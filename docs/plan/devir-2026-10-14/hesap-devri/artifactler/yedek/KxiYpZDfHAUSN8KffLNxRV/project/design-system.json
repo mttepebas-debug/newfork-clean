@@ -1,0 +1,42 @@
+{
+  "v": 3,
+  "assetGroups": {
+    "Logos": {
+      "files": {
+        "favicon.svg": {
+          "blob": "b273d6621bf0c46cdb51025ad9449ec4",
+          "name": "favicon.svg",
+          "size": 216,
+          "type": "image/svg+xml"
+        }
+      },
+      "name": "Logos",
+      "order": [
+        "favicon.svg"
+      ],
+      "tile": "l"
+    }
+  },
+  "blobs": {},
+  "createdOnFiles": {
+    "at": "2026-10-04T18:27:33Z",
+    "v": 1
+  },
+  "docs": {
+    "sections": []
+  },
+  "groups": [
+    "Logos"
+  ],
+  "lastChange": {
+    "by": "Mert",
+    "at": "2026-10-04T22:21:55Z",
+    "via": "Claude Code · newfork-clean@795a8f94",
+    "note": "Inter self-hosted and listed as the font; green button reads theme-accent; Schedule top bar stays black (Mert, 2026-10-04)."
+  },
+  "layout": "files",
+  "libraries": [],
+  "namespace": "Newfork",
+  "sections": {},
+  "title": "Newfork"
+}

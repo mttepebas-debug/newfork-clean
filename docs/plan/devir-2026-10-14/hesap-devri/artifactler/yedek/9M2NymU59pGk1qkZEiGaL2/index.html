@@ -1,0 +1,106 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1"><style>:root{color-scheme:light}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Newfork Motion Hero</title>
+    <meta name="description" content="Newfork — shift scheduling for restaurants. 15-second motion hero." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap"
+    />
+    <link rel="stylesheet" href="hero.css" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #f4f5f3;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Add data-loop to replay the reel forever (showreel mode). -->
+    <section class="nfh" data-newfork-hero aria-label="Newfork">
+      <div class="nfh-copy">
+        <p class="nfh-eyebrow" data-nfh-reveal>
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#101828" />
+            <path d="M18 46V18h8.5l11 17.4V18H46v28h-8.5l-11-17.4V46H18Z" fill="#F9FAFB" />
+          </svg>
+          <b>newfork</b><span>Shift scheduling for restaurants</span>
+        </p>
+        <h1 class="nfh-h1">
+          <span class="nfh-line"><span data-nfh-reveal="mask">Every shift,</span></span>
+          <span class="nfh-line"><span data-nfh-reveal="mask"><em>covered.</em></span></span>
+        </h1>
+        <p class="nfh-sub" data-nfh-reveal>
+          Build the week, catch conflicts before they happen, and publish to every phone in one
+          click — across every location.
+        </p>
+        <div class="nfh-ctas" data-nfh-reveal>
+          <a class="nfh-btn primary" href="#get-started">Get started</a>
+          <a class="nfh-btn secondary" href="#reel" data-nfh-replay>
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <path
+                d="M3 9a6 6 0 1 0 1.8-4.3M3 2.5v3.3h3.3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Replay the reel
+          </a>
+        </div>
+      </div>
+      <p class="nfh-sr">
+        Animation: scattered shift cards snap into a weekly schedule, a time-off conflict is caught
+        and the open shift goes to an available teammate, the shift reaches their phone, and the week
+        is published across three locations.
+      </p>
+    </section>
+    <script src="hero.js"></script>
+  </body>
+</html>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Kaynak belirsiz", "line": "Project'ten önce, diğer hesapta yapıldı; hangi araçla yapıldığı bilinmiyor.", "folder": "Tanıtım sitesi ve herkese açık sayfalar", "tip": "Project'ten önce, diğer hesapta yapıldı; Code oturumunda mı başka bir araçta mı yapıldığı bilinmiyor. 2026-10-09'da bu hesaba taşındı.", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#e8ebea", "fg": "#424b48"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+</body></html>

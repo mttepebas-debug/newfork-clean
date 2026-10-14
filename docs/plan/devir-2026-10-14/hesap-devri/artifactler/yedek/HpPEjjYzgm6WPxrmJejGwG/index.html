@@ -1,0 +1,1355 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Lineup Phone</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap">
+<style>
+:root {
+  color-scheme: light;
+  --theme-font-sans: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --theme-page: #f4f5f3; --theme-surface: #ffffff; --theme-surface-soft: #f7f9f8; --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e; --theme-text-body: #1d2525; --theme-muted: #66716c; --theme-muted-strong: #5f6b66;
+  --theme-border: #dce3df; --theme-border-subtle: #e2e6e4; --theme-border-strong: #cbd4d0; --theme-border-control: #7f8c86; --theme-border-hover: #95aaa1;
+  --theme-accent: #176954; --theme-accent-strong: #12624f; --theme-accent-soft: #dbece5; --theme-accent-deep: #244c3d; --theme-selected: #e7f1ed;
+  --theme-focus: #177a64; --theme-focus-halo: #c9eadf; --theme-action: #111827; --theme-on-accent: #ffffff;
+  --theme-danger: #b84234; --theme-danger-soft: #fff0ee; --theme-danger-surface: #fff8f6; --theme-danger-border: #ad3f36; --theme-danger-text: #653b36; --theme-danger-strong: #a43830;
+  --theme-warning-soft: #fff7e2; --theme-warning-surface: #fbf6ec; --theme-warning-border: #bf872d; --theme-warning-text: #5f491f;
+  --theme-availability: #d9730d; --theme-current: #b7791f; --theme-published: #087f5b;
+  --theme-list-frame: #d7dcda; --theme-list-head: #e6ece8; --theme-list-head-text: #4f5d57; --theme-list-cell-text: #46514d; --theme-text-faint: #aeb9b4;
+  --theme-info-soft: #e8eff8; --theme-info-text: #234a7a;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--theme-page); color: var(--theme-text-body); font-family: var(--theme-font-sans); font-size: 14px; -webkit-font-smoothing: antialiased; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+
+/* ---------- Mockup chrome (not the product) ---------- */
+.mk { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 28px; max-width: 1180px; margin: 0 auto; padding: 24px 24px 48px; }
+/* Mert 14 Oct 05:10: the long menu scrolls on its own, so a pick never sends the page back to the top */
+.mk-side { display: grid; align-content: start; gap: 18px; position: sticky; top: 16px; max-height: calc(100vh - 32px); overflow-y: auto; overscroll-behavior: contain; padding-right: 8px; }
+.mk-side h1 { margin: 0; color: var(--theme-text); font-size: 20px; font-weight: 750; letter-spacing: -0.01em; }
+.mk-side p { margin: 0; color: var(--theme-muted); font-size: 13px; line-height: 1.5; }
+.mk-label { margin: 0 0 6px; color: var(--theme-muted); font-size: 11px; font-weight: 750; letter-spacing: 0.08em; text-transform: uppercase; }
+.mk-vars { display: grid; gap: 6px; }
+.mk-var { display: grid; gap: 2px; border: 1px solid var(--theme-border); border-radius: 8px; padding: 10px 12px; background: var(--theme-surface); text-align: left; }
+.mk-var b { color: var(--theme-text); font-size: 14px; }
+.mk-var span { color: var(--theme-muted); font-size: 12px; line-height: 1.45; }
+.mk-var[aria-pressed="true"] { border-color: var(--theme-accent); box-shadow: inset 0 0 0 1px var(--theme-accent); background: var(--theme-selected); }
+.mk-moments { display: grid; gap: 2px; margin: 0; padding: 0; list-style: none; counter-reset: m; }
+.mk-moments button { display: flex; width: 100%; align-items: baseline; gap: 10px; border: 0; border-radius: 6px; padding: 7px 8px; background: transparent; color: var(--theme-text-body); font-size: 13px; text-align: left; }
+.mk-moments button::before { counter-increment: m; content: counter(m); min-width: 16px; color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.mk-moments button:hover { background: var(--theme-surface-muted); }
+.mk-moments button[aria-pressed="true"] { background: var(--theme-accent-deep); color: #fff; }
+.mk-moments button[aria-pressed="true"]::before { color: #cfe3da; }
+.mk-reset { justify-self: start; border: 1px solid var(--theme-border-control); border-radius: 5px; padding: 6px 12px; background: var(--theme-surface); font-size: 12px; font-weight: 650; }
+.mk-stage { display: grid; align-self: start; justify-items: center; gap: 12px; position: sticky; top: 16px; }
+.mk-note { max-width: 520px; margin: 0; color: var(--theme-text-body); font-size: 13px; line-height: 1.5; text-align: center; }
+.device { position: relative; width: 390px; height: 844px; overflow: hidden; border: 10px solid #1b2320; border-radius: 46px; background: var(--theme-page); box-shadow: 0 30px 60px -30px rgba(23, 34, 30, 0.45); }
+@media (max-width: 900px) {
+  .mk { grid-template-columns: minmax(0, 1fr); padding: 16px; }
+  .mk-side, .mk-stage { position: static; max-height: none; overflow: visible; }
+}
+/* On a real phone the mockup is the screen. */
+@media (max-width: 520px) {
+  .mk { display: block; padding: 0; }
+  .mk-side, .mk-note { display: none; }
+  .mk-phonebar { display: flex !important; }
+  .device { width: 100vw; height: 100dvh; border: 0; border-radius: 0; box-shadow: none; }
+}
+.mk-phonebar { display: none; gap: 6px; overflow-x: auto; padding: 6px 8px; background: #1b2320; }
+.mk-phonebar button { flex: none; border: 0; border-radius: 999px; padding: 4px 10px; background: #2c3833; color: #dfe8e4; font-size: 12px; }
+.mk-phonebar button[aria-pressed="true"] { background: #fff; color: #17221e; }
+
+/* ---------- App (the product) ---------- */
+.app { position: absolute; inset: 0; display: grid; grid-template-rows: minmax(0, 1fr) auto; background: var(--theme-page); }
+.scroll { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.pad { padding: 0 16px; }
+
+/* Bottom nav (the app's management bar) */
+.nav { display: grid; grid-template-columns: repeat(5, 1fr); gap: 2px; border-top: 1px solid var(--theme-border); padding: 6px 8px calc(8px + env(safe-area-inset-bottom, 0px)); background: var(--theme-surface); }
+.nav a { display: grid; justify-items: center; gap: 3px; border-radius: 10px; padding: 7px 0 6px; color: var(--theme-muted); font-size: 11px; text-decoration: none; }
+.nav a[aria-current="page"] { background: var(--theme-selected); color: var(--theme-accent-deep); font-weight: 700; }
+.nav svg { width: 21px; height: 21px; }
+
+/* List-page header (A) */
+.lp-head { padding: 18px 16px 14px; border-bottom: 1px solid var(--theme-border); margin: 0 16px; padding-left: 0; padding-right: 0; }
+.eyebrow { margin: 0 0 6px; color: var(--theme-accent); font-size: 10px; font-weight: 800; letter-spacing: 0.16em; text-transform: uppercase; }
+.lp-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--theme-text); font-size: 30px; font-weight: 800; letter-spacing: -0.02em; line-height: 1.1; }
+.live-dot { width: 18px; height: 18px; border-radius: 50%; background: var(--theme-accent-soft); position: relative; }
+.live-dot::after { content: ""; position: absolute; inset: 5px; border-radius: 50%; background: var(--theme-accent); }
+.lp-desc { margin: 6px 0 0; color: var(--theme-muted); font-size: 13px; }
+
+/* Compact app bar (B, C) */
+.bar { position: sticky; top: 0; z-index: 3; display: grid; gap: 10px; padding: 12px 16px 10px; background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); }
+.bar-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bar-title { display: flex; align-items: center; gap: 8px; margin: 0; color: var(--theme-text); font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+.bar-title .live-dot { width: 14px; height: 14px; }
+.bar-title .live-dot::after { inset: 4px; }
+
+/* Controls */
+.ctl-row { display: flex; gap: 8px; }
+.date-ctl { display: flex; flex: none; align-items: stretch; height: 40px; border: 1px solid var(--theme-border-control); border-radius: 6px; background: var(--theme-surface); overflow: hidden; }
+.date-ctl button { display: inline-flex; width: 38px; align-items: center; justify-content: center; border: 0; background: transparent; color: var(--theme-text); }
+.date-ctl .d { width: auto; min-width: 104px; padding: 0 6px; border-left: 1px solid var(--theme-border-subtle); border-right: 1px solid var(--theme-border-subtle); font-size: 13px; font-weight: 700; }
+.select { position: relative; flex: 1; min-width: 0; }
+.select select { width: 100%; height: 40px; appearance: none; border: 1px solid var(--theme-border-control); border-radius: 6px; padding: 0 30px 0 11px; background: var(--theme-surface); color: var(--theme-text); font-size: 14px; }
+.select::after { content: ""; position: absolute; right: 12px; top: 50%; width: 7px; height: 7px; border-right: 2px solid var(--theme-text); border-bottom: 2px solid var(--theme-text); transform: translateY(-70%) rotate(45deg); pointer-events: none; }
+.btn { display: inline-flex; min-height: 40px; align-items: center; justify-content: center; gap: 7px; border: 1px solid var(--theme-border-control); border-radius: 6px; padding: 0 14px; background: var(--theme-surface); color: var(--theme-text); font-size: 14px; font-weight: 650; }
+.btn.sm { min-height: 32px; padding: 0 10px; font-size: 13px; }
+.btn.green { border-color: var(--theme-accent); background: var(--theme-accent); color: #fff; }
+.btn.dark { border-color: var(--theme-action); background: var(--theme-action); color: #fff; }
+.btn.danger { border-color: var(--theme-danger-border); color: var(--theme-danger-strong); }
+.btn.danger.armed { background: var(--theme-danger); border-color: var(--theme-danger); color: #fff; }
+.btn:disabled { opacity: 0.45; cursor: default; }
+.btn svg { width: 16px; height: 16px; }
+.icon-btn { display: inline-flex; width: 36px; height: 36px; flex: none; align-items: center; justify-content: center; border: 0; border-radius: 8px; background: transparent; color: var(--theme-text); }
+.icon-btn:hover { background: var(--theme-surface-muted); }
+.icon-btn svg { width: 18px; height: 18px; }
+
+/* Week strip */
+.week { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--theme-border-subtle); }
+.week button { position: relative; display: grid; justify-items: center; gap: 1px; border: 0; border-bottom: 3px solid transparent; padding: 6px 0 5px; background: transparent; color: var(--theme-muted); }
+.week span { font-size: 10px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.week strong { color: var(--theme-text); font-size: 15px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.week button[aria-pressed="true"] { border-bottom-color: var(--theme-accent); color: var(--theme-accent-deep); }
+.week button[aria-pressed="true"] strong { color: var(--theme-accent-deep); font-weight: 800; }
+.week .today::before { content: ""; position: absolute; top: 1px; left: 50%; width: 2px; height: 5px; border-radius: 1px; background: var(--theme-current); transform: translateX(-50%); }
+
+/* Location heading */
+.loc-h { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; margin: 18px 0 8px; }
+.loc-h h2 { margin: 0; color: var(--theme-text); font-size: 15px; font-weight: 800; }
+.loc-h span { color: var(--theme-muted); font-size: 12px; }
+
+/* Shift card (Gösterge: colour channel on the left) */
+.shift { overflow: hidden; border: 1px solid var(--theme-list-frame); border-left: 4px solid var(--c); border-radius: 8px; background: var(--theme-surface); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.05); }
+.shift + .shift { margin-top: 10px; }
+.shift-h { display: flex; width: 100%; min-height: 60px; align-items: center; gap: 10px; border: 0; padding: 10px 10px 10px 12px; background: transparent; text-align: left; }
+.shift-h .t { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.shift-h h3 { margin: 0; color: var(--theme-text); font-size: 16px; font-weight: 750; }
+.st { display: inline-flex; align-items: center; gap: 5px; color: var(--theme-muted); font-size: 12px; font-weight: 600; }
+.st.pub { color: var(--theme-published); }
+.st.draft { color: var(--theme-warning-text); }
+.st i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+.chev { flex: none; color: var(--theme-muted); transition: transform 0.15s; }
+.shift-h[aria-expanded="false"] .chev { transform: rotate(-90deg); }
+.count { color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.gauge { display: inline-grid; grid-auto-flow: column; gap: 2px; vertical-align: middle; }
+.gauge i { width: 5px; height: 10px; border-radius: 1px; background: var(--theme-border); }
+.gauge i.on { background: var(--theme-published); }
+.shift-tools { display: flex; gap: 6px; padding: 0 12px 10px; }
+.shift.empty { background: var(--theme-surface-soft); }
+.lock { display: flex; align-items: center; gap: 8px; margin: 0 12px 10px; border-radius: 6px; padding: 8px 10px; background: var(--theme-surface-muted); color: var(--theme-muted-strong); font-size: 12px; }
+.lock svg { width: 14px; height: 14px; flex: none; }
+
+/* Department and job */
+.dept { display: flex; align-items: center; gap: 10px; margin: 6px 12px 0; padding: 8px 0 4px; color: var(--theme-text); font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.dept::after { content: ""; flex: 1; height: 1px; background: var(--theme-border-subtle); }
+.job { display: flex; align-items: center; gap: 8px; padding: 6px 6px 2px 12px; color: var(--theme-muted-strong); font-size: 12px; font-weight: 700; }
+.job i { width: 8px; height: 8px; border-radius: 50%; background: var(--jc); }
+.job .grow { flex: 1; }
+.add { display: inline-flex; width: 32px; height: 32px; align-items: center; justify-content: center; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); color: var(--theme-accent-deep); }
+.add svg { width: 16px; height: 16px; }
+
+/* Person row */
+.row { display: flex; width: 100%; min-height: 56px; align-items: center; gap: 10px; border: 0; border-top: 1px solid var(--theme-border-subtle); padding: 8px 12px; background: transparent; text-align: left; }
+.job + .row { border-top: 0; }
+.row:active { background: var(--theme-surface-soft); }
+.av { display: inline-flex; width: 32px; height: 32px; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: var(--theme-surface-muted); color: var(--theme-text-body); font-size: 11px; font-weight: 750; }
+.who { display: grid; flex: 1; min-width: 0; gap: 2px; }
+.who b { overflow: hidden; color: var(--theme-text); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.meta { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; color: var(--theme-muted); font-size: 12px; }
+.time { color: var(--theme-text-body); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tag { display: inline-flex; align-items: center; border-radius: 4px; padding: 1px 6px; background: var(--theme-surface-muted); color: var(--theme-muted-strong); font-size: 11px; font-weight: 650; }
+.tag.lab { background: var(--theme-info-soft); color: var(--theme-info-text); }
+.tag.only { background: var(--theme-warning-soft); color: var(--theme-warning-text); }
+.tag.off { background: var(--theme-danger-soft); color: var(--theme-danger-text); }
+.sec { width: 84px; flex: none; color: var(--theme-text); font-size: 12.5px; font-weight: 650; line-height: 1.3; text-align: right; }
+.sec.none { color: var(--theme-text-faint, var(--theme-muted)); font-weight: 500; }
+.sec-h, .lab-h { color: var(--theme-muted); font-size: 10px; font-weight: 750; letter-spacing: 0.08em; }
+.dept i { flex: 1; height: 1px; background: var(--theme-border-subtle); }
+.dept:has(.sec-h)::after { display: none; }
+.time.adj { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 1px 6px 1px 4px; background: var(--theme-warning-soft); box-shadow: inset 0 0 0 1px var(--theme-warning-border); color: var(--theme-warning-text); font-weight: 700; }
+.time.adj svg { width: 13px; height: 13px; flex: none; }
+.was { color: var(--theme-muted); font-size: 11.5px; text-decoration: line-through; white-space: nowrap; }
+.tag.moved { background: var(--theme-info-soft); color: var(--theme-info-text); }
+.row.from { box-shadow: inset 3px 0 0 var(--theme-info-border, var(--theme-info-text)); }
+.who b .chg { display: inline-block; margin-left: 6px; vertical-align: 2px; }
+.sortby { display: flex; align-items: center; gap: 6px; margin-top: 10px; color: var(--theme-muted); font-size: 12px; font-weight: 650; }
+.sortby span { margin-right: 2px; }
+.sortby button { min-height: 30px; border: 1px solid var(--theme-border-control); border-radius: 999px; padding: 0 12px; background: var(--theme-surface); color: var(--theme-text-body); font: inherit; font-size: 12.5px; font-weight: 650; }
+.sortby button[aria-pressed="true"] { border-color: var(--theme-accent); background: var(--theme-accent-soft); color: var(--theme-accent-deep); }
+.pick-g span { margin-left: 4px; color: var(--theme-muted); font-weight: 650; letter-spacing: 0; }
+.pick-g.lead { color: var(--theme-accent-deep); }
+.pick > svg { width: 18px; height: 18px; flex: none; color: var(--theme-accent-deep); }
+.pick.dim .who b { color: var(--theme-text-body); font-weight: 600; }
+.pjs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.pj { display: inline-flex; align-items: center; gap: 4px; border-radius: 4px; padding: 1px 6px; background: var(--theme-surface-muted); color: var(--theme-muted-strong); font-size: 11px; font-weight: 650; }
+.pj i { width: 6px; height: 6px; border-radius: 50%; background: var(--jc); }
+.pj.on { background: var(--theme-accent-soft); color: var(--theme-accent-deep); }
+.ps { font-size: 12px; }
+.ps.ok { color: var(--theme-accent-deep); font-weight: 650; }
+.ps.other { color: var(--theme-info-text); }
+.ps.timeoff { color: var(--theme-warning-text); }
+.chg { width: 7px; height: 7px; flex: none; border-radius: 50%; background: var(--theme-availability); }
+.off-h { margin: 8px 12px 0; padding: 10px 0 2px; border-top: 1px dashed var(--theme-border-strong); color: var(--theme-muted); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.row.is-off b { color: var(--theme-muted); text-decoration: line-through; }
+.restore { border: 0; padding: 6px 4px; background: transparent; color: var(--theme-accent-deep); font-size: 13px; font-weight: 700; }
+.empty-line { margin: 0; padding: 0 12px 14px 12px; color: var(--theme-muted); font-size: 13px; }
+/* Row layout 1 and 2 (Mert 14 Oct, 01:54): one grid for header, job line and person rows, so columns line up */
+.lay { --gut: 12px; --av: 32px; --gap: 10px; --hair-dept: var(--theme-border-subtle); --hair-job: color-mix(in srgb, var(--theme-border-subtle) 55%, transparent); }
+.lay.r1 { --secw: 116px; }
+.lay.r2 { --secw: 96px; }
+.lay .g { display: grid; grid-template-columns: var(--av) minmax(0, 1fr); column-gap: var(--gap); align-items: start; padding-inline: var(--gut); }
+.lay.has-sec .g { grid-template-columns: var(--av) minmax(0, 1fr) var(--secw); }
+/* Mert 14 Oct 04:52: Opener, Closer, Training… sit in their own middle column, not beside the name */
+.lay { --labw: 64px; }
+.lay.has-lab.has-sec { --secw: 76px; }
+.lay.has-lab .g:not(.dh) { grid-template-columns: var(--av) minmax(0, 1fr) var(--labw); }
+.lay.has-lab.has-sec .g:not(.dh) { grid-template-columns: var(--av) minmax(0, 1fr) var(--labw) var(--secw); }
+.lay .lab-h { text-transform: uppercase; }
+.lay .labc { display: flex; flex-direction: column; align-items: flex-start; gap: 3px; padding-top: 2px; min-width: 0; }
+.lay .labc .tag { max-width: 100%; white-space: normal; line-height: 14px; }
+.lay .g.dh { padding-top: 14px; padding-bottom: 2px; align-items: baseline; }
+.lay .dh .t { grid-column: 1 / 3; align-self: center; color: var(--theme-text); font-size: 10.5px; font-weight: 800; letter-spacing: 0.1em; text-transform: uppercase; }
+.lay .sec-h { grid-column: -2 / -1; text-transform: uppercase; }
+.lay .g.dh { grid-template-columns: minmax(0, 1fr) auto; align-items: center; min-height: 40px; padding-top: 10px; }
+.lay .dh .t { grid-column: 1; }
+.lay .dh .add2 { grid-column: 2; }
+.lay.r2 .sec-h, .lay.r2 .sec2 { text-align: right; }
+.lay .g.jh { align-items: center; min-height: 36px; padding-top: 4px; }
+.lay .jh .dot { justify-self: center; width: 8px; height: 8px; border-radius: 50%; background: var(--jc); }
+.lay .jh .nm { display: flex; align-items: baseline; gap: 6px; color: var(--theme-muted-strong); font-size: 12px; font-weight: 700; }
+.lay .jh .nm span { color: var(--theme-muted); font-weight: 600; font-variant-numeric: tabular-nums; }
+.lay.has-sec .jh .nm, .lay.has-lab .jh .nm { grid-column: 2 / 3; }
+.lay .g.jh { min-height: 30px; }
+.lay .add2 { grid-column: -2 / -1; justify-self: end; display: inline-flex; align-items: center; gap: 3px; min-height: 32px; margin-right: -8px; border: 0; border-radius: 6px; padding: 0 8px; background: transparent; color: var(--theme-accent); font-size: 12.5px; font-weight: 700; }
+.lay .add2 svg { width: 14px; height: 14px; }
+.lay .add2:active { background: var(--theme-accent-soft); }
+.lay .row.g { min-height: 0; border: 0; padding-block: 7px; }
+.lay .row.g .av { margin-top: 1px; }
+.lay .row.g .who { gap: 1px; }
+.lay .row.g .who b { line-height: 20px; }
+.lay .sec2 { padding-top: 2px; color: var(--theme-text-body); font-size: 13px; font-weight: 600; line-height: 18px; overflow-wrap: anywhere; }
+.lay .row.is-off.g { grid-template-columns: var(--av) minmax(0, 1fr) auto; align-items: center; }
+.lay .jg { padding-bottom: 6px; }
+.lay .jg + .jg, .lay .dg + .dg { position: relative; }
+.lay .jg + .jg::before, .lay .dg + .dg::before { content: ""; position: absolute; top: 0; right: var(--gut); left: calc(var(--gut) + var(--av) + var(--gap)); height: 1px; background: var(--hair-job); }
+.lay .dg + .dg::before { left: var(--gut); background: var(--hair-dept); }
+.lay .off-h { margin: 6px var(--gut) 0; }
+.lay .nl { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.lay .nl b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lay .nl .tag, .lay .nl .chg { flex: none; }
+.lay .row.g.me { background: var(--theme-selected); }
+
+/* Employee: own shift summary (Mert 14 Oct 02:18) */
+.me-wrap { display: grid; gap: 10px; margin: 12px 16px 0; }
+.me-card { display: grid; gap: 6px; border: 1px solid var(--theme-list-frame); border-left: 4px solid var(--c); border-radius: 10px; padding: 14px; background: var(--theme-surface); }
+.me-top { display: flex; align-items: center; gap: 8px; color: var(--theme-muted-strong); font-size: 12.5px; font-weight: 700; }
+.me-top i { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.me-name { margin: 0; color: var(--theme-text); font-size: 18px; font-weight: 800; letter-spacing: -0.01em; }
+.me-line { display: flex; align-items: center; gap: 8px; color: var(--theme-text-body); font-size: 14px; }
+.me-line svg { width: 15px; height: 15px; flex: none; color: var(--theme-muted); }
+.me-time { color: var(--theme-text); font-size: 16px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Mert 14 Oct 02:49: the time stays on one line ("PM" never drops). */
+.me-time .tx, .me-time .tx > span { white-space: nowrap; }
+.me-line { min-width: 0; }
+/* Mert 14 Oct 02:49: Acknowledge at the bottom of the page; the whole-team table names the location and the date in large type. */
+.me-foot { display: grid; gap: 8px; margin: 14px 16px 0; }
+.me-foot p { margin: 0; color: var(--theme-muted); font-size: 12.5px; text-align: center; }
+.team-h { display: grid; gap: 2px; padding: 14px 16px 12px; border-bottom: 1px solid var(--theme-border-subtle); }
+.team-h h2 { margin: 0; color: var(--theme-text); font-size: 22px; font-weight: 800; letter-spacing: -0.015em; }
+.team-h span { color: var(--theme-muted-strong); font-size: 14px; font-weight: 650; }
+.me-chg { color: var(--theme-muted); font-size: 12px; }
+.me-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.me-acked { display: flex; align-items: center; gap: 6px; color: var(--theme-accent-deep); font-size: 13px; font-weight: 650; }
+.me-acked svg { width: 15px; height: 15px; }
+.ticket { overflow: hidden; border: 1px solid var(--theme-list-frame); border-radius: 12px; background: var(--theme-surface); }
+.ticket-h { display: grid; gap: 2px; padding: 12px 14px; background: color-mix(in srgb, var(--c) 12%, var(--theme-surface)); border-bottom: 1px solid var(--theme-border-subtle); }
+.ticket-h small { color: var(--theme-muted-strong); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.ticket-time { padding: 14px 14px 4px; color: var(--theme-text); font-size: 24px; white-space: nowrap; font-weight: 800; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ticket-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px 12px; padding: 10px 14px 14px; }
+.ticket-grid div { display: grid; gap: 2px; }
+.ticket-grid span { color: var(--theme-muted); font-size: 11px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; }
+.ticket-grid b { color: var(--theme-text); font-size: 14px; font-weight: 650; }
+.ack-strip { display: flex; align-items: center; gap: 10px; border: 1px solid var(--theme-list-frame); border-left: 4px solid var(--c); border-radius: 10px; padding: 10px 12px; background: var(--theme-surface); }
+.ack-strip p { flex: 1; margin: 0; color: var(--theme-text-body); font-size: 13.5px; line-height: 1.35; }
+.ack-strip b { color: var(--theme-text); }
+/* The changed time: the Schedule's time is struck through, the lineup's time takes its place, and it repeats. */
+.tx { display: inline-grid; vertical-align: bottom; }
+.tx > span { grid-area: 1 / 1; white-space: nowrap; }
+.tx-old { position: relative; animation: tx-old 7s infinite; }
+.tx-old i { position: absolute; left: -2px; right: -2px; top: 52%; height: 2px; border-radius: 2px; background: var(--theme-danger); transform: scaleX(0); transform-origin: left center; animation: tx-line 7s infinite; }
+.tx-new { color: var(--theme-accent-deep); opacity: 0; animation: tx-new 7s infinite; }
+@keyframes tx-old { 0%, 30% { opacity: 1; } 38%, 92% { opacity: 0; } 97%, 100% { opacity: 1; } }
+@keyframes tx-line { 0%, 16% { transform: scaleX(0); } 28%, 38% { transform: scaleX(1); } 39%, 100% { transform: scaleX(0); } }
+@keyframes tx-new { 0%, 34% { opacity: 0; transform: translateY(5px); } 42%, 88% { opacity: 1; transform: none; } 93%, 100% { opacity: 0; transform: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .tx { display: inline-flex; gap: 6px; }
+  .tx > span { animation: none; opacity: 1; }
+  .tx-old { color: var(--theme-muted); text-decoration: line-through; }
+  .tx-old i { display: none; }
+}
+.short { display: flex; gap: 8px; margin: 0 0 10px; border: 1px solid var(--theme-warning-border); border-radius: 6px; padding: 8px 10px; background: var(--theme-warning-surface); color: var(--theme-warning-text); font-size: 12px; }
+
+/* Notes block in a card */
+.notes { display: grid; gap: 6px; margin: 8px 12px 12px; border-radius: 6px; padding: 10px; background: var(--theme-surface-soft); border: 1px solid var(--theme-border-subtle); }
+.note-l { display: grid; grid-template-columns: 74px 1fr; gap: 8px; font-size: 12px; }
+.note-l b { color: var(--theme-muted-strong); font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; }
+
+/* Sticky publish bar (A) */
+.pubbar { position: sticky; bottom: 0; z-index: 2; display: flex; align-items: center; gap: 10px; margin-top: 16px; border-top: 1px solid var(--theme-border); padding: 10px 16px; background: rgba(255, 255, 255, 0.96); backdrop-filter: blur(6px); }
+.pubbar .info { flex: 1; color: var(--theme-muted); font-size: 12px; line-height: 1.35; }
+.pubbar .info b { display: block; color: var(--theme-text); font-size: 13px; }
+
+/* B: shift tabs */
+.tabs { display: flex; gap: 4px; overflow-x: auto; margin: 0 -16px; padding: 0 16px; scrollbar-width: none; }
+.tabs button { display: inline-flex; flex: none; align-items: center; gap: 6px; border: 0; border-bottom: 3px solid transparent; padding: 8px 10px 7px; background: transparent; color: var(--theme-muted); font-size: 14px; font-weight: 650; }
+.tabs button[aria-selected="true"] { border-bottom-color: var(--c); color: var(--theme-text); }
+.tabs .n { color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.tabs .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--theme-border-strong); }
+.tabs .dot.pub { background: var(--theme-published); }
+.tabs .dot.draft { background: var(--theme-warning-border); }
+.summary { display: grid; gap: 10px; margin: 12px 16px 0; border: 1px solid var(--theme-list-frame); border-top: 3px solid var(--c); border-radius: 8px; padding: 12px; background: var(--theme-surface); }
+.summary-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.summary h2 { margin: 0; color: var(--theme-text); font-size: 18px; font-weight: 800; }
+.kpis { display: grid; grid-template-columns: repeat(3, 1fr); border-top: 1px solid var(--theme-border-subtle); padding-top: 10px; }
+.kpis div { display: grid; gap: 1px; }
+.kpis div + div { border-left: 1px solid var(--theme-border-subtle); padding-left: 10px; }
+.kpis b { color: var(--theme-text); font-size: 16px; font-variant-numeric: tabular-nums; }
+.kpis span { color: var(--theme-muted); font-size: 11px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; margin: 12px 16px 0; border-radius: 8px; padding: 3px; background: var(--theme-surface-muted); }
+.seg button { border: 0; border-radius: 6px; padding: 7px 0; background: transparent; color: var(--theme-muted-strong); font-size: 13px; font-weight: 650; }
+.seg button[aria-selected="true"] { background: var(--theme-surface); color: var(--theme-text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.12); }
+.panel { margin: 10px 16px 0; overflow: hidden; border: 1px solid var(--theme-list-frame); border-radius: 8px; background: var(--theme-surface); }
+.note-card { display: grid; gap: 4px; padding: 12px; border-top: 1px solid var(--theme-border-subtle); }
+.note-card:first-child { border-top: 0; }
+.note-card b { color: var(--theme-muted-strong); font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; }
+.note-card p { margin: 0; color: var(--theme-text-body); font-size: 14px; line-height: 1.45; }
+.note-card p.none { color: var(--theme-text-faint); }
+
+/* C: timeline */
+.chips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.chip { flex: none; border: 1px solid var(--theme-border); border-radius: 999px; padding: 5px 11px; background: var(--theme-surface); color: var(--theme-text-body); font-size: 13px; font-weight: 600; }
+.chip[aria-pressed="true"] { border-color: var(--theme-accent-deep); background: var(--theme-accent-deep); color: #fff; }
+.chip .sw { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--c); vertical-align: 0; }
+.tl { margin: 12px 16px 0; overflow: hidden; border: 1px solid var(--theme-list-frame); border-left: 4px solid var(--c); border-radius: 8px; background: var(--theme-surface); }
+.tl-head { display: flex; align-items: center; gap: 10px; padding: 10px 10px 10px 12px; border-bottom: 1px solid var(--theme-border-subtle); }
+.tl-head .t { display: grid; flex: 1; gap: 2px; }
+.tl-head h3 { margin: 0; color: var(--theme-text); font-size: 16px; font-weight: 750; }
+.scale { position: relative; height: 22px; margin-left: 116px; margin-right: 12px; border-bottom: 1px solid var(--theme-border-subtle); }
+.scale span { position: absolute; top: 4px; color: var(--theme-muted); font-size: 10px; font-weight: 650; transform: translateX(-50%); font-variant-numeric: tabular-nums; }
+.tl-row { display: flex; width: 100%; min-height: 46px; align-items: center; border: 0; border-top: 1px solid var(--theme-border-subtle); padding: 0 12px 0 12px; background: transparent; text-align: left; }
+.tl-row:first-of-type { border-top: 0; }
+.tl-name { display: grid; width: 104px; flex: none; gap: 1px; padding-right: 8px; }
+.tl-name b { overflow: hidden; color: var(--theme-text); font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.tl-name span { overflow: hidden; color: var(--theme-muted); font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+.track { position: relative; flex: 1; height: 26px; background: repeating-linear-gradient(90deg, transparent 0 calc(var(--h) - 1px), var(--theme-border-subtle) calc(var(--h) - 1px) var(--h)); }
+.barx { position: absolute; top: 3px; bottom: 3px; display: flex; align-items: center; overflow: hidden; border-radius: 4px; padding: 0 6px; background: color-mix(in srgb, var(--jc) 18%, white); border-left: 3px solid var(--jc); color: var(--theme-text); font-size: 10.5px; font-weight: 700; white-space: nowrap; }
+.tl-row.is-off .barx { background: var(--theme-surface-muted); border-left-color: var(--theme-border-strong); color: var(--theme-muted); text-decoration: line-through; }
+.now-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--theme-current); }
+.tl-sec { display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px; color: var(--theme-muted-strong); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; background: var(--theme-surface-soft); border-top: 1px solid var(--theme-border-subtle); }
+.tl-sec .grow { flex: 1; }
+.tl-sec .add { width: 28px; height: 28px; }
+
+/* Sheets */
+.scrim { position: absolute; inset: 0; z-index: 20; background: rgba(17, 24, 39, 0.38); animation: fade 0.15s ease-out; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; z-index: 21; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; max-height: 86%; border-radius: 16px 16px 0 0; background: var(--theme-surface); box-shadow: 0 -10px 30px rgba(23, 34, 30, 0.18); animation: up 0.2s ease-out; }
+.sheet.small { max-height: none; }
+@keyframes up { from { transform: translateY(24px); opacity: 0.6; } }
+@keyframes fade { from { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .sheet, .scrim { animation: none; } }
+.sheet-h { display: grid; gap: 2px; padding: 8px 16px 12px; border-bottom: 1px solid var(--theme-border-subtle); }
+.grab { justify-self: center; width: 38px; height: 4px; margin-bottom: 8px; border-radius: 2px; background: var(--theme-border-strong); }
+.sheet-h .ttl { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.sheet-h h3 { margin: 0; color: var(--theme-text); font-size: 17px; font-weight: 750; }
+.sheet-h p { margin: 0; color: var(--theme-muted); font-size: 13px; }
+.sheet-b { overflow-y: auto; padding: 12px 16px; scrollbar-width: none; }
+.sheet-f { display: flex; gap: 8px; border-top: 1px solid var(--theme-border-subtle); padding: 10px 16px calc(12px + env(safe-area-inset-bottom, 0px)); }
+.sheet-f .btn { flex: 1; }
+.field { display: grid; gap: 5px; margin-bottom: 12px; }
+.field > span { color: var(--theme-muted-strong); font-size: 12px; font-weight: 700; }
+.two { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.input { width: 100%; height: 40px; border: 1px solid var(--theme-border-control); border-radius: 6px; padding: 0 11px; background: var(--theme-surface); font-size: 15px; font-variant-numeric: tabular-nums; }
+textarea.input { height: 64px; padding: 8px 11px; resize: none; line-height: 1.4; }
+.hint { display: flex; align-items: center; gap: 6px; color: var(--theme-muted); font-size: 12px; }
+.hint .chg { display: inline-block; }
+.linkrow { display: flex; width: 100%; align-items: center; justify-content: space-between; border: 1px solid var(--theme-border); border-radius: 8px; padding: 10px 12px; background: var(--theme-surface); text-align: left; }
+.linkrow b { display: block; color: var(--theme-text); font-size: 14px; }
+.linkrow span { color: var(--theme-muted); font-size: 12px; }
+[hidden] { display: none !important; }
+.pfilters { position: sticky; top: -12px; z-index: 2; display: grid; gap: 8px; margin: -12px -16px 0; padding: 12px 16px 10px; background: var(--theme-surface); border-bottom: 1px solid var(--theme-border-subtle); }
+.pchips { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.pdept { position: relative; display: inline-flex; flex: none; align-items: center; }
+.pdept select { appearance: none; min-height: 32px; border: 1px solid var(--theme-accent); border-radius: 999px; padding: 0 28px 0 12px; background: var(--theme-accent-soft); color: var(--theme-accent-deep); font: inherit; font-size: 12.5px; font-weight: 700; }
+.pdept .chev { position: absolute; right: 8px; width: 14px; height: 14px; color: var(--theme-accent-deep); pointer-events: none; }
+.pjobs { display: flex; flex: none; gap: 6px; }
+.pjobs button { display: inline-flex; flex: none; align-items: center; gap: 5px; min-height: 32px; border: 1px solid var(--theme-border-control); border-radius: 999px; padding: 0 11px; background: var(--theme-surface); color: var(--theme-text-body); font: inherit; font-size: 12.5px; font-weight: 650; }
+.pjobs button i { width: 7px; height: 7px; border-radius: 50%; background: var(--jc); }
+.pjobs button span { color: var(--theme-muted); font-weight: 600; }
+.pjobs button[aria-pressed="true"] { border-color: var(--theme-text); background: var(--theme-text); color: var(--theme-surface); }
+.pjobs button[aria-pressed="true"] span { color: inherit; opacity: 0.75; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.prow { position: relative; display: flex; min-height: 56px; align-items: center; gap: 10px; border-top: 1px solid var(--theme-border-subtle); padding: 7px 0; }
+.pick-g + .prow, .pbest-why + .prow { border-top: 0; }
+.prow .av { width: 34px; height: 34px; box-shadow: inset 0 0 0 2px color-mix(in srgb, var(--jc) 35%, transparent); }
+.prow .who { gap: 3px; }
+.prow .l1 { display: flex; min-width: 0; align-items: center; gap: 6px; }
+.prow .l1 b { min-width: 0; }
+/* Name, a job column in the middle, the button; the status line runs under name and job (Mert 14 Oct 04:23). */
+.prow { display: grid; grid-template-columns: 34px minmax(0, 1fr) 104px auto; column-gap: 10px; row-gap: 2px; align-items: center; }
+.prow .av { grid-row: 1 / 3; }
+.pname { overflow: hidden; color: var(--theme-text); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.prow .padd { grid-row: 1 / 3; grid-column: 4; }
+.prow .pst { grid-column: 2 / 4; }
+.pjc { display: flex; min-width: 0; align-items: center; gap: 4px; }
+.pjc .pjob { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pst-t { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.phrs { flex: none; border-radius: 4px; padding: 0 5px; background: var(--theme-surface-muted, #f2f4f3); color: var(--theme-muted-strong); font-size: 11px; font-weight: 700; }
+.phrs.over { background: var(--theme-warning-soft, #fff7e2); color: var(--theme-warning-text); }
+.padd.move[data-armed="true"] { border-color: var(--theme-info-text); background: var(--theme-info-text); color: var(--theme-surface); }
+.pmove-why { grid-column: 2 / -1; margin: 2px 0 0; color: var(--theme-info-text); font-size: 12px; line-height: 1.4; }
+.pjob { display: inline-flex; flex: none; align-items: center; gap: 4px; border-radius: 4px; padding: 1px 6px; background: color-mix(in srgb, var(--jc) 12%, white); color: color-mix(in srgb, var(--jc) 70%, black); font-size: 11px; font-weight: 700; }
+.pjob i { width: 6px; height: 6px; border-radius: 50%; background: var(--jc); }
+.pmore { flex: none; min-width: 26px; min-height: 22px; border: 1px solid var(--theme-border-control); border-radius: 4px; padding: 0 5px; background: var(--theme-surface); color: var(--theme-muted-strong); font: inherit; font-size: 11px; font-weight: 700; }
+.pmore[aria-expanded="true"] { border-color: var(--theme-text); color: var(--theme-text); }
+.pst { display: flex; min-width: 0; align-items: center; gap: 6px; overflow: hidden; color: var(--theme-muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.pst i { width: 6px; height: 6px; flex: none; border-radius: 50%; background: var(--theme-muted); }
+.pst.available { color: var(--theme-accent-deep); font-weight: 650; }
+.pst.available i { background: var(--theme-accent); }
+.pst.other i { background: var(--theme-info-text); }
+.pst.timeoff { color: var(--theme-warning-text); }
+.pst.timeoff i { background: var(--theme-warning-text); }
+.pst.no i { background: transparent; box-shadow: inset 0 0 0 1.5px var(--theme-muted); }
+.padd { display: inline-flex; flex: none; align-items: center; gap: 4px; min-height: 34px; border: 1px solid var(--theme-accent); border-radius: 8px; padding: 0 12px; background: var(--theme-surface); color: var(--theme-accent-deep); font: inherit; font-size: 13px; font-weight: 700; }
+.padd svg { width: 14px; height: 14px; }
+.padd.move { border-color: var(--theme-info-text); color: var(--theme-info-text); }
+.prow.fit2 .who b { color: var(--theme-text-body); font-weight: 600; }
+.prow.no { opacity: 0.62; }
+.jobpop { position: absolute; z-index: 3; top: calc(100% - 6px); left: 44px; display: grid; gap: 6px; min-width: 210px; border: 1px solid var(--theme-border); border-radius: 10px; padding: 10px 12px; background: var(--theme-surface); box-shadow: 0 10px 24px rgba(23, 34, 30, 0.16); }
+.jobpop p { margin: 0; color: var(--theme-muted-strong); font-size: 10.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.jp-row { display: grid; grid-template-columns: 8px auto 1fr; align-items: center; gap: 8px; font-size: 13px; }
+.jp-row i { width: 8px; height: 8px; border-radius: 50%; background: var(--jc); }
+.jp-row b { color: var(--theme-text); font-weight: 650; }
+.jp-row span { color: var(--theme-muted); font-size: 12px; }
+.pgrp.best { margin: 10px -8px 0; border: 1px solid var(--theme-accent-soft); border-radius: 10px; padding: 0 8px 2px; background: var(--theme-selected); }
+.pgrp.best .pick-g { margin-top: 10px; }
+.pbest-why { margin: 0 0 2px; color: var(--theme-muted); font-size: 12px; }
+.pshowall { width: 100%; margin-top: 12px; min-height: 40px; border: 1px dashed var(--theme-border-control); border-radius: 8px; background: transparent; color: var(--theme-text-body); font: inherit; font-size: 13px; font-weight: 650; }
+.noel { display: flex; width: 100%; align-items: center; justify-content: space-between; margin-top: 16px; min-height: 40px; border: 0; border-top: 1px solid var(--theme-border); padding: 10px 0 0; background: transparent; color: var(--theme-muted-strong); font: inherit; font-size: 13px; font-weight: 700; text-align: left; }
+.noel .chev { width: 16px; height: 16px; transform: rotate(-90deg); }
+.noel[aria-expanded="true"] .chev { transform: none; }
+.pempty { margin: 18px 0; color: var(--theme-muted); font-size: 13px; text-align: center; }
+.pick-g { margin: 14px 0 4px; color: var(--theme-muted-strong); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.pick { display: flex; width: 100%; min-height: 52px; align-items: center; gap: 10px; border: 0; border-top: 1px solid var(--theme-border-subtle); padding: 6px 2px; background: transparent; text-align: left; }
+.pick-g + .pick { border-top: 0; }
+.pick:disabled { opacity: 0.55; cursor: default; }
+.warn { display: grid; gap: 8px; margin-top: 10px; border: 1px solid var(--theme-warning-border); border-radius: 8px; padding: 10px 12px; background: var(--theme-warning-surface); color: var(--theme-warning-text); font-size: 13px; }
+.pub-loc { margin: 4px 0 6px; color: var(--theme-muted-strong); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.pub-row { display: flex; min-height: 50px; align-items: center; gap: 10px; border-top: 1px solid var(--theme-border-subtle); }
+.pub-loc + .pub-row { border-top: 0; }
+.pub-row .who { gap: 1px; }
+.cb { width: 20px; height: 20px; flex: none; accent-color: var(--theme-accent); }
+.pub-ok { display: inline-flex; width: 20px; height: 20px; flex: none; align-items: center; justify-content: center; border-radius: 50%; background: var(--theme-accent-soft); color: var(--theme-published); }
+.pub-ok svg { width: 12px; height: 12px; }
+.switch { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 12px; border-top: 1px solid var(--theme-border-subtle); padding-top: 12px; }
+.switch b { display: block; color: var(--theme-text); font-size: 14px; }
+.switch span { color: var(--theme-muted); font-size: 12px; }
+.tog { position: relative; width: 44px; height: 26px; flex: none; border: 0; border-radius: 999px; background: var(--theme-border-strong); }
+.tog::after { content: ""; position: absolute; top: 3px; left: 3px; width: 20px; height: 20px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2); transition: transform 0.15s; }
+.tog[aria-checked="true"] { background: var(--theme-accent); }
+.tog[aria-checked="true"]::after { transform: translateX(18px); }
+.share { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 12px; }
+.ok-line { display: flex; align-items: center; gap: 8px; border-radius: 8px; padding: 10px 12px; background: var(--theme-success-soft, var(--theme-selected)); color: var(--theme-accent-deep); font-size: 13px; font-weight: 600; }
+.toast { position: absolute; left: 16px; right: 16px; bottom: 84px; z-index: 30; display: flex; align-items: center; gap: 10px; border-radius: 10px; padding: 11px 14px; background: var(--theme-action); color: #fff; font-size: 13px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2); animation: up 0.2s ease-out; }
+.toast button { margin-left: auto; border: 0; background: transparent; color: #9fe0c6; font-weight: 700; }
+
+/* Loading / error (variant B of the states page) */
+.sk { display: block; border-radius: 4px; background: linear-gradient(90deg, var(--theme-surface-muted) 0%, var(--theme-surface-soft) 45%, var(--theme-surface-muted) 90%); background-size: 240% 100%; animation: sk 1.3s ease-in-out infinite; }
+@keyframes sk { from { background-position: 120% 0; } to { background-position: -120% 0; } }
+@media (prefers-reduced-motion: reduce) { .sk { animation: none; } }
+.sk-card { display: grid; gap: 10px; margin-top: 10px; border: 1px solid var(--theme-list-frame); border-left: 4px solid var(--theme-border); border-radius: 8px; padding: 14px 12px; background: var(--theme-surface); }
+.sk-line { display: flex; align-items: center; gap: 10px; }
+.err { display: grid; justify-items: center; gap: 12px; margin: 16px; border: 1px solid var(--theme-list-frame); border-radius: 8px; padding: 28px 18px; background: var(--theme-surface); text-align: center; }
+.err .ic { display: inline-flex; width: 48px; height: 48px; align-items: center; justify-content: center; border-radius: 50%; background: var(--theme-danger-soft); color: var(--theme-danger-text); }
+.err h2 { margin: 0; color: var(--theme-text); font-size: 16px; }
+.err p { margin: 0; color: var(--theme-muted); font-size: 14px; line-height: 1.5; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<div class="mk">
+  <aside class="mk-side">
+    <div>
+      <p class="mk-label">Lineup · müdürün telefonu</p>
+      <h1>Telefonda lineup yapmak</h1>
+    </div>
+    <p>Üç düzen, aynı veri ve aynı davranış. Kişiye dokununca alttan düzenleme paneli açılır; Publish de alttan açılan bir panelde, masaüstündeki onaylı pencerenin içeriğiyle. Tarih: Çarşamba 14 Ekim, saat 2:10 PM.</p>
+    <div>
+      <p class="mk-label">Varyant</p>
+      <div class="mk-vars" id="vars"></div>
+    </div>
+    <div>
+      <p class="mk-label">Satır düzeni (Section ve Add)</p>
+      <div class="mk-vars" id="rows"></div>
+    </div>
+    <div>
+      <p class="mk-label">Çalışanın vardiya özeti (son iki an)</p>
+      <div class="mk-vars" id="sums"></div>
+    </div>
+    <div>
+      <p class="mk-label">Kişi ekleme penceresi (Add Staff)</p>
+      <div class="mk-vars" id="adds"></div>
+    </div>
+    <div>
+      <p class="mk-label">An</p>
+      <ol class="mk-moments" id="moments"></ol>
+    </div>
+    <button type="button" class="mk-reset" data-act="reset">Baştan başlat</button>
+  </aside>
+  <section class="mk-stage">
+    <div class="mk-phonebar" id="phonebar"></div>
+    <div class="device"><div class="app" id="app"></div></div>
+    <p class="mk-note" id="note"></p>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var I = {
+    left: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>',
+    right: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" x2="19" y1="8" y2="14"/><line x1="22" x2="16" y1="11" y2="11"/></svg>',
+    x: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></svg>',
+    note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M15.5 3H5a2 2 0 0 0-2 2v14c0 1.1.9 2 2 2h14a2 2 0 0 0 2-2V8.5L15.5 3Z"/><path d="M15 3v6h6"/></svg>',
+    edit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+    send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m22 2-7 20-4-9-9-4Z"/><path d="M22 2 11 13"/></svg>',
+    image: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="18" x="3" y="3" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>',
+    text: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="14" height="14" x="8" y="8" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></svg>',
+    cloud: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m2 2 20 20"/><path d="M5.782 5.782A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.307-.193"/><path d="M21.532 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7.008 7.008 0 0 0 10 5.07"/></svg>',
+    add: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>',
+    pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>',
+    tclock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    tag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.586 2.586A2 2 0 0 0 11.172 2H4a2 2 0 0 0-2 2v7.172a2 2 0 0 0 .586 1.414l8.704 8.704a2.426 2.426 0 0 0 3.42 0l6.58-6.58a2.426 2.426 0 0 0 0-3.42z"/><circle cx="7.5" cy="7.5" r=".5" fill="currentColor"/></svg>',
+    refresh: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>',
+    nav: {
+      ws: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="7" height="9" x="3" y="3" rx="1"/><rect width="7" height="5" x="14" y="3" rx="1"/><rect width="7" height="9" x="14" y="12" rx="1"/><rect width="7" height="5" x="3" y="16" rx="1"/></svg>',
+      lu: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="8" height="4" x="8" y="2" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4"/><path d="M12 16h4"/><path d="M8 11h.01"/><path d="M8 16h.01"/></svg>',
+      rq: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><path d="M12 7v2"/><path d="M12 13h.01"/></svg>',
+      em: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+      mo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>'
+    }
+  };
+
+  /* ---------------- Data ---------------- */
+  var TYPES = { lunch: { name: "Lunch", c: "#1f9d74" }, dinner: { name: "Dinner", c: "#6d5bd0" }, close: { name: "Close", c: "#c2417a" } };
+  var LOCS = { dt: "Harbor & Vine Downtown", up: "Harbor & Vine Uptown" };
+  var DEPTS = [
+    { id: "foh", name: "Front of House", jobs: ["server", "host", "busser"] },
+    { id: "bar", name: "Bar", jobs: ["bartender", "barback"] },
+    { id: "boh", name: "Kitchen", jobs: ["linecook", "prep"] }
+  ];
+  var JOBS = {
+    server: { name: "Server", c: "#2563eb" }, host: { name: "Host", c: "#0ea5e9" }, busser: { name: "Busser", c: "#64748b" },
+    bartender: { name: "Bartender", c: "#9333ea" }, barback: { name: "Barback", c: "#a855f7" },
+    linecook: { name: "Line Cook", c: "#ea580c" }, prep: { name: "Prep Cook", c: "#d97706" }
+  };
+  var LABELS = ["", "Opener", "Closer", "Training", "Lead"];
+  var SECTIONS = ["", "Section 1", "Section 2", "Section 3", "Sections 1–2", "Front door", "Bar top", "Service well", "Grill", "Patio"];
+  var NOW = 14 * 60 + 10;
+  var seq = 0;
+  function P(name, job, inT, outT, label, section, extra) {
+    var r = { id: "p" + (++seq), name: name, job: job, in: inT, out: outT, label: label || "", section: section || "", off: false, changed: {} };
+    for (var k in extra || {}) r[k] = extra[k];
+    return r;
+  }
+  function fresh() {
+    seq = 0;
+    return {
+      "dt-lunch": { loc: "dt", type: "lunch", status: "published", v: 1, at: "10:30 AM", ack: true, notes: { sp: "Soup: roasted tomato", s86: "", sn: "" },
+        rows: [P("Emma Wilson", "server", "11:00", "16:00", "Opener", "Section 1"), P("Chloe Davis", "server", "11:00", "15:00", "", "Section 2"),
+               P("Sofia Reyes", "host", "10:30", "15:00"), P("Marcus Bell", "linecook", "10:00", "16:00", "Opener")], acked: 4 },
+      "dt-dinner": { loc: "dt", type: "dinner", status: "draft", v: 0, ack: true, notes: { sp: "Halibut, lemon butter", s86: "Burrata", sn: "Private party of 14 at 7 PM in Section 3" },
+        rows: [P("Maria Lopez", "server", "16:00", "22:00", "Closer", "Section 1"), P("Hannah Lee", "server", "16:30", "22:00", "", "Section 2", { sched: { job: "server", in: "16:00", out: "22:00" }, changed: { in: true } }),
+               P("Owen Price", "server", "17:00", "23:00", "Training", "Section 3"), P("Noah Garcia", "server", "16:00", "22:00", "", "Section 3"),
+               P("Priya Patel", "host", "16:00", "21:00", "", "Front door"), P("Ethan Brooks", "busser", "16:00", "22:00", "", "Sections 1–2"),
+               P("Jake Thompson", "bartender", "16:00", "23:00", "Lead", "Bar top"), P("Daniel Kim", "barback", "16:00", "22:00", "", "Service well"),
+               P("Aisha Johnson", "linecook", "15:30", "22:00", "", "Grill"), P("Carlos Rivera", "linecook", "15:30", "22:30", "Closer", "", { sched: { job: "linecook", in: "15:30", out: "22:00" }, changed: { out: true } })] },
+      "dt-close": { loc: "dt", type: "close", status: "draft", v: 0, ack: true, notes: { sp: "", s86: "", sn: "" }, rows: [] },
+      "up-lunch": { loc: "up", type: "lunch", status: "published", v: 1, at: "10:45 AM", ack: true, notes: { sp: "", s86: "", sn: "" }, startsLater: true,
+        rows: [P("Grace Kim", "server", "15:00", "18:00", "", "Patio"), P("Leo Martin", "host", "15:00", "18:00")], acked: 1 },
+      "up-dinner": { loc: "up", type: "dinner", status: "draft", v: 0, ack: true, notes: { sp: "", s86: "Oysters", sn: "" },
+        rows: [P("Ava Martinez", "server", "16:00", "22:00", "", "Section 1"), P("Mia Chen", "server", "17:00", "22:00"),
+               P("Liam Scott", "bartender", "16:00", "23:00", "Opener"), P("Ben Carter", "linecook", "15:30", "22:00")] }
+    };
+  }
+  /* Who could join: the jobs each person can work, and where they stand today. */
+  var POOL = [
+    { n: "Rachel Adams", jobs: ["server", "host"], kind: "available" },
+    { n: "Tyler Brooks", jobs: ["busser", "server"], kind: "available" },
+    { n: "Nina Patel", jobs: ["host"], kind: "available" },
+    { n: "Sam Ortiz", jobs: ["bartender", "barback", "server"], kind: "available" },
+    { n: "Zoe Turner", jobs: ["barback"], kind: "available" },
+    { n: "Kevin Wright", jobs: ["linecook", "prep"], kind: "available" },
+    { n: "Ava Martinez", jobs: ["server", "bartender"], kind: "other", note: "Uptown · Dinner 4:00 – 10:00 PM", from: "up-dinner" },
+    { n: "Liam Scott", jobs: ["bartender"], kind: "other", note: "Uptown · Dinner 4:00 – 11:00 PM", from: "up-dinner" },
+    { n: "Emma Wilson", jobs: ["server"], kind: "here", note: "Lunch 11 AM – 4 PM", hrs: 5 },
+    { n: "Chloe Davis", jobs: ["server", "host"], kind: "here", note: "Lunch 11 AM – 1 PM", hrs: 2 },
+    { n: "Marcus Bell", jobs: ["linecook"], kind: "here", note: "Lunch 10 AM – 4 PM", hrs: 6 },
+    { n: "Lily Chen", jobs: ["server", "bartender"], kind: "timeoff", note: "Approved time off · all day" },
+    { n: "Olivia Grant", jobs: ["server", "host", "busser"], kind: "available" },
+    { n: "Ryan Cole", jobs: ["server"], kind: "available" },
+    { n: "Jordan Hayes", jobs: ["server"], kind: "no", note: "Assigned to Uptown only" },
+    { n: "Maya Ross", jobs: ["bartender", "server"], kind: "no", note: "Assigned to Uptown only" },
+    { n: "Derek Ford", jobs: ["linecook"], kind: "no", note: "Assigned to Uptown only" }
+  ];
+  var KIND_RANK = { available: 0, other: 1, here: 2, timeoff: 3 };
+  var KIND_TEXT = { available: "Free today" };
+
+  /* ---------------- State ---------------- */
+  var VARS = [
+    { id: "a", name: "A · Liste", sub: "Bugünkü sayfanın telefondaki hali: başlık, gün şeridi, lokasyonlar alt alta, her vardiya katlanan bir kart. Publish altta sabit." },
+    { id: "b", name: "B · Vardiya sekmeleri (seçimim)", sub: "Kısa üst çubuk; vardiyalar sekme. Her seferinde tek vardiya: özet kartı (durum, onay, saat aralığı), altında Team ve Notes." },
+    { id: "c", name: "C · Saat çizgisi", sub: "Kimin ne zaman geldiği bir bakışta: her kişi saat ekseninde bir çubuk, şimdiki saat amber çizgi. Departman çipleriyle süzülür." }
+  ];
+  var ROWS = [
+    { id: "1", name: "1 · Orta sütun (önerim)", sub: "Section kendi sütununda, adla aynı hizada, sol kenarı düz. Kişiler arasında çizgi yok; job grubunun sonunda çok ince, departman sonunda biraz belirgin bir çizgi. Add, job satırının sağında sade bir yazı." },
+    { id: "2", name: "2 · Sağ sütun", sub: "Aynı düzen; Section sağa yaslı. Section başlığı, Section değerleri ve Add aynı sağ kenarda hizalı." },
+    { id: "0", name: "Önceki", sub: "Şu anki hali: Section satırın ortasında, Add çerçeveli ikon, her kişi arasında çizgi." }
+  ];
+  var SUMS = [
+    { id: "1", name: "1 · Rozet (önerim)", sub: "13 Ekim'de seçtiğin dört satırlık vardiya kutusu, başına ad eklendi. Lineup açılınca listenin üstünde durur; Acknowledge sayfanın en altında." },
+    { id: "2", name: "2 · Bilet", sub: "Üstte vardiya renginde başlık ve ad, ortada büyük saat, altında Location, Position, Label ve Section dört kutu." },
+    { id: "3", name: "3 · Acknowledge'a basınca", sub: "Üstte ince bir şerit; Acknowledge sayfanın en altında. Basınca kişinin vardiya özeti alttan açılır." }
+  ];
+  var ADDS = [
+    { id: "1", name: "1 · Durum listesi (önerim)", sub: "Eski sürümdeki gibi bugünkü duruma göre gruplar: Available, Has another shift here, Working somewhere else, Approved day off. Basılan departman ve job çiplerle hazır süzülür; ana işi uyanlar her grubun başında. Bu lokasyonda çalışamayanlar en altta kapalı." },
+    { id: "2", name: "2 · Önce en uygunlar", sub: "Aynı liste; tepede \"Best fit\" şeridi: bugün boş ve ana işi basılan departmanda olan ilk 3 kişi. Tek dokunuşla ekle." },
+    { id: "0", name: "Original", sub: "Bugünkü hali: Sort by Department / Job, gruplar departmana ya da job'a göre." }
+  ];
+  var MOMENTS = [
+    { id: "day", t: "Günün lineup'ları" },
+    { id: "nosec", t: "Section yazılmamış vardiya" },
+    { id: "person", t: "Kişiye dokun: düzenleme paneli" },
+    { id: "add", t: "Server'a kişi ekle (+)" },
+    { id: "addbar", t: "Bar'a kişi ekle: Bar'ı yapabilenler önde" },
+    { id: "byjob", t: "Kişi ekle: job'a göre sırala" },
+    { id: "jobpop", t: "Kişi ekle: +2'ye dokun, diğer job'lar" },
+    { id: "search", t: "Kişi ekle: arama \"ma\"" },
+    { id: "noel", t: "Kişi ekle: burada çalışamayanlar açık" },
+    { id: "here", t: "Kişi ekle: burada başka vardiyası olanlar (günlük saat)" },
+    { id: "movearm", t: "Başka lokasyondan çek: Confirm move" },
+    { id: "other", t: "Başka lokasyondan çek: Ava Martinez" },
+    { id: "timeoff", t: "İzinli kişiyi eklemek: uyarı" },
+    { id: "calloff", t: "Call off: Noah Garcia" },
+    { id: "notes", t: "Notlar: Specials, 86s, Shift notes" },
+    { id: "publish", t: "Publish paneli" },
+    { id: "published", t: "Yayınlandı" },
+    { id: "edit", t: "Yayındaki lineup'ı düzenle" },
+    { id: "started", t: "Başlamış lineup: salt okunur" },
+    { id: "me", t: "Çalışanın telefonu: kendi vardiyası (Hannah Lee)" },
+    { id: "me-ack", t: "Çalışan Acknowledge'a bastı" },
+    { id: "loading", t: "Yükleniyor" },
+    { id: "error", t: "Okunamadı" }
+  ];
+  var S;
+  function reset(v) {
+    S = { v: v || (S && S.v) || "a", L: fresh(), loc: "all", openShift: { "dt-lunch": false, "dt-dinner": true, "dt-close": false, "up-lunch": false, "up-dinner": false },
+      row: (S && S.row) || "1", sum: (S && S.sum) || "1", addv: (S && S.addv) || "1", pdept: null, pjob: "all", jobPop: null, noel: false, q: "", emp: false, meId: null, acked: false, tab: "dinner", seg: "team", dept: "all", mode: "ok", sheet: null, toast: null, moment: "day", armed: null, picks: null, pubDone: false, ackOn: true };
+  }
+  reset("b");
+  try { var sv = localStorage.getItem("nf-lineup-tel-v"); if (sv && /^[abc]$/.test(sv)) S.v = sv; } catch (e) {}
+
+  /* ---------------- Helpers ---------------- */
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function min(t) { var p = t.split(":"); return +p[0] * 60 + +p[1]; }
+  function fmt(t, ap) { var m = min(t), h = Math.floor(m / 60) % 24, mm = m % 60, s = (h % 12 || 12) + ":" + (mm < 10 ? "0" : "") + mm; return ap === false ? s : s + (h < 12 ? " AM" : " PM"); }
+  function range(a, b) { return fmt(a) + " – " + fmt(b); } /* Mert 14 Oct 02:18: AM/PM on the in time too */
+  function initials(n) { return n.split(" ").map(function (x) { return x[0]; }).join("").slice(0, 2); }
+  function deptOf(job) { for (var i = 0; i < DEPTS.length; i++) if (DEPTS[i].jobs.indexOf(job) >= 0) return DEPTS[i]; return DEPTS[0]; }
+  function live(l) { return l.rows.filter(function (r) { return !r.off; }); }
+  function firstIn(l) { return l.rows.reduce(function (m, r) { return min(r.in) < min(m) ? r.in : m; }, "23:59"); }
+  function started(l) { return l.status === "published" && l.rows.length > 0 && min(firstIn(l)) <= NOW; }
+  function locked(l) { return started(l); }
+  function statusHtml(l) {
+    if (!l.rows.length) return '<span class="st">No one is scheduled</span>';
+    if (l.status === "published") return '<span class="st pub"><i></i>Published v' + l.v + " · " + l.at + (started(l) ? " · Started" : "") + "</span>";
+    return '<span class="st draft"><i></i>Draft · not published</span>';
+  }
+  function gauge(l) {
+    if (l.status !== "published") return "";
+    var n = live(l).length, a = l.acked || 0, s = '<span class="gauge" aria-label="' + a + " of " + n + ' acknowledged">';
+    for (var i = 0; i < n; i++) s += '<i class="' + (i < a ? "on" : "") + '"></i>';
+    return s + '</span> <span class="count">' + a + "/" + n + "</span>";
+  }
+  function keysFor(loc) { return Object.keys(S.L).filter(function (k) { return loc === "all" || S.L[k].loc === loc; }); }
+  function drafts() { return Object.keys(S.L).filter(function (k) { var l = S.L[k]; return l.status === "draft" && live(l).length; }); }
+
+  /* ---------------- Pieces ---------------- */
+  function navBar() {
+    var it = [["ws", "Workspace"], ["lu", "Lineup"], ["rq", "Requests"], ["em", "Employees"], ["mo", "More"]];
+    return '<nav class="nav" aria-label="Main navigation">' + it.map(function (x) {
+      return '<a href="#" ' + (x[0] === "lu" ? 'aria-current="page"' : "") + ' data-act="noop">' + I.nav[x[0]] + "<span>" + x[1] + "</span></a>";
+    }).join("") + "</nav>";
+  }
+  function dateCtl() {
+    return '<div class="date-ctl"><button type="button" aria-label="Previous day" data-act="noop">' + I.left + '</button><button type="button" class="d" data-act="noop">Wed, Oct 14</button><button type="button" aria-label="Next day" data-act="noop">' + I.right + "</button></div>";
+  }
+  function locSelect() {
+    return '<label class="select"><span class="sr">Location</span><select data-act="loc"><option value="all"' + (S.loc === "all" ? " selected" : "") + '>All locations</option><option value="dt"' + (S.loc === "dt" ? " selected" : "") + '>Downtown</option><option value="up"' + (S.loc === "up" ? " selected" : "") + ">Uptown</option></select></label>";
+  }
+  function week() {
+    var d = [["Mon", 12], ["Tue", 13], ["Wed", 14], ["Thu", 15], ["Fri", 16], ["Sat", 17], ["Sun", 18]];
+    return '<div class="week" role="group" aria-label="Days of the week">' + d.map(function (x) {
+      return '<button type="button" class="' + (x[1] === 14 ? "today" : "") + '" aria-pressed="' + (x[1] === 14) + '" data-act="noop"><span>' + x[0] + "</span><strong>" + x[1] + "</strong></button>";
+    }).join("") + "</div>";
+  }
+  function timeHtml(r) {
+    var adj = r.sched && (r.changed.in || r.changed.out);
+    if (!adj) return '<span class="time">' + range(r.in, r.out) + "</span>";
+    return '<span class="time adj" title="Changed in this lineup. Schedule: ' + range(r.sched.in, r.sched.out) + '">' + I.clock + range(r.in, r.out) + "</span>" +
+      '<span class="was">Schedule ' + range(r.sched.in, r.sched.out) + "</span>";
+  }
+  function personRow(k, r, l) {
+    var tags = "";
+    if (r.label) tags += '<span class="tag lab">' + esc(r.label) + "</span>";
+    if (r.only) tags += '<span class="tag only">' + esc(r.only) + "</span>";
+    var other = Object.keys(r.changed).filter(function (x) { return x !== "in" && x !== "out"; }).length;
+    var ch = other ? '<i class="chg" title="Changed in this lineup only"></i>' : "";
+    var sec = '<span class="sec' + (r.section ? "" : " none") + '">' + (r.section ? esc(r.section) : "—") + "</span>";
+    if (r.off) {
+      var why = r.moved ? '<span class="tag moved">Moved to ' + esc(r.moved) + "</span>" : '<span class="tag off">Called off</span>';
+      return '<div class="row is-off"><span class="av">' + initials(r.name) + '</span><span class="who"><b>' + esc(r.name) + '</b><span class="meta">' + why + JOBS[r.job].name + "</span></span>" +
+        (locked(l) || r.moved ? "" : '<button type="button" class="restore" data-act="restore" data-k="' + k + '" data-id="' + r.id + '">Restore</button>') + "</div>";
+    }
+    return '<button type="button" class="row' + (r.from ? " from" : "") + '" data-act="person" data-k="' + k + '" data-id="' + r.id + '"><span class="av">' + initials(r.name) + '</span><span class="who"><b>' + esc(r.name) + ch + "</b>" +
+      '<span class="meta">' + timeHtml(r) + "</span>" + (tags ? '<span class="meta">' + tags + "</span>" : "") + "</span>" + sec + "</button>";
+  }
+  function personRowG(k, r, l, hasSec, hasLab) {
+    var tags = "";
+    if (r.label) tags += '<span class="tag lab">' + esc(r.label) + "</span>";
+    if (r.only) tags += '<span class="tag only">' + esc(r.only) + "</span>";
+    var other = Object.keys(r.changed).filter(function (x) { return x !== "in" && x !== "out"; }).length;
+    var ch = other ? '<i class="chg" title="Changed in this lineup only"></i>' : "";
+    if (r.off) {
+      var why = r.moved ? '<span class="tag moved">Moved to ' + esc(r.moved) + "</span>" : '<span class="tag off">Called off</span>';
+      return '<div class="row g is-off"><span class="av">' + initials(r.name) + '</span><span class="who"><b>' + esc(r.name) + '</b><span class="meta">' + why + JOBS[r.job].name + "</span></span>" +
+        (locked(l) || r.moved ? "<span></span>" : '<button type="button" class="restore" data-act="restore" data-k="' + k + '" data-id="' + r.id + '">Restore</button>') + "</div>";
+    }
+    // Mert 14 Oct 02:49: the green band marks your own row; no "You" tag.
+    var mine = S.emp && r.id === S.meId;
+    return '<button type="button" class="row g' + (r.from ? " from" : "") + (mine ? " me" : "") + '"' + (mine ? ' aria-label="' + esc(r.name) + ', your shift"' : "") + ' data-act="' + (S.emp ? "noop" : "person") + '" data-k="' + k + '" data-id="' + r.id + '"><span class="av">' + initials(r.name) + '</span><span class="who"><span class="nl"><b>' + esc(r.name) + "</b>" + ch + "</span>" +
+      '<span class="meta"><span class="time">' + range(r.in, r.out) + "</span></span></span>" +
+      (hasLab ? '<span class="labc">' + tags + "</span>" : "") +
+      (hasSec ? '<span class="sec2">' + (r.section ? esc(r.section) : "") + "</span>" : "") + "</button>";
+  }
+  function groupsG(k, l, deptFilter) {
+    var hasSec = l.rows.some(function (r) { return r.section && !r.off; });
+    var hasLab = l.rows.some(function (r) { return (r.label || r.only) && !r.off; });
+    var canAdd = !S.emp && !(locked(l) || l.status === "published");
+    var out = "";
+    DEPTS.forEach(function (d) {
+      if (deptFilter && deptFilter !== "all" && deptFilter !== d.id) return;
+      var jobs = d.jobs.filter(function (j) { return l.rows.some(function (r) { return r.job === j && !r.off; }); });
+      if (!jobs.length) return;
+      // Mert 14 Oct 02:20: Add Staff sits on the department line; the Section heading on every job line.
+      out += '<div class="dg" role="group" aria-label="' + d.name + '"><div class="g dh"><span class="t">' + d.name + "</span>" +
+        (canAdd ? '<button type="button" class="add2" aria-label="Add staff to ' + d.name + '" data-act="add" data-k="' + k + '" data-job="' + jobs[0] + '">' + I.add + "Add Staff</button>" : "") + "</div>";
+      jobs.forEach(function (j) {
+        var rows = l.rows.filter(function (r) { return r.job === j && !r.off; }).sort(function (a, b) { return min(a.in) - min(b.in) || a.name.localeCompare(b.name); });
+        out += '<div class="jg"><div class="g jh" style="--jc:' + JOBS[j].c + '"><i class="dot"></i><span class="nm">' + JOBS[j].name + "<span>" + rows.length + "</span></span>" +
+          (hasLab ? '<span class="lab-h">Label</span>' : "") + (hasSec ? '<span class="sec-h">Section</span>' : "") + "</div>";
+        rows.forEach(function (r) { out += personRowG(k, r, l, hasSec, hasLab); });
+        out += "</div>";
+      });
+      out += "</div>";
+    });
+    var off = l.rows.filter(function (r) { return r.off; });
+    if (off.length) { out += '<div class="off-h">Called off</div>'; off.forEach(function (r) { out += personRowG(k, r, l, false); }); }
+    return '<div class="lay r' + S.row + (hasSec ? " has-sec" : "") + (hasLab ? " has-lab" : "") + '">' + out + "</div>";
+  }
+  function groups(k, l, deptFilter) {
+    if (S.row !== "0") return groupsG(k, l, deptFilter);
+    var out = "";
+    DEPTS.forEach(function (d) {
+      if (deptFilter && deptFilter !== "all" && deptFilter !== d.id) return;
+      var jobs = d.jobs.filter(function (j) { return l.rows.some(function (r) { return r.job === j && !r.off; }); });
+      if (!jobs.length) return;
+      out += '<div class="dept"><span>' + d.name + '</span><i></i><span class="sec-h">Section</span></div>';
+      jobs.forEach(function (j) {
+        out += '<div class="job" style="--jc:' + JOBS[j].c + '"><i></i><span class="grow">' + JOBS[j].name + "</span>" +
+          (locked(l) || l.status === "published" ? "" : '<button type="button" class="add" aria-label="Add a ' + JOBS[j].name + '" data-act="add" data-k="' + k + '" data-job="' + j + '">' + I.plus + "</button>") + "</div>";
+        l.rows.filter(function (r) { return r.job === j && !r.off; }).sort(function (a, b) { return min(a.in) - min(b.in) || a.name.localeCompare(b.name); })
+          .forEach(function (r) { out += personRow(k, r, l); });
+      });
+    });
+    var off = l.rows.filter(function (r) { return r.off; });
+    if (off.length) { out += '<div class="off-h">Called off</div>'; off.forEach(function (r) { out += personRow(k, r, l); }); }
+    return out;
+  }
+  function lockNote(l) {
+    if (started(l)) return '<div class="lock">' + I.lock + "<span>Started at " + fmt(firstIn(l)) + ". This lineup is read-only.</span></div>";
+    return "";
+  }
+  function toolsFor(k, l) {
+    if (!l.rows.length) return "";
+    if (started(l)) return "";
+    if (l.status === "published") return '<div class="shift-tools"><button type="button" class="btn sm" data-act="editpub" data-k="' + k + '">' + I.edit + 'Edit</button><button type="button" class="btn sm" data-act="notes" data-k="' + k + '">' + I.note + "Notes</button></div>";
+    return '<div class="shift-tools"><button type="button" class="btn sm" data-act="notes" data-k="' + k + '">' + I.note + "Notes</button></div>";
+  }
+  function shiftCard(k) {
+    var l = S.L[k], t = TYPES[l.type], open = S.openShift[k], n = live(l).length;
+    if (!l.rows.length) {
+      return '<section class="shift empty" style="--c:' + t.c + '"><div class="shift-h"><span class="t"><h3>' + t.name + "</h3>" + statusHtml(l) + '</span><button type="button" class="btn sm" data-act="add" data-k="' + k + '" data-job="server">' + I.plus + "Add staff</button></div></section>";
+    }
+    return '<section class="shift" style="--c:' + t.c + '"><button type="button" class="shift-h" aria-expanded="' + open + '" data-act="fold" data-k="' + k + '"><span class="t"><h3>' + t.name + ' <span class="count">· ' + n + " people</span></h3>" + statusHtml(l) + "</span>" + gauge(l) + I.chev + "</button>" +
+      (open ? lockNote(l) + toolsFor(k, l) + groups(k, l) + '<div style="height:6px"></div>' : "") + "</section>";
+  }
+
+  /* ---------------- Variants ---------------- */
+  function loadingBody() {
+    var c = "";
+    for (var i = 0; i < 3; i++) c += '<div class="sk-card" aria-hidden="true"><div class="sk-line"><i class="sk" style="width:70px;height:14px"></i><i class="sk" style="width:60px;height:10px"></i></div>' +
+      (i === 1 ? '<div class="sk-line"><i class="sk" style="width:32px;height:32px;border-radius:50%"></i><i class="sk" style="width:55%;height:11px"></i></div><div class="sk-line"><i class="sk" style="width:32px;height:32px;border-radius:50%"></i><i class="sk" style="width:45%;height:11px"></i></div>' : "") + "</div>";
+    return '<div class="pad" role="status" aria-label="Loading lineups"><div class="loc-h"><i class="sk" style="width:180px;height:14px"></i></div>' + c + "</div>";
+  }
+  function errorBody() {
+    return '<section class="err" role="alert"><span class="ic">' + I.cloud + '</span><div style="display:grid;gap:4px"><h2>We couldn\'t load the lineup</h2><p>Wednesday, October 14 didn\'t load. Nothing was changed.</p><p style="color:var(--theme-text-body)">Check your connection, then try again.</p></div><button type="button" class="btn" data-act="retry">' + I.refresh + "Try again</button></section>";
+  }
+  function pubBar() {
+    var d = drafts().length;
+    return '<div class="pubbar"><span class="info"><b>' + (d ? d + " lineup" + (d > 1 ? "s" : "") + " not published" : "All lineups published") + "</b>" + (d ? "Staff see a lineup after you publish it." : "Staff were notified.") + '</span><button type="button" class="btn green" data-act="publish">' + I.send + "Publish</button></div>";
+  }
+  function viewA() {
+    var body = "";
+    if (S.mode === "loading") body = loadingBody();
+    else if (S.mode === "error") body = errorBody();
+    else {
+      ["dt", "up"].forEach(function (loc) {
+        if (S.loc !== "all" && S.loc !== loc) return;
+        body += '<div class="loc-h"><h2>' + LOCS[loc] + "</h2></div>";
+        if (loc === "up") body += '<div class="short"><span>Short hours today: open 11:00 AM – 9:00 PM (Staff training).</span></div>';
+        ["lunch", "dinner", "close"].forEach(function (t) { var k = loc + "-" + t; if (S.L[k]) body += shiftCard(k); });
+      });
+      body = '<div class="pad">' + body + "</div>";
+    }
+    return '<div class="scroll"><header class="lp-head"><p class="eyebrow">The right people. In the right spot.</p><h1 class="lp-title">Lineup <span class="live-dot" aria-hidden="true"></span></h1><p class="lp-desc">Today\'s lineups, live from the Schedule.</p></header>' +
+      '<div class="pad" style="display:grid;gap:10px;padding-top:14px"><div class="ctl-row">' + dateCtl() + locSelect() + "</div>" + week() + "</div>" + body + (S.mode === "ok" ? pubBar() : '<div style="height:20px"></div>') + "</div>" + navBar();
+  }
+  function curLoc() { return S.loc === "all" ? "dt" : S.loc; }
+  function viewB() {
+    var loc = curLoc(), k = loc + "-" + S.tab, l = S.L[k], body = "";
+    var tabs = '<div class="tabs" role="tablist">' + ["lunch", "dinner", "close"].map(function (t) {
+      var kk = loc + "-" + t; if (!S.L[kk]) return ""; var ll = S.L[kk];
+      var dot = !ll.rows.length ? "" : ll.status === "published" ? "pub" : "draft";
+      return '<button type="button" role="tab" style="--c:' + TYPES[t].c + '" aria-selected="' + (S.tab === t) + '" data-act="tab" data-t="' + t + '"><i class="dot ' + dot + '"></i>' + TYPES[t].name + ' <span class="n">' + live(ll).length + "</span></button>";
+    }).join("") + "</div>";
+    var head = '<header class="bar"><div class="bar-top"><h1 class="bar-title">Lineup <span class="live-dot" aria-hidden="true"></span></h1><button type="button" class="btn green sm" data-act="publish">' + I.send + "Publish" + (drafts().length ? " " + drafts().length : "") + "</button></div>" +
+      '<div class="ctl-row">' + dateCtl() + '<label class="select"><span class="sr">Location</span><select data-act="loc"><option value="dt"' + (loc === "dt" ? " selected" : "") + '>Downtown</option><option value="up"' + (loc === "up" ? " selected" : "") + ">Uptown</option></select></label></div>" + tabs + "</header>";
+    if (S.mode === "loading") body = loadingBody();
+    else if (S.mode === "error") body = errorBody();
+    else if (!l) body = '<p class="empty-line" style="padding:16px">No ' + TYPES[S.tab].name + " lineup at this location.</p>";
+    else {
+      var n = live(l).length, first = n ? l.rows.filter(function (r) { return !r.off; }).reduce(function (m, r) { return min(r.in) < min(m) ? r.in : m; }, "23:59") : null;
+      var last = n ? l.rows.filter(function (r) { return !r.off; }).reduce(function (m, r) { return min(r.out) > min(m) ? r.out : m; }, "00:00") : null;
+      body += '<section class="summary" style="--c:' + TYPES[l.type].c + '"><div class="summary-top"><div style="display:grid;gap:3px"><h2>' + TYPES[l.type].name + "</h2>" + statusHtml(l) + "</div>" +
+        (started(l) || !n ? "" : l.status === "published" ? '<button type="button" class="btn sm" data-act="editpub" data-k="' + k + '">' + I.edit + "Edit</button>" : "") + "</div>" +
+        (n ? '<div class="kpis"><div><b>' + n + "</b><span>On the floor</span></div><div><b>" + fmt(first) + "</b><span>First in</span></div><div><b>" + (l.status === "published" ? (l.acked || 0) + "/" + n : "—") + "</b><span>Acknowledged</span></div></div>" : "") + "</section>";
+      if (started(l)) body += '<div style="margin:10px 16px 0">' + lockNote(l).replace('class="lock"', 'class="lock" style="margin:0"') + "</div>";
+      if (!n) body += '<div class="panel" style="padding:18px 14px;text-align:center"><p style="margin:0 0 10px;color:var(--theme-muted)">No one is scheduled.</p><button type="button" class="btn" data-act="add" data-k="' + k + '" data-job="server">' + I.plus + "Add staff</button></div>";
+      else {
+        body += '<div class="seg" role="tablist"><button type="button" role="tab" aria-selected="' + (S.seg === "team") + '" data-act="seg" data-s="team">Team</button><button type="button" role="tab" aria-selected="' + (S.seg === "notes") + '" data-act="seg" data-s="notes">Notes' + (l.notes.sp || l.notes.s86 || l.notes.sn ? " ·" : "") + "</button></div>";
+        if (S.seg === "team") body += '<div class="panel">' + groups(k, l) + '<div style="height:4px"></div></div>';
+        else {
+          body += '<div class="panel">' + [["Specials", "sp"], ["86s", "s86"], ["Shift notes", "sn"]].map(function (x) {
+            return '<div class="note-card"><b>' + x[0] + "</b>" + (l.notes[x[1]] ? "<p>" + esc(l.notes[x[1]]) + "</p>" : '<p class="none">Nothing yet</p>') + "</div>";
+          }).join("") + "</div>" + (started(l) ? "" : '<div style="margin:10px 16px 0"><button type="button" class="btn" style="width:100%" data-act="notes" data-k="' + k + '">' + I.edit + "Edit notes</button></div>");
+        }
+      }
+    }
+    return '<div class="scroll">' + head + body + '<div style="height:24px"></div></div>' + navBar();
+  }
+  /* Employee: the shared lineup with their own shift on top (Mert 14 Oct 02:18) */
+  function txPart(was, now) {
+    return '<span class="tx"><span class="tx-old" aria-hidden="true">' + was + '<i></i></span><span class="tx-new" aria-hidden="true">' + now + "</span></span>";
+  }
+  function myTime(r) {
+    var a = r.sched && r.changed.in ? txPart(fmt(r.sched.in), fmt(r.in)) : fmt(r.in);
+    var b = r.sched && r.changed.out ? txPart(fmt(r.sched.out), fmt(r.out)) : fmt(r.out);
+    var said = range(r.in, r.out) + (r.sched && (r.changed.in || r.changed.out) ? ". Changed from " + range(r.sched.in, r.sched.out) + " on the Schedule." : "");
+    return '<span class="me-time" role="text" aria-label="' + said + '">' + a + " – " + b + "</span>";
+  }
+  function chgNote(r) {
+    if (!(r.sched && (r.changed.in || r.changed.out))) return "";
+    return '<span class="me-chg">' + (r.changed.in && r.changed.out ? "Hours" : r.changed.in ? "Start time" : "End time") + " changed in the lineup.</span>";
+  }
+  function ackBit() {
+    return S.acked ? '<span class="me-acked">' + I.check + "Acknowledged at 3:12 PM</span>" : '<button type="button" class="btn green" style="width:100%" data-act="meack">' + I.check + "Acknowledge</button>";
+  }
+  function badge(l, r) {
+    var t = TYPES[l.type], extra = [r.label, r.section].filter(Boolean).join(" – ");
+    return '<section class="me-card" style="--c:' + t.c + '" aria-label="Your shift"><div class="me-top"><i></i>' + t.name + " – " + JOBS[r.job].name + "</div>" +
+      '<h2 class="me-name">' + esc(r.name) + "</h2>" +
+      '<div class="me-line">' + I.pin + LOCS[l.loc].replace("Harbor & Vine ", "") + "</div>" +
+      '<div class="me-line">' + I.tclock + myTime(r) + "</div>" + chgNote(r) +
+      (extra ? '<div class="me-line">' + I.tag + esc(extra) + "</div>" : "") + "</section>";
+  }
+  function ticket(l, r) {
+    var t = TYPES[l.type], cells = [["Location", LOCS[l.loc].replace("Harbor & Vine ", "")], ["Position", JOBS[r.job].name]];
+    if (r.label) cells.push(["Label", r.label]); if (r.section) cells.push(["Section", r.section]);
+    return '<section class="ticket" style="--c:' + t.c + '" aria-label="Your shift"><div class="ticket-h"><small>Your shift · ' + t.name + " · Wed, Oct 14</small><h2 class=\"me-name\">" + esc(r.name) + "</h2></div>" +
+      '<div class="ticket-time">' + myTime(r) + '</div><div style="padding:0 14px">' + chgNote(r) + "</div>" +
+      '<div class="ticket-grid">' + cells.map(function (c) { return "<div><span>" + c[0] + "</span><b>" + esc(c[1]) + "</b></div>"; }).join("") + "</div></section>";
+  }
+  function viewEmp() {
+    var k = "dt-dinner", l = S.L[k], r = l.rows.filter(function (x) { return x.id === S.meId; })[0], body = '<div class="me-wrap">';
+    if (S.sum === "1") body += badge(l, r);
+    else if (S.sum === "2") body += ticket(l, r);
+    else body += S.acked ? badge(l, r) : '<div class="ack-strip" style="--c:' + TYPES[l.type].c + '"><p><b>Dinner lineup is out.</b> Published 3:05 PM by Sarah. Acknowledge is at the bottom.</p></div>';
+    body += "</div>";
+    body += '<div class="panel">' + [["Specials", "sp"], ["86s", "s86"], ["Shift notes", "sn"]].filter(function (x) { return l.notes[x[1]]; }).map(function (x) {
+      return '<div class="note-card"><b>' + x[0] + "</b><p>" + esc(l.notes[x[1]]) + "</p></div>";
+    }).join("") + "</div>";
+    body += '<section class="panel" aria-labelledby="team-h"><div class="team-h"><h2 id="team-h">' + LOCS[l.loc].replace("Harbor & Vine ", "") + "</h2><span>Wednesday, October 14 · " + TYPES[l.type].name + "</span></div>" + groups(k, l) + '<div style="height:4px"></div></section>';
+    body += '<div class="me-foot">' + ackBit() + (S.acked ? "" : "<p>Tap when you've read the whole lineup.</p>") + "</div>";
+    var head = '<header class="bar"><div class="bar-top"><h1 class="bar-title">Lineup <span class="live-dot" aria-hidden="true"></span></h1></div><div class="ctl-row">' + dateCtl() + "</div></header>";
+    return '<div class="scroll">' + head + body + '<div style="height:24px"></div></div>' + empNav();
+  }
+  function empNav() {
+    var it = [["ws", "Home"], ["lu", "Lineup"], ["rq", "Requests"], ["mo", "More"]];
+    return '<nav class="nav" style="grid-template-columns:repeat(4,1fr)" aria-label="Main navigation">' + it.map(function (x) {
+      return '<a href="#" ' + (x[0] === "lu" ? 'aria-current="page"' : "") + ' data-act="noop">' + I.nav[x[0]] + "<span>" + x[1] + "</span></a>";
+    }).join("") + "</nav>";
+  }
+  function mineSheet() {
+    var l = S.L["dt-dinner"], r = l.rows.filter(function (x) { return x.id === S.meId; })[0];
+    return sheet("Your shift", "Dinner lineup · Wed, Oct 14", '<div style="display:grid;gap:10px">' + badge(l, r) + "</div>", '<button type="button" class="btn green" data-act="mineok">' + I.check + "Got it</button>");
+  }
+  function viewC() {
+    var loc = curLoc(), body = "";
+    var head = '<header class="bar"><div class="bar-top"><h1 class="bar-title">Lineup <span class="live-dot" aria-hidden="true"></span></h1><button type="button" class="btn green sm" data-act="publish">' + I.send + "Publish" + (drafts().length ? " " + drafts().length : "") + "</button></div>" +
+      '<div class="ctl-row">' + dateCtl() + '<label class="select"><span class="sr">Location</span><select data-act="loc"><option value="dt"' + (loc === "dt" ? " selected" : "") + '>Downtown</option><option value="up"' + (loc === "up" ? " selected" : "") + ">Uptown</option></select></label></div>" +
+      '<div class="chips" role="group" aria-label="Department">' + [["all", "All"]].concat(DEPTS.map(function (d) { return [d.id, d.name]; })).map(function (d) {
+        return '<button type="button" class="chip" aria-pressed="' + (S.dept === d[0]) + '" data-act="dept" data-d="' + d[0] + '">' + d[1] + "</button>";
+      }).join("") + "</div></header>";
+    if (S.mode === "loading") body = loadingBody();
+    else if (S.mode === "error") body = errorBody();
+    else ["lunch", "dinner", "close"].forEach(function (t) {
+      var k = loc + "-" + t, l = S.L[k]; if (!l) return;
+      var rows = l.rows.filter(function (r) { return S.dept === "all" || deptOf(r.job).id === S.dept; });
+      var open = S.openShift[k];
+      if (!l.rows.length) {
+        body += '<section class="tl" style="--c:' + TYPES[t].c + '"><div class="tl-head" style="border-bottom:0"><span class="t"><h3>' + TYPES[t].name + "</h3>" + statusHtml(l) + '</span><button type="button" class="btn sm" data-act="add" data-k="' + k + '" data-job="server">' + I.plus + "Add staff</button></div></section>";
+        return;
+      }
+      var a = Math.floor(Math.min.apply(null, l.rows.map(function (r) { return min(r.in); })) / 60), b = Math.ceil(Math.max.apply(null, l.rows.map(function (r) { return min(r.out); })) / 60);
+      var hours = b - a, W = 390 - 32 - 8 - 116 - 12, pxh = W / hours;
+      var scale = ""; for (var h = a; h <= b; h++) { if ((h - a) % (hours > 7 ? 2 : 1)) continue; scale += '<span style="left:' + ((h - a) * pxh) + 'px">' + ((h % 12) || 12) + (h < 12 ? "a" : "p") + "</span>"; }
+      body += '<section class="tl" style="--c:' + TYPES[t].c + '"><button type="button" class="tl-head shift-h" style="min-height:0" aria-expanded="' + open + '" data-act="fold" data-k="' + k + '"><span class="t"><h3>' + TYPES[t].name + ' <span class="count">· ' + live(l).length + " people</span></h3>" + statusHtml(l) + "</span>" + gauge(l) + I.chev + "</button>";
+      if (open) {
+        body += lockNote(l).replace('class="lock"', 'class="lock" style="margin:10px 12px 4px"') + toolsFor(k, l).replace('class="shift-tools"', 'class="shift-tools" style="padding-top:10px"');
+        body += '<div class="scale">' + scale + "</div>";
+        var depts = DEPTS.filter(function (d) { return rows.some(function (r) { return deptOf(r.job).id === d.id; }); });
+        depts.forEach(function (d) {
+          body += '<div class="tl-sec"><span class="grow">' + d.name + "</span>" + (l.status === "published" ? "" : '<button type="button" class="add" aria-label="Add to ' + d.name + '" data-act="add" data-k="' + k + '" data-job="' + d.jobs[0] + '">' + I.plus + "</button>") + "</div>";
+          rows.filter(function (r) { return deptOf(r.job).id === d.id; }).sort(function (x, y) { return (x.off - y.off) || min(x.in) - min(y.in); }).forEach(function (r) {
+            var x0 = (min(r.in) / 60 - a) * pxh, w = (min(r.out) - min(r.in)) / 60 * pxh;
+            var nowx = (NOW / 60 - a) * pxh;
+            var bar = '<span class="barx" style="--jc:' + JOBS[r.job].c + ";left:" + x0 + "px;width:" + w + 'px">' + range(r.in, r.out).replace(/ (AM|PM)/g, function (m, p) { return p[0].toLowerCase(); }) + "</span>";
+            var nl = nowx > 0 && nowx < W ? '<i class="now-line" style="left:' + nowx + 'px"></i>' : "";
+            var label = r.off ? "Called off" : [JOBS[r.job].name, r.section, r.label].filter(Boolean).join(" · ");
+            body += r.off
+              ? '<div class="tl-row is-off"><span class="tl-name"><b>' + esc(r.name) + "</b><span>" + label + '</span></span><span class="track" style="--h:' + pxh + 'px">' + bar + nl + "</span>" + (l.status === "published" ? "" : '<button type="button" class="restore" data-act="restore" data-k="' + k + '" data-id="' + r.id + '">Restore</button>') + "</div>"
+              : '<button type="button" class="tl-row" data-act="person" data-k="' + k + '" data-id="' + r.id + '"><span class="tl-name"><b>' + esc(r.name) + "</b><span>" + esc(label) + '</span></span><span class="track" style="--h:' + pxh + 'px">' + bar + nl + "</span></button>";
+          });
+        });
+        body += '<div style="height:6px"></div>';
+      }
+      body += "</section>";
+    });
+    return '<div class="scroll">' + head + body + '<div style="height:24px"></div></div>' + navBar();
+  }
+
+  /* ---------------- Sheets ---------------- */
+  function sheet(title, sub, body, foot, small) {
+    return '<div class="scrim" data-act="close"></div><section class="sheet' + (small ? " small" : "") + '" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><header class="sheet-h"><i class="grab"></i><div class="ttl"><h3>' + esc(title) + '</h3><button type="button" class="icon-btn" aria-label="Close" data-act="close">' + I.x + "</button></div>" + (sub ? "<p>" + sub + "</p>" : "") + '</header><div class="sheet-b">' + body + "</div>" + (foot ? '<footer class="sheet-f">' + foot + "</footer>" : "") + "</section>";
+  }
+  function find(k, id) { return S.L[k].rows.filter(function (r) { return r.id === id; })[0]; }
+  function sel(name, opts, val, dis) {
+    return '<label class="select"><span class="sr">' + name + '</span><select data-f="' + name + '"' + (dis ? " disabled" : "") + ">" + opts.map(function (o) { return '<option value="' + esc(o[0]) + '"' + (o[0] === val ? " selected" : "") + ">" + esc(o[1]) + "</option>"; }).join("") + "</select></label>";
+  }
+  function personSheet() {
+    var k = S.sheet.k, l = S.L[k], r = find(k, S.sheet.id), ro = l.status === "published";
+    var jobOpts = Object.keys(JOBS).map(function (j) { return [j, JOBS[j].name]; });
+    var changed = Object.keys(r.changed).length;
+    var b = (ro ? '<div class="lock" style="margin:0 0 12px">' + I.lock + "<span>" + (started(l) ? "Started at " + fmt(firstIn(l)) + ". This lineup is read-only." : "Published. Tap Edit on the lineup to change it.") + "</span></div>" : "") +
+      '<div class="field"><span>Position</span>' + sel("job", jobOpts, r.job, ro) + "</div>" +
+      '<div class="field"><span>In – Out</span><div class="two"><input class="input" aria-label="In" value="' + fmt(r.in) + '"' + (ro ? " disabled" : "") + ' data-f="in"><input class="input" aria-label="Out" value="' + fmt(r.out) + '"' + (ro ? " disabled" : "") + ' data-f="out"></div></div>' +
+      '<div class="two"><div class="field"><span>Label</span>' + sel("label", LABELS.map(function (x) { return [x, x || "None"]; }), r.label, ro) + '</div><div class="field"><span>Section</span>' + sel("section", SECTIONS.map(function (x) { return [x, x || "None"]; }).concat([["__add", "+ Add section…"]]), r.section, ro) + "</div></div>" +
+      (changed ? '<p class="hint"><i class="chg"></i>Changed in this lineup only. Schedule: ' + JOBS[r.sched.job].name + ", " + range(r.sched.in, r.sched.out) + ".</p>" : '<p class="hint">Changes stay in this lineup. The Schedule doesn\'t change.</p>') +
+      (ro ? "" : '<div style="margin-top:12px"><button type="button" class="linkrow" data-act="replace"><span><b>Replace ' + esc(r.name.split(" ")[0]) + '</b><span>Put someone else in this spot</span></span>' + I.right + "</button></div>");
+    var foot = ro ? '<button type="button" class="btn" data-act="close">Close</button>'
+      : '<button type="button" class="btn danger' + (S.armed === "off" ? " armed" : "") + '" data-act="calloff">' + (S.armed === "off" ? "Tap again to call off" : "Call off") + '</button><button type="button" class="btn green" data-act="close">Done</button>';
+    return sheet(r.name, TYPES[l.type].name + " · " + JOBS[r.job].name + " · " + LOCS[l.loc].replace("Harbor & Vine ", ""), b, foot);
+  }
+  function pickRow(p, k, here) {
+    var l = S.L[k];
+    var jobs = p.jobs.map(function (j) { return '<span class="pj' + (j === S.sheet.job ? " on" : "") + '" style="--jc:' + JOBS[j].c + '"><i></i>' + JOBS[j].name + "</span>"; }).join("");
+    var status = p.kind === "available" ? '<span class="ps ok">Free today</span>' : '<span class="ps ' + p.kind + '">' + esc(p.note) + "</span>";
+    return '<button type="button" class="pick' + (here ? "" : " dim") + '" data-act="pick" data-kind="' + p.kind + '" data-name="' + esc(p.n) + '"><span class="av">' + initials(p.n) + '</span><span class="who"><b>' + esc(p.n) + "</b>" +
+      '<span class="meta">' + status + '</span><span class="pjs">' + jobs + "</span></span>" + I.plus + "</button>";
+  }
+  function pickSheetOld() {
+    var job = S.sheet.job, k = S.sheet.k, l = S.L[k], d = deptOf(job), by = S.sortBy || "dept";
+    var taken = l.rows.map(function (r) { return r.name; });
+    var pool = POOL.filter(function (p) { return taken.indexOf(p.n) < 0 && p.kind !== "no"; });
+    var order = function (a, b) { return KIND_RANK[a.kind] - KIND_RANK[b.kind] || a.n.localeCompare(b.n); };
+    var canDo = function (p, jobs) { return p.jobs.some(function (j) { return jobs.indexOf(j) >= 0; }); };
+    var b = '<input class="input" placeholder="Search people" aria-label="Search people">' +
+      '<div class="sortby" role="group" aria-label="Sort by"><span>Sort by</span><button type="button" aria-pressed="' + (by === "dept") + '" data-act="sortby" data-s="dept">Department</button><button type="button" aria-pressed="' + (by === "job") + '" data-act="sortby" data-s="job">Job</button></div>' +
+      (S.warn ? '<div class="warn"><b>Lily Chen has approved time off today.</b><span>She joins this lineup only. Her time off and the Schedule don\'t change.</span><div style="display:flex;gap:8px"><button type="button" class="btn sm" data-act="unwarn">Cancel</button><button type="button" class="btn sm green" data-act="addanyway">Add anyway</button></div></div>' : "");
+    var seen = [];
+    var group = function (title, list, first, cls) {
+      list = list.filter(function (p) { return seen.indexOf(p.n) < 0; }).sort(order);
+      if (!list.length) return "";
+      list.forEach(function (p) { seen.push(p.n); });
+      return '<p class="pick-g' + (cls ? " " + cls : "") + '">' + title + ' <span>' + list.length + "</span></p>" + list.map(function (p) { return pickRow(p, k, first); }).join("");
+    };
+    if (by === "dept") {
+      b += group("Can work " + d.name, pool.filter(function (p) { return canDo(p, d.jobs); }), true, "lead");
+      DEPTS.forEach(function (o) { if (o.id !== d.id) b += group(o.name, pool.filter(function (p) { return canDo(p, o.jobs); }), false); });
+    } else {
+      var jobOrder = [job].concat(d.jobs.filter(function (j) { return j !== job; }));
+      DEPTS.forEach(function (o) { if (o.id !== d.id) jobOrder = jobOrder.concat(o.jobs); });
+      jobOrder.forEach(function (j, i) { b += group(JOBS[j].name, pool.filter(function (p) { return p.jobs.indexOf(j) >= 0; }), d.jobs.indexOf(j) >= 0, i === 0 ? "lead" : ""); });
+    }
+    var title = S.sheet.replace ? "Replace " + S.sheet.replace : "Add to " + d.name;
+    return sheet(title, TYPES[l.type].name + " · " + LOCS[l.loc].replace("Harbor & Vine ", "") + " · from the " + JOBS[job].name + " row", b, "");
+  }
+
+  /* Add Staff, variants 1 and 2 (Mert 14 Oct 03:06): grouped by where each person stands today,
+     narrowed by the department and job chips, the best fit first in every group. */
+  var PGROUPS = [["available", "Available"], ["here", "Has another shift here"], ["other", "Working somewhere else"], ["timeoff", "Approved day off"]];
+  var PSTATUS = { available: "Free today" };
+  function pRow(p, cls) {
+    var pj = JOBS[p.jobs[0]], more = p.jobs.length - 1, no = p.kind === "no";
+    var pop = S.jobPop === p.n ? '<div class="jobpop" role="dialog" aria-label="' + esc(p.n) + ' jobs"><p>Jobs</p>' + p.jobs.map(function (j, i) {
+      return '<span class="jp-row"><i style="--jc:' + JOBS[j].c + '"></i><b>' + JOBS[j].name + "</b><span>" + deptOf(j).name + (i === 0 ? " · Primary" : "") + "</span></span>"; }).join("") + "</div>" : "";
+    var status = no ? p.note : p.kind === "available" ? PSTATUS.available : p.note.replace("Approved time off · all day", "Approved day off · all day");
+    /* Another shift here: the day's total with this one, amber past 8 hours (daily overtime in California). */
+    var day = p.kind === "here" ? p.hrs + 6 : 0;
+    var hours = day ? '<span class="phrs' + (day > 8 ? " over" : "") + '">' + day + "h today</span>" : "";
+    var armed = p.kind === "other" && S.armed === "mv-" + p.n;
+    var btn = no ? "" : '<button type="button" class="padd' + (p.kind === "other" ? " move" : "") + '" data-act="pick" data-kind="' + p.kind + '" data-name="' + esc(p.n) + '" aria-label="' + (armed ? "Confirm move " : p.kind === "other" ? "Move " : "Add ") + esc(p.n) + '"' + (armed ? ' data-armed="true"' : "") + '>' + (armed ? "Confirm" : p.kind === "other" ? "Move" : I.plus + "Add") + "</button>";
+    var from = armed ? '<p class="pmove-why">' + esc(p.n.split(" ")[0]) + " leaves " + esc(p.note.split(" · ")[0]) + "'s " + esc(p.note.split(" · ")[1].split(" ")[0]) + " lineup. " + esc(p.note.split(" · ")[0]) + " sees the move and can bring " + esc(p.n.split(" ")[0]) + " back.</p>" : "";
+    return '<div class="prow' + (cls ? " " + cls : "") + (no ? " no" : "") + (armed ? " armed" : "") + '" data-name="' + esc(p.n.toLowerCase()) + '"><span class="av" style="--jc:' + pj.c + '">' + initials(p.n) + '</span><b class="pname">' + esc(p.n) + "</b>" +
+      '<span class="pjc"><span class="pjob" style="--jc:' + pj.c + '"><i></i>' + pj.name + "</span>" +
+      (more ? '<button type="button" class="pmore" data-act="jobpop" data-name="' + esc(p.n) + '" aria-expanded="' + (S.jobPop === p.n) + '" aria-label="' + more + ' more jobs">+' + more + "</button>" : "") + "</span>" +
+      btn + '<span class="pst ' + p.kind + '"><i></i><span class="pst-t">' + esc(status) + "</span>" + hours + "</span>" + from + pop + "</div>";
+  }
+  function pickSheet() {
+    var k = S.sheet.k, l = S.L[k], d0 = deptOf(S.sheet.job), dsel = S.pdept || d0.id;
+    var D = dsel === "all" ? null : DEPTS.filter(function (x) { return x.id === dsel; })[0];
+    var taken = l.rows.map(function (r) { return r.name; });
+    var pool = POOL.filter(function (p) { return taken.indexOf(p.n) < 0; });
+    var inDept = function (p) { return !D || p.jobs.some(function (j) { return D.jobs.indexOf(j) >= 0; }); };
+    var jobOk = function (p) { return S.pjob === "all" || p.jobs.indexOf(S.pjob) >= 0; };
+    var rank = function (p) { return S.pjob !== "all" ? (p.jobs[0] === S.pjob ? 0 : 1) : D ? (D.jobs.indexOf(p.jobs[0]) >= 0 ? 0 : 1) : 0; };
+    var order = function (a, b) { return rank(a) - rank(b) || a.n.localeCompare(b.n); };
+    var ok = pool.filter(function (p) { return p.kind !== "no"; });
+    var shown = ok.filter(function (p) { return inDept(p) && jobOk(p); });
+    var jobs = D ? D.jobs : Object.keys(JOBS);
+    var b = '<div class="pfilters"><input class="input psearch" type="search" placeholder="Search by name" aria-label="Search by name" value="' + esc(S.q) + '">' +
+      '<div class="pchips"><label class="pdept"><span class="sr">Department</span><select data-act="pdept" aria-label="Department">' +
+      '<option value="all"' + (dsel === "all" ? " selected" : "") + ">All departments</option>" + DEPTS.map(function (o) { return '<option value="' + o.id + '"' + (o.id === dsel ? " selected" : "") + ">" + o.name + "</option>"; }).join("") + "</select>" + I.chev + "</label>" +
+      '<span class="pjobs" role="group" aria-label="Job"><button type="button" data-act="pjob" data-j="all" aria-pressed="' + (S.pjob === "all") + '">All</button>' +
+      jobs.map(function (j) { var n = ok.filter(function (p) { return inDept(p) && p.jobs.indexOf(j) >= 0; }).length;
+        return '<button type="button" data-act="pjob" data-j="' + j + '" aria-pressed="' + (S.pjob === j) + '"><i style="--jc:' + JOBS[j].c + '"></i>' + JOBS[j].name + " <span>" + n + "</span></button>"; }).join("") + "</span></div></div>";
+    if (S.warn) b += '<div class="warn"><b>Lily Chen has approved time off today.</b><span>She joins this lineup only. Her time off and the Schedule don\'t change.</span><div style="display:flex;gap:8px"><button type="button" class="btn sm" data-act="unwarn">Cancel</button><button type="button" class="btn sm green" data-act="addanyway">Add anyway</button></div></div>';
+    var seen = [];
+    if (S.addv === "2") {
+      var best = shown.filter(function (p) { return p.kind === "available" && rank(p) === 0; }).sort(order).slice(0, 3);
+      if (best.length) {
+        best.forEach(function (p) { seen.push(p.n); });
+        b += '<section class="pgrp best"><p class="pick-g lead">Best fit <span>' + best.length + '</span></p><p class="pbest-why">Free today · ' + (S.pjob !== "all" ? JOBS[S.pjob].name : D ? D.name : "any department") + " is their main job</p>" + best.map(function (p) { return pRow(p, "best"); }).join("") + "</section>";
+      }
+    }
+    PGROUPS.forEach(function (g) {
+      var list = shown.filter(function (p) { return p.kind === g[0] && seen.indexOf(p.n) < 0; }).sort(order);
+      if (!list.length) return;
+      b += '<section class="pgrp g-' + g[0] + '"><p class="pick-g' + (g[0] === "available" && S.addv !== "2" ? " lead" : "") + '">' + g[1] + " <span>" + list.length + "</span></p>" + list.map(function (p) { return pRow(p, rank(p) ? "fit2" : ""); }).join("") + "</section>";
+    });
+    b += '<p class="pempty" hidden>No one by that name. They may not be on this workspace.</p>';
+    var out = ok.length - shown.length;
+    if (out) b += '<button type="button" class="pshowall" data-act="pclear">Show ' + out + " more outside " + (S.pjob !== "all" ? JOBS[S.pjob].name : D ? D.name : "these filters") + "</button>";
+    var no = pool.filter(function (p) { return p.kind === "no"; });
+    if (no.length) b += '<section class="pgrp noel-g"><button type="button" class="noel" data-act="noel" aria-expanded="' + S.noel + '">' + no.length + " people can't work at " + LOCS[l.loc].replace("Harbor & Vine ", "") + I.chev + "</button>" +
+      '<div class="noel-list"' + (S.noel ? "" : " hidden") + '><p class="pbest-why">They are in your other locations but not assigned to ' + LOCS[l.loc].replace("Harbor & Vine ", "") + ". Assign them in Employees first.</p>" + no.sort(order).map(function (p) { return pRow(p); }).join("") + "</div></section>";
+    var r0 = function (l) { return l.rows[0] ? range(l.type === "lunch" ? "11:00" : "16:00", l.type === "lunch" ? "16:00" : "22:00") : ""; };
+    var title = S.sheet.replace ? "Replace " + S.sheet.replace : "Add to " + d0.name;
+    return sheet(title, TYPES[l.type].name + " · " + LOCS[l.loc].replace("Harbor & Vine ", "") + " · " + r0(l), b, "");
+  }
+  /* Search narrows the rows already drawn: typing keeps the focus. */
+  function pickFilter() {
+    var q = (S.q || "").trim().toLowerCase(), any = false;
+    app.querySelectorAll(".prow").forEach(function (r) { var hit = !q || r.dataset.name.indexOf(q) >= 0; r.hidden = !hit; if (hit && !r.closest(".noel-list")) any = true; });
+    app.querySelectorAll(".pgrp").forEach(function (g) {
+      var vis = g.querySelectorAll(".prow:not([hidden])").length;
+      if (g.classList.contains("noel-g")) { var lst = g.querySelector(".noel-list"); if (q && vis) { lst.hidden = false; any = true; } else if (!S.noel) lst.hidden = true; g.hidden = !!q && !vis; }
+      else g.hidden = !vis;
+    });
+    var e = app.querySelector(".pempty"); if (e) e.hidden = any;
+    var sa = app.querySelector(".pshowall"); if (sa) sa.hidden = !!q;
+  }
+  function notesSheet() {
+    var l = S.L[S.sheet.k];
+    var f = function (lab, key, ph) { return '<label class="field"><span>' + lab + '</span><textarea class="input" data-n="' + key + '" placeholder="' + ph + '">' + esc(l.notes[key]) + "</textarea></label>"; };
+    return sheet(TYPES[l.type].name + " notes", LOCS[l.loc].replace("Harbor & Vine ", "") + " · Staff see filled notes when you publish.", f("Specials", "sp", "Today's specials") + f("86s", "s86", "Out of stock") + f("Shift notes", "sn", "Anything the team should know"), '<button type="button" class="btn green" data-act="savenotes">Save notes</button>');
+  }
+  function publishSheet() {
+    if (S.pubDone) {
+      return sheet("Publish lineups", "Wednesday, October 14", '<div class="ok-line">' + '<span class="pub-ok">' + I.check + "</span>" + S.pubDone + "</div>" + pubList(true), '<button type="button" class="btn green" data-act="close">Done</button>');
+    }
+    var n = S.picks.length;
+    var b = pubList(false) + '<div class="switch"><span><b>Ask staff to acknowledge</b><span>Each person taps Acknowledge on their phone.</span></span><button type="button" class="tog" role="switch" aria-checked="' + S.ackOn + '" aria-label="Ask staff to acknowledge" data-act="ack"></button></div>' +
+      '<div class="share"><button type="button" class="btn" data-act="toast" data-msg="Image copied.">' + I.image + 'Image</button><button type="button" class="btn" data-act="toast" data-msg="Text copied.">' + I.text + "Text</button></div>";
+    return sheet("Publish lineups", "Wednesday, October 14", b, '<button type="button" class="btn green" data-act="dopublish"' + (n ? "" : " disabled") + ">" + (n ? "Publish " + n : "Nothing to publish") + "</button>");
+  }
+  function pubList(done) {
+    var out = "";
+    ["dt", "up"].forEach(function (loc) {
+      out += '<p class="pub-loc">' + LOCS[loc].replace("Harbor & Vine ", "") + "</p>";
+      ["lunch", "dinner", "close"].forEach(function (t) {
+        var k = loc + "-" + t, l = S.L[k]; if (!l) return;
+        var n = live(l).length, left;
+        if (l.status === "published") left = '<span class="pub-ok">' + I.check + "</span>";
+        else if (!n || done) left = '<span style="width:20px"></span>';
+        else left = '<input type="checkbox" class="cb" aria-label="Publish ' + TYPES[t].name + '" data-act="pick" data-k="' + k + '"' + (S.picks.indexOf(k) >= 0 ? " checked" : "") + ">";
+        var sub = !n ? "No one is scheduled" : l.status === "published" ? "Published v" + l.v + " · " + l.at + " · " + (l.acked || 0) + "/" + n + " acknowledged" : n + " people · not published";
+        var right = l.status === "published" && !started(l) && !done ? '<button type="button" class="btn sm danger' + (S.armed === "un-" + k ? " armed" : "") + '" data-act="unpub" data-k="' + k + '">' + (S.armed === "un-" + k ? "Confirm" : "Unpublish") + "</button>" : "";
+        out += '<div class="pub-row">' + left + '<span class="who"><b style="font-size:14px">' + TYPES[t].name + '</b><span class="meta">' + sub + "</span></span>" + right + "</div>";
+      });
+    });
+    return out;
+  }
+  function editSheet() {
+    var l = S.L[S.sheet.k];
+    return sheet("Edit " + TYPES[l.type].name + " lineup?", "", '<p style="margin:0;color:var(--theme-text-body);line-height:1.5">This takes it off staff phones. They see it again after you publish.</p>', '<button type="button" class="btn" data-act="close">Cancel</button><button type="button" class="btn dark" data-act="unedit">Unpublish &amp; edit</button>', true);
+  }
+
+  /* ---------------- Render ---------------- */
+  var app = document.getElementById("app");
+  function render() {
+    var keep = app.querySelector(".scroll"), top = keep ? keep.scrollTop : 0;
+    var html = S.emp ? viewEmp() : S.v === "a" ? viewA() : S.v === "b" ? viewB() : viewC();
+    if (S.sheet) {
+      html += S.sheet.type === "mine" ? mineSheet() : S.sheet.type === "person" ? personSheet() : S.sheet.type === "pick" ? (S.addv === "0" ? pickSheetOld() : pickSheet()) : S.sheet.type === "notes" ? notesSheet() : S.sheet.type === "publish" ? publishSheet() : editSheet();
+    }
+    if (S.toast) html += '<div class="toast" role="status">' + esc(S.toast.msg) + (S.toast.undo ? '<button type="button" data-act="undo">Undo</button>' : "") + "</div>";
+    app.innerHTML = html;
+    var sc = app.querySelector(".scroll"); if (sc && S.keepScroll) sc.scrollTop = top;
+    S.keepScroll = true;
+    if (S.scrollTo) { var el = app.querySelector(S.scrollTo); if (el && sc) sc.scrollTop = el.offsetTop - 120; S.scrollTo = null; }
+    document.getElementById("vars").innerHTML = VARS.map(function (v) { return '<button type="button" class="mk-var" aria-pressed="' + (S.v === v.id) + '" data-act="var" data-v="' + v.id + '"><b>' + v.name + "</b><span>" + v.sub + "</span></button>"; }).join("");
+    document.getElementById("rows").innerHTML = ROWS.map(function (v) { return '<button type="button" class="mk-var" aria-pressed="' + (S.row === v.id) + '" data-act="rowlay" data-r="' + v.id + '"><b>' + v.name + "</b><span>" + v.sub + "</span></button>"; }).join("");
+    document.getElementById("sums").innerHTML = SUMS.map(function (v) { return '<button type="button" class="mk-var" aria-pressed="' + (S.sum === v.id) + '" data-act="sumv" data-s="' + v.id + '"><b>' + v.name + "</b><span>" + v.sub + "</span></button>"; }).join("");
+    document.getElementById("adds").innerHTML = ADDS.map(function (v) { return '<button type="button" class="mk-var" aria-pressed="' + (S.addv === v.id) + '" data-act="addv" data-a="' + v.id + '"><b>' + v.name + "</b><span>" + v.sub + "</span></button>"; }).join("");
+    document.getElementById("moments").innerHTML = MOMENTS.map(function (m) { return '<li><button type="button" aria-pressed="' + (S.moment === m.id) + '" data-act="moment" data-m="' + m.id + '">' + m.t + "</button></li>"; }).join("");
+    document.getElementById("phonebar").innerHTML = VARS.map(function (v) { return '<button type="button" aria-pressed="' + (S.v === v.id) + '" data-act="var" data-v="' + v.id + '">' + v.name.split(" · ")[0] + "</button>"; }).join("") +
+      ROWS.map(function (v) { return '<button type="button" aria-pressed="' + (S.row === v.id) + '" data-act="rowlay" data-r="' + v.id + '">Satır ' + v.name.split(" · ")[0] + "</button>"; }).join("") +
+      SUMS.map(function (v) { return '<button type="button" aria-pressed="' + (S.sum === v.id) + '" data-act="sumv" data-s="' + v.id + '">Özet ' + v.name.split(" · ")[0] + "</button>"; }).join("") +
+      ADDS.map(function (v) { return '<button type="button" aria-pressed="' + (S.addv === v.id) + '" data-act="addv" data-a="' + v.id + '">Ekle ' + v.name.split(" · ")[0] + "</button>"; }).join("") +
+      MOMENTS.map(function (m) { return '<button type="button" aria-pressed="' + (S.moment === m.id) + '" data-act="moment" data-m="' + m.id + '">' + m.t + "</button>"; }).join("");
+    if (S.sheet && S.sheet.type === "pick" && S.addv !== "0") pickFilter();
+    if (S.sheetTo) { var sb = app.querySelector(".sheet-b"), se = app.querySelector(S.sheetTo); if (sb && se) sb.scrollTop = se.offsetTop - 80; S.sheetTo = null; }
+    document.getElementById("note").textContent = VARS.filter(function (v) { return v.id === S.v; })[0].sub;
+  }
+  var toastTimer;
+  function toast(msg, undo) { S.toast = { msg: msg, undo: undo }; clearTimeout(toastTimer); toastTimer = setTimeout(function () { S.toast = null; render(); }, 4000); }
+
+  function moment(m) {
+    var v = S.v; reset(v); S.moment = m; S.keepScroll = false;
+    var dn = S.L["dt-dinner"];
+    if (m === "person") { S.sheet = { type: "person", k: "dt-dinner", id: dn.rows[0].id }; S.tab = "dinner"; }
+    if (m === "me" || m === "me-ack") {
+      S.emp = true; S.tab = "dinner"; S.meId = dn.rows[1].id; dn.status = "published"; dn.at = "3:05 PM"; dn.v = 1; dn.acked = 6; dn.rows[1].label = "Lead";
+      if (m === "me-ack") { if (S.sum === "3") S.sheet = { type: "mine" }; else S.acked = true; }
+    }
+    if (m === "nosec") { dn.rows.forEach(function (r) { r.section = ""; }); }
+    if (m === "add") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; }
+    if (m === "timeoff") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.warn = true; }
+    if (m === "addbar") { S.sheet = { type: "pick", k: "dt-dinner", job: "bartender" }; }
+    if (m === "byjob") { S.sheet = { type: "pick", k: "dt-dinner", job: "bartender" }; S.sortBy = "job"; S.pjob = "bartender"; }
+    if (m === "jobpop") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.jobPop = "Olivia Grant"; }
+    if (m === "search") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.q = "ma"; S.pdept = "all"; }
+    if (m === "noel") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.noel = true; S.sheetTo = ".noel"; }
+    if (m === "here") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.sheetTo = ".g-here"; }
+    if (m === "movearm") { S.sheet = { type: "pick", k: "dt-dinner", job: "server" }; S.armed = "mv-Ava Martinez"; S.sheetTo = ".g-other"; }
+    if (m === "other") { S.sheet = { type: "pick", k: "dt-dinner", job: "bartender" }; addPerson("Ava Martinez", "other"); S.tab = "dinner"; S.scrollTo = ".row.from"; }
+    if (m === "calloff") { var r = dn.rows[3]; r.off = true; toast("Noah Garcia called off. The Schedule doesn't change.", { k: "dt-dinner", id: r.id }); S.scrollTo = ".off-h"; }
+    if (m === "notes") { if (S.v === "b") S.seg = "notes"; else S.sheet = { type: "notes", k: "dt-dinner" }; }
+    if (m === "publish") openPublish();
+    if (m === "published") { openPublish(); doPublish(); }
+    if (m === "edit") { S.loc = S.v === "a" ? "all" : "up"; S.tab = "lunch"; S.openShift["up-lunch"] = true; S.sheet = { type: "editpub", k: "up-lunch" }; if (S.v === "a") S.scrollTo = ".loc-h:nth-of-type(2)"; }
+    if (m === "started") { S.tab = "lunch"; S.openShift["dt-lunch"] = true; S.openShift["dt-dinner"] = false; }
+    if (m === "loading") S.mode = "loading";
+    if (m === "error") S.mode = "error";
+    render();
+  }
+  function openPublish() { S.picks = drafts().slice(); S.pubDone = false; S.armed = null; S.sheet = { type: "publish" }; }
+  function doPublish() {
+    var n = S.picks.length; var t = ["1:52 PM", "2:10 PM"];
+    S.picks.forEach(function (k) { var l = S.L[k]; l.status = "published"; l.v = (l.v || 0) + 1; l.at = "2:10 PM"; l.acked = 0; });
+    S.pubDone = n + " lineup" + (n > 1 ? "s" : "") + " published. " + (S.ackOn ? "Staff were asked to acknowledge." : "Staff were notified.");
+  }
+
+  document.addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    var a = b.dataset.act, k = b.dataset.k;
+    if (a === "noop") { e.preventDefault(); return; }
+    if (a === "var") { S.v = b.dataset.v; try { localStorage.setItem("nf-lineup-tel-v", S.v); } catch (x) {} moment(S.moment); return; }
+    if (a === "moment") { moment(b.dataset.m); return; }
+    if (a === "sumv") { S.sum = b.dataset.s; var mm = S.moment; moment(mm === "me" || mm === "me-ack" ? mm : "me"); return; }
+    if (a === "meack") { if (S.sum === "3") S.sheet = { type: "mine" }; else { S.acked = true; toast("Acknowledged. Sarah can see it."); } render(); return; }
+    if (a === "mineok") { S.sheet = null; S.acked = true; toast("Acknowledged. Sarah can see it."); render(); return; }
+    if (a === "addv") { S.addv = b.dataset.a; var m0 = S.moment; moment(["add", "addbar", "byjob", "jobpop", "search", "noel", "timeoff", "here", "movearm"].indexOf(m0) >= 0 ? m0 : "add"); return; }
+    if (a === "rowlay") { S.row = b.dataset.r; S.keepScroll = true; render(); return; }
+    if (a === "reset") { reset(S.v); render(); return; }
+    if (a !== "calloff" && a !== "unpub" && !(a === "pick" && b.dataset.kind === "other")) S.armed = null;
+    if (a === "fold") S.openShift[k] = !S.openShift[k];
+    else if (a === "tab") { S.tab = b.dataset.t; S.seg = "team"; }
+    else if (a === "seg") S.seg = b.dataset.s;
+    else if (a === "dept") S.dept = b.dataset.d;
+    else if (a === "person") { S.sheet = { type: "person", k: k, id: b.dataset.id }; }
+    else if (a === "add") { S.sheet = { type: "pick", k: k, job: b.dataset.job }; S.warn = false; S.sortBy = "dept"; S.pdept = null; S.pjob = "all"; S.jobPop = null; S.noel = false; S.q = ""; }
+    else if (a === "pjob") { S.pjob = b.dataset.j; S.jobPop = null; }
+    else if (a === "jobpop") { S.jobPop = S.jobPop === b.dataset.name ? null : b.dataset.name; }
+    else if (a === "noel") { S.noel = !S.noel; }
+    else if (a === "pclear") { S.pdept = "all"; S.pjob = "all"; }
+    else if (a === "sortby") S.sortBy = b.dataset.s;
+    else if (a === "replace") { var r0 = find(S.sheet.k, S.sheet.id); S.sheet = { type: "pick", k: S.sheet.k, job: r0.job, replace: r0.name, rid: r0.id }; }
+    else if (a === "pick" && b.classList.contains("cb")) { var i = S.picks.indexOf(k); if (i >= 0) S.picks.splice(i, 1); else S.picks.push(k); }
+    else if (a === "pick") {
+      var kind = b.dataset.kind;
+      if (kind === "timeoff") { S.warn = true; render(); return; }
+      /* Moving someone off another manager's lineup takes a second tap, like every
+         step that undoes someone else's work; the toast's Bring back stays. */
+      if (kind === "other" && S.armed !== "mv-" + b.dataset.name) {
+        S.armed = "mv-" + b.dataset.name; clearTimeout(S.armTimer);
+        S.armTimer = setTimeout(function () { if (S.armed === "mv-" + b.dataset.name) { S.armed = null; render(); } }, 4000);
+        render(); return;
+      }
+      S.armed = null;
+      addPerson(b.dataset.name, kind);
+    }
+    else if (a === "unwarn") S.warn = false;
+    else if (a === "addanyway") { S.warn = false; addPerson("Lily Chen", "timeoff"); }
+    else if (a === "calloff") {
+      if (S.armed !== "off") { S.armed = "off"; render(); return; }
+      var r = find(S.sheet.k, S.sheet.id); r.off = true; S.armed = null; var kk = S.sheet.k; S.sheet = null; toast(r.name + " called off. The Schedule doesn't change.", { k: kk, id: r.id });
+    }
+    else if (a === "restore") { find(k, b.dataset.id).off = false; }
+    else if (a === "undo") { find(S.toast.undo.k, S.toast.undo.id).off = false; S.toast = null; }
+    else if (a === "notes") S.sheet = { type: "notes", k: k };
+    else if (a === "savenotes") { var l = S.L[S.sheet.k]; app.querySelectorAll("[data-n]").forEach(function (t) { l.notes[t.dataset.n] = t.value; }); S.sheet = null; toast("Notes saved."); }
+    else if (a === "publish") openPublish();
+    else if (a === "ack") S.ackOn = !S.ackOn;
+    else if (a === "dopublish") doPublish();
+    else if (a === "unpub") {
+      if (S.armed !== "un-" + k) { S.armed = "un-" + k; render(); return; }
+      S.L[k].status = "draft"; S.armed = null; if (S.picks.indexOf(k) < 0) S.picks.push(k); toast("Unpublished. Staff can't see this lineup until you publish again.");
+    }
+    else if (a === "editpub") S.sheet = { type: "editpub", k: k };
+    else if (a === "unedit") { var le = S.L[S.sheet.k]; le.status = "draft"; S.openShift[S.sheet.k] = true; S.sheet = null; toast("Unpublished. Staff can't see this lineup until you publish again."); }
+    else if (a === "retry") { S.mode = "loading"; render(); setTimeout(function () { S.mode = "ok"; S.moment = "day"; render(); }, 1200); return; }
+    else if (a === "toast") toast(b.dataset.msg);
+    else if (a === "close") { S.sheet = null; S.warn = false; }
+    render();
+  });
+  function addPerson(name, kind) {
+    var sh = S.sheet, l = S.L[sh.k];
+    if (sh.replace) {
+      var r = find(sh.k, sh.rid); r.sched = r.sched || { job: r.job, in: r.in, out: r.out }; r.changed.person = true; r.name = name; S.sheet = null;
+      toast(name + " is in " + sh.replace.split(" ")[0] + "'s spot. The Schedule doesn't change."); return;
+    }
+    var who = POOL.filter(function (x) { return x.n === name; })[0] || { jobs: [sh.job] };
+    var job = who.jobs.indexOf(sh.job) >= 0 ? sh.job : who.jobs.filter(function (j) { return deptOf(j) === deptOf(sh.job); })[0] || who.jobs[0];
+    var p = P(name, job, l.type === "lunch" ? "11:00" : "16:00", l.type === "lunch" ? "16:00" : "22:00", "", "", { only: kind === "available" ? "Lineup only" : kind === "timeoff" ? "Time off · lineup only" : kind === "other" ? "From Uptown" : "", from: kind === "other" });
+    l.rows.push(p); S.openShift[sh.k] = true; S.sheet = null;
+    if (kind === "other" && who.from) {
+      var src = S.L[who.from].rows.filter(function (r) { return r.name === name; })[0];
+      if (src) { src.off = true; src.moved = LOCS[l.loc].replace("Harbor & Vine ", ""); }
+      toast(name + " moved here from Uptown. Uptown's lineup shows the move; the Schedule doesn't change.");
+      return;
+    }
+    toast(name + " added to " + TYPES[l.type].name + ".");
+  }
+  document.addEventListener("change", function (e) {
+    var t = e.target;
+    if (t.dataset.act === "loc") { S.loc = t.value; render(); return; }
+    if (t.dataset.act === "pdept") { S.pdept = t.value; S.pjob = "all"; S.jobPop = null; render(); return; }
+    if (S.sheet && S.sheet.type === "person" && t.dataset.f) {
+      var r = find(S.sheet.k, S.sheet.id); r.sched = r.sched || { job: r.job, in: r.in, out: r.out };
+      var f = t.dataset.f;
+      if (f === "section" && t.value === "__add") { t.value = r.section; toast("Section names are added here (mockup)."); render(); return; }
+      if (f === "in" || f === "out") {
+        var m = /^(\d{1,2})(?::?(\d{2}))?\s*([ap])?/i.exec(t.value.trim()); if (!m) { render(); return; }
+        var h = +m[1], mm = +(m[2] || 0), ap = (m[3] || (h < 12 && h >= 1 && h <= 11 && f === "out" ? "p" : "")).toLowerCase();
+        if (ap === "p" && h < 12) h += 12; if (ap === "a" && h === 12) h = 0;
+        r[f] = (h < 10 ? "0" : "") + h + ":" + (mm < 10 ? "0" : "") + mm;
+      } else r[f] = t.value;
+      r.changed[f] = true; render();
+    }
+  });
+  document.addEventListener("input", function (e) {
+    if (e.target.classList && e.target.classList.contains("psearch")) { S.q = e.target.value; pickFilter(); }
+  });
+  document.addEventListener("keydown", function (e) { if (e.key === "Escape" && S.sheet) { S.sheet = null; render(); } });
+  render();
+})();
+</script>
+
+
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Schedule", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+
+</body></html>

@@ -1,0 +1,748 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Giriş ve Katılım Keşfi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: Newfork'un kendi paleti (yeşil aksiyon, açık gri zemin). Solda yapışkan ekran listesi, sağda ekran ekran
+   "bugün" görüntüsü (masaüstü 1440 + telefon 390) ve altında karar düğmeli bulgu satırları. */
+:root {
+  --bg: #f4f5f3;
+  --surface: #ffffff;
+  --surface-2: #f7f9f8;
+  --ink: #17221e;
+  --ink-2: #46524d;
+  --muted: #5f6b66;
+  --line: #dce3df;
+  --line-strong: #c3cdc8;
+  --accent: #176954;
+  --accent-ink: #ffffff;
+  --accent-soft: #e7f1ed;
+  --hi: #b84234;
+  --hi-soft: #fff0ee;
+  --mid: #8a5a00;
+  --mid-soft: #fff4d9;
+  --lo: #5f6b66;
+  --lo-soft: #eef1ef;
+  --focus: #177a64;
+  --shadow: 0 1px 2px rgba(23, 34, 30, 0.06), 0 4px 16px rgba(23, 34, 30, 0.05);
+  --font-body: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Mono", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f1412; --surface: #161d1a; --surface-2: #1b2420; --ink: #e4ebe8; --ink-2: #c0ccc7; --muted: #9aa8a2;
+    --line: #2a3531; --line-strong: #3d4a45; --accent: #5cc29d; --accent-ink: #0b1a14; --accent-soft: #183329;
+    --hi: #f29a8d; --hi-soft: #3a1f1b; --mid: #e6bd66; --mid-soft: #33290f; --lo: #a7b4ae; --lo-soft: #222b28;
+    --focus: #7fd8b6; --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f1412; --surface: #161d1a; --surface-2: #1b2420; --ink: #e4ebe8; --ink-2: #c0ccc7; --muted: #9aa8a2;
+  --line: #2a3531; --line-strong: #3d4a45; --accent: #5cc29d; --accent-ink: #0b1a14; --accent-soft: #183329;
+  --hi: #f29a8d; --hi-soft: #3a1f1b; --mid: #e6bd66; --mid-soft: #33290f; --lo: #a7b4ae; --lo-soft: #222b28;
+  --focus: #7fd8b6; --shadow: 0 1px 2px rgba(0, 0, 0, 0.4), 0 4px 16px rgba(0, 0, 0, 0.3);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.55; }
+h1, h2, h3 { text-wrap: balance; margin: 0; letter-spacing: -0.01em; }
+p { margin: 0; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: 4px; }
+code, .mono { font-family: var(--font-mono); font-size: 0.84em; }
+
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 20px; }
+.masthead { border-bottom: 1px solid var(--line); background: var(--surface); }
+.masthead .wrap { padding-block: 28px 24px; display: grid; gap: 12px; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); display: flex; flex-wrap: wrap; gap: 6px 14px; }
+.eyebrow span + span::before { content: "·"; margin-right: 14px; color: var(--muted); }
+h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; }
+.lead { color: var(--ink-2); max-width: 70ch; }
+.progress { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; font-size: 13px; color: var(--muted); }
+.bar { width: 180px; height: 6px; border-radius: 3px; background: var(--lo-soft); overflow: hidden; }
+.bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.dbstate { font-size: 12.5px; padding: 3px 9px; border-radius: 999px; background: var(--lo-soft); color: var(--muted); }
+.dbstate.ok { background: var(--accent-soft); color: var(--accent); }
+.dbstate.warn { background: var(--mid-soft); color: var(--mid); }
+
+.layout { display: grid; gap: 32px; padding-block: 28px 64px; }
+.toc { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 4px; }
+.toc a { flex: 0 0 auto; text-decoration: none; color: var(--ink-2); font-size: 13.5px; padding: 6px 10px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); white-space: nowrap; }
+.toc a:hover { border-color: var(--line-strong); color: var(--ink); }
+.toc .toc-label { display: none; }
+@media (min-width: 1080px) {
+  .layout { grid-template-columns: 200px minmax(0, 1fr); gap: 40px; }
+  .toc { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 20px); align-self: start; flex-direction: column; gap: 2px; overflow: visible; }
+  .toc a { border: 0; background: transparent; padding: 5px 10px; white-space: normal; }
+  .toc a:hover { background: var(--surface); }
+  .toc .toc-label { display: block; font-size: 11.5px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); padding: 14px 10px 4px; }
+  .toc .toc-label:first-child { padding-top: 0; }
+}
+main { min-width: 0; display: grid; gap: 44px; }
+section > h2 { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+.section-note { color: var(--muted); font-size: 14px; margin-bottom: 18px; max-width: 72ch; }
+
+/* Kısaca */
+.brief { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; display: grid; gap: 10px; box-shadow: var(--shadow); }
+.brief ol { margin: 0; padding-left: 22px; display: grid; gap: 8px; }
+.brief li { padding-left: 4px; max-width: 80ch; }
+.brief b { font-weight: 600; }
+
+/* Sorular */
+.questions { display: grid; gap: 16px; }
+.q { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 12px; }
+.q h3 { font-size: 17px; font-weight: 650; }
+.q dl { margin: 0; display: grid; gap: 6px; }
+.q dt { font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); }
+.q dd { margin: 0 0 6px; max-width: 80ch; }
+.opts { display: grid; gap: 8px; }
+.opt { text-align: left; font: inherit; color: inherit; background: var(--surface-2); border: 1px solid var(--line); border-radius: 8px; padding: 11px 14px; cursor: pointer; display: grid; gap: 3px; }
+.opt:hover:not(:disabled) { border-color: var(--line-strong); }
+.opt[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent); }
+.opt:disabled { cursor: default; }
+.opt .opt-title { font-weight: 600; display: flex; gap: 8px; flex-wrap: wrap; align-items: baseline; }
+.opt .rec { font-size: 11.5px; font-weight: 600; color: var(--accent); letter-spacing: 0.02em; }
+.opt .opt-body { color: var(--ink-2); font-size: 14px; }
+.opt .basis { color: var(--muted); font-size: 12.5px; }
+
+/* Ekran kartları */
+.screen { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: var(--shadow); }
+.screen-head { padding: 18px 22px 14px; display: grid; gap: 6px; border-bottom: 1px solid var(--line); }
+.screen-head .title-row { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: baseline; }
+.screen-head h3 { font-size: 19px; font-weight: 700; }
+.route { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+.today { color: var(--ink-2); font-size: 14px; max-width: 80ch; }
+.states { display: flex; flex-wrap: wrap; gap: 6px; padding: 14px 22px 0; }
+.state-btn { font: inherit; font-size: 13px; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-2); cursor: pointer; }
+.state-btn[aria-selected="true"] { background: var(--ink); border-color: var(--ink); color: var(--surface); }
+.mock-tag { font-size: 11px; font-weight: 600; margin-left: 4px; color: var(--mid); }
+.state-btn[aria-selected="true"] .mock-tag { color: var(--mid-soft); }
+.shots { display: flex; flex-wrap: wrap; gap: 16px; padding: 14px 22px 18px; align-items: flex-start; }
+.shot { margin: 0; display: grid; gap: 6px; min-width: 0; }
+.shot.desk { flex: 1 1 460px; }
+.shot.phone { flex: 0 1 200px; }
+.shot button { all: unset; cursor: zoom-in; display: block; box-sizing: border-box; width: 100%; border: 1px solid var(--line-strong); border-radius: 8px; overflow: hidden; background: var(--surface-2); }
+.shot button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.shot img { display: block; width: 100%; max-width: 100%; height: auto; object-fit: cover; object-position: top; }
+.shot.desk img { aspect-ratio: 1440 / 900; }
+.shot.phone img { aspect-ratio: 390 / 844; }
+.shot figcaption { font-size: 12px; color: var(--muted); display: flex; justify-content: space-between; gap: 8px; }
+.state-note { padding: 0 22px 14px; font-size: 13px; color: var(--muted); max-width: 90ch; }
+
+.rows { border-top: 1px solid var(--line); }
+.row { padding: 16px 22px; display: grid; gap: 8px; border-top: 1px solid var(--line); border-left: 4px solid transparent; }
+.row:first-child { border-top: 0; }
+.row.sev-yuksek { border-left-color: var(--hi); }
+.row.sev-orta { border-left-color: var(--mid); }
+.row.sev-dusuk { border-left-color: var(--line-strong); }
+.row-head { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: baseline; }
+.pill { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; letter-spacing: 0.02em; white-space: nowrap; }
+.pill.sev-yuksek { background: var(--hi-soft); color: var(--hi); }
+.pill.sev-orta { background: var(--mid-soft); color: var(--mid); }
+.pill.sev-dusuk { background: var(--lo-soft); color: var(--lo); }
+.rid { font-family: var(--font-mono); font-size: 12px; color: var(--muted); }
+.row-title { font-weight: 600; flex: 1 1 320px; min-width: 0; }
+.row p { color: var(--ink-2); font-size: 14px; max-width: 86ch; }
+.row .k { font-weight: 600; color: var(--ink); }
+.row .src { font-size: 12.5px; color: var(--muted); }
+.decide { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 2px; }
+.chip { font: inherit; font-size: 13px; font-weight: 500; padding: 6px 12px; min-height: 34px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); cursor: pointer; }
+.chip:hover:not(:disabled) { border-color: var(--ink-2); }
+.chip:disabled { cursor: default; opacity: 0.6; }
+.chip[aria-pressed="true"][data-v="degistir"], .chip[aria-pressed="true"][data-v="varyant"], .chip[aria-pressed="true"][data-v="uygun"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); }
+.chip[aria-pressed="true"][data-v="birak"], .chip[aria-pressed="true"][data-v="gereksiz"] { background: var(--lo-soft); border-color: var(--lo); color: var(--ink); }
+.chip[aria-pressed="true"][data-v="konusalim"] { background: var(--mid-soft); border-color: var(--mid); color: var(--mid); }
+.note-toggle { font: inherit; font-size: 13px; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 6px 4px; }
+.note { width: 100%; max-width: 640px; min-height: 64px; font: inherit; font-size: 14px; padding: 8px 10px; border-radius: 7px; border: 1px solid var(--line-strong); background: var(--surface); color: var(--ink); resize: vertical; }
+.saved { font-size: 12px; color: var(--muted); }
+
+/* Görsel kararlar, prototip, arka plan */
+.cards { display: grid; gap: 12px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; }
+.card h3 { font-size: 16px; font-weight: 650; }
+.card p { color: var(--ink-2); font-size: 14px; }
+.proto { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); }
+.proto .col { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+.proto h3 { font-size: 15px; font-weight: 650; display: flex; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.proto h3 span { font-family: var(--font-mono); font-size: 13px; color: var(--muted); font-weight: 400; }
+.proto ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; font-size: 14px; color: var(--ink-2); }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.sources { font-size: 13.5px; color: var(--ink-2); display: grid; gap: 6px; }
+.sources code { word-break: break-all; }
+footer { color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-block: 20px 40px; }
+
+dialog.lightbox { padding: 0; border: 0; background: transparent; max-width: 96vw; max-height: 94vh; }
+dialog.lightbox::backdrop { background: rgba(10, 14, 12, 0.78); }
+dialog.lightbox .lb-inner { display: grid; gap: 8px; }
+dialog.lightbox .lb-scroll { max-height: 86vh; overflow: auto; border-radius: 8px; background: #fff; }
+dialog.lightbox img { display: block; max-width: min(96vw, 1440px); height: auto; }
+dialog.lightbox .lb-bar { display: flex; justify-content: space-between; gap: 12px; color: #fff; font-size: 13px; align-items: center; }
+dialog.lightbox .lb-close { font: inherit; font-size: 13px; background: #fff; color: #17221e; border: 0; border-radius: 6px; padding: 6px 12px; cursor: pointer; }
+@media (prefers-reduced-motion: reduce) { .bar i { transition: none; } }
+/* Karar durumu (2026-10-09) */
+.status-strip { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--mid-soft); border: 1px solid var(--mid); color: var(--ink); font-size: 14px; }
+.status-strip b { color: var(--ink); }
+.status-strip .st-k { font-size: 11.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--mid); }
+.status-strip p { max-width: 110ch; }
+.st { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+.st-done { background: var(--accent-soft); color: var(--accent); }
+.st-wait { background: var(--mid-soft); color: var(--mid); }
+.st-b1 { background: var(--lo-soft); color: var(--ink-2); border: 1px solid var(--line-strong); }
+.row.decided { background: var(--surface-2); }
+.row .newstate { color: var(--ink); }
+.q h3 .st, .card h3 .st { vertical-align: middle; margin-left: 6px; }
+</style>
+
+<header class="masthead">
+  <div class="wrap">
+    <div class="eyebrow"><span>Newfork</span><span>Ekran 16</span><span>Keşif 7 Ekim 2026</span><span class="mono" style="text-transform:none;letter-spacing:0">main fb9ced47</span></div>
+    <div class="status-strip" role="note" aria-label="Karar durumu">
+      <span class="st-k">Yarı karar · 9 Ekim 2026</span>
+      <p><b>Karar verildi:</b> 14 bulguda "Değiştir" (Mert, 7 Ekim 2026 10:13–10:19, bu sayfadaki seçimler). Bu satırlarda yalnız yeni hâl kaldı. <b>Uygulamada:</b> henüz koda girmedi; giriş ve katılım ekranı giriş modeli kararını bekliyor (KARARLAR S-118, Mert 9 Ekim 2026).</p>
+      <p><b>Bekleyen sorular:</b> giriş modeli B1 (e-posta servisi bağlanınca) · 4 soru S1–S4 · "No invitation yet" düğme ölçüsü (E16-14, Konuşalım) · görsel kararlar G1–G4 · prototip listesi · işaretlenmemiş 30 bulgu.</p>
+    </div>
+    <h1>Giriş ve katılım</h1>
+    <p class="lead">Sign in, parola, davet, Workspaces ve iki kurulumun bugünkü hâli: gerçek uygulamadan masaüstü (1440) ve telefon (390) görüntüleri, altında bulgular. Karar verilen satırda yalnız yeni hâl durur; "B1 bekliyor" etiketli satırlar giriş modeline bağlı. Bekleyen bulguda <b>Değiştir</b>, <b>Bırak</b> ya da <b>Konuşalım</b> seçilebilir.</p>
+    <div class="progress" aria-live="polite">
+      <span id="progress-text">0 / 0 bulgu işaretlendi</span>
+      <span class="bar" aria-hidden="true"><i id="progress-bar"></i></span>
+      <span id="db-state" class="dbstate">Seçimler yükleniyor…</span>
+    </div>
+  </div>
+</header>
+
+<div class="wrap layout">
+  <nav class="toc" aria-label="Bölümler" id="toc"></nav>
+  <main id="main">
+    <section id="kisaca" aria-labelledby="kisaca-h">
+      <h2 id="kisaca-h">Kısaca</h2>
+      <div class="brief">
+        <ol>
+          <li><b>Güvenlik sağlam.</b> Yanlış workspace'e katılmak, başkasının davetini kabul etmek ya da hesabı ele geçirmek için yol bulunmadı.</li>
+          <li><b>Dört kararın ekranda yok:</b> girişte "Active invitation found" ekranı; favori yokken sormak; "Create" düğmesinin ne zaman görüneceği; "I am waiting for an invitation" metni.</li>
+          <li><b>Sessiz kayıplar:</b> kurulum sonunda gitmeyen davetler owner'a söylenmiyor. Kurulumda geri dönünce ilerleme geri sarıyor, adlar boş geliyor. Favori workspace kurulum bitince kendiliğinden değişiyor.</li>
+          <li><b>Yanlış cümleler:</b> silinen taslak "Closed" diye kalıyor. Onboarding'den kendi vazgeçen kişi "bir yönetici açana kadar beklemede" okuyor. Yeniden gönderilen davetin eski bağlantısı "iptal edildi" diyor.</li>
+          <li><b>Görünüm:</b> aynı işi yapan düğmeler 36, 42 ve 44 px. Telefonda düğmeler 36 px (dokunmak için 44 gerekir). Owner kurulumu telefonda sağa kaymış.</li>
+          <li><b>Ham hata metni</b> ekrana çıkıyor: "Invalid login credentials", "owner onboarding revision conflict", "duplicate key…".</li>
+          <li>Sana <b>4 soru</b> var. Prototipten 24 madde taşınacak, 2'si sorudan sonra; 4'ü varyant ister, 2'si bırakılır.</li>
+        </ol>
+      </div>
+    </section>
+
+    <section id="sorular" aria-labelledby="sorular-h">
+      <h2 id="sorular-h">Sana 4 soru</h2>
+      <p class="section-note">Bir seçeneğe tıkla; seçimin kaydedilir, koordinatör karara işler. Önerilen seçenek ilk sırada.</p>
+      <div class="questions" id="questions"></div>
+    </section>
+
+    <section id="ekranlar" aria-labelledby="ekranlar-h">
+      <h2 id="ekranlar-h">Ekran ekran</h2>
+      <p class="section-note">Görüntüye tıklayınca tam boy açılır. "Taklit" etiketli durumlar yerelde gerçek kişisi bulunmadığı için sahte sunucu cevabıyla çekildi; sayfanın kodu gerçek.</p>
+      <div style="display:grid;gap:24px" id="screens"></div>
+    </section>
+
+    <section id="arka-plan" aria-labelledby="arka-plan-h">
+      <h2 id="arka-plan-h">Ekranda görünmeyen işler</h2>
+      <p class="section-note">Kodda ve veritabanında duran, ekran görüntüsüyle gösterilemeyen bulgular.</p>
+      <div class="panel"><div class="rows" id="hidden-rows"></div></div>
+    </section>
+
+    <section id="gorsel-kararlar" aria-labelledby="gorsel-h">
+      <h2 id="gorsel-h">Görsel kararlar</h2>
+      <p class="section-note">Bunlar yazıyla değil gözle karar verilecek işler. "Varyant hazırla" dersen gerçek uygulamada 2–3 farklı hâl bu sayfaya eklenir.</p>
+      <div class="cards" id="visual-cards"></div>
+    </section>
+
+    <section id="prototip" aria-labelledby="prototip-h">
+      <h2 id="prototip-h">Prototipten taşı / bırak <span class="st st-wait">Karar bekliyor</span></h2>
+      <p class="section-note">Prototipteki giriş ve kurulum ekranlarıyla gerçek uygulamanın farkları (Q1–Q4, PHONE-AUTH).</p>
+      <div class="proto" id="proto"></div>
+      <div class="decide" style="margin-top:12px" data-id="PROTO" data-kind="proto"></div>
+    </section>
+
+    <section id="kaynak" aria-labelledby="kaynak-h">
+      <h2 id="kaynak-h">Kaynaklar</h2>
+      <div class="sources">
+        <p>Dört rapor ve özet repoda: <code>docs/plan/ekranlar/16-giris-katilim/</code> (OZET.md, A-backlog-prototip.md, B-guvenlik.md, C-gorsel.md, D-kod-davranis.md).</p>
+        <p>Ekran görüntülerinin aslı: <code>newfork-clean/artifacts/EKRAN-16/</code> (65 PNG).</p>
+        <p>Bulgu kimlikleri (E16-xx) OZET.md'deki tek listeyle aynı; satır sonundaki harf ve numara raporlardaki bulguyu gösterir (A, B, C, D).</p>
+      </div>
+    </section>
+  </main>
+</div>
+<div class="wrap"><footer>Keşif salt okumaydı: kod değişmedi, yerel veritabanında yalnız okuma yapıldı. Hazırlayan: ekran 16 oturumu, 7 Ekim 2026.</footer></div>
+
+<dialog class="lightbox" id="lightbox" aria-label="Ekran görüntüsü">
+  <div class="lb-inner">
+    <div class="lb-bar"><span id="lb-cap"></span><button class="lb-close" id="lb-close" type="button">Kapat</button></div>
+    <div class="lb-scroll"><img id="lb-img" alt=""></div>
+  </div>
+</dialog>
+
+<script>
+const QUESTIONS = [
+  { id: "S1", title: "1 davet varken \"Create your workspace\" görünsün mü?",
+    today: "Workspaces → \"Your own workspace\": davet varken düğme her zaman gizli. KARARLAR'da iki satır bu durumda birbirini tutmuyor: \"0 ya da 1 davette görünür\" ve \"workspace'i olmayan davetli önce daveti cevaplar\".",
+    example: "Jordan'ın hiç workspace'i yok; Northstar Kitchen onu davet etti. Mert Meyhouse'un owner'ı; ona da Northstar'dan davet geldi.",
+    options: [
+      { v: "1", title: "Workspace'i olmayana gizli, kendi işletmesi olana görünür", rec: true, body: "Jordan önce Join ya da Decline der. Mert hem daveti görür hem yeni işletme açabilir.", basis: "Dayanak: KARARLAR \"Davetin önceliği\" + \"Create görünürlüğü\" birlikte; prototip H17" },
+      { v: "2", title: "1 davette herkese görünür", body: "Jordan daveti cevaplamadan işletme açabilir; sert engel kalkar, sunucu kuralı da değişir." },
+      { v: "3", title: "Davet varken hep gizli (bugünkü)", body: "Mert yeni işletme açmak için önce daveti cevaplamak zorunda." }
+    ] },
+  { id: "S2", title: "Başka bir workspace'te çalışan kişi kendi işletmesini açabilir mi?",
+    today: "KARARLAR: \"Owner olmadığı bir workspace'te aktif üyeliği olan hesap kendi işletmesini açamaz; ayrı hesap gerekir.\" Sunucu yalnız aktif üyeliğe bakıyor. Bir yerde owner olan kişiyi ise hiç durdurmuyor.",
+    example: "Ali Kadıköy'ün davetini kabul etti, onboarding'i bitmedi; bugün kendi işletmesini açabiliyor. Mert Beyoğlu'nun owner'ı ve Kadıköy'de çalışan; bugün yeni işletme açabiliyor.",
+    options: [
+      { v: "1", title: "Onboarding'i süren kişi de engellenir; zaten owner olan açabilir", rec: true, body: "Ali ayrı hesap açar. Mert aynı hesapla açar.", basis: "Dayanak: KARARLAR \"Kendi işletmesini açma\" + \"Daha önce işletme kurmuş kişi durdurulmaz\"; owner kısmı yeni karar" },
+      { v: "2", title: "Kural harfiyen uygulanır", body: "Ali de Mert de yeni işletme için ayrı hesap açar." },
+      { v: "3", title: "Bugünkü gibi kalır", body: "Yalnız aktif üyelik sayılır; Ali'nin önü açık." }
+    ] },
+  { id: "S3", title: "Resmî adı onay bekleyen çalışan ne görsün?",
+    today: "Onboarding → Review → Profile \"Done\" görünüyor. Onay beklendiğini söyleyen cümle yok.",
+    example: "Davette \"Orhan Turan\" yazıyor; Orhan \"Turhan\" diye düzeltir. Her şey \"Done\" görünür. Mert onaylayana kadar Orhan erişimin neden açılmadığını bilmez.",
+    options: [
+      { v: "1", title: "\"In review\" rozeti ve profil sayfasında tek satır", rec: true, body: "\"Your legal name differs from your invitation. An owner or admin will check it.\"", basis: "Dayanak: ILKELER P10 + P21; belge adımlarındaki \"In review\" rozeti (BL-646)" },
+      { v: "2", title: "Rozet yok, yalnız Review sayfasında tek satır", body: "Orhan notu ancak Review'da görür." },
+      { v: "3", title: "Bugünkü gibi kalır", body: "Onay gelince erişim açılır, arada bilgi yok." }
+    ] },
+  { id: "S4", title: "Middle name resmî adın parçası sayılsın mı?",
+    today: "Davetteki addan farkı yalnız ad ve soyadda aranıyor. Middle name değişirse onay istenmiyor.",
+    example: "Davette \"Emre Can Yilmaz\" yazıyor. Emre onboarding'de \"Can\"ı siler; değişiklik onaysız geçer ve bordroya gider.",
+    options: [
+      { v: "1", title: "Evet, middle name farkı da owner ya da admin onayına gider", rec: true, body: "Emre'nin değişikliği onay bekler.", basis: "Dayanak: KARARLAR \"Onboarding'de resmî ad düzeltmesini yalnız owner ya da admin onaylar\"" },
+      { v: "2", title: "Hayır, yalnız ad ve soyad (bugünkü)", body: "Middle name değişikliği onaysız geçer." }
+    ] }
+];
+
+const SCREENS = [
+  { key: "sign-in", title: "Sign in", route: "/sign-in",
+    today: "Giriş ve hesap oluşturma aynı formda. Yeşil \"Sign in\", beyaz ikinci düğme (kurala uygun), altta yasal bağlantılar. Oturumsuz /app açılınca buraya yönleniyor.",
+    states: [
+      { label: "Boş", d: "01-sign-in-bos-1440.png", m: "01-sign-in-bos-390.png" },
+      { label: "Yanlış parola", d: "04-sign-in-yanlis-parola-1440.png", m: "04-sign-in-yanlis-parola-390.png", note: "Ham \"Invalid login credentials\"; düğmeler 37 px aşağı kayıyor, yazılan e-posta kalın." },
+      { label: "Hesap oluştur", d: "03-sign-in-hesap-olustur-1440.png", m: "03-sign-in-hesap-olustur-390.png", note: "Başlıkta \"account\" tek başına ikinci satırda." },
+      { label: "Davetten gelen", d: "05-sign-in-davet-modu-1440.png", m: "05-sign-in-davet-modu-390.png" },
+      { label: "Klavye odağı", d: "02-sign-in-odak-1440.png", m: "02-sign-in-odak-390.png", note: "Odak halkası görünür (2 px yeşil). Bu iyi." }
+    ],
+    rows: [
+      { id: "E16-11-signin", sev: "orta", title: "Yanlış parolada ham metin: \"Invalid login credentials\"", ex: "Ali parolasını yanlış yazar, Supabase'in cümlesini okur. API o an düşerse \"Workspace context is temporarily unavailable\" bile çıkıyor.", fix: "Sade cümle: \"The email or password is incorrect.\"; geçici hatada \"Try again\".", src: "C-09, D-06 · BL-628" },
+      { id: "E16-15-signin", sev: "orta", title: "Hatadan sonra klavye odağı kayboluyor, düğmeler kayıyor", ex: "Odak sayfanın başına düşüyor; alan \"hatalı\" diye işaretlenmiyor; Sign in düğmesi 441'den 478 px'e iniyor.", fix: "Odak parola alanına dönsün, hata alana bağlansın, hata satırına önceden yer ayrılsın.", src: "C-09 · YENİ" },
+      { id: "E16-13-signin", sev: "orta", title: "Telefonda alan yazısı 13 px", ex: "Ayşe iPhone'da e-posta alanına dokunur; Safari sayfayı yakınlaştırır, form kayar.", fix: "720 px altında alan yazısı 16 px.", src: "C-10 · YENİ" },
+      { id: "E16-L-signin", sev: "dusuk", title: "Hesap oluşturma modunda küçükler", ex: "Açıklama \"next step\"te workspace adı vaat ediyor, ama sıradaki ekran \"Check your email\". Sign in ↔ Create geçişinde eski hata kalıyor.", fix: "Gerçek sırayı söyleyen tek cümle; mod değişince hata temizlensin; başlıkta dengeli satır kırma.", src: "C-19, D-08, D-09 · BL-636 + YENİ" },
+      { id: "E16-16", sev: "orta", title: "Paylaşılan tablette yeni giren kişi bir öncekinin sayfasına iniyor", ex: "Ayşe Settings → Roles'tayken çıkar; Ali girince oraya gönderilir ve \"erişim yok\" görür.", fix: "Açık çıkışta son sayfa taşınmasın.", src: "D-07 · BL-627" }
+    ] },
+  { key: "password", title: "Forgot ve Reset password", route: "/forgot-password · /reset-password",
+    today: "Forgot her adrese aynı cevabı ~1,5 sn'de veriyor; Reset bağlantısı adresin # parçasında taşınıyor ve \"Save password\"ta harcanıyor. Güvenlik kuralları doğru.",
+    states: [
+      { label: "Forgot", d: "07-forgot-password-bos-1440.png", m: "07-forgot-password-bos-390.png", note: "Yasal bağlantılar yok." },
+      { label: "Reset, bağlantısız", d: "08-reset-password-baglantisiz-1440.png", m: "08-reset-password-baglantisiz-390.png", note: "Tek çıkış \"Request a new link\" 44 px yeşil; Sign in'e dönüş yok." },
+      { label: "Reset, form", d: "09-reset-password-gecersiz-baglanti-1440.png", m: "09-reset-password-gecersiz-baglanti-390.png" }
+    ],
+    rows: [
+      { id: "E16-11-password", sev: "dusuk", title: "Ham hata: \"Failed to fetch\" ve Supabase cümleleri", ex: "Ali metroda bağlantısı koparken \"Failed to fetch\" görür. Ayşe eski parolasını yazınca \"New password should be different from the old password.\" okur.", fix: "Bilinen nedenler için sade, sabit cümleler.", src: "D-10, D-11 · BL-637, BL-638" },
+      { id: "E16-15-forgot", sev: "dusuk", title: "Forgot gönderilince odak sayfanın başına düşüyor", ex: "Ekran okuyucu kullanan kişi \"gönderildi\" cevabını duymuyor.", fix: "Odak sonuç başlığına gitsin.", src: "A · BL-289" },
+      { id: "E16-L-reset", sev: "dusuk", title: "Reset ekranlarından Sign in'e dönüş yok; Forgot'ta yasal bağlantı yok", ex: "Ayşe geçersiz bağlantıyla gelir, parolasını hatırlar; yalnız \"Request a new link\" var.", fix: "\"Back to sign in\" ve Sign in'deki güven bağlantıları.", src: "C-21 · BL-285" }
+    ] },
+  { key: "recovery", title: "Account recovery", route: "/account-recovery",
+    today: "Silinmiş hesabı 14 gün içinde geri getiren sayfa. Bağlantı geçerliyse \"Restore my account\" ile döner.",
+    states: [ { label: "Bağlantısız", d: "10-account-recovery-1440.png", m: "10-account-recovery-390.png", note: "Düğme soluk ve kapalı (156×36, saydamlık 0,55); çerçeve sola yaslı." } ],
+    rows: [
+      { id: "E16-17", sev: "orta", title: "Bağlantı eksikse çıkmaz sokak", ex: "Burak bağlantıyı kesik kopyalar; \"Restore my account\" soluk kalır, nedeni yazmaz. Sunucu çökse de \"Valid recovery token required\" der.", fix: "\"Bu bağlantı eksik\" cümlesi, yeni bağlantı isteme, Sign in'e dönüş; çerçeve öteki oturumsuz ekranlar gibi ortalı.", src: "C-12, C-18, D-12 · BL-629, BL-630, BL-285" }
+    ] },
+  { key: "invite", title: "Davet bağlantısı", route: "/invite/accept?token=…",
+    today: "Önizleme davetin her durumunu ayrı gösteriyor (geçerli, süresi dolmuş, iptal…). Kabul için davetin gittiği onaylı e-postayla giriş şart; bu doğru çalışıyor.",
+    states: [
+      { label: "Geçerli, başka hesap", d: "22-davet-onizleme-1440.png", m: "22-davet-onizleme-390.png", note: "Oturum employee@… hesabında, davet fa*******@world.test'e; sayfa yine yeşil Accept gösteriyor. Decline yok." },
+      { label: "Süresi dolmuş", d: "22b-davet-suresi-dolmus-1440.png", m: "22b-davet-suresi-dolmus-390.png" },
+      { label: "Geçersiz", d: "17-davet-gecersiz-1440.png", m: "17-davet-gecersiz-390.png", note: "Telefonda başlığın son kelimesi \"anymore\" tek başına." }
+    ],
+    rows: [
+      { id: "E16-10", sev: "orta", title: "Başka hesapla açılınca söylemiyor; Decline yok; aynı eylemin iki adı var", ex: "Ali'nin tabletinde Ayşe'nin oturumu açık; Ali davet bağlantısını açar, yeşil \"Accept invitation\" görür. Uyuşmazlık ancak basınca çıkar. Workspaces'te aynı eylemin adı \"Join\".", fix: "Uyuşmazlık önizlemede söylensin; Decline ve \"Not now\" A görünümündeki gibi; eylem her yerde \"Join\".", src: "C-11, D-17 · YENİ" },
+      { id: "E16-10-loading", sev: "orta", title: "Yüklenirken yanlış metinle açık Accept", ex: "Emre yavaş internette bir an \"Join the team at this workspace\" ve basılabilir Accept görür.", fix: "Önizleme gelene kadar yükleniyor hâli.", src: "D-13 · BL-631" },
+      { id: "E16-09", sev: "orta", title: "Yeniden gönderilen davetin eski bağlantısı \"iptal edildi\" diyor", ex: "Ayşe Perşembe daveti yeniden gönderir. Ali Pazartesi'nin e-postasını açar, \"Meyhouse cancelled it\" okur ve istenmediğini sanar.", fix: "\"A newer invitation was sent to you. Open the latest email.\"", src: "D-14 · YENİ" }
+    ] },
+  { key: "welcome", title: "Workspaces: ilk karşılama", route: "/workspaces (üyeliği ve daveti olmayan)",
+    today: "Hiçbir şeyi olmayan kişi \"Welcome to Newfork\" görüyor: yeşil Create ve beyaz ikinci düğme. İkinci düğmeye basınca \"No invitation yet\".",
+    states: [
+      { label: "İlk kez", d: "25-workspaces-ilk-kez-1440.png", m: "25-workspaces-ilk-kez-390.png" },
+      { label: "No invitation yet", d: "26-workspaces-davet-bekliyorum-1440.png", m: "26-workspaces-davet-bekliyorum-390.png", note: "Aynı sayfada 36 px yeşil, 36 px beyaz ve 44 px beyaz düğme." },
+      { label: "Welcome back", mock: true, d: "27-workspaces-tekrar-hosgeldin-mock-1440.png", m: "27-workspaces-tekrar-hosgeldin-mock-390.png" }
+    ],
+    rows: [
+      { id: "E16-20", sev: "orta", title: "İkinci düğme \"I have an invitation\"; karar \"I am waiting for an invitation\"", ex: "İlk kez gelen Emre senin 5 Ekim'de reddettiğin metni görüyor. \"Welcome back\" ekranı da ilkiyle aynı; yalnız başlık değişiyor (karar: davetler ve yarım iş listelenir, \"I am waiting for another invitation\").", fix: "Metin ve \"Welcome back\" içeriği karara çekilsin.", src: "A YENİ-1, C-02, D-36 · YENİ" },
+      { id: "E16-14-welcome", sev: "orta", title: "\"No invitation yet\"te üç ayrı düğme ölçüsü", ex: "Check again 36 px yeşil, Back 36 px beyaz, Create 44 px beyaz yan yana.", fix: "Tek düğme ölçüsü (görsel karar G1).", src: "C-05 · YENİ" },
+      { id: "E16-L-welcome-metin", sev: "dusuk", title: "\"ask your manager to invite it\" cümlesi tuhaf", ex: "\"it\" e-posta adresini kastediyor.", fix: "\"…to invite this email\".", src: "C-22 · YENİ" }
+    ] },
+  { key: "hub", title: "Workspaces: davetler ve liste", route: "/workspaces",
+    today: "Bölümler: Invitations (Decline / Join), In progress (Discard ya da Decline / Continue), Where you work (Open), No longer open to you (rozet + Why), Your own workspace (Create). Decline önce beyaz, ilk tıkta kırmızı \"Confirm decline\" (kurala uygun).",
+    states: [
+      { label: "Owner + davet", mock: true, d: "28b-workspaces-owner-davet-var-mock-1440.png", m: "28b-workspaces-owner-davet-var-mock-390.png", note: "Davet listenin başında bir satır; \"Not now\" yok; Create gizli." },
+      { label: "Yalnız davet", mock: true, d: "28-workspaces-davet-var-mock-1440.png", m: "28-workspaces-davet-var-mock-390.png" },
+      { label: "Decline, iki tık", mock: true, d: "28c-workspaces-davet-reddet-iki-tik-1440.png", m: "28c-workspaces-davet-reddet-iki-tik-390.png" },
+      { label: "Owner", d: "14-workspaces-owner-1440.png", m: "14-workspaces-owner-390.png", note: "Telefonda satır düğmeleri 36 px, e-posta kesik." },
+      { label: "Yarım kurulum", d: "18-workspaces-yarim-kurulum-owner-1440.png", m: "18-workspaces-yarim-kurulum-owner-390.png" },
+      { label: "Onboarding süren", d: "21-workspaces-davetli-kurulum-yarim-1440.png", m: "21-workspaces-davetli-kurulum-yarim-390.png" },
+      { label: "Askıdaki çalışan", d: "29-workspaces-erisim-beklemede-calisan-1440.png", m: "29-workspaces-erisim-beklemede-calisan-390.png" },
+      { label: "Aktif çalışan", d: "31-workspaces-aktif-calisan-1440.png", m: "31-workspaces-aktif-calisan-390.png", note: "Create görünüyor; sunucu bu kişide reddeder. \"Employee\" yazısı 4,39:1." }
+    ],
+    rows: [
+      { id: "E16-01", sev: "yuksek", title: "Girişte \"Active invitation found\" ekranı ve \"Not now\" yok", ex: "Ali Meyhouse'ta çalışıyor, Sunset Tacos onu davet etti. Giriş yapınca doğrudan Meyhouse'a iner; daveti yalnız burada bir satır olarak görür, süresi dolabilir.", fix: "5 Ekim'de seçtiğin A görünümü: tek sütun, satırda beyaz Decline ve yeşil Join, altında \"Not now\". Girişte davet varsa ilk bu ekran.", src: "A, C-01, D-01 · BL-624" },
+      { id: "E16-03", sev: "orta", title: "\"Create your workspace\" yanlış kişiye görünüyor, doğru kişiden gizleniyor", ex: "Meyhouse'ta çalışan Ali düğmeyi görür, basınca \"Workspace could not be created\" okur. Meyhouse owner'ına tek davet gelince düğme gizlenir.", fix: "Görünürlük tek kurala bağlansın (soru S1 ve S2).", src: "B3, C-03, D-35 · BL-626" },
+      { id: "E16-02", sev: "orta", title: "Favori yokken sistem sormadan bir workspace seçiyor", ex: "Test Manager iki workspace'te, favorisi yok; dün açtığı Ridgeline'a sorulmadan iner. Kurulum bitince favori de kendiliğinden değişiyor.", fix: "Favori yoksa ve birden çok workspace varsa bu liste sorsun.", src: "D-02, D-03 · BL-625 + YENİ" },
+      { id: "E16-06", sev: "orta", title: "Discard edilen taslak \"Closed\" diye kalıyor", ex: "Mert yanlışlıkla açtığı \"New workspace\"i Discard eder; satır \"No longer open to you → Closed\" olur, Why bir işletmenin kapandığını anlatır.", fix: "Hiç bitmemiş ve silinmiş taslak hiçbir listede görünmesin.", src: "D-37 · YENİ" },
+      { id: "E16-07-hub", sev: "orta", title: "Onboarding'den vazgeçen kişi \"On hold\" görüyor", ex: "Ali Sunset Tacos'un onboarding'inden vazgeçer; \"Nothing in Sunset Tacos can be opened until an owner or an admin lifts the hold.\" okur. Yeniden davet edilirse yeni davet listede görünmez.", fix: "\"You left onboarding\"; iki tıklık onay sonucu söylesin; yeni davet listede görünsün.", src: "D-38 · YENİ" },
+      { id: "E16-13-hub", sev: "orta", title: "Telefonda düğmeler 36 px", ex: "Ali telefonda \"Open\"a basıyor; düğme 304×36. Dokunma hedefi 44 px olmalı.", fix: "720 px altında düğme en az 44 px (görsel karar G1).", src: "C-04 · YENİ" },
+      { id: "E16-15-hub", sev: "dusuk", title: "Seçili satırda rol yazısının kontrastı 4,39:1", ex: "Meyhouse satırının altındaki \"Owner\" açık yeşil zeminde soluk; AA eşiği 4,5.", fix: "Tonlu satırda daha koyu gri.", src: "C-16 · YENİ" },
+      { id: "E16-L-hub", sev: "dusuk", title: "Yarım kurulum düğmesi \"Continue\"; telefonda e-posta kesik", ex: "Karar \"Continue setup\" diyor. Üst çubukta \"employee@newfo…\" okunmuyor; davette hangi hesapla girildiğini göstermek için duruyor.", fix: "\"Continue setup\"; telefonda e-posta ikinci satıra.", src: "A YENİ-2, C-17 · YENİ" }
+    ] },
+  { key: "status", title: "Workspace durum sayfası", route: "/workspaces/status/:id",
+    today: "Workspaces'teki \"Why\" buraya gelir. Üç son ayrılıyor: workspace kapandı, erişim kaldırıldı, beklemede.",
+    states: [
+      { label: "Beklemede", d: "15-workspaces-status-beklemede-1440.png", m: "15-workspaces-status-beklemede-390.png" },
+      { label: "Kimliksiz adres", d: "16-workspaces-status-idsiz-1440.png", m: "16-workspaces-status-idsiz-390.png", note: "Telefonda başlığın son kelimesi \"you\" tek başına." }
+    ],
+    rows: [
+      { id: "E16-07-status", sev: "orta", title: "Kişinin askısı workspace'in askısı gibi anlatılıyor", ex: "Suspended Demo'da yalnız bu kişinin üyeliği askıda; ekran \"Suspended Demo is on hold. Nothing in Suspended Demo can be opened…\" diyor.", fix: "\"Your access to Suspended Demo is on hold.\"", src: "C-15 · YENİ" },
+      { id: "E16-L-status", sev: "dusuk", title: "Açık workspace \"isn't open to you\" diyor; tarih tarayıcının dilinde", ex: "Mert'in tarayıcısı Türkçe olduğu için kapanış tarihi \"7 Ekim 2026\" görünüyor.", fix: "Açık workspace'e yönlendirsin; tarih en-US.", src: "D-39 · BL-639" }
+    ] },
+  { key: "owner-setup", title: "Owner kurulumu", route: "/onboarding",
+    today: "Dört adım: Workspace, Locations, Jobs, Team. Her adım sunucuya kaydediliyor; \"Exit setup\" Workspaces'e götürür. En az 1 lokasyon ve Management dışında 1 iş kuralı, kilitli Owner işi kurala uygun.",
+    states: [
+      { label: "2. adım Locations", d: "19-onboarding-adim2-1440.png", m: "19-onboarding-adim2-390.png", note: "Yer tutucular kalın, dolu gibi. \"Add location\" kaydediyor ama beyaz. Tam boy görüntüde yapışkan alt çubuk ortada kalıyor (çekim etkisi)." },
+      { label: "1. adıma dönüş", d: "20-onboarding-adim1-1440.png", m: "20-onboarding-adim1-390.png", note: "Resmî ad alanları boş, Continue kapalı." }
+    ],
+    rows: [
+      { id: "E16-05", sev: "orta", title: "İlerleme kayboluyor", ex: "Jordan 1. adıma döner; ad alanları boş, Continue kapalı. Mert Team'den Locations'a dönüp lokasyon ekler; panel \"1 of 4\"e düşer.", fix: "Sunucu büyük adım numarasını korusun; sayfa adları ve eklenen kişileri sunucudan okusun.", src: "C-13, D-21 · BL-632, BL-633" },
+      { id: "E16-13-setup", sev: "orta", title: "Telefonda sağa kaymış; Sign out taşabiliyor", ex: "İçerik solda 24, sağda 64 px'te bitiyor; başlık çubuğun 94 px altında. Birden çok workspace'i olan kişide Sign out ekran dışında; Jobs ve Team yana kayıyor.", fix: "Telefon genişlik kuralı kalksın; çubuk üç satır (görsel karar G3).", src: "A YENİ-5, C-07, C-17 · BL-151 + YENİ" },
+      { id: "E16-14-setup", sev: "orta", title: "Alanlar öteki ekranlardan farklı ölçüde; yazı kalın", ex: "Burada alan 44 px köşe 6, giriş ekranlarında 42 px köşe 5. \"Main dining room\" yer tutucusu girilmiş değer gibi.", fix: "Tek alan kuralı, normal kalınlık (görsel karar G1).", src: "C-06 · BL-622 + YENİ" },
+      { id: "E16-11-setup", sev: "orta", title: "Geliştirici hata cümleleri", ex: "Mert iki sekmede kurulum yapar; \"owner onboarding revision conflict\" okur. İkinci kez \"Kitchen\" eklerse \"duplicate key…\".", fix: "Neden anahtarına göre sade cümle; çakışmada \"Your setup changed in another tab. We loaded the latest.\"", src: "D-23 · BL-620, BL-490" },
+      { id: "E16-21", sev: "orta", title: "Posta kodundan saat dilimi önerisi çalışmıyor", ex: "Mert İstanbul'dan Palo Alto'yu kurar; dilim Europe/Istanbul kalır.", fix: "Posta kodundan öneri.", src: "D-27 · BL-634" },
+      { id: "E16-19-setup", sev: "dusuk", title: "Lokasyon telefonunda sabit gri \"+1\" yok", ex: "Maske var (\"(415) 555-0100\"), ama başta +1 görünmüyor.", fix: "Ortak telefon alanı.", src: "D-28 · BL-503" },
+      { id: "E16-L-setup", sev: "dusuk", title: "Küçükler", ex: "Team adımında \"Invite delivery waits until owner onboarding is completed.\"; başarı mesajı adım değişince kalıyor; onay kutuları yazının hizasında değil; Management satırında Remove etkin.", fix: "Satır kalksın; mesaj adımla temizlensin; hiza; Remove kapalı.", src: "BL-640, BL-641, BL-642, BL-481" }
+    ] },
+  { key: "employee-setup", title: "Çalışan kurulumu", route: "/welcome/:workspaceId",
+    today: "Welcome → Profile (iki sayfa) → Documents → Availability → Review → \"Send for review\". Sıfırlama yok (kurala uygun). Gerçek veriyle açmak satır yazdığı için görüntüler taklit veriyle; ayrıca geliştirme önizlemesi.",
+    states: [
+      { label: "Karşılama", mock: true, d: "23-calisan-kurulumu-karsilama-mock-1440.png", m: "23-calisan-kurulumu-karsilama-mock-390.png" },
+      { label: "Your details", mock: true, d: "24-calisan-kurulumu-profil-mock-1440.png", m: "24-calisan-kurulumu-profil-mock-390.png", note: "Kapalı anahtar zeminden ayrılmıyor (1,8:1). \"E-mail\" yazımı." },
+      { label: "Önizleme: karşılama", d: "11-dev-calisan-kurulumu-karsilama-1440.png", m: "11-dev-calisan-kurulumu-karsilama-390.png", note: "Yalnız geliştirmede açılan tasarım önizlemesi; 7 adım, gerçek sayfa 3." },
+      { label: "Önizleme: kişisel", d: "12-dev-calisan-kurulumu-kisisel-1440.png", m: "12-dev-calisan-kurulumu-kisisel-390.png", note: "Telefon alanında ülke kodu menüsü var; kural \"+1 sabit\"." }
+    ],
+    rows: [
+      { id: "E16-18", sev: "orta", title: "Kişi neyi beklediğini bilmiyor", ex: "Orhan resmî adını düzeltir; adım \"Done\" görünür (soru S3). Review \"Needs changes\" işaretinden söz ediyor ama işaret yok. Onaydan sonra bağlantı düşerse \"Finishing up\"ta düğmesiz kalıyor.", fix: "\"In review\" rozeti, \"Needs changes\" işareti, \"Try again\".", src: "D-30, D-31 · BL-646, BL-645 + numarasız" },
+      { id: "E16-19", sev: "orta", title: "ABD form kuralları yok: +1, harf, e-posta tekilliği", ex: "Orhan telefonuna \"+90 532 …\" yazar, kabul edilir. \"Şükrü\" adı da geçer.", fix: "Ortak ABD telefon alanı ve ad doğrulaması.", src: "D-29 · BL-503" },
+      { id: "E16-15-switch", sev: "orta", title: "Kapalı anahtar zeminden ayrılmıyor (1,8:1)", ex: "Ali \"Share my phone with teammates\"in açık mı kapalı mı olduğunu zor seçer. WCAG en az 3:1 ister.", fix: "Kapalı zemin daha koyu; odak halkası tema renginde.", src: "C-08 · YENİ" },
+      { id: "E16-11-employee", sev: "orta", title: "Doğrulama cümleleri ham (\"Too small: expected string…\")", ex: "Orhan telefonu eksik yazınca kütüphanenin İngilizce teknik cümlesini görür.", fix: "Sade cümleler.", src: "D-33 · BL-621, BL-620" },
+      { id: "E16-L-employee", sev: "dusuk", title: "Resmî ad davetteki adla dolu geliyor; metin farkları", ex: "Orhan alanları dolu bulur, yazmadan geçer (KARARLAR: kişi kendisi yazar). \"E-mail\" / \"Email\"; owner'da \"Name as it appears on your ID\", çalışanda \"Legal first name\".", fix: "Alanlar boş başlasın; tek yazım.", src: "D-32, C-22 · YENİ" },
+      { id: "E16-L-preview", sev: "dusuk", title: "Geliştirme önizlemesi gerçek sayfadan farklı", ex: "7 adım, 9–11 px yazılar, 4,34:1 gri, ülke kodu menüsü.", fix: "Önizleme gerçek sayfaya taşınacaksa önce bunlar düzelsin.", src: "C-24 · YENİ" }
+    ] }
+];
+
+const HIDDEN_ROWS = [
+  { id: "E16-04", sev: "orta", title: "Kurulum bitince gitmeyen davetler owner'a söylenmiyor", ex: "Mert kurulumda Orhan'ı ekler, \"kurulum bitince gönder\"i işaretler. Gönderim düşer; Mert uyarı görmez, Orhan Employees'te davet edilmemiş görünür.", fix: "Kurulum geri alınmasın; Workspace'te tek satır: \"2 invitations didn't go out. Send them from Employees.\"", src: "D-22 · YENİ" },
+  { id: "E16-08", sev: "orta", title: "Davet kapısının boşlukları", ex: "Kurulumu bitmemiş workspace'ten API ile davet gidebiliyor (1 Ekim kararına aykırı). Askıdaki ya da taslak workspace'in daveti Join ile kabul edilebiliyor. Arşivlenen kişinin daveti açık kalıp önünü kesiyor.", fix: "Kapı veritabanında: açık olmayan workspace'te davet üretilmez, listelenmez, kabul edilmez; arşivleme daveti iptal eder.", src: "B1, B2, D-15 · BL-419 + YENİ" },
+  { id: "E16-12", sev: "orta", title: "Discard, taslakta kişi ve veri olsa da parola istemiyor", ex: "Mert taslağa 3 lokasyon ve 12 kişi ekledi; Discard iki tıkla parolasız siler.", fix: "Taslakta veri varsa parola; boşsa parolasız (KARARLAR).", src: "D-24 · BL-284" },
+  { id: "E16-22", sev: "orta", title: "Nereye inileceği 9 yerde kararlaştırılıyor", ex: "Asıl fonksiyonun davet dalları hiç çağrılmıyor; üç test KARARLAR'a ters davranışı kilitliyor.", fix: "Tek iniş fonksiyonu; E16-01 ile aynı işte.", src: "A YENİ-3, D-04 · YENİ" },
+  { id: "E16-23", sev: "orta", title: "Davetle yeni hesap açanın bağlantısı e-posta onayında kayboluyor", ex: "Emre onay bağlantısına basınca davete değil Workspaces'e iner (davet orada listelendiği için Join yine çalışır). Bu yolun tarayıcı testi yok.", fix: "Kayıtta dönüş adresi davet sayfası; e2e senaryosu.", src: "D-19 · BL-336, BL-434" },
+  { id: "E16-24", sev: "orta", title: "Davet ve kurtarma bağlantısında anahtar adres çubuğunda", ex: "Bağlantı tarayıcı geçmişinde kalabilir; kabul onaylı e-posta istediği için etkisi sınırlı.", fix: "Parola sıfırlamadaki gibi # içinde taşınsın.", src: "B5, D-20 · BL-351" },
+  { id: "E16-B", sev: "dusuk", title: "Güvenlik ve kural borcu", ex: "\"Hayır\" tek biçimde değil; ölü davet anahtarları düz metin; ikiz fonksiyonlar ve eski kapılar; web'de güvenlik başlıkları yok (çerçeveye koyma, CSP).", fix: "Ekran turunda temizlik; başlıklar vercel.json'a.", src: "B4, B6, B7, B8, D-43 · BL-352, BL-898 + YENİ" }
+];
+
+const VISUAL = [
+  { id: "G1", title: "Giriş ve katılım için tek ölçü", body: "Öneri: düğme 44 px, alan 44 px ve köşe 6, cevap metni normal kalınlıkta, telefonda alan yazısı 16 px. Ortak değer: öteki ekranlar da etkilenir, önce kural yazılır." },
+  { id: "G2", title: "\"Active invitation found\"", body: "A görünümünü 5 Ekim'de seçtin. Gerçek uygulamada kurulunca gözle onay." },
+  { id: "G3", title: "Telefonda owner kurulumu", body: "Başlığın üst boşluğu (BL-151) ve prototipteki üç satırlık çubuk." },
+  { id: "G4", title: "Workspaces rozetleri", body: "Kapanış tarihi ve sahiplik devri rozetleri (prototip H8); bugün yalnız Account → Workspaces'te." }
+];
+
+const PROTO = [
+  { title: "Taşı", n: 24, items: ["\"Active invitation found\" A görünümü", "Favori yokken sor", "Create görünürlüğü (çalışana yok)", "\"I am waiting for an invitation\"", "\"Continue setup\"", "Sade hata cümleleri (giriş, sıfırlama, kurtarma)", "Mod değişince hata temizlenir", "Forgot'ta odak başlığa", "Kurtarma: neden, yol, dar çerçeve, güven bağlantıları", "Paylaşılan cihazda kendi sayfasına dönüş", "Davet sayfasının yükleniyor anı", "Cevap metni normal kalınlıkta", "Onay kutusu hizası", "\"Invite delivery waits…\" satırı kalkar", "Aynı adlı departman için sade cümle", "Sabit \"+1\"", "Türkçe harf yasağı", "E-posta tekilliği", "Sade doğrulama cümleleri", "\"Needs changes\" rozeti", "\"Save reason\" geri bildirimi", "Belge sayfası yerleşimi (Documents ile ortak)", "Preferred name onay modu metinleri", "Telefonda üç satırlık sihirbaz çubuğu"] },
+  { title: "Sorudan sonra taşı", n: 2, items: ["1 davette Create (S1)", "Resmî ad \"In review\" (S3)"] },
+  { title: "Varyant gerekir", n: 4, items: ["Workspaces'te kapanış ve devir rozetleri", "Politika onay kutusu 18 px ve yeşil", "Telefonda başlığın üst boşluğu", "Telefonda 44 px düğme"] },
+  { title: "Bırak", n: 2, items: ["Bekleme simgesi, geçiş ve basma animasyonları", "Departman seçici liste kutusu"] }
+];
+
+const SEV_LABEL = { yuksek: "Yüksek", orta: "Orta", dusuk: "Düşük" };
+const ROW_CHOICES = [["degistir", "Değiştir"], ["birak", "Bırak"], ["konusalim", "Konuşalım"]];
+const VISUAL_CHOICES = [["varyant", "Varyant hazırla"], ["gereksiz", "Gerek yok"], ["konusalim", "Konuşalım"]];
+const PROTO_CHOICES = [["uygun", "Liste uygun"], ["konusalim", "Konuşalım"]];
+
+const state = { db: null, me: null, canWrite: false, decisions: {}, writing: {}, noteTimers: {} };
+const el = (tag, attrs = {}, ...kids) => {
+  const n = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") n.className = v; else if (k === "text") n.textContent = v; else n.setAttribute(k, v === true ? "" : v);
+  }
+  for (const kid of kids.flat()) if (kid != null) n.append(kid.nodeType ? kid : document.createTextNode(kid));
+  return n;
+};
+
+function decideBlock(id, choices) {
+  const box = el("div", { class: "decide", "data-id": id });
+  for (const [v, label] of choices) {
+    const b = el("button", { type: "button", class: "chip", "data-v": v, "aria-pressed": "false", text: label });
+    b.addEventListener("click", () => choose(id, v));
+    box.append(b);
+  }
+  const toggle = el("button", { type: "button", class: "note-toggle", text: "Not ekle" });
+  const area = el("textarea", { class: "note", id: "note-" + id, "aria-label": "Not: " + id, placeholder: "Ne değişsin, nasıl olsun?", hidden: true });
+  toggle.addEventListener("click", () => { area.hidden = !area.hidden; if (!area.hidden) area.focus(); });
+  area.addEventListener("input", () => {
+    clearTimeout(state.noteTimers[id]);
+    state.noteTimers[id] = setTimeout(() => saveNote(id, area.value), 900);
+  });
+  const saved = el("span", { class: "saved", id: "saved-" + id });
+  box.append(toggle, saved, area);
+  return box;
+}
+
+// Mert'in 7 Ekim 2026 seçimleri (sayfa veritabanı, "decisions"): 14 Değiştir, 1 Konuşalım.
+const DECIDED = { "E16-11-signin": "10:13", "E16-15-signin": "10:13", "E16-13-signin": "10:13", "E16-L-signin": "10:14", "E16-16": "10:14",
+  "E16-11-password": "10:15", "E16-15-forgot": "10:15", "E16-L-reset": "10:15", "E16-17": "10:15", "E16-10": "10:16", "E16-09": "10:17",
+  "E16-20": "10:18", "E16-L-welcome-metin": "10:18", "E16-01": "10:19" };
+const TALK = { "E16-14-welcome": "10:18" };
+// Giriş modeline (B1, KARARLAR S-118) bağlı satırlar: sign in, parola, kurtarma.
+const B1_WAIT = new Set(["E16-11-signin", "E16-15-signin", "E16-13-signin", "E16-L-signin", "E16-16", "E16-11-password", "E16-15-forgot", "E16-L-reset", "E16-17"]);
+
+function rowEl(r) {
+  const b1 = B1_WAIT.has(r.id) ? el("span", { class: "st st-b1", text: "B1 bekliyor" }) : null;
+  if (DECIDED[r.id]) {
+    return el("article", { class: "row decided sev-" + r.sev, id: r.id },
+      el("div", { class: "row-head" },
+        el("span", { class: "st st-done", text: "Karar verildi · Değiştir" }), b1,
+        el("span", { class: "row-title", text: r.title }),
+        el("span", { class: "rid", text: r.id })),
+      el("p", { class: "newstate" }, el("span", { class: "k", text: "Yeni hâl: " }), r.fix),
+      el("p", { class: "src", text: "Karar: Mert, 7 Ekim 2026 " + DECIDED[r.id] + " (UTC) · Kaynak: " + r.src }));
+  }
+  const label = TALK[r.id] ? "Karar bekliyor · Konuşalım" : "Karar bekliyor";
+  return el("article", { class: "row sev-" + r.sev, id: r.id },
+    el("div", { class: "row-head" },
+      el("span", { class: "st st-wait", text: label }), b1,
+      el("span", { class: "pill sev-" + r.sev, text: SEV_LABEL[r.sev] }),
+      el("span", { class: "row-title", text: r.title }),
+      el("span", { class: "rid", text: r.id })),
+    el("p", {}, el("span", { class: "k", text: "Örnek: " }), r.ex),
+    el("p", {}, el("span", { class: "k", text: "Öneri: " }), r.fix),
+    el("p", { class: "src", text: "Kaynak: " + r.src }),
+    decideBlock(r.id, ROW_CHOICES));
+}
+
+function shotEl(file, kind, caption) {
+  const img = el("img", { src: "shots/" + file, alt: caption, loading: "lazy", decoding: "async", width: kind === "desk" ? 1440 : 390, height: kind === "desk" ? 900 : 844 });
+  const btn = el("button", { type: "button", "aria-label": "Tam boy aç: " + caption }, img);
+  btn.addEventListener("click", () => openLightbox(file, caption));
+  return el("figure", { class: "shot " + kind }, btn, el("figcaption", {}, el("span", { text: kind === "desk" ? "Masaüstü 1440" : "Telefon 390" }), el("span", { class: "mono", text: file.replace(/-(1440|390)\.png$/, "") })));
+}
+
+function renderScreens() {
+  const host = document.getElementById("screens");
+  for (const s of SCREENS) {
+    const shots = el("div", { class: "shots" });
+    const note = el("p", { class: "state-note" });
+    const tabs = el("div", { class: "states", role: "tablist", "aria-label": s.title + " durumları" });
+    const show = (i) => {
+      const st = s.states[i];
+      shots.replaceChildren(shotEl(st.d, "desk", s.title + ", " + st.label + ", masaüstü"), st.m ? shotEl(st.m, "phone", s.title + ", " + st.label + ", telefon") : null);
+      note.textContent = st.note || "";
+      note.hidden = !st.note;
+      tabs.querySelectorAll(".state-btn").forEach((b, j) => b.setAttribute("aria-selected", j === i ? "true" : "false"));
+    };
+    s.states.forEach((st, i) => {
+      const b = el("button", { type: "button", class: "state-btn", role: "tab", "aria-selected": "false" }, st.label, st.mock ? el("span", { class: "mock-tag", text: "taklit" }) : null);
+      b.addEventListener("click", () => show(i));
+      tabs.append(b);
+    });
+    const card = el("section", { class: "screen", id: "ekran-" + s.key, "aria-labelledby": "h-" + s.key },
+      el("div", { class: "screen-head" },
+        el("div", { class: "title-row" }, el("h3", { id: "h-" + s.key, text: s.title }), el("span", { class: "route", text: s.route })),
+        el("p", { class: "today" }, el("b", { text: "Bugün: " }), s.today)),
+      s.states.length > 1 ? tabs : null, shots, note,
+      el("div", { class: "rows" }, s.rows.map(rowEl)));
+    host.append(card);
+    show(0);
+  }
+}
+
+function renderQuestions() {
+  const host = document.getElementById("questions");
+  for (const q of QUESTIONS) {
+    const opts = el("div", { class: "opts", "data-id": q.id, role: "group", "aria-label": q.id + " seçenekleri" });
+    for (const o of q.options) {
+      const b = el("button", { type: "button", class: "opt", "data-v": o.v, "aria-pressed": "false" },
+        el("span", { class: "opt-title" }, o.title, o.rec ? el("span", { class: "rec", text: "(Önerilen)" }) : null),
+        el("span", { class: "opt-body", text: o.body }),
+        o.basis ? el("span", { class: "basis", text: o.basis }) : null);
+      b.addEventListener("click", () => choose(q.id, o.v));
+      opts.append(b);
+    }
+    const toggle = el("button", { type: "button", class: "note-toggle", text: "Not ekle" });
+    const area = el("textarea", { class: "note", id: "note-" + q.id, "aria-label": "Not: " + q.id, placeholder: "Seçenek dışı cevap ya da not", hidden: true });
+    toggle.addEventListener("click", () => { area.hidden = !area.hidden; if (!area.hidden) area.focus(); });
+    area.addEventListener("input", () => { clearTimeout(state.noteTimers[q.id]); state.noteTimers[q.id] = setTimeout(() => saveNote(q.id, area.value), 900); });
+    host.append(el("article", { class: "q", id: q.id },
+      el("h3", {}, q.id + " · " + q.title, el("span", { class: "st st-wait", text: "Karar bekliyor" })),
+      el("dl", {}, el("dt", { text: "Bugün" }), el("dd", { text: q.today }), el("dt", { text: "Örnek" }), el("dd", { text: q.example })),
+      opts,
+      el("div", { class: "decide" }, toggle, el("span", { class: "saved", id: "saved-" + q.id }), area)));
+  }
+}
+
+function renderRest() {
+  document.getElementById("hidden-rows").append(...HIDDEN_ROWS.map(rowEl));
+  const vc = document.getElementById("visual-cards");
+  for (const v of VISUAL) vc.append(el("article", { class: "card", id: v.id }, el("h3", {}, v.id + " · " + v.title, el("span", { class: "st st-wait", text: "Karar bekliyor" })), el("p", { text: v.body }), decideBlock(v.id, VISUAL_CHOICES)));
+  const pr = document.getElementById("proto");
+  for (const g of PROTO) pr.append(el("div", { class: "col" }, el("h3", {}, g.title, el("span", { text: String(g.n) })), el("ul", {}, g.items.map((t) => el("li", { text: t })))));
+  const protoBox = document.querySelector('[data-kind="proto"]');
+  protoBox.replaceWith(Object.assign(decideBlock("PROTO", PROTO_CHOICES), { style: "margin-top:12px" }));
+}
+
+function renderToc() {
+  const toc = document.getElementById("toc");
+  const link = (href, text) => el("a", { href: "#" + href, text });
+  toc.append(el("span", { class: "toc-label", text: "Özet" }), link("kisaca", "Kısaca"), link("sorular", "4 soru"),
+    el("span", { class: "toc-label", text: "Ekranlar" }), ...SCREENS.map((s) => link("ekran-" + s.key, s.title)),
+    el("span", { class: "toc-label", text: "Diğer" }), link("arka-plan", "Görünmeyen işler"), link("gorsel-kararlar", "Görsel kararlar"), link("prototip", "Prototip"), link("kaynak", "Kaynaklar"));
+}
+
+function allDecisionIds() {
+  return [...SCREENS.flatMap((s) => s.rows.map((r) => r.id)), ...HIDDEN_ROWS.map((r) => r.id)];
+}
+
+function paint() {
+  const d = state.decisions;
+  document.querySelectorAll("[data-id]").forEach((box) => {
+    const id = box.getAttribute("data-id");
+    const cur = d[id] || {};
+    box.querySelectorAll("[data-v]").forEach((b) => {
+      b.setAttribute("aria-pressed", cur.choice === b.getAttribute("data-v") ? "true" : "false");
+      b.disabled = !state.canWrite;
+    });
+  });
+  for (const [id, cur] of Object.entries(d)) {
+    const area = document.getElementById("note-" + id);
+    if (area && document.activeElement !== area && typeof cur.note === "string") { area.value = cur.note; if (cur.note) area.hidden = false; }
+    const saved = document.getElementById("saved-" + id);
+    if (saved) saved.textContent = cur.at ? "Kaydedildi " + new Date(cur.at).toLocaleString("tr-TR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }) : "";
+  }
+  document.querySelectorAll(".note").forEach((a) => { a.disabled = !state.canWrite; });
+  const ids = allDecisionIds();
+  const done = ids.filter((id) => DECIDED[id] || (d[id] && d[id].choice)).length;
+  const fixed = ids.filter((id) => DECIDED[id]).length;
+  document.getElementById("progress-text").textContent = fixed + " karar verildi · " + (ids.length - fixed) + " bulgu bekliyor (" + done + " / " + ids.length + " işaretli)";
+  document.getElementById("progress-bar").style.width = (ids.length ? (100 * done) / ids.length : 0) + "%";
+}
+
+function setDbState(text, kind) {
+  const n = document.getElementById("db-state");
+  n.textContent = text;
+  n.className = "dbstate" + (kind ? " " + kind : "");
+}
+
+async function write(id, patch) {
+  if (!state.db || !state.canWrite) return;
+  const prev = state.writing[id] || Promise.resolve();
+  const job = prev.then(async () => {
+    const next = { ...(state.decisions[id] || {}), ...patch, at: new Date().toISOString(), by: state.me };
+    state.decisions[id] = next;
+    paint();
+    try {
+      await state.db.doc("decisions/" + id).set(next);
+    } catch (e) {
+      if (e && e.code === "invalid_argument") { state.canWrite = false; setDbState("Bu görünümde seçim kaydedilemiyor (salt okunur)", "warn"); paint(); }
+      else setDbState("Kaydedilemedi, tekrar dene", "warn");
+    }
+  });
+  state.writing[id] = job.catch(() => {});
+  return job;
+}
+
+function choose(id, v) {
+  const cur = (state.decisions[id] || {}).choice;
+  write(id, { choice: cur === v ? null : v });
+}
+function saveNote(id, text) { write(id, { note: text }); }
+
+let lastFocus = null;
+function openLightbox(file, caption) {
+  const dlg = document.getElementById("lightbox");
+  lastFocus = document.activeElement;
+  document.getElementById("lb-img").src = "shots/" + file;
+  document.getElementById("lb-img").alt = caption;
+  document.getElementById("lb-cap").textContent = caption;
+  if (typeof dlg.showModal === "function") dlg.showModal(); else dlg.setAttribute("open", "");
+}
+function closeLightbox() {
+  const dlg = document.getElementById("lightbox");
+  if (dlg.open) dlg.close();
+}
+document.getElementById("lb-close").addEventListener("click", closeLightbox);
+document.getElementById("lightbox").addEventListener("click", (e) => { if (e.target.id === "lightbox") closeLightbox(); });
+document.getElementById("lightbox").addEventListener("close", () => { if (lastFocus) lastFocus.focus(); });
+
+renderToc();
+renderQuestions();
+renderScreens();
+renderRest();
+paint();
+
+(async () => {
+  const claude = window.claude;
+  if (!claude || typeof claude.use !== "function") { setDbState("Seçimler yalnız yayınlanmış sayfada kaydedilir", "warn"); return; }
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([claude.use("db"), claude.use("user")]); } catch (e) { db = null; }
+  if (!db) { setDbState("Seçimler bu görünümde kaydedilemiyor", "warn"); return; }
+  state.db = db;
+  try { state.me = user ? await user.id() : null; } catch (e) { state.me = null; }
+  let can = null;
+  try { can = user && typeof user.can === "function" ? await user.can("data.write") : null; } catch (e) { can = null; }
+  state.canWrite = can !== false;
+  setDbState(state.canWrite ? "Seçimler kaydediliyor" : "Salt okunur görünüm", state.canWrite ? "ok" : "warn");
+  db.collection("decisions").onSnapshot((snap) => {
+    const next = {};
+    snap.docs.forEach((doc) => { const data = doc.data(); if (data) next[doc.id] = data; });
+    state.decisions = next;
+    paint();
+  }, () => setDbState("Seçimler şu an okunamıyor", "warn"));
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Code'dan kurtarıldı", "line": "Project'ten önce, bu hesaptaki bir Claude Code oturumunda yapıldı; 2026-10-09'da bulunup Project'e alındı.", "folder": "Giriş, kayıt, davet ve kurulum", "tip": "Bu hesapta, Project'ten önceki bir Claude Code oturumunda yapıldı (2026-10-07/08); 2026-10-09 sayfa denetiminde bulunup Project'e alındı.", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#fbeedd", "fg": "#7a420c"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+</body></html>

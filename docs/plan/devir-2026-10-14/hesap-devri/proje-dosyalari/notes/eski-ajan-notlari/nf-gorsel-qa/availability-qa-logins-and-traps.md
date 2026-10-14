@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-Local world "e2e1791130198245" (2026-10-04), password `world-pass-2026` via /sign-in: employee Ali (`...ali.7b526937@world.test`), manager Ayse (`...ayse.a0bf9882`), owner (`...owner.dfb09487`, password login worked). Time_range mode.
+Local world "e2e1791130198245" (2026-10-04), password `[GIZLI-CIKARILDI: e2e/global-setup.ts]` via /sign-in: employee Ali (`...ali.7b526937@world.test`), manager Ayse (`...ayse.a0bf9882`), owner (`...owner.dfb09487`, password login worked). Time_range mode.
 - shift_type mode exists only in Meyhouse: `test.employee@meyhouse.test` via magic link (OTP + mailpit 55324 + `/sign-in#access_token=...` hash URL, reload; 60 s OTP cooldown).
 - Onboarding in progress (read-only visit): `...ln2494t.bab1dc49@world.test` -> /workspaces "Continue" -> /welcome/<ws>/availability. Find others with `employee_onboarding_cases where status='in_progress'`.
 - Employees drawer for Ali: sidebar buttons are inside `[role=dialog]`; on phone it is a `<select>`. "Employee availability" sub-tab is read-only; the editor (Add hours) is under "Manager reminders".

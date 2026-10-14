@@ -1,0 +1,297 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+
+<title>Telefon Kuralları Denemesi</title>
+<style>
+/* Layout: mask lab on top (today vs two proposed masks), then the employee setup Profile step with the two new phone checks. App is light-only (CLAUDE.md §3.A.7), so the page keeps the app's light look. */
+:root {
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --text: #17221e;
+  --body: #1d2525;
+  --muted: #66716c;
+  --muted-strong: #5f6b66;
+  --border: #dce3df;
+  --accent: #176954;
+  --accent-strong: #12624f;
+  --focus-halo: #c9eadf;
+  --danger: #b84234;
+  --danger-soft: #fff0ee;
+  --danger-halo: #f6d5d0;
+  --success-soft: #e7f1ed;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: grid; gap: 24px; }
+h1 { margin: 0; font-size: 22px; color: var(--text); text-wrap: balance; }
+h2 { margin: 0; font-size: 16px; color: var(--text); text-wrap: balance; }
+p { margin: 0; max-width: 72ch; }
+.lead, .screen { color: var(--muted-strong); }
+.screen { font-size: 12px; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+@media (max-width: 820px) { .grid3 { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px; display: grid; gap: 12px; min-width: 0; align-content: start; }
+.tag { justify-self: start; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; background: var(--surface-soft); color: var(--muted-strong); border: 1px solid var(--border); }
+.tag.rec { background: var(--success-soft); color: var(--accent-strong); border-color: transparent; }
+.field { display: grid; gap: 6px; color: var(--text); font-size: 13px; font-weight: 600; min-width: 0; }
+.phone { position: relative; display: block; }
+/* The +1 sits on the number's own line: centred the way the input centres its text, in the same type. */
+.phone .prefix { position: absolute; top: 0; bottom: 0; left: 11px; display: flex; align-items: center; color: var(--muted-strong); font-size: 13px; font-weight: 400; line-height: normal; font-variant-numeric: tabular-nums; pointer-events: none; }
+.field input {
+  width: 100%; min-width: 0; min-height: 40px; border: 1px solid var(--muted); border-radius: 6px;
+  background: var(--surface); padding: 8px 11px; color: var(--body); font: inherit; font-weight: 400; outline: none;
+}
+/* One narrow space between +1 and the number: 11px edge, the +1 (about 2ch), then 4px. */
+.phone input { padding-left: calc(15px + 2ch); font-variant-numeric: tabular-nums; }
+.field input:focus { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--focus-halo); }
+.field input[aria-invalid="true"] { border-color: var(--danger); background: var(--danger-soft); }
+.field input[aria-invalid="true"]:focus { box-shadow: 0 0 0 3px var(--danger-halo); }
+.field input[readonly] { background: var(--surface-soft); color: var(--muted-strong); }
+/* One reserved line under every field: help or error, so an error never moves the field. */
+.line { min-height: 18px; font-size: 12px; font-weight: 400; color: var(--muted); }
+.line.error { color: var(--danger); }
+.steps { font-size: 12px; color: var(--muted); font-family: var(--mono); display: grid; gap: 2px; max-height: 210px; overflow: auto; }
+.samples { display: flex; flex-wrap: wrap; gap: 8px; }
+.samples button { font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px; border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer; }
+.samples button:hover { border-color: var(--muted); }
+button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.setup { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px 16px; }
+@media (max-width: 640px) { .setup { grid-template-columns: minmax(0, 1fr); } }
+.setup h3 { grid-column: 1 / -1; margin: 6px 0 0; font-size: 14px; color: var(--text); }
+.members { font-size: 12px; color: var(--muted-strong); }
+.members li { font-variant-numeric: tabular-nums; }
+.foot { font-size: 12px; color: var(--muted); }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>Telefon kuralları: deneme sayfası</h1>
+    <p class="lead">Mert'in 2026-10-09 isteği. Kod değil, öneri: üstte maske biçimleri, altta çalışan kurulumundaki iki yeni kontrol. Alanlara yazıp silerek dene; altta her tuşta alanın ne gösterdiği yazıyor.</p>
+  </header>
+
+  <section style="display:grid;gap:12px" aria-labelledby="mask-h">
+    <h2 id="mask-h">1. Yazarken maske</h2>
+    <p class="screen">Bütün telefon alanlarında aynı parça kullanılıyor: Account → Profile, çalışan kurulumu, Employees çekmecesi, Settings → Locations, owner kurulumu.</p>
+    <div class="samples" role="group" aria-label="Maske örnekleri">
+      <button type="button" id="type-all">Üçüne de tuş tuş yaz: 4155550100</button>
+      <button type="button" id="erase-all">Üçünü de tuş tuş sil</button>
+    </div>
+    <div class="grid3">
+      <div class="card">
+        <span class="tag">Bugün</span>
+        <label class="field" for="mask-today"><span>Phone number</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="mask-today" type="tel" inputmode="numeric" placeholder="(415) 555-0100" autocomplete="off"></span>
+          <span class="line">"(" ilk hanede gelir, ")" 4. hanede, "-" 7. hanede.</span>
+        </label>
+        <div class="steps" id="steps-today" aria-live="polite"></div>
+      </div>
+      <div class="card">
+        <span class="tag rec">A · ABD biçimi, senin zamanlaman (önerilen)</span>
+        <label class="field" for="mask-a"><span>Phone number</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="mask-a" type="tel" inputmode="numeric" placeholder="(415) 555-0100" autocomplete="off"></span>
+          <span class="line">3. hanede "( )" gelir, 6. hanede "-". Silerken aynı yerlerde gider.</span>
+        </label>
+        <div class="steps" id="steps-a" aria-live="polite"></div>
+      </div>
+      <div class="card">
+        <span class="tag">B · Yazdığın biçim, 10 haneye uydurulmuş</span>
+        <label class="field" for="mask-b"><span>Phone number</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="mask-b" type="tel" inputmode="numeric" placeholder="(415)55-50-100" autocomplete="off"></span>
+          <span class="line">3. hanede "( )", 5. ve 7. hanede "-". Sonuç (415)55-50-100.</span>
+        </label>
+        <div class="steps" id="steps-b" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:12px" aria-labelledby="check-h">
+    <h2 id="check-h">2. Çalışan kurulumu: iki kontrol</h2>
+    <p class="screen">Ekran: davetle katılan çalışan → kurulum → Profile ve Emergency contact adımları (burada tek kutuda). Maske A ile. Hata, alanın altındaki yardım satırının yerine çıkar; o satır her zaman ayrıldığı için alan yerinden oynamaz.</p>
+    <div class="samples" role="group" aria-label="Kontrol örnekleri">
+      <button type="button" id="s-dup">Telefon: Ali'nin numarası</button>
+      <button type="button" id="s-own">Telefon: boşta bir numara</button>
+      <button type="button" id="s-self">Acil kişi: kendi numaram</button>
+      <button type="button" id="s-friend">Acil kişi: Ali (iş arkadaşı)</button>
+      <button type="button" id="s-back">Acil kişide bir hane sil</button>
+    </div>
+    <div class="card">
+      <div class="setup">
+        <h3>Profile</h3>
+        <label class="field" for="own-phone"><span>Phone</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="own-phone" type="tel" inputmode="numeric" placeholder="(415) 555-0100" autocomplete="off" aria-describedby="own-line"></span>
+          <span class="line" id="own-line">The number this workspace can reach you on.</span>
+        </label>
+        <label class="field" for="dob"><span>Date of birth</span>
+          <input id="dob" type="date" value="1998-04-12">
+          <span class="line"></span>
+        </label>
+        <h3>Emergency contact</h3>
+        <label class="field" for="ec-name"><span>Contact name</span>
+          <input id="ec-name" value="Ali Kaya" autocomplete="off">
+          <span class="line"></span>
+        </label>
+        <label class="field" for="ec-phone"><span>Contact phone</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="ec-phone" type="tel" inputmode="numeric" placeholder="(415) 555-0100" autocomplete="off" aria-describedby="ec-line"></span>
+          <span class="line" id="ec-line"></span>
+        </label>
+      </div>
+      <div class="members">
+        Bu örnek workspace'te kayıtlı numaralar (kontrol bunlara bakar, kimin olduğunu ekrana yazmaz):
+        <ul style="margin:4px 0 0;padding-left:18px">
+          <li>Ali Kaya · +1 (415) 555-0123</li>
+          <li>Maria Lopez · +1 (628) 555-0190</li>
+          <li>Ben (bu kurulumu yapan kişi) · henüz yok</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <p class="foot">Hata metinleri öneridir: "This number is already used by someone in this workspace." ve "Enter someone else's number, not your own." Ayrıntılar: <code>/mnt/project-files/notes/telefon-kurallari/kapsam.md</code></p>
+</div>
+
+<script>
+(function () {
+  function digitsOf(v) { return v.replace(/[^0-9]/g, "").replace(/^1(?=\d{10})/, "").slice(0, 10); }
+  // Today (packages/shared/src/us-forms.ts formatUsPhone).
+  function today(d) {
+    if (!d) return "";
+    if (d.length <= 3) return "(" + d;
+    if (d.length <= 6) return "(" + d.slice(0, 3) + ") " + d.slice(3);
+    return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+  }
+  // A: US layout; each separator appears with the digit that completes its group.
+  function maskA(d) {
+    if (d.length < 3) return d;
+    var s = "(" + d.slice(0, 3) + ")";
+    if (d.length > 3) s += " " + d.slice(3, 6);
+    if (d.length >= 6) s += "-";
+    if (d.length > 6) s += d.slice(6);
+    return s;
+  }
+  // B: Mert's written layout over ten digits: (xxx)xx-xx-xxx.
+  function maskB(d) {
+    if (d.length < 3) return d;
+    var s = "(" + d.slice(0, 3) + ")" + d.slice(3, 5);
+    if (d.length >= 5) s += "-" + d.slice(5, 7);
+    if (d.length >= 7) s += "-" + d.slice(7);
+    return s;
+  }
+
+  // One field: Backspace that removes only a separator also removes the digit before it,
+  // otherwise the mask would put the separator straight back.
+  function bind(input, mask, onChange) {
+    var digits = "";
+    input.addEventListener("input", function (event) {
+      var next = digitsOf(input.value);
+      if (event.inputType === "deleteContentBackward" && next === digits) next = digits.slice(0, -1);
+      digits = next;
+      input.value = mask(digits);
+      onChange && onChange(digits);
+    });
+    return {
+      set: function (d) { digits = d; input.value = mask(d); onChange && onChange(d); },
+      get: function () { return digits; }
+    };
+  }
+
+  var labs = [["today", today], ["a", maskA], ["b", maskB]].map(function (pair) {
+    var steps = document.getElementById("steps-" + pair[0]);
+    var input = document.getElementById("mask-" + pair[0]);
+    var field = bind(input, pair[1], function () {
+      var row = document.createElement("div");
+      row.textContent = "+1 " + (input.value || "(boş)");
+      steps.appendChild(row);
+      steps.scrollTop = steps.scrollHeight;
+    });
+    return { field: field, steps: steps };
+  });
+
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timers = [];
+  function run(seq) {
+    timers.forEach(clearTimeout); timers = [];
+    seq.forEach(function (fn, i) { if (reduce) fn(); else timers.push(setTimeout(fn, 160 * i)); });
+  }
+  document.getElementById("type-all").addEventListener("click", function () {
+    var target = "4155550100";
+    labs.forEach(function (l) { l.steps.textContent = ""; l.field.set(""); });
+    run(Array.from(target).map(function (_, i) { return function () { labs.forEach(function (l) { l.field.set(target.slice(0, i + 1)); }); }; }));
+  });
+  document.getElementById("erase-all").addEventListener("click", function () {
+    var start = labs[0].field.get() || "4155550100";
+    labs.forEach(function (l) { l.steps.textContent = ""; l.field.set(start); });
+    run(Array.from(start).map(function (_, i) { return function () { labs.forEach(function (l) { l.field.set(start.slice(0, start.length - i - 1)); }); }; }));
+  });
+
+  // Checks on the setup step.
+  var taken = ["4155550123", "6285550190"];
+  var ownInput = document.getElementById("own-phone");
+  var ownLine = document.getElementById("own-line");
+  var ecInput = document.getElementById("ec-phone");
+  var ecLine = document.getElementById("ec-line");
+  var own, ec;
+  function check() {
+    var mine = own ? own.get() : "";
+    var dup = mine.length === 10 && taken.indexOf(mine) >= 0;
+    ownInput.setAttribute("aria-invalid", dup ? "true" : "false");
+    ownLine.className = dup ? "line error" : "line";
+    ownLine.textContent = dup ? "This number is already used by someone in this workspace." : "The number this workspace can reach you on.";
+    var other = ec ? ec.get() : "";
+    var self = other.length === 10 && other === mine;
+    ecInput.setAttribute("aria-invalid", self ? "true" : "false");
+    ecLine.className = self ? "line error" : "line";
+    ecLine.textContent = self ? "Enter someone else's number, not your own." : "";
+  }
+  own = bind(ownInput, maskA, check);
+  ec = bind(ecInput, maskA, check);
+  document.getElementById("s-dup").addEventListener("click", function () { own.set("4155550123"); });
+  document.getElementById("s-own").addEventListener("click", function () { own.set("3125550147"); });
+  document.getElementById("s-self").addEventListener("click", function () { ec.set(own.get()); });
+  document.getElementById("s-friend").addEventListener("click", function () { ec.set("4155550123"); });
+  document.getElementById("s-back").addEventListener("click", function () { ec.set(ec.get().slice(0, -1)); });
+
+  // Opening state: the masks typed through, own number free, emergency phone = own number.
+  labs.forEach(function (l) { for (var i = 1; i <= 10; i++) l.field.set("4155550100".slice(0, i)); });
+  own.set("3125550147");
+  ec.set("3125550147");
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Giriş, kayıt, davet ve kurulum", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+</body></html>

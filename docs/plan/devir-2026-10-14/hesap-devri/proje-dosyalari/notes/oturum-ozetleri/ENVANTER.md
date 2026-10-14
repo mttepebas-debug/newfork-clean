@@ -43,11 +43,9 @@ Sayılar: toplam 42 · önemsiz 7 · başka işçide (kapsandı) 13 · benim oku
 | session_01SUvwsjoxMmMYmTCqMkEiab | Discover the sign-in and join screens (EKRAN-16 keşif) | 10-07 08:13 – 10-08 07:36 (arşiv) | Giriş / katılım | Muhtemelen (BZkoo…, PEYuS…) | bilinmiyor | Ek — okunmadı |
 | session_0131p6uFVEXbL3idPZAX1qFs | Own the Employees screen to the finish (EKRAN-03) | 10-07 08:01 – 10-08 07:36 (arşiv) | Employees | Muhtemelen (U4QsN…) | bilinmiyor | Ek — okunmadı |
 | session_011VQWMbPaBxZREVHWg4vwF2 | Own the Requests screen end to end (EKRAN-02) | 10-07 06:40 – 10-08 06:33 | Requests | Muhtemelen (KwshR…, PYbKy…) | bilinmiyor | Ek — okunmadı |
-| session_0125HxxEBhK87xj5BTNHQUaE | Devir testi | 10-09 05:26 | Dev sunucusu açma | Hayır | Hayır | Önemsiz |
 | session_01AfZGAbnzzkECFVtvwYX5QH | Boş mesaj uyanman için | 10-09 04:43 – 04:44 | Uyandırma | Hayır | Hayır | Önemsiz |
 | session_016R738w4qGycqNTasCdDygF | Uyanman için boş mesaj | 10-09 04:42 (arşiv) | Uyandırma | Hayır | Hayır | Önemsiz |
 | session_01E2aWbDtqrrhhNGZshzwY4k | Claude projesi remote telefonda görüntüleme | 10-09 03:52 – 03:53 (iOS) | Telefon sorusu | Hayır | Hayır | Önemsiz |
-| session_01GG7WBEXtHzqsMa6Q28MJ16 | Devir testi | 10-08 11:59 – 10-09 02:20 | Hesap devri denemesi | Hayır | Hayır | Önemsiz |
 | session_01B2E97nXJSx4SipgpEEtAVk | Dev sunucusu başlat | 10-07 07:08 – 10-08 07:36 (arşiv) | Dev sunucusu | Hayır | Hayır | Önemsiz |
 | session_01V3Fuvsu8c3XfwdYVqWNUaL | Dev sunucusu başlat | 10-08 12:13 – 13:00 | Dev sunucusu | Hayır | Hayır | Önemsiz (okundu) |
 

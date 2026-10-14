@@ -5,7 +5,7 @@ metadata:
   type: reference
 ---
 
-World accounts (`e2e<ts>.ayse.<hash>@world.test` manager, `.ali.` employee) sign in with the password grant (`world-pass-2026`, `e2e/global-setup.ts`), then open `/sign-in#access_token=...&expires_in&expires_at&token_type=bearer&type=magiclink` and reload. Playwright: `playwright-core` from `C:/Users/TheWe/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright-core/index.mjs`, `channel:"chrome"`.
+World accounts (`e2e<ts>.ayse.<hash>@world.test` manager, `.ali.` employee) sign in with the password grant (`[GIZLI-CIKARILDI: e2e/global-setup.ts]`, `e2e/global-setup.ts`), then open `/sign-in#access_token=...&expires_in&expires_at&token_type=bearer&type=magiclink` and reload. Playwright: `playwright-core` from `C:/Users/TheWe/AppData/Local/npm-cache/_npx/e41f203b7505f1fb/node_modules/playwright-core/index.mjs`, `channel:"chrome"`.
 
 Edit mode has no URL shortcut: Schedule -> `New Schedule` -> pencil button `Edit <draft name>` (aria-label). Add shift: hover the cell, click `[data-schedule-add-shift-control]`. Time inputs are masked text: click, Ctrl+A, type `0600PM`.
 

@@ -1,0 +1,371 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Newfork İlerleme Raporu</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tek sütun rapor, üstte "senden bekleneni" taşıyan şerit, sonra bölümler; ekran tablosu yatay kaydırmalı */
+:root{
+  --bg:#f7f9f8; --surface:#ffffff; --ink:#17221e; --muted:#5f6b66; --line:#dce3df;
+  --accent:#176954; --accent-soft:#dbece5; --warn:#8a5a00; --warn-soft:#fff7e2; --bad:#b84234; --bad-soft:#fff0ee;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211e; --ink:#e6eeea; --muted:#9db0a8; --line:#2b3833;
+  --accent:#5cc4a3; --accent-soft:#1d3b31; --warn:#e2b45a; --warn-soft:#33290f; --bad:#f08a7c; --bad-soft:#3a1d19; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211e; --ink:#e6eeea; --muted:#9db0a8; --line:#2b3833;
+  --accent:#5cc4a3; --accent-soft:#1d3b31; --warn:#e2b45a; --warn-soft:#33290f; --bad:#f08a7c; --bad-soft:#3a1d19; color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.6}
+.wrap{max-width:860px;margin:0 auto;padding-inline:20px;padding-block:28px 64px;display:flex;flex-direction:column;gap:36px}
+h1,h2{font-family:var(--f-display);font-weight:600;text-wrap:balance;margin:0;line-height:1.2}
+h1{font-size:2rem}
+h2{font-size:1.35rem}
+h3{font-size:1rem;margin:0;font-weight:600}
+p{margin:0;max-width:68ch}
+ul,ol{margin:0;padding-left:1.2em;display:flex;flex-direction:column;gap:6px;max-width:72ch}
+.eyebrow{font-size:.75rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+header{display:flex;flex-direction:column;gap:8px}
+.meta{color:var(--muted);font-size:.9rem}
+section{display:flex;flex-direction:column;gap:14px}
+.ask{background:var(--warn-soft);border:1px solid var(--warn);border-radius:10px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.ask strong{color:var(--warn)}
+.facts{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px}
+.fact{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.fact b{font-family:var(--f-mono);font-size:1.5rem;font-weight:500;font-variant-numeric:tabular-nums}
+.fact span{color:var(--muted);font-size:.85rem;line-height:1.4}
+.pill{display:inline-block;font-size:.75rem;font-weight:600;padding:1px 8px;border-radius:99px;white-space:nowrap}
+.p-go{background:var(--accent-soft);color:var(--accent)}
+.p-wait{background:var(--warn-soft);color:var(--warn)}
+.p-bad{background:var(--bad-soft);color:var(--bad)}
+.p-idle{background:var(--line);color:var(--muted)}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:620px;font-size:.9rem}
+th,td{text-align:left;padding:9px 12px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.75rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.n{font-family:var(--f-mono);font-variant-numeric:tabular-nums;color:var(--muted)}
+.bar{height:6px;background:var(--line);border-radius:3px;overflow:hidden;width:110px;margin-top:6px}
+.bar i{display:block;height:100%;background:var(--accent)}
+.small{font-size:.85rem;color:var(--muted)}
+code{font-family:var(--f-mono);font-size:.85em}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px}
+.cols>div{min-width:0;display:flex;flex-direction:column;gap:8px}
+.reco{border-left:3px solid var(--accent);padding-left:14px;display:flex;flex-direction:column;gap:8px}
+a{color:var(--accent)}
+a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+nav{display:flex;gap:16px;font-size:.9rem;flex-wrap:wrap}
+nav a{font-weight:600;text-decoration:none}
+nav a:hover{text-decoration:underline}
+nav span{color:var(--muted)}
+.done{text-decoration:line-through;color:var(--muted)}
+.done b{color:var(--muted)}
+tr.done td{text-decoration:line-through;color:var(--muted)}
+.chk{color:var(--accent);font-weight:700;text-decoration:none;display:inline-block;width:1.2em}
+.wip{color:var(--warn);font-weight:700;display:inline-block;width:1.2em}
+.todo{color:var(--muted);display:inline-block;width:1.2em}
+ul.track{list-style:none;padding-left:0}
+ul.track li{display:flex;gap:6px;align-items:baseline}
+ul.track li>span:last-child{min-width:0}
+.ask.ok{background:var(--accent-soft);border-color:var(--accent)}
+.ask.ok strong{color:var(--accent)}
+</style>
+
+<div class="wrap">
+<nav><span>İlerleme raporu</span><span>·</span><a href="backlog.html">Backlog →</a></nav>
+<header>
+  <div class="eyebrow">Newfork · genel durum · ilerledikçe güncellenir</div>
+  <h1>İlerleme raporu</h1>
+  <p class="meta"><b>Son güncelleme: 9 Ekim 2026, 09:41 UTC (senin saatinle 9 Ekim 02:41)</b> (main <code>d68aa958</code>, CI yeşil, ekran testleri dahil). İlk sürüm 04:10 UTC. Biten işler silinmez: ✓ ile işaretlenir ve üstü çizilir. Backlog'un tamamı ayrı sayfada: <a href="backlog.html">Backlog</a>.</p>
+</header>
+
+<div class="ask" id="v9-marker">
+  <strong>Senden beklenenler (Schedule tasarım seçimleri ve bir Undo kararı)</strong>
+  <p class="small">Tasarım planının dört sayfası da yayında. Seçimini bekleyenler:</p>
+  <p><span class="todo">○</span><b>Hayalet vardiya</b> (madde 10), ikinci tur: 20 yeni varyant ve varyant 5'ten 5 türev yayında.</p>
+  <p><span class="todo">○</span><b>Vardiya ekleme ve düzenleme pencereleri</b> (madde 11–14): sayfa yayında, seçimlerini bekliyor.</p>
+  <p><span class="todo">○</span><b>Üst çubuk ve Schedule pencereleri</b> (madde 2, 5, 7, 8, 9): sayfa yayında, seçimlerini bekliyor.</p>
+  <p><span class="todo">○</span><b>Tam gün izinli hücre</b> (madde 6): o hücreye tıklayınca vardiya penceresi yine açılsın mı?</p>
+  <p><span class="todo">○</span><b>Şablon penceresi:</b> üç varyantı da beğenmedin; neyi beğenmediğini yazarsan yeni varyantlar ona göre yapılır.</p>
+  <p><span class="todo">○</span><b>Undo, ekranda görünmeyen lokasyon</b> (BL-997): ekranda yalnız Uptown açıkken Undo'ya basınca Downtown'daki son değişiklik geri alınıyor ve ekranda hiçbir şey kıpırdamıyor. Bildirim neyin geri alındığını söylesin mi, ekran oraya mı gitsin, yoksa Undo yalnız görünen yerde mi çalışsın? Bu bir tasarım kararı, senin.</p>
+  <p class="small">Bunlar yalnız ilgili maddeleri bekletiyor; kod işi sürüyor.</p>
+  <p class="done"><span class="chk">✓</span>Eski Claude Code koordinatör oturumunu kapat (tren onu bekliyordu). Kapatıldı; tren 04:43 UTC'de main'e indi.</p>
+  <p class="done"><span class="chk">✓</span>Öteki hesaptaki sayfaları taşıma (okuma izni onayın). Bitti: 14 sayfa bu hesaba taşındı, 06:30 UTC (senin saatinle 23:30).</p>
+</div>
+
+<section>
+  <h2>Kısaca</h2>
+  <div class="facts">
+    <div class="fact"><b>0 / 18</b><span>ekran bitti; 3'ü uygulamada (Schedule, Requests, Employees)</span></div>
+    <div class="fact"><b>6 / 16</b><span>Schedule tasarım maddesinin seçimi bitti (1, 3, 4, 6, 15, 16); dört sayfa da yayında</span></div>
+    <div class="fact"><b>26</b><span>karar seni bekliyor; şu an hiçbiri işi durdurmuyor (giriş modeli e-posta servisine kadar bekliyor)</span></div>
+    <div class="fact"><b>663</b><span>açık backlog maddesi (toplam 980); 37'si kritik ya da yüksek önemde</span></div>
+    <div class="fact"><b>🟢</b><span>main yeşil (<code>d68aa958</code>, CI yeşil); dokuz tren bugün indi</span></div>
+  </div>
+</section>
+
+<section>
+  <h2>Takip listesi</h2>
+  <p class="small">Öncelik senin onayınla (9 Ekim): önce main yeşil, sonra Schedule'ı bitirmek. ✓ bitti · ◐ sürüyor · ○ sırada.</p>
+  <ul class="track">
+    <li class="done"><span class="chk">✓</span><span><b>Main yeşil.</b> BL-990 düzeltildi; geçiş, BL-974 ve GA-2 ile tren 04:43 UTC'de indi. Main şimdi <code>021f82e</code>, CI yeşil.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Requests'in kullanılmayan 6 eski fonksiyonu canlıdan silindi</b> (S3, senin "evet"inle 04:50 UTC). Yedek alındı, doğrulama temiz.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Schedule → Templates penceresi (#28, #29) main'de.</b> Şablon kaydederken çalışan adları artık varsayılan olarak korunuyor; departman seçimi "Only some departments" altında kapalı. Senin kapanış bakışın bekleniyor.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Vardiyada izin işareti (#38, BL-579) kapandı, main'e çıkmadı.</b> Kuralı değiştirdin (05:57 UTC): onaylı izinle 1 dakika bile çakışan vardiya yazılamaz; hücre kırmızı, "Time off" yazar.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Bugünkü kararların deftere işlendi</b> (S-117…S-120: öncelik, giriş modeli bekliyor, çalışma anlaşması, bir hafta süreç dondurma).</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Yeni izin kuralın deftere işlendi ve main'e indi</b> (kayıt treni, 06:30 UTC, main <code>e3a1354</code>): KARARLAR §1.1 "onaylı izinle çakışan vardiya alınamaz"; BL-579 kapandı, yerine BL-995 açıldı; BL-994 (yerel test DB'sinde 3 kırmızı test) yazıldı. Yalnız belge; CI gerekmedi.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Öteki hesaptaki 14 sayfa bu hesapta yeniden yayımlandı</b> (06:30 UTC, senin saatinle 23:30). Eski ve yeni bağlantıların tablosu: proje dosyalarında <code>pages/LISTE.md</code>.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Schedule test sayfası yayında</b> (06:39 UTC, senin saatinle 23:39): <a href="https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3" target="_blank" rel="noopener">Schedule test page</a>. Main'deki gerçek Schedule kodu, örnek veriyle; kalıcı test ortamı, düğmeleri gönül rahatlığıyla deneyebilirsin.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Daha az onay sorusu: izin treni main'e indi</b> (06:50 UTC, senin saatinle 23:50; main <code>df17fd6</code>, CI yeşil). Senin <code>/fewer-permission-prompts</code> isteğinle <code>.claude/settings.json</code>'a yalnız okuma yapan 27 komut için "izin ver" kuralı eklendi. Yasak listesi ve kancalar değişmedi.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Vardiya penceresinde saat yazmak düzeldi (BL-613, BL-055'in bir kısmı)</b> (beşinci tren, main <code>3e2be18</code>, CI yeşil). 24 saat düzeninde saati yazınca pencere dakikayı bekliyor, sonra End'e geçiyor; Enter vardiyayı kaydediyor. Start ve End artık Account → Preferences'taki kişisel 12/24 saat seçimine uyuyor.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Schedule: sunucuda Undo (BL-762) main'de ve canlıda</b> (altıncı tren, main <code>9a9793e</code>, CI ve ekran testleri yeşil). Undo artık adımların sırasını ve 25 adımın tamamını koruyor. Canlı veritabanına yaklaşık 08:03 UTC'de uygulandı, doğrulandı; veri kaybı yok.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Undo artık takılmıyor (S4b, BL-998)</b> (yedinci tren, main <code>afb24b3</code>, CI ve ekran testleri yeşil). En yeni adım geri gelemiyorsa (örneğin o arada izin onaylandıysa) Undo o adımı atlıyor, nedenini ekranda söylüyor; bir sonraki basış daha önceki adımı geri alıyor. Eski kalmış bir sekmeye "sayfayı yenile" deniyor. Canlı veritabanına yaklaşık 08:48 UTC'de uygulandı, doğrulandı.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Undo denetimi: neyi geri alır, neyi almaz.</b> Proje dosyalarında <code>notes/undo-davranis.md</code>. Bulunan 8 risk ve test boşlukları backlog'a yazıldı (BL-997…BL-1005).</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Sayfa atlası yayında:</b> <a href="https://claude.ai/artifact/CgRj1az35H4TAz2NM3Na1p" target="_blank" rel="noopener">Sayfa atlası</a>. Uygulamanın 17 sayfası, main <code>9a9793e</code>'den. Gezerken bulunan 11 hata backlog'a yazıldı (BL-1009…BL-1019).</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Taşınan 14 sayfanın 8'ine "Orijinal" eklendi</b> (uygulamadaki gerçek ekranın hâli, varyantlarla yan yana). Kalan 6 sayfanın uygulamada karşılığı olan bir ekran yok.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Schedule tasarım planının dört sayfası da yayında.</b></span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Schedule tasarımı: "Müsaitlik ve izin hücreleri" (madde 1, 6, 15, 16) seçildi.</b> 1 → A yumuşak renk, 6 → Original, 15 → B kaydırınca kapanır, 16 → A sakin. Madde 6'da tek açık soru var (yukarıda).</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>S4b'nin devamı, yalnız test: main'de</b> (sekizinci tren, main <code>24d9565b</code>, CI ve ekran testleri yeşil). Veritabanı testleri artık Undo'nun öteki iki geri çevirme nedenini de ("document" ve "rule") gerçekten üretip kanıtlıyor; bir ekran testi dört nedenin her birinin kendi cümlesini gösterdiğini kontrol ediyor. Ekranda değişiklik yok.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Yeni backlog kayıtları main'de:</b> BL-1006…BL-1019 (Undo incelemesinin notları ve atlas taramasında bulunan hatalar). BL-998, BL-999 ve BL-1000 düzeldiği için kayıtta kapatıldı; bu kapanış sonraki trenle main'e iner.</span></li>
+    <li><span class="wip">◐</span><span><b>Schedule tasarımı: "Vardiya kartı, hayalet vardiya ve sürükleme".</b> 3 → varyant 6 (yayınlanmış vardiyada işaret yok) ve 4 → B (vardiyanın kendi lokasyonunda alamayacak kişiler gizlenir) seçildi. Madde 10 (hayalet vardiya) ikinci turda: 20 yeni varyant ve varyant 5'ten 5 türev (en az biri kırmızı tonlarda) yayında, seçimini bekliyor.</span></li>
+    <li><span class="wip">◐</span><span><b>Schedule tasarımı: "Vardiya ekleme ve düzenleme pencereleri" (madde 11–14)</b> yayında, seçimini bekliyor.</span></li>
+    <li><span class="wip">◐</span><span><b>Schedule tasarımı: "Üst çubuk ve Schedule pencereleri" (madde 2, 5, 7, 8, 9)</b> yayında, seçimini bekliyor.</span></li>
+    <li><span class="wip">◐</span><span><b>Schedule → Templates penceresinin yeniden tasarımı.</b> Üç varyantı (A kütüphane, B ızgarada önizleme, C adım adım) da reddettin; neyi beğenmediğini sorduk. Test sayfasındaki izin kuralı şimdilik Original kalıyor.</span></li>
+    <li><span class="wip">◐</span><span><b>Schedule'ı ilk biten ekran yapmak.</b> 101 maddeden 29'u kayıtta bitti; Undo (#12) ve Undo'nun takılmaması (S4b) main'de ve canlıda, kayıtta işaretlenmesi bekleniyor. Test sayfası yayında; tasarım planının 16 maddesi sayfa sayfa seçiliyor.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Yüksek önem (BL-1011) bitti, main'de</b> (dokuzuncu tren, main <code>d68aa958</code>, CI ve ekran testleri yeşil, koşu 37911356048). Settings → Notifications'taki üç sıfırlama düğmesi ("Reset all policies", "Reset current category" ve kartın "Reset" düğmesi) artık kırmızı ve iki tıklı: ilk tık sorar, ikinci tık yapar. Bir tarayıcı testi ilk tıkta hiçbir şeyin sıfırlanmadığını kanıtlıyor.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>BL-998, BL-999 ve BL-1000'in kapanışı main'de</b> (kayıt, dokuzuncu trenle). Backlog sayıları main <code>d68aa958</code>'den yeniden sayıldı.</span></li>
+    <li class="done"><span class="chk">✓</span><span><b>Takas onay penceresi bulundu, kaybolmamış.</b> Saatlerce üzerinde çalıştığın takas (shift swap) onay penceresi yalnız senin bilgisayarında, GitHub'a hiç gönderilmemiş bir dalda duruyor. Hiç main'e girmedi, hiç canlıya çıkmadı. Senin görsel bakışını ve üç küçük soruyu bekliyordu; 8 Ekim akşamındaki devir (Project düzenine geçiş) onu dondurdu.</span></li>
+    <li><span class="wip">◐</span><span><b>Yalnız senin bilgisayarında duran bütün dallar GitHub'a yedekleniyor.</b> Yalnız yedek: hiçbiri main'e katılmıyor, hiçbir şey canlıya çıkmıyor.</span></li>
+    <li><span class="wip">◐</span><span><b>Sayfa sayfa denetim:</b> Schedule dışındaki her ekran için "ne yapıldı, nerede kaldı, canlıda mı". Thread: "Sayfa sayfa kayıp ve güncellik denetimi".</span></li>
+    <li><span class="todo">○</span><span><b>Takas penceresi için karşılaştırma sayfası:</b> bulunan pencere ile bugünkü Original yan yana, senin bakışın için.</span></li>
+    <li><span class="todo">○</span><span><b>Seçilen tasarımları koda geçirmek.</b> Bir alanın bütün seçimleri bitince o alan koda geçer.</span></li>
+    <li><span class="todo">○</span><span><b>Undo'nun kalan riskleri:</b> görünmeyen lokasyondaki değişikliğin geri alınması (BL-997, senin tasarım kararını bekliyor); bırakılan düzenleme oturumları hiç kapanmıyor, eski Undo hafızası günler sonra geri gelebilir (BL-1001); vardiya penceresi açıkken Ctrl+Z arkadaki ızgarada Undo yapabiliyor (BL-1003).</span></li>
+    <li><span class="todo">○</span><span>Vardiya penceresinin kalan üç küçük hatası (BL-613): klavyeyle açılan pencere sol üst köşeye yapışıyor; kural kutusu aynı cümleyi iki kez yazıyor; işaretli hücrenin üzerine gelince çizgileri siliniyor.</span></li>
+    <li><span class="todo">○</span><span>12/24 saat seçimini kalan yerlere taşımak (BL-055): ızgaradaki kartlar, dışa aktarma, Employee Hub ve bildirimler.</span></li>
+    <li><span class="todo">○</span><span>Schedule: yayın kuralları paketi (DB-4) main'e.</span></li>
+    <li><span class="todo">○</span><span>Schedule'da senden beş karar: S24, S25 ve üç görsel (sırası gelince kartla).</span></li>
+    <li><span class="todo">○</span><span>Eski "izni kısaltarak vardiya alma" akışını kaldırmak (BL-995, yeni izin kuralının kodu; riskli canlı adım). Senin "şimdi mi, sonra mı" cevabın bekleniyor; başlarken iki soru sorulacak.</span></li>
+  </ul>
+</section>
+
+<section>
+  <h2>Neler yapıldı</h2>
+  <h3>Bugün (9 Ekim)</h3>
+  <ul>
+    <li><b>Main'i kırmızıya çeviren hata bulundu ve düzeltildi (BL-990).</b> Ekran testleri her kişi için açtığı tarayıcı penceresini kapatmıyordu; koşunun sonunda 116 sayfa sunucuyu aynı anda yokluyordu ve en sondaki izin testleri takılıyordu. Düzeltmeden sonra bütün ekran testleri (49) karantinasız iki kez yeşil; izin testleri 60 sn yerine 6–10 sn sürüyor.</li>
+    <li><b>Project düzenine geçiş hazır.</b> Kurallar (CLAUDE.md) Project'e uyarlandı: koordinatör artık proje sohbetindeki Claude, eski <code>/oto</code> ve <code>/durum</code> emekli, bulut thread'leri bilgisayarındaki veritabanını bozamıyor. Ayrıntı: proje dosyalarında <code>notes/claude-md-degisiklikleri.md</code>.</li>
+    <li><b>Git işini Claude'a devrettin.</b> Commit, push, dal ve tren artık senden onay istemeden yürüyor.</li>
+    <li><b>Tren main'e indi (04:43 UTC):</b> geçiş + BL-990 + BL-974 (Jobs süzgeci hatası) + GA-2 (organizasyon ayarlarını yalnız owner ve admin değiştirir) + koordinatör kayıtları.</li>
+    <li><b>İkinci tren (Templates penceresi) indi;</b> main <code>021f82e</code>, CI yeşil. Yolda bulunan API varsayılanı farkı backlog'a yazıldı (BL-993).</li>
+    <li><b>Üçüncü tren (kayıtlar) indi, 06:30 UTC;</b> main <code>e3a1354</code>. Yalnız belge (yeni izin kuralı, BL-995, BL-994, EKRAN-01 devir notu), bu yüzden CI tasarım gereği koşmadı; son CI'lı main <code>021f82e</code> yeşil. Main alarmı temiz. Bilgisayarındaki geçici Supabase (nf-shot-0138) 06:25 UTC'de senin tarafından durduruldu.</li>
+    <li><b>Öteki hesaptaki 14 sayfa bu hesaba taşındı</b> (06:30 UTC, senin saatinle 23:30). Bağlantı tablosu proje dosyalarında <code>pages/LISTE.md</code>.</li>
+    <li><b>Schedule test sayfası yayımlandı</b> (06:39 UTC, senin saatinle 23:39): <a href="https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3" target="_blank" rel="noopener">Schedule test page</a>. Gerçek Schedule kodu, örnek veri; kalıcı test ortamı.</li>
+    <li><b>Dördüncü tren (izinler) indi, 06:50 UTC (senin saatinle 23:50);</b> main <code>e3a1354</code> → <code>df17fd6</code>, CI yeşil (koşu 37895052273). Yalnız okuma yapan 27 komut artık onay sormadan çalışır; yasak listesi ve kancalar aynı.</li>
+    <li><b>Beşinci tren (vardiya penceresinde saat) indi;</b> main <code>df17fd6</code> → <code>3e2be18</code>, CI yeşil. 24 saat düzeninde saat yazarken pencere dakikayı bekliyor, Enter kaydediyor; Start ve End kişisel 12/24 saat seçimine uyuyor (BL-613, BL-055 kısmen).</li>
+    <li><b>Altıncı tren (Undo) indi;</b> main <code>3e2be18</code> → <code>9a9793e</code>, CI yeşil, ekran testleri dahil. Undo sırasını ve tam derinliğini koruyor (BL-762). Canlı veritabanına yaklaşık 08:03 UTC'de uygulandı, doğrulandı, veri kaybı yok.</li>
+    <li><b>Schedule tasarım planı (16 madde) sayfa sayfa ilerliyor.</b> Dört sayfanın hepsi yayında. İlk sayfa ("Müsaitlik ve izin hücreleri") seçildi; ikinci sayfada 3 ve 4 seçildi, hayalet vardiya (10) ikinci turda; üçüncü ve dördüncü sayfa seçimini bekliyor.</li>
+    <li><b>Yedinci tren (Undo takılmıyor, S4b) indi;</b> main <code>9a9793e</code> → <code>afb24b3</code>, CI yeşil, ekran testleri dahil. Geri gelemeyen adım atlanıyor ve nedeni söyleniyor; eski sekmeye "yenile" deniyor. Canlı veritabanına yaklaşık 08:48 UTC'de uygulandı, doğrulandı.</li>
+    <li><b>Undo denetimi yazıldı</b> (proje dosyalarında <code>notes/undo-davranis.md</code>): başka haftaya, başka lokasyona geçince ve sayfayı yenileyince Undo'nun ne yaptığı. 8 risk ve test boşlukları backlog'a yazıldı (BL-997…BL-1005).</li>
+    <li><b>Sayfa atlası yayımlandı:</b> <a href="https://claude.ai/artifact/CgRj1az35H4TAz2NM3Na1p" target="_blank" rel="noopener">Sayfa atlası</a> (17 sayfa, main <code>9a9793e</code>).</li>
+    <li><b>Taşınan 14 sayfanın 8'ine "Orijinal" eklendi;</b> kalan 6'sının uygulamada karşılığı olan bir ekran yok.</li>
+    <li><b>Yeni kayıtlar main'e indi</b> (koordinatör dalındaki <code>f2f7c135</code>, sekizinci trenle): BL-1006…BL-1008 (S4b incelemesinin notları) ve BL-1009…BL-1019 (atlas için uygulamayı gezerken bulunan 11 hata). BL-1011 yüksek önemde: Settings → Notifications'taki "Reset all policies" yeşil ve onay sormuyor.</li>
+    <li><b>Kayıtlar güncellendi ve main'e indi</b> (koordinatör dalındaki <code>fd4ec8e</code>, main'de <code>0fabded</code>): BL-996 yeni (düşük önem; Undo tablosunda dizinsiz bir bağlantı alanı), BL-697 kapandı, BL-991 ve BL-992 açık bölüme taşındı, BL-613 ve BL-055 daraltıldı.</li>
+    <li><b>Sekizinci tren (Undo'nun eksik testleri) indi;</b> main <code>afb24b3</code> → <code>24d9565b</code>, CI yeşil, ekran testleri dahil (koşu 37909014536). Undo'nun dört geri çevirme nedeninin hepsi artık testle kanıtlı; ekranda değişiklik yok. Aynı trenle BL-1006…BL-1019 kayıtları da main'e indi.</li>
+    <li><b>BL-998, BL-999, BL-1000 kayıtta kapatıldı</b> (Undo'nun takılması ve iki yakın hata; düzeltmeleri main'de ve canlıda). Kapanış kaydı sonraki trenle main'e iner.</li>
+    <li><b>BL-1011 başladı:</b> Settings → Notifications'taki "Reset all policies" kırmızı ve iki tıklı olacak.</li>
+    <li><b>Dokuzuncu tren (BL-1011) indi;</b> main <code>24d9565b</code> → <code>d68aa958</code>, CI yeşil, ekran testleri dahil (koşu 37911356048). Settings → Notifications'taki üç sıfırlama düğmesi kırmızı ve iki tıklı; ilk tıkta hiçbir şey sıfırlanmıyor (tarayıcı testiyle kanıtlı). BL-998, BL-999 ve BL-1000'in kapanış kaydı da aynı trenle main'e indi.</li>
+    <li><b>Takas onay penceresi bulundu</b> (02:41 senin saatinle): kaybolmamış; yalnız senin bilgisayarında, GitHub'a hiç gönderilmemiş bir dalda. Hiç main'de ve canlıda olmadı.</li>
+    <li><b>Yalnız bilgisayarında duran dalların GitHub'a yedeklenmesi</b> ve <b>Schedule dışındaki ekranların sayfa sayfa denetimi</b> başladı.</li>
+  </ul>
+  <h3>Son günler (5–8 Ekim)</h3>
+  <ul>
+    <li><b>Schedule:</b> iş kaybı hataları kapandı (hareketsizlikte silinen iş, Undo, düşen kilit, boş taslak, iki müdürün işinin karışması). Kapalı günlü haftanın açılmaması (BL-959) ve e-postanın kendiliğinden kapanması (BL-795) düzeldi. İki düzeltme paketi main'de ve canlıda.</li>
+    <li><b>Requests:</b> veri paketi (talep kaybı ve yetki) main'de.</li>
+    <li><b>Employees:</b> 8 madde tam, 6 madde kısmen kapandı; örneğin lokasyonsuz kişiyi işten çıkaramama ve 120 kişilik işletmede 20 kişinin görünmemesi.</li>
+    <li><b>Acil:</b> bütün işletmelerde sunucuyu durdurabilen hata (BL-958) 8 Ekim'de canlıda kapandı.</li>
+    <li><b>Dengeye dikkat:</b> bu dört günde main'e ~500 commit girdi; ~340'ı plan ve kayıt belgesi, ~180'i ürün kodu. 8 Ekim'in son 50 commit'inin hepsi çalışma düzeni (WORKFLOW-V2) işiydi.</li>
+  </ul>
+</section>
+
+<section>
+  <h2>Schedule tasarım planı (16 madde)</h2>
+  <p class="small">Görsel maddeler sayfa sayfa geliyor; her sayfada varyantlar yan yana, sen seçiyorsun. ✓ seçildi · ◐ sürüyor · ○ sırada.</p>
+  <div class="tbl"><table>
+    <thead><tr><th></th><th>Sayfa</th><th>Maddeler</th><th>Durum</th></tr></thead>
+    <tbody>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Müsaitlik ve izin hücreleri</td><td>1, 6, 15, 16</td><td>seçildi: 1 A yumuşak renk · 6 Original · 15 B kaydırınca kapanır · 16 A sakin</td></tr>
+      <tr><td class="n"><span class="wip">◐</span></td><td>Vardiya kartı, hayalet vardiya ve sürükleme</td><td>3, 4, 10</td><td>3 → varyant 6 ✓ · 4 → B ✓ · 10 (hayalet vardiya), ikinci tur: 20 yeni varyant + varyant 5'ten 5 türev <span class="pill p-wait">yayında, seçimin bekleniyor</span></td></tr>
+      <tr><td class="n"><span class="wip">◐</span></td><td>Vardiya ekleme ve düzenleme pencereleri</td><td>11–14</td><td><span class="pill p-wait">yayında, seçimin bekleniyor</span></td></tr>
+      <tr><td class="n"><span class="wip">◐</span></td><td>Üst çubuk ve Schedule pencereleri</td><td>2, 5, 7, 8, 9</td><td><span class="pill p-wait">yayında, seçimin bekleniyor</span></td></tr>
+      <tr><td class="n"><span class="wip">◐</span></td><td>Şablon penceresi (plandan ayrı)</td><td>—</td><td><span class="pill p-wait">3 varyant reddedildi; neyi beğenmediğin soruldu</span></td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Dört sayfanın hepsi yayında. Seçimi biten: 1, 3, 4, 6, 15, 16. Açık soru (madde 6): tam gün izinli hücreye tıklayınca vardiya penceresi yine açılsın mı? Test sayfasındaki izin kuralı şimdilik Original.</p>
+</section>
+
+<section>
+  <h2>Neler açık</h2>
+  <p>Sıradaki işler (koordinatörün sırası, sadeleştirilmiş). Bitenler listede kalır.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>Sıra</th><th>İş</th><th>Durum</th></tr></thead>
+    <tbody>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Requests'in kullanılmayan eski fonksiyonlarını canlıdan silmek</td><td>bitti, 04:50 UTC</td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Schedule: sunucuda Undo (BL-762)</td><td>main'de ve canlıda, 9 Ekim ~08:03 UTC</td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Schedule: Undo geri gelemeyen adımda takılmasın (S4b, BL-998)</td><td>main'de ve canlıda, 9 Ekim ~08:48 UTC</td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Schedule: vardiyada izin işareti (BL-579)</td><td>kapandı; kural değişti, çıkmadı</td></tr>
+      <tr><td class="n">4</td><td>Employees form kuralı (BL-969)</td><td><span class="pill p-go">dalda</span> canlı ölçüm gerekiyor</td></tr>
+      <tr><td class="n">5</td><td>Schedule: yayın kuralları paketi (DB-4)</td><td><span class="pill p-go">dalda hazır</span> yeni main'e taşınacak</td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Schedule: şablon penceresi (#28/#29)</td><td>main'de; kapanış bakışın bekliyor</td></tr>
+      <tr><td class="n">7</td><td>Requests: takas inceleme penceresi (C2)</td><td><span class="pill p-wait">senin bakışını bekliyor (B4)</span> bulundu: yalnız bilgisayarında, GitHub'a gönderilmemiş bir dalda; yedekleniyor; karşılaştırma sayfası sırada</td></tr>
+      <tr><td class="n">8</td><td>Settings yetkisini eski kapıdan çekirdeğe almak (GA-3)</td><td><span class="pill p-wait">B19'u bekliyor</span></td></tr>
+      <tr><td class="n">9</td><td>Bildirim sisteminin eski parçalarını sökmek</td><td><span class="pill p-idle">başlamadı</span></td></tr>
+      <tr><td class="n">10</td><td>Eski "izni kısaltarak vardiya alma" akışını kaldırmak (BL-995)</td><td><span class="pill p-wait">"şimdi mi, sonra mı" cevabını bekliyor</span></td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>S4b'nin yalnız test ekleyen devamı</td><td>main'de, <code>24d9565b</code>, CI yeşil</td></tr>
+      <tr class="done"><td class="n"><span class="chk">✓</span></td><td>Settings → Notifications: sıfırlama düğmeleri kırmızı ve iki tıklı (BL-1011)</td><td>main'de, <code>d68aa958</code>, CI yeşil</td></tr>
+      <tr><td class="n">11</td><td>Yalnız bilgisayarında duran dalları GitHub'a yedeklemek (yalnız yedek)</td><td><span class="pill p-go">sürüyor</span></td></tr>
+      <tr><td class="n">12</td><td>Sayfa sayfa denetim: Schedule dışındaki ekranlar ne durumda, canlıda mı</td><td><span class="pill p-go">sürüyor</span></td></tr>
+      <tr><td class="n">13</td><td>Takas penceresi ile bugünkü Original'i yan yana gösteren sayfa</td><td><span class="pill p-idle">sırada</span></td></tr>
+      <tr><td class="n">14</td><td>Seçilen Schedule tasarımlarını koda geçirmek</td><td><span class="pill p-idle">sırada</span> her alanın seçimleri bitince</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Tam liste 25 iş: proje dosyalarında <code>DURUM.md</code> "Sırada". Aynı anda tek kod yazan thread çalışıyor (işçi sınırı 1).</p>
+</section>
+
+<section>
+  <h2>Karar bekleyenler (26)</h2>
+  <p><b>B1, giriş modeli: bekletiliyor (senin kararın, 9 Ekim).</b> Kullanıcının nasıl gireceğine e-posta ve SMS servisi bağlanınca karar vereceksin. Bugün canlıda e-posta anahtarı yok, yani davet ve parola sıfırlama e-postaları da gitmiyor (BL-027, Soru-8). Giriş ve katılım ekranı o zamana kadar bekler; öteki ekranlar beklemez.</p>
+  <p class="small"><b>Not:</b> Önerilen model e-posta + 6 haneli kod olursa SMS'e gerek kalmaz; SMS ücretli bir servis demek. Asıl ön koşul e-posta servisi (Resend, ücretsiz katman var). Kurmaya hazır olduğunda koordinatöre söylemen yeterli.</p>
+  <div class="cols">
+    <div><h3>Ürün kuralı (10)</h3>
+      <ul class="small">
+        <li>B4–B5 Requests tek tablo, takas penceresi, 3 düşük güvenlik bulgusu</li>
+        <li>B7 Workspace saat dilimi modeli (önce sohbet)</li>
+        <li>B8 Kurulum listesini admin de gizlesin mi</li>
+        <li>B9 Jobs: 4 kapsam sorusu</li>
+        <li>B12–B13 Important Dates: kısa saatli gün, All day</li>
+        <li>B14 Bildirim: 6 temel soru (önce sohbet)</li>
+        <li>B16 Schedule: lokasyon değişen vardiya ve "bu hafta"nın saati</li>
+        <li>B24 Kalan sabah soruları (belge arşivi, yayından kaldırılan talepler…)</li>
+      </ul></div>
+    <div><h3>Görsel seçim (7)</h3>
+      <ul class="small">
+        <li>B2 Marka (sembol, motto, yerleşim)</li>
+        <li>B3 Giriş ekranları S1–S4, G1–G4</li>
+        <li>B6 Settings General: altı tasarımda neyi beğenmedin</li>
+        <li>B10 Jobs: New department'ın yeri</li>
+        <li>B11 Çekmecedeki 15 px kayma</li>
+        <li>B15 Bildirim merkezi varyantı</li>
+        <li>B17 Schedule görselleri #86–#88</li>
+      </ul></div>
+    <div><h3>Para, makine, süreç (8)</h3>
+      <ul class="small">
+        <li>B18 Şartlı canlı veri silme (şu an yok)</li>
+        <li>B19 Ücretli kod incelemesi</li>
+        <li>B20 Yarım kalan güvenlik sorusu</li>
+        <li>B21, B23 Eski otomasyon soruları</li>
+        <li>B25 Uzak dal silme listesi</li>
+        <li>B26 Makine temizliği (14 GB)</li>
+        <li>B27 GitHub CI ücreti ve tavanı</li>
+      </ul></div>
+  </div>
+  <p class="small"><b>Önerim:</b> B21, B23 ve B25 Project geçişi ve git devriyle senin sorun olmaktan çıktı; ben kapatırım. B20 yarım kaldığı için ya tamamlarsın ya düşer. Böylece liste 22'ye iner.</p>
+</section>
+
+<section>
+  <h2>Ekran ekran plan</h2>
+  <p>Kural: bir ekran, kabul listesinde açık madde kalmayınca biter. Henüz biten yok. Üç ekran aynı anda uygulamaya alındı.</p>
+  <div class="tbl"><table>
+    <thead><tr><th>#</th><th>Ekran</th><th>Aşama</th><th>İlerleme</th></tr></thead>
+    <tbody>
+      <tr><td class="n">1</td><td>Schedule</td><td><span class="pill p-go">uygulama</span></td><td>29 / 101 madde bitti; Undo (#12) ve takılmayan Undo (S4b) main'de ve canlıda, kayıtta işaretlenmesi bekleniyor; 6'sı dalda hazır; tasarım planı 6 / 16 seçildi<div class="bar"><i style="width:29%"></i></div></td></tr>
+      <tr><td class="n">2</td><td>Requests</td><td><span class="pill p-go">uygulama</span></td><td>veri paketi main'de; ekran dilimleri bekliyor; kabul listesi henüz yok</td></tr>
+      <tr><td class="n">3</td><td>Employees</td><td><span class="pill p-go">uygulama</span></td><td>8 / 59 madde bitti, 6'sı kısmen<div class="bar"><i style="width:14%"></i></div></td></tr>
+      <tr><td class="n">4</td><td>Availability</td><td><span class="pill p-wait">keşif</span></td><td>3 rapor yazıldı, görsel inceleme eksik; 3 soru</td></tr>
+      <tr><td class="n">5</td><td>Workspace</td><td><span class="pill p-wait">karar</span></td><td>keşif bitti; 6 soru</td></tr>
+      <tr><td class="n">6</td><td>Documents</td><td><span class="pill p-wait">karar</span></td><td>keşif bitti; 10 soru</td></tr>
+      <tr><td class="n">7</td><td>Announcements</td><td><span class="pill p-wait">karar</span></td><td>keşif bitti; 3 soru</td></tr>
+      <tr><td class="n">8</td><td>Important Dates</td><td><span class="pill p-wait">keşif</span></td><td>çekmece incelendi; B12, B13</td></tr>
+      <tr><td class="n">9</td><td>Notifications</td><td><span class="pill p-wait">plan</span></td><td>sıfırdan yazılacak; B14, B15</td></tr>
+      <tr><td class="n">10</td><td>Settings</td><td><span class="pill p-wait">keşif</span></td><td>General, Jobs, Locations incelendi; B6–B11</td></tr>
+      <tr><td class="n">11–14</td><td>Çalışan ekranları (Home, Schedule, Shift Hub, My Availability)</td><td><span class="pill p-idle">sırada</span></td><td>—</td></tr>
+      <tr><td class="n">15</td><td>Account</td><td><span class="pill p-idle">sırada</span></td><td>—</td></tr>
+      <tr><td class="n">16</td><td>Giriş ve katılım</td><td><span class="pill p-idle">bekletiliyor</span></td><td>keşif bitti; giriş modeli kararı e-posta servisi bağlanınca</td></tr>
+      <tr><td class="n">17</td><td>Yasal sayfalar</td><td><span class="pill p-idle">sırada</span></td><td>Stripe canlı hesap için önce bunlar</td></tr>
+      <tr><td class="n">18</td><td>Billing (Stripe)</td><td><span class="pill p-idle">sırada</span></td><td>ödeme kodu yok</td></tr>
+    </tbody>
+  </table></div>
+  <p class="small">Schedule ve Employees sayıları kabul listelerinden (<code>docs/plan/ekranlar/01-schedule/EKRAN.md</code>, <code>03-employees/EKRAN.md</code>) sayıldı; "dalda hazır" ve "kısmen" maddeler bitmiş sayılmadı. <code>EKRAN-PLANI.md</code>'deki tablo eskimiş (Schedule için 7 Ekim'deki "12/19 dilim" yazıyor); güncellenmeli.</p>
+</section>
+
+<section>
+  <h2>Backlog</h2>
+  <div class="facts">
+    <div class="fact"><b>980</b><span>toplam madde (BL-1019'a kadar)</span></div>
+    <div class="fact"><b>317</b><span>kapandı ✓</span></div>
+    <div class="fact"><b>663</b><span>açık</span></div>
+    <div class="fact"><b>37</b><span>kritik ya da yüksek önemde (2 kritik, 35 yüksek)</span></div>
+  </div>
+  <p><a href="backlog.html"><b>Bütün maddeler önem, risk ve alana göre gruplanmış hâliyle: Backlog sayfası →</b></a></p>
+  <p class="small">Kritik görünen iki madde (BL-958, BL-959) büyük ölçüde düzeldi ama kayıtta kapatılmamış. Sayılar main'deki <code>BACKLOG.md</code>'den (<code>d68aa958</code>) her güncellemede otomatik çıkarılır.</p>
+  <p class="small"><b>Sayıldı:</b> BL-998, BL-999 ve BL-1000'in kapanışı main'e indi; yukarıdaki sayılara dahil. <b>Henüz sayılmayan:</b> BL-1011'in düzeltmesi main'de ama kayıtta henüz kapatılmadı; kapanınca 662 açık, 318 kapanan, 36 kritik ya da yüksek olur.</p>
+</section>
+
+<section>
+  <h2>Bir sonraki en önemli iş</h2>
+  <p class="small">Senin onayınla (9 Ekim): en önemli iki iş bunlar, bu sırayla.</p>
+  <div class="reco">
+    <p class="done"><span class="chk">✓</span><b>1. Main'i yeşile indirmek.</b> Bitti: tren 04:43 UTC'de indi, main yeşil.</p>
+    <p><span class="wip">◐</span><b>2. Schedule'ı ilk "bitti" ekran yapmak.</b> Şimdi bunun üzerindeyiz. Şablon penceresi main'de, üç yeniden tasarım varyantını beğenmedin (neyi beğenmediğin soruldu); test sayfası yayında; Undo main'de ve canlıda, artık geri gelemeyen adımda da takılmıyor; vardiya penceresinde saat yazma düzeldi; tasarım planının 16 maddesi sayfa sayfa seçiliyor; yayın kuralları paketi sırada; izin işareti kural değişince kapandı. Kalan açık maddeler kapanır. Üç ekran aynı anda açık ve hiçbiri bitmedi; ilk bitmiş ekran hem kaliteyi kanıtlar hem sonrakiler için kalıp olur. Schedule'da senden yalnız beş karar gerekecek (S24, S25 ve üç görsel); sırası gelince kartla sorulur.</p>
+    <p class="small">Elenenler: Stripe'a şimdi başlamak erken (yasal sayfalar ve giriş önce gelmeli). Bildirim sistemini sıfırdan yazmak büyük bir iş ve 6 temel soru cevapsız. Giriş ekranı e-posta servisini bekliyor.</p>
+  </div>
+</section>
+
+<section>
+  <h2>Benimle en uyumlu çalışmak için</h2>
+  <p class="small">Senin cevabın (9 Ekim): 1–6 kabul; 7'yi gerekirse sen söyleyeceksin.</p>
+  <ol>
+    <li><b>Tek koordinatör.</b> Eski yerel koordinatör oturumunu kalıcı olarak kapalı tut. Bugünkü çakışma (aynı işe iki işçi) bundan çıktı. Bilgisayarında Claude Code açman gerekirse yalnız bir thread'in istediği oturum olarak açılsın.</li>
+    <li><b>İstekler proje sohbetine.</b> Her iş kendi thread'inde yürür; "durum ne?" dersen koordinatör tek mesajla özetler. Git, dal ve tren soruları sana gelmez.</li>
+    <li><b>Kararlar küçük paketlerle.</b> Günde bir tur, en çok 3–5 karar kartı, önce durduranlar. 26 kararı bu hafta beşer beşer bitirebiliriz; ilk paket Schedule'ın kararlarıyla başlar.</li>
+    <li><b>Bir hafta süreç dondurma.</b> Geçiş main'e girince kurallara ve betiklere yeni ekleme yapmayalım, zamanı ürün koduna verelim. Son günlerde commit'lerin üçte ikisi belge ve düzen işiydi. Kabul edildi ve karar defterine işlendi.</li>
+    <li><b>Bilgisayar açık, Docker çalışır.</b> Veritabanı testleri, ekran testleri ve tren yalnız senin makinende koşuyor. Makine kapalıyken main'e hiçbir şey girmez. Bunun ücretli bir alternatifi var (B27).</li>
+    <li><b>Görsel kararlar sayfada.</b> Varyantlar tek sayfada yan yana gelir, sen tıklayarak seçersin; sohbette uzun liste olmaz.</li>
+    <li><b>Mesaj fazla uzun ya da teknikse söyle.</b> Tercihini hafızaya yazarım, bütün thread'ler ona uyar.</li>
+  </ol>
+</section>
+</div>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Ortak tasarım, raporlar ve araçlar", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+</body></html>

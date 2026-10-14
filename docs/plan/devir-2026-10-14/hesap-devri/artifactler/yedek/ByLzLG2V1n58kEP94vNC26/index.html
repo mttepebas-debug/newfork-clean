@@ -1,0 +1,476 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Requests Çekmeceleri</title>
+<meta charset="utf-8">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: a bench. Turkish brief and switches on top, then the drawer on a
+   desktop frame and a phone frame side by side, then what changed and today's
+   drawers. The app inside the frames uses Newfork's light-only app tokens
+   (same as the Important Dates single-drawer prototype); the page around it
+   follows the viewer's theme. */
+:root {
+  --bg: #f4f5f3; --panel: #ffffff; --ink: #17221e; --muted: #5f6b66; --line: #dce3df;
+  --accent: #176954; --accent-soft: #dbece5; --tag-new: #ece6f7; --tag-new-ink: #4b347a;
+  --frame: #e7ece9;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #121815; --panel: #1a221e; --ink: #e5ece8; --muted: #a3b2ab; --line: #2e3a34; --accent: #5fc39a; --accent-soft: #1d3329; --tag-new: #2c2440; --tag-new-ink: #d4c6f2; --frame: #0d1210; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #121815; --panel: #1a221e; --ink: #e5ece8; --muted: #a3b2ab; --line: #2e3a34; --accent: #5fc39a; --accent-soft: #1d3329; --tag-new: #2c2440; --tag-new-ink: #d4c6f2; --frame: #0d1210; color-scheme: dark; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font); }
+.wrap { max-width: 1520px; margin: 0 auto; padding-block: 26px 64px; padding-inline: 20px; display: grid; gap: 22px; }
+h1 { margin: 0; font-size: 28px; line-height: 1.2; text-wrap: balance; }
+h2 { margin: 0; font-size: 18px; text-wrap: balance; }
+p { margin: 0; max-width: 78ch; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.lead { display: grid; gap: 10px; }
+.muted { color: var(--muted); }
+.box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.controls { display: grid; gap: 10px; }
+.crow { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; }
+.crow > span { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); min-width: 86px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button { font: 600 13.5px/1 var(--font); color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 9px 12px; min-height: 38px; cursor: pointer; }
+.pills button[aria-pressed="true"] { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.pills button:focus-visible, .stagebox button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.hint { font-size: 13.5px; color: var(--muted); }
+.hint b { color: var(--ink); }
+.stagebox { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; background: var(--frame); border-radius: 12px; padding: 14px; }
+.slot { display: grid; gap: 6px; min-width: 0; }
+.slot > .lab { font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.viewport { position: relative; overflow: hidden; border-radius: 8px; box-shadow: 0 1px 2px rgb(0 0 0 / .08), 0 10px 28px rgb(0 0 0 / .1); }
+.phonevp { border-radius: 34px; border: 10px solid #1d2525; box-shadow: 0 10px 28px rgb(0 0 0 / .15); }
+.scaler { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.orig { display: grid; gap: 12px; }
+.orig img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); background: #fff; }
+.changes { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+.changes ul { margin: 0; padding-left: 18px; display: grid; gap: 7px; }
+.changes li { max-width: 70ch; }
+.tagnew { display: inline-block; background: var(--tag-new); color: var(--tag-new-ink); border-radius: 999px; font-size: 11.5px; font-weight: 700; padding: 1px 8px; margin-right: 4px; }
+@media (max-width: 900px) { .stagebox { grid-template-columns: 1fr; justify-items: center; } .slot { width: 100%; } h1 { font-size: 23px; } }
+
+/* ---------- the app (light only, Newfork app tokens) ---------- */
+.app {
+  --page: #f4f5f3; --surface: #ffffff; --soft2: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #66716c; --muted-strong: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --accent-soft: #dbece5; --accent-ink: #11513a; --focus: #177a64;
+  --warn-soft: #fff7e2; --warn-text: #5f491f; --warn-border: #bf872d;
+  --danger: #b84234; --danger-soft: #fbeceb; --blue-soft: #e8eff8; --blue-ink: #234a7a;
+  --ok-soft: #e4f2ea; --ok-ink: #1d6043;
+  color-scheme: light; position: relative; background: var(--page); color: var(--body); font: 14px/1.45 var(--font); overflow: hidden;
+}
+.app button { font: inherit; cursor: pointer; color: inherit; }
+.app :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.app .side { position: absolute; top: 0; left: 0; bottom: 0; width: 288px; background: #eef1ef; padding: 20px 18px; display: grid; align-content: start; gap: 6px; }
+.app .side b { font-size: 15px; margin-bottom: 18px; }
+.app .side span { padding: 9px 10px; border-radius: 7px; color: var(--muted-strong); font-weight: 500; }
+.app .side span.on { background: #dfe6e2; color: var(--accent-ink); font-weight: 650; }
+.app .main { position: absolute; top: 0; left: 288px; right: 0; bottom: 0; padding: 56px 32px; display: grid; align-content: start; gap: 14px; }
+.app .main .ey { font-size: 11px; font-weight: 700; letter-spacing: .14em; color: var(--accent); }
+.app .main h4 { margin: 0; font-size: 38px; color: var(--text); }
+.app .rows { border: 1px solid var(--border); border-radius: 9px; background: var(--surface); overflow: hidden; }
+.app .rows div { padding: 14px 16px; border-top: 1px solid var(--border); color: var(--muted-strong); }
+.app .rows div:first-child { border-top: 0; background: #edf2ef; font-size: 11.5px; font-weight: 700; letter-spacing: .05em; }
+.app .scrim { position: absolute; inset: 0; background: rgba(23, 34, 30, .32); z-index: 5; }
+.app .drawer { position: absolute; top: 0; right: 0; bottom: 0; width: 640px; background: var(--surface); z-index: 6; display: flex; flex-direction: column; box-shadow: -8px 0 24px rgba(23, 34, 30, .12); }
+.app.ph .drawer { width: 100%; }
+.app.ph .side, .app.ph .main { display: none; }
+.app .dh { padding: 18px 16px 0; border-bottom: 1px solid var(--border); display: grid; gap: 4px; }
+.app .dh-row { display: flex; justify-content: space-between; gap: 10px; align-items: flex-start; }
+.app .dh h3 { margin: 0; font-size: 18px; font-weight: 650; color: var(--text); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.app .dh .sub { color: var(--muted-strong); font-size: 13px; display: flex; gap: 4px 10px; flex-wrap: wrap; align-items: center; }
+.app .dh .sub a { color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.app .typ { background: var(--soft2); color: var(--muted-strong); border-radius: 6px; font-size: 12px; font-weight: 600; padding: 2px 8px; }
+.app .st { border-radius: 999px; font-size: 12px; font-weight: 650; padding: 2px 9px; }
+.app .st.warn { background: var(--warn-soft); color: #7a4b07; }
+.app .st.ok { background: var(--ok-soft); color: var(--ok-ink); }
+.app .st.red { background: var(--danger-soft); color: #8b3326; }
+.app .st.grey { background: var(--soft2); color: var(--muted-strong); }
+.app .x { border: 0; background: none; width: 32px; height: 32px; border-radius: 6px; font-size: 20px; color: var(--muted-strong); flex: none; }
+.app .x:hover { background: var(--soft2); }
+.app .dtabs { display: flex; gap: 18px; margin-top: 10px; overflow-x: auto; }
+.app .dtabs button { border: 0; background: none; padding: 8px 0 10px; color: var(--muted-strong); font-weight: 600; border-bottom: 2px solid transparent; white-space: nowrap; font-size: 14px; }
+.app .dtabs button[aria-selected="true"] { color: var(--text); border-color: var(--accent); }
+.app .dtabs .badge { background: var(--warn-soft); color: #7a4b07; border-radius: 999px; font-size: 11px; padding: 1px 7px; margin-left: 4px; }
+.app .db { flex: 1; overflow-y: auto; padding: 16px; display: grid; align-content: start; gap: 14px; }
+.app .df { border-top: 1px solid var(--border); padding: 12px 16px; display: grid; gap: 8px; }
+.app .df-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; }
+.app .df-right { display: flex; gap: 8px; margin-left: auto; }
+.app .df-note { font-size: 12.5px; color: var(--muted-strong); }
+.app .fld { display: grid; gap: 6px; min-width: 0; }
+.app .lbl { font-weight: 650; font-size: 13px; color: var(--text); }
+.app .val { font-size: 14px; color: var(--text); }
+.app .val small { display: block; color: var(--muted); font-size: 12.5px; }
+.app .g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.app .sec { border-top: 1px solid var(--border); padding-top: 14px; display: grid; gap: 12px; }
+.app .sec:first-child { border-top: 0; padding-top: 0; }
+.app .sec-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.app .sec-h b { font-size: 14px; color: var(--text); }
+.app .sec-h span { font-size: 12.5px; color: var(--muted); }
+.app .note { font-size: 13px; color: var(--muted-strong); background: var(--soft2); border-radius: 7px; padding: 9px 11px; line-height: 1.5; }
+.app .note.warn { background: var(--warn-soft); color: var(--warn-text); }
+.app .note.red { background: var(--danger-soft); color: #7d2a20; }
+.app .ro { background: var(--blue-soft); color: var(--blue-ink); border-radius: 8px; padding: 9px 12px; font-size: 13px; font-weight: 600; }
+.app .quote { border-left: 3px solid var(--border-strong); padding: 2px 0 2px 10px; color: var(--body); }
+.app .locs, .app .grp { border: 1px solid var(--border); border-radius: 9px; overflow: hidden; }
+.app .loc-h, .app .loc { display: grid; grid-template-columns: minmax(0, 1fr) 150px 120px; gap: 10px; align-items: center; padding: 9px 12px; }
+.app.ph .loc-h, .app.ph .loc { grid-template-columns: minmax(0, 1fr) 110px; }
+.app.ph .loc .who, .app.ph .loc-h .who { display: none; }
+.app .loc-h { background: #edf2ef; font-size: 11.5px; font-weight: 700; color: var(--muted-strong); text-transform: uppercase; letter-spacing: .05em; }
+.app .loc { border-top: 1px solid var(--border); }
+.app .loc .nm { font-weight: 650; color: var(--text); }
+.app .loc .who { font-size: 12.5px; color: var(--muted); }
+.app .grp-h { background: #f6f8f7; padding: 8px 12px; font-size: 12.5px; font-weight: 650; color: var(--muted-strong); display: flex; justify-content: space-between; gap: 8px; }
+.app .sh { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-top: 1px solid var(--border); align-items: center; }
+.app .sh:first-child { border-top: 0; }
+.app .av { width: 30px; height: 30px; border-radius: 50%; background: #e7ecea; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--muted-strong); }
+.app .av.empty { background: none; border: 1.5px dashed var(--border-strong); }
+.app .sh .nm b { display: block; font-size: 13.5px; color: var(--text); }
+.app .sh .nm span { font-size: 12.5px; color: var(--muted); display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.app .chk { display: inline-flex; gap: 4px; align-items: center; border-radius: 6px; font-size: 11.5px; font-weight: 650; padding: 1px 7px; }
+.app .chk.ok { background: var(--ok-soft); color: var(--ok-ink); }
+.app .chk.warn { background: var(--warn-soft); color: #7a4b07; }
+.app .chk.red { background: var(--danger-soft); color: #8b3326; }
+.app .cand { display: grid; grid-template-columns: 20px 32px minmax(0, 1fr); gap: 10px; padding: 11px 12px; border-top: 1px solid var(--border); align-items: center; cursor: pointer; }
+.app .cand:first-child { border-top: 0; }
+.app .cand input { accent-color: var(--accent); width: 16px; height: 16px; margin: 0; }
+.app .cand.on { background: #f3f8f5; }
+.app .cand.off { cursor: not-allowed; }
+.app .cand.off .nm b { color: var(--muted); }
+.app .empty { padding: 18px 12px; text-align: center; color: var(--muted); font-size: 13px; }
+.app .shift { display: grid; gap: 3px; padding: 12px; border: 1px solid var(--border); border-radius: 9px; }
+.app .shift .d { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted-strong); }
+.app .shift .t { font-size: 18px; font-weight: 650; color: var(--text); }
+.app .shift .m { font-size: 13px; color: var(--muted-strong); }
+.app .act { display: grid; grid-template-columns: 16px minmax(0, 1fr); gap: 10px; font-size: 13px; }
+.app .act i { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); margin-top: 5px; }
+.app .act b { color: var(--text); font-weight: 650; }
+.app .act span { display: block; color: var(--muted); font-size: 12.5px; }
+.app .btn { height: 36px; border-radius: 7px; padding: 0 14px; font-weight: 650; font-size: 13.5px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); }
+.app .btn.go { background: var(--accent); border-color: var(--accent); color: #fff; }
+.app .btn.go:disabled { background: #9db9ae; border-color: #9db9ae; cursor: not-allowed; }
+.app .btn.red { background: var(--danger); border-color: var(--danger); color: #fff; }
+.app .btn.redline { color: var(--danger); border-color: #e3b5ae; }
+.app .ta { width: 100%; min-height: 74px; border: 1px solid var(--border-strong); border-radius: 7px; padding: 8px 10px; font: inherit; resize: vertical; }
+.app .done { display: grid; gap: 6px; justify-items: start; }
+.app.ph .g2 { grid-template-columns: 1fr; }
+.app.ph .df-row { flex-direction: column; align-items: stretch; }
+.app.ph .df-right { margin-left: 0; }
+.app.ph .df-right .btn { flex: 1; height: 44px; }
+.app.ph .df .btn.redline { height: 44px; }
+.app .phtop { display: none; }
+</style>
+
+<div class="wrap">
+  <header class="lead">
+    <span class="eyebrow">Requests · çekmeceler · taslak, kod yok</span>
+    <h1>Requests çekmeceleri: Important Dates çekmecesinin diliyle</h1>
+    <p>Requests'te bir satıra basınca açılan çekmeceleri yeniden çizdim: <b>Time off</b>, <b>Cover</b> ve <b>Open shift</b>. Swap'a dokunmadım; onun ortada açılan küçük penceresini (H2) sen kilitledin. Dil, Important Dates thread'indeki tek çekmece prototipinden: başlıkta tür rozeti ve durum, altında sekmeler, ince çizgiyle ayrılan bölümler, lokasyon tablosu, altta sabit düğme şeridi.</p>
+    <p class="muted">Tıklanır örnek; veriler sahte (Harbor &amp; Vine), tıkladıkların yalnız bu tarayıcıda kalır. En altta bugünkü çekmecelerin görüntüsü var.</p>
+  </header>
+
+  <section class="box controls" aria-label="Seçimler">
+    <div class="crow"><span>Hâl</span>
+      <div class="pills" role="group" aria-label="Hâl">
+        <button type="button" data-view="new" aria-pressed="true">Yeni</button>
+        <button type="button" data-view="orig" aria-pressed="false">Original (bugün)</button>
+      </div>
+    </div>
+    <div class="crow" id="scenRow"><span>Senaryo</span>
+      <div class="pills" role="group" aria-label="Senaryo" id="scenarios"></div>
+    </div>
+    <div class="crow" id="roleRow"><span>Kim açıyor</span>
+      <div class="pills" role="group" aria-label="Kim açıyor">
+        <button type="button" data-role="owner" aria-pressed="true">Owner · Mert Tepebas</button>
+        <button type="button" data-role="manager" aria-pressed="false">Manager · Rachel Adams (Downtown)</button>
+      </div>
+      <div class="pills"><button type="button" id="reset">Senaryoyu baştan başlat</button></div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </section>
+
+  <section class="stagebox" id="stage" aria-label="Çekmece">
+    <div class="slot" id="deskSlot"><span class="lab">Masaüstü · 1440 × 900</span><div class="viewport" id="deskVp"><div class="scaler" id="deskScaler"></div></div></div>
+    <div class="slot" id="phoneSlot"><span class="lab">Telefon · 390 × 844</span><div class="viewport phonevp" id="phoneVp"><div class="scaler" id="phoneScaler"></div></div></div>
+  </section>
+
+  <section class="orig" id="origBox" hidden aria-label="Bugünkü çekmeceler">
+    <p class="hint">Kurtarma dalının bugünkü çekmeceleri (1440). Time off ile Cover/Open shift iki ayrı tasarım; Cover ya da Open shift açınca arkadaki liste eski "Shift changes" görünümüne dönüyor.</p>
+    <img id="origImg" alt="Bugünkü çekmece" src="img/orig-timeoff.png">
+  </section>
+
+  <section class="changes" aria-label="Ne değişti">
+    <div class="box">
+      <h2>Üçünde ortak</h2>
+      <ul>
+        <li>Tek kabuk: başlık, sekmeler, gövde, alt şerit hep aynı yerde. Bugün Time off ve Cover/Open shift iki ayrı tasarım.</li>
+        <li>Başlıkta kişi ya da vardiya, yanında tür rozeti (Time off, Cover, Open shift) ve durum.</li>
+        <li>Alt satırda <b>Decide by</b> ve "New York time"; G13 soru 2'deki önerimle aynı biçim. Yanında <b>Open in Schedule ↗</b>; bugünkü en alttaki "View current schedule" buraya geldi.</li>
+        <li>Saatler tek biçimde: "4:00 PM – 10:00 PM". Bugün aynı çekmecede "4p – 10p", "16:00 – 22:00" ve "America/New_York" karışık.</li>
+        <li>Geçmiş kendi sekmesinde (<b>Activity</b>); karar verirken araya girmiyor.</li>
+        <li>Düğmeler: onay yeşil sağda, Deny beyaz; Deny gerekçe ister ve gerekçeyi yalnız çalışan okur (BL-910). Kapatmak gibi geri dönüşsüz iş kırmızı ve iki tıkla.</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Time off</h2>
+      <ul>
+        <li>"Dates" ve "Requested periods" aynı şeyi iki kez söylüyordu; tek bölümde Starts, Ends ve gün gün süre.</li>
+        <li>Onaylar Important Dates'in lokasyon tablosuyla: Location · Status · Kim. İki lokasyonlu izinde kimin onayladığı bir bakışta görünür.</li>
+        <li>Açılacak vardiyalar <b>Shifts</b> sekmesinde, sayısı sekmede. Details'te tek satır özet: "2 shifts become open".</li>
+        <li><span class="tagnew">yeni</span> <b>Also off</b> satırı: aynı lokasyonda o günlerde izinli başka kim var. Müdürün asıl sorusu "o gün kaç kişi eksik kalırım?".</li>
+      </ul>
+    </div>
+    <div class="box">
+      <h2>Cover ve Open shift</h2>
+      <ul>
+        <li>Sarı "Current owner" kutusu tek satırlık mavi bilgi şeridi oldu: "Noah stays on this shift until you approve."</li>
+        <li>Aday <b>Candidates</b> sekmesinde değil Details'te, çünkü kararın kendisi. Her adayın satırında uygunluk etiketi (H2 kutularının renkleri).</li>
+        <li><span class="tagnew">kalktı</span> "Review" ara adımı. Adayı seç, yeşil düğme "Give shift to Emma" der.</li>
+        <li>"Close cover search" alttaki kırmızı <b>Close request</b> oldu; iki tık ister.</li>
+        <li>Aday yoksa boş satır ne olacağını söyler: "Nobody has asked yet. The shift stays open on the Schedule."</li>
+      </ul>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const S = {
+    to1: {
+      label: "Time off · tek lokasyon", kind: "timeoff",
+      hint: "<b>Ethan Brooks</b>, 2 gün izin. Details'te tarih, not ve onay tablosu; <b>Shifts</b> sekmesinde açılacak vardiya. Deny'a bas: gerekçe ister.",
+      who: "Ethan Brooks", initials: "EB", status: ["Needs review", "warn"], submitted: "Oct 11, 4:56 AM", decide: "Oct 12, 12:00 AM",
+      starts: "Tue, Oct 13", ends: "Wed, Oct 14", days: "2 full days",
+      note: "Family emergency, flying to Atlanta for my grandmother's funeral.",
+      locs: [{ name: "Harbor & Vine Downtown", st: ["Waiting", "warn"], who: "You decide", mine: true }],
+      shifts: [{ d: "Tue, Oct 13", t: "4:00 PM – 10:00 PM", m: "Downtown · Busser" }],
+      alsoOff: "Maria Lopez (Oct 14)",
+      acts: [["Submitted", "Ethan Brooks · Oct 11, 4:56 AM"]],
+    },
+    to2: {
+      label: "Time off · iki lokasyon", kind: "timeoff",
+      hint: "<b>Jake Thompson</b> iki lokasyonda çalışıyor. Uptown müdürü David Park onayladı; tablo kimin ne dediğini gösteriyor. Rolü Manager yap: Rachel yalnız Downtown için karar verir.",
+      who: "Jake Thompson", initials: "JT", status: ["In progress", "grey"], submitted: "Oct 10, 6:12 PM", decide: "Oct 12, 12:00 AM",
+      starts: "Tue, Oct 13", ends: "Thu, Oct 15", days: "3 full days",
+      note: "My brother's wedding in Denver.",
+      locs: [
+        { name: "Harbor & Vine Uptown", st: ["Approved", "ok"], who: "David Park · Oct 11" },
+        { name: "Harbor & Vine Downtown", st: ["Waiting", "warn"], who: "You decide", mine: true },
+      ],
+      shifts: [
+        { d: "Tue, Oct 13", t: "6:00 PM – 11:30 PM", m: "Uptown · Bartender" },
+        { d: "Thu, Oct 15", t: "11:00 AM – 4:00 PM", m: "Downtown · Server" },
+      ],
+      alsoOff: "nobody else",
+      acts: [["Approved for Uptown", "David Park · Oct 11, 9:02 AM"], ["Submitted", "Jake Thompson · Oct 10, 6:12 PM"]],
+    },
+    cover: {
+      label: "Cover · aday var", kind: "cover",
+      hint: "<b>Noah Garcia</b> vardiyasını devretmek istiyor; Emma ve Sophie almak istedi. Bir adayı seç: yeşil düğmenin yazısı değişir. Sophie'nin dinlenme uyarısı turuncu; seçilebilir ama düğme uyarıyı söyler.",
+      title: "Sun, Oct 11 · 4:00 PM – 10:00 PM", owner: "Noah Garcia", initials: "NG", status: ["Needs review", "warn"], decide: "Oct 11, 4:00 PM",
+      shift: { d: "Sun, Oct 11", t: "4:00 PM – 10:00 PM", m: "Harbor & Vine Uptown · Server · 5.5 h, 30 min unpaid break" },
+      note: "Final exams week.",
+      cands: [
+        { name: "Emma Wilson", initials: "EW", when: "Asked Oct 11, 6:56 AM", checks: [["Available", "ok"], ["12 h of rest", "ok"]] },
+        { name: "Sophie Martin", initials: "SM", when: "Asked Oct 11, 7:20 AM", checks: [["8 h of rest · 10 h needed", "warn"]] },
+        { name: "Diego Morales", initials: "DM", when: "Asked Oct 11, 7:41 AM", checks: [["On time off", "red"]], off: true },
+      ],
+      acts: [["Emma Wilson asked to take it", "Oct 11, 6:56 AM"], ["Noah Garcia asked for cover", "Oct 10, 9:14 PM"]],
+    },
+    open0: {
+      label: "Open shift · aday yok", kind: "open",
+      hint: "Kimsenin almadığı açık vardiya. Boş satır ne olacağını söylüyor; <b>Close request</b> kırmızı, iki tık.",
+      title: "Fri, Oct 16 · 4:00 PM – 10:00 PM", owner: null, status: ["Open", "grey"], decide: "Oct 16, 4:00 PM",
+      shift: { d: "Fri, Oct 16", t: "4:00 PM – 10:00 PM", m: "Harbor & Vine Downtown · Server · 5.5 h, 30 min unpaid break" },
+      cands: [], acts: [["Shift opened", "Rachel Adams · Oct 9, 3:10 PM"]],
+    },
+    open1: {
+      label: "Open shift · aday var", kind: "open",
+      hint: "<b>Grace Murphy</b> açık vardiyayı almak istedi. Tek aday seçili gelir; onay \"Give shift to Grace\".",
+      title: "Sat, Oct 17 · 4:00 PM – 10:00 PM", owner: null, status: ["Needs review", "warn"], decide: "Oct 17, 4:00 PM",
+      shift: { d: "Sat, Oct 17", t: "4:00 PM – 10:00 PM", m: "Harbor & Vine Downtown · Server · 5.5 h, 30 min unpaid break" },
+      cands: [{ name: "Grace Murphy", initials: "GM", when: "Asked Oct 11, 8:05 AM", checks: [["Available", "ok"], ["No shift nearby", "ok"]] }],
+      acts: [["Grace Murphy asked to take it", "Oct 11, 8:05 AM"], ["Shift opened", "Rachel Adams · Oct 9, 3:10 PM"]],
+    },
+  };
+  const ORIG = { timeoff: "img/orig-timeoff.png", cover: "img/orig-cover.png", open: "img/orig-open.png" };
+  const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const fresh = () => ({ tab: "details", pick: null, deny: false, reason: "", closeArm: false, outcome: null });
+  const st = { view: "new", scen: "to1", role: "owner", ui: fresh() };
+  try { const saved = JSON.parse(localStorage.getItem("cekmece.view") || "{}"); if (S[saved.scen]) st.scen = saved.scen; if (saved.role === "manager") st.role = "manager"; } catch (e) { /* storage blocked */ }
+
+  function firstName(n) { return n.split(" ")[0]; }
+  function header(s) {
+    const typ = { timeoff: "Time off", cover: "Cover", open: "Open shift" }[s.kind];
+    const status = st.ui.outcome ? st.ui.outcome.status : s.status;
+    const title = s.kind === "timeoff" ? s.who : s.title;
+    const tabs = s.kind === "timeoff"
+      ? [["details", "Details"], ["shifts", "Shifts", s.shifts.length], ["activity", "Activity"]]
+      : [["details", "Details"], ["activity", "Activity"]];
+    return `<div class="dh"><div class="dh-row"><h3>${esc(title)} <span class="typ">${typ}</span> <span class="st ${status[1]}">${esc(status[0])}</span></h3><button type="button" class="x" aria-label="Close">×</button></div>
+      <div class="sub"><span>Decide by ${esc(s.decide)} · New York time</span><a href="#" data-noop>Open in Schedule ↗</a></div>
+      <div class="dtabs" role="tablist">${tabs.map(([k, l, n]) => `<button type="button" role="tab" data-tab="${k}" aria-selected="${st.ui.tab === k}">${l}${n ? `<span class="badge">${n}</span>` : ""}</button>`).join("")}</div></div>`;
+  }
+  function locTable(s) {
+    const mine = st.role === "owner" || true;
+    return `<div class="locs"><div class="loc-h"><span>Location</span><span>Status</span><span class="who">Who</span></div>${s.locs.map((l) => {
+      let stt = l.st, who = l.who;
+      if (l.mine && st.ui.outcome) { stt = st.ui.outcome.loc; who = st.role === "owner" ? "Mert Tepebas · now" : "Rachel Adams · now"; }
+      if (l.mine && !st.ui.outcome && st.role === "manager" && l.name.includes("Uptown")) who = "Uptown manager";
+      return `<div class="loc"><span class="nm">${esc(l.name)}</span><span><span class="st ${stt[1]}">${esc(stt[0])}</span></span><span class="who">${esc(who)}</span></div>`;
+    }).join("")}</div>`;
+  }
+  function shiftRows(list, tag) {
+    return `<div class="grp">${list.map((x) => `<div class="sh"><span class="av empty" aria-hidden="true"></span><span class="nm"><b>${esc(x.d)} · ${esc(x.t)}</b><span>${esc(x.m)}</span></span><span class="chk warn">${tag}</span></div>`).join("")}</div>`;
+  }
+  function timeoffBody(s) {
+    if (st.ui.tab === "shifts") return `<div class="sec"><div class="sec-h"><b>Shifts that become open</b><span>${s.shifts.length} ${s.shifts.length === 1 ? "shift" : "shifts"}</span></div>
+      <p class="note">When you approve, these shifts become open shifts on the Schedule. Nobody is moved onto them for you.</p>${shiftRows(s.shifts, "Becomes open")}</div>`;
+    if (st.ui.tab === "activity") return activity(s);
+    const n = s.shifts.length;
+    return `<div class="sec"><div class="g2"><div class="fld"><span class="lbl">Starts</span><span class="val">${esc(s.starts)}<small>Full day</small></span></div><div class="fld"><span class="lbl">Ends</span><span class="val">${esc(s.ends)}<small>Full day · ${esc(s.days)}</small></span></div></div>
+      <div class="fld"><span class="lbl">Note from ${esc(firstName(s.who))}</span><span class="quote">${esc(s.note)}</span></div></div>
+      <div class="sec"><div class="sec-h"><b>Approvals</b><span>${s.locs.filter((l) => l.st[0] === "Approved").length + (st.ui.outcome && st.ui.outcome.loc[0] === "Approved" ? 1 : 0)} of ${s.locs.length} ${s.locs.length === 1 ? "location" : "locations"}</span></div>${locTable(s)}</div>
+      <div class="sec"><div class="sec-h"><b>On the Schedule</b><button type="button" class="btn" data-tab="shifts" style="height:30px;font-size:12.5px">See ${n} ${n === 1 ? "shift" : "shifts"}</button></div>
+      <div class="note warn">${n} ${n === 1 ? "shift becomes" : "shifts become"} open if you approve.</div>
+      <div class="fld"><span class="lbl"><span class="tagnew" style="background:#ece6f7;color:#4b347a;border-radius:999px;font-size:11px;padding:1px 7px">new</span> Also off these days</span><span class="val">${esc(s.alsoOff)}</span></div></div>`;
+  }
+  function coverBody(s) {
+    if (st.ui.tab === "activity") return activity(s);
+    const owner = s.owner ? `<div class="ro">${esc(firstName(s.owner))} stays on this shift until you approve.</div>` : `<div class="ro">Nobody is on this shift yet. It stays open until you approve someone.</div>`;
+    const cands = s.cands.length
+      ? `<div class="grp">${s.cands.map((c, i) => `<label class="cand${st.ui.pick === i ? " on" : ""}${c.off ? " off" : ""}"><input type="radio" name="cand-${st.scen}" data-pick="${i}" ${st.ui.pick === i ? "checked" : ""} ${c.off || st.ui.outcome ? "disabled" : ""}><span class="av">${c.initials}</span><span class="nm" style="display:grid;gap:3px"><b>${esc(c.name)}</b><span>${esc(c.when)}</span><span>${c.checks.map(([t, k]) => `<span class="chk ${k}">${esc(t)}</span>`).join("")}</span></span></label>`).join("")}</div>`
+      : `<div class="grp"><div class="empty">Nobody has asked yet. The shift stays open on the Schedule.</div></div>`;
+    return `<div class="sec"><div class="shift"><span class="d">${esc(s.shift.d)}</span><span class="t">${esc(s.shift.t)}</span><span class="m">${esc(s.shift.m)}</span></div>${owner}
+      ${s.note ? `<div class="fld"><span class="lbl">Private note from ${esc(firstName(s.owner))}</span><span class="quote">${esc(s.note)}</span><span class="val"><small>Only managers see this.</small></span></div>` : ""}</div>
+      <div class="sec"><div class="sec-h"><b>Who can take it</b><span>${s.cands.length} ${s.cands.length === 1 ? "person" : "people"}</span></div>${cands}</div>`;
+  }
+  function activity(s) {
+    return `<div class="sec"><div class="sec-h"><b>Activity</b></div>${s.acts.map(([a, b]) => `<div class="act"><i></i><span><b>${esc(a)}</b><span>${esc(b)}</span></span></div>`).join("")}</div>`;
+  }
+  function footer(s) {
+    const u = st.ui;
+    if (u.outcome) return `<div class="df"><div class="df-row"><span class="df-note">${esc(u.outcome.text)}</span><div class="df-right"><button type="button" class="btn" data-undo>Show again</button></div></div></div>`;
+    if (u.deny) return `<div class="df"><div class="fld"><label class="lbl" for="reason-${st.scen}">Reason for ${esc(firstName(s.who))}</label><textarea class="ta" id="reason-${st.scen}" placeholder="Only ${esc(firstName(s.who))} reads this.">${esc(u.reason)}</textarea></div>
+      <div class="df-row"><button type="button" class="btn" data-cancel>Back</button><div class="df-right"><button type="button" class="btn red" data-denyconfirm ${u.reason.trim() ? "" : "disabled"}>Deny request</button></div></div></div>`;
+    if (s.kind === "timeoff") {
+      const mineLoc = s.locs.find((l) => l.mine);
+      const label = s.locs.length > 1 ? `Approve for ${mineLoc.name.replace("Harbor & Vine ", "")}` : "Approve";
+      return `<div class="df"><div class="df-row"><span class="df-note">${s.locs.length > 1 ? "The other location already approved. Yours is the last approval." : "You are the only approval."}</span><div class="df-right"><button type="button" class="btn" data-deny>Deny</button><button type="button" class="btn go" data-approve>${label}</button></div></div></div>`;
+    }
+    const pick = u.pick === null ? null : s.cands[u.pick];
+    const warn = pick && pick.checks.some(([, k]) => k === "warn");
+    const label = pick ? `Give shift to ${firstName(pick.name)}${warn ? " anyway" : ""}` : (s.cands.length ? "Pick someone" : "Nobody to approve");
+    return `<div class="df"><div class="df-row"><button type="button" class="btn ${u.closeArm ? "red" : "redline"}" data-close>${u.closeArm ? "Click again to close" : "Close request"}</button><div class="df-right"><button type="button" class="btn go" data-approve ${pick ? "" : "disabled"}>${label}</button></div></div>
+      ${u.closeArm ? `<span class="df-note">${s.owner ? `${esc(firstName(s.owner))} keeps the shift.` : "The shift stays open."} People who asked are told.</span>` : ""}</div>`;
+  }
+  function drawer(s) {
+    const body = s.kind === "timeoff" ? timeoffBody(s) : coverBody(s);
+    return `${header(s)}<div class="db">${body}</div>${footer(s)}`;
+  }
+  function app(ph) {
+    const s = S[st.scen];
+    const bg = ph ? "" : `<div class="side"><b>Harbor &amp; Vine</b><span>Workspace</span><span>Schedule</span><span class="on">Requests</span><span>Employees</span><span>Availability</span><span>Important Dates</span><span>Announcements</span></div>
+      <div class="main"><span class="ey">TEAM CHANGES. REVIEWED WITH CONTROL.</span><h4>Requests</h4><div class="rows"><div>EMPLOYEE · TYPE · WHEN</div><div>Ethan Brooks · Time off · Oct 13 – Oct 14</div><div>Noah Garcia · Cover · Sun, Oct 11</div><div>Open shift · Fri, Oct 16</div><div>Jake Thompson · Time off · Oct 13 – Oct 15</div></div></div><div class="scrim"></div>`;
+    return `<div class="app${ph ? " ph" : ""}" style="width:${ph ? 390 : 1440}px;height:${ph ? 824 : 900}px">${bg}<aside class="drawer" aria-label="Request">${drawer(s).replace(/name="cand-/g, `name="cand-${ph ? "p" : "d"}-`).replace(/id="reason-/g, `id="reason-${ph ? "p" : "d"}-`).replace(/for="reason-/g, `for="reason-${ph ? "p" : "d"}-`)}</aside></div>`;
+  }
+
+  const desk = document.getElementById("deskScaler"), phone = document.getElementById("phoneScaler");
+  function render() {
+    const s = S[st.scen];
+    document.querySelectorAll("[data-view]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.view === st.view)));
+    document.querySelectorAll("[data-role]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.role === st.role)));
+    document.getElementById("scenarios").innerHTML = Object.entries(S).map(([k, v]) => `<button type="button" data-scen="${k}" aria-pressed="${k === st.scen}">${esc(v.label)}</button>`).join("");
+    document.getElementById("hint").innerHTML = st.view === "new" ? s.hint : "Bugünkü çekmece, aynı türden bir satır. Yeni hâle dönmek için üstte <b>Yeni</b>.";
+    document.getElementById("stage").hidden = st.view !== "new";
+    document.getElementById("roleRow").hidden = st.view !== "new";
+    document.getElementById("origBox").hidden = st.view !== "orig";
+    document.getElementById("origImg").src = ORIG[s.kind];
+    if (st.view === "new") { desk.innerHTML = app(false); phone.innerHTML = app(true); layout(); }
+    try { localStorage.setItem("cekmece.view", JSON.stringify({ scen: st.scen, role: st.role })); } catch (e) { /* storage blocked */ }
+  }
+  function layout() {
+    const stage = document.getElementById("stage");
+    const narrow = stage.clientWidth < 900;
+    const phoneW = narrow ? Math.min(stage.clientWidth - 28, 390) : 330;
+    const pScale = (phoneW - 20) / 390;
+    const dW = narrow ? stage.clientWidth - 28 : stage.clientWidth - 28 - phoneW - 16;
+    const dScale = Math.min(1, dW / 1440);
+    const dv = document.getElementById("deskVp"), pv = document.getElementById("phoneVp");
+    desk.style.transform = `scale(${dScale})`; dv.style.width = Math.floor(1440 * dScale) + "px"; dv.style.height = Math.floor(900 * dScale) + "px";
+    phone.style.transform = `scale(${pScale})`; pv.style.width = Math.floor(390 * pScale + 20) + "px"; pv.style.height = Math.floor(824 * pScale + 20) + "px";
+  }
+  function act(e) {
+    const t = e.target.closest("button, input, a, textarea");
+    if (!t) return;
+    const s = S[st.scen], u = st.ui;
+    if (t.matches("[data-noop]")) { e.preventDefault(); return; }
+    if (t.dataset.view) { st.view = t.dataset.view; }
+    else if (t.dataset.scen) { st.scen = t.dataset.scen; st.ui = fresh(); if (S[st.scen].cands && S[st.scen].cands.length === 1) st.ui.pick = 0; }
+    else if (t.dataset.role) { st.role = t.dataset.role; }
+    else if (t.id === "reset") { st.ui = fresh(); if (s.cands && s.cands.length === 1) st.ui.pick = 0; }
+    else if (t.dataset.tab) { u.tab = t.dataset.tab; }
+    else if (t.dataset.pick !== undefined && t.tagName === "INPUT") { u.pick = Number(t.dataset.pick); u.closeArm = false; }
+    else if (t.matches("[data-deny]")) { u.deny = true; }
+    else if (t.matches("[data-cancel]")) { u.deny = false; }
+    else if (t.matches("[data-denyconfirm]")) { u.deny = false; u.outcome = { status: ["Denied", "red"], loc: ["Denied", "red"], text: `Denied. ${firstName(s.who)} gets your reason; the shifts stay with ${firstName(s.who)}.` }; }
+    else if (t.matches("[data-approve]")) {
+      if (s.kind === "timeoff") u.outcome = { status: ["Approved", "ok"], loc: ["Approved", "ok"], text: `Approved. ${s.shifts.length} ${s.shifts.length === 1 ? "shift is" : "shifts are"} open on the Schedule now.` };
+      else { const c = s.cands[u.pick]; u.outcome = { status: ["Approved", "ok"], text: `Approved. The shift is ${firstName(c.name)}'s now${s.owner ? `; ${firstName(s.owner)} is off it` : ""}.` }; }
+    }
+    else if (t.matches("[data-close]")) { if (u.closeArm) { u.closeArm = false; u.outcome = { status: ["Closed", "grey"], text: `Closed. ${s.owner ? `${firstName(s.owner)} keeps the shift.` : "The shift stays open."}` }; } else u.closeArm = true; }
+    else if (t.matches("[data-undo]")) { st.ui = fresh(); if (s.cands && s.cands.length === 1) st.ui.pick = 0; }
+    else return;
+    render();
+  }
+  document.addEventListener("click", act);
+  document.addEventListener("input", (e) => {
+    if (!e.target.matches("textarea.ta")) return;
+    st.ui.reason = e.target.value;
+    document.querySelectorAll("[data-denyconfirm]").forEach((b) => { b.disabled = !st.ui.reason.trim(); });
+    document.querySelectorAll("textarea.ta").forEach((ta) => { if (ta !== e.target) ta.value = e.target.value; });
+  });
+  new ResizeObserver(() => { if (st.view === "new") layout(); }).observe(document.getElementById("stage"));
+  render();
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Requests", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+
+</body></html>

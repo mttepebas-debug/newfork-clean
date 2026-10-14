@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="tr"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body>
+<title>9.0 Notifications · PAGES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Light only, like the app; values are the app's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3; --surface: #ffffff; --soft2: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #66716c; --muted-strong: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --focus: #177a64; --bezel: #1d2525; --on-dark: #ffffff;
+  --warn-soft: #fff7e2; --warn-text: #5f491f; --warn-border: #bf872d;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); }
+body { color: var(--text); font-family: var(--font); font-size: 14px; }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1920px; margin: 0 auto; padding: 24px 24px 64px; display: grid; gap: 18px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.top { display: grid; gap: 10px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 .no { min-width: 44px; height: 34px; padding: 0 9px; border-radius: 8px; background: var(--text); color: var(--on-dark); display: inline-grid; place-items: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.lede { margin: 0; color: var(--body); line-height: 1.6; max-width: 90ch; }
+.facts { margin: 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; max-width: 120ch; font-size: 13.5px; line-height: 1.5; }
+.facts dt { font-weight: 650; color: var(--muted-strong); }
+.facts dd { margin: 0; color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.facts code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 6px; border-radius: 5px; }
+.facts a { color: var(--accent); font-weight: 600; }
+@media (max-width: 600px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-label { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted-strong); cursor: pointer; }
+.pills button:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--soft2); }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.pills button:disabled { cursor: not-allowed; opacity: 0.45; }
+.pills .count { font-weight: 500; opacity: .7; font-variant-numeric: tabular-nums; }
+.tally { margin: 0; font-size: 12.5px; color: var(--muted); }
+.tally code { font: 12px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 5px; border-radius: 4px; }
+.restart { min-height: 32px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.restart:hover { background: var(--soft2); }
+.stagebox { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 600px) { .stagebox { padding: 10px; } }
+.frames { display: flex; gap: 24px; align-items: flex-start; min-width: 0; }
+.frames[data-layout="stack"] { flex-direction: column; }
+.fcol { display: grid; gap: 8px; min-width: 0; }
+.desk-col { flex: 1 1 auto; }
+.frames[data-layout="stack"] .desk-col { width: 100%; }
+.phone-col { flex: 0 0 auto; }
+.flabel { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: 10px; align-items: center; }
+.flabel span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+.fit { overflow: hidden; }
+.fit.scroll { overflow-x: auto; }
+.desk { width: 1440px; height: 900px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--page); transform-origin: 0 0; }
+.phone { width: 410px; height: 864px; padding: 10px; border-radius: 44px; background: var(--bezel); transform-origin: 0 0; }
+.phone .screen { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--surface); }
+iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--page); }
+.notes { font-size: 13px; color: var(--muted-strong); line-height: 1.55; max-width: 120ch; margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #111827; color: #fff; font-weight: 600; font-size: 13px; padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.toast[data-open="true"] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<main class="wrap">
+  <header class="top">
+    <span class="eyebrow">PAGES · uygulamanın bugünkü hâli</span>
+    <h1><span class="no">9.0</span>Notifications</h1>
+    <p class="lede">Bildirim kutusu.</p>
+    <dl class="facts">
+      <dt>Adres</dt><dd><code>/app/notifications</code></dd>
+      <dt>Uygulamada</dt><dd>Sol menü → Notifications</dd>
+      <dt>Kim açar</dt><dd>Herkes</dd>
+      <dt>Kaynak</dt><dd>Gerçek uygulama kodu, main <code>f125236b</code> (2026-10-13); veri sahte (Harbor &amp; Vine demo restoranı). Bütün ekranlar: <a href="https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy" target="_blank" rel="noopener">PAGES dizini</a>.</dd>
+    </dl>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Kim açıyor</span><div class="pills"><button type="button" data-g="role" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="role" data-k="admin" disabled title="Bu rol bu ekranı uygulamada açamaz.">Admin · Daniel Brooks</button><button type="button" data-g="role" data-k="manager">Manager · Rachel Adams (Downtown)</button><button type="button" data-g="role" data-k="custom" disabled title="Bu rol bu ekranı uygulamada açamaz.">Shift Lead · Carlos Rivera (özel rol)</button><button type="button" data-g="role" data-k="employee">Employee · Maria Lopez</button></div></div>
+    </div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Parça</span><div class="pills"><button type="button" data-g="part" data-k="0">Roller <span class="count">3</span></button><button type="button" data-g="part" data-k="1">Sekmeler ve süzgeç · Unread, Read, category <span class="count">3</span></button><button type="button" data-g="part" data-k="2">Seçim ve toplu işlem · Mark as read, Dismiss <span class="count">5</span></button><button type="button" data-g="part" data-k="3">Bildirim bağlantıları · Open notification <span class="count">2</span></button><button type="button" data-g="part" data-k="4">Vardiya ayrıntısı · Shift request details <span class="count">3</span></button><button type="button" data-g="part" data-k="5">Sayfa durumları <span class="count">5</span></button></div></div></div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Senaryo</span><div class="pills" data-part="0"><button type="button" data-g="sc" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="sc" data-k="manager">Manager · Rachel Adams (Downtown)</button><button type="button" data-g="sc" data-k="employee">Employee · Maria Lopez</button></div><div class="pills" data-part="1" hidden><button type="button" data-g="sc" data-k="read">Okunanlar</button><button type="button" data-g="sc" data-k="category">Kategori süzgeci: Requests</button><button type="button" data-g="sc" data-k="category-empty">Süzgeçle boş: No unread notifications</button></div><div class="pills" data-part="2" hidden><button type="button" data-g="sc" data-k="select-one">Tek satır seçili: 1 selected + Mark as read</button><button type="button" data-g="sc" data-k="mark-read">Seçileni okundu yap: Read sekmesine geçer</button><button type="button" data-g="sc" data-k="mark-unread">Read sekmesinde hepsini seç + Mark as unread</button><button type="button" data-g="sc" data-k="dismiss">Dismiss: çöp kutusu, tek tık</button><button type="button" data-g="sc" data-k="action-error">İşlem hatası satırı</button></div><div class="pills" data-part="3" hidden><button type="button" data-g="sc" data-k="open-target">Başlığa tıkla: bildirimin sayfası açılır, bildirim okunur</button><button type="button" data-g="sc" data-k="security">Hesap bildirimi: Security sayfasına gider</button></div><div class="pills" data-part="4" hidden><button type="button" data-g="sc" data-k="shift-details">Çalışan: View shift details paneli</button><button type="button" data-g="sc" data-k="shift-details-manager">Manager: View shift details paneli + Open schedule</button><button type="button" data-g="sc" data-k="shift-details-error">Panel yüklenemedi: Try again</button></div><div class="pills" data-part="5" hidden><button type="button" data-g="sc" data-k="load-more">30'dan fazla bildirim: Load more</button><button type="button" data-g="sc" data-k="loading">Yükleniyor: Loading notifications...</button><button type="button" data-g="sc" data-k="error">Okuma hatası</button><button type="button" data-g="sc" data-k="empty">Hiç bildirim yok: No unread notifications</button><button type="button" data-g="sc" data-k="no-access">API reddi: You don't have access to notifications</button></div></div></div>
+    <p class="tally">6 parça · 21 senaryo. Bir senaryoya doğrudan bağlantı: sayfa linkinin sonuna <code>#senaryo-adı</code> (ör. <code>#owner</code>).</p>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Görünüm</span><div class="pills">
+        <button type="button" data-g="layout" data-k="auto">Otomatik</button>
+        <button type="button" data-g="layout" data-k="side">Yan yana</button>
+        <button type="button" data-g="layout" data-k="stack">Alt alta</button>
+      </div></div>
+      <div class="ctl"><span class="ctl-label">Masaüstü boyutu</span><div class="pills">
+        <button type="button" data-g="zoom" data-k="fit">Sığdır</button>
+        <button type="button" data-g="zoom" data-k="full">%100</button>
+      </div></div>
+      <button type="button" class="restart" id="restart">Baştan başlat</button>
+    </div>
+  </header>
+  <section class="stagebox" aria-label="Ekran">
+    <div class="frames" id="frames">
+      <div class="fcol desk-col"><div class="flabel">Masaüstü <span>1440 × 900</span><span id="desk-scale"></span></div><div class="fit" id="desk-fit"><div class="desk" id="desk"></div></div></div>
+      <div class="fcol phone-col"><div class="flabel">Telefon <span>390 × 844</span></div><div class="fit" id="phone-fit"><div class="phone"><div class="screen" id="phone"></div></div></div></div>
+    </div>
+  </section>
+  <ul class="notes">
+    <li>İki görüntü aynı demo veriyle çalışır: birinde kaydedilen değişiklik ötekine de gelir, adres değişince öteki de aynı adrese gider. Açık çekmece ya da pencere öbür görüntüye geçmez; senaryolar ikisini de aynı adımlarla açar.</li>
+    <li>Her açılış ve "Baştan başlat" senaryonun ilk hâline döner. Veri yalnız bu tarayıcıda kalır; e-posta, SMS ve dosya indirme çalışmaz.</li>
+    <li>Başka bir ekrana giden bağlantı o ekranın PAGES numarasını söyler ve yerinde kalır.</li>
+  </ul>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function () {
+  var D = {"no":"9.0","roles":["owner","manager","employee"],"signedOut":false,"scenarios":[{"id":"owner","label":"Owner · Mert Tepebas","role":"owner","part":"Roller"},{"id":"manager","label":"Manager · Rachel Adams (Downtown)","role":"manager","part":"Roller"},{"id":"employee","label":"Employee · Maria Lopez","role":"employee","part":"Roller"},{"id":"read","label":"Okunanlar","role":"owner","part":"Sekmeler ve süzgeç · Unread, Read, category"},{"id":"category","label":"Kategori süzgeci: Requests","role":"owner","part":"Sekmeler ve süzgeç · Unread, Read, category"},{"id":"category-empty","label":"Süzgeçle boş: No unread notifications","role":"owner","part":"Sekmeler ve süzgeç · Unread, Read, category"},{"id":"select-one","label":"Tek satır seçili: 1 selected + Mark as read","role":"owner","part":"Seçim ve toplu işlem · Mark as read, Dismiss"},{"id":"mark-read","label":"Seçileni okundu yap: Read sekmesine geçer","role":"owner","part":"Seçim ve toplu işlem · Mark as read, Dismiss"},{"id":"mark-unread","label":"Read sekmesinde hepsini seç + Mark as unread","role":"owner","part":"Seçim ve toplu işlem · Mark as read, Dismiss"},{"id":"dismiss","label":"Dismiss: çöp kutusu, tek tık","role":"owner","part":"Seçim ve toplu işlem · Mark as read, Dismiss"},{"id":"action-error","label":"İşlem hatası satırı","role":"owner","part":"Seçim ve toplu işlem · Mark as read, Dismiss"},{"id":"open-target","label":"Başlığa tıkla: bildirimin sayfası açılır, bildirim okunur","role":"employee","part":"Bildirim bağlantıları · Open notification"},{"id":"security","label":"Hesap bildirimi: Security sayfasına gider","role":"employee","part":"Bildirim bağlantıları · Open notification"},{"id":"shift-details","label":"Çalışan: View shift details paneli","role":"employee","part":"Vardiya ayrıntısı · Shift request details"},{"id":"shift-details-manager","label":"Manager: View shift details paneli + Open schedule","role":"manager","part":"Vardiya ayrıntısı · Shift request details"},{"id":"shift-details-error","label":"Panel yüklenemedi: Try again","role":"employee","part":"Vardiya ayrıntısı · Shift request details"},{"id":"load-more","label":"30'dan fazla bildirim: Load more","role":"owner","part":"Sayfa durumları"},{"id":"loading","label":"Yükleniyor: Loading notifications...","role":"owner","part":"Sayfa durumları"},{"id":"error","label":"Okuma hatası","role":"owner","part":"Sayfa durumları"},{"id":"empty","label":"Hiç bildirim yok: No unread notifications","role":"owner","part":"Sayfa durumları"},{"id":"no-access","label":"API reddi: You don't have access to notifications","role":"employee","part":"Sayfa durumları"}]};
+  var G = { sc: D.scenarios[0] ? D.scenarios[0].id : "", role: null, layout: "auto", zoom: "fit", part: "0" };
+  var partNames = []; D.scenarios.forEach(function (s) { if (partNames.indexOf(s.part) < 0) partNames.push(s.part); });
+  function partOf(id) { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === id) return String(partNames.indexOf(D.scenarios[i].part)); return "0"; }
+  // A bare #scenario-id in the page link opens that scenario.
+  try { var wanted = decodeURIComponent(location.hash.replace(/^#/, "")); if (wanted && D.scenarios.some(function (s) { return s.id === wanted; })) { G.sc = wanted; } } catch (e) {}
+  G.part = partOf(G.sc);
+  try { var saved = JSON.parse(localStorage.getItem("nf.pages.view") || "{}"); if (saved.layout) G.layout = saved.layout; if (saved.zoom) G.zoom = saved.zoom; } catch (e) {}
+  var frames = { desktop: null, phone: null };
+  function scenario() { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === G.sc) return D.scenarios[i]; return D.scenarios[0]; }
+  function role() { var s = scenario(); return G.role || (s && s.role) || (D.roles[0] || ""); }
+  function mount() {
+    ["desktop", "phone"].forEach(function (name) {
+      var host = document.getElementById(name === "desktop" ? "desk" : "phone");
+      host.textContent = "";
+      var f = document.createElement("iframe");
+      var params = "s=" + encodeURIComponent(D.no) + "&sc=" + encodeURIComponent(G.sc) + "&role=" + encodeURIComponent(role()) + "&frame=" + name + "&n=" + Date.now();
+      f.name = "pages:" + params;
+      f.title = (name === "desktop" ? "Masaüstü" : "Telefon") + " görünümü, 9.0 Notifications";
+      f.src = "app.html#" + params;
+      host.appendChild(f);
+      frames[name] = f;
+    });
+    sync();
+  }
+  // Each frame's saves and moves go to the other frame.
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (!m || m.nf !== "pages") return;
+    var other = event.source === (frames.desktop && frames.desktop.contentWindow) ? frames.phone
+      : event.source === (frames.phone && frames.phone.contentWindow) ? frames.desktop : null;
+    if (other && other.contentWindow) other.contentWindow.postMessage(m, "*");
+  });
+  function sync() {
+    document.querySelectorAll("[data-g]").forEach(function (b) {
+      var g = b.dataset.g, k = b.dataset.k;
+      var on = g === "role" ? role() === k : G[g] === k;
+      b.setAttribute("aria-pressed", String(on));
+    });
+    document.querySelectorAll("[data-part]").forEach(function (row) { row.hidden = row.dataset.part !== G.part; });
+  }
+  function fit() {
+    var box = document.getElementById("frames");
+    var width = box.clientWidth;
+    var side = G.layout === "side" || (G.layout === "auto" && (width - 410 - 24) / 1440 >= 0.62);
+    box.dataset.layout = side ? "side" : "stack";
+    var deskFit = document.getElementById("desk-fit");
+    var deskWidth = side ? width - 410 - 24 : width;
+    var desk = document.getElementById("desk");
+    var scale = G.zoom === "full" ? 1 : Math.min(1, deskWidth / 1440);
+    desk.style.transform = scale < 1 ? "scale(" + scale + ")" : "";
+    deskFit.style.width = Math.max(0, deskWidth) + "px";
+    deskFit.style.height = Math.round(900 * scale) + "px";
+    deskFit.classList.toggle("scroll", G.zoom === "full" && deskWidth < 1440);
+    document.getElementById("desk-scale").textContent = "· %" + Math.round(scale * 100);
+    var phoneFit = document.getElementById("phone-fit");
+    var phone = phoneFit.firstElementChild;
+    var pScale = Math.min(1, width / 410);
+    phone.style.transform = pScale < 1 ? "scale(" + pScale + ")" : "";
+    phoneFit.style.width = Math.round(410 * pScale) + "px";
+    phoneFit.style.height = Math.round(864 * pScale) + "px";
+  }
+  document.addEventListener("click", function (event) {
+    var b = event.target.closest && event.target.closest("[data-g]");
+    if (b && !b.disabled) {
+      var g = b.dataset.g, k = b.dataset.k;
+      if (g === "sc") { G.sc = k; G.role = null; mount(); }
+      else if (g === "part") { G.part = k; var first = null; for (var i = 0; i < D.scenarios.length; i++) if (String(partNames.indexOf(D.scenarios[i].part)) === k) { first = D.scenarios[i].id; break; } if (first) { G.sc = first; G.role = null; mount(); } else sync(); }
+      else if (g === "role") { G.role = k; mount(); }
+      else { G[g] = k; try { localStorage.setItem("nf.pages.view", JSON.stringify({ layout: G.layout, zoom: G.zoom })); } catch (e) {} sync(); fit(); }
+    }
+  });
+  document.getElementById("restart").addEventListener("click", mount);
+  try { new ResizeObserver(fit).observe(document.querySelector(".wrap")); } catch (e) { window.addEventListener("resize", fit); }
+  mount();
+  fit();
+})();
+</script>
+
+</body></html>

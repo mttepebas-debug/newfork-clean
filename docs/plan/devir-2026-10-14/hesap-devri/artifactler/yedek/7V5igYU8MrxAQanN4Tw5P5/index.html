@@ -1,0 +1,319 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>BL-969 Telefon Alanı</title>
+<style>
+/* Layout: two copies of the same Account › Profile field, today's main left, BL-969 right, one shared row of sample actions. App is light-only (CLAUDE.md §3.A.7), so the page commits to the app's light look. */
+:root {
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --text: #17221e;
+  --body: #1d2525;
+  --muted: #66716c;
+  --muted-strong: #5f6b66;
+  --border: #dce3df;
+  --accent: #176954;
+  --accent-strong: #12624f;
+  --focus-halo: #c9eadf;
+  --danger: #b84234;
+  --danger-soft: #fff0ee;
+  --danger-text: #653b36;
+  --success-soft: #e7f1ed;
+  --warning-soft: #fff7e2;
+  --warning-text: #5f491f;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 16px; padding-block: 28px 48px; display: grid; gap: 22px; }
+h1 { margin: 0; font-size: 22px; color: var(--text); text-wrap: balance; }
+h2 { margin: 0; font-size: 16px; color: var(--text); text-wrap: balance; }
+p { margin: 0; max-width: 70ch; }
+.lead { color: var(--muted-strong); }
+.samples { display: flex; flex-wrap: wrap; gap: 8px; }
+.samples button, .ghost {
+  font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 6px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text); cursor: pointer;
+}
+.samples button:hover, .ghost:hover { border-color: var(--muted); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: 12.5px; background: var(--surface-soft); border: 1px solid var(--border); border-radius: 4px; padding: 0 4px; }
+.pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 720px) { .pair { grid-template-columns: minmax(0, 1fr); } }
+.card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 18px; display: grid; gap: 14px; min-width: 0; align-content: start; }
+.tag { justify-self: start; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 3px 8px; border-radius: 999px; }
+.tag.before { background: var(--surface-soft); color: var(--muted-strong); border: 1px solid var(--border); }
+.tag.after { background: var(--success-soft); color: var(--accent-strong); }
+.screen { font-size: 12px; color: var(--muted); }
+.field { display: grid; gap: 6px; color: var(--text); font-size: 13px; font-weight: 600; }
+.phone { position: relative; display: block; }
+.phone .prefix { position: absolute; top: 50%; left: 11px; transform: translateY(-50%); color: var(--muted-strong); font: inherit; font-weight: 400; line-height: 1; pointer-events: none; }
+.field input {
+  width: 100%; min-width: 0; min-height: 40px; border: 1px solid var(--muted); border-radius: 6px;
+  background: var(--surface); padding: 8px 11px; color: var(--body); font: inherit; font-weight: 400; outline: none;
+}
+.phone input { padding-left: calc(22px + 1em); }
+.field input:focus { border-color: var(--accent-strong); box-shadow: 0 0 0 3px var(--focus-halo); }
+.field small { font-weight: 400; color: var(--muted); font-size: 12px; }
+.field .err { font-weight: 400; color: var(--danger); font-size: 12px; }
+.actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+.save { font: inherit; font-weight: 600; font-size: 13px; padding: 8px 16px; border-radius: 6px; border: 1px solid var(--accent); background: var(--accent); color: #fff; cursor: pointer; }
+.save:disabled { background: var(--surface-soft); color: var(--muted); border-color: var(--border); cursor: not-allowed; }
+.missing { font-size: 12px; color: var(--muted-strong); }
+.result { font-size: 13px; border-radius: 6px; padding: 8px 10px; }
+.result.ok { background: var(--success-soft); color: var(--accent-strong); }
+.result.bad { background: var(--danger-soft); color: var(--danger-text); border: 1px solid var(--danger); }
+.stored { font-size: 12px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.stored b { font-family: var(--mono); color: var(--text); font-weight: 600; }
+.notes { display: grid; gap: 8px; padding-left: 18px; margin: 0; }
+.notes li { max-width: 75ch; }
+.foot { font-size: 12px; color: var(--muted); }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>BL-969: telefon ve ad alanı, önce ve sonra</h1>
+    <p class="lead">Solda bugünkü main (<code>cedf5982</code>), sağda BL-969 (<code>d6d73a6a</code>). İki alan da uygulamadaki gerçek koddan alındı. Aşağıdaki örnek düğmeleri kullan ya da alana kendin yaz veya yapıştır.</p>
+  </header>
+
+  <section style="display:grid;gap:12px" aria-labelledby="phone-h">
+    <h2 id="phone-h">Telefon alanı</h2>
+    <p class="screen">Örnek ekran: Account → Profile → Phone number. Aynı alan çalışan kurulumunda, Employees çekmecesinde, Settings → Locations'ta ve owner kurulumunda da var.</p>
+    <div class="samples" role="group" aria-label="Örnekler">
+      <button type="button" data-mode="type" data-text="+44 20 7946 0958">Tuş tuş yaz: +44 20 7946 0958 (İngiltere)</button>
+      <button type="button" data-mode="paste" data-text="+44 20 7946 0958">Yapıştır: +44 20 7946 0958</button>
+      <button type="button" data-mode="paste" data-text="+1 (415) 555-0100">Yapıştır: +1 (415) 555-0100</button>
+      <button type="button" data-mode="type" data-text="415 555 0100">Tuş tuş yaz: 415 555 0100</button>
+      <button type="button" data-mode="clear">Temizle</button>
+    </div>
+    <div class="pair">
+      <div class="card" id="card-before">
+        <span class="tag before">Önce · bugün</span>
+        <label class="field" for="phone-before">
+          <span>Phone number</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="phone-before" type="tel" inputmode="numeric" maxlength="14" placeholder="(415) 555-0100" autocomplete="off"></span>
+        </label>
+        <div class="actions">
+          <button class="save" type="button" id="save-before">Save</button>
+          <span class="missing" id="missing-before" hidden>To save, fill in phone number.</span>
+        </div>
+        <div class="stored" id="stored-before">Kaydedilecek değer: <b>—</b></div>
+        <div class="result" id="result-before" hidden></div>
+      </div>
+      <div class="card" id="card-after">
+        <span class="tag after">Sonra · BL-969</span>
+        <label class="field" for="phone-after">
+          <span>Phone number</span>
+          <span class="phone"><span class="prefix" aria-hidden="true">+1</span><input id="phone-after" type="tel" inputmode="numeric" maxlength="24" placeholder="(415) 555-0100" autocomplete="off"></span>
+        </label>
+        <div class="actions">
+          <button class="save" type="button" id="save-after">Save</button>
+          <span class="missing" id="missing-after" hidden>To save, fill in phone number.</span>
+        </div>
+        <div class="stored" id="stored-after">Kaydedilecek değer: <b>—</b></div>
+        <div class="result" id="result-after" hidden></div>
+      </div>
+    </div>
+  </section>
+
+  <section style="display:grid;gap:12px" aria-labelledby="name-h">
+    <h2 id="name-h">Ad ve adres alanı: ayrık yazılmış Türkçe harf</h2>
+    <p class="screen">Örnek ekran: Account → Profile → Legal last name. Mac'ten ya da PDF'ten kopyalanan "ş", "s" ile ayrı bir işaretten oluşabilir; gözle aynıdır.</p>
+    <div class="samples" role="group" aria-label="Ad örnekleri">
+      <button type="button" id="paste-nfd">Yapıştır: Şişli (Mac / PDF'ten, ayrık)</button>
+      <button type="button" id="paste-nfc">Yaz: Şişli (klavyeden)</button>
+      <button type="button" id="name-clear">Temizle</button>
+    </div>
+    <div class="pair">
+      <div class="card">
+        <span class="tag before">Önce · bugün</span>
+        <label class="field" for="name-before">
+          <span>Legal last name</span>
+          <input id="name-before" autocomplete="off">
+          <span class="err" id="name-err-before" hidden>Use English letters instead of ş, ğ, ı or İ.</span>
+        </label>
+      </div>
+      <div class="card">
+        <span class="tag after">Sonra · BL-969</span>
+        <label class="field" for="name-after">
+          <span>Legal last name</span>
+          <input id="name-after" autocomplete="off">
+          <span class="err" id="name-err-after" hidden>Use English letters instead of ş, ğ, ı or İ.</span>
+        </label>
+      </div>
+    </div>
+  </section>
+
+  <section class="card" aria-labelledby="hidden-h">
+    <h2 id="hidden-h">Kodda kalkan, canlıda kimsenin görmeyeceği farklar</h2>
+    <ul class="notes">
+      <li>Çalışan kurulumu → Profile adımı: "Your account phone is not a US number. Change it in Account › Profile." uyarısı kalkar. Veride artık yabancı hesap numarası olamaz; canlıda bugün de yok.</li>
+      <li>Settings → Jobs → iş çekmecesi: Save iş adını her zaman denetler. Canlıda Türkçe harfli iş adı yok, kimse fark görmez.</li>
+      <li>Veritabanı değişikliklerinin tam listesi ve canlı veriye etkisi: <code>/mnt/project-files/notes/bl-969/once-sonra.md</code></li>
+    </ul>
+  </section>
+
+  <p class="foot">Kaynak: <code>packages/shared/src/us-forms.ts</code> ve <code>apps/web/src/shell/UsPhoneInput.tsx</code>, main ve <code>task/bl-969-kurtarma</code> dalı. Save'den sonra uygulama ayrıca "Profile saved" gibi bir bildirim gösterir; burada yalnız kaydedilecek değer yazılıyor.</p>
+</div>
+
+<script>
+(function () {
+  // Today's main (packages/shared/src/us-forms.ts @ cedf5982).
+  var BEFORE = {
+    digits: function (v) { var t = v.trim(); if (/^\+\s*[02-9]/.test(t)) return ""; return t.replace(/\D/g, "").replace(/^1/, "").slice(0, 10); },
+    format: function (v) { var d = BEFORE.digits(v); return mask(d); },
+    toUs: function (v) { var t = v.trim(); var d = t.replace(/\D/g, ""); if (t.charAt(0) === "+" && d.charAt(0) !== "1") return null; var l = d.length === 11 && d.charAt(0) === "1" ? d.slice(1) : d; return /^[2-9]\d{9}$/.test(l) ? "+1" + l : null; },
+    letters: function (v) { return /[şŞğĞıİ]/.test(v); },
+    max: 14
+  };
+  // BL-969 (same file @ d6d73a6a).
+  var other = /\+[ \t\n\v\f\r().-]*[02-9]/;
+  var AFTER = {
+    digits: function (v) { var t = v.normalize("NFKC"); if (other.test(t)) return ""; return t.replace(/[^0-9]/g, "").replace(/^1/, "").slice(0, 10); },
+    format: function (v) { var t = v.normalize("NFKC").replace(/^\s+/, ""); if (other.test(t) || /^\+[ \t\n\v\f\r().-]*$/.test(t)) return t; return mask(AFTER.digits(t)); },
+    toUs: function (v) { var t = v.normalize("NFKC"); if (other.test(t)) return null; var d = t.replace(/[^0-9]/g, ""); var l = d.length === 11 && d.charAt(0) === "1" ? d.slice(1) : d; return /^[2-9]\d{9}$/.test(l) ? "+1" + l : null; },
+    letters: function (v) { return /[şŞğĞıİ]/.test(v.normalize("NFC")); },
+    max: 24
+  };
+  function mask(d) {
+    if (!d) return "";
+    if (d.length <= 3) return "(" + d;
+    if (d.length <= 6) return "(" + d.slice(0, 3) + ") " + d.slice(3);
+    return "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
+  }
+  function pretty(e164) { return "+1 " + mask(e164.slice(2)); }
+
+  var sides = [["before", BEFORE], ["after", AFTER]].map(function (pair) {
+    var key = pair[0], impl = pair[1];
+    return {
+      key: key, impl: impl,
+      input: document.getElementById("phone-" + key),
+      save: document.getElementById("save-" + key),
+      missing: document.getElementById("missing-" + key),
+      stored: document.getElementById("stored-" + key),
+      result: document.getElementById("result-" + key)
+    };
+  });
+  var lastSample = null;
+
+  function refresh(side) {
+    var value = side.input.value;
+    var e164 = side.impl.toUs(value);
+    side.save.disabled = !e164;
+    side.missing.hidden = !!e164;
+    side.stored.innerHTML = "Kaydedilecek değer: <b>" + (e164 || "—") + "</b>";
+  }
+  function setValue(side, raw) {
+    side.input.value = side.impl.format(raw);
+    side.result.hidden = true;
+    refresh(side);
+  }
+  sides.forEach(function (side) {
+    // The real field: the browser applies maxLength, then the mask reads it.
+    side.input.addEventListener("input", function () { lastSample = null; setValue(side, side.input.value); });
+    side.save.addEventListener("click", function () {
+      var e164 = side.impl.toUs(side.input.value);
+      if (!e164) return;
+      var foreign = lastSample && /^\+(?!1)/.test(lastSample);
+      side.result.hidden = false;
+      if (foreign) {
+        side.result.className = "result bad";
+        side.result.textContent = "Kaydedildi: " + pretty(e164) + ". Bu bir İngiltere numarasıydı; yanlış bir ABD numarası olarak kaydedildi.";
+      } else {
+        side.result.className = "result ok";
+        side.result.textContent = "Kaydedildi: " + pretty(e164);
+      }
+    });
+    refresh(side);
+  });
+
+  var reduce = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var timers = [];
+  function stopTyping() { timers.forEach(clearTimeout); timers = []; }
+
+  document.querySelectorAll("[data-mode]").forEach(function (button) {
+    button.addEventListener("click", function () {
+      stopTyping();
+      var mode = button.getAttribute("data-mode");
+      var text = button.getAttribute("data-text") || "";
+      lastSample = mode === "clear" ? null : text;
+      sides.forEach(function (side) {
+        if (mode === "clear") { setValue(side, ""); return; }
+        if (mode === "paste") {
+          // A paste into an empty field: the browser keeps at most maxLength characters.
+          setValue(side, text.slice(0, side.impl.max));
+          return;
+        }
+        setValue(side, "");
+        var chars = Array.from(text);
+        var step = function (i) {
+          var next = (side.input.value + chars[i]).slice(0, side.impl.max);
+          side.input.value = side.impl.format(next);
+          refresh(side);
+        };
+        if (reduce) { chars.forEach(function (_, i) { step(i); }); return; }
+        chars.forEach(function (_, i) { timers.push(setTimeout(function () { step(i); }, 70 * (i + 1))); });
+      });
+    });
+  });
+
+  // Letter rule.
+  var names = ["before", "after"].map(function (key) {
+    return { impl: key === "before" ? BEFORE : AFTER, input: document.getElementById("name-" + key), err: document.getElementById("name-err-" + key) };
+  });
+  function nameRefresh(n) { n.err.hidden = !n.impl.letters(n.input.value); }
+  names.forEach(function (n) { n.input.addEventListener("input", function () { nameRefresh(n); }); });
+  function setNames(v) { names.forEach(function (n) { n.input.value = v; nameRefresh(n); }); }
+  document.getElementById("paste-nfd").addEventListener("click", function () { setNames("Şişli"); });
+  document.getElementById("paste-nfc").addEventListener("click", function () { setNames("Şişli"); });
+  document.getElementById("name-clear").addEventListener("click", function () { setNames(""); });
+
+  // Open in the most telling state: the UK number typed key by key.
+  sides.forEach(function (side) {
+    var v = "";
+    Array.from("+44 20 7946 0958").forEach(function (c) { v = side.impl.format((v + c).slice(0, side.impl.max)); });
+    side.input.value = v; refresh(side);
+  });
+  lastSample = "+44 20 7946 0958";
+  setNames("Şişli");
+})();
+</script>
+
+</body><!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Giriş, kayıt, davet ve kurulum", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->
+</html>
+</body></html>
