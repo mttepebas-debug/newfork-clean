@@ -13,7 +13,12 @@ import { can } from "../auth/can";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
-import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import {
+  CatalogPageHeader,
+  ListAddButton,
+  TabRowAdd,
+} from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import {
   listDocumentTypes,
   reorderDocumentTypes,
@@ -67,6 +72,7 @@ function editableDocument(document: DocumentType): DocumentTypeInput {
 export default function DocumentsSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
+  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const canReadSettings = can(context, "settings.documents.read");
   const canManage = can(context, "settings.documents.write");
@@ -210,6 +216,15 @@ export default function DocumentsSettingsPage() {
     );
   };
 
+  const addButton = canManage ? (
+    <ListAddButton
+      label="New document"
+      shortLabel="Add"
+      disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
+      onClick={() => openEditor()}
+    />
+  ) : null;
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
     return (
@@ -268,6 +283,7 @@ export default function DocumentsSettingsPage() {
                   ),
                 )}
               </div>
+              {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
             </div>
             <div className="catalog-toolbar-filter-row">
               <select
@@ -292,13 +308,7 @@ export default function DocumentsSettingsPage() {
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              {canManage ? (
-                <ListAddButton
-                  label="New document"
-                  disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
-                  onClick={() => openEditor()}
-                />
-              ) : null}
+              {phone ? null : addButton}
             </div>
           </div>
 

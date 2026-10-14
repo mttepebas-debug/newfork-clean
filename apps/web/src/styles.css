@@ -2950,93 +2950,66 @@ select:focus-visible {
   gap: 10px;
   padding: 8px 12px;
 }
-.organization-context-slot {
-  min-width: 0;
-}
-.workspace-name {
+.sidebar-workspace-name {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   font-size: 14px;
 }
-
-/* The workspace name becomes a control only when there is a second workspace
-   or an invitation waiting; with one workspace it stays the plain name above. */
+/* The workspace switcher is the footer row above Settings, sized like its
+   neighbours (Mert 2026-10-13). Its menu opens upwards inside the sidebar, or
+   to the right of the collapsed rail, so the sidebar edge never cuts it. */
 .workspace-switcher {
   position: relative;
-  flex-grow: 1;
 }
 .workspace-switcher-trigger {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  width: 100%;
-  min-height: 36px;
-  padding: 0 8px;
-  border: 1px solid transparent;
-  border-radius: 7px;
-  background: transparent;
-  color: var(--theme-text);
-  font: inherit;
+  font-family: inherit;
   text-align: left;
-  cursor: pointer;
 }
 .workspace-switcher-trigger:hover,
 .workspace-switcher-trigger[aria-expanded="true"] {
-  border-color: var(--theme-border);
-  background: var(--theme-surface);
+  background: var(--theme-surface-muted);
 }
 .workspace-switcher-trigger .workspace-name {
+  min-width: 0;
   flex-grow: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-/* A number that means "you owe someone an answer", not "something is new". */
-.workspace-switcher-count {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 5px;
-  border-radius: 999px;
-  background: var(--theme-danger);
+.workspace-switcher-trigger > svg {
+  color: var(--theme-muted);
+}
+.workspace-switcher-trigger[aria-expanded="true"] .rail-flyout {
+  display: none;
+}
+.workspace-switcher-tile {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 6px;
+  background: var(--theme-accent);
   color: var(--theme-on-accent);
   font-size: 11px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
-}
-.workspace-switcher-mark {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 700;
-  text-decoration: none;
-}
-.workspace-switcher-mark .workspace-switcher-count {
-  position: absolute;
-  top: -4px;
-  right: -4px;
-  min-width: 9px;
-  height: 9px;
-  padding: 0;
+  font-weight: 750;
+  line-height: 1;
 }
 .workspace-switcher-menu {
   position: absolute;
-  top: calc(100% + 6px);
+  bottom: calc(100% + 6px);
   left: 0;
-  z-index: 40;
+  z-index: 120;
   width: 264px;
   padding: 8px;
   border: 1px solid var(--theme-border);
   border-radius: 10px;
   background: var(--theme-surface);
   box-shadow: 0 16px 40px rgb(22 35 30 / 14%);
+}
+.app-shell[data-sidebar-collapsed="true"] .workspace-switcher-menu {
+  bottom: 0;
+  left: calc(100% + 8px);
 }
 .workspace-switcher-label {
   margin: 6px 0 4px;
@@ -3620,8 +3593,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-action-menu summary,
 .schedule-published-menu summary,
 .schedule-draft-menu-trigger,
-.schedule-template-action,
-.schedule-export-action,
 .schedule-publish-action,
 .schedule-published-indicator {
   display: inline-flex;
@@ -3794,7 +3765,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 /* Schedule top-right menus (New Schedule, Publish while editing,
    Published): quiet list style, 13px medium text, gray hairlines, one
    green action. Row tools show on hover or keyboard focus. */
-.schedule-draft-menu-panel,
 .schedule-save-draft-menu,
 .schedule-published-menu-panel {
   border: 0;
@@ -3805,319 +3775,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
     0 16px 40px -12px rgb(15 23 42 / 28%);
   font-size: 13px;
 }
-.schedule-draft-menu-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  right: 0;
-  z-index: 90;
-  display: grid;
-  width: min(360px, calc(100vw - 24px));
-  max-height: min(560px, 72vh);
-  overflow-y: auto;
-  padding: 6px 0 0;
-}
-.schedule-draft-menu-start,
-.schedule-draft-menu-row {
-  width: 100%;
-  border: 0;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--theme-text);
-  cursor: pointer;
-  font: inherit;
-  text-align: left;
-}
-.schedule-draft-menu-start {
-  display: flex;
-  width: auto;
-  min-height: 34px;
-  align-items: center;
-  gap: 10px;
-  margin: 0 6px;
-  padding: 0 10px;
-}
-.schedule-draft-menu-start:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-.schedule-draft-menu-start:hover,
-.schedule-draft-menu-row:hover,
-.schedule-draft-menu-row:focus-visible {
-  background: var(--theme-surface-muted);
-}
-/* The row is a div role="button"; the global button focus ring misses it,
-   and its gray alone looks like the "Viewing" row. */
-.schedule-draft-menu-row:focus-visible,
-.schedule-draft-menu-template-row:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: -2px;
-}
-.schedule-draft-menu-start > span {
-  display: inline-flex;
-  width: 18px;
-  height: 18px;
-  align-items: center;
-  justify-content: center;
-  color: var(--theme-muted-strong);
-}
-.schedule-draft-menu-start strong {
-  font-weight: 500;
-}
-.schedule-draft-menu-row small {
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 400;
-}
-.schedule-draft-menu-separator {
-  height: 1px;
-  margin: 6px 0;
-  background: var(--theme-border-subtle);
-}
-.schedule-draft-menu-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 2px 16px 4px;
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-draft-menu-heading small {
-  font-size: 12px;
-}
-.schedule-draft-menu-list {
-  display: grid;
-  padding: 0 6px 6px;
-}
-.schedule-draft-menu-row {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr);
-  grid-auto-columns: auto;
-  grid-auto-flow: column;
-  min-height: 44px;
-  align-items: center;
-  gap: 2px;
-  padding: 5px 4px 5px 10px;
-}
-.schedule-draft-menu-row[data-published-draft-row="true"],
-.schedule-draft-menu-row[data-published-fallback-row] {
-  margin-top: 4px;
-  border-top: 1px solid var(--theme-border-subtle);
-  border-radius: 0 0 6px 6px;
-  padding-top: 9px;
-}
-.schedule-draft-menu-row[data-active="true"] {
-  background: var(--theme-surface-muted);
-}
-.schedule-draft-menu-row > div {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-.schedule-draft-menu-title-line {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 7px;
-}
-.schedule-draft-menu-row strong {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-draft-menu-viewing {
-  flex: 0 0 auto;
-  color: var(--theme-muted);
-  font-size: 11px;
-  font-weight: 500;
-}
-.schedule-draft-menu-published-chip {
-  display: inline-flex;
-  flex: 0 0 auto;
-  align-items: center;
-  gap: 4px;
-  color: var(--theme-success);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-draft-menu-read-only-chip {
-  flex: 0 0 auto;
-  padding: 1px 7px;
-  border: 1px solid var(--theme-border);
-  border-radius: 999px;
-  background: var(--theme-surface-muted);
-  color: var(--theme-muted-strong);
-  font-size: 11px;
-  font-weight: 700;
-  line-height: 1.4;
-}
-/* --theme-muted-strong: the row turns --theme-surface-muted on hover. */
-.schedule-draft-menu-read-only-note {
-  margin-top: 1px;
-  color: var(--theme-muted-strong);
-  font-size: 11.5px;
-}
-.schedule-draft-menu-published-chip svg {
-  width: 12px;
-  height: 12px;
-}
-.schedule-draft-menu-location-badges {
-  display: flex !important;
-  min-width: 0;
-  flex-wrap: wrap;
-  gap: 2px 8px;
-  margin-top: 2px;
-}
-.schedule-draft-menu-location-badges > span {
-  display: inline-flex;
-  max-width: 120px;
-  align-items: center;
-  gap: 4px;
-  color: var(--theme-muted);
-  font-size: 12px;
-}
-.schedule-draft-menu-location-badges > span > span:first-child {
-  width: 6px;
-  height: 6px;
-  flex: 0 0 auto;
-  border-radius: 999px;
-}
-.schedule-draft-menu-location-badges > span > span:last-child {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-draft-menu-row > button,
-.schedule-draft-menu-template-row > button {
-  display: inline-flex;
-  width: 26px;
-  height: 26px;
-  align-items: center;
-  justify-content: center;
-  border: 0;
-  border-radius: 5px;
-  background: transparent;
-  color: var(--theme-muted);
-  cursor: pointer;
-}
-.schedule-draft-menu-row > button:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-.schedule-draft-menu-row > button:hover,
-.schedule-draft-menu-template-row > button:hover {
-  background: var(--theme-border-subtle);
-  color: var(--theme-text);
-}
-.schedule-draft-menu-row > button[data-confirming="true"],
-.schedule-draft-menu-template-row > button[data-confirming="true"] {
-  width: auto;
-  padding: 0 8px;
-  background: var(--theme-danger-soft);
-  color: var(--theme-danger);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 600;
-}
-.schedule-draft-menu-action-icon {
-  width: 14px;
-  height: 14px;
-}
-.schedule-draft-menu-empty {
-  margin: 0;
-  padding: 6px 10px 8px;
-  color: var(--theme-muted);
-  font-size: 12px;
-}
-.schedule-draft-menu-template-meta {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.schedule-draft-menu-template-meta button {
-  border: 0;
-  background: transparent;
-  color: var(--theme-muted-strong);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-}
-.schedule-draft-menu-template-list {
-  display: grid;
-  padding: 0 6px 6px;
-}
-.schedule-draft-menu-template-row {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  grid-auto-columns: auto;
-  grid-auto-flow: column;
-  min-height: 44px;
-  align-items: center;
-  gap: 8px;
-  border-radius: 6px;
-  padding: 5px 4px 5px 10px;
-  color: var(--theme-text);
-  cursor: pointer;
-}
-.schedule-draft-menu-template-row:hover,
-.schedule-draft-menu-template-row:focus-visible {
-  background: var(--theme-surface-muted);
-}
-.schedule-draft-menu-template-icon {
-  display: inline-flex;
-  width: 20px;
-  height: 20px;
-  align-items: center;
-  justify-content: center;
-  color: var(--theme-muted-strong);
-}
-.schedule-draft-menu-template-row > div {
-  display: grid;
-  min-width: 0;
-  gap: 2px;
-}
-.schedule-draft-menu-template-row strong,
-.schedule-draft-menu-template-row small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-draft-menu-template-row strong {
-  font-size: 13px;
-  font-weight: 500;
-}
-.schedule-draft-menu-template-row small {
-  color: var(--theme-muted);
-  font-size: 12px;
-}
-.schedule-draft-menu-save-template {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  gap: 8px;
-  border: 0;
-  border-top: 1px solid var(--theme-border-subtle);
-  padding: 0 16px;
-  background: transparent;
-  color: var(--theme-muted-strong);
-  cursor: pointer;
-  font: inherit;
-  font-size: 13px;
-  font-weight: 500;
-}
-.schedule-draft-menu-save-template:hover:not(:disabled) {
-  background: var(--theme-surface-muted);
-  color: var(--theme-text);
-}
-.schedule-draft-menu-save-template:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
+
 .schedule-action-menu-panel.schedule-published-menu-panel {
   min-width: 220px;
   gap: 0;
@@ -4916,7 +4574,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-save-menu-anchor {
     position: static;
   }
-  .schedule-draft-menu-panel,
   .schedule-save-draft-menu {
     left: 0;
     right: 0;
@@ -9176,428 +8833,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #25312c;
   font: inherit;
 }
-/* Templates window (Schedule, Templates button) in the quiet dialog style: one
-   column, list rows like the New Schedule menu, the Close strip pinned below. */
-.schedule-template-dialog {
-  flex: 1 1 auto;
-  grid-template-columns: minmax(0, 1fr);
-  align-items: start;
-  min-height: 0;
-  gap: 16px;
-  overflow-y: auto;
-  padding: 10px 18px 0;
-}
-.schedule-template-dialog h3 {
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-template-dialog > section,
-.schedule-template-dialog > form,
-.schedule-template-actions {
-  display: grid;
-  gap: 10px;
-}
-.schedule-template-dialog > form {
-  border-top: 1px solid var(--theme-border-subtle);
-  border-left: 0;
-  padding: 14px 0 0;
-}
-.schedule-template-list {
-  display: grid;
-  max-height: 220px;
-  gap: 0;
-  margin: 0 -8px;
-  overflow: auto;
-}
-.schedule-template-dialog .schedule-template-list > button {
-  display: grid;
-  text-align: left;
-  min-height: 44px;
-  justify-content: stretch;
-  gap: 2px;
-  border: 0;
-  border-radius: 6px;
-  padding: 5px 8px;
-  background: transparent;
-  color: var(--theme-text);
-  cursor: pointer;
-  font: inherit;
-}
-.schedule-template-dialog .schedule-template-list > button:hover {
-  background: var(--theme-surface-muted);
-}
-.schedule-template-dialog .schedule-template-list > button:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: -2px;
-}
-.schedule-template-dialog .schedule-template-list > button[aria-pressed="true"] {
-  background: var(--theme-surface-muted);
-}
-.schedule-template-list strong {
-  overflow: hidden;
-  font-weight: 500;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-template-list small,
-.schedule-template-list p,
-.schedule-template-apply-summary {
-  margin: 0;
-  color: var(--theme-muted);
-  font-size: 12px;
-  line-height: 1.45;
-}
-.schedule-template-list p {
-  padding: 4px 8px;
-}
-.schedule-template-actions label,
-.schedule-template-dialog > form > label:not(.schedule-check) {
-  display: grid;
-  gap: 5px;
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-template-dialog input:not([type="checkbox"]),
-.schedule-template-dialog select {
-  width: 100%;
-  min-height: 32px;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 5px 9px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font: inherit;
-  font-size: 13px;
-}
-.schedule-template-dialog input[type="checkbox"] {
-  accent-color: var(--theme-accent);
-}
-/* .schedule-check sets these with !important, so only !important overrides them. */
-.schedule-template-dialog .schedule-check {
-  gap: 6px !important;
-  color: var(--theme-text) !important;
-  font-size: 13px !important;
-  font-weight: 400 !important;
-}
-.schedule-template-dialog :is(.schedule-template-actions, form) button {
-  min-height: 32px;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 0 12px;
-  background: var(--theme-surface);
-  color: var(--theme-accent-deep);
-  font-size: 13px;
-  font-weight: 500;
-}
-.schedule-template-dialog :is(.schedule-template-actions, form) button:hover {
-  background: var(--theme-surface-muted);
-}
-.schedule-template-dialog button.danger-text {
-  color: var(--theme-danger);
-}
-.schedule-template-dialog button.danger-text.is-armed {
-  border-color: var(--theme-danger);
-  background: var(--theme-danger);
-  color: var(--theme-on-accent);
-}
-.schedule-template-replace-impact {
-  align-self: center;
-  color: var(--theme-danger-text);
-  font-size: 13px;
-}
-.schedule-template-dialog button.primary-command {
-  justify-self: end;
-  border-color: var(--theme-accent);
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-}
-.schedule-template-dialog button.primary-command:hover {
-  border-color: var(--theme-accent-strong);
-  background: var(--theme-accent-strong);
-}
-.schedule-template-dialog button:disabled {
-  cursor: not-allowed;
-  opacity: 0.5;
-}
-.schedule-template-actions > div,
-.schedule-template-apply-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-}
-.schedule-template-actions svg {
-  vertical-align: -2px;
-}
-/* Beats `.schedule-template-actions > div`, which right-aligns the button rows. */
-.schedule-template-actions > .schedule-template-departments {
-  display: grid;
-  justify-content: stretch;
-  gap: 6px;
-}
-/* BL-038 K4: the department filter stays folded until the manager narrows it. */
-.schedule-template-departments summary {
-  width: fit-content;
-  border-radius: 4px;
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 500;
-  cursor: pointer;
-}
-.schedule-template-departments summary:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: 2px;
-}
-.schedule-template-departments details > span {
-  display: block;
-  margin: 6px 0 0;
-  color: var(--theme-muted);
-  font-size: 12px;
-}
-.schedule-template-departments details > div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
-  margin-top: 6px;
-}
-.schedule-template-departments p {
-  margin: 0;
-  border-left: 2px solid var(--theme-danger);
-  padding-left: 8px;
-  color: var(--theme-danger);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-template-departments label {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid var(--theme-border-subtle);
-  border-radius: 6px;
-  padding: 5px 9px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-template-dialog > .schedule-overwrite-warning {
-  margin: 0;
-  border: 0;
-  border-left: 2px solid var(--theme-danger);
-  border-radius: 0;
-  padding: 2px 0 2px 8px;
-  background: transparent;
-  color: var(--theme-danger);
-  font-size: 12px;
-}
-.schedule-templates-page {
-  min-width: 860px;
-  padding: 28px 32px;
-}
-.schedule-templates-header {
-  max-width: 1120px;
-  margin-inline: auto;
-}
-.schedule-templates-header h1 {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.schedule-templates-header p:last-child {
-  max-width: 560px;
-  margin: 8px 0 0;
-  color: #66736d;
-  font-size: 13px;
-  line-height: 1.5;
-}
-.schedule-templates-header a {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  border: 1px solid var(--theme-border-strong);
-  border-radius: 6px;
-  padding: 0 12px;
-  background: var(--theme-surface);
-  color: #33403a;
-  font-size: 13px;
-  font-weight: 750;
-  text-decoration: none;
-}
-.schedule-template-page-state,
-.schedule-template-page-empty,
-.schedule-template-table-wrap {
-  max-width: 1120px;
-  margin-inline: auto;
-}
-.schedule-template-page-state,
-.schedule-template-page-empty {
-  display: flex;
-  min-height: 180px;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  border: 1px dashed #cbd5d0;
-  border-radius: 7px;
-  background: var(--theme-surface);
-  color: #59645f;
-  font-size: 13px;
-}
-.schedule-template-page-state.error {
-  border-style: solid;
-  border-color: #f1bbb4;
-  background: #fff5f4;
-  color: #8a2f27;
-}
-.schedule-template-page-state button {
-  min-height: 32px;
-  border: 1px solid #d59b93;
-  border-radius: 5px;
-  padding: 0 10px;
-  background: var(--theme-surface);
-  color: #8a2f27;
-  font-weight: 750;
-}
-.schedule-template-page-empty {
-  flex-direction: column;
-  text-align: center;
-}
-.schedule-template-page-empty strong {
-  color: #26332e;
-  font-size: 15px;
-}
-.schedule-template-page-empty span {
-  max-width: 420px;
-  line-height: 1.5;
-}
-.schedule-template-table-wrap {
-  overflow: hidden;
-  border: 1px solid #d7dcda;
-  border-radius: 7px;
-  background: var(--theme-surface);
-}
-.schedule-template-table {
-  width: 100%;
-  border-collapse: collapse;
-  table-layout: fixed;
-}
-.schedule-template-table th {
-  height: 40px;
-  padding: 0 14px;
-  border-bottom: 1px solid #dce1de;
-  background: #f3f5f3;
-  color: #68726e;
-  font-size: 11px;
-  font-weight: 800;
-  text-align: left;
-  text-transform: uppercase;
-}
-.schedule-template-table td {
-  overflow: hidden;
-  height: 58px;
-  padding: 8px 14px;
-  border-bottom: 1px solid #e7eae8;
-  color: #46514d;
-  font-size: 13px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.schedule-template-table tr:last-child td {
-  border-bottom: 0;
-}
-.schedule-template-table td strong,
-.schedule-template-table td small {
-  display: block;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.schedule-template-table td strong {
-  color: #202a27;
-}
-.schedule-template-table td small {
-  margin-top: 3px;
-  color: #87908c;
-  font-size: 11px;
-}
-.schedule-template-row-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 4px;
-}
-.schedule-template-row-actions .icon-button[data-confirming="true"] {
-  border: 1px solid #d59b93;
-  background: #fff1ef;
-  color: #a23b31;
-}
-.schedule-template-rename-dialog {
-  display: grid;
-  width: min(420px, calc(100vw - 32px));
-  gap: 14px;
-  border: 1px solid #d5ddda;
-  border-radius: 8px;
-  padding: 16px;
-  background: var(--theme-surface);
-  box-shadow: 0 20px 60px rgb(28 40 35 / 18%);
-}
-.schedule-template-rename-dialog header,
-.schedule-template-rename-dialog footer {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.schedule-template-rename-dialog h2 {
-  margin: 2px 0 0;
-  color: #26332e;
-  font-size: 18px;
-}
-.schedule-template-rename-dialog header span {
-  color: #68746f;
-  font-size: 11px;
-  font-weight: 800;
-  text-transform: uppercase;
-}
-.schedule-template-rename-dialog label {
-  display: grid;
-  gap: 6px;
-  color: #56635d;
-  font-size: 11px;
-  font-weight: 750;
-}
-.schedule-template-rename-dialog input {
-  min-height: 38px;
-  border: 1px solid var(--theme-border-strong);
-  border-radius: 5px;
-  padding: 7px 9px;
-  background: var(--theme-surface);
-  color: #25312c;
-  font: inherit;
-}
-.schedule-template-rename-dialog p[role="alert"] {
-  margin: 0;
-  color: #9a392f;
-  font-size: 12px;
-}
-.schedule-template-rename-dialog button {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  border: 1px solid #c7d0cc;
-  border-radius: 5px;
-  padding: 0 11px;
-  background: var(--theme-surface);
-  color: #34413b;
-  font-weight: 750;
-}
-.schedule-template-rename-dialog button.primary-command {
-  border-color: var(--theme-accent);
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-}
+
 .schedule-tool-dialog button {
   display: inline-flex;
   min-height: 34px;
@@ -10638,15 +9874,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   .schedule-layout-control button span {
     display: inline;
   }
-  .schedule-template-dialog {
-    grid-template-columns: 1fr;
-  }
-  .schedule-template-dialog > form {
-    padding-top: 14px;
-    padding-left: 0;
-    border-top: 1px solid var(--theme-border);
-    border-left: 0;
-  }
+  
+  
   .schedule-autofill-list > label {
     grid-template-columns: 1fr;
   }

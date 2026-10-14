@@ -13,7 +13,13 @@ import {
 // no media queries, so sidebar links are read inside the sidebar.
 const sidebar = () =>
   within(screen.getByRole("complementary", { name: "Application sidebar" }));
+// The drafts list as the API answers it: each draft with its facts, and the live total.
+const draftList = (drafts: readonly ScheduleDraftSummary[]): ScheduleDraftList => ({
+  drafts: drafts.map((draft) => ({ updated_by_name: "Olcay Owner", shift_count: 0, paid_minutes: 0, ...draft })),
+  published: { shift_count: 0, paid_minutes: 0 },
+});
 import type { ScheduleReadModel } from "@newfork/shared";
+import type { ScheduleDraftList, ScheduleDraftSummary } from "@newfork/shared/schedule";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { App, appQueryClient } from "./App";
 import { renderExportFiles, downloadExportFile } from "./schedule/export-v2/files";
@@ -318,6 +324,26 @@ function scheduleFixtureForWeek(weekStart: string): ScheduleReadModel {
   };
 }
 
+/** An edit with unsaved work: leaving it asks to save first. */
+function unsavedEdit() {
+  const acquired = makeDefaultEditAcquireResult();
+  return { ...acquired, session: { ...acquired.session, dirty: true } };
+}
+/** The Save draft window (not the Publish menu): leaving an unsaved edit asks to save it first. */
+async function openSaveDraftWindow() {
+  fireEvent.click(sidebar().getByRole("link", { name: "Employees" }));
+  fireEvent.click(within(
+    await screen.findByRole("alertdialog", { name: "Save changes before leaving?" }),
+  ).getByRole("button", { name: "Save draft" }));
+}
+
+/** The New Schedule window at one of its tabs; returns the window. */
+async function openNewScheduleTab(tab: "Schedules" | "Templates" | "Export") {
+  fireEvent.click(await screen.findByRole("button", { name: /^Draft selector:/ }, { timeout: 5000 }));
+  fireEvent.click(await screen.findByRole("tab", { name: new RegExp(`^${tab}`) }));
+  return screen.findByRole("dialog", { name: /^Schedules for / });
+}
+
 async function openPublishedScheduleEditor(
   app: Pick<typeof screen, "findByRole" | "getByRole"> = screen,
 ) {
@@ -401,7 +427,7 @@ function resetScheduleApiMocks() {
   vi.mocked(getScheduleReadModel).mockReset();
   vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixture);
   vi.mocked(listScheduleDrafts).mockReset();
-  vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [] });
+  vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([]));
   vi.mocked(fetchScheduleDraftShifts).mockReset();
   vi.mocked(fetchScheduleDraftShifts).mockResolvedValue({
     shifts: scheduleFixture.shifts.map((shift) => ({
@@ -590,7 +616,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   isEditSessionClosed: actual.isEditSessionClosed,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
-  listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [] }),
+  listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [], published: { shift_count: 0, paid_minutes: 0 } }),
   fetchScheduleDraftShifts: vi.fn().mockResolvedValue({
     shifts: scheduleFixture.shifts.map((shift) => ({
       ...shift,
@@ -845,9 +871,9 @@ describe("App", () => {
     expect(
       screen.getByRole("button", { name: "Hide Unscheduled" }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Export" }).className).toContain(
-      "schedule-action-button",
-    );
+    // Export and Templates are tabs of the New Schedule window, not top bar buttons (Mert, 2026-10-12).
+    expect(screen.queryByRole("button", { name: "Export" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Templates" })).toBeNull();
     expect(
       screen.getByRole("button", { name: "Draft selector: New Schedule" })
         .className,
@@ -912,7 +938,14 @@ describe("App", () => {
           .filter((child) => child.tagName.toLowerCase() !== "svg")
           .at(-1)?.textContent,
     );
-    expect(footerLinks).toEqual(["Settings", "Employee view", "Account", "Sign out"]);
+    // The workspace switcher is the first footer row (Mert 2026-10-13).
+    expect(footerLinks).toEqual([
+      "Meyhouse",
+      "Settings",
+      "Employee view",
+      "Account",
+      "Sign out",
+    ]);
   }, 40000);
 
   // Each first visit to a lazy route transforms its module graph; under a
@@ -1096,7 +1129,7 @@ describe("App", () => {
   });
 
   function mockUnpublishedPastWeek(
-    drafts: Awaited<ReturnType<typeof listScheduleDrafts>>["drafts"] = [],
+    drafts: readonly ScheduleDraftSummary[] = [],
   ) {
     const pastWeekStart = "2020-01-06";
     const pastFixture = scheduleFixtureForWeek(pastWeekStart);
@@ -1109,7 +1142,7 @@ describe("App", () => {
       })),
       shifts: [],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList(drafts));
     vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
       week_start: pastWeekStart,
       week_end: "2020-01-12",
@@ -1147,13 +1180,12 @@ describe("App", () => {
       { name: "Draft selector: New Schedule" },
       { timeout: 5000 },
     );
-    await waitFor(() => expect(draftSelector).toHaveProperty("disabled", true));
-    expect(
-      screen.queryByRole("button", { name: "New Schedule (blank)" }),
-    ).toBeNull();
-    expect(
-      screen.queryByRole("button", { name: "Edit live schedule" }),
-    ).toBeNull();
+    // The window still opens (Export and Templates live there), but nothing in it starts an edit.
+    fireEvent.click(draftSelector);
+    const windowRoot = await screen.findByRole("dialog", { name: /^Schedules for / });
+    expect(within(windowRoot).getByText("Past week: you can view it, not edit it.")).toBeTruthy();
+    expect(within(windowRoot).queryByRole("button", { name: "Blank schedule" })).toBeNull();
+    expect(within(windowRoot).queryByRole("button", { name: "Edit live schedule" })).toBeNull();
     expect(acquireScheduleEditSession).not.toHaveBeenCalled();
   });
 
@@ -1173,10 +1205,11 @@ describe("App", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
     );
-    const row = await screen.findByRole("button", { name: `View ${draft.name}` });
-    expect(within(row).queryByRole("button")).toBeNull();
-    expect(within(row).getByText("Read-only")).toBeTruthy();
-    expect(within(row).getByText("Past week: you can view it, not edit it.")).toBeTruthy();
+    const view = await screen.findByRole("button", { name: `View ${draft.name}` });
+    const row = view.closest("li")!;
+    expect(within(row).queryByRole("button", { name: `Edit ${draft.name}` })).toBeNull();
+    expect(within(row).queryByRole("button", { name: `Delete ${draft.name}` })).toBeNull();
+    expect(screen.getByText("Past week: you can view it, not edit it.")).toBeTruthy();
   });
 
   // TEL-KAPALI (KARARLAR "Schedule telefonda tamamen kapalı"): below 768 px a manager or owner has no Schedule.
@@ -1258,8 +1291,8 @@ describe("App", () => {
       })),
       shifts: [],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({
-      drafts: Array.from({ length: draftCount }, () => ({
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList(
+      Array.from({ length: draftCount }, () => ({
         id: "99999999-9999-4999-8999-999999999991",
         workspace_id: unpublishedFixture.workspace_id,
         week_start: weekStart,
@@ -1270,7 +1303,7 @@ describe("App", () => {
         created_at: "2026-10-20T12:00:00Z",
         updated_at: "2026-10-20T12:00:00Z",
       })),
-    });
+    ));
     vi.mocked(fetchSchedulePublicationStatus).mockResolvedValue({
       week_start: weekStart,
       week_end: "2026-11-01",
@@ -1483,40 +1516,57 @@ describe("App", () => {
     );
   });
 
-  it("opens Export v2 nonmodally in the application sidebar and keeps grid Settings interactive", async () => {
+  it("opens the New Schedule window at Export from the export address; closing it leaves the address", async () => {
     window.history.pushState({}, "", "/app/schedule/export?date=2026-08-17");
     render(<App />);
     await signInAs("owner");
     const panel = await screen.findByRole("region", { name: "Export settings" });
-    expect(panel.closest("aside")?.getAttribute("aria-label")).toBe("Application sidebar");
-    expect(screen.queryByRole("dialog")).toBeNull();
+    const windowRoot = panel.closest("[role='dialog']") as HTMLElement;
+    expect(windowRoot.getAttribute("aria-label")).toMatch(/^Schedules for /);
+    expect(within(windowRoot).getByRole("tab", { name: "Export" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByText("Scheduled emails")).toBeNull();
     expect(listScheduleExportPresets).not.toHaveBeenCalled();
     expect(listScheduleExportSchedules).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: /Settings/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Hide Clock in/out in badges" }));
-    expect(screen.getByRole("region", { name: "Export settings" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Show Clock in/out in badges" })).toBeTruthy();
-    fireEvent.click(within(panel).getByRole("button", { name: "Close export" }));
-    expect(screen.getByRole("navigation", { name: "Primary" })).toBeTruthy();
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "Close" }));
+    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
+    await waitFor(() => expect(window.location.pathname).toBe("/app/schedule"));
   });
 
-  it("opens the standalone schedule templates page from the reference templates route", async () => {
-    const draftCallCount = vi.mocked(listScheduleDrafts).mock.calls.length;
+  it("opens the New Schedule window at Templates from the templates address", async () => {
     window.history.pushState({}, "", "/app/schedule/templates?date=2026-08-24");
     testAuth.role = "owner";
     render(<App />);
+    const tab = await screen.findByRole("tab", { name: /^Templates/ }, { timeout: 5000 });
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(await screen.findByText(/^No templates yet\./)).toBeTruthy();
+    expect(listScheduleTemplates).toHaveBeenCalledWith(scheduleFixture.workspace_id);
+  });
 
-    expect(
-      await screen.findByRole("heading", { name: "Schedule templates" }),
-    ).toBeTruthy();
-    expect(await screen.findByText("No templates yet")).toBeTruthy();
-    expect(listScheduleTemplates).toHaveBeenCalledWith(
-      scheduleFixture.workspace_id,
-    );
-    expect(vi.mocked(listScheduleDrafts).mock.calls.length).toBe(
-      draftCallCount,
-    );
+  // S18 (review): a role that may read templates but not manage them sees the
+  // list from the templates address, with nothing it cannot do.
+  it("shows a templates reader the list with no Save template, Use or row menu", async () => {
+    vi.mocked(listScheduleTemplates).mockResolvedValue({
+      templates: [{
+        id: "99999999-9999-4999-8999-999999999982",
+        workspace_id: scheduleFixture.workspace_id,
+        name: "Lunch week",
+        revision: 1,
+        shift_count: 1,
+        open_slot_count: 0,
+        created_by_name: "Development Owner",
+        updated_at: "2026-08-17T12:00:00Z",
+      }],
+    });
+    testAuth.withoutActions = ["schedule.templates"];
+    window.history.pushState({}, "", "/app/schedule/templates?date=2026-08-24");
+    testAuth.role = "owner";
+    render(<App />);
+    const tab = await screen.findByRole("tab", { name: /^Templates/ }, { timeout: 5000 });
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(await screen.findByText("Lunch week")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save template" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use template Lunch week" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More for Lunch week" })).toBeNull();
   });
 
   it("opens Schedule editing from an explicit working-copy source", async () => {
@@ -1552,7 +1602,6 @@ describe("App", () => {
         },
       ),
     );
-    expect(screen.getByRole("button", { name: "Export" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Publish" })).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", {
@@ -2508,9 +2557,7 @@ describe("App", () => {
       updated_by: "88888888-8888-4888-8888-888888888888",
       updated_at: "2026-08-17T12:05:00Z",
     };
-    vi.mocked(listScheduleDrafts).mockResolvedValue({
-      drafts: [conflictingDraft],
-    });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([conflictingDraft]));
     const confirmSpy = vi.spyOn(window, "confirm");
     const saveMock = vi.mocked(saveScheduleDraft);
     saveMock.mockRejectedValueOnce(
@@ -2543,7 +2590,7 @@ describe("App", () => {
     fireEvent.click(within(overwrite).getByRole("button", { name: "Overwrite" }));
     await waitFor(() => expect(saveMock).toHaveBeenCalledTimes(2));
     expect(confirmSpy).not.toHaveBeenCalled();
-    expect(saveMock.mock.calls[1]?.[3]).toEqual(conflictingDraft);
+    expect(saveMock.mock.calls[1]?.[3]).toEqual(expect.objectContaining(conflictingDraft));
     expect(
       screen.queryByRole("dialog", { name: "Schedule save failed" }),
     ).toBeNull();
@@ -3216,7 +3263,10 @@ describe("App", () => {
     });
     const live = draft("99999999-9999-4999-8999-999999999981", "Week plan v1");
     const other = draft("99999999-9999-4999-8999-999999999982", "Week plan v2");
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [live, other] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue({
+      ...draftList([live, other]),
+      published: { shift_count: 12, paid_minutes: 5040 },
+    });
     const status = await vi.mocked(fetchSchedulePublicationStatus)(
       scheduleFixture.workspace_id,
       scheduleFixture.week_start,
@@ -3240,21 +3290,22 @@ describe("App", () => {
       ),
     );
 
-    const menu = await screen.findByRole("dialog");
+    // The live schedule is the first row, named after its draft; the other drafts follow.
+    const menu = await screen.findByRole("dialog", { name: /^Schedules for / });
     await waitFor(() =>
       expect(
-        Array.from(menu.querySelectorAll("[data-draft-row] strong")).map(
-          (name) => name.textContent,
-        ),
-      ).toEqual(["Week plan v2", "Week plan v1"]),
+        Array.from(menu.querySelectorAll("li .new-schedule-window-open b")).map((name) => name.textContent),
+      ).toEqual(["Week plan v1", "Week plan v2"]),
     );
     const liveRow = menu.querySelector("[data-published-draft-row]");
-    expect(liveRow?.querySelector("strong")?.textContent).toBe("Week plan v1");
-    expect(liveRow?.textContent).toContain("Published");
-    expect(
-      within(menu).getByRole("button", { name: "Delete Week plan v1" }),
-    ).toHaveProperty("disabled", true);
-    expect(menu.querySelector("[data-published-fallback-row]")).toBeNull();
+    expect(liveRow?.querySelector("b")?.textContent).toBe("Week plan v1");
+    expect(liveRow?.textContent).toContain("Live");
+    // The live week's facts survive the window's own refresh of the drafts list (S18).
+    await waitFor(() => expect(liveRow?.textContent).toContain("12 shifts"));
+    expect(liveRow?.textContent).toContain("84 h");
+    // A live schedule is unpublished, never deleted as a draft.
+    expect(within(menu).queryByRole("button", { name: "Delete Week plan v1" })).toBeNull();
+    expect(menu.querySelectorAll("[data-draft-row]")).toHaveLength(1);
   });
 
   it("says who is editing a draft somebody else has open", async () => {
@@ -3270,7 +3321,7 @@ describe("App", () => {
       created_at: "2026-08-17T12:00:00Z",
       updated_at: "2026-08-17T12:00:00Z",
     };
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [kitchenPlan] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([kitchenPlan]));
     acquireMock.mockResolvedValueOnce({
       status: "conflict",
       session_id: "77777777-7777-4777-8777-777777777777",
@@ -5204,7 +5255,7 @@ describe("App", () => {
       ...scheduleFixtureForWeek("2026-10-19"),
       employees: publishEmployees,
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "override_required",
       workspace_id: scheduleFixture.workspace_id,
@@ -5362,7 +5413,7 @@ describe("App", () => {
   });
 
   // BL-705 (KARARLAR Schedule: "Save as template" is on the draft screen too).
-  it("opens Templates on the open draft from New Schedule ▾ → Save as template", async () => {
+  it("saves the draft on screen as a template from New Schedule ▾ → Templates → Save template", async () => {
     const draft = {
       id: "99999999-9999-4999-8999-999999999990",
       workspace_id: scheduleFixture.workspace_id,
@@ -5377,7 +5428,7 @@ describe("App", () => {
     const other = { ...draft, id: "99999999-9999-4999-8999-999999999991", name: "Plan B" };
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [other, draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([other, draft]));
     window.history.pushState({}, "", `/app/schedule?date=2026-10-26&draft=${draft.id}`);
     render(<App />);
     await signInAs("owner");
@@ -5385,11 +5436,12 @@ describe("App", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Draft selector: Holiday week" }, { timeout: 5000 }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save as template" }));
+    fireEvent.click(await screen.findByRole("tab", { name: /^Templates/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save template" }));
 
-    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
+    const form = await screen.findByRole("region", { name: "Save a draft as a template" });
     expect(
-      (within(dialog).getByRole("combobox", { name: "Draft" }) as HTMLSelectElement).value,
+      (within(form).getByRole("combobox", { name: "Draft" }) as HTMLSelectElement).value,
     ).toBe(draft.id);
     readModelMock.mockResolvedValue(scheduleFixture);
   });
@@ -5443,7 +5495,7 @@ describe("App", () => {
         },
       ],
     });
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
@@ -5584,7 +5636,7 @@ describe("App", () => {
     readModelMock
       .mockResolvedValueOnce(liveFixture)
       .mockResolvedValue(unpublishedFixture);
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(fetchScheduleDraftShifts).mockResolvedValue({
       shifts: [draftShift],
     });
@@ -5711,9 +5763,14 @@ describe("App", () => {
     testAuth.role = "owner";
     render(<App />);
 
-    fireEvent.click(await screen.findByRole("button", { name: "Templates" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }));
+    fireEvent.click(await screen.findByRole("tab", { name: /^Templates/ }));
 
-    expect(await screen.findByText("Newfork could not finish that. Try again in a moment.")).toBeTruthy();
+    // The tab says it, with Retry, not "No templates yet" (S18).
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Templates could not be loaded.");
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByText(/No templates yet/)).toBeNull();
     expect(screen.queryByText(/invalid_type/)).toBeNull();
   });
 
@@ -5795,7 +5852,7 @@ describe("App", () => {
     vi.mocked(getScheduleReadModel).mockResolvedValue(
       scheduleFixtureForWeek(weekStart),
     );
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(fetchScheduleDraftShifts)
       .mockRejectedValueOnce(
         new ScheduleRequestError('relation "x" does not exist', 500, {
@@ -5844,7 +5901,7 @@ describe("App", () => {
     let failDraftList = false;
     vi.mocked(listScheduleDrafts).mockImplementation(async () => {
       if (failDraftList) throw failure;
-      return { drafts: [] };
+      return draftList([]);
     });
     window.history.pushState({}, "", "/app/schedule");
     testAuth.role = "owner";
@@ -5891,7 +5948,7 @@ describe("App", () => {
     );
     vi.mocked(listScheduleDrafts).mockImplementation(async () => {
       if (failDraftList) throw failure;
-      return { drafts: [draft] };
+      return draftList([draft]);
     });
     const acquireMock = vi.mocked(acquireScheduleEditSession);
     acquireMock.mockClear();
@@ -5906,7 +5963,7 @@ describe("App", () => {
     );
     failDraftList = true;
     fireEvent.click(trigger);
-    fireEvent.click(await screen.findByRole("button", { name: /New Schedule \(blank\)/ }));
+    fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
 
     expect(
       await screen.findByText("Drafts could not be loaded. Try again."),
@@ -5955,7 +6012,7 @@ describe("App", () => {
           { error: "permission denied for table schedule_drafts" },
         );
       }
-      return { drafts: [draft] };
+      return draftList([draft]);
     });
     vi.mocked(previewScheduleUnpublish).mockResolvedValueOnce({
       status: "unpublish_ready",
@@ -6026,7 +6083,7 @@ describe("App", () => {
       created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z",
     };
     vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     const unhandled = vi.fn();
     process.on("unhandledRejection", unhandled);
     try {
@@ -6059,7 +6116,7 @@ describe("App", () => {
     };
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-10-26"));
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
@@ -6175,7 +6232,7 @@ describe("App", () => {
     };
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-11-02"));
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
@@ -6320,7 +6377,7 @@ describe("App", () => {
     };
     const readModelMock = vi.mocked(getScheduleReadModel);
     readModelMock.mockResolvedValue(scheduleFixtureForWeek("2026-11-09"));
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     vi.mocked(previewSchedulePublication).mockResolvedValue({
       status: "publish_ready",
       workspace_id: scheduleFixture.workspace_id,
@@ -6423,7 +6480,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
     await signInAs("owner");
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
+    await openNewScheduleTab("Export");
     const panel = await screen.findByRole("region", { name: "Export settings" });
     await clickReadyButton(within(panel), "Download PDF");
     await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
@@ -6436,75 +6493,98 @@ describe("App", () => {
     expect(screen.getByRole("region", { name: "Export settings" })).toBeTruthy();
   });
 
-  it("prompts Save draft for edit-mode Export, and cancellation keeps the working copy", async () => {
+  // Mert 2026-10-12: Export never asks for a save; while editing it exports the grid as it is now.
+  it("opens Export straight from an open edit, exports it unsaved and keeps editing", async () => {
+    // The unsaved change is on the server as the edit's own pending step, as in the browser:
+    // Export takes it as part of the grid, it does not wait for it to be saved.
+    const changed = makeDefaultEditAcquireResult().session.shifts[0]!;
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
+    vi.mocked(fetchPendingOps).mockResolvedValue({ pending_ops: [{
+      id: changed.id, location_id: changed.location_id, week_start: scheduleFixture.week_start, op_type: "update",
+      target_shift_id: changed.id, target_draft_id: null, payload: { note: "Not saved yet" },
+      created_by: "88888888-8888-4888-8888-888888888888", created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:01:00Z",
+    }] });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
-    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    expect(within(dialog).getByText(/Export is available in preview mode/)).toBeTruthy();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(authorizeScheduleExportV2).not.toHaveBeenCalled();
-    fireEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await openNewScheduleTab("Export");
+    const panel = await screen.findByRole("region", { name: "Export settings" });
+    expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
+    await waitFor(() => expect(within(panel).getByText("Editing · not saved")).toBeTruthy());
+    await clickReadyButton(within(panel), "Download PDF");
+    await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
+    const session = makeDefaultEditAcquireResult().session;
+    expect(authorizeScheduleExportV2).toHaveBeenCalledWith(scheduleFixture.workspace_id,
+      expect.objectContaining({ source: { kind: "edit_session", id: session.id, revision: session.revision } }), expect.anything());
+    expect(saveScheduleDraft).not.toHaveBeenCalled();
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
     expect(window.location.search).toContain("mode=edit");
   });
 
-  it("opens Export v2 only after a successful Save draft and reads the saved preview", async () => {
-    const saved = { id: "99999999-9999-4999-8999-999999999999", workspace_id: scheduleFixture.workspace_id,
-      week_start: scheduleFixture.week_start, name: "Export draft", revision: 1,
-      created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
-      created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z" };
-    vi.mocked(saveScheduleDraft).mockImplementationOnce(async () => {
-      vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [saved] }); return saved;
-    });
+  it("exports a shift added in the open edit once, with its real id (S18)", async () => {
+    // The added shift is a row of the edit; the server also lists it as the edit's pending "create".
+    const acquired = unsavedEdit();
+    const base = acquired.session.shifts[0]!;
+    const added = { ...base, id: "abababab-abab-4bab-8bab-abababababab", scheduled_date: "2026-08-18", pending_op_type: "create" as const };
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue({ ...acquired, session: { ...acquired.session, shifts: [...acquired.session.shifts, added] } });
+    vi.mocked(fetchPendingOps).mockResolvedValue({ pending_ops: [{
+      id: added.id, location_id: added.location_id, week_start: scheduleFixture.week_start, op_type: "create",
+      target_shift_id: null, target_draft_id: null,
+      payload: { location_id: added.location_id, employee_id: added.employee_id, job_id: added.job_id, shift_type_id: added.shift_type_id,
+        scheduled_date: added.scheduled_date, start_time: added.start_time, end_time: added.end_time },
+      created_by: "88888888-8888-4888-8888-888888888888", created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:01:00Z",
+    }] });
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
-    const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: saved.name } });
-    fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
+    await waitFor(() => expect(fetchPendingOps).toHaveBeenCalled());
+    await openNewScheduleTab("Export");
     const panel = await screen.findByRole("region", { name: "Export settings" });
-    await waitFor(() => expect(within(panel).getByText(/Export draft/)).toBeTruthy());
-    expect(window.location.search).not.toContain("mode=edit");
-    expect(fetchScheduleDraftShifts).toHaveBeenCalledWith(scheduleFixture.workspace_id, scheduleFixture.week_start, saved.id, [scheduleFixture.locations[0]!.id]);
-    expect(renderExportFiles).not.toHaveBeenCalled();
+    await clickReadyButton(within(panel), "Download PDF");
+    await waitFor(() => expect(downloadExportFile).toHaveBeenCalledOnce());
+    const exported = vi.mocked(renderExportFiles).mock.calls.at(-1)![0].shifts.map((shift) => shift.id);
+    expect(exported.filter((id) => id === added.id)).toHaveLength(1);
+    expect(exported.some((id) => id.startsWith("pending:"))).toBe(false);
+    const scope = vi.mocked(authorizeScheduleExportV2).mock.calls.at(-1)![1];
+    expect(scope.shift_ids).toContain(added.id);
+    expect(scope.shift_ids.some((id) => id.startsWith("pending:"))).toBe(false);
   });
 
-  it("keeps Export v2 settings open when switching from published to another saved preview", async () => {
+  // Mert 2026-10-12: Export has no source choice; it takes the schedule on screen, picked in Schedules first.
+  it("exports the draft on screen, picked in the Schedules tab before Export opens", async () => {
     const draft = { id: "99999999-9999-4999-8999-999999999996", workspace_id: scheduleFixture.workspace_id,
       week_start: scheduleFixture.week_start, name: "Alternate export draft", revision: 2,
       created_by: "88888888-8888-4888-8888-888888888888", updated_by: "88888888-8888-4888-8888-888888888888",
       created_at: "2026-08-17T12:00:00Z", updated_at: "2026-08-17T12:00:00Z" };
-    vi.mocked(listScheduleDrafts).mockResolvedValue({ drafts: [draft] });
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    fireEvent.click(await screen.findByRole("button", { name: "Export" }));
-    const panel = await screen.findByRole("region", { name: "Export settings" });
-    fireEvent.click(within(panel).getByRole("radio", { name: /^Excel/ }));
-    fireEvent.click(screen.getByRole("button", { name: /^Draft selector:/ }));
-    const row = (await screen.findByText(draft.name)).closest("[data-draft-row]");
+    const windowRoot = await openNewScheduleTab("Schedules");
+    const row = (await within(windowRoot).findByText(draft.name)).closest("[data-draft-row]");
     if (!row) throw new Error("Draft row missing"); fireEvent.click(row);
-    await waitFor(() => expect(within(panel).getByText(new RegExp(draft.name))).toBeTruthy());
-    expect(within(panel).getByRole("radio", { name: /^Excel/ }).getAttribute("aria-checked")).toBe("true");
+    await screen.findByRole("button", { name: `Draft selector: ${draft.name}` });
+    await openNewScheduleTab("Export");
+    const panel = await screen.findByRole("region", { name: "Export settings" });
+    await waitFor(() => expect(within(panel).getByText(`Draft · ${draft.name}`)).toBeTruthy());
+    expect(within(panel).queryByRole("radio", { name: /Published/ })).toBeNull();
+    fireEvent.click(within(panel).getByRole("radio", { name: /^Excel/ }));
     await clickReadyButton(within(panel), "Download Excel");
     await waitFor(() => expect(renderExportFiles).toHaveBeenCalledWith(expect.objectContaining({ source: { kind: "draft", id: draft.id, revision: 2, name: draft.name } }), expect.objectContaining({ format: "xlsx" })));
   });
 
-  it("does not open Export v2 or emit output after Save draft fails", async () => {
+  it("keeps the edit open after a failed Save draft", async () => {
     vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new Error("Network dropped"));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Failed draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
     await screen.findByRole("dialog", { name: "Schedule save failed" });
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled(); expect(window.location.search).toContain("mode=edit");
+    expect(window.location.search).toContain("mode=edit");
     fireEvent.click(screen.getByRole("button", { name: "Keep editing" }));
     expect(screen.getByRole("button", { name: "Discard" })).toBeTruthy();
   });
@@ -6514,9 +6594,10 @@ describe("App", () => {
     vi.mocked(saveScheduleDraft).mockRejectedValueOnce(new ScheduleRequestError("session revision stale", 409, {
       error: "session revision stale", code: "edit_session_stale",
     }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
     fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Stale draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
@@ -6527,25 +6608,25 @@ describe("App", () => {
     expect(within(alert).getByRole("button", { name: "Reload" })).toBeTruthy();
     expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
     expect(screen.queryByText(/session revision stale/i)).toBeNull();
   });
 
-  it.each(["network", "retroactive"] as const)("ignores a late %s Save-for-Export error after the edit session expires", async kind => {
+  it.each(["network", "retroactive"] as const)("ignores a late %s Save draft error after the edit session expires", async kind => {
     let rejectSave!: (error: Error) => void;
     vi.mocked(saveScheduleDraft).mockImplementationOnce(() => new Promise((_, reject) => { rejectSave = reject; }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
-    await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+    await openPublishedScheduleEditor(); await openSaveDraftWindow();
     const dialog = await screen.findByRole("dialog", { name: "Save draft" });
-    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Expired export draft" } });
+    fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: "Expired draft" } });
     fireEvent.click(within(dialog).getByRole("button", { name: "Save draft" }));
     await waitFor(() => expect(saveScheduleDraft).toHaveBeenCalledOnce());
     expect(exportSaveIdleHarness.expire).toBeTypeOf("function");
     await act(async () => { exportSaveIdleHarness.expire!(); });
     expect(window.location.search).not.toContain("mode=edit");
     expect(screen.queryByRole("dialog", { name: "Save draft" })).toBeNull();
-    await act(async () => rejectSave(kind === "network" ? new Error("Late failed export save") :
+    await act(async () => rejectSave(kind === "network" ? new Error("Late failed save") :
       new ScheduleRequestError("Late retroactive edit", 409, {
         status: "past_shift_edit_requires_ack", past_edits: [{ op_type: "update", shift_id: scheduleFixture.shifts[0]!.id,
           scheduled_date: "2026-08-17", location_name: "Main Dining", employee_name: "Alex Rivera", reason: "shift_started", severity: "warning" }],
@@ -6553,22 +6634,21 @@ describe("App", () => {
       })));
     expect(screen.queryByRole("dialog", { name: "Schedule save failed" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "This changes shifts that already ran" })).toBeNull();
-    expect(screen.queryByRole("region", { name: "Export settings" })).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled();
     expect(saveScheduleDraft).toHaveBeenCalledOnce();
   });
 
-  it("does not let an expired Export save unlock or replace a newer pending save", async () => {
+  it("does not let an expired save unlock or replace a newer pending save", async () => {
     let rejectOld!: (error: Error) => void, rejectNew!: (error: Error) => void;
     vi.mocked(saveScheduleDraft)
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectOld = reject; }))
       .mockImplementationOnce(() => new Promise((_, reject) => { rejectNew = reject; }));
+    vi.mocked(acquireScheduleEditSession).mockResolvedValue(unsavedEdit());
     window.history.pushState({}, "", "/app/schedule?date=2026-08-17"); render(<App />);
     await signInAs("owner");
     for (const name of ["Expired draft", "Current draft"]) {
       // The fixture deliberately resumes the same session id/revision: an old
       // operation must still be stale after the intervening preview state.
-      await openPublishedScheduleEditor(); fireEvent.click(screen.getByRole("button", { name: "Export" }));
+      await openPublishedScheduleEditor(); await openSaveDraftWindow();
       const dialog = await screen.findByRole("dialog", { name: "Save draft" });
       fireEvent.change(within(dialog).getByRole("textbox", { name: "Draft name" }), { target: { value: name } });
       await clickReadyButton(within(dialog), "Save draft");
@@ -6583,7 +6663,6 @@ describe("App", () => {
     await act(async () => rejectNew(new Error("Current request error")));
     expect(screen.getByRole("dialog", { name: "Schedule save failed" })).toBeTruthy();
     expect(screen.queryByText("Expired request error")).toBeNull();
-    expect(renderExportFiles).not.toHaveBeenCalled();
   });
 
   it("lands manager sign-ins on Workspace by default", async () => {
@@ -6846,14 +6925,13 @@ describe("App", () => {
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
-    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
-    fireEvent.click(await within(dialog).findByRole("button", { name: /Base week/ }));
+    const dialog = await openNewScheduleTab("Templates");
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Use template Base week" }));
     fireEvent.click(within(dialog).getByRole("button", { name: /^(Add to current shifts|Apply template)$/ }));
 
     await waitFor(() => expect(applyScheduleTemplate).toHaveBeenCalledTimes(2));
     expect(acquireScheduleEditSession).toHaveBeenCalledTimes(2);
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Schedule templates" })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /^Schedules for / })).toBeNull());
     expect(screen.queryByText(/edit lease expired/)).toBeNull();
   });
 
@@ -6877,9 +6955,8 @@ describe("App", () => {
     render(<App />);
     await signInAs("owner");
     await openPublishedScheduleEditor();
-    fireEvent.click(await screen.findByRole("button", { name: "Templates" }));
-    const dialog = await screen.findByRole("dialog", { name: "Schedule templates" });
-    fireEvent.click(await within(dialog).findByRole("button", { name: /Lunch week/ }));
+    const dialog = await openNewScheduleTab("Templates");
+    fireEvent.click(await within(dialog).findByRole("button", { name: "Use template Lunch week" }));
     fireEvent.click(within(dialog).getByRole("button", { name: "Replace current shifts" }));
 
     expect(await within(dialog).findByText("7 shifts will be removed. Draft only, not published.")).toBeTruthy();

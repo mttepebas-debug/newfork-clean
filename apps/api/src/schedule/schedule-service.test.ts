@@ -157,6 +157,38 @@ describe("createScheduleReadService read model", () => {
 // S1: when the idle countdown ends the edit is kept as an "Auto-save" draft.
 // S2 (KK-171): Undo takes the edit's last step back on the server.
 describe("createScheduleReadService undo", () => {
+  it("reads the person's own open edit for Export without touching the lease or telling anyone", async () => {
+    mocks.rpc.mockResolvedValueOnce({ data: scheduleSessionModel(), error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    const session = await service.getEditSession!(actorUserId, workspaceId, "87000000-0000-4000-8000-000000000001");
+
+    expect(session.revision).toBe(3);
+    expect(mocks.rpc).toHaveBeenCalledWith("get_schedule_edit_session_service", {
+      actor_user_id: actorUserId, target_workspace_id: workspaceId, target_session_id: "87000000-0000-4000-8000-000000000001",
+    });
+    expect(mocks.send).not.toHaveBeenCalled();
+  });
+
+  it("lists the week's drafts with their shifts, paid minutes and last saver, and the live total (New Schedule window)", async () => {
+    const draft = {
+      id: draftId, workspace_id: workspaceId, week_start: "2026-08-17", name: "Week A", revision: 2,
+      created_by: actorUserId, updated_by: actorUserId,
+      created_at: "2026-08-17T12:00:00+00:00", updated_at: "2026-08-17T13:00:00+00:00",
+      updated_by_name: "Olcay Owner", shift_count: 3, paid_minutes: 1050,
+    };
+    mocks.rpc.mockResolvedValueOnce({ data: { drafts: [draft], published: { shift_count: 2, paid_minutes: 810 } }, error: null });
+    const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });
+
+    const list = await service.listDrafts(actorUserId, workspaceId, "2026-08-17");
+
+    expect(list.drafts[0]).toMatchObject({ updated_by_name: "Olcay Owner", shift_count: 3, paid_minutes: 1050 });
+    expect(list.published).toEqual({ shift_count: 2, paid_minutes: 810 });
+    // An answer without the facts is a broken contract, not an empty window.
+    mocks.rpc.mockResolvedValueOnce({ data: { drafts: [draft] }, error: null });
+    await expect(service.listDrafts(actorUserId, workspaceId, "2026-08-17")).rejects.toThrow();
+  });
+
   it("asks the server to take the last step back and tells the edit's locations", async () => {
     mocks.rpc.mockResolvedValueOnce({ data: { ...scheduleSessionModel(), revision: 4, undo_depth: 2 }, error: null });
     const service = createScheduleReadService({ url: "https://example.supabase.co", serviceRoleKey: "service-role" });

@@ -22,6 +22,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { DEFAULT_LIST_PAGE_SIZE, ListPagination } from "../views/ListPagination";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -80,6 +81,7 @@ export default function EmployeesPage() {
   const { context } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const phone = useListPhoneWidth();
   const [params, setParams] = useSearchParams();
   const workspaceId = context?.workspace.id ?? "";
   const archived = location.pathname.endsWith("/archive");
@@ -255,6 +257,22 @@ export default function EmployeesPage() {
     Boolean(search) || locationFilter !== "all" || status !== "all";
 
   const drawerOpen = creating || Boolean(employeeId);
+  const addButton =
+    !archived && canCreate ? (
+      <ListAddButton
+        label="Add employee"
+        shortLabel="Add"
+        onClick={() =>
+          setParams(
+            nextParams({
+              mode: "create",
+              employeeId: null,
+              section: "profile",
+            }),
+          )
+        }
+      />
+    ) : null;
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(employees.error))
     return (
@@ -352,6 +370,9 @@ export default function EmployeesPage() {
             ))}
             <option value={noLocation}>No location</option>
           </select>
+          {/* A phone puts "+ Add" beside the location list, the search under
+              both (Mert 2026-10-14). */}
+          {phone ? addButton : null}
           <label className="employee-search toolbar-search">
             <Search size={17} aria-hidden />
             <span className="sr-only">Search employees</span>
@@ -363,21 +384,7 @@ export default function EmployeesPage() {
               placeholder="Search name, location, or job"
             />
           </label>
-          {!archived && canCreate ? (
-            <ListAddButton
-              label="Add employee"
-              shortLabel="Add"
-              onClick={() =>
-                setParams(
-                  nextParams({
-                    mode: "create",
-                    employeeId: null,
-                    section: "profile",
-                  }),
-                )
-              }
-            />
-          ) : null}
+          {phone ? null : addButton}
         </div>
       </div>
 

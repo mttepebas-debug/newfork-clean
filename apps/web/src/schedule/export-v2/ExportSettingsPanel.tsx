@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router";
-import {
-  Check, Columns3, Download, ExternalLink, FileDown, FileImage, FileSpreadsheet, FileText, PanelLeftClose, PanelLeftOpen,
-  Printer, RotateCcw, StretchVertical, X,
-} from "lucide-react";
-import { AppSidebarPanel } from "../../shell/AppSidebarPanel";
+import { Download, ExternalLink, FileImage, FileSpreadsheet, FileText, Printer } from "lucide-react";
 import { formatDateNumber } from "../lib/scheduleDateTime";
 import type { ExportDownload } from "./files";
 import type { ExportPreferences } from "./preferences";
@@ -12,24 +8,17 @@ import type { SnapshotResult } from "./snapshot";
 import "./export-v2.css";
 
 type Format = ExportPreferences["format"];
-type Destination = ExportPreferences["destination"];
 const formats: readonly { value: Format; label: string; hint: string; icon: typeof FileText }[] = [
   { value: "pdf", label: "PDF", hint: "Print-ready pages", icon: FileText },
-  { value: "png", label: "PNG", hint: "One image per page", icon: FileImage },
+  { value: "png", label: "Image", hint: "PNG, one per page", icon: FileImage },
   { value: "xlsx", label: "Excel", hint: "Merged, per location, Data", icon: FileSpreadsheet },
 ];
-const destinations: readonly { value: Destination; label: string; hint: string; icon: typeof Download }[] = [
-  { value: "download", label: "Download", hint: "Save the file", icon: Download },
-  { value: "print", label: "Print", hint: "Fixed paper, print dialog", icon: Printer },
-];
-const formatLabel = (format: Format) => formats.find(item => item.value === format)!.label;
+const formatLabel = (format: Format) => (format === "xlsx" ? "Excel" : format.toUpperCase());
 
 export interface ExportSettingsPanelProps {
   readonly result: SnapshotResult;
   readonly preferences: ExportPreferences;
   readonly onChange: (value: ExportPreferences) => void;
-  readonly onReset: () => void;
-  readonly onClose: () => void;
   readonly onPreview: () => void;
   readonly onExport: () => void;
   readonly busy: boolean;
@@ -42,122 +31,125 @@ export interface ExportSettingsPanelProps {
   readonly footer?: ReactNode;
 }
 
-/** Sidebar export panel in the schedule settings-menu voice: rows with a trailing check. */
+/**
+ * Export inside the New Schedule window (Mert, 2026-10-12): what is on the
+ * grid now, preview on the left, file, destination and layout on the right.
+ */
 export function ExportSettingsPanel(props: ExportSettingsPanelProps) {
-  const { result, preferences, onChange, onReset, onClose, onPreview, onExport, busy, error, footer, inline, onInlineTarget } = props;
+  const { result, preferences, onChange, onPreview, onExport, busy, error, footer, inline, onInlineTarget } = props;
   const disabled = busy || result.status !== "ready";
   const excel = preferences.format === "xlsx";
   const print = preferences.destination === "print" && !excel;
   const setFormat = (format: Format) => onChange({ ...preferences, format, destination: format === "xlsx" ? "download" : preferences.destination });
   const PrimaryIcon = print ? Printer : Download;
-  return <AppSidebarPanel>{({ collapsed, onToggle }) => (
-    <section className="schedule-export-v2" data-schedule-export-v2="true" aria-label="Export settings"
-      onKeyDown={event => { if (event.key === "Escape") { event.stopPropagation(); onClose(); } }}>
-      <header className="export-v2-heading">
-        {!collapsed ? <h2><FileDown size={18} aria-hidden="true" />Export</h2> : null}
-        <button type="button" className="icon-button" aria-label={collapsed ? "Expand export settings" : "Minimize export settings"} onClick={onToggle}>
-          {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
-        </button>
-        <button type="button" className="icon-button" aria-label="Close export" onClick={onClose}><X size={18} /></button>
-      </header>
-      {!collapsed ? <>
-        <InlinePreview result={result} preferences={preferences} files={inline.files} loading={inline.loading} onTarget={onInlineTarget} onOpen={onPreview} />
-        <SourceTable {...props} />
-        <Section title="Format"><MenuRows options={formats} value={preferences.format} onChange={setFormat} /></Section>
-        {excel ? <p className="export-v2-hint">One workbook: Merged, each location, and Data. Only the heading rows are frozen.</p> : <>
-          <Section title="Page layout"><LayoutControls {...props} /></Section>
-          <Section title="Output"><MenuRows options={destinations} value={preferences.destination} onChange={destination => onChange({ ...preferences, destination })} /></Section>
-        </>}
-        {error ? <p role="alert" className="form-error export-v2-error">{error}</p> : null}
-        <div className="export-v2-footer">
-          <button type="button" className="export-v2-primary" disabled={disabled} onClick={onExport}>
-            <PrimaryIcon size={15} aria-hidden="true" />{busy ? "Preparing…" : `${print ? "Print" : "Download"} ${formatLabel(preferences.format)}`}
-          </button>
-          <div className="export-v2-pair">
-            <button type="button" className="export-v2-secondary" disabled={disabled} onClick={onPreview}><ExternalLink size={14} aria-hidden="true" />Preview</button>
-            <button type="button" className="export-v2-secondary" onClick={onReset}><RotateCcw size={14} aria-hidden="true" />Reset</button>
+  return (
+    <section className="schedule-export-v2" data-schedule-export-v2="true" aria-label="Export settings">
+      <SourceLine {...props} />
+      <div className="export-v2-grid">
+        <InlinePreview result={result} preferences={preferences} files={inline.files} loading={inline.loading} onTarget={onInlineTarget} />
+        <div className="export-v2-side">
+          <Section title="File">
+            <div className="export-v2-formats" role="radiogroup" aria-label="File">
+              {formats.map(({ value, label, hint, icon: Icon }) => (
+                <button key={value} type="button" role="radio" aria-checked={preferences.format === value} onClick={() => setFormat(value)}>
+                  <Icon size={18} aria-hidden="true" /><b>{label}</b><small>{hint}</small>
+                </button>
+              ))}
+            </div>
+          </Section>
+          {!excel ? (
+            <Section title="Send to">
+              <Segmented label="Send to" value={preferences.destination} onChange={(destination) => onChange({ ...preferences, destination })}
+                options={[{ value: "download", label: "Download" }, { value: "print", label: "Printer" }]} />
+            </Section>
+          ) : null}
+          <Section title={print ? "Paper" : "Layout"}><LayoutControls {...props} /></Section>
+          {error ? <p role="alert" className="form-error export-v2-error">{error}</p> : null}
+          <div className="export-v2-footer">
+            <button type="button" className="export-v2-secondary" disabled={disabled} onClick={onPreview}>
+              <ExternalLink size={14} aria-hidden="true" />Open in a tab
+            </button>
+            <button type="button" className="export-v2-primary" disabled={disabled} onClick={onExport}>
+              <PrimaryIcon size={15} aria-hidden="true" />{busy ? "Preparing…" : `${print ? "Print" : "Download"} ${formatLabel(preferences.format)}`}
+            </button>
           </div>
+          {footer}
         </div>
-        {footer}
-      </> : null}
+      </div>
     </section>
-  )}</AppSidebarPanel>;
+  );
 }
 
 function Section({ title, children }: { readonly title: string; readonly children: ReactNode }) {
   return <div className="export-v2-section" role="group" aria-label={title}><strong>{title}</strong>{children}</div>;
 }
 
-function SourceTable({ result, canManageLocations }: ExportSettingsPanelProps) {
+/** One line over the preview: what is exported. Export takes the grid as it is; it has no source choice. */
+function SourceLine({ result, canManageLocations }: ExportSettingsPanelProps) {
   if (result.status !== "ready") {
     return <div className="export-v2-blocked" aria-live="polite">
       {result.reason === "short_names" ? <>
         <strong>Add location short names before exporting.</strong>
         <span>{result.locationNames?.join(", ")}</span>
         {canManageLocations ? <Link to="/app/settings/locations">Open Location Settings</Link> : <span>Ask a workspace manager to add them.</span>}
-      </> : <span>{result.reason === "edit" ? "Save a draft to export this schedule." : result.reason === "locations" ? "No locations are available to export." : "Waiting for the current preview…"}</span>}
+      </> : <span>{result.reason === "locations" ? "No locations are available to export." : "Waiting for the current preview…"}</span>}
     </div>;
   }
   const { source, dates, locations, rows, shifts } = result.snapshot;
   const first = dates[0]!, last = dates.at(-1)!;
   const employees = rows.filter(row => row.id !== null).length;
   const plural = (count: number, word: string) => `${count} ${word}${count === 1 ? "" : "s"}`;
-  const cells: [string, ReactNode][] = [
-    ["Source", <span className={`export-v2-state${source.kind === "draft" ? " is-draft" : ""}`}>{source.kind === "draft" ? `Draft · ${source.name}` : "Published"}</span>],
-    ["Range", `${first === last ? formatDateNumber(first) : `${formatDateNumber(first)} – ${formatDateNumber(last)}`}, ${new Date(`${last}T12:00:00Z`).getUTCFullYear()}`],
-    ["Scope", `${plural(locations.length, "location")} · ${plural(employees, "employee")} · ${plural(shifts.length, "shift")}`],
-  ];
-  return <dl className="export-v2-table" aria-live="polite">
-    {cells.map(([label, value]) => <div key={label}><dt>{label}</dt><dd>{value}</dd></div>)}
-  </dl>;
+  const range = first === last ? formatDateNumber(first) : `${formatDateNumber(first)} – ${formatDateNumber(last)}`;
+  return <p className="export-v2-source" data-source={source.kind} aria-live="polite">
+    <span className="export-v2-state">{source.kind === "draft" ? `Draft · ${source.name}` : source.kind === "edit_session" ? "Editing · not saved" : "Published"}</span>
+    <span>{` · ${range} · ${plural(locations.length, "location")} · ${plural(employees, "employee")} · ${plural(shifts.length, "shift")}`}</span>
+  </p>;
 }
 
-function MenuRows<T extends string>({ options, value, onChange }: {
-  readonly options: readonly { value: T; label: string; hint: string; icon: typeof FileText }[]; readonly value: T; readonly onChange: (value: T) => void;
+function Segmented<T extends string>({ value, options, onChange, label }: {
+  readonly value: T; readonly label: string; readonly onChange: (value: T) => void;
+  readonly options: readonly { value: T; label: string }[];
 }) {
-  return <div className="export-v2-menu" role="radiogroup">
-    {options.map(({ value: option, label, hint, icon: Icon }) => <button key={option} type="button" role="radio" aria-checked={value === option} onClick={() => onChange(option)}>
-      <Icon size={15} aria-hidden="true" /><span>{label}<small>{hint}</small></span>{value === option ? <Check size={15} aria-hidden="true" /> : null}
-    </button>)}
+  return <div className="export-v2-segmented" role="radiogroup" aria-label={label}>
+    {options.map(option => <button key={option.value} type="button" role="radio" aria-checked={value === option.value} onClick={() => onChange(option.value)}>{option.label}</button>)}
   </div>;
+}
+
+function Switch({ on, label, hint, onChange }: { readonly on: boolean; readonly label: string; readonly hint: string; readonly onChange: () => void }) {
+  return <button type="button" role="switch" aria-checked={on} className="export-v2-switch" onClick={onChange}>
+    <span><b>{label}</b><small>{hint}</small></span><i aria-hidden="true" />
+  </button>;
 }
 
 function LayoutControls({ result, preferences, onChange }: ExportSettingsPanelProps) {
   const unified = result.status === "ready" && result.snapshot.layout === "unified";
+  if (preferences.format === "xlsx") return <p className="export-v2-hint">One workbook: Merged, each location, and Data. Only the heading rows are frozen.</p>;
   if (preferences.destination === "print") {
-    const papers = [["A4", "A4 landscape"], ["LETTER", "US Letter landscape"]] as const;
     return <>
-      <div className="export-v2-menu" role="radiogroup" aria-label="Paper">
-        {papers.map(([paper, text]) => <button key={paper} type="button" role="radio" aria-checked={preferences.paper === paper} onClick={() => onChange({ ...preferences, paper })}>
-          <FileText size={15} aria-hidden="true" /><span>{text}</span>{preferences.paper === paper ? <Check size={15} aria-hidden="true" /> : null}
-        </button>)}
-      </div>
-      <p className="export-v2-hint">{unified ? "All locations in one table." : "One location per page."} Employee rows continue onto additional pages with repeated headers.</p>
+      <Segmented label="Paper" value={preferences.paper} onChange={paper => onChange({ ...preferences, paper })}
+        options={[{ value: "LETTER", label: "US Letter" }, { value: "A4", label: "A4" }]} />
+      <p className="export-v2-hint">Landscape. {unified ? "All locations in one table." : "One location per page."} Employee rows continue onto more pages with repeated headers.</p>
     </>;
   }
-  const options: { key: "combineHorizontally" | "combineVertically"; text: string; hint: string; icon: typeof Columns3 }[] = [
-    ...(unified ? [] : [{ key: "combineHorizontally" as const, text: "Combine locations", hint: "Side by side across one page width", icon: Columns3 }]),
-    { key: "combineVertically", text: "One long page", hint: "The page grows to fit; rows stay readable", icon: StretchVertical },
-  ];
-  return <div className="export-v2-menu">
-    {options.map(({ key, text, hint, icon: Icon }) => <button key={key} type="button" role="checkbox" aria-checked={preferences[key]}
-      onClick={() => onChange({ ...preferences, [key]: !preferences[key] })}>
-      <Icon size={15} aria-hidden="true" /><span>{text}<small>{hint}</small></span>{preferences[key] ? <Check size={15} aria-hidden="true" /> : null}
-    </button>)}
+  return <div className="export-v2-switches">
+    {!unified ? <Switch on={preferences.combineHorizontally} label="Locations side by side" hint="All on one page width"
+      onChange={() => onChange({ ...preferences, combineHorizontally: !preferences.combineHorizontally })} /> : null}
+    <Switch on={preferences.combineVertically} label="One long page" hint="No page breaks between rows"
+      onChange={() => onChange({ ...preferences, combineVertically: !preferences.combineVertically })} />
   </div>;
 }
 
 /** Thumbnail of ExportPreview in an isolated iframe so the preview page's styles stay out of the app. */
-function InlinePreview({ result, preferences, files, loading, onTarget, onOpen }: {
+function InlinePreview({ result, preferences, files, loading, onTarget }: {
   readonly result: SnapshotResult; readonly preferences: ExportPreferences; readonly files: readonly ExportDownload[];
-  readonly loading: boolean; readonly onTarget: (target: HTMLElement | null) => void; readonly onOpen: () => void;
+  readonly loading: boolean; readonly onTarget: (target: HTMLElement | null) => void;
 }) {
   const frame = useRef<HTMLIFrameElement>(null);
   const [pages, setPages] = useState<number | null>(null);
   useEffect(() => {
     const doc = frame.current?.contentDocument;
     if (!doc) return;
-    doc.head.innerHTML = "<style>header{display:none!important}html,body{overflow:hidden}iframe{height:100vh!important}</style>";
+    doc.head.innerHTML = "<style>header{display:none!important}html,body{overflow:hidden;margin:0}iframe{height:100vh!important}</style>";
     const root = doc.createElement("main"); doc.body.replaceChildren(root);
     onTarget(root);
     return () => onTarget(null);
@@ -174,15 +166,9 @@ function InlinePreview({ result, preferences, files, loading, onTarget, onOpen }
   const count = preferences.format === "xlsx"
     ? ready ? `${result.snapshot.locations.length + 2} sheets` : "Workbook"
     : loading ? "Rendering…" : pages ? `${pages} ${pages === 1 ? "page" : "pages"}` : "—";
-  return <div className="export-v2-preview">
-    <div className="export-v2-thumb" aria-hidden="true">
-      <iframe ref={frame} title="Export thumbnail" tabIndex={-1} />
-      {loading ? <span className="export-v2-thumb-status">Updating…</span> : null}
-    </div>
-    <div className="export-v2-preview-bar">
-      <span aria-live="polite">{formatLabel(preferences.format)} · {count}</span>
-      <button type="button" className="export-v2-secondary" disabled={!ready} onClick={onOpen}><ExternalLink size={14} aria-hidden="true" />Open</button>
-    </div>
+  return <div className="export-v2-preview" aria-hidden="true">
+    <iframe ref={frame} title="Export thumbnail" tabIndex={-1} />
+    <span className="export-v2-thumb-status">{loading ? "Updating…" : `${formatLabel(preferences.format)} · ${count}`}</span>
   </div>;
 }
 

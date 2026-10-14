@@ -12,6 +12,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ShiftType } from "@newfork/shared";
 import ShiftTypesSettingsPage from "./ShiftTypesSettingsPage";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import { MemoryRouter } from "react-router";
 import {
   listShiftTypes,
@@ -294,6 +295,7 @@ describe("shift type default review", () => {
 
 // Shift catalog, design A (Mert 2026-10-12): the shared list language.
 describe("shift catalog list", () => {
+  afterEach(() => vi.unstubAllGlobals());
   function renderList() {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -344,11 +346,25 @@ describe("shift catalog list", () => {
     expect(filterRow?.querySelector("input")?.getAttribute("aria-label")).toBe(
       "Search shift types",
     );
-    expect(filterRow?.lastElementChild?.textContent).toBe("New shift type");
+    expect(filterRow?.lastElementChild).toBe(
+      screen.getByRole("button", { name: "New shift type" }),
+    );
     // No status filter and no "Show archived" box (Mert: "dropdown filtreyi kaldır").
     expect(container.querySelector("select")).toBeNull();
     expect(screen.queryByText("Show archived")).toBeNull();
     expect(container.querySelector(".catalog-page-actions")).toBeNull();
+  });
+
+  // Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+  it("puts New shift type beside the tabs on a phone", async () => {
+    stubPhoneWidth();
+    const { container } = renderList();
+    await screen.findByRole("button", { name: "Edit Lunch" });
+    const add = screen.getByRole("button", { name: "New shift type" });
+    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+    expect(
+      container.querySelector(".catalog-toolbar-filter-row .list-add-button"),
+    ).toBeNull();
   });
 
   it("closes the list with archived types, marked Archived and restorable", async () => {

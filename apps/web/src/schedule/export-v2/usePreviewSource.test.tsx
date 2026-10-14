@@ -10,7 +10,8 @@ const model = { workspace_id: "w", week_start: "2026-09-14", locations: [{ id: "
 const drafts = ["a", "b"].map(id => ({ id, name: id, revision: 1, workspace_id: "w", week_start: model.week_start })) as ScheduleDraftSummary[];
 const shifts = (id: string) => [{ id }] as ScheduleShift[];
 const base = { workspaceId: "w", model, modelVersion: 1, activeDraftId: "a" as string | null,
-  editing: false, loading: false, drafts, onMissingDraft: vi.fn() };
+  editing: false, editSession: null as { id: string; revision: number; sourceDraftId: string | null } | null,
+  loading: false, drafts, onMissingDraft: vi.fn() };
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 
 describe("live preview source resolution", () => {
@@ -33,6 +34,24 @@ describe("live preview source resolution", () => {
     rerender({ ...base, loading: true }); expect(result.current.resolvedKey).toBeNull();
     rerender({ ...base, editing: true }); expect(result.current.resolvedKey).toBeNull();
     rerender({ ...base, workspaceId: "other", activeDraftId: null }); expect(result.current.resolvedKey).toBeNull();
+  });
+  // Mert 2026-10-12: Export never asks for a save; an open edit is exported as it is on screen.
+  it("makes an open edit the source at once, keyed to its revision, without reading the saved draft", async () => {
+    vi.mocked(fetchScheduleDraftShifts).mockClear();
+    const editing = { ...base, editing: true, editSession: { id: "s", revision: 4, sourceDraftId: "a" as string | null } };
+    const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: { ...editing, editSession: null } as typeof base });
+    expect(result.current.resolvedKey).toBeNull();
+    rerender(editing);
+    expect(result.current.source).toEqual({ kind: "edit_session", id: "s", revision: 4, draftName: "a" });
+    expect(result.current.resolvedKey).toBe(result.current.requestedKey);
+    const first = result.current.requestedKey;
+    rerender({ ...editing, editSession: { ...editing.editSession, revision: 5 } });
+    expect(result.current.requestedKey).not.toBe(first);
+    rerender({ ...editing, editSession: { ...editing.editSession, revision: 5 }, loading: true });
+    expect(result.current.resolvedKey).toBeNull();
+    rerender({ ...editing, activeDraftId: null, editSession: { id: "s", revision: 1, sourceDraftId: null } });
+    expect(result.current.source).toEqual({ kind: "edit_session", id: "s", revision: 1, draftName: null });
+    expect(fetchScheduleDraftShifts).not.toHaveBeenCalled();
   });
   it("switches immediately to published without letting a pending draft restore itself", async () => {
     const a = deferred<{ shifts: ScheduleShift[] }>(); vi.mocked(fetchScheduleDraftShifts).mockReturnValue(a.promise);

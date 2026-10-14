@@ -70,15 +70,22 @@ describe("WorkspaceSwitcher", () => {
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([]);
   });
 
-  it("stays a plain name when there is nowhere else to go", async () => {
+  it("is a control even with one workspace, so switching is always in one place", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([meyhouse]);
     renderSwitcher();
 
-    expect(await screen.findByText("Meyhouse")).toBeTruthy();
-    expect(screen.queryByRole("button")).toBeNull();
+    const trigger = await screen.findByRole("button", {
+      name: "Meyhouse, switch workspace",
+    });
+    expect(trigger.getAttribute("aria-haspopup")).toBe("menu");
+    fireEvent.click(trigger);
+
+    expect(screen.getByText("You are in")).toBeTruthy();
+    expect(screen.queryByText("Switch to")).toBeNull();
+    expect(screen.getByRole("link", { name: "All workspaces" })).toBeTruthy();
   });
 
-  it("becomes a control once there is a second workspace", async () => {
+  it("lists the other workspaces", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([meyhouse, ridgeline]);
     renderSwitcher();
 
@@ -114,10 +121,13 @@ describe("WorkspaceSwitcher", () => {
     ]);
     renderSwitcher();
 
-    // One workspace and one invitation: the count is the whole reason the
-    // control exists here.
+    // The count lives on the Account row; the row here only names the
+    // workspace, and the invitation waits inside the menu.
     const trigger = await screen.findByRole("button");
-    expect(trigger.textContent).toContain("1");
+    expect(trigger.querySelector(".workspace-name")?.textContent).toBe(
+      "Meyhouse",
+    );
+    expect(trigger.textContent).not.toContain("1");
     fireEvent.click(trigger);
 
     expect(screen.getByText("Invitation")).toBeTruthy();
@@ -126,12 +136,16 @@ describe("WorkspaceSwitcher", () => {
     expect(screen.queryByText("Switch to")).toBeNull();
   });
 
-  it("keeps a mark and its dot when the rail is collapsed", async () => {
+  it("keeps the initial on the collapsed rail and opens the same menu", async () => {
     vi.mocked(listAccountWorkspaces).mockResolvedValue([meyhouse, ridgeline]);
     renderSwitcher(true);
 
-    expect(
-      await screen.findByLabelText(/Meyhouse .* choose a workspace/),
-    ).toBeTruthy();
+    const trigger = await screen.findByRole("button", {
+      name: "Meyhouse, switch workspace",
+    });
+    expect(trigger.textContent).toContain("M");
+    fireEvent.click(trigger);
+
+    expect(screen.getByText("Ridgeline")).toBeTruthy();
   });
 });

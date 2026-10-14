@@ -1,5 +1,5 @@
 import type { QueryClient, QueryKey } from "@tanstack/react-query";
-import type { ScheduleDraftSummary } from "@newfork/shared/schedule";
+import type { ScheduleDraftList, ScheduleDraftSummary } from "@newfork/shared/schedule";
 
 import { draftsKey, scheduleReadScopeKey } from "../schedule-data";
 
@@ -17,8 +17,11 @@ export function getPostSavePreviewDraftId({
   return savedDraftId ?? targetDraftId ?? previousPreviewDraftId;
 }
 
+// The drafts list and the live week's facts arrive together; a write that
+// only changes the drafts keeps the facts (the window's live row reads them).
 export interface DraftsCacheSnapshot {
   readonly drafts: readonly ScheduleDraftSummary[];
+  readonly published?: ScheduleDraftList["published"];
 }
 
 export function upsertSavedDraft(
@@ -26,6 +29,7 @@ export function upsertSavedDraft(
   draft: ScheduleDraftSummary,
 ): DraftsCacheSnapshot {
   return {
+    ...current,
     drafts: [draft, ...(current?.drafts ?? []).filter((item) => item.id !== draft.id)],
   };
 }
@@ -35,6 +39,7 @@ export function removeDraft(
   draftId: string,
 ): DraftsCacheSnapshot {
   return {
+    ...current,
     drafts: (current?.drafts ?? []).filter((item) => item.id !== draftId),
   };
 }

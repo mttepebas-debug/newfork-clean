@@ -36,7 +36,7 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
 
   await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await ayse.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await ayse.getByRole("button", { name: "Blank schedule", exact: true }).click();
   await expect(ayse).toHaveURL(/mode=edit/);
 
   // The button only turns interactive on :hover (opacity/pointer-events are

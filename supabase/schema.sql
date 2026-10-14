@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 484, last: 20261012224500_announcement_hours_name_both_halves.sql
--- fingerprint: sha256:66b6a8033d317e6a495428e0aaf983e0b9609ca14c31bfb611625e32949f7e60
+-- migrations: 485, last: 20261013230000_draft_list_counts_shifts_and_hours.sql
+-- fingerprint: sha256:80b39ece65235bcd8c77729cfda11672d8635f439ce50ee50dc0f887b760968f
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15476,13 +15476,38 @@ begin
       'week_start', draft.week_start, 'name', draft.name,
       'revision', draft.revision, 'created_by', draft.created_by,
       'updated_by', draft.updated_by, 'created_at', draft.created_at,
-      'updated_at', draft.updated_at
+      'updated_at', draft.updated_at,
+      'updated_by_name', coalesce((
+        select nullif(profile.display_name, '') from public.user_profiles profile
+        where profile.user_id = draft.updated_by), 'Team member'),
+      'shift_count', facts.shift_count, 'paid_minutes', facts.paid_minutes
     ) order by draft.updated_at desc, draft.name)
     from public.schedule_drafts draft
+    cross join lateral (
+      select count(*)::integer as shift_count,
+        coalesce(sum(greatest(0, (case when shift.end_time <= shift.start_time then 1440 else 0 end
+          + extract(epoch from (shift.end_time - shift.start_time)) / 60)::integer
+          - shift.unpaid_break_minutes)), 0)::integer as paid_minutes
+      from public.schedule_draft_shifts shift
+      where shift.draft_id = draft.id and shift.workspace_id = target_workspace_id
+        and (org_wide or shift.location_id = any (edit_scope))
+    ) facts
     where draft.workspace_id = target_workspace_id
       and draft.week_start = target_week_start and draft.archived_at is null
       and (org_wide or draft.location_ids && edit_scope)
-  ), '[]'::jsonb));
+  ), '[]'::jsonb),
+  'published', (
+    select jsonb_build_object('shift_count', count(*)::integer,
+      'paid_minutes', coalesce(sum(greatest(0, (case when shift.end_time <= shift.start_time then 1440 else 0 end
+        + extract(epoch from (shift.end_time - shift.start_time)) / 60)::integer
+        - shift.unpaid_break_minutes)), 0)::integer)
+    from public.schedule_published_shifts shift
+    join public.schedule_location_publications publication
+      on publication.id = shift.publication_id and publication.workspace_id = shift.workspace_id
+    where publication.workspace_id = target_workspace_id
+      and publication.week_start = target_week_start and publication.status = 'current'
+      and (org_wide or shift.location_id = any (edit_scope))
+  ));
 end;
 $$;
 

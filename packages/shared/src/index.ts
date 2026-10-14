@@ -1660,8 +1660,21 @@ export type ScheduleShiftMutationInput = z.infer<
   typeof scheduleShiftMutationInputSchema
 >;
 
+/** What a schedule of the week holds where the reader schedules: shifts and paid minutes. */
+export const scheduleWeekFactsSchema = z.object({
+  shift_count: z.coerce.number().int().nonnegative(),
+  paid_minutes: z.coerce.number().int().nonnegative(),
+});
+export type ScheduleWeekFacts = z.infer<typeof scheduleWeekFactsSchema>;
+/** A row of the New Schedule window: the draft, who saved it last, and its facts. */
+export const scheduleDraftListItemSchema = scheduleDraftSummarySchema
+  .extend({ updated_by_name: z.string().trim().min(1).max(100) })
+  .merge(scheduleWeekFactsSchema);
+export type ScheduleDraftListItem = z.infer<typeof scheduleDraftListItemSchema>;
 export const scheduleDraftListSchema = z.object({
-  drafts: z.array(scheduleDraftSummarySchema),
+  drafts: z.array(scheduleDraftListItemSchema),
+  /** The live schedule's facts (zeros when nothing is published). */
+  published: scheduleWeekFactsSchema,
 });
 export type ScheduleDraftList = z.infer<typeof scheduleDraftListSchema>;
 export const legacyScheduleShiftListSchema = z.object({

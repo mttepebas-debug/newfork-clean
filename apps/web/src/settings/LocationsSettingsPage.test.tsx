@@ -1,10 +1,11 @@
 import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import LocationsSettingsPage from "./LocationsSettingsPage";
 import { formatUsPhone, usLettersMessage } from "@newfork/shared";
 import { listLocations, saveLocation } from "./organization-data";
 import { RequestError } from "../lib/request-error";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 
 const state = vi.hoisted(() => ({ canEdit: true }));
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: {
@@ -213,6 +214,27 @@ describe("Location names and addresses", () => {
       expect(saveLocation).not.toHaveBeenCalled();
     },
   );
+});
+
+// Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+describe("Locations add button on a phone", () => {
+  afterEach(() => vi.unstubAllGlobals());
+  it("keeps New location at the end of the filter row on a computer", async () => {
+    page();
+    await screen.findByRole("button", { name: /^Main/ });
+    const add = screen.getByRole("button", { name: "New location" });
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(add.closest(".catalog-toolbar-status-row")).toBeNull();
+  });
+  it("moves it beside the tabs, short label Add, on a phone", async () => {
+    stubPhoneWidth();
+    page();
+    await screen.findByRole("button", { name: /^Main/ });
+    const add = screen.getByRole("button", { name: "New location" });
+    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+    expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+    expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
+  });
 });
 
 // Loading and error in the "B" look (Mert 2026-10-14).

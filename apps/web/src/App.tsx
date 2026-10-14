@@ -90,9 +90,6 @@ const ScheduleShiftBadgeLabPage = import.meta.env.DEV
 const FeedbackGalleryPage = import.meta.env.DEV
   ? lazy(() => import("./dev/FeedbackGalleryPage"))
   : () => null;
-const ScheduleTemplatesPage = lazy(
-  () => import("./views/ScheduleTemplatesPage"),
-);
 const AvailabilityPage = lazy(() =>
   import("./views/AvailabilityPage").then((module) => ({
     default: module.AvailabilityPage,
@@ -345,7 +342,7 @@ export function App() {
                       roles={["owner", "admin", "manager"]}
                     >
                       <DesktopOnlyRoute message="Schedule is available on a computer.">
-                        <ScheduleTemplatesPage />
+                        <SchedulePage />
                       </DesktopOnlyRoute>
                     </PermissionRoute>
                   }
