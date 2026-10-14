@@ -118,6 +118,10 @@ export function JobAssignmentsDrawer({
   useEffect(() => {
     if (employeeList.current) employeeList.current.scrollTop = 0;
   }, [deferredSearch, location, filter]);
+  // A first page that doesn't fill the list can't be scrolled: load on.
+  useEffect(() => {
+    if (employeeList.current?.scrollHeight) loadMoreNearEnd();
+  });
   function loadMoreNearEnd() {
     const list = employeeList.current;
     if (!list || !data.hasNextPage || data.isFetching) return;
@@ -559,21 +563,25 @@ export function JobAssignmentsDrawer({
                 ) : rows.length ? (
                   <>
                     {rows.map(employeeRow)}
-                    {data.isFetchingNextPage ? (
-                      <div className="job-list-more" role="status">
-                        Loading more employees…
-                      </div>
-                    ) : data.isFetchNextPageError ? (
+                    {/* In the page before it speaks, so its first line is announced. */}
+                    <div className="job-list-more" role="status">
+                      {data.isFetchingNextPage ? "Loading more employees…" : ""}
+                    </div>
+                    {data.isError && (
                       <div className="job-list-more job-error" role="alert">
                         {errorText(data.error)}{" "}
                         <button
                           type="button"
-                          onClick={() => void data.fetchNextPage()}
+                          onClick={() =>
+                            void (data.isFetchNextPageError
+                              ? data.fetchNextPage()
+                              : data.refetch())
+                          }
                         >
                           Retry
                         </button>
                       </div>
-                    ) : null}
+                    )}
                   </>
                 ) : (
                   <div className="job-empty-state">

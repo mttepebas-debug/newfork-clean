@@ -970,6 +970,9 @@
   color: var(--job-muted);
   text-align: center;
 }
+.job-list-more:empty {
+  padding: 0;
+}
 .job-save-notice {
   padding: 10px 24px;
   font-size: 12px;
