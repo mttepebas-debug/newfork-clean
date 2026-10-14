@@ -431,7 +431,7 @@ describe("AppShell notification badge", () => {
   });
 
   it("does not expose team availability to an employee opening its direct URL", async () => {
-    currentContext = employeeContext;
+    currentContext = { ...employeeContext, actions: [...employeeContext.actions, "employee_hub.read"] };
     renderShell("/app/availability");
     // The card in place, not a silent trip home (Mert 2026-10-14).
     await screen.findByRole("heading", { name: "You don't have access to Availability" });

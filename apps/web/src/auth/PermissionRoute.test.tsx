@@ -76,6 +76,7 @@ describe("PermissionRoute", () => {
   });
 
   it("shows an employee the no-access card at a management direct URL", () => {
+    currentContext = { ...baseContext, actions: ["employee_hub.read"] };
     renderGuard();
 
     // The card in place, not a silent trip home (Mert 2026-10-14).
