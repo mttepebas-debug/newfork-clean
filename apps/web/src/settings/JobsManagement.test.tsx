@@ -448,6 +448,27 @@ describe("job assignment drawer", () => {
     fireEvent.scroll(list);
     expect(await screen.findByLabelText("Assign Employee 50")).toBeTruthy();
   });
+  it("stops loading on its own after the next employees fail", async () => {
+    const loaded = vi.mocked(api.loadJobEmployees).getMockImplementation()!;
+    vi.mocked(api.loadJobEmployees).mockImplementation(async (workspace, job, query) => {
+      if (query.page > 0) throw new Error("Network down");
+      return loaded(workspace, job, query);
+    });
+    const proto = Element.prototype;
+    const height = Object.getOwnPropertyDescriptor(proto, "scrollHeight");
+    const client = Object.getOwnPropertyDescriptor(proto, "clientHeight");
+    Object.defineProperty(proto, "scrollHeight", { configurable: true, get: () => 400 });
+    Object.defineProperty(proto, "clientHeight", { configurable: true, get: () => 400 });
+    try {
+      drawer();
+      await screen.findByRole("alert");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(api.loadJobEmployees).toHaveBeenCalledTimes(2);
+    } finally {
+      Object.defineProperty(proto, "scrollHeight", height!);
+      Object.defineProperty(proto, "clientHeight", client!);
+    }
+  });
   it("keeps loaded employees when the next ones fail and retries them", async () => {
     drawer();
     await screen.findByLabelText("Assign Employee 0");
