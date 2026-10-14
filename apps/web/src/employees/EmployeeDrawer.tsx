@@ -1256,7 +1256,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   // Read again after a save and failed: what was saved is
                   // said, the server's sentence is not (BL-463).
                   <RefreshError
-                    message={`${roleJustSaved ? "Role saved. " : ""}This employee didn't refresh. This is the last version that loaded.`}
+                    // The sections stay hidden until it reads again, so nothing
+                    // stale is offered for editing.
+                    message={`${roleJustSaved ? "Role saved. " : ""}This employee didn't reload.`}
                     retrying={detail.isFetching}
                     onRetry={() => void detail.refetch()}
                   />
