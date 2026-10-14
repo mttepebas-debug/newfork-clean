@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import LocationsSettingsPage from "./LocationsSettingsPage";
@@ -213,4 +213,36 @@ describe("Location names and addresses", () => {
       expect(saveLocation).not.toHaveBeenCalled();
     },
   );
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("Locations loading and error", () => {
+  it("outlines the list while locations load", async () => {
+    vi.mocked(listLocations).mockReturnValueOnce(new Promise(() => {}));
+    page();
+    expect((await screen.findByRole("status")).textContent).toBe("Loading locations");
+    expect(screen.queryByText("Loading locations...")).toBeNull();
+  });
+
+  it("shows the card with Try again, not the server's sentence, when locations fail", async () => {
+    vi.mocked(listLocations).mockRejectedValueOnce(new Error("relation does not exist"));
+    page();
+    expect(await screen.findByRole("heading", { name: "We couldn't load locations" })).toBeTruthy();
+    expect(screen.queryByText("relation does not exist")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Deniz")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load locations" })).toBeNull();
+  });
+
+  it("keeps the last list with one line when a refresh fails", async () => {
+    const client = page();
+    expect(await screen.findByText("Deniz")).toBeTruthy();
+    vi.mocked(listLocations).mockRejectedValueOnce(new Error("timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Locations didn't refresh. This is the last list that loaded.");
+    expect(screen.getByText("Deniz")).toBeTruthy();
+    expect(screen.queryByText("timeout")).toBeNull();
+  });
 });

@@ -40,6 +40,7 @@ import "./roles-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const blankRole = (): WorkspaceRoleInput => ({
   name: "",
@@ -128,11 +129,21 @@ export default function RolesSettingsPage() {
           ) : undefined
         }
       />
-      {query.isLoading && <p className="settings-state">Loading roles...</p>}
-      {query.error && (
-        <p className="form-error" role="alert">
-          {errorText(query.error)}
-        </p>
+      {query.isLoading && <ListOutline label="Loading roles" rows={5} columns={3} />}
+      {query.error && !query.data && (
+        <LoadError
+          title="We couldn't load roles"
+          detail="Roles didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      )}
+      {query.error && query.data && (
+        <RefreshError
+          message="Roles didn't refresh. This is the last list that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       )}
       {query.data && (
         <>
