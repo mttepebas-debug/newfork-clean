@@ -422,6 +422,17 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(screen.queryByText("Your schedule may be out of date.")).toBeNull();
     expect(screen.queryByText("hub service down")).toBeNull();
+
+    // While the retry is on its way the button says so and waits.
+    let answer: (value: typeof fixture) => void = () => {};
+    vi.mocked(getEmployeeHub).mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const waiting = await screen.findByRole("button", { name: "Trying again…" });
+    expect((waiting as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => answer(fixture));
+    await waitFor(() =>
+      expect(screen.queryByText("Your day didn't refresh. This is the last schedule that loaded.")).toBeNull(),
+    );
   });
   // EKRAN-08: dated posts show under Coming up, for the person's own location; the rest stay Team notices.
   it("lists published Important Dates under Coming up and keeps them out of Team notices", async () => {
