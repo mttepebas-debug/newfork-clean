@@ -23,7 +23,9 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
   // BL-324: a retry reads the draft again; the attempt is part of the key so the failed read stops counting.
   const [attempt, setAttempt] = useState(0);
   const key = JSON.stringify([workspaceId, week, activeDraftId, draft?.revision, draft?.name, modelVersion, locationKey, attempt]);
-  const [resolved, setResolved] = useState<{ key: string; shifts: readonly ScheduleShift[]; error: string | null } | null>(null);
+  // The draft itself, apart from its version: a newer read of the same draft keeps its last shifts on screen meanwhile.
+  const draftKey = JSON.stringify([workspaceId, week, activeDraftId]);
+  const [resolved, setResolved] = useState<{ key: string; draftKey: string; shifts: readonly ScheduleShift[]; error: string | null } | null>(null);
   useEffect(() => {
     if (editing || loading || !workspaceId || !week || !activeDraftId || !drafts) return;
     if (!draft || draft.workspace_id !== workspaceId || draft.week_start !== week) {
@@ -31,14 +33,15 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
     }
     let cancelled = false;
     void fetchScheduleDraftShifts(workspaceId, week, activeDraftId, locationKey ? locationKey.split(",") : [])
-      .then(result => { if (!cancelled) setResolved({ key, shifts: result.shifts, error: null }); })
+      .then(result => { if (!cancelled) setResolved({ key, draftKey, shifts: result.shifts, error: null }); })
       .catch((error: unknown) => {
         console.error(error);
-        if (!cancelled) setResolved({ key, shifts: [], error: requestErrorText(error, "Could not load the selected draft") });
+        if (!cancelled) setResolved({ key, draftKey, shifts: [], error: requestErrorText(error, "Could not load the selected draft") });
       });
     return () => { cancelled = true; };
-  }, [activeDraftId, draft, drafts, editing, key, loading, locationKey, onMissingDraft, week, workspaceId]);
+  }, [activeDraftId, draft, draftKey, drafts, editing, key, loading, locationKey, onMissingDraft, week, workspaceId]);
   const current = resolved?.key === key ? resolved : null;
+  const lastRead = resolved && resolved.draftKey === draftKey && !resolved.error ? resolved.shifts : null;
   if (editing) {
     const editKey = JSON.stringify([workspaceId, week, "edit", editSession?.id, editSession?.revision, modelVersion, locationKey]);
     const editReady = Boolean(editSession && !loading && workspaceId && model?.workspace_id === workspaceId);
@@ -55,5 +58,5 @@ export function usePreviewSource({ workspaceId, model, modelVersion, activeDraft
     ? draft ? { kind: "draft", id: draft.id, revision: draft.revision, name: draft.name } : null
     : { kind: "published" };
   return { requestedKey: key, resolvedKey: ready ? key : null, source, loading: !ready,
-    shifts: current?.shifts ?? null, error: current?.error ?? null, retry: () => setAttempt(value => value + 1) };
+    shifts: current?.shifts ?? lastRead, error: current?.error ?? null, retry: () => setAttempt(value => value + 1) };
 }

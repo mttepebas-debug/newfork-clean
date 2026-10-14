@@ -37,7 +37,7 @@ import {
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
-import { LinesOutline, LoadError, RefreshError } from "../../shell/LoadState";
+import { LinesOutline, LoadError } from "../../shell/LoadState";
 import { requestErrorText } from "../../lib/request-error";
 
 export interface SchedulePublicationDepartmentScope {
@@ -601,18 +601,14 @@ export function PublishScheduleDialog({
             {/* Loading and error in the "B" look (Mert 2026-10-14). */}
             {stepOnePreviewPending && !preview ? (
               <LinesOutline label="Loading publish preview" />
-            ) : stepOnePreviewError && !preview ? (
+            ) : stepOnePreviewError ? (
+              // Every new choice drops the last preview (BL-299), so there is no older one to keep.
               <LoadError
                 title="We couldn't load the publish preview"
                 detail="The publish preview didn't load. Nothing was published."
                 onRetry={() => void loadPreview(false)}
                 inset
                 level={3}
-              />
-            ) : stepOnePreviewError ? (
-              <RefreshError
-                message="The publish preview didn't refresh. These are the last numbers that loaded."
-                onRetry={() => void loadPreview(false)}
               />
             ) : null}
             {departments.length ? (
