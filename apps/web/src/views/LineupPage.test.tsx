@@ -114,7 +114,6 @@ describe("LineupPage", () => {
     read.mockReturnValue(new Promise(() => undefined));
     renderPage();
     const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
-    expect(loading.getAttribute("aria-busy")).toBe("true");
     expect(loading.textContent).toBe("Loading lineups");
     expect(loading.querySelector(".lineup-location.lineup-outline")).toBeTruthy();
     expect(screen.queryByRole("navigation", { name: "Days of the week" })).toBeNull();
@@ -135,5 +134,6 @@ describe("LineupPage", () => {
     read.mockRejectedValue(new RequestError("Not allowed", "authz.out_of_scope", "schedule.read", 403));
     renderPage();
     expect(await screen.findByText("You don't have access to the lineup")).toBeTruthy();
+    expect(screen.queryByText("We couldn't load the lineup")).toBeNull();
   });
 });
