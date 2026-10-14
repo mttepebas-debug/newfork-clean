@@ -10,6 +10,7 @@ import { type JSX, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 
 import { requestErrorText } from "../../lib/request-error";
+import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
 import { agoText, plural } from "./newScheduleWindowText";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
@@ -33,6 +34,11 @@ export interface TemplateUseOption {
 export interface NewScheduleTemplatesProps {
   readonly templates: readonly ScheduleTemplateSummary[];
   readonly loading: boolean;
+  /** Why the list did not load, with Retry; never shown as "No templates yet". */
+  readonly loadError: string | null;
+  readonly onRetry: () => void;
+  /** Save template, Use, Rename and Delete; a role that only reads templates sees the list. */
+  readonly canManage: boolean;
   readonly drafts: readonly ScheduleDraftSummary[];
   /** The open edit, if any: Use then goes straight to Add or Replace. */
   readonly session: ScheduleEditSession | null;
@@ -94,13 +100,25 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const loadError = props.loadError ? (
+    <p className="new-schedule-window-error" role="alert">
+      {props.loadError}{" "}
+      <button type="button" className="new-schedule-window-link" onClick={props.onRetry}>Retry</button>
+    </p>
+  ) : null;
   if (props.loading && !props.templates.length) return <p className="new-schedule-window-empty">Loading templates…</p>;
+  if (loadError && !props.templates.length) return loadError;
   if (!props.templates.length) {
     return <p className="new-schedule-window-empty">No templates yet. Save a draft as a template to reuse its week.</p>;
   }
-  const run = (action: Promise<unknown>) => {
+  const rename = (template: ScheduleTemplateSummary) => {
     setError(null);
-    return action.then(() => setRenaming(null), (caught: unknown) => setError(requestErrorText(caught)));
+    return props.onRename(template, name.trim()).then(() => setRenaming(null), (caught: unknown) => setError(templateMutationError(caught, "rename")));
+  };
+  // A failed delete says so in its toast (Schedule page); the row stays.
+  const remove = (template: ScheduleTemplateSummary) => {
+    setError(null);
+    return props.onDelete(template).catch(() => undefined);
   };
   return (
     <>
@@ -112,7 +130,7 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
                 className="new-schedule-window-rename"
                 onSubmit={(event) => {
                   event.preventDefault();
-                  void run(props.onRename(template, name.trim()));
+                  void rename(template);
                 }}
               >
                 <label className="sr-only" htmlFor={`template-rename-${template.id}`}>Template name</label>
@@ -127,6 +145,7 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
                   <b>{template.name}</b>
                   <small>{templateLine(template)}</small>
                 </span>
+                {props.canManage ? <>
                 <button
                   type="button"
                   className="secondary-button new-schedule-window-button"
@@ -158,7 +177,7 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
                         confirmLabel={<><Trash2 size={14} aria-hidden />Click again to delete</>}
                         onConfirm={() => {
                           closeMenu();
-                          void run(props.onDelete(template));
+                          void remove(template);
                         }}
                       >
                         <Trash2 size={14} aria-hidden />Delete
@@ -166,14 +185,30 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
                     </>
                   )}
                 </RowMenu>
+                </> : null}
               </>
             )}
           </li>
         ))}
       </ul>
       {error ? <p className="new-schedule-window-error" role="alert">{error}</p> : null}
+      {loadError}
     </>
   );
+}
+
+/**
+ * BL-1044: what a refused rename or delete says. The refusal's key, not any
+ * 409 and not the server's words: another tab changed the template, or the
+ * name is taken.
+ */
+export function templateMutationError(error: unknown, action: "rename" | "delete"): string {
+  const body = (error as { body?: unknown } | null)?.body;
+  if (body && typeof body === "object" && (body as { status?: unknown }).status === "name_taken") {
+    return "A template with this name already exists.";
+  }
+  if (scheduleRefusalReason(error) === "schedule.template_changed") return "This template changed. Refresh and try again.";
+  return action === "rename" ? "The template could not be renamed. Try again." : "The template could not be deleted.";
 }
 
 function templateLine(template: ScheduleTemplateSummary): string {

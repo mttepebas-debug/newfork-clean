@@ -179,7 +179,7 @@ const tabName: Record<NewScheduleTab, string> = { schedules: "Schedules", templa
 function HeadAction(props: NewScheduleWindowProps & { readonly tab: NewScheduleTab }): JSX.Element | null {
   if (props.tab === "templates") {
     const templates = props.templates;
-    if (!templates || templates.step.kind !== "list") return null;
+    if (!templates || !templates.canManage || templates.step.kind !== "list") return null;
     const disabled = !templates.drafts.length;
     return (
       <button

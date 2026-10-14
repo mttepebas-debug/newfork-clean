@@ -51,6 +51,7 @@ describe("scheduleGates", () => {
           "schedule.publish",
           "schedule.export",
           "schedule.templates",
+          "schedule.templates.read",
           "settings.organization.write",
           "settings.locations.write",
           "employee.read",
@@ -61,6 +62,7 @@ describe("scheduleGates", () => {
       publish: true,
       export: true,
       templates: true,
+      templatesRead: true,
       manageLogo: true,
       manageLocations: true,
       openEmployee: true,
@@ -73,11 +75,18 @@ describe("scheduleGates", () => {
       publish: false,
       export: false,
       templates: false,
+      templatesRead: false,
       manageLogo: false,
       manageLocations: false,
       openEmployee: false,
     });
     expect(scheduleGates(null).edit).toBe(false);
+  });
+
+  it("lets a role that only reads templates see them without managing them (S18)", () => {
+    const reader = scheduleGates(contextWith(["schedule.read", "schedule.templates.read"]));
+    expect(reader.templatesRead).toBe(true);
+    expect(reader.templates).toBe(false);
   });
 
   it("offers Unpublish only to someone who may publish, and only when something is live (BL-302)", () => {
