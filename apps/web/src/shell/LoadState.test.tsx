@@ -84,6 +84,11 @@ describe("inset pieces", () => {
     expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
   });
 
+  it("titles the card an h4 under a section that has an h3", () => {
+    render(<LoadError title="We couldn't check document requirements" detail="It didn't load. Nothing was changed." inset level={4} />);
+    expect(screen.getByRole("heading", { level: 4, name: "We couldn't check document requirements" })).toBeTruthy();
+  });
+
   it("outlines a few lines for a panel", () => {
     render(<LinesOutline label="Loading shift details" lines={2} />);
     expect(screen.getByRole("status").querySelectorAll(".nf-skeleton")).toHaveLength(2);

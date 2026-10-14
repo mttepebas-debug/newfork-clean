@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -196,5 +196,59 @@ describe("personal list (Account › Documents)", () => {
     fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
     expect((await screen.findAllByText("Food handler card")).length).toBeGreaterThan(0);
     expect(screen.queryByRole("heading", { name: "We couldn't load documents" })).toBeNull();
+  });
+
+  it("keeps the last list and says so when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([obligation] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: false }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect((await screen.findAllByText("Food handler card")).length).toBeGreaterThan(0);
+    vi.mocked(listDocuments)
+      .mockRejectedValueOnce(new Error("Gateway timeout"))
+      .mockResolvedValue([obligation] as never);
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Documents didn't refresh. This is the last list that loaded.");
+    expect(screen.queryByRole("heading", { name: "We couldn't load documents" })).toBeNull();
+    expect(screen.getAllByText("Food handler card").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(listDocuments).toHaveBeenCalledTimes(3);
+  });
+
+  it("still says the last list was empty when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: false }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const empty = await screen.findByRole("heading", { name: /No documents/ });
+    vi.mocked(listDocuments).mockRejectedValue(new Error("Gateway timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Documents didn't refresh.");
+    expect(screen.getByRole("heading", { name: empty.textContent ?? "" })).toBeTruthy();
   });
 });

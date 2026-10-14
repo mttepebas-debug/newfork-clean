@@ -1340,12 +1340,24 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {(props.creating ||
                   activeSection === "employment" ||
                   activeSection === "access") &&
-                references.isError ? (
+                references.isError &&
+                !references.data ? (
                   <LoadError
                     inset
                     level={3}
                     title="We couldn't load locations, jobs and roles"
                     detail="The choices for this form didn't load. Nothing was changed."
+                    retrying={references.isFetching}
+                    onRetry={() => void references.refetch()}
+                  />
+                ) : null}
+                {(props.creating ||
+                  activeSection === "employment" ||
+                  activeSection === "access") &&
+                references.isError &&
+                references.data ? (
+                  <RefreshError
+                    message="Locations, jobs and roles didn't refresh. These are the last choices that loaded."
                     retrying={references.isFetching}
                     onRetry={() => void references.refetch()}
                   />
@@ -2989,7 +3001,7 @@ function EmployeeAvatarControl({
         <Skeleton width="40%" height={12} />
       </LoadingOutline>
     );
-  if (avatar.isError)
+  if (avatar.isError && !avatar.data)
     return (
       <LoadError
         inset
@@ -3003,6 +3015,14 @@ function EmployeeAvatarControl({
   const hasAvatar = Boolean(avatar.data?.present);
 
   return (
+    <>
+    {avatar.isError ? (
+      <RefreshError
+        message="The profile photo didn't refresh. This is the last photo that loaded."
+        retrying={avatar.isFetching}
+        onRetry={() => void avatar.refetch()}
+      />
+    ) : null}
     <div className="employee-avatar-control">
       {hasAvatar && avatar.data?.url ? (
         <img src={avatar.data.url} alt="Employee workspace profile" />
@@ -3042,6 +3062,7 @@ function EmployeeAvatarControl({
         </span>
       ) : null}
     </div>
+    </>
   );
 }
 

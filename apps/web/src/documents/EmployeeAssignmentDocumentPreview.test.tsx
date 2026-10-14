@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { RequestError } from "../lib/request-error";
 import {
   EmployeeAssignmentDocumentPreview,
   type useEmployeeDocumentAssignmentPreview,
@@ -25,10 +26,26 @@ describe("EmployeeAssignmentDocumentPreview", () => {
         query={query({ error: new Error("preview service down"), refetch } as Partial<Query>)}
       />,
     );
-    expect(screen.getByRole("heading", { level: 3, name: "We couldn't check document requirements" })).toBeTruthy();
+    // An h4: the section's own title above it is an h3.
+    expect(screen.getByRole("heading", { level: 4, name: "We couldn't check document requirements" })).toBeTruthy();
     expect(screen.queryByText("preview service down")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("says a refusal in its own sentence, not as a connection problem", () => {
+    render(
+      <EmployeeAssignmentDocumentPreview
+        query={query({
+          error: new RequestError("Location out of scope", "authz.out_of_scope", undefined, 403),
+        } as Partial<Query>)}
+      />,
+    );
+    expect(screen.getByRole("alert").textContent).toBe(
+      "You don't have access to check documents for these choices.",
+    );
+    expect(screen.queryByText("Location out of scope")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
   it("says when nothing changes", () => {

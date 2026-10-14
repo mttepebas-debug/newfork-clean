@@ -272,6 +272,18 @@ describe("EmployeesPage loading and error", () => {
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(listEmployees).toHaveBeenCalledTimes(3);
   });
+
+  it("still says the last list was empty when a refresh fails", async () => {
+    vi.mocked(listEmployees).mockReset().mockResolvedValueOnce([]);
+    const client = renderQueued();
+    expect(await screen.findByRole("heading", { name: "No employees yet" })).toBeTruthy();
+    vi.mocked(listEmployees).mockRejectedValue(new RequestError("Gateway timeout", "network", undefined, 504));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("The employee list didn't refresh.");
+    expect(screen.getByRole("heading", { name: "No employees yet" })).toBeTruthy();
+  });
 });
 
 // FB-6.2 .7a: "Add employee" is the core's answer, not the permission list.

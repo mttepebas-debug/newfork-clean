@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -2670,6 +2671,25 @@ describe("EmployeeDrawer EMP-001 look", () => {
     expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
   });
 
+  it("keeps the photo control and says so when the photo does not refresh", async () => {
+    const { client } = renderDrawer("access");
+    expect(await screen.findByRole("button", { name: "Remove photo" })).toBeTruthy();
+    vi.mocked(getEmployeeAvatar).mockRejectedValueOnce(new Error("Storage unavailable"));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["employee-avatar"] });
+    });
+    const line = await screen.findByText(
+      "The profile photo didn't refresh. This is the last photo that loaded.",
+    );
+    expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load the profile photo" })).toBeNull();
+    expect(screen.queryByText("Storage unavailable")).toBeNull();
+    fireEvent.click(within(line.closest(".load-refresh") as HTMLElement).getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.queryByText(/The profile photo didn't refresh/)).toBeNull(),
+    );
+  });
+
   it("keeps no photo note for a reader who cannot remove the photo", async () => {
     renderDrawer("access", { ...detail, allowed: { ...detail.allowed, save: false } });
     await screen.findByRole("heading", { name: "Profile photo" });
@@ -3437,6 +3457,23 @@ describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
       expect(screen.queryByRole("heading", { name: "We couldn't load locations, jobs and roles" })).toBeNull(),
     );
     expect(vi.mocked(loadEmployeeReferenceData).mock.calls.length).toBe(reads + 1);
+  });
+
+  it("keeps the pickers and says so when the pick lists do not refresh", async () => {
+    const { client } = renderDrawer("employment");
+    expect(await screen.findByRole("button", { name: "Terminate employee" })).toBeTruthy();
+    await waitFor(() => expect(loadEmployeeReferenceData).toHaveBeenCalled());
+    vi.mocked(loadEmployeeReferenceData).mockRejectedValueOnce(new Error("down"));
+    await act(async () => {
+      await client.refetchQueries({ type: "active" });
+    });
+    const line = await screen.findByText(
+      "Locations, jobs and roles didn't refresh. These are the last choices that loaded.",
+    );
+    expect(screen.queryByRole("heading", { name: "We couldn't load locations, jobs and roles" })).toBeNull();
+    expect(screen.queryByText("down")).toBeNull();
+    fireEvent.click(within(line.closest(".load-refresh") as HTMLElement).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByText(/didn't refresh/)).toBeNull());
   });
 
   // BL-402: out of reach, the drawer does not draw a nameless record beside the card.

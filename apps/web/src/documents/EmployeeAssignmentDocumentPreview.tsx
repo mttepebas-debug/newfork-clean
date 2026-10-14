@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { previewEmployeeDocumentAssignments } from "./document-data";
 import { LinesOutline, LoadError } from "../shell/LoadState";
+import { isNoAccess } from "../lib/no-access";
 
 export function useEmployeeDocumentAssignmentPreview(input: {
   enabled: boolean;
@@ -43,10 +44,15 @@ export function EmployeeAssignmentDocumentPreview({
       <h3>Document assignment impact</h3>
       {query.isFetching ? (
         <LinesOutline label="Checking document requirements" lines={2} />
+      ) : isNoAccess(query.error) ? (
+        // A refusal is not a connection problem: no retry, its own sentence.
+        <p role="alert">
+          You don't have access to check documents for these choices.
+        </p>
       ) : query.error ? (
         <LoadError
           inset
-          level={3}
+          level={4}
           title="We couldn't check document requirements"
           detail="The document check didn't load. Nothing was changed."
           onRetry={() => void query.refetch()}

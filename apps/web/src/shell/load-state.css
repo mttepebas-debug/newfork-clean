@@ -121,7 +121,7 @@
   max-width: 46ch;
 }
 
-.load-error .load-error-copy :is(h2, h3) {
+.load-error .load-error-copy :is(h2, h3, h4) {
   margin: 0;
   color: var(--theme-text);
   font-size: 16px;
