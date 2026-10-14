@@ -1542,6 +1542,33 @@ describe("App", () => {
     expect(listScheduleTemplates).toHaveBeenCalledWith(scheduleFixture.workspace_id);
   });
 
+  // S18 (review): a role that may read templates but not manage them sees the
+  // list from the templates address, with nothing it cannot do.
+  it("shows a templates reader the list with no Save template, Use or row menu", async () => {
+    vi.mocked(listScheduleTemplates).mockResolvedValue({
+      templates: [{
+        id: "99999999-9999-4999-8999-999999999982",
+        workspace_id: scheduleFixture.workspace_id,
+        name: "Lunch week",
+        revision: 1,
+        shift_count: 1,
+        open_slot_count: 0,
+        created_by_name: "Development Owner",
+        updated_at: "2026-08-17T12:00:00Z",
+      }],
+    });
+    testAuth.withoutActions = ["schedule.templates"];
+    window.history.pushState({}, "", "/app/schedule/templates?date=2026-08-24");
+    testAuth.role = "owner";
+    render(<App />);
+    const tab = await screen.findByRole("tab", { name: /^Templates/ }, { timeout: 5000 });
+    expect(tab.getAttribute("aria-selected")).toBe("true");
+    expect(await screen.findByText("Lunch week")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Save template" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Use template Lunch week" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "More for Lunch week" })).toBeNull();
+  });
+
   it("opens Schedule editing from an explicit working-copy source", async () => {
     const workingFixture = scheduleFixtureForWeek("2026-09-07");
     vi.mocked(getScheduleReadModel).mockResolvedValueOnce(workingFixture);
