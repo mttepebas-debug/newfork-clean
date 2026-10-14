@@ -24,7 +24,7 @@ import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
-import { ListOutline, LoadError } from "../shell/LoadState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 
 const base = "/app/announcements/important-dates";
 
@@ -122,7 +122,14 @@ export function ImportantDatesPage() {
         </div>
       </div>
       {dates.isLoading && <ListOutline label="Loading important dates" rows={5} columns={5} />}
-      {dates.error && (
+      {dates.error && dates.data ? (
+        <RefreshError
+          message="Important Dates didn't refresh. This is the last list that loaded."
+          retrying={dates.isFetching}
+          onRetry={() => void dates.refetch()}
+        />
+      ) : null}
+      {dates.error && !dates.data && (
         <LoadError
           title="We couldn't load Important Dates"
           detail="Important Dates didn't load. Nothing was changed."
