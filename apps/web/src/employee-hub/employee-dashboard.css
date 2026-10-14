@@ -879,18 +879,6 @@
   padding: 36px;
   min-height: 400px;
 }
-.eh-loading-bar {
-  height: 28px;
-  max-width: 300px;
-  border-radius: 10px;
-  background: #e7ece4;
-  margin: 24px 0;
-}
-.eh-loading-block {
-  height: 260px;
-  border-radius: 20px;
-  background: #e7ece4;
-}
 @media (max-width: 1180px) {
   .eh-dashboard {
     padding-inline: 24px;

@@ -1,21 +1,15 @@
-import { Button } from "@newfork/ui";
-
+/** A quiet line where the grid would be, e.g. when a filter leaves no location. */
 export function ScheduleState({
   detail,
-  error = false,
   title,
-  onRetry,
 }: {
   readonly detail: string;
-  readonly error?: boolean;
   readonly title: string;
-  readonly onRetry?: () => void;
 }) {
   return (
-    <section className="schedule-state" role={error ? "alert" : "status"}>
+    <section className="schedule-state" role="status">
       <strong>{title}</strong>
       <span>{detail}</span>
-      {onRetry ? <Button onClick={onRetry}>Retry</Button> : null}
     </section>
   );
 }
