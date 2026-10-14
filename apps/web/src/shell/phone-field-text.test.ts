@@ -66,7 +66,7 @@ describe("phone field text", () => {
             /font-size[^;]*!important/.test(body!) &&
             /\b(input|select|textarea)\b/.test(head!),
         )
-        .map(([, head]) => `${path}: ${head!.trim()}`),
+        .map(([, head]) => `${path.replaceAll("\\", "/")}: ${head!.trim()}`),
     );
     expect(
       forced.filter((entry) => !entry.startsWith("src/styles.css: input:not(")),
