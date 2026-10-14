@@ -54,8 +54,13 @@ describe("phone field text", () => {
       }
     };
     walk("src");
+    // Opening the @media blocks lets a phone-only rule inside one be seen too.
     const forced = sheets.flatMap((path) =>
-      [...strip(readFileSync(path, "utf8")).matchAll(/([^{}]+)\{([^}]*)\}/g)]
+      [
+        ...strip(readFileSync(path, "utf8"))
+          .replace(/@media[^{]*\{/g, "")
+          .matchAll(/([^{}]+)\{([^}]*)\}/g),
+      ]
         .filter(
           ([, head, body]) =>
             /font-size[^;]*!important/.test(body!) &&
