@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CatalogSortButton } from "../views/CatalogSortButton";
-import { errorText } from "../settings/GeneralSettingsPage";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import {
   documentQueryKey,
   listDocuments,
@@ -135,6 +135,13 @@ export function EmployeeDocumentsList(props: {
         </p>
       ) : null}
       {nothingAsked ? null : <>
+      {query.error && query.data && !isNoAccess(query.error) ? (
+        <RefreshError
+          message="Documents didn't refresh. This is the last list that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       <div className="catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div className="catalog-status-tabs" aria-label="Document status">
@@ -283,11 +290,18 @@ export function EmployeeDocumentsList(props: {
           </tbody>
         </table>
         {/* BL-855: where the rows go, not under the empty table. */}
-        {query.isLoading && <p className="settings-state">Loading documents…</p>}
-        {query.error && !isNoAccess(query.error) && (
-          <p className="settings-state error" role="alert">
-            {errorText(query.error)}
-          </p>
+        {query.isLoading && (
+          <ListOutline label="Loading documents" rows={6} columns={personal ? 2 : 3} inset />
+        )}
+        {query.error && !query.data && !isNoAccess(query.error) && (
+          <LoadError
+            inset
+            level={props.employeeId ? 3 : 2}
+            title="We couldn't load documents"
+            detail="Documents didn't load. Nothing was changed."
+            retrying={query.isFetching}
+            onRetry={() => void query.refetch()}
+          />
         )}
         {!query.isLoading && !query.error && !visible.length && (
           noneYet ? (

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -182,13 +182,19 @@ describe("personal list (Account › Documents)", () => {
     vi.mocked(listDocuments).mockReturnValueOnce(new Promise(() => {}) as never);
     const { unmount } = renderList(false, false);
     expect(
-      screen.getByText("Loading documents…").closest(".employee-table-wrap"),
+      screen.getByText("Loading documents").closest(".employee-table-wrap"),
     ).toBeTruthy();
+    expect(screen.queryByText("Loading documents…")).toBeNull();
     unmount();
     vi.mocked(listDocuments).mockRejectedValueOnce(new Error("Documents unavailable"));
     renderList(false, false);
-    expect(
-      (await screen.findByRole("alert")).closest(".employee-table-wrap"),
-    ).toBeTruthy();
+    const card = await screen.findByRole("alert");
+    expect(card.closest(".employee-table-wrap")).toBeTruthy();
+    expect(within(card).getByRole("heading", { name: "We couldn't load documents" })).toBeTruthy();
+    expect(screen.queryByText("Documents unavailable")).toBeNull();
+    vi.mocked(listDocuments).mockResolvedValueOnce([obligation] as never);
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect((await screen.findAllByText("Food handler card")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "We couldn't load documents" })).toBeNull();
   });
 });

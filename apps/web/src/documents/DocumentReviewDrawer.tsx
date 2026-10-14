@@ -8,6 +8,7 @@ import { X } from "lucide-react";
 import { useState, type Dispatch, type SetStateAction } from "react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
+import { LinesOutline, LoadError } from "../shell/LoadState";
 import { errorText } from "../settings/GeneralSettingsPage";
 import { DocumentExemptionAction } from "./DocumentExemptionAction";
 import { TimezoneSelect } from "../settings/TimezoneSelect";
@@ -114,13 +115,20 @@ function DocumentDrawer(props: DrawerProps) {
           </button>
         </div>
         <div className="catalog-drawer-body">
-          <p role={query.error ? "alert" : undefined}>
-            {!query.error
-              ? "Loading document…"
-              : isNoAccess(query.error)
-                ? "You don't have access to this document."
-                : errorText(query.error)}
-          </p>
+          {!query.error ? (
+            <LinesOutline label="Loading document" lines={5} />
+          ) : isNoAccess(query.error) ? (
+            <p role="alert">You don't have access to this document.</p>
+          ) : (
+            <LoadError
+              inset
+              level={3}
+              title="We couldn't load this document"
+              detail="This document didn't load. Nothing was changed."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
+          )}
         </div>
       </div>
     </CatalogDrawer>

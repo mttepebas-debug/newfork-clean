@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { previewEmployeeDocumentAssignments } from "./document-data";
-import { errorText } from "../settings/GeneralSettingsPage";
+import { LinesOutline, LoadError } from "../shell/LoadState";
 
 export function useEmployeeDocumentAssignmentPreview(input: {
   enabled: boolean;
@@ -42,14 +42,15 @@ export function EmployeeAssignmentDocumentPreview({
     <section aria-label="Document assignment impact">
       <h3>Document assignment impact</h3>
       {query.isFetching ? (
-        <p role="status">Checking document requirements…</p>
+        <LinesOutline label="Checking document requirements" lines={2} />
       ) : query.error ? (
-        <p role="alert">
-          {errorText(query.error)}{" "}
-          <button type="button" onClick={() => void query.refetch()}>
-            Retry document preview
-          </button>
-        </p>
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't check document requirements"
+          detail="The document check didn't load. Nothing was changed."
+          onRetry={() => void query.refetch()}
+        />
       ) : query.data?.length ? (
         <ul>
           {query.data.map((item, index) => (
