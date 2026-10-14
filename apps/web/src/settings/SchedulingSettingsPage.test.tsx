@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   SchedulingSettings,
@@ -121,6 +121,38 @@ describe("SchedulingSettingsPage checklist mode", () => {
     );
     return { client, ...view };
   }
+
+  // Loading and error in the "B" look (Mert 2026-10-14).
+  it("outlines the rules while they load", () => {
+    vi.mocked(loadSchedulingSettings).mockReturnValueOnce(new Promise(() => {}));
+    renderPage("/app/settings/scheduling");
+    expect(screen.getAllByRole("status").some((s) => s.textContent?.includes("Loading schedule rules"))).toBe(true);
+    expect(screen.queryByText("Loading scheduling rules...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again, not the server's sentence", async () => {
+    vi.mocked(loadSchedulingSettings).mockRejectedValueOnce(new Error("rules service down"));
+    renderPage("/app/settings/scheduling");
+    expect(await screen.findByRole("heading", { name: "We couldn't load schedule rules" })).toBeTruthy();
+    expect(screen.queryByText("rules service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByLabelText("Time off decision window (hours)")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load schedule rules" })).toBeNull();
+  });
+
+  it("keeps the last rules and says so when a refresh fails", async () => {
+    const { client } = renderPage("/app/settings/scheduling");
+    expect(await screen.findByLabelText("Time off decision window (hours)")).toBeTruthy();
+    vi.mocked(loadSchedulingSettings).mockRejectedValueOnce(new Error("rules service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(
+      await screen.findByText("Schedule rules didn't refresh. These are the last rules that loaded."),
+    ).toBeTruthy();
+    expect(screen.getByLabelText("Time off decision window (hours)")).toBeTruthy();
+    expect(screen.queryByText("rules service down")).toBeNull();
+  });
 
   it("shows the no-access card, not the raw error, when the API refuses scheduling settings (FB-6.1.9)", async () => {
     vi.mocked(loadSchedulingSettings).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
