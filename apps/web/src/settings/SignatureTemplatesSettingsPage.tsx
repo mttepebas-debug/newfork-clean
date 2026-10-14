@@ -47,6 +47,7 @@ import {
 import "./jobs-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
@@ -460,12 +461,22 @@ export default function SignatureTemplatesSettingsPage() {
         </p>
       ) : null}
       {query.isLoading ? (
-        <p className="settings-state">Loading acknowledgement settings...</p>
+        <ListOutline label="Loading acknowledgement settings" rows={5} columns={3} />
       ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
+      {query.error && !query.data ? (
+        <LoadError
+          title="We couldn't load acknowledgement settings"
+          detail="Acknowledgement settings didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.error && query.data ? (
+        <RefreshError
+          message="Acknowledgement settings didn't refresh. This is the last list that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
 
       {view === "retention" && editingPolicy ? (
@@ -864,7 +875,7 @@ export default function SignatureTemplatesSettingsPage() {
         </CatalogDrawer>
       ) : null}
 
-      {!query.isLoading && !query.error && view === "retention" ? (
+      {query.data && view === "retention" ? (
         <RetentionList
           policies={data.policies.filter(
             (item) =>
@@ -884,7 +895,7 @@ export default function SignatureTemplatesSettingsPage() {
           }
         />
       ) : null}
-      {!query.isLoading && !query.error && view === "templates" ? (
+      {query.data && view === "templates" ? (
         <TemplateList
           templates={data.templates.filter(
             (item) =>

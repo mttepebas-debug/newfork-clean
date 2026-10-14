@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, expect, it, vi } from "vitest";
 import SignatureTemplatesSettingsPage from "./SignatureTemplatesSettingsPage";
@@ -42,6 +42,7 @@ function mount() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 
 beforeEach(() => {
@@ -150,4 +151,40 @@ it("says nothing matches when every template is archived and archived ones are h
     await screen.findByText("No acknowledgement templates match this view"),
   ).toBeTruthy();
   expect(screen.queryByText("No acknowledgement templates yet")).toBeNull();
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+it("outlines acknowledgement settings while they load", () => {
+  vi.mocked(listSignatureSettings).mockReturnValueOnce(new Promise(() => {}));
+  mount();
+  expect(screen.getByRole("status").textContent).toContain("Loading acknowledgement settings");
+  expect(screen.queryByText("Loading acknowledgement settings...")).toBeNull();
+});
+
+it("shows the load-error card with Try again, not the server's sentence", async () => {
+  vi.mocked(listSignatureSettings).mockRejectedValueOnce(new Error("settings service down"));
+  mount();
+  const card = await screen.findByRole("alert");
+  expect(within(card).getByRole("heading", { name: "We couldn't load acknowledgement settings" })).toBeTruthy();
+  expect(screen.queryByText("settings service down")).toBeNull();
+  fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("heading", { name: "We couldn't load acknowledgement settings" })).toBeNull(),
+  );
+  expect(listSignatureSettings).toHaveBeenCalledTimes(2);
+});
+
+it("keeps the last settings and says so when a refresh fails", async () => {
+  const client = mount();
+  await waitFor(() => expect(listSignatureSettings).toHaveBeenCalledOnce());
+  await waitFor(() => expect(screen.queryByRole("status")).toBeNull());
+  vi.mocked(listSignatureSettings).mockRejectedValueOnce(new Error("settings service down"));
+  await act(async () => {
+    await client.refetchQueries();
+  });
+  expect(
+    await screen.findByText("Acknowledgement settings didn't refresh. This is the last list that loaded."),
+  ).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "We couldn't load acknowledgement settings" })).toBeNull();
+  expect(screen.queryByText("settings service down")).toBeNull();
 });
