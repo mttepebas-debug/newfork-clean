@@ -675,11 +675,12 @@ describe("EmployeeDrawer", () => {
       new Error("Weekly preferences unavailable"),
     );
     renderDrawer("availability");
-    await screen.findByText("Weekly preferences unavailable");
+    await screen.findByRole("heading", { level: 3, name: "We couldn't load availability" });
+    expect(screen.queryByText("Weekly preferences unavailable")).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Enter availability for employee" }),
     ).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await screen.findByRole("tab", { name: "Manager reminders" });
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
