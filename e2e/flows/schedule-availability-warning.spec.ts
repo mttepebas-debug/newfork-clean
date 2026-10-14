@@ -213,10 +213,12 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
   await expect(thursdayCard.locator(".schedule-availability-mark")).toHaveCount(0);
   await ayse.getByRole("rowheader").filter({ hasText: "Ali Person" })
     .getByRole("button", { name: "Ali Person: unavailable days this week", exact: true }).click();
+  // tests.availability saves Ali's whole week, so Thursday's mark replaced
+  // Tuesday's: Thursday is his only unavailable day now.
+  await expect(cell(ayse, aliId, tuesday)).not.toHaveAttribute("data-availability-kind", "unavailable");
   const nameWindow = ayse.getByRole("dialog", { name: "Ali Person: unavailable days this week", exact: true });
   await expect(nameWindow.locator("p")).toHaveText([
-    /^Marked unavailable Tue, /,
-    /^Marked unavailable Thu, /,
+    /^Marked unavailable Thu, .* · 9:00 AM – 3:00 PM$/,
     "Changed after publishing",
   ]);
   await ayse.keyboard.press("Escape");
