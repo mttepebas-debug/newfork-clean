@@ -22,6 +22,8 @@ const context = {
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13" }));
+let phone = false;
+vi.mock("../lib/usePhoneWidth", () => ({ usePhoneWidth: () => phone }));
 vi.mock("../schedule/hooks/useScheduleRealtime", () => ({ useScheduleRealtime: () => undefined }));
 vi.mock("../schedule/schedule-data", async (original) => ({
   ...(await original<object>()),
@@ -57,6 +59,7 @@ function renderPage(url = "/app/schedule/lineup") {
 }
 
 beforeEach(() => {
+  phone = false;
   read.mockReset();
   read.mockResolvedValue(
     model([
@@ -135,5 +138,66 @@ describe("LineupPage", () => {
     renderPage();
     expect(await screen.findByText("You don't have access to the lineup")).toBeTruthy();
     expect(screen.queryByText("We couldn't load the lineup")).toBeNull();
+  });
+});
+
+// Phone (Mert 2026-10-14, "B"): one location and one shift at a time; the
+// shifts are tabs, a summary card on top, then the team.
+describe("LineupPage on a phone", () => {
+  beforeEach(() => {
+    phone = true;
+    read.mockResolvedValue(
+      model([
+        shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] }),
+        shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00", location: uptown }),
+        shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "22:00", date: "2026-10-14" }),
+      ]),
+    );
+  });
+
+  it("shows one location's shift as tabs, a summary and the team", async () => {
+    renderPage("/app/schedule/lineup?date=2026-10-12");
+    const tabs = await screen.findByRole("group", { name: "Shifts" });
+    expect(within(tabs).getAllByRole("button").map((tab) => tab.getAttribute("aria-label"))).toEqual([
+      "Lunch, no one",
+      "Dinner, no one",
+    ]);
+    expect(screen.queryByRole("navigation", { name: "Days of the week" })).toBeNull();
+    expect(screen.queryByRole("combobox", { name: "Filter by shift" })).toBeNull();
+    const location = screen.getByRole("combobox", { name: "Location" }) as HTMLSelectElement;
+    expect([...location.options].map((option) => option.text)).toEqual(["Downtown", "Uptown"]);
+  });
+
+  it("opens on the shift with people and reads it like a card", async () => {
+    renderPage();
+    const lunchTab = await screen.findByRole("button", { name: "Lunch, 1 person" });
+    expect(lunchTab.getAttribute("aria-pressed")).toBe("true");
+    const summary = screen.getByRole("region", { name: "Lunch" });
+    expect(within(summary).getByText("On the floor").previousSibling?.textContent).toBe("1");
+    expect(within(summary).getByText("First in").previousSibling?.textContent).toBe("11:00 AM");
+    expect(within(summary).getByText("Last out").previousSibling?.textContent).toBe("4:00 PM");
+    const team = screen.getByRole("list", { name: "Server" });
+    const maria = within(team).getByRole("listitem");
+    expect(maria.textContent).toContain("Maria Lopez");
+    expect(maria.textContent).toContain("11:00 AM – 4:00 PM");
+    expect(maria.textContent).toContain("Training");
+  });
+
+  it("moves between shifts and locations", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Dinner, no one" }));
+    expect(screen.getByTestId("where").textContent).toBe(`?shift=${dinner}`);
+    expect(screen.getByText("No one is scheduled for Dinner.")).toBeTruthy();
+    fireEvent.change(screen.getByRole("combobox", { name: "Location" }), { target: { value: uptown } });
+    expect(screen.getByTestId("where").textContent).toContain(`location=${uptown}`);
+    fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
+    expect(within(screen.getByRole("list", { name: "Server" })).getByText("Hannah Lee")).toBeTruthy();
+  });
+
+  it("shows the phone outline while it loads", () => {
+    read.mockReturnValue(new Promise(() => undefined));
+    renderPage();
+    const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
+    expect(loading.classList.contains("lineup-phone-outline")).toBe(true);
   });
 });

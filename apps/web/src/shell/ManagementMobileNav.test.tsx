@@ -71,6 +71,7 @@ function mount(path = "/app/schedule") {
         <Routes>
           <Route path="/app" element={<AppShell />}>
             <Route path="schedule" element={<h1>Schedule page</h1>} />
+            <Route path="schedule/lineup" element={<h1>Lineup page</h1>} />
             <Route path="employees" element={<h1>Employees page</h1>} />
             <Route path="settings" element={<h1>Settings page</h1>} />
             <Route path="employee-hub" element={<h1>Hub page</h1>} />
@@ -106,8 +107,10 @@ describe("ManagementMobileNav in the app shell", () => {
   it("owner: four pages in the bar, everything else they can open under More", () => {
     context = owner;
     mount();
-    expect(names(bar())).toEqual(["Workspace", "Schedule", "Requests", "Employees", "More"]);
+    // Lineup opens on a phone too (Mert 2026-10-14); a real phone has no Schedule entry.
+    expect(names(bar())).toEqual(["Workspace", "Schedule", "Requests", "Lineup", "More"]);
     expect(names(morePages())).toEqual([
+      "Employees",
       "Documents",
       "Availability",
       "Announcements",
@@ -122,14 +125,14 @@ describe("ManagementMobileNav in the app shell", () => {
   it("manager: pages they cannot open never appear, Settings included", () => {
     context = manager;
     mount();
-    expect(names(bar())).toEqual(["Schedule", "Requests", "Employees", "Availability", "More"]);
-    expect(names(morePages())).toEqual(["Notifications", "Account", "Sign out"]);
+    expect(names(bar())).toEqual(["Schedule", "Requests", "Lineup", "Employees", "More"]);
+    expect(names(morePages())).toEqual(["Availability", "Notifications", "Account", "Sign out"]);
   });
 
   it("with an employee record of their own, More offers the employee view (FB-6.2.8)", () => {
     context = { ...manager, actions: ["employee_hub.read"] };
     mount();
-    expect(names(morePages())).toEqual(["Notifications", "Employee view", "Account", "Sign out"]);
+    expect(names(morePages())).toEqual(["Availability", "Notifications", "Employee view", "Account", "Sign out"]);
   });
 
   it("employee: no management bar (the Employee Hub bar serves them)", () => {
@@ -138,12 +141,12 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).toBeNull();
   });
 
-  it("moves Schedule → Employees → Settings, closing More on the way", () => {
+  it("moves Schedule → Lineup → Settings, closing More on the way", () => {
     context = owner;
     mount();
-    fireEvent.click(within(bar()).getByRole("link", { name: "Employees" }));
-    expect(screen.getByRole("heading", { name: "Employees page" })).toBeTruthy();
-    expect(within(bar()).getByRole("link", { name: "Employees" }).className).toBe("active");
+    fireEvent.click(within(bar()).getByRole("link", { name: "Lineup" }));
+    expect(screen.getByRole("heading", { name: "Lineup page" })).toBeTruthy();
+    expect(within(bar()).getByRole("link", { name: "Lineup" }).className).toBe("active");
 
     fireEvent.click(within(bar()).getByRole("button", { name: "More" }));
     const sheet = screen.getByRole("dialog", { name: "More" });
