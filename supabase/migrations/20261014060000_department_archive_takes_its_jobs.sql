@@ -37,6 +37,12 @@ as $$
 declare department_archived_at timestamptz;
 begin
   if new.archived_at is not null or new.department_id is null then return new; end if;
+  -- A save that keeps an active job where it is reads nothing: Settings sends
+  -- department_id on every save, and locking the department there could
+  -- deadlock with that department's archive, which locks this job.
+  if tg_op = 'UPDATE' and old.archived_at is null and new.department_id is not distinct from old.department_id then
+    return new;
+  end if;
   -- Shares the department's row so an archive running at the same moment
   -- either waits for this job or is seen by it.
   select department.archived_at into department_archived_at
@@ -48,11 +54,8 @@ begin
     new.department_id := null;
     return new;
   end if;
-  if tg_op = 'INSERT' or new.department_id is distinct from old.department_id then
-    raise exception 'Restore the department before adding jobs'
-      using errcode = '22023', hint = 'department.archived';
-  end if;
-  return new;
+  raise exception 'Restore the department before adding jobs'
+    using errcode = '22023', hint = 'department.archived';
 end;
 $$;
 
