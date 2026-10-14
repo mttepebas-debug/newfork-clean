@@ -67,29 +67,53 @@ function renderShiftCard(
 }
 
 describe("ShiftCard", () => {
-  it("marks a not yet published shift \"New\" while editing and a live one with nothing (Mert, 2026-10-09, item 3 variant 6)", () => {
+  // Mert, 2026-10-12: while editing, a live shift says LIVE top right.
+  it("marks a live shift LIVE while editing and with nothing while reading", () => {
     renderShiftCard({ publicationState: "locked" });
     const live = screen.getByRole("button", { name: /Dinner-Server/i });
-    expect(live.getAttribute("data-has-markers")).toBe("false");
-    expect(live.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(live.querySelector(".schedule-shift-badge-markers .schedule-shift-live-mark")?.textContent).toBe("Live");
     expect(live.querySelector(".schedule-shift-new-mark")).toBeNull();
+    expect(live.getAttribute("data-mark-row")).toBe("true");
+    // Both sides keep LIVE's room: 6 + 30 + 4 - 8.
+    expect(live.style.getPropertyValue("--shift-card-side")).toBe("32px");
+    expect(live.style.getPropertyValue("--shift-card-line1-right")).toBe("37px");
+    document.body.innerHTML = "";
+    renderShiftCard({ publicationState: "locked", editing: false });
+    const read = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(read.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(read.getAttribute("data-mark-row")).toBeNull();
+    expect(read.style.getPropertyValue("--shift-card-side")).toBe("2px");
   });
-  it("shows \"New\" only while editing, and keeps the edited mark of a live shift", () => {
+  // Mert, 2026-10-12: an edited live shift says NEW like a new one, with no
+  // stripe or pencil; a shift staged for removal carries no icon.
+  it("shows \"New\" only while editing, on a new shift and on an edited live one", () => {
     renderShiftCard();
     expect(document.querySelector(".schedule-shift-new-mark")?.textContent).toBe("New");
+    expect(document.querySelector(".schedule-shift-new-mark")?.getAttribute("title")).toBe(
+      "Not published yet - goes live on next publish",
+    );
     document.body.innerHTML = "";
     renderShiftCard({ editing: false });
     expect(document.querySelector(".schedule-shift-new-mark")).toBeNull();
     document.body.innerHTML = "";
     renderShiftCard({ publicationState: "unlocked-modified" });
+    expect(document.querySelector(".schedule-shift-new-mark")?.getAttribute("title")).toBe(
+      "Edited - updates the live shift on next publish",
+    );
+    expect(document.querySelector(".schedule-shift-live-mark")).toBeNull();
+    expect(document.querySelector(".schedule-shift-badge svg")).toBeNull();
+    document.body.innerHTML = "";
+    renderShiftCard({ publicationState: "staged-removed" });
     expect(document.querySelector(".schedule-shift-new-mark")).toBeNull();
-    expect(screen.getByLabelText("Edited - updates the live shift on next publish")).toBeTruthy();
+    expect(document.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    expect(document.querySelector(".schedule-shift-badge svg")).toBeNull();
   });
-  it("keeps warning context without a warning icon or reserved marker space", () => {
+  it("keeps warning context without a warning icon", () => {
     renderShiftCard({ shift: { ...shift, warning_codes: ["overlap"] } });
     const badge = screen.getByRole("button", { name: /Dinner-Server/i });
-    expect(badge.getAttribute("data-has-markers")).toBe("false");
     expect(badge.querySelector(".schedule-shift-badge-markers")).toBeNull();
+    // Editing, the sides keep the spinner's room and NEW's below: 4 + 22 + 4 - 8.
+    expect(badge.style.getPropertyValue("--shift-card-side")).toBe("22px");
     expect(badge.getAttribute("aria-label")).toContain("conflicts with another shift");
   });
   it("says the person shows as unavailable with an orange \"!\" and its hours (BL-186, G14)", () => {
@@ -102,7 +126,7 @@ describe("ShiftCard", () => {
     expect(badge.getAttribute("aria-label")).toContain("Ali Kaya shows as unavailable for this shift");
     expect(badge.getAttribute("title")).toBeNull();
     expect(badge.getAttribute("data-availability-warning")).toBe("true");
-    expect(badge.getAttribute("data-has-markers")).toBe("true");
+    expect(badge.querySelector(".schedule-shift-badge-markers")).not.toBeNull();
     const mark = screen.getByRole("button", { name: "Ali Kaya: unavailable during this shift" });
     expect(mark.textContent).toBe("!");
     // A card is a button, so its "!" is a focusable span, never a nested button.
@@ -113,6 +137,32 @@ describe("ShiftCard", () => {
       .map((id) => document.getElementById(id)?.textContent)
       .join(" ");
     expect(description).toContain("Marked unavailable Tue, Oct 20 · After 2:00 PM");
+  });
+  // Mert, 2026-10-12: while editing, a live shift's "!" moves to the row's
+  // name cell (ScheduleRow); the card still says why to a screen reader.
+  it("keeps a live shift's \"!\" off its card while editing, and says it to a screen reader", () => {
+    renderShiftCard({
+      shift: { ...shift, scheduled_date: "2026-10-20", start_time: "16:00", end_time: "22:00", warning_codes: ["availability"] },
+      employeeName: "Ali Kaya",
+      availabilityMark: { kind: "unavailable", windows: [{ from: 840, to: 1440 }] },
+      publicationState: "locked",
+    });
+    const badge = screen.getByRole("button", { name: /Dinner-Server/i });
+    expect(screen.queryByRole("button", { name: "Ali Kaya: unavailable during this shift" })).toBeNull();
+    expect(badge.querySelector(".schedule-shift-live-mark")).not.toBeNull();
+    const description = badge.getAttribute("aria-describedby")!
+      .split(" ")
+      .map((id) => document.getElementById(id)?.textContent)
+      .join(" ");
+    expect(description).toContain("Marked unavailable Tue, Oct 20 · After 2:00 PM");
+    document.body.innerHTML = "";
+    renderShiftCard({
+      shift: { ...shift, warning_codes: ["availability"] },
+      employeeName: "Ali Kaya",
+      publicationState: "locked",
+      editing: false,
+    });
+    expect(screen.getByRole("button", { name: "Ali Kaya: unavailable during this shift" })).toBeTruthy();
   });
   it("says \"Changed after publishing\" on a mark that came after the first publish (M11)", () => {
     renderShiftCard({
@@ -173,12 +223,25 @@ describe("ShiftCard", () => {
     expect(badge.getAttribute("title")).toBeNull();
     expect(badge.getAttribute("data-availability-warning")).toBeNull();
   });
+  // Mert, 2026-10-12: saving is a spinner in the top-right row, not a strip.
   it("shows saving feedback only on its optimistic badge", () => {
-    renderShiftCard({ shift: { ...shift, optimistic: true, saving_state: "delayed" } });
+    renderShiftCard({ shift: { ...shift, optimistic: true, saving_state: "saving" } });
     const status = screen.getByRole("status");
-    expect(status.textContent).toBe("Still saving — please wait");
+    expect(status.textContent).toBe("Saving");
+    expect(status.closest(".schedule-shift-badge-markers")).not.toBeNull();
+    expect(status.querySelector("svg")).not.toBeNull();
+    expect(status.getAttribute("data-delayed")).toBeNull();
     expect(status.closest("button")?.disabled).toBe(true);
     expect(status.closest("button")?.getAttribute("aria-busy")).toBe("true");
+    // An optimistic card is not yet a shift, so it says no NEW.
+    expect(document.querySelector(".schedule-shift-new-mark")).toBeNull();
+    document.body.innerHTML = "";
+    renderShiftCard({ shift: { ...shift, optimistic: true, saving_state: "delayed" } });
+    expect(screen.getByRole("status").textContent).toBe("Still saving, please wait");
+    expect(screen.getByRole("status").getAttribute("data-delayed")).toBe("true");
+    document.body.innerHTML = "";
+    renderShiftCard();
+    expect(screen.queryByRole("status")).toBeNull();
   });
   it("renders the schedule badge with title, labels, location, time, and sizing data", () => {
     renderShiftCard({ selected: true, focused: true });
@@ -652,8 +715,10 @@ describe("GhostShiftCard", () => {
 
     const badge = screen.getByTestId("ghost-shift-badge");
     expect(badge.getAttribute("data-ghost")).toBe("true");
-    // The location pin takes the marker corner, so the title keeps clear of it.
-    expect(badge.getAttribute("data-has-markers")).toBe("true");
+    // The location pin takes the top-right corner; both sides keep its room
+    // (6 + 17 + 4 - 8), so the words keep clear of it.
+    expect(badge.getAttribute("data-mark-row")).toBe("true");
+    expect(badge.style.getPropertyValue("--shift-card-side")).toBe("19px");
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
     // The place is behind the pin, not on its own line.
     // Not written on the card: the pin's bubble and its hidden description carry it.
@@ -668,9 +733,9 @@ describe("GhostShiftCard", () => {
     // Mert, 2026-10-13 (ghost look I): the real card at half strength, in
     // its own type color.
     expect(badge.style.getPropertyValue("--shift-color")).toBe(shiftType.color);
-    // Mert, 2026-10-13: the location pin a little bigger.
+    // Mert, 2026-10-12 (the card look he chose): the location pin 17px.
     const pin = screen.getByRole("button", { name: "Location: Patio" }).querySelector("svg");
-    expect(pin?.getAttribute("width")).toBe("14");
+    expect(pin?.getAttribute("width")).toBe("17");
   });
 
   it("falls back to the real card's color when the type has none", () => {

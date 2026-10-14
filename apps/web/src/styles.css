@@ -5789,13 +5789,28 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #60716a;
   font-size: 9px;
 }
+/* A closed day looks like time off; it says "Closed" only under the mouse
+   (Mert, 2026-10-12). While editing, the cell's "Add shift" takes the hover
+   instead of printing over the word; the day's header still says Closed. */
 .schedule-cell[data-closed="true"] {
-  background-color: #fbf1ef;
-  background-image: repeating-linear-gradient(
-    135deg,
-    transparent 0 7px,
-    rgba(155, 75, 60, 0.07) 7px 9px
-  );
+  background-color: var(--theme-time-off-soft);
+}
+.schedule-cell[data-closed="true"]:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+}
+.schedule-cell[data-closed="true"]:not(:has(.schedule-shift-badge, .schedule-cell-add-action)):hover::before {
+  content: "Closed";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-danger-strong);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
 }
 /* A marked day (KARARLAR Schedule, 2026-10-06): time off is a flat red cell
    that says "Time off"; an unavailable day draws nothing but its orange "!". */
@@ -5822,10 +5837,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   pointer-events: none;
 }
 /* Hover and drag over time off: the black words turn red under the mouse
-   (Mert, 2026-10-13); while a shift is dragged over it, the red frame stays
-   and one line under the words says why it will not land (Mert, 2026-10-09,
-   item 16). The part-day "Add shift" layer covers the words instead of
-   printing over them. */
+   (Mert, 2026-10-13); while a shift is dragged over it, the red frame stays,
+   with no line under the words (Mert, 2026-10-12). The part-day "Add shift"
+   layer covers the words instead of printing over them. */
 /* Editing gives an empty cell a cream hover; time off keeps its own colour. */
 .schedule-cell[data-editing="true"][data-availability-kind="time_off"]:hover {
   background-color: var(--theme-time-off-soft);
@@ -5836,16 +5850,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-cell[data-availability-kind="time_off"]
   > .schedule-cell-add-action:not(:hover):not([data-add-shift-active="true"]) {
   background: color-mix(in srgb, var(--theme-surface) 94%, transparent);
-}
-.schedule-cell[data-availability-kind="time_off"][data-drop-status="blocked"]::after {
-  content: "Can't place a shift here";
-  position: absolute;
-  inset: auto 0 14px;
-  color: var(--theme-danger-text);
-  font-size: 11px;
-  font-weight: 600;
-  text-align: center;
-  pointer-events: none;
 }
 .schedule-availability-tip-dot {
   display: inline-grid;
@@ -5878,7 +5882,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
   height: var(--schedule-row-badge-height, 58px);
   min-height: var(--schedule-row-badge-height, 58px);
   flex-direction: column;
-  justify-content: center;
+  /* Every card's first line starts at the top, so first lines line up along
+     a row whatever a card holds below them (Mert, 2026-10-14); what is left
+     over goes below the words. */
+  justify-content: flex-start;
   margin-bottom: 0;
   appearance: none;
   overflow: hidden;
@@ -5915,20 +5922,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
   gap: 1px;
   border: 1px solid color-mix(in srgb, var(--shift-color) 65%, #26332e);
   border-radius: var(--schedule-badge-radius);
-  padding: 6px 10px;
+  /* The card's own padding and the room its marks keep (--shift-card-side),
+     so the column widens instead of a mark touching the words. */
+  padding: 6px calc(8px + var(--shift-card-side, 2px));
   font-size: 10px;
   font-weight: 700;
   line-height: 1.3;
   white-space: nowrap;
-}
-.schedule-badge-width-measure[data-has-markers="true"] {
-  padding-right: 50px;
-}
-.schedule-badge-width-measure[data-has-stack="true"] {
-  padding-right: 48px;
-}
-.schedule-badge-width-measure[data-has-markers="true"][data-has-stack="true"] {
-  padding-right: 78px;
 }
 .schedule-badge-width-measure > span {
   display: block;
@@ -6161,11 +6161,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-shift-badge[data-publication-state="staged-removed"] span,
 .schedule-shift-badge[data-publication-state="staged-removed"] em {
   text-decoration: line-through;
-}
-.schedule-shift-badge[data-publication-state="unlocked-modified"]:not(
-    [data-selected="true"]
-  ) {
-  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--shift-color) 72%, #176f59);
 }
 .schedule-shift-badge[data-dragging="true"] {
   cursor: grabbing;
@@ -9405,6 +9400,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   width: 100%;
   accent-color: #173e34;
 }
+/* Words centred between the card's edges, the same room on both sides: the
+   widest corner mark plus a gap (ShiftCard --shift-card-side,
+   lib/shiftCardRoom.ts; Mert, 2026-10-12). Every line keeps its own row and
+   never takes a second one; when even the fitted week is narrower, the line
+   ends in "…" (the card's name says it in full). */
 .schedule-shift-badge .schedule-shift-badge-content {
   position: relative;
   z-index: 1;
@@ -9414,44 +9414,27 @@ button.workspace-switcher-item:hover:not(:disabled) {
   min-height: 0;
   flex: 0 0 auto;
   flex-direction: column;
-  align-items: stretch;
+  align-items: center;
   justify-content: center;
   gap: 1px;
-  padding-right: 42px;
-  padding-left: 18px;
+  padding-right: var(--shift-card-side, 2px);
+  padding-left: var(--shift-card-side, 2px);
   text-align: center;
 }
-.schedule-shift-badge[data-job-color-dot="false"]
-  .schedule-shift-badge-content {
-  padding-left: 2px;
-}
-.schedule-shift-badge[data-selected="true"][data-job-color-dot="false"]
-  .schedule-shift-badge-content {
-  padding-left: 22px;
-}
-.schedule-shift-badge[data-has-markers="false"]:not([data-stack-count])
-  .schedule-shift-badge-content {
-  padding-right: 2px;
-}
-.schedule-shift-badge[data-stack-count] .schedule-shift-badge-content {
-  padding-right: 40px;
-}
-.schedule-shift-badge[data-stack-count][data-has-markers="true"]
-  .schedule-shift-badge-content {
-  padding-right: 70px;
+.schedule-shift-badge .schedule-shift-badge-content > * {
+  max-width: 100%;
+  overflow: hidden;
+  overflow-wrap: normal;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .schedule-shift-badge strong {
   display: block;
-  max-width: 100%;
   margin: 0;
-  overflow-wrap: anywhere;
-  overflow: visible;
-  text-overflow: clip;
   font-size: 12px;
   font-weight: 750;
   letter-spacing: -0.01em;
   line-height: 1.25;
-  white-space: normal;
 }
 .schedule-shift-badge > svg {
   position: absolute;
@@ -9460,9 +9443,12 @@ button.workspace-switcher-item:hover:not(:disabled) {
   flex: 0 0 auto;
   color: #a04735;
 }
+/* Every top mark sits level with the card's first line (Mert, 2026-10-14):
+   the card keeps that line's middle in --shift-card-line1-mid
+   (useFirstLineMid). */
 .schedule-shift-badge .schedule-shift-badge-markers {
   position: absolute;
-  top: 6px;
+  top: var(--shift-card-line1-mid, 13.5px);
   right: 6px;
   z-index: 2;
   display: flex;
@@ -9470,35 +9456,134 @@ button.workspace-switcher-item:hover:not(:disabled) {
   gap: 3px;
   margin: 0;
   color: #a04735;
+  transform: translateY(-50%);
 }
 .schedule-shift-badge .schedule-shift-badge-markers svg {
   position: static;
   flex: 0 0 auto;
   color: currentColor;
 }
-.schedule-shift-badge[data-stack-count] .schedule-shift-badge-markers {
-  right: 39px;
-}
-/* A shift with a manager's note (BL-199): an 11px ink triangle in the top
-   left, clipped by the card's radius, on a 16px hover area that stays
-   invisible. The note opens beside the card only for a mouse on that area. */
+/* A shift with a manager's note (BL-199; Mert, 2026-10-14): a thin navy
+   paperclip in the top left, level with the first line, 5px in. The note
+   opens beside the card only for a mouse on it. */
 .schedule-shift-badge .schedule-shift-note-corner {
   position: absolute;
-  top: 0;
-  left: 0;
+  top: calc(var(--shift-card-line1-mid, 11.5px) - 7.5px);
+  left: 5px;
   z-index: 2;
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
 }
 .schedule-shift-badge .schedule-shift-note-corner::before {
   position: absolute;
   top: 0;
   left: 0;
-  width: 0;
-  height: 0;
-  border-top: 11px solid var(--theme-note);
-  border-right: 11px solid transparent;
+  width: 15px;
+  height: 15px;
+  background: var(--theme-note);
   content: "";
+  -webkit-mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M13.234%2020.252%2021%2012.3'%2F%3E%3Cpath%20d%3D'm16%206-8.414%208.586a2%202%200%200%200%200%202.828%202%202%200%200%200%202.828%200l8.414-8.586a4%204%200%200%200%200-5.656%204%204%200%200%200-5.656%200l-8.415%208.585a6%206%200%201%200%208.486%208.486'%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg%20xmlns%3D'http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg'%20viewBox%3D'0%200%2024%2024'%20fill%3D'none'%20stroke%3D'black'%20stroke-width%3D'2'%20stroke-linecap%3D'round'%20stroke-linejoin%3D'round'%3E%3Cpath%20d%3D'M13.234%2020.252%2021%2012.3'%2F%3E%3Cpath%20d%3D'm16%206-8.414%208.586a2%202%200%200%200%200%202.828%202%202%200%200%200%202.828%200l8.414-8.586a4%204%200%200%200%200-5.656%204%204%200%200%200-5.656%200l-8.415%208.585a6%206%200%201%200%208.486%208.486'%2F%3E%3C%2Fsvg%3E") center / contain no-repeat;
+}
+/* A live shift while editing (Mert, 2026-10-12 and 2026-10-13): a green dot
+   and LIVE, no box, in the top-right row. */
+.schedule-shift-badge .schedule-shift-live-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: var(--theme-success);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.schedule-shift-badge .schedule-shift-live-mark::before {
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: currentColor;
+  content: "";
+}
+/* A fitted week too narrow for the side room (ScheduleGridShell
+   data-card-band, Mert 2026-10-12 and 2026-10-14): the words take the card's
+   width. Reading, the marks stay beside the first line, which keeps clear of
+   them: centred while it can be, sliding away from a mark only as far as it
+   must. While editing, every card keeps a row of its own for the top marks
+   above the words (LIVE does not fit beside a name there) and NEW one below,
+   3px clear of the words. */
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
+  .schedule-shift-badge .schedule-shift-badge-content {
+  padding-right: 2px;
+  padding-left: 2px;
+}
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
+  display: flex;
+  align-self: stretch;
+}
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before,
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  flex: 1 1 0;
+  content: "";
+}
+/* The words start 4px past a mark (shiftCardFirstLineInset): its reach from
+   the outer edge, less the border, the card's padding (8px; 5px compact) and
+   the words' own 2px. */
+.schedule-grid-exact[data-card-band="tight"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
+  min-width: max(0px, calc(var(--shift-card-line1-left, 0px) - 7px));
+}
+.schedule-grid-exact[data-card-band="tight"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  min-width: max(0px, calc(var(--shift-card-line1-right, 0px) - 7px));
+}
+.schedule-grid-exact[data-card-band="compact"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::before {
+  min-width: max(0px, calc(var(--shift-card-line1-left, 0px) - 4px));
+}
+.schedule-grid-exact[data-card-band="compact"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child::after {
+  min-width: max(0px, calc(var(--shift-card-line1-right, 0px) - 4px));
+}
+/* Clip band: the name already fills the card and ends in "…". */
+.schedule-grid-exact[data-card-band="clip"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge .schedule-shift-badge-content > strong:first-child {
+  align-self: stretch;
+  padding-right: max(0px, calc(var(--shift-card-line1-right, 0px) - 4px));
+  padding-left: max(0px, calc(var(--shift-card-line1-left, 0px) - 4px));
+}
+/* Editing: the marks' own row, its middle 13.5px down (6px + a 15px mark);
+   a ghost's 17px pin, 2px taller, sits 2px higher. */
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-mark-row="true"] {
+  --shift-card-line1-mid: 13.5px !important;
+}
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-ghost="true"][data-mark-row="true"] {
+  --shift-card-line1-mid: 11.5px !important;
+}
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-mark-row="true"] .schedule-shift-badge-content {
+  padding-top: 18px;
+}
+.schedule-grid-exact:is([data-card-band="tight"], [data-card-band="compact"], [data-card-band="clip"])
+  .schedule-shift-badge[data-new-row="true"] .schedule-shift-badge-content {
+  padding-bottom: 16px;
+}
+/* Compact band: narrower still, the name a point smaller (12px to 11px) so it
+   stays whole; only past that does a name end in "…" (clip). */
+.schedule-grid-exact:is([data-card-band="compact"], [data-card-band="clip"])
+  .schedule-shift-badge .schedule-shift-badge-content > strong {
+  font-size: 11px;
+}
+.schedule-grid-exact:is([data-card-band="compact"], [data-card-band="clip"])
+  .schedule-shift-badge {
+  padding-right: 5px;
+  padding-left: 5px;
 }
 .schedule-shift-note-card {
   position: fixed;
@@ -9679,23 +9764,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
     animation: none !important;
   }
 }
-/* A card with a corner mark keeps its words centred: equal room on both sides
-   (the measured column width already counts the mark). */
-.schedule-shift-badge[data-has-markers="true"]:not([data-stack-count])
-  .schedule-shift-badge-content {
-  padding-right: 24px;
-  padding-left: 24px;
-}
-/* A shift not yet published, while editing (Mert, 2026-10-09, item 3 variant 6). */
+/* A shift not live yet, or a live one edited, while editing: a plain green
+   NEW, no box (Mert, 2026-10-09 item 3, 2026-10-12 and 2026-10-13). */
 .schedule-shift-new-mark {
   position: absolute;
   right: 4px;
   bottom: 4px;
   z-index: 2;
-  padding: 0 4px;
-  border: 1px solid color-mix(in srgb, var(--theme-success) 45%, transparent);
-  border-radius: 3px;
-  background: var(--theme-success-soft);
   color: var(--theme-success);
   font-size: 9px;
   font-weight: 750;
@@ -9704,10 +9779,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
   text-transform: uppercase;
   pointer-events: none;
 }
+/* Open shifts: "x2" top left, level with the first line (Mert, 2026-10-12). */
 .schedule-shift-stack-count {
   position: absolute;
-  right: 5px;
-  top: 5px;
+  top: var(--shift-card-line1-mid, 13.5px);
+  left: 5px;
   z-index: 2;
   min-width: 23px;
   border: 1px solid color-mix(in srgb, var(--shift-color) 62%, #26332e);
@@ -9720,22 +9796,18 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1.1;
   text-align: center;
   box-shadow: 0 1px 2px rgba(24, 34, 30, 0.16);
+  transform: translateY(-50%);
 }
 .schedule-shift-badge .schedule-shift-badge-content > span,
 .schedule-shift-badge .schedule-shift-badge-content > em {
   display: block;
-  max-width: 100%;
   margin: 0;
-  overflow-wrap: anywhere;
-  overflow: visible;
-  text-overflow: clip;
   color: #596660;
   font-size: 10px;
   font-weight: 600;
   font-style: normal;
   letter-spacing: 0;
   line-height: 1.3;
-  white-space: normal;
 }
 .schedule-shift-badge .schedule-shift-time {
   margin-top: 0;

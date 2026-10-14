@@ -226,7 +226,10 @@ export function ScheduleRow({
           date: day,
           mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))?.availabilityMark ?? null,
           shiftCount: cell.length,
-          clashes: cell.some((shift) => shift.warning_codes.includes("availability")),
+          // While editing, a live shift's card says LIVE, so its "!" moves
+          // here (Mert, 2026-10-12).
+          clashes: cell.some((shift) => shift.warning_codes.includes("availability") &&
+            !(editing && publicationStateForShift(shift) === "locked")),
         };
       }))
     : [];

@@ -29,6 +29,7 @@ import {
 } from "../lib/scheduleShiftMetadata";
 import type { TimeFormat } from "../timeInput";
 import { unassignedShiftStackKey } from "../lib/unassignedShiftStack";
+import { SHIFT_CARD_MARK, shiftCardSideRoom } from "../lib/shiftCardRoom";
 
 export const NON_EDIT_SHIFT_BADGE_MIN_HEIGHT = 36;
 export const PREVIEW_SHIFT_BADGE_MIN_HEIGHT = 44;
@@ -65,17 +66,12 @@ export function useUniformScheduleBadgeWidth({
         setWidth(minimumWidth);
         return;
       }
-      // Long content wraps in the visible badge instead of widening every day.
+      // A card's line never wraps (Mert, 2026-10-12), so a scrolling week
+      // takes the widest line in full.
       const nextWidth = Math.ceil(
         badges.reduce(
           (max, badge) =>
-            Math.max(
-              max,
-              Math.min(
-                badge.dataset.measurePreset === "true" ? Infinity : 220,
-                Math.max(badge.scrollWidth, badge.getBoundingClientRect().width),
-              ),
-            ),
+            Math.max(max, badge.scrollWidth, badge.getBoundingClientRect().width),
           minimumWidth,
         ),
       );
@@ -119,6 +115,7 @@ export function useUniformScheduleBadgeWidth({
 export function renderScheduleBadgeWidthMeasurer({
   shifts,
   catalog,
+  editing,
   locationGroups,
   showShiftType,
   showShiftLabels,
@@ -130,6 +127,7 @@ export function renderScheduleBadgeWidthMeasurer({
 }: {
   readonly shifts: readonly ScheduleShift[];
   readonly catalog: ScheduleCatalog;
+  readonly editing: boolean;
   readonly locationGroups: readonly ScheduleGridLocationGroup[];
   readonly showShiftType: boolean;
   readonly showShiftLabels: boolean;
@@ -167,17 +165,14 @@ export function renderScheduleBadgeWidthMeasurer({
         showClockTimes && !shift.hide_time_on_badge
           ? `${formatScheduleBadgeTimeRange(shift.start_time, shift.end_time, timeFormat)}${shift.crosses_midnight ? " +1" : ""}`
           : "",
-      // Same corner space the card reserves (ShiftCard data-has-markers): a
-      // ghost's location pin, or a real card's edited / staged mark or availability
-      // warning (a live shift has no mark, Mert 2026-10-09 item 3).
-      hasMarkers: isGhostScheduleShift(shift)
-        ? Boolean(locationName ?? ghostShiftLocation(shift))
-        : (publicationStateForShift(shift) ?? "locked") !== "locked" ||
-          shift.warning_codes.includes("availability"),
-      hasStack:
-        shift.employee_id === null &&
-        (unassignedStackCounts.get(unassignedShiftStackKey(shift)) ?? 0) >
-          1,
+      // The same room on both sides the card keeps (ShiftCard --shift-card-side).
+      side: measuredSideRoom(shift, {
+        editing,
+        pin: Boolean(locationName ?? ghostShiftLocation(shift)),
+        stack:
+          shift.employee_id === null &&
+          (unassignedStackCounts.get(unassignedShiftStackKey(shift)) ?? 0) > 1,
+      }),
     };
   });
   const presetItems = showShiftTypePresets
@@ -190,8 +185,7 @@ export function renderScheduleBadgeWidthMeasurer({
           location: "",
           meta: "",
           time: "",
-          hasMarkers: false,
-          hasStack: false,
+          side: shiftCardSideRoom({ top: [] }),
         })),
       )
     : [];
@@ -212,8 +206,6 @@ export function renderScheduleBadgeWidthMeasurer({
           data-schedule-badge-width-measure="true"
           data-measure-preset={item.isPreset}
           data-job-color-dot={showJobColorDot}
-          data-has-markers={item.hasMarkers}
-          data-has-stack={item.hasStack}
           data-measure-label={[item.label, item.location, item.meta, item.time]
             .filter(Boolean)
             .join(" ")}
@@ -221,6 +213,7 @@ export function renderScheduleBadgeWidthMeasurer({
             {
               "--shift-color": item.color,
               "--schedule-row-badge-height": "auto",
+              "--shift-card-side": `${item.side}px`,
             } as CSSProperties
           }
         >
@@ -235,6 +228,32 @@ export function renderScheduleBadgeWidthMeasurer({
   );
 }
 
+// A ghost keeps room for its pin. A real card reading keeps room for its note
+// and "x2"; editing, also for LIVE on a live shift, the "!" or the saving
+// spinner on the others, and NEW on a shift not live yet.
+function measuredSideRoom(
+  shift: ScheduleShift,
+  { editing, pin, stack }: { readonly editing: boolean; readonly pin: boolean; readonly stack: boolean },
+): number {
+  if (isGhostScheduleShift(shift)) {
+    return shiftCardSideRoom({ top: pin ? [SHIFT_CARD_MARK.pin] : [] });
+  }
+  const note = shift.note?.trim() ? SHIFT_CARD_MARK.note : 0;
+  if (!editing) return shiftCardSideRoom({ top: [], stack, note });
+  const state = publicationStateForShift(shift);
+  const live = state === "locked";
+  return shiftCardSideRoom({
+    note,
+    stack,
+    top: live
+      ? [SHIFT_CARD_MARK.live]
+      : shift.warning_codes.includes("availability")
+        ? [SHIFT_CARD_MARK.availability]
+        : [SHIFT_CARD_MARK.spinner],
+    bottom: state === null || state === "unlocked-modified" ? SHIFT_CARD_MARK.newLabel : 0,
+  });
+}
+
 export function readMeasuredHeight(
   element: HTMLElement | null | undefined,
 ): number {
@@ -245,12 +264,14 @@ export function readMeasuredHeight(
   return Number.isFinite(height) && height > 0 ? Math.ceil(height) : 0;
 }
 
-/** Room between a card's top corner mark ("!", icons) and NEW below it. */
+/** Room between a card's top corner mark ("!", LIVE) and NEW below it. */
 export const CORNER_MARK_GAP_PX = 6;
 
 // A short card grows until its top corner mark and NEW sit apart (Mert,
-// 2026-10-13: the "!" and NEW touched on a short card). Layout heights, so a
-// "!" growing under the mouse does not move the row.
+// 2026-10-13: the "!" and NEW touched on a short card). The top marks sit
+// centred on the first line (useFirstLineMid), so they end half their height
+// below their layout top. Layout heights, so a "!" growing under the mouse
+// does not move the row.
 function cornerMarksHeight(badge: HTMLElement): number {
   const top = badge.querySelector<HTMLElement>(".schedule-shift-badge-markers");
   const bottom = badge.querySelector<HTMLElement>(".schedule-shift-new-mark");
@@ -262,8 +283,8 @@ function cornerMarksHeight(badge: HTMLElement): number {
   const card = getComputedStyle(badge);
   return Math.ceil(
     px(card.borderTopWidth) +
-      px(getComputedStyle(top).top) +
-      top.offsetHeight +
+      top.offsetTop +
+      top.offsetHeight / 2 +
       CORNER_MARK_GAP_PX +
       bottom.offsetHeight +
       px(getComputedStyle(bottom).bottom) +

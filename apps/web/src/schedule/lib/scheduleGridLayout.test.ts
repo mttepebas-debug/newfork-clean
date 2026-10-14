@@ -10,7 +10,7 @@ import {
   createScheduleGridDays,
   createScheduleGridLocationGroups,
   createScheduleGridTemplateColumns,
-  scheduleGridFitDayWidth,
+  scheduleGridFitCards,
   scheduleGridFitsVisibleDays,
   scheduleGridWeeklyLocationWidths,
   resolveScheduleInteractionLocationId,
@@ -222,24 +222,26 @@ describe("scheduleGridLayout", () => {
     expect(scheduleGridFitsVisibleDays({ ...week, width: 0 })).toBe(true);
   });
 
-  it("sizes a fitted day by the widest card's longest word and its chrome", () => {
-    // No cards: the floor.
-    expect(scheduleGridFitDayWidth([])).toBe(88);
-    // "Dinner-Server" beside the availability flag: "Dinner-" ~46px of text,
-    // ~64px taken by padding and the flag.
-    const flagged = { longestWord: 45.4, chrome: 64.6 };
-    expect(scheduleGridFitDayWidth([{ longestWord: 40, chrome: 20 }, flagged])).toBe(110);
-
-    const week = { columns: 7, dayWidth: 110 };
-    // 1280 window, box 975: fits without totals (200 + 7 x 110 = 970)...
-    expect(
-      scheduleGridFitsVisibleDays({ ...week, showTotalHours: false, width: 975 }),
-    ).toBe(true);
-    // ...but not with the 120px totals column (1090), where each day would get
-    // 93.6px and the flagged title broke as "Dinn / er- / Serv / er".
-    expect(
-      scheduleGridFitsVisibleDays({ ...week, showTotalHours: true, width: 975 }),
-    ).toBe(false);
+  // Mert, 2026-10-12: a card's line never wraps, and one location's seven
+  // days still fit; the bands give up the side room, then a point of the name,
+  // then cut a long name with "…", but never the hours.
+  it("fits a week in the first band its cards fit in, never cutting the hours", () => {
+    const needs = { side: 150, tight: 130, compact: 120, time: 100 };
+    const fitAt = (width: number, showTotalHours = false) =>
+      scheduleGridFitCards({ width, columns: 7, showTotalHours, needs });
+    // Room for the side room: 7 x 200.
+    expect(fitAt(1600)).toEqual({ band: "side", widths: { day: 200, employee: 200 }, fits: true });
+    // 1440 window, box 1135: 133.6px a day, too narrow for the side room.
+    expect(fitAt(1135)).toEqual({ band: "tight", widths: { day: 935 / 7, employee: 200 }, fits: true });
+    // The employee column gives up room down to 144px before the next band.
+    expect(fitAt(1100)).toEqual({ band: "tight", widths: { day: 130, employee: 190 }, fits: true });
+    expect(fitAt(1000)).toEqual({ band: "compact", widths: { day: 120, employee: 160 }, fits: true });
+    // Narrower: the employee column at 144px, a long name cut...
+    expect(fitAt(900)).toEqual({ band: "clip", widths: { day: 108, employee: 144 }, fits: true });
+    // ...until the hours would not fit: the week scrolls.
+    expect(fitAt(800)).toEqual({ band: "side", widths: null, fits: false });
+    // The totals column keeps its 120px.
+    expect(fitAt(1720, true)).toEqual({ band: "side", widths: { day: 200, employee: 200 }, fits: true });
   });
 
   it("puts each location's whole week on one screen while its cards' words fit", () => {

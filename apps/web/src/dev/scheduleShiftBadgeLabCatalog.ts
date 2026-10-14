@@ -45,7 +45,7 @@ export type LabStateId =
   | "clickable"
   | "comparison"
   | "stacked"
-  | "hasMarkers";
+  | "markRow";
 
 export type LabPseudoElement = "::before" | "::after";
 
@@ -347,7 +347,7 @@ export const labTargets: readonly LabTargetDefinition[] = [
       "stagedRemoved",
       "unlockedModified",
       "stacked",
-      "hasMarkers",
+      "markRow",
     ],
     "Real shift badge, with preview and edit values stored independently.",
   ),
@@ -1238,10 +1238,10 @@ export const labStates: readonly LabStateDefinition[] = [
     "Representative badge for multiple matching unassigned shifts.",
   ),
   state(
-    "hasMarkers",
-    "Has markers",
-    '[data-has-markers="true"]',
-    "Badge with publication or warning marker space reserved.",
+    "markRow",
+    "Mark row",
+    '[data-mark-row="true"]',
+    "Editing: in a narrow week the top marks keep a row of their own.",
   ),
 ];
 
