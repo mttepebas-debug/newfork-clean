@@ -15,6 +15,9 @@ import {
 
 import "./document-settings-editor.css";
 
+import { isNoAccess } from "../lib/no-access";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
+
 export function DocumentPublicationDialog({
   workspaceId,
   document,
@@ -102,8 +105,27 @@ export function DocumentPublicationDialog({
 
         <div className="document-side-index-panel">
           {preview.isPending && (
-            <p role="status">Loading publication impact…</p>
+            <LinesOutline label="Loading publication impact" lines={4} />
           )}
+          {/* Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence. */}
+          {preview.error && isNoAccess(preview.error) ? (
+            <p role="alert">You don't have access to {label.toLowerCase()} this document.</p>
+          ) : preview.error && !preview.data ? (
+            <LoadError
+              inset
+              level={3}
+              title="We couldn't load the publication impact"
+              detail="The employee impact didn't load. Nothing was changed."
+              retrying={preview.isFetching}
+              onRetry={() => void preview.refetch()}
+            />
+          ) : preview.error ? (
+            <RefreshError
+              message={`The employee impact didn't refresh. Try again before you ${label.toLowerCase()}.`}
+              retrying={preview.isFetching}
+              onRetry={() => void preview.refetch()}
+            />
+          ) : null}
 
           {preview.data && (
             <>
@@ -249,8 +271,8 @@ export function DocumentPublicationDialog({
             </>
           )}
 
-          {(preview.error || mutation.error) && (
-            <p role="alert">{errorText(preview.error || mutation.error)}</p>
+          {mutation.error && (
+            <p role="alert">{errorText(mutation.error)}</p>
           )}
 
           {mutation.error && (

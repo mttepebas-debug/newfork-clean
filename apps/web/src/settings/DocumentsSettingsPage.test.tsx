@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { documentTypeSchema } from "@newfork/shared";
@@ -63,6 +63,7 @@ function mount() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -185,10 +186,11 @@ it("shows the load error and disables creation when document types cannot be rea
     ),
   );
   mount();
-  expect(await screen.findByRole("alert")).toHaveProperty(
-    "textContent",
-    "Document types could not be loaded.",
-  );
+  // The "B" card (Mert 2026-10-14): a heading and Try again, never the server's sentence.
+  const card = await screen.findByRole("alert");
+  expect(within(card).getByRole("heading", { name: "We couldn't load document types" })).toBeTruthy();
+  expect(within(card).getByRole("button", { name: "Try again" })).toBeTruthy();
+  expect(screen.queryByText("Document types could not be loaded.")).toBeNull();
   expect(
     screen.getByRole("button", { name: "New document" }),
   ).toHaveProperty("disabled", true);
@@ -277,3 +279,30 @@ it("puts New document at the right end of the tab row on a phone", async () => {
   expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
 });
 afterEach(() => vi.unstubAllGlobals());
+it("outlines document types while they load", () => {
+  vi.mocked(listDocumentTypes).mockReturnValueOnce(new Promise(() => {}));
+  mount();
+  expect(screen.getByRole("status").textContent).toContain("Loading document types");
+  expect(screen.queryByText("Loading document types...")).toBeNull();
+});
+it("loads the list again from the card's Try again", async () => {
+  vi.mocked(listDocumentTypes).mockRejectedValueOnce(new Error("catalog down"));
+  mount();
+  const card = await screen.findByRole("alert");
+  fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+  expect(await screen.findByLabelText("Document types")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "We couldn't load document types" })).toBeNull();
+});
+it("keeps the last list and says so when a refresh fails", async () => {
+  const client = mount();
+  const catalog = await screen.findByLabelText("Document types");
+  vi.mocked(listDocumentTypes).mockRejectedValueOnce(new Error("catalog down"));
+  await act(async () => {
+    await client.refetchQueries();
+  });
+  expect(
+    await screen.findByText("Document types didn't refresh. This is the last list that loaded."),
+  ).toBeTruthy();
+  expect(catalog.isConnected).toBe(true);
+  expect(screen.queryByText("catalog down")).toBeNull();
+});
