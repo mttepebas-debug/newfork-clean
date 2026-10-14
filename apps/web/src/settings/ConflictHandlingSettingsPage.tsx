@@ -14,6 +14,7 @@ import { organizationRequest } from "./organization-data";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const conflictRuleChoices: readonly {
   key: keyof ScheduleConflictRules;
@@ -149,14 +150,22 @@ export default function ConflictHandlingSettingsPage() {
         description="Choose how scheduling conflicts are handled across this workspace."
       />
       {query.isLoading ? (
-        <p className="settings-state" role="status">
-          Loading conflict rules...
-        </p>
+        <LinesOutline label="Loading conflict rules" lines={4} />
       ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
+      {query.error && !query.data ? (
+        <LoadError
+          title="We couldn't load conflict rules"
+          detail="Conflict rules didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.error && query.data ? (
+        <RefreshError
+          message="Conflict rules didn't refresh. These are the last rules that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       {draft ? (
         <form className="organization-form scheduling-form" onSubmit={submit}>
