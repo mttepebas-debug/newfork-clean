@@ -2821,7 +2821,7 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     vi.mocked(getEmployeeDetail).mockRejectedValue(new Error("Failed to fetch"));
     fireEvent.click(save());
     expect(
-      await screen.findByText(/^Role saved\. This employee didn't refresh\. This is the last version that loaded\.$/),
+      await screen.findByText(/^Role saved\. This employee didn't reload\.$/),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("Failed to fetch")).toBeNull();
