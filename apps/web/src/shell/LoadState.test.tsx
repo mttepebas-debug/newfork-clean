@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { LinesOutline, ListOutline, LoadError, LoadingOutline, Skeleton } from "./LoadState";
+import { LinesOutline, ListOutline, LoadError, LoadingOutline, RefreshError, Skeleton } from "./LoadState";
 
 // Loading and error, one look everywhere (Mert 2026-10-14, "B").
 
@@ -87,5 +87,22 @@ describe("inset pieces", () => {
   it("outlines a few lines for a panel", () => {
     render(<LinesOutline label="Loading shift details" lines={2} />);
     expect(screen.getByRole("status").querySelectorAll(".nf-skeleton")).toHaveLength(2);
+  });
+});
+
+describe("RefreshError", () => {
+  it("is one alert line over a list that stays, with Try again", () => {
+    const retry = vi.fn();
+    render(<RefreshError message="The employee list didn't refresh. This is the last list that loaded." onRetry={retry} />);
+    const line = screen.getByRole("alert");
+    expect(line.textContent).toContain("The employee list didn't refresh. This is the last list that loaded.");
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(retry).toHaveBeenCalledTimes(1);
+  });
+
+  it("holds the button while the retry is on its way", () => {
+    render(<RefreshError message="It didn't refresh." onRetry={() => {}} retrying />);
+    const button = screen.getByRole("button", { name: "Trying again…" }) as HTMLButtonElement;
+    expect(button.disabled).toBe(true);
   });
 });

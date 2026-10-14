@@ -142,3 +142,30 @@ export function LoadError({
     </section>
   );
 }
+
+/**
+ * A list that loaded once and then failed to refresh keeps showing; this line
+ * sits above it and says so.
+ */
+export function RefreshError({
+  message,
+  onRetry,
+  retrying = false,
+  className,
+}: {
+  /** e.g. "The employee list didn't refresh. This is the last list that loaded." */
+  readonly message: string;
+  readonly onRetry: () => void;
+  readonly retrying?: boolean;
+  readonly className?: string;
+}) {
+  return (
+    <div className={className ? `load-refresh ${className}` : "load-refresh"} role="alert">
+      <span>{message}</span>
+      <button type="button" className="load-error-retry" disabled={retrying} onClick={onRetry}>
+        <RotateCw size={15} aria-hidden className={retrying ? "spinning" : undefined} />
+        <span>{retrying ? "Trying again…" : "Try again"}</span>
+      </button>
+    </div>
+  );
+}

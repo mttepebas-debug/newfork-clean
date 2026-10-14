@@ -178,3 +178,49 @@
     transform: rotate(360deg);
   }
 }
+
+/* A list that loaded once but failed to refresh: it stays, with one line. */
+.load-refresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  border: 1px solid var(--theme-danger-border);
+  border-radius: 8px;
+  padding: 8px 8px 8px 14px;
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.load-refresh > span {
+  min-width: 0;
+}
+
+.load-refresh .load-error-retry {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  padding: 0 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.load-refresh .load-error-retry:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+
+.load-refresh .load-error-retry:disabled {
+  cursor: progress;
+  color: var(--theme-muted);
+}
