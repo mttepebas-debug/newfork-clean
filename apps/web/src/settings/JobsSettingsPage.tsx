@@ -1,87 +1,63 @@
-import { useDeferredValue, useEffect, useState } from "react";
+import { useDeferredValue, useState, type ReactNode } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
-import {
-  BriefcaseBusiness,
-  ArrowDown,
-  ArrowUp,
-  ArrowUpDown,
-  ChevronDown,
-  ChevronRight,
-  Folder,
-  Plus,
-  Search,
-  Users,
-  X,
-} from "lucide-react";
+import { Archive, BriefcaseBusiness, Folder, Plus, Search, X } from "lucide-react";
 import type { Department, Job } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
-import { errorText, SettingsHeader } from "./GeneralSettingsPage";
+import { errorText } from "./GeneralSettingsPage";
 import { isGoneMeanwhile } from "../lib/catalog-refusals";
-import {
-  loadDepartmentsAndJobs,
-  setDepartmentArchived,
-  setJobArchived,
-} from "./organization-data";
+import { loadDepartmentsAndJobs, setDepartmentArchived, setJobArchived } from "./organization-data";
 import { loadJobCounts } from "./jobs-management-data";
 import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
-import "./jobs-settings.css";
 import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
-
+import { CatalogPageHeader, ListAddButton, TabRowAdd } from "../views/CatalogPageHeader";
+import { CatalogSortButton } from "../views/CatalogSortButton";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
-type View = "hierarchy" | "departments" | "jobs";
-type SortKey = "name" | "department" | "jobs" | "employees";
+import "./jobs-settings.css";
+
+// Settings → Jobs & departments in the shared list language (Mert's Jobs V1,
+// 2026-10-07, and his ten Jobs decisions of 2026-10-13/14): Jobs, Departments
+// and Archived tabs; one table with a sub-heading per department, always open;
+// sorting inside each department, A to Z by default. Archiving a department
+// takes its active jobs with it, and a restored job comes back under its
+// department only while that department is active: both are the database's
+// rules (department_archive_takes_its_jobs), so the page writes one row.
+
+type Tab = "jobs" | "departments" | "archived";
+type SortKey = "name" | "employees" | "jobs" | "archived";
+type Sort = { key: SortKey; descending: boolean } | null;
+
 /** "1 job", "2 jobs". */
-function countLabel(count: number, one: string): string {
-  return `${count} ${count === 1 ? one : `${one}s`}`;
-}
+const plural = (count: number, one: string) => `${count} ${count === 1 ? one : `${one}s`}`;
+const byName = (a: { name: string }, b: { name: string }) =>
+  a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: "base" }) || a.name.localeCompare(b.name);
+const archivedOn = (iso: string | null | undefined) =>
+  iso ? new Date(iso).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
 
 export default function JobsSettingsPage() {
   const { context } = useAuth();
-  const canEdit =
-    context?.permissions.includes("settings.jobs.manage") ?? false;
+  const canEdit = context?.permissions.includes("settings.jobs.manage") ?? false;
+  const readEmployees = Boolean(context?.permissions.includes("employees.read"));
   const workspaceId = context?.workspace.id ?? "";
-  const readEmployees = Boolean(
-    context?.permissions.includes("employees.read"),
-  );
   const queryClient = useQueryClient();
+  const phone = useListPhoneWidth();
   const [params, setParams] = useSearchParams();
-  const view: View =
-    params.get("view") === "jobs"
-      ? "jobs"
-      : params.get("view") === "departments"
-        ? "departments"
-        : "hierarchy";
+  const tab: Tab = params.get("tab") === "departments" ? "departments" : params.get("tab") === "archived" ? "archived" : "jobs";
   const search = params.get("q") ?? "";
   const match = useDeferredValue(search.trim().toLowerCase());
-  const archived = params.get("archived") === "1";
-  const requestedSort = params.get("sort");
-  const sortKey: SortKey | null =
-    view !== "hierarchy" &&
-    (requestedSort === "name" ||
-      requestedSort === "employees" ||
-      (view === "jobs" && requestedSort === "department") ||
-      (view === "departments" && requestedSort === "jobs"))
-      ? requestedSort
-      : null;
-  const sortDescending = params.get("direction") === "desc";
+  const [sort, setSort] = useState<Sort>(null);
   const [editor, setEditor] = useState<CatalogEditor | null>(null);
   const [transientJob, setTransientJob] = useState<Job | null>(null);
-  useEffect(() => {
-    setEditor(null);
-  }, [view]);
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
   const [formError, setFormError] = useState<string | null>(null);
+
   const queryKey = ["organization-jobs", workspaceId];
-  const data = useQuery({
-    queryKey,
-    enabled: Boolean(workspaceId),
-    queryFn: () => loadDepartmentsAndJobs(workspaceId),
-  });
+  const data = useQuery({ queryKey, enabled: Boolean(workspaceId), queryFn: () => loadDepartmentsAndJobs(workspaceId) });
   const counts = useQuery({
     queryKey: ["organization-job-counts", workspaceId],
     enabled: Boolean(workspaceId && readEmployees),
@@ -90,26 +66,31 @@ export default function JobsSettingsPage() {
   const departments = data.data?.departments ?? [];
   const jobs = data.data?.jobs ?? [];
   const departmentMap = new Map(departments.map((item) => [item.id, item]));
-  const jobCounts = new Map(
-    counts.data?.jobs.map((item) => [item.id, item.employee_count]),
-  );
-  const departmentCounts = new Map(
-    counts.data?.departments.map((item) => [item.id, item.employee_count]),
-  );
-  const activeJobs = jobs.filter((item) => !item.archived_at);
+  const jobCounts = new Map(counts.data?.jobs.map((item) => [item.id, item.employee_count]));
+  const departmentCounts = new Map(counts.data?.departments.map((item) => [item.id, item.employee_count]));
+  const activeJobs = jobs.filter((job) => !job.archived_at);
+  const activeDepartments = departments.filter((dep) => !dep.archived_at).sort(byName);
+  // A filter for a department that is gone or archived shows every department.
+  const departmentFilter = activeDepartments.some((dep) => dep.id === params.get("department"))
+    ? (params.get("department") ?? "")
+    : "";
+  /** The active jobs a group lists: a department's, or those with no active department. */
+  const jobsIn = (dep: Department | undefined) =>
+    activeJobs.filter((job) => (dep ? job.department_id === dep.id : !departmentHome(job)));
+  /** Where a job is filed or comes back to: its department while that is active. */
+  function departmentHome(job: Job): Department | undefined {
+    const dep = job.department_id ? departmentMap.get(job.department_id) : undefined;
+    return dep && !dep.archived_at ? dep : undefined;
+  }
   const selectedJob =
-    jobs.find((item) => item.id === params.get("jobId")) ??
+    jobs.find((job) => job.id === params.get("jobId")) ??
     (transientJob?.id === params.get("jobId") ? transientJob : undefined);
-  function updateParams(
-    changes: Record<string, string | null>,
-    replace = false,
-  ) {
+
+  function updateParams(changes: Record<string, string | null>, replace = false) {
     setParams(
       (current) => {
         const next = new URLSearchParams(current);
-        Object.entries(changes).forEach(([key, value]) =>
-          value === null ? next.delete(key) : next.set(key, value),
-        );
+        Object.entries(changes).forEach(([key, value]) => (value === null ? next.delete(key) : next.set(key, value)));
         return next;
       },
       { replace, preventScrollReset: true },
@@ -118,38 +99,16 @@ export default function JobsSettingsPage() {
   const refresh = async () => {
     await Promise.all([
       queryClient.invalidateQueries({ queryKey }),
-      queryClient.invalidateQueries({
-        queryKey: ["organization-job-counts", workspaceId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["employee-reference-data", workspaceId],
-      }),
-      queryClient.invalidateQueries({
-        queryKey: ["schedule-read", workspaceId],
-      }),
+      queryClient.invalidateQueries({ queryKey: ["organization-job-counts", workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ["employee-reference-data", workspaceId] }),
+      queryClient.invalidateQueries({ queryKey: ["schedule-read", workspaceId] }),
     ]);
   };
-  const mutation = useMutation({
-    mutationFn: async (
-      action: {
-        kind: "archive";
-        type: "departments" | "jobs";
-        item: Department | Job;
-      },
-    ) => {
+  const archive = useMutation({
+    mutationFn: async (action: { type: "departments" | "jobs"; item: Department | Job }) => {
       if (!canEdit) throw new Error("Jobs edit access required");
-      if (action.type === "departments")
-        await setDepartmentArchived(
-          workspaceId,
-          action.item.id,
-          !action.item.archived_at,
-        );
-      else
-        await setJobArchived(
-          workspaceId,
-          action.item.id,
-          !action.item.archived_at,
-        );
+      if (action.type === "departments") await setDepartmentArchived(workspaceId, action.item.id, !action.item.archived_at);
+      else await setJobArchived(workspaceId, action.item.id, !action.item.archived_at);
     },
     onSuccess: async () => {
       setFormError(null);
@@ -161,370 +120,454 @@ export default function JobsSettingsPage() {
       if (isGoneMeanwhile(cause)) void refresh();
     },
   });
+
+  function changeTab(next: Tab) {
+    setSort(null);
+    setEditor(null);
+    setFormError(null);
+    updateParams({ tab: next === "jobs" ? null : next, q: null });
+  }
   function openEditor(next: CatalogEditor) {
     setFormError(null);
-    if (next.type === "jobs" && next.item) {
-      openJob(next.item as Job);
-      return;
-    }
-    updateParams({ jobId: null }, true);
     setTransientJob(null);
+    updateParams({ jobId: null }, true);
     setEditor(next);
   }
   function openJob(job: Job) {
     setEditor(null);
     updateParams({ jobId: job.id });
   }
+  function openCreatedJob(job: Job) {
+    setTransientJob(job);
+    setEditor(null);
+    updateParams({ jobId: job.id });
+  }
   function countText(value: number | undefined) {
-    return !readEmployees || counts.isError
-      ? "—"
-      : counts.isPending
-        ? "…"
-        : (value ?? 0);
+    return !readEmployees || counts.isError ? "—" : counts.isPending ? "…" : (value ?? 0);
   }
-  // Departments and jobs come A to Z from the server; nothing moves them by
-  // hand (BL-475).
-  function menu(item: Job | Department, type: "departments" | "jobs") {
-    const jobCount = jobs.filter(
-      (job) => job.department_id === item.id && !job.archived_at,
-    ).length;
-    return (
-      <RowMenu name={item.name}>
-        <button
-          type="button"
-          disabled={!canEdit}
-          onClick={() => openEditor({ type, item })}
-        >
-          Edit {type === "jobs" ? "job" : "department"}
-        </button>
-        {type === "jobs" && readEmployees && (
-          <button type="button" onClick={() => openJob(item as Job)}>
-            Manage employees
-          </button>
-        )}
-        <CatalogArchiveButton
-          archived={Boolean(item.archived_at)}
-          disabled={
-            mutation.isPending ||
-            (type === "departments" && !item.archived_at && jobCount > 0)
-          }
-          title={
-            type === "departments" && jobCount > 0
-              ? "Archive active jobs first"
-              : undefined
-          }
-          onToggle={() => mutation.mutate({ kind: "archive", type, item })}
-        />
-      </RowMenu>
-    );
-  }
-  function jobRow(job: Job, nested = false) {
-    return (
-      <div
-        className={`job-catalog-row${nested ? " job-nested-row" : ""}`}
-        key={job.id}
-        data-archived={Boolean(job.archived_at)}
-        onClick={(event) => {
-          if (
-            (event.target as HTMLElement).closest("button, a, summary, details")
-          )
-            return;
-          event.currentTarget
-            .querySelector<HTMLButtonElement>(".job-row-identity")
-            ?.focus({ preventScroll: true });
-          openJob(job);
-        }}
-      >
-        <button
-          className="job-row-identity"
-          type="button"
-          onClick={() => openJob(job)}
-        >
-          <span
-            className="job-color-dot"
-            style={{ backgroundColor: job.color }}
-          />
-          <span className="job-name-stack">
-            <span className="job-row-name" title={job.name}>
-              {job.name}
-            </span>
-            {!nested && (
-              <span className="job-mobile-meta">
-                {departmentMap.get(job.department_id ?? "")?.name ??
-                  "No department"}
-              </span>
-            )}
-          </span>
-          {job.archived_at && (
-            <span className="job-archived-label">Archived</span>
-          )}
-        </button>
-        {!nested && (
-          <span
-            className="job-department-cell"
-            title={departmentMap.get(job.department_id ?? "")?.name}
-          >
-            {departmentMap.get(job.department_id ?? "")?.name ??
-              "No department"}
-          </span>
-        )}
-        <button
-          className="job-count-button"
-          type="button"
-          disabled={!readEmployees}
-          onClick={() => openJob(job)}
-          aria-label={`Manage employees for ${job.name}`}
-        >
-          {countText(jobCounts.get(job.id))}
-        </button>
-        {menu(job, "jobs")}
-      </div>
-    );
-  }
-  function sortCatalog<T extends Job | Department>(items: T[]): T[] {
-    if (!sortKey) return items;
+
+  // Sorting stays inside a department group; without a choice, A to Z.
+  function sorted<T extends Job | Department>(items: T[]): T[] {
+    const base = [...items].sort(byName);
+    if (!sort) return base;
     const value = (item: T): string | number => {
-      if (sortKey === "employees")
-        return (
-          ("department_id" in item ? jobCounts : departmentCounts).get(
-            item.id,
-          ) ?? 0
-        );
-      if (sortKey === "jobs")
-        return activeJobs.filter((job) => job.department_id === item.id).length;
-      if (sortKey === "department")
-        return (
-          departmentMap.get((item as Job).department_id ?? "")?.name ??
-          "No department"
-        );
+      if (sort.key === "employees") return ("department_id" in item ? jobCounts : departmentCounts).get(item.id) ?? 0;
+      if (sort.key === "jobs") return activeJobs.filter((job) => job.department_id === item.id).length;
+      if (sort.key === "archived") return item.archived_at ?? "";
       return item.name;
     };
-    return [...items].sort((a, b) => {
-      const av = value(a),
-        bv = value(b);
+    return base.sort((a, b) => {
+      const av = value(a);
+      const bv = value(b);
       const order =
         typeof av === "number" && typeof bv === "number"
           ? av - bv
-          : String(av).localeCompare(String(bv), undefined, {
-              numeric: true,
-              sensitivity: "base",
-            });
-      return (
-        (sortDescending ? -order : order) ||
-        a.name.localeCompare(b.name) ||
-        a.id.localeCompare(b.id)
-      );
+          : String(av).localeCompare(String(bv), undefined, { numeric: true, sensitivity: "base" });
+      return (sort.descending ? -order : order) || byName(a, b);
     });
   }
-  function column(key: SortKey, label: string) {
-    const active = sortKey === key;
-    const Icon = active ? (sortDescending ? ArrowDown : ArrowUp) : ArrowUpDown;
+  function sortColumn(key: SortKey, label: string, disabled = false) {
+    const selected = sort?.key === key;
     return (
-      <button
-        type="button"
-        className="job-sort-button"
-        aria-label={`Sort by ${label}`}
-        aria-pressed={active}
-        title={
-          active
-            ? `Sorted ${sortDescending ? "descending" : "ascending"}. Click to reverse.`
-            : "Sort ascending"
-        }
-        disabled={key === "employees" && (!readEmployees || !counts.data)}
-        onClick={() =>
-          updateParams({
-            sort: key,
-            direction: active && !sortDescending ? "desc" : "asc",
-          })
-        }
-      >
-        {label}
-        <Icon size={12} aria-hidden />
-      </button>
+      <span role="columnheader" aria-sort={selected ? (sort.descending ? "descending" : "ascending") : "none"}>
+        {disabled ? (
+          <span className="catalog-sort-label">{label}</span>
+        ) : (
+          <CatalogSortButton
+            active={selected}
+            label={label}
+            onClick={() => setSort({ key, descending: selected ? !sort.descending : false })}
+          />
+        )}
+      </span>
     );
   }
-  const resetSort = sortKey ? (
-    <button
-      type="button"
-      className="job-icon-button"
-      aria-label="Clear column sorting"
-      title="Restore manual order"
-      onClick={() => updateParams({ sort: null, direction: null })}
-    >
-      <X size={13} />
+  const clearSort = sort ? (
+    <button type="button" className="job-icon-button" aria-label="Clear column sorting" onClick={() => setSort(null)}>
+      <X size={14} />
     </button>
   ) : (
     <span />
   );
-  const visibleJobs = sortCatalog(
-    jobs.filter(
-      (job) =>
-        (archived || !job.archived_at) &&
-        (!match ||
-          job.name.toLowerCase().includes(match) ||
-          departmentMap
-            .get(job.department_id ?? "")
-            ?.name.toLowerCase()
-            .includes(match)),
-    ),
-  );
-  const visibleDepartments = sortCatalog(
-    departments.filter(
-      (dep) =>
-        (archived || !dep.archived_at) &&
-        (!match ||
-          dep.name.toLowerCase().includes(match) ||
-          visibleJobs.some((job) => job.department_id === dep.id)),
-    ),
-  );
-  const groups: { id: string; department?: Department; rows: Job[] }[] =
-    departments
-      .map((department) => ({
-        id: department.id,
-        department,
-        rows: visibleJobs.filter((job) => job.department_id === department.id),
-      }))
-      .filter(
-        (group) =>
-          group.rows.length > 0 ||
-          visibleDepartments.some((dep) => dep.id === group.id),
+
+  function jobMenu(job: Job) {
+    if (!canEdit) return <span />;
+    return (
+      <RowMenu name={job.name}>
+        <button type="button" onClick={() => openJob(job)}>
+          Edit job
+        </button>
+        <CatalogArchiveButton
+          archived={Boolean(job.archived_at)}
+          name={job.name}
+          disabled={archive.isPending}
+          onToggle={() => archive.mutate({ type: "jobs", item: job })}
+        />
+      </RowMenu>
+    );
+  }
+  function departmentMenu(dep: Department) {
+    if (!canEdit) return <span />;
+    const active = activeJobs.filter((job) => job.department_id === dep.id).length;
+    return (
+      <RowMenu name={dep.name}>
+        <button type="button" onClick={() => openEditor({ type: "departments", item: dep })}>
+          Edit department
+        </button>
+        <button type="button" onClick={() => openEditor({ type: "jobs", departmentId: dep.id })}>
+          Add job
+        </button>
+        <CatalogArchiveButton
+          archived={false}
+          name={dep.name}
+          disabled={archive.isPending}
+          title={active > 0 ? `Also archives ${plural(active, "job")}` : undefined}
+          onToggle={() => archive.mutate({ type: "departments", item: dep })}
+        />
+        {active > 0 && <p className="jobs-menu-note">Its {plural(active, "job")} will be archived too.</p>}
+      </RowMenu>
+    );
+  }
+  function empty(icon: ReactNode, title: string, text: string) {
+    return (
+      <div className="catalog-table-empty">
+        <span className="catalog-table-empty-icon" aria-hidden>
+          {icon}
+        </span>
+        <h2>{title}</h2>
+        <p>{text}</p>
+      </div>
+    );
+  }
+
+  function jobsTable() {
+    const groups: { dep?: Department; rows: Job[] }[] = activeDepartments
+      .filter((dep) => !departmentFilter || dep.id === departmentFilter)
+      .map((dep) => {
+        const all = jobsIn(dep);
+        const rows =
+          !match || dep.name.toLowerCase().includes(match) ? all : all.filter((job) => job.name.toLowerCase().includes(match));
+        return { dep, rows: sorted(rows) };
+      })
+      .filter((group) => !match || group.rows.length > 0);
+    if (!departmentFilter) {
+      const loose = jobsIn(undefined).filter((job) => !match || job.name.toLowerCase().includes(match));
+      if (loose.length) groups.push({ rows: sorted(loose) });
+    }
+    return (
+      <div className="job-catalog" aria-label="Jobs">
+        <div className="job-column-headings catalog-column-headings jobs-job-row" role="row">
+          {sortColumn("name", "Job")}
+          {sortColumn("employees", "Employees", !readEmployees)}
+          {clearSort}
+        </div>
+        {groups.length === 0
+          ? empty(
+              <BriefcaseBusiness size={22} />,
+              match ? "No jobs match your search." : "No jobs yet",
+              match ? "Try another name or clear your search." : "Add the first job your team works.",
+            )
+          : groups.map((group) => {
+              const dep = group.dep;
+              return (
+                <div role="rowgroup" key={dep?.id ?? "none"} aria-label={dep?.name ?? "No department"}>
+                  <div className="jobs-group-row">
+                    <span className="jobs-group-name">
+                      <Folder size={15} aria-hidden style={{ color: dep?.color }} />
+                      <span className="jobs-group-title">{dep?.name ?? "No department"}</span>
+                      <span className="jobs-group-meta">
+                        {plural(jobsIn(dep).length, "job")}
+                        {dep && readEmployees && counts.isSuccess
+                          ? ` · ${plural(departmentCounts.get(dep.id) ?? 0, "employee")}`
+                          : ""}
+                      </span>
+                    </span>
+                    {dep && canEdit ? (
+                      <button
+                        type="button"
+                        className="jobs-add-job"
+                        aria-label={`Add job to ${dep.name}`}
+                        onClick={() => openEditor({ type: "jobs", departmentId: dep.id })}
+                      >
+                        <Plus size={14} aria-hidden />
+                        Add job
+                      </button>
+                    ) : (
+                      <span />
+                    )}
+                    {dep ? departmentMenu(dep) : <span />}
+                  </div>
+                  {group.rows.map((job) => (
+                    <div className="job-catalog-row jobs-job-row" key={job.id}>
+                      <button type="button" className="job-row-identity" onClick={() => openJob(job)}>
+                        <span className="job-color-dot" style={{ backgroundColor: job.color }} />
+                        <span className="job-name-stack">
+                          <span className="job-row-name" title={job.name}>
+                            {job.name}
+                          </span>
+                        </span>
+                      </button>
+                      <span className="jobs-cell jobs-number">{countText(jobCounts.get(job.id))}</span>
+                      {jobMenu(job)}
+                    </div>
+                  ))}
+                  {group.rows.length === 0 && <p className="jobs-group-empty">No jobs in this department yet.</p>}
+                </div>
+              );
+            })}
+      </div>
+    );
+  }
+
+  function departmentsTable() {
+    const rows = sorted(
+      activeDepartments.filter(
+        (dep) =>
+          !match || dep.name.toLowerCase().includes(match) || jobsIn(dep).some((job) => job.name.toLowerCase().includes(match)),
+      ),
+    );
+    return (
+      <div className="job-catalog" aria-label="Departments">
+        <div className="job-column-headings catalog-column-headings jobs-department-row" role="row">
+          {sortColumn("name", "Department")}
+          {sortColumn("jobs", "Jobs")}
+          {sortColumn("employees", "Employees", !readEmployees)}
+          {clearSort}
+        </div>
+        {rows.length === 0
+          ? empty(
+              <Folder size={22} />,
+              match ? "No departments match your search." : "No departments yet",
+              match ? "Try another name or clear your search." : "Add a department for the jobs your team works.",
+            )
+          : rows.map((dep) => {
+              const count = jobsIn(dep).length;
+              return (
+                <div className="job-catalog-row jobs-department-row" key={dep.id}>
+                  <button
+                    type="button"
+                    className="job-row-identity"
+                    onClick={() => openEditor({ type: "departments", item: dep })}
+                  >
+                    <Folder size={15} aria-hidden style={{ color: dep.color, flex: "none" }} />
+                    <span className="job-name-stack">
+                      <span className="job-row-name" title={dep.name}>
+                        {dep.name}
+                      </span>
+                    </span>
+                  </button>
+                  <span className="jobs-cell jobs-number">
+                    {/* The count opens the Jobs tab filtered to this department (Jobs decision 8). */}
+                    <button
+                      type="button"
+                      className="jobs-count-link"
+                      aria-label={`Show the ${plural(count, "job")} in ${dep.name}`}
+                      onClick={() => {
+                        setSort(null);
+                        setEditor(null);
+                        setFormError(null);
+                        updateParams({ tab: null, q: null, department: dep.id });
+                      }}
+                    >
+                      {count}
+                    </button>
+                  </span>
+                  <span className="jobs-cell jobs-number jobs-people">{countText(departmentCounts.get(dep.id))}</span>
+                  {departmentMenu(dep)}
+                </div>
+              );
+            })}
+      </div>
+    );
+  }
+
+  function archivedTable() {
+    const hit = (name: string) => !match || name.toLowerCase().includes(match);
+    const archivedDepartments = sorted(departments.filter((dep) => dep.archived_at && hit(dep.name)));
+    const archivedJobs = sorted(jobs.filter((job) => job.archived_at && hit(job.name)));
+    const restore = (name: string, title: string, onClick: () => void) =>
+      canEdit ? (
+        <button
+          type="button"
+          className="jobs-restore"
+          disabled={archive.isPending}
+          title={title}
+          aria-label={`Restore ${name}`}
+          onClick={onClick}
+        >
+          Restore
+        </button>
+      ) : (
+        <span />
       );
-  const ungrouped = visibleJobs.filter(
-    (job) => !job.department_id || !departmentMap.has(job.department_id),
-  );
+    const groupHead = (title: string, count: number) => (
+      <div className="jobs-group-row jobs-archived-group">
+        <span className="jobs-group-name">
+          <span className="jobs-group-title">{title}</span>
+          <span className="jobs-group-meta">{count}</span>
+        </span>
+      </div>
+    );
+    return (
+      <div className="job-catalog" aria-label="Archived departments and jobs">
+        <div className="job-column-headings catalog-column-headings jobs-archived-row" role="row">
+          {sortColumn("name", "Name")}
+          <span role="columnheader">
+            <span className="catalog-sort-label">Department</span>
+          </span>
+          {sortColumn("archived", "Archived")}
+          {clearSort}
+        </div>
+        {archivedDepartments.length + archivedJobs.length === 0 ? (
+          empty(
+            <Archive size={22} />,
+            match ? "Nothing archived matches your search." : "No archived departments or jobs",
+            match ? "Try another name or clear your search." : "Departments and jobs you archive will appear here.",
+          )
+        ) : (
+          <>
+            {archivedDepartments.length > 0 && (
+              <div role="rowgroup" aria-label="Archived departments">
+                {groupHead("Departments", archivedDepartments.length)}
+                {archivedDepartments.map((dep) => (
+                  <div className="job-catalog-row jobs-archived-row" key={dep.id} data-archived="true">
+                    <button
+                      type="button"
+                      className="job-row-identity"
+                      onClick={() => openEditor({ type: "departments", item: dep })}
+                    >
+                      <Folder size={15} aria-hidden style={{ color: dep.color, flex: "none" }} />
+                      <span className="job-row-name" title={dep.name}>
+                        {dep.name}
+                      </span>
+                    </button>
+                    <span className="jobs-cell jobs-faint jobs-archived-detail">—</span>
+                    <span className="jobs-cell jobs-archived-detail">{archivedOn(dep.archived_at)}</span>
+                    {restore(dep.name, "Comes back with no jobs", () => archive.mutate({ type: "departments", item: dep }))}
+                  </div>
+                ))}
+              </div>
+            )}
+            {archivedJobs.length > 0 && (
+              <div role="rowgroup" aria-label="Archived jobs">
+                {groupHead("Jobs", archivedJobs.length)}
+                {archivedJobs.map((job) => {
+                  const was = job.department_id ? departmentMap.get(job.department_id) : undefined;
+                  const home = departmentHome(job);
+                  return (
+                    <div className="job-catalog-row jobs-archived-row" key={job.id} data-archived="true">
+                      <button type="button" className="job-row-identity" onClick={() => openJob(job)}>
+                        <span className="job-color-dot" style={{ backgroundColor: job.color }} />
+                        <span className="job-row-name" title={job.name}>
+                          {job.name}
+                        </span>
+                      </button>
+                      <span className="jobs-cell">
+                        {was ? was.name : <span className="jobs-faint">No department</span>}
+                        {was?.archived_at && <span className="jobs-faint"> · archived</span>}
+                      </span>
+                      <span className="jobs-cell jobs-archived-detail">{archivedOn(job.archived_at)}</span>
+                      {restore(job.name, home ? `Comes back under ${home.name}` : "Comes back under No department", () =>
+                        archive.mutate({ type: "jobs", item: job }),
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(data.error))
-    return (
-      <NoAccessState
-        subject="positions"
-        homeHref={noAccessHomePath(context, "/app/settings/jobs")}
+    return <NoAccessState subject="positions" homeHref={noAccessHomePath(context, "/app/settings/jobs")} />;
+
+  const addButton =
+    canEdit && tab !== "archived" ? (
+      <ListAddButton
+        label={tab === "jobs" ? "New job" : "New department"}
+        shortLabel="Add"
+        disabled={archive.isPending}
+        onClick={() => openEditor({ type: tab === "jobs" ? "jobs" : "departments" })}
       />
-    );
-  if (ungrouped.length) groups.push({ id: "none", rows: ungrouped });
-  const noRows =
-    view === "jobs"
-      ? visibleJobs.length === 0
-      : view === "departments"
-        ? visibleDepartments.length === 0
-        : groups.length === 0;
+    ) : null;
+  const tabs: [Tab, string][] = [
+    ["jobs", "Jobs"],
+    ["departments", "Departments"],
+    ["archived", "Archived"],
+  ];
   return (
-    <section
-      className="settings-page jobs-settings-page"
-      aria-labelledby="jobs-&-departments-settings-title"
-    >
-      <SettingsHeader
-        icon={<BriefcaseBusiness size={21} />}
+    <section className="settings-page jobs-settings-page jobs-catalog-page list-page" aria-labelledby="jobs-settings-title">
+      <CatalogPageHeader
+        eyebrow="SETTINGS"
         title="Jobs & departments"
+        titleId="jobs-settings-title"
         description="Organize your jobs. Connect the right people to each one."
-        action={
-          <div className="job-create-actions">
-            {view === "hierarchy" ? (
-              <RowMenu name="Create" create>
-                <button
-                  type="button"
-                  disabled={!canEdit}
-                  onClick={() => openEditor({ type: "departments" })}
-                >
-                  <Folder size={15} />
-                  Department
-                </button>
-                <button
-                  type="button"
-                  disabled={!canEdit}
-                  onClick={() => openEditor({ type: "jobs" })}
-                >
-                  <BriefcaseBusiness size={15} />
-                  Job
-                </button>
-              </RowMenu>
-            ) : (
+      />
+      <div className="job-catalog-toolbar catalog-toolbar">
+        <div className="catalog-toolbar-status-row">
+          <div className="catalog-status-tabs" role="tablist" onKeyDown={onTabListKeyDown} aria-label="Jobs and departments">
+            {tabs.map(([value, label]) => (
               <button
-                className="job-primary-button"
+                key={value}
                 type="button"
-                disabled={!canEdit}
-                onClick={() =>
-                  openEditor({ type: view === "jobs" ? "jobs" : "departments" })
-                }
+                role="tab"
+                aria-selected={tab === value}
+                tabIndex={tab === value ? 0 : -1}
+                className={tab === value ? "active" : ""}
+                onClick={() => changeTab(value)}
               >
-                <Plus size={16} />
-                Add {view === "jobs" ? "job" : "department"}
+                {label}
+              </button>
+            ))}
+          </div>
+          {/* Phone: the add button sits in the tab row, right of Archived (Jobs decision 10). */}
+          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
+        </div>
+        <div className="catalog-toolbar-filter-row">
+          {tab === "jobs" && (
+            <select
+              className="toolbar-filter-select"
+              aria-label="Filter by department"
+              value={departmentFilter}
+              onChange={(event) => updateParams({ department: event.target.value || null })}
+            >
+              <option value="">All departments</option>
+              {activeDepartments.map((dep) => (
+                <option key={dep.id} value={dep.id}>
+                  {dep.name}
+                </option>
+              ))}
+            </select>
+          )}
+          <label className="job-search toolbar-search">
+            <Search size={16} aria-hidden />
+            <input
+              aria-label={tab === "departments" ? "Search departments or jobs" : "Search jobs or departments"}
+              placeholder={tab === "departments" ? "Search departments or jobs" : "Search jobs or departments"}
+              value={search}
+              onChange={(event) => updateParams({ q: event.target.value || null }, true)}
+            />
+            {search && (
+              <button type="button" aria-label="Clear search" onClick={() => updateParams({ q: null }, true)}>
+                <X size={14} />
               </button>
             )}
-          </div>
-        }
-      />
-      <div className="job-catalog-toolbar">
-        <div
-          className="job-view-control"
-          role="tablist"
-          onKeyDown={onTabListKeyDown}
-          aria-label="Jobs settings view"
-        >
-          {(
-            [
-              ["hierarchy", "All"],
-              ["departments", "Departments"],
-              ["jobs", "Jobs"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              role="tab"
-              aria-selected={view === value}
-              tabIndex={view === value ? 0 : -1}
-              onClick={() => {
-                setEditor(null);
-                updateParams({ view: value });
-              }}
-            >
-              {label}
-            </button>
-          ))}
+          </label>
+          {phone ? null : addButton}
         </div>
-        <label className="job-search">
-          <Search size={16} />
-          <input
-            aria-label="Search jobs and departments"
-            placeholder="Search jobs or departments"
-            value={search}
-            onChange={(event) =>
-              updateParams({ q: event.target.value || null }, true)
-            }
-          />
-          {search && (
-            <button
-              type="button"
-              aria-label="Clear search"
-              onClick={() => updateParams({ q: null }, true)}
-            >
-              <X size={14} />
-            </button>
-          )}
-        </label>
-        <label className="job-archive-filter">
-          <input
-            type="checkbox"
-            checked={archived}
-            onChange={(event) =>
-              updateParams({ archived: event.target.checked ? "1" : null })
-            }
-          />
-          Show archived
-        </label>
       </div>
       {editor?.type === "jobs" && !editor.item && !editor.departmentId ? (
         <JobAssignmentsDrawer
           key="new-job"
           workspaceId={workspaceId}
-          initialJob={{ name: "", color: "#4478A8", department_id: null }}
+          initialJob={{ name: "", color: "#4478A8", department_id: departmentFilter || null }}
           departments={departments}
           onClose={() => setEditor(null)}
-          onCreatedJob={(job) => {
-            setTransientJob(job);
-            setEditor(null);
-            openJob(job);
-          }}
+          onCreatedJob={openCreatedJob}
         />
       ) : editor ? (
         <JobCatalogEditor
@@ -535,237 +578,48 @@ export default function JobsSettingsPage() {
           jobs={jobs}
           onClose={() => setEditor(null)}
           onSaved={refresh}
-          onCreatedJob={(job) => {
-            setTransientJob(job);
-            setEditor(null);
-            openJob(job);
-          }}
+          onCreatedJob={openCreatedJob}
         />
       ) : null}
       {formError && (
-        <p className="job-error" role="alert">
+        <p className="settings-state error" role="alert">
           {formError}
         </p>
       )}
       {counts.isError && (
-        <p className="job-error" role="alert">
-          Employee counts could not load.{" "}
-          <button type="button" onClick={() => void counts.refetch()}>
-            Retry
-          </button>
-        </p>
+        <RefreshError
+          message="Employee counts didn't load."
+          retrying={counts.isFetching}
+          onRetry={() => void counts.refetch()}
+        />
       )}
-      {data.isPending ? (
-        <div className="job-empty-state" role="status">
-          Loading your team structure…
-        </div>
-      ) : data.isError ? (
-        <div className="job-error" role="alert">
-          {errorText(data.error)}{" "}
-          <button type="button" onClick={() => void data.refetch()}>
-            Try again
-          </button>
-        </div>
-      ) : noRows ? (
-        <div className="job-empty-state">
-          <BriefcaseBusiness size={26} />
-          <h2>{match ? "No matches found" : "Build your team structure"}</h2>
-          <p>
-            {match
-              ? "Try another name or clear your search."
-              : "Start with a department, then add the jobs your team does."}
-          </p>
-        </div>
-      ) : (
-        <div className="job-catalog">
-          {view === "hierarchy" ? (
-            <>
-              <div className="job-catalog-caption">
-                <span>
-                  {countLabel(groups.length, "group")} ·{" "}
-                  {countLabel(visibleJobs.length, "job")}
-                </span>
-                <button
-                  className="job-text-button"
-                  type="button"
-                  onClick={() =>
-                    setCollapsed((current) =>
-                      current.size
-                        ? new Set()
-                        : new Set(groups.map((group) => group.id)),
-                    )
-                  }
-                >
-                  {collapsed.size ? "Expand all" : "Collapse all"}
-                </button>
-              </div>
-              {groups.map((group) => {
-                const dep = group.department;
-                const open =
-                  Boolean(match || sortKey) || !collapsed.has(group.id);
-                return (
-                  <section
-                    className="job-group"
-                    key={group.id}
-                    aria-label={dep?.name ?? "No department"}
-                  >
-                    <div className="job-group-heading">
-                      <button
-                        type="button"
-                        className="job-group-toggle"
-                        aria-expanded={open}
-                        onClick={() =>
-                          setCollapsed((current) => {
-                            const next = new Set(current);
-                            if (next.has(group.id)) next.delete(group.id);
-                            else next.add(group.id);
-                            return next;
-                          })
-                        }
-                      >
-                        {open ? (
-                          <ChevronDown size={16} />
-                        ) : (
-                          <ChevronRight size={16} />
-                        )}
-                        <Folder size={16} style={{ color: dep?.color }} />
-                        <span className="job-row-name" title={dep?.name}>
-                          {dep?.name ?? "No department"}
-                        </span>
-                        {dep?.archived_at && (
-                          <span className="job-archived-label">Archived</span>
-                        )}
-                        <span className="job-group-count">
-                          {countLabel(
-                            jobs.filter(
-                              (job) =>
-                                (dep
-                                  ? job.department_id === dep.id
-                                  : !job.department_id) && !job.archived_at,
-                            ).length,
-                            "job",
-                          )}
-                        </span>
-                      </button>
-                      {dep && (
-                        <span className="job-group-people">
-                          <Users size={14} />
-                          {countText(departmentCounts.get(dep.id))}
-                        </span>
-                      )}
-                      {!dep?.archived_at && (
-                        <button
-                          type="button"
-                          className="job-text-button job-group-add"
-                          aria-label={`Add job to ${dep?.name ?? "No department"}`}
-                          onClick={() =>
-                            openEditor({
-                              type: "jobs",
-                              ...(dep ? { departmentId: dep.id } : {}),
-                            })
-                          }
-                        >
-                          <Plus size={14} />
-                          <span>Add job</span>
-                        </button>
-                      )}
-                      {dep && menu(dep, "departments")}
-                    </div>
-                    {open && (
-                      <div>
-                        {group.rows.map((job) => jobRow(job, true))}
-                        {!group.rows.length && (
-                          <p className="job-group-empty">
-                            No jobs in this department yet.
-                          </p>
-                        )}
-                      </div>
-                    )}
-                  </section>
-                );
-              })}
-            </>
-          ) : view === "jobs" ? (
-            <>
-              <div className="job-column-headings">
-                {column("name", "Job")}
-                {column("department", "Department")}
-                {column("employees", "Employees")}
-                {resetSort}
-              </div>
-              {visibleJobs.map((job) => jobRow(job))}
-            </>
-          ) : (
-            <>
-              <div className="job-column-headings job-department-columns">
-                {column("name", "Department")}
-                {column("jobs", "Jobs")}
-                {column("employees", "Employees")}
-                {resetSort}
-              </div>
-              {visibleDepartments.map((dep) => (
-                <div
-                  className="job-catalog-row job-department-columns"
-                  key={dep.id}
-                  data-archived={Boolean(dep.archived_at)}
-                >
-                  <button
-                    type="button"
-                    className="job-row-identity"
-                    onClick={() =>
-                      openEditor({ type: "departments", item: dep })
-                    }
-                  >
-                    <span
-                      className="job-color-dot"
-                      style={{ backgroundColor: dep.color }}
-                    />
-                    <span className="job-row-name" title={dep.name}>
-                      {dep.name}
-                    </span>
-                    {dep.archived_at && (
-                      <span className="job-archived-label">Archived</span>
-                    )}
-                  </button>
-                  <button
-                    className="job-text-button"
-                    type="button"
-                    aria-label={`Show jobs in ${dep.name}`}
-                    onClick={() => {
-                      setCollapsed((current) => {
-                        const next = new Set(current);
-                        next.delete(dep.id);
-                        return next;
-                      });
-                      updateParams({ view: "hierarchy", q: dep.name });
-                    }}
-                  >
-                    {(() => {
-                      const count = activeJobs.filter(
-                        (job) => job.department_id === dep.id,
-                      ).length;
-                      return (
-                        <>
-                          {count}
-                          <span className="job-mobile-meta">
-                            {count === 1 ? " job" : " jobs"}
-                          </span>
-                        </>
-                      );
-                    })()}
-                  </button>
-                  <span className="job-count-button">
-                    {countText(departmentCounts.get(dep.id))}
-                  </span>
-                  {menu(dep, "departments")}
-                </div>
-              ))}
-            </>
-          )}
-        </div>
-      )}
+      {data.error && data.data ? (
+        <RefreshError
+          message="Jobs and departments didn't refresh. This is the last list that loaded."
+          retrying={data.isFetching}
+          onRetry={() => void data.refetch()}
+        />
+      ) : null}
+      {data.isLoading ? (
+        <ListOutline label="Loading jobs and departments" rows={6} columns={3} />
+      ) : data.error && !data.data ? (
+        <LoadError
+          title="We couldn't load jobs and departments"
+          detail="Jobs and departments didn't load. Nothing was changed."
+          retrying={data.isFetching}
+          onRetry={() => void data.refetch()}
+        />
+      ) : data.data ? (
+        tab === "jobs" ? (
+          jobsTable()
+        ) : tab === "departments" ? (
+          departmentsTable()
+        ) : (
+          archivedTable()
+        )
+      ) : null}
       {params.get("jobId") && data.isSuccess && !selectedJob && (
-        <p className="job-error" role="alert">
+        <p className="settings-state error" role="alert">
           This job is no longer available.{" "}
           <button type="button" onClick={() => updateParams({ jobId: null })}>
             Dismiss

@@ -6160,25 +6160,60 @@ describe("App", () => {
     fireEvent.click(trigger);
     fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
 
-    expect(
-      await screen.findByText("Drafts could not be loaded. Try again."),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Dismiss error" }));
+    const notice = "The drafts didn't load, so editing didn't start. Nothing was changed.";
+    expect(await screen.findByText(notice)).toBeTruthy();
+    expect(screen.queryByText("Drafts could not be loaded. Try again.")).toBeNull();
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Draft selector: New Schedule" }),
     );
     fireEvent.click(await screen.findByRole("button", { name: "Edit Plan D" }));
 
-    expect(
-      await screen.findByText("Drafts could not be loaded. Try again."),
-    ).toBeTruthy();
+    expect(await screen.findByText(notice)).toBeTruthy();
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(acquireMock).not.toHaveBeenCalled();
+
+    // Try again repeats the last ask (edit Plan D) once the drafts read works.
+    failDraftList = false;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(acquireMock).toHaveBeenCalled());
+    expect(acquireMock.mock.calls[0]).toContain(draft.id);
+    await waitFor(() => expect(screen.queryByText(notice)).toBeNull());
     expect(unhandled).not.toHaveBeenCalled();
     expect(screen.queryByText(/permission denied/)).toBeNull();
     expect(consoleError).toHaveBeenCalledWith(failure);
     process.off("unhandledRejection", unhandled);
+    consoleError.mockRestore();
+  }, 15_000);
+
+  it("drops the unread-drafts line when the week changes, so Try again never edits another week", async () => {
+    const weekStart = "2026-11-16";
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    let failDraftList = false;
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspaceId, date) =>
+      scheduleFixtureForWeek(String(date) >= "2026-11-23" ? "2026-11-23" : weekStart),
+    );
+    vi.mocked(listScheduleDrafts).mockImplementation(async () => {
+      if (failDraftList) throw new Error("drafts unavailable");
+      return draftList([]);
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    const trigger = await screen.findByRole(
+      "button",
+      { name: "Draft selector: New Schedule" },
+      { timeout: 5000 },
+    );
+    failDraftList = true;
+    fireEvent.click(trigger);
+    fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
+    const notice = "The drafts didn't load, so editing didn't start. Nothing was changed.";
+    expect(await screen.findByText(notice)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+    await waitFor(() => expect(screen.queryByText(notice)).toBeNull());
     consoleError.mockRestore();
   }, 15_000);
 
