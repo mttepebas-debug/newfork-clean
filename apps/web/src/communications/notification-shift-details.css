@@ -24,12 +24,12 @@
   border-radius: 12px;
   background: var(--sx-card);
 }
-.notifications-page .notification-shift-details h3 {
+.notifications-page .notification-shift-details h3:not(.load-error *) {
   margin: 0;
   font-size: 0.9375rem;
   line-height: 1.5;
 }
-.notifications-page .notification-shift-details p {
+.notifications-page .notification-shift-details p:not(.load-error *) {
   font-size: 0.875rem;
   color: var(--sx-muted);
 }
