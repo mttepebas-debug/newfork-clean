@@ -263,10 +263,20 @@ describe("weekly team availability", () => {
       new Error("Could not load"),
     );
     renderPage();
-    await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const card = await screen.findByRole("alert");
+    expect(card.textContent).toContain("We couldn't load team availability");
+    expect(card.textContent).toContain("Nothing was changed.");
+    expect(screen.queryByText("Could not load")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("draws the table's outline while team availability loads", async () => {
+    vi.mocked(loadWeeklyTeam).mockReturnValueOnce(new Promise(() => {}));
+    renderPage();
+    const status = (await screen.findByText("Loading availability")).closest("[role=status]")!;
+    expect(status.className).toContain("nf-list-outline");
+    expect(status.querySelectorAll(".nf-list-outline-row")).toHaveLength(8);
   });
 });
 

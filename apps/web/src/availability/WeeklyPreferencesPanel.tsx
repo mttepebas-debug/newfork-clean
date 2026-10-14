@@ -7,6 +7,7 @@ import {
 } from "./availability-data";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
 import { isNoAccess } from "../lib/no-access";
+import { ListOutline, LoadError } from "../shell/LoadState";
 
 type Props = {
   workspaceId: string;
@@ -92,22 +93,12 @@ function ConnectedPreferences({
       : 0;
   // BL-798: the core's "no" reads as a sentence; retrying cannot change it.
   const noAccess = isNoAccess(query.error);
-  const readError = query.isError ? (
-    <div role="alert">
-      <p>
-        {noAccess
-          ? "You don't have access to this availability."
-          : query.error instanceof Error
-            ? query.error.message
-            : "Availability could not be loaded."}
-      </p>
-      {noAccess ? null : (
-        <button type="button" onClick={() => void query.refetch()}>
-          Retry
-        </button>
-      )}
-    </div>
-  ) : null;
+  if (query.isError && noAccess)
+    return (
+      <div role="alert">
+        <p>You don't have access to this availability.</p>
+      </div>
+    );
   if (
     query.isError &&
     (!query.data ||
@@ -115,11 +106,30 @@ function ConnectedPreferences({
       readStatus === 403 ||
       readStatus === 404)
   )
-    return readError;
-  if (!query.data) return <p role="status">Loading availability...</p>;
+    return (
+      <LoadError
+        inset
+        level={3}
+        title="We couldn't load availability"
+        detail="Availability didn't load. Nothing was changed."
+        retrying={query.isFetching}
+        onRetry={() => void query.refetch()}
+      />
+    );
+  if (!query.data)
+    return (
+      <ListOutline label="Loading availability" rows={7} columns={3} inset />
+    );
   return (
     <>
-      {readError}
+      {query.isError ? (
+        <div role="alert">
+          <p>Availability didn't refresh. This is the last version that loaded.</p>
+          <button type="button" onClick={() => void query.refetch()}>
+            Try again
+          </button>
+        </div>
+      ) : null}
       <WeeklyPreferencesForm
         model={query.data}
         audience={audience}
