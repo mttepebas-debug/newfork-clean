@@ -38,6 +38,7 @@ import {
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 const emptyLocation: LocationDraft = {
@@ -424,14 +425,24 @@ export default function LocationsSettingsPage() {
         </p>
       ) : null}
       {locations.isLoading ? (
-        <p className="settings-state">Loading locations...</p>
+        <ListOutline label="Loading locations" rows={4} columns={4} />
       ) : null}
-      {locations.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(locations.error)}
-        </p>
+      {locations.error && !locations.data ? (
+        <LoadError
+          title="We couldn't load locations"
+          detail="Locations didn't load. Nothing was changed."
+          retrying={locations.isFetching}
+          onRetry={() => void locations.refetch()}
+        />
       ) : null}
-      {!locations.isLoading && !locations.error ? (
+      {locations.error && locations.data ? (
+        <RefreshError
+          message="Locations didn't refresh. This is the last list that loaded."
+          retrying={locations.isFetching}
+          onRetry={() => void locations.refetch()}
+        />
+      ) : null}
+      {locations.data ? (
         <div className="job-catalog" aria-label="Locations">
           <div
             className="job-column-headings catalog-column-headings location-catalog-row"
