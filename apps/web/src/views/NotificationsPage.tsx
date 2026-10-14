@@ -28,6 +28,7 @@ import {
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
 import { isNoAccess } from "../lib/no-access";
+import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
@@ -372,13 +373,15 @@ export function NotificationsPage() {
           ))}
         </table>
         {query.isLoading ? (
-          <p className="notification-table-state" role="status">
-            Loading notifications...
-          </p>
+          <ListOutline label="Loading notifications" rows={6} columns={4} inset />
         ) : query.error ? (
-          <p className="notification-table-state" role="alert">
-            {query.error.message}
-          </p>
+          <LoadError
+            inset
+            title="We couldn't load notifications"
+            detail="Your notifications didn't load. Nothing was changed."
+            retrying={query.isFetching}
+            onRetry={() => void query.refetch()}
+          />
         ) : groups.length ? null : (
           <div className="catalog-table-empty">
             <span className="catalog-table-empty-icon" aria-hidden>

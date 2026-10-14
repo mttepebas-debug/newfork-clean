@@ -940,3 +940,42 @@ describe("Important Dates (EKRAN-08)", () => {
 function loc(location_id: string, name: string, day: "open" | "closed" | "short" = "open") {
   return { location_id, name, short_name: name, timezone: "America/Los_Angeles", archived: false, day, opens: null, closes: null };
 }
+
+// Loading and error look the same everywhere (Mert 2026-10-14, "B").
+describe("loading and error", () => {
+  it("Announcements: outline while loading, then the load-error card that tries again", async () => {
+    vi.mocked(getAnnouncements).mockReturnValueOnce(new Promise(() => undefined));
+    const first = renderList();
+    expect(screen.getByText("Loading announcements").closest("[role=status]")).toBeTruthy();
+    first.unmount();
+
+    vi.mocked(getAnnouncements).mockRejectedValueOnce(new Error("Failed to fetch")).mockResolvedValue(list());
+    renderList();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load announcements" })).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "We couldn't load announcements" })).toBeNull());
+  });
+
+  it("Important Dates: the load-error card tries again", async () => {
+    vi.mocked(getImportantDates)
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockResolvedValue({ workspace_id: workspaceId, time_format: "12h", can_write: true, dates: [] });
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path]);
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load Important Dates" })).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("table", { name: "Important dates" })).toBeTruthy();
+  });
+
+  it("an announcement that did not load gives the inset card in its drawer", async () => {
+    const id = "a8200000-0000-4000-8000-000000000091";
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(getAnnouncement).mockRejectedValueOnce(new Error("Failed to fetch"));
+    renderList(`/app/announcements/${id}`);
+    const card = await screen.findByRole("alert");
+    expect(card.className).toContain("inset");
+    expect(within(card).getByRole("heading", { name: "We couldn't load this announcement" })).toBeTruthy();
+  });
+});

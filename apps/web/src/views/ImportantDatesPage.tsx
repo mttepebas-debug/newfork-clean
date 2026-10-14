@@ -23,6 +23,7 @@ import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
+import { ListOutline, LoadError } from "../shell/LoadState";
 
 const base = "/app/announcements/important-dates";
 
@@ -114,11 +115,14 @@ export function ImportantDatesPage() {
           {dates.data?.can_write && <ListAddButton label="New" onClick={() => setAdding(true)} />}
         </div>
       </div>
-      {dates.isLoading && <p className="settings-state">Loading important dates...</p>}
+      {dates.isLoading && <ListOutline label="Loading important dates" rows={5} columns={5} />}
       {dates.error && (
-        <p className="settings-state error" role="alert">
-          Important Dates couldn&apos;t load. Refresh the page to try again.
-        </p>
+        <LoadError
+          title="We couldn't load Important Dates"
+          detail="Important Dates didn't load. Nothing was changed."
+          retrying={dates.isFetching}
+          onRetry={() => void dates.refetch()}
+        />
       )}
       {dates.data && (
         <div className="job-catalog important-dates-table" role="table" aria-label="Important dates">

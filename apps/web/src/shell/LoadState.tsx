@@ -1,5 +1,5 @@
 import { CloudOff, RotateCw } from "lucide-react";
-import { useId, type CSSProperties, type ReactNode } from "react";
+import { useId, type CSSProperties, type ReactNode, type RefObject } from "react";
 import "./load-state.css";
 
 /**
@@ -46,11 +46,24 @@ export function LoadingOutline({
   );
 }
 
-/** Rows of a list page while it loads: a header bar and `rows` lines. */
-export function ListOutline({ label, rows = 6, columns = 4 }: { readonly label: string; readonly rows?: number; readonly columns?: number }) {
+/**
+ * Rows of a list while it loads. Framed with a header bar by default; `inset`
+ * draws only the rows, for a list whose frame and header are already there.
+ */
+export function ListOutline({
+  label,
+  rows = 6,
+  columns = 4,
+  inset = false,
+}: {
+  readonly label: string;
+  readonly rows?: number;
+  readonly columns?: number;
+  readonly inset?: boolean;
+}) {
   return (
-    <LoadingOutline label={label} className="nf-list-outline">
-      <div className="nf-list-outline-head" />
+    <LoadingOutline label={label} className={inset ? "nf-list-outline inset" : "nf-list-outline"}>
+      {inset ? null : <div className="nf-list-outline-head" />}
       {Array.from({ length: rows }, (_, row) => (
         <div className="nf-list-outline-row" key={row} style={{ gridTemplateColumns: `2fr repeat(${columns - 1}, 1fr)` }}>
           {Array.from({ length: columns }, (_, column) => (
@@ -62,12 +75,25 @@ export function ListOutline({ label, rows = 6, columns = 4 }: { readonly label: 
   );
 }
 
+/** A few lines of text while a panel, drawer or expanded row loads. */
+export function LinesOutline({ label, lines = 3 }: { readonly label: string; readonly lines?: number }) {
+  return (
+    <LoadingOutline label={label} className="nf-lines-outline">
+      {Array.from({ length: lines }, (_, line) => (
+        <Skeleton key={line} width={`${88 - line * 18}%`} height={line === 0 ? 14 : 10} />
+      ))}
+    </LoadingOutline>
+  );
+}
+
 /** The card a screen shows when its data did not load. */
 export function LoadError({
   title,
   detail,
   onRetry,
   retrying = false,
+  inset = false,
+  headingRef,
   className,
 }: {
   /** e.g. "We couldn't load the lineup". */
@@ -77,16 +103,29 @@ export function LoadError({
   readonly onRetry?: () => void;
   /** True while the retry is on its way. */
   readonly retrying?: boolean;
+  /**
+   * Inside a frame that is already there (a list, a drawer, an expanded row):
+   * no border of its own and less height.
+   */
+  readonly inset?: boolean;
+  /**
+   * Set when the screen moves focus to the card's heading: the focus reads it,
+   * so it is not also a live alert (it would be read twice, button and all).
+   */
+  readonly headingRef?: RefObject<HTMLHeadingElement | null>;
   readonly className?: string;
 }) {
   const titleId = useId();
+  const classes = ["load-error", inset ? "inset" : "", className ?? ""].filter(Boolean).join(" ");
   return (
-    <section className={className ? `load-error ${className}` : "load-error"} role="alert" aria-labelledby={titleId}>
+    <section className={classes} role={headingRef ? undefined : "alert"} aria-labelledby={titleId}>
       <span className="load-error-icon" aria-hidden>
         <CloudOff size={22} />
       </span>
       <div className="load-error-copy">
-        <h2 id={titleId}>{title}</h2>
+        <h2 id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+          {title}
+        </h2>
         <p>{detail}</p>
         {onRetry ? <p className="load-error-help">Check your connection, then try again.</p> : null}
       </div>

@@ -50,6 +50,18 @@
   background: var(--theme-surface);
 }
 
+.nf-list-outline.inset > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.nf-lines-outline > div {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+
 .nf-list-outline-head {
   height: 36px;
   border-bottom: 1px solid var(--theme-list-head-border, var(--theme-border));
@@ -81,6 +93,14 @@
   background: var(--theme-surface);
   color: var(--theme-muted);
   text-align: center;
+}
+
+.load-error.inset {
+  min-height: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 28px 16px;
+  background: transparent;
 }
 
 .load-error-icon {

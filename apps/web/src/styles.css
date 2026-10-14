@@ -13373,12 +13373,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .notification-title-link:hover strong {
   text-decoration: underline;
 }
-.notification-table-state {
-  margin: 0;
-  padding: 24px 14px;
-  color: var(--theme-text-secondary);
-  font-size: 13px;
-}
 .notification-delete {
   display: grid;
   width: 32px;
