@@ -599,19 +599,18 @@ export function JobAssignmentsDrawer({
             </section>
           )}
         </div>
-        {/* Nothing to save says nothing: Save stays disabled (Mert 2026-10-14). */}
-        {(detailsDirty || pending.size > 0) && (
-          <p className="job-change-summary" aria-live="polite">
-            {[
-              detailsDirty ? "Job details changed" : "",
-              pending.size
-                ? `${additions} to assign · ${removals} to remove`
-                : "",
-            ]
-              .filter(Boolean)
-              .join(" · ")}
-          </p>
-        )}
+        {/* Nothing to save says nothing (Save stays disabled; Mert 2026-10-14).
+            The line stays in the page so its first change is announced. */}
+        <p className="job-change-summary" aria-live="polite">
+          {[
+            detailsDirty ? "Job details changed" : "",
+            pending.size
+              ? `${additions} to assign · ${removals} to remove`
+              : "",
+          ]
+            .filter(Boolean)
+            .join(" · ")}
+        </p>
         <footer className="job-editor-footer">
           {context?.permissions.includes("settings.jobs.manage") &&
             !createMode &&
