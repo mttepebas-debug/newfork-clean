@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { AccountProfile } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 import ProfilePage from "./ProfilePage";
+import { ownLegalNameKey } from "./legal-name-data";
 import {
   getOwnLegalName,
   listAccountWorkspaces,
@@ -66,7 +67,7 @@ function renderProfile() {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const view = render(
     <QueryClientProvider client={queryClient}>
       <MemoryRouter initialEntries={["/account/profile"]}>
         <Routes>
@@ -76,6 +77,7 @@ function renderProfile() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, queryClient };
 }
 
 function contactRecord(workspaceId: string, over: Record<string, string> = {}) {
@@ -353,9 +355,39 @@ describe("ProfilePage", () => {
     vi.mocked(getOwnLegalName).mockRejectedValue(new Error("offline"));
     renderProfile();
 
-    expect((await screen.findByRole("alert")).textContent).toBe(
-      "Your legal name could not be loaded. Reload the page to try again.",
-    );
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load your legal name" })).toBeTruthy();
+    expect(card.textContent).not.toMatch(/saved|offline/);
+    expect(screen.queryByLabelText("Legal first name")).toBeNull();
+    vi.mocked(getOwnLegalName).mockResolvedValue({ firstName: "Mert", middleName: "", lastName: "Tepebas" });
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    const first = await screen.findByLabelText("Legal first name");
+    await waitFor(() => expect(first).toHaveProperty("value", "Mert"));
+    expect(screen.queryByRole("heading", { name: "We couldn't load your legal name" })).toBeNull();
+  });
+
+  it("keeps the legal name on screen and says so when a refresh fails", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockResolvedValue({ firstName: "Mert", middleName: "", lastName: "Tepebas" });
+    const { queryClient } = renderProfile();
+    const first = await screen.findByLabelText("Legal first name");
+    await waitFor(() => expect(first).toHaveProperty("value", "Mert"));
+    vi.mocked(getOwnLegalName).mockRejectedValue(new Error("offline"));
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: ownLegalNameKey(ownedWorkspaceId) });
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Your legal name didn't refresh.");
+    expect(screen.getByLabelText("Legal first name")).toHaveProperty("value", "Mert");
+    expect(screen.queryByText("offline")).toBeNull();
+  });
+
+  it("shows an outline while the legal name loads", async () => {
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([workspace("owner")]);
+    vi.mocked(getOwnLegalName).mockReturnValue(new Promise(() => {}) as never);
+    renderProfile();
+
+    expect(await screen.findByText("Loading your legal name")).toBeTruthy();
     expect(screen.queryByLabelText("Legal first name")).toBeNull();
   });
 

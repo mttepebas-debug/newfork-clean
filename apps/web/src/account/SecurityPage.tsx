@@ -16,6 +16,7 @@ import {
   type AccountSecurityState,
 } from "../lib/supabase";
 import { RequestError } from "../lib/request-error";
+import { RefreshError } from "../shell/LoadState";
 import { AccountPageHeader } from "./components";
 
 export default function SecurityPage() {
@@ -35,6 +36,10 @@ export default function SecurityPage() {
   // Which action failed, so its sentence shows beside that action's button.
   const [failure, setFailure] = useState<{ readonly key: string; readonly message: string } | null>(null);
   const errorIn = (key: string) => (failure?.key === key ? failure.message : null);
+  // Reading the verification state and what blocks deletion; Try again bumps it.
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [loading, setLoading] = useState(false);
+  const [loadFailed, setLoadFailed] = useState(false);
   useEffect(() => {
     if (confirmDeletion) deletionDialog.current?.showModal();
     else deletionDialog.current?.close();
@@ -58,6 +63,7 @@ export default function SecurityPage() {
       return;
     }
     let active = true;
+    setLoading(true);
     void Promise.all([
       loadAccountSecurityState(supabaseClient),
       loadAccountDeletionBlockers(supabaseClient),
@@ -66,12 +72,16 @@ export default function SecurityPage() {
         if (!active) return;
         setSecurity(state);
         setBlockers(deletionBlockers);
+        setLoadFailed(false);
       })
-      .catch((loadError: unknown) => {
-        if (active) setFailure({ key: "load", message: errorMessage(loadError, "Security details could not be loaded") });
+      .catch(() => {
+        if (active) setLoadFailed(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
       });
     return () => { active = false; };
-  }, [account, context]);
+  }, [account, context, loadAttempt]);
 
   if (!account) return null;
 
@@ -111,13 +121,20 @@ export default function SecurityPage() {
   return (
     <section className="account-page" aria-labelledby="security-title">
       <AccountPageHeader title="Security" titleId="security-title" description="Keep sign-in methods and recovery details current." />
+      {loadFailed ? (
+        <RefreshError
+          message="Your security details didn't load. Email verification and account deletion wait until they do."
+          retrying={loading}
+          onRetry={() => setLoadAttempt((attempt) => attempt + 1)}
+        />
+      ) : null}
 
       <section className="account-section-block">
         <div className="account-section-copy"><h2>Email address</h2><p>The address you use to sign in and receive recovery messages.</p></div>
         <div className="account-section-body">
           <p className="account-current-value">
             <strong>{security?.email ?? account.email}</strong>
-            <span>{security ? security.emailVerified ? "Verified" : "Not verified" : "Checking verification"}</span>
+            {security || !loadFailed ? <span>{security ? security.emailVerified ? "Verified" : "Not verified" : "Checking verification"}</span> : null}
           </p>
           {security?.pendingEmail ? (
             <div className="account-notice">

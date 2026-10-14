@@ -3,6 +3,7 @@ import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { focusManager, QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, type InitialEntry, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { accountWorkspacesKey } from "./legal-name-data";
 import WorkspacesPage from "./WorkspacesPage";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import {
@@ -344,6 +345,42 @@ describe("WorkspacesPage", () => {
     vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
     renderPage();
     await screen.findByRole("alert");
+    expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
+  });
+
+  it("shows a loading outline, then a card with Try again instead of the raw error", async () => {
+    vi.mocked(listAccountWorkspaces).mockReturnValueOnce(new Promise(() => {}) as never);
+    const { unmount } = renderPage();
+    expect(screen.getAllByRole("status").some(node => node.textContent?.includes("Loading workspaces"))).toBe(true);
+    expect(screen.queryByText("No workspaces yet")).toBeNull();
+    unmount();
+
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
+    renderPage();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load your workspaces" })).toBeTruthy();
+    expect(screen.queryByText("Unavailable")).toBeNull();
+    expect(screen.queryByText("No workspaces yet")).toBeNull();
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("button", { name: "Open Meyhouse" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load your workspaces" })).toBeNull();
+  });
+
+  it("keeps the last workspaces and says so when a refresh fails", async () => {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
+    renderPage("/account/workspaces", queryClient);
+    expect(await screen.findByRole("button", { name: "Open Meyhouse" })).toBeTruthy();
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
+    await act(async () => {
+      await queryClient.refetchQueries({ queryKey: accountWorkspacesKey });
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Your workspaces didn't refresh.");
+    expect(screen.getByRole("button", { name: "Open Meyhouse" })).toBeTruthy();
+    expect(screen.queryByText("Unavailable")).toBeNull();
+    // A list that may be stale doesn't offer to create a workspace.
     expect(screen.queryByRole("button", { name: "Create workspace" })).toBeNull();
   });
 
