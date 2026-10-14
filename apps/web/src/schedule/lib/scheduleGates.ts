@@ -13,6 +13,8 @@ export function scheduleGates(context: ActiveWorkspaceContext | null | undefined
     publish: can(context, "schedule.publish"),
     export: can(context, "schedule.export"),
     templates: can(context, "schedule.templates"),
+    // Reading the list is its own permission: such a role sees the Templates tab without its buttons.
+    templatesRead: can(context, "schedule.templates.read"),
     // The logo is written to the workspace row and its storage folder, which
     // RLS opens on settings.general.manage: settings.organization.write.
     manageLogo: can(context, "settings.organization.write"),

@@ -43,7 +43,7 @@ function Harness({ initialTab = "schedules", session = false, templateProps, ...
     onPreviewDraft: vi.fn(), onEditDraft: vi.fn(), onEditPublishedSchedule: vi.fn(), onStartBlankDraft: vi.fn(), onDeleteDraft: vi.fn(),
     onUnpublishSchedule: vi.fn(),
     templates: {
-      templates: [TEMPLATE], loading: false, drafts: [LIVE, OTHER], departments: [],
+      templates: [TEMPLATE], loading: false, loadError: null, onRetry: vi.fn(), canManage: true, drafts: [LIVE, OTHER], departments: [],
       session: session ? ({ id: "s", shifts: [{ id: "x" }] } as never) : null,
       saving, onSavingChange: setSaving, draftOnScreen: null, step, onStepChange: setStep,
       canStartEdit: true, onUseInto: vi.fn(), onCreate: vi.fn(async () => undefined), onRename: vi.fn(async () => undefined),
@@ -132,6 +132,44 @@ describe("New Schedule window (Mert, 2026-10-12, design B)", () => {
     expect(screen.getByRole("dialog", { name: /^Schedules for / })).toBeTruthy();
     fireEvent.keyDown(document.body, { key: "Escape" });
     expect(screen.queryByRole("dialog")).toBeNull();
+  });
+});
+
+describe("New Schedule window · Templates · reading and refusals", () => {
+  // A role may read templates without managing them: it sees the list, nothing it cannot do.
+  it("shows a reader the templates with no Save template, Use or row menu", () => {
+    render(<Harness initialTab="templates" templateProps={{ canManage: false }} />);
+    const windowRoot = openWindow();
+    expect(within(windowRoot).getByText("Lunch week")).toBeTruthy();
+    expect(within(windowRoot).queryByRole("button", { name: "Save template" })).toBeNull();
+    expect(within(windowRoot).queryByRole("button", { name: "Use template Lunch week" })).toBeNull();
+    expect(within(windowRoot).queryByRole("button", { name: "More for Lunch week" })).toBeNull();
+  });
+
+  it("says the list did not load and offers Retry, instead of 'No templates yet'", () => {
+    const onRetry = vi.fn();
+    render(<Harness initialTab="templates" templateProps={{ templates: [], loadError: "Templates could not be loaded.", onRetry }} />);
+    const windowRoot = openWindow();
+    expect(within(windowRoot).queryByText(/No templates yet/)).toBeNull();
+    expect(within(windowRoot).getByRole("alert").textContent).toContain("Templates could not be loaded.");
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "Retry" }));
+    expect(onRetry).toHaveBeenCalled();
+  });
+
+  // BL-1044: the refusal's key, not the server's words, says what happened.
+  it.each([
+    [{ reason: "schedule.template_changed", error: "schedule template revision stale" }, "This template changed. Refresh and try again."],
+    [{ status: "name_taken", error: "name taken" }, "A template with this name already exists."],
+    [{ error: "boom" }, "The template could not be renamed. Try again."],
+  ])("a refused rename says it plainly (%o)", async (body, text) => {
+    const refusal = Object.assign(new Error(String(body.error)), { status: 409, body });
+    render(<Harness initialTab="templates" templateProps={{ onRename: vi.fn(async () => { throw refusal; }) }} />);
+    const windowRoot = openWindow();
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "More for Lunch week" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
+    fireEvent.change(within(windowRoot).getByLabelText("Template name"), { target: { value: "Dinner week" } });
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "Save" }));
+    expect((await within(windowRoot).findByRole("alert")).textContent).toBe(text);
   });
 });
 

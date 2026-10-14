@@ -5739,7 +5739,11 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }));
     fireEvent.click(await screen.findByRole("tab", { name: /^Templates/ }));
 
-    expect(await screen.findByText("Newfork could not finish that. Try again in a moment.")).toBeTruthy();
+    // The tab says it, with Retry, not "No templates yet" (S18).
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toContain("Templates could not be loaded.");
+    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.queryByText(/No templates yet/)).toBeNull();
     expect(screen.queryByText(/invalid_type/)).toBeNull();
   });
 

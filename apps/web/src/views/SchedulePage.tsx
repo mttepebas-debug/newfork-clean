@@ -94,7 +94,7 @@ import {
 import { AutoFillReviewOverlay } from "../schedule/components/AutoFillReviewOverlay";
 import { DefaultHoursReviewDialog } from "../schedule/components/DefaultHoursReviewDialog";
 import { NewScheduleWindow, type NewScheduleTab, type NewScheduleWindowProps } from "../schedule/components/NewScheduleWindow";
-import type { NewScheduleTemplatesStep, TemplateUseTarget } from "../schedule/components/NewScheduleTemplates";
+import { templateMutationError, type NewScheduleTemplatesStep, type TemplateUseTarget } from "../schedule/components/NewScheduleTemplates";
 import {
   SCHEDULE_CONFLICT_QUESTION,
   ScheduleConflictSheet,
@@ -434,6 +434,7 @@ export function SchedulePage({
     readonly ScheduleTemplateSummary[]
   >([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesLoadError, setTemplatesLoadError] = useState<string | null>(null);
   const [templatesStep, setTemplatesStep] = useState<NewScheduleTemplatesStep>({ kind: "list" });
   const [templatesSaving, setTemplatesSaving] = useState(false);
   // "Use" with no edit open: the picked schedule opens for editing, then the window comes back at this template.
@@ -1006,12 +1007,14 @@ export function SchedulePage({
 
   // The templates list loads each time the window opens; the tab shows what is there meanwhile.
   const loadTemplates = async () => {
-    if (!context || !gates.templates) return;
+    if (!context || !gates.templatesRead) return;
     setTemplatesLoading(true);
+    setTemplatesLoadError(null);
     try {
       setTemplates((await listScheduleTemplates(context.workspace.id)).templates);
     } catch (error) {
-      setOperationError(requestErrorText(error));
+      // The tab says it, with Retry; an empty list would read as "No templates yet".
+      setTemplatesLoadError(requestErrorText(error, "Templates could not be loaded."));
     } finally {
       setTemplatesLoading(false);
     }
@@ -1076,14 +1079,14 @@ export function SchedulePage({
       return;
     }
     if (!context || !query.data || saveOpen || newScheduleDeepLinkConsumed.current === deepLinkTab) return;
-    if (deepLinkTab === "templates" ? !gates.templates : !canExportSchedules) return;
+    if (deepLinkTab === "templates" ? !gates.templatesRead : !canExportSchedules) return;
     // The Schedule is closed on phones; Export is a desktop tool.
     if (deepLinkTab === "export" && window.matchMedia && !window.matchMedia("(min-width: 721px)").matches) return;
     newScheduleDeepLinkConsumed.current = deepLinkTab;
     openNewScheduleWindow(deepLinkTab);
     // openNewScheduleWindow changes every render; the link is read once per visit.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [context, canExportSchedules, deepLinkTab, gates.templates, query.data, saveOpen]);
+  }, [context, canExportSchedules, deepLinkTab, gates.templatesRead, query.data, saveOpen]);
 
   const leaveScheduleDeepLink = () => {
     if (deepLinkTab) navigate({ pathname: scheduleBasePath, search: location.search });
@@ -2337,9 +2340,12 @@ export function SchedulePage({
       y: target.point?.y,
     });
   };
-  const templatesTab: NewScheduleWindowProps["templates"] = gates.templates && context ? {
+  const templatesTab: NewScheduleWindowProps["templates"] = gates.templatesRead && context ? {
     templates,
     loading: templatesLoading,
+    loadError: templatesLoadError,
+    onRetry: () => void loadTemplates(),
+    canManage: gates.templates,
     drafts,
     session: gridEditSession ?? null,
     departments: model.departments,
@@ -2369,7 +2375,7 @@ export function SchedulePage({
         .catch((error: unknown) => {
           toast.error("Template could not be deleted", {
             dedupeKey: `schedule-template-delete-failed:${template.id}`,
-            description: "Refresh templates, then try again.",
+            description: templateMutationError(error, "delete"),
           });
           throw error;
         }),
@@ -2403,7 +2409,7 @@ export function SchedulePage({
   } : null;
   const topBarActions = (
     <>
-      {gates.edit || gates.templates || canExportSchedules ? (
+      {gates.edit || gates.templatesRead || canExportSchedules ? (
         <NewScheduleWindow
           open={newScheduleMenuOpen}
           tab={newScheduleTab}
@@ -2412,7 +2418,7 @@ export function SchedulePage({
             setNewScheduleTab(tab);
             setTemplatesSaving(false);
           }}
-          tabs={{ schedules: gates.edit, templates: gates.templates, export: canExportSchedules && !isDiscardingEditSession }}
+          tabs={{ schedules: gates.edit, templates: gates.templatesRead, export: canExportSchedules && !isDiscardingEditSession }}
           triggerLabel={drafts.find((draft) => draft.id === activeDraftId)?.name ?? "New Schedule"}
           topActionId="new-schedule"
           weekStart={model.week_start}
