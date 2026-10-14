@@ -96,6 +96,7 @@ export function NotificationShiftDetails({
       ) : query.isError || !request ? (
         <LoadError
           inset
+          level={3}
           title="We couldn't load the shift details"
           detail="They didn't load. Nothing was changed. You can also open the request."
           retrying={query.isFetching}
