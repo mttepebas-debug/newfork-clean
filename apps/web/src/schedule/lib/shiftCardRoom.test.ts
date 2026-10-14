@@ -20,10 +20,10 @@ describe("shiftCardRoom", () => {
   it("keeps the widest corner's room, plus 4px, less the card's own 8px padding", () => {
     // LIVE: 6px from the edge, 30 wide.
     expect(shiftCardSideRoom({ top: [SHIFT_CARD_MARK.live] })).toBe(6 + 30 + 4 - 8);
-    // The "!" and the spinner side by side, 3px apart.
+    // The orange dot and the spinner side by side, 3px apart.
     expect(
       shiftCardSideRoom({ top: [SHIFT_CARD_MARK.availability, SHIFT_CARD_MARK.spinner] }),
-    ).toBe(6 + 18 + 3 + 12 + 4 - 8);
+    ).toBe(6 + 10 + 3 + 12 + 4 - 8);
     // NEW at the bottom, 4px from the edge, is wider than the spinner above.
     expect(
       shiftCardSideRoom({ top: [SHIFT_CARD_MARK.spinner], bottom: SHIFT_CARD_MARK.newLabel }),
@@ -44,7 +44,7 @@ describe("shiftCardRoom", () => {
         left: [SHIFT_CARD_MARK.note, SHIFT_CARD_STACK_REACH],
         right: [SHIFT_CARD_MARK.availability, SHIFT_CARD_MARK.live],
       }),
-    ).toEqual({ left: 1 + 5 + 26, right: 1 + 6 + 18 + 3 + 30 });
+    ).toEqual({ left: 1 + 5 + 26, right: 1 + 6 + 10 + 3 + 30 });
   });
 
   it("keeps a narrow week's first line 4px clear of the marks beside it", () => {

@@ -398,6 +398,26 @@ describe("schedule sticky layout styles", () => {
     expect(markerRule).toContain("z-index: 2");
   });
 
+  // Mert, 2026-10-13 ("5 · Nokta"): the availability mark is an 8px orange
+  // dot, a shade deeper than the theme's orange, with 18px to press.
+  it("draws the availability mark as an 8px dot with an 18px place to press", () => {
+    const markRule = cssRuleByPattern(/^\.schedule-availability-mark\s*\{([^}]*)\}/m);
+    const dotRule = cssRuleByPattern(/^\.schedule-availability-mark::before\s*\{([^}]*)\}/m);
+    const pressRule = cssRuleByPattern(/^\.schedule-availability-mark::after\s*\{([^}]*)\}/m);
+
+    expect(markRule).toContain("width: 10px");
+    expect(markRule).toContain("height: 10px");
+    expect(markRule).toContain("font-size: 0");
+    expect(markRule).toContain(
+      "color: color-mix(in srgb, var(--theme-availability) 70%, var(--theme-availability-text))",
+    );
+    expect(dotRule).toContain("width: 8px");
+    expect(dotRule).toContain("height: 8px");
+    expect(dotRule).toContain("background: currentColor");
+    // 10px and 4px around it.
+    expect(pressRule).toContain("inset: -4px");
+  });
+
   it("keeps topbar dropdown menus above the active filter chip strip", () => {
     const topbarRule = cssRule(".schedule-topbar");
     const chipStripRule = cssRule(".schedule-filter-command-strip");
