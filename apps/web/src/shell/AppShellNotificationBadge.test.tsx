@@ -342,6 +342,15 @@ describe("AppShell notification badge", () => {
     expect(sidebar().queryByRole("link", { name: "Requests" })).toBeNull();
   });
 
+  it("puts Lineup in the phone bar: a manager runs it from a phone too (Mert 2026-10-14)", async () => {
+    renderShell();
+    expect(await screen.findByText("Workspace route")).toBeTruthy();
+    const bar = screen.getByRole("navigation", { name: "Main navigation" });
+    const more = document.querySelector("dialog.mm-sheet")!;
+    const links = [...bar.querySelectorAll("a"), ...more.querySelectorAll("a")].map((link) => link.textContent);
+    expect(links).toContain("Lineup");
+  });
+
   it("orders management navigation before shared navigation", async () => {
     vi.mocked(getNotifications).mockResolvedValue({
       workspace_id: workspaceId,

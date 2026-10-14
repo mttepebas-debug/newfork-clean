@@ -52,8 +52,6 @@ interface NavItem {
   readonly parentTo?: string;
   readonly roles?: readonly ("owner" | "admin" | "manager" | "employee")[];
   readonly exact?: boolean;
-  /** A computer-only page: the sidebar lists it, the phone bar does not. */
-  readonly desktopOnly?: boolean;
 }
 
 const navItems: readonly NavItem[] = [
@@ -94,7 +92,6 @@ const navItems: readonly NavItem[] = [
     section: "management",
     parentTo: "/app/schedule",
     roles: ["owner", "admin", "manager"],
-    desktopOnly: true,
   },
   {
     to: "/app/employees",
@@ -521,7 +518,7 @@ export function AppShell() {
       {employeeShell ? null : (
         <ManagementMobileNav
           links={[
-            ...visibleNavItems.filter((item) => item.section !== "employee" && !item.desktopOnly),
+            ...visibleNavItems.filter((item) => item.section !== "employee"),
             ...(canViewSettings ? [settingsNavItem] : []),
             ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}

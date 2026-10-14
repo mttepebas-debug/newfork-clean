@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { lineupDay, lineupWeek } from "./lineup";
+import { lineupDay, lineupShiftSpan, lineupWeek, phoneLineupShift } from "./lineup";
 import { aisha, chloe, day, dinner, downtown, hannah, host, lunch, maria, model, oldJob, server, cook, shift, uptown } from "./lineup.testing";
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live shifts per
@@ -86,5 +86,57 @@ describe("lineupWeek", () => {
     expect(lineupWeek("2026-10-12")).toEqual([
       "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18",
     ]);
+  });
+});
+
+// Phone Lineup (Mert 2026-10-14): one shift at a time, under tabs.
+describe("phoneLineupShift", () => {
+  const shifts = lineupDay(
+    model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" }),
+    ]),
+    day,
+  )[0]!.shifts;
+
+  it("opens on the chosen shift when there is one", () => {
+    expect(phoneLineupShift(shifts, dinner, null)?.name).toBe("Dinner");
+  });
+
+  it("today, opens on the first shift still on the floor", () => {
+    expect(phoneLineupShift(shifts, "", "10:00")?.name).toBe("Lunch");
+    expect(phoneLineupShift(shifts, "", "17:30")?.name).toBe("Dinner");
+    // After everyone left, the last shift with people.
+    expect(phoneLineupShift(shifts, "", "23:30")?.name).toBe("Dinner");
+  });
+
+  it("another day, opens on the first shift with people", () => {
+    expect(phoneLineupShift(shifts, "", null)?.name).toBe("Lunch");
+    const empty = lineupDay(model([shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" })]), day)[0]!.shifts;
+    expect(phoneLineupShift(empty, "", null)?.name).toBe("Dinner");
+    expect(phoneLineupShift(lineupDay(model([]), day)[0]!.shifts, "", null)?.name).toBe("Lunch");
+    expect(phoneLineupShift([], "", null)).toBeNull();
+  });
+
+  it("falls back when the chosen shift is not at this location", () => {
+    expect(phoneLineupShift(shifts, "nope", null)?.name).toBe("Lunch");
+  });
+});
+
+describe("lineupShiftSpan", () => {
+  it("gives the first start and the last end, past midnight too", () => {
+    const [lunchShift] = lineupDay(
+      model([
+        shift({ employee: maria, job: server, type: lunch, start: "11:30", end: "16:00" }),
+        shift({ employee: hannah, job: server, type: lunch, start: "10:00", end: "15:00" }),
+        shift({ employee: chloe, job: host, type: lunch, start: "18:00", end: "01:00", crossesMidnight: true }),
+      ]),
+      day,
+    )[0]!.shifts;
+    expect(lineupShiftSpan(lunchShift!)).toEqual({ firstIn: "10:00", lastOut: "01:00" });
+  });
+
+  it("is empty for a shift no one works", () => {
+    expect(lineupShiftSpan(lineupDay(model([]), day)[0]!.shifts[0]!)).toBeNull();
   });
 });

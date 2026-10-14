@@ -395,9 +395,7 @@ export function App() {
                   path="schedule/lineup"
                   element={
                     <ActionRoute action="schedule.read">
-                      <DesktopOnlyRoute message="Lineup is available on a computer.">
-                        <LineupPage />
-                      </DesktopOnlyRoute>
+                      <LineupPage />
                     </ActionRoute>
                   }
                 />
