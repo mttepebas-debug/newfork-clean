@@ -435,6 +435,32 @@ describe("job assignment drawer", () => {
     fireEvent.scroll(list);
     expect(api.loadJobEmployees).toHaveBeenCalledTimes(3);
   });
+  it("loads the next employees only near the end of the list", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    const list = screen.getByRole("region", { name: "Employee list" });
+    Object.defineProperty(list, "scrollHeight", { configurable: true, value: 3000 });
+    Object.defineProperty(list, "clientHeight", { configurable: true, value: 400 });
+    list.scrollTop = 0;
+    fireEvent.scroll(list);
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(1);
+    list.scrollTop = 2400;
+    fireEvent.scroll(list);
+    expect(await screen.findByLabelText("Assign Employee 50")).toBeTruthy();
+  });
+  it("keeps loaded employees when the next ones fail and retries them", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    const loaded = vi.mocked(api.loadJobEmployees).getMockImplementation()!;
+    vi.mocked(api.loadJobEmployees).mockRejectedValueOnce(new Error("Network down"));
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
+    const alert = await screen.findByRole("alert");
+    expect(screen.getByLabelText("Assign Employee 0")).toBeTruthy();
+    vi.mocked(api.loadJobEmployees).mockImplementation(loaded);
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(await screen.findByLabelText("Assign Employee 50")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
   it("deletes an assigned job through one confirmed command and closes the drawer", async () => {
     vi.mocked(api.deleteJob).mockResolvedValue({ removed_count: 1 });
     const close = drawer();
