@@ -42,6 +42,7 @@ import { CatalogPageHeader } from "./CatalogPageHeader";
 import { isNoAccess } from "../lib/no-access";
 import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
+import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { announcementCategoryLabel } from "../lib/announcementCategories";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
@@ -112,14 +113,18 @@ export function WorkspacePage() {
         homeHref={noAccessHomePath(context, "/app/workspace")}
       />
     );
-  if (query.isLoading) return <PageState text="Loading Workspace..." />;
-  if (query.error || !query.data) {
+  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
+  if (query.isLoading) return <WorkspaceOutline />;
+  if (!query.data) {
     return (
-      <PageState
-        // BL-814: one plain sentence, never the browser's or server's words.
-        text={query.error ? requestErrorText(query.error) : "Workspace unavailable"}
-        error
-      />
+      <section className="workspace-page">
+        <LoadError
+          title="We couldn't load Workspace"
+          detail="Today's numbers didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      </section>
     );
   }
   // A failed check with nothing cached is unknown (null), not zero.
@@ -188,6 +193,13 @@ export function WorkspacePage() {
           </div>
         }
       />
+      {query.error ? (
+        <RefreshError
+          message="Workspace didn't refresh. These are the last numbers that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       {saveMutation.error ? (
         <p className="workspace-error" role="alert">
           {requestErrorText(saveMutation.error)}
@@ -323,6 +335,7 @@ function OwnerSetupChecklist({
     },
   });
   if (progressQuery.isPending || progressQuery.data?.closed_at) return null;
+  const unread = progressQuery.error && !progressQuery.data;
 
   const visited = new Set(progressQuery.data?.completed_item_ids ?? []);
   const markVisited = (id: OwnerSetupChecklistItemId) => {
@@ -340,17 +353,31 @@ function OwnerSetupChecklist({
       <header>
         <div>
           <h2 id="setup-title">Setup checklist</h2>
-          <p>{requiredVisitedCount} of {requiredCount} required visits complete</p>
+          {unread ? null : <p>{requiredVisitedCount} of {requiredCount} required visits complete</p>}
         </div>
       </header>
-      {progressQuery.error || markMutation.error ? (
+      {unread ? (
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't load the setup checklist"
+          detail="Your visits didn't load. Nothing was changed."
+          retrying={progressQuery.isFetching}
+          onRetry={() => void progressQuery.refetch()}
+        />
+      ) : progressQuery.error ? (
+        <RefreshError
+          message="The setup checklist didn't refresh. These are the last visits that loaded."
+          retrying={progressQuery.isFetching}
+          onRetry={() => void progressQuery.refetch()}
+        />
+      ) : null}
+      {markMutation.error ? (
         <p className="workspace-error" role="alert">
-          {markMutation.error
-            ? "Setup checklist progress could not be saved."
-            : "Setup checklist progress could not be loaded."}
+          Setup checklist progress could not be saved.
         </p>
       ) : null}
-      <div className="owner-setup-checklist-list">
+      {unread ? null : <div className="owner-setup-checklist-list">
         {/* KARARLAR "Schedule telefonda tamamen kapalı": a phone is not sent to Schedule. */}
         {ownerSetupChecklistItems.filter((item) => !(phone && item.to === "/app/schedule")).map((item) => {
           const done = visited.has(item.id);
@@ -386,7 +413,7 @@ function OwnerSetupChecklist({
             </button>
           );
         })}
-      </div>
+      </div>}
     </section>
   );
 }
@@ -655,10 +682,24 @@ function WidgetLink({ to, children }: { to: string; children: ReactNode }) {
 function EmptyWidget({ text }: { text: string }) {
   return <p className="workspace-empty">{text}</p>;
 }
-function PageState({ text, error = false }: { text: string; error?: boolean }) {
+/** The dashboard's cards in grey while it loads, at their real size. */
+function WorkspaceOutline() {
   return (
-    <section className="workspace-state" role={error ? "alert" : "status"}>
-      {text}
+    <section className="workspace-page">
+      <LoadingOutline label="Loading Workspace">
+        <div className="workspace-grid">
+          {[0, 1, 2, 3].map((card) => (
+            <article className="workspace-widget" key={card}>
+              <header>
+                <Skeleton width="45%" height={14} />
+              </header>
+              <Skeleton width="80%" />
+              <Skeleton width="60%" />
+              <Skeleton width="70%" />
+            </article>
+          ))}
+        </div>
+      </LoadingOutline>
     </section>
   );
 }

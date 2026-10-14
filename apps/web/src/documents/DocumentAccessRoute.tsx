@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
+import { LoadError } from "../shell/LoadState";
 import { getDocumentAccess } from "./document-data";
 
 export function DocumentAccessRoute({ children }: { children: ReactNode }) {
@@ -18,13 +19,18 @@ export function DocumentAccessRoute({ children }: { children: ReactNode }) {
   });
   if (enabled && access.isPending)
     return <main aria-label="Checking document requirements" />;
-  if (enabled && access.error)
+  // Only a first check that fails stands in the way. The check repeats every
+  // 30 seconds; a failed repeat keeps the last answer instead of taking the
+  // whole app off the screen.
+  if (enabled && access.error && !access.data)
     return (
-      <main>
-        <p role="alert">Document access could not be checked.</p>
-        <button type="button" onClick={() => void access.refetch()}>
-          Try again
-        </button>
+      <main className="document-access-error">
+        <LoadError
+          title="We couldn't check your documents"
+          detail="Newfork checks whether a document is required before it opens. Nothing was changed."
+          retrying={access.isFetching}
+          onRetry={() => void access.refetch()}
+        />
       </main>
     );
   if (access.data?.restricted)

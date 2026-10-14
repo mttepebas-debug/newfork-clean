@@ -11,8 +11,8 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { PanelError } from "../employee-hub/DashboardPrimitives";
 import { ScheduleState } from "../schedule/components/ScheduleState";
+import { LoadError } from "../shell/LoadState";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import ScheduleShiftDesignPage from "./ScheduleShiftDesignPage";
@@ -357,7 +357,7 @@ function StatesBoard() {
             </div>
           </Card>
           <Card title="Dashboard panel failed" where="Employee Hub › a card">
-            <PanelError onRetry={noop} />
+            <LoadError inset level={3} title="We couldn't load your updates" detail="Your updates didn't load. Nothing was changed." onRetry={noop} />
           </Card>
           <Card title="Settings failed" where="Settings pages">
             <p className="settings-state error">Failed to fetch</p>

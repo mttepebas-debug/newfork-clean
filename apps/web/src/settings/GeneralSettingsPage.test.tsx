@@ -131,6 +131,19 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     expect(screen.getByRole("button", { name: /answer them here|let them through/i })).toHaveProperty("disabled", true);
   });
 
+  it("closes the checklist button when access is lost after it loaded", async () => {
+    const { client } = renderPage();
+    expect(await screen.findByText("Visible on Workspace")).toBeTruthy();
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(await screen.findByText("You don't have access to this setting.")).toBeTruthy();
+    expect(screen.getByRole("button", { name: /hide checklist/i })).toHaveProperty("disabled", true);
+  });
+
   it("closes the button when access is lost after the setting loaded", async () => {
     const { client } = renderPage();
     expect(await screen.findByText("Used as soon as it is entered")).toBeTruthy();
