@@ -279,7 +279,7 @@ export default function ShiftLabelsSettingsPage() {
           tabsDisabled={saveMutation.isPending || deleteLocked}
           notice={
             <>
-              {/* The open drawer says it for itself. */}
+              {/* Waits while a drawer is open: the page behind it is inert and the edit doesn't use the list. */}
               {query.error && !editing ? (
                 <RefreshError
                   message="Shift labels didn't refresh. This is the last list that loaded."
