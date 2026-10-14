@@ -165,6 +165,17 @@ describe("noAccessHomePath", () => {
     ).toBe(hubPath);
   });
 
+  // Workspace is a management page: an employee refused anywhere goes to
+  // Employee Hub, not to a Workspace card that refuses them again.
+  it("sends an employee to Employee Hub, whatever the core opens", () => {
+    const employee = {
+      ...managerWith(["workspace.read", "schedule.read"]),
+      membership: { role: "employee" },
+    } as unknown as ActiveWorkspaceContext;
+    expect(noAccessHomePath(employee, "/app/employees")).toBe("/app/employee-hub");
+    expect(noAccessHomePath(employee, "/app/employee-hub")).toBe(hubPath);
+  });
+
   it("sends a person with no workspace loaded to the hub", () => {
     expect(noAccessHomePath(null, "/app/schedule")).toBe(hubPath);
   });

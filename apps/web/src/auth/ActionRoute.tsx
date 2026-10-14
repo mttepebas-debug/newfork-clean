@@ -1,14 +1,13 @@
 import type { AuthzAction } from "@newfork/shared";
 import type { ReactNode } from "react";
-import { Navigate } from "react-router";
 import { useAuth } from "./AuthContext";
 import { can } from "./can";
-import { appLandingPath } from "./resolveLanding";
+import { NoAccessRoute } from "../shell/NoAccessState";
 
 /**
  * A route the authorization core opens (`can()`, context.actions), not a
- * permission key or a role name. Somebody it does not open lands where they
- * belong.
+ * permission key or a role name. Somebody it does not open sees the no-access
+ * card in its place (Mert 2026-10-14: "kart çıksın").
  */
 export function ActionRoute({
   children,
@@ -18,6 +17,6 @@ export function ActionRoute({
   readonly action: AuthzAction;
 }) {
   const { context } = useAuth();
-  if (!can(context, action)) return <Navigate to={appLandingPath(context)} replace />;
+  if (!can(context, action)) return <NoAccessRoute />;
   return children;
 }

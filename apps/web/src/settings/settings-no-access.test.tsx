@@ -56,48 +56,34 @@ vi.mock("./signature-templates-data", async (original) => ({
 }));
 
 const pages: Array<[string, ComponentType, string]> = [
-  ["Locations", LocationsSettingsPage, "locations"],
-  ["Jobs", JobsSettingsPage, "positions"],
-  ["Shift types", ShiftTypesSettingsPage, "shift types"],
-  ["Shift labels", ShiftLabelsSettingsPage, "shift labels"],
-  ["Roles", RolesSettingsPage, "roles"],
-  ["Documents", DocumentsSettingsPage, "document settings"],
-  ["Acknowledgements", SignatureTemplatesSettingsPage, "acknowledgements"],
+  ["Locations", LocationsSettingsPage, "/app/settings/locations"],
+  ["Jobs", JobsSettingsPage, "/app/settings/jobs"],
+  ["Shift types", ShiftTypesSettingsPage, "/app/settings/scheduling/shift-types"],
+  ["Shift labels", ShiftLabelsSettingsPage, "/app/settings/scheduling/shift-labels"],
+  ["Roles & permissions", RolesSettingsPage, "/app/settings/roles"],
+  ["Documents", DocumentsSettingsPage, "/app/settings/documents"],
+  ["Acknowledgements", SignatureTemplatesSettingsPage, "/app/settings/acknowledgements"],
 ];
 
 describe("Settings pages show the no-access card when the API refuses their read (FB-6.1.9)", () => {
   afterEach(cleanup);
 
-  it.each(pages)("%s", async (_page, Page, subject) => {
-    render(
+  // The card alone, named after the page's menu entry: no title, tabs or
+  // toolbar of the page around it (Mert 2026-10-14).
+  it.each(pages)("%s", async (name, Page, path) => {
+    const { container } = render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter>
+        <MemoryRouter initialEntries={[path]}>
           <Page />
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    expect(await screen.findByRole("heading", { name: `You don't have access to ${subject}` })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: `You don't have access to ${name}` })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
-  });
-
-  // The card sits in the shift catalog's tab panel: the page title and the
-  // Shift types | Shift labels switch stay, so the other tab is still reachable.
-  it.each([
-    ["Shift catalog", ShiftTypesSettingsPage, "shift types"],
-    ["Shift catalog", ShiftLabelsSettingsPage, "shift labels"],
-  ] as Array<[string, ComponentType, string]>)("%s keeps its title and tabs around the card", async (title, Page, subject) => {
-    render(
-      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
-        <MemoryRouter>
-          <Page />
-        </MemoryRouter>
-      </QueryClientProvider>,
-    );
-    expect(await screen.findByRole("heading", { name: `You don't have access to ${subject}` })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: title })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Shift types" })).toBeTruthy();
-    expect(screen.getByRole("tab", { name: "Shift labels" })).toBeTruthy();
-    expect(screen.queryByRole("button", { name: /(Add|New) shift/ })).toBeNull();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(container.querySelector(".catalog-page-header, .catalog-toolbar")).toBeNull();
   });
 });

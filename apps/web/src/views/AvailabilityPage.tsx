@@ -106,7 +106,6 @@ export function AvailabilityPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="team availability"
         homeHref={noAccessHomePath(context, "/app/availability")}
       />
     );

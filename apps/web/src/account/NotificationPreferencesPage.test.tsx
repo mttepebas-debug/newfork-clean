@@ -337,6 +337,8 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to this workspace's notifications" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+    // The card alone: no page title around it (Mert 2026-10-14).
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
   });
 });
 

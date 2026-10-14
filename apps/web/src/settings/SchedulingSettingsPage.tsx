@@ -131,7 +131,6 @@ export default function SchedulingSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="scheduling settings"
         homeHref={noAccessHomePath(context, "/app/settings/scheduling")}
       />
     );

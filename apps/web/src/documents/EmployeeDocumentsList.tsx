@@ -29,6 +29,16 @@ const statusLabels = {
   expired: "Expired",
   completed: "Completed",
 };
+/** One cached read for the list and the page around it, so the page can drop
+ * its header when the list is refused. */
+export function useEmployeeDocuments(audience: DocumentAudience, userId: string) {
+  return useQuery({
+    queryKey: documentQueryKey(audience, userId),
+    queryFn: () => listDocuments(audience),
+    enabled: Boolean(audience.workspaceId),
+  });
+}
+
 export function EmployeeDocumentsList(props: {
   audience: DocumentAudience;
   userId: string;
@@ -42,11 +52,7 @@ export function EmployeeDocumentsList(props: {
 }) {
   const personal = props.personal ?? false;
   const { context } = useAuth();
-  const query = useQuery({
-    queryKey: documentQueryKey(props.audience, props.userId),
-    queryFn: () => listDocuments(props.audience),
-    enabled: Boolean(props.audience.workspaceId),
-  });
+  const query = useEmployeeDocuments(props.audience, props.userId);
   const [filter, setFilter] = useState<DocumentStatusFilter>("all");
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
@@ -120,8 +126,17 @@ export function EmployeeDocumentsList(props: {
   // BL-834: nothing here at all is not a filter miss.
   const noneYet =
     items.length === 0 && filter === "all" && !search.trim() && !location && !type;
+  // Refused: only the no-access card, no header, filters or empty table.
+  const refused = Boolean(query.error) && isNoAccess(query.error);
   const sortBy = (key: typeof sort.key) =>
     setSort((s) => ({ key, descending: s.key === key && !s.descending }));
+  if (refused)
+    return (
+      <NoAccessState
+        subject="these documents"
+        homeHref={noAccessHomePath(context, "/app/employees/documents")}
+      />
+    );
   return (
     <div className="employee-documents-list">
       {props.audience.selfOnly && blockers.length > 0 && (
@@ -333,12 +348,6 @@ export function EmployeeDocumentsList(props: {
         )}
       </div>
       </>}
-      {query.error && isNoAccess(query.error) && (
-        <NoAccessState
-          subject="these documents"
-          homeHref={noAccessHomePath(context, "/app/employees/documents")}
-        />
-      )}
       {selected && (
         <DocumentReviewDrawer
           audience={props.audience}

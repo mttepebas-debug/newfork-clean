@@ -136,8 +136,11 @@ describe("LineupPage", () => {
   it("gives the one no-access card when the core says no", async () => {
     read.mockRejectedValue(new RequestError("Not allowed", "authz.out_of_scope", "schedule.read", 403));
     renderPage();
-    expect(await screen.findByText("You don't have access to the lineup")).toBeTruthy();
+    expect(await screen.findByText("You don't have access to Lineup")).toBeTruthy();
     expect(screen.queryByText("We couldn't load the lineup")).toBeNull();
+    // The card alone: no page title or date controls around it (Mert 2026-10-14).
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });
 

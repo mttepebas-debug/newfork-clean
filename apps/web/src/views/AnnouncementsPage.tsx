@@ -62,7 +62,7 @@ export function AnnouncementsPage() {
   const open = (id: string) => navigate(`/app/announcements/${id}`, { preventScrollReset: true });
 
   if (isNoAccess(query.error))
-    return <NoAccessState subject="announcements" homeHref={noAccessHomePath(context, "/app/announcements")} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/announcements")} />;
   const list = query.data;
   const reader = list ? !list.can_manage : false;
   return (

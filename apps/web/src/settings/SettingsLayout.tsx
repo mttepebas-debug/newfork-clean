@@ -11,7 +11,8 @@ import {
   ShieldCheck,
   SlidersHorizontal,
 } from "lucide-react";
-import { NavLink, Navigate, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet, useLocation } from "react-router";
+import { NoAccessRoute } from "../shell/NoAccessState";
 import { useAuth } from "../auth/AuthContext";
 import {
   canEnterSettings,
@@ -110,9 +111,8 @@ const groups = [
 export default function SettingsLayout() {
   const { context } = useAuth();
   const location = useLocation();
-  if (!canEnterSettings(context)) {
-    return <Navigate to="/app" replace />;
-  }
+  // Nobody's settings: the no-access card, not a silent trip home (Mert 2026-10-14).
+  if (!canEnterSettings(context)) return <NoAccessRoute subject="Settings" />;
 
   const visibleGroups = groups
     .map((group) => ({

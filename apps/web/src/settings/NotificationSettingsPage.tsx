@@ -197,7 +197,6 @@ export default function NotificationSettingsPage() {
   if (isNoAccess(settings.error))
     return (
       <NoAccessState
-        subject="notification settings"
         homeHref={noAccessHomePath(context, "/app/settings/notifications")}
       />
     );

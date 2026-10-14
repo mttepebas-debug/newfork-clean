@@ -77,18 +77,21 @@ export function appLandingPath(
 /**
  * Where "Back to Home" goes from a page the API refused (`NoAccessState`).
  * Not `/app`: for a schedule-only person that lands right back on Schedule, and
- * the card and the page would hand them to each other. Workspace when they can
- * read it and it is not the page that refused; otherwise the hub, which every
- * signed-in account can open.
+ * the card and the page would hand them to each other. Employee Hub for an
+ * employee; Workspace for whoever else can read it; never the page that
+ * refused; otherwise the hub, which every signed-in account can open.
  */
 export function noAccessHomePath(
   context: ActiveWorkspaceContext | null | undefined,
   refusedPath: string,
 ): string {
-  const workspacePath = "/app/workspace";
-  return can(context, "workspace.read") && refusedPath !== workspacePath
-    ? workspacePath
-    : hubPath;
+  const home =
+    context?.membership?.role === "employee"
+      ? workspaceLandingPathForRole("employee")
+      : can(context, "workspace.read")
+        ? workspaceLandingPathForRole("manager")
+        : hubPath;
+  return refusedPath === home ? hubPath : home;
 }
 
 /**

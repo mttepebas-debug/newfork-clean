@@ -325,7 +325,7 @@ describe("Announcements list (EKRAN-08)", () => {
   it("shows the no-access card when the API refuses", async () => {
     vi.mocked(getAnnouncements).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderList();
-    expect(await screen.findByRole("heading", { name: "You don't have access to announcements" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Announcements" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });

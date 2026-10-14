@@ -359,7 +359,6 @@ export default function SignatureTemplatesSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="acknowledgements"
         homeHref={noAccessHomePath(context, "/app/settings/acknowledgements")}
       />
     );

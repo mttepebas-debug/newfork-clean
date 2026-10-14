@@ -154,7 +154,7 @@ function renderWithClient() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/app/settings/notifications"]}>
         <NotificationSettingsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -424,7 +424,7 @@ describe("no access (FB-6.1.9)", () => {
     permissions = ["notifications.settings.read"];
     vi.mocked(getNotificationSettings).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to notification settings" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Notifications" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

@@ -157,7 +157,7 @@ describe("SchedulingSettingsPage checklist mode", () => {
   it("shows the no-access card, not the raw error, when the API refuses scheduling settings (FB-6.1.9)", async () => {
     vi.mocked(loadSchedulingSettings).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to scheduling settings" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Schedule rules" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

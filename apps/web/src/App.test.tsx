@@ -1262,7 +1262,7 @@ describe("App", () => {
 
     expect(
       await screen.findByRole("heading", {
-        name: "You don't have access to this schedule",
+        name: "You don't have access to Schedule",
       }),
     ).toBeTruthy();
     expect(
@@ -6018,7 +6018,7 @@ describe("App", () => {
     expect(
       await screen.findByRole(
         "heading",
-        { name: "You don't have access to this schedule" },
+        { name: "You don't have access to Schedule" },
         { timeout: 5000 },
       ),
     ).toBeTruthy();
@@ -7294,17 +7294,20 @@ describe("App", () => {
     ).toBeTruthy();
     await signInAs("manager");
 
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/app/workspace"),
-    );
+    // The card in place, not a silent trip home (Mert 2026-10-14).
     expect(
-      await screen.findByRole("heading", { name: "Workspace" }),
+      await screen.findByRole("heading", { name: "You don't have access to Settings" }),
     ).toBeTruthy();
+    expect(window.location.pathname).toBe("/app/settings/general");
+    expect(
+      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+    ).toBe("/app/workspace");
+    expect(screen.queryByRole("navigation", { name: "Workspace settings" })).toBeNull();
     expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: "Settings", hidden: true })).toBeNull();
   });
 
-  it("redirects employee-only users away from the manager Schedule route", async () => {
+  it("shows employee-only users the no-access card at the manager Schedule route", async () => {
     window.history.pushState({}, "", "/app/schedule");
     render(<App />);
 
@@ -7313,9 +7316,14 @@ describe("App", () => {
     ).toBeTruthy();
     await signInAs("employee");
 
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/app/employee-hub"),
-    );
+    // The card in place, not a silent trip home (Mert 2026-10-14).
+    expect(
+      await screen.findByRole("heading", { name: "You don't have access to Schedule" }),
+    ).toBeTruthy();
+    expect(window.location.pathname).toBe("/app/schedule");
+    expect(
+      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+    ).toBe("/app/employee-hub");
     expect(screen.queryByRole("heading", { name: "Schedule" })).toBeNull();
   });
 
@@ -7338,7 +7346,7 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/app/employee-hub");
   });
 
-  it("redirects employee-only users away from the manager Workspace route", async () => {
+  it("shows employee-only users the no-access card at the manager Workspace route", async () => {
     window.history.pushState({}, "", "/app/workspace");
     render(<App />);
 
@@ -7347,9 +7355,14 @@ describe("App", () => {
     ).toBeTruthy();
     await signInAs("employee");
 
-    await waitFor(() =>
-      expect(window.location.pathname).toBe("/app/employee-hub"),
-    );
+    // The card in place, not a silent trip home (Mert 2026-10-14).
+    expect(
+      await screen.findByRole("heading", { name: "You don't have access to Workspace" }),
+    ).toBeTruthy();
+    expect(window.location.pathname).toBe("/app/workspace");
+    expect(
+      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+    ).toBe("/app/employee-hub");
     expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
   });
 });

@@ -324,7 +324,7 @@ describe("no access (FB-6.1.9)", () => {
   it("shows the no-access card, not the raw error, when the API refuses notifications (FB-6.1.9)", async () => {
     vi.mocked(getNotifications).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderRoute("/app/notifications", <NotificationsPage />);
-    expect(await screen.findByRole("heading", { name: "You don't have access to notifications" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Notifications" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

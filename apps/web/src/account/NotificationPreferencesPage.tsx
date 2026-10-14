@@ -142,6 +142,10 @@ export default function NotificationPreferencesPage() {
     });
   };
 
+  // Refused: the card alone, no page header (Mert 2026-10-14).
+  if (isNoAccess(query.error)) return <NoAccessState subject="this workspace's notifications"
+    homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />;
+
   return <section className="account-page notification-preferences" aria-labelledby="notification-title">
     <AccountPageHeader title="Notifications" titleId="notification-title"
       description="Choose which updates reach you, workspace by workspace." />
@@ -154,16 +158,14 @@ export default function NotificationPreferencesPage() {
       {dirtyKeys.length > 0 ? <small>Save or discard changes before choosing another workspace.</small> : null}
     </label> : !context ? <p>Workspace notification controls become available when you have workspace access.</p> : null}
     {query.isLoading ? <ListOutline label="Loading notification preferences" rows={5} columns={3} /> : null}
-    {isNoAccess(query.error) ? <NoAccessState subject="this workspace's notifications"
-      homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />
-      : query.error && !data ? <LoadError title="We couldn't load your notification preferences"
+    {query.error && !data ? <LoadError title="We couldn't load your notification preferences"
         detail="Your notification choices didn't load. Nothing was changed."
         retrying={query.isFetching} onRetry={() => void query.refetch()} />
       : query.error ? <RefreshError message="Your notification choices didn't refresh. These are the last ones that loaded."
         retrying={query.isFetching} onRetry={() => void query.refetch()} /> : null}
     {mutation.error ? <p className="form-error" role="alert">
       {changedElsewhere(mutation.error) ? changedElsewhereLine : mutation.error.message}</p> : null}
-    {data && !isNoAccess(query.error) ? <>
+    {data ? <>
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
         <span aria-hidden="true" />

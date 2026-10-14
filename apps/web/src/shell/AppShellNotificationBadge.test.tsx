@@ -433,7 +433,9 @@ describe("AppShell notification badge", () => {
   it("does not expose team availability to an employee opening its direct URL", async () => {
     currentContext = employeeContext;
     renderShell("/app/availability");
-    await screen.findByText("Employee Hub route");
+    // The card in place, not a silent trip home (Mert 2026-10-14).
+    await screen.findByRole("heading", { name: "You don't have access to Availability" });
+    expect(screen.getByRole("link", { name: "Back to Home" }).getAttribute("href")).toBe("/app/employee-hub");
     expect(screen.queryByText("Team Availability route")).toBeNull();
     expect(screen.queryByRole("link", { name: "Availability", hidden: true })).toBeNull();
     expect(sidebar().getByRole("link", { name: "My Availability" })).toBeTruthy();

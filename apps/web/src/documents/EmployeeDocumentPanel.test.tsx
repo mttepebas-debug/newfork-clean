@@ -23,6 +23,7 @@ vi.mock("./EmployeeDocumentsList", () => ({
   EmployeeDocumentsList: ({ canReview }: { canReview: boolean }) => (
     <div>Documents list, review {String(canReview)}</div>
   ),
+  useEmployeeDocuments: () => ({ error: null }),
 }));
 
 beforeEach(() => {
