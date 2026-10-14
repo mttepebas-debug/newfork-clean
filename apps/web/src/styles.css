@@ -7882,30 +7882,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-publication-preview-state svg {
   animation: schedule-spin 0.85s linear infinite;
 }
-.schedule-publication-preview-state.error {
-  justify-content: space-between;
-  border-color: #efc6c6;
-  background: #fff4f4;
-  color: #9d2f2f;
-}
-.schedule-publication-preview-state.error button {
-  display: inline-flex;
-  min-height: 28px;
-  align-items: center;
-  gap: 6px;
-  border: 1px solid #efc6c6;
-  border-radius: 5px;
-  padding: 0 9px;
-  background: var(--theme-surface);
-  color: #9d2f2f;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 800;
-}
-.schedule-publication-preview-state.error button svg {
-  animation: none;
-}
 .schedule-publication-departments {
   display: grid;
   gap: 6px;
