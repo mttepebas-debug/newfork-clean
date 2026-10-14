@@ -251,7 +251,7 @@ export default function JobsSettingsPage() {
       <div className="job-catalog" aria-label="Jobs">
         <div className="job-column-headings catalog-column-headings jobs-job-row" role="row">
           {sortColumn("name", "Job")}
-          {sortColumn("employees", "Employees", !readEmployees)}
+          {sortColumn("employees", "Employees", !readEmployees || counts.isError)}
           <span />
         </div>
         {groups.length === 0
@@ -324,7 +324,7 @@ export default function JobsSettingsPage() {
         <div className="job-column-headings catalog-column-headings jobs-department-row" role="row">
           {sortColumn("name", "Department")}
           {sortColumn("jobs", "Jobs")}
-          {sortColumn("employees", "Employees", !readEmployees)}
+          {sortColumn("employees", "Employees", !readEmployees || counts.isError)}
           <span />
         </div>
         {rows.length === 0
@@ -447,16 +447,19 @@ export default function JobsSettingsPage() {
                   const home = departmentHome(job);
                   return (
                     <div className="job-catalog-row jobs-archived-row" key={job.id} data-archived="true">
-                      <button type="button" className="job-row-identity" onClick={() => openJob(job)}>
-                        <span className="job-color-dot" style={{ backgroundColor: job.color }} />
-                        <span className="job-row-name" title={job.name}>
-                          {job.name}
-                        </span>
+                      {/* The department sits beside the button, so the button's name stays the job's. */}
+                      <span className="jobs-archived-name">
+                        <button type="button" className="job-row-identity" onClick={() => openJob(job)}>
+                          <span className="job-color-dot" style={{ backgroundColor: job.color }} />
+                          <span className="job-row-name" title={job.name}>
+                            {job.name}
+                          </span>
+                        </button>
                         <span className="jobs-faint jobs-archived-home">
-                          {was ? was.name : "No department"}
+                          · {was ? was.name : "No department"}
                           {was?.archived_at ? " · archived" : ""}
                         </span>
-                      </button>
+                      </span>
                       <span className="jobs-cell jobs-archived-detail">{archivedOn(job.archived_at)}</span>
                       {restore(job.name, home ? `Comes back under ${home.name}` : "Comes back under No department", () =>
                         archive.mutate({ type: "jobs", item: job }),

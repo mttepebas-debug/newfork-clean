@@ -1932,6 +1932,12 @@
   padding: 16px;
   border-bottom: 1px solid var(--job-border);
 }
+/* Always in the page so a screen reader hears its first change; empty, it
+   takes no room. */
+.catalog-drawer .job-change-summary:empty {
+  padding: 0;
+  border-top: 0;
+}
 .catalog-drawer .job-change-summary {
   flex: 0 0 auto;
   margin: 0;
@@ -2056,14 +2062,21 @@
   grid-template-columns: minmax(0, 1fr) 140px 96px;
   gap: 12px;
 }
-/* An archived job names the department it comes back to, beside its name. */
+/* An archived job names its department beside its name. */
+.jobs-catalog-page .jobs-archived-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.jobs-catalog-page .jobs-archived-name > .job-row-identity {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
 .jobs-catalog-page .jobs-archived-home {
   flex: none;
   font-size: 12px;
-  font-weight: 400;
-}
-.jobs-catalog-page .jobs-archived-home::before {
-  content: "· ";
 }
 .jobs-catalog-page .job-catalog-row {
   min-height: 48px;

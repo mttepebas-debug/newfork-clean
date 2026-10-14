@@ -399,6 +399,9 @@ describe("job assignment drawer", () => {
     expect(tabs.compareDocumentPosition(search) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(screen.queryByText("Primary")).toBeNull();
     expect(screen.queryByText("No pending changes")).toBeNull();
+    const summary = document.querySelector(".job-change-summary") as HTMLElement;
+    expect(summary.getAttribute("aria-live")).toBe("polite");
+    expect(summary.textContent).toBe("");
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(screen.getByLabelText("Assign Employee 1"));
     expect(screen.getByText("1 to assign · 0 to remove")).toBeTruthy();
@@ -682,6 +685,8 @@ describe("catalog navigation", () => {
     const headings = document.querySelector(".jobs-archived-row[role='row']") as HTMLElement;
     expect(headings.textContent).not.toMatch(/Name|Department/);
     expect(within(headings).getByRole("button", { name: "Archived" })).toBeTruthy();
+    // The job's button keeps its own name; its department sits beside it.
+    expect(screen.getByRole("button", { name: "Server" })).toBeTruthy();
   });
 
   it("leaves counts at — with no message when they don't load", async () => {
@@ -690,6 +695,8 @@ describe("catalog navigation", () => {
     const service = await screen.findByRole("rowgroup", { name: "Service" });
     await waitFor(() => expect(within(service).getByText("—")).toBeTruthy());
     expect(screen.queryByText("Employee counts didn't load.")).toBeNull();
+    // Sorting by counts that didn't load would mean nothing.
+    expect(screen.queryByRole("button", { name: "Employees" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
 
