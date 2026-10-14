@@ -49,5 +49,11 @@ it("keeps out somebody the core holds back, whatever their role lists", () => {
   // An admin whose required document is overdue.
   auth.permissions = ["documents.read", "employee_documents.read"];
   mount();
-  expect(screen.getByText("App home")).toBeTruthy();
+  // The card in place of Settings, not a silent trip home (Mert 2026-10-14).
+  expect(
+    screen.getByRole("heading", { name: "You don't have access to Settings" }),
+  ).toBeTruthy();
+  expect(screen.queryByText("App home")).toBeNull();
+  expect(screen.queryByText("Documents route")).toBeNull();
+  expect(screen.queryByRole("navigation", { name: "Workspace settings" })).toBeNull();
 });

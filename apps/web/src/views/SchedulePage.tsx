@@ -1,4 +1,5 @@
 import type {
+  ScheduleDraftList,
   ScheduleDraftSummary,
   ScheduleAutoFillPreview,
   ScheduleEditableShift,
@@ -18,8 +19,6 @@ import {
   ClipboardPaste,
   Eye,
   EyeOff,
-  FileDown,
-  LayoutTemplate,
   Save,
   Send,
   Trash2,
@@ -44,6 +43,7 @@ import { isNoAccess } from "../lib/no-access";
 import { requestErrorText, ScreenError } from "../lib/request-error";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { Tooltip } from "../shell/Tooltip";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
@@ -55,7 +55,6 @@ import {
 } from "../schedule/components/ScheduleContextMenu";
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar, ScheduleViewModeControls } from "../schedule/components/ScheduleTopBar";
-import { ScheduleState } from "../schedule/components/ScheduleState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
 import { resolveTimeInputFormat } from "../schedule/timeInput";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
@@ -94,7 +93,8 @@ import {
 } from "../schedule/schedule-data";
 import { AutoFillReviewOverlay } from "../schedule/components/AutoFillReviewOverlay";
 import { DefaultHoursReviewDialog } from "../schedule/components/DefaultHoursReviewDialog";
-import { DraftDropdownMenu } from "../schedule/components/DraftDropdownMenu";
+import { NewScheduleWindow, type NewScheduleTab, type NewScheduleWindowProps } from "../schedule/components/NewScheduleWindow";
+import { templateMutationError, type NewScheduleTemplatesStep, type TemplateUseTarget } from "../schedule/components/NewScheduleTemplates";
 import {
   SCHEDULE_CONFLICT_QUESTION,
   ScheduleConflictSheet,
@@ -120,7 +120,6 @@ import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
 } from "../schedule/components/ScheduleLogoUploadDialog";
-import { ScheduleTemplatesDialog } from "../schedule/components/ScheduleTemplateDialogs";
 import { RetroactiveEditDialog } from "../schedule/components/RetroactiveEditDialog";
 import {
   EDIT_IDLE_TIMEOUT_MS,
@@ -238,7 +237,7 @@ import { useConfirmDialog } from "../shell/ConfirmDialog";
 
 type SaveRecoveryIntent =
   | {
-      readonly kind: "save" | "save-and-export";
+      readonly kind: "save";
       readonly name: string;
       readonly force: boolean;
       readonly targetDraftId: string | null | undefined;
@@ -265,6 +264,12 @@ const SCHEDULE_FILTER_QUERY_PARAMS = [
   "hideUnscheduled",
   "layout",
 ] as const;
+
+type DraftsAsk = {
+  readonly source: "blank" | "edit";
+  readonly draftId: string | null;
+  readonly weekStart: string;
+};
 
 export function SchedulePage({
   scheduleBasePath = "/app/schedule",
@@ -343,9 +348,14 @@ export function SchedulePage({
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
   const [, setEditorDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
-  const [exportAfterSave, setExportAfterSave] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
+  // An edit asked for while the drafts list could not be read: "Try again"
+  // repeats that ask (blank, or the published or draft schedule it named).
+  // The ask keeps its week, so a read that fails after the week changed never
+  // shows on, or edits, the new week.
+  const [draftsUnread, setDraftsUnread] = useState<DraftsAsk | null>(null);
+  const [draftsRetrying, setDraftsRetrying] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
@@ -398,7 +408,6 @@ export function SchedulePage({
   useEffect(() => {
     setSaveBusy(false);
     setSaveOpen(false);
-    setExportAfterSave(false);
     setSaveRecovery(null);
     setRetroactiveEditOpen(false);
   }, [mutationContext, setRetroactiveEditOpen]);
@@ -433,48 +442,40 @@ export function SchedulePage({
   const [pendingOps, setPendingOps] = useState<readonly SchedulePendingOp[]>(
     [],
   );
-  const [templatesOpen, setTemplatesOpen] = useState(false);
-  // BL-705: New Schedule ▾ → Save as template opens Templates on this draft.
-  const [templateDraftId, setTemplateDraftId] = useState<string | null>(null);
   const [templates, setTemplates] = useState<
     readonly ScheduleTemplateSummary[]
   >([]);
+  const [templatesLoading, setTemplatesLoading] = useState(false);
+  const [templatesLoadError, setTemplatesLoadError] = useState(false);
+  const [templatesStep, setTemplatesStep] = useState<NewScheduleTemplatesStep>({ kind: "list" });
+  const [templatesSaving, setTemplatesSaving] = useState(false);
+  // "Use" with no edit open: the picked schedule opens for editing, then the window comes back at this template.
+  const [templateUseAfterEdit, setTemplateUseAfterEdit] = useState<string | null>(null);
   const [autoFill, setAutoFill] = useState<ScheduleAutoFillPreview | null>(
     null,
   );
-  const [exportOpen, setExportOpen] = useState(false);
-  const exportDeepLinkConsumed = useRef(false);
+  const newScheduleDeepLinkConsumed = useRef<NewScheduleTab | null>(null);
+  // The New Schedule window: Schedules, Templates and Export are its tabs (Mert, 2026-10-12).
   const [newScheduleMenuOpen, setNewScheduleMenuOpen] = useState(false);
+  const [newScheduleTab, setNewScheduleTab] = useState<NewScheduleTab>("schedules");
+  const exportOpen = newScheduleMenuOpen && newScheduleTab === "export" && gates.export;
   const [publishMenuOpen, setPublishMenuOpen] = useState(false);
-  const [newScheduleDismissSignal, setNewScheduleDismissSignal] = useState(0);
   const [publishMenuDismissSignal, setPublishMenuDismissSignal] = useState(0);
   const topActionBlockedClickTargetRef = useRef<Element | null>(null);
   const closeTopActionSurfaces = useCallback(
-    (
-      keep:
-        | "export"
-        | "templates"
-        | "publish"
-        | "newSchedule"
-        | null = null,
-    ) => {
+    (keep: "newSchedule" | "publish" | null = null) => {
       if (
-        keep !== "export" &&
-        keep !== "templates" &&
+        keep !== "newSchedule" &&
         (location.pathname === `${scheduleBasePath}/export` ||
           location.pathname === `${scheduleBasePath}/templates`)
       ) {
         navigate({ pathname: scheduleBasePath, search: location.search });
       }
-      if (keep !== "templates") setTemplatesOpen(false);
       if (keep !== "publish") {
         setPublishOpen(false);
         setPublishDraftOverride(null);
       }
-      if (keep !== "newSchedule") {
-        setNewScheduleMenuOpen(false);
-        setNewScheduleDismissSignal((current) => current + 1);
-      }
+      if (keep !== "newSchedule") setNewScheduleMenuOpen(false);
       if (keep !== "publish") {
         setPublishMenuOpen(false);
         setPublishMenuDismissSignal((current) => current + 1);
@@ -483,7 +484,6 @@ export function SchedulePage({
     [location.pathname, location.search, navigate, scheduleBasePath],
   );
   const topActionSurfaceOpen =
-    templatesOpen ||
     publishOpen ||
     newScheduleMenuOpen ||
     publishMenuOpen;
@@ -650,15 +650,20 @@ export function SchedulePage({
   }, [setScheduleMode]);
   const previewSource = usePreviewSource({
     workspaceId: context?.workspace.id ?? null, model: query.data, modelVersion: query.dataUpdatedAt,
-    activeDraftId, editing: isEditMode || Boolean(gridEditSession),
+    activeDraftId, editSession: gridEditSession ? { id: gridEditSession.id, revision: gridEditSession.revision, sourceDraftId: gridEditSession.source_draft_id } : null,
+    // The grid shows the edit as soon as it is held, a render before the mode follows.
+    editing: isEditMode || Boolean(gridEditSession),
     loading: query.isFetching || query.isPlaceholderData || Boolean(activeDraftId && draftsQuery.isFetching),
     drafts: draftsQuery.data?.drafts, onMissingDraft: clearMissingDraftPreview,
   });
+  const exportOpenRef = useRef(exportOpen);
+  exportOpenRef.current = exportOpen;
   useEffect(() => {
-    if (isEditMode || gridEditSession || !canExportSchedules) setExportOpen(false);
-  }, [isEditMode, gridEditSession, canExportSchedules]);
+    // Export shows what is on the grid; entering or leaving edit changes that, so an open Export closes.
+    if (exportOpenRef.current) setNewScheduleMenuOpen(false);
+  }, [isEditMode]);
   useEffect(() => {
-    setExportOpen(false); setExportAfterSave(false); setSaveOpen(false);
+    setNewScheduleMenuOpen(false); setSaveOpen(false);
   }, [context?.workspace.id, context?.userId]);
   const dropReview = useScheduleDropReview(context?.workspace.id, gridEditSession?.id, gridEditSession?.revision);
   const displayedPendingOps = useMemo(
@@ -689,14 +694,9 @@ export function SchedulePage({
   }, [effectiveShifts, query.data, search, selectedDate, view]);
   usePreflightShiftFocus(preflightShiftId, Boolean(gridEditSession && preflightShiftId && visibleSelectableShiftIds.includes(preflightShiftId)), setPreflightShiftId);
   const updateDraftCache = useCallback(
-    (nextDrafts: readonly ScheduleDraftSummary[]) => {
+    (next: ScheduleDraftList) => {
       if (!context || !query.data) return;
-      queryClient.setQueryData(
-        draftsKey(context.workspace.id, query.data.week_start),
-        {
-          drafts: nextDrafts,
-        },
-      );
+      queryClient.setQueryData(draftsKey(context.workspace.id, query.data.week_start), next);
     },
     [context, query.data, queryClient],
   );
@@ -898,39 +898,82 @@ export function SchedulePage({
       context.workspace.id,
       query.data.week_start,
     );
-    updateDraftCache(result.drafts);
+    updateDraftCache(result);
     return result.drafts;
   };
 
   // BL-394: editing starts from a fresh drafts list; if it cannot load, say so
   // plainly and stop, with the reason in the console.
-  const refreshDraftsBeforeEdit = async (): Promise<boolean> => {
+  const refreshDraftsBeforeEdit = async (
+    ask: Omit<DraftsAsk, "weekStart">,
+  ): Promise<boolean> => {
+    if (!query.data) return false;
+    const weekStart = query.data.week_start;
     try {
       await refreshDrafts();
+      setDraftsUnread(null);
       return true;
     } catch (error) {
       console.error(error);
-      setOperationError("Drafts could not be loaded. Try again.");
+      if (isNoAccess(error)) {
+        setDraftsUnread(null);
+        setOperationError("You don't have access to edit this schedule.");
+      } else {
+        setDraftsUnread({ ...ask, weekStart });
+      }
       return false;
     }
   };
 
   const startBlankDraftFromMenu = async () => {
-    if (!(await refreshDraftsBeforeEdit())) return;
-    await acquire("blank");
+    if (!(await refreshDraftsBeforeEdit({ source: "blank", draftId: null }))) return;
+    return acquire("blank");
   };
 
   const previewDraftFromMenu = async (draftId: string | null) => {
     if (!context || !query.data) return;
     setOperationError(null);
+    setDraftsUnread(null);
     // One cancellable source read feeds both grid and export.
     setScheduleMode("preview", draftId);
   };
 
   const editDraftFromMenu = async (draftId: string | null) => {
-    if (!(await refreshDraftsBeforeEdit())) return;
-    await acquire(draftId ? "draft" : "published", draftId);
+    if (!(await refreshDraftsBeforeEdit({ source: "edit", draftId }))) return;
+    return acquire(draftId ? "draft" : "published", draftId);
   };
+
+  const draftsUnreadHere =
+    draftsUnread && draftsUnread.weekStart === query.data?.week_start ? draftsUnread : null;
+
+  const retryDraftsUnread = async () => {
+    if (!draftsUnreadHere) return;
+    setDraftsRetrying(true);
+    try {
+      await (draftsUnreadHere.source === "blank"
+        ? startBlankDraftFromMenu()
+        : editDraftFromMenu(draftsUnreadHere.draftId));
+    } finally {
+      setDraftsRetrying(false);
+    }
+  };
+
+  // "Use" with no edit open: the picked schedule opens for editing, then the
+  // window comes back at the template's Add or Replace step.
+  const applyTemplateInto = async (templateId: string, target: TemplateUseTarget) => {
+    setTemplateUseAfterEdit(templateId);
+    const opened =
+      target.kind === "blank" ? await startBlankDraftFromMenu()
+        : await editDraftFromMenu(target.kind === "draft" ? target.draftId : null);
+    if (!opened) setTemplateUseAfterEdit(null);
+  };
+  useEffect(() => {
+    if (!templateUseAfterEdit || !gridEditSession) return;
+    setTemplatesStep({ kind: "use", templateId: templateUseAfterEdit });
+    setNewScheduleTab("templates");
+    setNewScheduleMenuOpen(true);
+    setTemplateUseAfterEdit(null);
+  }, [gridEditSession, templateUseAfterEdit]);
 
   const deleteDraftFromMenu = async (draft: ScheduleDraftSummary) => {
     if (!context) return;
@@ -964,7 +1007,7 @@ export function SchedulePage({
         context.workspace.id,
         query.data.week_start,
       );
-      updateDraftCache(result.drafts);
+      updateDraftCache(result);
       void refreshPublicationStatus();
       if (!result.drafts.length) {
         setOperationError("Save a named draft before publishing this week.");
@@ -1000,21 +1043,41 @@ export function SchedulePage({
     }
   }, [context, query.data]);
 
-  const openTemplates = async () => {
+  // The templates list loads each time the window opens; the tab shows what is there meanwhile.
+  const loadTemplates = async () => {
+    if (!context || !gates.templatesRead) return;
+    setTemplatesLoading(true);
+    setTemplatesLoadError(false);
+    try {
+      setTemplates((await listScheduleTemplates(context.workspace.id)).templates);
+    } catch (error) {
+      // The tab says it, with Try again; an empty list would read as "No templates yet".
+      console.error(error);
+      setTemplatesLoadError(true);
+    } finally {
+      setTemplatesLoading(false);
+    }
+  };
+
+  const openNewScheduleWindow = (tab: NewScheduleTab = newScheduleTab) => {
     if (!context || !query.data) return;
     setOperationError(null);
-    closeTopActionSurfaces("templates");
-    try {
-      const [templateResult, draftResult] = await Promise.all([
-        listScheduleTemplates(context.workspace.id),
-        listScheduleDrafts(context.workspace.id, query.data.week_start),
-      ]);
-      setTemplates(templateResult.templates);
-      updateDraftCache(draftResult.drafts);
-      setTemplatesOpen(true);
-    } catch (error) {
-      setOperationError(requestErrorText(error));
-    }
+    setTopbarDropdownOpen(false);
+    setTopbarDismissSignal((current) => current + 1);
+    closeTopActionSurfaces("newSchedule");
+    setNewScheduleTab(tab);
+    setTemplatesStep({ kind: "list" });
+    setTemplatesSaving(false);
+    setNewScheduleMenuOpen(true);
+    // A background refresh: the window keeps the cached list, the reason goes to the console.
+    void refreshDrafts().catch((error: unknown) => console.error(error));
+    void loadTemplates();
+  };
+
+  const closeNewScheduleWindow = () => {
+    setNewScheduleMenuOpen(false);
+    setTemplatesSaving(false);
+    leaveScheduleDeepLink();
   };
 
   const openAutoFill = async () => {
@@ -1032,25 +1095,6 @@ export function SchedulePage({
     }
   };
 
-  const openExport = async () => {
-    if (!context || !query.data) return;
-    if (!canExportSchedules) {
-      setOperationError("You do not have permission to export schedules.");
-      return;
-    }
-    if (window.matchMedia && !window.matchMedia("(min-width: 721px)").matches) return;
-    setOperationError(null);
-    setTopbarDropdownOpen(false);
-    setTopbarDismissSignal(current => current + 1);
-    closeTopActionSurfaces("export");
-    if (isEditMode || session) {
-      setExportAfterSave(true);
-      setSaveOpen(true);
-      return;
-    }
-    setExportOpen(true);
-  };
-
   useEffect(() => {
     if (!context || !query.data || gridEditSession) {
       publicationRequestIdRef.current += 1;
@@ -1064,61 +1108,27 @@ export function SchedulePage({
     setPendingOps(pendingOpsQuery.data?.pending_ops ?? []);
   }, [pendingOpsQuery.data]);
 
+  // /schedule/export and /schedule/templates open the New Schedule window at that tab, once per visit.
+  const deepLinkTab: NewScheduleTab | null =
+    location.pathname === `${scheduleBasePath}/export` ? "export"
+      : location.pathname === `${scheduleBasePath}/templates` ? "templates" : null;
   useEffect(() => {
-    if (location.pathname !== `${scheduleBasePath}/export`) exportDeepLinkConsumed.current = false;
-    if (!context || !query.data) return;
-    if (location.pathname === `${scheduleBasePath}/templates` && !templatesOpen) {
-      void openTemplates();
+    if (!deepLinkTab) {
+      newScheduleDeepLinkConsumed.current = null;
+      return;
     }
-    if (
-      location.pathname === `${scheduleBasePath}/export` &&
-      !exportDeepLinkConsumed.current &&
-      !exportOpen &&
-      !saveOpen &&
-      canExportSchedules
-    ) {
-      exportDeepLinkConsumed.current = true;
-      void openExport();
-    }
-  }, [
-    context,
-    canExportSchedules,
-    exportOpen,
-    saveOpen,
-    location.pathname,
-    query.data,
-    scheduleBasePath,
-    templatesOpen,
-  ]);
+    if (!context || !query.data || saveOpen || newScheduleDeepLinkConsumed.current === deepLinkTab) return;
+    if (deepLinkTab === "templates" ? !gates.templatesRead : !canExportSchedules) return;
+    // The Schedule is closed on phones; Export is a desktop tool.
+    if (deepLinkTab === "export" && window.matchMedia && !window.matchMedia("(min-width: 721px)").matches) return;
+    newScheduleDeepLinkConsumed.current = deepLinkTab;
+    openNewScheduleWindow(deepLinkTab);
+    // openNewScheduleWindow changes every render; the link is read once per visit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [context, canExportSchedules, deepLinkTab, gates.templatesRead, query.data, saveOpen]);
 
   const leaveScheduleDeepLink = () => {
-    if (
-      location.pathname === `${scheduleBasePath}/export` ||
-      location.pathname === `${scheduleBasePath}/templates`
-    ) {
-      navigate({ pathname: scheduleBasePath, search: location.search });
-    }
-  };
-
-  const closeTemplates = () => {
-    setTemplatesOpen(false);
-    setTemplateDraftId(null);
-    leaveScheduleDeepLink();
-  };
-
-  const closeExport = () => {
-    setExportOpen(false);
-    leaveScheduleDeepLink();
-  };
-
-  const openExportDialog = () => {
-    leaveScheduleDeepLink();
-    void openExport();
-  };
-
-  const openTemplatesDialog = () => {
-    leaveScheduleDeepLink();
-    void openTemplates();
+    if (deepLinkTab) navigate({ pathname: scheduleBasePath, search: location.search });
   };
 
   const enterEditModeWithResetFilters = useCallback(
@@ -1178,7 +1188,6 @@ export function SchedulePage({
     const editLocationIds = filteredLocationIds.length ? filteredLocationIds : null;
     setOperationError(null);
     setNewScheduleMenuOpen(false);
-    setNewScheduleDismissSignal((current) => current + 1);
     const result = await acquireEditSession(
       query.data.week_start,
       source,
@@ -1291,7 +1300,6 @@ export function SchedulePage({
         return next;
       }, { replace: true });
     }
-    setExportAfterSave(false);
     setSaveOpen(true);
   };
 
@@ -1299,7 +1307,7 @@ export function SchedulePage({
     name: string,
     force: boolean,
     targetDraftId: string | null | undefined,
-    recoveryKind: "save" | "save-and-publish" | "save-and-export" = "save",
+    recoveryKind: "save" | "save-and-publish" = "save",
   ) => {
     if (!context || !session) return null;
     const savingContext = currentMutationContext.current;
@@ -1359,7 +1367,6 @@ export function SchedulePage({
         setOperationError(scheduleEditErrorText(error));
         setPublishMenuDismissSignal((value) => value + 1);
         setSaveOpen(false);
-        setExportAfterSave(false);
         leaveScheduleDeepLink();
         return null;
       }
@@ -1438,9 +1445,6 @@ export function SchedulePage({
       );
       if (result) {
         setSaveRecovery(null);
-        if (intent.kind === "save-and-export") {
-          setSaveOpen(false); setExportAfterSave(false); setExportOpen(true);
-        }
         if (intent.kind === "save-and-publish") {
           setPublishDraftOverride(result);
           setPublishOpen(true);
@@ -1456,15 +1460,11 @@ export function SchedulePage({
   };
 
   const keepEditingAfterSaveFailure = () => {
-    if (saveRecovery?.intent.kind === "save-and-export") {
-      setSaveOpen(false);
-      setExportAfterSave(false);
-    }
     setSaveRecovery(null);
   };
 
   const discardAfterSaveFailure = () => {
-    setSaveRecovery(null); setSaveOpen(false); setExportAfterSave(false);
+    setSaveRecovery(null); setSaveOpen(false);
     discardEditSession();
   };
 
@@ -1927,15 +1927,19 @@ export function SchedulePage({
     if (!exportOpen) return { status: "blocked", reason: "source" };
     if (!query.data || !context) return { status: "blocked", reason: "loading" };
     return createScheduleExportSnapshot({
-      mode: isEditMode || gridEditSession ? "edit" : "preview", loading: previewSource.loading,
+      // The edit's saved-but-unpublished steps (pending ops) are part of the grid and go into the export.
+      // Only a step still on its way to the server (a drop being saved) is not there yet; Export waits for that.
+      loading: previewSource.loading || dropReview.optimisticOps.length > 0,
       requestedSourceKey: previewSource.requestedKey, resolvedSourceKey: previewSource.resolvedKey,
-      source: previewSource.source, model: { ...query.data, shifts: effectiveShifts },
+      // An open edit exports its own rows, as the server holds and checks them. Its pending
+      // steps are those same rows listed again, so they are not laid over them a second time.
+      source: previewSource.source, model: { ...query.data, shifts: gridEditSession?.shifts ?? effectiveShifts },
       workspaceName: context.workspace.name, selectedDate, view, search, focusedShiftId,
       display: { layout, employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
         showUnassignedShifts, showRoleSeparators, showTotalHours },
     });
-  }, [exportOpen, query.data, context, isEditMode, gridEditSession, previewSource.loading, previewSource.requestedKey,
-    previewSource.resolvedKey, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
+  }, [exportOpen, query.data, context, previewSource.loading, previewSource.source, dropReview.optimisticOps.length, previewSource.requestedKey,
+    previewSource.resolvedKey, gridEditSession?.shifts, effectiveShifts, selectedDate, view, search, focusedShiftId, layout,
     employeeSortMode, hideUnscheduled, showShiftType, showShiftLabels, showClockTimes,
     showUnassignedShifts, showRoleSeparators, showTotalHours]);
 
@@ -1944,17 +1948,16 @@ export function SchedulePage({
     if (query.error && !isNoAccess(query.error)) console.error(query.error);
   }, [query.error]);
 
+  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
   if (query.isPending)
     return (
-      <ScheduleState
-        title="Loading Schedule"
-        detail="Getting this week's shifts."
-      />
+      <section className="schedule-page" aria-label="Schedule">
+        <ScheduleGridOutline />
+      </section>
     );
-  if (query.isError)
+  if (query.isError && (!query.data || isNoAccess(query.error)))
     return isNoAccess(query.error) ? (
       <NoAccessState
-        subject="this schedule"
         homeHref={noAccessHomePath(context, scheduleBasePath)}
       />
     ) : (
@@ -1985,16 +1988,18 @@ export function SchedulePage({
             />
           </div>
         </header>
-        <ScheduleState
-          title="Schedule unavailable"
-          detail="This week's schedule could not be loaded. Try again."
-          error
+        <LoadError
+          title="We couldn't load Schedule"
+          detail="This week's shifts didn't load. Nothing was changed."
+          retrying={query.isFetching}
           onRetry={() => void query.refetch()}
         />
       </section>
     );
 
   const model = { ...query.data, shifts: effectiveShifts };
+  const draftUnread = Boolean(activeDraftId && !gridEditSession && previewSource.error);
+  const draftLoading = Boolean(activeDraftId && !gridEditSession && !previewSource.error && previewSource.shifts === null);
   const dropReviewAsk = dropReview.review
     ? scheduleDropReviewAsk(model, dropReview.review.drop.items.map((item) => item.input), dropReview.review.assessments)
     : null;
@@ -2192,12 +2197,7 @@ export function SchedulePage({
     }
     if (saveOpen) {
       if (saveBusy) return true;
-      setExportAfterSave(false);
       setSaveOpen(false);
-      return true;
-    }
-    if (templatesOpen) {
-      setTemplatesOpen(false);
       return true;
     }
     if (logoOpen) {
@@ -2380,95 +2380,136 @@ export function SchedulePage({
       y: target.point?.y,
     });
   };
+  const templatesTab: NewScheduleWindowProps["templates"] = gates.templatesRead && context ? {
+    templates,
+    loading: templatesLoading,
+    loadError: templatesLoadError,
+    onRetry: () => void loadTemplates(),
+    canManage: gates.templates,
+    drafts,
+    session: gridEditSession ?? null,
+    departments: model.departments,
+    saving: templatesSaving,
+    onSavingChange: setTemplatesSaving,
+    draftOnScreen: activeDraftId,
+    step: templatesStep,
+    onStepChange: setTemplatesStep,
+    canStartEdit: gates.edit && !pastWeek && !gridEditSession && !isDiscardingEditSession,
+    onUseInto: (templateId, target) => void applyTemplateInto(templateId, target),
+    onCreate: (draftId, name, stripAssignments) =>
+      createScheduleTemplate(context.workspace.id, draftId, name, stripAssignments).then((result) => {
+        toast.success("Template saved", { dedupeKey: "schedule-template-saved", description: name });
+        setTemplates((items) => [...items, result.template]);
+      }),
+    onRename: (template, name) =>
+      renameScheduleTemplate(context.workspace.id, template.id, name, template.revision).then((result) => {
+        toast.success("Template renamed", { dedupeKey: `schedule-template-renamed:${template.id}`, description: name });
+        setTemplates((items) => items.map((item) => (item.id === template.id ? result.template : item)));
+      }),
+    onDelete: (template) =>
+      deleteScheduleTemplate(context.workspace.id, template.id, template.revision)
+        .then(() => {
+          toast.success("Template deleted", { dedupeKey: `schedule-template-deleted:${template.id}`, description: template.name });
+          setTemplates((items) => items.filter((item) => item.id !== template.id));
+        })
+        .catch((error: unknown) => {
+          toast.error("Template could not be deleted", {
+            dedupeKey: `schedule-template-delete-failed:${template.id}`,
+            description: templateMutationError(error, "delete"),
+          });
+          throw error;
+        }),
+    onPreviewReplace: (templateId, departmentKeys) =>
+      gridEditSession
+        ? previewScheduleTemplateApply(context.workspace.id, gridEditSession.id, templateId, departmentKeys)
+            .then((preview) => preview.removed_shift_count)
+        : Promise.reject(new Error("No edit is open")),
+    onApply: (templateId, mode, departmentKeys) =>
+      gridEditSession
+        ? runWithLease(() => applyScheduleTemplate(context.workspace.id, gridEditSession, templateId, mode, departmentKeys))
+            .then((result) => {
+              const templateName = templates.find((item) => item.id === templateId)?.name ?? "Template";
+              // Archived labels left off: same toast, warning tone (BL-197).
+              (result.skipped.length ? toast.warning : toast.success)("Template applied", {
+                dedupeKey: `schedule-template-applied:${templateId}`,
+                description: templateAppliedDescription(templateName, result),
+              });
+              setSession(result.session);
+              setTemplatesStep({ kind: "list" });
+              closeNewScheduleWindow();
+            })
+            .catch((error: unknown) => {
+              toast.error("Template could not be applied", {
+                dedupeKey: `schedule-template-apply-failed:${templateId}`,
+                description: "Refresh the draft, then try again.",
+              });
+              throw staleEditAsScreenError(error);
+            })
+        : Promise.resolve(),
+  } : null;
   const topBarActions = (
     <>
-      {!isDiscardingEditSession && canExportSchedules ? (
-        <button
-          className={`schedule-export-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
-          data-schedule-top-action-trigger="export"
-          type="button"
-          onClick={openExportDialog}
-        >
-          <FileDown size={15} aria-hidden /> Export
-        </button>
-      ) : null}
-      {gates.templates ? (
-        <button
-          type="button"
-          className={`schedule-template-action ${SCHEDULE_ACTION_BUTTON_CLASS}`}
-          data-schedule-top-action-trigger="templates"
-          onClick={openTemplatesDialog}
-        >
-          <LayoutTemplate size={15} aria-hidden /> Templates
-        </button>
-      ) : null}
-      {gates.edit ? (
-        <>
-          <DraftDropdownMenu
-            drafts={drafts}
-            activeDraftId={activeDraftId}
-            triggerLabel={
-              drafts.find((draft) => draft.id === activeDraftId)?.name ??
-              "New Schedule"
-            }
-            canEditPublishedSchedule={
-              !pastWeek &&
-              model.locations.some(
-                (location) => location.publication_status === "published",
-              )
-            }
-            canManageDrafts={!pastWeek && !gridEditSession}
-            canStartDraft={
-              !pastWeek && !gridEditSession && !isDiscardingEditSession
-            }
-            isStartingDraft={isDiscardingEditSession}
-            readOnlyNote={
-              pastWeek ? "Past week: you can view it, not edit it." : null
-            }
-            publishedSchedule={
-              publishedScheduleSummary?.published_at
-                ? {
-                    published_at: publishedScheduleSummary.published_at,
-                    published_by_name:
-                      publishedScheduleSummary.published_by_name,
-                    source_draft_id: publishedScheduleSummary.source_draft_id,
-                    source_draft_name:
-                      publishedScheduleSummary.source_draft_name,
-                  }
-                : null
-            }
-            publishedLocationStatuses={publicationStatus?.locations ?? []}
-            onOpen={() => {
-              closeTopActionSurfaces("newSchedule");
-              // A background refresh: the menu keeps the cached list, the reason goes to the console.
-              void refreshDrafts().catch((error: unknown) => console.error(error));
-            }}
-            onOpenChange={setNewScheduleMenuOpen}
-            dismissSignal={newScheduleDismissSignal}
-            topActionId="new-schedule"
-            onPreviewDraft={(draftId) => {
-              void previewDraftFromMenu(draftId);
-            }}
-            onEditDraft={(draftId) => void editDraftFromMenu(draftId)}
-            onStartBlankDraft={() => void startBlankDraftFromMenu()}
-            onEditPublishedSchedule={() => void editDraftFromMenu(null)}
-            onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
-            onSaveAsTemplate={() => {
-              setTemplateDraftId(activeDraftId);
-              openTemplatesDialog();
-            }}
-            saveAsTemplateDisabledReason={
-              activeDraftId ? null : "Open a saved draft to save it as a template."
-            }
-            onUnpublishSchedule={
-              canUnpublishSchedule(canPublishSchedule, hasPublishedSchedule)
-                ? () => {
-                    setUnpublishOpen(true);
-                  }
-                : undefined
-            }
-          />
-        </>
+      {gates.edit || gates.templatesRead || canExportSchedules ? (
+        <NewScheduleWindow
+          open={newScheduleMenuOpen}
+          tab={newScheduleTab}
+          onOpenChange={(open) => (open ? openNewScheduleWindow() : closeNewScheduleWindow())}
+          onTabChange={(tab) => {
+            setNewScheduleTab(tab);
+            setTemplatesSaving(false);
+          }}
+          tabs={{ schedules: gates.edit, templates: gates.templatesRead, export: canExportSchedules && !isDiscardingEditSession }}
+          triggerLabel={drafts.find((draft) => draft.id === activeDraftId)?.name ?? "New Schedule"}
+          topActionId="new-schedule"
+          weekStart={model.week_start}
+          drafts={drafts}
+          publishedFacts={draftsQuery.data?.published ?? null}
+          publishedSchedule={
+            publishedScheduleSummary?.published_at
+              ? {
+                  published_at: publishedScheduleSummary.published_at,
+                  published_by_name: publishedScheduleSummary.published_by_name,
+                  source_draft_id: publishedScheduleSummary.source_draft_id,
+                  source_draft_name: publishedScheduleSummary.source_draft_name,
+                }
+              : null
+          }
+          activeDraftId={activeDraftId}
+          editing={Boolean(gridEditSession)}
+          editingName={
+            gridEditSession
+              ? (drafts.find((draft) => draft.id === gridEditSession.source_draft_id)?.name ??
+                (gridEditSession.source_kind === "published" ? "the live schedule" : null))
+              : null
+          }
+          canEditPublishedSchedule={
+            !pastWeek &&
+            model.locations.some((location) => location.publication_status === "published")
+          }
+          canManageDrafts={!pastWeek && !gridEditSession}
+          canStartDraft={!pastWeek && !gridEditSession && !isDiscardingEditSession}
+          isStartingDraft={isDiscardingEditSession}
+          readOnlyNote={pastWeek ? "Past week: you can view it, not edit it." : null}
+          disableDeleteDraftId={gridEditSession?.source_draft_id ?? null}
+          onPreviewDraft={(draftId) => void previewDraftFromMenu(draftId)}
+          onEditDraft={(draftId) => void editDraftFromMenu(draftId)}
+          onStartBlankDraft={() => void startBlankDraftFromMenu()}
+          onEditPublishedSchedule={() => void editDraftFromMenu(null)}
+          onDeleteDraft={(draft) => void deleteDraftFromMenu(draft)}
+          onUnpublishSchedule={
+            canUnpublishSchedule(canPublishSchedule, hasPublishedSchedule)
+              ? () => setUnpublishOpen(true)
+              : undefined
+          }
+          templates={templatesTab}
+          exportPane={
+            exportOpen && context ? (
+              <ExportController key={`${context.userId}:${context.workspace.id}`} userId={context.userId}
+                workspaceId={context.workspace.id} result={exportSnapshot}
+                canManageLocations={gates.manageLocations} sourceError={previewSource.error} />
+            ) : null
+          }
+        />
       ) : null}
       {gridEditSession && !isDiscardingEditSession ? (
         <SaveDraftMenu
@@ -2692,16 +2733,20 @@ export function SchedulePage({
         actions={topBarActions}
       />
       <ScheduleFilterCommandStrip chips={filterChips} />
-      {activeDraftId && !gridEditSession && previewSource.error ? (
-        <div className="schedule-operation-error" role="alert">
-          This draft's shifts could not be loaded.
-          <Button
-            className="schedule-operation-retry"
-            onClick={previewSource.retry}
-          >
-            Retry
-          </Button>
-        </div>
+      {query.isError ? (
+        <RefreshError
+          message="This week's schedule didn't refresh. These are the last shifts that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {/* Once an edit of this week is open, "editing didn't start" no longer holds. */}
+      {draftsUnreadHere && !gridEditSession ? (
+        <RefreshError
+          message="The drafts didn't load, so editing didn't start. Nothing was changed."
+          retrying={draftsRetrying}
+          onRetry={() => void retryDraftsUnread()}
+        />
       ) : null}
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
@@ -2792,6 +2837,16 @@ export function SchedulePage({
           </button>
         </div>
       ) : null}
+      {/* A draft whose shifts haven't loaded is not an empty draft. */}
+      {draftUnread ? (
+        <LoadError
+          title="We couldn't load this draft"
+          detail="This draft's shifts didn't load. Nothing was changed."
+          onRetry={previewSource.retry}
+        />
+      ) : draftLoading ? (
+        <ScheduleGridOutline />
+      ) : (
       <ScheduleGrid
         model={sortedModel}
         timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
@@ -2950,6 +3005,7 @@ export function SchedulePage({
           setQueryIds("locations", locationIds);
         }}
       />
+      )}
       {gridEditSession &&
       (pasteArmed || pasteBlockedReason || pasteModeNotice) ? (
         <div
@@ -3263,18 +3319,15 @@ export function SchedulePage({
             ) ?? null
           }
           busy={saveBusy}
-          description={exportAfterSave ? "Export is available in preview mode. Save this working copy as a draft to continue." : undefined}
-          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); setExportAfterSave(false); leaveScheduleDeepLink(); } }}
+          onClose={() => { if (!saveBusy) { leaveAfterSaveRef.current = null; setSaveOpen(false); leaveScheduleDeepLink(); } }}
           onSave={(name, draft) => {
             if (saveBusy) return;
             const savingContext = currentMutationContext.current;
             setSaveBusy(true);
-            void saveDraftFromMenu(name, Boolean(draft), draft?.id, exportAfterSave ? "save-and-export" : "save")
+            void saveDraftFromMenu(name, Boolean(draft), draft?.id, "save")
               .then(saved => {
                 if (!saved) return;
                 setSaveOpen(false);
-                if (exportAfterSave) setExportOpen(true);
-                setExportAfterSave(false);
                 const departure = leaveAfterSaveRef.current;
                 leaveAfterSaveRef.current = null;
                 if (departure) setDepartureAfterSave(() => departure);
@@ -3449,117 +3502,6 @@ export function SchedulePage({
           }
         />
       ) : null}
-      {templatesOpen && context ? (
-        <ScheduleTemplatesDialog
-          templates={templates}
-          drafts={drafts}
-          initialDraftId={templateDraftId}
-          session={gridEditSession}
-          departments={model.departments}
-          onClose={closeTemplates}
-          onCreate={(draftId, name, stripAssignments) =>
-            createScheduleTemplate(
-              context.workspace.id,
-              draftId,
-              name,
-              stripAssignments,
-            ).then((result) => {
-              toast.success("Template saved", {
-                dedupeKey: "schedule-template-saved",
-                description: name,
-              });
-              setTemplates((items) => [...items, result.template]);
-            })
-          }
-          onRename={(template, name) =>
-            renameScheduleTemplate(
-              context.workspace.id,
-              template.id,
-              name,
-              template.revision,
-            ).then((result) => {
-              toast.success("Template renamed", {
-                dedupeKey: `schedule-template-renamed:${template.id}`,
-                description: name,
-              });
-              setTemplates((items) =>
-                items.map((item) =>
-                  item.id === template.id ? result.template : item,
-                ),
-              );
-            })
-          }
-          onDelete={(template) =>
-            deleteScheduleTemplate(
-              context.workspace.id,
-              template.id,
-              template.revision,
-            )
-              .then(() => {
-                toast.success("Template deleted", {
-                  dedupeKey: `schedule-template-deleted:${template.id}`,
-                  description: template.name,
-                });
-                setTemplates((items) =>
-                  items.filter((item) => item.id !== template.id),
-                );
-              })
-              .catch((error: unknown) => {
-                toast.error("Template could not be deleted", {
-                  dedupeKey: `schedule-template-delete-failed:${template.id}`,
-                  description: "Refresh templates, then try again.",
-                });
-                throw error;
-              })
-          }
-          onPreviewReplace={(templateId, departmentKeys) =>
-            gridEditSession
-              ? previewScheduleTemplateApply(
-                  context.workspace.id,
-                  gridEditSession.id,
-                  templateId,
-                  departmentKeys,
-                ).then((preview) => preview.removed_shift_count)
-              : Promise.reject(new Error("No edit is open"))
-          }
-          onApply={(templateId, mode, departmentKeys) =>
-            gridEditSession
-              ? runWithLease(() => applyScheduleTemplate(
-                  context.workspace.id,
-                  gridEditSession,
-                  templateId,
-                  mode,
-                  departmentKeys,
-                ))
-                  .then((result) => {
-                    const templateName =
-                      templates.find((item) => item.id === templateId)?.name ??
-                      "Template";
-                    // Archived labels left off: same toast, warning tone (BL-197).
-                    (result.skipped.length ? toast.warning : toast.success)(
-                      "Template applied",
-                      {
-                        dedupeKey: `schedule-template-applied:${templateId}`,
-                        description: templateAppliedDescription(templateName, result),
-                      },
-                    );
-                    setSession(result.session);
-                    closeTemplates();
-                  })
-                  .catch((error: unknown) => {
-                    toast.error(
-                      "Template could not be applied",
-                      {
-                        dedupeKey: `schedule-template-apply-failed:${templateId}`,
-                        description: "Refresh the draft, then try again.",
-                      },
-                    );
-                    throw staleEditAsScreenError(error);
-                  })
-              : Promise.resolve()
-          }
-        />
-      ) : null}
       {defaultHoursOpen && context && gridEditSession ? <DefaultHoursReviewDialog key={`${context.workspace.id}:${gridEditSession.id}`} workspaceId={context.workspace.id} session={gridEditSession} model={model} initialSelectedIds={selectedIds}
         onClose={() => setDefaultHoursOpen(false)} onApplied={result => setSession(result)} /> : null}
       {autoFill && context && gridEditSession ? (
@@ -3582,11 +3524,6 @@ export function SchedulePage({
             })
           }
         />
-      ) : null}
-      {exportOpen && canExportSchedules && context && !isEditMode && !gridEditSession ? (
-        <ExportController key={`${context.userId}:${context.workspace.id}`} userId={context.userId}
-          workspaceId={context.workspace.id} result={exportSnapshot} onClose={closeExport}
-          canManageLocations={gates.manageLocations} sourceError={previewSource.error} />
       ) : null}
     </section>
   );
@@ -3717,3 +3654,8 @@ function blurScheduleEditorActivationTarget(): void {
 }
 
 export default SchedulePage;
+
+/** The week in grey while it loads, where the grid goes. */
+function ScheduleGridOutline() {
+  return <ListOutline label="Loading Schedule" rows={8} columns={8} />;
+}

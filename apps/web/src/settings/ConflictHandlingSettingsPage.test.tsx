@@ -80,10 +80,42 @@ describe("ConflictHandlingSettingsPage", () => {
     return { client, ...view };
   }
 
+  // Loading and error in the "B" look (Mert 2026-10-14).
+  it("outlines the rules while they load", () => {
+    vi.mocked(organizationRequest).mockReturnValueOnce(new Promise(() => {}));
+    renderPage();
+    expect(screen.getByRole("status").textContent).toContain("Loading conflict rules");
+    expect(screen.queryByText("Loading conflict rules...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again, not the server's sentence", async () => {
+    vi.mocked(organizationRequest).mockRejectedValueOnce(new Error("rules service down"));
+    renderPage();
+    expect(await screen.findByRole("heading", { name: "We couldn't load conflict rules" })).toBeTruthy();
+    expect(screen.queryByText("rules service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Approved time off always keeps someone off the schedule.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load conflict rules" })).toBeNull();
+  });
+
+  it("keeps the last rules and says so when a refresh fails", async () => {
+    const { client } = renderPage();
+    expect(await screen.findByText("Approved time off always keeps someone off the schedule.")).toBeTruthy();
+    vi.mocked(organizationRequest).mockRejectedValueOnce(new Error("rules service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(
+      await screen.findByText("Conflict rules didn't refresh. These are the last rules that loaded."),
+    ).toBeTruthy();
+    expect(screen.getByText("Approved time off always keeps someone off the schedule.")).toBeTruthy();
+    expect(screen.queryByText("rules service down")).toBeNull();
+  });
+
   it("shows the no-access card, not the raw error, when the API refuses conflict rules (FB-6.1.9)", async () => {
     vi.mocked(organizationRequest).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to conflict rules" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Conflict handling" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it, vi } from "vitest";
 
-import { todayIn } from "./today";
+import { clockIn, todayIn } from "./today";
 
 // Sunday Oct 4, 2026, 11 pm in Los Angeles; UTC already reads Monday Oct 5.
 const sundayNightInLosAngeles = new Date("2026-10-05T06:00:00Z");
@@ -49,5 +49,13 @@ describe("todayIn", () => {
     const source = readFileSync(file, "utf8");
     expect(source).toContain("todayIn(");
     expect(source).not.toMatch(/(new Date\(\)|\bnow)\.toISOString\(\)\.slice\(0, ?10\)|timeZone: \w+ \?\? "UTC"|new Date\(\)\.toLocaleDateString\("en-CA"\)|today\.getFullYear\(\)/);
+  });
+});
+
+describe("clockIn", () => {
+  it("reads the wall clock in the zone, 24 h", () => {
+    const now = new Date("2026-10-14T01:05:00Z");
+    expect(clockIn("America/Los_Angeles", now)).toBe("18:05");
+    expect(clockIn("America/New_York", now)).toBe("21:05");
   });
 });

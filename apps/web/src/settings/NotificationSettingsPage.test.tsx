@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   NotificationSettingsResponse,
@@ -154,7 +154,7 @@ function renderWithClient() {
   });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
+      <MemoryRouter initialEntries={["/app/settings/notifications"]}>
         <NotificationSettingsPage />
       </MemoryRouter>
     </QueryClientProvider>,
@@ -237,9 +237,10 @@ describe("NotificationSettingsPage", () => {
       new Error("Settings are temporarily unavailable"),
     );
     renderWithClient();
-    expect((await screen.findByRole("alert")).textContent).toContain(
-      "temporarily unavailable",
-    );
+    // The "B" card (Mert 2026-10-14): a heading and Try again, never the server's sentence.
+    const card = await screen.findByRole("alert");
+    expect(card.textContent).toContain("We couldn't load notification settings");
+    expect(card.textContent).not.toContain("temporarily unavailable");
   });
 
   it("keeps every mutation control disabled for a read-only administrator", async () => {
@@ -423,8 +424,64 @@ describe("no access (FB-6.1.9)", () => {
     permissions = ["notifications.settings.read"];
     vi.mocked(getNotificationSettings).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to notification settings" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Notifications" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("NotificationSettingsPage loading and error", () => {
+  beforeEach(() => {
+    permissions = ["notifications.settings.read", "notifications.settings.write"];
+    vi.clearAllMocks();
+  });
+  const renderQueued = () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <NotificationSettingsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    return client;
+  };
+  const catalog = () => document.querySelector(".notification-policy-list");
+
+  it("outlines the settings while they load", () => {
+    vi.mocked(getNotificationSettings).mockReturnValueOnce(new Promise(() => {}));
+    renderQueued();
+    expect(screen.getByRole("status").textContent).toContain("Loading notification settings");
+    expect(screen.queryByText("Loading notification settings...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again, not the server's sentence", async () => {
+    vi.mocked(getNotificationSettings)
+      .mockRejectedValueOnce(new Error("settings service down"))
+      .mockResolvedValueOnce(fixture);
+    renderQueued();
+    expect(await screen.findByRole("heading", { name: "We couldn't load notification settings" })).toBeTruthy();
+    expect(screen.queryByText("settings service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(catalog()).toBeTruthy());
+    expect(screen.queryByRole("heading", { name: "We couldn't load notification settings" })).toBeNull();
+  });
+
+  it("keeps the last settings and says so when a refresh fails", async () => {
+    vi.mocked(getNotificationSettings).mockResolvedValueOnce(fixture);
+    const client = renderQueued();
+    await waitFor(() => expect(catalog()).toBeTruthy());
+    vi.mocked(getNotificationSettings).mockRejectedValueOnce(new Error("settings service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(
+      await screen.findByText("Notification settings didn't refresh. These are the last settings that loaded."),
+    ).toBeTruthy();
+    expect(catalog()).toBeTruthy();
+    expect(screen.queryByText("settings service down")).toBeNull();
   });
 });

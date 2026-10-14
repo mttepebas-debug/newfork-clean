@@ -1,7 +1,7 @@
 import Fastify from "fastify";
 import type { ActiveWorkspaceContext, ScheduleReadModel, ScheduleExportV2Scope } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
-import { replyWithError } from "../http-error";
+import { replyWithError, rpcFailure } from "../http-error";
 import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import type { ScheduleReadService } from "./schedule-service";
 
@@ -20,12 +20,15 @@ function setup(value: ActiveWorkspaceContext | null = context) {
   const getReadModel = vi.fn().mockResolvedValue(model);
   const listDrafts = vi.fn().mockResolvedValue({ drafts: [{ id: id(6), workspace_id: id(2), week_start: scope.week_start, revision: 3 }] });
   const listWeeklyShifts = vi.fn().mockResolvedValue({ shifts: model.shifts });
+  // An open edit: one unsaved shift (id 7) the published model does not have yet.
+  const getEditSession = vi.fn().mockResolvedValue({ id: id(10), workspace_id: id(2), week_start: scope.week_start, revision: 4,
+    location_ids: [id(3)], shifts: [{ id: id(7), employee_id: id(4), location_id: id(3), scheduled_date: scope.dates[0] }] });
   const resolve = vi.fn().mockResolvedValue(value);
-  registerScheduleExportV2Routes(app, { service: { getReadModel, listDrafts, listWeeklyShifts } as unknown as ScheduleReadService, contextResolver: { resolve } });
+  registerScheduleExportV2Routes(app, { service: { getReadModel, listDrafts, listWeeklyShifts, getEditSession } as unknown as ScheduleReadService, contextResolver: { resolve } });
   const post = (payload: unknown = scope, authorization: string | undefined = "Bearer test") => app.inject({
     method: "POST", url: `/v1/workspaces/${id(2)}/schedule/export-v2/authorize`, headers: { ...(authorization ? { authorization } : {}), "content-type": "application/json" }, payload: JSON.stringify(payload),
   });
-  return { app, post, getReadModel, listDrafts, listWeeklyShifts, resolve };
+  return { app, post, getReadModel, listDrafts, listWeeklyShifts, getEditSession, resolve };
 }
 
 describe("Export v2 read-only server authorization", () => {
@@ -78,6 +81,43 @@ describe("Export v2 read-only server authorization", () => {
     expect((await post(payload)).statusCode).toBe(403);
     expect(listWeeklyShifts).toHaveBeenCalledTimes(1); await app.close();
   });
+  it("exports an open edit as it is now: reads the person's own edit, checks its revision, never a saved draft (Mert 2026-10-12)", async () => {
+    const { app, post, getEditSession, listDrafts, listWeeklyShifts } = setup();
+    const payload = { ...scope, shift_ids: [id(7)], source: { kind: "edit_session", id: id(10), revision: 4 } };
+    expect((await post(payload)).statusCode).toBe(200);
+    expect(getEditSession).toHaveBeenCalledWith(id(1), id(2), id(10));
+    expect(listDrafts).not.toHaveBeenCalled(); expect(listWeeklyShifts).not.toHaveBeenCalled();
+    // A newer edit, a shift the edit does not have, or another week: refresh, nothing is authorized.
+    expect((await post({ ...payload, source: { ...payload.source, revision: 3 } })).statusCode).toBe(409);
+    expect((await post({ ...payload, shift_ids: [id(5)] })).statusCode).toBe(409);
+    getEditSession.mockResolvedValueOnce({ id: id(10), workspace_id: id(2), week_start: "2026-09-21", revision: 4, location_ids: [id(3)], shifts: [] });
+    expect((await post(payload)).statusCode).toBe(409);
+    // An edit from another workspace is not this export's edit.
+    getEditSession.mockResolvedValueOnce({ id: id(10), workspace_id: id(99), week_start: scope.week_start, revision: 4, location_ids: [id(3)], shifts: [] });
+    expect((await post(payload)).statusCode).toBe(409);
+    // The core refuses the edit (42501, e.g. edit rights taken away): the route fails closed and nothing leaks.
+    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "schedule.edit refused", code: "42501", hint: "authz.out_of_scope" }));
+    const refused = await post(payload); expect(refused.statusCode).toBe(503);
+    expect(refused.body).not.toContain("refused"); expect(refused.body).not.toContain("authz.");
+    // Someone else's edit: the database answers as if it did not exist (P0002), the same closed answer.
+    getEditSession.mockRejectedValueOnce(rpcFailure({ message: "edit session not found", code: "P0002" }));
+    const missing = await post(payload); expect(missing.statusCode).toBe(503); expect(missing.body).not.toContain("edit session not found");
+    await app.close();
+  });
+  it("in an open edit, its own locations come from the edit and the other locations from what is published", async () => {
+    const { app, post, getReadModel } = setup();
+    const payload = { ...scope, shift_ids: [id(7)], source: { kind: "edit_session", id: id(10), revision: 4 } };
+    // Published shift 5 sits at the edited location, so the edit replaced it: no longer exportable.
+    expect((await post({ ...payload, shift_ids: [id(5)] })).statusCode).toBe(409);
+    // Published shift 9 sits at another location the edit does not cover: still a cross-location reference.
+    const other = { ...model.shifts[0]!, id: id(9), location_id: id(8) };
+    getReadModel.mockResolvedValue({ ...model, locations: [...model.locations, { id: id(8), short_name: null }], shifts: [...model.shifts, other] });
+    expect((await post({ ...payload, ghost_shift_ids: [id(9)] })).statusCode).toBe(200);
+    expect((await post({ ...payload, ghost_shift_ids: [id(99)] })).statusCode).toBe(403);
+    // A published shift at the edited location is not a reference either.
+    expect((await post({ ...payload, ghost_shift_ids: [id(5)] })).statusCode).toBe(403);
+    await app.close();
+  });
   it("fails closed on revoked permissions, missing short names or a failing source read", async () => {
     const { app, post, getReadModel, resolve } = setup();
     expect((await post()).statusCode).toBe(200);
@@ -102,7 +142,8 @@ describe("Export v2 read-only server authorization", () => {
     { ...scope, source: { kind: "edit" } }, { ...scope, actor_user_id: id(99) },
     { ...scope, location_ids: [] }, { ...scope, dates: ["2026-09-21"] },
     { ...scope, shift_ids: [id(5), id(5)] },
-  ])("rejects malformed or edit-session export scopes", async payload => {
+    { ...scope, source: { kind: "edit_session", id: id(10) } },
+  ])("rejects malformed export scopes", async payload => {
     const { app, post, getReadModel } = setup(); expect((await post(payload)).statusCode).toBe(400);
     expect(getReadModel).not.toHaveBeenCalled(); await app.close();
   });

@@ -60,6 +60,13 @@ import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { NoAccessState } from "../shell/NoAccessState";
+import {
+  LinesOutline,
+  LoadError,
+  LoadingOutline,
+  RefreshError,
+  Skeleton,
+} from "../shell/LoadState";
 import { FieldNote } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
@@ -1238,7 +1245,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 ref={scrollRef}
               >
                 {detail.isLoading && !props.creating ? (
-                  <p className="employee-panel-state">Loading employee...</p>
+                  <LinesOutline label="Loading employee" lines={5} />
                 ) : null}
                 {isNoAccess(detail.error) ? (
                   <NoAccessState
@@ -1248,17 +1255,22 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 ) : detail.error && detail.data ? (
                   // Read again after a save and failed: what was saved is
                   // said, the server's sentence is not (BL-463).
-                  <p className="employee-panel-state error" role="alert">
-                    {roleJustSaved ? "Role saved. " : null}
-                    Couldn't reload this employee.{" "}
-                    <button type="button" onClick={() => void detail.refetch()}>
-                      Retry
-                    </button>
-                  </p>
+                  <RefreshError
+                    // The sections stay hidden until it reads again, so nothing
+                    // stale is offered for editing.
+                    message={`${roleJustSaved ? "Role saved. " : ""}This employee didn't reload.`}
+                    retrying={detail.isFetching}
+                    onRetry={() => void detail.refetch()}
+                  />
                 ) : detail.error ? (
-                  <p className="employee-panel-state error" role="alert">
-                    {errorMessage(detail.error)}
-                  </p>
+                  <LoadError
+                    inset
+                    level={3}
+                    title="We couldn't load this employee"
+                    detail="This employee didn't load. Nothing was changed."
+                    retrying={detail.isFetching}
+                    onRetry={() => void detail.refetch()}
+                  />
                 ) : null}
                 {!detail.isLoading && !detail.error
                   ? renderSection(
@@ -1321,23 +1333,34 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   <EmployeeAssignmentDocumentPreview query={documentPreview} />
                 )}
                 {props.creating && references.isLoading ? (
-                  <p role="status">Loading locations, jobs and roles...</p>
+                  <LinesOutline label="Loading locations, jobs and roles" lines={3} />
                 ) : null}
                 {/* A saved person's pickers need them too: empty would read as
                     no assignments (BL-244). */}
                 {(props.creating ||
                   activeSection === "employment" ||
                   activeSection === "access") &&
-                references.isError ? (
-                  <p role="alert">
-                    Couldn't load locations, jobs or roles.{" "}
-                    <button
-                      type="button"
-                      onClick={() => void references.refetch()}
-                    >
-                      Retry
-                    </button>
-                  </p>
+                references.isError &&
+                !references.data ? (
+                  <LoadError
+                    inset
+                    level={3}
+                    title="We couldn't load locations, jobs and roles"
+                    detail="The choices for this form didn't load. Nothing was changed."
+                    retrying={references.isFetching}
+                    onRetry={() => void references.refetch()}
+                  />
+                ) : null}
+                {(props.creating ||
+                  activeSection === "employment" ||
+                  activeSection === "access") &&
+                references.isError &&
+                references.data ? (
+                  <RefreshError
+                    message="Locations, jobs and roles didn't refresh. These are the last choices that loaded."
+                    retrying={references.isFetching}
+                    onRetry={() => void references.refetch()}
+                  />
                 ) : null}
                 {props.creating &&
                 activeSection === "employment" &&
@@ -2972,22 +2995,34 @@ function EmployeeAvatarControl({
   });
 
   if (avatar.isLoading)
-    return <p className="employee-panel-state">Loading profile photo...</p>;
-  if (avatar.isError)
     return (
-      <div className="employee-access-empty">
-        <strong>Profile photo unavailable</strong>
-        <Button
-          type="button"
-          onClick={() => void avatar.refetch()}
-        >
-          Retry
-        </Button>
-      </div>
+      <LoadingOutline label="Loading profile photo" className="employee-avatar-outline">
+        <Skeleton width={44} height={44} className="employee-avatar-skeleton" />
+        <Skeleton width="40%" height={12} />
+      </LoadingOutline>
+    );
+  if (avatar.isError && !avatar.data)
+    return (
+      <LoadError
+        inset
+        level={3}
+        title="We couldn't load the profile photo"
+        detail="The photo didn't load. Nothing was changed."
+        retrying={avatar.isFetching}
+        onRetry={() => void avatar.refetch()}
+      />
     );
   const hasAvatar = Boolean(avatar.data?.present);
 
   return (
+    <>
+    {avatar.isError ? (
+      <RefreshError
+        message="The profile photo didn't refresh. This is the last photo that loaded."
+        retrying={avatar.isFetching}
+        onRetry={() => void avatar.refetch()}
+      />
+    ) : null}
     <div className="employee-avatar-control">
       {hasAvatar && avatar.data?.url ? (
         <img src={avatar.data.url} alt="Employee workspace profile" />
@@ -3027,6 +3062,7 @@ function EmployeeAvatarControl({
         </span>
       ) : null}
     </div>
+    </>
   );
 }
 

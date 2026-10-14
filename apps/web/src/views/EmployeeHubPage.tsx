@@ -2,7 +2,7 @@ import { todayIn } from "../lib/today";
 import { Button } from "@newfork/ui";
 import { timeOffSubmitInputSchema, type EmployeeHubReadModel } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarDays, CalendarOff, RefreshCw } from "lucide-react";
+import { CalendarDays, CalendarOff } from "lucide-react";
 import {
   useEffect,
   useRef,
@@ -37,6 +37,7 @@ import { CatalogPageHeader } from "./CatalogPageHeader";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 // Navigation between these pages lives in the app sidebar. This map supplies
 // the shared catalog header copy, written for the employee reading it.
@@ -110,7 +111,6 @@ export function EmployeeHubPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="Employee Hub"
         homeHref={noAccessHomePath(context, "/app/employee-hub")}
       />
     );
@@ -127,31 +127,23 @@ export function EmployeeHubPage() {
         <EmployeeMorePage />
       </section>
     );
+  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
   if (query.isLoading)
     return (
-      <div
-        className="eh-loading"
-        role="status"
-        aria-label="Loading Employee Hub"
-      >
-        <p>Getting your day ready…</p>
-        <div className="eh-loading-bar" />
-        <div className="eh-loading-block" />
-      </div>
+      <LoadingOutline label="Loading Employee Hub" className="eh-loading">
+        <Skeleton width={300} height={28} style={{ maxWidth: "100%", margin: "24px 0", borderRadius: 10 }} />
+        <Skeleton width="100%" height={260} style={{ borderRadius: 20 }} />
+      </LoadingOutline>
     );
   if (!query.data)
     return (
       <section className="employee-hub-page">
-        <div className="empty-state">
-          <h2>Employee Hub is unavailable</h2>
-          <p>
-            {query.error instanceof Error ? query.error.message : "Try again."}
-          </p>
-          <button className="secondary-button" onClick={() => query.refetch()}>
-            <RefreshCw size={16} />
-            Retry
-          </button>
-        </div>
+        <LoadError
+          title="We couldn't load Employee Hub"
+          detail="Your day didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       </section>
     );
   const model = query.data;
@@ -166,6 +158,7 @@ export function EmployeeHubPage() {
           model={model}
           now={now}
           stale={query.isError}
+          refreshing={query.isFetching}
           onRefresh={() => void query.refetch()}
         />
       </section>
@@ -177,6 +170,13 @@ export function EmployeeHubPage() {
           fallbackCopy)}
         titleId="employee-hub-title"
       />
+      {query.isError ? (
+        <RefreshError
+          message="Employee Hub didn't refresh. This is the last information that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       {path === "schedule" ? (
         <EmployeeScheduleBoard
           key={`${workspaceId}:${context?.userId}`}

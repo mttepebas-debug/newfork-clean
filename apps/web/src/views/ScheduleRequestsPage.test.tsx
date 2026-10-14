@@ -210,9 +210,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
-    activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
+    activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"], actions: ["workspace.read", "employee_hub.read"] };
     renderPage("/app/schedule/requests?tab=availability");
-    await screen.findByRole("heading", { name: "Employee Hub" });
+    // The old link opens team Availability, which shows the card in place,
+    // not a silent trip home (Mert 2026-10-14).
+    await screen.findByRole("heading", { name: "You don't have access to Availability" });
+    expect(screen.getByRole("link", { name: "Back to Home" }).getAttribute("href")).toBe("/app/employee-hub");
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // KARARLAR Schedule → Requests, Ek 2026-10-07: the tabs are request types,
@@ -305,7 +308,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThanOrEqual(2));
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
-    expect(screen.getByText("Loading requests...")).toBeTruthy();
+    expect(screen.getByText("Loading requests")).toBeTruthy();
     answer({ employee_id: null, cases: [], opportunities: [], own_shifts: [] });
     expect(await screen.findByRole("row", { name: /Alex Kim/ })).toBeTruthy();
   });
@@ -451,7 +454,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage(`/app/schedule/requests?case=${caseId}`);
     await waitFor(() => expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, expect.objectContaining({ caseId })));
     // Reading the linked request: the list does not flash in first.
-    await screen.findByText("Loading request...");
+    await screen.findByText("Loading request");
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     answer(empty);
     await screen.findByRole("heading", { name: "Request unavailable" });
@@ -476,15 +479,15 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       return empty;
     });
     renderPage(`/app/schedule/requests?case=${caseId}`);
-    await screen.findByRole("heading", { name: "Request could not load" });
+    await screen.findByRole("heading", { name: "We couldn't load this request" });
     expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
     expect(screen.queryByText("This request is no longer available.")).toBeNull();
     let answer: (value: typeof empty) => void = () => {};
     vi.mocked(getExchanges).mockImplementation(() => new Promise((resolve) => { answer = resolve; }));
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     // While it reads again it says so, and the list does not flash in between.
-    await screen.findByText("Loading request...");
-    expect(screen.queryByRole("heading", { name: "Request could not load" })).toBeNull();
+    await screen.findByText("Loading request");
+    expect(screen.queryByRole("heading", { name: "We couldn't load this request" })).toBeNull();
     expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     answer(empty);
     await screen.findByRole("heading", { name: "Request unavailable" });
@@ -499,7 +502,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     });
     renderPage("/app/schedule/requests?case=97500000-0000");
     await screen.findByRole("heading", { name: "Request unavailable" });
-    expect(screen.queryByRole("heading", { name: "Request could not load" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "We couldn't load this request" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
   });
   // The message stands where the table was; the tabs, filters and search
@@ -548,7 +551,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       // Only the one-case read waits for the network, as every read does by default.
       client.setQueryDefaults(["shift-exchanges", workspaceId, "manager-case"], { networkMode: "online" });
       renderPage(`/app/schedule/requests?case=${missingCaseId}`, client);
-      await screen.findByText("Loading request...");
+      await screen.findByText("Loading request");
       expect(screen.queryByRole("row", { name: /Alex Kim/ })).toBeNull();
     } finally {
       onlineManager.setOnline(true);
@@ -565,7 +568,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
         ? new Promise((resolve) => { answer = resolve as (value: unknown) => void; })
         : Promise.resolve({ employee_id: null, opportunities: [], own_shifts: [], cases: [] }) as never);
     renderPage(`/app/schedule/requests?case=${coverCase.id}`, client);
-    await screen.findByText("Loading request...");
+    await screen.findByText("Loading request");
     expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
     answer({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] });
     expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
@@ -577,7 +580,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       client.setQueryDefaults(["shift-exchanges", workspaceId, "manager-case"], { networkMode: "online" });
       client.setQueryData(["shift-exchanges", workspaceId, "manager-case", missingCaseId], { employee_id: null, opportunities: [], own_shifts: [], cases: [] });
       renderPage(`/app/schedule/requests?case=${missingCaseId}`, client);
-      await screen.findByText("Loading request...");
+      await screen.findByText("Loading request");
       expect(screen.queryByRole("heading", { name: "Request unavailable" })).toBeNull();
     } finally {
       onlineManager.setOnline(true);
@@ -615,7 +618,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       return { employee_id: null, cases: [], opportunities: [], own_shifts: [] } as unknown as Awaited<ReturnType<typeof getExchanges>>;
     });
     renderPage(`/app/schedule/requests?case=${missingCaseId}`);
-    const heading = await screen.findByRole("heading", { name: "Request could not load" });
+    const heading = await screen.findByRole("heading", { name: "We couldn't load this request" });
     await waitFor(() => expect(document.activeElement).toBe(heading));
     expect(heading.closest("[role=status], [role=alert]")).toBeNull();
   });
@@ -642,10 +645,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
-  it("sends away someone whose role names a request permission the core does not grant here", async () => {
+  // The card in place, not a silent trip home (Mert 2026-10-14).
+  it("shows the no-access card to someone whose role names a request permission the core does not grant here", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read" && action !== "exchange.read") };
     renderPage();
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Requests" })).toBeTruthy();
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("hides the time off queue from someone the core does not let read it", async () => {
@@ -1015,7 +1020,7 @@ describe("a list that did not load (R2-11)", () => {
     readFailure = { status: 500, body: { error: "boom" } };
     renderPage();
     const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Requests could not load");
+    expect(alert.textContent).toContain("We couldn't load requests");
     expect(screen.queryByText("boom")).toBeNull();
     const asked = fetchRequests.mock.calls.length;
     readFailure = null;
@@ -1029,7 +1034,7 @@ describe("no access (FB-6.1.9)", () => {
   it("shows the no-access card, not the raw error, when the API refuses requests (FB-6.1.9)", async () => {
     readFailure = { status: 403, body: { error: "Forbidden", reason: "authz.missing_permission" } };
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to requests" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Requests" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
@@ -1046,7 +1051,7 @@ describe("search", () => {
     box.focus();
     fireEvent.change(box, { target: { value: "a".repeat(200) } });
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(1));
-    expect(screen.queryByText("Loading requests...")).toBeNull();
+    expect(screen.queryByText("Loading requests")).toBeNull();
     expect(screen.getByRole("row", { name: /Alex Kim/ })).toBeTruthy();
     expect(document.activeElement).toBe(screen.getByLabelText("Search requests"));
     const asked = new URL(fetchRequests.mock.calls.at(-1)![0], "http://x").searchParams.get("search");

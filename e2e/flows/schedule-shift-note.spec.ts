@@ -76,7 +76,7 @@ test("a manager's shift note reaches the employee, and deleting it takes it away
 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
   await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await ayse.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await ayse.getByRole("button", { name: "Blank schedule", exact: true }).click();
   await expect(ayse).toHaveURL(/mode=edit/);
 
   // Hover first: the add button only takes pointer events on :hover.

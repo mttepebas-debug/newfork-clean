@@ -25,6 +25,7 @@ import "./notification-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const channels = ["in_app", "email", "push"] as const;
 type CatalogEntry = NotificationSettingsResponse["catalog"][number];
@@ -196,7 +197,6 @@ export default function NotificationSettingsPage() {
   if (isNoAccess(settings.error))
     return (
       <NoAccessState
-        subject="notification settings"
         homeHref={noAccessHomePath(context, "/app/settings/notifications")}
       />
     );
@@ -216,21 +216,22 @@ export default function NotificationSettingsPage() {
         aria-labelledby="notifications-settings-title"
       >
         {header}
-        <p className="notification-settings-state" role="status">
-          Loading notification settings...
-        </p>
+        <ListOutline label="Loading notification settings" rows={6} columns={3} />
       </section>
     );
-  if (settings.isError)
+  if (settings.isError && !data)
     return (
       <section
         className="settings-page notification-settings"
         aria-labelledby="notifications-settings-title"
       >
         {header}
-        <p className="form-error" role="alert">
-          {errorText(settings.error)}
-        </p>
+        <LoadError
+          title="We couldn't load notification settings"
+          detail="Notification settings didn't load. Nothing was changed."
+          retrying={settings.isFetching}
+          onRetry={() => void settings.refetch()}
+        />
       </section>
     );
   if (!data) return null;
@@ -265,6 +266,13 @@ export default function NotificationSettingsPage() {
   return (
     <section className="settings-page notification-settings" aria-labelledby="notifications-settings-title">
       {header}
+      {settings.isError ? (
+        <RefreshError
+          message="Notification settings didn't refresh. These are the last settings that loaded."
+          retrying={settings.isFetching}
+          onRetry={() => void settings.refetch()}
+        />
+      ) : null}
 
       {!canWrite ? (
         <div className="notification-readonly" role="note">

@@ -1,0 +1,258 @@
+/* LoadState (Mert 2026-10-14, "B"): loading outline and the load-error card.
+   Tokens only. The error card is NoAccessState's family. */
+
+.nf-skeleton {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--theme-surface-muted) 0%,
+    var(--theme-surface-soft) 45%,
+    var(--theme-surface-muted) 90%
+  );
+  background-size: 240% 100%;
+  animation: nf-skeleton 1.3s ease-in-out infinite;
+}
+
+/* A bar that sits on the grey page itself, not inside a white frame. */
+.nf-skeleton.on-page {
+  background-image: linear-gradient(
+    90deg,
+    var(--theme-border-subtle) 0%,
+    var(--theme-surface-muted) 45%,
+    var(--theme-border-subtle) 90%
+  );
+}
+
+@keyframes nf-skeleton {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-skeleton,
+  .load-error-retry .spinning {
+    animation: none;
+  }
+}
+
+/* Generic list outline: same frame and row height as the list pages. */
+.nf-list-outline > div {
+  overflow: hidden;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+
+.nf-list-outline.inset > div {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.nf-lines-outline > div {
+  display: grid;
+  gap: 10px;
+  padding: 4px 0;
+}
+
+.nf-list-outline-head {
+  height: 36px;
+  border-bottom: 1px solid var(--theme-list-head-border, var(--theme-border));
+  background: var(--theme-list-head, var(--theme-surface-soft));
+}
+
+.nf-list-outline-row {
+  display: grid;
+  height: 48px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.nf-list-outline-row + .nf-list-outline-row {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+/* The full card has NoAccessState's box, look "C" (Mert 2026-10-14): narrow,
+   centered, the same on every screen. */
+.load-error {
+  display: flex;
+  width: 100%;
+  max-width: 440px;
+  box-sizing: border-box;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  margin: 56px auto;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  padding: 36px 32px 28px;
+  background: var(--theme-surface);
+  box-shadow: 0 1px 2px rgb(23 34 30 / 6%), 0 8px 24px rgb(23 34 30 / 6%);
+  color: var(--theme-muted);
+  text-align: center;
+}
+
+.load-error:not(.inset) .load-error-icon {
+  width: 56px;
+  height: 56px;
+}
+
+.load-error:not(.inset) .load-error-copy :is(h2, h3, h4) {
+  font-size: 19px;
+  text-wrap: balance;
+}
+
+.load-error:not(.inset) .load-error-retry {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 40px;
+}
+
+@media (max-width: 720px) {
+  .load-error:not(.inset) {
+    width: auto;
+    margin: 24px 12px;
+    padding: 28px 20px 20px;
+  }
+}
+
+.load-error.inset {
+  max-width: none;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  padding: 28px 16px;
+  background: transparent;
+  box-shadow: none;
+}
+
+.load-error-icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-text);
+}
+
+.load-error-copy {
+  display: grid;
+  gap: 4px;
+  max-width: 46ch;
+}
+
+.load-error .load-error-copy :is(h2, h3, h4) {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.load-error .load-error-copy p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.load-error .load-error-copy .load-error-help {
+  color: var(--theme-text-body);
+}
+
+.load-error .load-error-retry {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  padding: 0 14px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.load-error .load-error-retry:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+
+.load-error .load-error-retry:disabled {
+  cursor: progress;
+  color: var(--theme-muted);
+}
+
+.load-error-retry:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+.load-error-retry .spinning {
+  animation: load-error-spin 0.9s linear infinite;
+}
+
+@keyframes load-error-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* A list that loaded once but failed to refresh: it stays, with one line. */
+.load-refresh {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px 14px;
+  border: 1px solid var(--theme-danger-border);
+  border-radius: 8px;
+  padding: 8px 8px 8px 14px;
+  background: var(--theme-danger-surface);
+  color: var(--theme-danger-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.load-refresh > span {
+  min-width: 0;
+}
+
+.load-refresh .load-error-retry {
+  display: inline-flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  padding: 0 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.load-refresh .load-error-retry:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+
+.load-refresh .load-error-retry:disabled {
+  cursor: progress;
+  color: var(--theme-muted);
+}

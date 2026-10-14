@@ -46,12 +46,7 @@
   outline-offset: 3px;
 }
 .jobs-settings-page
-  :is(
-    .job-count-button,
-    .job-group-toggle,
-    .job-text-button,
-    [role="tab"]
-  ):is(:focus, :focus-visible) {
+  [role="tab"]:is(:focus, :focus-visible) {
   outline: none;
   box-shadow: none;
 }
@@ -211,10 +206,6 @@
   background: var(--job-hover);
   color: var(--job-text);
 }
-.job-create-actions {
-  display: flex;
-  gap: 8px;
-}
 .jobs-settings-page .job-sort-button {
   display: flex;
   align-items: center;
@@ -277,30 +268,37 @@
   background: var(--job-bg);
   color: var(--job-text);
 }
+/* The job drawer's All / Assigned / Not assigned: underlined tabs on a 1 px
+   line, as the list pages' tabs (Mert 2026-10-14). */
 .job-view-control {
-  display: inline-flex;
-  align-items: center;
-  padding: 3px;
-  gap: 2px;
-  border: 1px solid var(--job-border);
-  border-radius: 7px;
-  background: var(--job-subtle);
+  display: flex;
+  flex: 1 1 auto;
+  align-items: stretch;
+  gap: 6px;
+  border-bottom: 1px solid var(--theme-border);
 }
 .job-view-control button {
-  padding: 7px 12px;
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 8px 12px;
   border: 0;
-  border-radius: 4px;
-  background: transparent;
-  color: var(--job-muted);
-  font-size: 12px;
-  font-weight: 600;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--theme-muted);
+  font-size: 13px;
+  font-weight: 500;
   white-space: nowrap;
 }
 .job-view-control button[aria-selected="true"],
 .job-view-control button[aria-pressed="true"] {
-  background: var(--job-bg);
-  color: var(--job-text);
-  box-shadow: 0 1px 3px #10251a16;
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.job-view-control button:focus-visible {
+  outline-offset: -2px;
 }
 .job-search {
   display: flex;
@@ -320,7 +318,7 @@
   border-color: var(--job-accent);
 }
 .jobs-settings-page .job-search input,
-.job-assignment-drawer .job-search input {
+.job-assignment-drawer .job-search.job-search input {
   background: transparent;
   border: 0;
   outline: none;
@@ -331,6 +329,10 @@
   width: 100%;
   font-size: 12px;
   color: var(--job-text);
+}
+/* The editor's field rule would draw a second frame inside the search box. */
+.job-assignment-drawer .job-search.job-search input {
+  font-size: 13px;
 }
 .job-search button {
   border: 0;
@@ -361,30 +363,6 @@
   border-radius: 8px;
   background: var(--job-bg);
   min-width: 0;
-}
-.job-catalog-caption {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 14px;
-  font-size: 11px;
-  color: var(--job-muted);
-  border-bottom: 1px solid var(--job-border);
-}
-.job-text-button {
-  display: inline-flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 5px;
-  min-height: 28px;
-  background: none;
-  border: 0;
-  color: var(--job-muted);
-  font-size: 11px !important;
-  padding: 0;
-}
-.job-text-button:hover {
-  color: var(--job-accent);
 }
 .job-catalog-row,
 .job-column-headings {
@@ -459,21 +437,6 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.job-count-button {
-  display: inline-flex;
-  gap: 7px;
-  align-items: center;
-  justify-content: flex-start;
-  border: 0;
-  background: none;
-  font-size: 12px !important;
-  color: var(--job-muted);
-  padding: 0;
-  min-height: 32px;
-}
-.job-count-button:hover {
-  color: var(--job-accent);
-}
 .job-archived-label {
   font-size: 10px;
   color: var(--job-muted);
@@ -485,66 +448,8 @@
 .job-catalog-row[data-archived="true"] .job-row-identity {
   color: var(--job-muted);
 }
-.job-department-columns {
-  grid-template-columns: minmax(0, 1fr) 72px 86px 32px;
-}
 .job-mobile-meta {
   display: none;
-}
-.job-group + .job-group {
-  border-top: 1px solid var(--job-border);
-}
-.job-group-heading {
-  min-height: 46px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 0 14px;
-  background: var(--job-subtle);
-}
-.job-group-toggle {
-  display: flex;
-  align-items: center;
-  gap: 9px;
-  flex: 1;
-  min-width: 0;
-  min-height: 46px;
-  background: none;
-  border: 0;
-  padding: 0;
-  color: var(--job-text);
-  text-align: left;
-}
-.job-group-toggle > svg {
-  flex-shrink: 0;
-}
-.job-group-count {
-  font-size: 11px;
-  font-weight: 400;
-  color: var(--job-muted);
-  white-space: nowrap;
-}
-.job-group-people {
-  display: flex;
-  gap: 6px;
-  align-items: center;
-  font-size: 12px;
-  color: var(--job-muted);
-  min-width: 44px;
-}
-.job-group-add {
-  font-size: 11px !important;
-  white-space: nowrap;
-}
-.job-nested-row {
-  grid-template-columns: minmax(0, 1fr) 86px 32px;
-  padding-left: 55px;
-}
-.job-group-empty {
-  font-size: 12px;
-  color: var(--job-muted);
-  padding: 16px 54px;
-  margin: 0;
 }
 .job-row-menu {
   position: relative;
@@ -992,6 +897,7 @@
   gap: 12px;
   align-items: center;
   justify-content: space-between;
+  margin-bottom: 12px;
 }
 .job-drawer-filter-row > select {
   width: 125px;
@@ -1061,32 +967,15 @@
   font-size: 10px;
   color: var(--job-muted);
 }
-.job-employee-meta {
-  display: flex;
-  align-items: flex-end;
-  flex-direction: column;
-  gap: 5px;
-  flex-shrink: 0;
-}
-.job-primary-tag {
-  font-size: 9px;
-  border: 1px solid var(--job-border);
-  border-radius: 4px;
-  padding: 2px 5px;
+/* The next 50 load as the list nears its end; this row says so. */
+.job-list-more {
+  padding: 12px 16px;
+  font-size: 12px;
   color: var(--job-muted);
+  text-align: center;
 }
-.job-drawer-pagination {
-  padding: 8px 24px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  border-top: 1px solid var(--job-border);
-  color: var(--job-muted);
-  font-size: 11px;
-}
-.job-drawer-pagination > div {
-  display: flex;
-  gap: 4px;
+.job-list-more:empty {
+  padding: 0;
 }
 .job-save-notice {
   padding: 10px 24px;
@@ -1130,9 +1019,6 @@
     max-width: none;
     flex-basis: 100%;
   }
-  .job-group-count {
-    display: none;
-  }
 }
 @media (max-width: 720px) {
   .job-primary-button,
@@ -1140,9 +1026,7 @@
   .job-small-button,
   .job-icon-button,
   .job-row-menu > summary,
-  .job-view-control button,
-  .job-text-button,
-  .job-count-button {
+  .job-view-control button {
     min-height: 44px;
   }
   .job-icon-button,
@@ -1150,14 +1034,11 @@
     min-width: 36px;
     width: 36px;
   }
-  .job-create-actions {
-    flex-wrap: wrap;
-  }
   .job-catalog-toolbar:not(.catalog-toolbar) {
     gap: 10px;
   }
   .job-view-control button {
-    padding: 7px 10px;
+    padding: 8px 10px;
   }
   .job-archive-filter {
     font-size: 11px;
@@ -1169,11 +1050,8 @@
     padding: 4px 10px;
   }
   .job-department-cell,
-  .job-column-headings:not(.job-department-columns) > span:nth-child(2) {
+  .job-column-headings > span:nth-child(2) {
     display: none;
-  }
-  .job-department-columns {
-    grid-template-columns: minmax(0, 1fr) 35px 42px 36px;
   }
   .job-column-headings {
     font-size: 9px;
@@ -1185,36 +1063,8 @@
     font-weight: 400;
     margin-top: 3px;
   }
-  .job-text-button > .job-mobile-meta {
-    display: none;
-  }
   .job-row-name {
     font-size: 12px;
-  }
-  .job-group-heading {
-    gap: 5px;
-    padding: 0 10px;
-  }
-  .job-group-toggle {
-    gap: 6px;
-  }
-  .job-group-people {
-    min-width: 30px;
-    font-size: 11px;
-    gap: 4px;
-  }
-  .job-group-add > span {
-    display: none;
-  }
-  .job-group-add {
-    width: 28px;
-    justify-content: center;
-  }
-  .job-nested-row {
-    padding-left: 30px;
-  }
-  .job-group-empty {
-    padding: 16px 30px;
   }
   .job-catalog-editor
     input:not([type="color"], [type="checkbox"], [type="radio"]),
@@ -1227,7 +1077,7 @@
     min-height: 44px;
   }
   .jobs-settings-page .job-search input,
-  .job-assignment-drawer .job-search input {
+  .job-assignment-drawer .job-search.job-search input {
     height: 42px;
     font-size: 13px;
   }
@@ -1253,8 +1103,8 @@
     gap: 8px;
   }
   .job-drawer-filter-row .job-view-control button {
-    padding: 6px 8px;
-    font-size: 11px;
+    height: 44px;
+    padding: 8px 10px;
   }
   .job-drawer-filter-row > select {
     width: 110px;
@@ -1267,21 +1117,12 @@
   .job-employee-avatar {
     display: none;
   }
-  .job-employee-meta {
-    max-width: 82px;
-  }
-  .job-drawer-pagination {
-    padding: 6px 16px;
-  }
   .job-drawer-job-icon {
     flex-basis: 38px;
     height: 38px;
   }
   .job-drawer-heading h2 {
     font-size: 18px;
-  }
-  .job-count-button > svg {
-    width: 12px;
   }
   .job-row-menu .job-menu-popover button {
     min-height: 44px;
@@ -1683,6 +1524,11 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--job-accent) 13%, transparent);
   outline: none;
 }
+/* The search box's own frame shows its focus; the field inside stays bare. */
+.job-assignment-drawer .job-search.job-search input:focus {
+  border: 0;
+  box-shadow: none;
+}
 .jobs-settings-page .job-catalog-editor textarea::placeholder {
   color: var(--job-muted);
   opacity: 1;
@@ -1966,13 +1812,18 @@
   max-height: 50dvh;
   overflow-y: auto;
 }
-.catalog-drawer .job-editor-footer:has(.catalog-delete-confirm) {
-  flex-wrap: wrap;
-}
-.catalog-drawer
-  .job-editor-footer
-  .catalog-delete-action:has(.catalog-delete-confirm) {
-  flex-basis: 100%;
+/* The delete warning takes the Delete button's place in the footer row, from
+   the drawer's left edge to Cancel (Mert 2026-10-14). A phone has no room
+   beside Cancel and Save: there it takes its own row above them. */
+@media (max-width: 720px) {
+  .catalog-drawer .job-editor-footer:has(.catalog-delete-confirm) {
+    flex-wrap: wrap;
+  }
+  .catalog-drawer
+    .job-editor-footer
+    .catalog-delete-action:has(.catalog-delete-confirm) {
+    flex-basis: 100%;
+  }
 }
 .catalog-drawer
   .catalog-drawer-body
@@ -2027,8 +1878,7 @@
   min-width: 0;
   overflow: hidden;
 }
-.catalog-drawer .job-drawer-employees > .job-drawer-controls,
-.catalog-drawer .job-drawer-employees > .job-drawer-pagination {
+.catalog-drawer .job-drawer-employees > .job-drawer-controls {
   flex: 0 0 auto;
 }
 .catalog-drawer .job-employee-list {
@@ -2065,10 +1915,6 @@
   font-size: 11px;
   line-height: 1.4;
 }
-.catalog-drawer .job-employee-meta {
-  max-width: 64px;
-  text-align: right;
-}
 .catalog-drawer.job-assignment-drawer .catalog-drawer-body:has(> .job-error) {
   overflow-y: auto;
 }
@@ -2079,14 +1925,17 @@
   flex: 1 0 auto;
   height: min(240px, 40dvh);
 }
-.catalog-drawer .job-drawer-pagination {
-  padding: 8px 16px;
-}
 .catalog-drawer .job-details-fields {
   display: grid;
   gap: 12px;
   padding: 16px;
   border-bottom: 1px solid var(--job-border);
+}
+/* Always in the page so a screen reader hears its first change; empty, it
+   takes no room. */
+.catalog-drawer .job-change-summary:empty {
+  padding: 0;
+  border-top: 0;
 }
 .catalog-drawer .job-change-summary {
   flex: 0 0 auto;
@@ -2197,9 +2046,197 @@
 .catalog-drawer .job-employee-list .job-employee-row[data-pending="true"] {
   background-color: var(--job-soft);
 }
-/* Employees column: the number alone, in the shared table cell's type. */
-.jobs-settings-page .job-catalog-row .job-count-button {
-  font-size: 13px !important;
+
+/* Settings > Jobs & departments in the shared list language (Jobs V1): one
+   table, a sub-heading per department, always open. */
+.jobs-catalog-page .jobs-job-row {
+  grid-template-columns: minmax(0, 1fr) 140px 32px;
+  gap: 12px;
+}
+.jobs-catalog-page .jobs-department-row {
+  grid-template-columns: minmax(0, 1fr) 120px 140px 32px;
+  gap: 12px;
+}
+.jobs-catalog-page .jobs-archived-row {
+  grid-template-columns: minmax(0, 1fr) 140px 96px;
+  gap: 12px;
+}
+/* An archived job names its department beside its name. */
+.jobs-catalog-page .jobs-archived-name {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.jobs-catalog-page .jobs-archived-name > .job-row-identity {
+  flex: 0 1 auto;
+  width: auto;
+  min-width: 0;
+}
+.jobs-catalog-page .jobs-archived-home {
+  flex: none;
+  font-size: 12px;
+}
+.jobs-catalog-page .job-catalog-row {
+  min-height: 48px;
+}
+.jobs-catalog-page .jobs-cell {
+  min-width: 0;
+  overflow: hidden;
   color: var(--theme-list-cell-text);
+  font-size: 13px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.jobs-catalog-page .jobs-number {
   font-variant-numeric: tabular-nums;
+}
+/* Counts sit in the middle of their column, under a centred heading (Mert
+   2026-10-14). On a phone the cards keep them at the row's end. */
+@media (min-width: 721px) {
+  .jobs-catalog-page :is(.jobs-job-row, .jobs-department-row) > .jobs-number {
+    text-align: center;
+  }
+  .jobs-catalog-page .jobs-job-row > [role="columnheader"]:nth-child(2),
+  .jobs-catalog-page .jobs-department-row > [role="columnheader"]:is(:nth-child(2), :nth-child(3)) {
+    display: flex;
+    justify-content: center;
+  }
+}
+.jobs-catalog-page .jobs-faint {
+  color: var(--theme-muted);
+}
+.jobs-catalog-page .jobs-group-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
+  align-items: center;
+  gap: 12px;
+  min-height: 36px;
+  padding: 0 14px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface-soft);
+}
+.jobs-catalog-page .jobs-archived-group {
+  grid-template-columns: minmax(0, 1fr);
+}
+.jobs-catalog-page .jobs-group-name {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+.jobs-catalog-page .jobs-group-title {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.jobs-catalog-page .jobs-group-meta {
+  color: var(--theme-muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.jobs-catalog-page .jobs-group-empty {
+  margin: 0;
+  padding: 12px 14px 12px 40px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 13px;
+}
+/* The department menu says what its Archive takes with it. */
+.jobs-catalog-page .jobs-menu-note {
+  margin: 4px 0 0;
+  padding: 6px 10px 4px;
+  border-top: 1px solid var(--theme-border-subtle);
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.jobs-catalog-page .jobs-add-job {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 28px;
+  padding: 0 4px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-accent);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.jobs-catalog-page .jobs-add-job:hover {
+  color: var(--theme-accent-strong);
+  text-decoration: underline;
+}
+/* Departments: the jobs count opens the Jobs tab filtered to the department. */
+.jobs-catalog-page .jobs-count-link {
+  min-width: 28px;
+  padding: 2px 4px;
+  border: 0;
+  border-radius: 4px;
+  background: none;
+  color: var(--theme-list-cell-text);
+  font: inherit;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+  text-decoration: underline;
+  text-decoration-color: var(--theme-border-strong);
+  text-underline-offset: 3px;
+}
+.jobs-catalog-page .jobs-count-link:hover {
+  color: var(--theme-accent);
+  text-decoration-color: currentColor;
+}
+/* Archived: Restore is one click, right in the row. */
+.jobs-catalog-page .jobs-restore {
+  justify-self: end;
+  height: 30px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 7px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.jobs-catalog-page .jobs-restore:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+}
+.jobs-catalog-page :is(.jobs-add-job, .jobs-count-link, .jobs-restore):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+
+/* Phone: one card per row, as the other Settings lists (UI-14). */
+@media (max-width: 720px) {
+  .jobs-catalog-page.list-page .job-catalog .job-column-headings.catalog-column-headings {
+    display: none;
+  }
+  .jobs-catalog-page.list-page.list-page .job-catalog-row.jobs-job-row {
+    grid-template-columns: minmax(0, 1fr) auto 36px;
+  }
+  .jobs-catalog-page.list-page.list-page .job-catalog-row.jobs-department-row {
+    grid-template-columns: minmax(0, 1fr) auto auto 36px;
+  }
+  .jobs-catalog-page.list-page.list-page .job-catalog-row.jobs-archived-row {
+    grid-template-columns: minmax(0, 1fr) auto auto;
+  }
+  .jobs-catalog-page .jobs-archived-row .jobs-archived-detail,
+  .jobs-catalog-page .jobs-group-meta {
+    display: none;
+  }
+  .jobs-catalog-page .jobs-count-link::after {
+    content: " jobs";
+  }
+  .jobs-catalog-page .jobs-people::after {
+    content: " people";
+    color: var(--theme-muted);
+  }
 }

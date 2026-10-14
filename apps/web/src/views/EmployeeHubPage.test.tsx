@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   EmployeeHubReadModel,
@@ -333,13 +333,106 @@ describe("EmployeeHubPage", () => {
       new Error("Notices unavailable"),
     );
     renderPage();
-    await waitFor(() =>
-      expect(
-        screen.getAllByText("This section couldn’t be loaded."),
-      ).toHaveLength(2),
-    );
+    expect(await screen.findByRole("heading", { name: "We couldn't load your updates" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "We couldn't load team notices" })).toBeTruthy();
+    expect(screen.queryByText(/unavailable/)).toBeNull();
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
     expect(screen.getByLabelText("New personal reminder")).toBeTruthy();
+  });
+
+  // Loading and error in the "B" look (Mert 2026-10-14).
+  it("keeps a card's last items and says so when its refresh fails", async () => {
+    const task = {
+      id: "98300000-0000-4000-8000-000000000010",
+      title: "Bring notebook",
+      completed: false,
+      created_at: "2026-09-06T10:00:00Z",
+    };
+    vi.mocked(getEmployeePersonalTasks).mockResolvedValue([task]);
+    const { client } = renderPageWithFixture(fixture);
+    expect(await screen.findByRole("checkbox", { name: "Bring notebook" })).toBeTruthy();
+    vi.mocked(getEmployeePersonalTasks).mockRejectedValueOnce(new Error("Unavailable"));
+    await act(async () => {
+      await client.refetchQueries({ predicate: (query) => query.queryKey.some((part) => typeof part === "string" && part.includes("task")) });
+    });
+    expect(
+      await screen.findByText("Your reminders didn't refresh. These are the last ones that loaded."),
+    ).toBeTruthy();
+    expect(screen.getByRole("checkbox", { name: "Bring notebook" })).toBeTruthy();
+    expect(screen.queryByText("Unavailable")).toBeNull();
+  });
+
+  it("keeps the updates and notices cards' last answer when their refresh fails", async () => {
+    context.permissions = [...context.permissions, "notifications.read", "announcements.read"];
+    context.actions = ["announcement.read"];
+    const { client } = renderPageWithFixture(fixture);
+    expect(await screen.findByText(/You’re up to date/)).toBeTruthy();
+    expect(await screen.findByText("No new notices. Enjoy a little quiet.")).toBeTruthy();
+    vi.mocked(getNotifications).mockRejectedValueOnce(new Error("Updates unavailable"));
+    vi.mocked(getAnnouncements).mockRejectedValueOnce(new Error("Notices unavailable"));
+    await act(async () => {
+      await client.refetchQueries({ predicate: (query) => query.queryKey.includes("hub-preview") });
+    });
+    expect(await screen.findByText("Updates didn't refresh. These are the last ones that loaded.")).toBeTruthy();
+    expect(screen.getByText("Team notices didn't refresh. These are the last ones that loaded.")).toBeTruthy();
+    expect(screen.getByText(/You’re up to date/)).toBeTruthy();
+    expect(screen.getByText("No new notices. Enjoy a little quiet.")).toBeTruthy();
+    expect(screen.queryByText(/unavailable/)).toBeNull();
+  });
+
+  it("shows the hub's outline, then a card with Try again instead of the server's sentence", async () => {
+    vi.mocked(getEmployeeHub).mockReturnValueOnce(new Promise(() => {}) as never);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const view = render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={["/app/employee-hub"]}>
+          <EmployeeHubPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Employee Hub")).toBe(true);
+    expect(screen.queryByText("Getting your day ready…")).toBeNull();
+    view.unmount();
+
+    vi.mocked(getEmployeeHub).mockReset().mockRejectedValueOnce(new Error("hub service down")).mockResolvedValue(fixture);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/app/employee-hub"]}>
+          <EmployeeHubPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load Employee Hub" })).toBeTruthy();
+    expect(screen.queryByText("hub service down")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+  });
+
+  it("keeps the last day and says so when the hub's refresh fails", async () => {
+    const { client } = renderPageWithFixture(fixture);
+    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+    vi.mocked(getEmployeeHub).mockRejectedValueOnce(new Error("hub service down"));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["employee-hub"] });
+    });
+    expect(
+      await screen.findByText("Your day didn't refresh. This is the last schedule that loaded."),
+    ).toBeTruthy();
+    expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(screen.queryByText("Your schedule may be out of date.")).toBeNull();
+    expect(screen.queryByText("hub service down")).toBeNull();
+
+    // While the retry is on its way the button says so and waits.
+    let answer: (value: typeof fixture) => void = () => {};
+    vi.mocked(getEmployeeHub).mockReturnValueOnce(new Promise((resolve) => { answer = resolve; }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const waiting = await screen.findByRole("button", { name: "Trying again…" });
+    expect((waiting as HTMLButtonElement).disabled).toBe(true);
+    await act(async () => answer(fixture));
+    await waitFor(() =>
+      expect(screen.queryByText("Your day didn't refresh. This is the last schedule that loaded.")).toBeNull(),
+    );
   });
   // EKRAN-08: dated posts show under Coming up, for the person's own location; the rest stay Team notices.
   it("lists published Important Dates under Coming up and keeps them out of Team notices", async () => {
@@ -458,7 +551,7 @@ describe("EmployeeHubPage", () => {
     );
     renderPage();
     expect(
-      await screen.findByText("This section couldn’t be loaded."),
+      await screen.findByRole("heading", { name: "We couldn't load your reminders" }),
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
   });
@@ -622,6 +715,20 @@ describe("EmployeeHubPage", () => {
         shift_id: "22000000-0000-4000-8000-000000000005",
       }, expect.any(String)),
     );
+  });
+
+  it("keeps My availability on screen and says so when the hub's refresh fails", async () => {
+    const { client } = renderPageWithFixture(fixture, "/app/employee-hub/my-availability");
+    expect(await screen.findByRole("switch", { name: "Monday all day unavailable" })).toBeTruthy();
+    vi.mocked(getEmployeeHub).mockRejectedValueOnce(new Error("hub service down"));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["employee-hub"] });
+    });
+    expect(
+      await screen.findByText("Employee Hub didn't refresh. This is the last information that loaded."),
+    ).toBeTruthy();
+    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toBeTruthy();
+    expect(screen.queryByText("hub service down")).toBeNull();
   });
 
   it("opens the current weekly editor by default and saves without approval", async () => {

@@ -10,7 +10,8 @@ const model = { workspace_id: "w", week_start: "2026-09-14", locations: [{ id: "
 const drafts = ["a", "b"].map(id => ({ id, name: id, revision: 1, workspace_id: "w", week_start: model.week_start })) as ScheduleDraftSummary[];
 const shifts = (id: string) => [{ id }] as ScheduleShift[];
 const base = { workspaceId: "w", model, modelVersion: 1, activeDraftId: "a" as string | null,
-  editing: false, loading: false, drafts, onMissingDraft: vi.fn() };
+  editing: false, editSession: null as { id: string; revision: number; sourceDraftId: string | null } | null,
+  loading: false, drafts, onMissingDraft: vi.fn() };
 function deferred<T>() { let resolve!: (value: T) => void; const promise = new Promise<T>(done => { resolve = done; }); return { promise, resolve }; }
 
 describe("live preview source resolution", () => {
@@ -26,6 +27,21 @@ describe("live preview source resolution", () => {
     expect(result.current.shifts?.[0]?.id).toBe("b-shift");
     expect(result.current.requestedKey).toBe(result.current.resolvedKey);
   });
+  // A live refresh re-reads the open draft: its last shifts stay on the grid meanwhile, never an empty or grey week.
+  it("keeps the same draft's last shifts while it is read again, but not another draft's", async () => {
+    const again = deferred<{ shifts: ScheduleShift[] }>();
+    vi.mocked(fetchScheduleDraftShifts).mockReset().mockResolvedValueOnce({ shifts: shifts("a-1") }).mockReturnValueOnce(again.promise);
+    const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: base });
+    await waitFor(() => expect(result.current.shifts?.[0]?.id).toBe("a-1"));
+    rerender({ ...base, modelVersion: 2 });
+    expect(result.current.shifts?.[0]?.id).toBe("a-1");
+    expect(result.current.resolvedKey).toBeNull();
+    await act(async () => again.resolve({ shifts: shifts("a-2") }));
+    expect(result.current.shifts?.[0]?.id).toBe("a-2");
+    vi.mocked(fetchScheduleDraftShifts).mockReturnValueOnce(new Promise(() => {}));
+    rerender({ ...base, modelVersion: 2, activeDraftId: "b" });
+    expect(result.current.shifts).toBeNull();
+  });
   it("invalidates the old snapshot during loading, edit entry and workspace changes", async () => {
     vi.mocked(fetchScheduleDraftShifts).mockResolvedValue({ shifts: shifts("a") });
     const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: base });
@@ -33,6 +49,24 @@ describe("live preview source resolution", () => {
     rerender({ ...base, loading: true }); expect(result.current.resolvedKey).toBeNull();
     rerender({ ...base, editing: true }); expect(result.current.resolvedKey).toBeNull();
     rerender({ ...base, workspaceId: "other", activeDraftId: null }); expect(result.current.resolvedKey).toBeNull();
+  });
+  // Mert 2026-10-12: Export never asks for a save; an open edit is exported as it is on screen.
+  it("makes an open edit the source at once, keyed to its revision, without reading the saved draft", async () => {
+    vi.mocked(fetchScheduleDraftShifts).mockClear();
+    const editing = { ...base, editing: true, editSession: { id: "s", revision: 4, sourceDraftId: "a" as string | null } };
+    const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: { ...editing, editSession: null } as typeof base });
+    expect(result.current.resolvedKey).toBeNull();
+    rerender(editing);
+    expect(result.current.source).toEqual({ kind: "edit_session", id: "s", revision: 4, draftName: "a" });
+    expect(result.current.resolvedKey).toBe(result.current.requestedKey);
+    const first = result.current.requestedKey;
+    rerender({ ...editing, editSession: { ...editing.editSession, revision: 5 } });
+    expect(result.current.requestedKey).not.toBe(first);
+    rerender({ ...editing, editSession: { ...editing.editSession, revision: 5 }, loading: true });
+    expect(result.current.resolvedKey).toBeNull();
+    rerender({ ...editing, activeDraftId: null, editSession: { id: "s", revision: 1, sourceDraftId: null } });
+    expect(result.current.source).toEqual({ kind: "edit_session", id: "s", revision: 1, draftName: null });
+    expect(fetchScheduleDraftShifts).not.toHaveBeenCalled();
   });
   it("switches immediately to published without letting a pending draft restore itself", async () => {
     const a = deferred<{ shifts: ScheduleShift[] }>(); vi.mocked(fetchScheduleDraftShifts).mockReturnValue(a.promise);

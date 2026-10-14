@@ -24,6 +24,8 @@ export const scheduleExportV2ScopeSchema = z.object({
   source: z.discriminatedUnion("kind", [
     z.object({ kind: z.literal("published") }).strict(),
     z.object({ kind: z.literal("draft"), id: z.string().uuid(), revision: z.number().int().positive() }).strict(),
+    // The person's own open edit, exported as it is on screen; nothing has to be saved first (Mert 2026-10-12).
+    z.object({ kind: z.literal("edit_session"), id: z.string().uuid(), revision: z.number().int().positive() }).strict(),
   ]),
 }).strict().superRefine((value, context) => {
   const start = Date.parse(`${value.week_start}T00:00:00Z`);

@@ -181,7 +181,7 @@ export function CatalogDeleteAction({
               disabled={deletion.isPending}
               onClick={dismiss}
             >
-              Keep {nouns[kind]}
+              Cancel
             </button>
             <button
               type="button"

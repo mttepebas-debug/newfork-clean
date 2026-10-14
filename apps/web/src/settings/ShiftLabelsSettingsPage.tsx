@@ -16,6 +16,7 @@ import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { ShiftCatalogHeader, ShiftCatalogToolbar } from "./ShiftCatalogTabs";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { ShiftCatalogList } from "./ShiftCatalogList";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import {
   listShiftLabels,
   reorderShiftLabels,
@@ -128,22 +129,14 @@ export default function ShiftLabelsSettingsPage() {
     reorderMutation.mutate(ids);
   };
 
-  // The API's "no" gets the one no-access card, never its raw sentence.
-  // The card takes the catalog's place, not the page's: the title and the
-  // Shift types | Shift labels switch stay, so the other tab is still reachable.
+  // The API's "no" gets the one no-access card, never its raw sentence, and
+  // the card alone: no title, no tabs (Mert 2026-10-14). Both tabs open by the
+  // same Settings gate, so a "no" here is a "no" there too.
   if (isNoAccess(query.error))
     return (
-      <section
-        className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
-        aria-labelledby="shift-labels-settings-title"
-      >
-        <ShiftCatalogHeader titleId="shift-labels-settings-title" />
-        <ShiftCatalogToolbar />
-        <NoAccessState
-          subject="shift labels"
-          homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
-        />
-      </section>
+      <NoAccessState
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-labels")}
+      />
     );
   return (
     <section
@@ -255,15 +248,18 @@ export default function ShiftLabelsSettingsPage() {
           </form>
         </CatalogDrawer>
       ) : null}
-      {query.isLoading || query.error ? (
+      {query.isLoading || (query.error && !query.data) ? (
         <>
           <ShiftCatalogToolbar disabled={saveMutation.isPending || deleteLocked} />
           {query.isLoading ? (
-            <p className="settings-state">Loading shift labels...</p>
+            <ListOutline label="Loading shift labels" rows={5} columns={3} />
           ) : (
-            <p className="settings-state error" role="alert">
-              {errorText(query.error)}
-            </p>
+            <LoadError
+              title="We couldn't load shift labels"
+              detail="Shift labels didn't load. Nothing was changed."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
           )}
         </>
       ) : (
@@ -274,11 +270,21 @@ export default function ShiftLabelsSettingsPage() {
           addDisabled={saveMutation.isPending || deleteLocked}
           tabsDisabled={saveMutation.isPending || deleteLocked}
           notice={
-            !editing && formError ? (
-              <p className="settings-state error" role="alert">
-                {formError}
-              </p>
-            ) : null
+            <>
+              {/* Waits while a drawer is open: the page behind it is inert and the edit doesn't use the list. */}
+              {query.error && !editing ? (
+                <RefreshError
+                  message="Shift labels didn't refresh. This is the last list that loaded."
+                  retrying={query.isFetching}
+                  onRetry={() => void query.refetch()}
+                />
+              ) : null}
+              {!editing && formError ? (
+                <p className="settings-state error" role="alert">
+                  {formError}
+                </p>
+              ) : null}
+            </>
           }
           onEdit={openEditor}
           onMove={move}

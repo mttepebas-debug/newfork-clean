@@ -73,6 +73,20 @@ describe("SecurityPage", () => {
     vi.mocked(requestSecureAccountDeletion).mockResolvedValue(undefined);
   });
 
+  it("says the security details didn't load, without the raw error, and keeps deletion closed until they do", async () => {
+    vi.mocked(loadAccountSecurityState).mockRejectedValueOnce(new Error("Gateway timeout"));
+    render(<SecurityPage />);
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Your security details didn't load.");
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    expect(screen.queryByText("Checking verification")).toBeNull();
+    expect(screen.getByRole("button", { name: "Delete account" })).toHaveProperty("disabled", true);
+    fireEvent.click(within(line).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Not verified")).toBeTruthy();
+    expect(screen.queryByText(/didn't load/)).toBeNull();
+    expect(loadAccountSecurityState).toHaveBeenCalledTimes(2);
+  });
+
   it("shows pending double-confirmation state with resend and cancel actions", async () => {
     vi.mocked(loadAccountSecurityState).mockResolvedValue({
       email: account.email,

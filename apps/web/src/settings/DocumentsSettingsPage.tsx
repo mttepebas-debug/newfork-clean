@@ -6,14 +6,19 @@ import {
   type DocumentTypeInput,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { FileText, Search, X } from "lucide-react";
+import { FileText, Search } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
-import { CatalogSortButton } from "../views/CatalogSortButton";
+import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
-import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import {
+  CatalogPageHeader,
+  ListAddButton,
+  TabRowAdd,
+} from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import {
   listDocumentTypes,
   reorderDocumentTypes,
@@ -26,6 +31,7 @@ import { DocumentSettingsEditor } from "./DocumentSettingsEditor";
 import { formatsLabel } from "../documents/document-rules";
 
 import { isNoAccess } from "../lib/no-access";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
@@ -66,6 +72,7 @@ function editableDocument(document: DocumentType): DocumentTypeInput {
 export default function DocumentsSettingsPage() {
   const { context } = useAuth();
   const queryClient = useQueryClient();
+  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const canReadSettings = can(context, "settings.documents.read");
   const canManage = can(context, "settings.documents.write");
@@ -202,18 +209,26 @@ export default function DocumentsSettingsPage() {
           active={selected}
           label={label}
           onClick={() =>
-            setSort({ key, descending: selected ? !sort.descending : false })
+            setSort(nextCatalogSort(sort, key))
           }
         />
       </span>
     );
   };
 
+  const addButton = canManage ? (
+    <ListAddButton
+      label="New document"
+      shortLabel="Add"
+      disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
+      onClick={() => openEditor()}
+    />
+  ) : null;
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="document settings"
         homeHref={noAccessHomePath(context, "/app/settings/documents")}
       />
     );
@@ -267,6 +282,7 @@ export default function DocumentsSettingsPage() {
                   ),
                 )}
               </div>
+              {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
             </div>
             <div className="catalog-toolbar-filter-row">
               <select
@@ -291,13 +307,7 @@ export default function DocumentsSettingsPage() {
                   onChange={(event) => setSearch(event.target.value)}
                 />
               </label>
-              {canManage ? (
-                <ListAddButton
-                  label="New document"
-                  disabled={!query.isSuccess || saveMutation.isPending || applyBusy}
-                  onClick={() => openEditor()}
-                />
-              ) : null}
+              {phone ? null : addButton}
             </div>
           </div>
 
@@ -337,14 +347,24 @@ export default function DocumentsSettingsPage() {
             </p>
           ) : null}
           {query.isLoading ? (
-            <p className="settings-state">Loading document types...</p>
+            <ListOutline label="Loading document types" rows={5} columns={3} />
           ) : null}
-          {query.error ? (
-            <p className="settings-state error" role="alert">
-              {errorText(query.error)}
-            </p>
+          {query.error && !query.data ? (
+            <LoadError
+              title="We couldn't load document types"
+              detail="Document types didn't load. Nothing was changed."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
           ) : null}
-          {!query.isLoading && !query.error ? (
+          {query.error && query.data ? (
+            <RefreshError
+              message="Document types didn't refresh. This is the last list that loaded."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null}
+          {query.data ? (
             <div className="job-catalog" aria-label="Document types">
               <div className="job-column-headings catalog-column-headings document-catalog-row">
                 {sortColumn("title", "Document name")}
@@ -363,18 +383,7 @@ export default function DocumentsSettingsPage() {
                   "Published",
                   "document-catalog-optional",
                 )}
-                {sort ? (
-                  <button
-                    type="button"
-                    className="job-icon-button"
-                    aria-label="Clear column sorting"
-                    onClick={() => setSort(null)}
-                  >
-                    <X size={14} />
-                  </button>
-                ) : (
-                  <span />
-                )}
+                <span />
               </div>
               {visible.length === 0 ? (
                 <div className="catalog-table-empty">

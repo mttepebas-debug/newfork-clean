@@ -25,6 +25,13 @@ describe("frozen list pages", () => {
     "notifications-page",
     "announcements-page",
     "document-catalog-settings-page",
+    // Settings → Jobs joined the shared list look on 2026-10-14 (Mert's
+    // comment on its page: "sadece liste scroll up down olsun").
+    "jobs-catalog-page",
+    // Locations, Shift catalog and Shift labels too (Mert 2026-10-14, card
+    // "Hepsinde sabit").
+    "locations-catalog-settings-page",
+    "shift-catalog-settings-page",
   ];
 
   it("is loaded with the shared list look", () => {
@@ -55,11 +62,32 @@ describe("frozen list pages", () => {
     expect(body).toMatch(/position\s*:\s*relative/);
   });
 
+  // Shift catalog's list page sits in a shell and a tab panel: both pass the
+  // height down, or the whole page scrolls again.
+  it("passes the height through Shift catalog's shell and tab panel", () => {
+    expect(bodyOf((head) => head.includes(".shift-catalog-shell") && head.includes(":has("))).toMatch(
+      /height\s*:\s*100%/,
+    );
+    const panel = bodyOf((head) => head.endsWith(".shift-catalog-shell > .shift-catalog-panel"));
+    expect(panel).toMatch(/display\s*:\s*flex/);
+    expect(panel).toMatch(/flex\s*:\s*1 1 auto/);
+    expect(panel).toMatch(/min-height\s*:\s*0/);
+    expect(bodyOf((head) => head.startsWith(".shift-catalog-panel > .shift-catalog-settings-page"))).toMatch(
+      /flex\s*:\s*1 1 auto/,
+    );
+  });
+
   // Announcements' Active and Past tables scroll in one body under the toolbar.
   it("scrolls Announcements' two tables in one body", () => {
     expect(readFileSync("src/views/AnnouncementsPage.tsx", "utf8")).toContain('className="list-frozen-body"');
     expect(bodyOf((head) => head.includes(".announcements-page") && head.includes(".list-frozen-body"))).toMatch(
       /overflow-y\s*:\s*auto/,
+    );
+  });
+
+  it("draws a focus ring inside the frame so its edge is not cut", () => {
+    expect(bodyOf((head) => head.includes("> .job-catalog") && head.includes(":focus-visible"))).toMatch(
+      /outline-offset\s*:\s*-2px/,
     );
   });
 

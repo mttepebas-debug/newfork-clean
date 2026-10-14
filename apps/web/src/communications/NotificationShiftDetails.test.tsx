@@ -223,6 +223,8 @@ describe("notification shift detail disclosure", () => {
       await screen.findByRole("button", { name: "View shift details" }),
     );
     const retry = await screen.findByRole("button", { name: "Try again" });
+    // Under the panel's own h3 headings, not above them.
+    expect(screen.getByRole("heading", { level: 3, name: "We couldn't load the shift details" })).toBeTruthy();
     expect(screen.queryByText(notification().body)).toBeNull();
     expect(screen.queryByText("Alex QA")).toBeNull();
     fireEvent.click(retry);

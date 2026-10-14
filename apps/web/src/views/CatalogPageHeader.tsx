@@ -69,3 +69,9 @@ export function ListAddButton({
     </Button>
   );
 }
+
+/** On a phone, a list page with tabs shows its add button at the right end of
+ * the tab row instead of the filter row (Mert 2026-10-14). */
+export function TabRowAdd({ children }: { readonly children: ReactNode }) {
+  return <span className="catalog-tab-add">{children}</span>;
+}

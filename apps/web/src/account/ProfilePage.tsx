@@ -43,6 +43,7 @@ import { validateAvatarFile } from "./avatar-crop";
 import { AccountAvatar } from "./AccountAvatar";
 import { RequestError } from "../lib/request-error";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
 
@@ -736,16 +737,29 @@ function OwnerLegalNameBlock({
   const legalName = useOwnLegalName(workspaceId);
   // Kept above the fields, which start over when the saved name comes back.
   const save = useSaveOwnLegalName(workspaceId);
-  if (legalName.isPending) return null;
+  if (legalName.isPending)
+    return <LinesOutline label="Loading your legal name" lines={3} />;
   // A failed read is not a failed save: the save wording would send the owner
   // looking for a change they never made.
-  if (legalName.isError)
+  if (legalName.isError && legalName.data === undefined)
     return (
-      <p className="form-error" role="alert">
-        Your legal name could not be loaded. Reload the page to try again.
-      </p>
+      <LoadError
+        inset
+        title={showName ? `We couldn't load your legal name for ${workspaceName}` : "We couldn't load your legal name"}
+        detail="Your legal name didn't load. Nothing was changed."
+        retrying={legalName.isFetching}
+        onRetry={() => void legalName.refetch()}
+      />
     );
   return (
+    <>
+    {legalName.isError ? (
+      <RefreshError
+        message="Your legal name didn't refresh. This is the last one that loaded."
+        retrying={legalName.isFetching}
+        onRetry={() => void legalName.refetch()}
+      />
+    ) : null}
     <OwnerLegalNameFields
       // A saved name comes back from the server and starts a clean draft.
       key={JSON.stringify(legalName.data)}
@@ -756,6 +770,7 @@ function OwnerLegalNameBlock({
       register={register}
       onEdit={onEdit}
     />
+    </>
   );
 }
 

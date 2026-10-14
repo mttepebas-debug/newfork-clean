@@ -3,7 +3,6 @@ import {
   BellRing,
   BriefcaseBusiness,
   Check,
-  Loader2,
   MapPin,
   RefreshCw,
   Users,
@@ -11,8 +10,7 @@ import {
 } from "lucide-react";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 
-import { PanelError } from "../employee-hub/DashboardPrimitives";
-import { ScheduleState } from "../schedule/components/ScheduleState";
+import { LinesOutline, ListOutline, LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import ScheduleShiftDesignPage from "./ScheduleShiftDesignPage";
@@ -293,14 +291,13 @@ function StatesBoard() {
             <main className="auth-loading fg-fill" aria-label="Loading page" />
           </Card>
           <Card title="Schedule loading" where="Schedule">
-            <ScheduleState title="Loading Schedule" detail="Fetching the week." />
+            <ListOutline label="Loading Schedule" rows={8} columns={8} />
           </Card>
           <Card title="Employee Hub skeleton" where="Employee Hub">
-            <div className="eh-loading" role="status">
-              <p>Getting your day ready…</p>
-              <div className="eh-loading-bar" />
-              <div className="eh-loading-block" />
-            </div>
+            <LoadingOutline label="Loading Employee Hub" className="eh-loading">
+              <Skeleton width={300} height={28} style={{ maxWidth: "100%", margin: "24px 0", borderRadius: 10 }} />
+              <Skeleton width="100%" height={260} style={{ borderRadius: 20 }} />
+            </LoadingOutline>
           </Card>
           <Card title="Shift Hub skeleton" where="Shift changes">
             <div className="sx-root sx-skeleton" role="status">
@@ -315,11 +312,8 @@ function StatesBoard() {
           <Card title="Team structure loading" where="Settings › Jobs">
             <div className="job-empty-state" role="status">Loading your team structure…</div>
           </Card>
-          <Card title="Publish preview (spinner never spins)" where="Schedule › Publish">
-            <div className="schedule-publication-preview-state" role="status">
-              <Loader2 size={14} aria-hidden />
-              Loading publish preview
-            </div>
+          <Card title="Publish preview loading" where="Schedule › Publish">
+            <LinesOutline label="Loading publish preview" />
           </Card>
           <Card title="Button while saving" where="Most forms">
             <div className="fg-row">
@@ -340,14 +334,10 @@ function StatesBoard() {
         <h2>Errors</h2>
         <div className="fg-grid">
           <Card title="Schedule failed" where="Schedule">
-            <ScheduleState error title="Schedule unavailable" detail="Failed to fetch" />
+            <LoadError title="We couldn't load Schedule" detail="This week's shifts didn't load. Nothing was changed." onRetry={noop} />
           </Card>
           <Card title="Employee Hub failed" where="Employee Hub">
-            <div className="empty-state">
-              <h2>Employee Hub is unavailable</h2>
-              <p>Failed to fetch</p>
-              <button type="button" className="secondary-button"><RefreshCw size={16} />Retry</button>
-            </div>
+            <LoadError title="We couldn't load Employee Hub" detail="Your day didn't load. Nothing was changed." onRetry={noop} />
           </Card>
           <Card title="Shift Hub failed" where="Shift changes">
             <div className="sx-root sx-empty">
@@ -357,7 +347,7 @@ function StatesBoard() {
             </div>
           </Card>
           <Card title="Dashboard panel failed" where="Employee Hub › a card">
-            <PanelError onRetry={noop} />
+            <LoadError inset level={3} title="We couldn't load your updates" detail="Your updates didn't load. Nothing was changed." onRetry={noop} />
           </Card>
           <Card title="Settings failed" where="Settings pages">
             <p className="settings-state error">Failed to fetch</p>
@@ -366,10 +356,7 @@ function StatesBoard() {
             <div className="job-error" role="alert">Failed to fetch <button type="button">Try again</button></div>
           </Card>
           <Card title="Publish preview failed" where="Schedule › Publish">
-            <div className="schedule-publication-preview-state error" role="alert">
-              <span>Publish preview could not be loaded.</span>
-              <button type="button"><RefreshCw size={13} aria-hidden />Retry</button>
-            </div>
+            <LoadError inset level={3} title="We couldn't load the publish preview" detail="The publish preview didn't load. Nothing was published." onRetry={noop} />
           </Card>
           <Card title="Form error" where="~40 forms">
             <p className="form-error">A template with this name already exists.</p>

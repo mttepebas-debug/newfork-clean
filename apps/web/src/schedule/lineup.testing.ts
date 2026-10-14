@@ -29,6 +29,7 @@ export function shift(input: {
   end: string;
   date?: string;
   labels?: string[];
+  crossesMidnight?: boolean;
 }) {
   n += 1;
   return {
@@ -40,7 +41,7 @@ export function shift(input: {
     scheduled_date: input.date ?? day,
     start_time: input.start,
     end_time: input.end,
-    crosses_midnight: false,
+    crosses_midnight: input.crossesMidnight ?? false,
     label_names: input.labels,
     note: "",
     warning_codes: [],

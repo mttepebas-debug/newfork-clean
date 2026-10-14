@@ -19,10 +19,12 @@ import {
 import { getAnnouncements, getImportantDates } from "../communications/communications-data";
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
-import { CatalogPageHeader, ListAddButton } from "./CatalogPageHeader";
+import { CatalogPageHeader, ListAddButton, TabRowAdd } from "./CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
+import { ListOutline, LoadError } from "../shell/LoadState";
 
 const base = "/app/announcements/important-dates";
 
@@ -34,6 +36,7 @@ export function ImportantDatesPage() {
   const { context } = useAuth();
   const { announcementId } = useParams();
   const navigate = useNavigate();
+  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const [tab, setTab] = useState<"upcoming" | "past">("upcoming");
   const [adding, setAdding] = useState(false);
@@ -54,7 +57,7 @@ export function ImportantDatesPage() {
     if (announcementId) navigate(base, { replace: true, preventScrollReset: true });
   };
   if (isNoAccess(dates.error))
-    return <NoAccessState subject="important dates" homeHref={noAccessHomePath(context, base)} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, base)} />;
   const timeFormat = dates.data?.time_format ?? "12h";
   const needle = search.trim().toLowerCase();
   const rows = (dates.data?.dates ?? [])
@@ -68,6 +71,9 @@ export function ImportantDatesPage() {
         a.title.localeCompare(b.title),
     );
   const selected = dates.data?.dates.find((record) => record.id === announcementId) ?? null;
+  const addButton = dates.data?.can_write ? (
+    <ListAddButton label="New" shortLabel="Add" onClick={() => setAdding(true)} />
+  ) : null;
   return (
     <section
       className="settings-page jobs-settings-page announcements-page important-dates-page list-page"
@@ -100,6 +106,7 @@ export function ImportantDatesPage() {
               </button>
             ))}
           </div>
+          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -111,14 +118,17 @@ export function ImportantDatesPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {dates.data?.can_write && <ListAddButton label="New" onClick={() => setAdding(true)} />}
+          {phone ? null : addButton}
         </div>
       </div>
-      {dates.isLoading && <p className="settings-state">Loading important dates...</p>}
+      {dates.isLoading && <ListOutline label="Loading important dates" rows={5} columns={5} />}
       {dates.error && (
-        <p className="settings-state error" role="alert">
-          Important Dates couldn&apos;t load. Refresh the page to try again.
-        </p>
+        <LoadError
+          title="We couldn't load Important Dates"
+          detail="Important Dates didn't load. Nothing was changed."
+          retrying={dates.isFetching}
+          onRetry={() => void dates.refetch()}
+        />
       )}
       {dates.data && (
         <div className="job-catalog important-dates-table" role="table" aria-label="Important dates">

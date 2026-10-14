@@ -426,6 +426,11 @@ insert into retired (kind, name, step) values
 -- form without that answer goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.acquire_schedule_edit_session_service(uuid, uuid, date, public.schedule_edit_source, uuid, uuid[])', 'EKRAN-01');
+-- Archiving a department takes its jobs with it; the guard that refused the
+-- archive while jobs were active goes (JOBS-DEVIR).
+insert into retired (kind, name, step) values
+  ('function', 'prevent_department_archive_with_active_jobs', 'JOBS-DEVIR'),
+  ('trigger', 'departments.departments_archive_guard_trigger', 'JOBS-DEVIR');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

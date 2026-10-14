@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { documentTypeSchema } from "@newfork/shared";
 import DocumentsSettingsPage from "./DocumentsSettingsPage";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import {
   listDocumentTypes,
   saveDocumentType,
@@ -62,6 +63,7 @@ function mount() {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return client;
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -184,10 +186,11 @@ it("shows the load error and disables creation when document types cannot be rea
     ),
   );
   mount();
-  expect(await screen.findByRole("alert")).toHaveProperty(
-    "textContent",
-    "Document types could not be loaded.",
-  );
+  // The "B" card (Mert 2026-10-14): a heading and Try again, never the server's sentence.
+  const card = await screen.findByRole("alert");
+  expect(within(card).getByRole("heading", { name: "We couldn't load document types" })).toBeTruthy();
+  expect(within(card).getByRole("button", { name: "Try again" })).toBeTruthy();
+  expect(screen.queryByText("Document types could not be loaded.")).toBeNull();
   expect(
     screen.getByRole("button", { name: "New document" }),
   ).toHaveProperty("disabled", true);
@@ -250,11 +253,57 @@ it("sorts rows from the heading and clears back to the saved order", async () =>
   fireEvent.click(screen.getByRole("button", { name: "Document name" }));
   expect(names()).toEqual(["Beta", "Alpha"]);
   expect(header.getAttribute("aria-sort")).toBe("descending");
-  fireEvent.click(screen.getByRole("button", { name: "Clear column sorting" }));
+  expect(screen.queryByRole("button", { name: "Clear column sorting" })).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Document name" }));
   expect(header.getAttribute("aria-sort")).toBe("none");
 });
 it("does not read definitions the core does not open", () => {
   auth.actions = [];
   mount();
   expect(listDocumentTypes).not.toHaveBeenCalled();
+});
+
+// Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+it("keeps New document in the filter row on a computer", async () => {
+  mount();
+  await screen.findByTitle("Safety certificate");
+  expect(
+    screen.getByRole("button", { name: "New document" }).closest(".catalog-toolbar-filter-row"),
+  ).toBeTruthy();
+});
+it("puts New document at the right end of the tab row on a phone", async () => {
+  stubPhoneWidth();
+  mount();
+  await screen.findByTitle("Safety certificate");
+  const add = screen.getByRole("button", { name: "New document" });
+  expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+  expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+});
+afterEach(() => vi.unstubAllGlobals());
+it("outlines document types while they load", () => {
+  vi.mocked(listDocumentTypes).mockReturnValueOnce(new Promise(() => {}));
+  mount();
+  expect(screen.getByRole("status").textContent).toContain("Loading document types");
+  expect(screen.queryByText("Loading document types...")).toBeNull();
+});
+it("loads the list again from the card's Try again", async () => {
+  vi.mocked(listDocumentTypes).mockRejectedValueOnce(new Error("catalog down"));
+  mount();
+  const card = await screen.findByRole("alert");
+  fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+  expect(await screen.findByLabelText("Document types")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "We couldn't load document types" })).toBeNull();
+});
+it("keeps the last list and says so when a refresh fails", async () => {
+  const client = mount();
+  const catalog = await screen.findByLabelText("Document types");
+  vi.mocked(listDocumentTypes).mockRejectedValueOnce(new Error("catalog down"));
+  await act(async () => {
+    await client.refetchQueries();
+  });
+  expect(
+    await screen.findByText("Document types didn't refresh. This is the last list that loaded."),
+  ).toBeTruthy();
+  expect(catalog.isConnected).toBe(true);
+  expect(screen.queryByText("catalog down")).toBeNull();
 });

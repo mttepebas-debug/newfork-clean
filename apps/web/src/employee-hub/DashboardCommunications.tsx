@@ -12,7 +12,8 @@ import {
   getAnnouncements,
   getNotifications,
 } from "../communications/communications-data";
-import { CardHeading, PanelError } from "./DashboardPrimitives";
+import { CardHeading } from "./DashboardPrimitives";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 function useInbox(workspaceId: string) {
   const { context } = useAuth();
   return useQuery({
@@ -48,10 +49,24 @@ export function RecentChanges({ workspaceId }: { workspaceId: string }) {
         icon={<Bell size={18} />}
         to="/app/notifications"
       />
-      {query.isError ? (
-        <PanelError onRetry={() => void query.refetch()} />
+      {query.isError && query.data ? (
+        <RefreshError
+          message="Updates didn't refresh. These are the last ones that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.isError && !query.data ? (
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't load your updates"
+          detail="Your updates didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : query.isLoading ? (
-        <p className="eh-empty">Loading your updates…</p>
+        <LinesOutline label="Loading your updates" lines={3} />
       ) : (
         visible.slice(0, 3).map((item) => (
           <Link
@@ -70,7 +85,7 @@ export function RecentChanges({ workspaceId }: { workspaceId: string }) {
           </Link>
         ))
       )}
-      {query.isSuccess && !visible.length && (
+      {query.data && !visible.length && (
         <p className="eh-empty">
           You’re up to date. Schedule changes and request updates will appear
           here.
@@ -157,10 +172,24 @@ export function Announcements({ workspaceId }: { workspaceId: string }) {
         icon={<Megaphone size={18} />}
         to="/app/announcements"
       />
-      {query.isError ? (
-        <PanelError onRetry={() => void query.refetch()} />
+      {query.isError && query.data ? (
+        <RefreshError
+          message="Team notices didn't refresh. These are the last ones that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.isError && !query.data ? (
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't load team notices"
+          detail="Team notices didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : query.isLoading ? (
-        <p className="eh-empty">Loading notices…</p>
+        <LinesOutline label="Loading team notices" lines={3} />
       ) : items.length ? (
         items.map((item) => (
           <Link

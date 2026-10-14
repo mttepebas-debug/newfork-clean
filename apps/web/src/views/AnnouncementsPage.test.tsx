@@ -10,7 +10,7 @@ import type {
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { record } from "../communications/announcement-fixtures.test-util";
 import {
   acknowledgeAnnouncement,
@@ -22,6 +22,7 @@ import {
   setAnnouncementState,
 } from "../communications/communications-data";
 import { RequestError } from "../lib/request-error";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import { AnnouncementsPage } from "./AnnouncementsPage";
 import { ImportantDatesPage } from "./ImportantDatesPage";
 
@@ -324,7 +325,7 @@ describe("Announcements list (EKRAN-08)", () => {
   it("shows the no-access card when the API refuses", async () => {
     vi.mocked(getAnnouncements).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderList();
-    expect(await screen.findByRole("heading", { name: "You don't have access to announcements" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Announcements" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });
@@ -935,8 +936,61 @@ describe("Important Dates (EKRAN-08)", () => {
     expect(await screen.findByLabelText("Search important dates")).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New" })).toBeNull();
   });
+
+  // Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+  it("puts New at the right end of the tab row on a phone, short label Add", async () => {
+    stubPhoneWidth();
+    vi.mocked(getImportantDates).mockResolvedValue({ workspace_id: workspaceId, time_format: "12h", can_write: true, dates: [] });
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path]);
+    const add = await screen.findByRole("button", { name: "New" });
+    const search = screen.getByLabelText("Search important dates");
+    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+    expect(search.closest("label")?.nextElementSibling).toBeNull();
+    expect(add.querySelector(".list-add-short")?.textContent).toBe("Add");
+  });
+  afterEach(() => vi.unstubAllGlobals());
 });
 
 function loc(location_id: string, name: string, day: "open" | "closed" | "short" = "open") {
   return { location_id, name, short_name: name, timezone: "America/Los_Angeles", archived: false, day, opens: null, closes: null };
 }
+
+// Loading and error look the same everywhere (Mert 2026-10-14, "B").
+describe("loading and error", () => {
+  it("Announcements: outline while loading, then the load-error card that tries again", async () => {
+    vi.mocked(getAnnouncements).mockReturnValueOnce(new Promise(() => undefined));
+    const first = renderList();
+    expect(screen.getByText("Loading announcements").closest("[role=status]")).toBeTruthy();
+    first.unmount();
+
+    vi.mocked(getAnnouncements).mockRejectedValueOnce(new Error("Failed to fetch")).mockResolvedValue(list());
+    renderList();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load announcements" })).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "We couldn't load announcements" })).toBeNull());
+  });
+
+  it("Important Dates: the load-error card tries again", async () => {
+    vi.mocked(getImportantDates)
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockResolvedValue({ workspace_id: workspaceId, time_format: "12h", can_write: true, dates: [] });
+    const path = "/app/announcements/important-dates";
+    renderAt(path, <ImportantDatesPage />, [path]);
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load Important Dates" })).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("table", { name: "Important dates" })).toBeTruthy();
+  });
+
+  it("an announcement that did not load gives the inset card in its drawer", async () => {
+    const id = "a8200000-0000-4000-8000-000000000091";
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(getAnnouncement).mockRejectedValueOnce(new Error("Failed to fetch"));
+    renderList(`/app/announcements/${id}`);
+    const card = await screen.findByRole("alert");
+    expect(card.className).toContain("inset");
+    expect(within(card).getByRole("heading", { level: 3, name: "We couldn't load this announcement" })).toBeTruthy();
+  });
+});

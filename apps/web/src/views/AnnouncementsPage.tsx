@@ -37,6 +37,7 @@ import { CatalogSortButton } from "./CatalogSortButton";
 import { ListCard, ListCards } from "./ListCards";
 import "../settings/jobs-settings.css";
 import "./announcements-catalog.css";
+import { ListOutline, LoadError } from "../shell/LoadState";
 
 /**
  * Announcements (EKRAN-08): one list of posts, Important Dates among them.
@@ -61,7 +62,7 @@ export function AnnouncementsPage() {
   const open = (id: string) => navigate(`/app/announcements/${id}`, { preventScrollReset: true });
 
   if (isNoAccess(query.error))
-    return <NoAccessState subject="announcements" homeHref={noAccessHomePath(context, "/app/announcements")} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/announcements")} />;
   const list = query.data;
   const reader = list ? !list.can_manage : false;
   return (
@@ -80,11 +81,14 @@ export function AnnouncementsPage() {
             : "Create, schedule, and publish updates for the right teams. Posts added to Important Dates show a calendar icon."
         }
       />
-      {query.isLoading && <p className="settings-state">Loading announcements...</p>}
+      {query.isLoading && <ListOutline label="Loading announcements" rows={5} columns={4} />}
       {query.error && (
-        <p className="settings-state error" role="alert">
-          Announcements couldn&apos;t load. Refresh the page to try again.
-        </p>
+        <LoadError
+          title="We couldn't load announcements"
+          detail="Announcements didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       )}
       {list && !reader && (
         <ManagerList

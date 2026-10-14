@@ -10,8 +10,13 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Search, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
-import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
-import { CatalogSortButton } from "../views/CatalogSortButton";
+import {
+  CatalogPageHeader,
+  ListAddButton,
+  TabRowAdd,
+} from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
+import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import "./jobs-settings.css";
@@ -33,6 +38,7 @@ import {
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 const emptyLocation: LocationDraft = {
@@ -67,6 +73,7 @@ export default function LocationsSettingsPage() {
   const canEdit =
     context?.permissions.includes("settings.locations.manage") ?? false;
   const queryClient = useQueryClient();
+  const phone = useListPhoneWidth();
   const workspaceId = context?.workspace.id ?? "";
   const queryKey = ["organization-locations", workspaceId];
   const locations = useQuery({
@@ -190,18 +197,26 @@ export default function LocationsSettingsPage() {
           active={selected}
           label={label}
           onClick={() =>
-            setSort({ key, descending: selected ? !sort.descending : false })
+            setSort(nextCatalogSort(sort, key))
           }
         />
       </span>
     );
   };
 
+  const addButton = canEdit ? (
+    <ListAddButton
+      label="New location"
+      shortLabel="Add"
+      disabled={saveMutation.isPending || deleteLocked}
+      onClick={() => openEditor()}
+    />
+  ) : null;
+
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(locations.error))
     return (
       <NoAccessState
-        subject="locations"
         homeHref={noAccessHomePath(context, "/app/settings/locations")}
       />
     );
@@ -243,6 +258,7 @@ export default function LocationsSettingsPage() {
               </button>
             ))}
           </div>
+          {phone && addButton ? <TabRowAdd>{addButton}</TabRowAdd> : null}
         </div>
         <div className="catalog-toolbar-filter-row">
           <label className="job-search toolbar-search">
@@ -254,13 +270,7 @@ export default function LocationsSettingsPage() {
               onChange={(event) => setSearch(event.target.value)}
             />
           </label>
-          {canEdit ? (
-            <ListAddButton
-              label="New location"
-              disabled={saveMutation.isPending || deleteLocked}
-              onClick={() => openEditor()}
-            />
-          ) : null}
+          {phone ? null : addButton}
         </div>
       </div>
       {editing ? (
@@ -414,14 +424,24 @@ export default function LocationsSettingsPage() {
         </p>
       ) : null}
       {locations.isLoading ? (
-        <p className="settings-state">Loading locations...</p>
+        <ListOutline label="Loading locations" rows={4} columns={4} />
       ) : null}
-      {locations.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(locations.error)}
-        </p>
+      {locations.error && !locations.data ? (
+        <LoadError
+          title="We couldn't load locations"
+          detail="Locations didn't load. Nothing was changed."
+          retrying={locations.isFetching}
+          onRetry={() => void locations.refetch()}
+        />
       ) : null}
-      {!locations.isLoading && !locations.error ? (
+      {locations.error && locations.data ? (
+        <RefreshError
+          message="Locations didn't refresh. This is the last list that loaded."
+          retrying={locations.isFetching}
+          onRetry={() => void locations.refetch()}
+        />
+      ) : null}
+      {locations.data ? (
         <div className="job-catalog" aria-label="Locations">
           <div
             className="job-column-headings catalog-column-headings location-catalog-row"
@@ -431,18 +451,7 @@ export default function LocationsSettingsPage() {
             {sortColumn("address", "Address")}
             {sortColumn("phone", "Phone number")}
             {sortColumn("timezone", "Time zone")}
-            {sort ? (
-              <button
-                type="button"
-                className="job-icon-button"
-                aria-label="Clear column sorting"
-                onClick={() => setSort(null)}
-              >
-                <X size={14} />
-              </button>
-            ) : (
-              <span />
-            )}
+            <span />
           </div>
           {visible.length === 0 ? (
             <div className="catalog-table-empty">

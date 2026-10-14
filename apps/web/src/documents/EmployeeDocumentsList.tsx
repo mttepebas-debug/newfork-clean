@@ -8,7 +8,7 @@ import { useQuery } from "@tanstack/react-query";
 import { FileText, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { CatalogSortButton } from "../views/CatalogSortButton";
-import { errorText } from "../settings/GeneralSettingsPage";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import {
   documentQueryKey,
   listDocuments,
@@ -29,6 +29,16 @@ const statusLabels = {
   expired: "Expired",
   completed: "Completed",
 };
+/** One cached read for the list and the page around it, so the page can drop
+ * its header when the list is refused. */
+export function useEmployeeDocuments(audience: DocumentAudience, userId: string) {
+  return useQuery({
+    queryKey: documentQueryKey(audience, userId),
+    queryFn: () => listDocuments(audience),
+    enabled: Boolean(audience.workspaceId),
+  });
+}
+
 export function EmployeeDocumentsList(props: {
   audience: DocumentAudience;
   userId: string;
@@ -42,11 +52,7 @@ export function EmployeeDocumentsList(props: {
 }) {
   const personal = props.personal ?? false;
   const { context } = useAuth();
-  const query = useQuery({
-    queryKey: documentQueryKey(props.audience, props.userId),
-    queryFn: () => listDocuments(props.audience),
-    enabled: Boolean(props.audience.workspaceId),
-  });
+  const query = useEmployeeDocuments(props.audience, props.userId);
   const [filter, setFilter] = useState<DocumentStatusFilter>("all");
   const [search, setSearch] = useState("");
   const [location, setLocation] = useState("");
@@ -114,13 +120,25 @@ export function EmployeeDocumentsList(props: {
     currentIndex >= 0 ? currentIndex + 1 : (selected?.ordinal ?? 0);
   const next = visible[nextIndex];
   // Nothing asked of this person here: one line says so, no empty table.
+  // A failed refresh keeps the last answer, so it doesn't turn this into a table.
   const nothingAsked =
-    personal && !query.isLoading && !query.error && items.length === 0;
+    personal && Boolean(query.data) && !isNoAccess(query.error) && items.length === 0;
   // BL-834: nothing here at all is not a filter miss.
   const noneYet =
     items.length === 0 && filter === "all" && !search.trim() && !location && !type;
+  // Refused: only the no-access card, no header, filters or empty table.
+  // Employees → Documents answers before this (EmployeeDocumentsPage); the
+  // employee drawer and Account › Documents land here.
+  const refused = Boolean(query.error) && isNoAccess(query.error);
   const sortBy = (key: typeof sort.key) =>
     setSort((s) => ({ key, descending: s.key === key && !s.descending }));
+  if (refused)
+    return (
+      <NoAccessState
+        subject="these documents"
+        homeHref={noAccessHomePath(context, "/app/employees/documents")}
+      />
+    );
   return (
     <div className="employee-documents-list">
       {props.audience.selfOnly && blockers.length > 0 && (
@@ -129,6 +147,13 @@ export function EmployeeDocumentsList(props: {
           {blockers.map((item) => item.title).join(", ")}.
         </p>
       )}
+      {query.error && query.data && !isNoAccess(query.error) ? (
+        <RefreshError
+          message="Documents didn't refresh. This is the last list that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       {nothingAsked ? (
         <p className="employee-documents-none">
           Nothing has been asked of you here.
@@ -283,13 +308,20 @@ export function EmployeeDocumentsList(props: {
           </tbody>
         </table>
         {/* BL-855: where the rows go, not under the empty table. */}
-        {query.isLoading && <p className="settings-state">Loading documents…</p>}
-        {query.error && !isNoAccess(query.error) && (
-          <p className="settings-state error" role="alert">
-            {errorText(query.error)}
-          </p>
+        {query.isLoading && (
+          <ListOutline label="Loading documents" rows={6} columns={personal ? 2 : 3} inset />
         )}
-        {!query.isLoading && !query.error && !visible.length && (
+        {query.error && !query.data && !isNoAccess(query.error) && (
+          <LoadError
+            inset
+            level={props.employeeId || personal ? 3 : 2}
+            title="We couldn't load documents"
+            detail="Documents didn't load. Nothing was changed."
+            retrying={query.isFetching}
+            onRetry={() => void query.refetch()}
+          />
+        )}
+        {query.data && !isNoAccess(query.error) && !visible.length && (
           noneYet ? (
             <div className="catalog-table-empty">
               <span className="catalog-table-empty-icon" aria-hidden>
@@ -318,12 +350,6 @@ export function EmployeeDocumentsList(props: {
         )}
       </div>
       </>}
-      {query.error && isNoAccess(query.error) && (
-        <NoAccessState
-          subject="these documents"
-          homeHref={noAccessHomePath(context, "/app/employees/documents")}
-        />
-      )}
       {selected && (
         <DocumentReviewDrawer
           audience={props.audience}

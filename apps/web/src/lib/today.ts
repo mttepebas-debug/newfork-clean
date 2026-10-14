@@ -32,3 +32,14 @@ export function validZone(zone?: string): string {
 export function todayIn(zone?: string, now: Date = new Date()): string {
   return dateInZone(now, validZone(zone));
 }
+
+/** The wall-clock time (HH:MM, 24 h) in the location's zone, else the device's. */
+export function clockIn(zone?: string, now: Date = new Date()): string {
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: validZone(zone),
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(now);
+  return `${parts.find((part) => part.type === "hour")!.value}:${parts.find((part) => part.type === "minute")!.value}`;
+}

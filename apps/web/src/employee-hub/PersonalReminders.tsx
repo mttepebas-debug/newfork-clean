@@ -6,7 +6,8 @@ import {
   changeEmployeePersonalTask,
   getEmployeePersonalTasks,
 } from "./employee-hub-data";
-import { CardHeading, PanelError } from "./DashboardPrimitives";
+import { CardHeading } from "./DashboardPrimitives";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 export function PersonalTasks({
   workspaceId,
   employeeId,
@@ -58,14 +59,28 @@ export function PersonalTasks({
       <p className="eh-section-description">
         Just for you. Saved across your devices.
       </p>
-      {query.isError ? (
-        <PanelError onRetry={() => void query.refetch()} />
+      {query.isError && query.data ? (
+        <RefreshError
+          message="Your reminders didn't refresh. These are the last ones that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.isError && !query.data ? (
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't load your reminders"
+          detail="Your reminders didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : query.isPending ? (
-        <p className="eh-empty">
-          {online
-            ? "Loading your reminders…"
-            : "Connect to load your reminders."}
-        </p>
+        online ? (
+          <LinesOutline label="Loading your reminders" lines={3} />
+        ) : (
+          <p className="eh-empty">Connect to load your reminders.</p>
+        )
       ) : (
         <>
           <form

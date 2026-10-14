@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Check,
   Loader2,
-  RefreshCw,
   Search,
   X,
 } from "lucide-react";
@@ -38,6 +37,7 @@ import {
 } from "./PublishPreflightPanel";
 import { formatShortDateTime } from "../lib/scheduleDateTime";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
+import { LinesOutline, LoadError } from "../../shell/LoadState";
 import { requestErrorText } from "../../lib/request-error";
 
 export interface SchedulePublicationDepartmentScope {
@@ -598,20 +598,18 @@ export function PublishScheduleDialog({
                 {staleNotice}
               </p>
             ) : null}
+            {/* Loading and error in the "B" look (Mert 2026-10-14). */}
             {stepOnePreviewPending && !preview ? (
-              <div className="schedule-publication-preview-state" role="status">
-                <Loader2 size={14} aria-hidden />
-                Loading publish preview
-              </div>
-            ) : null}
-            {stepOnePreviewError ? (
-              <div className="schedule-publication-preview-state error" role="alert">
-                <span>Publish preview could not be loaded.</span>
-                <button type="button" onClick={() => void loadPreview(false)}>
-                  <RefreshCw size={13} aria-hidden />
-                  Retry
-                </button>
-              </div>
+              <LinesOutline label="Loading publish preview" />
+            ) : stepOnePreviewError ? (
+              // Every new choice drops the last preview (BL-299), so there is no older one to keep.
+              <LoadError
+                title="We couldn't load the publish preview"
+                detail="The publish preview didn't load. Nothing was published."
+                onRetry={() => void loadPreview(false)}
+                inset
+                level={3}
+              />
             ) : null}
             {departments.length ? (
               <fieldset className="schedule-publication-departments">

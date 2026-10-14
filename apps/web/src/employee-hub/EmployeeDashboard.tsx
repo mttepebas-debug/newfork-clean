@@ -44,16 +44,20 @@ import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import "./employee-dashboard.css";
 import { getExchanges } from "./shift-exchanges/exchange-data";
 import { useHubOnline } from "./useHubClock";
+import { RefreshError } from "../shell/LoadState";
 const base = "/app/employee-hub";
 export function EmployeeDashboard({
   model,
   now,
   stale,
+  refreshing = false,
   onRefresh,
 }: {
   model: EmployeeHubReadModel;
   now: Date;
   stale: boolean;
+  /** True while a refresh is on its way. */
+  refreshing?: boolean;
   onRefresh: () => void;
 }) {
   const { context } = useAuth();
@@ -154,14 +158,18 @@ export function EmployeeDashboard({
           </div>
         }
       />
-      {(!online || stale) && (
+      {!online ? (
         <div className="eh-notice" role="status">
-          {online
-            ? "Your schedule may be out of date."
-            : "You’re offline. Showing your last loaded schedule."}{" "}
+          You’re offline. Showing your last loaded schedule.{" "}
           <button onClick={onRefresh}>Refresh schedule</button>
         </div>
-      )}
+      ) : stale ? (
+        <RefreshError
+          message="Your day didn't refresh. This is the last schedule that loaded."
+          retrying={refreshing}
+          onRetry={onRefresh}
+        />
+      ) : null}
       <div className="eh-dashboard-grid">
         <section className="eh-hero" aria-label="Your shift">
           <div className="eh-hero-top">

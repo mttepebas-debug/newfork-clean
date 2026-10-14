@@ -1,19 +1,24 @@
 // @vitest-environment jsdom
-import { fireEvent, render, screen } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import { listDocuments } from "./document-data";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
+import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
 
-vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: null }) }));
+const auth = vi.hoisted(() => ({ context: null as unknown }));
+vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: auth.context }) }));
 vi.mock("./document-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./document-data")>()),
   listDocuments: vi.fn(),
 }));
 
 describe("no access (FB-6.1.9)", () => {
+  afterEach(() => {
+    auth.context = null;
+  });
   it("shows the no-access card, not the raw error, when the API refuses these documents (FB-6.1.9)", async () => {
     vi.mocked(listDocuments).mockRejectedValue(
       new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
@@ -32,6 +37,32 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to these documents" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" }).getAttribute("href")).toBe("/workspaces");
     expect(screen.queryByText("Forbidden")).toBeNull();
+    // The card alone: no status tabs, filters or empty table (Mert 2026-10-14).
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("drops the Employees → Documents page title too, and names the page", async () => {
+    vi.mocked(listDocuments).mockRejectedValue(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    auth.context = {
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "Meyhouse" },
+      membership: { role: "manager" },
+      actions: ["workspace.read"],
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/app/employees/documents"]}>
+          <EmployeeDocumentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "You don't have access to Documents" })).toBeTruthy();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });
 
@@ -182,13 +213,108 @@ describe("personal list (Account › Documents)", () => {
     vi.mocked(listDocuments).mockReturnValueOnce(new Promise(() => {}) as never);
     const { unmount } = renderList(false, false);
     expect(
-      screen.getByText("Loading documents…").closest(".employee-table-wrap"),
+      screen.getByText("Loading documents").closest(".employee-table-wrap"),
     ).toBeTruthy();
+    expect(screen.queryByText("Loading documents…")).toBeNull();
     unmount();
     vi.mocked(listDocuments).mockRejectedValueOnce(new Error("Documents unavailable"));
     renderList(false, false);
-    expect(
-      (await screen.findByRole("alert")).closest(".employee-table-wrap"),
-    ).toBeTruthy();
+    const card = await screen.findByRole("alert");
+    expect(card.closest(".employee-table-wrap")).toBeTruthy();
+    expect(within(card).getByRole("heading", { name: "We couldn't load documents" })).toBeTruthy();
+    expect(screen.queryByText("Documents unavailable")).toBeNull();
+    vi.mocked(listDocuments).mockResolvedValueOnce([obligation] as never);
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect((await screen.findAllByText("Food handler card")).length).toBeGreaterThan(0);
+    expect(screen.queryByRole("heading", { name: "We couldn't load documents" })).toBeNull();
+  });
+
+  it("keeps the last list and says so when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([obligation] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: false }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect((await screen.findAllByText("Food handler card")).length).toBeGreaterThan(0);
+    vi.mocked(listDocuments)
+      .mockRejectedValueOnce(new Error("Gateway timeout"))
+      .mockResolvedValue([obligation] as never);
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Documents didn't refresh. This is the last list that loaded.");
+    expect(screen.queryByRole("heading", { name: "We couldn't load documents" })).toBeNull();
+    expect(screen.getAllByText("Food handler card").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(listDocuments).toHaveBeenCalledTimes(3);
+  });
+
+  it("still says the last list was empty when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: false }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    const empty = await screen.findByRole("heading", { name: /No documents/ });
+    vi.mocked(listDocuments).mockRejectedValue(new Error("Gateway timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Documents didn't refresh.");
+    expect(screen.getByRole("heading", { name: empty.textContent ?? "" })).toBeTruthy();
+  });
+
+  it("keeps saying nothing is asked of the person when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: true }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+            personal
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Nothing has been asked of you here.")).toBeTruthy();
+    vi.mocked(listDocuments).mockRejectedValue(new Error("Gateway timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Documents didn't refresh.");
+    expect(screen.getByText("Nothing has been asked of you here.")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /No documents/ })).toBeNull();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+  });
+
+  it("puts the failed-load card one level under the workspace heading on the personal page", async () => {
+    vi.mocked(listDocuments).mockReset().mockRejectedValue(new Error("Documents unavailable"));
+    renderList(true);
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load documents" }).tagName).toBe("H3");
+    expect(screen.queryByText("Nothing has been asked of you here.")).toBeNull();
   });
 });

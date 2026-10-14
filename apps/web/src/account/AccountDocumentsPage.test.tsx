@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import AccountDocumentsPage, { waitingOnYou } from "./AccountDocumentsPage";
@@ -40,13 +40,14 @@ function renderPage() {
   const cache = new QueryClient({
     defaultOptions: { queries: { retry: false } },
   });
-  return render(
+  const view = render(
     <QueryClientProvider client={cache}>
       <MemoryRouter>
         <AccountDocumentsPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, cache };
 }
 
 describe("waitingOnYou", () => {
@@ -120,5 +121,37 @@ describe("AccountDocumentsPage", () => {
 
     await screen.findByText("Meyhouse");
     expect(document.body.textContent).not.toMatch(/organi[sz]ation/i);
+  });
+
+  it("shows a loading outline, then a card with Try again when the workspaces don't load", async () => {
+    vi.mocked(listAccountWorkspaces).mockReturnValueOnce(new Promise(() => {}) as never);
+    const { unmount } = renderPage();
+    expect(screen.getByRole("status").textContent).toContain("Loading your documents");
+    expect(screen.queryByText("You are not in a workspace yet.")).toBeNull();
+    unmount();
+
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Gateway timeout"));
+    renderPage();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load your workspaces" })).toBeTruthy();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    expect(screen.queryByText("You are not in a workspace yet.")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Meyhouse")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load your workspaces" })).toBeNull();
+  });
+
+  it("keeps the last workspaces and says so when a refresh fails", async () => {
+    const { cache } = renderPage();
+    expect(await screen.findByText("Meyhouse")).toBeTruthy();
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Gateway timeout"));
+    await act(async () => {
+      await cache.refetchQueries({ queryKey: ["account-document-workspaces"] });
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Your workspaces didn't refresh.");
+    expect(screen.getByText("Meyhouse")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load your workspaces" })).toBeNull();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
   });
 });

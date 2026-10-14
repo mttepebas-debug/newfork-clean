@@ -17,6 +17,7 @@ import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 type Entry = NotificationUserPreferencesResponse["catalog"][number];
 type Drafts = Record<string, NotificationChannelPreference>;
 const channels = ["in_app", "email"] as const;
@@ -141,6 +142,10 @@ export default function NotificationPreferencesPage() {
     });
   };
 
+  // Refused: the card alone, no page header (Mert 2026-10-14).
+  if (isNoAccess(query.error)) return <NoAccessState subject="this workspace's notifications"
+    homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />;
+
   return <section className="account-page notification-preferences" aria-labelledby="notification-title">
     <AccountPageHeader title="Notifications" titleId="notification-title"
       description="Choose which updates reach you, workspace by workspace." />
@@ -152,11 +157,15 @@ export default function NotificationPreferencesPage() {
       </select>
       {dirtyKeys.length > 0 ? <small>Save or discard changes before choosing another workspace.</small> : null}
     </label> : !context ? <p>Workspace notification controls become available when you have workspace access.</p> : null}
-    {query.isLoading ? <p>Loading preferences</p> : null}
-    {isNoAccess(query.error) ? <NoAccessState subject="this workspace's notifications"
-      homeHref={noAccessHomePath(context, "/account/preferences/notifications")} />
-      : query.error || mutation.error ? <p className="form-error" role="alert">{query.error?.message
-        ?? (changedElsewhere(mutation.error) ? changedElsewhereLine : mutation.error?.message)}</p> : null}
+    {query.isLoading ? <ListOutline label="Loading notification preferences" rows={5} columns={3} /> : null}
+    {query.error && !data ? <LoadError title="We couldn't load your notification preferences"
+        detail="Your notification choices didn't load. Nothing was changed."
+        retrying={query.isFetching} onRetry={() => void query.refetch()} />
+      : query.error ? <RefreshError message="Your notification choices didn't refresh. These are the last ones that loaded."
+        retrying={query.isFetching} onRetry={() => void query.refetch()} /> : null}
+    {mutation.error ? <p className="form-error" role="alert">
+      {changedElsewhere(mutation.error) ? changedElsewhereLine : mutation.error.message}</p> : null}
+    {data ? <>
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
         <span aria-hidden="true" />
@@ -237,5 +246,6 @@ export default function NotificationPreferencesPage() {
         {mutation.isPending ? "Saving" : "Save"}
       </Button>
     </div>
+    </> : null}
   </section>;
 }

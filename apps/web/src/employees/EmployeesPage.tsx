@@ -22,6 +22,7 @@ import { useLocation, useNavigate, useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { DEFAULT_LIST_PAGE_SIZE, ListPagination } from "../views/ListPagination";
 import { CatalogSortButton } from "../views/CatalogSortButton";
 import { EmployeeDrawer } from "./EmployeeDrawer";
@@ -37,6 +38,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 // The location filter's value for people who work nowhere (K6); a location's
 // value is its id.
 const noLocation = "none";
@@ -79,6 +81,7 @@ export default function EmployeesPage() {
   const { context } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const phone = useListPhoneWidth();
   const [params, setParams] = useSearchParams();
   const workspaceId = context?.workspace.id ?? "";
   const archived = location.pathname.endsWith("/archive");
@@ -254,11 +257,26 @@ export default function EmployeesPage() {
     Boolean(search) || locationFilter !== "all" || status !== "all";
 
   const drawerOpen = creating || Boolean(employeeId);
+  const addButton =
+    !archived && canCreate ? (
+      <ListAddButton
+        label="Add employee"
+        shortLabel="Add"
+        onClick={() =>
+          setParams(
+            nextParams({
+              mode: "create",
+              employeeId: null,
+              section: "profile",
+            }),
+          )
+        }
+      />
+    ) : null;
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(employees.error))
     return (
       <NoAccessState
-        subject="employees"
         homeHref={noAccessHomePath(context, "/app/employees")}
       />
     );
@@ -351,6 +369,9 @@ export default function EmployeesPage() {
             ))}
             <option value={noLocation}>No location</option>
           </select>
+          {/* A phone puts "+ Add" beside the location list, the search under
+              both (Mert 2026-10-14). */}
+          {phone ? addButton : null}
           <label className="employee-search toolbar-search">
             <Search size={17} aria-hidden />
             <span className="sr-only">Search employees</span>
@@ -362,24 +383,18 @@ export default function EmployeesPage() {
               placeholder="Search name, location, or job"
             />
           </label>
-          {!archived && canCreate ? (
-            <ListAddButton
-              label="Add employee"
-              shortLabel="Add"
-              onClick={() =>
-                setParams(
-                  nextParams({
-                    mode: "create",
-                    employeeId: null,
-                    section: "profile",
-                  }),
-                )
-              }
-            />
-          ) : null}
+          {phone ? null : addButton}
         </div>
       </div>
 
+      {employees.error && employees.data ? (
+        <RefreshError
+          className="employees-refresh"
+          message="The employee list didn't refresh. This is the last list that loaded."
+          retrying={employees.isFetching}
+          onRetry={() => void employees.refetch()}
+        />
+      ) : null}
       <div className="employee-table-wrap employee-people-wrap">
         <table className="employee-table">
           <colgroup>
@@ -456,18 +471,23 @@ export default function EmployeesPage() {
           }
         />
         {employees.isLoading ? (
-          <p className="employees-state">Loading employees...</p>
+          <ListOutline
+            label="Loading employees"
+            rows={8}
+            columns={Math.max(2, visibleColumns.length)}
+            inset
+          />
         ) : null}
-        {employees.error ? (
-          <p className="employees-state error" role="alert">
-            {employees.error instanceof Error
-              ? employees.error.message
-              : "Employees unavailable"}
-          </p>
+        {employees.error && !employees.data ? (
+          <LoadError
+            inset
+            title="We couldn't load employees"
+            detail="The employee list didn't load. Nothing was changed."
+            retrying={employees.isFetching}
+            onRetry={() => void employees.refetch()}
+          />
         ) : null}
-        {!employees.isLoading &&
-        !employees.error &&
-        visibleEmployees.length === 0 ? (
+        {employees.data && visibleEmployees.length === 0 ? (
           // A status tab with nobody in it is a filter too (L26).
           <div className="catalog-table-empty">
             <span className="catalog-table-empty-icon" aria-hidden>

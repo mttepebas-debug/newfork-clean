@@ -6,6 +6,7 @@ import type {
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "./AuthContext";
+import { NoAccessRoute } from "../shell/NoAccessState";
 import { appLandingPath } from "./resolveLanding";
 
 /**
@@ -31,12 +32,13 @@ export function PermissionRoute({
   readonly roles?: readonly WorkspaceRole[];
 }) {
   const { context } = useAuth();
+  if (!context) return <Navigate to={appLandingPath(context)} replace />;
+  // A refused address shows the no-access card in place (Mert 2026-10-14).
   if (
-    !context ||
     (roles && !roles.includes(context.membership.role)) ||
     !anyOf.some((permission) => holdsPermission(context, permission))
   ) {
-    return <Navigate to={appLandingPath(context)} replace />;
+    return <NoAccessRoute />;
   }
   return children;
 }

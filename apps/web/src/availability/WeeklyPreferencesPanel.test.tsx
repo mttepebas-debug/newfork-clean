@@ -165,7 +165,16 @@ describe("weekly preferences API panel", () => {
     await act(async () => {
       await client.invalidateQueries({ queryKey: ["weekly-preferences", w] });
     });
-    await screen.findByText("Refresh unavailable");
+    await screen.findByText("Availability didn't refresh. This is the last version that loaded.");
+    expect(screen.queryByText("Refresh unavailable")).toBeNull();
+    vi.mocked(loadWeeklyPreferences).mockResolvedValueOnce(model());
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByText("Availability didn't refresh. This is the last version that loaded.")).toBeNull());
+    vi.mocked(loadWeeklyPreferences).mockRejectedValueOnce(new TypeError("Refresh unavailable"));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["weekly-preferences", w] });
+    });
+    await screen.findByText("Availability didn't refresh. This is the last version that loaded.");
     expect(
       (
         screen.getByRole("switch", {
@@ -179,7 +188,8 @@ describe("weekly preferences API panel", () => {
     await act(async () => {
       await client.invalidateQueries({ queryKey: ["weekly-preferences", w] });
     });
-    await screen.findByText("Access removed");
+    await screen.findByRole("heading", { level: 3, name: "We couldn't load availability" });
+    expect(screen.queryByText("Access removed")).toBeNull();
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
   // BL-798 (E4-15): the core's "Not allowed" reads as a sentence for the
@@ -197,6 +207,33 @@ describe("weekly preferences API panel", () => {
       "You don't have access to this availability.",
     );
     expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+  });
+  it("draws the week's outline while availability loads", () => {
+    vi.mocked(loadWeeklyPreferences).mockReturnValue(new Promise(() => {}));
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <WeeklyPreferencesPanel workspaceId={w} audience="employee" />
+      </QueryClientProvider>,
+    );
+    const status = screen.getByRole("status");
+    expect(status.textContent).toBe("Loading availability");
+    expect(status.querySelectorAll(".nf-list-outline-row")).toHaveLength(7);
+  });
+  it("shows the load-error card without the raw error, and tries again", async () => {
+    vi.mocked(loadWeeklyPreferences)
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockResolvedValueOnce(model());
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <WeeklyPreferencesPanel workspaceId={w} audience="employee" />
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load availability" })).toBeTruthy();
+    expect(screen.getByText("Availability didn't load. Nothing was changed.")).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2);
   });
   it("words a refused save for the person when access was removed", async () => {
     await setup();

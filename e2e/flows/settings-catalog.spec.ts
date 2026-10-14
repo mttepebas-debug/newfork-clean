@@ -11,6 +11,9 @@ import { psql } from "../global-setup";
 //   Restore takes one.
 // - Jobs V1 (Mert 2026-10-07): the drawer says "N employees assigned", has a
 //   "Details" group, a "Not assigned" filter and a "Save" button.
+// - Jobs decision 6 (Mert 2026-10-13): archiving a department takes its active
+//   jobs with it; a job restored while its department is archived comes back
+//   under No department; a department restored comes back with no jobs.
 //
 // The workspace is this file's own: archiving a location of the shared world
 // would take it off every later spec's grid.
@@ -112,7 +115,7 @@ test("Jobs: the drawer counts who is assigned, filters Not assigned, and saves w
          where job_id = tests.id('${w}:job:cook') and ended_at is null;`);
   expect(cooks()).toBe("1");
 
-  await owner.getByRole("button", { name: "Manage employees for Cook", exact: true }).click();
+  await owner.getByRole("rowgroup", { name: "Kitchen", exact: true }).getByRole("button", { name: "Cook", exact: true }).click();
   const drawer = owner.getByRole("dialog", { name: "Edit job: Cook", exact: true });
   await expect(drawer).toContainText("1 employee assigned");
   await expect(drawer.locator("legend", { hasText: "Details" })).toBeVisible();
@@ -130,4 +133,54 @@ test("Jobs: the drawer counts who is assigned, filters Not assigned, and saves w
   await expect(drawer.getByText(/^Job saved/)).toBeVisible();
   await expect(drawer).toContainText("2 employees assigned");
   await expect.poll(cooks).toBe("2");
+});
+
+test("Jobs: a department goes to the archive with its jobs, and each comes back on its own", async ({ browser }) => {
+  // A department of this test's own, so the drawer test's Kitchen stays as it is.
+  sql(`select public.create_department_with_jobs_service(tests.user('${w}:owner'), tests.id('${w}'),
+         '{"name": "Bar", "color": "#3C7A68"}'::jsonb,
+         '[{"name": "Bartender", "color": "#D39A36"}, {"name": "Barback", "color": "#4478A8"}]'::jsonb);`);
+  // "archived", or "active <department>" ("active none" for No department).
+  const state = (name: string) =>
+    sql(`select case when j.archived_at is not null then 'archived' else 'active ' || coalesce(d.name, 'none') end
+         from public.jobs j left join public.departments d on d.id = j.department_id
+         where j.workspace_id = tests.id('${w}') and j.name = '${name}';`);
+  const bar = () =>
+    sql(`select case when archived_at is null then 'active' else 'archived' end from public.departments
+         where workspace_id = tests.id('${w}') and name = 'Bar';`);
+  const owner = await openAsOwner(browser, "/app/settings/jobs");
+  const tabs = owner.getByRole("tablist", { name: "Jobs and departments" });
+  const group = owner.getByRole("rowgroup", { name: "Bar", exact: true });
+
+  // The menu says what Archive takes with it; two clicks archive the department.
+  await group.getByRole("button", { name: "Actions for Bar", exact: true }).click();
+  await expect(group.getByText("Its 2 jobs will be archived too.")).toBeVisible();
+  await group.getByRole("button", { name: "Archive Bar", exact: true }).click();
+  await group.getByRole("button", { name: "Confirm archive Bar", exact: true }).click();
+  await expect.poll(bar).toBe("archived");
+  expect(state("Bartender")).toBe("archived");
+  expect(state("Barback")).toBe("archived");
+  await expect(group).toHaveCount(0);
+
+  // Archived lists the department and its jobs in two groups.
+  await tabs.getByRole("tab", { name: "Archived", exact: true }).click();
+  const departments = owner.getByRole("rowgroup", { name: "Archived departments", exact: true });
+  const jobs = owner.getByRole("rowgroup", { name: "Archived jobs", exact: true });
+  await expect(departments.getByRole("button", { name: "Bar", exact: true })).toBeVisible();
+  await expect(jobs.getByRole("button", { name: "Bartender", exact: true })).toBeVisible();
+
+  // Bartender, restored while Bar is archived, comes back under No department.
+  await jobs.getByRole("button", { name: "Restore Bartender", exact: true }).click();
+  await expect.poll(() => state("Bartender")).toBe("active none");
+  // Bar, restored, comes back with no jobs: Barback stays archived.
+  await departments.getByRole("button", { name: "Restore Bar", exact: true }).click();
+  await expect.poll(bar).toBe("active");
+  expect(state("Barback")).toBe("archived");
+  // Barback, restored now that Bar is active, goes back under Bar.
+  await jobs.getByRole("button", { name: "Restore Barback", exact: true }).click();
+  await expect.poll(() => state("Barback")).toBe("active Bar");
+
+  await tabs.getByRole("tab", { name: "Jobs", exact: true }).click();
+  await expect(group.getByRole("button", { name: "Barback", exact: true })).toBeVisible();
+  await expect(owner.getByRole("rowgroup", { name: "No department", exact: true }).getByRole("button", { name: "Bartender", exact: true })).toBeVisible();
 });

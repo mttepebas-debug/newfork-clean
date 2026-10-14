@@ -171,3 +171,49 @@ export function lineupWeek(weekStart: string): string[] {
     return day.toISOString().slice(0, 10);
   });
 }
+
+function minutes(time: string): number {
+  const [hours = "0", mins = "0"] = time.split(":");
+  return Number(hours) * 60 + Number(mins);
+}
+
+function shiftRows(shift: LineupShift): LineupRow[] {
+  return shift.departments.flatMap((department) => department.jobs.flatMap((job) => job.rows));
+}
+
+/** Minutes after the day's midnight the row ends; past midnight runs over 24 h. */
+function endsAt(row: LineupRow): number {
+  return minutes(row.endTime) + (row.crossesMidnight ? 24 * 60 : 0);
+}
+
+/** When the shift's first person comes in and its last one leaves. */
+export function lineupShiftSpan(shift: LineupShift): { firstIn: string; lastOut: string } | null {
+  const rows = shiftRows(shift);
+  if (!rows.length) return null;
+  const first = rows.reduce((a, b) => (minutes(b.startTime) < minutes(a.startTime) ? b : a));
+  const last = rows.reduce((a, b) => (endsAt(b) > endsAt(a) ? b : a));
+  return { firstIn: first.startTime, lastOut: last.endTime };
+}
+
+/**
+ * The shift a phone opens on (Mert 2026-10-14: one shift at a time, under
+ * tabs): the chosen one; today, the first one still on the floor at `now`
+ * (HH:MM), else the last one with people; another day, the first one with
+ * people; else the first.
+ */
+export function phoneLineupShift(
+  shifts: readonly LineupShift[],
+  chosen: string,
+  now: string | null,
+): LineupShift | null {
+  const picked = shifts.find((shift) => shift.key === chosen);
+  if (picked) return picked;
+  const staffed = shifts.filter((shift) => shift.count > 0);
+  if (now !== null) {
+    const at = minutes(now);
+    const onFloor = staffed.find((shift) => shiftRows(shift).some((row) => endsAt(row) > at));
+    if (onFloor) return onFloor;
+    if (staffed.length) return staffed[staffed.length - 1]!;
+  }
+  return staffed[0] ?? shifts[0] ?? null;
+}

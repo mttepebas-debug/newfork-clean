@@ -17,6 +17,7 @@ import "../availability/weekly-team.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const EmployeeDrawer = lazy(() =>
   import("../employees/EmployeeDrawer").then((module) => ({
@@ -105,7 +106,6 @@ export function AvailabilityPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="team availability"
         homeHref={noAccessHomePath(context, "/app/availability")}
       />
     );
@@ -185,15 +185,23 @@ export function AvailabilityPage() {
           </label>
         </div>
       </div>
-      {query.isPending && <p role="status">Loading availability...</p>}
-      {query.error && (
+      {query.isPending && (
+        <ListOutline label="Loading availability" rows={8} columns={8} />
+      )}
+      {query.error && !model && (
+        <LoadError
+          title="We couldn't load team availability"
+          detail="Team availability didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      )}
+      {query.error && model && (
         <div className="weekly-team-error" role="alert">
-          <span>
-            {query.error.message || "Team availability could not be loaded."}
-          </span>
-          <button type="button" onClick={() => void query.refetch()}>
+          <span>Team availability didn't refresh. This is the last view that loaded.</span>
+          <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
             <RotateCcw size={15} aria-hidden />
-            Retry
+            Try again
           </button>
         </div>
       )}

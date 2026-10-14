@@ -25,3 +25,13 @@ export function CatalogSortButton({
     </button>
   );
 }
+
+// One column heading cycles A→Z, Z→A, then back to the list's own order; a
+// list has no separate "clear sorting" button (Mert 2026-10-14).
+export function nextCatalogSort<K extends string>(
+  sort: { readonly key: K; readonly descending: boolean } | null,
+  key: K,
+): { key: K; descending: boolean } | null {
+  if (sort?.key !== key) return { key, descending: false };
+  return sort.descending ? null : { key, descending: true };
+}

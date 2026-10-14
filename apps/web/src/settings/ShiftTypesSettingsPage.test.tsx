@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
 import {
+  act,
   cleanup,
   fireEvent,
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ShiftType } from "@newfork/shared";
 import ShiftTypesSettingsPage from "./ShiftTypesSettingsPage";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import { MemoryRouter } from "react-router";
 import {
   listShiftTypes,
@@ -292,6 +295,7 @@ describe("shift type default review", () => {
 
 // Shift catalog, design A (Mert 2026-10-12): the shared list language.
 describe("shift catalog list", () => {
+  afterEach(() => vi.unstubAllGlobals());
   function renderList() {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -342,11 +346,25 @@ describe("shift catalog list", () => {
     expect(filterRow?.querySelector("input")?.getAttribute("aria-label")).toBe(
       "Search shift types",
     );
-    expect(filterRow?.lastElementChild?.textContent).toBe("New shift type");
+    expect(filterRow?.lastElementChild).toBe(
+      screen.getByRole("button", { name: "New shift type" }),
+    );
     // No status filter and no "Show archived" box (Mert: "dropdown filtreyi kaldır").
     expect(container.querySelector("select")).toBeNull();
     expect(screen.queryByText("Show archived")).toBeNull();
     expect(container.querySelector(".catalog-page-actions")).toBeNull();
+  });
+
+  // Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+  it("puts New shift type beside the tabs on a phone", async () => {
+    stubPhoneWidth();
+    const { container } = renderList();
+    await screen.findByRole("button", { name: "Edit Lunch" });
+    const add = screen.getByRole("button", { name: "New shift type" });
+    expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+    expect(
+      container.querySelector(".catalog-toolbar-filter-row .list-add-button"),
+    ).toBeNull();
   });
 
   it("closes the list with archived types, marked Archived and restorable", async () => {
@@ -422,5 +440,55 @@ describe("shift catalog list", () => {
     await screen.findByRole("button", { name: "Edit Lunch" });
     expect(screen.queryByRole("button", { name: "New shift type" })).toBeNull();
     expect(screen.queryByRole("button", { name: "Actions for Lunch" })).toBeNull();
+  });
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("Shift types loading and error", () => {
+  const renderQueued = () => {
+    const client = new QueryClient({
+      defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
+    });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <ShiftTypesSettingsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    return client;
+  };
+
+  it("outlines the list while it loads", () => {
+    vi.mocked(listShiftTypes).mockReturnValueOnce(new Promise(() => {}));
+    renderQueued();
+    expect(screen.getByRole("status").textContent).toContain("Loading shift types");
+    expect(screen.queryByText("Loading shift types...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again, not the server's sentence", async () => {
+    vi.mocked(listShiftTypes).mockRejectedValueOnce(new Error("catalog service down"));
+    renderQueued();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load shift types" })).toBeTruthy();
+    expect(screen.queryByText("catalog service down")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Lunch")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load shift types" })).toBeNull();
+  });
+
+  it("keeps the last list and says so when a refresh fails", async () => {
+    const client = renderQueued();
+    expect(await screen.findByText("Lunch")).toBeTruthy();
+    vi.mocked(listShiftTypes).mockRejectedValueOnce(new Error("catalog service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Shift types didn't refresh. This is the last list that loaded.");
+    expect(screen.getByText("Lunch")).toBeTruthy();
+    expect(screen.queryByText("catalog service down")).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
   });
 });

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -172,6 +173,58 @@ describe("weekly preference settings", () => {
     expect((await screen.findByRole("alert")).textContent).toBe(
       "You don't have access to these availability settings.",
     );
-    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  });
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("WeeklyPreferenceSettingsPanel loading and error", () => {
+  const renderPanel = () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <WeeklyPreferenceSettingsPanel workspaceId="w" />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    return client;
+  };
+
+  it("outlines the panel while it loads", () => {
+    vi.mocked(loadWeeklyPreferenceSettings).mockReturnValueOnce(new Promise(() => {}));
+    renderPanel();
+    expect(screen.getByRole("status").textContent).toContain("Loading availability settings");
+    expect(screen.queryByText("Loading availability settings...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again, not the server's sentence", async () => {
+    vi.mocked(loadWeeklyPreferenceSettings)
+      .mockRejectedValueOnce(new Error("preferences service down"))
+      .mockResolvedValueOnce(model());
+    renderPanel();
+    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load availability settings" })).toBeTruthy();
+    expect(screen.queryByText("preferences service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "We couldn't load availability settings" })).toBeNull(),
+    );
+    expect(screen.getByRole("switch")).toBeTruthy();
+  });
+
+  it("keeps the last settings and says so when a refresh fails", async () => {
+    vi.mocked(loadWeeklyPreferenceSettings).mockResolvedValueOnce(model());
+    const client = renderPanel();
+    expect(await screen.findByRole("switch")).toBeTruthy();
+    vi.mocked(loadWeeklyPreferenceSettings).mockRejectedValueOnce(new Error("preferences service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain(
+      "Availability settings didn't refresh. These are the last settings that loaded.",
+    );
+    expect(screen.getByRole("switch")).toBeTruthy();
+    expect(screen.queryByText("preferences service down")).toBeNull();
   });
 });

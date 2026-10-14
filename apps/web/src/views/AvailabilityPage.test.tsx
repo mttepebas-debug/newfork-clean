@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -263,10 +264,34 @@ describe("weekly team availability", () => {
       new Error("Could not load"),
     );
     renderPage();
-    await screen.findByRole("alert");
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    const card = await screen.findByRole("alert");
+    expect(card.textContent).toContain("We couldn't load team availability");
+    expect(card.textContent).toContain("Nothing was changed.");
+    expect(screen.queryByText("Could not load")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("keeps the table when a refresh fails, says so, and tries again", async () => {
+    const client = renderPage();
+    await screen.findByText("Alex Kim");
+    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new Error("Could not load"));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["weekly-preferences"] });
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Team availability didn't refresh. This is the last view that loaded.");
+    expect(screen.queryByText("Could not load")).toBeNull();
+    expect(screen.getByText("Alex Kim")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(loadWeeklyTeam).toHaveBeenCalledTimes(3);
+  });
+  it("draws the table's outline while team availability loads", async () => {
+    vi.mocked(loadWeeklyTeam).mockReturnValueOnce(new Promise(() => {}));
+    renderPage();
+    const status = (await screen.findByText("Loading availability")).closest("[role=status]")!;
+    expect(status.className).toContain("nf-list-outline");
+    expect(status.querySelectorAll(".nf-list-outline-row")).toHaveLength(8);
   });
 });
 
@@ -274,7 +299,7 @@ describe("no access (FB-6.1.9)", () => {
   it("shows the no-access card, not the raw error, when the API refuses team availability (FB-6.1.9)", async () => {
     vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to team availability" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Availability" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

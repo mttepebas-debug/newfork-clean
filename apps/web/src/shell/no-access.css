@@ -1,56 +1,58 @@
-/* NoAccessState: the shared "you may not" screen. Tokens only.
-   Same box as the Schedule's loading/error state, centered. */
+/* NoAccessState: the shared "you may not" card, look "C" (Mert 2026-10-14).
+   A narrow card, centered, the same on every screen; LoadError's full card
+   (load-state.css) has the same box. Tokens only. */
 .no-access {
   display: flex;
-  min-height: 220px;
+  max-width: 440px;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 14px;
-  margin: 20px;
+  gap: 16px;
+  margin: 56px auto;
   border: 1px solid var(--theme-border);
-  border-radius: 6px;
-  padding: 28px 20px;
+  border-radius: 12px;
+  padding: 36px 32px 28px;
   background: var(--theme-surface);
+  box-shadow: 0 1px 2px rgb(23 34 30 / 6%), 0 8px 24px rgb(23 34 30 / 6%);
   color: var(--theme-muted);
   text-align: center;
 }
 .no-access h2 {
   margin: 0;
   color: var(--theme-text);
-  font-size: 16px;
+  font-size: 19px;
   line-height: 1.35;
+  text-wrap: balance;
 }
 .no-access p {
   margin: 0;
   font-size: 14px;
   line-height: 1.5;
 }
-.no-access .no-access-help {
-  color: var(--theme-text-body);
-}
 .no-access-icon {
   display: inline-flex;
-  width: 44px;
-  height: 44px;
+  width: 56px;
+  height: 56px;
   flex: none;
   align-items: center;
   justify-content: center;
   border-radius: 999px;
-  background: var(--theme-surface-muted);
-  color: var(--theme-text-body);
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
 }
 .no-access-copy {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 }
 .no-access .nf-button {
+  align-self: stretch;
+  justify-content: center;
   text-decoration: none;
 }
 
 @media (max-width: 720px) {
   .no-access {
-    margin: 12px;
+    margin: 24px 12px;
+    padding: 28px 20px 20px;
   }
 }

@@ -7,7 +7,7 @@ import "./requests-catalog.css";
 import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { AlertTriangle, ArrowLeftRight, Check, RotateCcw, Search } from "lucide-react";
+import { ArrowLeftRight, Check, Search } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode, type RefObject } from "react";
 import { TimeOffShorten } from "./TimeOffShorten";
 import { TimeOffReview } from "./TimeOffReview";
@@ -40,8 +40,9 @@ import {
   tabOf,
 } from "../schedule/requests-list";
 
-import { NoAccessState } from "../shell/NoAccessState";
-import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
+import { ListOutline, LoadError } from "../shell/LoadState";
+import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -51,8 +52,9 @@ export function ScheduleRequestsPage() {
     return <Navigate to="/app/availability" replace />;
   }
   // EKRAN-02 B1: the door asks the core, like the tabs do.
+  // Neither type opens: the no-access card in place (Mert 2026-10-14).
   if (!can(context, "requests.read") && !can(context, "exchange.read"))
-    return <Navigate to={appLandingPath(context)} replace />;
+    return <NoAccessRoute />;
   return (
       <AvailabilityDraftScope
         labels={{
@@ -324,7 +326,6 @@ function ScheduleRequestsPageContent() {
   if (data.failure === "no_access")
     return (
       <NoAccessState
-        subject="requests"
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );
@@ -431,21 +432,16 @@ function ScheduleRequestsPageContent() {
               }
             />
           ) : caseFailed ? (
-            <TableEmpty
-              icon={<AlertTriangle size={22} />}
-              title="Request could not load"
-              text="Check your connection and try again."
+            <LoadError
+              inset
+              title="We couldn't load this request"
+              detail="The request didn't load. Nothing was changed."
               headingRef={caseNoticeHeading}
-              action={
-                <button type="button" className="nf-button secondary" onClick={() => void caseRead.refetch()}>
-                  <RotateCcw size={16} aria-hidden /> Try again
-                </button>
-              }
+              retrying={caseRead.isFetching}
+              onRetry={() => void caseRead.refetch()}
             />
           ) : (
-            <p className="settings-state" role="status">
-              Loading request...
-            </p>
+            <ListOutline label="Loading request" rows={1} columns={5} inset />
           )}
         </div>
       ) : (
@@ -454,18 +450,14 @@ function ScheduleRequestsPageContent() {
             {/* Three reads make one list: it is drawn once all of them answered. */}
             <RequestsTable rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
             <RequestCards rows={loading ? [] : page.rows} timeFormat={timeFormat} onOpen={openRow} />
-            {loading ? <p className="settings-state">Loading requests...</p> : null}
+            {loading ? <ListOutline label="Loading requests" rows={6} columns={5} inset /> : null}
             {!loading && failed ? (
-              <TableEmpty
-                role="alert"
-                icon={<AlertTriangle size={22} />}
-                title="Requests could not load"
-                text="Check your connection and try again."
-                action={
-                  <button type="button" className="nf-button secondary" onClick={data.retry}>
-                    <RotateCcw size={16} aria-hidden /> Try again
-                  </button>
-                }
+              <LoadError
+                inset
+                title="We couldn't load requests"
+                detail="Requests didn't load. Nothing was changed."
+                retrying={data.isFetching}
+                onRetry={data.retry}
               />
             ) : null}
             {!loading && !failed && !page.rows.length ? (
@@ -574,17 +566,16 @@ function ScheduleRequestsPageContent() {
  * fades where more tabs wait (`data-more`), and the chosen tab is scrolled into view.
  */
 /** What stands where the table was: an icon, a heading, a sentence, maybe one button. */
-function TableEmpty({ icon, title, text, action, role, headingRef }: {
+function TableEmpty({ icon, title, text, action, headingRef }: {
   readonly icon: ReactNode;
   readonly title: string;
   readonly text: string;
   readonly action?: ReactNode;
-  readonly role?: "alert";
   /** Set when the page moves focus to the message. */
   readonly headingRef?: RefObject<HTMLHeadingElement | null>;
 }) {
   return (
-    <div className="catalog-table-empty" role={role}>
+    <div className="catalog-table-empty">
       <span className="catalog-table-empty-icon" aria-hidden>
         {icon}
       </span>

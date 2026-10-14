@@ -40,7 +40,7 @@ test("a Kadikoy save refreshes a Kadikoy reader's screen and not Besiktas's", as
   const zeynepRefresh = zeynep.waitForRequest(isDraftList, { timeout: 15_000 });
 
   await ayse.getByRole("button", { name: "Draft selector: New Schedule", exact: true }).click();
-  await ayse.getByRole("button", { name: "New Schedule (blank)", exact: true }).click();
+  await ayse.getByRole("button", { name: "Blank schedule", exact: true }).click();
   await expect(ayse).toHaveURL(/mode=edit/);
   await ayse.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
   await ayse.getByLabel("Draft name").fill(draftName("Ayse live"));

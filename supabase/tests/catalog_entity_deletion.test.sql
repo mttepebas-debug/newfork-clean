@@ -50,7 +50,7 @@ select throws_ok($$select public.delete_catalog_entity_service('18000000-0000-40
 select throws_ok($$select pg_temp.del('departments','38000000-0000-4000-8000-000000000099')$$,'P0002',null,'wrong workspace or missing item unavailable');
 select throws_ok($$select pg_temp.del('anything','38000000-0000-4000-8000-000000000091')$$,'22023',null,'unknown kind rejected');
 select lives_ok($$select pg_temp.del('departments','38000000-0000-4000-8000-000000000091','keep')$$,'department deleted keeping jobs');
-select ok((select department_id is null and deleted_at is null from public.jobs where id='58000000-0000-4000-8000-000000000091'),'kept job becomes ungrouped');
+select ok((select department_id is null and deleted_at is null and archived_at is null from public.jobs where id='58000000-0000-4000-8000-000000000091'),'kept job becomes ungrouped and stays active');
 select throws_ok($$insert into public.jobs(workspace_id,name,department_id) values('28000000-0000-4000-8000-000000000091','Stale','38000000-0000-4000-8000-000000000091')$$,'PT409',null,'stale department assignment rejected');
 create function pg_temp.reject_second_job_delete() returns trigger language plpgsql as $$ begin
   if new.id='58000000-0000-4000-8000-000000000093' and new.deleted_at is not null then

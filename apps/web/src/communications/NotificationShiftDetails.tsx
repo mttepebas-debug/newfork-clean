@@ -14,6 +14,7 @@ import {
 import { safeAppActionUrl } from "./action-url";
 import "../employee-hub/shift-exchanges/shift-exchanges.css";
 import "./notification-shift-details.css";
+import { LinesOutline, LoadError } from "../shell/LoadState";
 
 export function notificationExchangeTarget(item: NotificationRecord) {
   if (
@@ -91,20 +92,16 @@ export function NotificationShiftDetails({
       aria-busy={query.isFetching}
     >
       {query.isPending ? (
-        <p role="status">Loading shift details…</p>
+        <LinesOutline label="Loading shift details" />
       ) : query.isError || !request ? (
-        <div className="notification-shift-unavailable">
-          <p role="status">
-            Shift details could not be loaded. Try again or open the request.
-          </p>
-          <button
-            type="button"
-            onClick={() => void query.refetch()}
-            disabled={query.isFetching}
-          >
-            Try again
-          </button>
-        </div>
+        <LoadError
+          inset
+          level={3}
+          title="We couldn't load the shift details"
+          detail="They didn't load. Nothing was changed. You can also open the request."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : (
         <>
           <div className="notification-shift-message">
