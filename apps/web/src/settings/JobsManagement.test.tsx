@@ -416,17 +416,71 @@ describe("job assignment drawer", () => {
     });
     drawer();
     await screen.findByLabelText("Assign Employee 15");
-    expect(screen.queryByRole("button", { name: "Next employee page" })).toBeNull();
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(1);
     expect(screen.queryByText("1–16 of 16")).toBeNull();
   });
-  it("has no bulk dropdown and still pages beyond 100 employees", async () => {
+  it("has no bulk dropdown or pager and loads beyond 100 employees on scroll", async () => {
     drawer();
     await screen.findByLabelText("Assign Employee 0");
     expect(screen.queryByLabelText("Bulk assignment actions")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    expect(screen.queryByRole("button", { name: /employee page/ })).toBeNull();
+    expect(screen.queryByLabelText("Assign Employee 50")).toBeNull();
+    const list = screen.getByRole("region", { name: "Employee list" });
+    fireEvent.scroll(list);
     await screen.findByLabelText("Assign Employee 50");
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    expect(screen.getByLabelText("Assign Employee 0")).toBeTruthy();
+    fireEvent.scroll(list);
     expect(await screen.findByLabelText("Assign Employee 124")).toBeTruthy();
+    fireEvent.scroll(list);
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(3);
+  });
+  it("loads the next employees only near the end of the list", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    const list = screen.getByRole("region", { name: "Employee list" });
+    Object.defineProperty(list, "scrollHeight", { configurable: true, value: 3000 });
+    Object.defineProperty(list, "clientHeight", { configurable: true, value: 400 });
+    list.scrollTop = 0;
+    fireEvent.scroll(list);
+    expect(api.loadJobEmployees).toHaveBeenCalledTimes(1);
+    list.scrollTop = 2400;
+    fireEvent.scroll(list);
+    expect(await screen.findByLabelText("Assign Employee 50")).toBeTruthy();
+  });
+  it("stops loading on its own after the next employees fail", async () => {
+    const loaded = vi.mocked(api.loadJobEmployees).getMockImplementation()!;
+    vi.mocked(api.loadJobEmployees).mockImplementation(async (workspace, job, query) => {
+      if (query.page > 0) throw new Error("Network down");
+      return loaded(workspace, job, query);
+    });
+    const proto = Element.prototype;
+    const height = Object.getOwnPropertyDescriptor(proto, "scrollHeight");
+    const client = Object.getOwnPropertyDescriptor(proto, "clientHeight");
+    Object.defineProperty(proto, "scrollHeight", { configurable: true, get: () => 400 });
+    Object.defineProperty(proto, "clientHeight", { configurable: true, get: () => 400 });
+    try {
+      drawer();
+      await screen.findByRole("alert");
+      await new Promise((resolve) => setTimeout(resolve, 100));
+      expect(api.loadJobEmployees).toHaveBeenCalledTimes(2);
+    } finally {
+      Object.defineProperty(proto, "scrollHeight", height!);
+      Object.defineProperty(proto, "clientHeight", client!);
+    }
+  });
+  it("keeps loaded employees when the next ones fail and retries them", async () => {
+    drawer();
+    await screen.findByLabelText("Assign Employee 0");
+    const loaded = vi.mocked(api.loadJobEmployees).getMockImplementation()!;
+    vi.mocked(api.loadJobEmployees).mockRejectedValueOnce(new Error("Network down"));
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
+    const alert = await screen.findByRole("alert");
+    expect(screen.getByLabelText("Assign Employee 0")).toBeTruthy();
+    vi.mocked(api.loadJobEmployees).mockImplementation(loaded);
+    fireEvent.click(within(alert).getByRole("button", { name: "Retry" }));
+    expect(await screen.findByLabelText("Assign Employee 50")).toBeTruthy();
+    expect(screen.queryByRole("alert")).toBeNull();
   });
   it("deletes an assigned job through one confirmed command and closes the drawer", async () => {
     vi.mocked(api.deleteJob).mockResolvedValue({ removed_count: 1 });
@@ -448,18 +502,14 @@ describe("job assignment drawer", () => {
     await waitFor(() => expect(close).toHaveBeenCalled());
     expect(api.saveJobAssignments).not.toHaveBeenCalled();
   });
-  it("preserves mixed changes across pages and saves only the target job deltas", async () => {
+  it("preserves mixed changes across loaded pages and saves only the target job deltas", async () => {
     drawer();
     fireEvent.click(await screen.findByLabelText("Assign Employee 0"));
     fireEvent.click(screen.getByLabelText("Assign Employee 1"));
-    fireEvent.click(screen.getByRole("button", { name: "Next employee page" }));
+    fireEvent.scroll(screen.getByRole("region", { name: "Employee list" }));
     fireEvent.click(await screen.findByLabelText("Assign Employee 50"));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Previous employee page" }),
-    );
     expect(
-      ((await screen.findByLabelText("Assign Employee 0")) as HTMLInputElement)
-        .checked,
+      (screen.getByLabelText("Assign Employee 0") as HTMLInputElement).checked,
     ).toBe(false);
     expect(
       (screen.getByLabelText("Assign Employee 1") as HTMLInputElement).checked,

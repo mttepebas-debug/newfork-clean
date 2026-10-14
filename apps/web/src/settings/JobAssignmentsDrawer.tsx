@@ -1,6 +1,10 @@
 import { useDeferredValue, useEffect, useRef, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ChevronLeft, ChevronRight, Search, Users, X } from "lucide-react";
+import {
+  useInfiniteQuery,
+  useMutation,
+  useQueryClient,
+} from "@tanstack/react-query";
+import { Search, Users, X } from "lucide-react";
 import type {
   Job,
   Department,
@@ -78,7 +82,6 @@ export function JobAssignmentsDrawer({
   const deferredSearch = useDeferredValue(search);
   const [location, setLocation] = useState("");
   const [filter, setFilter] = useState<JobAssignmentQuery["filter"]>("all");
-  const [page, setPage] = useState(0);
   const [pending, setPending] = useState<Map<string, Pending>>(new Map());
   const [discard, setDiscard] = useState(false);
   const [deleteLocked, setDeleteLocked] = useState(false);
@@ -87,35 +90,47 @@ export function JobAssignmentsDrawer({
   const [reloadable, setReloadable] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [bulkBusy, setBulkBusy] = useState(false);
-  const query: JobAssignmentQuery = {
+  const scope = {
     search: deferredSearch,
     filter,
-    page,
     ...(location ? { location_id: location } : {}),
   };
-  const data = useQuery({
+  // No pager: the next 50 load as the list nears its end (Mert 2026-10-14).
+  const data = useInfiniteQuery({
     queryKey: [
       "job-assignments",
       workspaceId,
       createMode ? "new" : job!.id,
-      query,
+      scope,
     ],
-    queryFn: () =>
-      createMode
+    queryFn: ({ pageParam }) => {
+      const query: JobAssignmentQuery = { ...scope, page: pageParam };
+      return createMode
         ? loadNewJobEmployees(workspaceId, query)
-        : loadJobEmployees(workspaceId, job!.id, query),
+        : loadJobEmployees(workspaceId, job!.id, query);
+    },
+    initialPageParam: 0,
+    getNextPageParam: (last, all) =>
+      all.length * 50 < last.total ? all.length : undefined,
     enabled: canRead,
   });
+  const first = data.data?.pages[0];
   useEffect(() => {
     if (employeeList.current) employeeList.current.scrollTop = 0;
-  }, [page, deferredSearch, location, filter]);
+  }, [deferredSearch, location, filter]);
+  // A first page that doesn't fill the list can't be scrolled: load on.
+  const loadedPages = data.data?.pages.length ?? 0;
   useEffect(() => {
-    const total = data.data?.total;
-    if (total !== undefined && !data.isFetching)
-      setPage((current) =>
-        Math.min(current, Math.max(0, Math.ceil(total / 50) - 1)),
-      );
-  }, [data.data, data.isFetching]);
+    if (employeeList.current?.scrollHeight) loadMoreNearEnd();
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when a page arrives
+  }, [loadedPages]);
+  function loadMoreNearEnd() {
+    const list = employeeList.current;
+    // After a failure only Retry asks again; scrolling doesn't loop the request.
+    if (!list || !data.hasNextPage || data.isFetching || data.isError) return;
+    if (list.scrollTop + list.clientHeight >= list.scrollHeight - 240)
+      void data.fetchNextPage();
+  }
   useEffect(() => {
     if (discard)
       dialog.current
@@ -192,7 +207,7 @@ export function JobAssignmentsDrawer({
     },
   });
   const busy = save.isPending || bulkBusy || deleteLocked;
-  const rows = data.data?.employees ?? [];
+  const rows = data.data?.pages.flatMap((page) => page.employees) ?? [];
   const additions = [...pending.values()].filter((row) => row.assigned).length;
   const removals = pending.size - additions;
   function stage(targets: JobAssignmentTarget[], assigned: boolean) {
@@ -360,8 +375,8 @@ export function JobAssignmentsDrawer({
               </h2>
               {canRead && (
                 <span>
-                  {data.data
-                    ? `${data.data.assigned_count} ${data.data.assigned_count === 1 ? "employee" : "employees"} assigned`
+                  {first
+                    ? `${first.assigned_count} ${first.assigned_count === 1 ? "employee" : "employees"} assigned`
                     : "… employees assigned"}
                 </span>
               )}
@@ -482,10 +497,7 @@ export function JobAssignmentsDrawer({
                           key={value}
                           aria-pressed={filter === value}
                           disabled={busy}
-                          onClick={() => {
-                            setFilter(value);
-                            setPage(0);
-                          }}
+                          onClick={() => setFilter(value)}
                         >
                           {value === "all"
                             ? "All"
@@ -511,7 +523,6 @@ export function JobAssignmentsDrawer({
                       }}
                       onChange={(event) => {
                         setSearch(event.target.value);
-                        setPage(0);
                       }}
                     />
                   </label>
@@ -521,11 +532,10 @@ export function JobAssignmentsDrawer({
                     disabled={busy}
                     onChange={(event) => {
                       setLocation(event.target.value);
-                      setPage(0);
                     }}
                   >
                     <option value="">All locations</option>
-                    {data.data?.locations.map((loc) => (
+                    {first?.locations.map((loc) => (
                       <option key={loc.id} value={loc.id}>
                         {loc.name}
                       </option>
@@ -540,12 +550,13 @@ export function JobAssignmentsDrawer({
                 aria-label="Employee list"
                 tabIndex={0}
                 aria-busy={data.isFetching || busy}
+                onScroll={loadMoreNearEnd}
               >
                 {data.isPending ? (
                   <div className="job-empty-state" role="status">
                     Loading employees…
                   </div>
-                ) : data.isError ? (
+                ) : data.isError && !rows.length ? (
                   <div className="job-error" role="alert">
                     {errorText(data.error)}{" "}
                     <button type="button" onClick={() => void data.refetch()}>
@@ -553,7 +564,28 @@ export function JobAssignmentsDrawer({
                     </button>
                   </div>
                 ) : rows.length ? (
-                  rows.map(employeeRow)
+                  <>
+                    {rows.map(employeeRow)}
+                    {/* In the page before it speaks, so its first line is announced. */}
+                    <div className="job-list-more" role="status">
+                      {data.isFetchingNextPage ? "Loading more employees…" : ""}
+                    </div>
+                    {data.isError && (
+                      <div className="job-list-more job-error" role="alert">
+                        {errorText(data.error)}{" "}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void (data.isFetchNextPageError
+                              ? data.fetchNextPage()
+                              : data.refetch())
+                          }
+                        >
+                          Retry
+                        </button>
+                      </div>
+                    )}
+                  </>
                 ) : (
                   <div className="job-empty-state">
                     <Users size={24} />
@@ -562,40 +594,6 @@ export function JobAssignmentsDrawer({
                   </div>
                 )}
               </div>
-              {/* One page needs no pager: the list runs to the footer (Mert 2026-10-14). */}
-              {(data.data?.total ?? 0) > 50 && (
-                <div className="job-drawer-pagination">
-                  <span>
-                    {data.data?.total
-                      ? `${page * 50 + 1}–${Math.min((page + 1) * 50, data.data.total)} of ${data.data.total}`
-                      : "0 employees"}
-                  </span>
-                  <div>
-                    <button
-                      className="job-icon-button"
-                      type="button"
-                      aria-label="Previous employee page"
-                      disabled={page === 0 || busy || data.isFetching}
-                      onClick={() => setPage((current) => current - 1)}
-                    >
-                      <ChevronLeft size={17} />
-                    </button>
-                    <button
-                      className="job-icon-button"
-                      type="button"
-                      aria-label="Next employee page"
-                      disabled={
-                        (page + 1) * 50 >= (data.data?.total ?? 0) ||
-                        busy ||
-                        data.isFetching
-                      }
-                      onClick={() => setPage((current) => current + 1)}
-                    >
-                      <ChevronRight size={17} />
-                    </button>
-                  </div>
-                </div>
-              )}
             </section>
           )}
         </div>

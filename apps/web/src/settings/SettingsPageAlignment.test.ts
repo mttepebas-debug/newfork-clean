@@ -87,4 +87,12 @@ describe("settings page alignment styles", () => {
       /\.(?:shift-catalog-settings-page|acknowledgement-page)\s+\.settings-header-action\s*\{[^}]*(?:align|justify)-self\s*:/,
     );
   });
+  it("keeps a single frame on the job drawer's search box", () => {
+    // The editor's field rule (0,2,1, later in the file) would add an inner border.
+    const body = /\.job-assignment-drawer \.job-search\.job-search input \{([^}]*)\}/.exec(
+      jobsSettingsStyles,
+    )?.[1];
+    expect(body).toContain("border: 0");
+    expect(body).toContain("padding: 0");
+  });
 });
