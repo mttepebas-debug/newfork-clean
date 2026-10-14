@@ -6,6 +6,8 @@
    pagination bar or "Load more" under the frame stays in view below it.
    A window shorter than 560 px scrolls the whole page as before (a phone held
    sideways would otherwise keep almost nothing for the list).
+   Settings → Jobs joined on 2026-10-14 (Mert, on its page: "sadece liste
+   scroll up down olsun").
    Selectors carry `.list-page` three times so a page's own sheet (loaded
    later, at most `.x.list-page.list-page .frame`) cannot undo the frame. */
 @media (min-height: 560px) {
@@ -15,7 +17,8 @@
       .requests-page,
       .notifications-page,
       .announcements-page,
-      .document-catalog-settings-page
+      .document-catalog-settings-page,
+      .jobs-catalog-page
     ).list-page.list-page {
     display: flex;
     height: 100%;
@@ -28,7 +31,8 @@
       .requests-page,
       .notifications-page,
       .announcements-page,
-      .document-catalog-settings-page
+      .document-catalog-settings-page,
+      .jobs-catalog-page
     ).list-page.list-page
     > *,
   .employee-documents-page.list-page.list-page > .employee-documents-list > * {
@@ -40,7 +44,8 @@
       .employees-page,
       .requests-page,
       .notifications-page,
-      .document-catalog-settings-page
+      .document-catalog-settings-page,
+      .jobs-catalog-page
     ).list-page.list-page.list-page
     > :is(.employee-table-wrap, .job-catalog),
   .employee-documents-page.list-page.list-page.list-page

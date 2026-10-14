@@ -25,6 +25,9 @@ describe("frozen list pages", () => {
     "notifications-page",
     "announcements-page",
     "document-catalog-settings-page",
+    // Settings → Jobs joined the shared list look on 2026-10-14 (Mert's
+    // comment on its page: "sadece liste scroll up down olsun").
+    "jobs-catalog-page",
   ];
 
   it("is loaded with the shared list look", () => {
