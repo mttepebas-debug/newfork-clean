@@ -44,6 +44,29 @@
   .employee-documents-page.list-page.list-page > .employee-documents-list > * {
     flex: 0 0 auto;
   }
+  /* Shift catalog's two tabs sit in a shell and a tab panel between the
+     scrolling area and the list page: both pass the height down, and the
+     shell keeps the one bottom padding. */
+  .shift-catalog-shell.shift-catalog-shell:has(
+      > .shift-catalog-panel > .list-page
+    ) {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .shift-catalog-shell > .shift-catalog-panel {
+    display: flex;
+    min-height: 0;
+    flex: 1 1 auto;
+    flex-direction: column;
+  }
+  .shift-catalog-panel
+    > .shift-catalog-settings-page.list-page.list-page.list-page {
+    height: auto;
+    flex: 1 1 auto;
+    padding-bottom: 0;
+  }
   /* The frame: scrolls up and down. Sideways stays each page's own (Employees
      never scrolls sideways on a phone). */
   :is(
@@ -88,6 +111,13 @@
     overflow: auto;
   }
 
+  /* The frame cuts what is drawn outside it: a row's focus ring is drawn
+     inside the control, so the last row's ring keeps its bottom edge. */
+  .list-page.list-page
+    > .job-catalog
+    :is(button, a, input, select, summary):focus-visible {
+    outline-offset: -2px;
+  }
   /* Column headings stay at the top of the frame. Employees, Requests,
      Notifications and Employees → Documents already pin theirs
      (.employee-table th). */
