@@ -6,7 +6,7 @@
 
 /** Widths in px of the card's marks, as drawn (checked in the browser). */
 export const SHIFT_CARD_MARK = {
-  availability: 18, // the orange "!"
+  availability: 10, // the orange dot (its 18px place to press reaches past it)
   live: 30, // the green dot and LIVE
   newLabel: 22, // the green NEW
   spinner: 12, // saving
