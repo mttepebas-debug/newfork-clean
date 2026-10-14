@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 485, last: 20261013230000_draft_list_counts_shifts_and_hours.sql
--- fingerprint: sha256:80b39ece65235bcd8c77729cfda11672d8635f439ce50ee50dc0f887b760968f
+-- migrations: 486, last: 20261014060000_department_archive_takes_its_jobs.sql
+-- fingerprint: sha256:4ee0299c7a724b4475c496943c6594a2e6b01df538be1f8e18966c3ab4c12cb4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3712,6 +3712,24 @@ COMMENT ON FUNCTION "app_private"."default_closure_period"() IS 'How long a sche
 
 
 
+CREATE OR REPLACE FUNCTION "app_private"."department_archive_takes_its_jobs"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if old.archived_at is null and new.archived_at is not null then
+    update public.jobs set archived_at = new.archived_at, updated_at = now()
+    where workspace_id = new.workspace_id and department_id = new.id
+      and archived_at is null and deleted_at is null;
+  end if;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."department_archive_takes_its_jobs"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") RETURNS bigint
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5242,6 +5260,39 @@ $$;
 
 
 ALTER FUNCTION "app_private"."keep_job_assignment_rules"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."keep_jobs_out_of_archived_departments"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare department_archived_at timestamptz;
+begin
+  if new.archived_at is not null or new.department_id is null then return new; end if;
+  -- A save that keeps an active job where it is reads nothing: Settings sends
+  -- department_id on every save, and locking the department there could
+  -- deadlock with that department's archive, which locks this job.
+  if tg_op = 'UPDATE' and old.archived_at is null and new.department_id is not distinct from old.department_id then
+    return new;
+  end if;
+  -- Shares the department's row so an archive running at the same moment
+  -- either waits for this job or is seen by it.
+  select department.archived_at into department_archived_at
+  from public.departments department
+  where department.id = new.department_id and department.workspace_id = new.workspace_id
+  for share;
+  if department_archived_at is null then return new; end if;
+  if tg_op = 'UPDATE' and old.archived_at is not null then
+    new.department_id := null;
+    return new;
+  end if;
+  raise exception 'Restore the department before adding jobs'
+    using errcode = '22023', hint = 'department.archived';
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."keep_jobs_out_of_archived_departments"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."keep_manager_at_a_location"("w" "uuid", "target_employee" "uuid", "becoming" "public"."workspace_role" DEFAULT NULL::"public"."workspace_role") RETURNS "void"
@@ -17579,27 +17630,6 @@ end; $$;
 
 
 ALTER FUNCTION "public"."prepare_weekly_schedule_assignment"("actor" "uuid", "w" "uuid", "s" "jsonb", "previous" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."prevent_department_archive_with_active_jobs"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-begin
-  if old.archived_at is null and new.archived_at is not null and exists (
-    select 1 from public.jobs job
-    where job.workspace_id = new.workspace_id
-      and job.department_id = new.id
-      and job.archived_at is null
-  ) then
-    raise exception 'archive active jobs before archiving their department' using errcode = '23514';
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."prevent_department_archive_with_active_jobs"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prevent_last_workspace_owner_removal"() RETURNS "trigger"
@@ -32951,7 +32981,7 @@ CREATE OR REPLACE TRIGGER "deleted_location_assignment_guard" BEFORE INSERT OR U
 
 
 
-CREATE OR REPLACE TRIGGER "departments_archive_guard_trigger" BEFORE UPDATE OF "archived_at" ON "public"."departments" FOR EACH ROW EXECUTE FUNCTION "public"."prevent_department_archive_with_active_jobs"();
+CREATE OR REPLACE TRIGGER "department_archive_takes_its_jobs" AFTER UPDATE OF "archived_at" ON "public"."departments" FOR EACH ROW EXECUTE FUNCTION "app_private"."department_archive_takes_its_jobs"();
 
 
 
@@ -33076,6 +33106,10 @@ CREATE OR REPLACE TRIGGER "jobs_audit_trigger" AFTER INSERT OR UPDATE ON "public
 
 
 CREATE OR REPLACE TRIGGER "jobs_deletion_state_guard" BEFORE INSERT OR UPDATE ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."guard_job_deletion_state"();
+
+
+
+CREATE OR REPLACE TRIGGER "jobs_stay_out_of_archived_departments" BEFORE INSERT OR UPDATE OF "department_id", "archived_at" ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."keep_jobs_out_of_archived_departments"();
 
 
 
@@ -35635,6 +35669,10 @@ REVOKE ALL ON FUNCTION "app_private"."default_closure_period"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."department_archive_takes_its_jobs"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") FROM PUBLIC;
 
 
@@ -35851,6 +35889,10 @@ REVOKE ALL ON FUNCTION "app_private"."job_assignment_candidates"("actor" "uuid",
 
 
 REVOKE ALL ON FUNCTION "app_private"."keep_job_assignment_rules"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."keep_jobs_out_of_archived_departments"() FROM PUBLIC;
 
 
 
@@ -37151,10 +37193,6 @@ GRANT ALL ON FUNCTION "public"."prepare_employee_invitation_service"("actor_user
 
 
 REVOKE ALL ON FUNCTION "public"."prepare_weekly_schedule_assignment"("actor" "uuid", "w" "uuid", "s" "jsonb", "previous" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."prevent_department_archive_with_active_jobs"() FROM PUBLIC;
 
 
 
