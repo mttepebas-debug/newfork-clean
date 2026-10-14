@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router";
-import { CatalogPageHeader } from "../views/CatalogPageHeader";
+import { CatalogPageHeader, TabRowAdd } from "../views/CatalogPageHeader";
 
 type CatalogTab = "types" | "labels";
 
@@ -17,18 +17,22 @@ export function ShiftCatalogHeader({ titleId }: { titleId: string }) {
   );
 }
 
-/** The tab row, with the filter row under it when the list is ready. */
+/** The tab row, with the filter row under it when the list is ready. A phone
+ * passes the add button as `add`, for the tab row's right end. */
 export function ShiftCatalogToolbar({
   disabled = false,
+  add,
   children,
 }: {
   disabled?: boolean;
+  add?: ReactNode;
   children?: ReactNode;
 }) {
   return (
     <div className="job-catalog-toolbar catalog-toolbar">
       <div className="catalog-toolbar-status-row">
         <ShiftCatalogTabs disabled={disabled} />
+        {add ? <TabRowAdd>{add}</TabRowAdd> : null}
       </div>
       {children}
     </div>

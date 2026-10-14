@@ -1,9 +1,10 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { MemoryRouter } from "react-router";
-import { beforeEach, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, expect, it, vi } from "vitest";
 import { documentTypeSchema } from "@newfork/shared";
 import DocumentsSettingsPage from "./DocumentsSettingsPage";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import {
   listDocumentTypes,
   saveDocumentType,
@@ -258,3 +259,21 @@ it("does not read definitions the core does not open", () => {
   mount();
   expect(listDocumentTypes).not.toHaveBeenCalled();
 });
+
+// Mert 2026-10-14: on a phone "+ Add" sits at the right end of the tab row.
+it("keeps New document in the filter row on a computer", async () => {
+  mount();
+  await screen.findByTitle("Safety certificate");
+  expect(
+    screen.getByRole("button", { name: "New document" }).closest(".catalog-toolbar-filter-row"),
+  ).toBeTruthy();
+});
+it("puts New document at the right end of the tab row on a phone", async () => {
+  stubPhoneWidth();
+  mount();
+  await screen.findByTitle("Safety certificate");
+  const add = screen.getByRole("button", { name: "New document" });
+  expect(add.closest(".catalog-toolbar-status-row .catalog-tab-add")).toBeTruthy();
+  expect(add.closest(".catalog-toolbar-filter-row")).toBeNull();
+});
+afterEach(() => vi.unstubAllGlobals());
