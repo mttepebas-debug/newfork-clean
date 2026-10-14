@@ -222,21 +222,30 @@ export function ScheduleRow({
   const availabilityDays = employee
     ? locations.flatMap((location) => days.map((day) => {
         const cell = employeeShifts.filter((shift) => location.sourceIds.includes(shift.location_id) && shift.scheduled_date === day);
+        // While editing, a live shift's card says LIVE, so its "!" moves
+        // here (Mert, 2026-10-12).
+        const movedHere = cell.filter((shift) => shift.warning_codes.includes("availability") &&
+          editing && publicationStateForShift(shift) === "locked");
         return {
           date: day,
           mark: cellStateByKey.get(scheduleCellStateKey(location.id, day, employee.id))?.availabilityMark ?? null,
           shiftCount: cell.length,
-          // While editing, a live shift's card says LIVE, so its "!" moves
-          // here (Mert, 2026-10-12).
-          clashes: cell.some((shift) => shift.warning_codes.includes("availability") &&
-            !(editing && publicationStateForShift(shift) === "locked")),
+          clashes: cell.some((shift) => shift.warning_codes.includes("availability") && !movedHere.includes(shift)),
+          // K18, M11: the moved "!" still says the mark came after the first publish.
+          changedAfterPublish: movedHere.some((shift) => shift.availability_changed_after_publish),
         };
       }))
     : [];
   const nameAvailabilityLines = nameCellShowsAvailabilityMark(availabilityDays)
-    ? [...new Set(availabilityDays.flatMap(({ date, mark }) => mark?.kind === "unavailable"
-        ? mark.windows.map((window) => formatAvailabilityMarkLine(date, window, timeFormat))
-        : []))]
+    ? days.flatMap((day) => {
+        const entries = availabilityDays.filter(({ date }) => date === day);
+        const lines = [...new Set(entries.flatMap(({ mark }) => mark?.kind === "unavailable"
+          ? mark.windows.map((window) => formatAvailabilityMarkLine(day, window, timeFormat))
+          : []))];
+        return lines.length && entries.some(({ changedAfterPublish }) => changedAfterPublish)
+          ? [...lines, "Changed after publishing"]
+          : lines;
+      })
     : [];
 
   return (
