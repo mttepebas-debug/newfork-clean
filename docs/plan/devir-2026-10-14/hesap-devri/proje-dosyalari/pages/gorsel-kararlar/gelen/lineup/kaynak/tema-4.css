@@ -1,0 +1,111 @@
+/* ===== Theme 4 · SOFT — friendly floating cards. Cool mist ground, white cards with big radii and soft depth,
+   pastel fields in each shift's own colour, pill controls, pine green action, rounded grotesk.
+   Free-hand theme (Mert 2026-10-13). Same markup and behaviour; only the look changes. */
+.tema-4 {
+  --mist: #eceff6; --mist-2: #e3e7f1; --card: #ffffff; --well: #f3f5fa; --well-2: #e9edf5;
+  --t1: #1a1f36; --t2: #4b5371; --t3: #7c849e; --line: #e4e8f1;
+  --pine: #136b57; --pine-2: #0f5a49; --pine-soft: #e1f2ec; --rose: #c2362b; --rose-soft: #fdecec; --honey: #9a6500; --honey-soft: #fff4d6;
+  --lift: 0 1px 2px rgb(26 31 54 / 5%), 0 10px 30px -12px rgb(26 31 54 / 18%);
+  --display: "Bricolage Grotesque", ui-sans-serif, system-ui, sans-serif;
+  --theme-font-sans: "Figtree", ui-sans-serif, system-ui, sans-serif;
+  --chrome-bg: #1a1f36; --chrome-fg: #f4f6fb; --chrome-muted: #9aa1bb; --chrome-line: #2c3352; --chrome-chip: #262c48;
+  font-family: var(--theme-font-sans);
+}
+.tema-4, .tema-4 .mk-desk, .tema-4 .app, .tema-4 .main { background: var(--mist); }
+.tema-4 .mk-seg { border-radius: 999px; }
+.tema-4 .mk-seg button { border-radius: 999px; }
+.tema-4 .mk-seg button[aria-pressed="true"] { background: #fff; color: var(--t1); }
+
+.tema-4 .side { background: var(--mist); border-right: 0; }
+.tema-4 .side-top strong { font-family: var(--display); font-weight: 700; font-size: 17px; }
+.tema-4 .nav { border-radius: 12px; color: var(--t2); font-weight: 600; }
+.tema-4 .nav:hover { background: var(--mist-2); }
+.tema-4 .nav.active { background: var(--card); color: var(--pine); box-shadow: var(--lift); }
+.tema-4 .nav .new { background: var(--pine-soft); color: var(--pine); border: 0; border-radius: 999px; }
+
+.tema-4 .lu-top { background: var(--mist) !important; }
+.tema-4 .cph { border-bottom: 0; }
+.tema-4 .cph-eyebrow { color: var(--pine); font-size: 11px; letter-spacing: .04em; text-transform: none; font-weight: 700; }
+.tema-4 .cph h1 { font-family: var(--display); font-size: 44px; font-weight: 800; letter-spacing: -.035em; color: var(--t1); }
+.tema-4 .cph-dot { background: #36c58f; box-shadow: 0 0 0 6px rgb(54 197 143 / 18%); }
+.tema-4 .cph p { color: var(--t2); font-size: 13.5px; }
+
+.tema-4 .topbar.under { background: var(--mist) !important; }
+.tema-4 .tb-btn { border: 0; border-radius: 999px; background: var(--card); color: var(--t1); font-weight: 650; box-shadow: var(--lift); min-height: 38px; padding: 0 16px; }
+.tema-4 .tb-btn:hover { background: #fff; color: var(--pine); }
+.tema-4 .tb-btn.icon { width: 38px; padding: 0; }
+.tema-4 .tb-split { background: var(--card); border-radius: 999px; box-shadow: var(--lift); }
+.tema-4 .tb-split .tb-btn { box-shadow: none; background: transparent; }
+.tema-4 .tb-split .tb-btn:first-child { border-radius: 999px 0 0 999px; width: 40px; }
+.tema-4 .tb-split .tb-btn:last-child { border-radius: 0 999px 999px 0; }
+.tema-4 .tb-split.away { background: var(--honey-soft); }
+.tema-4 .tb-split.away .tb-btn { background: transparent; color: var(--honey); border: 0; }
+.tema-4 .tb-btn.btn-green { background: var(--pine); color: #fff; box-shadow: 0 8px 20px -8px rgb(19 107 87 / 60%); }
+.tema-4 .tb-btn.btn-green:hover { background: var(--pine-2); color: #fff; }
+.tema-4 .day-strip { border: 0 !important; background: var(--card); border-radius: 999px; padding: 4px; box-shadow: var(--lift); height: 40px !important; gap: 4px; margin-top: 4px; }
+.tema-4 .day-strip .day, .tema-4 .day-strip button { border-radius: 999px; color: var(--t2); }
+.tema-4 .day-strip [aria-pressed="true"] { background: var(--pine) !important; color: #fff !important; box-shadow: none; }
+.tema-4 .day-strip [aria-pressed="true"] * { color: #fff !important; }
+
+.tema-4 .loc-sec { background: transparent; border: 0; box-shadow: none; padding: 0; }
+.tema-4 .loc-sec > .loc-hd { background: transparent !important; border: 0; margin: 0; flex-direction: row; justify-content: flex-start; align-items: baseline; gap: 12px; text-align: left; padding: 6px 4px 10px; }
+.tema-4 .loc-hd h2 { font-family: var(--display); font-size: 26px; font-weight: 800; letter-spacing: -.03em; color: var(--t1); }
+.tema-4 .loc-hd h2 i { width: 12px; height: 12px; box-shadow: 0 0 0 4px color-mix(in srgb, var(--c) 22%, transparent); }
+.tema-4 .loc-hd > span { color: var(--t3) !important; font-size: 14px; font-weight: 600; }
+
+.tema-4 .lt-card { background: var(--card); border: 0; border-radius: 22px; box-shadow: var(--lift); overflow: hidden; }
+.tema-4 .lt-card .lt-hd { background: color-mix(in srgb, var(--t) 13%, #fff); border-bottom: 0; padding-left: 18px; padding-right: 14px; }
+.tema-4 .lt-card.is-empty { box-shadow: none; background: transparent; border: 2px dashed var(--well-2); }
+.tema-4 .lt-card.is-empty .lt-hd { background: transparent; }
+.tema-4 .lt-type { font-family: var(--display); font-weight: 800; font-size: 19px; letter-spacing: -.02em; color: color-mix(in srgb, var(--t) 55%, var(--t1)); }
+.tema-4 .lt-type i { width: 10px; height: 10px; }
+.tema-4 .pill { border: 0 !important; border-radius: 999px; font-size: 10.5px !important; font-weight: 700; padding: 1px 9px !important; }
+.tema-4 .pill.draft { background: rgb(255 255 255 / 75%); color: var(--t2); }
+.tema-4 .pill.shared { background: var(--pine-soft); color: var(--pine); }
+.tema-4 .pill.editing { background: var(--honey-soft); color: var(--honey); }
+.tema-4 .ackbar { background: rgb(255 255 255 / 80%); border-radius: 999px; height: 8px; }
+.tema-4 .ackbar i { background: var(--pine); border-radius: 999px; }
+.tema-4 .ackbtn { color: var(--t2); font-weight: 650; }
+
+.tema-4 .lt-body { padding: 8px 10px 12px; }
+.tema-4 .dept-tbl, .tema-4 .dept-stack > .dept-tbl { border: 0 !important; border-radius: 16px !important; background: var(--card); }
+.tema-4 .dept-stack { display: flex; flex-direction: column; gap: 6px; }
+.tema-4 .dept-hd { background: transparent; border: 0 !important; color: var(--t3); font-size: 11px; letter-spacing: .08em; padding: 10px 12px 4px; }
+.tema-4 table.lt thead th { background: transparent; color: var(--t3); font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: none; border-bottom: 1px solid var(--line); }
+.tema-4 table.lt td { border-bottom: 1px solid var(--line); color: var(--t1); }
+.tema-4 table.lt tbody tr:last-child td { border-bottom: 0; }
+.tema-4 table.lt tr.grp td { background: transparent; border-bottom: 0; padding-top: 10px; color: var(--t2); font-size: 11px; letter-spacing: .06em; }
+.tema-4 table.lt tbody tr:not(.grp):hover > td { background: var(--well); }
+.tema-4 .cell-sel, .tema-4 .cell-btn.dd { border: 0 !important; border-radius: 999px !important; background-color: var(--well) !important; color: var(--t1) !important; font-weight: 550; }
+.tema-4 .cell-sel:hover, .tema-4 .cell-btn.dd:hover { background-color: var(--well-2) !important; }
+.tema-4 .cell-btn.name-dd { font-weight: 700; background-color: transparent !important; padding-left: 4px; }
+.tema-4 .cell-btn.name-dd:hover { background-color: var(--well) !important; }
+.tema-4 .tin { border: 0 !important; border-radius: 999px !important; background: var(--well) !important; box-shadow: none !important; font-weight: 600; font-variant-numeric: tabular-nums; }
+.tema-4 .tin:focus { outline: 2px solid var(--pine); outline-offset: 0; background: #fff !important; }
+.tema-4 .jobadd { border: 0; border-radius: 999px; background: var(--pine-soft); color: var(--pine); }
+.tema-4 .jobadd:hover { background: var(--pine); color: #fff; }
+.tema-4 .callbtn { border: 0; border-radius: 999px; background: var(--rose-soft); color: var(--rose); font-weight: 700; }
+.tema-4 .callbtn:hover { background: var(--rose); color: #fff; }
+.tema-4 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td, .tema-4 table.lt tbody tr:has(.callbtn.armed) > td { background: var(--rose-soft) !important; }
+.tema-4 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td:first-child { box-shadow: none; }
+
+.tema-4 .banner { border: 0; border-radius: 14px; }
+.tema-4 .banner.warn { background: var(--honey-soft); color: #6b4700; }
+.tema-4 .banner.ok { background: var(--pine-soft); color: var(--pine-2); }
+.tema-4 .pop, .tema-4 .modal { border: 0 !important; border-radius: 18px !important; box-shadow: 0 24px 60px -16px rgb(26 31 54 / 35%) !important; overflow: hidden; }
+.tema-4 .mi { border-radius: 10px; }
+.tema-4 .mi:hover { background: var(--well); }
+.tema-4 .mi .box { border-radius: 6px; }
+.tema-4 .mi[aria-checked="true"] .box { background: var(--pine); border-color: var(--pine); color: #fff; }
+.tema-4 .nf-btn { border-radius: 999px; background: var(--pine); }
+.tema-4 .nf-btn.secondary { background: var(--well); color: var(--t1); border: 0; }
+.tema-4 .toast { border-radius: 999px; background: var(--t1); }
+
+.tema-4 .ck-rail > *, .tema-4 .ck-card { border: 0 !important; border-radius: 20px !important; box-shadow: var(--lift) !important; }
+.tema-4 .bd-col { border: 0; border-radius: 22px; background: var(--card); box-shadow: var(--lift); overflow: hidden; }
+.tema-4 .bd-col .bd-hd { background: color-mix(in srgb, var(--t) 13%, #fff); border-radius: 0; }
+.tema-4 .pc { border: 0; border-radius: 16px; background: var(--well); }
+.tema-4 .phone { border-radius: 48px; background: #1a1f36; }
+.tema-4 .phone-scr { border-radius: 38px; }
+.tema-4 .ph-ack { background: var(--pine); border-radius: 999px; }
+.tema-4 .lt-card.is-empty { background: rgb(255 255 255 / 50%); border: 2px dashed #cfd5e3; }

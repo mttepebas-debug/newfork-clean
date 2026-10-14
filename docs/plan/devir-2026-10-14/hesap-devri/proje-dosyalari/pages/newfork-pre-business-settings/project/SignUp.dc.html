@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Create your workspace account</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.pb{display:flex;flex-direction:column;width:1440px;height:900px;background:#ffffff;color:#1d2525}
+.pb-top{display:flex;align-items:center;justify-content:space-between;gap:20px;height:62px;flex:0 0 62px;padding:0 32px;border-bottom:1px solid #dce3df;background:#ffffff;box-sizing:border-box}
+.pb-who{display:flex;align-items:center;gap:14px;min-width:0}
+.pb-who .av{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:999px;background:#e7f1ed;color:#12624f;font-size:11px;font-weight:700}
+.pb-who .mail{font-size:12.5px;color:#66716c}
+.pb-topnote{max-width:560px;font-size:12px;line-height:1.45;color:#8d9793;text-align:right}
+.pb-btn-tiny{min-height:32px;padding:0 12px;font-size:12.5px}
+.pb-brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.pb-body{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px 32px;box-sizing:border-box}
+.card{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;width:560px;box-sizing:border-box;padding:88px 88px 56px;border:1px solid #dce3df;border-radius:10px;background:#ffffff;text-align:center}
+.card h1{margin:0;font-size:26px;line-height:1.2;font-weight:600;color:#17221e}
+.card .pb-description{margin:0;max-width:384px;font-size:14px;line-height:1.55;color:#66716c}
+
+.pb-description{margin:0;color:#66716c;font-size:15px;line-height:1.55}
+.fld{display:grid;gap:7px;margin-top:22px}
+.fld label{font-size:13px;font-weight:700;color:#17221e}
+.fld input{height:42px;padding:0 12px;border:1px solid #cbd4d0;border-radius:6px;background:#ffffff;color:#1d2525;font:inherit;font-size:14px}
+.fld small{font-size:12px;color:#66716c}
+.pb-stack{display:grid;gap:10px;margin-top:26px}
+.pb-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.pb-btn-primary{background:#176954;color:#ffffff}
+.pb-btn-secondary{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.pb-btn-block{width:100%;min-height:40px;font-size:13.5px}
+.trust{display:flex;justify-content:center;gap:18px;margin:0;padding:0;border:0}
+.trust a{font-size:12.5px;color:#66716c;text-decoration:none}
+.sidenote{font-size:11.5px;color:#66716c;line-height:1.5}
+</style>
+</helmet>
+<div class="pb">
+  <header class="pb-top">
+    <span class="pb-brand">NEWFORK</span>
+    <span class="pb-topnote">Coming from an invitation link the same screen says &ldquo;Create your employee account&rdquo; and drops the name field &mdash; the invitation already carries it.</span>
+  </header>
+  <div class="pb-body">
+  <main class="card" aria-labelledby="su-t">
+    <h1 id="su-t">Create your workspace account</h1>
+    <p class="pb-description">You will name the workspace itself in the next step.</p>
+    <form style="width:100%;text-align:left;">
+      <div class="fld">
+        <label for="su-name">Your full name</label>
+        <input id="su-name" type="text" autocomplete="name" required>
+        <small>This is the name your team will see.</small>
+      </div>
+      <div class="fld">
+        <label for="su-mail">Email</label>
+        <input id="su-mail" type="email" autocomplete="username" required>
+      </div>
+      <div class="fld">
+        <label for="su-pw">Password</label>
+        <input id="su-pw" type="password" autocomplete="new-password" minlength="8" required>
+        <small>At least 8 characters.</small>
+      </div>
+      <div class="pb-stack">
+        <button type="submit" class="pb-btn pb-btn-primary pb-btn-block">Sign up</button>
+        <a class="pb-btn pb-btn-secondary pb-btn-block" href="#signin">Sign in</a>
+      </div>
+    </form>
+    </main>
+    <nav class="trust" aria-label="Trust and legal">
+      <a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#accessibility">Accessibility</a><a href="#contact">Contact</a>
+    </nav>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

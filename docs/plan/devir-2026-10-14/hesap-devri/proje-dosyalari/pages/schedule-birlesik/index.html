@@ -1,0 +1,288 @@
+<title>Schedule test page</title>
+<meta charset="utf-8">
+<style>
+/* Layout: karar defteri üstte (madde satırları), altında seçilen sayfayı gösteren tek pencere. */
+:root {
+  --bg: #f6f7f5;
+  --panel: #ffffff;
+  --ink: #18201c;
+  --muted: #59635d;
+  --line: #dde2dd;
+  --accent: #176954;
+  --accent-soft: #e3f1ec;
+  --done: #176954;
+  --done-bg: #e3f1ec;
+  --wait: #8a5300;
+  --wait-bg: #fff1d6;
+  --half: #3d4fa3;
+  --half-bg: #e8ebfb;
+  --no: #8f2431;
+  --no-bg: #fbe7ea;
+  --font-body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121614; --panel: #1a201d; --ink: #e7ece9; --muted: #a4aea8; --line: #2e3833;
+    --accent: #6fd0b0; --accent-soft: #1d3a31; --done: #7fd9b9; --done-bg: #1d3a31;
+    --wait: #f2c26b; --wait-bg: #3a2c12; --half: #a9b5f5; --half-bg: #262c4d; --no: #f3a1ab; --no-bg: #3f1f25;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121614; --panel: #1a201d; --ink: #e7ece9; --muted: #a4aea8; --line: #2e3833;
+  --accent: #6fd0b0; --accent-soft: #1d3a31; --done: #7fd9b9; --done-bg: #1d3a31;
+  --wait: #f2c26b; --wait-bg: #3a2c12; --half: #a9b5f5; --half-bg: #262c4d; --no: #f3a1ab; --no-bg: #3f1f25;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.5; }
+.wrap { max-width: 1240px; margin: 0 auto; padding-inline: 16px; padding-block: 24px 40px; display: grid; gap: 20px; }
+header { display: grid; gap: 6px; }
+.eyebrow { font-family: var(--font-mono); font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0; }
+h1 { font-size: 26px; line-height: 1.2; margin: 0; text-wrap: balance; }
+h2 { font-size: 18px; margin: 0; text-wrap: balance; }
+header p { margin: 0; max-width: 70ch; color: var(--muted); }
+.legend { display: flex; flex-wrap: wrap; gap: 8px 16px; font-size: 13px; color: var(--muted); }
+.pill { display: inline-flex; align-items: center; gap: 6px; border-radius: 10px; padding: 2px 10px; font-size: 12.5px; font-weight: 600; white-space: normal; max-width: 100%; }
+.pill::before { flex: none; }
+.pill::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+.p-done { color: var(--done); background: var(--done-bg); }
+.p-wait { color: var(--wait); background: var(--wait-bg); }
+.p-half { color: var(--half); background: var(--half-bg); }
+.p-no { color: var(--no); background: var(--no-bg); }
+section.book { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.book-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.book-head span { color: var(--muted); font-size: 13px; }
+.rows { display: grid; }
+.row { display: grid; grid-template-columns: 52px minmax(0, 1.2fr) minmax(0, 2.2fr) minmax(0, 1fr); gap: 4px 16px; padding: 12px 16px; border-top: 1px solid var(--line); align-items: start; }
+.row:first-child { border-top: 0; }
+.row.colhead { font-family: var(--font-mono); font-size: 11.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); padding-block: 8px; background: var(--bg); }
+.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; font-weight: 600; color: var(--muted); }
+.what strong { display: block; }
+.what small { color: var(--muted); font-size: 13px; }
+.state { display: grid; gap: 4px; min-width: 0; }
+.state p { margin: 0; font-size: 14px; }
+.state .src { font-size: 12.5px; color: var(--muted); }
+.go { display: flex; flex-wrap: wrap; gap: 6px; }
+button.open { font: inherit; font-size: 13px; font-weight: 600; color: var(--accent); background: var(--accent-soft); border: 1px solid transparent; border-radius: 6px; padding: 5px 10px; cursor: pointer; text-align: left; }
+button.open:hover { border-color: var(--accent); }
+button:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.viewer { display: grid; gap: 10px; scroll-margin-top: 8px; }
+.tabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.tabs button { flex: none; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--ink); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 12px; cursor: pointer; }
+.tabs button[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: var(--panel); }
+.frame-note { margin: 0; font-size: 13.5px; color: var(--muted); max-width: 90ch; }
+.frame-box { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; height: min(860px, 88vh); }
+.frame-box iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.foot { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.foot p { margin: 0; max-width: 90ch; }
+code { font-family: var(--font-mono); font-size: 12.5px; }
+@media (max-width: 760px) {
+  .row { grid-template-columns: 40px minmax(0, 1fr); }
+  .row .state, .row .go { grid-column: 2; }
+  .row.colhead { display: none; }
+  .frame-box { height: 80vh; }
+}
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;600;700&display=swap">
+
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Schedule · birleşik sayfa · 9 Ekim 2026</p>
+    <h1>Schedule tasarım kararları ve deneme sayfaları</h1>
+    <p>Schedule için açılan beş tasarım sayfası artık burada. Seçtiğin maddede yalnız seçtiğin hâl kaldı ve yanında ne zaman, hangi sayfada seçtiğin yazıyor. Karar vermediğin maddede bugünkü uygulama ("Original") ve bütün varyantlar duruyor; eski Code oturumlarındaki varyantlar da eklendi. Aynı varyant iki yerde varsa tek kopya kaldı ve iki kaynağı da yazıyor. Her satırdaki düğme ilgili sayfayı aşağıda açar; sayfaların içinde sağ alttaki "Test page" düğmesi varyantları değiştirir.</p>
+    <div class="legend">
+      <span class="pill p-done">Seçildi</span>
+      <span class="pill p-half">Yarı karar</span>
+      <span class="pill p-wait">Karar bekliyor</span>
+      <span class="pill p-no">Reddedildi</span>
+      <span>Saatler senin saatinle (ABD Pasifik).</span>
+    </div>
+  </header>
+
+  <section class="book" aria-labelledby="book-title">
+    <div class="book-head"><h2 id="book-title">Madde madde durum</h2><span>Mert'in 9 Ekim Schedule listesi, madde 1–16</span></div>
+    <div class="rows" role="list">
+      <div class="row colhead" aria-hidden="true"><span>Madde</span><span>Ne</span><span>Durum</span><span>Dene</span></div>
+
+      <div class="row" role="listitem"><span class="num">1</span>
+        <div class="what"><strong>Ad hücresindeki "!"</strong><small>Müsait olmadığı günleri göstermek</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 9 Ekim 01:13 · Müsaitlik ve izin hücreleri sayfası</span></span>
+          <p>A · Soft tint: "!" penceresi açıkken o kişinin müsait olmadığı günlerin hücreleri açık turuncu dolar.</p>
+          <p class="src">Koda girdi (gece dalı, trene hazır). "Schedule (seçimlerinle)" sayfasında gerçek kod çalışıyor.</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="musaitlik">Müsaitlik ve izin</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">2</span>
+        <div class="what"><strong>New Schedule penceresi</strong><small>Üst çubuk → New Schedule</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span>
+          <p>Original + 1–5 (9 Ekim) + eski Code'dan 28 Eylül stil A ve C. Original, 28 Eylül'de seçtiğin stil B'dir (iki kaynak: bugünkü uygulama ve 28 Eylül turu). 28 Eylül stilleri bütün sağ üst pencereleri birlikte boyar.</p></div>
+        <div class="go"><button class="open" data-tab="ustcubuk">Üst çubuk</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">3</span>
+        <div class="what"><strong>Düzenlerken yayın işareti</strong><small>Vardiya kartı</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 9 Ekim 01:21 · Vardiya kartı sayfası</span></span>
+          <p>6: yayındaki vardiyada işaret yok; yeni vardiyada küçük yeşil "NEW".</p>
+          <p class="src">Koda girdi (gece dalı, trene hazır).</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="vardiya">Vardiya kartı</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">4</span>
+        <div class="what"><strong>Sürüklerken uygun olmayanlar</strong><small>Vardiya sürükleme</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 9 Ekim 01:21 · Vardiya kartı sayfası</span></span>
+          <p>B: vardiyanın kendi lokasyonunda o işi yapamayanlar sürükleme boyunca listeden gizlenir.</p>
+          <p class="src">Koda girdi (gece dalı, trene hazır).</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="vardiya">Vardiya kartı</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">5</span>
+        <div class="what"><strong>Export menüsü</strong><small>Üst çubuk → Export</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span>
+          <p>Original + 1–5 (9 Ekim) + eski Code'dan 16 Eylül A, B, C, E, F. Original, 16 Eylül'de seçtiğin D'dir (iki kaynak: bugünkü uygulama ve 16 Eylül turu).</p></div>
+        <div class="go"><button class="open" data-tab="ustcubuk">Üst çubuk</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">6</span>
+        <div class="what"><strong>Onaylı izin hücresi</strong><small>Görünüş ve tıklayınca ne olacağı</small></div>
+        <div class="state"><span><span class="pill p-half">Yarı karar</span></span>
+          <p>Görünüş: <strong>Seçildi · 9 Ekim 01:13 · Müsaitlik ve izin hücreleri sayfası</strong>: Original (düz kırmızı, "TIME OFF").</p>
+          <p>Tıklama: 9 Ekim 01:05'te Schedule test sayfasında "orijinal iyi şu an için" dedin (hücre açılır, kayıtta sunucu reddeder). "Şu an için" dediğin için kesin cevap bekliyor; "Time off rule" düğmesinde iki hâl de duruyor.</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="musaitlik">Müsaitlik ve izin</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">7</span>
+        <div class="what"><strong>Üst çubuk taşması</strong><small>Dar ekranda ve uzun adlarda</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span>
+          <p>Original + A, B, C, D. B ve C, 6 Ekim varyant turundaki B ve C ile aynı; tek kopya kaldı, iki kaynağı da yazıyor. Original, 6 Ekim'in A'sı. 6 Ekim'de "başka bir fikrim var" demiştin; o fikir kayıtta yok.</p></div>
+        <div class="go"><button class="open" data-tab="ustcubuk">Üst çubuk</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">8</span>
+        <div class="what"><strong>Unpublish onayı</strong><small>Yayından kaldırma penceresi</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span><p>Original + 5 varyant.</p></div>
+        <div class="go"><button class="open" data-tab="ustcubuk">Üst çubuk</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">9</span>
+        <div class="what"><strong>Review default hours</strong><small>Varsayılan saatleri gözden geçirme</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span><p>Original + 3 varyant.</p></div>
+        <div class="go"><button class="open" data-tab="ustcubuk">Üst çubuk</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">10</span>
+        <div class="what"><strong>Hayalet vardiya</strong><small>Kişinin başka lokasyondaki vardiyasının gri kartı</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span>
+          <p>Original + 1–20 ve 5a–5e (9 Ekim; 5c kırmızı) + eski Code'dan 26 Eylül turu "Old 2–10, 12–15". Original, 26 Eylül'de seçtiğin 11b'dir; o günkü 11 aynı görünüyordu, tek kopya kaldı.</p></div>
+        <div class="go"><button class="open" data-tab="vardiya">Vardiya kartı</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">11</span>
+        <div class="what"><strong>Açık vardiya işareti</strong><small>Unassigned satırı</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span><p>Original + A Soft pulse, B Spotlight, C Moving outline.</p></div>
+        <div class="go"><button class="open" data-tab="pencereler">Vardiya pencereleri</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">12–13</span>
+        <div class="what"><strong>Edit shift ve Add shift pencereleri</strong><small>Hücreye tıklayınca açılan pencere</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span><p>Original + 5 aile: Compact card, Side panel, Keyboard first, Day timeline, Grows from the cell. Eski Code'da bu pencereler için varyant yok; 4–5 Ekim prototipi öbür Claude hesabında ve yalnız cila listesi içeriyordu.</p></div>
+        <div class="go"><button class="open" data-tab="pencereler">Vardiya pencereleri</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">14</span>
+        <div class="what"><strong>Açık vardiya ekleme ve saat yazma</strong><small>Add shift (unassigned), saat kutuları</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span><p>Pencere: Original + aynı 5 aile. Saat yazma: Original + A One box ("9-5"), B Two boxes + list. 12h / 24h düğmesi de var.</p></div>
+        <div class="go"><button class="open" data-tab="pencereler">Vardiya pencereleri</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">15</span>
+        <div class="what"><strong>"!" penceresi açıkken kaydırma</strong><small>Müsaitlik penceresi</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 9 Ekim 01:13 · Müsaitlik ve izin hücreleri sayfası</span></span>
+          <p>B · Closes on scroll: en küçük kaydırmada pencere kapanır.</p>
+          <p class="src">Koda girdi (gece dalı, trene hazır).</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="musaitlik">Müsaitlik ve izin</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">16</span>
+        <div class="what"><strong>İzin hücresinde üzerine gelme ve sürükleme</strong><small>Kırmızı izin hücresi</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 9 Ekim 01:13 · Müsaitlik ve izin hücreleri sayfası</span></span>
+          <p>A · Calm: üzerine gelince ince koyu kenar; sürüklerken "Can't place a shift here".</p>
+          <p class="src">Koda girdi (gece dalı, trene hazır).</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="musaitlik">Müsaitlik ve izin</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">—</span>
+        <div class="what"><strong>Tek lokasyonlu hafta</strong><small>1440'ta 7 günün 5'i görünüyor (eski #87)</small></div>
+        <div class="state"><span><span class="pill p-wait">Karar bekliyor</span></span>
+          <p>Eski Code'dan 6 Ekim turu: Original, B (yedi gün genişliği paylaşır), C (menü kapalı açılır). Seçmemiştin. Denemek için önce lokasyon süzgecinde tek lokasyon seç.</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">—</span>
+        <div class="what"><strong>Templates penceresi</strong><small>Üst çubuk → Templates</small></div>
+        <div class="state"><span><span class="pill p-no">Reddedildi · 9 Ekim 01:05 · Schedule test sayfası</span></span>
+          <p>A · Library, B · Side panel, C · Step by step'in üçünü de beğenmedin; bugünkü pencere kalıyor. Varyantlar bu sayfadan çıkarıldı. Bugünkü pencerenin tasarımı (S9) daha önce kararlaştırılmıştı.</p></div>
+        <div class="go"><button class="open" data-tab="test">Schedule (seçimlerinle)</button><button class="open" data-tab="s9">Templates S9</button></div></div>
+
+      <div class="row" role="listitem"><span class="num">—</span>
+        <div class="what"><strong>İzinli güne alınan vardiya</strong><small>Ürün kuralı</small></div>
+        <div class="state"><span><span class="pill p-done">Seçildi · 8 Ekim 22:57 · proje sohbeti</span></span>
+          <p>Onaylı izinle 1 dakika bile çakışan vardiya yazılamaz, otomatik kısaltma yok. Sunucu tarafının sıkılaştırılması ayrı iş.</p></div>
+        <div class="go"><button class="open" data-tab="izinli">İzinli gün</button></div></div>
+    </div>
+  </section>
+
+  <section class="viewer" id="viewer" aria-labelledby="viewer-title">
+    <h2 id="viewer-title">Dene</h2>
+    <div class="tabs" role="tablist" aria-label="Sayfalar">
+      <button role="tab" id="t-test" data-tab="test" aria-selected="true">Schedule (seçimlerinle)</button>
+      <button role="tab" id="t-vardiya" data-tab="vardiya" aria-selected="false">Vardiya kartı · 3, 4, 10</button>
+      <button role="tab" id="t-musaitlik" data-tab="musaitlik" aria-selected="false">Müsaitlik ve izin · 1, 6, 15, 16</button>
+      <button role="tab" id="t-pencereler" data-tab="pencereler" aria-selected="false">Vardiya pencereleri · 11–14</button>
+      <button role="tab" id="t-ustcubuk" data-tab="ustcubuk" aria-selected="false">Üst çubuk · 2, 5, 7, 8, 9</button>
+      <button role="tab" id="t-s9" data-tab="s9" aria-selected="false">Templates S9</button>
+      <button role="tab" id="t-izinli" data-tab="izinli" aria-selected="false">İzinli gün</button>
+    </div>
+    <p class="frame-note" id="frame-note"></p>
+    <div class="frame-box" role="tabpanel" id="panel" aria-labelledby="t-test">
+      <iframe id="frame" title="Schedule (seçimlerinle)" src="pages/test.html"></iframe>
+    </div>
+  </section>
+
+  <div class="foot">
+    <p>Sayfalar gerçek Schedule kodunu demo veriyle çalıştırır (Harbor &amp; Vine, iki şube). Yaptığın değişiklikler yalnız senin tarayıcında kalır; her sayfada "Test page" → "Reset demo data" ilk hâle döndürür.</p>
+    <p>Eski bağlantılar da çalışmaya devam ediyor; kaynak dosyaları silinmedi. Bu sayfanın kaynağı: <code>/mnt/project-files/pages/schedule-birlesik/</code>.</p>
+  </div>
+</div>
+
+<script>
+(() => {
+  const pages = {
+    test: { src: "pages/test.html", title: "Schedule (seçimlerinle)", note: "Güncel main + gece dalındaki seçimlerin (madde 1, 3, 4, 15, 16) gerçek kodla. Düzenlemek için New Schedule → Edit live schedule. Templates bugünkü pencere. \"Test page\" → \"Time off rule\" madde 6'nın tıklama sorusunu, \"One-location week\" 6 Ekim'in tek lokasyon varyantlarını gösterir." },
+    vardiya: { src: "pages/vardiya-karti.html", title: "Vardiya kartı", note: "Madde 3 (6) ve 4 (B) sabit; madde 10 hayalet vardiya: Original + 9 Ekim'in bütün varyantları + 26 Eylül turu (Old 2–15), \"Test page\" menüsünden." },
+    musaitlik: { src: "pages/musaitlik-izin.html", title: "Müsaitlik ve izin hücreleri", note: "Madde 1 A, 6 görünüş Original, 15 B, 16 A sabit; madde 6'nın tıklama sorusu menüde açık. \"!\" işaretleri yalnız düzenleme kipinde görünür." },
+    pencereler: { src: "pages/pencereler.html", title: "Vardiya pencereleri", note: "Madde 11–14: her grupta ilk satır Original (bugünkü uygulama), sonra varyantlar. Menü sol altta." },
+    ustcubuk: { src: "pages/ust-cubuk.html", title: "Üst çubuk", note: "Madde 2, 5, 7, 8, 9: her grupta Original + varyantlar; madde 2'de 28 Eylül stilleri, madde 5'te 16 Eylül Export varyantları da var. Madde 7 için menüdeki \"Uzun adlarla doldur\"." },
+    s9: { src: "pages/templates-s9.html", title: "Templates S9", note: "Bugünkü Templates penceresinin onaylı tasarımı." },
+    izinli: { src: "pages/izinli-gun.html", title: "İzinli gün", note: "İzinli güne alınan vardiyanın kararı." },
+  };
+  const frame = document.getElementById("frame");
+  const note = document.getElementById("frame-note");
+  const panel = document.getElementById("panel");
+  const tabs = [...document.querySelectorAll('.tabs [role="tab"]')];
+  function show(key, scroll) {
+    const page = pages[key] || pages.test;
+    if (!pages[key]) key = "test";
+    tabs.forEach((tab) => {
+      const on = tab.dataset.tab === key;
+      tab.setAttribute("aria-selected", String(on));
+      tab.tabIndex = on ? 0 : -1;
+      if (on) panel.setAttribute("aria-labelledby", tab.id);
+    });
+    note.textContent = page.note;
+    frame.title = page.title;
+    if (!frame.getAttribute("src").endsWith(page.src)) frame.src = page.src;
+    try { history.replaceState(null, "", "#" + key); } catch { /* the address stays as it is */ }
+    if (scroll) document.getElementById("viewer").scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" });
+  }
+  document.querySelectorAll("[data-tab]").forEach((el) => el.addEventListener("click", () => show(el.dataset.tab, el.classList.contains("open"))));
+  document.querySelector(".tabs").addEventListener("keydown", (event) => {
+    const i = tabs.findIndex((tab) => tab.getAttribute("aria-selected") === "true");
+    let next = -1;
+    if (event.key === "ArrowRight") next = (i + 1) % tabs.length;
+    if (event.key === "ArrowLeft") next = (i - 1 + tabs.length) % tabs.length;
+    if (next < 0) return;
+    event.preventDefault();
+    show(tabs[next].dataset.tab, false);
+    tabs[next].focus();
+  });
+  const start = location.hash.slice(1);
+  show(pages[start] ? start : "test", Boolean(pages[start]));
+})();
+</script>

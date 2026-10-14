@@ -1,0 +1,958 @@
+{
+  "dizin": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471",
+  "etiketler": {
+    "code-bu": {
+      "etiket": "Code'dan kurtarıldı",
+      "renk": "code",
+      "aciklama": "Bu hesapta, Project'ten önceki bir Claude Code oturumunda yapıldı (2026-10-07/08); 2026-10-09 sayfa denetiminde bulunup Project'e alındı."
+    },
+    "code-diger": {
+      "etiket": "Code'dan kurtarıldı",
+      "renk": "code",
+      "aciklama": "Mert'in diğer Claude hesabında, Project'ten önce yapıldı; 2026-10-09'da bu hesaba taşındı. O hesap Claude Code ile kullanılıyordu; Code oturumunda yapıldığı bu yüzden çıkarım."
+    },
+    "belirsiz": {
+      "etiket": "Kaynak belirsiz",
+      "renk": "belirsiz",
+      "aciklama": "Project'ten önce, diğer hesapta yapıldı; Code oturumunda mı başka bir araçta mı yapıldığı bilinmiyor. 2026-10-09'da bu hesaba taşındı."
+    },
+    "project": {
+      "etiket": "Project'te sıfırdan",
+      "renk": "project",
+      "aciklama": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası)."
+    }
+  },
+  "klasorler": [
+    {
+      "id": "pages",
+      "ad": "PAGES · uygulamanın güncel ekranları",
+      "ne": "Her route ayrı sayfa, numaralı (1.0 Sign in … 12.4); gerçek kod, demo veri, masaüstü ve telefon birlikte. Dizin: https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy"
+    },
+    {
+      "id": "giris",
+      "ad": "Giriş, kayıt, davet ve kurulum",
+      "ne": "Sign in, sign up, davet kabulü, owner kurulumu, çalışan karşılama (onboarding), workspace seçimi, telefon alanı kuralları"
+    },
+    {
+      "id": "employees",
+      "ad": "Employees",
+      "ne": "Çalışan listesi, çalışan çekmecesi, çalışan belgeleri"
+    },
+    {
+      "id": "schedule",
+      "ad": "Schedule",
+      "ne": "Haftalık vardiya ızgarası, vardiya kartı, pencereler, şablonlar, müsaitlik ve izin hücreleri"
+    },
+    {
+      "id": "duyuru",
+      "ad": "Announcements ve Important Dates",
+      "ne": "Duyurular, onaylar (acknowledgement), önemli günler, kapalı gün"
+    },
+    {
+      "id": "requests",
+      "ad": "Requests",
+      "ne": "İzin talepleri, vardiya takası, takas onay penceresi"
+    },
+    {
+      "id": "availability",
+      "ad": "Availability",
+      "ne": "Ekibin müsaitliği ve tercihleri"
+    },
+    {
+      "id": "settings",
+      "ad": "Settings",
+      "ne": "General, Locations, Jobs ve diğer ayar sekmeleri"
+    },
+    {
+      "id": "notifications",
+      "ad": "Notifications",
+      "ne": "Bildirim kutusu ve bildirim tasarımları"
+    },
+    {
+      "id": "calisan",
+      "ad": "Çalışan ekranları",
+      "ne": "Çalışanın Home, kendi programı, Shift Hub"
+    },
+    {
+      "id": "workspace",
+      "ad": "Workspace ve Account",
+      "ne": "Yöneticinin ana sayfası, kişisel hesap sayfası"
+    },
+    {
+      "id": "tanitim",
+      "ad": "Tanıtım sitesi ve herkese açık sayfalar",
+      "ne": "Landing sayfası sürümleri, tanıtım animasyonu, Privacy ve Terms"
+    },
+    {
+      "id": "ortak",
+      "ad": "Ortak tasarım, raporlar ve araçlar",
+      "ne": "Birden çok sayfayı etkileyen tasarım kararları, tasarım sistemi, raporlar, dizinler"
+    },
+    {
+      "id": "dal-inceleme",
+      "ad": "Eski tasarım dalları (inceleme)",
+      "ne": "Eski tasarım dallarını incelemek için hazırlanan sayfalar: dalda ne var, main'den farkı."
+    }
+  ],
+  "artifactlar": [
+    {
+      "id": "BZkoou6GKHrEwcwoDZYqQu",
+      "ad": "Giriş Tasarım Kitabı",
+      "klasor": "giris",
+      "kaynak": "code-bu",
+      "not": "Giriş, kayıt, davet ve yarım kalmış kurulum ekranlarının tasarımı. Mert'in beklemesinde: yalnız bant eklendi."
+    },
+    {
+      "id": "PEYuSjGWXGN9dkb9LipikY",
+      "ad": "Giriş ve Katılım Keşfi",
+      "klasor": "giris",
+      "kaynak": "code-bu",
+      "not": "14 seçim; 9'u giriş modelini bekliyor."
+    },
+    {
+      "id": "8g3ojM6qy3diHECSHjZvkS",
+      "ad": "Onboarding Documents",
+      "klasor": "giris",
+      "kaynak": "code-diger",
+      "not": "Çalışan onboarding'inde belge adımı. Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "7V5igYU8MrxAQanN4Tw5P5",
+      "ad": "BL-969 Telefon Alanı",
+      "klasor": "giris",
+      "kaynak": "project",
+      "not": "Telefon alanı önce / sonra."
+    },
+    {
+      "id": "LPMFzbYr4Yd2fdPSDWSiio",
+      "ad": "Telefon Kuralları Denemesi",
+      "klasor": "giris",
+      "kaynak": "project",
+      "not": "Telefon maskesi ve iki kontrol."
+    },
+    {
+      "id": "4AGPsoDPMS4gS9M2rup6sZ",
+      "ad": "Newfork — Pre-business & Settings (Design tuvali)",
+      "klasor": "giris",
+      "kaynak": "belirsiz",
+      "not": "37 çizim: işletmesi olmayan kişi, davet, kurulum ve Settings ekranları. Project'te \"08 · Orijinal\" satırı eklendi. Design tuvali olduğu için içine bant konmadı; Mert'in beklemesinde.",
+      "bant": false
+    },
+    {
+      "id": "U4QsNASs9qycRg1UUMNApA",
+      "ad": "Employees List Lab (bu hesaptaki kopya)",
+      "klasor": "employees",
+      "kaynak": "code-bu",
+      "not": "✅ Done. Aynı sayfanın diğer hesaptan gelen kopyası da var."
+    },
+    {
+      "id": "GVmBUJTwTrJqyMxwYn3Uvk",
+      "ad": "Employees List Lab (diğer hesaptan gelen kopya)",
+      "klasor": "employees",
+      "kaynak": "code-diger",
+      "not": "✅ Done. Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "RNJEGWCDgdG2NpYRpWF4g3",
+      "ad": "Schedule test page (birleşik Schedule sayfası)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Madde 1–16 karar listesi ve bütün Schedule varyantları sekmeli. Sürüm 10'da eski Code oturumlarının varyantları da eklendi.",
+      "bant_ek": "Sürüm 10'da eski Code oturumlarının varyantları da eklendi."
+    },
+    {
+      "id": "2oRzMjRe1hRRgYhDzRyxJE",
+      "ad": "Shift card variants",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Madde 3, 4, 10: yayın tiki, sürükleme, hayalet vardiya."
+    },
+    {
+      "id": "37To9ekKGsDrQNSmmKYvXx",
+      "ad": "Schedule availability lab",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Madde 1, 6, 15, 16: müsaitlik ve izin hücreleri."
+    },
+    {
+      "id": "JLkkPNRt2bhD5DNSsZxWoH",
+      "ad": "Shift window redesign",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Add / Edit shift penceresi: Original (main) ve yeni pencere (Form ⇄ Timeline, Alt+T). 2026-10-12."
+    },
+    {
+      "id": "WFnZBHaAo32rVHKDUkzXJe",
+      "ad": "Schedule Bar Variants",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Madde 2, 5, 7, 8, 9: üst çubuk ve pencereler."
+    },
+    {
+      "id": "WkMV2TeZZX9qfwAKVixCg4",
+      "ad": "Schedule Templates S9",
+      "klasor": "schedule",
+      "kaynak": "code-bu",
+      "not": "✅ Done: bugünkü şablon penceresi kalır."
+    },
+    {
+      "id": "2NW3C6EDQVYJiyGqpKvna7",
+      "ad": "İzinli Güne Alınan Vardiya",
+      "klasor": "schedule",
+      "kaynak": "code-bu",
+      "not": "✅ Done: izinle çakışan vardiya yazılamaz."
+    },
+    {
+      "id": "Pt7K2NVLwFx6TPS9ZuXNKX",
+      "ad": "Important Date Drawer Designs",
+      "klasor": "duyuru",
+      "kaynak": "code-bu",
+      "not": "✅ Done (A + L1)."
+    },
+    {
+      "id": "6YJ3MmXnmAJMY7JYGboWj6",
+      "ad": "Republish Acknowledgements",
+      "klasor": "duyuru",
+      "kaynak": "code-diger",
+      "not": "Duyuru yeniden yayında onaylar. Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "KwshRJ1SygGaDgyKJuuHT3",
+      "ad": "Requests Warnings Lab (bu hesaptaki kopya)",
+      "klasor": "requests",
+      "kaynak": "code-bu",
+      "not": "◐ Yarı karar."
+    },
+    {
+      "id": "E6DvBpyyt8rZeDv7opzj1j",
+      "ad": "Requests Warnings Lab (diğer hesaptan gelen kopya)",
+      "klasor": "requests",
+      "kaynak": "code-diger",
+      "not": "◐ Yarı karar. Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "PYbKyq7WaoWmZ7yRoCzT22",
+      "ad": "Takas Penceresi Düğmeleri",
+      "klasor": "requests",
+      "kaynak": "code-bu",
+      "not": "✅ Done (34 px düğmeler)."
+    },
+    {
+      "id": "CpHTbbxgUhEqwmEfXBjGia",
+      "ad": "Swap Onay Penceresi",
+      "klasor": "requests",
+      "kaynak": "project",
+      "not": "Takas onay penceresi: bugünkü main ile kurtarma dalı yan yana."
+    },
+    {
+      "id": "Ci3eocAuUVopdj3nGEGebs",
+      "ad": "Müsaitlik tasarımları",
+      "klasor": "availability",
+      "kaynak": "code-diger",
+      "not": "✅ Done. Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "Lru9WAg6HaSbdErLyMhU26",
+      "ad": "Newfork Locations",
+      "klasor": "settings",
+      "kaynak": "code-bu",
+      "not": "✅ Done (A)."
+    },
+    {
+      "id": "UWTcHirMHXjrfa9TND2TLE",
+      "ad": "Locations Designs",
+      "klasor": "settings",
+      "kaynak": "code-bu",
+      "not": "✅ Done (yalnız A kaldı)."
+    },
+    {
+      "id": "BUJShpW3rXDGFVNyEygDZr",
+      "ad": "Jobs & departments",
+      "klasor": "settings",
+      "kaynak": "code-bu",
+      "not": "✅ Done. Bütün Jobs kararları 2026-10-13'te seçildi (Departments A, katlama yok, arşiv kuralı).",
+      "bant_ek": "Project'te Original ve seçilen yeni tasarım; main a85619f'den derlendi."
+    },
+    {
+      "id": "Kwz63F5JeddW5S7y2kSsAi",
+      "ad": "Settings General Varyantları",
+      "klasor": "settings",
+      "kaynak": "code-bu",
+      "not": "Yeni yön bekliyor."
+    },
+    {
+      "id": "M8yVRt1fWEY8Sg24ze8Wmv",
+      "ad": "Bildirim Varyantları",
+      "klasor": "notifications",
+      "kaynak": "code-bu",
+      "not": "Karar bekliyor."
+    },
+    {
+      "id": "6x58GUS4e2Rb3SnP2gNXuZ",
+      "ad": "Newfork Landing Preview",
+      "klasor": "tanitim",
+      "kaynak": "code-diger",
+      "not": "Tanıtım sitesi; uygulamada karşılığı yok. Tanıtım sitesinin sürümleri Code dallarında da duruyor."
+    },
+    {
+      "id": "JUn9hs4MnoxnwejXoHZwy3",
+      "ad": "Newfork Landing (birinci sürüm)",
+      "klasor": "tanitim",
+      "kaynak": "code-diger",
+      "not": "Tanıtım sitesi."
+    },
+    {
+      "id": "ABTNGBeRAvqomzQfrHjwRK",
+      "ad": "Newfork Landing (ikinci sürüm)",
+      "klasor": "tanitim",
+      "kaynak": "code-diger",
+      "not": "Tanıtım sitesi."
+    },
+    {
+      "id": "9M2NymU59pGk1qkZEiGaL2",
+      "ad": "Newfork Motion Hero",
+      "klasor": "tanitim",
+      "kaynak": "belirsiz",
+      "not": "15 saniyelik tanıtım animasyonu."
+    },
+    {
+      "id": "3HkUtDGXY4jzN1aSSqKPHt",
+      "ad": "List Page Systems",
+      "klasor": "ortak",
+      "kaynak": "code-diger",
+      "not": "✅ Done: liste sayfalarının ortak düzeni (Employees, Requests, Documents, Announcements, Important Dates). Project'te Orijinal düğmesi eklendi."
+    },
+    {
+      "id": "KxiYpZDfHAUSN8KffLNxRV",
+      "ad": "Newfork (tasarım sistemi)",
+      "klasor": "ortak",
+      "kaynak": "belirsiz",
+      "not": "Renk, yazı ve bileşenler. Design System türünde bir sayfa olduğu için içine bant konmadı.",
+      "bant": false
+    },
+    {
+      "id": "NhecEzSFXPQ7FTvMjfN5su",
+      "ad": "Newfork Komut Rehberi",
+      "klasor": "ortak",
+      "kaynak": "code-diger",
+      "not": "Claude Code komutları rehberi (2026-09-30 ölçümü)."
+    },
+    {
+      "id": "6hyYTkzNQLeSRT4uxD9p2d",
+      "ad": "Code İlerleme Envanteri",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": "Eski Code oturumlarından çıkan kararlar ve ilerleme."
+    },
+    {
+      "id": "9BSKy2UUQvqQVtEnyUTKzX",
+      "ad": "Newfork İlerleme Raporu",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": "Genel ilerleme raporu."
+    },
+    {
+      "id": "Gqga77Bp6Dt4bmmF4Mw471",
+      "ad": "Artifact dizini (bu sayfa)",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": "Bütün Artifact sayfaları klasörlerde, kaynak etiketiyle.",
+      "bant": false
+    },
+    {
+      "id": "YG5Dx2CvskoemPFVoKg2ff",
+      "ad": "6.0 Important Dates · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 6.0: Tatiller, kapalı günler, etkinlikler ve izin yasağı günleri: ekle, düzenle, yayından kaldır, arşivle."
+    },
+    {
+      "id": "NFAMP6rKAqNx19f1d1ebzQ",
+      "ad": "1.0 Sign in · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.0: Giriş ekranı: e-posta ve parola, parolamı unuttum bağlantısı, davetle gelen kişi için hesap açma."
+    },
+    {
+      "id": "S4g9JVLfFCcLW42QFPeSb3",
+      "ad": "Important Dates yeni istekler",
+      "klasor": "duyuru",
+      "kaynak": "project",
+      "not": "Plan sayfası (2026-10-10)."
+    },
+    {
+      "id": "LzLBAoEfPikvF3bxop8US7",
+      "ad": "Hayalet kart denemeleri",
+      "klasor": "dal-inceleme",
+      "kaynak": "project",
+      "not": "Eski tasarım dalının (archive/ghost-color-mockups) inceleme sayfası, 2026-10-10."
+    },
+    {
+      "id": "CB4PkvR1hJwmV4n4uMJMRz",
+      "ad": "Sağ üst pencere stilleri",
+      "klasor": "dal-inceleme",
+      "kaynak": "project",
+      "not": "Schedule sağ üst pencereleri için 28 Eylül stil denemeleri (archive/schedule-dialog-mockups)"
+    },
+    {
+      "id": "9QtWGkV6SRgdiJCcedzDdC",
+      "ad": "1.1 Forgot password · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.1: Parola sıfırlama bağlantısı isteme ekranı."
+    },
+    {
+      "id": "FPFQy5zZ5D1hQh2GUs2V6D",
+      "ad": "1.2 Reset password · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.2: E-postadaki bağlantıyla gelen kişinin yeni parola belirlediği ekran."
+    },
+    {
+      "id": "K9e64aTWXWfut7gBbLZzPg",
+      "ad": "1.3 Account recovery · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.3: Hesabına giremeyen kişinin yardım istediği ekran."
+    },
+    {
+      "id": "1hSopZEENNDztexMJHbQcz",
+      "ad": "1.4 Accept invitation · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.4: Davet bağlantısıyla gelen kişinin daveti kabul ettiği ekran. Oturumu yoksa önce 1.0 Sign in'e (davet senaryosu) gider."
+    },
+    {
+      "id": "9zBLGFyvs9Y2X6qvWgMCz3",
+      "ad": "1.5 Workspace hub · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.5: Girişten sonra workspace seçimi, bekleyen davetler, yeni workspace kurma."
+    },
+    {
+      "id": "QB8i9pfM1xNHLUMYGoUPsn",
+      "ad": "1.6 Workspace status · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.6: Askıya alınmış ya da kapanmış workspace'in durum ekranı."
+    },
+    {
+      "id": "TpEfJoc2hEac7fm5K5gQ4v",
+      "ad": "1.7 Owner setup · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.7: Yeni workspace kurulum sihirbazı: işletme, lokasyonlar, ekip, ilk program."
+    },
+    {
+      "id": "4Szx8TsamsrYesTGp72jRy",
+      "ad": "1.8 Employee welcome · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.8: Davet edilen çalışanın karşılama adımları: profil, belgeler, onaylar."
+    },
+    {
+      "id": "4EbXXuT4EY6NcLqfAJUuBy",
+      "ad": "2.0 Workspace · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 2.0: Yöneticinin ana sayfası: yapılacaklar, kurulum listesi, bekleyen işler."
+    },
+    {
+      "id": "LjHpcgS38GsQAvnMyemaoH",
+      "ad": "3.3 Requests · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 3.3: İzin talepleri (incelenecek / kapanan) ve vardiya değişim talepleri: onayla, reddet, kısalt, geri al."
+    },
+    {
+      "id": "3W6vH1fCZAP7KvzQcMgnUW",
+      "ad": "4.0 Employees · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 4.0: Çalışan listesi (All, Invited, Onboarding, Needs Attention, Active), çalışan çekmecesi, davet, rol, yeni çalışan."
+    },
+    {
+      "id": "2b1nCYf4ow1bWTcmCQ5qcE",
+      "ad": "4.1 Employee documents · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 4.1: Çalışan belgeleri: inceleme, onay, red, muafiyet, süre uzatma."
+    },
+    {
+      "id": "HVLf3vUTAzVyeJhpJmz28z",
+      "ad": "4.2 Employees archive · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 4.2: Arşivlenmiş çalışanlar ve geri alma."
+    },
+    {
+      "id": "8Dda7vpsNDFZey5WygaA4R",
+      "ad": "5.0 Availability · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 5.0: Ekibin haftalık müsaitliği ve tercihleri."
+    },
+    {
+      "id": "PV43RDJYxL5SBdVpD6to4X",
+      "ad": "7.0 Employee home · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 7.0: Çalışanın ana sayfası: sıradaki vardiya, duyurular, hatırlatmalar."
+    },
+    {
+      "id": "UkrQH4AscnEi2d7z4KRbco",
+      "ad": "7.1 My schedule · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 7.1: Çalışanın kendi programı."
+    },
+    {
+      "id": "U1yLX9KHcSkzoNJcTVughw",
+      "ad": "7.2 Shift Hub · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 7.2: Vardiya değişim merkezi: açık vardiyalar, takas, bırakma, devralma teklifleri."
+    },
+    {
+      "id": "QxggDkv4nCCT2sAuxufJbd",
+      "ad": "7.3 My availability · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 7.3: Çalışanın haftalık tercihleri ve izin talebi."
+    },
+    {
+      "id": "HgPjKfQmSBmx2vPAacQLPc",
+      "ad": "7.4 More · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 7.4: Telefondaki \"More\" menüsü: çalışanın geri kalan sayfaları."
+    },
+    {
+      "id": "JC7V6cGGgXpKH9BrJGH7W5",
+      "ad": "8.0 Announcements · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 8.0: Duyurular listesi, yeni duyuru, onay (acknowledgement) takibi."
+    },
+    {
+      "id": "FnPFkE5B8M242nuX5y2iyy",
+      "ad": "8.1 Announcement detail · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 8.1: Tek bir duyurunun sayfası ve onay durumu."
+    },
+    {
+      "id": "PTfHkeyhJJc8iB8s57QjrZ",
+      "ad": "9.0 Notifications · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 9.0: Bildirim kutusu."
+    },
+    {
+      "id": "DFczQ53ZuMXZFhVWoiDktZ",
+      "ad": "10.0 Settings · General · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.0: İşletme adı, logo, saat dilimi ve genel ayarlar; kurulum listesi."
+    },
+    {
+      "id": "AqLuHNmxqmpMSgXJ2fs4oE",
+      "ad": "10.1 Settings · Locations · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.1: Lokasyonlar: adres, telefon, saat dilimi; yeni lokasyon, arşiv."
+    },
+    {
+      "id": "APVqmoNiwVpogT99C2bw22",
+      "ad": "10.2 Settings · Jobs · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.2: Departmanlar ve job'lar; job'a çalışan atama."
+    },
+    {
+      "id": "Psrq8HivP2tquaWH2JFvDK",
+      "ad": "10.3 Settings · Notifications · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.3: Workspace bildirim kuralları: kim, hangi kanaldan, ne zaman."
+    },
+    {
+      "id": "DKtrT34EAvyZHoiv1xHtAQ",
+      "ad": "10.4 Settings · Schedule rules · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.4: Program kuralları: hafta başlangıcı, yayın, mesai sınırları."
+    },
+    {
+      "id": "Vx4Foa379VhWkYTdHawLuP",
+      "ad": "10.5 Settings · Conflict handling · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.5: Çakışma kuralları: izin, müsaitlik, üst üste vardiya; uyar ya da engelle."
+    },
+    {
+      "id": "5nb6ytPPoff2WgbLTVQdk7",
+      "ad": "10.6 Settings · Shift catalog · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.6: Vardiya türleri (Breakfast, Lunch, Dinner, Close) ve varsayılan saatleri."
+    },
+    {
+      "id": "QK1Ey1yvDDtyoZBnLCZtpC",
+      "ad": "10.7 Settings · Shift labels · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.7: Vardiya etiketleri (Training, Opener, Closer, Private event)."
+    },
+    {
+      "id": "VtiKsxQsVD31dv2NfGT711",
+      "ad": "10.8 Settings · Roles & permissions · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.8: Roller ve izinleri; yeni rol, rol kopyalama."
+    },
+    {
+      "id": "2FdPcnM2sPJoGve6JNYMVW",
+      "ad": "10.9 Settings · Role detail · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.9: Tek bir rolün izinleri (örnek: Shift Lead)."
+    },
+    {
+      "id": "2mwLws71TJU3Ccskqgwtxj",
+      "ad": "10.10 Settings · Documents · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.10: Çalışanlardan istenen belge türleri (W-4, I-9, Food Handler Card)."
+    },
+    {
+      "id": "LGtfraWQKektkYXJb6gEQg",
+      "ad": "10.11 Settings · Acknowledgements · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.11: İmzalı onay şablonları (Employee Handbook, Tip Pooling Policy) ve saklama süreleri."
+    },
+    {
+      "id": "5EzE4sSWJRtjbTRnxiQFf7",
+      "ad": "10.12 Settings · Support · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 10.12: Destek: e-posta ve tanı bilgisi."
+    },
+    {
+      "id": "9BmgY8fzUeBuyra25gtq6M",
+      "ad": "11.0 Account · Profile · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.0: Ad, telefon, profil fotoğrafı."
+    },
+    {
+      "id": "3c5w98Atq9MBZm5whgVSt8",
+      "ad": "11.1 Account · Security · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.1: E-posta ve parola değişimi, öbür oturumları kapatma, hesabı silme."
+    },
+    {
+      "id": "4oMRpyDiTt85YWJyjw8cUS",
+      "ad": "11.2 Account · Preferences · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.2: Görünüm, saat ve tarih biçimi."
+    },
+    {
+      "id": "XkSScsR1iYV2bkEatXcByG",
+      "ad": "11.3 Account · Notification preferences · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.3: Kişinin kendi bildirim tercihleri, kategori kategori."
+    },
+    {
+      "id": "Stth74e8NvEM4csTfD2L4Z",
+      "ad": "11.4 Account · Workspaces · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.4: Kişinin bütün workspace'leri ve bekleyen davetleri."
+    },
+    {
+      "id": "7HYEV86WKWnbHZGnrjNHDb",
+      "ad": "11.5 Account · Documents · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.5: Kişinin kendi belgeleri ve imzaladığı onaylar."
+    },
+    {
+      "id": "1zCdXPSkYUL5FQwhKVoxsF",
+      "ad": "11.6 Account · Inbox · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 11.6: Workspace'i olmayan kişinin bildirim kutusu (hesap bildirimleri)."
+    },
+    {
+      "id": "8qwmZQELtJ9xcDLHazngPQ",
+      "ad": "12.0 Privacy · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 12.0: Herkese açık Privacy sayfası."
+    },
+    {
+      "id": "LK5wwrMogFzwU2avBUeSSD",
+      "ad": "12.1 Terms · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 12.1: Herkese açık Terms sayfası."
+    },
+    {
+      "id": "LiHqxMEKCtG2AuaRRSr2Lj",
+      "ad": "12.2 Accessibility · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 12.2: Herkese açık Accessibility sayfası."
+    },
+    {
+      "id": "JTFLvgkEokYP8PEJ9UxYHL",
+      "ad": "12.3 Contact · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 12.3: Herkese açık Contact sayfası."
+    },
+    {
+      "id": "T4kpow996YBHQndRueZYuK",
+      "ad": "12.4 Your privacy choices · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 12.4: Herkese açık Your privacy choices sayfası."
+    },
+    {
+      "id": "J6tWENw7QTf6gHoP8jtPAu",
+      "ad": "3.0 Schedule · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 3.0: Haftalık vardiya ızgarası: düzenleme, taslak, yayınlama, Auto-fill."
+    },
+    {
+      "id": "DEctBmqXhDLRpumfifre4c",
+      "ad": "3.1 Schedule export · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 3.1: Programın PDF ve Excel dışa aktarma önizlemesi."
+    },
+    {
+      "id": "7PPX8YQ3AUPQNSskTJuW6M",
+      "ad": "3.2 Schedule templates · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 3.2: Haftalık şablonlar: kaydet, uygula."
+    },
+    {
+      "id": "LhdocLQ2tCScFrANYHag2Z",
+      "ad": "Duyuru + Önemli tarih: tek çekmece",
+      "klasor": "duyuru",
+      "kaynak": "project",
+      "not": "Claude Docs dokümanı; beyin fırtınası planı, kod yok. Bant konmadı: doküman türü, içine HTML eklenemiyor."
+    },
+    {
+      "id": "PeCwcUC922XVirLhgBYfBr",
+      "ad": "Schedule · Atanmamış lokasyon hücresi (3 varyant)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "2026-10-11: düzenleme modunda atanmadığı lokasyondaki hücre kapalı; bugünkü + A/B/C"
+    },
+    {
+      "id": "FXWWvxLd3T9v5Qfy4112Mm",
+      "ad": "Tek çekmece prototipi",
+      "klasor": "duyuru",
+      "kaynak": "project",
+      "not": "Tıklanır prototip, kod yok; duyuru + önemli tarih tek çekmece (2026-10-11)."
+    },
+    {
+      "id": "ByLzLG2V1n58kEP94vNC26",
+      "ad": "Requests Çekmeceleri",
+      "klasor": "requests",
+      "kaynak": "project",
+      "not": ""
+    },
+    {
+      "id": "JqDJXpTnExgEuNnjhxpimG",
+      "ad": "Bekleyen görsel kararlar",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": "8 görsel madde (BL-1029/843, 1026, 664 (5)(6), 850, 258, 723 (2)(3)) için Original + varyantlar; sonunda BL-953 ve BL-339 soruları. /oto thread'i, 2026-10-11."
+    },
+    {
+      "id": "2e9oGkM7BKsVgRHkJXwF8D",
+      "ad": "Requests Kayıp Talep Bağlantısı",
+      "klasor": "requests",
+      "kaynak": "project",
+      "not": "BL-1024 varyantları: bulunamayan vardiya değişikliği bağlantısı"
+    },
+    {
+      "id": "SKVYPZu4hnDupzU7Jn1xWo",
+      "ad": "Schedule · Ghost kart kendi renginde (Original + A–F)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Mert 2026-10-12: ghost kart asıl vardiyanın renginde, ölü tonda; karar bekliyor"
+    },
+    {
+      "id": "GPJjNGSJb3ftowmFN4BnA6",
+      "ad": "1.9 Check your email · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.9: Hesap açtıktan sonra çıkan ekran: e-posta onay bağlantısı gönderildi, adresi onaylayıp giriş yap."
+    },
+    {
+      "id": "S9fM4Yfc7SLhro3frLo9gL",
+      "ad": "Schedule · Bütün kart hâlleri (canlı ızgara + katalog)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Mert 2026-10-12: güncel Schedule, yayında ve yayında olmayan lokasyon; ikinci sekmede her kart 5N1K ile; Live ve Edited varyantları"
+    },
+    {
+      "id": "7EiSLRANsdm2jyeh9kzjHT",
+      "ad": "Newfork Backlog",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": "Backlog'un tamamı dört grupta (karar bekleyen, sırada, açık, bitti); 2026-10-12, kayıt dalı coord/kayit2."
+    },
+    {
+      "id": "YSQYTSXbT8CdQLGR6ozWcy",
+      "ad": "PAGES dizini",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "Bütün PAGES sayfalarının numaralı dizini: sayfa → parça → senaryo, her senaryo doğrudan bağlantıyla."
+    },
+    {
+      "id": "SDWkfuTDYz2RJP436CAV9y",
+      "ad": "0.1 Shell · Sidebar · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.1: Masaüstündeki sol menü: workspace adı, role ve izne göre sayfalar (yönetim ve çalışan bölümleri), Notifications sayacı, Settings, Employee view, Account ve Sign out. Menü daraltılıp simge rayına dönebilir; alt grupları (Schedule altında Requests, Employees altında Documents) açılıp kapanır."
+    },
+    {
+      "id": "KDg5MMetVsd1nCzB9EoF3i",
+      "ad": "0.2 Shell · Employee bottom nav · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.2: Telefonda çalışanın alt menüsü: Home, Schedule, Requests (Shift Hub) ve More. Menüdeki üç sayfadan biri açık değilse More etkin görünür. Masaüstünde görünmez; orada sol menü vardır."
+    },
+    {
+      "id": "YNxGBRjUNSVoKHEmkR4z9e",
+      "ad": "0.3 Shell · Management bottom nav · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.3: Telefonda yönetimin alt çubuğu: izinli ilk dört sayfa ve More. More bir sayfa olarak açılır: kalan sayfalar, Settings, Employee view, Account, Sign out ve Close. Esc ya da arka plana dokunma kapatır."
+    },
+    {
+      "id": "DM4iqmWdb5ZCcorkXkm5NE",
+      "ad": "0.4 Shell · Workspace switcher · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.4: Sol menünün başındaki workspace adı. Başka workspace ya da bekleyen davet varsa açılır menü olur: You are in, Switch to listesi (kurulumu bitmeyene Setup unfinished), davetler ve All workspaces. Daraltılmış rayda baş harfe döner."
+    },
+    {
+      "id": "BdLQ3NUgtRM91zRozvuivC",
+      "ad": "0.5 Shell · Account menu · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.5: Sol menünün altındaki Account satırı: kişinin resmi ve cevap bekleyen iş sayısı. Ayrı açılır menü yoktur; satır hesap sayfasına gider. Telefonda yönetimde More sayfasında, çalışanda More'da (My account) bulunur."
+    },
+    {
+      "id": "CdgQhAkTBhb3jXnDBirhEa",
+      "ad": "0.6 Shell · Employee view · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.6: Yöneticinin çalışan gözüyle bakması: sol menüde (telefonda More'da) Employee view. Açılınca kabuk çalışan kabuğuna döner (çalışan menüsü, Settings gizli) ve aynı yerde Management view ile geri dönülür. Çalışan kaydı olmayan yönetici yetkisiz kartını görür."
+    },
+    {
+      "id": "YRqhhq8AMKBFLQ1zpJSDad",
+      "ad": "0.7 Shell · Common states · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.7: Her sayfanın paylaştığı durumlar: workspace yüklenirken boş sayfa, workspace okunamadı, kurulumu bitmemiş workspace (Almost ready), belge kapısı, ortak yetkisiz kartı, telefonda kapalı Schedule, izinsiz ya da bilinmeyen adresin sessiz yönlendirmesi ve oturumun düşmesi."
+    },
+    {
+      "id": "SDzyW1e5cX2FqaccC4SAhM",
+      "ad": "0.8 Shell · Toaster and confirm dialog · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 0.8: Ortak geri bildirim katmanları: ekranın altında kısa bildirim (toast; en çok üç, altı saniye, kapat düğmesiyle) ve onay penceresi (başlık, açıklama, beyaz Cancel, yeşil ya da kırmızı onay; Esc ve arka plan Cancel sayılır, kayıt sürerken onay kapalı)."
+    },
+    {
+      "id": "R79CMAJ6118AxAtn4C8SrY",
+      "ad": "1.10 Almost ready · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.10: Owner kurulumu bitirmemişken owner olmayan üyenin gördüğü bekleme ekranı: Check again, birden çok workspace varsa Choose a workspace."
+    },
+    {
+      "id": "CYXR9A9L3gjBfXQu93VRsD",
+      "ad": "1.11 That workspace didn't load · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 1.11: Workspace bilgisi (context) sunucudan gelmeyince açılan hata ekranı: Try again, çerçevede Sign out."
+    },
+    {
+      "id": "2TT6LzGoz92k86YKHfjWvA",
+      "ad": "Sabit liste başlıkları · test sayfası",
+      "klasor": "availability",
+      "kaynak": "project",
+      "not": "Bütün liste sayfalarında (Availability, Employees, Employees → Documents, Requests, Announcements, Important Dates, Notifications, Settings → Documents) başlık, sekmeler, filtreler ve sütun başlıkları yerinde kalır, yalnız liste kayar. Kod trene girince PAGES sayfaları bunu gösterecek."
+    },
+    {
+      "id": "T4Heypx662YmYWSnG36yxW",
+      "ad": "Lineup mockups (A List, B Cockpit, C Board)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Yeni Lineup sayfasının üç çalışan mockup'ı; kaynak pages/gorsel-kararlar/gelen/lineup/"
+    },
+    {
+      "id": "AJqKmK2HZcmwV8tooCtusz",
+      "ad": "3.4 Lineup · PAGES",
+      "klasor": "pages",
+      "kaynak": "project",
+      "not": "PAGES 3.4: Günün lineup'ı, Schedule'ın yayınlanmış verisinden canlı: her lokasyon bir kart, içinde her vardiya (Lunch, Dinner) katlanır; kişiler departman ve job altında, en erken başlayan önce (Name, Shift, Position, In – Out, Label). Gün seçici, haftanın 7 günü şeridi, lokasyon ve vardiya süzgeci. Şimdilik salt okunur; düzenleme, call off, notlar ve Publish sonraki aşamalarda."
+    },
+    {
+      "id": "7xJNYsZbknmsvGPk5jdd7p",
+      "ad": "Schedule · Kart işaretleri: 40 taslak",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Mert 2026-10-13: turuncu !, LIVE, NEW ve yönetici notu işareti için onar taslak; seçilenler ! 5, LIVE 1, NEW 7"
+    },
+    {
+      "id": "8GCespYLCqN8NRXNEwTnJs",
+      "ad": "Lineup · yükleniyor ve hata ekranları (varyantlar)",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Original + A Schedule kutusu, B iskelet + kart, C şerit; Mert B'yi seçti, bütün uygulamada B (14 Ekim)"
+    },
+    {
+      "id": "HpPEjjYzgm6WPxrmJejGwG",
+      "ad": "Lineup telefon (müdür) varyantları",
+      "klasor": "schedule",
+      "kaynak": "project",
+      "not": "Müdürün telefondan Lineup'ı: A Liste, B Vardiya sekmeleri, C Saat çizgisi; B seçildi"
+    },
+    {
+      "id": "Xr1CkDfyGejXq74pWdmnCW",
+      "ad": "Erişim Yok Ekranları",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": ""
+    },
+    {
+      "id": "XxfpgGwRtUH2P5jJKup5qi",
+      "ad": "Job ikon paketi",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": ""
+    },
+    {
+      "id": "7pQDWftLVrPVLGuxVRLuMV",
+      "ad": "Tek cümlelik uyarılar",
+      "klasor": "ortak",
+      "kaynak": "project",
+      "not": ""
+    }
+  ]
+}

@@ -1,0 +1,189 @@
+<title>Bekleyen görsel kararlar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Light only, like the app and every PAGES page; values are the app's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3; --surface: #ffffff; --soft: #f7f9f8; --soft2: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #66716c; --muted-strong: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --accent-soft: #dbece5; --selected: #e7f1ed; --focus: #177a64; --bezel: #1d2525; --on-dark: #ffffff;
+  --warn-soft: #fff7e2; --warn-text: #5f491f; --warn-border: #bf872d; --warn-line: #ecd9b0;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+#detail, #tabhead { scroll-margin-top: 120px; }
+html, body { margin: 0; background: var(--page); }
+body { color: var(--text); font-family: var(--font); font-size: 14px; }
+button { font: inherit; }
+a { color: var(--accent); font-weight: 600; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1920px; margin: 0 auto; padding: 24px 24px 64px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 18px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; margin: 0; text-wrap: balance; }
+h2 { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; margin: 0; text-wrap: balance; display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+h3 { font-size: 15px; margin: 0; }
+.lede { margin: 0; color: var(--body); line-height: 1.6; max-width: 96ch; }
+.lede strong { font-weight: 650; }
+.howto { margin: 0; padding: 12px 16px; border: 1px solid var(--warn-border); border-radius: 10px; background: var(--warn-soft); color: var(--warn-text); line-height: 1.55; max-width: 120ch; }
+.howto code, .warn code { font: 12.5px ui-monospace, Consolas, monospace; background: #fff; padding: 1px 6px; border-radius: 5px; border: 1px solid var(--warn-line); }
+/* Screen tabs */
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; padding: 4px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; box-shadow: 0 4px 14px rgb(23 34 30 / 0.06); }
+.tab { display: inline-flex; align-items: center; gap: 7px; min-height: 36px; padding: 0 10px; border: 0; border-radius: 8px; background: transparent; color: var(--body); cursor: pointer; font-weight: 650; font-size: 14px; }
+.tab:hover { background: var(--soft2); }
+.tab[aria-selected="true"] { background: var(--text); color: var(--on-dark); }
+.tab .c { min-width: 22px; height: 20px; padding: 0 6px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); display: inline-grid; place-items: center; font-size: 12px; font-weight: 750; font-variant-numeric: tabular-nums; }
+.tab[aria-selected="true"] .c { background: rgb(255 255 255 / 0.18); color: #fff; }
+.tabhead { display: grid; gap: 6px; }
+.tabhead p { margin: 0; color: var(--muted-strong); line-height: 1.5; max-width: 110ch; }
+@media (max-width: 700px) { .tabs { position: static; flex-wrap: nowrap; overflow-x: auto; box-shadow: none; } .tab { flex: none; } #detail, #tabhead { scroll-margin-top: 0; } }
+/* Item picker */
+.items { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 8px; }
+.item { text-align: left; display: grid; align-content: start; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); color: var(--text); cursor: pointer; min-width: 0; }
+.item:hover { border-color: var(--border-strong); background: var(--soft); }
+.item[aria-pressed="true"] { border-color: var(--accent); background: var(--selected); box-shadow: inset 0 0 0 1px var(--accent); }
+.item .n { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 11.5px; font-weight: 700; color: var(--muted-strong); letter-spacing: .02em; }
+.item .n b { min-width: 30px; height: 22px; padding: 0 6px; border-radius: 6px; background: var(--text); color: var(--on-dark); display: inline-grid; place-items: center; font-variant-numeric: tabular-nums; }
+.item .t { font-weight: 650; line-height: 1.35; }
+.item .w { font-size: 12px; color: var(--muted); }
+.kind { font-size: 10.5px; font-weight: 700; letter-spacing: .03em; padding: 1px 7px; border-radius: 999px; background: var(--soft2); color: var(--muted-strong); border: 1px solid var(--border); }
+.kind.q { background: #eef2ff; color: #3730a3; border-color: #c7d2fe; }
+.kind.old { background: var(--warn-soft); color: var(--warn-text); border-color: var(--warn-line); }
+/* Detail */
+.detail { display: grid; grid-template-columns: minmax(0, 1fr); min-width: 0; gap: 14px; padding: 18px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+@media (max-width: 600px) { .detail { padding: 12px; } }
+.bl { font-size: 12px; font-weight: 700; color: var(--muted-strong); background: var(--soft2); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; letter-spacing: .02em; }
+.paren { font-size: 13px; font-weight: 500; color: var(--muted); }
+.code { font-size: 13px; font-weight: 750; color: var(--on-dark); background: var(--text); border-radius: 7px; padding: 2px 8px; }
+.facts { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; max-width: 130ch; font-size: 13.5px; line-height: 1.5; }
+.facts dt { font-weight: 650; color: var(--muted-strong); }
+.facts dd { margin: 0; color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.facts code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 6px; border-radius: 5px; }
+.facts ol.notes { margin: 0; padding-left: 20px; display: grid; gap: 2px; }
+#e-pages { align-self: flex-start; }
+@media (max-width: 600px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-label { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--soft); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; color: var(--body); cursor: pointer; font-weight: 600; font-size: 13px; }
+.pills button:hover { background: var(--soft2); }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.restart { min-height: 34px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); cursor: pointer; font-weight: 600; font-size: 13px; }
+.restart:hover { background: var(--soft); }
+.vlist { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 8px; }
+.v { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 9px; background: var(--soft); text-align: left; cursor: pointer; color: var(--text); min-width: 0; }
+.v:hover { border-color: var(--border-strong); }
+.v[aria-pressed="true"] { background: var(--surface); border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.v .k { font-size: 12px; font-weight: 750; letter-spacing: .03em; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.v .rec { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; }
+.v .d { font-size: 13px; line-height: 1.45; color: var(--body); }
+.note { margin: 0; font-size: 13px; color: var(--muted-strong); line-height: 1.5; max-width: 120ch; }
+.mine { margin: 0; padding: 10px 14px; border-left: 3px solid var(--accent); background: var(--selected); border-radius: 0 8px 8px 0; line-height: 1.55; max-width: 120ch; }
+.warn { margin: 0; padding: 10px 14px; border-left: 3px solid var(--warn-border); background: var(--warn-soft); color: var(--warn-text); border-radius: 0 8px 8px 0; line-height: 1.55; max-width: 120ch; }
+.asks { margin: 0; padding: 12px 16px 12px 34px; border: 1px solid #c7d2fe; background: #f5f7ff; border-radius: 10px; display: grid; gap: 6px; line-height: 1.5; max-width: 120ch; }
+.asks li::marker { font-weight: 700; color: #3730a3; }
+.asks-title { font-size: 11.5px; font-weight: 700; color: #3730a3; text-transform: uppercase; letter-spacing: .05em; margin: 0 0 -6px; }
+/* Frames: the same layout as every PAGES page. */
+.frames { display: flex; gap: 24px; align-items: flex-start; }
+.frames[data-layout="stack"] { flex-direction: column; }
+.pane { display: grid; gap: 8px; min-width: 0; }
+.pane-label { font-size: 12px; font-weight: 650; color: var(--muted-strong); display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; }
+.desk-fit { position: relative; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: 0 6px 22px rgb(23 34 30 / 0.08); }
+.desk { width: 1440px; height: 900px; transform-origin: 0 0; }
+.desk iframe, #phone iframe, .pagebox iframe { width: 100%; height: 100%; border: 0; display: block; background: #fff; }
+.phone-fit { position: relative; }
+.phone-shell { width: 410px; height: 864px; transform-origin: 0 0; padding: 10px; border-radius: 44px; background: var(--bezel); box-shadow: 0 10px 30px rgb(23 34 30 / 0.22); }
+#phone { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: #fff; }
+.pagebox { height: 1400px; max-height: 160vh; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--page); box-shadow: 0 6px 22px rgb(23 34 30 / 0.08); }
+@media (max-width: 600px) { .pagebox { height: 1600px; } }
+.open-orig { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; }
+/* Question cards */
+.q { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+.q p { margin: 0; line-height: 1.6; max-width: 110ch; }
+.q ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; line-height: 1.5; max-width: 110ch; }
+.q ol li::marker { font-weight: 700; color: var(--muted-strong); }
+.q .tag { font-size: 11px; font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 999px; padding: 1px 8px; margin-left: 6px; white-space: nowrap; }
+.q code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 6px; border-radius: 5px; }
+/* Waiting-for-variants and outside lists */
+.todo { display: grid; gap: 8px; padding: 14px 16px; border: 1px dashed var(--border-strong); border-radius: 12px; background: var(--soft); }
+.todo h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: var(--muted-strong); }
+.todo ul, .out ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; line-height: 1.5; max-width: 120ch; }
+.out { display: grid; gap: 16px; }
+.out section { display: grid; gap: 8px; padding: 16px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); }
+.out h3 { font-size: 15px; }
+.foot { font-size: 12px; color: var(--muted); line-height: 1.5; }
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:10px">
+    <span class="eyebrow">Görsel kararlar · seni bekleyenler</span>
+    <h1>Bekleyen görsel kararlar</h1>
+    <p class="lede">Uygulamada senin gözünle seçmen gereken <strong>bütün görsel kararlar</strong> bu sayfada, <strong>ekran ekran sekmelerde</strong>. Her madde bugünkü hâli (<strong>Original</strong>) ve varyantları gösterir. Yeşil etiketli maddeler bugünkü main'in gerçek kodudur; turuncu "eski yapım" etiketli maddeler daha önce açılmış varyant sayfalarının kendisidir, ilk bağlantıları da yanında durur. Sayfada olmayanlar ve nedenleri son sekmede. Yeni bir görsel karar çıktıkça buraya, ilgili ekranın sekmesine eklenir.</p>
+    <p class="howto">Nasıl cevap verirsin: bu thread'e madde koduyla yaz, örnek <code>S1: C, S2: D, A4: B</code>. Kod yalnız cevap için bir kısaltma; her maddenin adı yanında yazar. Parantez içindeki numaralar plan kayıtlarındaki yerleridir, okumana gerek yok. Sorusu olan maddede soruyu da cevapla, örnek <code>S2: D, sağ tık kapalı, Time off kalsın</code>. Kararsız kaldığın ya da başka bir şey istediğin maddeyi kendi cümlenle yaz.</p>
+  </header>
+
+  <nav class="tabs" id="tabs" role="tablist" aria-label="Ekranlar"></nav>
+  <div class="tabhead" id="tabhead"></div>
+  <nav class="items" id="items" aria-label="Maddeler"></nav>
+  <p class="howto" id="empty-tab" hidden>Bu ekranda bekleyen görsel karar yok. Karara bağlananlar ve geçersiz kalanlar "Sayfada olmayanlar" sekmesinde.</p>
+
+  <section class="detail" id="detail" aria-live="polite">
+    <h2 id="d-title"></h2>
+    <dl class="facts" id="d-facts"></dl>
+    <p class="warn" id="d-warn"></p>
+    <ol class="asks" id="d-asks"></ol>
+    <div id="d-live">
+      <div class="controls" style="margin-bottom:14px">
+        <div class="ctl" id="d-views-wrap"><span class="ctl-label">Ekran</span><div class="pills" id="d-views"></div></div>
+        <button type="button" class="restart" id="restart">Baştan başlat</button>
+      </div>
+      <div class="vlist" id="d-variants" role="group" aria-label="Varyantlar"></div>
+    </div>
+    <p class="mine" id="d-mine"></p>
+    <p class="note" id="d-note"></p>
+    <div class="q" id="d-q"></div>
+    <div id="d-stage"></div>
+  </section>
+
+  <div class="todo" id="todo"></div>
+  <div class="out" id="out" hidden></div>
+  <p class="foot" id="foot"></p>
+</div>
+
+<template id="q-bl953">
+  <h3>Çekmecelerde sağ kenar simetrisi bütün katalog çekmecelerine yayılsın mı? <span class="tag">(BL-953)</span></h3>
+  <p><strong>Bugün:</strong> Settings'teki ortak katalog çekmecelerinde (Jobs, Shift catalog, Documents, Acknowledgements, Important Dates) alanların sağ kenarı, üstteki X ve alttaki Save düğmesinden 15 px içeride duruyor. Nedeni, çekmecenin kaydırma çubuğu için her zaman yer ayırması (<code>apps/web/src/settings/jobs-settings.css</code>, <code>scrollbar-gutter: stable</code>). Locations çekmecesinde bu düzeltildi: orada alanlar X ve Save ile aynı hizada bitiyor.</p>
+  <p><strong>Örnek:</strong> Settings → Jobs → bir job'a tıkla. Çekmecede "Job name" kutusunun sağ kenarı, sağ üstteki X'in sağ kenarıyla hizalı değil; Settings → Locations → bir lokasyonda hizalı.</p>
+  <p><strong>Neden soruyorum:</strong> bu beş çekmecenin ortak ölçüsü. Kuralımız ortak bir ölçü değişince önce sana sormamı istiyor. Bir yan etkisi var: uzun içerikli çekmecede kaydırma çubuğu çıkınca alanlar o an 15 px daralır (Locations'ta bugün de böyle).</p>
+  <ol type="A">
+    <li>Evet, beşine de Locations'taki gibi simetri uygula; kaydırma çubuğu çıkınca alanların biraz daralmasını kabul ediyorum. (Önerilen: Locations ile aynı görünür, tek iş.)</li>
+    <li>Hayır, bugünkü gibi kalsın; Locations da öbürleri gibi 15 px içeride olsun (hepsi aynı, kaydırma çubuğu çıkınca hiçbir şey kaymaz).</li>
+    <li>Hayır, bugünkü gibi kalsın; Locations da farklı kalsın.</li>
+    <li>Yazarak cevap vereceğim.</li>
+  </ol>
+</template>
+<template id="q-bl339">
+  <h3>Account → Preferences'taki "System" seçeneğinin adı ne olsun? <span class="tag">(BL-339)</span></h3>
+  <p><strong>Bugün:</strong> Account → Preferences sayfasında "Time format" listesinde <code>System</code>, <code>12-hour (9:30 AM)</code>, <code>24-hour (09:30)</code> gibi seçenekler var. Backlog maddesi "System" seçeneğinin tarayıcının biçimini gösterdiğini varsayıyordu; koda baktım, öyle değil: "System" aslında <strong>workspace'in ayarı</strong> demek (Settings → Schedule rules → Time format; <code>apps/web/src/schedule/timeInput.ts</code>, satır 10-15). Date format listesindeki "System" ise bugün hiçbir şeyi değiştirmiyor, kullanılmıyor.</p>
+  <p><strong>Örnek:</strong> Owner workspace'i 24 saate ayarlamış. Maria kendi Preferences'ında "System" seçili görüyor ve bunun telefonunun ayarı olduğunu sanıyor; ama Schedule'da saatleri 16:00 biçiminde görüyor, çünkü "System" workspace'in ayarını izliyor.</p>
+  <ol type="A">
+    <li>Adı "Workspace default (12-hour)" olsun: parantezde workspace'in o anki ayarı yazsın. Date format'taki kullanılmayan "System" kaldırılsın. (Önerilen: seçenek ne yapıyorsa onu söyler.)</li>
+    <li>Adı "Workspace default" olsun, parantez olmasın.</li>
+    <li>"System" adı kalsın, altına tek satır açıklama yazılsın: "Follows your workspace's setting."</li>
+    <li>Yazarak cevap vereceğim.</li>
+  </ol>
+</template>
+<template id="q-g13">
+  <h3>Takas inceleme penceresi telefonda nasıl dizilsin? <span class="tag">(soru listesinde G13, 3. madde)</span></h3>
+  <p><strong>Bugün:</strong> Requests → bir takas talebine tıkla → takas inceleme penceresi (H2, kararlı ve canlıda). Masaüstünde iki vardiya kartı yan yana, arada ⇄ işareti var. Telefonda (390 px) iki kart alt alta diziliyor ve ⇄ dikey dönüyor. Bu telefon hâli sana hiç ayrıca sorulmadı.</p>
+  <p><strong>Örnek:</strong> Carlos Rivera ile Aisha Johnson takas istiyor; müdür Rachel telefonda pencereyi açınca Carlos'un Çarşamba vardiyası üstte, ⇅ ortada, Aisha'nın Cuma vardiyası altta görünür.</p>
+  <ol type="A">
+    <li>Böyle kalsın: kartlar alt alta, ⇄ dikey. (Önerilen: dar ekranda iki kart yan yana sığmıyor; bugünkü kod bu.)</li>
+    <li>Telefonda da yan yana kalsın, kartlar küçülsün.</li>
+    <li>Yazarak cevap vereceğim.</li>
+  </ol>
+</template>

@@ -1,0 +1,214 @@
+/* Prototype styles for the New Schedule test page. Light theme only, --theme-*
+   tokens, the same 12–13px type and 5px corners as the Schedule top bar. */
+.stv-muted { color: var(--theme-muted); font-size: 12px; }
+.stv-pill { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: var(--theme-surface-muted); color: var(--theme-text-secondary); font-size: 11px; font-weight: 700; white-space: nowrap; }
+.stv-pill.is-live { background: #ddf3ea; color: var(--theme-published); }
+.stv-pill.is-viewing { background: #e8eefb; color: #2b4f9e; }
+.stv-btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 32px; padding: 0 11px; border-radius: 5px; font: inherit; font-size: 12px; font-weight: 700; cursor: pointer; white-space: nowrap; }
+.stv-btn:disabled { opacity: .5; cursor: not-allowed; }
+.secondary-button.stv-btn { border-color: var(--theme-border-control); color: var(--theme-text); }
+.stv-ns-empty { margin: 4px 14px 10px; color: var(--theme-muted); font-size: 12px; }
+.stv-ns-editing { display: flex; gap: 8px; align-items: flex-start; margin: 2px 12px 8px; padding: 8px 10px; border-radius: 6px; background: var(--theme-warning-surface); color: var(--theme-warning-text); font-size: 12px; line-height: 1.45; }
+.stv-ns-editing svg { flex: none; margin-top: 2px; }
+.stv-ns-icon { display: inline-flex; align-items: center; justify-content: center; gap: 5px; min-width: 28px; height: 28px; padding: 0 6px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text-secondary); font: inherit; font-size: 12px; font-weight: 650; cursor: pointer; white-space: nowrap; }
+.stv-ns-icon:hover:not(:disabled) { background: var(--theme-surface-muted); color: var(--theme-text); }
+.stv-ns-icon:disabled { opacity: .45; cursor: not-allowed; }
+.stv-ns-icon.is-danger { color: var(--theme-danger); }
+.stv-ns-icon.is-danger:hover:not(:disabled) { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
+.stv-ns-icon.is-armed, .stv-ns-icon.is-armed:hover:not(:disabled) { background: var(--theme-danger); color: #fff; }
+.stv-ns3-table { width: calc(100% - 16px); margin: 0 8px; border-collapse: collapse; font-size: 12.5px; }
+.stv-ns3-table th { padding: 6px 8px; border-bottom: 1px solid var(--theme-border); color: var(--theme-muted); font-size: 10.5px; font-weight: 750; letter-spacing: .03em; text-align: left; text-transform: uppercase; }
+.stv-ns3-table td { padding: 8px; border-bottom: 1px solid var(--theme-border-subtle); vertical-align: middle; }
+.stv-ns3-table tbody tr { cursor: pointer; }
+.stv-ns3-table tbody tr:hover { background: var(--theme-surface-soft); }
+.stv-ns3-table tr[data-viewing="true"] { background: var(--theme-selected); }
+.stv-ns3-table .num { text-align: right; font-variant-numeric: tabular-nums; }
+.stv-ns3-table .name { max-width: 230px; }
+.stv-ns3-table .name small { display: block; color: var(--theme-accent); font-size: 11px; font-weight: 700; }
+.stv-ns3-name { display: block; max-width: 100%; overflow: hidden; padding: 0; border: 0; background: none; color: var(--theme-text); font: inherit; font-weight: 650; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: pointer; }
+.stv-ns3-table .when { color: var(--theme-text-secondary); white-space: nowrap; }
+.stv-ns3-table .tools { white-space: nowrap; text-align: right; }
+.stv-seg { display: flex; gap: 2px; margin: 0 12px 8px; padding: 3px; border-radius: 7px; background: var(--theme-surface-muted); }
+.stv-seg button { flex: 1; height: 30px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text-secondary); font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; }
+.stv-seg button[aria-selected="true"] { background: var(--theme-surface); color: var(--theme-text); box-shadow: 0 1px 2px rgb(15 23 42 / 15%); }
+.stv-danger { border: 1px solid var(--theme-danger); background: var(--theme-surface); color: var(--theme-danger); }
+.stv-danger:hover:not(:disabled) { background: var(--theme-danger-soft); }
+.stv-danger.is-armed, .stv-danger.is-armed:hover:not(:disabled) { background: var(--theme-danger); color: #fff; }
+.stv-un-error { margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--theme-danger-surface); color: var(--theme-danger-text); font-size: 12px; }
+.stv-panel { color: var(--theme-text); font-size: 13px; }
+.stv-ex-source { display: flex; align-items: flex-start; gap: 7px; margin: 0; color: var(--theme-text-secondary); font-size: 12px; line-height: 1.45; }
+.stv-ex-source i { flex: none; width: 8px; height: 8px; margin-top: 4px; border-radius: 50%; background: var(--theme-published); }
+.stv-ex-source[data-draft="true"] i { background: #1f5f8b; }
+.stv-ex-preview { position: relative; overflow: hidden; border: 1px solid var(--theme-border-strong); border-radius: 7px; background: #eef1ef; }
+.stv-ex-preview iframe { position: absolute; top: 0; left: 0; border: 0; background: #fff; transform-origin: 0 0; pointer-events: none; }
+.stv-ex-preview-status { position: absolute; left: 8px; bottom: 8px; padding: 3px 8px; border-radius: 4px; background: rgb(255 255 255 / 92%); color: var(--theme-text-secondary); font-size: 11px; font-weight: 650; }
+.stv-ex-preview-open { position: absolute; right: 8px; bottom: 8px; display: inline-flex; align-items: center; gap: 5px; height: 26px; padding: 0 9px; border: 1px solid var(--theme-border-control); border-radius: 5px; background: #fff; color: var(--theme-text); font: inherit; font-size: 11.5px; font-weight: 700; cursor: pointer; }
+.stv-ex-main { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 0 14px; border: 1px solid var(--schedule-action); border-radius: 5px; background: var(--schedule-action); color: var(--theme-on-accent); font: inherit; font-size: 12.5px; font-weight: 750; cursor: pointer; white-space: nowrap; }
+.stv-ex-main:hover:not(:disabled) { background: var(--schedule-action-hover); }
+.stv-ex-main:disabled { opacity: .5; cursor: not-allowed; }
+.stv-ex-main.is-wide { width: 100%; }
+.stv-seg.is-tight { margin: 0; }
+.stv-seg.is-tight button { display: inline-flex; align-items: center; justify-content: center; gap: 5px; height: 30px; font-size: 12px; }
+.stv-seg button:disabled { opacity: .5; cursor: not-allowed; }
+.stv-switches { display: grid; gap: 4px; }
+.stv-switch { display: flex; align-items: center; gap: 10px; width: 100%; padding: 6px 2px; border: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.stv-switch > span { display: grid; flex: 1; gap: 1px; }
+.stv-switch b { font-size: 12.5px; font-weight: 650; }
+.stv-switch small { color: var(--theme-muted); font-size: 11px; }
+.stv-switch i { position: relative; flex: none; width: 32px; height: 18px; border-radius: 9px; background: var(--theme-border-strong); transition: background .12s; }
+.stv-switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgb(0 0 0 / 25%); transition: transform .12s; }
+.stv-switch[aria-checked="true"] i { background: var(--theme-accent); }
+.stv-switch[aria-checked="true"] i::after { transform: translateX(14px); }
+.stv-ex2-block { display: grid; gap: 7px; }
+.stv-ex2-block > strong { color: #6b7671; font-size: 10px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
+.stv-ex3-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.stv-ex3-formats button { display: grid; justify-items: center; gap: 3px; padding: 10px 6px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); color: inherit; font: inherit; text-align: center; cursor: pointer; }
+.stv-ex3-formats button[aria-checked="true"] { border-color: var(--theme-accent); background: var(--theme-selected); box-shadow: inset 0 0 0 1px var(--theme-accent); }
+.stv-ex3-formats b { font-size: 12.5px; }
+.stv-ex3-formats small { color: var(--theme-muted); font-size: 10.5px; line-height: 1.3; }
+.schedule-export-v2 .stv-ex-main { color: var(--theme-on-accent); font-size: 12.5px; font-weight: 750; }
+.schedule-export-v2 .stv-ex-preview-open { color: var(--theme-text); font-size: 11.5px; font-weight: 700; }
+.stv-panel :is(button, a, input, select, summary, [tabindex]):focus-visible, .stv-nt-menu :is(button, [role=menuitem]):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+
+/* A and B take Export and Templates out of the top bar: the window runs them. */
+:root:is([data-st-ns="a"], [data-st-ns="b"]) :is(.schedule-export-action, .schedule-template-action) { display: none !important; }
+
+/* ---------- The wide window (A and B) ---------- */
+.stv-nt-layer { position: fixed; z-index: 120; }
+.stv-nt { display: flex; flex-direction: column; width: max-content; min-width: min(440px, calc(100vw - 24px)); max-width: min(600px, calc(100vw - 24px)); max-height: min(700px, calc(100vh - 110px)); overflow: hidden; border-radius: 10px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%); }
+/* B: Schedules and Templates have one size, so switching tabs never moves the window (Mert, 2026-10-12 17:00 PT). */
+.stv-nt[data-variant="b"] { width: min(490px, calc(100vw - 24px)); min-width: 0; max-width: none; }
+.stv-nt[data-export="true"] { width: min(980px, calc(100vw - 24px)); max-width: none; }
+.stv-nt-head { display: flex; flex: none; align-items: center; gap: 10px; padding: 10px 10px 8px 14px; border-bottom: 1px solid var(--theme-border-subtle); }
+.stv-nt-head > strong { flex: 1; min-width: 0; overflow: hidden; font-size: 14px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.stv-nt-head.is-step { padding-left: 8px; }
+.stv-nt-head-tools { display: inline-flex; align-items: center; gap: 6px; }
+.stv-nt-blank { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.stv-nt-back { display: inline-flex; align-items: center; gap: 5px; height: 30px; padding: 0 8px; border: 0; border-radius: 5px; background: none; color: var(--theme-text-secondary); font: inherit; font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.stv-nt-back:hover { background: var(--theme-surface-muted); color: var(--theme-text); }
+.stv-nt .stv-ns-editing { margin: 8px 14px 0; }
+.stv-nt .stv-ns-empty { margin: 12px 16px; }
+.stv-nt-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; padding: 4px 8px 0; }
+.stv-nt-table { width: 100%; margin: 0; }
+.stv-nt-table thead th { position: sticky; top: 0; z-index: 1; background: var(--theme-surface); }
+.stv-nt-table .name { max-width: 190px; }
+.stv-nt-table th, .stv-nt-table td { padding-left: 6px; padding-right: 6px; }
+.stv-nt-table td { padding-top: 6px; padding-bottom: 6px; }
+.stv-nt-table .tools { width: 1%; }
+.stv-nt-table .tools > * { vertical-align: middle; }
+.stv-nt-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 10px 14px 14px; }
+.stv-nt-section { flex: none; margin: 4px 0 0; padding: 10px 14px 4px; border-top: 1px solid var(--theme-border-subtle); }
+.stv-nt-section h3 { margin: 0 0 6px; color: var(--theme-muted); font-size: 10.5px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; }
+.stv-nt-section.is-form { margin-top: 14px; padding: 14px 0 0; }
+.stv-nt-section .stv-ns-empty { margin: 4px 0 8px; }
+.stv-nt-foot { display: flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; padding: 6px 14px 8px; border-top: 1px solid var(--theme-border-subtle); }
+
+/* Row and template menus */
+.stv-nt-menu { position: fixed; z-index: 130; display: grid; min-width: 190px; padding: 5px; border-radius: 8px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 8%), 0 12px 28px -10px rgb(15 23 42 / 30%); }
+.stv-nt-menu > :is(button, .stv-nt-menu-danger) { display: flex; align-items: center; gap: 9px; width: 100%; min-height: 32px; padding: 0 10px; border: 0; border-radius: 5px; background: transparent; color: var(--theme-text); font: inherit; font-size: 12.5px; font-weight: 600; text-align: left; white-space: nowrap; cursor: pointer; }
+.stv-nt-menu > button:hover:not(:disabled) { background: var(--theme-surface-muted); }
+.stv-nt-menu > button:disabled { color: var(--theme-muted); cursor: not-allowed; }
+.stv-nt-menu > button svg { flex: none; color: var(--theme-text-secondary); }
+.stv-nt-menu > .stv-nt-menu-danger, .stv-nt-menu > .stv-nt-menu-danger svg { color: var(--theme-danger); }
+.stv-nt-menu > .stv-nt-menu-danger:hover:not(:disabled) { background: var(--theme-danger-soft); }
+.stv-nt-menu > .stv-nt-menu-danger[data-confirming="true"], .stv-nt-menu > .stv-nt-menu-danger.is-armed { background: var(--theme-danger); color: #fff; }
+.stv-nt-menu > .stv-nt-menu-danger[data-confirming="true"] svg, .stv-nt-menu > .stv-nt-menu-danger.is-armed svg { color: #fff; }
+
+/* Templates */
+/* The window is only as wide as its content, so "Use" sits at the right edge, close to the longest name
+   (Mert, 2026-10-12 15:29 and 15:47 PT). */
+/* Columns: name, Use, edit (pencil), more (⋯). */
+.stv-nt-templates { display: grid; grid-template-columns: minmax(0, 1fr) auto auto auto; column-gap: 6px; margin: 0; padding: 0; list-style: none; }
+.stv-nt-templates li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 40px; margin: 0 -6px; padding: 3px 6px; border-bottom: 1px solid var(--theme-border-subtle); }
+.stv-nt-templates li[data-clickable="true"] { cursor: pointer; }
+.stv-nt-templates li[data-clickable="true"]:hover { background: var(--theme-surface-soft); }
+.stv-nt-templates li[data-viewing="true"] { background: var(--theme-selected); }
+.stv-nt-templates li > .secondary-button.stv-btn { margin-right: 2px; }
+.stv-nt-templates li > .stv-nt-rename { grid-column: 1 / -1; }
+.stv-nt-templates li:last-child { border-bottom: 0; }
+.stv-nt-templates.is-compact { max-height: 166px; overflow-y: auto; }
+.stv-nt-templates.is-compact li { min-height: 36px; }
+.stv-nt-template-name { display: grid; grid-template-columns: auto minmax(0, 1fr); min-width: 0; align-items: center; column-gap: 8px; }
+.stv-nt-template-name svg { grid-row: span 2; color: var(--theme-text-secondary); }
+.stv-nt-template-open { display: flex; min-width: 0; align-items: center; gap: 7px; padding: 0; border: 0; background: none; color: var(--theme-text); font: inherit; text-align: left; cursor: pointer; }
+.stv-nt-template-open:disabled { cursor: default; }
+.stv-nt-template-open:focus-visible { outline: 2px solid var(--theme-accent); outline-offset: 2px; border-radius: 3px; }
+.stv-nt-template-open em { flex: none; color: var(--theme-accent); font-size: 11px; font-style: normal; font-weight: 700; }
+.stv-nt-template-name b { min-width: 0; overflow: hidden; font-size: 13px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.stv-nt-template-name small { overflow: hidden; color: var(--theme-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+/* B · Schedules tab: the Templates rows with two number columns (Mert, 2026-10-12 17:00 PT: "Templates kadar compact"; Open column removed). */
+.stv-nt-templates.is-schedules { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.stv-nt-num { padding-left: 6px; color: var(--theme-muted); font-size: 11.5px; text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.stv-nt-num b { color: var(--theme-text); font-size: 13px; font-weight: 650; }
+.stv-nt-template-name svg.is-live, .stv-nt-template-name small .is-live { color: var(--theme-published); }
+.stv-nt-template-name small .is-live { font-weight: 700; }
+.stv-nt-rename { display: flex; flex: 1; align-items: center; gap: 6px; }
+.stv-nt-rename input, .stv-nt-form :is(input:not([type=checkbox]), select) { flex: 1; min-width: 0; height: 32px; padding: 0 9px; border: 1px solid var(--theme-border-control); border-radius: 5px; background: var(--theme-surface); color: var(--theme-text); font: inherit; font-size: 13px; }
+.stv-nt-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; max-width: 620px; }
+.stv-nt-form > label:not(.stv-nt-check) { display: grid; gap: 5px; }
+.stv-nt-form > label > span { color: var(--theme-text-secondary); font-size: 12px; font-weight: 650; }
+.stv-nt-check { display: flex; grid-column: 1 / -1; align-items: center; gap: 8px; font-size: 12.5px; cursor: pointer; }
+.stv-nt-check input, .stv-nt-departments input { width: 16px; height: 16px; margin: 0; accent-color: var(--theme-accent); }
+.stv-nt-form .stv-un-error, .stv-nt-form .stv-nt-actions { grid-column: 1 / -1; }
+.stv-nt-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+.stv-nt-actions .nf-button.stv-btn { min-height: 34px; padding: 0 14px; }
+.stv-nt-use { display: grid; gap: 10px; max-width: 620px; }
+.stv-nt-use p { margin: 0; font-size: 13px; line-height: 1.5; }
+.stv-nt-use .stv-nt-actions { justify-content: flex-start; }
+.stv-nt-impact { flex-basis: 100%; order: 10; color: var(--theme-danger-text); font-size: 12px; font-weight: 650; }
+.stv-nt-departments { border: 1px solid var(--theme-border-subtle); border-radius: 6px; padding: 8px 10px; }
+.stv-nt-departments summary { color: var(--theme-text-secondary); font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.stv-nt-departments > div { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 8px; }
+.stv-nt-departments label { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; cursor: pointer; }
+/* "Use" outside an edit: which schedule it goes into */
+.stv-nt-target { display: grid; gap: 2px; margin: 0; padding: 0; border: 0; }
+.stv-nt-target legend { margin-bottom: 6px; padding: 0; color: var(--theme-text); font-size: 13px; font-weight: 700; }
+.stv-nt-target label { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 8px; border-radius: 5px; font-size: 12.5px; cursor: pointer; }
+.stv-nt-target label:hover { background: var(--theme-surface-soft); }
+.stv-nt-target label:has(input:checked) { background: var(--theme-selected); }
+.stv-nt-target input { width: 16px; height: 16px; margin: 0; accent-color: var(--theme-accent); }
+.stv-nt-target span { min-width: 0; overflow: hidden; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.stv-nt-target svg { flex: none; color: var(--theme-text-secondary); }
+.stv-nt-target small { color: var(--theme-accent); font-size: 11px; font-weight: 700; }
+
+/* B · tabs */
+.stv-nt-tabs { display: flex; flex: none; gap: 4px; padding: 0 12px; border-bottom: 1px solid var(--theme-border-subtle); }
+.stv-nt-head.has-tabs { align-items: stretch; padding-top: 0; padding-bottom: 0; padding-left: 8px; }
+.stv-nt-head.has-tabs .stv-nt-tabs { flex: 1; min-width: 0; padding: 0; border-bottom: 0; }
+.stv-nt-head.has-tabs .stv-nt-tabs button { height: 46px; font-size: 13.5px; }
+.stv-nt-head.has-tabs .stv-nt-head-tools { align-self: center; }
+.stv-nt-tabs button { position: relative; display: inline-flex; align-items: center; gap: 6px; height: 38px; padding: 0 10px; border: 0; background: none; color: var(--theme-text-secondary); font: inherit; font-size: 13px; font-weight: 650; cursor: pointer; }
+.stv-nt-tabs button:hover { color: var(--theme-text); }
+.stv-nt-tabs button[aria-selected="true"] { color: var(--theme-text); }
+.stv-nt-tabs button[aria-selected="true"]::after { content: ""; position: absolute; right: 8px; bottom: -1px; left: 8px; height: 2px; border-radius: 2px; background: var(--theme-accent); }
+.stv-nt-count { display: inline-grid; min-width: 18px; height: 18px; place-items: center; padding: 0 5px; border-radius: 9px; background: var(--theme-surface-muted); color: var(--theme-text-secondary); font-size: 11px; font-weight: 700; }
+.stv-nt-pick { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 12px; }
+.stv-nt-label { margin-right: 4px; color: var(--theme-text-secondary); font-size: 12px; font-weight: 650; }
+.stv-nt-pick button { display: inline-flex; align-items: center; gap: 5px; max-width: 220px; height: 30px; padding: 0 11px; border: 1px solid var(--theme-border-control); border-radius: 999px; background: var(--theme-surface); color: var(--theme-text); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.stv-nt-pick button span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stv-nt-pick button svg { color: var(--theme-published); }
+.stv-nt-pick button[aria-checked="true"] { border-color: var(--theme-accent); background: var(--theme-selected); box-shadow: inset 0 0 0 1px var(--theme-accent); }
+
+/* Export inside the window */
+.stv-nt-source { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-bottom: 12px; }
+.stv-nx { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; }
+.stv-nx-preview .stv-ex-preview { height: 100% !important; min-height: 300px; }
+.stv-nx-side { display: flex; flex-direction: column; gap: 14px; }
+.stv-nx-foot { display: flex; justify-content: flex-end; gap: 8px; margin-top: auto; }
+/* Forms and notes take the window's width instead of widening it. */
+.stv-nt :is(.stv-nt-section.is-form, .stv-nt-use, .stv-ns-editing, .stv-un-error, .stv-nt-impact) { contain: inline-size; }
+
+/* A template on the grid: a strip at the bottom says so (preview: Edit template, Close preview). */
+.stv-tpl-bar { position: fixed; left: 50%; bottom: 18px; z-index: 120; display: flex; align-items: center; gap: 10px; max-width: min(820px, calc(100vw - 32px)); padding: 8px 10px 8px 14px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); box-shadow: 0 10px 28px -12px rgb(15 23 42 / 35%); color: var(--theme-text-secondary); font-size: 12.5px; line-height: 1.4; transform: translateX(-50%); }
+.stv-tpl-bar > svg { flex: none; color: var(--theme-accent); }
+.stv-tpl-bar > span { flex: 1; min-width: 0; }
+.stv-tpl-bar b { margin-right: 8px; color: var(--theme-text); font-weight: 700; }
+.stv-tpl-bar[data-editing="true"] { border-color: var(--theme-warning-border, var(--theme-border)); background: var(--theme-warning-surface); color: var(--theme-warning-text); }
+.stv-tpl-bar[data-editing="true"] > svg, .stv-tpl-bar[data-editing="true"] b { color: var(--theme-warning-text); }
+/* Toasts sit above the strip, not on it. */
+body:has(.stv-tpl-bar) [data-sonner-toaster][data-y-position="bottom"] { bottom: 84px !important; }
+/* B: "Blank schedule" and "Save template" share one width, so the green button stays put when tabs change (Mert, 2026-10-12 18:29 PT). */
+.stv-nt[data-variant="b"] .stv-nt-head .stv-nt-blank { width: 138px; justify-content: flex-start; padding: 0 12px; }
+/* The icon starts at the same pixel in both labels; the tabs are a little tighter so Export keeps clear space before the button (Mert, 18:32 PT). */
+.stv-nt[data-variant="b"] .stv-nt-head.has-tabs .stv-nt-tabs button { padding: 0 8px; }
+.stv-nt[data-variant="b"] .stv-nt-head.has-tabs .stv-nt-tabs button[aria-selected="true"]::after { right: 6px; left: 6px; }

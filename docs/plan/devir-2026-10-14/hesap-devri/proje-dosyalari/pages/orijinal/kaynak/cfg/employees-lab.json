@@ -1,0 +1,40 @@
+{
+ "screens": [
+  {
+   "label": "Employees · Owner, masaüstü",
+   "as": "owner",
+   "route": "/app/employees",
+   "width": 1440
+  },
+  {
+   "label": "Employees · Owner, telefon",
+   "as": "owner",
+   "route": "/app/employees",
+   "width": 390
+  },
+  {
+   "label": "Employees · Hannah Lee (Manager), masaüstü",
+   "as": "manager",
+   "route": "/app/employees",
+   "width": 1440
+  },
+  {
+   "label": "Employees · Hannah Lee (Manager), telefon",
+   "as": "manager",
+   "route": "/app/employees",
+   "width": 390
+  }
+ ],
+ "personas": {
+  "owner": "Mert Tepebas · Owner",
+  "admin": "Laura Bennett · Admin",
+  "manager": "Hannah Lee · Manager, Downtown",
+  "employee": "Maria Lopez · Employee, Downtown",
+  "onboarding": "Ben Carter · yeni çalışan, onboarding'de",
+  "invited": "Chloe Adams · davet edildi, katılmadı",
+  "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi",
+  "nobusiness": "Alex Morgan · hesap var, workspace yok",
+  "signedout": "Giriş yapılmamış"
+ },
+ "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."
+}

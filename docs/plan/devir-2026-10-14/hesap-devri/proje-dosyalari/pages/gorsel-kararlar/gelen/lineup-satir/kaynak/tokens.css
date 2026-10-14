@@ -1,0 +1,84 @@
+:root {
+  /* Light theme tokens (THEME-002). New UI uses these instead of raw hex. */
+  --theme-font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --theme-page: #f4f5f3;
+  --theme-surface: #ffffff;
+  --theme-surface-soft: #f7f9f8;
+  --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e;
+  --theme-text-body: #1d2525;
+  --theme-muted: #66716c;
+  /* Secondary text on tinted surfaces where --theme-muted misses AA. */
+  --theme-muted-strong: #5f6b66;
+  --theme-border: #dce3df;
+  --theme-border-subtle: #e2e6e4;
+  --theme-border-strong: #cbd4d0;
+  --theme-accent: #176954;
+  --theme-accent-strong: #12624f;
+  --theme-selected: #e7f1ed;
+  --theme-focus: #177a64;
+  --theme-action: #111827;
+  --theme-action-hover: #1f2937;
+  --theme-danger: #b84234;
+  --theme-danger-soft: #fff0ee;
+  --theme-warning: #8a5a00;
+  --theme-warning-soft: #fff7e2;
+  --theme-success: #176b4e;
+  --theme-success-soft: #e7f1ed;
+  --theme-current: #b7791f;
+  --theme-on-accent: #ffffff;
+  /* Account screens (BL-148): kept at their exact values, no nearer token fits. */
+  --theme-text-secondary: #50605a;
+  --theme-text-menu: #26352f;
+  --theme-accent-soft: #dbece5;
+  --theme-accent-deep: #244c3d;
+  --theme-focus-halo: #c9eadf;
+  --theme-border-hover: #95aaa1;
+  --theme-warning-surface: #fbf6ec;
+  --theme-warning-border: #bf872d;
+  --theme-warning-text: #5f491f;
+  --theme-danger-surface: #fff8f6;
+  --theme-danger-border: #ad3f36;
+  --theme-danger-text: #653b36;
+  --theme-danger-strong: #a43830;
+  /* Schedule availability (G14, Mert 2026-10-01): orange is a preference the
+     manager may still schedule over, red is approved time off (a block). */
+  --theme-availability: #d9730d;
+  --theme-availability-soft: #fff1e2;
+  --theme-time-off: #d4162a;
+  --theme-time-off-soft: #ffe2e5;
+  --theme-accent-focus: #236844;
+  /* Schedule publication state (BL-312): green when the whole week is live,
+     amber when only some locations are. Kept at their exact values. */
+  --theme-published: #087f5b;
+  --theme-published-hover: #0b6f53;
+  --theme-published-partial: #b45309;
+  --theme-published-partial-hover: #92400e;
+  /* The edge every Schedule top bar control and list search/select shares
+     (G14; S7, KARARLAR 2026-10-06): 3.2:1 on the page ground, 3.5:1 on white. */
+  --theme-border-control: #7f8c86;
+  /* The dot of a location, or the chip of a person, that has no colour of its own. */
+  --theme-swatch-fallback: #64748b;
+  --theme-swatch-fallback-soft: #cbd5e1;
+  /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
+     never reads as a status, a warning or a selection. 7.6:1 on white. */
+  --theme-note: #2f4fa3;
+  /* Scheduled, "Now 3–4 PM" and other quiet info (EKRAN-08 announcements).
+     #234a7a on #e8eff8 is 8.2:1. */
+  --theme-info-soft: #e8eff8;
+  --theme-info-text: #234a7a;
+  /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
+     table frame, column-heading row, body cell ink, the line between
+     Availability day headings, and the faint "—" / disabled ink. */
+  --theme-list-frame: #d7dcda;
+  --theme-list-head: #e6ece8;
+  --theme-list-head-border: #d3dbd6;
+  --theme-list-head-text: #4f5d57;
+  --theme-list-cell-text: #46514d;
+  --theme-list-col-line: #dce1de;
+  --theme-text-faint: #aeb9b4;
+  --theme-availability-text: #8a4a06;
+  color-scheme: light;
+}

@@ -1,0 +1,369 @@
+<meta charset="utf-8">
+<title>Swap Onay Penceresi</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: a working bench. Short Turkish brief on top, then the live app frame
+   with its switches, then the guide to each swap and the three open questions. */
+:root {
+  --bg: #f3f5f2;
+  --panel: #ffffff;
+  --ink: #18231f;
+  --muted: #56645e;
+  --line: #d9e0dc;
+  --accent: #176b4e;
+  --accent-soft: #e4f0ea;
+  --warn: #8a5a00;
+  --warn-soft: #fff4dc;
+  --frame: #e6ebe8;
+  --sans: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121815; --panel: #1a221e; --ink: #e5ece8; --muted: #a3b2ab; --line: #2e3a34;
+    --accent: #5fc39a; --accent-soft: #1d3329; --warn: #f0c46a; --warn-soft: #3a2f17; --frame: #0d1210;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #121815; --panel: #1a221e; --ink: #e5ece8; --muted: #a3b2ab; --line: #2e3a34;
+  --accent: #5fc39a; --accent-soft: #1d3329; --warn: #f0c46a; --warn-soft: #3a2f17; --frame: #0d1210;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--sans); }
+.wrap { max-width: 1240px; margin: 0 auto; padding: 28px 20px 64px; display: grid; gap: 28px; }
+h1 { font-size: 30px; line-height: 1.15; margin: 0; text-wrap: balance; letter-spacing: -0.01em; }
+h2 { font-size: 19px; margin: 0; text-wrap: balance; }
+h3 { font-size: 15px; margin: 0; }
+p { margin: 0; max-width: 72ch; }
+.eyebrow { font: 500 12px/1.3 var(--mono); letter-spacing: 0.06em; text-transform: uppercase; color: var(--accent); }
+.lead { display: grid; gap: 10px; }
+.muted { color: var(--muted); }
+code, .mono { font-family: var(--mono); font-size: 13px; }
+.ba { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+.ba > div { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.ba ul, .guide ul { margin: 0; padding-left: 18px; display: grid; gap: 5px; }
+.tag { display: inline-block; font: 600 12px/1 var(--sans); padding: 5px 8px; border-radius: 999px; background: var(--frame); color: var(--muted); }
+.tag.new { background: var(--accent-soft); color: var(--accent); }
+.bench { display: grid; gap: 12px; }
+.bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--panel); }
+.seg button { font: 600 14px/1 var(--sans); color: var(--muted); background: transparent; border: 0; padding: 10px 14px; min-height: 40px; cursor: pointer; }
+.seg button + button { border-left: 1px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+.seg button:focus-visible, .q button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.note { font-size: 13px; color: var(--muted); }
+.stage { display: flex; gap: 16px; justify-content: center; align-items: flex-start; background: var(--frame); border-radius: 10px; padding: 14px; overflow: hidden; }
+.slot { display: grid; gap: 6px; justify-items: center; min-width: 0; }
+.slot[hidden] { display: none !important; }
+.slot .label { font: 500 12px/1.2 var(--mono); color: var(--muted); }
+.viewport { position: relative; overflow: hidden; border-radius: 6px; box-shadow: 0 1px 2px rgb(0 0 0 / 0.08), 0 8px 24px rgb(0 0 0 / 0.08); background: #f4f5f3; }
+.viewport iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #f4f5f3; }
+.guide { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.table-scroll { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font: 500 12px/1.3 var(--mono); text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted); }
+td:first-child { white-space: nowrap; font-weight: 600; }
+.qs { display: grid; gap: 14px; }
+.q { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 18px; display: grid; gap: 10px; }
+.q ol { margin: 0; padding-left: 20px; display: grid; gap: 10px; }
+.q li p + p { margin-top: 2px; }
+.rec { font-weight: 600; color: var(--accent); }
+.dayanak { font-size: 13px; color: var(--muted); }
+.find { background: var(--warn-soft); border-radius: 8px; padding: 14px 16px; display: grid; gap: 6px; }
+.find h3 { color: var(--warn); }
+.shots { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+.shots figure { margin: 0; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 10px; display: grid; gap: 8px; align-content: start; }
+.shots img { width: 100%; height: auto; border-radius: 4px; background: #fff; }
+.shots figcaption { font-size: 13px; color: var(--muted); }
+.shots figcaption b { color: var(--ink); }
+@media (max-width: 760px) {
+  .ba { grid-template-columns: 1fr; }
+  h1 { font-size: 24px; }
+  td:first-child { white-space: normal; }
+  .stage { padding: 8px; }
+}
+</style>
+
+<div class="wrap">
+  <header class="lead">
+    <span class="eyebrow">Requests · takas onayı · Önce / Sonra</span>
+    <h1>Swap onay penceresi: bugünkü hâli ve dalda bekleyen hâli</h1>
+    <p>Saatlerce düzelttiğin takas (swap) onay penceresi kaybolmadı. <code>task/ekran-02-c2r</code> dalında duruyor (son commit <code>8ef7b05a</code>, 7–8 Ekim), ama main'e hiç girmedi. Main bugün <code>d68aa958</code>. Bugün bu iş, Employees listesinin yeni hâliyle birlikte güncel main'in üstüne taşındı: <code>claude/project-thread-jcgonw</code> dalı (bugün <code>1700a07b</code>). Aşağıdaki <b>New</b> bu dalın kodu; sekmeler 11 Ekim isteğine göre bu sayfada değiştirildi, dalın kodunda henüz değil. Bu sayfada ikisi de gerçek uygulama koduyla, aynı demo restoranla (Harbor &amp; Vine, Downtown ve Uptown) çalışıyor.</p>
+    <p class="muted">Neden durdu: eski koordinatör "Mert Requests'in tek tablosuna ve takas penceresine görsel bakmadan trene girmesin" dedi; ayrıca aşağıdaki üç soru açık kaldı. Senin bakışın bu ikisini kapatır.</p>
+  </header>
+
+  <section class="ba" aria-label="Önce ve sonra">
+    <div>
+      <span class="tag">Original · bugün main'de</span>
+      <ul>
+        <li>Requests'in sağ üstünde iki sekme: <b>Time off</b> ve <b>Shift changes</b>.</li>
+        <li>Time off: Needs review / Closed düğmeleri, tarihler "Oct 10, 2026 - Oct 11, 2026".</li>
+        <li>Takas: Shift changes → Ready for review → satır, sağdan geniş "Shift change" çekmecesi açılır; onay için içinde adayın Review düğmesi.</li>
+        <li>Yol, dinlenme, müsaitlik, izin uyarısı pencerede yok.</li>
+      </ul>
+    </div>
+    <div>
+      <span class="tag new">New · kurtarma dalı (güncel main + c2r)</span>
+      <ul>
+        <li>Tek tablo; üstte sekmeler: <b>All · Time off · Shift changes</b> (11 Ekim isteğin: Swap, Cover ve Open shift tek sekmede; satırın türü Type sütununda yazar). Sekmelerin yanında bekleyen sayısı. <b>New B</b>'de All yok, yalnız iki sekme.</li>
+        <li>Swap ve Cover, iki taraf anlaşmadan müdürün listesine düşmez (11 Ekim isteğin). "Waiting for … to accept" satırları ve kimsenin almadığı Cover'lar listede yok; kapanmış olanlardan da yalnız iki tarafın anlaştığı görünür. Open shift'te tek taraf var, değişmedi.</li>
+        <li>Sütunlar Employee, Type, When, Decide by, Status, Review; telefonda tablo yerine kartlar.</li>
+        <li>Takas satırına basınca ortada küçük <b>SWAP REQUEST</b> penceresi (kilitlediğin H2): iki kart, arada ⇄, kural tutmayan kartta turuncu kutu, öbür kartta yeşil kutu; altta Decide by, Decline ve Approve.</li>
+        <li>Cover ve Open shift satırları hâlâ eski Shift changes görünümünü ve çekmeceyi açar.</li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="bench" aria-label="Uygulama" data-bench="swap-c2.view">
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Hangi hâl">
+        <button type="button" data-version="orig" aria-pressed="true">Original (bugün)</button>
+        <button type="button" data-version="new" aria-pressed="false">New A (All var)</button>
+        <button type="button" data-version="newb" aria-pressed="false">New B (All yok)</button>
+        <button type="button" data-version="both" aria-pressed="false">Yan yana</button>
+      </div>
+      <div class="seg" role="group" aria-label="Genişlik">
+        <button type="button" data-width="1440" aria-pressed="true">Masaüstü 1440</button>
+        <button type="button" data-width="390" aria-pressed="false">Telefon 390</button>
+      </div>
+    </div>
+    <p class="note">Yan yana: Original ile New A. Ekran sığmazsa küçültülür; tıklamalar yine çalışır. Rolü değiştirmek ya da veriyi sıfırlamak için uygulamanın üst ortasındaki küçük düğme ("Original · Requests" / "New · Requests"): Owner · Mert Tepebas ya da Manager · Rachel Adams (Downtown), "Reset demo data". Yaptığın onay ve retler yalnız bu tarayıcıda kalır.</p>
+    <div class="stage">
+      <div class="slot" data-slot="orig"><span class="label">Original · main d68aa958</span><div class="viewport"><iframe title="Requests, bugünkü hâl (main)" src="original.html"></iframe></div></div>
+      <div class="slot" data-slot="new" hidden><span class="label">New A · claude/project-thread-jcgonw 1700a07b + iki sekme</span><div class="viewport"><iframe title="Requests, New A: All, Time off, Shift changes" src="new.html"></iframe></div></div>
+      <div class="slot" data-slot="newb" hidden><span class="label">New B · claude/project-thread-jcgonw 1700a07b + iki sekme, All yok</span><div class="viewport"><iframe title="Requests, New B: Time off, Shift changes" src="new-b.html" loading="lazy"></iframe></div></div>
+    </div>
+  </section>
+
+
+  <section class="bench" aria-label="Onayladığın görüntüler">
+    <div class="bar">
+      <h2>7 Ekim'de onayladığın görüntüler (dalın kendi ekranı)</h2>
+      <div class="seg" role="group" aria-label="Görüntü genişliği">
+        <button type="button" id="s-desk" data-shot="1440" aria-pressed="true">Masaüstü 1440</button>
+        <button type="button" id="s-phone" data-shot="390" aria-pressed="false">Telefon 390</button>
+      </div>
+    </div>
+    <p class="note">Eski oturumun aldığı 16 görüntü (backup/ekran-02-c2-screens). Yukarıdaki New ile aynı kod; yalnız demo isimleri farklı (o gün Ali ve Deniz, Kadikoy ve Besiktas). Yan yana baktım: pencerenin düzeni, renkleri ve yazıları aynı.</p>
+    <div class="shots" id="shots">
+        <figure><img loading="lazy" data-state="clean" src="h2/h2-clean-1440.png" alt="Temiz hâl: uyarı yok (kilitlediğin temel görünüm)"><figcaption><b>Temiz hâl</b> · uyarı yok (kilitlediğin temel görünüm)</figcaption></figure>
+        <figure><img loading="lazy" data-state="travel" src="h2/h2-travel-1440.png" alt="Yol: yalnız yol süresi"><figcaption><b>Yol</b> · yalnız yol süresi</figcaption></figure>
+        <figure><img loading="lazy" data-state="rest" src="h2/h2-rest-1440.png" alt="Dinlenme: yalnız dinlenme süresi"><figcaption><b>Dinlenme</b> · yalnız dinlenme süresi</figcaption></figure>
+        <figure><img loading="lazy" data-state="two" src="h2/h2-two-1440.png" alt="Birden çok uyarı: yol, dinlenme ve müsaitlik"><figcaption><b>Birden çok uyarı</b> · yol, dinlenme ve müsaitlik</figcaption></figure>
+        <figure><img loading="lazy" data-state="timeoff" src="h2/h2-timeoff-1440.png" alt="İzin: eski izin kutusu (düzeltildi)"><figcaption><b>İzin</b> · eski izin kutusu, düzeltildi</figcaption></figure>
+        <figure><img loading="lazy" data-state="locked" src="h2/h2-locked-1440.png" alt="Kilitli: karar veremeyen müdür"><figcaption><b>Kilitli</b> · karar veremeyen müdür</figcaption></figure>
+        <figure><img loading="lazy" data-state="waiting" src="h2/h2-waiting-1440.png" alt="Bekleyen: artık müdürün listesine düşmüyor"><figcaption><b>Bekleyen</b> · 11 Ekim isteğinle artık müdürün listesine düşmüyor</figcaption></figure>
+        <figure><img loading="lazy" data-state="decline" src="h2/h2-decline-1440.png" alt="Ret adımı: gerekçe ve kırmızı Decline swap"><figcaption><b>Ret adımı</b> · gerekçe ve kırmızı Decline swap</figcaption></figure>
+    </div>
+  </section>
+
+
+  <section class="bench" aria-label="Düğme boyu kararı">
+    <h2>Decline ve Approve düğmelerinin boyu (7 Ekim kararın)</h2>
+    <p class="note">"Takas Penceresi Düğmeleri" sayfasındaki iki seçenek. Sen A'yı seçtin ("H2 deki daha estetik"); dalın kodu ve yukarıdaki New bu seçimle çalışıyor. Telefonda (390) iki seçenek aynı: düğmeler 44 px.</p>
+    <div class="shots">
+      <figure><img loading="lazy" src="h2/dugme-a-1440.png" alt="A: Decline ve Approve 34 px, 13 px yazı"><figcaption><b>A · seçtiğin, dalda</b> · 34 px yükseklik, 13 px yarı kalın yazı, 6 px köşe</figcaption></figure>
+      <figure><img loading="lazy" src="h2/dugme-b-1440.png" alt="B: Decline ve Approve 36 px, 12 px yazı"><figcaption><b>B · seçilmedi</b> · izin çekmecesiyle aynı: 36 px, 12 px yazı, 5 px köşe</figcaption></figure>
+      <figure><img loading="lazy" src="h2/izin-cekmecesi-dugmeleri.png" alt="İzin çekmecesinde Deny ve Approve düğmeleri"><figcaption><b>Karşılaştırma</b> · izin çekmecesinin Deny ve Approve düğmeleri (36 px, simgeli)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="guide" aria-label="Neye bakmalı">
+    <div class="card">
+      <h2>Neye bakmalı (New)</h2>
+      <p>Requests → <b>Shift changes</b> sekmesi → Type sütununda <b>Swap</b> yazan satıra bas. "1. satır / 2. satır" aynı kişinin Swap satırları arasındaki sırayı söylüyor. Her satır pencerenin bir hâlini gösteriyor:</p>
+      <div class="table-scroll">
+        <table>
+          <thead><tr><th>Satır</th><th>Pencerede ne görürsün</th></tr></thead>
+          <tbody>
+            <tr><td>Carlos Rivera</td><td>Temiz hâl: uyarı kutusu yok (kilitlediğin temel görünüm).</td></tr>
+            <tr><td>Emma Wilson</td><td>Dinlenme: "8 h of rest" turuncu, öbür kartta "12 h of rest" yeşil.</td></tr>
+            <tr><td>Maria Lopez</td><td>Birden çok uyarı: yol ("20 min to travel / 30 min needed"), dinlenme ve "Unavailable / chose to take it". Yalnız yol uyarısı olan örnek bugünkü demo verisinde kurulamadı; yol kutusu bu satırda.</td></tr>
+            <tr><td>Noah Garcia (1. satır)</td><td>İzin kutusu artık kurala uyuyor: "On time off / can't take this shift"; altında kırmızı satır "Noah has approved time off then. Their time off must be shortened before this swap."; Approve kapalı. <b>Düzeltildi</b>, aşağıya bak.</td></tr>
+            <tr><td>Noah Garcia (2. satır)</td><td>Sistemin takası baştan uygunsuz saydığı hâl (izin, takas kabul edildikten sonra onaylanmış): kırmızı satır, Approve kapalı.</td></tr>
+            <tr><td>Priya Patel</td><td>Soru 1'in örneği: yeşil kutuda "No shift nearby".</td></tr>
+            <tr><td>Jake Thompson</td><td>İki lokasyonlu takas, Uptown müdürü onaylamış; Owner onaylayınca vardiyalar yer değiştirir.</td></tr>
+            <tr><td>Aisha Johnson</td><td>Kilitli hâl: rolü <b>Manager · Rachel Adams</b> yap; düğmeler kapalı, kimin karar verdiği yazıyor.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="note">Ret adımı: herhangi bir satırda Decline → gerekçe yaz → "Decline swap" kırmızı, iki tıkla.</p>
+    </div>
+    <div class="card">
+      <h2>Aynı takaslar Original'de</h2>
+      <p>Requests → sağ üstte <b>Shift changes</b> → Ready for review → "Shift swap" yazan satır. Sağdan çekmece açılır; onay için adayın kartındaki <b>Review</b>.</p>
+      <div class="find">
+        <h3>Düzeltildi: izin kutusu</h3>
+        <p>7–8 Ekim'deki dalda kutu "On time off / chose to work" diyordu: izinli kişi kendi rızasıyla takası alabiliyordu. Bu, 9 Ekim kuralına (onaylı izinle 1 dakika bile çakışan vardiya alınamaz, önce izin kısaltılır) aykırıydı. Kurtarma dalında kutu "can't take this shift" diyor, kırmızı satır kimin iznini kısaltmak gerektiğini söylüyor ve Approve kapalı (Noah Garcia, 1. satır). Yukarıdaki 7 Ekim görüntülerinden "İzin" eski hâli gösteriyor. Noah'ın 2. satırında kırmızı satır hâlâ yalnız "The other employee is not eligible…" diyor, nedeni söylemiyor; bunu ayrıca düzeltmeyi öneririm.</p>
+      </div>
+      <div class="find">
+        <h3>Bilinen hata (dalda)</h3>
+        <p>Takas penceresinde uzun lokasyon adı ("Harbor &amp; Vine Downtown") masaüstünde kartın kenarına değiyor; kurtarma dalında da sürüyor. Eski örnekte adlar kısaydı (Kadikoy, Besiktas), bu yüzden görünmemişti. Pencere trene girmeden önce düzeltilmeli.</p>
+      </div>
+      <p class="note">Dala alınmamış iki küçük commit daha var (<code>task/ekran-02-c2-css</code>): Shift Hub'ın renkleri temaya bağlanıyor ve çalışanın ana sayfasındaki "Open shifts" kısayolu Shift Hub'a gidiyor. Takas penceresini değiştirmiyorlar; Requests'te yalnız Cover ve Open shift çekmecesinin renklerine dokunabilirler. Kurtarma dalında yoklar; trene onunla birlikte binecekler.</p>
+      <p class="note">Uyarı kutularındaki dakika ve saatler bu sayfada örnek değerler; gerçek uygulamada veritabanı ölçüyor. Kutuların biçimi, sırası ve yazıları dalın gerçek kodu.</p>
+    </div>
+  </section>
+
+  <section class="bench" aria-label="Employees listesi" data-bench="swap-c2.emp">
+    <h2>Aynı dalda: Employees listesinin yeni hâli</h2>
+    <p>Kurtarma dalı Employees listesinin yeni hâlini de taşıyor (EKRAN-03 C1a, 8 Ekim). Bu da main'e girmedi; takas penceresiyle aynı trene binecek. Soldaki menüden <b>Employees</b> zaten açık.</p>
+    <div class="ba">
+      <div>
+        <span class="tag">Original · bugün main'de</span>
+        <ul>
+          <li>Büyük <b>Add employee</b> düğmesi başlığın sağında.</li>
+          <li>Sekmeler gri kutu içinde (All, Invited, Onboarding, Needs Attention, Active, Archived).</li>
+          <li>Sayfalama yok: 44 kişinin hepsi tek listede.</li>
+          <li>Sütun başlıklarında sıralama oku yok.</li>
+        </ul>
+      </div>
+      <div>
+        <span class="tag new">New · kurtarma dalı</span>
+        <ul>
+          <li>Yeşil <b>Add employee</b> arama kutusunun sağında, satır yüksekliğinde (telefonda aramanın altında).</li>
+          <li>Sekmeler Requests'teki gibi altı çizili.</li>
+          <li>Altta <b>Rows per page 25 / 50 / 100</b> (başta 50), "1–44 of 44" ve sayfa düğmeleri. 25 seçince 2. sayfa çıkar.</li>
+          <li>Her sütun başlığında sıralama oku; telefonda sütun seçme düğmesi yok.</li>
+        </ul>
+      </div>
+    </div>
+    <div class="bar">
+      <div class="seg" role="group" aria-label="Hangi hâl">
+        <button type="button" data-version="orig" aria-pressed="true">Original (bugün)</button>
+        <button type="button" data-version="new" aria-pressed="false">New (dal)</button>
+        <button type="button" data-version="both" aria-pressed="false">Yan yana</button>
+      </div>
+      <div class="seg" role="group" aria-label="Genişlik">
+        <button type="button" data-width="1440" aria-pressed="true">Masaüstü 1440</button>
+        <button type="button" data-width="390" aria-pressed="false">Telefon 390</button>
+      </div>
+    </div>
+    <p class="note">Telefonda liste hâlâ tablo; Employees'in telefon kartı tasarlandı ama koda dönmedi, ayrı iş. Demo restorana bu sayfa için 20 kişi eklendi, sayfalama görünsün diye.</p>
+    <div class="stage">
+      <div class="slot" data-slot="orig"><span class="label">Original · main d68aa958</span><div class="viewport"><iframe title="Employees, bugünkü hâl (main)" src="emp-original.html" loading="lazy"></iframe></div></div>
+      <div class="slot" data-slot="new" hidden><span class="label">New · claude/project-thread-jcgonw 1700a07b</span><div class="viewport"><iframe title="Employees, dalda bekleyen hâl" src="emp-new.html" loading="lazy"></iframe></div></div>
+    </div>
+  </section>
+
+  <section class="qs" aria-label="Açık sorular">
+    <h2>Açık üç soru (G13)</h2>
+    <article class="q">
+      <h3>1. Öbür vardiyanın yakınında vardiya yoksa yeşil kutu ne yazsın?</h3>
+      <p><b>Bugün:</b> dinlenme kuralı bir vardiyada tutmuyor; öbür vardiyayı alan kişinin iki gün içinde başka vardiyası yok. Yeşil kutu "No shift nearby / 10 h needed" yazıyor.</p>
+      <p><b>Örnek:</b> Priya Patel ⇄ Maria Lopez (Tue). Maria'nın kartında turuncu "8 h of rest / 10 h needed"; Priya'nın kartında yeşil "No shift nearby / 10 h needed".</p>
+      <ol type="a">
+        <li><p><span class="rec">Böyle kalsın (Önerilen).</span> Kartlarda boşluk kalmaz, yazı doğru veriyi söyler.</p><p class="dayanak">Dayanak: KARARLAR "Takas inceleme penceresi H2" uyarı kutuları (2026-10-07: öbür kartta yeşil kutu, "boşluk kalmasın"; değerler gerçek veriden, P11).</p></li>
+        <li><p>Bu durumda yeşil kutu çıkmasın. Kartlar farklı boyda olur.</p><p class="dayanak">Dayanak: yok — yeni karar.</p></li>
+        <li><p>"Rest OK / 10 h needed" yazsın. Ölçü yerine yalnız sonuç.</p><p class="dayanak">Dayanak: yok — yeni karar.</p></li>
+      </ol>
+    </article>
+    <article class="q">
+      <h3>2. "Decide by" satırında saat dilimi adı olsun mu?</h3>
+      <p><b>Bugün:</b> pencere "Decide by Oct 12, 11:00 AM" yazıyor (kilitlediğin H2 böyleydi). Aynı takasın tablo satırında "New York time" da yazıyor.</p>
+      <p><b>Örnek:</b> Carlos Rivera satırı: tabloda "Oct 12, 11:00 AM / New York time", pencerede yalnız "Decide by Oct 12, 11:00 AM".</p>
+      <ol type="a">
+        <li><p><span class="rec">Pencereye de "New York time" eklensin (Önerilen).</span> Son karar anı her yerde aynı biçimde; kilitli görünüme küçük bir ek.</p><p class="dayanak">Dayanak: KARARLAR-v1:133 (son karar anı saat dilimi adıyla yazılır).</p></li>
+        <li><p>Pencere böyle kalsın. Tablo ve pencere farklı yazar.</p><p class="dayanak">Dayanak: KARARLAR "Takas inceleme penceresi H2", kilitli temel hâl (2026-10-07).</p></li>
+      </ol>
+    </article>
+    <article class="q">
+      <h3>3. Telefonda iki kart nasıl dursun?</h3>
+      <p><b>Bugün (dalda):</b> telefonda kartlar alt alta, ⇄ dikey dönüyor. Yan yana sığmıyor: kartın içi 123 px, en uzun kutu 139 px. H2 telefonu söylemiyordu.</p>
+      <p><b>Örnek:</b> Telefon 390'a geç, Maria Lopez satırını aç.</p>
+      <ol type="a">
+        <li><p><span class="rec">Böyle kalsın (Önerilen).</span> Yazılar tek satırda okunur, düğmeler 44 px.</p><p class="dayanak">Dayanak: yok — yeni karar (H2 telefonu kapsamıyordu).</p></li>
+        <li><p>Yan yana kalsın; kartlar daralır, kutu yazıları iki satıra kırılır.</p><p class="dayanak">Dayanak: yok — yeni karar.</p></li>
+      </ol>
+    </article>
+    <p class="note">Seçimini istediğin zaman thread'e yaz ya da bu sayfaya yorum bırak. Tek tablo ve pencere senin "tamam"ınla trene hazırlanır (veritabanı şeması, tam test, Requests e2e).</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const slots0 = (root) => Object.fromEntries([...root.querySelectorAll("[data-slot]")].map((el) => [el.dataset.slot, el]));
+  function bench(root) {
+    const key = root.dataset.bench;
+    const state = { version: "orig", width: 1440 };
+    try {
+      const saved = JSON.parse(localStorage.getItem(key) || "{}");
+      if (Object.keys(slots0(root)).concat("both").includes(saved.version)) state.version = saved.version;
+      if ([1440, 390].includes(saved.width)) state.width = saved.width;
+    } catch (e) { /* storage blocked */ }
+    const stage = root.querySelector(".stage");
+    const slots = Object.fromEntries([...root.querySelectorAll("[data-slot]")].map((el) => [el.dataset.slot, el]));
+    function layout() {
+      const both = state.version === "both";
+      for (const [name, el] of Object.entries(slots)) el.hidden = !(both ? name === "orig" || name === "new" : state.version === name);
+      const height = state.width < 500 ? 844 : 900;
+      const style = getComputedStyle(stage);
+      const inner = stage.clientWidth - parseFloat(style.paddingLeft) - parseFloat(style.paddingRight);
+      const each = both ? (inner - 16) / 2 : inner;
+      const scale = Math.min(1, each / state.width);
+      for (const slot of Object.values(slots)) {
+        const box = slot.querySelector(".viewport");
+        const frame = slot.querySelector("iframe");
+        frame.style.width = state.width + "px";
+        frame.style.height = height + "px";
+        frame.style.transform = `scale(${scale})`;
+        box.style.width = Math.floor(state.width * scale) + "px";
+        box.style.height = Math.floor(height * scale) + "px";
+      }
+      root.querySelectorAll("[data-version]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.version === state.version)));
+      root.querySelectorAll("[data-width]").forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.width) === state.width)));
+      try { localStorage.setItem(key, JSON.stringify(state)); } catch (e) { /* storage blocked */ }
+    }
+    root.querySelectorAll("[data-version]").forEach((b) => b.addEventListener("click", () => { state.version = b.dataset.version; layout(); }));
+    root.querySelectorAll("[data-width]").forEach((b) => b.addEventListener("click", () => { state.width = Number(b.dataset.width); layout(); }));
+    new ResizeObserver(layout).observe(stage);
+    layout();
+  }
+  document.querySelectorAll("[data-bench]").forEach(bench);
+  document.querySelectorAll("[data-shot]").forEach((b) => b.addEventListener("click", () => {
+    const w = b.dataset.shot;
+    document.querySelectorAll("[data-shot]").forEach((o) => o.setAttribute("aria-pressed", String(o === b)));
+    document.querySelectorAll("#shots img").forEach((img) => { img.src = `h2/h2-${img.dataset.state}-${w}.png`; });
+  }));
+})();
+</script>
+
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Requests", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

@@ -1,0 +1,481 @@
+<title>List Page Systems</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: each system = one labelled block; the Employees page drawn at desktop size and scaled,
+   then three other list pages built by the same system. Single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --surface-muted: #f0f3f1;
+  --text: #17221e;
+  --body: #46514d;
+  --muted: #66716c;
+  --muted-strong: #50605a;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --control: #aeb9b4;
+  --head: #e6ece8;
+  --head-text: #4f5d57;
+  --accent: #176954;
+  --accent-soft: #e7f1ed;
+  --eyebrow: #256b56;
+  --dot: #2d8c64;
+  --warn: #8a5a00;
+  --info: #2b5a8a;
+  --info-soft: #e7eef8;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1180px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+h1 { margin: 0 0 6px; font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0 0 6px; max-width: 78ch; color: var(--muted-strong); }
+.small { margin: 0; max-width: 78ch; color: var(--muted); font-size: 13px; }
+.inv { margin-top: 12px; overflow-x: auto; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.inv table { width: 100%; min-width: 860px; border-collapse: collapse; font-size: 12.5px; }
+.inv th { padding: 8px 10px; background: var(--head); color: var(--head-text); font-size: 10.5px; font-weight: 700; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
+.inv td { padding: 8px 10px; border-top: 1px solid #e2e6e4; color: var(--body); vertical-align: top; }
+.inv td:first-child { color: var(--text); font-weight: 600; white-space: nowrap; }
+details.inv-box { margin-top: 18px; }
+details.inv-box summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+.system { margin-top: 56px; }
+.sys-head { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 34px; justify-content: center; padding: 2px 10px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.tag.keep { background: var(--accent); }
+.sys-head h2 { margin: 0; font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+.idea { margin: 6px 0 12px; max-width: 80ch; color: var(--muted-strong); font-size: 13.5px; }
+.idea b { color: var(--text); font-weight: 600; }
+.frame-label { margin: 14px 0 6px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.stage { min-width: 0; padding: 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.previews { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.pv { display: block; width: 100%; min-width: 0; padding: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); text-align: left; font: inherit; color: inherit; cursor: zoom-in; }
+.pv:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.pv .pv-name { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--border); color: var(--text); font-size: 12px; font-weight: 700; }
+.pv .pv-name span { color: var(--muted); font-weight: 500; }
+.pv .pv-body { padding: 10px; }
+.pv.big { grid-column: 1 / -1; cursor: zoom-out; }
+.scaler { width: 100%; overflow: hidden; }
+.scaler > .page { transform-origin: 0 0; }
+.today-pair > *, .previews > * { min-width: 0; }
+.previews.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.openmenu { position: relative; }
+.typemenu { position: absolute; top: 236px; left: 222px; display: grid; gap: 2px; width: 200px; padding: 8px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); box-shadow: 0 10px 28px rgba(23, 33, 29, 0.16); font-size: 13px; color: var(--text); }
+.typemenu .tm-title { padding: 2px 6px 6px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.typemenu .tm-row { display: flex; align-items: center; gap: 8px; padding: 6px; border-radius: 6px; }
+.today-pair { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 760px) { .previews, .today-pair { grid-template-columns: 1fr; } .wrap { padding-inline: 16px; } }
+
+/* ================= the drawn page (1000 px = a 1440 screen without the side menu) ================= */
+.page { width: 1000px; padding: 0 30px 24px; background: var(--page); font-size: 13px; color: var(--body); }
+.page svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding: 32px 0 20px; border-bottom: 1px solid #d9dfdb; }
+.eb { display: block; margin-bottom: 9px; color: var(--eyebrow); font-size: 9px; font-weight: 700; letter-spacing: 1.7px; text-transform: uppercase; }
+.ttl { display: flex; align-items: center; gap: 12px; margin: 0; color: #16211c; font-size: 38px; font-weight: 650; line-height: 1.15; letter-spacing: -0.02em; }
+.ttl::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--dot); box-shadow: 0 0 0 6px rgb(45 140 100 / 11%); }
+.dsc { margin: 9px 0 0; max-width: 620px; color: #56655d; font-size: 12px; }
+.btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); font: 600 13px var(--font); white-space: nowrap; }
+.btn.green { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn.big { height: 40px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+.sel { display: inline-flex; flex: none; align-items: center; justify-content: space-between; gap: 10px; min-width: 180px; height: 36px; padding: 0 10px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.srch { display: flex; flex: 1; min-width: 160px; align-items: center; gap: 8px; height: 36px; padding: 0 12px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--muted); font-size: 13px; }
+.cols { display: grid; flex: none; place-items: center; width: 36px; height: 36px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); }
+.ul-tabs { display: flex; gap: 6px; border-bottom: 1px solid #dce3df; }
+.ul-tabs span { display: inline-flex; align-items: center; gap: 6px; margin-bottom: -1px; padding: 8px 12px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; }
+.ul-tabs span.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+.cnt { display: inline-grid; min-width: 18px; height: 18px; place-items: center; padding: 0 5px; border-radius: 999px; background: var(--surface-muted); color: var(--muted-strong); font-size: 10.5px; font-weight: 700; }
+.on .cnt { background: var(--accent-soft); color: var(--accent); }
+.row-flex { display: flex; align-items: center; gap: 10px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; white-space: nowrap; }
+.chip.g { background: #e7f1ed; color: #176b4e; }
+.chip.n { background: #f0f3f1; color: #50605a; }
+.chip.a { background: #fff7e2; color: #8a5a00; }
+.chip.b { background: var(--info-soft); color: var(--info); }
+.tbl { overflow: hidden; border: 1px solid #d7dcda; border-radius: 7px; background: var(--surface-soft); }
+.tr { display: grid; align-items: center; background: var(--surface); }
+.tr > * { min-width: 0; overflow: hidden; padding: 10px 14px; text-overflow: ellipsis; white-space: nowrap; }
+.tr.h { background: #e6ece8; border-bottom: 1px solid #d3dbd6; }
+.tr.h > * { display: flex; align-items: center; height: 40px; padding: 0 14px; color: #4f5d57; font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.tr.r { min-height: 50px; border-bottom: 1px solid #e2e6e4; }
+.tr.r > :first-child { color: var(--text); font-weight: 600; }
+.tr.g { background: var(--surface-soft); border-bottom: 1px solid #e2e6e4; }
+.tr.g > * { padding: 6px 14px; color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.tr.unread > :nth-child(2) { color: var(--text); font-weight: 650; }
+.who { display: flex; align-items: center; gap: 9px; }
+.av { display: grid; flex: none; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #e3ece8; color: var(--accent); font-size: 11px; font-weight: 800; }
+.sub { display: block; color: var(--muted); font-size: 11px; font-weight: 500; }
+.box { display: inline-block; width: 14px; height: 14px; border: 1.5px solid var(--control); border-radius: 3px; background: var(--surface); vertical-align: -2px; }
+.box.on { border-color: var(--accent); background: var(--accent); box-shadow: inset 0 0 0 2px var(--surface); }
+.muted { color: var(--muted); }
+.rtype { display: inline-flex; align-items: center; gap: 6px; color: var(--text); font-size: 12.5px; font-weight: 600; }
+.rtype::before { content: ""; width: 8px; height: 8px; border-radius: 2px; background: var(--muted); }
+.rtype.off::before { background: #d4162a; border-radius: 50%; }
+.rtype.swap::before { background: var(--info); }
+.rtype.cover::before { background: var(--accent); }
+.rtype.open::before { background: transparent; border: 1.5px solid var(--muted-strong); }
+.tr.r .sub { overflow: hidden; text-overflow: ellipsis; }
+.warnline { display: inline-flex; align-items: center; gap: 5px; color: var(--warn); font-weight: 600; }
+
+/* Today: Employees as it is */
+.s0 .seg { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: #edf0ee; }
+.s0 .seg span { padding: 6px 11px; border-radius: 6px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s0 .seg span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.1); }
+.s0 .tr.h { background: #f3f5f3; }
+.s0 .tr.h > * { color: #68726e; font-size: 10.5px; font-weight: 800; }
+
+/* System 1: shared language, green action at the end of the filter row (C) */
+.s1 .tools { display: grid; gap: 12px; margin: 16px 0 14px; }
+
+/* System 2: one panel */
+.s2 .ph { padding-bottom: 18px; border-bottom: 0; }
+.s2 .panel { overflow: hidden; border: 1px solid #d7dcda; border-radius: 10px; background: var(--surface); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.04); }
+.s2 .panel .ul-tabs { padding: 0 12px; }
+.s2 .panel .bar { display: flex; align-items: center; gap: 10px; padding: 12px; border-bottom: 1px solid #e2e6e4; }
+.s2 .panel .tbl { border: 0; border-radius: 0; }
+.s2 .tr.h { background: var(--surface); border-bottom: 1px solid #e2e6e4; }
+.s2 .foot { display: flex; justify-content: space-between; padding: 9px 14px; background: var(--surface); color: var(--muted); font-size: 11.5px; }
+
+/* System 3: a filter rail */
+.s3 .body { display: grid; grid-template-columns: 210px minmax(0, 1fr); gap: 18px; margin-top: 18px; }
+.s3 .rail { display: grid; align-content: start; gap: 18px; }
+.s3 .rail h4 { margin: 0 0 6px; color: var(--muted); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.s3 .nav { display: grid; gap: 2px; }
+.s3 .nav span { display: flex; align-items: center; justify-content: space-between; padding: 7px 10px; border-radius: 7px; color: var(--muted-strong); font-size: 13px; }
+.s3 .nav span.on { background: var(--accent-soft); color: var(--accent); font-weight: 650; }
+.s3 .rail .sel { width: 100%; min-width: 0; }
+.s3 .typeswitch { display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface-muted); }
+.s3 .typeswitch span { padding: 6px 8px; border-radius: 6px; color: var(--muted-strong); font-size: 12px; font-weight: 600; text-align: center; }
+.s3 .typeswitch span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.1); }
+.s3 .main { display: grid; align-content: start; gap: 10px; min-width: 0; }
+
+/* System 4: compact command bar */
+.s4 .ph { padding: 22px 0 14px; }
+.s4 .ttl { font-size: 26px; }
+.s4 .ttl::after { width: 7px; height: 7px; box-shadow: 0 0 0 4px rgb(45 140 100 / 11%); }
+.s4 .count { color: var(--muted); font-size: 15px; font-weight: 500; }
+.s4 .cmd { display: flex; align-items: center; gap: 8px; margin: 14px 0 12px; }
+.s4 .segc { display: inline-flex; flex: none; gap: 2px; padding: 3px; border-radius: 8px; background: #e9eeeb; }
+.s4 .segc span { display: inline-flex; align-items: center; gap: 5px; padding: 5px 10px; border-radius: 6px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s4 .segc span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.12); }
+.s4 .pill { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 32px; padding: 0 11px; border: 1px dashed var(--control); border-radius: 999px; color: var(--muted-strong); font-size: 12.5px; font-weight: 600; }
+.s4 .pill.set { border-style: solid; border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.s4 .srch { min-width: 100px; height: 32px; border-radius: 999px; }
+.s4 .btn, .s4 .cols { height: 32px; }
+.s4 .cols { width: 32px; }
+.s4 .tbl { border-radius: 9px; }
+.s4 .tr.h > * { height: 34px; font-size: 10.5px; }
+.s4 .tr.r { min-height: 42px; }
+.s4 .tr > * { padding-top: 7px; padding-bottom: 7px; }
+
+/* System 5: summary tiles */
+.s5 .tiles { display: flex; gap: 10px; margin: 18px 0 12px; }
+.s5 .tile { flex: 1; min-width: 0; padding: 11px 14px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.s5 .tile b { display: block; color: var(--text); font-size: 22px; font-weight: 700; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.s5 .tile span { color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.s5 .tile.on { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.s5 .tile.on span { color: var(--accent); }
+.s5 .tile.warn b { color: var(--warn); }
+.s5 .bar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.s5 .fchip { display: inline-flex; flex: none; align-items: center; gap: 6px; height: 30px; padding: 0 10px; border-radius: 999px; background: var(--surface-muted); color: var(--text); font-size: 12.5px; font-weight: 600; }
+.s5 .fchip .x { display: inline-flex; color: var(--muted); }
+.s5 .addf { display: inline-flex; flex: none; align-items: center; gap: 5px; height: 30px; padding: 0 10px; border-radius: 999px; color: var(--accent); font-size: 12.5px; font-weight: 600; }
+.s5 .srch { height: 32px; }
+.s5 .btn { height: 34px; }
+.s5 .typerow { margin-top: 14px; }
+</style>
+
+<div class="wrap">
+  <h1>List pages: the shared system (1 · C)</h1>
+  <p class="lead">The system you picked, now with Requests as one list: time off and every shift change in a single table, filtered by request type. Employees and Requests are shown in full; Announcements and Notifications are small previews (click to enlarge).</p>
+  <p class="small">Drawn in the app's own type and colours. Nothing here is live; the people are the e2e world's, the rows are realistic.</p>
+
+  <details class="inv-box">
+    <summary>Which pages this has to fit, and what each one has of its own</summary>
+    <div class="inv"><table>
+      <thead><tr><th>Page</th><th>Main button</th><th>Tabs</th><th>Filters / search</th><th>Own parts</th></tr></thead>
+      <tbody>
+        <tr><td>Employees</td><td>Add employee</td><td>All, Invited, Onboarding, Needs Attention, Active, Archived</td><td>Location · search</td><td>column picker; "No location" chip; "+1" location</td></tr>
+        <tr><td>Requests · Time off</td><td>—</td><td>type: Time off (3), Shift changes · queue: Needs review, Closed</td><td>Location · search</td><td>two tab levels; "Decide by"; open-shift alert count</td></tr>
+        <tr><td>Requests · Shift changes</td><td>—</td><td>Ready for review (2), Finding cover, Awaiting response, History</td><td>Location · search · date range (today + 6 weeks)</td><td>candidates column</td></tr>
+        <tr><td>Settings → Documents</td><td>New document</td><td>All, Draft, Published, Archived</td><td>Requirement · search</td><td>row menu (publish, reorder)</td></tr>
+        <tr><td>Employees → Documents</td><td>—</td><td>All, Needs review, Missing, Expired, Completed (counts)</td><td>Location · Document type · search</td><td>review drawer</td></tr>
+        <tr><td>Announcements</td><td>New announcement</td><td>All, Draft (n), Scheduled (n), Published, Archived</td><td>Location · search</td><td>employee view: no tabs, Acknowledge in the row</td></tr>
+        <tr><td>Important Dates</td><td>New date</td><td>Upcoming, Past, Archived</td><td>Type · search</td><td>"Repeats yearly", "Schedule flag"</td></tr>
+        <tr><td>Notifications</td><td>(Mark as read, with a selection)</td><td>Unread (n), Read (n)</td><td>Category, no search</td><td>check boxes, "N selected", day groups, Dismiss</td></tr>
+        <tr><td>Availability</td><td>—</td><td>All, Submitted, Not submitted</td><td>Location · search</td><td>"N employees" count; seven day columns</td></tr>
+        <tr><td>Locations · Jobs · Acknowledgements · Shift catalog</td><td>Add location / Create ▾ / Add template / Add shift type</td><td>Jobs: All, Departments, Jobs · Templates, Retention · Shift types, Shift labels</td><td>search · "Show archived"</td><td>older Settings header today; move up/down; department groups</td></tr>
+      </tbody>
+    </table></div>
+  </details>
+
+  <div id="systems"></div>
+</div>
+
+<script>
+const ic = {
+  plus: '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>',
+  search: '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>',
+  caret: '<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>',
+  cols: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16M15 4v16"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  cal: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  x: '<svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg>',
+  trash: '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg>',
+  dots: '<svg class="i" viewBox="0 0 24 24"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>',
+};
+const chip = (tone, text) => `<span class="chip ${tone}">${text}</span>`;
+const type = (k, label) => `<span class="rtype ${k}">${label}</span>`;
+const who = (n, sub = "") => `<span class="who"><span class="av">${n[0]}</span><span>${n}${sub ? `<span class="sub">${sub}</span>` : ""}</span></span>`;
+
+const pages = {
+  employees: {
+    name: "Employees", eyebrow: "YOUR TEAM. CONNECTED AND READY.", desc: "Manage employee profiles, assignments, invitations, and workspace access.",
+    primary: "Add employee",
+    tabs: [["All", 9, 1], ["Invited", 1], ["Onboarding", 1], ["Needs Attention", 1], ["Active", 6], ["Archived"]],
+    filters: [["Location", "All locations"]], search: "Search name, location, or job", columnPicker: true,
+    cols: ["Employee", "Status", "Primary location", "Primary job", "Access", "Start date"], widths: "24% 13% 17% 16% 15% 15%",
+    rows: [
+      [who("Olcay Owner", "E-0001"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy <span class="muted">+1</span></span>`, "Owner", "Owner", "Not set"],
+      [who("Zeynep Person", "E-0005"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Server", "Admin", "Mar 3, 2026"],
+      [who("Ayse Person", "E-0002"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Cook", "Manager", "Jan 12, 2026"],
+      [who("Ali Person", "E-0006"), chip("g", "Active"), `<span class="row-flex">${ic.pin}Kadikoy <span class="muted">+1</span></span>`, "Cook", "Employee", "Feb 2, 2026"],
+      [who("Busra Person", "E-0009"), chip("b", "Onboarding"), `<span class="row-flex">${ic.pin}Kadikoy</span>`, "Barista", "Employee", "Oct 14, 2028"],
+      [who("Emre Person", "E-0010"), chip("n", "Invited"), `<span class="row-flex">${ic.pin}Besiktas</span>`, "Server", "Employee", "Not set"],
+      [who("Mehmet Person", "E-0011"), chip("a", "Needs attention"), chip("a", "No location"), "Cook", "Employee", "Not set"],
+    ],
+  },
+  requests: {
+    name: "Requests", eyebrow: "TEAM CHANGES. REVIEWED WITH CONTROL.", desc: "Review time off and shift change requests in one place.",
+    tabs: [["Needs review", 6, 1], ["In progress", 2], ["Closed"]],
+    filters: [["Location", "All locations"], ["Request type", "All request types"]], search: "Search employee, date or note",
+    cols: ["Employee", "Type", "When", "Decide by", "Status", "Review"], widths: "27% 12% 24% 16% 13% 8%",
+    rows: [
+      [who("Ali Person", "2 shifts become open"), type("off", "Time off"), "Oct 11, 2028 · all day", "Oct 9, 5:00 PM", chip("a", "Pending"), `<span class="warnline">${ic.warn}2</span>`],
+      [who("Deniz Person", "for Ali&#39;s Fri, Oct 13, 7:30 AM"), type("swap", "Swap"), "Thu, Oct 12 · 3:30–11:00 PM", "Oct 10, 9:00 AM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+      [who("Busra Person", "3 candidates · Emre picked"), type("cover", "Cover"), "Sat, Oct 14 · 11:00 AM–3:00 PM", "Oct 11, 12:00 PM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+      [who("Open shift", "Kadikoy · Server · 2 applicants"), type("open", "Open shift"), "Sun, Oct 15 · 4:00–11:30 PM", "Oct 13, 6:00 PM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+      [who("Emre Person", "Cancels approved time off"), type("off", "Time off"), "Oct 20, 2028 · all day", "Oct 18, 5:00 PM", chip("a", "Pending"), `<span class="muted">${ic.chev}</span>`],
+      [who("Mehmet Person", "1 shift becomes open"), type("off", "Time off"), "Oct 24 – Oct 26, 2028", "Oct 20, 9:00 AM", chip("a", "Pending"), `<span class="warnline">${ic.warn}1</span>`],
+    ],
+  },
+  announcements: {
+    name: "Announcements", eyebrow: "THE RIGHT UPDATE. THE RIGHT PEOPLE.", desc: "Create, schedule, and publish updates for the right teams.",
+    primary: "New announcement",
+    tabs: [["All", 0, 1], ["Draft", 1], ["Scheduled", 1], ["Published"], ["Archived"]],
+    filters: [["Location", "All locations"]], search: "Search announcements",
+    cols: ["Announcement", "Audience", "Status", "Publish date", ""], widths: "38% 24% 15% 17% 6%",
+    rows: [
+      ["Holiday hours for Oct 29", "Kadikoy, Besiktas", chip("g", "Published"), "Oct 2, 2028", `<span class="muted">${ic.dots}</span>`],
+      ["Espresso machine training", "Kadikoy · Baristas", chip("a", "Scheduled"), "Oct 12, 2028", `<span class="muted">${ic.dots}</span>`],
+      ["Uniform policy update", "All locations", chip("n", "Draft"), `<span class="muted">Not published</span>`, `<span class="muted">${ic.dots}</span>`],
+    ],
+  },
+  notifications: {
+    name: "Notifications", eyebrow: "UPDATES. ALERTS. ACTIONS.", desc: "Review account security alerts and updates for this workspace. 3 unread.",
+    tabs: [["Unread", 3, 1], ["Read", 41]],
+    filters: [["Category", "All categories"]], noSearch: true, bulk: { selected: 2, action: "Mark as read" },
+    cols: [`<span class="box"></span>`, "Notification", "Category", "Received", ""], widths: "44px 1fr 16% 14% 56px",
+    groups: [["Today", [
+      [`<span class="box on"></span>`, "Ali Person asked for time off on Oct 11", "Requests", "9:12 AM", `<span class="muted">${ic.trash}</span>`, "unread"],
+      [`<span class="box on"></span>`, "A shift swap is ready for review", "Requests", "8:40 AM", `<span class="muted">${ic.trash}</span>`, "unread"],
+    ]], ["Yesterday", [
+      [`<span class="box"></span>`, "Deniz Person uploaded Food handler card", "People", "4:05 PM", `<span class="muted">${ic.trash}</span>`, "unread"],
+    ]]],
+  },
+};
+
+function table(p) {
+  const head = `<div class="tr h" style="grid-template-columns:${p.widths}">${p.cols.map((c) => `<span>${c}</span>`).join("")}</div>`;
+  const row = (r) => `<div class="tr r ${r.length > p.cols.length ? r[p.cols.length] : ""}" style="grid-template-columns:${p.widths}">${r.slice(0, p.cols.length).map((c) => `<span>${c}</span>`).join("")}</div>`;
+  const body = p.groups
+    ? p.groups.map(([g, rows]) => `<div class="tr g" style="grid-template-columns:1fr"><span>${g}</span></div>${rows.map(row).join("")}`).join("")
+    : p.rows.map(row).join("");
+  return `<div class="tbl">${head}${body}</div>`;
+}
+const header = (p, right = "") => `<div class="ph"><div><span class="eb">${p.eyebrow}</span><h3 class="ttl">${p.name}</h3><p class="dsc">${p.desc}</p></div>${right}</div>`;
+const ulTabs = (tabs) => `<div class="ul-tabs">${tabs.map(([l, n, on]) => `<span class="${on ? "on" : ""}">${l}${n ? ` <span class="cnt">${n}</span>` : ""}</span>`).join("")}</div>`;
+const selects = (p) => (p.filters ?? []).map(([, v]) => `<span class="sel">${v} ${ic.caret}</span>`).join("");
+const dateSel = (p) => p.dateRange ? `<span class="sel">${ic.cal}${p.dateRange} ${ic.caret}</span>` : "";
+const searchBox = (p) => p.noSearch ? "" : `<span class="srch">${ic.search}${p.search}</span>`;
+const plusBtn = (label, cls = "") => `<span class="btn ${cls}">${ic.plus}${label}</span>`;
+const bulkBits = (p) => p.bulk ? `<span class="muted" style="margin-left:auto">${p.bulk.selected} selected</span><span class="btn">${p.bulk.action}</span>` : "";
+const picker = (p) => p.columnPicker ? `<span class="cols">${ic.cols}</span>` : "";
+const shown = (p) => p.rows?.length ?? p.groups.reduce((s, [, r]) => s + r.length, 0);
+
+const systems = [
+  {
+    id: "s1", tag: "1 · C", tagCls: "keep", title: "Shared language, green action at the end of the filter row",
+    idea: "<b>Seçilen sistem:</b> ortak dil aynen; ana düğme yeşil, süzgeç satırının sağ ucunda. <b>Requests artık tek liste:</b> Time off / Shift changes sekmeleri yok; izin, takas, cover ve açık vardiya aynı tabloda, karar son tarihine göre sıralı. Sekmeler iş akışına göre: Needs review (karar sende), In progress (çalışanlardan cevap bekleniyor), Closed. Tarih açılır listesinin yerinde <b>Request type</b> süzgeci (çoklu seçim). Türe özgü bilgi adın altındaki ikinci satırda.",
+    render(p) {
+      return header(p) + `<div class="tools">${ulTabs(p.tabs)}<div class="row-flex">${selects(p)}${searchBox(p)}${bulkBits(p)}${picker(p)}${p.primary ? plusBtn(p.primary, "green") : ""}</div></div>` + table(p) + (p.typeMenu ? p.typeMenu : "");
+    },
+  },
+];
+
+function todayEmployees() {
+  const p = pages.employees;
+  const seg = `<span class="seg">${p.tabs.map(([l, , on]) => `<span class="${on ? "on" : ""}">${l}</span>`).join("")}</span>`;
+  return header(p, plusBtn(p.primary, "green big")) + `<div style="display:grid;gap:10px;margin:16px 0 12px"><div class="row-flex" style="justify-content:space-between">${seg}<span class="cols" style="border-color:var(--text)">${ic.cols}</span></div><div class="row-flex">${selects(p)}${searchBox(p)}</div></div>` + table(p);
+}
+function todayAnnouncements() {
+  const p = pages.announcements;
+  return header(p) + `<div style="display:grid;gap:12px;margin:16px 0 14px">${ulTabs(p.tabs)}<div class="row-flex">${selects(p)}${searchBox(p)}${plusBtn(p.primary)}</div></div>` + table(p);
+}
+
+const frame = (cls, html) => `<div class="scaler"><div class="page ${cls}">${html}</div></div>`;
+const typeMenu = `<div class="typemenu"><span class="tm-title">Request type</span>${[["Time off", 1], ["Swap", 1], ["Cover", 1], ["Open shift", 1]].map(([l, on]) => `<span class="tm-row"><span class="box ${on ? "on" : ""}"></span>${l}</span>`).join("")}</div>`;
+document.getElementById("systems").innerHTML = systems.map((s) => {
+  const prev = [["announcements", "Announcements", "main button, counts on tabs"], ["notifications", "Notifications", "selection, day groups, no search"]];
+  const body = `<div class="frame-label">Employees</div><div class="stage" data-shot="${s.id}-employees">${frame(s.id, s.render(pages.employees))}</div>
+    <div class="frame-label">Requests: one table</div><div class="stage" data-shot="${s.id}-requests">${frame(s.id, s.render(pages.requests))}</div>
+    <div class="frame-label">Request type filter, open</div><div class="stage" data-shot="${s.id}-requests-filter">${frame(s.id + " openmenu", s.render({ ...pages.requests, typeMenu }))}</div>
+    <div class="frame-label">The same system on two more pages (click to enlarge)</div>
+    <div class="previews two">${prev.map(([k, name, note]) => `<button type="button" class="pv" data-shot="${s.id}-${k}"><span class="pv-name">${name}<span>${note}</span></span><span class="pv-body" style="display:block">${frame(s.id, s.render(pages[k]))}</span></button>`).join("")}</div>`;
+  return `<section class="system" id="${s.id}" aria-labelledby="${s.id}-t"><div class="sys-head"><span class="tag ${s.tagCls ?? ""}">${s.tag}</span><h2 id="${s.id}-t">${s.title}</h2></div><p class="idea">${s.idea}</p>${body}</section>`;
+}).join("");
+
+function fit() {
+  document.querySelectorAll(".scaler").forEach((box) => {
+    const pageEl = box.firstElementChild;
+    const scale = box.clientWidth / pageEl.offsetWidth;
+    pageEl.style.transform = `scale(${scale})`;
+    box.style.height = `${pageEl.offsetHeight * scale}px`;
+  });
+}
+fit();
+addEventListener("resize", fit);
+if (document.fonts) document.fonts.ready.then(fit);
+document.querySelectorAll(".pv").forEach((b) => b.addEventListener("click", () => { b.classList.toggle("big"); fit(); }));
+</script>
+
+<!-- nf-orijinal:start -->
+<style>
+:root { --nfo-ink: #17221e; --nfo-muted: #5b6662; --nfo-line: #dce3df; --nfo-page: #f4f5f3; --nfo-green: #12624f; --nfo-green-soft: #e3efe9; }
+#nfo-bar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; width: 100%;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--nfo-line); font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); box-sizing: border-box; }
+html.nfo-o #nfo-bar { position: fixed; z-index: 2147483600; top: 0; left: 0; right: 0; }
+html.nfo-o, html.nfo-o body { overflow: hidden !important; }
+#nfo-bar .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; }
+#nfo-bar .nfo-seg button { border: 0; background: #fff; color: var(--nfo-ink); font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+#nfo-bar .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-bar .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green); color: #fff; }
+#nfo-bar button:focus-visible, #nfo-tools select:focus-visible, #nfo-tools button:focus-visible { outline: 2px solid var(--nfo-green); outline-offset: 2px; }
+#nfo-bar .nfo-hint { color: var(--nfo-muted); font-weight: 500; }
+@media (max-width: 700px) { #nfo-bar .nfo-hint { display: none; } }
+#nfo-view { position: fixed; z-index: 2147483500; top: 52px; left: 0; right: 0; bottom: 0; background: var(--nfo-page); display: flex; flex-direction: column; font: 500 13px/1.35 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); }
+#nfo-view[hidden] { display: none; }
+#nfo-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--nfo-line); background: #fff; }
+#nfo-tools label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+#nfo-tools select { font: inherit; font-weight: 500; padding: 6px 8px; border: 1px solid var(--nfo-line); border-radius: 6px; background: #fff; color: var(--nfo-ink); max-width: 72vw; }
+#nfo-tools .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 6px; overflow: hidden; }
+#nfo-tools .nfo-seg button { border: 0; background: #fff; font: inherit; padding: 6px 10px; cursor: pointer; color: var(--nfo-ink); }
+#nfo-tools .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-tools .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green-soft); color: var(--nfo-green); font-weight: 700; }
+#nfo-note { color: var(--nfo-muted); padding: 6px 16px; font-size: 12px; }
+#nfo-stage { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; box-sizing: border-box; }
+#nfo-holder { position: relative; flex: none; box-shadow: 0 6px 24px rgb(0 0 0 / 0.08); border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; background: #fff; }
+#nfo-frame { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+</style>
+<div id="nfo-bar" role="group" aria-label="Görünüm">
+  <span class="nfo-seg">
+    <button type="button" data-nfo="o" aria-pressed="false">Orijinal · bugünkü uygulama</button>
+    <button type="button" data-nfo="v" aria-pressed="true">Varyantlar</button>
+  </span>
+  <span class="nfo-hint" id="nfo-hint"></span>
+</div>
+<div id="nfo-view" hidden>
+  <div id="nfo-tools">
+    <label>Ekran <select id="nfo-screen"></select></label>
+    <label>Kim bakıyor <select id="nfo-as"></select></label>
+    <span class="nfo-seg" role="group" aria-label="Genişlik">
+      <button type="button" data-w="1440" aria-pressed="true">Masaüstü 1440</button>
+      <button type="button" data-w="390" aria-pressed="false">Telefon 390</button>
+    </span>
+  </div>
+  <div id="nfo-note"></div>
+  <div id="nfo-stage"><div id="nfo-holder"><iframe id="nfo-frame" title="Bugünkü uygulama" src="about:blank"></iframe></div></div>
+</div>
+<script>
+(() => {
+  const CFG = {"screens": [{"label": "Employees", "as": "owner", "route": "/app/employees", "width": 1440}, {"label": "Requests", "as": "owner", "route": "/app/schedule/requests", "width": 1440}, {"label": "Settings → Documents", "as": "owner", "route": "/app/settings/documents", "width": 1440}, {"label": "Employees → Documents", "as": "owner", "route": "/app/employees/documents", "width": 1440}, {"label": "Announcements", "as": "owner", "route": "/app/announcements", "width": 1440}, {"label": "Notifications", "as": "owner", "route": "/app/notifications", "width": 1440}, {"label": "Employees, telefon", "as": "owner", "route": "/app/employees", "width": 390}, {"label": "Requests, telefon", "as": "owner", "route": "/app/schedule/requests", "width": 390}], "personas": {"owner": "Mert Tepebas · Owner", "admin": "Laura Bennett · Admin", "manager": "Hannah Lee · Manager, Downtown", "employee": "Maria Lopez · Employee, Downtown", "onboarding": "Ben Carter · yeni çalışan, onboarding'de", "invited": "Chloe Adams · davet edildi, katılmadı", "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi", "nobusiness": "Alex Morgan · hesap var, workspace yok", "signedout": "Giriş yapılmamış"}, "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."};
+  const bar = document.getElementById("nfo-bar");
+  const view = document.getElementById("nfo-view");
+  const frame = document.getElementById("nfo-frame");
+  const holder = document.getElementById("nfo-holder");
+  const stage = document.getElementById("nfo-stage");
+  const screenSel = document.getElementById("nfo-screen");
+  const asSel = document.getElementById("nfo-as");
+  const widthBtns = [...document.querySelectorAll("#nfo-tools [data-w]")];
+  document.getElementById("nfo-note").textContent = CFG.note;
+  document.getElementById("nfo-hint").textContent = CFG.hint || "Orijinal: bugün main'de çalışan ekran, gerçek kodla. Varyantlar: bu sayfanın önerileri.";
+  // The bar sits in the page flow at the very top, so the page's own drawers and fixed parts cover it as usual.
+  document.body.prepend(bar);
+  function place() { view.style.top = bar.offsetHeight + "px"; }
+  CFG.screens.forEach((s, i) => screenSel.add(new Option(s.label, String(i))));
+  Object.entries(CFG.personas).forEach(([key, label]) => asSel.add(new Option(label, key)));
+  let state = { screen: 0, as: CFG.screens[0].as, width: CFG.screens[0].width || 1440, loaded: null, started: false };
+  let remember = (key, value) => { try { localStorage.setItem("nfo." + key, value); } catch (e) {} };
+  let recall = (key) => { try { return localStorage.getItem("nfo." + key); } catch (e) { return null; } };
+
+  function fit() {
+    const w = state.width, h = w < 600 ? 844 : 900;
+    frame.style.width = w + "px";
+    frame.style.height = (w < 600 ? h : Math.max(h, stage.clientHeight - 24)) + "px";
+    const room = stage.clientWidth - 24;
+    const scale = w > room ? room / w : 1;
+    frame.style.transform = scale < 1 ? `scale(${scale})` : "";
+    const fh = parseFloat(frame.style.height);
+    if (scale < 1) frame.style.height = (Math.max(h, (stage.clientHeight - 24) / scale)) + "px";
+    holder.style.width = (w * scale) + "px";
+    holder.style.height = (parseFloat(frame.style.height) * scale) + "px";
+  }
+  function load(route) {
+    const hash = "as=" + encodeURIComponent(state.as) + "&route=" + encodeURIComponent(route);
+    state.loaded = state.as;
+    frame.src = "today/index.html?" + Date.now().toString(36) + "#" + hash;
+  }
+  function go() {
+    const s = CFG.screens[state.screen];
+    if (state.loaded === state.as && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "nf-go", route: s.route }, "*");
+    } else load(s.route);
+  }
+  function show(which) {
+    const o = which === "o";
+    if (o) window.scrollTo(0, 0);
+    document.documentElement.classList.toggle("nfo-o", o);
+    view.hidden = !o;
+    place();
+    bar.querySelectorAll("[data-nfo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nfo === which)));
+    remember("tab", which);
+    if (o && !state.started) { state.started = true; fit(); load(CFG.screens[state.screen].route); }
+    if (o) fit();
+  }
+  function setWidth(w) {
+    state.width = w;
+    widthBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.w) === w)));
+    fit();
+  }
+  bar.addEventListener("click", (e) => { const b = e.target.closest("[data-nfo]"); if (b) show(b.dataset.nfo); });
+  screenSel.addEventListener("change", () => {
+    state.screen = Number(screenSel.value);
+    const s = CFG.screens[state.screen];
+    const personaChanged = s.as !== state.as;
+    state.as = s.as; asSel.value = s.as;
+    setWidth(s.width || 1440);
+    if (personaChanged) load(s.route); else go();
+  });
+  asSel.addEventListener("change", () => { state.as = asSel.value; load(CFG.screens[state.screen].route); });
+  widthBtns.forEach((b) => b.addEventListener("click", () => setWidth(Number(b.dataset.w))));
+  window.addEventListener("resize", () => { place(); if (!view.hidden) fit(); });
+  asSel.value = state.as;
+  setWidth(state.width);
+  if (recall("tab") === "o") show("o");
+})();
+</script>
+<!-- nf-orijinal:end -->

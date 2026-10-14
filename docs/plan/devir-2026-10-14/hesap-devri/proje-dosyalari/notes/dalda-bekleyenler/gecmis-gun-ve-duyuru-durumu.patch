@@ -1,0 +1,381 @@
+From e10afa398424dfa7c4236e9629a7efea95efaa52 Mon Sep 17 00:00:00 2001
+From: mttepebas-debug <mt.tepebas@gmail.com>
+Date: Fri, 9 Oct 2026 22:40:43 +0000
+Subject: [PATCH] feat(web): a past important date opens read-only;
+ announcements show Expired and Couldn't publish (FB-6.7, K11, K12)
+
+Ported from 19a6b16d onto today's list language: the status chip takes its
+tone from display_status, the Past tab opens a date to read with only Close,
+and a past-date refusal names the first day that may be written.
+
+Co-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>
+Claude-Session: https://claude.ai/code/session_01Ugsi3nzmxVN79dmGB4mouo
+---
+ .../ImportantDatesSettingsPage.test.tsx       | 43 ++++++++++++++-
+ .../settings/ImportantDatesSettingsPage.tsx   | 53 +++++++++++++------
+ apps/web/src/settings/jobs-settings.css       | 12 +++++
+ apps/web/src/views/AnnouncementsPage.tsx      | 26 +++++----
+ .../web/src/views/CommunicationPages.test.tsx | 22 ++++++++
+ apps/web/src/views/announcements-catalog.css  | 21 +++++++-
+ 6 files changed, 146 insertions(+), 31 deletions(-)
+
+diff --git a/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx b/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
+index e8d2b695..995201a1 100644
+--- a/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
++++ b/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
+@@ -12,6 +12,7 @@ import type {
+ } from "@newfork/shared";
+ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+ import { describe, expect, it, vi } from "vitest";
++import { RequestError } from "../lib/request-error";
+ import ImportantDatesSettingsPage, { dateTab } from "./ImportantDatesSettingsPage";
+ import { todayIn } from "../lib/today";
+ import {
+@@ -122,9 +123,11 @@ vi.mock("./organization-data", () => ({
+   setImportantDateState: vi.fn(),
+ }));
+ 
+-function renderPage() {
++function renderPage(
++  read: Awaited<ReturnType<typeof listImportantDates>> = { dates, locations: [location], can_manage: true, can_target_workspace: true },
++) {
+   // What may be done comes from the server (FB-6.7): the owner, anywhere.
+-  vi.mocked(listImportantDates).mockResolvedValue({ dates, locations: [location], can_manage: true, can_target_workspace: true });
++  vi.mocked(listImportantDates).mockResolvedValue(read);
+   vi.mocked(saveImportantDate).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "published" });
+   vi.mocked(setImportantDateState).mockResolvedValue({ important_date_id: "71000000-0000-4000-8000-000000000001", status: "unpublished" });
+   const client = new QueryClient({
+@@ -274,4 +277,40 @@ describe("ImportantDatesSettingsPage", () => {
+       ),
+     );
+   });
++
++  it("opens a past date read-only and keeps new dates from the editable week on (K11)", async () => {
++    const past: ImportantDate = {
++      ...dates[1]!,
++      id: "90000000-0000-4000-8000-000000000003",
++      title: "Spring buyout",
++      starts_on: "2026-04-01",
++      ends_on: "2026-04-01",
++      is_past: true,
++      can_edit: false,
++      can_unpublish: false,
++      can_archive: false,
++    };
++    renderPage({ dates: [...dates, past], locations: [location], can_manage: true, can_target_workspace: true, locked_before: "2026-09-28" });
++
++    fireEvent.click(await screen.findByRole("tab", { name: "Past" }));
++    fireEvent.click(await screen.findByRole("button", { name: /Spring buyout/ }));
++    expect(screen.getByText("This date has passed. Past dates are read-only.")).toBeTruthy();
++    const form = screen.getByRole("form", { name: "Edit Spring buyout" });
++    // The fieldset disables its fields; the input's own property stays false.
++    expect(within(form).getByLabelText("Title").matches(":disabled")).toBe(true);
++    expect(screen.queryByRole("button", { name: "Save date" })).toBeNull();
++    expect(screen.queryByRole("button", { name: "Delete date" })).toBeNull();
++    fireEvent.click(screen.getByRole("button", { name: "Close" }));
++
++    vi.mocked(saveImportantDate).mockRejectedValueOnce(
++      new RequestError("Past important dates are read-only.", "important_date.past", undefined, 400),
++    );
++    fireEvent.click(screen.getByRole("button", { name: "New date" }));
++    const add = screen.getByRole("form", { name: "Add important date" });
++    expect(within(add).getByLabelText("Starts").getAttribute("min")).toBe("2026-09-28");
++    expect(within(add).getByLabelText("Ends").getAttribute("min")).toBe("2026-09-28");
++    fireEvent.change(within(add).getByLabelText("Title"), { target: { value: "Late inventory" } });
++    fireEvent.click(screen.getByRole("button", { name: "Save date" }));
++    expect((await screen.findByRole("alert")).textContent).toBe("Past dates are read-only. Pick Sep 28, 2026 or later.");
++  });
+ });
+diff --git a/apps/web/src/settings/ImportantDatesSettingsPage.tsx b/apps/web/src/settings/ImportantDatesSettingsPage.tsx
+index dcda687a..9bad1cd9 100644
+--- a/apps/web/src/settings/ImportantDatesSettingsPage.tsx
++++ b/apps/web/src/settings/ImportantDatesSettingsPage.tsx
+@@ -15,6 +15,7 @@ import { CatalogSortButton } from "../views/CatalogSortButton";
+ import { CatalogPageHeader, ListAddButton } from "../views/CatalogPageHeader";
+ import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
+ import { errorText } from "./GeneralSettingsPage";
++import { RequestError } from "../lib/request-error";
+ import {
+   listImportantDates,
+   saveImportantDate,
+@@ -92,6 +93,12 @@ export default function ImportantDatesSettingsPage() {
+     (allLocations ||
+       (ids.length === 1 && pickerLocations.some((location) => location.id === ids[0])));
+   const mayManageDate = (item: ImportantDate) => item.can_edit === true;
++  // K11: no day before this may be written; a wholly past date only opens to read.
++  const lockedBefore = query.data?.locked_before;
++  const failureText = (error: unknown) =>
++    error instanceof RequestError && error.reason === "important_date.past" && lockedBefore
++      ? `Past dates are read-only. Pick ${formatDate(lockedBefore)} or later.`
++      : errorText(error);
+   const [tab, setTab] = useState<DateTab>("upcoming");
+   const [filter, setFilter] = useState<ImportantDateType | "all">("all");
+   const [search, setSearch] = useState("");
+@@ -119,13 +126,13 @@ export default function ImportantDatesSettingsPage() {
+       setConfirmDelete(false);
+       setFormError(null);
+     },
+-    onError: (error) => setFormError(errorText(error)),
++    onError: (error) => setFormError(failureText(error)),
+   });
+   const archiveMutation = useMutation({
+     mutationFn: ({ id, action }: { id: string; action: ImportantDateStateAction }) =>
+       setImportantDateState(workspaceId, id, action),
+     onSuccess: refresh,
+-    onError: (error) => setFormError(errorText(error)),
++    onError: (error) => setFormError(failureText(error)),
+   });
+ 
+   const items = useMemo(() => query.data?.dates ?? [], [query.data]);
+@@ -156,8 +163,7 @@ export default function ImportantDatesSettingsPage() {
+     if (
+       saveMutation.isPending ||
+       archiveMutation.isPending ||
+-      !canManage ||
+-      (item && !mayManageDate(item))
++      (!item?.is_past && (!canManage || (item && !mayManageDate(item))))
+     )
+       return;
+     setEditing(item ?? "new");
+@@ -194,7 +200,9 @@ export default function ImportantDatesSettingsPage() {
+   };
+   const parsedDraft = importantDateInputSchema.safeParse(normalizedDraft);
+   const baseline = editing && editing !== "new" ? draftFrom(editing) : null;
++  const readOnly = editing !== null && editing !== "new" && editing.is_past === true;
+   const canSave =
++    !readOnly &&
+     mayManageLocations(selectedLocationIds) &&
+     !saveMutation.isPending &&
+     !archiveMutation.isPending &&
+@@ -316,9 +324,15 @@ export default function ImportantDatesSettingsPage() {
+                 <h2>
+                   {editing === "new"
+                     ? "New important date"
+-                    : "Edit important date"}
++                    : readOnly
++                      ? editing.title
++                      : "Edit important date"}
+                 </h2>
+-                <p>Use closed day for dates that should block scheduling.</p>
++                <p>
++                  {readOnly
++                    ? "This date has passed. Past dates are read-only."
++                    : "Use closed day for dates that should block scheduling."}
++                </p>
+               </div>
+               <button
+                 type="button"
+@@ -334,7 +348,8 @@ export default function ImportantDatesSettingsPage() {
+             <div className="catalog-drawer-body">
+               <fieldset
+                 className="important-date-fields"
+-                disabled={saveMutation.isPending || archiveMutation.isPending}
++                data-read-only={readOnly || undefined}
++                disabled={readOnly || saveMutation.isPending || archiveMutation.isPending}
+               >
+                 <label className="job-field field-wide">
+                   <span>Title</span>
+@@ -469,6 +484,7 @@ export default function ImportantDatesSettingsPage() {
+                   <input
+                     type="date"
+                     value={draft.starts_on}
++                    min={readOnly ? undefined : lockedBefore}
+                     required
+                     onChange={(event) =>
+                       setDraft((current) => ({
+@@ -487,6 +503,7 @@ export default function ImportantDatesSettingsPage() {
+                   <input
+                     type="date"
+                     value={draft.ends_on}
++                    min={readOnly ? undefined : lockedBefore}
+                     required
+                     onChange={(event) =>
+                       setDraft((current) => ({
+@@ -548,7 +565,7 @@ export default function ImportantDatesSettingsPage() {
+               ) : null}
+             </div>
+             <div className="job-editor-footer">
+-              {editing !== "new" ? (
++              {editing !== "new" && !readOnly ? (
+                 <ImportantDateDeleteAction
+                   name={editing.title}
+                   busy={saveMutation.isPending || archiveMutation.isPending}
+@@ -571,15 +588,17 @@ export default function ImportantDatesSettingsPage() {
+                   disabled={saveMutation.isPending || archiveMutation.isPending}
+                   onClick={closeEditor}
+                 >
+-                  Cancel
+-                </Button>
+-                <Button
+-                  className="job-primary-button"
+-                  type="submit"
+-                  disabled={!canSave}
+-                >
+-                  {saveMutation.isPending ? "Saving" : "Save date"}
++                  {readOnly ? "Close" : "Cancel"}
+                 </Button>
++                {readOnly ? null : (
++                  <Button
++                    className="job-primary-button"
++                    type="submit"
++                    disabled={!canSave}
++                  >
++                    {saveMutation.isPending ? "Saving" : "Save date"}
++                  </Button>
++                )}
+               </div>
+             </div>
+           </form>
+@@ -647,7 +666,7 @@ export default function ImportantDatesSettingsPage() {
+                 <button
+                   type="button"
+                   className="job-row-identity"
+-                  disabled={!mayManageDate(item)}
++                  disabled={!mayManageDate(item) && !item.is_past}
+                   onClick={() => openEditor(item)}
+                 >
+                   <span className="important-date-marker" aria-hidden>
+diff --git a/apps/web/src/settings/jobs-settings.css b/apps/web/src/settings/jobs-settings.css
+index 69ca3075..101d30f0 100644
+--- a/apps/web/src/settings/jobs-settings.css
++++ b/apps/web/src/settings/jobs-settings.css
+@@ -2093,6 +2093,18 @@
+ .important-dates-catalog-page .important-date-fields .field-wide {
+   grid-column: 1 / -1;
+ }
++/* K11: a past date opens to read; its fields look locked (one grey, as in the Employees drawer). */
++.important-dates-catalog-page .important-date-fields[data-read-only="true"] :is(input, textarea, select, summary) {
++  background: var(--theme-surface-muted);
++  color: var(--theme-muted-strong);
++}
++.important-dates-catalog-page .important-date-fields[data-read-only="true"] summary {
++  pointer-events: none;
++}
++.important-dates-catalog-page .important-date-fields[data-read-only="true"] .important-date-location-picker {
++  background: var(--theme-surface-muted);
++  color: var(--theme-muted-strong);
++}
+ .important-dates-catalog-page .job-field > span {
+   color: var(--job-text);
+   font-size: 11px;
+diff --git a/apps/web/src/views/AnnouncementsPage.tsx b/apps/web/src/views/AnnouncementsPage.tsx
+index e122cb4a..a17ad41d 100644
+--- a/apps/web/src/views/AnnouncementsPage.tsx
++++ b/apps/web/src/views/AnnouncementsPage.tsx
+@@ -397,15 +397,8 @@ export function AnnouncementsPage() {
+                       <span role="cell" className="announcement-status-cell">
+                         <span
+                           className="list-chip"
+-                          data-tone={
+-                            isArchived(item)
+-                              ? "gray"
+-                              : item.status === "published"
+-                                ? "green"
+-                                : item.status === "scheduled"
+-                                  ? "amber"
+-                                  : "gray"
+-                          }
++                          data-status={displayStatus(item)}
++                          data-tone={statusTone(displayStatus(item))}
+                         >
+                           {statusLabel(item)}
+                         </span>
+@@ -1055,8 +1048,21 @@ function audienceLabel(item: AnnouncementRecord) {
+ function isArchived(item: AnnouncementRecord) {
+   return Boolean(item.archived_at);
+ }
++const displayStatusLabels: Record<string, string> = {
++  publish_failed: "Couldn't publish",
++};
++function displayStatus(item: AnnouncementRecord) {
++  return isArchived(item) ? "archived" : (item.display_status ?? item.status);
++}
++function statusTone(status: string) {
++  if (status === "published") return "green";
++  if (status === "scheduled") return "amber";
++  if (status === "publish_failed") return "red";
++  return "gray";
++}
+ function statusLabel(item: AnnouncementRecord) {
+-  return isArchived(item) ? "Archived" : capitalize(item.status);
++  const status = displayStatus(item);
++  return displayStatusLabels[status] ?? capitalize(status);
+ }
+ function capitalize(value: string) {
+   return value.charAt(0).toUpperCase() + value.slice(1);
+diff --git a/apps/web/src/views/CommunicationPages.test.tsx b/apps/web/src/views/CommunicationPages.test.tsx
+index 2d356c62..d58e5830 100644
+--- a/apps/web/src/views/CommunicationPages.test.tsx
++++ b/apps/web/src/views/CommunicationPages.test.tsx
+@@ -255,6 +255,28 @@ describe("Phase 8 communication pages", () => {
+     expect(screen.queryByText("Active scheduled")).toBeNull();
+   });
+ 
++  it("labels each row with what the list should show, including Expired and Couldn't publish (FB-6.7)", async () => {
++    const rows = [
++      announcement({ id: "a8200000-0000-4000-8000-000000000011", title: "Menu tasting", status: "published", display_status: "published" }),
++      announcement({ id: "a8200000-0000-4000-8000-000000000012", title: "Uniform update", status: "unpublished", display_status: "unpublished" }),
++      announcement({ id: "a8200000-0000-4000-8000-000000000013", title: "Sales contest", status: "published", display_status: "expired" }),
++      announcement({ id: "a8200000-0000-4000-8000-000000000014", title: "Brunch launch", status: "scheduled", display_status: "publish_failed", publish_error_code: "failed" }),
++    ];
++    vi.mocked(getAnnouncements).mockResolvedValue({ workspace_id: workspaceId, can_manage: true, locations: [], announcements: rows });
++    renderRoute("/app/announcements", <AnnouncementsPage />);
++
++    expect(await screen.findByText("Menu tasting")).toBeTruthy();
++    const label = (title: string) =>
++      screen.getByText(title).closest("[role='row']")!.querySelector(".list-chip")!;
++    expect(label("Menu tasting").textContent).toBe("Published");
++    expect(label("Uniform update").textContent).toBe("Unpublished");
++    expect(label("Sales contest").textContent).toBe("Expired");
++    expect(label("Sales contest").getAttribute("data-status")).toBe("expired");
++    expect(label("Brunch launch").textContent).toBe("Couldn't publish");
++    expect(label("Brunch launch").getAttribute("data-status")).toBe("publish_failed");
++    expect(label("Brunch launch").getAttribute("data-tone")).toBe("red");
++  });
++
+   it("shows employees a read-only list they can acknowledge", async () => {
+     const readOnly = { can_edit: false, can_publish: false, can_archive: false };
+     vi.mocked(getAnnouncements).mockResolvedValue({
+diff --git a/apps/web/src/views/announcements-catalog.css b/apps/web/src/views/announcements-catalog.css
+index e138cdc1..21ed7a61 100644
+--- a/apps/web/src/views/announcements-catalog.css
++++ b/apps/web/src/views/announcements-catalog.css
+@@ -335,8 +335,10 @@
+   display: inline-flex;
+   color: #2f9e5b;
+ }
+-.announcement-acknowledge-button {
++/* Two classes: `.jobs-settings-page button { font: inherit }` would draw it at 16px. */
++.announcements-catalog-page .announcement-acknowledge-button {
+   padding: 3px 9px;
++  white-space: nowrap;
+   border: 1px solid var(--job-border, currentColor);
+   border-radius: 5px;
+   background: var(--job-bg, transparent);
+@@ -365,7 +367,22 @@
+   }
+ }
+ @media (max-width: 650px) {
++  /* The title keeps the whole width; Acknowledge sits under it. */
+   .announcements-catalog-page .announcement-catalog-row[data-reader="true"] {
+-    grid-template-columns: minmax(0, 1fr) auto 36px;
++    grid-template-columns: minmax(0, 1fr) 36px;
++  }
++  .announcement-catalog-row[data-reader="true"] > :nth-child(4) {
++    grid-row: 2;
++    grid-column: 1;
++    justify-self: start;
++    /* Under the title, past the 17px megaphone and its 10px gap. */
++    margin-left: 27px;
++  }
++  .announcement-catalog-row[data-reader="true"] > :nth-child(5) {
++    grid-row: 1;
++    grid-column: 2;
++  }
++  .job-column-headings.announcement-catalog-row[data-reader="true"] > :nth-child(4) {
++    display: none;
+   }
+ }
+-- 
+2.43.0
+

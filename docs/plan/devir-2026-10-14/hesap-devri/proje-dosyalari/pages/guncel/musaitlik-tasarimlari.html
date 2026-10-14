@@ -1,0 +1,274 @@
+<meta charset="utf-8">
+<title>✅ Done · Müsaitlik tasarımları</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* A slim control bar (set, variant, device), one note block, then a frame that runs the real app. Light only, like the app. */
+:root {
+  --bg: #e9ece9;
+  --bar: #ffffff;
+  --ink: #17221e;
+  --muted: #5f6b66;
+  --line: #d3dad6;
+  --accent: #176954;
+  --accent-soft: #dbece5;
+  --note: #fbf6ec;
+  --note-ink: #5f491f;
+  --ui: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--ui); font-size: 13px; display: flex; flex-direction: column; }
+.bar { background: var(--bar); border-bottom: 1px solid var(--line); padding: 8px 16px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; }
+.bar h1 { margin: 0; font-size: 14px; font-weight: 800; letter-spacing: -.01em; }
+.group { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; }
+.group > span { color: var(--muted); font-weight: 600; margin-right: 2px; }
+.chip { border: 1px solid var(--line); background: var(--bar); color: var(--ink); border-radius: 999px; padding: 3px 10px; font: inherit; font-weight: 600; cursor: pointer; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); }
+.chip:disabled { opacity: .35; cursor: default; }
+.chip:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.push { margin-left: auto; }
+.note { background: var(--note); color: var(--note-ink); border-bottom: 1px solid var(--line); padding: 8px 16px; display: grid; gap: 3px; line-height: 1.45; }
+.note b { color: var(--ink); }
+.note .reco b { color: var(--accent); }
+details.ask { background: var(--bar); border-bottom: 1px solid var(--line); padding: 6px 16px; }
+details.ask summary { cursor: pointer; font-weight: 700; }
+details.ask ol { margin: 6px 0 4px; padding-left: 20px; display: grid; gap: 4px; max-width: 120ch; line-height: 1.45; }
+.stage { flex: 1 1 auto; min-height: 0; display: flex; justify-content: center; padding: 0; }
+.stage[data-device="phone"] { padding: 16px; }
+iframe { border: 0; width: 100%; height: 100%; background: #f4f5f3; display: block; }
+.stage[data-device="phone"] iframe { width: 375px; max-width: 100%; height: min(812px, 100%); border: 1px solid var(--line); border-radius: 18px; box-shadow: 0 12px 32px rgb(23 34 30 / 14%); }
+.tag { display: inline-block; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 700; margin-right: 6px; }
+.tag.in { background: var(--accent-soft); color: var(--accent); }
+.tag.out { background: #f3e3c2; color: var(--note-ink); }
+.status { background: var(--bar); border-bottom: 1px solid var(--line); padding: 6px 16px; display: grid; gap: 3px; line-height: 1.45; }
+.status b { color: var(--ink); }
+@media (max-width: 700px) {
+  .push { margin-left: 0; }
+  .stage[data-device="phone"] { padding: 0; }
+  .stage[data-device="phone"] iframe { width: 100%; height: 100%; border: 0; border-radius: 0; box-shadow: none; }
+}
+</style>
+<header class="bar">
+  <h1>Müsaitlik tasarımları · seçilenler</h1>
+  <div class="group" role="group" aria-label="Set"><span>Set</span><div class="group" id="sets"></div></div>
+  <div class="group" role="group" aria-label="Seçilen varyant"><span>Seçilen</span><div class="group" id="variants"></div></div>
+  <div class="group push" role="group" aria-label="Görünüm"><span>Görünüm</span>
+    <button class="chip" type="button" data-device="desktop" aria-pressed="false">Masaüstü</button>
+    <button class="chip" type="button" data-device="phone" aria-pressed="true">Telefon 375</button>
+  </div>
+</header>
+<div class="status">
+  <span><span class="tag in">Uygulamada: koda girdi</span><b>S1 A+C</b> (Availability aç / kapa: düzenleme şeridinde düğme + Settings menüsünde satır), <b>S2 B</b> (yönetici notu: hücrenin altında not kartı), <b>S3 B</b> (Pre-flight'ta tek katlanır müsaitlik satırı, onay kutusu yok). Bunlar main'de ve canlıda; üstteki "Uygulamada" düğmesiyle Schedule ekranında görülür. Lab görüntüleri silindi.</span>
+  <span><span class="tag out">Henüz koda girmedi</span><b>S4 E</b> ve <b>S5 B</b> aşağıda, tasarım lab'ının kendi kopyasıyla. Reddedilen S4 A–D ve S5 A, C, D, E silindi.</span>
+</div>
+<div class="note" id="note">
+  <span id="where"></span>
+  <span id="example"></span>
+  <span class="reco" id="reco"></span>
+</div>
+<main class="stage" id="stage" data-device="phone">
+  <iframe id="app" title="Newfork preview" src="app.html"></iframe>
+</main>
+
+<script>
+const sets = {
+  s4: {
+    variant: "e",
+    where: "Çalışan → Shift Hub → Available → unavailable işaretli saatine düşen cover ya da open shift'i iste. Lokasyon + iş uyuyor, onaylı izin yok, o yüzden listede çıkıyor; isterken bir kez sorulur (M6). Takas kabulünde de aynı pencere.",
+    example: "KadıköyGarson2 Salı 17:00 sonrası ve Cumartesi tüm gün unavailable. KadıköyGarson1'in Salı 16:00–23:00 cover'ı ve Cumartesi 16:00–23:00 open shift önünde; Perşembe öğle vardiyası normal istek, karşılaştırma için.",
+    decision: "<b>Karar: E, günün çizelgesi</b> (turuncu unavailable saatler + vardiya üstte, \"emin misin?\"). Önerilen B idi, Mert E'yi seçti (2026-10-04 ~12:00Z, KARARLAR.md:179; takas kabulü M6 eki, :169). <b>Kodda yok:</b> çizim yalnız <code>task/avail-design</code> @<code>8066c66a</code> (<code>S4EmployeeConsent.tsx</code>); main'de düz cümle \"Conflicts with your availability…\" (<code>ShiftExchangeHub.tsx:87-90</code>). <b>2026-10-09 kuralı:</b> onaylı izinle çakışan vardiya hiç alınamaz (KARARLAR.md:196); bu soru yalnız müsaitlik içindir.",
+  },
+  s5: {
+    variant: "b",
+    where: "Schedule → Requests → cover isteğini aç → adayda Review → Approve. \"Unavailable ama kendi rızasıyla istedi\" satırı amber, \"IF APPROVED\" bölümünde; yönetici onaylar ya da reddeder (M6).",
+    example: "KadıköyMüdür1, KadıköyGarson1'in Salı 20 Ekim 16:00–23:00 cover isteğine bakıyor. KadıköyGarson2 Salı 17:00 sonrasını unavailable işaretlemiş ama yine istemiş; KadıköyGarson3 müsait.",
+    decision: "<b>Karar: B, amber rıza satırı</b> (önerilen seçildi; Mert, 2026-10-04, KARARLAR.md:179). <b>Kodda yok:</b> main'de onay ekranında yalnız izin rızası satırı var (<code>ShiftExchangeHub.tsx:1349-1377</code>). <b>Takasta yerini aldı:</b> 2026-10-07 H2 takas penceresi, \"Unavailable / chose to take it\" kutusu (KARARLAR.md:497; yalnız <code>task/ekran-02-c2r</code>). Cover ve open shift onayında B'nin sürdüğü kayıtta açıkça yazmıyor.",
+  },
+};
+const frame = document.getElementById("app");
+const stage = document.getElementById("stage");
+let current = "s4";
+
+const go = (set) => frame.contentWindow?.postMessage({ availgo: `/app/dev/avail/${set}?variant=${sets[set].variant}` }, "*");
+
+function render() {
+  document.getElementById("sets").innerHTML = Object.keys(sets)
+    .map((key) => `<button class="chip" type="button" data-set="${key}" aria-pressed="${current === key}">${key.toUpperCase()}</button>`).join("");
+  document.getElementById("variants").innerHTML = `<button class="chip" type="button" aria-pressed="true" disabled>${sets[current].variant.toUpperCase()}</button>`;
+  const info = sets[current];
+  document.getElementById("where").innerHTML = `<b>Yol:</b> ${info.where}`;
+  document.getElementById("example").innerHTML = `<b>Örnek:</b> ${info.example}`;
+  document.getElementById("reco").innerHTML = info.decision;
+}
+
+document.addEventListener("click", (event) => {
+  const button = event.target.closest("button");
+  if (!button) return;
+  if (button.dataset.set) { current = button.dataset.set; setDevice(current === "s5" ? "desktop" : "phone"); render(); go(current); }
+  else if (button.dataset.device && !button.closest("#nfo-bar")) setDevice(button.dataset.device);
+});
+
+function setDevice(device) {
+  stage.dataset.device = device;
+  document.querySelectorAll(".bar [data-device]").forEach((el) => el.setAttribute("aria-pressed", String(el.dataset.device === device)));
+}
+
+// Only the chosen variants stay reachable: any other place the lab opens is sent back to the chosen one.
+window.addEventListener("message", (event) => {
+  if (event.source !== frame.contentWindow) return;
+  const where = event.data?.avail;
+  if (!where || typeof where.path !== "string") return;
+  const match = /^\/app\/dev\/avail\/([a-z0-9]+)/.exec(where.path);
+  const set = match && sets[match[1]] ? match[1] : null;
+  const variant = new URLSearchParams(where.search ?? "").get("variant") ?? "a";
+  if (!set || variant !== sets[set].variant) { go(set || current); return; }
+  if (set !== current) { current = set; render(); }
+});
+
+render();
+</script>
+
+<!-- nf-orijinal:start -->
+<style>
+/* Decision strip: sits inside the view bar so it stays visible in both views. Own light colors on purpose (the app is light-only). */
+#nfo-bar .nfk { flex-basis: 100%; display: grid; gap: 3px; margin: 2px 0 0; padding: 8px 12px; border-radius: 8px;
+  font: 500 13px/1.45 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: #17221e; background: #e6f1ec; border: 1px solid #b9d6c9; min-width: 0; }
+#nfo-bar .nfk.half { background: #fbf3e2; border-color: #e7cf9c; }
+#nfo-bar .nfk b { font-weight: 700; }
+#nfo-bar .nfk .nfk-k { display: inline-block; font-weight: 800; letter-spacing: .02em; margin-right: 6px; }
+#nfo-bar .nfk .nfk-k.ok { color: #12624f; }
+#nfo-bar .nfk .nfk-k.half { color: #7a5312; }
+#nfo-bar .nfk code { font: 500 12px/1.3 ui-monospace, Consolas, monospace; background: rgb(255 255 255 / 0.7); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+#nfo-bar .nfk a { color: #12624f; font-weight: 600; }
+#nfo-bar .nfk a:focus-visible { outline: 2px solid #12624f; outline-offset: 2px; }
+#nfo-bar .nfk ul { margin: 2px 0 0; padding-left: 18px; display: grid; gap: 2px; }
+#nfo-bar .nfk details summary { cursor: pointer; font-weight: 700; }
+#nfo-bar .nfo-seg button[data-nfo="o"] { font-weight: 500; }
+</style>
+
+<style>
+:root { --nfo-ink: #17221e; --nfo-muted: #5b6662; --nfo-line: #dce3df; --nfo-page: #f4f5f3; --nfo-green: #12624f; --nfo-green-soft: #e3efe9; }
+#nfo-bar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; width: 100%;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--nfo-line); font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); box-sizing: border-box; }
+html.nfo-o #nfo-bar { position: fixed; z-index: 2147483600; top: 0; left: 0; right: 0; }
+html.nfo-o, html.nfo-o body { overflow: hidden !important; }
+#nfo-bar .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; }
+#nfo-bar .nfo-seg button { border: 0; background: #fff; color: var(--nfo-ink); font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+#nfo-bar .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-bar .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green); color: #fff; }
+#nfo-bar button:focus-visible, #nfo-tools select:focus-visible, #nfo-tools button:focus-visible { outline: 2px solid var(--nfo-green); outline-offset: 2px; }
+#nfo-bar .nfo-hint { color: var(--nfo-muted); font-weight: 500; }
+@media (max-width: 700px) { #nfo-bar .nfo-hint { display: none; } }
+#nfo-view { position: fixed; z-index: 2147483500; top: 52px; left: 0; right: 0; bottom: 0; background: var(--nfo-page); display: flex; flex-direction: column; font: 500 13px/1.35 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); }
+#nfo-view[hidden] { display: none; }
+#nfo-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--nfo-line); background: #fff; }
+#nfo-tools label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+#nfo-tools select { font: inherit; font-weight: 500; padding: 6px 8px; border: 1px solid var(--nfo-line); border-radius: 6px; background: #fff; color: var(--nfo-ink); max-width: 72vw; }
+#nfo-tools .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 6px; overflow: hidden; }
+#nfo-tools .nfo-seg button { border: 0; background: #fff; font: inherit; padding: 6px 10px; cursor: pointer; color: var(--nfo-ink); }
+#nfo-tools .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-tools .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green-soft); color: var(--nfo-green); font-weight: 700; }
+#nfo-note { color: var(--nfo-muted); padding: 6px 16px; font-size: 12px; }
+#nfo-stage { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; box-sizing: border-box; }
+#nfo-holder { position: relative; flex: none; box-shadow: 0 6px 24px rgb(0 0 0 / 0.08); border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; background: #fff; }
+#nfo-frame { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+</style>
+<div id="nfo-bar" role="group" aria-label="Görünüm">
+  <span class="nfo-seg">
+    <button type="button" data-nfo="o" aria-pressed="false">Uygulamada · S1–S3</button>
+    <button type="button" data-nfo="v" aria-pressed="true">Seçilen, kodda yok · S4-E, S5-B</button>
+  </span>
+  <span class="nfo-hint" id="nfo-hint"></span>
+  <div class="nfk " role="note"><span><span class="nfk-k ok">✅ Done</span><b>Karar:</b> S1 A+C, S2 B, S3 B, S4 E, S5 B (Mert, 2026-10-04 ~12:00Z; KARARLAR.md:179).</span><span><b>Uygulamada:</b> S1–S3 koda girdi ("Uygulamada" düğmesi, Schedule). S4-E ve S5-B henüz koda girmedi: S4-E yalnız <code>task/avail-design</code> @<code>8066c66a</code>; takasta S5-B'nin yerini H2 aldı (<code>task/ekran-02-c2r</code>).</span></div>
+</div>
+<div id="nfo-view" hidden>
+  <div id="nfo-tools">
+    <label>Ekran <select id="nfo-screen"></select></label>
+    <label>Kim bakıyor <select id="nfo-as"></select></label>
+    <span class="nfo-seg" role="group" aria-label="Genişlik">
+      <button type="button" data-w="1440" aria-pressed="true">Masaüstü 1440</button>
+      <button type="button" data-w="390" aria-pressed="false">Telefon 390</button>
+    </span>
+  </div>
+  <div id="nfo-note"></div>
+  <div id="nfo-stage"><div id="nfo-holder"><iframe id="nfo-frame" title="Bugünkü uygulama" src="about:blank"></iframe></div></div>
+</div>
+<script>
+(() => {
+  const CFG = {"screens": [{"label": "Schedule · Owner", "as": "owner", "route": "/app/schedule", "width": 1440}, {"label": "Schedule · Hannah Lee (Manager)", "as": "manager", "route": "/app/schedule", "width": 1440}, {"label": "Availability (ekip) · Owner", "as": "owner", "route": "/app/availability", "width": 1440}, {"label": "Settings → Scheduling → Conflict handling", "as": "owner", "route": "/app/settings/scheduling/conflicts", "width": 1440}, {"label": "Maria Lopez · My availability, telefon", "as": "employee", "route": "/app/employee-hub/my-availability", "width": 390}, {"label": "Maria Lopez · Shift Hub, telefon", "as": "employee", "route": "/app/employee-hub/shift-hub", "width": 390}, {"label": "Maria Lopez · Schedule, telefon", "as": "employee", "route": "/app/employee-hub/schedule", "width": 390}, {"label": "Maria Lopez · Home, telefon", "as": "employee", "route": "/app/employee-hub", "width": 390}], "personas": {"owner": "Mert Tepebas · Owner", "admin": "Laura Bennett · Admin", "manager": "Hannah Lee · Manager, Downtown", "employee": "Maria Lopez · Employee, Downtown", "onboarding": "Ben Carter · yeni çalışan, onboarding'de", "invited": "Chloe Adams · davet edildi, katılmadı", "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi", "nobusiness": "Alex Morgan · hesap var, workspace yok", "signedout": "Giriş yapılmamış"}, "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez). Schedule'ı düzenlemeyi (vardiya ekleme, sürükleme, yayın) tam deneyebileceğin ayrı kopya: Schedule test sayfası https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3"};
+  const bar = document.getElementById("nfo-bar");
+  const view = document.getElementById("nfo-view");
+  const frame = document.getElementById("nfo-frame");
+  const holder = document.getElementById("nfo-holder");
+  const stage = document.getElementById("nfo-stage");
+  const screenSel = document.getElementById("nfo-screen");
+  const asSel = document.getElementById("nfo-as");
+  const widthBtns = [...document.querySelectorAll("#nfo-tools [data-w]")];
+  document.getElementById("nfo-note").textContent = CFG.note;
+  document.getElementById("nfo-hint").textContent = "Uygulamada: main'in gerçek kodu (S1–S3 burada). Seçilen, kodda yok: S4-E ve S5-B'nin lab kopyası.";
+  // The bar sits in the page flow at the very top, so the page's own drawers and fixed parts cover it as usual.
+  document.body.prepend(bar);
+  function place() { view.style.top = bar.offsetHeight + "px"; }
+  CFG.screens.forEach((s, i) => screenSel.add(new Option(s.label, String(i))));
+  Object.entries(CFG.personas).forEach(([key, label]) => asSel.add(new Option(label, key)));
+  let state = { screen: 0, as: CFG.screens[0].as, width: CFG.screens[0].width || 1440, loaded: null, started: false };
+  let remember = (key, value) => { try { localStorage.setItem("nfo." + key, value); } catch (e) {} };
+  let recall = (key) => { try { return localStorage.getItem("nfo." + key); } catch (e) { return null; } };
+
+  function fit() {
+    const w = state.width, h = w < 600 ? 844 : 900;
+    frame.style.width = w + "px";
+    frame.style.height = (w < 600 ? h : Math.max(h, stage.clientHeight - 24)) + "px";
+    const room = stage.clientWidth - 24;
+    const scale = w > room ? room / w : 1;
+    frame.style.transform = scale < 1 ? `scale(${scale})` : "";
+    const fh = parseFloat(frame.style.height);
+    if (scale < 1) frame.style.height = (Math.max(h, (stage.clientHeight - 24) / scale)) + "px";
+    holder.style.width = (w * scale) + "px";
+    holder.style.height = (parseFloat(frame.style.height) * scale) + "px";
+  }
+  function load(route) {
+    const hash = "as=" + encodeURIComponent(state.as) + "&route=" + encodeURIComponent(route);
+    state.loaded = state.as;
+    frame.src = "today/index.html?" + Date.now().toString(36) + "#" + hash;
+  }
+  function go() {
+    const s = CFG.screens[state.screen];
+    if (state.loaded === state.as && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "nf-go", route: s.route }, "*");
+    } else load(s.route);
+  }
+  function show(which) {
+    const o = which === "o";
+    if (o) window.scrollTo(0, 0);
+    document.documentElement.classList.toggle("nfo-o", o);
+    view.hidden = !o;
+    place();
+    bar.querySelectorAll("[data-nfo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nfo === which)));
+    remember("tab", which);
+    if (o && !state.started) { state.started = true; fit(); load(CFG.screens[state.screen].route); }
+    if (o) fit();
+  }
+  function setWidth(w) {
+    state.width = w;
+    widthBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.w) === w)));
+    fit();
+  }
+  bar.addEventListener("click", (e) => { const b = e.target.closest("[data-nfo]"); if (b) show(b.dataset.nfo); });
+  screenSel.addEventListener("change", () => {
+    state.screen = Number(screenSel.value);
+    const s = CFG.screens[state.screen];
+    const personaChanged = s.as !== state.as;
+    state.as = s.as; asSel.value = s.as;
+    setWidth(s.width || 1440);
+    if (personaChanged) load(s.route); else go();
+  });
+  asSel.addEventListener("change", () => { state.as = asSel.value; load(CFG.screens[state.screen].route); });
+  widthBtns.forEach((b) => b.addEventListener("click", () => setWidth(Number(b.dataset.w))));
+  window.addEventListener("resize", () => { place(); if (!view.hidden) fit(); });
+  asSel.value = state.as;
+  setWidth(state.width);
+})();
+</script>
+<!-- nf-orijinal:end -->

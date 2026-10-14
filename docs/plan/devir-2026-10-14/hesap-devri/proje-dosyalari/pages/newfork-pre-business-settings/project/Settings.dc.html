@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Account &mdash; Workspaces</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#f4f5f3;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.ic{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.side{width:268px;flex:0 0 268px;background:#ffffff;border-right:1px solid #dce3df;padding:20px 16px;display:flex;flex-direction:column;overflow:hidden}
+.back{display:flex;align-items:center;gap:10px;min-height:36px;margin-bottom:2px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:700;color:#5f6b66;text-decoration:none}
+.back:hover{background:#f0f3f1}
+.id{display:flex;align-items:center;gap:10px;padding:0 6px 14px;margin-bottom:15px;border-bottom:1px solid #e2e6e4}
+.av{width:36px;height:36px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 36px}
+.idn{display:grid;min-width:0}
+.idn strong{font-size:13px;color:#17221e}
+.idn span{font-size:11px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ni{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;margin-bottom:2px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66;text-decoration:none}
+.ni:hover{background:#f7f9f8}
+.ni.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.foot{margin-top:auto;padding-top:14px;border-top:1px solid #e2e6e4}
+.main{flex-grow:1;min-width:0;padding:40px 52px;overflow:hidden}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:30px}
+.ph h1{margin:0 0 7px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-0.01em;color:#17221e}
+.ph p{margin:0;font-size:14px;color:#66716c;max-width:640px;line-height:1.55}
+.sec{margin-bottom:28px;max-width:880px}
+.sech{display:flex;align-items:center;gap:9px;margin:0 0 11px}
+.sech h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5f6b66}
+.count{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.list{overflow:hidden;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.row{display:flex;min-height:56px;align-items:center;justify-content:space-between;gap:20px;padding:10px 18px;border-bottom:1px solid #e2e6e4}
+.row:last-child{border-bottom:0}
+.row.cur{background:#e7f1ed}
+.rl{display:flex;align-items:center;gap:12px;min-width:0}
+.mark{width:36px;height:36px;flex:0 0 36px;border-radius:9px;background:#f0f3f1;color:#5f6b66;display:grid;place-items:center;font-size:14px;font-weight:800}
+.row.cur .mark{background:#176954;color:#ffffff}
+.rt{display:grid;min-width:0;gap:2px}
+.rh{display:flex;align-items:center;gap:5px;min-width:0}
+.rt strong{overflow:hidden;color:#17221e;font-size:14px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}
+.rm{color:#66716c;font-size:12px;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ra{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;gap:8px}
+.ra-a{flex:0 0 200px}
+.ra-a .btn{flex:0 0 96px;min-width:96px;box-sizing:border-box}
+.ra-b{flex:0 0 192px}
+.ra-b .btn{flex:0 0 148px;min-width:148px;box-sizing:border-box}
+.badge{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;height:18px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap}
+.b-n{background:#f0f3f1;color:#5f6b66}.b-p{background:#fff7e2;color:#8a5a00}.b-s{background:#e7f1ed;color:#176b4e}.b-d{background:#fff0ee;color:#b84234}
+.row.cur .b-s{background:#ffffff}
+.btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.b2,.b3{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.kebab{display:inline-flex;align-items:center;justify-content:center;width:36px;height:36px;border:1px solid transparent;border-radius:7px;background:transparent;color:#5f6b66;cursor:pointer}
+.kebab:hover{background:#f0f3f1}
+.note{margin:12px 0 0;font-size:12.5px;color:#66716c;line-height:1.55}
+.railtop{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e6e4}
+.collapse{display:inline-grid;place-items:center;width:38px;height:36px;flex:0 0 38px;border:0;border-radius:6px;background:transparent;color:#4b5551;cursor:pointer}
+.collapse:hover{background:#f0f3f1}
+.collapse .ic{width:18px;height:18px;flex:0 0 18px}
+</style>
+</helmet>
+<div style="display: flex; width: 1440px; height: 1180px; box-sizing: border-box; background: #f4f5f3;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true" focusable="false">
+    <symbol id="a-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="a-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="a-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z"/><path d="M9.2 12l2 2 3.6-3.8"/></symbol>
+    <symbol id="a-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="a-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z"/><path d="M10.4 20a2 2 0 003.2 0"/></symbol>
+    <symbol id="a-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="a-building" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="16" rx="1.5"/><path d="M14 10h5a1 1 0 011 1v9M7.5 8h3M7.5 12h3M7.5 16h3"/></symbol>
+    <symbol id="a-out" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"/></symbol>
+    <symbol id="a-dots" viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></symbol>
+  </svg>
+
+  <aside class="side" aria-label="Account navigation">
+    <div class="railtop"><button type="button" class="collapse" aria-label="Collapse menu" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+    <div class="id">
+      <span class="av">MT</span>
+      <span class="idn"><strong>Mert Tepeba&#351;</strong><span>owner@newfork.test</span></span>
+    </div>
+    <nav aria-label="Account">
+      <a class="ni" href="#p"><svg class="ic"><use href="#a-user"/></svg>Profile</a>
+      <a class="ni" href="#s"><svg class="ic"><use href="#a-shield"/></svg>Security</a>
+      <a class="ni" href="#r"><svg class="ic"><use href="#a-sliders"/></svg>Preferences</a>
+      <a class="ni" href="#n"><svg class="ic"><use href="#a-bell"/></svg>Notifications</a>
+      <a class="ni" href="#d"><svg class="ic"><use href="#a-file"/></svg>Documents<span class="dot">2</span></a>
+      <a class="ni on" href="#b" aria-current="page"><svg class="ic"><use href="#a-building"/></svg>Workspaces<span class="dot">1</span></a>
+    </nav>
+    <div class="foot">
+      <a class="back" href="#back"><svg class="ic"><use href="#a-arrow"/></svg>Back to Meyhouse</a>
+      <a class="ni" href="#signout"><svg class="ic"><use href="#a-out"/></svg>Sign out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="ph">
+      <div>
+        <h1>Workspaces</h1>
+        <p>Everywhere you work, and everything waiting for an answer. Switching here changes which workspace the app opens.</p>
+      </div>
+      <button type="button" class="btn b1">Create a workspace</button>
+    </div>
+
+    <section class="sec">
+      <div class="sech"><h2>Waiting for you</h2><span class="count">1</span></div>
+      <div class="list">
+        <div class="row">
+          <span class="rl">
+            <span class="mark">J</span>
+            <span class="rt"><span class="rh"><strong>Juniper</strong><span class="badge b-p">Expires tomorrow</span></span><span class="rm">Invitation from Deniz Kaya</span></span>
+          </span>
+          <span class="ra ra-a"><button type="button" class="btn b3">Decline</button><button type="button" class="btn b1">Join</button></span>
+        </div>
+        <div class="row">
+          <span class="rl">
+            <span class="mark">P</span>
+            <span class="rt"><span class="rh"><strong>Palo Alto Kitchen</strong><span class="badge b-n">Setup unfinished</span></span><span class="rm">Owner</span></span>
+          </span>
+          <span class="ra ra-a"><button type="button" class="btn b3">Discard</button><button type="button" class="btn b1">Setup</button></span>
+        </div>
+      </div>
+    </section>
+
+    <section class="sec">
+      <div class="sech"><h2>Where you work</h2></div>
+      <div class="list">
+        <div class="row cur">
+          <span class="rl">
+            <span class="mark">M</span>
+            <span class="rt"><span class="rh"><strong>Meyhouse</strong><span class="badge b-s">Open now</span></span><span class="rm">Owner &middot; Palo Alto, Downtown</span></span>
+          </span>
+          <span class="ra ra-b"><button type="button" class="btn b2">Enter workspace</button><button type="button" class="kebab" aria-label="Meyhouse options"><svg class="ic"><use href="#a-dots"/></svg></button></span>
+        </div>
+        <div class="row">
+          <span class="rl">
+            <span class="mark">R</span>
+            <span class="rt"><span class="rh"><strong>Ridgeline Tavern</strong></span><span class="rm">Manager &middot; Harbourside</span></span>
+          </span>
+          <span class="ra ra-b"><button type="button" class="btn b1">Switch workspace</button><button type="button" class="kebab" aria-label="Ridgeline Tavern options"><svg class="ic"><use href="#a-dots"/></svg></button></span>
+        </div>
+        <div class="row">
+          <span class="rl">
+            <span class="mark">H</span>
+            <span class="rt"><span class="rh"><strong>Harbour &amp; Co</strong><span class="badge b-d">On hold</span></span><span class="rm">Employee</span></span>
+          </span>
+          <span class="ra ra-b"><button type="button" class="btn b2">View status</button><button type="button" class="kebab" aria-label="Harbour and Co options"><svg class="ic"><use href="#a-dots"/></svg></button></span>
+        </div>
+      </div>
+      <p class="note">Row menu, owner only: set as the one you land in &middot; transfer ownership &middot; close later &middot; close now. Closing is a two-click red confirm, never a browser dialog.</p>
+    </section>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

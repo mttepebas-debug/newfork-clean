@@ -1,0 +1,43 @@
+/* Variant parts, built from the app's own tokens (apps/web/src/styles.css). */
+.wsx-pop { position: fixed; top: auto; z-index: 400; width: 300px; }
+.wsx-pop .workspace-switcher-item, .wsx-sheet-list .workspace-switcher-item { gap: 10px; }
+.wsx-tile { display: inline-grid; flex: 0 0 26px; width: 26px; height: 26px; place-items: center; border-radius: 7px; background: var(--theme-accent); color: var(--theme-on-accent); font-size: 12px; font-weight: 750; }
+.wsx-tile.is-quiet { background: var(--theme-surface-muted); color: var(--theme-text); border: 1px solid var(--theme-border); }
+.wsx-slot { flex: 1 1 auto; min-width: 0; }
+.wsx-trigger { display: flex; width: 100%; min-height: 40px; align-items: center; gap: 9px; padding: 0 8px 0 6px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); color: var(--theme-text); font: inherit; text-align: left; cursor: pointer; }
+.wsx-trigger:hover, .wsx-trigger[aria-expanded="true"] { border-color: var(--theme-border-hover, var(--theme-border-strong)); background: var(--theme-surface-muted); }
+.wsx-trigger:focus-visible, .wsx-railtile:focus-visible, .wsx-account:focus-visible, .wsx-more-row:focus-visible { outline: 3px solid var(--theme-focus); outline-offset: 2px; }
+.wsx-trigger-text { display: grid; flex: 1 1 auto; min-width: 0; gap: 1px; }
+.wsx-trigger-text strong { overflow: hidden; font-size: 13.5px; text-overflow: ellipsis; white-space: nowrap; }
+.wsx-trigger-text span { overflow: hidden; color: var(--theme-muted); font-size: 11.5px; text-overflow: ellipsis; white-space: nowrap; }
+.wsx-trigger > svg { flex: 0 0 auto; color: var(--theme-muted); }
+.wsx-railtile { position: relative; display: grid; width: 32px; height: 32px; place-items: center; border: 1px solid var(--theme-accent); border-radius: 8px; background: var(--theme-accent); color: var(--theme-on-accent); font: inherit; font-size: 13px; font-weight: 750; cursor: pointer; }
+.wsx-dot { position: absolute; top: -4px; right: -4px; width: 10px; height: 10px; border: 2px solid var(--theme-surface); border-radius: 999px; background: var(--theme-danger); }
+.wsx-empty { margin: 4px 0 2px; padding: 0 8px; color: var(--theme-muted); font-size: 12px; }
+.wsx-all { width: 100%; border: 0; border-top: 1px solid var(--theme-border); background: transparent; font-family: inherit; text-align: left; cursor: pointer; }
+.wsx-sep { height: 1px; margin: 6px 0; background: var(--theme-border); }
+.wsx-row { display: flex; width: 100%; min-height: 36px; align-items: center; gap: 10px; padding: 0 8px; border: 0; border-radius: 8px; background: transparent; color: var(--theme-text-body, var(--theme-text)); font: inherit; font-size: 13.5px; font-weight: 600; text-align: left; cursor: pointer; }
+.wsx-row:hover { background: var(--theme-surface-muted); }
+.wsx-who { display: flex; align-items: center; gap: 10px; padding: 6px 8px 10px; border-bottom: 1px solid var(--theme-border); margin-bottom: 4px; }
+.wsx-account { width: 100%; border: 0; background: transparent; font: inherit; text-align: left; cursor: pointer; }
+.wsx-account-text { display: grid; flex: 1 1 auto; min-width: 0; gap: 0; line-height: 1.2; }
+.wsx-account-text strong { font-size: 14px; font-weight: 600; }
+.wsx-account-text span { overflow: hidden; color: var(--theme-muted); font-size: 11.5px; font-weight: 500; text-overflow: ellipsis; white-space: nowrap; }
+.wsx-account > svg { flex: 0 0 auto; color: var(--theme-muted); }
+.wsx-account[aria-expanded="true"] { background: var(--theme-surface-muted); }
+.mm-sheet nav button.wsx-more-row, .wsx-more-row { display: flex; width: 100%; min-height: 58px; align-items: center; gap: 12px; padding: 0 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); color: var(--theme-text); font: inherit; text-align: left; cursor: pointer; margin-bottom: 6px; }
+.wsx-more-row .wsx-tile { flex-basis: 32px; width: 32px; height: 32px; font-size: 14px; }
+.wsx-more-row .wsx-trigger-text strong { font-size: 15px; }
+.wsx-more-row .wsx-trigger-text span { font-size: 12.5px; }
+.wsx-chev { display: inline-flex; color: var(--theme-muted); }
+.wsx-sheet-list { display: grid; gap: 2px; padding-bottom: 6px; }
+.wsx-sheet-list .workspace-switcher-item { min-height: 52px; }
+.wsx-sheet-list .workspace-switcher-text strong { font-size: 15px; }
+.wsx-sheet-list .workspace-switcher-text span { font-size: 12.5px; }
+.wsx-sheet-list .wsx-row { min-height: 48px; font-size: 15px; }
+.wsx-footrow { width: 100%; text-align: left; }
+.wsx-footrow[aria-expanded="true"] { background: var(--theme-surface-muted); }
+.wsx-footrow > svg { flex: 0 0 auto; margin-left: auto; color: var(--theme-muted); }
+.wsx-foot-name { overflow: hidden; min-width: 0; text-overflow: ellipsis; white-space: nowrap; }
+.wsx-tile-sm { flex-basis: 22px; width: 22px; height: 22px; border-radius: 6px; font-size: 11px; }
+.wsx-pop a.workspace-switcher-all { display: block; margin-top: 6px; }

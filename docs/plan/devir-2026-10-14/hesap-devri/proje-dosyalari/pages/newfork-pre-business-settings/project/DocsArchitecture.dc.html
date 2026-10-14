@@ -1,0 +1,213 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Belgeler &mdash; mimari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5f6b66}
+.spec{font-size:12.5px;color:#66716c;line-height:1.55}
+.rule{margin:0;font-size:14px;line-height:1.6;color:#1d2525}
+.hr{height:1px;background:#e2e6e4}
+.card{border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.p-def{background:#e7f1ed;color:#176b4e}
+.p-asg{background:#fff7e2;color:#8a5a00}
+.p-ful{background:#eef2ff;color:#3a4a8c}
+.p-new{background:#fff0ee;color:#b84234}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66;padding:0 14px 10px 0;border-bottom:1px solid #dce3df;vertical-align:bottom}
+td{font-size:13px;color:#1d2525;padding:12px 14px 12px 0;border-bottom:1px solid #f0f3f1;vertical-align:top;line-height:1.5}
+td strong{color:#17221e}
+.layer{display:flex;flex-direction:column;gap:9px;padding:20px 22px;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.layer h3{margin:0;font-size:15px;font-weight:700;color:#17221e}
+.layer p{margin:0;font-size:13px;line-height:1.55;color:#66716c}
+.layer ul{margin:4px 0 0;padding-left:18px}
+.layer li{font-size:12.5px;line-height:1.7;color:#1d2525}
+.arrow{display:grid;place-items:center;font-size:22px;color:#cbd4d0}
+.badge{display:inline-flex;align-items:center;justify-content:center;height:18px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap}
+.b-n{background:#f0f3f1;color:#5f6b66}.b-p{background:#fff7e2;color:#8a5a00}.b-s{background:#e7f1ed;color:#176b4e}.b-d{background:#fff0ee;color:#b84234}
+.req{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 18px;border-bottom:1px solid #e2e6e4}
+.req:last-child{border-bottom:0}
+.rt{display:grid;gap:2px;min-width:0;flex:1}
+.rh{display:flex;align-items:center;gap:5px;min-width:0}
+.rt strong{font-size:14px;font-weight:600;line-height:18px;color:#17221e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rm{font-size:12px;line-height:15px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.req .badge{flex:0 0 auto}
+.req .btn{flex:0 0 auto;box-sizing:border-box}
+.btn{display:inline-flex;min-height:28px;min-width:74px;align-items:center;justify-content:center;gap:6px;padding:0 10px;border:1px solid transparent;border-radius:6px;font:inherit;font-size:12px;font-weight:700;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.b2{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.bad{color:#b84234;font-weight:600}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1900px; box-sizing: border-box; padding: 72px 80px; display: flex; flex-direction: column; gap: 36px; background: #ffffff;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #12624f;">Mimari &middot; Belgeler</span>
+    <h1 style="margin: 0; font-size: 42px; line-height: 1.1; letter-spacing: -0.02em; color: #17221e;">Bir katalog, bir gereksinim, d&#246;rt g&#246;r&#252;n&#252;m</h1>
+    <p style="margin: 0; max-width: 900px; font-size: 16px; line-height: 1.6; color: #66716c;">Belge d&#246;rt ayr&#305; yerde &#231;&#305;k&#305;yor ve bug&#252;n d&#246;rd&#252; de kendi kelimelerini kullan&#305;yor. Oysa alt&#305;nda tek bir zincir var: <strong style="color:#17221e;">i&#351;letme tan&#305;mlar &#8594; kural ki&#351;iye d&#252;&#351;er &#8594; ki&#351;i doldurur, y&#246;netici bakar.</strong> D&#246;rt y&#252;zey ayn&#305; sat&#305;r bile&#351;enini ve ayn&#305; durum s&#246;zl&#252;&#287;&#252;n&#252; payla&#351;&#305;r; de&#287;i&#351;en yaln&#305;z &#231;er&#231;eve ve eylem seti.</p>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display: grid; grid-template-columns: 1fr 40px 1fr 40px 1fr; gap: 0; align-items: stretch;">
+    <div class="layer">
+      <span class="pill p-def">1 &middot; Tan&#305;m</span>
+      <h3>&#304;&#351;letme neyi istiyor</h3>
+      <p>Settings &#9656; Documents. Katalog burada ya&#351;&#305;yor ve ger&#231;ek: <code>DocumentType</code>.</p>
+      <ul>
+        <li>Ba&#351;l&#305;k ve a&#231;&#305;klama</li>
+        <li>Onboarding&#39;de zorunlu mu (<code>required_at_onboarding</code>)</li>
+        <li>&#304;nceleme ister mi (<code>requires_review</code>)</li>
+        <li>Kabul edilen bi&#231;imler</li>
+        <li>Son kullanma takibi + ka&#231; g&#252;n &#246;nce uyar&#305;</li>
+        <li>S&#252;resi ge&#231;ince vardiyaya etkisi</li>
+        <li>Kime d&#252;&#351;&#252;yor (<code>assignment_scope</code>)</li>
+        <li>Yay&#305;nda m&#305; (taslak / yay&#305;n)</li>
+      </ul>
+    </div>
+    <div class="arrow">&rarr;</div>
+    <div class="layer">
+      <span class="pill p-asg">2 &middot; Atama</span>
+      <h3>Kural ki&#351;iye d&#252;&#351;er</h3>
+      <p>Katalog &times; ki&#351;i &#8594; <strong style="color:#17221e;">gereksinim</strong>. Kimsenin elle a&#231;t&#305;&#287;&#305; bir liste de&#287;il; kapsamdan t&#252;r&#252;yor.</p>
+      <ul>
+        <li>Rol ve lokasyon atamas&#305;na g&#246;re</li>
+        <li>Yeni bir belge yay&#305;nlan&#305;nca mevcut herkese de d&#252;&#351;er</li>
+        <li>Muafiyet tek tek verilebilir</li>
+        <li>Durum tek s&#246;zl&#252;k: To do &middot; In review &middot; Done &middot; Needs changes &middot; Expiring</li>
+      </ul>
+      <p class="spec" style="margin-top:2px;">Bu katman ekranda g&#246;r&#252;nmez ama &#252;&#231; y&#252;zey de onu okur. Bug&#252;n &#252;&#231;&#252; de kendi kelimesini kuruyor &mdash; sorun burada ba&#351;l&#305;yor.</p>
+    </div>
+    <div class="arrow">&rarr;</div>
+    <div class="layer">
+      <span class="pill p-ful">3 &middot; Kullan&#305;m</span>
+      <h3>&#220;&#231; ki&#351;i, &#252;&#231; soru</h3>
+      <p>Ayn&#305; gereksinim sat&#305;r&#305;, &#252;&#231; farkl&#305; soruya cevap veriyor.</p>
+      <ul>
+        <li><strong>Yeni &#231;al&#305;&#351;an:</strong> &ldquo;&#304;&#351;e ba&#351;lamadan ne vermem laz&#305;m?&rdquo;</li>
+        <li><strong>&Ccedil;al&#305;&#351;an:</strong> &ldquo;Benden ne istendi, ne g&#246;nderdim, ne zaman doluyor?&rdquo;</li>
+        <li><strong>Y&#246;netici:</strong> &ldquo;Kim eksik, ne inceleme bekliyor, ne doluyor?&rdquo;</li>
+      </ul>
+      <p class="spec" style="margin-top:2px;">&#220;&#231;&#252; de ayn&#305; bile&#351;eni farkl&#305; <em>audience</em> ile &#231;a&#287;&#305;r&#305;r &mdash; bu ayr&#305;m kodda zaten var (<code>selfOnly</code>), ekranda yok.</p>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display:flex;flex-direction:column;gap:16px;">
+    <h2 class="h2">D&#246;rt y&#252;zey &middot; kim, nerede, ne yapar</h2>
+    <table>
+      <thead><tr><th style="width:19%;">Y&#252;zey</th><th style="width:13%;">Kim</th><th style="width:26%;">Ne g&#246;r&#252;r</th><th style="width:22%;">Ne yapabilir</th><th>Kap&#305;</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Settings &#9656; Documents</strong><br><span class="spec">/app/settings/documents</span></td>
+          <td>Owner, admin</td>
+          <td>Kata&#322;o&#287;un kendisi: belge t&#252;rleri ve poli&#231;eler, yay&#305;n durumu, kime d&#252;&#351;t&#252;&#287;&#252;</td>
+          <td>T&#252;r ekler, d&#252;zenler, yay&#305;nlar, ar&#351;ivler. <strong>Kimsenin dosyas&#305;na dokunmaz.</strong></td>
+          <td class="spec"><code>documents.manage</code></td>
+        </tr>
+        <tr>
+          <td><strong>App &#9656; Employees &#9656; Documents</strong><br><span class="spec">/app/employees/documents</span></td>
+          <td>Manager, admin</td>
+          <td>Herkesin gereksinimleri; kendi lokasyon kapsam&#305;yla s&#305;n&#305;rl&#305;. Kuyruk: inceleme bekleyen, eksik, s&#252;resi dolan</td>
+          <td>&#304;nceler, kabul eder, gerek&#231;eyle geri yollar, muafiyet verir, s&#252;re uzat&#305;r</td>
+          <td class="spec"><code>employee_documents.read</code><br><code>&hellip;.review</code></td>
+        </tr>
+        <tr>
+          <td><strong>Account &#9656; Documents</strong><br><span class="spec">/account/documents</span></td>
+          <td>Herkes, kendisi i&#231;in</td>
+          <td><strong>Her i&#351;letmedeki</strong> kendi gereksinimleri, i&#351;letmeye g&#246;re gruplu; ge&#231;mi&#351; s&#252;r&#252;mler</td>
+          <td>Y&#252;kler, de&#287;i&#351;tirir, kopyas&#305;n&#305; indirir. Ba&#351;kas&#305;n&#305;nkini g&#246;rmez.</td>
+          <td class="spec">oturum &mdash; i&#351;letme <em>gerekmez</em></td>
+        </tr>
+        <tr>
+          <td><strong>Onboarding &#9656; Documents</strong><br><span class="spec">/welcome/&hellip;/documents</span></td>
+          <td>Hen&#252;z aktive edilmemi&#351; &#231;al&#305;&#351;an</td>
+          <td>Yaln&#305;z <em>o i&#351;letmenin</em> onboarding&#39;de zorunlu k&#305;ld&#305;klar&#305; &mdash; katalo&#287;un <code>required_at_onboarding</code> alt k&#252;mesi</td>
+          <td>Ayn&#305; y&#252;kleme ve okuma; bitince hepsi birden incelemeye gider</td>
+          <td class="spec">oturum + bekleyen &#252;yelik</td>
+        </tr>
+      </tbody>
+    </table>
+    <p class="spec" style="margin:0;max-width:1000px;"><strong style="color:#17221e;">Kritik ayr&#305;m:</strong> Account &#9656; Documents i&#351;letme ba&#287;lam&#305; gerektirmez ve gerektirmemeli &mdash; hen&#252;z aktive edilmemi&#351; bir &#231;al&#305;&#351;an da, art&#305;k &#231;al&#305;&#351;mayan biri de kendi belgelerine ula&#351;abilmeli. Onboarding&#39;in belge ad&#305;m&#305; bu sayfan&#305;n ilk ge&#231;i&#351;idir, ayr&#305; bir d&#252;nya de&#287;il.</p>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:56px;">
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <h2 class="h2">Payla&#351;&#305;lan birim &middot; gereksinim sat&#305;r&#305;</h2>
+      <p class="spec" style="margin:0;">Ad ve hemen sa&#287;&#305;nda durum rozeti; ba&#287;lam (i&#351;letme ya da ki&#351;i) ad&#305;n alt&#305;nda; sa&#287;da tek eylem. Rozet ad&#305;n hemen sa&#287;&#305;nda, sabit 5px bo&#351;lukla (18px, kompakt); b&#252;t&#252;n butonlar 74&times;28 &mdash; Upload, Replace, Review, View tek kutu. Ne g&#246;steriyorsa o de&#287;i&#351;ir, kal&#305;p de&#287;i&#351;mez.</p>
+      <div class="card" style="overflow:hidden;">
+        <div class="req">
+          <span class="rt"><span class="rh"><strong>Right to work</strong><span class="badge b-n">To do</span></span><span class="rm">Meyhouse &middot; zorunlu</span></span>
+          <button type="button" class="btn b1">Upload</button>
+        </div>
+        <div class="req">
+          <span class="rt"><span class="rh"><strong>Food handler certificate</strong><span class="badge b-p">Expires in 12 days</span></span><span class="rm">Meyhouse</span></span>
+          <button type="button" class="btn b1">Replace</button>
+        </div>
+        <div class="req">
+          <span class="rt"><span class="rh"><strong>Direct deposit form</strong><span class="badge b-d">Needs changes</span></span><span class="rm">Hesap numaras&#305; kesilmi&#351;</span></span>
+          <button type="button" class="btn b1">Replace</button>
+        </div>
+        <div class="req">
+          <span class="rt"><span class="rh"><strong>Alexa Nalbant &middot; Right to work</strong><span class="badge b-p">In review</span></span><span class="rm">Palo Alto &middot; 2 g&#252;nd&#252;r bekliyor</span></span>
+          <button type="button" class="btn b1">Review</button>
+        </div>
+        <div class="req">
+          <span class="rt"><span class="rh"><strong>Staff handbook</strong><span class="badge b-s">Done</span></span><span class="rm">18 Eyl&#252;l&#39;de onayland&#305;</span></span>
+          <button type="button" class="btn b2">View</button>
+        </div>
+      </div>
+      <p class="spec" style="margin:0;">Son iki sat&#305;r y&#246;netici kuyru&#287;undan ve ki&#351;isel listeden &mdash; ayn&#305; kal&#305;p. Y&#246;netici sat&#305;r&#305;nda ba&#351;l&#305;k ki&#351;i + belge, ba&#287;lam lokasyon; ki&#351;isel sat&#305;rda ba&#351;l&#305;k belge, ba&#287;lam i&#351;letme. Ham durum de&#287;eri (<code>awaiting_review</code>, <code>rejected</code>, <code>not_started</code>) hi&#231;bir yerde g&#246;r&#252;nmez.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:16px;">
+      <h2 class="h2">Bug&#252;n ne bozuk</h2>
+      <div style="display:flex;flex-direction:column;gap:10px;">
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Tek liste, iki i&#351;, tek ba&#351;l&#305;k</span>
+          <span class="spec"><code>EmployeeDocumentsList</code> hem y&#246;netici kuyru&#287;u hem ki&#351;isel liste (<code>selfOnly</code>). Do&#287;ru payla&#351;&#305;m &mdash; ama iki sayfa ayn&#305; ba&#351;l&#305;&#287;&#305;, ayn&#305; bo&#351; h&#226;lini ve ayn&#305; s&#252;tunlar&#305; kullan&#305;yor. Y&#246;netici &ldquo;kim eksik&rdquo; diye bak&#305;yor, &#231;al&#305;&#351;an &ldquo;ben ne yapaca&#287;&#305;m&rdquo; diye; iki farkl&#305; soru.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Onboarding katalo&#287;u anlatm&#305;yor</span>
+          <span class="spec">Belge sayfas&#305; belgenin <em>ne oldu&#287;unu ve neden istendi&#287;ini</em> yazm&#305;yor, oysa katalogda <code>description</code> alan&#305; var ve i&#351;letme onu dolduruyor. Tan&#305;m katman&#305;ndaki metin kullan&#305;m katman&#305;na ta&#351;&#305;nm&#305;yor.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">S&#252;resi dolan belge kimsenin listesinde de&#287;il</span>
+          <span class="spec">Katalogda <code>tracks_expiry</code>, <code>expiry_warning_days</code> ve vardiyaya etkisi var; ama &ldquo;yak&#305;nda doluyor&rdquo; ne ki&#351;isel listede ne y&#246;netici kuyru&#287;unda kendi ba&#351;&#305;na bir durum. Rozet olarak eklendi.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Account &#9656; Documents&#39;ta i&#351;letme se&#231;icisi</span>
+          <span class="spec">Ba&#351;l&#305;&#287;&#305;n yan&#305;nda bir <code>&lt;select&gt;</code> var ve ayn&#305; anda tek i&#351;letme g&#246;steriyor. Oysa bu sayfan&#305;n i&#351;i tam da hepsini birden g&#246;stermek. Se&#231;ici kalkar, liste i&#351;letmeye g&#246;re gruplan&#305;r.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Y&#252;kleme yaz&#305;lm&#305;&#351; tarihi siliyor</span>
+          <span class="spec">Uygulama i&#231;i drawer&#39;da: y&#252;kleme/silme <code>revision</code>&#39;&#305; art&#305;r&#305;yor, i&#231;erik yeniden mount oluyor, yaz&#305;lan son kullanma tarihi ve ek alanlar gidiyor. Onboarding&#39;in yeni sayfas&#305;nda kapat&#305;ld&#305;, drawer&#39;da duruyor.</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

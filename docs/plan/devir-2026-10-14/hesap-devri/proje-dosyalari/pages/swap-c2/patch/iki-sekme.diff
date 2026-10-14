@@ -1,0 +1,133 @@
+diff --git a/apps/web/src/schedule/requests-list.ts b/apps/web/src/schedule/requests-list.ts
+index b40ecba1..ec523774 100644
+--- a/apps/web/src/schedule/requests-list.ts
++++ b/apps/web/src/schedule/requests-list.ts
+@@ -19,7 +19,19 @@ export const requestTypeLabels: Record<RequestType, string> = {
+   cover: "Cover",
+   open_pickup: "Open shift",
+ };
+-export type RequestTypeTab = "all" | RequestType;
++// Two tabs (Mert, 2026-10-11): Time off, and every shift change (swap, cover,
++// open shift) together. The Type column still names each row's kind.
++declare const __TABS_ALL__: boolean;
++export type RequestTypeTab = "all" | "time_off" | "shift_changes";
++export const shiftChangeTypes: readonly RequestType[] = ["swap", "cover", "open_pickup"];
++export const tabOf = (type: RequestType): Exclude<RequestTypeTab, "all"> => (type === "time_off" ? "time_off" : "shift_changes");
++export const requestTabLabels: Record<RequestTypeTab, string> = { all: "All", time_off: "Time off", shift_changes: "Shift changes" };
++/** The tabs a reader gets: one per group they may read, All first when kept. */
++export function requestTabsFor(allowed: readonly RequestType[]): RequestTypeTab[] {
++  const groups = [...new Set(allowed.map(tabOf))].sort((a, b) => (a === "time_off" ? -1 : b === "time_off" ? 1 : 0));
++  if (groups.length < 2) return [];
++  return __TABS_ALL__ ? ["all", ...groups] : groups;
++}
+ export type RequestState = "needs_review" | "in_progress" | "closed";
+ export const requestPageSizes = [25, 50, 100] as const;
+ export type RequestPageSize = (typeof requestPageSizes)[number];
+@@ -43,6 +55,14 @@ export function requestTypesFor(can: { timeOff: boolean; shiftChanges: boolean }
+ // answers first (cover search, the other employee, the other manager).
+ // ponytail: a swap that one manager already approved stays in Needs review
+ // for that manager too; the read model does not say who voted (R2-18, A2).
++function agreed(item: ExchangeCase): boolean {
++  if (item.kind === "open_pickup") return true;
++  if (item.status === "open") return item.stage !== "seeking_candidates" && item.stage !== "awaiting_peer";
++  // A closed one shows when someone took it up and it went past the employees.
++  const neverAgreed = new Set(["invited", "declined_by_employee", "withdrawn"]);
++  return item.applications.some((application) => !neverAgreed.has(application.status));
++}
++
+ function exchangeState(item: ExchangeCase): RequestState {
+   if (item.status !== "open" || item.stage === "closed") return "closed";
+   return item.can_manage && (item.stage === "ready_for_manager" || item.stage === "awaiting_other_manager")
+@@ -111,7 +131,10 @@ export function requestRows(
+     }
+   }
+   for (const request of exchanges) {
+-    if ((filters.type !== "all" && filters.type !== request.kind) || !exchangeMatches(request, filters)) continue;
++    // A swap or cover reaches the manager once both people agreed (Mert,
++    // 2026-10-11): before that it is the employees' business, not a request.
++    if (!agreed(request)) continue;
++    if ((filters.type !== "all" && filters.type !== tabOf(request.kind)) || !exchangeMatches(request, filters)) continue;
+     const state = exchangeState(request);
+     rows.push({
+       source: "exchange",
+@@ -128,22 +151,25 @@ export function requestRows(
+ 
+ /** Each type tab's number, and All's: the requests still open. */
+ export function openCounts(rows: readonly RequestRow[]): Record<RequestTypeTab, number> {
+-  const counts: Record<RequestTypeTab, number> = { all: 0, time_off: 0, swap: 0, cover: 0, open_pickup: 0 };
++  const counts: Record<RequestTypeTab, number> = { all: 0, time_off: 0, shift_changes: 0 };
+   for (const row of rows) {
+     if (row.state === "closed") continue;
+     counts.all += 1;
+-    counts[row.type] += 1;
++    counts[tabOf(row.type)] += 1;
+   }
+   return counts;
+ }
+ 
+ /** Type tab and page as the address keeps them; anything else falls back. */
+ export function readRequestsParams(params: URLSearchParams, allowed: readonly RequestType[]) {
+-  const type = params.get("type");
++  const asked = params.get("type");
++  // An old address (?type=swap) lands on the shift changes tab.
++  const type = asked && (shiftChangeTypes as readonly string[]).includes(asked) ? "shift_changes" : asked;
++  const tabs = requestTabsFor(allowed);
+   const page = Number(params.get("page"));
+   const size = Number(params.get("size"));
+   return {
+-    type: (allowed.includes(type as RequestType) ? type : "all") as RequestTypeTab,
++    type: (tabs.includes(type as RequestTypeTab) ? type : (tabs[0] ?? "all")) as RequestTypeTab,
+     page: Number.isInteger(page) && page > 0 ? page : 1,
+     pageSize: (requestPageSizes as readonly number[]).includes(size) ? (size as RequestPageSize) : 50,
+   };
+diff --git a/apps/web/src/views/ScheduleRequestsPage.tsx b/apps/web/src/views/ScheduleRequestsPage.tsx
+index 334053ea..1651da3b 100644
+--- a/apps/web/src/views/ScheduleRequestsPage.tsx
++++ b/apps/web/src/views/ScheduleRequestsPage.tsx
+@@ -45,6 +45,9 @@ import {
+   useRequests,
+   type RequestRow,
+   type RequestTypeTab,
++  requestTabLabels,
++  requestTabsFor,
++  tabOf,
+ } from "../schedule/requests-list";
+ 
+ import { NoAccessState } from "../shell/NoAccessState";
+@@ -106,7 +109,7 @@ function ScheduleRequestsPageContent() {
+     [data.timeOff, data.exchanges, locationId, search],
+   );
+   const counts = openCounts(allRows);
+-  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => row.type === view.type), view.page, view.pageSize);
++  const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => tabOf(row.type) === view.type), view.page, view.pageSize);
+   const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
+   const timeOffById = new Map<string, TimeOffRequest>();
+   for (const row of allRows) if (row.source === "time_off") timeOffById.set(row.id, row.request);
+@@ -250,8 +253,7 @@ function ScheduleRequestsPageContent() {
+   const loading = data.isLoading;
+   const failed = Boolean(data.failure);
+   // One type to read needs no tabs: All would say the same thing.
+-  const tabs: [RequestTypeTab, string][] =
+-    allowedTypes.length > 1 ? [["all", "All"], ...allowedTypes.map((type): [RequestTypeTab, string] => [type, requestTypeLabels[type]])] : [];
++  const tabs: [RequestTypeTab, string][] = requestTabsFor(allowedTypes).map((key) => [key, requestTabLabels[key]]);
+ 
+   return (
+     <section
+@@ -285,7 +287,7 @@ function ScheduleRequestsPageContent() {
+                 aria-pressed={view.type === key}
+                 onClick={() => {
+                   selectRequest("");
+-                  setView({ type: key === "all" ? null : key, page: null });
++                  setView({ type: key === requestTabsFor(allowedTypes)[0] ? null : key, page: null });
+                 }}
+               >
+                 {label}
+@@ -351,7 +353,7 @@ function ScheduleRequestsPageContent() {
+               <Check size={22} />
+             </span>
+             <h2>No requests</h2>
+-            <p>{view.type === "all" ? "No requests match these filters." : `No ${requestTypeLabels[view.type].toLowerCase()} requests match these filters.`}</p>
++            <p>{view.type === "all" ? "No requests match these filters." : `No ${view.type === "time_off" ? "time off" : "shift change"} requests match these filters.`}</p>
+           </div>
+         ) : null}
+       </div>

@@ -1,0 +1,137 @@
+/* ===== Theme 7 · TRAVERTINE — the dining room itself. Honed stone ground with a faint grain, warm slab surfaces,
+   walnut ink, deep sage for action, a thin brass line for emphasis, and the arch (the doorway of the room) as the one
+   recurring shape. Inscription-style capitals for names of places, a quiet grotesk for everything else.
+   Action = sage, destructive = terracotta, attention = brass. Free-hand theme (Mert 2026-10-13). */
+.tema-7 {
+  --stone: #ebe5dc; --stone-2: #e2dace; --slab: #fbf9f5; --slab-2: #f4efe7;
+  --walnut: #29211b; --walnut-2: #54483e; --walnut-3: #6b5e52;
+  --vein: #e3dacd; --vein-2: #cdc1b0;
+  --sage: #3b5a48; --sage-2: #2d4738; --sage-soft: #e3ebe4; --sage-mist: #f1f5f1;
+  --brass: #a07a38; --brass-ink: #775820; --brass-soft: #f5ecda;
+  --terra: #a33d2a; --terra-soft: #f8e8e3;
+  --inscr: "Marcellus", "Trajan Pro", Georgia, serif;
+  --theme-font-sans: "Hanken Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='220' height='220'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.75' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 .33 0 0 0 0 .27 0 0 0 0 .2 0 0 0 .07 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  --chrome-bg: #29211b; --chrome-fg: #f6f1e9; --chrome-muted: #b3a595; --chrome-line: #40352c; --chrome-chip: #362d25;
+  font-family: var(--theme-font-sans);
+}
+.tema-7, .tema-7 .mk-desk, .tema-7 .app, .tema-7 .main { background: var(--grain), var(--stone); }
+.tema-7 .mk-seg button[aria-pressed="true"] { background: var(--slab); color: var(--walnut); }
+
+/* sidebar: a slab with an arched active state */
+.tema-7 .side { background: var(--slab); border-right: 1px solid var(--vein); }
+.tema-7 .side-top strong { font-family: var(--inscr); font-weight: 400; font-size: 17px; letter-spacing: .06em; text-transform: uppercase; color: var(--walnut); }
+.tema-7 .nav { border-radius: 8px; color: var(--walnut-2); font-weight: 500; }
+.tema-7 .nav:hover { background: var(--slab-2); }
+.tema-7 .nav.active { background: var(--sage-soft); color: var(--sage-2); font-weight: 650; border-radius: 16px 16px 6px 6px; }
+.tema-7 .nav .new { background: transparent; color: var(--brass-ink); border: 1px solid var(--brass); border-radius: 10px 10px 3px 3px; font-weight: 700; }
+
+/* header: inscription title, brass rule */
+.tema-7 .lu-top { background: var(--grain), var(--stone) !important; }
+.tema-7 .cph { border-bottom: 1px solid var(--vein-2); position: relative; }
+.tema-7 .cph::after { content: ""; position: absolute; left: 0; bottom: -1px; width: 72px; height: 2px; background: var(--brass); }
+.tema-7 .cph-eyebrow { color: var(--brass-ink); font-size: 10.5px; font-weight: 700; letter-spacing: .24em; }
+.tema-7 .cph h1 { font-family: var(--inscr); font-weight: 400; font-size: 50px; letter-spacing: .04em; text-transform: uppercase; color: var(--walnut); line-height: 1; }
+.tema-7 .cph-dot { width: 12px; height: 15px; flex-basis: 12px; border-radius: 6px 6px 1px 1px; background: var(--sage); box-shadow: none; }
+.tema-7 .cph p { color: var(--walnut-2); font-size: 13px; }
+
+/* toolbar */
+.tema-7 .topbar.under { background: var(--grain), var(--stone) !important; }
+.tema-7 .tb-btn { background: var(--slab); border: 1px solid var(--vein-2); border-radius: 8px; color: var(--walnut); font-weight: 600; }
+.tema-7 .tb-btn:hover { background: #fff; border-color: var(--walnut-3); }
+.tema-7 .tb-split .tb-btn:first-child { border-radius: 8px 0 0 8px; }
+.tema-7 .tb-split .tb-btn:last-child { border-radius: 0 8px 8px 0; }
+.tema-7 .tb-split.away .tb-btn { background: var(--brass-soft); border-color: var(--brass); color: #6e521f; }
+.tema-7 .tb-btn.btn-green { background: var(--sage); border-color: var(--sage); color: #f6f1e9; letter-spacing: .02em; }
+.tema-7 .tb-btn.btn-green:hover { background: var(--sage-2); border-color: var(--sage-2); color: #fff; }
+.tema-7 .day-strip { border-bottom: 1px solid var(--vein-2) !important; height: 34px !important; }
+.tema-7 .day-strip .day, .tema-7 .day-strip button { color: var(--walnut-3); }
+.tema-7 .day-strip [aria-pressed="true"] { color: var(--sage-2) !important; background: var(--slab) !important; border-radius: 16px 16px 0 0; box-shadow: inset 0 -2px 0 var(--sage), 0 0 0 1px var(--vein); }
+
+/* location: a stone slab with an arch emblem */
+.tema-7 .loc-sec { background: var(--slab); border: 1px solid var(--vein); border-radius: 12px; box-shadow: 0 1px 0 #fff inset, 0 10px 26px -18px rgb(41 33 27 / 35%); }
+.tema-7 .loc-sec > .loc-hd { background: transparent !important; border: 0; border-bottom: 1px solid var(--vein); border-radius: 12px 12px 0 0; padding: 18px 14px 14px; }
+.tema-7 .loc-hd h2 { font-family: var(--inscr); font-weight: 400; font-size: 25px; letter-spacing: .05em; text-transform: uppercase; color: var(--walnut); gap: 12px; }
+.tema-7 .loc-hd h2 i { width: 16px; height: 20px; border-radius: 8px 8px 2px 2px; background: var(--c); box-shadow: inset 0 0 0 2px rgb(255 255 255 / 55%); }
+.tema-7 .loc-hd > span { color: var(--walnut-3) !important; font-size: 13px; font-weight: 500; letter-spacing: .02em; }
+
+/* lineup card: an arched doorway */
+.tema-7 .lt-card { background: #fff; border: 1px solid var(--vein); border-radius: 22px 22px 10px 10px; box-shadow: 0 1px 2px rgb(41 33 27 / 4%); overflow: hidden; }
+.tema-7 .lt-card .lt-hd { background: linear-gradient(180deg, color-mix(in srgb, var(--t) 7%, var(--slab)), #fff); border-bottom: 1px solid var(--vein); padding-left: 16px; }
+.tema-7 .lt-card.is-collapsed .lt-hd { border-bottom: 0; }
+.tema-7 .lt-card.is-empty { background: transparent; border-style: dashed; border-color: var(--vein-2); box-shadow: none; }
+.tema-7 .lt-card.is-empty .lt-hd { background: transparent; }
+.tema-7 .lt-type { font-family: var(--theme-font-sans); font-weight: 700; font-size: 17px; letter-spacing: -.01em; color: var(--walnut); }
+.tema-7 .lt-type i { width: 11px; height: 14px; border-radius: 6px 6px 1px 1px; }
+.tema-7 .pill { border-radius: 6px; font-size: 10.5px !important; font-weight: 650; letter-spacing: .02em; }
+.tema-7 .pill.draft { background: var(--slab-2); color: var(--walnut-2); border-color: var(--vein); }
+.tema-7 .pill.shared { background: var(--sage-soft); color: var(--sage-2); border-color: #c5d4c8; }
+.tema-7 .pill.editing { background: var(--brass-soft); color: #6e521f; border-color: #e0cba2; }
+.tema-7 .ackbar { background: var(--slab-2); border-radius: 999px; height: 5px; }
+.tema-7 .ackbar i { background: var(--sage); border-radius: 999px; }
+.tema-7 .ackbtn { color: var(--walnut-2); font-weight: 500; }
+
+/* tables */
+.tema-7 .dept-tbl, .tema-7 .dept-stack > .dept-tbl { background: #fff; border-color: var(--vein) !important; }
+.tema-7 .dept-hd { background: var(--slab); color: var(--walnut-2); font-family: var(--inscr); font-weight: 400; font-size: 12px; letter-spacing: .2em; border-bottom-color: var(--vein); }
+.tema-7 table.lt thead th { background: #fff; color: var(--walnut-3); font-size: 10.5px; font-weight: 650; letter-spacing: .08em; border-bottom: 1px solid var(--vein); }
+.tema-7 table.lt td { border-bottom-color: #f0eae1; color: var(--walnut); }
+.tema-7 table.lt tr.grp td { background: #fff; color: var(--walnut-2); font-weight: 700; font-size: 10.5px; letter-spacing: .1em; }
+.tema-7 table.lt tr.grp .jdot { width: 8px; height: 10px; border-radius: 4px 4px 1px 1px; }
+.tema-7 table.lt tbody tr:not(.grp):hover > td { background: var(--sage-mist); }
+.tema-7 .cell-sel, .tema-7 .cell-btn.dd { background-color: #fff !important; border: 1px solid var(--vein-2) !important; border-radius: 7px !important; color: var(--walnut) !important; font-weight: 500; }
+.tema-7 .cell-sel:hover, .tema-7 .cell-btn.dd:hover { border-color: var(--sage) !important; background-color: var(--sage-mist) !important; }
+.tema-7 .cell-btn.name-dd { font-weight: 650; }
+.tema-7 .tin { background: #fff !important; border: 1px solid var(--vein-2) !important; border-radius: 7px !important; box-shadow: none !important; font-weight: 500; font-variant-numeric: tabular-nums; }
+.tema-7 .tin:focus { outline: 0; border-color: var(--sage) !important; box-shadow: 0 0 0 3px var(--sage-soft) !important; }
+.tema-7 .jobadd { background: #fff; border: 1px solid var(--vein-2); border-radius: 12px 12px 4px 4px; color: var(--sage); }
+.tema-7 .jobadd:hover { background: var(--sage-soft); border-color: var(--sage); }
+.tema-7 .callbtn { background: #fff; border: 1px solid #e6c2b8; border-radius: 7px; color: var(--terra); font-weight: 650; }
+.tema-7 .callbtn:hover { background: var(--terra); border-color: var(--terra); color: #fff; }
+.tema-7 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td, .tema-7 table.lt tbody tr:has(.callbtn.armed) > td { background: var(--terra-soft) !important; }
+.tema-7 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td:first-child { box-shadow: inset 2px 0 0 var(--terra); }
+
+/* notes, banners, popovers */
+.tema-7 .notes { border-top-color: var(--vein); }
+.tema-7 .notes-hd > span { font-family: var(--inscr); font-weight: 400; letter-spacing: .2em; color: var(--walnut-2); }
+.tema-7 .banner { border-radius: 8px; }
+.tema-7 .banner.warn { background: var(--brass-soft); border-color: #e0cba2; color: #5c4419; }
+.tema-7 .banner.ok { background: var(--sage-soft); border-color: #c5d4c8; color: var(--sage-2); }
+.tema-7 .pop, .tema-7 .modal { background: var(--slab) !important; border: 1px solid var(--vein-2) !important; border-radius: 16px 16px 10px 10px !important; box-shadow: 0 24px 48px -20px rgb(41 33 27 / 38%) !important; overflow: hidden; }
+.tema-7 .pop-hd strong, .tema-7 .modal-hd h2 { font-family: var(--inscr); font-weight: 400; letter-spacing: .06em; text-transform: uppercase; font-size: 15px; }
+.tema-7 .mi { border-radius: 7px; font-weight: 500; }
+.tema-7 .mi:hover { background: #fff; }
+.tema-7 .mi .box { border-radius: 4px; border-color: var(--vein-2); background: #fff; }
+.tema-7 .mi[aria-checked="true"] .box { background: var(--sage); border-color: var(--sage); color: #fff; }
+.tema-7 .nf-btn { border-radius: 8px; background: var(--sage); }
+.tema-7 .nf-btn.secondary { background: #fff; color: var(--walnut); border: 1px solid var(--vein-2); }
+.tema-7 .toast { border-radius: 10px; background: var(--walnut); }
+
+/* B rail, C board, phone */
+.tema-7 .ck-block { background: var(--slab); border-color: var(--vein); border-radius: 14px 14px 8px 8px; }
+.tema-7 .ck-h { font-family: var(--inscr); font-weight: 400; letter-spacing: .18em; color: var(--walnut-2); }
+.tema-7 .bd-col { background: #fff; border-color: var(--vein); border-radius: 22px 22px 10px 10px; overflow: hidden; box-shadow: 0 10px 26px -20px rgb(41 33 27 / 40%); }
+.tema-7 .bd-col .bd-hd { background: linear-gradient(180deg, color-mix(in srgb, var(--t) 7%, var(--slab)), #fff); border-radius: 0; }
+.tema-7 .pc { background: #fff; border-color: var(--vein); border-radius: 10px; }
+.tema-7 .mk-phone-col { background: var(--stone-2); }
+.tema-7 .phone { background: var(--walnut); }
+.tema-7 .ph-ack { background: var(--sage); border-radius: 18px 18px 8px 8px; }
+
+/* fixes after review: phone screen in stone + sage */
+.tema-7 .phone-scr { background: var(--grain), var(--stone); }
+.tema-7 .ph-status, .tema-7 .ph-top, .tema-7 .ph-nav { background: var(--slab); }
+.tema-7 .ph-top h3 { font-family: var(--inscr); font-weight: 400; font-size: 24px; letter-spacing: .06em; text-transform: uppercase; color: var(--walnut); }
+.tema-7 .ph-card h4 { color: var(--walnut); }
+.tema-7 .ph-week button b { color: var(--walnut); }
+.tema-7 .ph-week button[aria-pressed="true"] { background: var(--sage); color: #fff; border-radius: 16px 16px 6px 6px; }
+.tema-7 .ph-week button[aria-pressed="true"] b { color: #fff; }
+.tema-7 .ph-week button .d.on { background: var(--brass); }
+.tema-7 .ph-empty .circ { background: var(--slab); color: var(--sage); border-radius: 26px 26px 10px 10px; border: 1px solid var(--vein-2); }
+.tema-7 .ph-card { background: var(--slab); border-color: var(--vein); border-radius: 22px 22px 12px 12px; }
+.tema-7 .ph-person.me { background: var(--sage-mist); }
+.tema-7 .ph-note.sp { background: var(--sage-soft); color: var(--sage-2); }
+.tema-7 .ph-nav span.active { background: var(--sage-soft); color: var(--sage); }
+.tema-7 .ph-push .appic { background: var(--sage); color: #fff; }
+.tema-7 .ph-card > div[style*="#f1f6ee"] { background: var(--slab-2) !important; border-radius: 16px 16px 8px 8px !important; border-top: 2px solid var(--brass); }
+.tema-7 .ph-card > div[style*="#f1f6ee"] [style*="#4c6b45"] { color: var(--brass-ink) !important; }
+.tema-7 .ph-card > div[style*="#f1f6ee"] [style*="#243a32"] { color: var(--walnut) !important; }

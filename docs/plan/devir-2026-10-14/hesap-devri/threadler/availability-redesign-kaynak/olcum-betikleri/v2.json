@@ -1,0 +1,11 @@
+[
+ {"name":"v2-mine","hash":"v=2&s=mine&view=desk&about=0","w":1440,"h":1000},
+ {"name":"v2-mine-drag","hash":"v=2&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"eval":"document.querySelector('.main').scrollTop=300"},{"mouse":[[700,560],[900,700],[1050,720]]}]},
+ {"name":"v2-mine-pop","hash":"v=2&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"eval":"document.querySelector('.main').scrollTop=300"},{"click":"[data-blk='4:0']"}]},
+ {"name":"v2-phone","hash":"v=2&s=mine&view=phone&about=0","w":1440,"h":900},
+ {"name":"v2-phone-sheet","hash":"v=2&s=mine&view=phone&about=0","w":1440,"h":900,"steps":[{"click":".phone [data-blk='4:0']"}]},
+ {"name":"v2-team","hash":"v=2&s=team&view=desk&about=0","w":1440,"h":900,"steps":[{"hover":".v2-g-row[data-id='maria'] .v2-g-tl"},{"mouse":[[1100,600],[1180,610]]}]},
+ {"name":"v2-drawer","hash":"v=2&s=drawer&view=both&about=0","w":1700,"h":900},
+ {"name":"v2-types","hash":"v=2&s=mine&view=both&mode=types&about=0","w":1700,"h":1000,"steps":[{"eval":"document.querySelector('.main').scrollTop=300"}]},
+ {"name":"v2-about","hash":"v=2&s=mine&view=desk&about=1","w":1440,"h":900}
+]

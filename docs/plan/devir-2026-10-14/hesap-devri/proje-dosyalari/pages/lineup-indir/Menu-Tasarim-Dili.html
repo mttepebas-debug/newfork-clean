@@ -1,0 +1,419 @@
+<title>Menu Design Language</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400..800;1,9..144,400..700&family=Instrument+Sans:wght@400..700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: a printed menu card. One centered sheet on warm paper; sections read like courses, separated by inked rules. Single light look by choice. */
+:root {
+  --paper: #f3ece0; --sheet: #fffcf6; --sheet-2: #faf5ec;
+  --ink: #1b1712; --ink-2: #4a4036; --ink-3: #8a7d6c;
+  --hair: #dfd3c0; --hair-2: #c9b99f;
+  --ox: #7d1d16; --ox-2: #9e2a20; --ox-soft: #f6e4df;
+  --olive: #4f6b2c; --olive-soft: #eef2e4; --amber: #8a5a00; --amber-soft: #fbf1dc; --amber-line: #d9b56a;
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --sans: "Instrument Sans", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--paper); color: var(--ink); font-family: var(--sans); font-size: 14px; line-height: 1.55; }
+.wrap { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 64px; }
+.sheet { background: var(--sheet); border: 1px solid var(--hair-2); box-shadow: 8px 8px 0 -1px var(--paper), 8px 8px 0 0 var(--hair-2); padding: clamp(20px, 4vw, 48px); }
+h1, h2, h3 { font-family: var(--serif); font-weight: 600; letter-spacing: -.02em; text-wrap: balance; margin: 0; color: var(--ink); }
+p { margin: 0; max-width: 68ch; color: var(--ink-2); }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+:focus-visible { outline: 2px solid var(--ox); outline-offset: 2px; }
+
+/* masthead */
+.mast { text-align: center; border-bottom: 3px double var(--ink); padding-bottom: 22px; }
+.mast .eyebrow { font-family: var(--serif); font-style: italic; color: var(--ox); font-size: 15px; }
+.mast h1 { font-size: clamp(40px, 7vw, 68px); line-height: 1.05; margin-top: 6px; font-variation-settings: "opsz" 144; }
+.mast p { margin: 12px auto 0; text-align: center; }
+.orn { color: var(--ox); font-size: 10px; letter-spacing: .5em; text-align: center; margin: 14px 0 0; }
+.toc { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px 18px; margin-top: 18px; font-size: 12.5px; }
+.toc a { color: var(--ink-2); text-decoration: none; border-bottom: 1px dotted var(--hair-2); }
+.toc a:hover { color: var(--ox); border-bottom-color: var(--ox); }
+
+/* course = section */
+.course { padding-top: 44px; }
+.course-hd { display: flex; align-items: center; justify-content: center; gap: 16px; color: var(--ox); font-family: var(--serif); font-weight: 600; font-size: 13px; letter-spacing: .32em; text-transform: uppercase; }
+.course-hd::before, .course-hd::after { content: ""; flex: 0 1 60px; height: 1px; background: var(--ox); opacity: .5; }
+.course h2 { text-align: center; font-size: 30px; margin-top: 6px; }
+.course > p.lede { margin: 10px auto 22px; text-align: center; }
+.sub { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 17px; margin: 26px 0 10px; padding-bottom: 6px; border-bottom: 1px solid var(--hair); }
+
+/* swatches */
+.swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 0; border-top: 1px solid var(--ink); }
+.sw { display: flex; gap: 12px; align-items: center; padding: 12px 6px; border-bottom: 1px dotted var(--hair-2); min-width: 0; }
+.sw i { flex: none; width: 40px; height: 40px; border: 1px solid rgb(27 23 18 / 15%); }
+.sw b { display: block; font-size: 13px; }
+.sw span { display: block; font-size: 12px; color: var(--ink-3); }
+
+/* type specimens */
+.spec { display: grid; grid-template-columns: 170px 1fr; gap: 6px 22px; align-items: baseline; padding: 12px 0; border-bottom: 1px dotted var(--hair-2); }
+.spec .meta { font-size: 11.5px; color: var(--ink-3); line-height: 1.4; }
+.spec .meta b { display: block; color: var(--ink-2); font-size: 10.5px; letter-spacing: .14em; text-transform: uppercase; }
+@media (max-width: 620px) { .spec { grid-template-columns: 1fr; } }
+
+/* rules table */
+.rt { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rt th { text-align: left; font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; padding: 8px 8px; border-bottom: 1px solid var(--ink); }
+.rt td { padding: 10px 8px; border-bottom: 1px dotted var(--hair-2); vertical-align: top; }
+.rt td:first-child { white-space: nowrap; font-weight: 600; }
+.scroll { overflow-x: auto; }
+
+/* specimen frame */
+.board { border: 1px solid var(--hair); background: var(--sheet-2); padding: 20px; display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; }
+.board.col { flex-direction: column; align-items: stretch; }
+.cap { font-size: 11.5px; color: var(--ink-3); margin-top: 8px; }
+
+/* ===== the components themselves ===== */
+.btn { display: inline-flex; align-items: center; gap: 7px; min-height: 34px; padding: 0 14px; border: 1px solid var(--ink); background: var(--sheet); color: var(--ink); font: 600 13px var(--sans); border-radius: 0; cursor: pointer; }
+.btn:hover { background: var(--ink); color: var(--sheet); }
+.btn.primary { background: var(--ox); border-color: var(--ox); color: #fff8ef; text-transform: uppercase; letter-spacing: .08em; font-size: 11.5px; }
+.btn.primary:hover { background: var(--ox-2); }
+.btn.call { min-height: 28px; padding: 0 10px; border-color: var(--ox); color: var(--ox); background: transparent; font-size: 12px; }
+.btn.call:hover { background: var(--ox); color: #fff8ef; }
+.btn.icon { width: 34px; padding: 0; justify-content: center; }
+.btn:disabled { opacity: .45; cursor: not-allowed; background: transparent; color: var(--ink); }
+.split { display: inline-flex; }
+.split .btn + .btn { border-left: 0; }
+.split .date { font-family: var(--serif); font-style: italic; font-size: 14px; min-width: 130px; justify-content: center; }
+.split.away .btn { background: #f7e7c9; border-color: var(--amber); color: #5b3a00; }
+.ul { min-height: 30px; min-width: 130px; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; border: 0; border-bottom: 1px solid var(--hair-2); background: transparent; padding: 0 2px; font: 13px var(--sans); color: var(--ink); cursor: pointer; }
+.ul:hover { border-bottom-color: var(--ink); background: rgb(27 23 18 / 3%); }
+.ul.name { font-family: var(--serif); font-weight: 600; font-size: 15px; min-width: 170px; }
+.ul.empty { color: var(--ink-3); }
+.tin { width: 68px; height: 30px; border: 0; border-bottom: 1px solid var(--hair-2); background: transparent; font: 13px var(--sans); text-align: center; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tin:focus { outline: 0; border-bottom: 2px solid var(--ox); background: var(--ox-soft); }
+.pill { display: inline-flex; align-items: center; padding: 1px 7px; border: 1px solid; font-size: 9.5px; letter-spacing: .12em; text-transform: uppercase; font-weight: 700; }
+.pill.draft { color: var(--ink-3); border-color: var(--hair-2); }
+.pill.pub { color: var(--olive); border-color: var(--olive); }
+.pill.edit { color: var(--amber); border-color: var(--amber); }
+.dia { display: inline-block; width: 7px; height: 7px; transform: rotate(45deg); background: var(--c, var(--ox)); flex: none; }
+.banner { display: flex; align-items: center; gap: 10px; padding: 9px 12px; border: 1px solid; font-size: 12.5px; width: 100%; }
+.banner.warn { background: var(--amber-soft); border-color: var(--amber-line); color: #5b3a00; }
+.banner.ok { background: var(--olive-soft); border-color: #b6c49a; color: #3a4f1f; }
+.banner .x { margin-left: auto; border: 0; background: transparent; color: inherit; cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 6px; }
+.pop { width: 230px; background: var(--sheet); border: 1px solid var(--ink); box-shadow: 8px 8px 0 -1px var(--sheet-2), 8px 8px 0 0 var(--ink); }
+.pop-hd { padding: 10px 12px; border-bottom: 1px solid var(--hair); font-family: var(--serif); font-weight: 600; font-size: 16px; }
+.mi { display: flex; align-items: center; gap: 9px; padding: 7px 12px; font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.mi:hover { background: var(--sheet-2); }
+.box { width: 15px; height: 15px; border: 1px solid var(--ink); display: grid; place-items: center; font-size: 10px; color: #fff; }
+.box.on { background: var(--ox); border-color: var(--ox); }
+.pop-ft { padding: 8px 12px; border-top: 1px solid var(--hair); display: flex; justify-content: flex-end; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); border-bottom: 1px solid var(--ink); width: 100%; font-size: 11px; }
+.days span { text-align: center; padding: 6px 0; color: var(--ink-3); letter-spacing: .08em; }
+.days span b { font-size: 12.5px; color: var(--ink-2); margin-left: 4px; letter-spacing: 0; }
+.days .on { color: var(--ox); font-weight: 700; box-shadow: inset 0 -3px 0 var(--ox); }
+.days .on b { color: var(--ox); }
+.nav { display: flex; flex-direction: column; width: 200px; font-size: 13px; }
+.nav a { padding: 7px 10px; color: var(--ink-2); text-decoration: none; display: flex; justify-content: space-between; }
+.nav a.on { color: var(--ox); font-weight: 700; box-shadow: inset 0 -1px 0 var(--ox); }
+.nav em { font-family: var(--serif); font-style: italic; font-size: 10.5px; border: 1px solid var(--ox); padding: 0 4px; color: var(--ox); }
+.toast { background: var(--ink); color: var(--sheet); padding: 10px 14px; font-size: 13px; display: inline-flex; gap: 14px; align-items: center; }
+.toast button { background: transparent; border: 0; color: #f0c8b8; font-weight: 700; cursor: pointer; text-decoration: underline; }
+
+/* lineup sample */
+.lu { border-top: 1px solid var(--ink); width: 100%; }
+.lu-hd { display: flex; align-items: center; gap: 12px; padding: 10px 2px; border-bottom: 1px solid var(--hair); flex-wrap: wrap; }
+.lu-hd h3 { font-size: 21px; display: flex; align-items: center; gap: 10px; }
+.lu-hd .ack { margin-left: auto; font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 13px; display: flex; align-items: center; gap: 8px; }
+.bar { width: 54px; height: 3px; background: var(--hair); }
+.bar i { display: block; height: 100%; width: 80%; background: var(--ox); }
+.dept { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 16px 0 6px; color: var(--ox); font-family: var(--serif); font-weight: 600; font-size: 13px; letter-spacing: .3em; }
+.dept::before, .dept::after { content: ""; width: 40px; height: 1px; background: var(--ox); opacity: .5; }
+.lt { width: 100%; border-collapse: collapse; min-width: 720px; }
+.lt th { font-size: 9.5px; letter-spacing: .16em; text-transform: uppercase; color: var(--ink-3); font-weight: 600; text-align: left; padding: 6px 6px; border-bottom: 1px solid var(--ink); }
+.lt td { padding: 7px 6px; border-bottom: 1px dotted var(--hair-2); }
+.lt tr.grp td { font-family: var(--serif); font-style: italic; font-weight: 600; font-size: 14px; border-bottom: 1px solid var(--hair); padding-top: 12px; }
+.lt tr.row:hover td { background: rgb(125 29 22 / 3%); }
+.lt tr.row:has(.call:hover) td { background: var(--ox-soft); }
+.lt tr.row:has(.call:hover) td:first-child { box-shadow: inset 3px 0 0 var(--ox); }
+.loc { text-align: center; padding: 6px 0 14px; }
+.loc h3 { font-size: 30px; }
+.loc .d { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 14px; }
+
+/* do / don't */
+.dd { display: grid; grid-template-columns: 1fr 1fr; gap: 0 28px; }
+.dd ul { margin: 0; padding: 0; list-style: none; }
+.dd li { padding: 9px 0 9px 22px; border-bottom: 1px dotted var(--hair-2); position: relative; color: var(--ink-2); }
+.dd li::before { position: absolute; left: 0; font-family: var(--serif); font-weight: 700; }
+.dd .yes li::before { content: "✓"; color: var(--olive); }
+.dd .no li::before { content: "✕"; color: var(--ox); }
+.dd h3 { font-size: 17px; font-style: italic; margin-bottom: 4px; }
+@media (max-width: 680px) { .dd { grid-template-columns: 1fr; gap: 20px; } }
+
+pre.tok { background: var(--ink); color: #efe6d6; padding: 16px; overflow-x: auto; font: 12px/1.6 var(--mono); margin: 0; }
+.copy { margin-top: 10px; }
+footer { text-align: center; margin-top: 40px; font-family: var(--serif); font-style: italic; color: var(--ink-3); font-size: 13px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<div class="wrap" lang="tr"><div class="sheet">
+
+<header class="mast">
+  <div class="eyebrow">Lineup · Tasarım dili</div>
+  <h1>Menu</h1>
+  <p>Basılı bir restoran menüsünden alınma görünüm: krem kâğıt, siyah mürekkep, bordo vurgu, serif başlıklar ve ince çizgiler. Bu sayfa dilin tamamını anlatır: ilkeler, renkler, yazı, ölçüler, bileşenler, durumlar ve kurallar. Örnekler canlıdır, üzerlerine gelip tıklayabilirsin.</p>
+  <div class="orn">— ◆ —</div>
+  <nav class="toc" aria-label="İçindekiler">
+    <a href="#ilkeler">İlkeler</a><a href="#renk">Renk</a><a href="#yazi">Yazı</a><a href="#olcu">Ölçü ve çizgi</a><a href="#suslemeler">Süsler</a><a href="#bilesen">Bileşenler</a><a href="#lineup">Lineup örneği</a><a href="#durum">Durumlar</a><a href="#kurallar">Yap / yapma</a><a href="#token">Token'lar</a>
+  </nav>
+</header>
+
+<section class="course" id="ilkeler">
+  <div class="course-hd">Birinci bölüm</div>
+  <h2>İlkeler</h2>
+  <p class="lede">Ekran bir menü kartı gibi okunur: önce başlık, sonra bölümler, sonra satırlar.</p>
+  <div class="scroll"><table class="rt">
+    <thead><tr><th>İlke</th><th>Ne demek</th><th>Ekranda nasıl görünür</th></tr></thead>
+    <tbody>
+      <tr><td>Kâğıt, kutu değil</td><td>Yüzeyler kart değil, kâğıt sayfasıdır. Gölge yalnız "kâğıt destesi" kaydırmasıdır.</td><td>Lokasyon bir sayfa; köşeler keskin, bulanık gölge yok.</td></tr>
+      <tr><td>Mürekkep çizgisi hiyerarşi kurar</td><td>Renkli kutu yerine çizgi kalınlığı ve türü ayırır.</td><td>Kalın siyah çizgi = yeni bölüm; ince çizgi = grup; noktalı çizgi = satır.</td></tr>
+      <tr><td>Serif isim verir, sans iş görür</td><td>Adı olan şeyler (sayfa, lokasyon, shift, kişi, pozisyon) serif; veri ve düğmeler sans.</td><td>"Dinner", "Jake Thompson" Fraunces; saat, Section, Call off Instrument Sans.</td></tr>
+      <tr><td>Tek vurgu: bordo</td><td>Bordo yalnız eylem ve seçili durum içindir.</td><td>Publish, seçili gün, açık sekme, Call off.</td></tr>
+      <tr><td>Durum rengi ayrıdır</td><td>Yeşil-zeytin yayında, amber dikkat, bordo yıkıcı. Bunlar süs değil, anlamdır.</td><td>Published etiketi zeytin, kısa saat uyarısı amber.</td></tr>
+      <tr><td>Sessiz kontroller</td><td>Kutu çizgisi yerine alt çizgi; kontrol, üzerine gelince belirginleşir.</td><td>Dropdown ve saat kutuları yalnız alt çizgiyle durur.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="course" id="renk">
+  <div class="course-hd">İkinci bölüm</div>
+  <h2>Renk</h2>
+  <p class="lede">Dört aile: kâğıt, mürekkep, çizgi, vurgu. Durum renkleri ayrı bir ailedir.</p>
+  <div class="sub">Kâğıt</div>
+  <div class="swatches">
+    <div class="sw"><i style="background:#f3ece0"></i><div><b>paper · #f3ece0</b><span>Sayfa zemini</span></div></div>
+    <div class="sw"><i style="background:#fffcf6"></i><div><b>sheet · #fffcf6</b><span>Lokasyon sayfası, pencere</span></div></div>
+    <div class="sw"><i style="background:#faf5ec"></i><div><b>sheet-2 · #faf5ec</b><span>Kenar menü, üzerine gelme</span></div></div>
+  </div>
+  <div class="sub">Mürekkep</div>
+  <div class="swatches">
+    <div class="sw"><i style="background:#1b1712"></i><div><b>ink · #1b1712</b><span>Başlık, metin, ana çizgi</span></div></div>
+    <div class="sw"><i style="background:#4a4036"></i><div><b>ink-2 · #4a4036</b><span>İkincil metin</span></div></div>
+    <div class="sw"><i style="background:#8a7d6c"></i><div><b>ink-3 · #8a7d6c</b><span>Sütun başlığı, ipucu (yalnız 12px+ ve büyük harf etiketlerde)</span></div></div>
+  </div>
+  <div class="sub">Çizgi</div>
+  <div class="swatches">
+    <div class="sw"><i style="background:#dfd3c0"></i><div><b>hair · #dfd3c0</b><span>Grup ve başlık altı ince çizgi</span></div></div>
+    <div class="sw"><i style="background:#c9b99f"></i><div><b>hair-2 · #c9b99f</b><span>Satır noktalı çizgisi, kontrol alt çizgisi</span></div></div>
+  </div>
+  <div class="sub">Vurgu ve durum</div>
+  <div class="swatches">
+    <div class="sw"><i style="background:#7d1d16"></i><div><b>ox · #7d1d16</b><span>Eylem, seçili, yıkıcı</span></div></div>
+    <div class="sw"><i style="background:#9e2a20"></i><div><b>ox-2 · #9e2a20</b><span>Eylem üzerine gelince</span></div></div>
+    <div class="sw"><i style="background:#f6e4df"></i><div><b>ox-soft · #f6e4df</b><span>Odak zemini, Call off satırı</span></div></div>
+    <div class="sw"><i style="background:#4f6b2c"></i><div><b>olive · #4f6b2c</b><span>Yayında, onaylandı</span></div></div>
+    <div class="sw"><i style="background:#8a5a00"></i><div><b>amber · #8a5a00</b><span>Dikkat, düzenleniyor, bugün dışı</span></div></div>
+    <div class="sw"><i style="background:#fbf1dc"></i><div><b>amber-soft · #fbf1dc</b><span>Uyarı şeridi zemini</span></div></div>
+  </div>
+  <p class="cap">Shift ve job renkleri (Breakfast turuncu, Dinner mor gibi) uygulamanın kendi renkleridir; bu dilde yalnız küçük eşkenar dörtgen olarak görünürler, zemine yayılmazlar.</p>
+</section>
+
+<section class="course" id="yazi">
+  <div class="course-hd">Üçüncü bölüm</div>
+  <h2>Yazı</h2>
+  <p class="lede">İki aile: Fraunces (serif, isimler) ve Instrument Sans (veri ve kontroller). Rakamlar her zaman eşit genişlikte (tabular).</p>
+  <div class="spec"><div class="meta"><b>Display</b>Fraunces 600 · 54px · −0.035em · opsz 144</div><div style="font-family:var(--serif);font-weight:600;font-size:54px;letter-spacing:-.035em;line-height:1">Lineup</div></div>
+  <div class="spec"><div class="meta"><b>Lokasyon</b>Fraunces 600 · 30px · −0.02em</div><div style="font-family:var(--serif);font-weight:600;font-size:30px;letter-spacing:-.02em">Harbor &amp; Vine Downtown</div></div>
+  <div class="spec"><div class="meta"><b>Shift</b>Fraunces 600 · 21px</div><div style="font-family:var(--serif);font-weight:600;font-size:21px">Dinner</div></div>
+  <div class="spec"><div class="meta"><b>Kişi</b>Fraunces 600 · 15px</div><div style="font-family:var(--serif);font-weight:600;font-size:15px">Jake Thompson</div></div>
+  <div class="spec"><div class="meta"><b>Pozisyon grubu</b>Fraunces 600 italik · 14px</div><div style="font-family:var(--serif);font-weight:600;font-style:italic;font-size:14px">Server</div></div>
+  <div class="spec"><div class="meta"><b>Departman</b>Fraunces 600 · 13px · büyük harf · +0.30em · bordo</div><div style="font-family:var(--serif);font-weight:600;font-size:13px;letter-spacing:.3em;color:var(--ox)">FRONT OF HOUSE</div></div>
+  <div class="spec"><div class="meta"><b>Alt başlık, tarih</b>Fraunces 500 italik · 13–15px</div><div style="font-family:var(--serif);font-style:italic;font-size:15px;color:var(--ink-2)">Tuesday, October 13, 2026</div></div>
+  <div class="spec"><div class="meta"><b>Metin</b>Instrument Sans 400 · 13px · satır 1.5</div><div style="font-size:13px">Lineup edits stay in the lineup. The Schedule doesn't change.</div></div>
+  <div class="spec"><div class="meta"><b>Veri</b>Instrument Sans 400 · 13px · tabular</div><div style="font-size:13px;font-variant-numeric:tabular-nums">4:00 PM – 10:00 PM · 11:30 AM – 3:00 PM</div></div>
+  <div class="spec"><div class="meta"><b>Etiket</b>Instrument Sans 600 · 9.5px · büyük harf · +0.16em</div><div style="font-size:9.5px;font-weight:600;letter-spacing:.16em;color:var(--ink-3)">NAME · SHIFT · POSITION · IN – OUT</div></div>
+  <div class="spec"><div class="meta"><b>Eylem</b>Instrument Sans 600 · 11.5px · büyük harf · +0.08em</div><div><button class="btn primary" type="button">Publish</button></div></div>
+</section>
+
+<section class="course" id="olcu">
+  <div class="course-hd">Dördüncü bölüm</div>
+  <h2>Ölçü ve çizgi</h2>
+  <p class="lede">Köşe yarıçapı her yerde 0. Boşluk 4'ün katlarıyla. Ayrımı çizgi yapar.</p>
+  <div class="scroll"><table class="rt">
+    <thead><tr><th>Öğe</th><th>Değer</th><th>Nerede</th></tr></thead>
+    <tbody>
+      <tr><td>Boşluk ölçeği</td><td class="mono">4 · 8 · 12 · 16 · 22 · 32 · 44</td><td>Satır içi 6–8, grup 12, bölüm 16–22, sayfa 32–44</td></tr>
+      <tr><td>Köşe</td><td class="mono">0</td><td>Düğme, kutu, pencere, etiket, onay kutusu</td></tr>
+      <tr><td>Kontrol yüksekliği</td><td class="mono">34 · 30 · 28</td><td>Üst çubuk düğmesi · tablo kontrolü · Call off</td></tr>
+      <tr><td>Bölüm çizgisi</td><td><span style="display:inline-block;width:80px;border-top:1px solid var(--ink)"></span> 1px ink</td><td>Lineup başı, tablo başlığı altı, hafta şeridi</td></tr>
+      <tr><td>Grup çizgisi</td><td><span style="display:inline-block;width:80px;border-top:1px solid var(--hair)"></span> 1px hair</td><td>Pozisyon grubu, pencere başlığı</td></tr>
+      <tr><td>Satır çizgisi</td><td><span style="display:inline-block;width:80px;border-top:1px dotted var(--hair-2)"></span> 1px dotted hair-2</td><td>Her çalışan satırı</td></tr>
+      <tr><td>Manşet çizgisi</td><td><span style="display:inline-block;width:80px;border-top:3px double var(--ink)"></span> 3px double</td><td>Sayfa başlığının altı (tek yerde)</td></tr>
+      <tr><td>Kâğıt gölgesi</td><td class="mono">6px 6px 0 -1px paper, 6px 6px 0 0 hair-2</td><td>Lokasyon sayfası (pencerede 8px ve ink)</td></tr>
+      <tr><td>Sütun genişliği</td><td class="mono">Name 200 · In–Out 158 · diğerleri eşit</td><td>Lineup tablosu</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="course" id="suslemeler">
+  <div class="course-hd">Beşinci bölüm</div>
+  <h2>Süsler</h2>
+  <p class="lede">Az ve hep aynı yerde. İkon yerine tipografik işaretler.</p>
+  <div class="board">
+    <span style="display:flex;align-items:center;gap:8px"><span class="dia" style="--c:#6366f1"></span> Shift/job işareti: 45° dönmüş 7px kare</span>
+    <span style="color:var(--ox);letter-spacing:.5em;font-size:10px">— ◆ —</span><span>Lokasyon başlığı altında</span>
+    <span class="dept" style="padding:0">KITCHEN</span><span>Departman: iki yanda 40px bordo çizgi</span>
+  </div>
+</section>
+
+<section class="course" id="bilesen">
+  <div class="course-hd">Altıncı bölüm</div>
+  <h2>Bileşenler</h2>
+  <p class="lede">Her bileşen canlı. Üzerine gel, tıkla.</p>
+
+  <div class="sub">Düğmeler</div>
+  <div class="board">
+    <button class="btn primary" type="button">⇪ Publish</button>
+    <button class="btn" type="button">Edit</button>
+    <button class="btn icon" type="button" aria-label="Previous day">‹</button>
+    <button class="btn call" type="button">Call off</button>
+    <button class="btn" type="button" disabled>Disabled</button>
+    <button class="btn icon" type="button" aria-label="Add a Server row" style="width:30px;min-height:26px">+</button>
+  </div>
+  <p class="cap">Birincil: dolu bordo, büyük harf. İkincil: mürekkep çerçeve, üzerine gelince ters döner (siyah zemin, krem yazı). Yıkıcı: bordo çerçeve, üzerine gelince bordo dolar.</p>
+
+  <div class="sub">Tarih düğmesi ve hafta şeridi</div>
+  <div class="board col">
+    <div style="display:flex;gap:14px;flex-wrap:wrap">
+      <span class="split"><button class="btn icon" type="button" aria-label="Open calendar">▦</button><button class="btn date" type="button">Tue, Oct 13</button></span>
+      <span class="split away"><button class="btn icon" type="button" aria-label="Open calendar">▦</button><button class="btn date" type="button" title="Back to today">Thu, Oct 15</button></span>
+    </div>
+    <div class="days"><span>MON<b>12</b></span><span class="on">TUE<b>13</b></span><span>WED<b>14</b></span><span>THU<b>15</b></span><span>FRI<b>16</b></span><span>SAT<b>17</b></span><span>SUN<b>18</b></span></div>
+  </div>
+  <p class="cap">Tarih yazısı serif italik. Bugün dışındaki günde düğme amber. Seçili gün bordo, altında 3px bordo çizgi.</p>
+
+  <div class="sub">Dropdown ve saat</div>
+  <div class="board">
+    <button class="ul name" type="button">Jake Thompson <span>⌄</span></button>
+    <button class="ul" type="button">Server <span>⌄</span></button>
+    <button class="ul empty" type="button">Add label <span>⌄</span></button>
+    <span><input class="tin" id="t-in" value="4:00 PM" aria-label="In"> – <input class="tin" id="t-out" value="10:00 PM" aria-label="Out"></span>
+  </div>
+  <p class="cap">Kutu yok, yalnız alt çizgi. Yazı sola hizalı, ok sağda. Kişi adı serif. Saat kutusuna odaklanınca alt çizgi 2px bordo, zemin açık bordo.</p>
+
+  <div class="sub">Durum etiketleri</div>
+  <div class="board"><span class="pill draft">Draft · not published</span><span class="pill pub">Published v2</span><span class="pill edit">Unpublished · editing</span></div>
+  <p class="cap">Zemin yok, yalnız renkli çerçeve ve yazı. Shift adının altında durur.</p>
+
+  <div class="sub">Uyarı şeridi</div>
+  <div class="board col">
+    <div class="banner warn" id="bn1">⚠ <span><b>Short hours: 4:00 PM – 9:00 PM</b> · Hartwell private buyout (Important Dates). 3 shifts end after closing.</span><button class="x" type="button" aria-label="Close this notice" onclick="this.parentElement.hidden=true">×</button></div>
+    <div class="banner ok">◉ <span><b>Updated live 2:41 PM.</b> Maria Lopez covers Ben Carter (Shift Hub).</span></div>
+  </div>
+
+  <div class="sub">Açılır liste, kenar menü, bildirim</div>
+  <div class="board" style="align-items:flex-start">
+    <div class="pop" role="group" aria-label="Shift types example">
+      <div class="pop-hd">Shift types</div>
+      <div class="mi" data-c><span class="box on">✓</span><span class="dia" style="--c:#f59e0b"></span>Breakfast</div>
+      <div class="mi" data-c><span class="box"></span><span class="dia" style="--c:#10b981"></span>Lunch</div>
+      <div class="mi" data-c><span class="box on">✓</span><span class="dia" style="--c:#6366f1"></span>Dinner</div>
+      <div class="pop-ft"><button class="btn primary" type="button" style="min-height:28px">Done</button></div>
+    </div>
+    <nav class="nav" aria-label="Sidebar example"><a href="#bilesen">Schedule</a><a href="#bilesen" class="on">Lineup <em>New</em></a><a href="#bilesen">Employees</a><a href="#bilesen">Availability</a></nav>
+    <div class="toast">Jake Thompson is called off in this lineup. <button type="button">Undo</button></div>
+  </div>
+  <p class="cap">Pencere ve açılır liste keskin köşeli, mürekkep çerçeveli, 8px mürekkep "kâğıt" gölgesiyle. Onay kutusu kare, seçiliyse bordo. Bildirim siyah zemin, krem yazı.</p>
+</section>
+
+<section class="course" id="lineup">
+  <div class="course-hd">Yedinci bölüm</div>
+  <h2>Lineup örneği</h2>
+  <p class="lede">Bütün parçalar bir arada. Call off'un üzerine gel: satır bordo yanar.</p>
+  <div class="board col" style="background:var(--sheet)">
+    <div class="loc"><h3>Harbor &amp; Vine Downtown</h3><div class="d">Tuesday, October 13, 2026</div><div class="orn" style="margin-top:6px">— ◆ —</div></div>
+    <div class="lu">
+      <div class="lu-hd"><h3><span class="dia" style="--c:#6366f1"></span>Dinner</h3><span class="pill draft">Draft · not published</span><span class="ack"><span class="bar"><i></i></span>4/5 acknowledged</span></div>
+      <div class="dept">FRONT OF HOUSE</div>
+      <div class="scroll"><table class="lt">
+        <thead><tr><th>Name</th><th>Shift</th><th>Position</th><th>In – Out</th><th>Section</th><th>Call off</th></tr></thead>
+        <tbody>
+          <tr class="grp"><td colspan="6"><span class="dia" style="--c:#2563eb"></span>&nbsp; Server</td></tr>
+          <tr class="row"><td><button class="ul name" type="button">Jake Thompson <span>⌄</span></button></td><td><button class="ul" type="button">Dinner <span>⌄</span></button></td><td><button class="ul" type="button">Server <span>⌄</span></button></td><td><input class="tin" id="r1-in" value="4:00 PM" aria-label="In"> – <input class="tin" id="r1-out" value="10:00 PM" aria-label="Out"></td><td><button class="ul" type="button">Section 3 <span>⌄</span></button></td><td><button class="btn call" type="button">Call off</button></td></tr>
+          <tr class="row"><td><button class="ul name" type="button">Ben Carter <span>⌄</span></button></td><td><button class="ul" type="button">Dinner <span>⌄</span></button></td><td><button class="ul" type="button">Server <span>⌄</span></button></td><td><input class="tin" id="r2-in" value="4:00 PM" aria-label="In"> – <input class="tin" id="r2-out" value="10:00 PM" aria-label="Out"></td><td><button class="ul" type="button">Section 1 <span>⌄</span></button></td><td><button class="btn call" type="button">Call off</button></td></tr>
+          <tr class="grp"><td colspan="6"><span class="dia" style="--c:#0891b2"></span>&nbsp; Host</td></tr>
+          <tr class="row"><td><button class="ul name" type="button">Priya Patel <span>⌄</span></button></td><td><button class="ul" type="button">Dinner <span>⌄</span></button></td><td><button class="ul" type="button">Host <span>⌄</span></button></td><td><input class="tin" id="r3-in" value="4:00 PM" aria-label="In"> – <input class="tin" id="r3-out" value="10:00 PM" aria-label="Out"></td><td><button class="ul" type="button">Host stand <span>⌄</span></button></td><td><button class="btn call" type="button">Call off</button></td></tr>
+        </tbody>
+      </table></div>
+    </div>
+  </div>
+</section>
+
+<section class="course" id="durum">
+  <div class="course-hd">Sekizinci bölüm</div>
+  <h2>Durumlar</h2>
+  <div class="scroll"><table class="rt">
+    <thead><tr><th>Durum</th><th>Görünüm</th></tr></thead>
+    <tbody>
+      <tr><td>Üzerine gelme</td><td>İkincil düğme ters döner. Kontrolün alt çizgisi mürekkep olur, zemin %3 mürekkep. Satır zemini %3 bordo.</td></tr>
+      <tr><td>Klavye odağı</td><td>2px bordo çerçeve, 2px boşlukla. Yazı kutularında 2px bordo alt çizgi ve açık bordo zemin.</td></tr>
+      <tr><td>Seçili</td><td>Bordo yazı ve bordo alt çizgi (gün, menü). Onay kutusu bordo dolu.</td></tr>
+      <tr><td>Pasif (kilitli lineup)</td><td>%45 opaklık, imleç "yasak". Call off sütunu görünür kalır, basılmaz.</td></tr>
+      <tr><td>Call off üzerine gelme</td><td>Bütün satır açık bordo, solda 3px bordo şerit.</td></tr>
+      <tr><td>Boş shift</td><td>Üstte soluk çizgi, "No one is scheduled." serif italik.</td></tr>
+      <tr><td>Bugün dışı gün</td><td>Tarih düğmesi amber zemin ve amber çerçeve.</td></tr>
+    </tbody>
+  </table></div>
+</section>
+
+<section class="course" id="kurallar">
+  <div class="course-hd">Dokuzuncu bölüm</div>
+  <h2>Yap / yapma</h2>
+  <div class="dd" style="margin-top:18px">
+    <div class="yes"><h3>Yap</h3><ul>
+      <li>Ayrımı çizgiyle yap: kalın, ince, noktalı.</li>
+      <li>İsim taşıyan her şeyi serif yaz.</li>
+      <li>Bordoyu yalnız eylem, seçim ve yıkıcı iş için kullan.</li>
+      <li>Rakamları tabular yaz, saatleri hizala.</li>
+      <li>Yazıyı sola hizala; yalnız lokasyon başlığı ve departman ortalı.</li>
+      <li>Her sayfada tek manşet çizgisi (3px double) kullan.</li>
+    </ul></div>
+    <div class="no"><h3>Yapma</h3><ul>
+      <li>Yuvarlak köşe ve bulanık gölge kullanma.</li>
+      <li>Shift rengini zemine yayma; yalnız küçük karede kalsın.</li>
+      <li>Bordoyu süs için kullanma (başlık rengi, ikon rengi).</li>
+      <li>Serif'i veri, düğme ya da tablo hücresi metninde kullanma (kişi adı hariç).</li>
+      <li>Kontrollere tam kutu çizme; alt çizgi yeter.</li>
+      <li>İkon kalabalığı yapma; ◆ ve çizgi yeter.</li>
+    </ul></div>
+  </div>
+</section>
+
+<section class="course" id="token">
+  <div class="course-hd">Onuncu bölüm</div>
+  <h2>Token'lar</h2>
+  <p class="lede">Koda taşınacak tek blok bu. Kopyala düğmesi panoya alır.</p>
+  <pre class="tok" id="tok">:root {
+  /* paper */  --paper: #f3ece0; --sheet: #fffcf6; --sheet-2: #faf5ec;
+  /* ink */    --ink: #1b1712; --ink-2: #4a4036; --ink-3: #8a7d6c;
+  /* rules */  --hair: #dfd3c0; --hair-2: #c9b99f;
+  /* accent */ --ox: #7d1d16; --ox-2: #9e2a20; --ox-soft: #f6e4df;
+  /* status */ --olive: #4f6b2c; --olive-soft: #eef2e4;
+               --amber: #8a5a00; --amber-soft: #fbf1dc; --amber-line: #d9b56a;
+  /* type */   --serif: "Fraunces", Georgia, serif;
+               --sans: "Instrument Sans", system-ui, sans-serif;
+  /* size */   --fs-display: 54px; --fs-loc: 30px; --fs-shift: 21px; --fs-name: 15px;
+               --fs-body: 13px; --fs-label: 9.5px; --ls-label: .16em; --ls-dept: .3em;
+  /* space */  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s5: 22px; --s6: 32px; --s7: 44px;
+  /* shape */  --radius: 0; --ctl-h: 30px; --btn-h: 34px;
+  /* rules */  --rule-section: 1px solid var(--ink); --rule-group: 1px solid var(--hair);
+               --rule-row: 1px dotted var(--hair-2); --rule-mast: 3px double var(--ink);
+  /* depth */  --paper-stack: 6px 6px 0 -1px var(--paper), 6px 6px 0 0 var(--hair-2);
+}</pre>
+  <button class="btn copy" type="button" id="cp">Kopyala</button>
+</section>
+
+<footer>Menu · Lineup için serbest tema · 13 Ekim 2026</footer>
+</div></div>
+<script>
+document.querySelectorAll(".mi[data-c]").forEach(function (m) { m.addEventListener("click", function () { var b = m.querySelector(".box"); var on = b.classList.toggle("on"); b.textContent = on ? "✓" : ""; }); });
+document.getElementById("cp").addEventListener("click", function () {
+  var t = document.getElementById("tok").textContent, btn = this;
+  var done = function () { btn.textContent = "Kopyalandı"; setTimeout(function () { btn.textContent = "Kopyala"; }, 1600); };
+  try { navigator.clipboard.writeText(t).then(done, function () { var r = document.createRange(); r.selectNodeContents(document.getElementById("tok")); var s = getSelection(); s.removeAllRanges(); s.addRange(r); }); } catch (e) {}
+});
+</script>

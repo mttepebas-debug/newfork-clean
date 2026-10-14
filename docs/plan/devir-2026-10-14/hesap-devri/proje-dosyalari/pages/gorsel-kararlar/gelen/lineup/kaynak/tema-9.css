@@ -1,0 +1,112 @@
+/* ===== Study 9 · GÖSTERGE (Instrument) — today's Newfork design language, tuned like a cockpit instrument.
+   Only the app's own --theme-* colours, Inter (+ mono for times, as the design system says), green action,
+   white dismiss, red destructive. Layered: white location panels lifted off the page (Mert 2026-10-13).
+   Signature: precision. Each lineup is a channel with its shift colour on the left edge, labels are ruled like a
+   ledger, acknowledgements read on a segmented gauge, status tags are square (4px, like Schedule badges), and today
+   carries the amber "now" tick Schedule already uses. (Mert 2026-10-13, mockup only.) */
+.tema-9 { --mono9: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  --ground9: color-mix(in srgb, var(--theme-page) 72%, var(--theme-border)); }
+.tema-9 .mk-desk, .tema-9 .main, .tema-9 .topbar.under, .tema-9 .lu-top { background: var(--ground9); }
+
+/* sidebar */
+.tema-9 .side { border-right-color: var(--theme-border-strong); }
+.tema-9 .nav { border-radius: 6px; }
+.tema-9 .nav.active { background: var(--theme-surface); color: var(--theme-accent-strong); box-shadow: inset 0 0 0 1px var(--theme-border), inset 3px 0 0 var(--theme-accent); }
+.tema-9 .nav .new { border-radius: 3px; }
+
+/* page header: ruled, with the live dot */
+.tema-9 .cph { border-bottom: 1px solid var(--theme-border-strong); }
+.tema-9 .cph-eyebrow { color: var(--theme-accent-strong); letter-spacing: .18em; }
+.tema-9 .cph h1 { font-weight: 750; letter-spacing: -.02em; color: var(--theme-text); }
+.tema-9 .cph-dot { background: var(--theme-published); box-shadow: 0 0 0 4px var(--theme-surface), 0 0 0 5px var(--theme-border-strong); }
+.tema-9 .cph p { color: var(--theme-text-secondary); }
+
+/* toolbar */
+.tema-9 .tb-btn { border-radius: 6px; border-color: var(--theme-border-strong); background: var(--theme-surface); }
+.tema-9 .tb-btn:hover { border-color: var(--theme-border-hover); }
+.tema-9 .tb-split .tb-btn:first-child { border-radius: 6px 0 0 6px; }
+.tema-9 .tb-split .tb-btn:last-child { border-radius: 0 6px 6px 0; font-variant-numeric: tabular-nums; }
+.tema-9 .tb-btn.btn-green { background: var(--theme-accent); border-color: var(--theme-accent); color: #fff; }
+.tema-9 .tb-btn.btn-green:hover { background: var(--theme-accent-strong); border-color: var(--theme-accent-strong); }
+
+/* day strip as a dial: a tick over every day, green for the chosen day, amber "now" tick for today */
+.tema-9 .day-strip { border-bottom: 1px solid var(--theme-border-strong); height: 34px; }
+.tema-9 .day-strip .day { position: relative; height: 34px; padding-top: 6px; }
+.tema-9 .day-strip .day::before { content: ""; position: absolute; top: 0; left: 50%; width: 1px; height: 5px; background: var(--theme-border-hover); }
+.tema-9 .day-strip .day.past + .day:not(.past)::before { width: 2px; height: 7px; margin-left: -.5px; background: var(--theme-current, #b7791f); }
+.tema-9 .day-strip .day b { font-variant-numeric: tabular-nums; }
+.tema-9 .day-strip .day[aria-pressed="true"] { color: var(--theme-accent-strong); box-shadow: inset 0 -3px 0 var(--theme-accent); }
+.tema-9 .day-strip .day[aria-pressed="true"] b { color: var(--theme-text); font-weight: 800; }
+
+/* location panel: lifted, ruled header */
+.tema-9 .loc-sec { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 10px; padding: 0 14px 14px; gap: 14px;
+  box-shadow: 0 1px 2px rgb(23 34 30 / 6%), 0 14px 32px -20px rgb(23 34 30 / 28%); }
+.tema-9 .loc-sec > .loc-hd { margin: 0 -14px; padding: 14px 16px 12px; background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); border-radius: 10px 10px 0 0; }
+.tema-9 .loc-hd h2 { font-size: 19px; font-weight: 800; letter-spacing: -.015em; gap: 9px; }
+.tema-9 .loc-hd h2 i { width: 4px; height: 16px; border-radius: 2px; }
+.tema-9 .loc-sec > .loc-hd > span:not(.loc-n) { font-size: 12px; font-weight: 650; color: var(--theme-muted); letter-spacing: .06em; text-transform: uppercase; }
+.tema-9 .loc-sec > .loc-hd .loc-n { font-family: var(--mono9); font-size: 11px; color: var(--theme-text-secondary); border: 1px solid var(--theme-border); border-radius: 4px; padding: 2px 7px; background: var(--theme-surface-soft); }
+
+/* lineup = a channel: shift colour on the left edge */
+.tema-9 .lt-card { border: 1px solid var(--theme-border); border-left: 4px solid var(--t, var(--theme-border-strong)); border-radius: 8px; box-shadow: none; }
+.tema-9 .lt-card.is-empty { border-left-color: color-mix(in srgb, var(--t, #b8c4bf) 45%, #fff); background: var(--theme-surface-soft); }
+.tema-9 .lt-card .lt-hd { background: var(--theme-surface); border-bottom-color: var(--theme-border); }
+.tema-9 .lt-card.is-empty .lt-hd { background: transparent; }
+.tema-9 .lt-type { font-weight: 750; }
+.tema-9 .lt-type i { width: 4px; height: 14px; border-radius: 2px; }
+.tema-9 .bd-col { border-top: 4px solid var(--t); border-radius: 8px; box-shadow: none; }
+.tema-9 .bd-col .bd-hd { background: var(--theme-surface); }
+
+/* status tags: square, like Schedule badges */
+.tema-9 .pill { border-radius: 4px; letter-spacing: .02em; }
+
+/* acknowledgements on a segmented gauge */
+.tema-9 .ackbar { width: 70px; height: 7px; border-radius: 0; background: repeating-linear-gradient(90deg, var(--theme-border) 0 5px, transparent 5px 7px); }
+.tema-9 .ackbar i { background: var(--theme-published); -webkit-mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); mask: repeating-linear-gradient(90deg, #000 0 5px, transparent 5px 7px); }
+.tema-9 .ackbtn { font-variant-numeric: tabular-nums; }
+
+/* department: a ruled label, like a ledger */
+.tema-9 .dept-stack { padding: 12px 12px 4px; }
+.tema-9 .dept-tbl { border-color: var(--theme-border); }
+.tema-9 .dept-hd { display: flex; align-items: center; background: var(--theme-surface); color: var(--theme-text); font-size: 10.5px; letter-spacing: .16em; padding: 12px 12px 8px; border-bottom: 0; }
+.tema-9 .dept-hd::after { content: ""; flex: 1 1 auto; height: 1px; margin-left: 12px; background: var(--theme-border); }
+.tema-9 .dept-stack > .dept-tbl + .dept-tbl .dept-hd { border-top-color: var(--theme-border); }
+
+/* table: crisp header with column hairlines; times in mono */
+.tema-9 table.lt th { background: var(--theme-surface-soft); color: var(--theme-text-secondary); font-size: 10px; letter-spacing: .1em; font-weight: 700; border-top: 1px solid var(--theme-border); border-bottom-color: var(--theme-border); }
+.tema-9 table.lt th + th { box-shadow: inset 1px 0 0 var(--theme-border-subtle); }
+.tema-9 table.lt td { border-bottom-color: var(--theme-border-subtle); color: var(--theme-text-body); }
+.tema-9 table.lt tr.grp td { background: var(--theme-surface); color: var(--theme-text); }
+.tema-9 table.lt tr.row:hover td { background: var(--theme-surface-soft); }
+.tema-9 .tin { font-family: var(--mono9); font-size: 11.5px; letter-spacing: -.02em; }
+.tema-9 table.lt td.tcol .cell-text { font-variant-numeric: tabular-nums; }
+.tema-9 .tin { width: 72px; }
+.tema-9 .tin.c24 { width: 52px; }
+
+/* controls: one 6px family */
+.tema-9 .cell-sel, .tema-9 .cell-btn.dd, .tema-9 .tin, .tema-9 .callbtn, .tema-9 .restorebtn, .tema-9 .jobadd { border-radius: 6px; }
+.tema-9 .cell-sel, .tema-9 .cell-btn.dd, .tema-9 .tin { border-color: var(--theme-border-strong); box-shadow: none; }
+.tema-9 .cell-sel:hover, .tema-9 .cell-btn.dd:hover, .tema-9 .tin:hover { border-color: var(--theme-border-hover); background-color: var(--theme-surface); }
+.tema-9 .jobadd { border-color: var(--theme-border-strong); }
+.tema-9 .jobadd:hover { background: var(--theme-selected); border-color: var(--theme-accent); }
+
+/* B rail, popovers, phone */
+.tema-9 .ck-block { border-color: var(--theme-border); border-radius: 10px; box-shadow: 0 1px 2px rgb(23 34 30 / 5%); }
+.tema-9 .ck-h { color: var(--theme-text); letter-spacing: .16em; display: flex; gap: 10px; }
+.tema-9 .ck-locname i { width: 4px; height: 12px; border-radius: 2px; }
+.tema-9 .ck-st { font-variant-numeric: tabular-nums; }
+.tema-9 .pc { border-color: var(--theme-border); border-radius: 8px; }
+.tema-9 .pop, .tema-9 .modal { border-color: var(--theme-border-strong); border-radius: 8px; }
+.tema-9 .phone-scr { background: var(--ground9); }
+.tema-9 .ph-card { border-color: var(--theme-border); border-radius: 10px; box-shadow: 0 1px 2px rgb(23 34 30 / 6%); }
+.tema-9 .ph-card > div[style*="#f1f6ee"] { background: var(--theme-surface-soft) !important; border: 1px solid var(--theme-border); border-left: 4px solid var(--theme-accent); border-radius: 8px !important; }
+.tema-9 .ph-week button[aria-pressed="true"] { background: var(--theme-surface); color: var(--theme-accent-strong); box-shadow: inset 0 0 0 1px var(--theme-border), inset 0 -3px 0 var(--theme-accent); }
+
+/* Mert 2026-10-13 (Gösterge picked, view A): lineups a bit narrower than the week strip; the location header sits 1px lower */
+.tema-9 .loc-sec { margin: 1px 32px 0; }
+/* Mert 2026-10-13: Name column a little narrower; In–Out wide enough that the times never run into Label */
+.tema-9 table.lt colgroup col:nth-child(2) { width: 176px !important; }
+.tema-9 table.lt colgroup col:nth-child(5) { width: 176px !important; }
+.tema-9 .tin { width: 66px; padding: 0 2px; }
+.tema-9 table.lt td .tpair { gap: 4px; flex-wrap: nowrap; }
+.tema-9 .pill.shared { background: var(--theme-success-soft); color: var(--theme-published); border-color: color-mix(in srgb, var(--theme-published) 35%, #fff); }

@@ -1,0 +1,64 @@
+{
+ "screens": [
+  {
+   "label": "Employees",
+   "as": "owner",
+   "route": "/app/employees",
+   "width": 1440
+  },
+  {
+   "label": "Requests",
+   "as": "owner",
+   "route": "/app/schedule/requests",
+   "width": 1440
+  },
+  {
+   "label": "Settings → Documents",
+   "as": "owner",
+   "route": "/app/settings/documents",
+   "width": 1440
+  },
+  {
+   "label": "Employees → Documents",
+   "as": "owner",
+   "route": "/app/employees/documents",
+   "width": 1440
+  },
+  {
+   "label": "Announcements",
+   "as": "owner",
+   "route": "/app/announcements",
+   "width": 1440
+  },
+  {
+   "label": "Notifications",
+   "as": "owner",
+   "route": "/app/notifications",
+   "width": 1440
+  },
+  {
+   "label": "Employees, telefon",
+   "as": "owner",
+   "route": "/app/employees",
+   "width": 390
+  },
+  {
+   "label": "Requests, telefon",
+   "as": "owner",
+   "route": "/app/schedule/requests",
+   "width": 390
+  }
+ ],
+ "personas": {
+  "owner": "Mert Tepebas · Owner",
+  "admin": "Laura Bennett · Admin",
+  "manager": "Hannah Lee · Manager, Downtown",
+  "employee": "Maria Lopez · Employee, Downtown",
+  "onboarding": "Ben Carter · yeni çalışan, onboarding'de",
+  "invited": "Chloe Adams · davet edildi, katılmadı",
+  "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi",
+  "nobusiness": "Alex Morgan · hesap var, workspace yok",
+  "signedout": "Giriş yapılmamış"
+ },
+ "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."
+}

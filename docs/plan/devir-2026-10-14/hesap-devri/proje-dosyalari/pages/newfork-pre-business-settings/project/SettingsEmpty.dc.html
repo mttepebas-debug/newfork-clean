@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings &mdash; no workspace yet</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#f4f5f3;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.ic{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.side{width:268px;flex:0 0 268px;background:#ffffff;border-right:1px solid #dce3df;padding:20px 16px;display:flex;flex-direction:column;gap:15px;overflow:hidden}
+.id{display:flex;align-items:center;gap:10px;padding:0 6px 14px;border-bottom:1px solid #e2e6e4}
+.av{width:36px;height:36px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 36px}
+.idn{display:grid;min-width:0}
+.idn strong{font-size:13px;color:#17221e}
+.idn span{font-size:11px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.grp{display:flex;flex-direction:column;gap:2px}
+.glab{padding:0 8px 5px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66}
+.ni{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66;text-decoration:none}
+.ni.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.hint{margin:4px 8px 0;padding:12px;border:1px dashed #cbd4d0;border-radius:8px;font-size:12px;line-height:1.5;color:#66716c}
+.hint a{font-weight:700;text-decoration:none}
+.foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:12px;border-top:1px solid #e2e6e4}
+.main{flex-grow:1;min-width:0;padding:40px 48px;overflow:hidden}
+.ph{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:28px}
+.ph h1{margin:0 0 7px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-0.01em;color:#17221e}
+.ph p{margin:0;font-size:14px;color:#66716c;max-width:640px;line-height:1.55}
+.hero{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:44px;align-items:center;max-width:1000px;padding:40px;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.hero .eyebrow{display:block;margin-bottom:12px;font-size:11px;font-weight:800;letter-spacing:.14em;text-transform:uppercase;color:#12624f}
+.hero h2{margin:0 0 12px;font-size:30px;font-weight:400;line-height:1.2;letter-spacing:-0.01em;color:#17221e}
+.hero p{margin:0;max-width:460px;font-size:14.5px;line-height:1.6;color:#66716c}
+.acts{display:flex;gap:10px;margin-top:22px}
+.acts .btn{min-width:172px;box-sizing:border-box}
+.art{height:224px;border-radius:10px;background:#e7f1ed;display:grid;place-items:center}
+.h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5f6b66}
+.soon{margin-top:30px;max-width:1000px}
+.ghost{overflow:hidden;margin-top:11px;border:1px dashed #cbd4d0;border-radius:10px;background:#ffffff}
+.grow{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 18px;border-bottom:1px dashed #e2e6e4}
+.grow:last-child{border-bottom:0}
+.gmark{width:36px;height:36px;flex:0 0 36px;border-radius:9px;background:#f0f3f1}
+.gbar{height:10px;border-radius:999px;background:#f0f3f1}
+.gchip{width:80px;height:18px;flex:0 0 80px;border-radius:999px;background:#f0f3f1}
+.gbtn{width:96px;height:36px;flex:0 0 96px;margin-left:auto;border:1px solid #f0f3f1;border-radius:7px;background:#f7f9f8}
+.btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.b2{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.note{margin:18px 0 0;font-size:12.5px;color:#66716c;line-height:1.55;max-width:640px}
+.railtop{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e6e4}
+.collapse{display:inline-grid;place-items:center;width:38px;height:36px;flex:0 0 38px;border:0;border-radius:6px;background:transparent;color:#4b5551;cursor:pointer}
+.collapse:hover{background:#f0f3f1}
+.collapse .ic{width:18px;height:18px;flex:0 0 18px}
+</style>
+</helmet>
+<div style="display: flex; width: 1440px; height: 1180px; box-sizing: border-box; background: #f4f5f3;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true" focusable="false">
+    <symbol id="e-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="e-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z"/><path d="M9.2 12l2 2 3.6-3.8"/></symbol>
+    <symbol id="e-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="e-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z"/><path d="M10.4 20a2 2 0 003.2 0"/></symbol>
+    <symbol id="e-building" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="16" rx="1.5"/><path d="M14 10h5a1 1 0 011 1v9M7.5 8h3M7.5 12h3M7.5 16h3M17 14h0M17 17h0"/></symbol>
+    <symbol id="e-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="e-out" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"/></symbol>
+  </svg>
+
+  <aside class="side" aria-label="Settings navigation">
+    <div class="railtop"><button type="button" class="collapse" aria-label="Collapse menu" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+    <div class="id">
+      <span class="av">AN</span>
+      <span class="idn"><strong>Alexa Nalbant</strong><span>alexa@newfork.test</span></span>
+    </div>
+    <nav class="grp" aria-label="Account">
+      <a class="ni" href="#p"><svg class="ic"><use href="#e-user"/></svg>Profile</a>
+      <a class="ni" href="#s"><svg class="ic"><use href="#e-shield"/></svg>Security</a>
+      <a class="ni" href="#r"><svg class="ic"><use href="#e-sliders"/></svg>Preferences</a>
+      <a class="ni" href="#n"><svg class="ic"><use href="#e-bell"/></svg>Notifications</a>
+      <a class="ni" href="#d"><svg class="ic"><use href="#e-file"/></svg>Documents</a>
+      <a class="ni on" href="#b" aria-current="page"><svg class="ic"><use href="#e-building"/></svg>Workspaces</a>
+    </nav>
+    <p class="hint">No &ldquo;Back to&rdquo; link yet &mdash; there is nowhere to go back to. Everything else works the same.</p>
+    <div class="foot">
+      <a class="ni" href="#signout"><svg class="ic"><use href="#e-out"/></svg>Sign out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="ph">
+      <div>
+        <h1>Workspaces</h1>
+        <p>You are not part of a workspace yet.</p>
+      </div>
+    </div>
+
+    <section class="hero">
+      <div>
+        <span class="eyebrow">Your account is ready</span>
+        <h2>Two ways in.</h2>
+        <p>Open your own workspace and invite your team, or wait for an invitation to reach <strong style="color:#17221e;font-weight:600;">alexa@newfork.test</strong> &mdash; it appears here the moment it arrives.</p>
+        <div class="acts">
+          <button type="button" class="btn b1">Create a workspace</button>
+          <button type="button" class="btn b2">Find my invitation</button>
+        </div>
+      </div>
+      <div class="art">
+        <svg width="196" height="168" viewBox="0 0 196 168" fill="none" aria-hidden="true" focusable="false">
+          <g stroke="#12624f" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M26 150h144"/>
+            <path d="M42 150V72h112v78"/>
+            <path d="M34 72h128"/>
+            <path d="M46 44h104l12 28H34z"/>
+            <path d="M98 22v22"/>
+            <circle cx="98" cy="17" r="5"/>
+            <path d="M64 150v-40h30v40"/>
+            <path d="M112 96h30v30h-30z"/>
+            <path d="M127 96v30M112 111h30"/>
+            <circle cx="88" cy="131" r="2"/>
+          </g>
+          <g stroke="#b7791f" stroke-width="1.6" stroke-linecap="round">
+            <path d="M72 44l-9 28M98 44v28M124 44l9 28"/>
+          </g>
+        </svg>
+      </div>
+    </section>
+
+    <section class="soon">
+      <h2 class="h2">What will show up here</h2>
+      <div class="ghost" aria-hidden="true">
+        <div class="grow"><span class="gmark"></span><span class="gbar" style="width:148px;"></span><span class="gchip"></span><span class="gbtn"></span></div>
+        <div class="grow"><span class="gmark"></span><span class="gbar" style="width:116px;"></span><span class="gchip"></span><span class="gbtn"></span></div>
+      </div>
+      <p class="note" style="margin-top:11px;">Invitations and your own workspaces land as rows here, each with one action. Nothing to do until then.</p>
+    </section>
+
+    <p class="note">Men&#252; ayn&#305; kal&#305;yor &mdash; alt&#305; sayfa da senin, i&#351;letmeden ba&#287;&#305;ms&#305;z. De&#287;i&#351;en tek &#351;ey: &ldquo;Back to&rdquo; ba&#287;lant&#305;s&#305; yok (d&#246;n&#252;lecek yer yok) ve rozetler bo&#351;. Gri kilitli sat&#305;r yok; g&#246;r&#252;nen her sat&#305;r &#231;al&#305;&#351;&#305;yor. Davet geldi&#287;inde Workspaces&#39;ta bir say&#305; belirir ve bu sayfa kendili&#287;inden dolar.</p>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,1093 @@
+<title>Onboarding Documents</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;650;700;750;800&display=swap">
+<style>
+/* Layout: Turkish lab bar on top; behind it the app page (Employees, or Settings > Documents); drawers slide in from the right, below the lab bar. Light only, like the app. */
+:root {
+  color-scheme: light;
+  --bg: #f4f5f3; --surface: #fff; --subtle: #f7f9f8; --hover: #f0f5f2; --border: #e1e7e3; --line: #dce1de; --control: #cbd2ce; --box: #aeb9b4;
+  --text: #24382f; --title: #16211c; --muted: #647168; --label: #424d48; --accent: #256b56; --primary: #286d57; --primary-hover: #205943; --on-primary: #fff;
+  --soft: #e8f2ed; --error: #a53936; --err-soft: #fff0ee; --err-bar: #fff5f3; --err-bar-line: #ecd1cb; --err-bar-text: #a23725;
+  --warn-surface: #fbf6ec; --warn-text: #5f491f; --wait-surface: #eef2f7; --wait-text: #34506f;
+  --rail: #f4f6f4; --rail-on: #dfe9e5; --rail-on-text: #145f4c; --rail-text: #59635f; --scroll-bg: #fafbfa; --foot-bg: #f2f4f2; --foot-line: #d8ddda;
+  --head-row: #f3f5f3; --head-text: #68726e; --avatar: #dfe9e5; --avatar-text: #31594e; --avatar-line: #c6d4ce; --page-line: #d9dfdb; --sub: #56655d;
+  --pill: #e8edeb; --pill-text: #53605b; --pill-active: #dcede5; --pill-active-text: #176048; --pill-invited: #fff0cf; --pill-invited-text: #805915; --pill-saved: #e7e9e8; --pill-saved-text: #626966;
+  --pill-on: #e7f1ed; --pill-on-text: #155f4d; --menu-line: #dfe5e1; --menu-foot: #f5f7f5;
+  --backdrop: rgb(17 24 21 / .42); --shadow: rgb(18 28 24 / .18); --menu-shadow: rgb(11 33 31 / .15);
+  --lab: #fffaf0; --lab-border: #ead9b5;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; font-synthesis: none;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-size: 13px; line-height: 1.5; }
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+:is(button, input, textarea, select, summary):focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+[data-drawer]:focus { outline: none; }
+svg.i { width: var(--s, 16px); height: var(--s, 16px); flex: none; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* lab */
+.lab { background: var(--lab); border-bottom: 1px solid var(--lab-border); padding-block: 12px; padding-inline: 16px; display: grid; gap: 8px; }
+.lab-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+.lab h1 { font-size: 15px; margin: 0; color: var(--title); text-wrap: balance; }
+.lab .label { color: var(--muted); }
+.chip { border: 1px solid var(--box); background: var(--surface); border-radius: 999px; padding: 3px 12px; }
+.chip:hover { background: var(--hover); }
+.chip[aria-pressed="true"] { background: var(--soft); border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.lab p { margin: 0; max-width: 115ch; }
+.lab b { color: var(--title); }
+.lab details summary { cursor: pointer; font-weight: 600; color: var(--title); }
+.lab details ul { margin: 6px 0 0; padding-left: 20px; display: grid; gap: 3px; max-width: 115ch; }
+
+/* shared controls */
+.btn-primary, .btn-secondary { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 12px; font-weight: 650; white-space: nowrap; background: var(--surface); color: var(--text); }
+.btn-secondary:hover:not(:disabled) { background: var(--hover); }
+.btn-secondary:disabled { opacity: .5; }
+.btn-primary { background: var(--primary); border-color: var(--primary); color: var(--on-primary); }
+.btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+.btn-primary:disabled { opacity: .5; }
+.btn-secondary.sm { min-height: 30px; padding: 0 10px; }
+:is(.btn-primary, .btn-secondary) .i { --s: 14px; }
+.iconbtn { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; padding: 0; border: 0; border-radius: 6px; background: transparent; color: var(--label); }
+.iconbtn:hover { background: var(--hover); }
+.linkbtn { border: 0; background: none; color: var(--accent); font-size: 12px; font-weight: 600; padding: 2px 0; text-decoration: underline; text-underline-offset: 2px; white-space: nowrap; }
+.cb { appearance: none; -webkit-appearance: none; display: inline-grid; place-content: center; flex: none; width: 15px; height: 15px; margin: 0; border: 1px solid var(--box); border-radius: 3px; background: var(--surface); cursor: pointer; }
+.cb:checked { background: var(--accent); border-color: var(--accent); }
+.cb:checked::after { content: ""; width: 8px; height: 4px; margin-top: -2px; border: 2px solid var(--on-primary); border-top: 0; border-right: 0; transform: rotate(-45deg); }
+.cb:disabled { cursor: default; opacity: .6; }
+.st { display: inline-flex; align-items: center; padding: 3px 7px; border-radius: 5px; background: var(--subtle); color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.st[data-s="published"], .st.ok { background: var(--soft); color: var(--accent); }
+.st.none { background: var(--warn-surface); color: var(--warn-text); }
+.st.wait { background: var(--wait-surface); color: var(--wait-text); }
+.st.ex { border: 1px dashed var(--box); }
+.tag { display: inline-flex; align-items: center; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--subtle); color: var(--muted); font-size: 11px; font-weight: 600; white-space: nowrap; }
+.tag.hand { border-color: transparent; background: var(--soft); color: var(--accent); }
+.tag.dim { border-style: dashed; font-weight: 500; }
+.pill { display: inline-flex; align-items: center; min-height: 24px; border-radius: 999px; padding: 3px 8px; background: var(--pill); color: var(--pill-text); font-size: 11px; font-weight: 800; white-space: nowrap; }
+.pill.active { background: var(--pill-active); color: var(--pill-active-text); }
+.pill.invited { background: var(--pill-invited); color: var(--pill-invited-text); }
+.pill.saved { background: var(--pill-saved); color: var(--pill-saved-text); }
+.count { display: inline-flex; min-width: 18px; height: 18px; align-items: center; justify-content: center; padding: 0 5px; border-radius: 999px; background: var(--soft); color: var(--accent); font-size: 11px; font-weight: 750; line-height: 1; }
+.lockline { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 12px; }
+.empty { padding: 16px 14px; color: var(--muted); }
+.dmain { min-width: 0; display: grid; gap: 2px; }
+.dmain strong { font-size: 13px; font-weight: 600; color: var(--title); }
+.dname { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.dsub { font-size: 12px; color: var(--muted); }
+
+/* employees page */
+.page { width: min(100% - 32px, 1320px); margin: 0 auto; padding-block: 24px 44px; }
+.ph { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px 24px; margin: 0 0 18px; padding: 18px 0 20px; border-bottom: 1px solid var(--page-line); }
+.ph h2 { margin: 0; color: var(--title); font-size: 34px; font-weight: 650; line-height: 1.15; }
+.ph p { max-width: 620px; margin: 8px 0 0; color: var(--sub); font-size: 12px; }
+.catalog { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.crow { display: grid; grid-template-columns: minmax(0, 1.6fr) minmax(0, 1fr) minmax(0, 1.2fr) 110px; align-items: center; gap: 12px; padding: 0 14px; min-height: 56px; border-bottom: 1px solid var(--border); }
+.crow.docs { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1.4fr) 96px 150px; }
+.crow:last-child { border-bottom: 0; }
+.crow.head { min-height: 40px; background: var(--head-row); color: var(--head-text); font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: .02em; border-radius: 8px 8px 0 0; }
+.crow.item { cursor: pointer; }
+.crow.item:hover { background: var(--hover); }
+.who { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.stack { display: grid; min-width: 0; }
+.av { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border: 1px solid var(--avatar-line); border-radius: 50%; background: var(--avatar); color: var(--avatar-text); font-size: 13px; font-weight: 800; }
+.mk { display: grid; place-items: center; width: 32px; height: 32px; flex: none; border-radius: 6px; background: var(--soft); color: var(--accent); }
+.rlink, .rname { justify-self: start; max-width: 100%; border: 0; background: none; padding: 0; font-size: 13px; font-weight: 600; color: var(--title); text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cell { color: var(--muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* settings page */
+.settings { display: grid; grid-template-columns: 224px minmax(0, 1fr); min-height: 80vh; background: var(--bg); }
+.srail { display: grid; align-content: start; gap: 18px; padding: 18px 10px; background: var(--surface); border-right: 1px solid var(--page-line); }
+.stitle { display: flex; align-items: center; gap: 9px; min-height: 38px; padding: 0 10px; color: var(--title); font-size: 14px; font-weight: 700; }
+.sgroup { display: grid; gap: 2px; }
+.slabel { margin: 0 10px 6px; color: var(--muted); font-size: 10px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+.snav { display: flex; align-items: center; gap: 9px; height: 40px; padding: 0 10px; border-radius: 6px; color: var(--rail-text); font-size: 13px; font-weight: 700; }
+.snav.on { background: var(--soft); color: var(--rail-on-text); }
+.spage { width: min(100% - 32px, 1100px); min-width: 0; margin: 0 auto; padding-block: 30px 60px; }
+.sh { display: grid; grid-template-columns: 42px minmax(0, 1fr); gap: 14px; align-items: start; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 1px solid var(--page-line); }
+.sicon { display: grid; place-items: center; width: 42px; height: 42px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--primary); }
+.sh h1 { margin: 0; color: var(--title); font-size: 28px; font-weight: 800; line-height: 1.15; }
+.sh p { margin: 6px 0 0; color: var(--muted); font-size: 13px; }
+.toolbar { margin: 0 0 16px; }
+.stabs { display: inline-flex; flex-wrap: wrap; gap: 2px; padding: 3px; border: 1px solid var(--line); border-radius: 6px; background: var(--hover); }
+.stabs button { height: 32px; border: 0; border-radius: 4px; padding: 0 11px; background: transparent; color: var(--rail-text); font-size: 12px; font-weight: 750; }
+.stabs button[aria-selected="true"] { background: var(--surface); color: var(--title); box-shadow: 0 1px 2px rgb(22 35 30 / 12%); }
+
+/* drawer shell */
+.layer { position: fixed; z-index: 40; left: 0; right: 0; bottom: 0; top: var(--lab-h, 0px); }
+.backdrop { position: absolute; inset: 0; width: 100%; border: 0; padding: 0; background: var(--backdrop); cursor: default; }
+.drawer { position: absolute; top: 0; right: 0; height: 100%; display: flex; flex-direction: column; background: var(--surface); box-shadow: -16px 0 42px var(--shadow); }
+.fresh .backdrop { animation: fade .16s ease-out; }
+.fresh .drawer { animation: enter .16s ease-out; }
+@keyframes fade { from { opacity: 0; } }
+@keyframes enter { from { transform: translateX(32px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .fresh .backdrop, .fresh .drawer, .del[data-c="true"] { animation: none; } }
+.edrawer { width: min(100%, 880px); }
+.emain { display: flex; flex: 1; min-height: 0; }
+.erail { display: flex; flex: 0 0 236px; flex-direction: column; border-right: 1px solid var(--line); background: var(--rail); }
+.eident { display: flex; flex-direction: column; align-items: center; min-height: 128px; padding: 20px 16px; border-bottom: 1px solid var(--line); text-align: center; }
+.avatar { display: grid; place-items: center; width: 58px; height: 58px; margin-bottom: 12px; border: 1px solid var(--avatar-line); border-radius: 50%; background: var(--avatar); color: var(--avatar-text); font-size: 20px; font-weight: 800; }
+.eident strong { max-width: 100%; overflow: hidden; margin-bottom: 4px; color: var(--title); font-size: 15px; text-overflow: ellipsis; white-space: nowrap; }
+.eident .code { margin-bottom: 10px; color: var(--muted); font-size: 11px; }
+.esteps { display: grid; gap: 2px; padding: 12px 8px; }
+.esteps button, .msteps button { display: flex; align-items: center; gap: 10px; border: 0; background: transparent; color: var(--rail-text); font-size: 13px; font-weight: 700; text-align: left; }
+.esteps button { width: 100%; height: 38px; padding: 0 10px; border-radius: 5px; }
+.esteps button:hover:not(:disabled) { background: var(--hover); }
+.esteps button[aria-current="step"] { background: var(--rail-on); color: var(--rail-on-text); }
+.esteps button:disabled, .msteps button:disabled { opacity: .45; }
+.esteps button[data-gs] { position: relative; margin-top: 13px; }
+.esteps button[data-gs]::before { content: ""; position: absolute; top: -7px; left: 0; right: 0; border-top: 1px solid var(--line); }
+.esteps .count { margin-left: auto; }
+.ecol { display: flex; flex: 1; min-width: 0; flex-direction: column; }
+.ehead { display: flex; flex: 0 0 56px; align-items: center; justify-content: space-between; gap: 16px; padding: 8px 22px 8px 26px; border-bottom: 1px solid var(--line); }
+.ehead h2 { margin: 0; color: var(--title); font-size: 20px; font-weight: 700; }
+.emob { display: none; }
+.escroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 24px 26px 36px; background: var(--scroll-bg); }
+.derr { margin: 0; padding: 8px 24px; border-top: 1px solid var(--err-bar-line); background: var(--err-bar); color: var(--err-bar-text); font-size: 12px; }
+.efoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; min-height: 62px; padding: 10px 20px; border-top: 1px solid var(--foot-line); background: var(--foot-bg); }
+.acts { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-left: auto; }
+.role select { height: 36px; min-width: 150px; border: 1px solid var(--control); border-radius: 5px; padding: 0 10px; background: var(--surface); font-size: 13px; }
+/* Mert 2026-10-04: no dark scrollbars inside drawers; the panes still scroll. */
+.escroll, .cscroll, .msteps { scrollbar-width: none; }
+.escroll::-webkit-scrollbar, .cscroll::-webkit-scrollbar, .msteps::-webkit-scrollbar { display: none; }
+
+/* employee fields and pickers (as on main) */
+.groups { display: grid; gap: 18px; }
+.pgroup { display: grid; gap: 12px; padding-bottom: 18px; border-bottom: 1px solid var(--line); }
+.pgroup:last-child { padding-bottom: 0; border-bottom: 0; }
+.pgroup h3 { margin: 0; color: var(--title); font-size: 14px; }
+.fgrid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.ngrid { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .7fr) minmax(0, 1fr); gap: inherit; }
+.full { grid-column: 1 / -1; }
+.efield { display: grid; align-content: start; gap: 7px; color: var(--label); font-size: 12px; font-weight: 750; }
+.efield :is(input, select, textarea) { width: 100%; min-height: 40px; border: 1px solid var(--control); border-radius: 5px; padding: 0 11px; background: var(--surface); color: var(--title); font-size: 14px; font-weight: 400; }
+.efield textarea { min-height: 64px; padding: 8px 11px; resize: vertical; display: block; }
+.efield ::placeholder { color: var(--muted); }
+.efield small { margin-left: 8px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.efield small.opt { margin-left: 6px; font-size: 11.5px; text-transform: lowercase; }
+.stack2 { display: grid; gap: 20px; }
+.apick { min-width: 0; margin: 0; border: 1px solid var(--line); border-radius: 6px; padding: 10px; background: var(--surface); }
+.apick legend { padding: 0 5px; color: var(--label); font-size: 12px; font-weight: 800; }
+.apick legend small { margin-left: 8px; color: var(--muted); font-size: 12px; font-weight: 400; }
+.arow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; min-height: 38px; padding: 4px 7px; border-bottom: 1px solid var(--border); }
+.arow:last-of-type { border-bottom: 0; }
+.arow label { display: flex; align-items: center; gap: 9px; font-size: 13px; cursor: pointer; }
+.arow.off label { color: var(--muted); cursor: default; }
+.arow .primary { color: var(--head-text); font-size: 11px; gap: 5px; }
+.arow .primary input { margin: 0; accent-color: var(--accent); }
+.agroup { display: block; padding: 14px 7px 4px; color: var(--muted); font-size: 12px; font-weight: 700; }
+legend + .agroup { padding-top: 4px; }
+.apick > p { margin: 8px; color: var(--muted); font-size: 12px; }
+.isum { display: flex; align-items: center; gap: 12px; margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--line); color: var(--label); }
+.isum div { display: grid; gap: 2px; min-width: 0; }
+.isum strong { font-size: 14px; color: var(--title); overflow-wrap: anywhere; }
+.isum span { font-size: 12px; color: var(--muted); }
+
+/* Documents step */
+.lead { margin: 0 0 16px; color: var(--title); font-size: 16px; font-weight: 650; text-wrap: balance; }
+.dgroup { display: grid; gap: 8px; margin-bottom: 18px; }
+.gh h4 { margin: 0; color: var(--title); font-size: 13px; font-weight: 700; }
+.gh p { margin: 2px 0 0; max-width: 72ch; color: var(--muted); font-size: 12px; }
+.dlist { border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.drow { display: grid; grid-template-columns: 15px minmax(0, 1fr) auto; align-items: center; gap: 4px 12px; padding: 10px 12px; border-top: 1px solid var(--border); }
+.drow:first-child { border-top: 0; }
+label.drow { cursor: pointer; }
+label.drow:hover { background: var(--hover); }
+.drow.off .dname strong { color: var(--muted); font-weight: 500; }
+.reason { grid-column: 2 / -1; display: grid; gap: 8px; margin-top: 6px; }
+.rbtns { display: flex; justify-content: flex-end; gap: 8px; }
+.gtoggle { display: inline-flex; align-items: center; gap: 6px; justify-self: start; border: 0; background: none; padding: 4px 0; color: var(--title); font-size: 13px; font-weight: 700; }
+.gtoggle[aria-expanded="false"] .i { transform: rotate(-90deg); }
+.faint { margin: 0 0 10px; color: var(--muted); font-size: 11.5px; font-style: italic; }
+.note { margin: 0; padding-left: 10px; border-left: 2px solid var(--border); color: var(--muted); font-size: 12px; }
+
+/* person > Documents */
+.dtop { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 12px; margin-bottom: 12px; }
+.dsum { margin: 0; max-width: 62ch; color: var(--text); font-size: 12.5px; }
+.askp { margin-bottom: 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); box-shadow: 0 6px 18px var(--menu-shadow); }
+.askrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 9px 12px; border-top: 1px solid var(--border); }
+.askrow:first-child { border-top: 0; }
+.pad { margin: 0; padding: 12px; }
+.ptable { border: 1px solid var(--line); border-radius: 7px; background: var(--surface); }
+.prow2 { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1.7fr) auto; align-items: center; gap: 8px 14px; min-height: 58px; padding: 9px 14px; border-top: 1px solid var(--border); }
+.prow2.head { min-height: 40px; border-top: 0; border-radius: 7px 7px 0 0; background: var(--head-row); color: var(--head-text); font-size: 11px; font-weight: 800; letter-spacing: .02em; text-transform: uppercase; }
+.tst { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; min-width: 0; }
+.exline { color: var(--muted); font-size: 12px; overflow-wrap: anywhere; }
+.exnote { margin: 0; padding-left: 10px; border-left: 2px solid var(--border); color: var(--muted); font-size: 12px; }
+.del { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 9px; border: 1px solid transparent; border-radius: 6px; background: transparent; color: var(--error); font-size: 12px; font-weight: 600; white-space: nowrap; }
+.del:hover { background: var(--err-soft); border-color: color-mix(in srgb, var(--error) 18%, transparent); }
+.del[data-c="true"] { border-color: color-mix(in srgb, var(--error) 40%, var(--border)); background: color-mix(in srgb, var(--error) 12%, var(--surface)); animation: pulse .42s ease; }
+@keyframes pulse { 45% { transform: scale(1.04); } }
+.impact { display: grid; gap: 6px; margin-top: 24px; padding: 12px 14px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); }
+.impact h3 { margin: 0; color: var(--title); font-size: 13px; font-weight: 700; }
+.impact ul { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.impact li { font-size: 12.5px; font-weight: 600; }
+.impact .plus { color: var(--accent); }
+.impact .minus { color: var(--warn-text); }
+.impact p { margin: 0; font-size: 12px; }
+.impact .muted, .preview .muted { color: var(--muted); }
+
+/* Settings > Documents drawer (CatalogDrawer) */
+.cdrawer { width: min(680px, 100%); box-shadow: -12px 0 40px var(--shadow); }
+.ctitle { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; border-bottom: 1px solid var(--border); }
+.ctitle h2 { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin: 0 0 4px; color: var(--title); font-size: 16px; font-weight: 650; }
+.ctitle p { margin: 0; color: var(--muted); font-size: 12px; }
+.cscroll { display: grid; flex: 1; min-height: 0; align-content: start; gap: 16px; overflow-y: auto; overscroll-behavior: contain; padding: 18px 20px; }
+.jf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 16px; min-width: 0; margin: 0; padding: 0; border: 0; }
+.jlabel { margin: 0; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.jfield { display: grid; gap: 5px; min-width: 0; }
+.jfield > span { color: var(--text); font-size: 11px; font-weight: 700; }
+.jfield :is(input, select, textarea) { width: 100%; min-height: 34px; padding: 6px 9px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--text); font-size: 13px; }
+.jfield textarea { resize: none; display: block; }
+.jf :is(input, select, textarea):disabled { background: var(--subtle); color: var(--muted); opacity: 1; }
+.choice { display: flex; align-items: center; gap: 8px; min-height: 30px; font-size: 12px; }
+.jf:disabled .choice { color: var(--muted); }
+.whofs { display: grid; gap: 10px; min-width: 0; margin: 0; padding: 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--border)); border-radius: 8px; background: var(--surface); }
+.whofs legend { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 6px; color: var(--muted); font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.whofs legend .tag { letter-spacing: 0; text-transform: none; }
+.hint { margin: 0; color: var(--muted); font-size: 11.5px; line-height: 1.45; }
+.flt { display: grid; justify-items: start; }
+.fpill { display: inline-flex; align-items: center; gap: 6px; padding: 8px 10px; border: 1px solid var(--border); border-radius: 5px; background: var(--surface); color: var(--title); font-size: 12px; font-weight: 750; }
+.fpill.on { background: var(--pill-on); color: var(--pill-on-text); }
+.fpill[aria-expanded="true"] .i { transform: rotate(180deg); }
+.fpill:disabled { opacity: .6; }
+.fmenu { width: 100%; margin-top: 6px; border: 1px solid var(--menu-line); border-radius: 5px; background: var(--surface); box-shadow: 0 8px 22px var(--menu-shadow); }
+.fmh { display: flex; align-items: baseline; gap: 8px; padding: 10px 13px; border-bottom: 1px solid var(--menu-line); }
+.fmh strong { font-size: 13px; font-weight: 600; }
+.fmh span { color: var(--muted); font-size: 10.5px; }
+.fopt { display: flex; align-items: center; gap: 8px; min-height: 32px; padding: 5px 13px; font-size: 12px; cursor: pointer; }
+.fopt:hover { background: var(--menu-foot); }
+.fopt.all { font-weight: 600; border-bottom: 1px solid var(--menu-line); }
+.fmf { padding: 8px 13px; border-top: 1px solid var(--menu-line); background: var(--menu-foot); color: var(--muted); font-size: 10.5px; }
+.cover { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--muted); font-size: 12px; }
+.preview { display: grid; gap: 6px; padding: 10px 12px; border: 1px solid color-mix(in srgb, var(--accent) 30%, var(--border)); border-radius: 6px; background: var(--subtle); }
+.preview p { margin: 0; font-size: 12px; }
+.preview .plus b { color: var(--accent); }
+.preview .minus b { color: var(--warn-text); }
+.cfoot { display: flex; justify-content: flex-end; gap: 8px; padding: 12px 16px; border-top: 1px solid var(--border); background: var(--surface); }
+
+/* dialog + toast */
+.scrim { position: absolute; inset: 0; z-index: 5; display: grid; place-items: center; padding: 16px; background: var(--backdrop); }
+.dialog { display: grid; gap: 10px; width: 100%; max-width: 380px; padding: 18px; border-radius: 10px; background: var(--surface); box-shadow: 0 16px 40px var(--shadow); }
+.dialog h4 { margin: 0; color: var(--title); font-size: 15px; font-weight: 650; }
+.dialog p { margin: 0; color: var(--muted); }
+.dialog .row { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.toast { position: fixed; z-index: 60; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 9px 16px; border-radius: 8px; background: var(--title); color: var(--on-primary); font-size: 12.5px; }
+
+@media (max-width: 760px) {
+  .settings { grid-template-columns: 1fr; }
+  .srail { display: none; }
+}
+@media (max-width: 720px) {
+  .crow, .crow.docs { grid-template-columns: minmax(0, 1fr) auto; }
+  .c-loc, .c-job { display: none; }
+  .ph h2 { font-size: 30px; }
+}
+@media (max-width: 640px) {
+  .layer { top: 0; }
+  .erail, .ehead { display: none; }
+  .emob { display: grid; grid-template-columns: minmax(0, 1fr) 36px; align-items: center; gap: 8px; min-height: 56px; padding: 6px 12px; border-bottom: 1px solid var(--line); }
+  .msteps { display: flex; gap: 4px; min-width: 0; overflow-x: auto; }
+  .msteps button { gap: 6px; min-height: 44px; padding: 8px; border-bottom: 2px solid transparent; white-space: nowrap; }
+  .msteps button[aria-current="step"] { border-bottom-color: currentColor; color: var(--title); }
+  .escroll { padding: 16px; }
+  .fgrid, .ngrid, .jf { grid-template-columns: 1fr; }
+  .efield :is(input, select, textarea) { min-height: 44px; font-size: 16px; }
+  .efoot { padding: 9px 12px; }
+  .role, .role select { width: 100%; }
+  .acts { width: 100%; }
+  .acts > button { flex: 1; }
+  .prow2 { grid-template-columns: minmax(0, 1fr) auto; }
+  .prow2 .tst { grid-column: 1 / -1; grid-row: 2; }
+  .prow2 .tact { grid-column: 2; grid-row: 1; }
+  .prow2.head { display: none; }
+  .prow2:nth-child(2) { border-top: 0; }
+  .cscroll { padding: 12px; }
+  .cfoot button { flex: 1; min-height: 44px; }
+}
+</style>
+
+<section class="lab" id="lab" aria-label="Deneme alanı">
+  <div class="lab-row"><h1>Onboarding belgeleri: karma akış (Mert, 2026-10-04)</h1></div>
+  <div class="lab-row" role="group" aria-label="Ekran">
+    <span class="label">Ekran</span>
+    <button class="chip" data-act="labCreate" data-scr="create">1 · Add employee: Ayşe</button>
+    <button class="chip" data-act="labDoc" data-scr="doc">2 · Settings → Documents → Food Handler Card</button>
+    <button class="chip" data-act="labPerson" data-scr="person">3 · KadıköyGarson1 → Documents</button>
+    <button class="chip" data-act="labBartender">KadıköyGarson1'e Bartender işi ekle</button>
+    <button class="chip" data-act="reset">Başa dön</button>
+  </div>
+  <div class="lab-row" role="group" aria-label="Kim bakıyor">
+    <span class="label">Kim bakıyor</span>
+    <button class="chip" data-act="viewer" data-v="owner">Owner1 (owner)</button>
+    <button class="chip" data-act="viewer" data-v="admin">Admin1 (admin)</button>
+    <button class="chip" data-act="viewer" data-v="mgr1">KadıköyMüdür1 (manager)</button>
+  </div>
+  <div class="lab-row" role="group" aria-label="Workspace ayarı">
+    <span class="label">Workspace ayarı · Onboarding completes</span>
+    <button class="chip" data-act="setting" data-v="auto">Automatically</button>
+    <button class="chip" data-act="setting" data-v="manager">After a manager approves</button>
+  </div>
+  <p><b>Dene:</b> Employment adımında <b>Bartender</b>'ı işaretle; Documents sayısı 3'ten 4'e çıkar. Documents adımında Food Handler Card için <b>Not needed</b>'a bas, gerekçe yaz, sonra pencereyi kapatmayı dene. KadıköyMüdür1'e geçip davet rolünü <b>Manager</b> yap: Not needed bağlantıları kaybolur, kaydedilmiş muafiyet de uygulanmaz (Employee'ye dönünce geri gelir). <b>Invite</b>'a basınca Ayşe'nin belge listesi açılır. 2'de Jobs'a <b>Host</b> ekle; önizleme kimden hemen istendiğini gösterir. Workspace ayarını değiştirince "Needed before Ayşe can start" altındaki cümle değişir.</p>
+  <details>
+    <summary>Bu sayfadaki kurallar (Mert, 2026-10-04)</summary>
+    <ul>
+      <li><b>Belgeler:</b> Food Handler Card (Required; Server, Bartender, Line Cook; müdür onayı; son kullanma takibi; 7 gün). Alcohol server permit (Required; Bartender; müdür onayı; 14 gün). Employee handbook (Required; herkes; onay yok, yüklemek yeter). Allergen training certificate (Conditional, işe başladıktan sonra 30 gün içinde; Back of house; müdür onayı). Uniform policy (Optional; herkes). Tip pooling policy taslak: yayınlanana kadar kimseden istenmez. Federal vergi ve çalışma uygunluğu formları listede yok.</li>
+      <li><b>Ne zaman başlar:</b> Required belge yüklenene kadar kişinin başlamasını tutar; belgede "Manager review required" varsa müdür onaylayana kadar. Workspace ayarı "After a manager approves" ise müdür ayrıca onboarding'in tamamını onaylar. Davet eden bunu "Needed before Ayşe can start" başlığının altında tek cümleyle görür; her Required satırında "Upload" ya da "Upload + manager review" yazar.</li>
+      <li><b>Davet:</b> "Documents (N)" kişiden istenecek belge sayısını canlı gösterir; iş ya da lokasyon değişince sayı da değişir. Invite her adımda var: Documents hiç açılmadan davet edilirse kural olduğu gibi uygulanır.</li>
+      <li><b>Not needed:</b> Owner1 ve Admin1 her zaman kullanır. KadıköyMüdür1 yalnız Kadıköy'e Employee rolüyle davet ettiği kişi için kullanır; Manager rolüyle davette yalnız admin ve owner. ErenköyMüdür1 Kadıköy'e hiç davet edemez. Gerekçe zorunlu. Kişinin kartında "Exempt · gerekçe · by kim · at invite" olarak durur; Remove exemption iki tıkla kalkar.</li>
+      <li><b>Can start without:</b> Conditional ve Optional belgeler işaretli gelir, tek tıkla çıkarılır. Optional çıkarılınca sessizce "Skipped at invite" kaydı düşer; sonra kişinin kartından "Ask for a document" ile istenebilir.</li>
+      <li><b>Not for Ayşe:</b> kişiye uymayan yayındaki belgeler, nedeniyle ("Bartender only"). "Ask anyway" belgeyi Required olarak yukarı taşır, "Added by" etiketiyle.</li>
+      <li><b>Taslak:</b> hiç istenmez. Yayın yetkisi olan (Owner1, Admin1) Documents adımında "1 draft isn't asked until published" satırını görür.</li>
+      <li><b>Yayındaki belge:</b> içerik kilitli, yalnız "Who needs it" değişir. Değişince önizleme gelir: kimden hemen isteniyor (son tarih bugünden sayılır), kimden artık istenmiyor (yüklediği dosya kalır). Kimsenin mevcut son tarihi değişmez. Ayar, davet ile katılma arasında değişirse kişi güncel listeyi alır.</li>
+      <li><b>Kapatma:</b> pencere yalnız yazılmış bir gerekçe kaybolacaksa "Discard / Keep editing" diye sorar, yoksa sessizce kapanır (P26).</li>
+    </ul>
+  </details>
+  <details>
+    <summary>Açık konular (2)</summary>
+    <ul>
+      <li>Müdürün belge izni (BL-560) bu akışın ön koşulu; KadıköyMüdür1'in burada yaptıkları ona dayanıyor.</li>
+      <li>Raftaki soru cevaplandı: kişinin ne zaman başlayabileceği workspace ayarına ve belgenin "Manager review required" ayarına göre.</li>
+    </ul>
+  </details>
+</section>
+<div id="page"></div>
+<div id="drawerRoot"></div>
+<div class="toast" id="toast" hidden role="status"></div>
+
+<script>
+const ICON = {
+  user: '<circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/>',
+  brief: '<path d="M16 20V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/><rect width="20" height="14" x="2" y="6" rx="2"/>',
+  file: '<path d="M15 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7Z"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="M16 13H8"/><path d="M16 17H8"/><path d="M10 9H8"/>',
+  cal: '<path d="M21 7.5V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h3.5"/><path d="M16 2v4"/><path d="M8 2v4"/><path d="M3 10h5"/><path d="M17.5 17.5 16 16.3V14"/><circle cx="16" cy="16" r="6"/>',
+  key: '<path d="M2.586 17.414A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814a6.5 6.5 0 1 0-4-4z"/><circle cx="16.5" cy="7.5" r=".5"/>',
+  hist: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/>',
+  x: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',
+  mail: '<path d="M22 13V6a2 2 0 0 0-2-2H4a2 2 0 0 0-2 2v12c0 1.1.9 2 2 2h8"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/><path d="M19 16v6"/><path d="M16 19h6"/>',
+  arrowl: '<path d="M19 12H5"/><path d="m12 19-7-7 7-7"/>',
+  arrowr: '<path d="M5 12h14"/><path d="m12 5 7 7-7 7"/>',
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',
+  lock: '<rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  down: '<path d="m6 9 6 6 6-6"/>',
+  users: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/>',
+  sliders: '<path d="M21 4h-7"/><path d="M10 4H3"/><path d="M21 12h-9"/><path d="M8 12H3"/><path d="M21 20h-5"/><path d="M12 20H3"/><path d="M14 2v4"/><path d="M8 10v4"/><path d="M16 18v4"/>',
+  shield: '<path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/>',
+  scroll: '<path d="M15 12h-5"/><path d="M15 8h-5"/><path d="M19 17V5a2 2 0 0 0-2-2H4"/><path d="M8 21h12a2 2 0 0 0 2-2v-1a1 1 0 0 0-1-1H11a1 1 0 0 0-1 1v1a2 2 0 1 1-4 0V5a2 2 0 1 0-4 0v2a1 1 0 0 0 1 1h3"/>',
+  pin: '<path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/>',
+};
+const ic = (n, s) => `<svg class="i" viewBox="0 0 24 24"${s ? ` style="--s:${s}px"` : ""} aria-hidden="true">${ICON[n]}</svg>`;
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const $ = (id) => document.getElementById(id);
+const pl = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+const cap = (s) => s[0].toUpperCase() + s.slice(1);
+const NOW = new Date();
+const addDays = (n) => { const d = new Date(NOW); d.setDate(d.getDate() + n); return d; };
+const fmt = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric" });
+const fmtLong = (d) => new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/* ---------- sample workspace ---------- */
+const LOCS = ["Kadıköy", "Erenköy"];
+const DEPTS = ["Front of house", "Back of house", "Management"];
+const JOB_DEPT = { Server: "Front of house", Bartender: "Front of house", Host: "Front of house", "Line Cook": "Back of house", Manager: "Management" };
+const JOBS = Object.keys(JOB_DEPT);
+const OPTS = { locs: LOCS, depts: DEPTS, jobs: JOBS };
+const ROLE = { owner: "Owner", admin: "Admin", manager: "Manager", employee: "Employee" };
+const PILL = { active: "Active", invited: "Invited", saved: "Not invited" };
+const VIEWERS = { owner: { role: "owner", locs: LOCS }, admin: { role: "admin", locs: LOCS }, mgr1: { role: "manager", locs: ["Kadıköy"] } };
+
+function seedPeople() {
+  const P = (id, name, role, locs, jobs, docs = {}) => ({ id, name, role, locs, primary: locs[0], jobs, docs, status: "active" });
+  const up = () => ({ st: "uploaded" });
+  return [
+    P("owner", "Owner1", "owner", LOCS, []),
+    P("admin", "Admin1", "admin", LOCS, ["Manager"], { hb: up() }),
+    P("mgr1", "KadıköyMüdür1", "manager", ["Kadıköy"], ["Manager"], { hb: up() }),
+    P("mgr2", "ErenköyMüdür1", "manager", ["Erenköy"], ["Manager"], { hb: up() }),
+    P("k1", "KadıköyGarson1", "employee", ["Kadıköy"], ["Server"], { fh: { st: "waiting" }, hb: { st: "none", ex: { reason: "Signed the paper handbook at hire", by: "mgr1", atInvite: true } }, uni: { st: "none" }, alg: { st: "approved", added: "mgr1" } }),
+    P("k2", "KadıköyGarson2", "employee", ["Kadıköy"], ["Server"], { fh: { st: "approved" }, hb: up() }),
+    P("k3", "KadıköyGarson3", "employee", ["Kadıköy"], ["Server"], { fh: { st: "none", due: addDays(3) }, hb: up() }),
+    P("k4", "KadıköyBarmen1", "employee", ["Kadıköy"], ["Bartender"], { fh: { st: "approved" }, alc: { st: "approved" }, hb: up() }),
+    P("k5", "KadıköyHostes1", "employee", ["Kadıköy"], ["Host"], { hb: up() }),
+    P("k6", "KadıköyAşçı1", "employee", ["Kadıköy"], ["Line Cook"], { fh: { st: "approved" }, alg: { st: "approved" }, hb: up() }),
+    P("k7", "KadıköyAşçı2", "employee", ["Kadıköy"], ["Line Cook"], { fh: { st: "waiting" }, alg: { st: "none", due: addDays(12) }, hb: up() }),
+    P("e1", "ErenköyGarson1", "employee", ["Erenköy"], ["Server"], { fh: { st: "approved" }, hb: up() }),
+    P("e2", "ErenköyBarmen1", "employee", ["Erenköy"], ["Bartender"], { fh: { st: "approved" }, alc: { st: "waiting" }, hb: up() }),
+  ];
+}
+// "*" = All (and future options); a list = only these. Empty "Who needs it" is Everyone.
+const W = (locs = "*", depts = "*", jobs = "*") => ({ locs, depts, jobs });
+function seedDocs() {
+  const D = (id, name, desc, req, who, review, days, extra = {}) => ({ id, name, desc, req, who, review, days, expiry: false, status: "published", published: addDays(-30), ...extra });
+  return [
+    D("fh", "Food Handler Card", "Upload a valid food handler card.", "required", W("*", "*", ["Server", "Bartender", "Line Cook"]), true, 7, { expiry: true, published: addDays(-41) }),
+    D("alc", "Alcohol server permit", "Upload your state alcohol server permit.", "required", W("*", "*", ["Bartender"]), true, 14, { published: addDays(-41) }),
+    D("hb", "Employee handbook", "Read the handbook and upload the signed last page.", "required", W(), false, 7, { published: addDays(-60) }),
+    D("alg", "Allergen training certificate", "Upload the certificate from your allergen awareness course.", "conditional", W("*", ["Back of house"]), true, 30, { published: addDays(-20) }),
+    D("uni", "Uniform policy", "Read the uniform policy and upload the signed copy.", "optional", W(), false, 0, { published: addDays(-12) }),
+    D("tip", "Tip pooling policy", "How tips are pooled and shared each shift.", "required", W("*", ["Front of house"]), false, 7, { status: "draft", published: null }),
+  ];
+}
+
+// ponytail: one state object and a full re-render on every change; fine for a dozen rows, keyed updates only if this grows.
+const S = {};
+function initial(keep) {
+  return { viewer: keep ? S.viewer : "owner", setting: keep ? S.setting : "auto", page: "employees", drawer: null, c: null, pid: null, psec: "documents", pd: null,
+    did: null, who: null, flt: null, askOpen: false, stab: "all", armed: null, dialog: false, fresh: false, af: null, ret: null, sk: "", seq: 0, people: seedPeople(), docs: seedDocs() };
+}
+
+/* ---------- rules ---------- */
+const V = () => VIEWERS[S.viewer];
+const isMgrV = () => V().role === "manager";
+const canPublish = () => !isMgrV();
+const sees = (p) => !isMgrV() || p.locs.some((l) => V().locs.includes(l));
+// Owner and admin always; a manager only for an Employee-role person at their own locations.
+const canExempt = (t) => !isMgrV() || (t.role === "employee" && t.locs.length > 0 && t.locs.every((l) => V().locs.includes(l)));
+const pubDocs = () => S.docs.filter((d) => d.status === "published");
+const doc = (id) => S.docs.find((d) => d.id === id);
+const person = () => S.people.find((p) => p.id === S.pid);
+const nameOf = (id) => (S.people.find((p) => p.id === id) || {}).name || id;
+const firstOf = (p) => p.first || p.name.split(" ")[0];
+const assignOf = (p) => ({ locs: [...p.locs], primary: p.primary, jobs: [...p.jobs] });
+const sameArr = (a, b) => a.length === b.length && a.every((x, i) => x === b[i]);
+const sameW = (a, b) => ["locs", "depts", "jobs"].every((k) => (a[k] === "*" || b[k] === "*" ? a[k] === b[k] : sameArr(a[k], b[k])));
+const cloneW = (w) => Object.fromEntries(Object.entries(w).map(([k, v]) => [k, v === "*" ? "*" : [...v]]));
+const hit = (sel, vals) => sel === "*" || vals.some((v) => sel.includes(v));
+// Locations, departments and jobs must match together; a job carries its own department.
+function matches(d, t) {
+  if (t.role === "owner") return false; // the owner is never asked
+  const w = d.who;
+  if (!hit(w.locs, t.locs)) return false;
+  if (w.depts === "*" && w.jobs === "*") return true;
+  return t.jobs.some((j) => hit(w.depts, [JOB_DEPT[j]]) && hit(w.jobs, [j]));
+}
+const whoText = (w) => ["locs", "depts", "jobs"].filter((k) => w[k] !== "*").map((k) => w[k].join(", ")).join(" · ") || "Everyone";
+function why(d, t) {
+  const w = d.who, parts = [];
+  if (w.locs !== "*") parts.push(t.locs.filter((l) => w.locs.includes(l)).join(", "));
+  if (w.depts !== "*") parts.push([...new Set(t.jobs.map((j) => JOB_DEPT[j]))].filter((x) => w.depts.includes(x)).join(", "));
+  if (w.jobs !== "*") parts.push(t.jobs.filter((j) => w.jobs.includes(j)).join(", "));
+  return parts.filter(Boolean).join(" · ") || "Everyone";
+}
+function whyNot(d, t) {
+  const w = d.who, miss = (sel, vals) => sel !== "*" && !vals.some((v) => sel.includes(v)), parts = [];
+  if (miss(w.locs, t.locs)) parts.push(w.locs.join(", "));
+  if (miss(w.depts, t.jobs.map((j) => JOB_DEPT[j]))) parts.push(w.depts.join(", "));
+  if (miss(w.jobs, t.jobs)) parts.push(w.jobs.join(", "));
+  return parts.length ? parts.join(" · ") + " only" : "Not a match";
+}
+const workLabel = (d) => (d.review ? "Upload + manager review" : "Upload");
+// A person's list is worked out from today's document settings plus what was decided for them by hand.
+function rowsFor(p, t) {
+  const who = { ...t, role: p.role };
+  return pubDocs().map((d) => {
+    const r = p.docs[d.id] || {}, m = matches(d, who);
+    const kind = r.added ? "asked" : m && r.ex ? "exempt" : m && !r.skipped ? "asked" : r.st && r.st !== "none" ? "onfile" : null;
+    return kind && { d, r, kind };
+  }).filter(Boolean);
+}
+const coverage = (d, who) => S.people.filter((p) => { const r = p.docs[d.id] || {}; return !r.added && !r.ex && !r.skipped && matches({ ...d, who }, p); });
+// The app doesn't know anyone's pronouns, so the copy uses the person's name.
+const startRule = (nm) => (S.setting === "auto"
+  ? `${nm} can start once each of these is uploaded, and approved if it needs a manager review.`
+  : `${nm} can start once each of these is uploaded, approved if it needs a manager review, and a manager approves the onboarding.`);
+function canStart(rows) {
+  const req = rows.filter((x) => x.kind === "asked" && (x.r.added || x.d.req === "required"));
+  const n = req.length, rv = req.filter((x) => x.d.review).length, mgr = S.setting === "manager";
+  if (!n) return mgr ? "can start once a manager approves the onboarding." : "can start as soon as the invite is accepted.";
+  return `can start once ${pl(n, "required document is", "required documents are")} uploaded${rv ? ` (${rv} also approved by a manager)` : ""}${mgr ? ", and a manager approves the onboarding" : ""}.`;
+}
+
+/* ---------- Add employee: the Documents step ---------- */
+function newDraft() {
+  return { step: "profile", first: "Ayşe", middle: "", last: "Yılmaz", email: "ayse@example.com", role: "employee", locs: ["Kadıköy"], primary: "Kadıköy", jobs: ["Server"],
+    ex: {}, exOpen: null, exText: "", unticked: [], anyway: {}, notForOpen: false, err: "" };
+}
+function groups() {
+  const c = S.c, t = { locs: c.locs, jobs: c.jobs, role: c.role }, need = [], without = [], notFor = [];
+  pubDocs().forEach((d) => {
+    if (c.anyway[d.id]) need.push({ d, added: c.anyway[d.id] });
+    else if (!matches(d, t)) notFor.push({ d });
+    else (d.req === "required" ? need : without).push({ d });
+  });
+  // A viewer who may not exempt this person can't keep an exemption either (e.g. a manager switching the invite role to Manager).
+  const may = canExempt(t), ex = may ? c.ex : {};
+  const openOk = may && need.some((x) => x.d.id === c.exOpen && !x.added);
+  return { t, need, without, notFor, openOk, may, ex };
+}
+const askCount = (g) => g.need.filter((x) => x.added || !g.ex[x.d.id]).length + g.without.filter((x) => !S.c.unticked.includes(x.d.id)).length;
+const hasReason = () => !!S.c && (!!S.c.exText.trim() || Object.keys(S.c.ex).length > 0);
+function invalid(g) {
+  const c = S.c;
+  if (!c.first.trim()) return ["profile", "First name is required."];
+  if (!c.last.trim()) return ["profile", "Last name is required."];
+  if (!EMAIL.test(c.email.trim())) return ["profile", "Enter a valid email address."];
+  if (!c.locs.length) return ["employment", "Choose at least one location and mark one as primary."];
+  if (!c.jobs.length) return ["employment", "Choose at least one job."];
+  if (g.openOk && c.exText.trim()) return ["documents", `Save or cancel the reason for ${doc(c.exOpen).name} first.`];
+  return null;
+}
+function finishCreate(status) {
+  const c = S.c, g = groups(), bad = invalid(g);
+  if (bad) { c.step = bad[0]; c.err = bad[1]; return render(); }
+  const p = { id: "new" + ++S.seq, name: `${c.first.trim()} ${c.last.trim()}`, first: c.first.trim(), email: c.email.trim(), role: c.role,
+    locs: [...c.locs], primary: c.primary, jobs: [...c.jobs], status, docs: {} };
+  g.need.forEach(({ d, added }) => {
+    if (added) p.docs[d.id] = { st: "none", added };
+    else if (g.ex[d.id]) p.docs[d.id] = { st: "none", ex: { ...g.ex[d.id], atInvite: true } };
+  });
+  // Unticking an optional or conditional document leaves a quiet "Skipped at invite" record.
+  g.without.forEach(({ d }) => { if (c.unticked.includes(d.id)) p.docs[d.id] = { skipped: S.viewer }; });
+  S.people.unshift(p);
+  const n = askCount(g);
+  S.c = null;
+  toast(status === "invited" ? `Invitation sent to ${p.email}. ${pl(n, "document", "documents")} will be asked when ${p.first} joins.` : `${p.name} saved. Not invited yet.`);
+  Object.assign(S, { drawer: "person", pid: p.id, psec: "documents", pd: assignOf(p), askOpen: false, armed: null, af: "[data-drawer]" });
+  render();
+}
+
+function needRow({ d, added }, t, may, g) {
+  const c = S.c, ex = g.ex[d.id], open = g.openOk && c.exOpen === d.id;
+  if (ex && !added) return `<div class="drow off"><input type="checkbox" class="cb" disabled aria-label="${esc(d.name)}: won't be asked">
+    <span class="dmain"><span class="dname"><strong>${esc(d.name)}</strong></span><span class="dsub">Won't be asked · ${esc(ex.reason)}</span></span>
+    ${may ? `<button type="button" class="linkbtn" data-act="undoEx" data-id="${d.id}">Undo</button>` : "<span></span>"}</div>`;
+  const tag = added ? `<span class="tag hand">Added by ${esc(nameOf(added))}</span>` : `<span class="tag">${esc(why(d, t))}</span>`;
+  const act = added ? `<button type="button" class="linkbtn" data-act="unAnyway" data-id="${d.id}">Remove</button>`
+    : may && !g.openOk ? `<button type="button" class="linkbtn" data-act="notNeeded" data-id="${d.id}">Not needed</button>` : "<span></span>";
+  const box = open ? `<div class="reason"><label class="efield"><span>Reason<small>Required</small></span><textarea id="exReason" data-in="ex" rows="2" maxlength="500" placeholder="For example: has a valid card from a previous job">${esc(c.exText)}</textarea></label>
+    <div class="rbtns"><button type="button" class="btn-secondary" data-act="exCancel" data-id="${d.id}">Cancel</button><button type="button" class="btn-primary" data-act="exSave" ${c.exText.trim() ? "" : "disabled"}>Save</button></div></div>` : "";
+  return `<div class="drow"><input type="checkbox" class="cb" checked disabled title="Required documents can't be unticked" aria-label="${esc(d.name)}: required">
+    <span class="dmain"><span class="dname"><strong>${esc(d.name)}</strong>${tag}</span><span class="dsub">${workLabel(d)}</span></span>${act}${box}</div>`;
+}
+function withoutRow({ d }, t) {
+  const on = !S.c.unticked.includes(d.id), kind = d.req === "conditional" ? `Needed within ${d.days} days of starting` : "Optional";
+  return `<label class="drow ${on ? "" : "off"}"><input type="checkbox" class="cb" data-ch="tick" value="${d.id}" ${on ? "checked" : ""}>
+    <span class="dmain"><span class="dname"><strong>${esc(d.name)}</strong><span class="tag">${esc(why(d, t))}</span></span><span class="dsub">${kind} · ${workLabel(d)}${on ? "" : " · won't be asked"}</span></span><span></span></label>`;
+}
+function notForRow({ d }, t) {
+  return `<div class="drow"><span></span><span class="dmain"><span class="dname"><strong>${esc(d.name)}</strong><span class="tag dim">${esc(whyNot(d, t))}</span></span><span class="dsub">${cap(d.req)} · ${workLabel(d)}</span></span>
+    <button type="button" class="linkbtn" data-act="anyway" data-id="${d.id}">Ask anyway</button></div>`;
+}
+function docsStep(g) {
+  const c = S.c, nm = esc(c.first.trim() || "this person"), may = g.may, drafts = S.docs.filter((d) => d.status === "draft").length;
+  const none = (t) => `<div class="drow"><span></span><span class="dsub">${t}</span><span></span></div>`;
+  return `<h3 class="lead">${cap(nm)} will be asked for these after joining</h3>
+    <section class="dgroup" aria-label="Needed before ${nm} can start"><div class="gh"><h4>Needed before ${nm} can start</h4><p>${startRule(cap(nm))}</p></div>
+      <div class="dlist">${g.need.map((x) => needRow(x, g.t, may, g)).join("") || none("Nothing required for these jobs and locations.")}</div>
+      ${!may && c.role === "manager" ? `<p class="lockline">${ic("lock", 13)}Only an admin or the owner can mark a document not needed for a manager.</p>` : ""}</section>
+    <section class="dgroup" aria-label="Can start without"><div class="gh"><h4>Can start without</h4><p>Asked as well, but they don't hold up ${nm}'s start. Untick one to leave it out.</p></div>
+      <div class="dlist">${g.without.map((x) => withoutRow(x, g.t)).join("") || none("Nothing else for these jobs and locations.")}</div></section>
+    <section class="dgroup"><button type="button" class="gtoggle" data-act="toggleNotFor" aria-expanded="${c.notForOpen}">${ic("down", 14)}Not for ${nm} (${g.notFor.length})</button>
+      ${c.notForOpen ? `<div class="dlist">${g.notFor.map((x) => notForRow(x, g.t)).join("") || none("Every published document is in the lists above.")}</div>` : ""}</section>
+    ${drafts && canPublish() ? `<p class="faint">${drafts} ${drafts === 1 ? "draft isn't" : "drafts aren't"} asked until published</p>` : ""}
+    <p class="note">Uses current document settings. If they change before ${nm} joins, the updated list is used.</p>`;
+}
+
+/* ---------- shared drawer parts ---------- */
+function pickers(t, scope) {
+  const mgr = isMgrV();
+  const locRows = LOCS.map((l) => {
+    const on = t.locs.includes(l), off = mgr && !V().locs.includes(l);
+    return `<div class="arow ${off ? "off" : ""}"><label><input type="checkbox" class="cb" data-ch="loc" data-scope="${scope}" value="${l}" ${on ? "checked" : ""} ${off ? "disabled" : ""}><span>${l}</span></label>${on ? `<label class="primary"><input type="radio" name="pri-${scope}" data-ch="primary" data-scope="${scope}" value="${l}" aria-label="Primary location: ${l}" ${t.primary === l ? "checked" : ""}>Primary</label>` : ""}</div>`;
+  }).join("");
+  const jobRows = DEPTS.map((dep) => `<strong class="agroup">${dep}</strong>` + JOBS.filter((j) => JOB_DEPT[j] === dep)
+    .map((j) => `<div class="arow"><label><input type="checkbox" class="cb" data-ch="job" data-scope="${scope}" value="${j}" ${t.jobs.includes(j) ? "checked" : ""}><span>${j}</span></label></div>`).join("")).join("");
+  return `<div class="stack2">
+    <fieldset class="apick"><legend>Locations<small>Required</small></legend>${locRows}${t.locs.length ? "" : "<p>Select at least one location.</p>"}${mgr ? `<p class="lockline">${ic("lock", 13)}You add people to ${V().locs.join(", ")} only.</p>` : ""}</fieldset>
+    <fieldset class="apick"><legend>Jobs<small>Required</small></legend>${jobRows}${t.jobs.length ? "" : "<p>Select at least one job.</p>"}</fieldset>
+  </div>`;
+}
+const closeBtn = () => `<button type="button" class="iconbtn" data-act="close" aria-label="Close">${ic("x", 18)}</button>`;
+function shell(identity, steps, mobSteps, title, body, bars, foot) {
+  return `<aside class="drawer edrawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" tabindex="-1" data-drawer>
+    <div class="emain"><nav class="erail" aria-label="Employee sections"><div class="eident">${identity}</div><div class="esteps">${steps}</div></nav>
+      <div class="ecol"><div class="emob"><nav class="msteps" aria-label="Sections">${mobSteps}</nav>${closeBtn()}</div>
+        <header class="ehead"><h2>${title}</h2>${closeBtn()}</header>
+        <div class="escroll" data-scroll>${body}</div></div></div>${bars}${foot}${dialogHtml()}</aside>`;
+}
+
+/* ---------- Screen 1: Employees > Add employee ---------- */
+function createDrawer() {
+  const c = S.c, g = groups(), n = askCount(g), names = !!(c.first.trim() && c.last.trim());
+  const STEPS = [["profile", "Profile", "user"], ["employment", "Employment", "brief"], ["documents", "Documents", "file", n]];
+  const btn = (mob) => ([k, l, i, cnt]) => `<button type="button" data-act="step" data-id="${k}" ${c.step === k ? 'aria-current="step"' : ""} ${k !== "profile" && !names ? "disabled" : ""}>${mob ? "" : ic(i)}<span>${l}</span>${cnt === undefined ? "" : `<span class="count" aria-label="${pl(cnt, "document", "documents")}">${cnt}</span>`}</button>`;
+  const field = (label, f, mark, cls = "", extra = "") => `<label class="efield ${cls}"><span>${label}${mark}</span><input id="c-${f}" data-in="c" data-f="${f}" value="${esc(c[f])}" autocomplete="off" ${extra}></label>`;
+  const REQ = "<small>Required</small>";
+  const body = c.step === "profile" ? `<div class="groups">
+      <section class="pgroup"><h3>Identity</h3><div class="fgrid"><div class="ngrid">${field("First name", "first", REQ)}${field("Middle name", "middle", '<small class="opt">optional</small>')}${field("Last name", "last", REQ)}</div></div></section>
+      <section class="pgroup"><h3>Contact</h3><div class="fgrid">${field("E-mail", "email", "", "full", 'inputmode="email" spellcheck="false"')}</div></section></div>`
+    : c.step === "employment" ? pickers(c, "c") + (c.email.trim() ? `<div class="isum">${ic("mail", 18)}<div><strong>${esc(c.email)}</strong><span>Invited as ${ROLE[c.role]}</span></div></div>` : "")
+    : docsStep(g);
+  const s = c.step;
+  const back = s === "profile" ? `<button type="button" class="btn-secondary" data-act="close">Cancel</button>` : `<button type="button" class="btn-secondary" data-act="back">${ic("arrowl")}Back</button>`;
+  const invite = `<button type="button" class="btn-primary" data-act="invite">${ic("mail")}Invite</button>`;
+  const right = s === "documents" ? back + `<button type="button" class="btn-secondary" data-act="saveNew">Save</button>` + invite
+    : back + invite + `<button type="button" class="btn-secondary" data-act="next" ${s === "profile" && !names ? "disabled" : ""}>Next${ic("arrowr")}</button>`;
+  const foot = `<footer class="efoot"><div class="role"><select id="cRole" data-ch="role" aria-label="Invite role">${["employee", "manager"].map((v) => `<option value="${v}" ${c.role === v ? "selected" : ""}>${ROLE[v]}</option>`).join("")}</select></div><div class="acts">${right}</div></footer>`;
+  const identity = `<span class="avatar" aria-hidden="true">${esc((c.first.trim()[0] || "N").toUpperCase())}</span><strong id="dTitle">New employee</strong>`;
+  return shell(identity, STEPS.map(btn(false)).join(""), STEPS.map(btn(true)).join(""), cap(s), body, c.err ? `<p class="derr" role="alert">${esc(c.err)}</p>` : "", foot);
+}
+function dialogHtml() {
+  if (!S.dialog || !S.c) return "";
+  const c = S.c, ids = [...Object.keys(c.ex), c.exText.trim() ? c.exOpen : null].filter((x, i, a) => x && a.indexOf(x) === i);
+  const names = ids.map((id) => doc(id).name), list = names.length > 1 ? names.slice(0, -1).join(", ") + " and " + names[names.length - 1] : names[0];
+  return `<div class="scrim"><div class="dialog" role="alertdialog" aria-modal="true" aria-labelledby="dlgH" aria-describedby="dlgP"><h4 id="dlgH">Discard unsaved changes?</h4>
+    <p id="dlgP">${esc(c.first.trim() || "This person")} isn't invited, and the reason you wrote for ${esc(list)} won't be kept.</p>
+    <div class="row"><button type="button" class="btn-secondary" data-act="discard">Discard</button><button type="button" class="btn-primary" id="dlgKeep" data-act="keep">Keep editing</button></div></div></div>`;
+}
+
+/* ---------- Screen 3: Employees > person > Documents ---------- */
+const ST = { none: ["Not uploaded", "none"], waiting: ["Waiting for review", "wait"], approved: ["Approved", "ok"], uploaded: ["Uploaded", "ok"] };
+function subLine(p, x) {
+  const { d, r } = x, req = r.added ? "required" : d.req, st = r.st || "none";
+  const parts = [req === "conditional" ? `Needed within ${d.days} days of starting` : cap(req)];
+  if (d.review) parts.push("Manager review");
+  if (x.kind === "asked" && st === "none" && req === "required") parts.push(p.status === "active" ? (r.due ? `Due ${fmt(r.due)}` : "") : `Due ${d.days || 7} days after joining`);
+  if (x.kind === "onfile") parts.push("No longer asked");
+  return parts.filter(Boolean).join(" · ");
+}
+function docRow(p, x, may) {
+  const { d, r } = x, st = ST[r.st || "none"];
+  const status = x.kind === "exempt" ? `<span class="st ex">Exempt</span><span class="exline">${esc(r.ex.reason)} · by ${esc(nameOf(r.ex.by))}${r.ex.atInvite ? " · at invite" : ""}</span>`
+    : x.kind === "onfile" ? `<span class="st">On file</span>`
+    : `<span class="st ${st[1]}">${st[0]}</span>${r.added ? `<span class="tag hand">Added by ${esc(nameOf(r.added))}</span>` : ""}`;
+  const armed = S.armed === "rx" + d.id;
+  const act = x.kind === "exempt" && may ? `<button type="button" class="del" data-act="rmEx" data-id="${d.id}" data-c="${armed}">${armed ? "Confirm remove" : "Remove exemption"}</button>` : "";
+  return `<div class="prow2"><span class="dmain"><strong>${esc(d.name)}</strong><span class="dsub">${esc(subLine(p, x))}</span></span><span class="tst">${status}</span><span class="tact">${act}</span></div>`;
+}
+function askPanel(p, rows) {
+  const have = new Set(rows.filter((x) => x.kind !== "onfile").map((x) => x.d.id)), list = pubDocs().filter((d) => !have.has(d.id));
+  return `<div class="askp" role="group" aria-label="Ask for a document">${list.map((d) => `<div class="askrow"><span class="dmain"><strong>${esc(d.name)}</strong><span class="dsub">${(p.docs[d.id] || {}).skipped ? "Skipped at invite" : esc(whyNot(d, p))} · asked as Required</span></span>
+    <button type="button" class="btn-secondary sm" data-act="ask" data-id="${d.id}">Ask</button></div>`).join("") || `<p class="dsub pad">Every published document is already on the list.</p>`}</div>`;
+}
+function personDocs(p) {
+  if (p.role === "owner") return `<p class="exnote">An owner is not asked for the documents they ask of everyone else.</p>`;
+  const rows = rowsFor(p, p), may = canExempt(p), live = rows.filter((x) => x.kind !== "onfile");
+  const n = (st) => live.filter((x) => x.kind === "asked" && (x.r.st || "none") === st).length, ex = live.filter((x) => x.kind === "exempt").length;
+  const sum = p.status === "active"
+    ? [pl(live.length, "document", "documents"), n("none") && `${n("none")} not uploaded`, n("waiting") && `${n("waiting")} waiting for review`, ex && `${ex} exempt`].filter(Boolean).join(" · ")
+    : `${firstOf(p)} ${canStart(live)}`;
+  return `<div class="dtop"><p class="dsum">${esc(sum)}</p><button type="button" class="btn-secondary" data-act="askOpen" aria-expanded="${S.askOpen}">${ic("plus")}Ask for a document</button></div>
+    ${S.askOpen ? askPanel(p, rows) : ""}
+    <div class="ptable"><div class="prow2 head"><span>Document</span><span>Status</span><span></span></div>${rows.map((x) => docRow(p, x, may)).join("") || '<div class="empty">No documents are asked.</div>'}</div>`;
+}
+function impactBox(p, t) {
+  const before = rowsFor(p, p), after = rowsFor(p, t);
+  const asked = (rows) => new Set(rows.filter((x) => x.kind === "asked").map((x) => x.d.id)), a0 = asked(before), a1 = asked(after);
+  const lines = [
+    ...after.filter((x) => x.kind === "asked" && !a0.has(x.d.id)).map((x) => `<li class="plus">+ ${esc(x.d.name)} (${cap(x.d.req)}${x.d.days ? `, ${x.d.days} days` : ""})</li>`),
+    ...before.filter((x) => x.kind === "asked" && !a1.has(x.d.id)).map((x) => `<li class="minus">− ${esc(x.d.name)}: request closes${(x.r.st || "none") !== "none" ? "; the upload stays on file" : ""}</li>`),
+  ];
+  const still = (label, list) => (list.length ? `<p>${label}: ${esc(list.join(", "))}</p>` : "");
+  return `<section class="impact" aria-label="Document assignment impact"><h3>Document assignment impact</h3>
+    ${lines.length ? `<ul>${lines.join("")}</ul>` : "<p>No document requirements will change.</p>"}
+    ${still("Still exempt", after.filter((x) => x.kind === "exempt").map((x) => x.d.name))}${still("Still asked by hand", after.filter((x) => x.r.added).map((x) => x.d.name))}
+    <p class="muted">These changes apply when you save the employee.</p></section>`;
+}
+function personDrawer() {
+  const p = person(), t = S.pd, changed = !sameArr(p.locs, t.locs) || !sameArr(p.jobs, t.jobs) || p.primary !== t.primary, valid = t.locs.length > 0 && t.jobs.length > 0;
+  const SECS = [["profile", "Profile", "user"], ["employment", "Employment", "brief"], ["availability", "Availability", "cal"], ["documents", "Documents", "file"], ["access", "Access", "key"], ["history", "History", "hist"]];
+  const on = (k) => k === "documents" || (k === "employment" && p.role !== "owner");
+  const btn = (mob) => ([k, l, i], n) => `<button type="button" data-act="sec" data-id="${k}" ${S.psec === k ? 'aria-current="step"' : ""} ${on(k) ? "" : 'disabled title="Not part of this mockup"'} ${!mob && (n === 3 || n === 4) ? "data-gs" : ""}>${mob ? "" : ic(i)}<span>${l}</span></button>`;
+  const body = (S.psec === "employment" ? pickers(t, "p") : personDocs(p)) + (changed ? impactBox(p, t) : "");
+  const invitePrimary = p.status === "saved";
+  const foot = `<footer class="efoot"><span></span><div class="acts"><button type="button" class="btn-secondary" data-act="close">Cancel</button>
+    ${p.status !== "active" ? `<button type="button" class="${invitePrimary ? "btn-primary" : "btn-secondary"}" data-act="resend">${ic("mail")}${invitePrimary ? "Invite" : "Resend"}</button>` : ""}
+    <button type="button" class="${invitePrimary ? "btn-secondary" : "btn-primary"}" data-act="savePerson" ${changed && valid ? "" : "disabled"}>Save changes</button></div></footer>`;
+  const identity = `<span class="avatar" aria-hidden="true">${esc(p.name[0])}</span><strong id="dTitle">${esc(p.name)}</strong><span class="code">${ROLE[p.role]} · ${esc(p.locs.join(", "))}</span><span class="pill ${p.status}">${PILL[p.status]}</span>`;
+  return shell(identity, SECS.map(btn(false)).join(""), SECS.filter(([k]) => on(k)).map(btn(true)).join(""), SECS.find(([k]) => k === S.psec)[1], body, "", foot);
+}
+
+/* ---------- Screen 2: Settings > Documents > a published document ---------- */
+function flt(k, label, ro) {
+  const v = S.who[k], opts = OPTS[k], open = S.flt === k;
+  const text = v === "*" ? `All ${label}` : v.length === 1 ? v[0] : `${v.length} ${label.toLowerCase()}`;
+  return `<div class="flt"><button type="button" class="fpill ${v === "*" ? "" : "on"}" data-act="flt" data-id="${k}" aria-expanded="${open}" aria-label="${label}: ${esc(text)}" ${ro ? "disabled" : ""}>${esc(text)}${ic("down", 14)}</button>
+    ${open ? `<div class="fmenu" role="group" aria-label="${label}"><div class="fmh"><strong>${label}</strong><span>${v === "*" ? "All selected" : `${v.length} selected`}</span></div>
+      <label class="fopt all"><input type="checkbox" class="cb" data-ch="fall" value="${k}" ${v === "*" ? "checked" : ""}><span>All ${label}</span></label>
+      ${opts.map((o) => `<label class="fopt"><input type="checkbox" class="cb" data-ch="fopt" data-k="${k}" value="${esc(o)}" ${v === "*" || v.includes(o) ? "checked" : ""}><span>${esc(o)}</span></label>`).join("")}
+      <div class="fmf">${opts.length} ${label.toLowerCase()} · Esc to close</div></div>` : ""}</div>`;
+}
+function pickW(k, v) {
+  const opts = OPTS[k], cur = S.who[k];
+  // Mert 2026-10-04: from All, the first click keeps only that option; later clicks add. Nothing picked means Everyone.
+  const raw = cur === "*" ? [v] : cur.includes(v) ? cur.filter((x) => x !== v) : [...cur, v], next = opts.filter((o) => raw.includes(o));
+  S.who[k] = !next.length || next.length === opts.length ? "*" : next;
+}
+function changeOf(d) {
+  const old = coverage(d, d.who), neu = coverage(d, S.who);
+  return { plus: neu.filter((p) => !old.includes(p)), minus: old.filter((p) => !neu.includes(p)) };
+}
+function preview(d) {
+  const { plus, minus } = changeOf(d), now = plus.filter((p) => p.status === "active"), later = plus.filter((p) => p.status !== "active");
+  const names = (ps) => esc(ps.map((p) => p.name).join(", "));
+  const due = d.days ? ` (due ${fmt(addDays(d.days))})` : "";
+  return `<div class="preview" role="status">
+    ${now.length ? `<p class="plus"><b>+${pl(now.length, "person", "people")} will be asked now</b>${due}: ${names(now)}</p>` : ""}
+    ${later.length ? `<p class="plus"><b>+${pl(later.length, "invited person", "invited people")}</b> will be asked when they join: ${names(later)}</p>` : ""}
+    ${minus.length ? `<p class="minus"><b>−${pl(minus.length, "person", "people")} won't be asked anymore</b>; their uploads stay on file: ${names(minus)}</p>` : ""}
+    ${plus.length || minus.length ? "" : "<p>Nobody's list changes.</p>"}
+    <p class="muted">No one else's deadline changes.</p></div>`;
+}
+function docDrawer() {
+  const d = doc(S.did), ro = isMgrV(), changed = !sameW(S.who, d.who), n = coverage(d, d.who).length;
+  const period = d.req === "optional" ? "" : `<label class="jfield"><span>${d.req === "conditional" ? "Grace period (days)" : "Delivery period (days)"}</span><input value="${d.days}"></label>`;
+  return `<aside class="drawer cdrawer" role="dialog" aria-modal="true" aria-labelledby="dTitle" tabindex="-1" data-drawer>
+    <div class="ctitle"><div><h2 id="dTitle">${esc(d.name)}<span class="st" data-s="published">Published</span></h2><p>Document type</p></div><button type="button" class="iconbtn" data-act="close" aria-label="Close">${ic("x", 17)}</button></div>
+    <div class="cscroll" data-scroll>
+      <p class="lockline">${ic("lock", 13)}Published · unpublish to edit content</p>
+      <fieldset class="jf" disabled>
+        <label class="jfield full"><span>Name</span><input value="${esc(d.name)}"></label>
+        <label class="jfield full"><span>Description</span><textarea rows="2">${esc(d.desc)}</textarea></label>
+        <label class="jfield"><span>Requirement</span><select><option>${cap(d.req)}</option></select></label>
+      </fieldset>
+      <fieldset class="whofs" ${ro ? "disabled" : ""}><legend>Who needs it<span class="tag hand">Editable while published</span></legend>
+        <p class="hint">Employees must match the selected locations, departments and jobs together. All includes current and future options. Jobs apply across an employee's assigned locations.</p>
+        ${flt("locs", "Locations", ro)}${flt("depts", "Departments", ro)}${flt("jobs", "Jobs", ro)}
+        <p class="cover">${ic("users", 14)}Asked of ${pl(n, "person", "people")} today</p>
+        ${changed ? preview(d) : ""}
+        ${ro ? `<p class="lockline">${ic("lock", 13)}Only an admin or the owner can change who needs it.</p>` : ""}
+      </fieldset>
+      <fieldset class="jf" disabled><p class="jlabel full">Time &amp; review</p>${period}
+        <label class="choice full"><input type="checkbox" class="cb">Restrict organization access after the delivery period</label>
+        <label class="choice"><input type="checkbox" class="cb" ${d.review ? "checked" : ""}>Manager review required</label>
+        <label class="choice"><input type="checkbox" class="cb" ${d.expiry ? "checked" : ""}>Track expiration</label>
+        ${d.expiry ? '<label class="jfield"><span>Warn before expiry (days)</span><input value="30"></label>' : ""}
+      </fieldset>
+    </div>
+    <div class="cfoot"><button type="button" class="btn-secondary" data-act="close">Cancel</button><button type="button" class="btn-primary" data-act="apply" ${changed && !ro ? "" : "disabled"}>Apply</button></div>
+  </aside>`;
+}
+
+/* ---------- pages behind the drawers ---------- */
+function employeesPage() {
+  const rows = S.people.filter(sees).map((p) => `<div class="crow item" data-act="openPerson" data-id="${p.id}">
+      <span class="who"><span class="av" aria-hidden="true">${esc(p.name[0])}</span><span class="stack"><button type="button" class="rlink" id="op-${p.id}">${esc(p.name)}</button><span class="cell">${ROLE[p.role]}</span></span></span>
+      <span class="cell c-loc">${esc(p.locs.join(", "))}</span><span class="cell c-job">${esc(p.role === "owner" ? "Owner" : p.jobs.join(", "))}</span>
+      <span><span class="pill ${p.status}">${PILL[p.status]}</span></span></div>`).join("");
+  return `<main class="page"><header class="ph"><div><h2>Employees</h2><p>Everyone in this workspace, with their locations, jobs and onboarding status.</p></div>
+      <button type="button" class="btn-primary" id="addEmp" data-act="openCreate">${ic("plus")}Add employee</button></header>
+    <div class="catalog"><div class="crow head"><span>Name</span><span class="c-loc">Locations</span><span class="c-job">Jobs</span><span>Status</span></div>${rows}</div></main>`;
+}
+function settingsPage() {
+  const TABS = [["all", "All"], ["draft", "Draft"], ["published", "Published"], ["archived", "Archived"]];
+  const nav = (icon, label, on) => `<span class="snav ${on ? "on" : ""}" ${on ? 'aria-current="page"' : ""}>${ic(icon, 17)}${label}</span>`;
+  const rows = S.docs.filter((d) => S.stab === "all" || d.status === S.stab).map((d) => {
+    const pub = d.status === "published";
+    return `<div class="crow docs ${pub ? "item" : ""}" ${pub ? `data-act="openDoc" data-id="${d.id}"` : ""}>
+      <span class="who"><span class="mk" aria-hidden="true">${ic("file")}</span><span class="stack">${pub ? `<button type="button" class="rlink" id="od-${d.id}">${esc(d.name)}</button>` : `<span class="rname">${esc(d.name)}</span>`}<span class="cell">${cap(d.req)}</span></span></span>
+      <span class="cell c-loc">${esc(whoText(d.who))}</span><span><span class="st" data-s="${d.status}">${cap(d.status)}</span></span>
+      <span class="cell c-job">${pub ? fmtLong(d.published) : "Not asked until published"}</span></div>`;
+  }).join("") || '<div class="empty">No document types here.</div>';
+  return `<div class="settings"><aside class="srail" aria-label="Settings sections"><div class="stitle">${ic("sliders", 17)}Settings</div>
+      <div class="sgroup"><span class="slabel">Organization</span>${nav("sliders", "General")}${nav("pin", "Locations")}${nav("brief", "Jobs")}</div>
+      <div class="sgroup"><span class="slabel">Access</span>${nav("shield", "Roles &amp; permissions")}${nav("file", "Documents", true)}${nav("scroll", "Acknowledgements")}</div></aside>
+    <main class="spage"><header class="sh"><span class="sicon">${ic("file", 21)}</span><div><h1>Documents</h1><p>Set up the documents employees need to upload, with review and expiry rules.</p></div></header>
+      <div class="toolbar"><div class="stabs" role="tablist" aria-label="Document status">${TABS.map(([k, l]) => `<button type="button" role="tab" data-act="stab" data-id="${k}" aria-selected="${S.stab === k}">${l}</button>`).join("")}</div></div>
+      <div class="catalog"><div class="crow docs head"><span>Document name</span><span class="c-loc">Who needs it</span><span>Status</span><span class="c-job">Published</span></div>${rows}</div></main></div>`;
+}
+
+/* ---------- render ---------- */
+function focusKey(el) {
+  if (!el || el === document.body || !el.dataset) return null;
+  if (el.id) return "#" + el.id;
+  const d = el.dataset, attr = (k, v) => (v ? `[data-${k}="${v}"]` : "");
+  if (d.act) return `[data-act="${d.act}"]` + attr("id", d.id) + attr("v", d.v);
+  if (d.ch) return `[data-ch="${d.ch}"][value="${el.value}"]` + attr("scope", d.scope) + attr("k", d.k);
+  return null;
+}
+function renderLab() {
+  document.querySelectorAll('[data-act="viewer"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.viewer));
+  document.querySelectorAll('[data-act="setting"]').forEach((b) => b.setAttribute("aria-pressed", b.dataset.v === S.setting));
+  const scr = S.drawer === "create" ? "create" : S.drawer === "doc" ? "doc" : S.drawer === "person" && S.pid === "k1" && S.psec === "documents" ? "person" : "";
+  document.querySelectorAll("[data-scr]").forEach((b) => b.setAttribute("aria-pressed", b.dataset.scr === scr));
+}
+function render() {
+  const a = document.activeElement, key = S.af || focusKey(a);
+  let sel = null;
+  try { if (a && typeof a.selectionStart === "number") sel = [a.selectionStart, a.selectionEnd]; } catch (_) { sel = null; }
+  const prev = $("drawerRoot").querySelector("[data-scroll]"), top = prev ? prev.scrollTop : 0;
+  renderLab();
+  $("page").innerHTML = S.page === "settings" ? settingsPage() : employeesPage();
+  $("page").inert = !!S.drawer;
+  const inner = !S.drawer ? "" : S.drawer === "create" ? createDrawer() : S.drawer === "person" ? personDrawer() : docDrawer();
+  $("drawerRoot").innerHTML = inner && `<div class="layer ${S.fresh ? "fresh" : ""}"><button type="button" class="backdrop" data-act="close" tabindex="-1" aria-label="Close"></button>${inner}</div>`;
+  const sk = [S.drawer, S.drawer === "create" ? S.c.step : S.psec, S.pid, S.did].join("|"), sc = $("drawerRoot").querySelector("[data-scroll]");
+  if (sc && sk === S.sk) sc.scrollTop = top;
+  S.sk = sk;
+  const t = key && document.querySelector(key);
+  if (t) {
+    t.focus({ preventScroll: true });
+    if (sel && !S.af) try { t.setSelectionRange(sel[0], sel[1]); } catch (_) { /* not a text field */ }
+  }
+  S.af = null; S.fresh = false;
+}
+function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toast.t); toast.t = setTimeout(() => (el.hidden = true), 4500); }
+function arm(key, fn) {
+  if (S.armed === key) { S.armed = null; fn(); return render(); }
+  S.armed = key; render();
+  clearTimeout(arm.t); arm.t = setTimeout(() => { if (S.armed === key) { S.armed = null; render(); } }, 3500);
+}
+
+/* ---------- open / close ---------- */
+function opening(drawer, extra) {
+  if (!S.drawer) S.ret = focusKey(document.activeElement);
+  Object.assign(S, { drawer, flt: null, askOpen: false, armed: null, dialog: false, fresh: true, af: "[data-drawer]" }, extra);
+  render();
+}
+function openCreate() { if (!S.c) S.c = newDraft(); opening("create", { page: "employees" }); }
+function openPerson(id, sec, pd) { const p = S.people.find((x) => x.id === id); opening("person", { page: "employees", pid: id, psec: sec, pd: pd || assignOf(p) }); }
+function openDoc(id) { opening("doc", { page: "settings", did: id, who: cloneW(doc(id).who) }); }
+function closeDrawer(force) {
+  if (!force && S.drawer === "create" && hasReason()) { S.dialog = true; S.af = "#dlgKeep"; return render(); }
+  if (S.drawer === "create") S.c = null; // closing the form drops the unsent invite
+  Object.assign(S, { drawer: null, dialog: false, flt: null, askOpen: false, armed: null, af: S.ret, ret: null });
+  render();
+}
+
+/* ---------- actions ---------- */
+const ACT = {
+  labCreate: () => openCreate(),
+  labDoc: () => openDoc("fh"),
+  labPerson: () => openPerson("k1", "documents"),
+  labBartender: () => { const pd = assignOf(S.people.find((x) => x.id === "k1")); pd.jobs = JOBS.filter((j) => j === "Bartender" || pd.jobs.includes(j)); openPerson("k1", "employment", pd); const box = document.querySelector(".impact"); if (box) box.scrollIntoView({ block: "nearest" }); },
+  reset: () => { Object.assign(S, initial(true)); toast("Başa dönüldü."); openCreate(); },
+  viewer: (el) => {
+    S.viewer = el.dataset.v;
+    if (isMgrV() && S.c) { const c = S.c, own = V().locs; c.locs = c.locs.filter((l) => own.includes(l)); if (!c.locs.length) c.locs = [own[0]]; if (!c.locs.includes(c.primary)) c.primary = c.locs[0]; }
+    if (S.drawer === "person" && !sees(person())) S.drawer = null;
+    S.flt = null; S.armed = null; render();
+  },
+  setting: (el) => { S.setting = el.dataset.v; render(); },
+  openCreate: () => openCreate(),
+  openPerson: (el) => openPerson(el.dataset.id, "documents"),
+  openDoc: (el) => openDoc(el.dataset.id),
+  stab: (el) => { S.stab = el.dataset.id; render(); },
+  close: () => closeDrawer(false),
+  discard: () => closeDrawer(true),
+  keep: () => { S.dialog = false; S.af = S.c.exOpen ? "#exReason" : "[data-drawer]"; render(); },
+  // Add employee
+  step: (el) => { S.c.step = el.dataset.id; S.c.err = ""; render(); },
+  next: () => { S.c.step = S.c.step === "profile" ? "employment" : "documents"; S.c.err = ""; render(); },
+  back: () => { S.c.step = S.c.step === "documents" ? "employment" : "profile"; S.c.err = ""; render(); },
+  invite: () => finishCreate("invited"),
+  saveNew: () => finishCreate("saved"),
+  notNeeded: (el) => { Object.assign(S.c, { exOpen: el.dataset.id, exText: "", err: "" }); S.af = "#exReason"; render(); },
+  exCancel: (el) => { Object.assign(S.c, { exOpen: null, exText: "" }); S.af = `[data-act="notNeeded"][data-id="${el.dataset.id}"]`; render(); },
+  exSave: () => { const c = S.c, id = c.exOpen; if (!c.exText.trim()) return; c.ex[id] = { reason: c.exText.trim(), by: S.viewer }; Object.assign(c, { exOpen: null, exText: "", err: "" }); S.af = `[data-act="undoEx"][data-id="${id}"]`; render(); },
+  undoEx: (el) => { delete S.c.ex[el.dataset.id]; S.af = `[data-act="notNeeded"][data-id="${el.dataset.id}"]`; render(); },
+  anyway: (el) => { S.c.anyway[el.dataset.id] = S.viewer; S.af = `[data-act="unAnyway"][data-id="${el.dataset.id}"]`; render(); },
+  unAnyway: (el) => { delete S.c.anyway[el.dataset.id]; render(); },
+  toggleNotFor: () => { S.c.notForOpen = !S.c.notForOpen; render(); },
+  // person
+  sec: (el) => { S.psec = el.dataset.id; S.askOpen = false; S.armed = null; render(); },
+  askOpen: () => { S.askOpen = !S.askOpen; render(); },
+  ask: (el) => {
+    const p = person(), d = doc(el.dataset.id), r = { ...(p.docs[d.id] || {}) }, active = p.status === "active";
+    delete r.skipped; delete r.ex; r.added = S.viewer; r.st = r.st || "none";
+    if (active && r.st === "none") r.due = addDays(d.days || 7);
+    p.docs[d.id] = r; S.askOpen = false; S.af = '[data-act="askOpen"]';
+    toast(`${d.name} asked of ${p.name}${active ? (r.due ? `, due ${fmt(r.due)}` : "") : ` when ${firstOf(p)} joins`}.`);
+    render();
+  },
+  rmEx: (el) => arm("rx" + el.dataset.id, () => {
+    const p = person(), d = doc(el.dataset.id), r = p.docs[d.id], active = p.status === "active";
+    delete r.ex;
+    if (active && (r.st || "none") === "none" && d.req === "required") r.due = addDays(d.days);
+    toast(`Exemption removed. ${d.name} is asked again${active ? (r.due ? `, due ${fmt(r.due)}` : "") : ` when ${firstOf(p)} joins`}.`);
+  }),
+  savePerson: () => {
+    const p = person(), t = S.pd, active = p.status === "active", before = new Set(rowsFor(p, p).filter((x) => x.kind === "asked").map((x) => x.d.id));
+    Object.assign(p, { locs: [...t.locs], primary: t.primary, jobs: [...t.jobs] });
+    const added = rowsFor(p, p).filter((x) => x.kind === "asked" && !before.has(x.d.id));
+    added.forEach(({ d, r }) => { if (active && (r.st || "none") === "none") p.docs[d.id] = { ...r, st: "none", due: addDays(d.days || 7) }; });
+    S.pd = assignOf(p); S.psec = "documents"; S.af = "[data-drawer]";
+    const names = added.map((x) => x.d.name).join(", "), due = active && added.length === 1 && added[0].d.days ? `, due ${fmt(addDays(added[0].d.days))}` : "";
+    toast(added.length ? `Saved. ${names} ${added.length === 1 ? "is" : "are"} now asked${due}.` : "Saved.");
+    render();
+  },
+  resend: () => { const p = person(), was = p.status; p.status = "invited"; toast(was === "saved" ? `Invitation sent to ${p.email}.` : `Invitation sent again to ${p.email}.`); render(); },
+  // Settings > Documents
+  flt: (el) => { S.flt = S.flt === el.dataset.id ? null : el.dataset.id; render(); },
+  apply: () => {
+    const d = doc(S.did), { plus, minus } = changeOf(d);
+    d.who = cloneW(S.who);
+    plus.filter((p) => p.status === "active").forEach((p) => { const r = p.docs[d.id] || {}; p.docs[d.id] = r.st && r.st !== "none" ? r : { ...r, st: "none", due: d.days ? addDays(d.days) : undefined }; });
+    const parts = [plus.length && `${pl(plus.length, "person", "people")} asked${d.days ? `, due ${fmt(addDays(d.days))}` : ""}`, minus.length && `${minus.length} no longer asked, uploads kept`].filter(Boolean);
+    S.flt = null; S.af = "[data-drawer]";
+    toast(`${d.name} updated${parts.length ? ": " + parts.join("; ") : ""}.`);
+    render();
+  },
+};
+const tgt = (el) => (el.dataset.scope === "p" ? S.pd : S.c);
+const CH = {
+  role: (el) => { S.c.role = el.value; },
+  loc: (el) => { const t = tgt(el); t.locs = LOCS.filter((l) => (l === el.value ? el.checked : t.locs.includes(l))); if (!t.locs.includes(t.primary)) t.primary = t.locs[0] || ""; },
+  primary: (el) => { tgt(el).primary = el.value; },
+  job: (el) => { const t = tgt(el); t.jobs = JOBS.filter((j) => (j === el.value ? el.checked : t.jobs.includes(j))); },
+  tick: (el) => { const u = S.c.unticked.filter((x) => x !== el.value); S.c.unticked = el.checked ? u : [...u, el.value]; },
+  fall: (el) => { S.who[el.value] = "*"; },
+  fopt: (el) => pickW(el.dataset.k, el.value),
+};
+const IN = {
+  c: (el) => { S.c[el.dataset.f] = el.value; S.c.err = ""; },
+  ex: (el) => { S.c.exText = el.value; },
+};
+
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]");
+  if (!el || el.disabled || !ACT[el.dataset.act]) return;
+  ACT[el.dataset.act](el, e);
+});
+document.addEventListener("change", (e) => {
+  const h = CH[e.target.dataset.ch];
+  if (!h) return;
+  h(e.target);
+  if (S.c && e.target.dataset.scope !== "p") S.c.err = "";
+  render();
+});
+document.addEventListener("input", (e) => { const h = IN[e.target.dataset.in]; if (!h) return; h(e.target); if (!e.isComposing) render(); });
+document.addEventListener("compositionend", (e) => { const h = IN[e.target.dataset.in]; if (h) { h(e.target); render(); } });
+document.addEventListener("keydown", (e) => {
+  if (e.key !== "Escape") return;
+  if (S.dialog) { S.dialog = false; S.af = "[data-drawer]"; render(); }
+  else if (S.flt) { S.af = `[data-act="flt"][data-id="${S.flt}"]`; S.flt = null; render(); }
+  else if (S.askOpen) { S.askOpen = false; S.af = '[data-act="askOpen"]'; render(); }
+  else if (S.drawer) closeDrawer(false);
+});
+// The drawers start below the lab bar so the lab stays clickable; on a phone they cover it.
+const syncLab = () => document.documentElement.style.setProperty("--lab-h", Math.max(0, $("lab").getBoundingClientRect().bottom) + "px");
+new ResizeObserver(syncLab).observe($("lab"));
+addEventListener("scroll", syncLab, { passive: true });
+addEventListener("resize", syncLab);
+syncLab();
+Object.assign(S, initial(false));
+// On a phone the drawer covers the lab bar, so the page opens on the lab and the Employees list there.
+if (matchMedia("(max-width: 640px)").matches) render(); else openCreate();
+</script>
+
+<!-- nf-orijinal:start -->
+<style>
+:root { --nfo-ink: #17221e; --nfo-muted: #5b6662; --nfo-line: #dce3df; --nfo-page: #f4f5f3; --nfo-green: #12624f; --nfo-green-soft: #e3efe9; }
+#nfo-bar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; width: 100%;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--nfo-line); font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); box-sizing: border-box; }
+html.nfo-o #nfo-bar { position: fixed; z-index: 2147483600; top: 0; left: 0; right: 0; }
+html.nfo-o, html.nfo-o body { overflow: hidden !important; }
+#nfo-bar .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; }
+#nfo-bar .nfo-seg button { border: 0; background: #fff; color: var(--nfo-ink); font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+#nfo-bar .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-bar .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green); color: #fff; }
+#nfo-bar button:focus-visible, #nfo-tools select:focus-visible, #nfo-tools button:focus-visible { outline: 2px solid var(--nfo-green); outline-offset: 2px; }
+#nfo-bar .nfo-hint { color: var(--nfo-muted); font-weight: 500; }
+@media (max-width: 700px) { #nfo-bar .nfo-hint { display: none; } }
+#nfo-view { position: fixed; z-index: 2147483500; top: 52px; left: 0; right: 0; bottom: 0; background: var(--nfo-page); display: flex; flex-direction: column; font: 500 13px/1.35 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); }
+#nfo-view[hidden] { display: none; }
+#nfo-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--nfo-line); background: #fff; }
+#nfo-tools label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+#nfo-tools select { font: inherit; font-weight: 500; padding: 6px 8px; border: 1px solid var(--nfo-line); border-radius: 6px; background: #fff; color: var(--nfo-ink); max-width: 72vw; }
+#nfo-tools .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 6px; overflow: hidden; }
+#nfo-tools .nfo-seg button { border: 0; background: #fff; font: inherit; padding: 6px 10px; cursor: pointer; color: var(--nfo-ink); }
+#nfo-tools .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-tools .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green-soft); color: var(--nfo-green); font-weight: 700; }
+#nfo-note { color: var(--nfo-muted); padding: 6px 16px; font-size: 12px; }
+#nfo-stage { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; box-sizing: border-box; }
+#nfo-holder { position: relative; flex: none; box-shadow: 0 6px 24px rgb(0 0 0 / 0.08); border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; background: #fff; }
+#nfo-frame { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+</style>
+<div id="nfo-bar" role="group" aria-label="Görünüm">
+  <span class="nfo-seg">
+    <button type="button" data-nfo="o" aria-pressed="false">Orijinal · bugünkü uygulama</button>
+    <button type="button" data-nfo="v" aria-pressed="true">Varyantlar</button>
+  </span>
+  <span class="nfo-hint" id="nfo-hint"></span>
+</div>
+<div id="nfo-view" hidden>
+  <div id="nfo-tools">
+    <label>Ekran <select id="nfo-screen"></select></label>
+    <label>Kim bakıyor <select id="nfo-as"></select></label>
+    <span class="nfo-seg" role="group" aria-label="Genişlik">
+      <button type="button" data-w="1440" aria-pressed="true">Masaüstü 1440</button>
+      <button type="button" data-w="390" aria-pressed="false">Telefon 390</button>
+    </span>
+  </div>
+  <div id="nfo-note"></div>
+  <div id="nfo-stage"><div id="nfo-holder"><iframe id="nfo-frame" title="Bugünkü uygulama" src="about:blank"></iframe></div></div>
+</div>
+<script>
+(() => {
+  const CFG = {"screens": [{"label": "Employees → Add employee · Owner", "as": "owner", "route": "/app/employees", "width": 1440}, {"label": "Settings → Documents · Owner", "as": "owner", "route": "/app/settings/documents", "width": 1440}, {"label": "Employees → Documents · Owner", "as": "owner", "route": "/app/employees/documents", "width": 1440}, {"label": "Employees → Documents · Laura Bennett (Admin)", "as": "admin", "route": "/app/employees/documents", "width": 1440}, {"label": "Employees → Documents · Hannah Lee (Manager)", "as": "manager", "route": "/app/employees/documents", "width": 1440}, {"label": "Ben Carter'ın onboarding'i (çalışan)", "as": "onboarding", "route": "/welcome", "width": 1440}, {"label": "Maria Lopez · Account → Documents", "as": "employee", "route": "/account/documents", "width": 1440}], "personas": {"owner": "Mert Tepebas · Owner", "admin": "Laura Bennett · Admin", "manager": "Hannah Lee · Manager, Downtown", "employee": "Maria Lopez · Employee, Downtown", "onboarding": "Ben Carter · yeni çalışan, onboarding'de", "invited": "Chloe Adams · davet edildi, katılmadı", "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi", "nobusiness": "Alex Morgan · hesap var, workspace yok", "signedout": "Giriş yapılmamış"}, "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."};
+  const bar = document.getElementById("nfo-bar");
+  const view = document.getElementById("nfo-view");
+  const frame = document.getElementById("nfo-frame");
+  const holder = document.getElementById("nfo-holder");
+  const stage = document.getElementById("nfo-stage");
+  const screenSel = document.getElementById("nfo-screen");
+  const asSel = document.getElementById("nfo-as");
+  const widthBtns = [...document.querySelectorAll("#nfo-tools [data-w]")];
+  document.getElementById("nfo-note").textContent = CFG.note;
+  document.getElementById("nfo-hint").textContent = CFG.hint || "Orijinal: bugün main'de çalışan ekran, gerçek kodla. Varyantlar: bu sayfanın önerileri.";
+  // The bar sits in the page flow at the very top, so the page's own drawers and fixed parts cover it as usual.
+  document.body.prepend(bar);
+  function place() { view.style.top = bar.offsetHeight + "px"; }
+  CFG.screens.forEach((s, i) => screenSel.add(new Option(s.label, String(i))));
+  Object.entries(CFG.personas).forEach(([key, label]) => asSel.add(new Option(label, key)));
+  let state = { screen: 0, as: CFG.screens[0].as, width: CFG.screens[0].width || 1440, loaded: null, started: false };
+  let remember = (key, value) => { try { localStorage.setItem("nfo." + key, value); } catch (e) {} };
+  let recall = (key) => { try { return localStorage.getItem("nfo." + key); } catch (e) { return null; } };
+
+  function fit() {
+    const w = state.width, h = w < 600 ? 844 : 900;
+    frame.style.width = w + "px";
+    frame.style.height = (w < 600 ? h : Math.max(h, stage.clientHeight - 24)) + "px";
+    const room = stage.clientWidth - 24;
+    const scale = w > room ? room / w : 1;
+    frame.style.transform = scale < 1 ? `scale(${scale})` : "";
+    const fh = parseFloat(frame.style.height);
+    if (scale < 1) frame.style.height = (Math.max(h, (stage.clientHeight - 24) / scale)) + "px";
+    holder.style.width = (w * scale) + "px";
+    holder.style.height = (parseFloat(frame.style.height) * scale) + "px";
+  }
+  function load(route) {
+    const hash = "as=" + encodeURIComponent(state.as) + "&route=" + encodeURIComponent(route);
+    state.loaded = state.as;
+    frame.src = "today/index.html?" + Date.now().toString(36) + "#" + hash;
+  }
+  function go() {
+    const s = CFG.screens[state.screen];
+    if (state.loaded === state.as && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "nf-go", route: s.route }, "*");
+    } else load(s.route);
+  }
+  function show(which) {
+    const o = which === "o";
+    if (o) window.scrollTo(0, 0);
+    document.documentElement.classList.toggle("nfo-o", o);
+    view.hidden = !o;
+    place();
+    bar.querySelectorAll("[data-nfo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nfo === which)));
+    remember("tab", which);
+    if (o && !state.started) { state.started = true; fit(); load(CFG.screens[state.screen].route); }
+    if (o) fit();
+  }
+  function setWidth(w) {
+    state.width = w;
+    widthBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.w) === w)));
+    fit();
+  }
+  bar.addEventListener("click", (e) => { const b = e.target.closest("[data-nfo]"); if (b) show(b.dataset.nfo); });
+  screenSel.addEventListener("change", () => {
+    state.screen = Number(screenSel.value);
+    const s = CFG.screens[state.screen];
+    const personaChanged = s.as !== state.as;
+    state.as = s.as; asSel.value = s.as;
+    setWidth(s.width || 1440);
+    if (personaChanged) load(s.route); else go();
+  });
+  asSel.addEventListener("change", () => { state.as = asSel.value; load(CFG.screens[state.screen].route); });
+  widthBtns.forEach((b) => b.addEventListener("click", () => setWidth(Number(b.dataset.w))));
+  window.addEventListener("resize", () => { place(); if (!view.hidden) fit(); });
+  asSel.value = state.as;
+  setWidth(state.width);
+  if (recall("tab") === "o") show("o");
+})();
+</script>
+<!-- nf-orijinal:end -->

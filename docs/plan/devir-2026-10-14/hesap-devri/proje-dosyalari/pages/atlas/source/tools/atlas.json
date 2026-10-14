@@ -1,0 +1,357 @@
+{
+  "updated": "2026-10-10",
+  "groups": [
+    {
+      "id": "manage",
+      "title": "Yönetici sayfaları"
+    },
+    {
+      "id": "employee",
+      "title": "Çalışan görünümü"
+    },
+    {
+      "id": "shared",
+      "title": "Herkesin sayfaları"
+    },
+    {
+      "id": "setup",
+      "title": "Kurulum ve giriş"
+    }
+  ],
+  "pages": [
+    {
+      "id": "schedule",
+      "group": "manage",
+      "title": "Schedule",
+      "external": true,
+      "url": "https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3",
+      "sha": "021f82e0",
+      "built": "2026-10-09",
+      "what": "Haftalık vardiya ızgarası: düzenleme, taslak, yayınlama, Templates, Auto-fill, Export. Ayrı bir test sayfasıdır, kendi thread'i günceller.",
+      "where": "Sol menü → Schedule (yalnız bilgisayarda)",
+      "routes": [
+        "/app/schedule",
+        "/app/schedule/export"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ]
+    },
+    {
+      "id": "requests",
+      "group": "manage",
+      "title": "Requests",
+      "what": "İzin talepleri (incelenecek / kapanan), vardiya değişim talepleri; onayla, reddet, kısalt, geri al.",
+      "where": "Sol menü → Schedule → Requests",
+      "routes": [
+        "/app/schedule/requests"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "rolesNote": "Manager yalnız kendi şubesini görür.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/UrzghhjFWPaARLiMvVDtHh"
+    },
+    {
+      "id": "employees",
+      "group": "manage",
+      "title": "Employees",
+      "what": "Çalışan listesi (All, Invited, Onboarding, Needs Attention, Active, Archived), çalışan çekmecesi, davet, rol, işten çıkarma, arşiv, yeni çalışan ekleme.",
+      "where": "Sol menü → Employees",
+      "routes": [
+        "/app/employees",
+        "/app/employees/archive"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "rolesNote": "Manager kısmen düzenler.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/Goxfpr99qkgD2BvhNzgqvq"
+    },
+    {
+      "id": "employee-documents",
+      "group": "manage",
+      "title": "Employee Documents",
+      "what": "Çalışanların belgeleri: inceleme, onay, red, muafiyet, süre uzatma.",
+      "where": "Sol menü → Employees → Documents",
+      "routes": [
+        "/app/employees/documents"
+      ],
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "rolesNote": "Manager göremez.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/NDT8Pknf8cBDYL5Xfg57FY"
+    },
+    {
+      "id": "settings",
+      "group": "manage",
+      "title": "Settings",
+      "what": "General, Locations, Jobs, Notifications, Schedule rules, Conflict handling, Shift catalog, Roles & permissions, Documents, Acknowledgements, Support.",
+      "where": "Sol menü altı → Settings",
+      "routes": [
+        "/app/settings/…"
+      ],
+      "roles": [
+        "owner",
+        "admin"
+      ],
+      "rolesNote": "Manager giremez.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/2wDz2MV52Z7Yh2ba9wCwM3"
+    },
+    {
+      "id": "important-dates",
+      "group": "manage",
+      "title": "Important Dates",
+      "what": "Tatiller, kapalı günler, etkinlikler ve izin yasağı günleri; ekle, düzenle, yayından kaldır, arşivle.",
+      "where": "Sol menü → Important Dates",
+      "routes": [
+        "/app/important-dates"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/GVghwvEPXvnuXNcrK8rjQp"
+    },
+    {
+      "id": "workspace",
+      "group": "manage",
+      "title": "Workspace",
+      "what": "Yöneticinin ana sayfası: yapılacaklar, kurulum listesi, bekleyen işler.",
+      "where": "Sol menü → Workspace",
+      "routes": [
+        "/app/workspace"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/15R5uKzv3vk3YXqHuCE4eW"
+    },
+    {
+      "id": "availability",
+      "group": "manage",
+      "title": "Availability",
+      "what": "Ekibin haftalık müsaitliği ve tercihleri.",
+      "where": "Sol menü → Availability",
+      "routes": [
+        "/app/availability"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/QrcLQxWwK8AXa1jsgP2uxv"
+    },
+    {
+      "id": "shift-hub",
+      "group": "employee",
+      "title": "Shift Hub",
+      "what": "Çalışanın vardiya değişim merkezi: açık vardiyalar, takas, bırakma, devralma teklifleri.",
+      "where": "Çalışan menüsü → Shift Hub (telefonda Requests)",
+      "routes": [
+        "/app/employee-hub/shift-hub"
+      ],
+      "roles": [
+        "employee"
+      ],
+      "rolesNote": "Yönetici Employee view ile görür.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/Am1yHdyPPjZoWGUmNPgWjC"
+    },
+    {
+      "id": "employee-hub",
+      "group": "employee",
+      "title": "Employee Home",
+      "what": "Çalışanın ana sayfası, kendi programı, izin talebi ve iptali, My Availability.",
+      "where": "Çalışan menüsü → Home, Schedule, My Availability",
+      "routes": [
+        "/app/employee-hub",
+        "/app/employee-hub/schedule",
+        "/app/employee-hub/my-availability"
+      ],
+      "roles": [
+        "employee"
+      ],
+      "rolesNote": "Yönetici Employee view ile görür.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/LhfGZAHzgp3SqbocbDNjEj"
+    },
+    {
+      "id": "announcements",
+      "group": "shared",
+      "title": "Announcements",
+      "what": "Duyurular: yönetici yazar ve yayınlar, çalışan okur ve onaylar.",
+      "where": "Sol menü → Announcements",
+      "routes": [
+        "/app/announcements"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager",
+        "employee"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/G8fpejMn36HA5JdCpXNZi2"
+    },
+    {
+      "id": "notifications",
+      "group": "shared",
+      "title": "Notifications",
+      "what": "Bildirim kutusu: okunmamış, kategoriler, bildirimden işe gitme.",
+      "where": "Sol menü → Notifications",
+      "routes": [
+        "/app/notifications"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager",
+        "employee"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/7oqKomeCbuqhZXPfda2b5t"
+    },
+    {
+      "id": "account",
+      "group": "shared",
+      "title": "Account",
+      "what": "Profil, güvenlik, gelen kutusu, tercihler, bildirim tercihleri, workspace'ler, kişisel belgeler.",
+      "where": "Sol menü altı → Account",
+      "routes": [
+        "/account/profile",
+        "/account/…"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager",
+        "employee"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/SGeFtkFq97b5YV814uY32d"
+    },
+    {
+      "id": "workspace-hub",
+      "group": "setup",
+      "title": "Workspace Hub",
+      "what": "Workspace seçme, bekleyen davetler, workspace durumu.",
+      "where": "Girişten sonra ya da workspace değiştiriciden",
+      "routes": [
+        "/workspaces",
+        "/workspaces/status"
+      ],
+      "roles": [
+        "owner",
+        "admin",
+        "manager",
+        "employee"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/1zBhzWpfYAsVnc76j5YUhF"
+    },
+    {
+      "id": "owner-onboarding",
+      "group": "setup",
+      "title": "Owner Setup",
+      "what": "Yeni workspace kurulum sihirbazı (owner).",
+      "where": "İlk kurulum",
+      "routes": [
+        "/onboarding"
+      ],
+      "roles": [
+        "owner"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/3MhoAGmcutqR5MYNdQ5WBP"
+    },
+    {
+      "id": "employee-onboarding",
+      "group": "setup",
+      "title": "Employee Welcome",
+      "what": "Davet edilen çalışanın karşılama ve kurulum adımları.",
+      "where": "Davet bağlantısından sonra",
+      "routes": [
+        "/welcome/…"
+      ],
+      "roles": [
+        "employee"
+      ],
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/1V1ykz2BSCxtnTHrwQ7iwd"
+    },
+    {
+      "id": "sign-in",
+      "group": "setup",
+      "title": "Sign In",
+      "what": "Giriş, kayıt, parola sıfırlama, hesap kurtarma, davet kabulü.",
+      "where": "Giriş yapmamış kişi",
+      "routes": [
+        "/sign-in",
+        "/forgot-password",
+        "/reset-password",
+        "/account-recovery",
+        "/accept-invite"
+      ],
+      "roles": [],
+      "rolesNote": "Giriş yapmamış herkes.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/9tGUpcDFPjzhxx9ZDFVNv9"
+    },
+    {
+      "id": "public",
+      "group": "setup",
+      "title": "Public Pages",
+      "what": "Privacy, Terms, Accessibility, Contact, Your privacy choices.",
+      "where": "Herkese açık",
+      "routes": [
+        "/privacy",
+        "/terms",
+        "/accessibility",
+        "/contact",
+        "/your-privacy-choices"
+      ],
+      "roles": [],
+      "rolesNote": "Herkes, giriş gerekmez.",
+      "sha": "aac05f76",
+      "built": "2026-10-10",
+      "url": "https://claude.ai/artifact/JZRq8dL1yfn6pi5CFGTTdr"
+    }
+  ],
+  "index": "https://claude.ai/artifact/CgRj1az35H4TAz2NM3Na1p"
+}

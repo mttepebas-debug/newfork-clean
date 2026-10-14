@@ -1,0 +1,376 @@
+{
+ "index": "https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy",
+ "screens": {
+  "1.0": {
+   "file": "01.00-sign-in.html",
+   "title": "Sign in",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/NFAMP6rKAqNx19f1d1ebzQ"
+  },
+  "6.0": {
+   "file": "06.00-important-dates.html",
+   "title": "Important Dates",
+   "sha": "a205e2a6",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/YG5Dx2CvskoemPFVoKg2ff"
+  },
+  "1.1": {
+   "file": "01.01-forgot-password.html",
+   "title": "Forgot password",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/9QtWGkV6SRgdiJCcedzDdC"
+  },
+  "1.2": {
+   "file": "01.02-reset-password.html",
+   "title": "Reset password",
+   "sha": "e0763dd5",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/FPFQy5zZ5D1hQh2GUs2V6D"
+  },
+  "1.3": {
+   "file": "01.03-account-recovery.html",
+   "title": "Account recovery",
+   "sha": "e0763dd5",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/K9e64aTWXWfut7gBbLZzPg"
+  },
+  "1.4": {
+   "file": "01.04-accept-invitation.html",
+   "title": "Accept invitation",
+   "sha": "e6d5e4b0",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/1hSopZEENNDztexMJHbQcz"
+  },
+  "1.5": {
+   "file": "01.05-workspace-hub.html",
+   "title": "Workspace hub",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/9zBLGFyvs9Y2X6qvWgMCz3"
+  },
+  "1.6": {
+   "file": "01.06-workspace-status.html",
+   "title": "Workspace status",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/QB8i9pfM1xNHLUMYGoUPsn"
+  },
+  "1.7": {
+   "file": "01.07-owner-setup.html",
+   "title": "Owner setup",
+   "sha": "34021182",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/TpEfJoc2hEac7fm5K5gQ4v"
+  },
+  "1.8": {
+   "file": "01.08-employee-welcome.html",
+   "title": "Employee welcome",
+   "sha": "34021182",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/4Szx8TsamsrYesTGp72jRy"
+  },
+  "2.0": {
+   "file": "02.00-workspace.html",
+   "title": "Workspace",
+   "sha": "186f39b2",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/4EbXXuT4EY6NcLqfAJUuBy"
+  },
+  "3.3": {
+   "file": "03.03-requests.html",
+   "title": "Requests",
+   "sha": "9a649e82",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/LjHpcgS38GsQAvnMyemaoH"
+  },
+  "4.0": {
+   "file": "04.00-employees.html",
+   "title": "Employees",
+   "sha": "bdb3cd69",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/3W6vH1fCZAP7KvzQcMgnUW"
+  },
+  "4.1": {
+   "file": "04.01-employee-documents.html",
+   "title": "Employee documents",
+   "sha": "a205e2a6",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/2b1nCYf4ow1bWTcmCQ5qcE"
+  },
+  "4.2": {
+   "file": "04.02-employees-archive.html",
+   "title": "Employees archive",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/HVLf3vUTAzVyeJhpJmz28z"
+  },
+  "5.0": {
+   "file": "05.00-availability.html",
+   "title": "Availability",
+   "sha": "186f39b2",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/8Dda7vpsNDFZey5WygaA4R"
+  },
+  "7.0": {
+   "file": "07.00-employee-home.html",
+   "title": "Employee home",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/PV43RDJYxL5SBdVpD6to4X"
+  },
+  "7.1": {
+   "file": "07.01-my-schedule.html",
+   "title": "My schedule",
+   "sha": "e0763dd5",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/UkrQH4AscnEi2d7z4KRbco"
+  },
+  "7.2": {
+   "file": "07.02-shift-hub.html",
+   "title": "Shift Hub",
+   "sha": "9a649e82",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/U1yLX9KHcSkzoNJcTVughw"
+  },
+  "7.3": {
+   "file": "07.03-my-availability.html",
+   "title": "My availability",
+   "sha": "186f39b2",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/QxggDkv4nCCT2sAuxufJbd"
+  },
+  "7.4": {
+   "file": "07.04-more.html",
+   "title": "More",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/HgPjKfQmSBmx2vPAacQLPc"
+  },
+  "8.0": {
+   "file": "08.00-announcements.html",
+   "title": "Announcements",
+   "sha": "9a94fc88",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/JC7V6cGGgXpKH9BrJGH7W5"
+  },
+  "8.1": {
+   "file": "08.01-announcement-detail.html",
+   "title": "Announcement detail",
+   "sha": "9a94fc88",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/FnPFkE5B8M242nuX5y2iyy"
+  },
+  "9.0": {
+   "file": "09.00-notifications.html",
+   "title": "Notifications",
+   "sha": "9a649e82",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/PTfHkeyhJJc8iB8s57QjrZ"
+  },
+  "10.0": {
+   "file": "10.00-settings-general.html",
+   "title": "Settings · General",
+   "sha": "8e787e4f",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/DFczQ53ZuMXZFhVWoiDktZ"
+  },
+  "10.1": {
+   "file": "10.01-settings-locations.html",
+   "title": "Settings · Locations",
+   "sha": "bdb3cd69",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/AqLuHNmxqmpMSgXJ2fs4oE"
+  },
+  "10.2": {
+   "file": "10.02-settings-jobs.html",
+   "title": "Settings · Jobs",
+   "sha": "34021182",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/APVqmoNiwVpogT99C2bw22"
+  },
+  "10.3": {
+   "file": "10.03-settings-notifications.html",
+   "title": "Settings · Notifications",
+   "sha": "186f39b2",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/Psrq8HivP2tquaWH2JFvDK"
+  },
+  "10.4": {
+   "file": "10.04-settings-schedule-rules.html",
+   "title": "Settings · Schedule rules",
+   "sha": "5470ab0e",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/DKtrT34EAvyZHoiv1xHtAQ"
+  },
+  "10.5": {
+   "file": "10.05-settings-conflict-handling.html",
+   "title": "Settings · Conflict handling",
+   "sha": "5470ab0e",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/Vx4Foa379VhWkYTdHawLuP"
+  },
+  "10.6": {
+   "file": "10.06-settings-shift-catalog.html",
+   "title": "Settings · Shift catalog",
+   "sha": "34021182",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/5nb6ytPPoff2WgbLTVQdk7"
+  },
+  "10.7": {
+   "file": "10.07-settings-shift-labels.html",
+   "title": "Settings · Shift labels",
+   "sha": "34021182",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/QK1Ey1yvDDtyoZBnLCZtpC"
+  },
+  "10.8": {
+   "file": "10.08-settings-roles-permissions.html",
+   "title": "Settings · Roles & permissions",
+   "sha": "bdb3cd69",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/VtiKsxQsVD31dv2NfGT711"
+  },
+  "10.9": {
+   "file": "10.09-settings-role-detail.html",
+   "title": "Settings · Role detail",
+   "sha": "bdb3cd69",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/2FdPcnM2sPJoGve6JNYMVW"
+  },
+  "10.10": {
+   "file": "10.10-settings-documents.html",
+   "title": "Settings · Documents",
+   "sha": "a205e2a6",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/2mwLws71TJU3Ccskqgwtxj"
+  },
+  "10.11": {
+   "file": "10.11-settings-acknowledgements.html",
+   "title": "Settings · Acknowledgements",
+   "sha": "a205e2a6",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/LGtfraWQKektkYXJb6gEQg"
+  },
+  "10.12": {
+   "file": "10.12-settings-support.html",
+   "title": "Settings · Support",
+   "sha": "c900fb42",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/5EzE4sSWJRtjbTRnxiQFf7"
+  },
+  "11.0": {
+   "file": "11.00-account-profile.html",
+   "title": "Account · Profile",
+   "sha": "5470ab0e",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/9BmgY8fzUeBuyra25gtq6M"
+  },
+  "11.1": {
+   "file": "11.01-account-security.html",
+   "title": "Account · Security",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/3c5w98Atq9MBZm5whgVSt8"
+  },
+  "11.2": {
+   "file": "11.02-account-preferences.html",
+   "title": "Account · Preferences",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/4oMRpyDiTt85YWJyjw8cUS"
+  },
+  "11.3": {
+   "file": "11.03-account-notification-preferences.html",
+   "title": "Account · Notification preferences",
+   "sha": "186f39b2",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/XkSScsR1iYV2bkEatXcByG"
+  },
+  "11.4": {
+   "file": "11.04-account-workspaces.html",
+   "title": "Account · Workspaces",
+   "sha": "5470ab0e",
+   "built": "2026-10-11",
+   "url": "https://claude.ai/artifact/Stth74e8NvEM4csTfD2L4Z"
+  },
+  "11.5": {
+   "file": "11.05-account-documents.html",
+   "title": "Account · Documents",
+   "sha": "a205e2a6",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/7HYEV86WKWnbHZGnrjNHDb"
+  },
+  "11.6": {
+   "file": "11.06-account-inbox.html",
+   "title": "Account · Inbox",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/1zCdXPSkYUL5FQwhKVoxsF"
+  },
+  "12.0": {
+   "file": "12.00-privacy.html",
+   "title": "Privacy",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/8qwmZQELtJ9xcDLHazngPQ"
+  },
+  "12.1": {
+   "file": "12.01-terms.html",
+   "title": "Terms",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/LK5wwrMogFzwU2avBUeSSD"
+  },
+  "12.2": {
+   "file": "12.02-accessibility.html",
+   "title": "Accessibility",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/LiHqxMEKCtG2AuaRRSr2Lj"
+  },
+  "12.3": {
+   "file": "12.03-contact.html",
+   "title": "Contact",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/JTFLvgkEokYP8PEJ9UxYHL"
+  },
+  "12.4": {
+   "file": "12.04-your-privacy-choices.html",
+   "title": "Your privacy choices",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/T4kpow996YBHQndRueZYuK"
+  },
+  "3.0": {
+   "file": "03.00-schedule.html",
+   "title": "Schedule",
+   "sha": "e0763dd5",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/J6tWENw7QTf6gHoP8jtPAu"
+  },
+  "3.1": {
+   "file": "03.01-schedule-export.html",
+   "title": "Schedule export",
+   "sha": "74131a7e",
+   "built": "2026-10-10",
+   "url": "https://claude.ai/artifact/DEctBmqXhDLRpumfifre4c"
+  },
+  "3.2": {
+   "file": "03.02-schedule-templates.html",
+   "title": "Schedule templates",
+   "sha": "9a94fc88",
+   "built": "2026-10-12",
+   "url": "https://claude.ai/artifact/7PPX8YQ3AUPQNSskTJuW6M"
+  },
+  "1.9": {
+   "url": "https://claude.ai/artifact/GPJjNGSJb3ftowmFN4BnA6",
+   "file": "01.09-check-your-email.html",
+   "title": "Check your email",
+   "sha": "e0763dd5",
+   "built": "2026-10-12"
+  }
+ }
+}

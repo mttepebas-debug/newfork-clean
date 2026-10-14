@@ -1,0 +1,70 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Newfork Motion Hero</title>
+    <meta name="description" content="Newfork — shift scheduling for restaurants. 15-second motion hero." />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&family=JetBrains+Mono:wght@500;600&display=swap"
+    />
+    <link rel="stylesheet" href="hero.css" />
+    <style>
+      :root {
+        color-scheme: light;
+      }
+      html,
+      body {
+        margin: 0;
+        background: #f4f5f3;
+      }
+    </style>
+  </head>
+  <body>
+    <!-- Add data-loop to replay the reel forever (showreel mode). -->
+    <section class="nfh" data-newfork-hero aria-label="Newfork">
+      <div class="nfh-copy">
+        <p class="nfh-eyebrow" data-nfh-reveal>
+          <svg viewBox="0 0 64 64" aria-hidden="true">
+            <rect width="64" height="64" rx="14" fill="#101828" />
+            <path d="M18 46V18h8.5l11 17.4V18H46v28h-8.5l-11-17.4V46H18Z" fill="#F9FAFB" />
+          </svg>
+          <b>newfork</b><span>Shift scheduling for restaurants</span>
+        </p>
+        <h1 class="nfh-h1">
+          <span class="nfh-line"><span data-nfh-reveal="mask">Every shift,</span></span>
+          <span class="nfh-line"><span data-nfh-reveal="mask"><em>covered.</em></span></span>
+        </h1>
+        <p class="nfh-sub" data-nfh-reveal>
+          Build the week, catch conflicts before they happen, and publish to every phone in one
+          click — across every location.
+        </p>
+        <div class="nfh-ctas" data-nfh-reveal>
+          <a class="nfh-btn primary" href="#get-started">Get started</a>
+          <a class="nfh-btn secondary" href="#reel" data-nfh-replay>
+            <svg viewBox="0 0 18 18" aria-hidden="true">
+              <path
+                d="M3 9a6 6 0 1 0 1.8-4.3M3 2.5v3.3h3.3"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="1.8"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+            Replay the reel
+          </a>
+        </div>
+      </div>
+      <p class="nfh-sr">
+        Animation: scattered shift cards snap into a weekly schedule, a time-off conflict is caught
+        and the open shift goes to an available teammate, the shift reaches their phone, and the week
+        is published across three locations.
+      </p>
+    </section>
+    <script src="hero.js"></script>
+  </body>
+</html>

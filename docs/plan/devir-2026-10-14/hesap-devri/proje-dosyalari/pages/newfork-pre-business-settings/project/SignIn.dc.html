@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Sign in</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.gate{display:flex;flex-direction:column;width:1440px;height:900px;background:#ffffff}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;height:62px;flex:0 0 62px;padding:0 32px;border-bottom:1px solid #dce3df;background:#ffffff}
+.brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.who{display:flex;align-items:center;gap:12px}
+.who span{font-size:12.5px;color:#66716c}
+.body{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px;padding:24px 32px;box-sizing:border-box}
+.col{display:flex;flex-direction:column;align-items:center;gap:12px;width:560px;box-sizing:border-box;padding:88px 88px 56px;border:1px solid #dce3df;border-radius:10px;background:#ffffff;text-align:center}
+h1{margin:0;color:#17221e;font-size:26px;line-height:1.2;font-weight:600}
+.lead2{margin:0;max-width:384px;font-size:14px;line-height:1.55;color:#66716c}
+.lead{margin:0 0 28px;color:#66716c;font-size:15px;line-height:1.55}
+.fld{display:grid;gap:6px;margin-bottom:14px;text-align:left}
+.fld label{font-size:13px;font-weight:700;color:#17221e}
+.fld input{height:44px;padding:0 13px;border:1px solid #cbd4d0;border-radius:7px;background:#ffffff;color:#1d2525;font:inherit;font-size:14px}
+.stack{display:grid;gap:10px;margin-top:16px}
+.btn{display:inline-flex;box-sizing:border-box;min-height:40px;align-items:center;justify-content:center;gap:7px;padding:0 16px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13.5px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none}
+.b1{background:#176954;color:#ffffff}
+.b2{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.wide{width:100%}
+.small{min-height:32px;padding:0 12px;font-size:12.5px}
+.trust{display:flex;justify-content:center;gap:18px;margin:0;padding:0;border:0}
+.trust a{font-size:12.5px;color:#66716c;text-decoration:none}
+.note{position:absolute;left:32px;bottom:22px;max-width:520px;font-size:12px;color:#8d9793;line-height:1.55}
+</style>
+</helmet>
+<div class="gate" style="position:relative;box-sizing:border-box;">
+  <header class="topbar">
+    <span class="brand">NEWFORK</span>
+    <span class="who"><a href="#help" style="font-size:12.5px;text-decoration:none;font-weight:700;">Need help?</a></span>
+  </header>
+  <div class="body">
+    <main class="col" aria-labelledby="si-t">
+      <h1 id="si-t">Sign in</h1>
+      <p class="lead2">Use the email address your workspace or invitation is tied to.</p>
+      <form style="width:100%;margin-top:4px;">
+        <div class="fld">
+          <label for="si-mail">Email</label>
+          <input id="si-mail" type="email" autocomplete="username" required>
+        </div>
+        <div class="fld">
+          <label for="si-pw">Password</label>
+          <input id="si-pw" type="password" autocomplete="current-password" minlength="8" required>
+        </div>
+        <div class="stack">
+          <button type="submit" class="btn b1 wide">Sign in</button>
+          <a class="btn b2 wide" href="#signup">Sign up</a>
+        </div>
+      </form>
+        </main>
+    <nav class="trust" aria-label="Trust and legal">
+        <a href="#privacy">Privacy</a><a href="#terms">Terms</a><a href="#accessibility">Accessibility</a><a href="#contact">Contact</a>
+      </nav>
+  </div>
+  <p class="note"><strong style="color:#5f6b66;">Ne de&#287;i&#351;ti:</strong> 280px&#39;lik bo&#351; sol panel yerine 62px&#39;lik &#252;st &#231;ubuk. &#304;&#231;erik kar&#351;&#305;lama ekran&#305;yla ayn&#305; kal&#305;pta: 560px&#39;lik &#231;er&#231;eve, yanlardan ve &#252;stten 88px, alttan 56px bo&#351;luk, 384px&#39;lik tek s&#252;tun. Ba&#351;l&#305;k ve a&#231;&#305;klama ortal&#305;, alan etiketleri sola hizal&#305; &mdash; etiket-alan ili&#351;kisi ortalan&#305;nca okunmuyor. Butonlar 40px, tam s&#252;tun geni&#351;li&#287;inde; legal sat&#305;r&#305; &#231;er&#231;evenin d&#305;&#351;&#305;nda, ortal&#305;.</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

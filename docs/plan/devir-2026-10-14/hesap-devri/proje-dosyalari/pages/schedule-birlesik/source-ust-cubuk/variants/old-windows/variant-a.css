@@ -1,0 +1,458 @@
+/* Variant A: Newfork's own language. The frame of ConfirmDialog (UI-13),
+   the green nf-button for the action, the white secondary-button for
+   dismiss (UI-09), 8px corners, sentence-case headings. */
+:root[data-ui-variant="a"] {
+  --mock-pad: 22px;
+
+  /* ---------- Shared menu frame ---------- */
+  & :is(.schedule-draft-menu-panel, .schedule-save-draft-menu, .schedule-action-menu-panel) {
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    background: var(--theme-surface);
+    box-shadow: 0 18px 48px rgb(15 23 42 / 20%);
+  }
+
+  /* ---------- New Schedule ▾ ---------- */
+  & .schedule-draft-menu-panel {
+    width: min(400px, calc(100vw - 24px));
+    gap: 0;
+    padding: 0;
+  }
+  & .schedule-draft-menu-start {
+    width: auto;
+    min-height: 56px;
+    margin: 10px;
+    gap: 12px;
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-draft-menu-start:hover {
+    border-color: var(--theme-accent);
+    background: var(--theme-selected);
+  }
+  & .schedule-draft-menu-start > span {
+    width: 34px;
+    height: 34px;
+    border-radius: 7px;
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & .schedule-draft-menu-start strong {
+    color: var(--theme-text);
+    font-size: 14px;
+    font-weight: 800;
+  }
+  & .schedule-draft-menu-separator {
+    background: var(--theme-border-subtle);
+  }
+  & .schedule-draft-menu-heading {
+    padding: 12px 18px 6px;
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+    font-weight: 800;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+  & .schedule-draft-menu-heading small {
+    color: var(--theme-muted);
+    font-weight: 700;
+  }
+  & .schedule-draft-menu-list {
+    gap: 2px;
+    padding: 0 10px 10px;
+  }
+  & .schedule-draft-menu-row {
+    min-height: 54px;
+    border: 1px solid transparent;
+    border-radius: 7px;
+    padding: 8px 8px 8px 12px;
+  }
+  & .schedule-draft-menu-row strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  & .schedule-draft-menu-row small {
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  & .schedule-draft-menu-row:hover {
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-draft-menu-row[data-active="true"] {
+    border-color: var(--theme-accent-soft);
+    background: var(--theme-selected);
+    box-shadow: inset 3px 0 0 var(--theme-accent);
+  }
+  & .schedule-draft-menu-row[data-active="true"] strong {
+    color: var(--theme-accent-strong);
+  }
+  & .schedule-draft-menu-row[data-published-fallback-row] {
+    margin-top: 6px;
+    border-color: var(--theme-border);
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-draft-menu-published-chip {
+    border-color: var(--theme-accent-soft);
+    background: var(--theme-success-soft);
+    color: var(--theme-success);
+    font-size: 11px;
+  }
+  & .schedule-draft-menu-location-badges > span {
+    border-color: var(--theme-border);
+    border-radius: 999px;
+    background: var(--theme-surface);
+    color: var(--theme-text-secondary);
+    font-size: 11px;
+  }
+  & .schedule-draft-menu-row > button {
+    width: 30px;
+    height: 30px;
+    border-radius: 6px;
+    color: var(--theme-muted-strong);
+  }
+  & .schedule-draft-menu-row > button:hover {
+    border-color: var(--theme-border-strong);
+  }
+
+  /* ---------- Publish while editing ---------- */
+  & .schedule-save-draft-menu {
+    width: min(400px, calc(100vw - 24px));
+    gap: 0;
+    padding: 0;
+  }
+  & .schedule-save-draft-menu label {
+    gap: 6px;
+    padding: 18px 18px 0;
+    color: var(--theme-text);
+    font-size: 13px;
+  }
+  & .schedule-save-draft-menu input {
+    min-height: 40px;
+    border: 1px solid var(--theme-muted);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-weight: 600;
+  }
+  & :is(.schedule-save-menu-muted, .schedule-save-menu-warning, .schedule-save-menu-danger) {
+    padding: 6px 18px 0;
+  }
+  & .schedule-save-menu-muted {
+    color: var(--theme-muted-strong);
+  }
+  & .schedule-save-menu-actions {
+    gap: 8px;
+    padding: 14px 18px 16px;
+  }
+  & .schedule-save-menu-actions button {
+    min-height: 38px;
+    border: 1px solid var(--theme-muted);
+    border-radius: 6px;
+    background: var(--theme-surface);
+    color: var(--theme-accent-deep);
+    font-size: 13px;
+    font-weight: 750;
+  }
+  & .schedule-save-menu-actions button:hover:not(:disabled) {
+    background: var(--theme-surface-muted);
+  }
+  & .schedule-save-menu-actions .schedule-save-menu-publish-action {
+    order: -1;
+    min-height: 42px;
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & .schedule-save-menu-actions .schedule-save-menu-publish-action:hover:not(:disabled) {
+    background: var(--theme-accent-strong);
+  }
+  & .schedule-save-menu-divider {
+    background: var(--theme-border-subtle);
+  }
+  & .schedule-save-menu-heading {
+    padding: 12px 18px 4px;
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+    text-transform: none;
+  }
+  & .schedule-save-menu-row {
+    margin: 0 10px;
+    border-radius: 7px;
+    padding: 8px;
+  }
+  & .schedule-save-menu-row:hover {
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-save-menu-row strong {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  & .schedule-save-menu-row small {
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+    font-weight: 600;
+  }
+  & .schedule-save-menu-row button {
+    width: 32px;
+    height: 32px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: var(--theme-muted-strong);
+  }
+  & .schedule-save-menu-row button:hover {
+    border-color: var(--theme-border-strong);
+    background: var(--theme-surface);
+  }
+  & .schedule-save-menu-footer {
+    margin-top: 8px;
+    border-top: 1px solid var(--theme-border-subtle);
+    padding: 12px 18px;
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-save-menu-footer button {
+    min-height: 36px;
+    border: 1px solid var(--theme-muted);
+    border-radius: 6px;
+    padding: 0 14px;
+    background: var(--theme-surface);
+    color: var(--theme-accent-deep);
+    font-size: 13px;
+    font-weight: 750;
+  }
+
+  /* ---------- Published ▾ ---------- */
+  & .schedule-action-menu-panel {
+    min-width: 240px;
+    gap: 2px;
+    padding: 6px;
+  }
+  & .schedule-action-menu-panel button {
+    min-height: 40px;
+    border-radius: 6px;
+    padding: 0 12px;
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 750;
+  }
+  & .schedule-action-menu-panel button:last-child {
+    border-top: 1px solid var(--theme-border-subtle);
+    border-radius: 0 0 6px 6px;
+    color: var(--theme-danger);
+  }
+
+  /* ---------- Publish window ---------- */
+  & [data-schedule-publish-surface] .schedule-dialog-backdrop {
+    background: rgb(15 23 42 / 42%);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog {
+    width: min(100%, 580px);
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgb(15 23 42 / 20%);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog > header {
+    min-height: 0;
+    border-bottom: 1px solid var(--theme-border-subtle);
+    padding: 20px 16px 16px 22px;
+  }
+  & .ui-mock-dialog-icon {
+    width: 38px;
+    height: 38px;
+    border: 1px solid var(--theme-border);
+    border-radius: 7px;
+    background: var(--theme-surface-soft);
+    color: var(--theme-accent-strong);
+  }
+  & .ui-mock-dialog-heading h2 {
+    color: var(--theme-text);
+    font-size: 16px;
+    font-weight: 850;
+  }
+  & .ui-mock-dialog-heading p {
+    color: var(--theme-muted-strong);
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 1.45;
+  }
+  & .schedule-publication-form {
+    gap: 18px;
+  }
+  & .schedule-publication-steps {
+    gap: 8px;
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+  }
+  & .schedule-publication-steps span + span::before {
+    width: 28px;
+    background: var(--theme-border-strong);
+  }
+  & .schedule-publication-steps i {
+    width: 22px;
+    height: 22px;
+    background: var(--theme-surface-muted);
+    color: var(--theme-muted-strong);
+    font-size: 11px;
+  }
+  & .schedule-publication-steps span[data-active="true"] {
+    color: var(--theme-text);
+  }
+  & .schedule-publication-steps span[data-active="true"] i {
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & .schedule-publish-weekly-availability {
+    border: 1px solid var(--theme-warning-border);
+    border-radius: 8px;
+    padding: 10px 12px;
+    background: var(--theme-warning-surface);
+  }
+  & .schedule-publication-steps span[data-complete="true"] i {
+    background: var(--theme-selected);
+    color: var(--theme-accent);
+  }
+  & .ui-mock-publish-summary {
+    border: 1px solid var(--theme-border);
+    border-radius: 8px;
+    background: var(--theme-surface-soft);
+  }
+  & .ui-mock-publish-summary > span {
+    display: grid;
+    flex: 1 1 0;
+    min-width: 0;
+    gap: 2px;
+    padding: 10px 12px;
+  }
+  & .ui-mock-publish-summary > span:first-child {
+    flex: 1.6 1 0;
+  }
+  & .ui-mock-publish-summary > span + span {
+    border-left: 1px solid var(--theme-border);
+  }
+  & .ui-mock-publish-summary strong {
+    overflow: hidden;
+    color: var(--theme-text);
+    font-size: 14px;
+    font-weight: 850;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  & .ui-mock-publish-summary small {
+    color: var(--theme-muted-strong);
+    font-size: 11px;
+    font-weight: 700;
+  }
+  & .schedule-publication-form > label,
+  & .schedule-publication-locations legend,
+  & .schedule-publication-departments legend {
+    color: var(--theme-text);
+    font-size: 13px;
+    font-weight: 800;
+  }
+  & .schedule-publication-form select {
+    min-height: 40px;
+    border: 1px solid var(--theme-muted);
+    border-radius: 6px;
+    font-weight: 600;
+  }
+  & .schedule-publication-departments {
+    border: 0;
+    padding: 0;
+  }
+  & .schedule-publication-departments legend {
+    padding: 0 0 8px;
+  }
+  & .schedule-publication-departments label {
+    min-height: 32px;
+    border-color: var(--theme-border-strong);
+    background: var(--theme-surface);
+    color: var(--theme-text);
+  }
+  & .schedule-publication-locations {
+    border-color: var(--theme-border);
+    border-radius: 8px;
+  }
+  & .schedule-publication-location {
+    min-height: 60px;
+    border-bottom-color: var(--theme-border-subtle);
+    padding: 12px 14px;
+  }
+  & .schedule-publication-location[data-selected="true"] {
+    background: var(--theme-surface);
+  }
+  & .schedule-publication-location:hover {
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-publication-location strong {
+    color: var(--theme-text);
+    font-size: 14px;
+    font-weight: 800;
+  }
+  & .schedule-publication-location-delta small {
+    font-size: 12px;
+  }
+  & .schedule-publication-location-warning {
+    border: 1px solid var(--theme-warning-border);
+    background: var(--theme-warning-surface);
+    color: var(--theme-warning-text);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  & .schedule-publish-preflight-summary,
+  & .schedule-publish-finding-group {
+    border-radius: 8px;
+  }
+  & .schedule-publication-diff > section {
+    border-radius: 8px;
+  }
+  & .schedule-publish-notify {
+    border-color: var(--theme-border);
+    border-radius: 8px;
+    background: var(--theme-surface);
+  }
+  & .schedule-publish-notify-list {
+    border-color: var(--theme-border-subtle);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions {
+    gap: 10px;
+    margin-top: 6px;
+    border-top: 1px solid var(--theme-border-subtle);
+    padding: 14px 22px;
+    background: var(--theme-surface-soft);
+  }
+  & .schedule-publication-footer-summary {
+    color: var(--theme-muted-strong);
+    font-size: 12px;
+    font-weight: 700;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button {
+    min-height: 38px;
+    border: 1px solid var(--theme-muted);
+    border-radius: 6px;
+    padding: 0 14px;
+    color: var(--theme-accent-deep);
+    font-size: 13px;
+    font-weight: 750;
+    white-space: nowrap;
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button:hover {
+    border-color: var(--theme-muted);
+    background: var(--theme-surface-muted);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button.primary {
+    border-color: var(--theme-accent);
+    background: var(--theme-accent);
+    color: var(--theme-on-accent);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button.primary:hover {
+    background: var(--theme-accent-strong);
+  }
+  & [data-schedule-publish-surface] .schedule-dialog-actions button:disabled {
+    cursor: not-allowed;
+    opacity: 0.55;
+  }
+}

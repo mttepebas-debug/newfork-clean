@@ -1,0 +1,223 @@
+<title>10.2 Settings · Jobs · PAGES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Light only, like the app; values are the app's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3; --surface: #ffffff; --soft2: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #66716c; --muted-strong: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --focus: #177a64; --bezel: #1d2525; --on-dark: #ffffff;
+  --warn-soft: #fff7e2; --warn-text: #5f491f; --warn-border: #bf872d;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); }
+body { color: var(--text); font-family: var(--font); font-size: 14px; }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1920px; margin: 0 auto; padding: 24px 24px 64px; display: grid; gap: 18px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.top { display: grid; gap: 10px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 .no { min-width: 44px; height: 34px; padding: 0 9px; border-radius: 8px; background: var(--text); color: var(--on-dark); display: inline-grid; place-items: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.lede { margin: 0; color: var(--body); line-height: 1.6; max-width: 90ch; }
+.facts { margin: 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; max-width: 120ch; font-size: 13.5px; line-height: 1.5; }
+.facts dt { font-weight: 650; color: var(--muted-strong); }
+.facts dd { margin: 0; color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.facts code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 6px; border-radius: 5px; }
+.facts a { color: var(--accent); font-weight: 600; }
+@media (max-width: 600px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-label { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted-strong); cursor: pointer; }
+.pills button:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--soft2); }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.pills button:disabled { cursor: not-allowed; opacity: 0.45; }
+.pills .count { font-weight: 500; opacity: .7; font-variant-numeric: tabular-nums; }
+.tally { margin: 0; font-size: 12.5px; color: var(--muted); }
+.tally code { font: 12px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 5px; border-radius: 4px; }
+.restart { min-height: 32px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.restart:hover { background: var(--soft2); }
+.stagebox { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 600px) { .stagebox { padding: 10px; } }
+.frames { display: flex; gap: 24px; align-items: flex-start; min-width: 0; }
+.frames[data-layout="stack"] { flex-direction: column; }
+.fcol { display: grid; gap: 8px; min-width: 0; }
+.desk-col { flex: 1 1 auto; }
+.frames[data-layout="stack"] .desk-col { width: 100%; }
+.phone-col { flex: 0 0 auto; }
+.flabel { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: 10px; align-items: center; }
+.flabel span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+.fit { overflow: hidden; }
+.fit.scroll { overflow-x: auto; }
+.desk { width: 1440px; height: 900px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--page); transform-origin: 0 0; }
+.phone { width: 410px; height: 864px; padding: 10px; border-radius: 44px; background: var(--bezel); transform-origin: 0 0; }
+.phone .screen { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--surface); }
+iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--page); }
+.notes { font-size: 13px; color: var(--muted-strong); line-height: 1.55; max-width: 120ch; margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #111827; color: #fff; font-weight: 600; font-size: 13px; padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.toast[data-open="true"] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<main class="wrap">
+  <header class="top">
+    <span class="eyebrow">PAGES · uygulamanın bugünkü hâli</span>
+    <h1><span class="no">10.2</span>Settings · Jobs</h1>
+    <p class="lede">Job'lar departman başlıkları altında tek tabloda; Departments ve Archived sekmeleri; departman arşivlenince job'ları da arşive gider; job'a çalışan atama.</p>
+    <dl class="facts">
+      <dt>Adres</dt><dd><code>/app/settings/jobs</code></dd>
+      <dt>Uygulamada</dt><dd>Sol menü altı → Settings → Jobs</dd>
+      <dt>Kim açar</dt><dd>Owner, admin (manager Settings'e giremez)</dd>
+      <dt>Kaynak</dt><dd>Gerçek uygulama kodu, main <code>28aeb82b</code> (2026-10-14); veri sahte (Harbor &amp; Vine demo restoranı). Bütün ekranlar: <a href="https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy" target="_blank" rel="noopener">PAGES dizini</a>.</dd>
+    </dl>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Kim açıyor</span><div class="pills"><button type="button" data-g="role" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="role" data-k="admin" disabled title="Bu rol bu ekranı uygulamada açamaz.">Admin · Daniel Brooks</button><button type="button" data-g="role" data-k="manager" disabled title="Bu rol bu ekranı uygulamada açamaz.">Manager · Rachel Adams (Downtown)</button><button type="button" data-g="role" data-k="custom">Shift Lead · Carlos Rivera (özel rol)</button><button type="button" data-g="role" data-k="employee" disabled title="Bu rol bu ekranı uygulamada açamaz.">Employee · Maria Lopez</button></div></div>
+    </div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Parça</span><div class="pills"><button type="button" data-g="part" data-k="0">Liste · Jobs / Departments / Archived <span class="count">15</span></button><button type="button" data-g="part" data-k="1">Departman ve job ekleme · Add <span class="count">7</span></button><button type="button" data-g="part" data-k="2">Job çekmecesi · Employees <span class="count">8</span></button><button type="button" data-g="part" data-k="3">Silme ve arşiv · Delete / Archive <span class="count">7</span></button><button type="button" data-g="part" data-k="4">Roller <span class="count">3</span></button></div></div></div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Senaryo</span><div class="pills" data-part="0"><button type="button" data-g="sc" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="sc" data-k="departments">Departments sekmesi: Department · Jobs · Employees</button><button type="button" data-g="sc" data-k="show-jobs">Departments → Bar'ın job sayısı: Jobs sekmesi Bar'a süzülür</button><button type="button" data-g="sc" data-k="filter">Department süzgeci: Kitchen</button><button type="button" data-g="sc" data-k="sorted">Employees'e göre sıralı (departman içinde)</button><button type="button" data-g="sc" data-k="no-match">Arama sonuç yok: &quot;No jobs match your search.&quot;</button><button type="button" data-g="sc" data-k="archived">Archived sekmesi: Departments ve Jobs iki grupta, Restore tek tık</button><button type="button" data-g="sc" data-k="archived-empty">Arşiv boş: &quot;No archived departments or jobs&quot;</button><button type="button" data-g="sc" data-k="no-department">&quot;No department&quot; grubu (Expo)</button><button type="button" data-g="sc" data-k="empty">Hiç departman ve job yok: &quot;No jobs yet&quot;</button><button type="button" data-g="sc" data-k="gone-job">Adresteki job yok: &quot;This job is no longer available. Dismiss&quot;</button><button type="button" data-g="sc" data-k="loading">Yükleniyor: gri iskelet</button><button type="button" data-g="sc" data-k="read-error">Liste okunamadı: Try again</button><button type="button" data-g="sc" data-k="counts-error">Çalışan sayıları yüklenemedi: sayılar sessizce &quot;—&quot;, uyarı yok</button><button type="button" data-g="sc" data-k="denied">API reddi: &quot;You don't have access to Jobs&quot;</button></div><div class="pills" data-part="1" hidden><button type="button" data-g="sc" data-k="addjob">Bar'a job ekle</button><button type="button" data-g="sc" data-k="new-job">New job çekmecesi (çalışan listesiyle)</button><button type="button" data-g="sc" data-k="new-department">Departments → New department</button><button type="button" data-g="sc" data-k="edit-department">Kitchen'ı düzenle</button><button type="button" data-g="sc" data-k="dup-name">Aynı ad: yeni job &quot;Server&quot;</button><button type="button" data-g="sc" data-k="letters">Harf kuralı: departman adı &quot;Café&quot;</button><button type="button" data-g="sc" data-k="letters-job">Harf kuralı: job adı &quot;Garçon&quot; kaydedilirken</button></div><div class="pills" data-part="2" hidden><button type="button" data-g="sc" data-k="people">Bartender çekmecesi</button><button type="button" data-g="sc" data-k="pending">Atama bekliyor: &quot;1 to assign · 0 to remove&quot;</button><button type="button" data-g="sc" data-k="saved">Atama kaydedildi: &quot;Job saved · 1 employee assignments updated.&quot;</button><button type="button" data-g="sc" data-k="discard">&quot;Discard changes?&quot; penceresi</button><button type="button" data-g="sc" data-k="changed">Başkası değiştirdi: &quot;Reload latest&quot;</button><button type="button" data-g="sc" data-k="archived-job">Arşivli job: &quot;Restore it to change assignments&quot;</button><button type="button" data-g="sc" data-k="locked-row">Değiştirilemeyen çalışan satırı (Sophie Martin, nedeniyle)</button><button type="button" data-g="sc" data-k="paging">56 çalışan: sayfa düğmesi yok, liste sonuna gelince devamı yüklenir</button></div><div class="pills" data-part="3" hidden><button type="button" data-g="sc" data-k="delete-job">Job sil uyarısı (iki aşamalı)</button><button type="button" data-g="sc" data-k="delete-department">Departman sil: &quot;Keep jobs in No department&quot; / &quot;Delete jobs too&quot;</button><button type="button" data-g="sc" data-k="owner-job">Owner job'u silinemez: &quot;Management and Owner are kept&quot;</button><button type="button" data-g="sc" data-k="archive-note">Departman menüsü: &quot;Its 2 jobs will be archived too.&quot;</button><button type="button" data-g="sc" data-k="archive-department">Bar arşivlendi: job'ları da Archived'de</button><button type="button" data-g="sc" data-k="restore-job">Departmanı arşivli job geri gelir: No department altına</button><button type="button" data-g="sc" data-k="archive-confirm">Archive iki tık: Barback &quot;Confirm archive&quot;</button></div><div class="pills" data-part="4" hidden><button type="button" data-g="sc" data-k="custom-readonly">Özel rol yalnız Jobs okuma: New job, Add job ve satır menüleri yok; ana menüde Settings yok</button><button type="button" data-g="sc" data-k="custom-no-employees">employees.read yok: sayılar &quot;—&quot;</button><button type="button" data-g="sc" data-k="custom-assign">employees.manage var, Jobs düzenleme yok: ayrıntılar kilitli, atama açık</button></div></div></div>
+    <p class="tally">5 parça · 40 senaryo. Bir senaryoya doğrudan bağlantı: sayfa linkinin sonuna <code>#senaryo-adı</code> (ör. <code>#owner</code>).</p>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Görünüm</span><div class="pills">
+        <button type="button" data-g="layout" data-k="auto">Otomatik</button>
+        <button type="button" data-g="layout" data-k="side">Yan yana</button>
+        <button type="button" data-g="layout" data-k="stack">Alt alta</button>
+      </div></div>
+      <div class="ctl"><span class="ctl-label">Masaüstü boyutu</span><div class="pills">
+        <button type="button" data-g="zoom" data-k="fit">Sığdır</button>
+        <button type="button" data-g="zoom" data-k="full">%100</button>
+      </div></div>
+      <button type="button" class="restart" id="restart">Baştan başlat</button>
+    </div>
+  </header>
+  <section class="stagebox" aria-label="Ekran">
+    <div class="frames" id="frames">
+      <div class="fcol desk-col"><div class="flabel">Masaüstü <span>1440 × 900</span><span id="desk-scale"></span></div><div class="fit" id="desk-fit"><div class="desk" id="desk"></div></div></div>
+      <div class="fcol phone-col"><div class="flabel">Telefon <span>390 × 844</span></div><div class="fit" id="phone-fit"><div class="phone"><div class="screen" id="phone"></div></div></div></div>
+    </div>
+  </section>
+  <ul class="notes">
+    <li>İki görüntü aynı demo veriyle çalışır: birinde kaydedilen değişiklik ötekine de gelir, adres değişince öteki de aynı adrese gider. Açık çekmece ya da pencere öbür görüntüye geçmez; senaryolar ikisini de aynı adımlarla açar.</li>
+    <li>Her açılış ve "Baştan başlat" senaryonun ilk hâline döner. Veri yalnız bu tarayıcıda kalır; e-posta, SMS ve dosya indirme çalışmaz.</li>
+    <li>Başka bir ekrana giden bağlantı o ekranın PAGES numarasını söyler ve yerinde kalır.</li>
+  </ul>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function () {
+  var D = {"no":"10.2","roles":["owner","custom"],"signedOut":false,"scenarios":[{"id":"owner","label":"Owner · Mert Tepebas","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"addjob","label":"Bar'a job ekle","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"people","label":"Bartender çekmecesi","role":"owner","part":"Job çekmecesi · Employees"},{"id":"departments","label":"Departments sekmesi: Department · Jobs · Employees","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"show-jobs","label":"Departments → Bar'ın job sayısı: Jobs sekmesi Bar'a süzülür","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"filter","label":"Department süzgeci: Kitchen","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"sorted","label":"Employees'e göre sıralı (departman içinde)","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"no-match","label":"Arama sonuç yok: \"No jobs match your search.\"","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"archived","label":"Archived sekmesi: Departments ve Jobs iki grupta, Restore tek tık","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"archived-empty","label":"Arşiv boş: \"No archived departments or jobs\"","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"no-department","label":"\"No department\" grubu (Expo)","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"empty","label":"Hiç departman ve job yok: \"No jobs yet\"","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"gone-job","label":"Adresteki job yok: \"This job is no longer available. Dismiss\"","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"loading","label":"Yükleniyor: gri iskelet","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"read-error","label":"Liste okunamadı: Try again","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"counts-error","label":"Çalışan sayıları yüklenemedi: sayılar sessizce \"—\", uyarı yok","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"denied","label":"API reddi: \"You don't have access to Jobs\"","role":"owner","part":"Liste · Jobs / Departments / Archived"},{"id":"new-job","label":"New job çekmecesi (çalışan listesiyle)","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"new-department","label":"Departments → New department","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"edit-department","label":"Kitchen'ı düzenle","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"dup-name","label":"Aynı ad: yeni job \"Server\"","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"letters","label":"Harf kuralı: departman adı \"Café\"","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"letters-job","label":"Harf kuralı: job adı \"Garçon\" kaydedilirken","role":"owner","part":"Departman ve job ekleme · Add"},{"id":"pending","label":"Atama bekliyor: \"1 to assign · 0 to remove\"","role":"owner","part":"Job çekmecesi · Employees"},{"id":"saved","label":"Atama kaydedildi: \"Job saved · 1 employee assignments updated.\"","role":"owner","part":"Job çekmecesi · Employees"},{"id":"discard","label":"\"Discard changes?\" penceresi","role":"owner","part":"Job çekmecesi · Employees"},{"id":"changed","label":"Başkası değiştirdi: \"Reload latest\"","role":"owner","part":"Job çekmecesi · Employees"},{"id":"archived-job","label":"Arşivli job: \"Restore it to change assignments\"","role":"owner","part":"Job çekmecesi · Employees"},{"id":"locked-row","label":"Değiştirilemeyen çalışan satırı (Sophie Martin, nedeniyle)","role":"owner","part":"Job çekmecesi · Employees"},{"id":"paging","label":"56 çalışan: sayfa düğmesi yok, liste sonuna gelince devamı yüklenir","role":"owner","part":"Job çekmecesi · Employees"},{"id":"delete-job","label":"Job sil uyarısı (iki aşamalı)","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"delete-department","label":"Departman sil: \"Keep jobs in No department\" / \"Delete jobs too\"","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"owner-job","label":"Owner job'u silinemez: \"Management and Owner are kept\"","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"archive-note","label":"Departman menüsü: \"Its 2 jobs will be archived too.\"","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"archive-department","label":"Bar arşivlendi: job'ları da Archived'de","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"restore-job","label":"Departmanı arşivli job geri gelir: No department altına","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"archive-confirm","label":"Archive iki tık: Barback \"Confirm archive\"","role":"owner","part":"Silme ve arşiv · Delete / Archive"},{"id":"custom-readonly","label":"Özel rol yalnız Jobs okuma: New job, Add job ve satır menüleri yok; ana menüde Settings yok","role":"custom","part":"Roller"},{"id":"custom-no-employees","label":"employees.read yok: sayılar \"—\"","role":"custom","part":"Roller"},{"id":"custom-assign","label":"employees.manage var, Jobs düzenleme yok: ayrıntılar kilitli, atama açık","role":"custom","part":"Roller"}]};
+  var G = { sc: D.scenarios[0] ? D.scenarios[0].id : "", role: null, layout: "auto", zoom: "fit", part: "0" };
+  var partNames = []; D.scenarios.forEach(function (s) { if (partNames.indexOf(s.part) < 0) partNames.push(s.part); });
+  function partOf(id) { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === id) return String(partNames.indexOf(D.scenarios[i].part)); return "0"; }
+  // A bare #scenario-id in the page link opens that scenario.
+  try { var wanted = decodeURIComponent(location.hash.replace(/^#/, "")); if (wanted && D.scenarios.some(function (s) { return s.id === wanted; })) { G.sc = wanted; } } catch (e) {}
+  G.part = partOf(G.sc);
+  try { var saved = JSON.parse(localStorage.getItem("nf.pages.view") || "{}"); if (saved.layout) G.layout = saved.layout; if (saved.zoom) G.zoom = saved.zoom; } catch (e) {}
+  var frames = { desktop: null, phone: null };
+  function scenario() { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === G.sc) return D.scenarios[i]; return D.scenarios[0]; }
+  function role() { var s = scenario(); return G.role || (s && s.role) || (D.roles[0] || ""); }
+  function mount() {
+    ["desktop", "phone"].forEach(function (name) {
+      var host = document.getElementById(name === "desktop" ? "desk" : "phone");
+      host.textContent = "";
+      var f = document.createElement("iframe");
+      var params = "s=" + encodeURIComponent(D.no) + "&sc=" + encodeURIComponent(G.sc) + "&role=" + encodeURIComponent(role()) + "&frame=" + name + "&n=" + Date.now();
+      f.name = "pages:" + params;
+      f.title = (name === "desktop" ? "Masaüstü" : "Telefon") + " görünümü, 10.2 Settings · Jobs";
+      f.src = "app.html#" + params;
+      host.appendChild(f);
+      frames[name] = f;
+    });
+    sync();
+  }
+  // Each frame's saves and moves go to the other frame.
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (!m || m.nf !== "pages") return;
+    var other = event.source === (frames.desktop && frames.desktop.contentWindow) ? frames.phone
+      : event.source === (frames.phone && frames.phone.contentWindow) ? frames.desktop : null;
+    if (other && other.contentWindow) other.contentWindow.postMessage(m, "*");
+  });
+  function sync() {
+    document.querySelectorAll("[data-g]").forEach(function (b) {
+      var g = b.dataset.g, k = b.dataset.k;
+      var on = g === "role" ? role() === k : G[g] === k;
+      b.setAttribute("aria-pressed", String(on));
+    });
+    document.querySelectorAll("[data-part]").forEach(function (row) { row.hidden = row.dataset.part !== G.part; });
+  }
+  function fit() {
+    var box = document.getElementById("frames");
+    var width = box.clientWidth;
+    var side = G.layout === "side" || (G.layout === "auto" && (width - 410 - 24) / 1440 >= 0.62);
+    box.dataset.layout = side ? "side" : "stack";
+    var deskFit = document.getElementById("desk-fit");
+    var deskWidth = side ? width - 410 - 24 : width;
+    var desk = document.getElementById("desk");
+    var scale = G.zoom === "full" ? 1 : Math.min(1, deskWidth / 1440);
+    desk.style.transform = scale < 1 ? "scale(" + scale + ")" : "";
+    deskFit.style.width = Math.max(0, deskWidth) + "px";
+    deskFit.style.height = Math.round(900 * scale) + "px";
+    deskFit.classList.toggle("scroll", G.zoom === "full" && deskWidth < 1440);
+    document.getElementById("desk-scale").textContent = "· %" + Math.round(scale * 100);
+    var phoneFit = document.getElementById("phone-fit");
+    var phone = phoneFit.firstElementChild;
+    var pScale = Math.min(1, width / 410);
+    phone.style.transform = pScale < 1 ? "scale(" + pScale + ")" : "";
+    phoneFit.style.width = Math.round(410 * pScale) + "px";
+    phoneFit.style.height = Math.round(864 * pScale) + "px";
+  }
+  document.addEventListener("click", function (event) {
+    var b = event.target.closest && event.target.closest("[data-g]");
+    if (b && !b.disabled) {
+      var g = b.dataset.g, k = b.dataset.k;
+      if (g === "sc") { G.sc = k; G.role = null; mount(); }
+      else if (g === "part") { G.part = k; var first = null; for (var i = 0; i < D.scenarios.length; i++) if (String(partNames.indexOf(D.scenarios[i].part)) === k) { first = D.scenarios[i].id; break; } if (first) { G.sc = first; G.role = null; mount(); } else sync(); }
+      else if (g === "role") { G.role = k; mount(); }
+      else { G[g] = k; try { localStorage.setItem("nf.pages.view", JSON.stringify({ layout: G.layout, zoom: G.zoom })); } catch (e) {} sync(); fit(); }
+    }
+  });
+  document.getElementById("restart").addEventListener("click", mount);
+  try { new ResizeObserver(fit).observe(document.querySelector(".wrap")); } catch (e) { window.addEventListener("resize", fit); }
+  mount();
+  fit();
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "PAGES · uygulamanın güncel ekranları", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

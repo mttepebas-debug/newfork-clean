@@ -1,0 +1,338 @@
+/* Test page variants. Only this page loads this file; "original" adds nothing. */
+
+/* ---------- Item 3: the published check (edit mode) ---------- */
+.schedule-shift-badge .schedule-shift-badge-markers svg.vk-tick-green {
+  color: var(--theme-success);
+}
+.schedule-shift-badge .vk-live-mark {
+  position: absolute;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+}
+/* 2: green check, bottom right */
+.schedule-shift-badge .vk-live-mark[data-vk-live-mark="t2"] {
+  right: 5px;
+  bottom: 4px;
+  color: var(--theme-success);
+}
+/* 3: green live dot, bottom right */
+.schedule-shift-badge .vk-live-mark[data-vk-live-mark="t3"] {
+  right: 6px;
+  bottom: 6px;
+  width: 7px;
+  height: 7px;
+  border-radius: 999px;
+  background: #1f8a5b;
+  box-shadow: 0 0 0 1.5px var(--theme-surface);
+}
+/* 4: green folded corner, bottom right (the note's ink corner, mirrored) */
+.schedule-shift-badge .vk-live-mark[data-vk-live-mark="t4"] {
+  right: 0;
+  bottom: 0;
+  width: 0;
+  height: 0;
+  border-bottom: 11px solid #1f8a5b;
+  border-left: 11px solid transparent;
+}
+/* 5: green seal with a white check, top right; the "!" moves left of it */
+.schedule-shift-badge .vk-live-mark[data-vk-live-mark="t5"] {
+  top: 5px;
+  right: 5px;
+  width: 15px;
+  height: 15px;
+  border-radius: 999px;
+  background: var(--theme-success);
+  color: #fff;
+}
+.schedule-shift-badge[data-vk-live="t5"] .schedule-shift-badge-markers {
+  right: 24px;
+}
+/* 6 (suggestion): published shows nothing; a shift that is not live yet says "New" */
+.schedule-shift-badge .vk-new-mark {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  z-index: 2;
+  border: 1px solid color-mix(in srgb, var(--theme-success) 45%, transparent);
+  border-radius: 3px;
+  padding: 0 4px;
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+/* ---------- Item 10: the ghost shift ---------- */
+html[data-vk-ghost] .schedule-shift-badge[data-ghost="true"] {
+  transition: none;
+}
+/* 1: amber hatch */
+html[data-vk-ghost="g1"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #d6a447;
+  background: repeating-linear-gradient(135deg, #f1d79c 0 1px, #fff8e8 1px 5px);
+}
+html[data-vk-ghost="g1"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #6b4a0e;
+}
+/* 2: the other location's own color */
+html[data-vk-ghost="g2"] .schedule-shift-badge[data-ghost="true"] {
+  border: 1px dashed color-mix(in srgb, var(--vk-ghost-color) 70%, #fff);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--vk-ghost-color) 20%, #fff) 0 1px,
+    color-mix(in srgb, var(--vk-ghost-color) 6%, #fff) 1px 5px
+  );
+}
+html[data-vk-ghost="g2"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: color-mix(in srgb, var(--vk-ghost-color) 62%, #111827);
+}
+/* 3: stronger grey: darker hatch and edge (today's 11b, turned up) */
+html[data-vk-ghost="g3"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #9aa5a0;
+  background: repeating-linear-gradient(135deg, #cfd6d3 0 1.5px, #e9edeb 1.5px 5px);
+}
+html[data-vk-ghost="g3"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #3f4945;
+}
+/* 4: grey hatch with a light sweep */
+html[data-vk-ghost="g4"] .schedule-shift-badge[data-ghost="true"] {
+  background:
+    linear-gradient(100deg, transparent 35%, rgb(255 255 255 / 0.85) 50%, transparent 65%) no-repeat,
+    repeating-linear-gradient(135deg, var(--theme-border-subtle) 0 1px, var(--theme-surface-muted) 1px 5px);
+  background-size: 260% 100%, auto;
+  animation: vk-ghost-sweep 3.2s ease-in-out infinite;
+}
+@keyframes vk-ghost-sweep {
+  0% { background-position: 130% 0, 0 0; }
+  55%, 100% { background-position: -30% 0, 0 0; }
+}
+/* 5: moving dashed outline */
+html[data-vk-ghost="g5"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: transparent;
+  background:
+    linear-gradient(90deg, #6f7a76 50%, transparent 0) repeat-x 0 0 / 8px 1.5px,
+    linear-gradient(90deg, #6f7a76 50%, transparent 0) repeat-x 0 100% / 8px 1.5px,
+    linear-gradient(0deg, #6f7a76 50%, transparent 0) repeat-y 0 0 / 1.5px 8px,
+    linear-gradient(0deg, #6f7a76 50%, transparent 0) repeat-y 100% 0 / 1.5px 8px,
+    #f6f7f6;
+  animation: vk-ghost-ants 1.4s linear infinite;
+}
+@keyframes vk-ghost-ants {
+  to { background-position: 8px 0, -8px 100%, 0 -8px, 100% 8px, 0 0; }
+}
+/* 6: slow breathing outline */
+html[data-vk-ghost="g6"] .schedule-shift-badge[data-ghost="true"] {
+  animation: vk-ghost-breathe 2.6s ease-in-out infinite;
+}
+@keyframes vk-ghost-breathe {
+  0%, 100% { border-color: var(--schedule-ghost-edge); box-shadow: 0 0 0 0 rgb(86 97 92 / 0); }
+  50% { border-color: #7b8682; box-shadow: 0 0 0 3px rgb(86 97 92 / 0.22); }
+}
+/* 7: today's grey hatch with an amber edge and an amber pin */
+html[data-vk-ghost="g7"] .schedule-shift-badge[data-ghost="true"] {
+  border: 1.5px solid #d39a2c;
+}
+html[data-vk-ghost="g7"] .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location svg {
+  color: #a86b00;
+}
+/* 8: amber stripes that slowly slide */
+html[data-vk-ghost="g8"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #d6a447;
+  background: linear-gradient(135deg, #fbe5b0 25%, #fff7e3 25%, #fff7e3 50%, #fbe5b0 50%, #fbe5b0 75%, #fff7e3 75%);
+  background-size: 16px 16px;
+  animation: vk-ghost-slide 1.8s linear infinite;
+}
+@keyframes vk-ghost-slide {
+  to { background-position: 16px 0; }
+}
+html[data-vk-ghost="g8"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #5c3f0a;
+}
+/* 9: violet tint, the location pin pulses */
+html[data-vk-ghost="g9"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #b9a5f5;
+  background: repeating-linear-gradient(135deg, #e6ddff 0 1px, #f6f2ff 1px 5px);
+}
+html[data-vk-ghost="g9"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #4c2a92;
+}
+html[data-vk-ghost="g9"] .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location svg {
+  animation: vk-ghost-pin 1.6s ease-in-out infinite;
+  transform-origin: 50% 60%;
+}
+@keyframes vk-ghost-pin {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.35); }
+}
+/* 10: calm grey; amber pulse on the row you are working on (rule written by the harness) */
+@keyframes vk-ghost-hot {
+  0%, 100% { border-color: #d6a447; box-shadow: 0 0 0 0 rgb(214 164 71 / 0); }
+  50% { border-color: #c27c0e; box-shadow: 0 0 0 3px rgb(214 164 71 / 0.5); }
+}
+
+/* ===== Round 2 (Mert 2026-10-09 08:21Z): 10 more, and five takes on 5 ===== */
+/* 11: teal hatch, still */
+html[data-vk-ghost="g11"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #7cc4bb;
+  background: repeating-linear-gradient(135deg, #c9ebe6 0 1px, #f0faf8 1px 5px);
+}
+html[data-vk-ghost="g11"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #155e56;
+}
+/* 12: soft red, still ("this person is taken") */
+html[data-vk-ghost="g12"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #e8a3ab;
+  background: repeating-linear-gradient(135deg, #f8d3d7 0 1px, #fff3f4 1px 5px);
+}
+html[data-vk-ghost="g12"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #8f1d2c;
+}
+/* 13: grey hatch, one amber flash every 4 seconds */
+html[data-vk-ghost="g13"] .schedule-shift-badge[data-ghost="true"] {
+  animation: vk-ghost-flash 4s ease-out infinite;
+}
+@keyframes vk-ghost-flash {
+  0%, 70%, 100% { border-color: var(--schedule-ghost-edge); box-shadow: 0 0 0 0 rgb(214 164 71 / 0); }
+  78% { border-color: #c98a1c; box-shadow: 0 0 0 3px rgb(214 164 71 / 0.45); }
+}
+/* 14: grey hatch that drifts very slowly */
+html[data-vk-ghost="g14"] .schedule-shift-badge[data-ghost="true"] {
+  background: linear-gradient(135deg, #e2e6e4 25%, #f0f3f1 25%, #f0f3f1 50%, #e2e6e4 50%, #e2e6e4 75%, #f0f3f1 75%);
+  background-size: 10px 10px;
+  animation: vk-ghost-drift 4s linear infinite;
+}
+@keyframes vk-ghost-drift {
+  to { background-position: 10px 0; }
+}
+/* 15: ink blue (the note's color), still */
+html[data-vk-ghost="g15"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #9fb0dc;
+  background: repeating-linear-gradient(135deg, #d9e0f3 0 1px, #f3f5fb 1px 5px);
+}
+html[data-vk-ghost="g15"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #2f4fa3;
+}
+/* 16: grey hatch, the pin sends out a ring like a radar ping */
+html[data-vk-ghost="g16"] .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location {
+  position: relative;
+  border-radius: 999px;
+}
+html[data-vk-ghost="g16"] .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location::after {
+  position: absolute;
+  inset: -2px;
+  border: 1.5px solid #a86b00;
+  border-radius: 999px;
+  content: "";
+  animation: vk-ghost-ping 2s ease-out infinite;
+}
+html[data-vk-ghost="g16"] .schedule-shift-badge[data-ghost="true"] .schedule-ghost-location svg {
+  color: #a86b00;
+}
+@keyframes vk-ghost-ping {
+  0% { transform: scale(0.6); opacity: 0.9; }
+  80%, 100% { transform: scale(1.9); opacity: 0; }
+}
+/* 17: amber fading into grey from the left edge, still */
+html[data-vk-ghost="g17"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #d3b27a;
+  background:
+    linear-gradient(90deg, rgb(246 200 110 / 0.75) 0, rgb(246 200 110 / 0) 45%),
+    repeating-linear-gradient(135deg, var(--theme-border-subtle) 0 1px, var(--theme-surface-muted) 1px 5px);
+}
+html[data-vk-ghost="g17"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #4a3f2c;
+}
+/* 18: grey hatch, a small nudge every 5 seconds */
+html[data-vk-ghost="g18"] .schedule-shift-badge[data-ghost="true"] {
+  animation: vk-ghost-nudge 5s ease-in-out infinite;
+}
+@keyframes vk-ghost-nudge {
+  0%, 86%, 100% { transform: translateX(0); }
+  89% { transform: translateX(-2px); }
+  92% { transform: translateX(2px); }
+  95% { transform: translateX(-1px); }
+}
+/* 19: calm grey; turns solid amber when you work on that person (rule in the harness) */
+/* 20: calm grey; red pulse when you work on that person (rule in the harness) */
+@keyframes vk-ghost-hot-red {
+  0%, 100% { border-color: #d9707c; box-shadow: 0 0 0 0 rgb(200 40 60 / 0); }
+  50% { border-color: #b4233a; box-shadow: 0 0 0 3px rgb(200 40 60 / 0.35); }
+}
+
+/* 5a-5e: five takes on 5 (moving dashed outline) */
+:where(html[data-vk-ghost^="g5"]) .schedule-shift-badge[data-ghost="true"] {
+  --vk-ants: #6f7a76;
+  --vk-ants-fill: #f6f7f6;
+  --vk-dash: 8px;
+}
+html[data-vk-ghost^="g5"]:not([data-vk-ghost="g5"]) .schedule-shift-badge[data-ghost="true"] {
+  border-color: transparent;
+  background:
+    linear-gradient(90deg, var(--vk-ants) 50%, transparent 0) repeat-x 0 0 / var(--vk-dash) 1.5px,
+    linear-gradient(90deg, var(--vk-ants) 50%, transparent 0) repeat-x 0 100% / var(--vk-dash) 1.5px,
+    linear-gradient(0deg, var(--vk-ants) 50%, transparent 0) repeat-y 0 0 / 1.5px var(--vk-dash),
+    linear-gradient(0deg, var(--vk-ants) 50%, transparent 0) repeat-y 100% 0 / 1.5px var(--vk-dash),
+    var(--vk-ants-fill);
+}
+/* 5a: long dashes, slow, dark grey */
+html[data-vk-ghost="g5a"] .schedule-shift-badge[data-ghost="true"] {
+  --vk-ants: #4f5955;
+  --vk-dash: 14px;
+  animation: vk-ghost-ants-long 3s linear infinite;
+}
+@keyframes vk-ghost-ants-long {
+  to { background-position: 14px 0, -14px 100%, 0 -14px, 100% 14px, 0 0; }
+}
+/* 5b: amber dashes on light amber */
+html[data-vk-ghost="g5b"] .schedule-shift-badge[data-ghost="true"] {
+  --vk-ants: #c27c0e;
+  --vk-ants-fill: #fff6e3;
+  animation: vk-ghost-ants 1.4s linear infinite;
+}
+html[data-vk-ghost="g5b"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #6b4a0e;
+}
+/* 5c: red dashes on light rose */
+html[data-vk-ghost="g5c"] .schedule-shift-badge[data-ghost="true"] {
+  --vk-ants: #c0283f;
+  --vk-ants-fill: #fff1f2;
+  animation: vk-ghost-ants 1.4s linear infinite;
+}
+html[data-vk-ghost="g5c"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #8f1d2c;
+}
+/* 5d: the other location's own color */
+html[data-vk-ghost="g5d"] .schedule-shift-badge[data-ghost="true"] {
+  --vk-ants: color-mix(in srgb, var(--vk-ghost-color) 85%, #111827);
+  --vk-ants-fill: color-mix(in srgb, var(--vk-ghost-color) 7%, #fff);
+  animation: vk-ghost-ants 1.4s linear infinite;
+}
+html[data-vk-ghost="g5d"] .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: color-mix(in srgb, var(--vk-ghost-color) 62%, #111827);
+}
+/* 5e: still dashes; they start moving when you work on that person (rule in the harness) */
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-vk-ghost] .schedule-shift-badge[data-ghost="true"],
+  html[data-vk-ghost] .schedule-shift-badge[data-ghost="true"] * {
+    animation: none !important;
+  }
+}

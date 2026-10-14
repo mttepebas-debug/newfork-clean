@@ -1,0 +1,7 @@
+.catalog-drawer.job-assignment-drawer .catalog-drawer-body{background:#f4f5f3!important;padding:12px 16px!important;gap:12px!important}
+.catalog-drawer .job-details-fields{background:#fff;border:1px solid #dce3df!important;border-radius:12px;margin:0 0 12px!important}
+.catalog-drawer .job-drawer-employees{background:#fff;border:1px solid #dce3df;border-radius:12px;padding-bottom:12px}
+.catalog-drawer .job-drawer-header{border-bottom:1px solid #dce3df!important}
+.catalog-drawer .job-editor-footer{border-top:1px solid #dce3df!important;background:#fff}
+.catalog-drawer .job-employee-list{border-color:#dce3df!important;margin:0 16px!important}
+.catalog-drawer .job-employee-row:has(input:checked){background:#e7f1ed}

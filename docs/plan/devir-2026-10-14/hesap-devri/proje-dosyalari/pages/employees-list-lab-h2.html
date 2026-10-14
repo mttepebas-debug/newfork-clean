@@ -1,0 +1,371 @@
+<title>Employees List Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one column of labelled specimens; desktop specimens are a scaled-down 1440 list,
+   phone specimens sit in a 375 px frame. Single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --text: #17221e;
+  --body: #1d2525;
+  --muted: #66716c;
+  --muted-strong: #5f6b66;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --control: #aeb9b4;
+  --accent: #176954;
+  --accent-soft: #e7f1ed;
+  --action: #111827;
+  --warn: #8a5a00;
+  --warn-soft: #fff7e2;
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1060px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 64px; }
+h1 { margin: 0 0 6px; color: var(--text); font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0; max-width: 72ch; color: var(--muted-strong); }
+section.part { margin-top: 44px; }
+.part > h2 { margin: 0 0 4px; color: var(--text); font-size: 20px; letter-spacing: -0.01em; text-wrap: balance; }
+.part > .where { margin: 0 0 8px; max-width: 75ch; color: var(--muted); font-size: 13px; }
+.spec { display: grid; gap: 10px; margin-top: 24px; min-width: 0; }
+.spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 30px; justify-content: center; padding: 2px 9px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.tag.keep { background: var(--accent); }
+.spec-head strong { color: var(--text); font-size: 15px; }
+.note { margin: 0; color: var(--muted-strong); font-size: 13px; }
+.note b { color: var(--text); font-weight: 600; }
+.stage { min-width: 0; padding: 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow-x: auto; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 15px; height: 15px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+/* ---------- desktop page (the Employees list, drawn at 1440 and scaled) ---------- */
+.desk { width: 1000px; padding: 26px 30px 22px; background: var(--page); border-radius: 8px; }
+.ph { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.eyebrow { color: var(--accent); font-size: 9.5px; font-weight: 800; letter-spacing: 0.14em; }
+.ph h3 { display: flex; align-items: center; gap: 8px; margin: 2px 0 2px; color: var(--text); font-size: 30px; letter-spacing: -0.03em; }
+.ph h3::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.ph p { margin: 0; color: var(--muted-strong); font-size: 12px; }
+.bar1 { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 16px; }
+.tabs { display: inline-flex; gap: 2px; padding: 3px; border: 1px solid var(--border); border-radius: 8px; background: #edf0ee; }
+.tabs span { padding: 5px 10px; border-radius: 6px; color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.tabs span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.1); }
+.cols { display: grid; flex: none; place-items: center; width: 34px; height: 34px; border: 1px solid var(--text); border-radius: 6px; background: var(--surface); color: var(--text); }
+.bar2 { display: flex; align-items: center; gap: 10px; margin-top: 10px; }
+.sel { display: flex; align-items: center; justify-content: space-between; width: 190px; height: 34px; padding: 0 10px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); font-size: 12px; color: var(--text); }
+.search { display: flex; flex: 1; align-items: center; gap: 8px; height: 34px; padding: 0 12px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--muted); font-size: 12px; }
+.btn { display: inline-flex; flex: none; align-items: center; justify-content: center; gap: 6px; height: 34px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text); font: 600 12.5px var(--font); white-space: nowrap; }
+.btn.green { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn.big { height: 40px; padding: 0 18px; border-radius: 8px; font-size: 14px; font-weight: 700; }
+.btn.dark { border-color: var(--action); background: var(--action); color: var(--surface); }
+.btn.icon { width: 34px; padding: 0; }
+.btn.outline-green { border-color: var(--accent); background: var(--surface); color: var(--accent); }
+.btn.ghost { height: 30px; padding: 0 8px; border-color: transparent; background: transparent; color: var(--accent); font-weight: 650; }
+.tbl { margin-top: 12px; border: 1px solid #d7dcda; border-radius: 7px; background: var(--surface); overflow: hidden; }
+.tr { display: grid; grid-template-columns: 24% 12% 17% 17% 15% 15%; align-items: center; padding: 0 12px; font-size: 12px; color: #46514d; }
+.tr.h { height: 34px; background: #f3f5f3; color: #68726e; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.tr.r { height: 46px; border-top: 1px solid #e7eae8; }
+.id { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.av { display: grid; flex: none; place-items: center; width: 26px; height: 26px; border: 1px solid #c9d6d0; border-radius: 50%; background: #e3ece8; color: var(--accent); font-size: 11px; font-weight: 800; }
+.id b { display: block; overflow: hidden; color: var(--text); font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.id small { display: block; color: var(--muted); font-size: 10px; }
+.st { justify-self: start; padding: 2px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); font-size: 10.5px; font-weight: 800; white-space: nowrap; }
+.st.invited { background: #eef1ef; color: var(--muted-strong); }
+.st.onboarding { background: #e7eef8; color: #2b5a8a; }
+.st.attention { background: var(--warn-soft); color: var(--warn); }
+.loc { display: flex; align-items: center; gap: 5px; }
+.loc small { color: var(--muted); }
+.nochip { padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 10.5px; font-weight: 700; }
+.scaler { width: 100%; overflow: hidden; }
+.scaler > .desk { transform-origin: 0 0; }
+
+/* ---------- phone frame (375) ---------- */
+.phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 18px; }
+.phone { width: 100%; max-width: 375px; height: 640px; margin: 0 auto; overflow: auto; border: 1px solid var(--border-strong); border-radius: 22px; background: var(--page); }
+.pin { padding: 16px 14px 18px; }
+.pin .eyebrow { font-size: 9px; }
+.pin h3 { display: flex; align-items: center; gap: 7px; margin: 2px 0 10px; color: var(--text); font-size: 26px; letter-spacing: -0.03em; }
+.pin h3::after { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+.pctl { display: grid; gap: 8px; margin-bottom: 12px; }
+.pctl .row2 { display: flex; gap: 8px; }
+.pctl .sel { width: auto; flex: 1; }
+.pctl .search { flex: none; }
+.pctl .btn { width: 100%; }
+.ptabs { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 2px; }
+.ptabs span { flex: none; padding: 5px 11px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.ptabs span.on { border-color: var(--text); background: var(--text); color: var(--surface); }
+.tiny { height: 212px; overflow: auto; border: 1px solid #d7dcda; border-radius: 7px; background: var(--surface); }
+.cards { display: grid; gap: 8px; }
+.card { display: grid; grid-template-columns: 34px minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 11px 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.card .av { width: 34px; height: 34px; font-size: 13px; }
+.card b { display: block; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.card small { display: block; overflow: hidden; color: var(--muted); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.full { overflow-x: auto; border: 1px solid #d7dcda; border-radius: 7px; background: var(--surface); -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 30px), transparent); }
+.full table { min-width: 640px; border-collapse: collapse; font-size: 12px; }
+.full th, .full td { padding: 0 12px; text-align: left; white-space: nowrap; }
+.full th { height: 34px; background: #f3f5f3; color: #68726e; font-size: 9.5px; font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase; }
+.full td { height: 50px; border-top: 1px solid #e7eae8; color: #46514d; }
+.full th:first-child, .full td:first-child { position: sticky; left: 0; background: var(--surface); box-shadow: 1px 0 0 #e7eae8; }
+.full th:first-child { background: #f3f5f3; }
+.group { margin-top: 12px; }
+.ghead { display: flex; justify-content: space-between; padding: 0 2px 6px; color: var(--muted); font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
+.glist { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.gi { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; padding: 8px 12px; }
+.gi + .gi { border-top: 1px solid #edf0ee; }
+.gi b { display: block; color: var(--text); font-size: 14px; font-weight: 650; }
+.gi small { display: block; color: var(--muted); font-size: 12px; }
+.stripe { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.sr { position: relative; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 2px 10px; padding: 10px 12px 10px 16px; }
+.sr + .sr { border-top: 1px solid #edf0ee; }
+.sr::before { content: ""; position: absolute; left: 0; top: 10px; bottom: 10px; width: 3px; border-radius: 0 3px 3px 0; background: var(--accent); }
+.sr.invited::before { background: var(--control); }
+.sr.onboarding::before { background: #2b5a8a; }
+.sr.attention::before { background: #d39b2a; }
+.sr b { color: var(--text); font-size: 14px; font-weight: 650; }
+.sr .role { justify-self: end; color: var(--muted-strong); font-size: 11.5px; font-weight: 600; }
+.sr small { grid-column: 1 / -1; color: var(--muted); font-size: 12px; }
+.sr .stw { grid-column: 1 / -1; color: var(--muted-strong); font-size: 11.5px; }
+.legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 8px; color: var(--muted); font-size: 11px; }
+.legend i { display: inline-block; width: 8px; height: 8px; margin-right: 4px; border-radius: 2px; }
+.acc { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.ai + .ai { border-top: 1px solid #edf0ee; }
+.ah { display: flex; align-items: center; min-height: 50px; padding: 0 12px; }
+.ah button { all: unset; display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; cursor: pointer; }
+.ah button:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: 4px; }
+.ah b { flex: 1; overflow: hidden; color: var(--text); font-size: 14px; font-weight: 650; text-overflow: ellipsis; white-space: nowrap; }
+.ah .chev { color: var(--muted); transition: transform 0.15s; }
+.ai.open .ah .chev { transform: rotate(90deg); }
+.ad { display: none; grid-template-columns: auto 1fr; gap: 4px 14px; margin: 0; padding: 0 12px 12px 48px; font-size: 12.5px; }
+.ai.open .ad { display: grid; }
+.ad dt { color: var(--muted); }
+.ad dd { margin: 0; color: var(--text); font-weight: 600; }
+@media (prefers-reduced-motion: reduce) { .ah .chev { transition: none; } }
+@media (max-width: 560px) { .wrap { padding-inline: 16px; } .stage { padding: 10px; } h1 { font-size: 24px; } }
+</style>
+
+<div class="wrap">
+  <h1>Employees: the add button and the phone list</h1>
+  <p class="lead">Each block starts with today's screen, then the versions. The people are the same in every version, so only the design changes. Pick one per block. The location cell already uses the owner choice: "Kadikoy +1".</p>
+
+  <section class="part" aria-labelledby="g1">
+    <h2 id="g1">1. "Add employee" button (desktop)</h2>
+    <p class="where">Employees list at 1440 px, drawn smaller to fit. The list moves to the shared list layout (as Announcements and Documents): page title alone, status tabs, then location filter, search and the add button on one row.</p>
+    <div id="g1-list"></div>
+  </section>
+
+  <section class="part" aria-labelledby="g2">
+    <h2 id="g2">2. Employees list on a phone (375 px)</h2>
+    <p class="where">Each person shows name, location (owner "Kadikoy +1"), job, role and status. The frames scroll like a phone.</p>
+    <div id="g2-list"></div>
+  </section>
+</div>
+
+<script>
+const people = [
+  { n: "Olcay Owner", c: "E-0001", loc: "Kadikoy", more: 1, job: "Owner", role: "Owner", st: "active" },
+  { n: "Zeynep Person", c: "E-0005", loc: "Kadikoy", more: 0, job: "Server", role: "Admin", st: "active" },
+  { n: "Ayse Person", c: "E-0002", loc: "Kadikoy", more: 0, job: "Cook", role: "Manager", st: "active" },
+  { n: "Hande Person", c: "E-0008", loc: "Besiktas", more: 0, job: "Cook", role: "Manager", st: "active" },
+  { n: "Ali Person", c: "E-0006", loc: "Kadikoy", more: 1, job: "Cook", role: "Employee", st: "active" },
+  { n: "Deniz Person", c: "E-0007", loc: "Kadikoy", more: 1, job: "Cook", role: "Employee", st: "active" },
+  { n: "Busra Person", c: "E-0009", loc: "Kadikoy", more: 0, job: "Barista", role: "Employee", st: "onboarding" },
+  { n: "Emre Person", c: "E-0010", loc: "Besiktas", more: 0, job: "Server", role: "Employee", st: "invited" },
+  { n: "Mehmet Person", c: "E-0011", loc: "", more: 0, job: "Cook", role: "Employee", st: "attention" },
+];
+const label = { active: "Active", invited: "Invited", onboarding: "Onboarding", attention: "Needs attention" };
+const pin = '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+const plus = '<svg class="i" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></svg>';
+const search = '<svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>';
+const sliders = '<svg class="i" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>';
+const chev = '<svg class="i chev" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>';
+const caret = '<svg class="i" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></svg>';
+const locText = (p) => p.loc ? `${p.loc}${p.more ? ` +${p.more}` : ""}` : "";
+const locCell = (p) => p.loc ? `<span class="loc">${pin}${p.loc}${p.more ? ` <small>+${p.more}</small>` : ""}</span>` : `<span class="nochip">No location</span>`;
+const chip = (p) => `<span class="st ${p.st}">${label[p.st]}</span>`;
+const av = (p) => `<span class="av">${p.n[0]}</span>`;
+
+function deskTable(rows = 6, style = "") {
+  return `<div class="tbl" style="${style}"><div class="tr h"><span>Employee</span><span>Status</span><span>Primary location</span><span>Primary job</span><span>Access</span><span>Start date</span></div>${
+    people.slice(0, rows).map((p) => `<div class="tr r"><span class="id">${av(p)}<span><b>${p.n}</b><small>${p.c}</small></span></span><span>${chip(p)}</span><span>${locCell(p)}</span><span>${p.job}</span><span>${p.role}</span><span>Not set</span></div>`).join("")}</div>`;
+}
+function desk({ headerBtn = "", tabsRight = "", filterRight = "" }) {
+  return `<div class="desk"><div class="ph"><div><span class="eyebrow">YOUR TEAM. CONNECTED AND READY.</span><h3>Employees</h3><p>Manage employee profiles, assignments, invitations, and workspace access.</p></div>${headerBtn}</div>
+  <div class="bar1"><span class="tabs"><span class="on">All</span><span>Invited</span><span>Onboarding</span><span>Needs Attention</span><span>Active</span><span>Archived</span></span><span style="display:flex;gap:8px;align-items:center">${tabsRight}<span class="cols">${sliders}</span></span></div>
+  <div class="bar2"><span class="sel">All locations ${caret}</span><span class="search">${search}Search name, location, or job</span>${filterRight}</div>${deskTable()}</div>`;
+}
+const g1 = [
+  { tag: "Today", cls: "today", title: "Green, big, beside the title", html: desk({ headerBtn: `<span class="btn green big">${plus}Add employee</span>` }), note: "<b>Bugün:</b> büyük yeşil düğme sayfa başlığının sağında; arama satırı ortak dilden farklı." },
+  { tag: "1", title: "White, at the end of the search row", html: desk({ filterRight: `<span class="btn">${plus}Add employee</span>` }), note: "<b>Fark:</b> ortak dilin kendisi; Announcements ve Documents'taki gibi beyaz, ince çerçeveli." },
+  { tag: "2", title: "Black, at the end of the search row", html: desk({ filterRight: `<span class="btn dark">${plus}Add employee</span>` }), note: "<b>Fark:</b> Schedule'ın sağ üstteki siyah düğmeleriyle aynı dil; beyaz sayfada en net vurgu." },
+  { tag: "3", title: "Only a plus, at the end of the search row", html: desk({ filterRight: `<span class="btn icon green" title="Add employee" aria-label="Add employee">${plus}</span>` }), note: "<b>Fark:</b> en sade; yeşil kare içinde yalnız artı, üzerine gelince \"Add employee\" yazar." },
+  { tag: "4", title: "A quiet text link beside the title", html: desk({ headerBtn: `<span class="btn ghost">${plus}Add employee</span>` }), note: "<b>Fark:</b> çerçevesiz yeşil yazı, başlık satırının sağ altında; arama satırı yalnız süzgeç kalır." },
+  { tag: "5", title: "Green outline, with the status tabs", html: desk({ tabsRight: `<span class="btn outline-green">${plus}Add employee</span>` }), note: "<b>Fark:</b> yeşil çerçeveli beyaz düğme, sekmelerin sağında sütun düğmesinin yanında; arama satırı tam genişlik." },
+  { tag: "6 · C", cls: "keep", title: "Green, at the end of the search row (the one you liked)", html: desk({ filterRight: `<span class="btn green">${plus}Add employee</span>` }), note: "<b>Senin C'n, aynen:</b> yeşil eylem rengi kalır, yeri ortak dildeki gibi arama satırının sağ ucu." },
+];
+
+function phoneTop() {
+  return `<span class="eyebrow">YOUR TEAM. CONNECTED AND READY.</span><h3>Employees</h3>
+  <div class="pctl"><div class="ptabs"><span class="on">All</span><span>Invited</span><span>Onboarding</span><span>Needs attention</span><span>Active</span><span>Archived</span></div>
+  <div class="row2"><span class="sel">All locations ${caret}</span><span class="cols">${sliders}</span></div><span class="search">${search}Search name, location, or job</span><span class="btn green">${plus}Add employee</span></div>`;
+}
+const meta = (p) => [locText(p) || "No location", p.job, p.role !== "Employee" ? p.role : ""].filter(Boolean).join(" · ");
+const g2 = [
+  { tag: "Today", cls: "today", title: "A small table window", html: `<span class="eyebrow">YOUR TEAM. CONNECTED AND READY.</span><h3>Employees</h3><p style="margin:0 0 10px;color:var(--muted-strong);font-size:12px">Manage employee profiles, assignments, invitations, and workspace access.</p><div class="pctl"><span class="btn green big">${plus}Add employee</span><div class="ptabs"><span class="on">All</span><span>Invited</span><span>Onboarding</span></div><span class="cols" style="width:100%">${sliders}</span><span class="sel" style="width:100%">All locations ${caret}</span><span class="search">${search}Search name, location, or job</span></div><div class="tiny">${deskTable(9, "margin:0;border:0;width:780px")}</div>`, note: "<b>Bugün:</b> sayfanın içinde 212 px'lik bir tablo penceresi; yalnız ad ve durum görünür, dört sütun ipucusuz sağda." },
+  { tag: "1", title: "One card per person", html: phoneTop() + `<div class="cards">${people.map((p) => `<div class="card">${av(p)}<span style="min-width:0"><b>${p.n}</b><small>${meta(p)}</small></span>${chip(p)}</div>`).join("")}</div>`, note: "<b>Fark:</b> kişi başına bir kart; ad, altında lokasyon · iş · rol, sağda durum. Sayfa boyunca uzar." },
+  { tag: "2", title: "The whole table, name pinned", html: phoneTop() + `<div class="full"><table><thead><tr><th>Employee</th><th>Status</th><th>Location</th><th>Job</th><th>Access</th></tr></thead><tbody>${people.map((p) => `<tr><td><span class="id">${av(p)}<b>${p.n}</b></span></td><td>${chip(p)}</td><td>${locText(p) || '<span class="nochip">No location</span>'}</td><td>${p.job}</td><td>${p.role}</td></tr>`).join("")}</tbody></table></div>`, note: "<b>Fark:</b> masaüstündeki tablonun tamamı; ad sütunu sabit, sağ kenar soluk, parmakla yana kaydırılır." },
+  { tag: "3", title: "Grouped by location", html: phoneTop() + ["Kadikoy", "Besiktas", ""].map((g) => { const list = people.filter((p) => p.loc === g); return list.length ? `<div class="group"><div class="ghead"><span>${g || "No location"}</span><span class="num">${list.length}</span></div><div class="glist">${list.map((p) => `<div class="gi"><span><b>${p.n}</b><small>${[p.job, p.role !== "Employee" ? p.role : "", p.more ? `+${p.more} location` : ""].filter(Boolean).join(" · ")}</small></span>${chip(p)}</div>`).join("")}</div></div>` : ""; }).join(""), note: "<b>Fark:</b> kişiler lokasyon başlıkları altında; müdür kendi şubesini bir bakışta görür, satırda lokasyon tekrar etmez." },
+  { tag: "4", title: "A colour stripe for status", html: phoneTop() + `<div class="legend"><span><i style="background:var(--accent)"></i>Active</span><span><i style="background:#2b5a8a"></i>Onboarding</span><span><i style="background:var(--control)"></i>Invited</span><span><i style="background:#d39b2a"></i>Needs attention</span></div><div class="stripe">${people.map((p) => `<div class="sr ${p.st}"><b>${p.n}</b><span class="role">${p.role}</span><small>${[locText(p) || "No location", p.job].join(" · ")}</small>${p.st !== "active" ? `<span class="stw">${label[p.st]}</span>` : ""}</div>`).join("")}</div>`, note: "<b>Fark:</b> durum soldaki ince renkli çizgide, yalnız \"Active\" dışındakilerde yazıyla; rol sağda. En az gürültü." },
+  { tag: "5", title: "Tap to open the details", html: phoneTop() + `<div class="acc">${people.map((p, i) => `<div class="ai${i === 4 ? " open" : ""}"><div class="ah"><button type="button" aria-expanded="${i === 4}">${av(p)}<b>${p.n}</b>${chip(p)}${chev}</button></div><dl class="ad"><dt>Location</dt><dd>${locText(p) || "No location"}</dd><dt>Job</dt><dd>${p.job}</dd><dt>Role</dt><dd>${p.role}</dd></dl></div>`).join("")}</div>`, note: "<b>Fark:</b> liste yalnız ad ve durum; satıra dokununca lokasyon, iş ve rol açılır (Ali açık gösteriliyor)." },
+];
+
+const spec = (v, body) => `<div class="spec"><div class="spec-head"><span class="tag ${v.cls ?? ""}">${v.tag}</span><strong>${v.title}</strong></div>${body}<p class="note">${v.note}</p></div>`;
+document.getElementById("g1-list").innerHTML = g1.map((v) => spec(v, `<div class="stage"><div class="scaler">${v.html}</div></div>`)).join("");
+document.getElementById("g2-list").innerHTML = '<div class="phones">' + g2.map((v) => spec(v, `<div class="phone"><div class="pin">${v.html}</div></div>`)).join("") + "</div>";
+
+function fit() {
+  document.querySelectorAll(".scaler").forEach((box) => {
+    const desk = box.firstElementChild;
+    const scale = Math.min(1, box.clientWidth / desk.offsetWidth);
+    desk.style.transform = `scale(${scale})`;
+    box.style.height = `${desk.offsetHeight * scale}px`;
+  });
+}
+fit();
+addEventListener("resize", fit);
+document.querySelectorAll(".ah button").forEach((button) => button.addEventListener("click", () => {
+  const item = button.closest(".ai");
+  item.classList.toggle("open");
+  button.setAttribute("aria-expanded", String(item.classList.contains("open")));
+}));
+</script>
+
+<!-- nf-orijinal:start -->
+<style>
+:root { --nfo-ink: #17221e; --nfo-muted: #5b6662; --nfo-line: #dce3df; --nfo-page: #f4f5f3; --nfo-green: #12624f; --nfo-green-soft: #e3efe9; }
+#nfo-bar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; width: 100%;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--nfo-line); font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); box-sizing: border-box; }
+html.nfo-o #nfo-bar { position: fixed; z-index: 2147483600; top: 0; left: 0; right: 0; }
+html.nfo-o, html.nfo-o body { overflow: hidden !important; }
+#nfo-bar .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; }
+#nfo-bar .nfo-seg button { border: 0; background: #fff; color: var(--nfo-ink); font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+#nfo-bar .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-bar .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green); color: #fff; }
+#nfo-bar button:focus-visible, #nfo-tools select:focus-visible, #nfo-tools button:focus-visible { outline: 2px solid var(--nfo-green); outline-offset: 2px; }
+#nfo-bar .nfo-hint { color: var(--nfo-muted); font-weight: 500; }
+@media (max-width: 700px) { #nfo-bar .nfo-hint { display: none; } }
+#nfo-view { position: fixed; z-index: 2147483500; top: 52px; left: 0; right: 0; bottom: 0; background: var(--nfo-page); display: flex; flex-direction: column; font: 500 13px/1.35 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); }
+#nfo-view[hidden] { display: none; }
+#nfo-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--nfo-line); background: #fff; }
+#nfo-tools label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+#nfo-tools select { font: inherit; font-weight: 500; padding: 6px 8px; border: 1px solid var(--nfo-line); border-radius: 6px; background: #fff; color: var(--nfo-ink); max-width: 72vw; }
+#nfo-tools .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 6px; overflow: hidden; }
+#nfo-tools .nfo-seg button { border: 0; background: #fff; font: inherit; padding: 6px 10px; cursor: pointer; color: var(--nfo-ink); }
+#nfo-tools .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-tools .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green-soft); color: var(--nfo-green); font-weight: 700; }
+#nfo-note { color: var(--nfo-muted); padding: 6px 16px; font-size: 12px; }
+#nfo-stage { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; box-sizing: border-box; }
+#nfo-holder { position: relative; flex: none; box-shadow: 0 6px 24px rgb(0 0 0 / 0.08); border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; background: #fff; }
+#nfo-frame { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+</style>
+<div id="nfo-bar" role="group" aria-label="Görünüm">
+  <span class="nfo-seg">
+    <button type="button" data-nfo="o" aria-pressed="false">Orijinal · bugünkü uygulama</button>
+    <button type="button" data-nfo="v" aria-pressed="true">Varyantlar</button>
+  </span>
+  <span class="nfo-hint" id="nfo-hint"></span>
+</div>
+<div id="nfo-view" hidden>
+  <div id="nfo-tools">
+    <label>Ekran <select id="nfo-screen"></select></label>
+    <label>Kim bakıyor <select id="nfo-as"></select></label>
+    <span class="nfo-seg" role="group" aria-label="Genişlik">
+      <button type="button" data-w="1440" aria-pressed="true">Masaüstü 1440</button>
+      <button type="button" data-w="390" aria-pressed="false">Telefon 390</button>
+    </span>
+  </div>
+  <div id="nfo-note"></div>
+  <div id="nfo-stage"><div id="nfo-holder"><iframe id="nfo-frame" title="Bugünkü uygulama" src="about:blank"></iframe></div></div>
+</div>
+<script>
+(() => {
+  const CFG = {"screens": [{"label": "Employees · Owner, masaüstü", "as": "owner", "route": "/app/employees", "width": 1440}, {"label": "Employees · Owner, telefon", "as": "owner", "route": "/app/employees", "width": 390}, {"label": "Employees · Hannah Lee (Manager), masaüstü", "as": "manager", "route": "/app/employees", "width": 1440}, {"label": "Employees · Hannah Lee (Manager), telefon", "as": "manager", "route": "/app/employees", "width": 390}], "personas": {"owner": "Mert Tepebas · Owner", "admin": "Laura Bennett · Admin", "manager": "Hannah Lee · Manager, Downtown", "employee": "Maria Lopez · Employee, Downtown", "onboarding": "Ben Carter · yeni çalışan, onboarding'de", "invited": "Chloe Adams · davet edildi, katılmadı", "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi", "nobusiness": "Alex Morgan · hesap var, workspace yok", "signedout": "Giriş yapılmamış"}, "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."};
+  const bar = document.getElementById("nfo-bar");
+  const view = document.getElementById("nfo-view");
+  const frame = document.getElementById("nfo-frame");
+  const holder = document.getElementById("nfo-holder");
+  const stage = document.getElementById("nfo-stage");
+  const screenSel = document.getElementById("nfo-screen");
+  const asSel = document.getElementById("nfo-as");
+  const widthBtns = [...document.querySelectorAll("#nfo-tools [data-w]")];
+  document.getElementById("nfo-note").textContent = CFG.note;
+  document.getElementById("nfo-hint").textContent = CFG.hint || "Orijinal: bugün main'de çalışan ekran, gerçek kodla. Varyantlar: bu sayfanın önerileri.";
+  // The bar sits in the page flow at the very top, so the page's own drawers and fixed parts cover it as usual.
+  document.body.prepend(bar);
+  function place() { view.style.top = bar.offsetHeight + "px"; }
+  CFG.screens.forEach((s, i) => screenSel.add(new Option(s.label, String(i))));
+  Object.entries(CFG.personas).forEach(([key, label]) => asSel.add(new Option(label, key)));
+  let state = { screen: 0, as: CFG.screens[0].as, width: CFG.screens[0].width || 1440, loaded: null, started: false };
+  let remember = (key, value) => { try { localStorage.setItem("nfo." + key, value); } catch (e) {} };
+  let recall = (key) => { try { return localStorage.getItem("nfo." + key); } catch (e) { return null; } };
+
+  function fit() {
+    const w = state.width, h = w < 600 ? 844 : 900;
+    frame.style.width = w + "px";
+    frame.style.height = (w < 600 ? h : Math.max(h, stage.clientHeight - 24)) + "px";
+    const room = stage.clientWidth - 24;
+    const scale = w > room ? room / w : 1;
+    frame.style.transform = scale < 1 ? `scale(${scale})` : "";
+    const fh = parseFloat(frame.style.height);
+    if (scale < 1) frame.style.height = (Math.max(h, (stage.clientHeight - 24) / scale)) + "px";
+    holder.style.width = (w * scale) + "px";
+    holder.style.height = (parseFloat(frame.style.height) * scale) + "px";
+  }
+  function load(route) {
+    const hash = "as=" + encodeURIComponent(state.as) + "&route=" + encodeURIComponent(route);
+    state.loaded = state.as;
+    frame.src = "today/index.html?" + Date.now().toString(36) + "#" + hash;
+  }
+  function go() {
+    const s = CFG.screens[state.screen];
+    if (state.loaded === state.as && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "nf-go", route: s.route }, "*");
+    } else load(s.route);
+  }
+  function show(which) {
+    const o = which === "o";
+    if (o) window.scrollTo(0, 0);
+    document.documentElement.classList.toggle("nfo-o", o);
+    view.hidden = !o;
+    place();
+    bar.querySelectorAll("[data-nfo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nfo === which)));
+    remember("tab", which);
+    if (o && !state.started) { state.started = true; fit(); load(CFG.screens[state.screen].route); }
+    if (o) fit();
+  }
+  function setWidth(w) {
+    state.width = w;
+    widthBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.w) === w)));
+    fit();
+  }
+  bar.addEventListener("click", (e) => { const b = e.target.closest("[data-nfo]"); if (b) show(b.dataset.nfo); });
+  screenSel.addEventListener("change", () => {
+    state.screen = Number(screenSel.value);
+    const s = CFG.screens[state.screen];
+    const personaChanged = s.as !== state.as;
+    state.as = s.as; asSel.value = s.as;
+    setWidth(s.width || 1440);
+    if (personaChanged) load(s.route); else go();
+  });
+  asSel.addEventListener("change", () => { state.as = asSel.value; load(CFG.screens[state.screen].route); });
+  widthBtns.forEach((b) => b.addEventListener("click", () => setWidth(Number(b.dataset.w))));
+  window.addEventListener("resize", () => { place(); if (!view.hidden) fit(); });
+  asSel.value = state.as;
+  setWidth(state.width);
+  if (recall("tab") === "o") show("o");
+})();
+</script>
+<!-- nf-orijinal:end -->

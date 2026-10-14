@@ -1,0 +1,152 @@
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Audience Sekmesi Deneme</title>
+<style>
+/* Layout: control bar on top (variant, scenario, zoom), then the real app in a 1440 desktop frame and a 390 phone frame. */
+:root {
+  --page: #f3f5f3; --surface: #ffffff; --text: #17241e; --muted: #56655d; --border: #d9e0db;
+  --accent: #176954; --accent-soft: #e4f0eb; --bezel: #1d2622; --soft: #eef2ef;
+  --font: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --page: #121816; --surface: #1a2320; --text: #e4ece7; --muted: #a2b2a9; --border: #2f3c36;
+  --accent: #5cc3a3; --accent-soft: #1f3a31; --bezel: #050706; --soft: #222d29; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --page: #121816; --surface: #1a2320; --text: #e4ece7; --muted: #a2b2a9; --border: #2f3c36;
+  --accent: #5cc3a3; --accent-soft: #1f3a31; --bezel: #050706; --soft: #222d29; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { background: var(--page); color: var(--text); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1900px; margin: 0 auto; padding-inline: 16px; padding-block: 18px 28px; display: grid; gap: 14px; }
+h1 { margin: 0; font-size: 21px; font-weight: 650; text-wrap: balance; }
+.lede { margin: 2px 0 0; color: var(--muted); max-width: 90ch; }
+.bar { display: grid; gap: 10px; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: 0; }
+.lbl { flex: 0 0 auto; width: 74px; font-size: 11.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--muted); }
+.pill { min-height: 32px; padding: 0 13px; border: 1px solid var(--border); border-radius: 999px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.pill:hover { background: var(--soft); }
+.pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.pill:focus-visible, .plain:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.plain { min-height: 32px; padding: 0 12px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+.what { margin: 0; padding: 8px 12px; border-radius: 8px; background: var(--accent-soft); color: var(--text); font-size: 13px; }
+.hint { margin: 0; color: var(--muted); font-size: 12.5px; }
+.frames { display: flex; gap: 24px; align-items: flex-start; min-width: 0; }
+.frames[data-layout="stack"] { flex-direction: column; }
+.fcol { display: grid; gap: 6px; min-width: 0; }
+.desk-col { flex: 1 1 auto; }
+.frames[data-layout="stack"] .desk-col { width: 100%; }
+.phone-col { flex: 0 0 auto; }
+.flabel { font-size: 11.5px; font-weight: 650; color: var(--muted); text-transform: uppercase; letter-spacing: .05em; }
+.fit { overflow: hidden; }
+.fit.scroll { overflow-x: auto; }
+.desk { width: 1440px; height: 900px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: #f6f7f5; transform-origin: 0 0; }
+.phone { width: 410px; height: 864px; padding: 10px; border-radius: 44px; background: var(--bezel); transform-origin: 0 0; }
+.screen { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: #ffffff; }
+iframe { display: block; width: 100%; height: 100%; border: 0; }
+@media (max-width: 600px) { .lbl { width: 100%; } }
+</style>
+<main class="wrap">
+  <header>
+    <h1>Announcements → duyuru çekmecesi → Audience sekmesi</h1>
+    <p class="lede">Gerçek uygulamanın kodu, demo veriyle. Üstten varyantı ve durumu seç; aşağıdaki iki ekranda tıklayıp deneyebilirsin. Veri yalnız bu tarayıcıda kalır, hiçbir yere gitmez.</p>
+  </header>
+  <section class="bar" aria-label="Deneme ayarları">
+    <div class="row"><span class="lbl">Varyant</span>
+      <button class="pill" type="button" data-g="v" data-k="o">Original</button>
+      <button class="pill" type="button" data-g="v" data-k="a">A · Toparlanmış</button>
+      <button class="pill" type="button" data-g="v" data-k="b">B · Arama kutusu</button>
+      <button class="pill" type="button" data-g="v" data-k="c">C · Tek liste</button>
+    </div>
+    <p class="what" id="what"></p>
+    <div class="row"><span class="lbl">Durum</span>
+      <button class="pill" type="button" data-g="sc" data-k="new">Yeni duyuru (owner)</button>
+      <button class="pill" type="button" data-g="sc" data-k="acks">Yayında, onaylar (owner)</button>
+      <button class="pill" type="button" data-g="sc" data-k="manager">Müdür</button>
+      <button class="plain" type="button" id="restart">Baştan başlat</button>
+      <button class="plain" type="button" id="zoom" aria-pressed="false">Masaüstü: %100 boyut</button>
+    </div>
+    <p class="hint" id="hint"></p>
+  </section>
+  <section class="frames" id="frames">
+    <div class="fcol desk-col"><div class="flabel">Masaüstü 1440 × 900 <span id="desk-scale"></span></div><div class="fit" id="desk-fit"><div class="desk" id="desk"></div></div></div>
+    <div class="fcol phone-col"><div class="flabel">Telefon 390 × 844</div><div class="fit" id="phone-fit"><div class="phone"><div class="screen" id="phone"></div></div></div></div>
+  </section>
+</main>
+<script>
+(function () {
+  var VARIANTS = {
+    o: "Original: bugünkü hâl. Üstte açıklama cümlesi, solda üç süzgeç ve tam genişlik yeşil Add düğmesi; sağda kişiler yalnız yazı, \"Not yet\" her satırda.",
+    a: "A (önerim): aynı iki bölme. Baş harfli yuvarlaklar, ince süzgeçler (süzgeçten sonra herkes yine seçili gelir), altta küçük Add; sağda onay çubuğu ve Remind, \"Not yet\" yalnız grup başlığında.",
+    b: "B: A'nın aynısı, ama üç süzgeç yerine tek arama kutusu. Kimse seçili gelmez; işaretlediğini eklersin.",
+    c: "C: tek liste. Sağ üstte \"+ Add people\"; basınca aynı yerde arama ve liste açılır, altta Cancel ve Add."
+  };
+  var SCENARIOS = {
+    new: { s: "8.0", sc: "new", role: "owner", hint: "Yeni duyuruda Audience sekmesi kilitli başlar: önce Details'te bir başlık yaz ve bir lokasyon işaretle, sonra Audience'a geç." },
+    acks: { s: "8.1", sc: "audience", role: "owner", hint: "Yayındaki bir duyuru, onay isteniyor: 18 kişiden 6'sı onayladı. Audience sekmesi açık gelir." },
+    manager: { s: "8.1", sc: "manager-new", role: "manager", hint: "Müdür yeni duyuru yazıyor: kendi lokasyonundaki herkes zaten alıyor." }
+  };
+  var G = { v: "a", sc: "new", zoom: false };
+  try { var saved = JSON.parse(localStorage.getItem("nf.audience.test") || "{}"); if (VARIANTS[saved.v]) G.v = saved.v; if (SCENARIOS[saved.sc]) G.sc = saved.sc; } catch (e) {}
+  var frames = { desktop: null, phone: null };
+  function remember() { try { localStorage.setItem("nf.audience.test", JSON.stringify({ v: G.v, sc: G.sc })); } catch (e) {} }
+  function mount() {
+    var sc = SCENARIOS[G.sc];
+    ["desktop", "phone"].forEach(function (name) {
+      var host = document.getElementById(name === "desktop" ? "desk" : "phone");
+      host.textContent = "";
+      var f = document.createElement("iframe");
+      var params = "s=" + sc.s + "&sc=" + sc.sc + "&role=" + sc.role + "&frame=" + name + "&n=" + Date.now() + "&audv=" + G.v;
+      f.name = "pages:" + params;
+      f.title = (name === "desktop" ? "Masaüstü" : "Telefon") + " görünümü, Audience varyant " + G.v.toUpperCase();
+      f.src = "app.html#" + params;
+      host.appendChild(f);
+      frames[name] = f;
+    });
+    sync();
+  }
+  // Each frame's saves and moves go to the other frame.
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (!m || m.nf !== "pages") return;
+    var other = event.source === (frames.desktop && frames.desktop.contentWindow) ? frames.phone
+      : event.source === (frames.phone && frames.phone.contentWindow) ? frames.desktop : null;
+    if (other && other.contentWindow) other.contentWindow.postMessage(m, "*");
+  });
+  function sync() {
+    document.querySelectorAll("[data-g]").forEach(function (b) { b.setAttribute("aria-pressed", String(G[b.dataset.g] === b.dataset.k)); });
+    document.getElementById("what").textContent = VARIANTS[G.v];
+    document.getElementById("hint").textContent = SCENARIOS[G.sc].hint;
+    var zoom = document.getElementById("zoom");
+    zoom.setAttribute("aria-pressed", String(G.zoom));
+    zoom.textContent = G.zoom ? "Masaüstü: sığdır" : "Masaüstü: %100 boyut";
+  }
+  function fit() {
+    var box = document.getElementById("frames");
+    var width = box.clientWidth;
+    var side = (width - 410 - 24) / 1440 >= 0.55;
+    box.dataset.layout = side ? "side" : "stack";
+    var deskWidth = side ? width - 410 - 24 : width;
+    var scale = G.zoom ? 1 : Math.min(1, deskWidth / 1440);
+    var desk = document.getElementById("desk"), deskFit = document.getElementById("desk-fit");
+    desk.style.transform = scale < 1 ? "scale(" + scale + ")" : "";
+    deskFit.style.width = Math.max(0, deskWidth) + "px";
+    deskFit.style.height = Math.round(900 * scale) + "px";
+    deskFit.classList.toggle("scroll", G.zoom && deskWidth < 1440);
+    document.getElementById("desk-scale").textContent = "· %" + Math.round(scale * 100);
+    var phoneFit = document.getElementById("phone-fit"), phone = phoneFit.firstElementChild;
+    var pScale = Math.min(1, width / 410);
+    phone.style.transform = pScale < 1 ? "scale(" + pScale + ")" : "";
+    phoneFit.style.width = Math.round(410 * pScale) + "px";
+    phoneFit.style.height = Math.round(864 * pScale) + "px";
+  }
+  document.addEventListener("click", function (event) {
+    var b = event.target.closest && event.target.closest("[data-g]");
+    if (b) { G[b.dataset.g] = b.dataset.k; remember(); mount(); fit(); return; }
+    if (event.target.closest && event.target.closest("#restart")) { mount(); return; }
+    if (event.target.closest && event.target.closest("#zoom")) { G.zoom = !G.zoom; sync(); fit(); }
+  });
+  window.addEventListener("resize", fit);
+  // A focused field inside a scaled frame can scroll the clipped box sideways; keep it put unless %100 is on.
+  ["desk-fit", "phone-fit"].forEach(function (id) { var el = document.getElementById(id); el.addEventListener("scroll", function () { if (!G.zoom || id === "phone-fit") { el.scrollLeft = 0; el.scrollTop = 0; } }); });
+  mount();
+  fit();
+})();
+</script>

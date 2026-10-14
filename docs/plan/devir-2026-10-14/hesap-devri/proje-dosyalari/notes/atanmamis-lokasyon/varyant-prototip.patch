@@ -1,0 +1,201 @@
+diff --git a/apps/web/src/schedule/components/ScheduleRow.tsx b/apps/web/src/schedule/components/ScheduleRow.tsx
+index 9186b01f..ba977e77 100644
+--- a/apps/web/src/schedule/components/ScheduleRow.tsx
++++ b/apps/web/src/schedule/components/ScheduleRow.tsx
+@@ -278,7 +278,13 @@ export function ScheduleRow({
+             ? (derivedCellState?.availabilityMark ?? null)
+             : null;
+           // Mert, 2026-10-10: full-day approved time off opens no Add shift.
+-          const canAddShift = editing && !isFullDayTimeOff(availabilityMark);
++          // PAGES variant prototype: a person's cell in a location they are not assigned to.
++          const pagesVariant = document.documentElement.dataset.nfVariant ?? "orig";
++          const outsideAssignment =
++            pagesVariant !== "orig" &&
++            Boolean(employee) &&
++            !location.sourceIds.some((id) => employee!.location_ids.includes(id));
++          const canAddShift = editing && !outsideAssignment && !isFullDayTimeOff(availabilityMark);
+           const cellKey = `${rowKey}-${location.id}-${day}`;
+           const editorOwnsCell = Boolean(
+             activeEditorTarget &&
+@@ -359,8 +365,10 @@ export function ScheduleRow({
+               data-unassigned-frozen={isUnassignedRow && unassignedFrozen}
+               data-closed={Boolean(closure)}
+               data-availability-kind={availabilityMark?.kind}
++              data-outside-assignment={outsideAssignment ? "true" : undefined}
++              aria-disabled={outsideAssignment && editing ? true : undefined}
++              title={outsideAssignment && editing && employee ? `${employee.display_name} isn't assigned to ${location.name}` : closure?.title}
+               data-overlap={cellHasOverlap}
+-              title={closure?.title}
+               data-editing={editing}
+               data-drop-target={
+                 dragOverCell === cellKey || dragOverCell === dropTargetKey
+@@ -389,6 +397,7 @@ export function ScheduleRow({
+               onClick={(event) => {
+                 if (
+                   !editing ||
++                  outsideAssignment ||
+                   !pasteArmed ||
+                   !clipboard ||
+                   event.target !== event.currentTarget
+@@ -493,6 +502,18 @@ export function ScheduleRow({
+                   <Plus size={12} aria-hidden />
+                   <span>Add shift</span>
+                 </button>
++              ) : editing && outsideAssignment ? (
++                <span
++                  className={`schedule-cell-add-action schedule-cell-add-blocked ${
++                    displayStacks.length
++                      ? "schedule-cell-add-another"
++                      : "schedule-cell-add"
++                  }`}
++                  aria-hidden="true"
++                >
++                  <Plus size={12} aria-hidden />
++                  <span>Add shift</span>
++                </span>
+               ) : null}
+               {/* After the add layer: the "!" stays pressable over it. */}
+               {availabilityMark?.kind === "unavailable" && employee && displayStacks.length === 0 ? (
+diff --git a/apps/web/src/schedule/components/ShiftCard.tsx b/apps/web/src/schedule/components/ShiftCard.tsx
+index 7310c864..045fd6e8 100644
+--- a/apps/web/src/schedule/components/ShiftCard.tsx
++++ b/apps/web/src/schedule/components/ShiftCard.tsx
+@@ -431,6 +431,7 @@ export function GhostShiftCard({
+       className="schedule-shift-badge"
+       style={
+         {
++          "--shift-color": type?.color ?? "#54736a",
+           "--schedule-row-badge-height": `${badgeHeight}px`,
+         } as CSSProperties
+       }
+diff --git a/apps/web/src/styles.css b/apps/web/src/styles.css
+index 0ab60036..5d390b99 100644
+--- a/apps/web/src/styles.css
++++ b/apps/web/src/styles.css
+@@ -14467,3 +14467,126 @@ button.workspace-switcher-item:hover:not(:disabled) {
+     display: none;
+   }
+ }
++
++/* ---- PAGES variant prototype: a cell in a location the person is not assigned to ---- */
++html[data-nf-variant] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  cursor: default;
++}
++html[data-nf-variant] .schedule-cell[data-outside-assignment="true"][data-editing="true"]:hover {
++  background: var(--nf-outside-bg, var(--theme-surface));
++}
++.schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked,
++.schedule-cell-add-blocked {
++  pointer-events: none;
++  cursor: default;
++}
++.schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked {
++  border-color: color-mix(in srgb, var(--theme-danger) 45%, transparent);
++  background: color-mix(in srgb, var(--theme-danger-soft) 70%, transparent);
++  color: var(--theme-danger-strong);
++}
++
++/* A: soft press, breathing red */
++html[data-nf-variant="a"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  --nf-outside-bg: color-mix(in srgb, var(--theme-surface) 97%, #64748b);
++  background: var(--nf-outside-bg);
++  box-shadow:
++    inset 0 2px 4px rgba(15, 23, 42, 0.07),
++    inset 0 0 0 1px rgba(15, 23, 42, 0.035);
++}
++html[data-nf-variant="a"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] > .schedule-shift-badge {
++  opacity: 0.8;
++}
++html[data-nf-variant="a"] .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked {
++  animation: nf-outside-breathe 1.6s ease-in-out infinite;
++}
++@keyframes nf-outside-breathe {
++  0%, 100% { opacity: 0.55; }
++  50% { opacity: 1; }
++}
++
++/* B: inner frame, a short "no" shake */
++html[data-nf-variant="b"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  --nf-outside-bg: color-mix(in srgb, var(--theme-surface) 96%, #64748b);
++  background: var(--nf-outside-bg);
++  box-shadow:
++    inset 0 0 0 3px var(--theme-surface),
++    inset 0 0 0 4px rgba(15, 23, 42, 0.08),
++    inset 0 3px 4px rgba(15, 23, 42, 0.05);
++}
++html[data-nf-variant="b"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] > .schedule-shift-badge {
++  opacity: 0.75;
++}
++html[data-nf-variant="b"] .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked {
++  animation: nf-outside-shake 0.45s ease-in-out 1;
++}
++@keyframes nf-outside-shake {
++  0%, 100% { transform: translateX(0); }
++  20% { transform: translateX(-3px); }
++  40% { transform: translateX(3px); }
++  60% { transform: translateX(-2px); }
++  80% { transform: translateX(2px); }
++}
++
++/* C: deeper press, plus turns to a cross under a red sweep */
++html[data-nf-variant="c"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  --nf-outside-bg: color-mix(in srgb, var(--theme-surface) 95%, #64748b);
++  background: var(--nf-outside-bg);
++  box-shadow:
++    inset 0 4px 7px -3px rgba(15, 23, 42, 0.16),
++    inset 0 -1px 0 rgba(255, 255, 255, 0.9);
++}
++html[data-nf-variant="c"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] > .schedule-shift-badge {
++  opacity: 0.7;
++}
++html[data-nf-variant="c"] .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked {
++  background-image: linear-gradient(100deg, transparent 30%, color-mix(in srgb, var(--theme-danger) 16%, transparent) 50%, transparent 70%);
++  background-size: 250% 100%;
++  animation: nf-outside-sweep 1.8s linear infinite;
++}
++html[data-nf-variant="c"] .schedule-cell-add-blocked > svg {
++  transition: transform 0.25s ease;
++}
++html[data-nf-variant="c"] .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked > svg {
++  transform: rotate(45deg);
++}
++@keyframes nf-outside-sweep {
++  from { background-position: 100% 0; }
++  to { background-position: -150% 0; }
++}
++@media (prefers-reduced-motion: reduce) {
++  .schedule-cell-add-blocked, .schedule-cell-add-blocked > svg { animation: none !important; transition: none !important; }
++}
++html[data-nf-variant] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  user-select: none;
++}
++
++/* D: A's cell, and every ghost card in its real shift colors (pin kept) */
++html[data-nf-variant="d"] .schedule-cell[data-outside-assignment="true"][data-editing="true"] {
++  --nf-outside-bg: color-mix(in srgb, var(--theme-surface) 97%, #64748b);
++  background: var(--nf-outside-bg);
++  box-shadow:
++    inset 0 2px 4px rgba(15, 23, 42, 0.07),
++    inset 0 0 0 1px rgba(15, 23, 42, 0.035);
++}
++html[data-nf-variant="d"] .schedule-cell[data-editing="true"]:hover > .schedule-cell-add-blocked {
++  animation: nf-outside-breathe 1.6s ease-in-out infinite;
++}
++/* The ghost is its shift's own color, faded and pressed into the grid; the
++   real card stays bright. Words keep the real card's colors (Mert, 2026-10-11). */
++html[data-nf-variant="d"] .schedule-shift-badge[data-ghost="true"] {
++  border-color: color-mix(in srgb, var(--shift-color) 30%, #d3d9d6);
++  background: color-mix(in srgb, var(--shift-color) 6%, #f2f4f3);
++  box-shadow:
++    inset 0 3px 6px -2px color-mix(in srgb, var(--shift-color) 28%, rgba(15, 23, 42, 0.14)),
++    inset 0 -1px 0 rgba(255, 255, 255, 0.7);
++}
++html[data-nf-variant="d"] .schedule-shift-badge[data-ghost="true"] :is(strong, .schedule-shift-badge-markers) {
++  color: #26312d;
++}
++html[data-nf-variant="d"] .schedule-shift-badge[data-ghost="true"] .schedule-shift-labels {
++  color: #2d574c;
++}
++html[data-nf-variant="d"] .schedule-shift-badge[data-ghost="true"] .schedule-shift-time {
++  color: rgb(89, 102, 96);
++}

@@ -1,0 +1,169 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Newfork Backlog</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: üstte önem × risk matrisi ve süzgeçler, altında gruplanmış madde listesi */
+:root{
+  --bg:#f7f9f8; --surface:#ffffff; --ink:#17221e; --muted:#5f6b66; --line:#dce3df;
+  --accent:#176954; --accent-soft:#dbece5; --warn:#8a5a00; --warn-soft:#fff7e2; --bad:#b84234; --bad-soft:#fff0ee;
+  --orange:#a24a12; --orange-soft:#fdeee3;
+  --f-display:"Fraunces", Georgia, "Times New Roman", serif;
+  --f-body:"Inter", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211e; --ink:#e6eeea; --muted:#9db0a8; --line:#2b3833;
+  --accent:#5cc4a3; --accent-soft:#1d3b31; --warn:#e2b45a; --warn-soft:#33290f; --bad:#f08a7c; --bad-soft:#3a1d19;
+  --orange:#f2a46b; --orange-soft:#3a2416; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211e; --ink:#e6eeea; --muted:#9db0a8; --line:#2b3833;
+  --accent:#5cc4a3; --accent-soft:#1d3b31; --warn:#e2b45a; --warn-soft:#33290f; --bad:#f08a7c; --bad-soft:#3a1d19;
+  --orange:#f2a46b; --orange-soft:#3a2416; color-scheme:dark}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:960px;margin:0 auto;padding-inline:20px;padding-block:24px 64px;display:flex;flex-direction:column;gap:24px}
+h1,h2{font-family:var(--f-display);font-weight:600;margin:0;line-height:1.2;text-wrap:balance}
+h1{font-size:1.9rem}
+p{margin:0;max-width:72ch}
+nav{display:flex;gap:16px;font-size:.9rem;flex-wrap:wrap}
+nav a{color:var(--accent);font-weight:600;text-decoration:none}
+nav a:hover{text-decoration:underline}
+nav span{color:var(--muted)}
+.meta{color:var(--muted);font-size:.9rem}
+.small{color:var(--muted);font-size:.85rem}
+.tbl{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:.9rem;min-width:480px}
+th,td{padding:8px 12px;border-bottom:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+th:first-child,td:first-child{text-align:left}
+th{font-size:.72rem;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.zero{color:var(--line)}
+.controls{display:flex;flex-wrap:wrap;gap:12px;align-items:center}
+.controls label{font-size:.85rem;color:var(--muted);display:flex;gap:6px;align-items:center}
+select,input[type=search]{font:inherit;color:var(--ink);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+input[type=search]{min-width:0;width:220px;max-width:100%}
+select:focus-visible,input:focus-visible,summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.pill{display:inline-block;font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:99px;white-space:nowrap;line-height:1.6}
+.imp-critical{background:var(--bad);color:var(--surface)}
+.imp-high{background:var(--orange-soft);color:var(--orange)}
+.imp-medium{background:var(--warn-soft);color:var(--warn)}
+.imp-low,.imp-belirsiz{background:var(--line);color:var(--muted)}
+.risk-risky{border:1px solid var(--bad);color:var(--bad)}
+.risk-moderate{border:1px solid var(--warn);color:var(--warn)}
+.risk-safe{border:1px solid var(--accent);color:var(--accent)}
+.risk-belirsiz{border:1px solid var(--line);color:var(--muted)}
+.tag{background:var(--accent-soft);color:var(--accent)}
+.stale{background:var(--line);color:var(--muted)}
+details.group{border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+details.group>summary{cursor:pointer;padding:12px 16px;font-weight:600;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+details.group>summary .count{font-family:var(--f-mono);color:var(--muted);font-weight:400;font-size:.85rem}
+ul.items{list-style:none;margin:0;padding:0 16px 8px}
+ul.items li{padding:10px 0;border-top:1px solid var(--line);display:grid;grid-template-columns:64px 1fr;gap:4px 12px}
+.id{font-family:var(--f-mono);font-size:.82rem;color:var(--muted);padding-top:2px}
+.body{min-width:0;display:flex;flex-direction:column;gap:4px}
+.title{font-weight:500;overflow-wrap:anywhere}
+.desc{font-size:.85rem;color:var(--muted);overflow-wrap:anywhere}
+.marks{display:flex;gap:6px;flex-wrap:wrap}
+li.done .title,li.done .desc{text-decoration:line-through;color:var(--muted)}
+li.done .id::before{content:"✓ ";color:var(--accent)}
+.empty{padding:16px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a href="./">← İlerleme raporu</a><span>·</span><span>Backlog</span></nav>
+  <header style="display:flex;flex-direction:column;gap:8px">
+    <h1>Backlog</h1>
+    <p class="meta">Kaynak: <code>docs/plan/BACKLOG.md</code> (__SOURCE__). Her güncellemede yeniden üretilir; kapanan maddeler silinmez, üstü çizili ve ✓ ile en altta durur.</p>
+  </header>
+
+  <section style="display:flex;flex-direction:column;gap:10px">
+    <h2 style="font-size:1.2rem">Açık maddeler: önem × risk</h2>
+    <div class="tbl"><table id="matrix"></table></div>
+    <p class="small"><b>Önem</b> maddenin ürüne etkisi (kayıttaki <code>leave</code>; ciddiyet de budur). <b>Risk</b> düzeltmenin ne kadar tehlikeli olduğu (kayıttaki <code>do</code>): güvenli, orta, riskli. <b>Alan</b> başlıktan otomatik çıkarıldı, birkaç madde yanlış grupta olabilir.</p>
+  </section>
+
+  <div class="controls">
+    <label for="group">Grupla <select id="group">
+      <option value="imp">Önem</option>
+      <option value="risk">Risk</option>
+      <option value="area">Alan</option>
+    </select></label>
+    <label for="q">Ara <input id="q" type="search" placeholder="BL numarası ya da kelime"></label>
+    <label for="closed"><input id="closed" type="checkbox" checked> Kapananları göster</label>
+  </div>
+
+  <div id="list" style="display:flex;flex-direction:column;gap:12px"></div>
+  <p class="small">Sıra: her grupta önce önem (kritik → düşük), sonra risk (riskli → güvenli), sonra en yeni madde.</p>
+</div>
+<script>
+const DATA = __DATA__;
+const IMP = {critical:"Kritik", high:"Yüksek", medium:"Orta", low:"Düşük", belirsiz:"Belirsiz"};
+const RISK = {risky:"Riskli", moderate:"Orta risk", safe:"Güvenli", belirsiz:"Belirsiz"};
+const IMP_ORDER = ["critical","high","medium","low","belirsiz"];
+const RISK_ORDER = ["risky","moderate","safe","belirsiz"];
+const ir = k => { const i = IMP_ORDER.indexOf(k); return i < 0 ? 9 : i; };
+const rr = k => { const i = RISK_ORDER.indexOf(k); return i < 0 ? 9 : i; };
+const cmp = (a,b) => ir(a.imp)-ir(b.imp) || rr(a.risk)-rr(b.risk) || b.n-a.n;
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function matrix(){
+  const open = DATA.filter(r => !r.closed);
+  let h = "<thead><tr><th>Önem</th>" + RISK_ORDER.map(k => `<th>${RISK[k]}</th>`).join("") + "<th>Toplam</th></tr></thead><tbody>";
+  for (const i of IMP_ORDER){
+    const row = open.filter(r => (IMP_ORDER.includes(r.imp) ? r.imp : "belirsiz") === i);
+    if (!row.length) continue;
+    h += `<tr><td><span class="pill imp-${i}">${IMP[i]}</span></td>` + RISK_ORDER.map(k => {
+      const n = row.filter(r => (RISK_ORDER.includes(r.risk) ? r.risk : "belirsiz") === k).length;
+      return `<td class="${n ? "" : "zero"}">${n}</td>`;
+    }).join("") + `<td><b>${row.length}</b></td></tr>`;
+  }
+  h += `<tr><td>Kapanan ✓</td><td colspan="${RISK_ORDER.length}"></td><td>${DATA.length - open.length}</td></tr></tbody>`;
+  document.getElementById("matrix").innerHTML = h;
+}
+
+function item(r){
+  const stale = r.stale ? `<span class="pill stale">bayat olabilir</span>` : "";
+  return `<li class="${r.closed ? "done" : ""}"><span class="id">${esc(r.id)}</span><div class="body">
+    <div class="title">${esc(r.t)}</div>
+    ${r.d ? `<div class="desc">${esc(r.d)}</div>` : ""}
+    <div class="marks"><span class="pill imp-${esc(IMP[r.imp] ? r.imp : "belirsiz")}">${esc(IMP[r.imp] || r.imp)}</span><span class="pill risk-${esc(RISK[r.risk] ? r.risk : "belirsiz")}">${esc(RISK[r.risk] || r.risk)}</span><span class="pill tag">${esc(r.area)}</span>${stale}</div>
+  </div></li>`;
+}
+
+function render(){
+  const g = document.getElementById("group").value;
+  const q = document.getElementById("q").value.trim().toLowerCase();
+  const showClosed = document.getElementById("closed").checked;
+  const hit = r => !q || (r.id + " " + r.t + " " + r.d + " " + r.area).toLowerCase().includes(q);
+  const open = DATA.filter(r => !r.closed && hit(r)).sort(cmp);
+  const done = DATA.filter(r => r.closed && hit(r)).sort((a,b) => b.n - a.n);
+  const keyOf = r => g === "imp" ? (IMP[r.imp] ? r.imp : "belirsiz") : g === "risk" ? (RISK[r.risk] ? r.risk : "belirsiz") : r.area;
+  let keys = [...new Set(open.map(keyOf))];
+  if (g === "imp") keys.sort((a,b) => ir(a)-ir(b));
+  else if (g === "risk") keys.sort((a,b) => rr(a)-rr(b));
+  else keys.sort((a,b) => open.filter(r => keyOf(r) === b).length - open.filter(r => keyOf(r) === a).length);
+  const label = k => g === "imp" ? `<span class="pill imp-${k}">${IMP[k]}</span>` : g === "risk" ? `<span class="pill risk-${k}">${RISK[k]}</span>` : esc(k);
+  let h = keys.map(k => {
+    const rows = open.filter(r => keyOf(r) === k);
+    const shut = g === "imp" && (k === "low" || k === "belirsiz");
+    return `<details class="group"${shut && !q ? "" : " open"}><summary>${label(k)}<span class="count">${rows.length} açık</span></summary><ul class="items">${rows.map(item).join("")}</ul></details>`;
+  }).join("");
+  if (showClosed && done.length) h += `<details class="group"${q ? " open" : ""}><summary>Kapananlar ✓<span class="count">${done.length}</span></summary><ul class="items">${done.map(item).join("")}</ul></details>`;
+  document.getElementById("list").innerHTML = h || `<div class="empty">Bu aramaya uyan madde yok.</div>`;
+}
+
+try { const s = localStorage.getItem("nf-backlog-group"); if (s) document.getElementById("group").value = s; } catch (e) {}
+document.getElementById("group").addEventListener("change", e => { try { localStorage.setItem("nf-backlog-group", e.target.value); } catch (x) {} render(); });
+document.getElementById("q").addEventListener("input", render);
+document.getElementById("closed").addEventListener("change", render);
+matrix(); render();
+</script>
+</body>
+</html>

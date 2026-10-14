@@ -1,0 +1,395 @@
+/* Test page variants for Mert's Schedule items 1, 6, 15 and 16 (2026-10-09).
+   Every rule hangs off html[data-vN="…"], so "Original" (today) is main. */
+
+.mi-timeoff,
+.mi-unavailable-bar,
+.mi-unavailable-hours {
+  display: none;
+}
+
+/* ───────────── Item 6 · Approved time off cell ───────────── */
+
+html:not([data-v6="today"]) .schedule-cell[data-availability-kind="time_off"]::before {
+  content: none;
+}
+html:not([data-v6="today"]) .schedule-cell[data-time-off] {
+  isolation: isolate;
+}
+html:not([data-v6="today"]) .mi-timeoff {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+.mi-timeoff-fill {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+}
+.mi-timeoff-label {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 2px;
+  color: var(--theme-danger-text);
+  text-align: center;
+}
+.mi-timeoff-title {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.mi-timeoff-label small {
+  font-size: 10px;
+  font-weight: 650;
+  line-height: 1.2;
+}
+.mi-timeoff-span,
+.mi-timeoff-refuse {
+  display: none;
+}
+.schedule-cell[data-time-off="all-day"] .mi-timeoff-hours {
+  display: none;
+}
+/* A shift already in the cell (approved after it was published): the words
+   move to a small tag at the top so the shift stays readable. */
+.mi-timeoff[data-has-shift] .mi-timeoff-label {
+  inset: 2px auto auto 4px;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  white-space: nowrap;
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--theme-time-off);
+  color: #fff;
+}
+.mi-timeoff[data-has-shift] .mi-timeoff-title {
+  font-size: 9px;
+}
+.mi-timeoff[data-has-shift] .mi-timeoff-label small {
+  font-size: 9px;
+}
+.mi-timeoff[data-has-shift] .mi-timeoff-hours {
+  display: none;
+}
+.mi-timeoff-hours-short {
+  display: none;
+}
+.mi-timeoff[data-has-shift] .mi-timeoff-hours-short {
+  display: block;
+}
+.mi-timeoff[data-has-shift] .mi-timeoff-span,
+.mi-timeoff[data-has-shift] .mi-timeoff-refuse {
+  display: none !important;
+}
+html:not([data-v6="today"]) .schedule-cell[data-time-off] .schedule-shift-badge {
+  margin-top: 8px;
+}
+
+/* The whole cell is one button when the time off covers the day. */
+.mi-timeoff-lock {
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+.mi-timeoff-lock:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -3px;
+}
+.mi-timeoff-card {
+  position: fixed;
+  z-index: 300;
+  display: grid;
+  gap: 6px;
+  width: 300px;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  box-shadow: 0 10px 28px rgba(23, 33, 29, 0.16);
+  color: var(--theme-text);
+  font-size: 13px;
+  line-height: 1.4;
+}
+.mi-timeoff-card strong {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+}
+.mi-timeoff-card p {
+  margin: 0;
+  color: var(--theme-text-muted, #4b5a54);
+}
+.mi-timeoff-card .mi-timeoff-card-when {
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.mi-timeoff-card-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--theme-time-off);
+}
+
+/* A · Locked flat: today's flat red with a lock; a part day says its hours. */
+html[data-v6="a"] .schedule-cell[data-time-off] {
+  background-color: var(--theme-time-off-soft);
+}
+
+/* B · Stripes + lock: red stripes, the words on a white tag. */
+html[data-v6="b"] .schedule-cell[data-time-off] {
+  background-color: #fff4f5;
+}
+html[data-v6="b"] .mi-timeoff-fill {
+  background-image: repeating-linear-gradient(
+    135deg,
+    rgba(212, 22, 42, 0.13) 0 7px,
+    transparent 7px 13px
+  );
+  background-size: 18.4px 18.4px;
+}
+html[data-v6="b"] .mi-timeoff:not([data-has-shift]) .mi-timeoff-title {
+  padding: 3px 8px;
+  border: 1px solid #e7a3ab;
+  border-radius: 999px;
+  background: #fff;
+}
+html[data-v6="b"] .mi-timeoff:not([data-has-shift]) .mi-timeoff-label small {
+  padding: 0 6px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.85);
+}
+
+/* C · Hours drawn: red only where the time off is in the day (left = midnight,
+   right = midnight); a bar under it marks the hours, the words say them. */
+html[data-v6="c"] .schedule-cell[data-time-off] {
+  background-color: var(--theme-surface);
+}
+html[data-v6="c"] .mi-timeoff-fill {
+  background:
+    linear-gradient(90deg, transparent var(--mi-from), var(--theme-time-off) var(--mi-from), var(--theme-time-off) var(--mi-to), transparent var(--mi-to))
+      bottom / 100% 4px no-repeat,
+    linear-gradient(90deg, transparent var(--mi-from), var(--theme-time-off-soft) var(--mi-from), var(--theme-time-off-soft) var(--mi-to), transparent var(--mi-to));
+}
+html[data-v6="c"] .schedule-cell[data-time-off="all-day"] .mi-timeoff-hours {
+  display: block;
+}
+html[data-v6="c"] .mi-timeoff-lock-icon {
+  display: none;
+}
+
+/* ───────────── Item 16 · Hover and drag over a time off cell ───────────── */
+
+/* In every variant the "Add shift" layer of a part-day cell covers the words
+   instead of printing over them (today: "TIME OFF" and "Add shift" collide). */
+html:not([data-v16="today"]) .schedule-cell[data-time-off] > .schedule-cell-add-action {
+  background: rgba(255, 255, 255, 0.94);
+}
+html:not([data-v16="today"]) .schedule-cell[data-time-off-locked] {
+  cursor: not-allowed;
+}
+html:not([data-v16="today"]) .schedule-cell[data-time-off-locked] .mi-timeoff-lock {
+  cursor: not-allowed;
+}
+html:not([data-v16="today"]) .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-refuse {
+  display: block;
+}
+html:not([data-v16="today"]) .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-hours,
+html:not([data-v16="today"]) .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-span {
+  display: none;
+}
+html:not([data-v16="today"]) .schedule-cell[data-time-off][data-drop-status="blocked"] {
+  background-color: var(--theme-time-off-soft);
+}
+
+/* A · Calm: a darker edge on hover; on drag a red frame and one line. */
+html[data-v16="a"] .schedule-cell[data-time-off]:hover {
+  box-shadow: inset 0 0 0 1px rgba(212, 22, 42, 0.55);
+}
+html[data-v16="a"] .schedule-cell[data-time-off]:hover .mi-timeoff-label {
+  color: var(--theme-danger-strong);
+}
+
+/* B · Reveal: hover shows the dates; drag sets the stripes moving. */
+html[data-v16="b"] .schedule-cell[data-time-off]:hover {
+  box-shadow: inset 0 0 0 1px rgba(212, 22, 42, 0.45);
+}
+html[data-v16="b"] .schedule-cell[data-time-off]:not([data-drop-status]):hover .mi-timeoff:not([data-has-shift]) .mi-timeoff-span {
+  display: block;
+  animation: mi-slide-up 0.16s ease-out;
+}
+html[data-v16="b"] .schedule-cell[data-time-off]:not([data-drop-status]):hover .mi-timeoff:not([data-has-shift]) .mi-timeoff-hours {
+  display: block;
+  animation: mi-slide-up 0.16s ease-out;
+}
+html[data-v16="b"] .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-fill {
+  background-image: repeating-linear-gradient(135deg, rgba(212, 22, 42, 0.2) 0 7px, transparent 7px 13px);
+  background-size: 18.4px 18.4px;
+  animation: mi-stripes 0.6s linear infinite;
+}
+
+/* C · Push back: hover breathes once; drag shakes the words "no". */
+html[data-v16="c"] .schedule-cell[data-time-off]:hover {
+  animation: mi-ring 0.7s ease-out 1;
+}
+html[data-v16="c"] .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-label {
+  animation: mi-shake 0.42s ease-in-out 1;
+}
+html[data-v16="c"] .schedule-cell[data-time-off][data-drop-status="blocked"] {
+  outline-width: 3px;
+}
+
+/* ───────────── Item 1 · Unavailable days from the name "!" ───────────── */
+
+.mi-unavailable-bar {
+  position: absolute;
+  bottom: 2px;
+  left: calc(var(--mi-from) + 2px);
+  width: calc(var(--mi-to) - var(--mi-from) - 4px);
+  height: 4px;
+  border-radius: 2px;
+  background: var(--theme-availability);
+  pointer-events: none;
+}
+.mi-unavailable-hours {
+  position: absolute;
+  right: 4px;
+  bottom: 8px;
+  left: 4px;
+  justify-content: center;
+  color: #8a4b06;
+  font-size: 10px;
+  font-weight: 700;
+  pointer-events: none;
+}
+.schedule-cell[data-has-shift] .mi-unavailable-hours {
+  bottom: auto;
+  top: 1px;
+}
+.mi-flash {
+  animation: mi-flash 1.3s ease-out 1 !important;
+}
+.mi-line-button {
+  display: block;
+  padding: 2px 4px;
+  margin: 0 -4px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.mi-line-button:hover {
+  background: #fff3e3;
+  text-decoration: underline;
+}
+.mi-line-button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+}
+
+/* ───────────── Item 15 · The "!" window while scrolling ───────────── */
+
+.schedule-availability-mark-window[data-mi-hidden] {
+  visibility: hidden;
+}
+.schedule-availability-mark-window[data-mi-dock] {
+  box-shadow: 0 10px 28px rgba(23, 33, 29, 0.24);
+}
+.mi-dock-back {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: -2px -4px 2px;
+  padding: 4px 6px;
+  border: 1px solid #f3c58c;
+  border-radius: 6px;
+  background: #fff3e3;
+  color: #7a4206;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.mi-dock-back:focus-visible {
+  outline: 2px solid var(--theme-focus);
+}
+
+@keyframes mi-tint-in {
+  from { background-color: var(--theme-surface); }
+}
+@keyframes mi-pulse {
+  0% { box-shadow: inset 0 0 0 1px #f3c58c, 0 0 0 0 rgba(217, 115, 13, 0.45); }
+  100% { box-shadow: inset 0 0 0 1px #f3c58c, 0 0 0 10px rgba(217, 115, 13, 0); }
+}
+@keyframes mi-flash {
+  0%, 40% { box-shadow: inset 0 0 0 3px var(--theme-availability); background-color: #ffe4c2; }
+}
+@keyframes mi-slide-up {
+  from { opacity: 0; transform: translateY(4px); }
+}
+@keyframes mi-stripes {
+  to { background-position: 18.4px 0; }
+}
+@keyframes mi-ring {
+  0% { box-shadow: inset 0 0 0 1px rgba(212, 22, 42, 0.2); }
+  40% { box-shadow: inset 0 0 0 3px rgba(212, 22, 42, 0.55); }
+  100% { box-shadow: inset 0 0 0 1px rgba(212, 22, 42, 0.35); }
+}
+@keyframes mi-shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .mi-flash,
+  html .schedule-cell,
+  html .schedule-cell * {
+    animation: none !important;
+  }
+}
+
+/* ───────────── 2026-10-09: item 16 A on the chosen Original look ─────────────
+   Original draws "Time off" with the cell's ::before (main), so A's hover edge
+   and the "Can't place a shift here" line are added to that look here. */
+html[data-v6="today"][data-v16="a"] .schedule-cell[data-availability-kind="time_off"]:hover {
+  background-color: var(--theme-time-off-soft);
+  box-shadow: inset 0 0 0 1px rgba(212, 22, 42, 0.55);
+}
+html[data-v6="today"][data-v16="a"] .schedule-cell[data-availability-kind="time_off"]:hover::before {
+  color: var(--theme-danger-strong);
+}
+html[data-v6="today"] .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff:not([data-has-shift]) {
+  position: absolute;
+  inset: 0;
+  display: block;
+  pointer-events: none;
+}
+html[data-v6="today"] .schedule-cell[data-time-off] .mi-timeoff-title {
+  display: none;
+}
+html[data-v6="today"] .schedule-cell[data-time-off][data-drop-status="blocked"]::before {
+  padding-bottom: 18px;
+}
+html[data-v6="today"] .schedule-cell[data-time-off][data-drop-status="blocked"] .mi-timeoff-label {
+  padding-top: 18px;
+}

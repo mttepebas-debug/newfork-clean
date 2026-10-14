@@ -1,0 +1,113 @@
+/* EXP-000 mockup variants D/E/F. Light values mirror the schedule top bar and settings menu
+   (styles.css); dark values come from the --theme-* tokens (REUSE UI-05). */
+.export-xd {
+  --x-surface: var(--theme-surface, #fff);
+  --x-soft: var(--theme-soft, #f6f8f7);
+  --x-text: var(--theme-text, #17221e);
+  --x-muted: var(--theme-muted, #6b7671);
+  --x-border: var(--theme-control-border, #aeb9b4);
+  --x-divider: var(--theme-divider, #dce3df);
+  --x-hover: var(--theme-hover, #f0f3f1);
+  --x-selected: var(--theme-selected, #e7f1ed);
+  --x-selected-border: var(--theme-accent, #6c9b8c);
+  --x-selected-text: var(--theme-accent, #155f4d);
+  --x-action: var(--schedule-action, #111827);
+  --x-action-hover: var(--schedule-action-hover, #1f2937);
+  --x-on-action: #fff;
+  --x-info: var(--theme-info, #1f5f8b);
+  --x-warning: var(--theme-warning, #8a5a00);
+  --x-warning-surface: var(--theme-warning-surface, #fdf4dc);
+  gap: 18px;
+  color: var(--x-text);
+}
+.export-xd :is(button, select) { font: inherit; color: inherit; }
+.export-xd button:disabled { opacity: .5; cursor: not-allowed; }
+.export-xd :is(button, input, select, summary, a):focus-visible { outline: 2px solid var(--schedule-focus-ring-color, #177a64); outline-offset: 2px; }
+
+/* Section: settings-menu heading voice */
+.export-xd-section { display: flex; flex-direction: column; gap: 6px; }
+.export-xd-section > strong, .export-xd-details summary { color: var(--x-muted); font-size: 10px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
+.export-xd-hint, .export-xd-muted { margin: 0; color: var(--x-muted); font-size: 12px; line-height: 1.5; }
+.export-xd-error { margin: 0; font-size: 12px; }
+
+/* Source */
+.export-xd-source { display: flex; flex-direction: column; gap: 2px; }
+.export-xd-source p { margin: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
+.export-xd-source-range { font-size: 14px !important; font-weight: 750; }
+.export-xd-state { display: inline-flex; align-items: center; gap: 6px; font-weight: 750; }
+.export-xd-state::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--x-selected-text); flex: 0 0 auto; }
+.export-xd-state.is-draft::before { background: var(--x-info); }
+.export-xd-draft-name { color: var(--x-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.export-xd-table { display: flex; flex-direction: column; margin: 0; border-top: 1px solid var(--x-divider); border-bottom: 1px solid var(--x-divider); }
+.export-xd-table > div { display: grid; grid-template-columns: 78px minmax(0, 1fr); gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--x-divider); font-size: 12px; }
+.export-xd-table > div:last-child { border-bottom: 0; }
+.export-xd-table dt { color: var(--x-muted); }
+.export-xd-table dd { margin: 0; font-weight: 750; overflow-wrap: anywhere; }
+.export-xd-blocked { display: flex; flex-direction: column; gap: 4px; padding: 10px 12px; border: 1px solid var(--x-warning); border-radius: 5px; background: var(--x-warning-surface); font-size: 12px; line-height: 1.5; overflow-wrap: anywhere; }
+.export-xd-blocked strong { color: var(--x-warning); }
+.export-xd-blocked a { color: var(--x-selected-text); font-weight: 750; }
+
+/* Buttons: top bar language */
+.export-xd-primary, .export-xd-secondary { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border: 1px solid var(--x-border); border-radius: 5px; background: var(--x-surface); color: var(--x-text) !important; font-size: 12px !important; font-weight: 750; white-space: nowrap; cursor: pointer; }
+.export-xd-primary { border-color: var(--x-action); background: var(--x-action); color: var(--x-on-action) !important; }
+.export-xd-primary:not(:disabled):hover { border-color: var(--x-action-hover); background: var(--x-action-hover); }
+:root[data-theme="dark"] .export-xd-primary { border-color: var(--theme-control-border); }
+:root[data-theme="dark"] .export-xd-primary:not(:disabled):hover { border-color: var(--theme-text); }
+.export-xd-secondary:not(:disabled):hover { background: var(--x-hover); }
+.export-xd-footer { display: flex; flex-direction: column; gap: 8px; }
+.export-xd-footer .export-xd-primary { width: 100%; }
+.export-xd-pair { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.export-xd-pair-primary { grid-template-columns: auto minmax(0, 1fr); }
+.export-xd-link { align-self: center; padding: 4px 2px; border: 0; background: none; color: var(--x-muted) !important; font-size: 12px !important; font-weight: 650; cursor: pointer; }
+.export-xd-link:hover { color: var(--x-text) !important; text-decoration: underline; }
+.export-xd-filename { margin: 0; color: var(--x-muted); font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* D: settings-menu rows */
+.export-xd-menu { display: flex; flex-direction: column; }
+.export-xd-menu button { display: flex; min-height: 36px; align-items: center; gap: 10px; padding: 6px 8px; border: 0; border-radius: 4px; background: transparent; text-align: left; font-size: 12px; font-weight: 650; cursor: pointer; }
+.export-xd-menu button > span { flex: 1; min-width: 0; }
+.export-xd-menu button small { display: block; margin-top: 1px; color: var(--x-muted); font-size: 11px; font-weight: 500; }
+.export-xd-menu button > svg:first-child { color: var(--x-muted); flex: 0 0 auto; }
+.export-xd-menu button > svg:last-child:not(:first-child) { color: var(--x-selected-text); flex: 0 0 auto; }
+.export-xd-menu button:hover { background: var(--x-hover); }
+.export-xd-menu button[aria-checked="true"] { color: var(--x-text); font-weight: 750; }
+.export-xd-menu button[aria-checked="true"] > svg:first-child { color: var(--x-text); }
+
+/* E/F: top-bar button group */
+.export-xd-segmented { display: grid; grid-auto-flow: column; grid-auto-columns: minmax(0, 1fr); border: 1px solid var(--x-border); border-radius: 5px; background: var(--x-surface); overflow: hidden; }
+.export-xd-segmented button { display: inline-flex; min-height: 34px; align-items: center; justify-content: center; gap: 6px; padding: 0 6px; border: 0; border-right: 1px solid var(--x-border); background: transparent; color: var(--x-text); font-size: 12px; font-weight: 750; cursor: pointer; }
+.export-xd-segmented button:last-child { border-right: 0; }
+.export-xd-segmented button svg { color: var(--x-muted); }
+.export-xd-segmented button:hover { background: var(--x-hover); }
+.export-xd-segmented button[aria-checked="true"] { background: var(--x-selected); color: var(--x-selected-text); box-shadow: inset 0 0 0 1px var(--x-selected-border); }
+.export-xd-segmented button[aria-checked="true"] svg { color: currentColor; }
+.export-xd-segmented button:focus-visible { outline-offset: -2px; }
+
+/* Rows with a control on the right (E, print paper select) */
+.export-xd-row { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 40px; padding: 4px 0; border-bottom: 1px solid var(--x-divider); font-size: 12px; font-weight: 650; cursor: pointer; }
+.export-xd-row:last-of-type { border-bottom: 0; }
+.export-xd-row small, .export-xd-check small { display: block; margin-top: 1px; color: var(--x-muted); font-size: 11px; font-weight: 500; }
+.export-xd select { min-height: 30px; max-width: 60%; padding: 0 8px; border: 1px solid var(--x-border); border-radius: 5px; background: var(--x-surface); font-size: 12px; font-weight: 650; }
+.export-xd-switch input { appearance: none; position: relative; flex: 0 0 auto; width: 34px; height: 20px; margin: 0; border-radius: 999px; background: var(--x-border); cursor: pointer; transition: background var(--schedule-motion-state, 150ms); }
+.export-xd-switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; transition: transform var(--schedule-motion-state, 150ms); }
+.export-xd-switch input:checked { background: var(--x-selected-text); }
+.export-xd-switch input:checked::after { transform: translateX(14px); }
+
+/* F: preview + accordion */
+.export-xd-preview { display: flex; flex-direction: column; border: 1px solid var(--x-border); border-radius: 5px; overflow: hidden; background: var(--x-soft); }
+.export-xd-thumb { position: relative; height: 140px; overflow: hidden; }
+.export-xd-thumb iframe { position: absolute; top: 0; left: 0; width: 1100px; height: 620px; border: 0; transform: scale(.25); transform-origin: 0 0; pointer-events: none; background: #fff; }
+.export-xd-thumb-status { position: absolute; inset: auto 8px 8px; padding: 3px 8px; border: 1px solid var(--x-divider); border-radius: 4px; background: var(--x-surface); color: var(--x-muted); font-size: 11px; text-align: center; }
+.export-xd-preview-bar { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding: 6px 6px 6px 10px; border-top: 1px solid var(--x-border); background: var(--x-surface); color: var(--x-muted); font-size: 12px; font-weight: 650; }
+.export-xd-preview-bar .export-xd-secondary { min-height: 28px; padding: 0 8px; }
+.export-xd-details { border-top: 1px solid var(--x-divider); border-bottom: 1px solid var(--x-divider); padding: 8px 0; }
+.export-xd-details summary { display: flex; align-items: center; gap: 8px; cursor: pointer; list-style: none; }
+.export-xd-details summary::-webkit-details-marker { display: none; }
+.export-xd-details summary::before { content: "▸"; font-size: 10px; }
+.export-xd-details[open] summary::before { content: "▾"; }
+.export-xd-details summary span { margin-left: auto; color: var(--x-text); font-size: 12px; font-weight: 650; letter-spacing: 0; text-transform: none; }
+.export-xd-details[open] summary { margin-bottom: 6px; }
+.export-xd-check { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 8px 0; font-size: 12px; font-weight: 650; cursor: pointer; }
+.export-xd-check input { flex: 0 0 auto; margin: 2px 0 0; accent-color: var(--x-selected-text); }
+
+@media (prefers-reduced-motion: reduce) { .export-xd-switch input, .export-xd-switch input::after { transition: none; } }

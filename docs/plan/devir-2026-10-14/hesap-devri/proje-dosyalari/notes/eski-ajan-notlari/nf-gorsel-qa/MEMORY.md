@@ -1,0 +1,9 @@
+- [Vite stale dep cache hides gated buttons](vite-stale-dep-cache-gates-missing.md) — restart vite --force before concluding a gate/permission regression is real
+- [Ghost shift mock via Playwright route](ghost-shift-mock-via-playwright-route.md) — auto-ghost vs out-of-scope ghost_shifts semantics; how to launch standalone Playwright in this repo
+- [Ports 5616/5617 occupied by stale worktree](ports-5616-occupied-by-stale-worktree.md) — pick a free port pair instead of killing a foreign PID; say so in the report
+- [Meyhouse role logins + touch test](meyhouse-role-logins-and-touch-test.md) — manager/employee/admin magic links exist but manager cannot see Main Dining (use page.route); phone tips need hasTouch + tap
+- [Onboarding wizard needs a fresh workspace](onboarding-wizard-needs-fresh-workspace.md) — /onboarding redirects to /app/workspace once a workspace is fully set up (Meyhouse); "Add your team" step can only be seen by creating a new owner workspace, out of scope for a read-only QA pass.
+- [Playwright double-goto blanks mobile screenshot](playwright-double-goto-blanks-mobile.md) — retry with reload/click before reporting a mobile blank-page as a real bug
+- [Schedule quiet-dialog pattern](schedule-quiet-dialog-pattern.md) — shared attr for Publish/Templates; safe QA open paths
+- [Time-off QA login and dialogs](time-off-qa-login-and-dialogs.md) — owner-capable world e2e1790693406000, no pending time off (page.route), `.app-confirm-layer` for the confirm dialog
+- [Schedule tip QA data + traps](schedule-tip-qa-data-and-traps.md) — week 2026-09-21 data, manager_notes/card injection, focus-scroll closes bubble, no max-height

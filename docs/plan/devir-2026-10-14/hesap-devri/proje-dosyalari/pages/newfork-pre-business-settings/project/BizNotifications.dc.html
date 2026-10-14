@@ -1,0 +1,198 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Meyhouse &mdash; My notifications</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#f4f5f3;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.ic{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.side{width:268px;flex:0 0 268px;background:#ffffff;border-right:1px solid #dce3df;padding:20px 16px;display:flex;flex-direction:column;overflow:hidden}
+.id{display:flex;align-items:center;gap:10px;padding:0 6px 14px;margin-bottom:15px;border-bottom:1px solid #e2e6e4}
+.av{width:36px;height:36px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 36px}
+.idn{display:grid;min-width:0}
+.idn strong{font-size:13px;color:#17221e}
+.idn span{font-size:11px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.back{display:flex;align-items:center;gap:10px;min-height:36px;margin-bottom:2px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:700;color:#5f6b66;text-decoration:none}
+.ni{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;margin-bottom:2px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66;text-decoration:none}
+.ni.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:14px;border-top:1px solid #e2e6e4}
+.main{flex-grow:1;min-width:0;padding:40px 48px;overflow:hidden}
+.ph h1{margin:0 0 7px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-0.01em;color:#17221e}
+.ph p{margin:0 0 24px;font-size:14px;color:#66716c;max-width:660px;line-height:1.55}
+.tbl{border:1px solid #dce3df;border-radius:10px;background:#ffffff;overflow:hidden;max-width:840px}
+.thead{display:grid;grid-template-columns:minmax(0,1fr) 108px 108px;gap:12px;padding:12px 20px;border-bottom:1px solid #dce3df;background:#f7f9f8}
+.thead span{font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66;text-align:center}
+.thead span:first-child{text-align:left}
+.cat{display:grid;grid-template-columns:minmax(0,1fr) 108px 108px;gap:12px;align-items:center;padding:13px 20px;background:#f0f3f1;border-bottom:1px solid #e2e6e4}
+.cat strong{font-size:13px;font-weight:700;color:#17221e}
+.trow{display:grid;grid-template-columns:minmax(0,1fr) 108px 108px;gap:12px;align-items:center;padding:13px 20px;border-bottom:1px solid #e2e6e4}
+.trow:last-child{border-bottom:0}
+.trow.lock{background:#fbfbfa}
+.cell{display:flex;justify-content:center}
+.cell input{width:17px;height:17px;accent-color:#176954;cursor:pointer}
+.cell input:disabled{cursor:not-allowed}
+.tlab{font-size:13.5px;color:#1d2525}
+.lockwhy{display:block;margin-top:4px;font-size:12px;color:#8a5a00}
+.btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.b2{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;max-width:840px;padding-top:16px}
+.note{margin:14px 0 0;font-size:12.5px;color:#66716c;line-height:1.55;max-width:840px}
+.banner{display:flex;align-items:flex-start;gap:10px;max-width:840px;margin-bottom:20px;padding:13px 16px;border:1px solid #e2e6e4;border-radius:8px;background:#ffffff;font-size:13px;color:#66716c;line-height:1.55}
+.railtop{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e6e4}
+.collapse{display:inline-grid;place-items:center;width:38px;height:36px;flex:0 0 38px;border:0;border-radius:6px;background:transparent;color:#4b5551;cursor:pointer}
+.collapse:hover{background:#f0f3f1}
+.collapse .ic{width:18px;height:18px;flex:0 0 18px}
+</style>
+</helmet>
+<div style="display: flex; width: 1440px; height: 1400px; box-sizing: border-box; background: #f4f5f3;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true" focusable="false">
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"/></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z"/><path d="M9.2 12l2 2 3.6-3.8"/></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z"/><path d="M10.4 20a2 2 0 003.2 0"/></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="16" rx="1.5"/><path d="M14 10h5a1 1 0 011 1v9M7.5 8h3M7.5 12h3M7.5 16h3"/></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4L5.6 5.6"/></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"/><circle cx="12" cy="10" r="2.5"/></symbol>
+    <symbol id="i-case" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7M3 12h18"/></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9 16H3z"/><path d="M12 9v4M12 16h0"/></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M6 4h10a2 2 0 012 2v12a2 2 0 002 2H8a2 2 0 01-2-2z"/><path d="M6 4a2 2 0 00-2 2v2h2M10 9h6M10 13h6"/></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"/></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"/></symbol>
+  </svg>
+
+  <aside class="side" aria-label="Account navigation">
+    <div class="railtop"><button type="button" class="collapse" aria-label="Collapse menu" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button></div>
+    <div class="id">
+      <span class="av">AN</span>
+      <span class="idn"><strong>Alexa Nalbant</strong><span>alexa@newfork.test</span></span>
+    </div>
+    <nav aria-label="Account">
+      <sc-for list="{{nav}}" as="row" hint-placeholder-count="6">
+        <a class="{{row.cls}}" href="{{row.href}}" aria-current="{{row.cur}}"><svg class="ic"><use href="{{row.icon}}"/></svg>{{row.text}}<sc-if value="{{row.hasBadge}}" hint-placeholder-val="{{no}}"><span class="dot">{{row.badge}}</span></sc-if></a>
+      </sc-for>
+    </nav>
+    <div class="foot">
+      <a class="back" href="#back"><svg class="ic"><use href="#i-arrow"/></svg>Back to Meyhouse</a>
+      <a class="ni" href="#signout"><svg class="ic"><use href="#i-out"/></svg>Sign out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="ph">
+      <h1>Notifications</h1>
+      <p>Same page as the channels above &mdash; this is the Meyhouse section of it. Each workspace you belong to gets its own.</p>
+    </div>
+
+    <p class="banner">Meyhouse decides what it can tell you about; you choose inside that. A row it keeps on stays on, and the reason is on the row. Email goes to <strong style="color:#17221e;">alexa@newfork.test</strong>.</p>
+
+    <div class="tbl">
+      <div class="thead"><span>What happens</span><span>In the app</span><span>Email</span></div>
+
+      <div class="cat">
+        <strong>Schedule</strong>
+        <span class="cell"><input type="checkbox" checked aria-label="All schedule notifications in the app"></span>
+        <span class="cell"><input type="checkbox" checked aria-label="All schedule notifications by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">A new schedule is published</span></span>
+        <span class="cell"><input id="n1a" type="checkbox" checked aria-label="A new schedule is published, in the app"></span>
+        <span class="cell"><input id="n1e" type="checkbox" checked aria-label="A new schedule is published, by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">Your shift assignment changes</span></span>
+        <span class="cell"><input id="n2a" type="checkbox" checked aria-label="Your shift assignment changes, in the app"></span>
+        <span class="cell"><input id="n2e" type="checkbox" checked aria-label="Your shift assignment changes, by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">An open shift is offered to you</span></span>
+        <span class="cell"><input id="n3a" type="checkbox" checked aria-label="An open shift is offered to you, in the app"></span>
+        <span class="cell"><input id="n3e" type="checkbox" aria-label="An open shift is offered to you, by email"></span>
+      </div>
+
+      <div class="cat">
+        <strong>Requests</strong>
+        <span class="cell"><input type="checkbox" checked aria-label="All request notifications in the app"></span>
+        <span class="cell"><input type="checkbox" aria-label="All request notifications by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">Your time-off request is answered</span></span>
+        <span class="cell"><input id="n4a" type="checkbox" checked aria-label="Your time-off request is answered, in the app"></span>
+        <span class="cell"><input id="n4e" type="checkbox" aria-label="Your time-off request is answered, by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">Your shift-change request is answered</span></span>
+        <span class="cell"><input id="n5a" type="checkbox" checked aria-label="Your shift-change request is answered, in the app"></span>
+        <span class="cell"><input id="n5e" type="checkbox" aria-label="Your shift-change request is answered, by email"></span>
+      </div>
+      <div class="trow lock">
+        <span><span class="tlab" style="color:#8d9793;">Someone asks for time off</span><span class="lockwhy">Only managers get this one.</span></span>
+        <span class="cell"><input id="n6a" type="checkbox" disabled aria-label="Someone asks for time off, in the app"></span>
+        <span class="cell"><input id="n6e" type="checkbox" disabled aria-label="Someone asks for time off, by email"></span>
+      </div>
+
+      <div class="cat">
+        <strong>Documents</strong>
+        <span class="cell"><input type="checkbox" checked aria-label="All document notifications in the app"></span>
+        <span class="cell"><input type="checkbox" checked aria-label="All document notifications by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">A document needs your signature</span></span>
+        <span class="cell"><input id="n7a" type="checkbox" checked aria-label="A document needs your signature, in the app"></span>
+        <span class="cell"><input id="n7e" type="checkbox" checked aria-label="A document needs your signature, by email"></span>
+      </div>
+      <div class="trow">
+        <span><span class="tlab">A document of yours is about to expire</span></span>
+        <span class="cell"><input id="n8a" type="checkbox" checked aria-label="A document of yours is about to expire, in the app"></span>
+        <span class="cell"><input id="n8e" type="checkbox" checked aria-label="A document of yours is about to expire, by email"></span>
+      </div>
+    </div>
+
+    <div class="bar">
+      <button type="button" class="btn b2" disabled style="opacity:.55;cursor:default;">Discard</button>
+      <button type="button" class="btn b1" disabled style="opacity:.55;cursor:default;">Save changes</button>
+    </div>
+
+    <p class="note">Bu sayfa bug&#252;n <code>/account/preferences/notifications</code> i&#231;inde ya&#351;&#305;yor ve kendi i&#351;letme <code>&lt;select&gt;</code>&#39;iyle geliyor; burada se&#231;ici yok &mdash; sayfa zaten Meyhouse&#39;un alt&#305;nda. <strong style="color:#17221e;">Kilitli sat&#305;r&#305;n nedeni art&#305;k g&#246;r&#252;n&#252;r:</strong> bug&#252;n o a&#231;&#305;klama yaln&#305;z ekran okuyucuya gidiyor (<code>aria-describedby</code>, g&#246;rsel olarak gizli), ekranda kapal&#305; bir kutu duruyor ve nedeni yazm&#305;yor.</p>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1400}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const link = (text, icon, href, on, badge) => ({
+      text, icon, href,
+      cls: on ? 'ni on' : 'ni', cur: on ? 'page' : 'false',
+      hasBadge: Boolean(badge), badge: badge ?? '',
+    });
+    return {
+      yes: true, no: false,
+      nav: [
+        link('Profile', '#i-user', '#p', false),
+        link('Security', '#i-shield', '#s', false),
+        link('Preferences', '#i-sliders', '#r', false),
+        link('Notifications', '#i-bell', '#n', true),
+        link('Documents', '#i-file', '#d', false, '2'),
+        link('Workspaces', '#i-building', '#b', false),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

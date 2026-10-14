@@ -1,0 +1,67 @@
+PAGES: numara, ekran, adres, Artifact bağlantısı, derlendiği main
+Dizin: https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy
+
+0.1	Shell · Sidebar	/app/workspace	https://claude.ai/artifact/SDWkfuTDYz2RJP436CAV9y	4169aef7
+0.2	Shell · Employee bottom nav	/app/employee-hub	https://claude.ai/artifact/KDg5MMetVsd1nCzB9EoF3i	68a6eaef
+0.3	Shell · Management bottom nav	/app/workspace	https://claude.ai/artifact/YNxGBRjUNSVoKHEmkR4z9e	4169aef7
+0.4	Shell · Workspace switcher	/app/workspace	https://claude.ai/artifact/DM4iqmWdb5ZCcorkXkm5NE	4169aef7
+0.5	Shell · Account menu	/app/workspace	https://claude.ai/artifact/BdLQ3NUgtRM91zRozvuivC	68a6eaef
+0.6	Shell · Employee view	/app/workspace	https://claude.ai/artifact/CdgQhAkTBhb3jXnDBirhEa	68a6eaef
+0.7	Shell · Common states	/app/workspace	https://claude.ai/artifact/YRqhhq8AMKBFLQ1zpJSDad	54af9320
+0.8	Shell · Toaster and confirm dialog	/app/schedule/requests	https://claude.ai/artifact/SDzyW1e5cX2FqaccC4SAhM	68a6eaef
+1.0	Sign in	/sign-in	https://claude.ai/artifact/NFAMP6rKAqNx19f1d1ebzQ	ff275b71
+1.1	Forgot password	/forgot-password	https://claude.ai/artifact/9QtWGkV6SRgdiJCcedzDdC	ff275b71
+1.2	Reset password	/reset-password	https://claude.ai/artifact/FPFQy5zZ5D1hQh2GUs2V6D	ff275b71
+1.3	Account recovery	/account-recovery	https://claude.ai/artifact/K9e64aTWXWfut7gBbLZzPg	ff275b71
+1.4	Accept invitation	/invite/accept	https://claude.ai/artifact/1hSopZEENNDztexMJHbQcz	ff275b71
+1.5	Workspace hub	/workspaces	https://claude.ai/artifact/9zBLGFyvs9Y2X6qvWgMCz3	68a6eaef
+1.6	Workspace status	/workspaces/status	https://claude.ai/artifact/QB8i9pfM1xNHLUMYGoUPsn	68a6eaef
+1.7	Owner setup	/onboarding	https://claude.ai/artifact/TpEfJoc2hEac7fm5K5gQ4v	ff275b71
+1.8	Employee welcome	/welcome	https://claude.ai/artifact/4Szx8TsamsrYesTGp72jRy	68a6eaef
+1.9	Check your email	/sign-in	https://claude.ai/artifact/GPJjNGSJb3ftowmFN4BnA6	68a6eaef
+1.10	Almost ready	/app	https://claude.ai/artifact/R79CMAJ6118AxAtn4C8SrY	68a6eaef
+1.11	That workspace didn't load	/app	https://claude.ai/artifact/CYXR9A9L3gjBfXQu93VRsD	68a6eaef
+2.0	Workspace	/app/workspace	https://claude.ai/artifact/4EbXXuT4EY6NcLqfAJUuBy	ff275b71
+3.0	Schedule	/app/schedule	https://claude.ai/artifact/J6tWENw7QTf6gHoP8jtPAu	e0c18aae
+3.1	Schedule export	/app/schedule/export	https://claude.ai/artifact/DEctBmqXhDLRpumfifre4c	ff275b71
+3.2	Schedule templates	/app/schedule/templates	https://claude.ai/artifact/7PPX8YQ3AUPQNSskTJuW6M	ff275b71
+3.3	Requests	/app/schedule/requests	https://claude.ai/artifact/LjHpcgS38GsQAvnMyemaoH	ff275b71
+3.4	Lineup	/app/schedule/lineup	https://claude.ai/artifact/AJqKmK2HZcmwV8tooCtusz	ff275b71
+4.0	Employees	/app/employees	https://claude.ai/artifact/3W6vH1fCZAP7KvzQcMgnUW	ff275b71
+4.1	Employee documents	/app/employees/documents	https://claude.ai/artifact/2b1nCYf4ow1bWTcmCQ5qcE	ff275b71
+4.2	Employees archive	/app/employees/archive	https://claude.ai/artifact/HVLf3vUTAzVyeJhpJmz28z	ff275b71
+5.0	Availability	/app/availability	https://claude.ai/artifact/8Dda7vpsNDFZey5WygaA4R	ff275b71
+6.0	Important Dates	/app/announcements/important-dates	https://claude.ai/artifact/YG5Dx2CvskoemPFVoKg2ff	ff275b71
+7.0	Employee home	/app/employee-hub	https://claude.ai/artifact/PV43RDJYxL5SBdVpD6to4X	ff275b71
+7.1	My schedule	/app/employee-hub/schedule	https://claude.ai/artifact/UkrQH4AscnEi2d7z4KRbco	68a6eaef
+7.2	Shift Hub	/app/employee-hub/shift-hub	https://claude.ai/artifact/U1yLX9KHcSkzoNJcTVughw	ff275b71
+7.3	My availability	/app/employee-hub/my-availability	https://claude.ai/artifact/QxggDkv4nCCT2sAuxufJbd	68a6eaef
+7.4	More	/app/employee-hub/more	https://claude.ai/artifact/HgPjKfQmSBmx2vPAacQLPc	68a6eaef
+8.0	Announcements	/app/announcements	https://claude.ai/artifact/JC7V6cGGgXpKH9BrJGH7W5	ff275b71
+8.1	Announcement detail	/app/announcements	https://claude.ai/artifact/FnPFkE5B8M242nuX5y2iyy	68a6eaef
+9.0	Notifications	/app/notifications	https://claude.ai/artifact/PTfHkeyhJJc8iB8s57QjrZ	ff275b71
+10.0	Settings · General	/app/settings/general	https://claude.ai/artifact/DFczQ53ZuMXZFhVWoiDktZ	ff275b71
+10.1	Settings · Locations	/app/settings/locations	https://claude.ai/artifact/AqLuHNmxqmpMSgXJ2fs4oE	e0c18aae
+10.2	Settings · Jobs	/app/settings/jobs	https://claude.ai/artifact/APVqmoNiwVpogT99C2bw22	5950292c
+10.3	Settings · Notifications	/app/settings/notifications	https://claude.ai/artifact/Psrq8HivP2tquaWH2JFvDK	ff275b71
+10.4	Settings · Schedule rules	/app/settings/scheduling	https://claude.ai/artifact/DKtrT34EAvyZHoiv1xHtAQ	ff275b71
+10.5	Settings · Conflict handling	/app/settings/scheduling/conflicts	https://claude.ai/artifact/Vx4Foa379VhWkYTdHawLuP	ff275b71
+10.6	Settings · Shift catalog	/app/settings/scheduling/shift-types	https://claude.ai/artifact/5nb6ytPPoff2WgbLTVQdk7	e0c18aae
+10.7	Settings · Shift labels	/app/settings/scheduling/shift-labels	https://claude.ai/artifact/QK1Ey1yvDDtyoZBnLCZtpC	e0c18aae
+10.8	Settings · Roles & permissions	/app/settings/roles	https://claude.ai/artifact/VtiKsxQsVD31dv2NfGT711	ff275b71
+10.9	Settings · Role detail	/app/settings/roles/00000c05-0000-4000-8000-000000000c05	https://claude.ai/artifact/2FdPcnM2sPJoGve6JNYMVW	ff275b71
+10.10	Settings · Documents	/app/settings/documents	https://claude.ai/artifact/2mwLws71TJU3Ccskqgwtxj	e0c18aae
+10.11	Settings · Acknowledgements	/app/settings/acknowledgements	https://claude.ai/artifact/LGtfraWQKektkYXJb6gEQg	ff275b71
+10.12	Settings · Support	/app/settings/support	https://claude.ai/artifact/5EzE4sSWJRtjbTRnxiQFf7	68a6eaef
+11.0	Account · Profile	/account/profile	https://claude.ai/artifact/9BmgY8fzUeBuyra25gtq6M	ff275b71
+11.1	Account · Security	/account/security	https://claude.ai/artifact/3c5w98Atq9MBZm5whgVSt8	ff275b71
+11.2	Account · Preferences	/account/preferences	https://claude.ai/artifact/4oMRpyDiTt85YWJyjw8cUS	ff275b71
+11.3	Account · Notification preferences	/account/preferences/notifications	https://claude.ai/artifact/XkSScsR1iYV2bkEatXcByG	ff275b71
+11.4	Account · Workspaces	/account/workspaces	https://claude.ai/artifact/Stth74e8NvEM4csTfD2L4Z	48f81bc1
+11.5	Account · Documents	/account/documents	https://claude.ai/artifact/7HYEV86WKWnbHZGnrjNHDb	ff275b71
+11.6	Account · Inbox	/account/inbox	https://claude.ai/artifact/1zCdXPSkYUL5FQwhKVoxsF	ff275b71
+12.0	Privacy	/privacy	https://claude.ai/artifact/8qwmZQELtJ9xcDLHazngPQ	68a6eaef
+12.1	Terms	/terms	https://claude.ai/artifact/LK5wwrMogFzwU2avBUeSSD	68a6eaef
+12.2	Accessibility	/accessibility	https://claude.ai/artifact/LiHqxMEKCtG2AuaRRSr2Lj	68a6eaef
+12.3	Contact	/contact	https://claude.ai/artifact/JTFLvgkEokYP8PEJ9UxYHL	68a6eaef
+12.4	Your privacy choices	/your-privacy-choices	https://claude.ai/artifact/T4kpow996YBHQndRueZYuK	68a6eaef

@@ -1,0 +1,448 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Newfork Landing Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap" rel="stylesheet">
+<style>:root {
+  /* Light theme tokens (THEME-002). New UI uses these instead of raw hex. */
+  --theme-font-sans:
+    Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+    "Segoe UI", sans-serif;
+  --theme-page: #f4f5f3;
+  --theme-surface: #ffffff;
+  --theme-surface-soft: #f7f9f8;
+  --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e;
+  --theme-text-body: #1d2525;
+  --theme-muted: #66716c;
+  /* Secondary text on tinted surfaces where --theme-muted misses AA. */
+  --theme-muted-strong: #5f6b66;
+  --theme-border: #dce3df;
+  --theme-border-subtle: #e2e6e4;
+  --theme-border-strong: #cbd4d0;
+  --theme-accent: #176954;
+  --theme-accent-strong: #12624f;
+  --theme-selected: #e7f1ed;
+  --theme-focus: #177a64;
+  --theme-action: #111827;
+  --theme-action-hover: #1f2937;
+  --theme-danger: #b84234;
+  --theme-danger-soft: #fff0ee;
+  --theme-warning: #8a5a00;
+  --theme-warning-soft: #fff7e2;
+  --theme-success: #176b4e;
+  --theme-success-soft: #e7f1ed;
+  --theme-current: #b7791f;
+  --theme-on-accent: #ffffff;
+  /* Account screens (BL-148): kept at their exact values, no nearer token fits. */
+  --theme-text-secondary: #50605a;
+  --theme-text-menu: #26352f;
+  --theme-accent-soft: #dbece5;
+  --theme-accent-deep: #244c3d;
+  --theme-focus-halo: #c9eadf;
+  --theme-border-hover: #95aaa1;
+  --theme-warning-surface: #fbf6ec;
+  --theme-warning-border: #bf872d;
+  --theme-warning-text: #5f491f;
+  --theme-danger-surface: #fff8f6;
+  --theme-danger-border: #ad3f36;
+  --theme-danger-text: #653b36;
+  --theme-danger-strong: #a43830;
+  /* Schedule availability (G14, Mert 2026-10-01): orange is a preference the
+     manager may still schedule over, red is approved time off (a block). */
+  --theme-availability: #d9730d;
+  --theme-availability-soft: #fff1e2;
+  --theme-time-off: #d4162a;
+  --theme-time-off-soft: #ffe2e5;
+  --theme-accent-focus: #236844;
+  /* Schedule publication state (BL-312): green when the whole week is live,
+     amber when only some locations are. Kept at their exact values. */
+  --theme-published: #087f5b;
+  --theme-published-hover: #0b6f53;
+  --theme-published-partial: #b45309;
+  --theme-published-partial-hover: #92400e;
+  /* The edge every Schedule top bar control shares (G14); value unchanged. */
+  --theme-border-control: #aeb9b4;
+  /* The dot of a location, or the chip of a person, that has no colour of its own. */
+  --theme-swatch-fallback: #64748b;
+  --theme-swatch-fallback-soft: #cbd5e1;
+  /* A manager's note on a Schedule shift (BL-199): its own ink, so a note
+     never reads as a status, a warning or a selection. 7.6:1 on white. */
+  --theme-note: #2f4fa3;
+  /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
+     table frame, column-heading row, body cell ink, the line between
+     Availability day headings, and the faint "—" / disabled ink. */
+  --theme-list-frame: #d7dcda;
+  --theme-list-head: #e6ece8;
+  --theme-list-head-border: #d3dbd6;
+  --theme-list-head-text: #4f5d57;
+  --theme-list-cell-text: #46514d;
+  --theme-list-col-line: #dce1de;
+  --theme-text-faint: var(--theme-border-control);
+  --theme-availability-text: #8a4a06;
+  --schedule-action: var(--theme-action);
+  --schedule-action-hover: var(--theme-action-hover);
+  --schedule-grid-line-color: #dce2df;
+  --schedule-grid-line-width: 1px;
+  --schedule-section-line-color: #8fa098;
+  --schedule-unassigned-row-background: #fef3c7;
+  --schedule-unassigned-line-color: #d6a23a;
+  --schedule-unassigned-line-width: 2px;
+  --schedule-badge-radius: 4px;
+  --schedule-cell-edit-inset: 4px;
+  --schedule-cell-preview-inset: 1px;
+  --schedule-location-boundary-width: 3px;
+  --schedule-badge-edit-gap: 2px;
+  --schedule-badge-preview-gap: 1px;
+  --schedule-add-shift-lane-height: 28px;
+  --schedule-focus-ring-color: var(--theme-focus);
+  --schedule-current-ring-color: var(--theme-current);
+  /* Ghost shift card: switched-off gray, shared by every ghost. */
+  --schedule-ghost-edge: #d3d9d6;
+  --schedule-ghost-text: #56615c;
+  --schedule-motion-fast: 120ms;
+  --schedule-motion-state: 150ms;
+  color: var(--theme-text-body);
+  background: var(--theme-page);
+  font-family: var(--theme-font-sans);
+  font-synthesis: none;
+}
+/* Marketing site at "/" (light theme only; colors come from --theme-* tokens). */
+.lp {
+  --lp-ink: var(--theme-text);
+  --lp-deep: var(--theme-accent-deep);
+  --lp-accent: var(--theme-accent);
+  --lp-soft: var(--theme-accent-soft);
+  --lp-warm: var(--theme-availability);
+  --lp-warm-soft: var(--theme-availability-soft);
+  --lp-red: var(--theme-time-off);
+  --lp-red-soft: var(--theme-time-off-soft);
+  --lp-radius: 18px;
+  --lp-ease: cubic-bezier(0.2, 0.8, 0.2, 1);
+  min-height: 100vh;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-family: var(--theme-font-sans);
+  overflow-x: clip;
+}
+.lp *, .lp *::before, .lp *::after { box-sizing: border-box; }
+.lp a { color: inherit; }
+.lp :focus-visible { outline: 3px solid var(--theme-focus); outline-offset: 3px; border-radius: 8px; }
+.lp-skip { position: absolute; left: -999px; top: 8px; z-index: 100; background: var(--theme-surface); padding: 8px 12px; }
+.lp-skip:focus { left: 16px; }
+
+/* Buttons */
+.lp-btn { display: inline-flex; align-items: center; gap: 8px; height: 40px; padding: 0 16px; border-radius: 10px;
+  font: 600 14px/1 var(--theme-font-sans); text-decoration: none; border: 1px solid transparent; cursor: pointer;
+  transition: transform .2s var(--lp-ease), box-shadow .2s, background .2s; white-space: nowrap; }
+.lp-btn:hover { transform: translateY(-1px); }
+.lp-btn-lg { height: 50px; padding: 0 22px; font-size: 15px; border-radius: 12px; }
+.lp-btn-primary { background: var(--lp-accent); color: var(--theme-on-accent) !important; box-shadow: 0 8px 24px -10px var(--lp-accent); }
+.lp-btn-primary:hover { background: var(--theme-accent-strong); box-shadow: 0 14px 30px -12px var(--lp-accent); }
+.lp-btn-ghost { background: var(--theme-surface); color: var(--lp-ink); border-color: var(--theme-border-strong); }
+.lp-btn-light { background: var(--theme-surface); color: var(--lp-deep) !important; }
+.lp-btn-outline-light { color: var(--theme-on-accent) !important; border-color: rgb(255 255 255 / .5); }
+
+/* Nav */
+.lp-nav { position: sticky; top: 0; z-index: 50; transition: background .3s, box-shadow .3s; }
+.lp-nav.is-scrolled { background: rgb(255 255 255 / .86); backdrop-filter: blur(14px); box-shadow: 0 1px 0 var(--theme-border); }
+.lp-nav-inner { max-width: 1200px; margin: 0 auto; height: 68px; padding: 0 24px; display: flex; align-items: center; gap: 28px; }
+.lp-brand { display: inline-flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .14em; font-size: 15px; text-decoration: none; color: var(--lp-ink) !important; }
+.lp-brand-mark { display: inline-grid; grid-template-columns: repeat(3, 5px); gap: 3px; align-items: end; height: 18px; }
+.lp-brand-mark i { display: block; width: 5px; border-radius: 3px; background: var(--lp-accent); animation: lp-bars 2.4s var(--lp-ease) infinite; }
+.lp-brand-mark i:nth-child(1) { height: 10px; }
+.lp-brand-mark i:nth-child(2) { height: 18px; animation-delay: .2s; }
+.lp-brand-mark i:nth-child(3) { height: 14px; animation-delay: .4s; }
+@keyframes lp-bars { 50% { transform: scaleY(.6); } }
+.lp-nav nav { display: flex; gap: 22px; margin-left: 8px; }
+.lp-nav nav a { text-decoration: none; font-size: 14px; font-weight: 500; color: var(--theme-muted-strong); }
+.lp-nav nav a:hover { color: var(--lp-ink); }
+.lp-nav-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; }
+.lp-nav-signin { font-size: 14px; font-weight: 600; text-decoration: none; }
+.lp-menu { display: none; background: none; border: 0; padding: 8px; color: var(--lp-ink); cursor: pointer; }
+
+/* Hero */
+.lp-hero { position: relative; padding: 56px 24px 96px; isolation: isolate; }
+.lp-hero-bg { position: absolute; inset: 0; z-index: -1; overflow: hidden; }
+.lp-blob { position: absolute; border-radius: 50%; filter: blur(70px); opacity: .55; animation: lp-float 14s ease-in-out infinite; }
+.lp-blob-a { width: 520px; height: 520px; background: var(--lp-soft); left: -120px; top: -160px; }
+.lp-blob-b { width: 460px; height: 460px; background: var(--lp-warm-soft); right: -80px; top: 120px; animation-delay: -6s; }
+@keyframes lp-float { 50% { transform: translate(40px, 30px) scale(1.08); } }
+.lp-gridlines { position: absolute; inset: 0; background-image: linear-gradient(var(--theme-border-subtle) 1px, transparent 1px), linear-gradient(90deg, var(--theme-border-subtle) 1px, transparent 1px);
+  background-size: 56px 56px; mask-image: radial-gradient(ellipse at 60% 30%, #000 10%, transparent 70%); opacity: .7; }
+.lp-hero-inner { max-width: 1200px; margin: 0 auto; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: 48px; align-items: center; }
+.lp-eyebrow { display: inline-flex; align-items: center; gap: 10px; padding: 6px 12px; border-radius: 999px; background: var(--theme-selected);
+  color: var(--lp-deep); font-size: 13px; font-weight: 600; margin: 0 0 22px; animation: lp-rise .8s var(--lp-ease) both; }
+.lp-pulse { width: 8px; height: 8px; border-radius: 50%; background: var(--lp-accent); box-shadow: 0 0 0 0 var(--lp-accent); animation: lp-ping 2s infinite; }
+@keyframes lp-ping { 70% { box-shadow: 0 0 0 10px transparent; } }
+.lp-hero h1 { font-size: clamp(40px, 5.6vw, 68px); line-height: 1.02; letter-spacing: -.035em; color: var(--lp-ink); margin: 0; font-weight: 800; animation: lp-rise .9s .08s var(--lp-ease) both; }
+.lp-rotator { display: inline-block; position: relative; color: var(--lp-accent); min-width: 4.6ch; }
+.lp-rotator-word { display: inline-block; animation: lp-word .55s var(--lp-ease) both; background: linear-gradient(90deg, var(--lp-accent), var(--lp-warm)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+@keyframes lp-word { from { opacity: 0; transform: translateY(.45em) rotateX(60deg); filter: blur(6px); } }
+.lp-lede { font-size: 18px; line-height: 1.6; color: var(--theme-text-secondary); max-width: 520px; margin: 24px 0 32px; animation: lp-rise .9s .16s var(--lp-ease) both; }
+.lp-hero-ctas { display: flex; flex-wrap: wrap; gap: 12px; animation: lp-rise .9s .24s var(--lp-ease) both; }
+.lp-hero-proof { list-style: none; padding: 0; margin: 28px 0 0; display: flex; flex-wrap: wrap; gap: 18px; font-size: 13px; color: var(--theme-muted-strong); animation: lp-rise .9s .32s var(--lp-ease) both; }
+.lp-hero-proof li { display: inline-flex; gap: 6px; align-items: center; }
+.lp-hero-proof svg { color: var(--lp-accent); }
+@keyframes lp-rise { from { opacity: 0; transform: translateY(18px); } }
+
+/* Hero stage: the animated cockpit */
+.lp-stage { --tilt-x: 0deg; --tilt-y: 0deg; position: relative; perspective: 1400px; min-height: 480px; animation: lp-rise 1s .2s var(--lp-ease) both; }
+.lp-orbit { position: absolute; border: 1px dashed var(--theme-border-strong); border-radius: 50%; animation: lp-spin 40s linear infinite; }
+.lp-orbit-a { width: 560px; height: 560px; left: 8%; top: -40px; }
+.lp-orbit-b { width: 380px; height: 380px; right: -60px; bottom: -60px; animation-direction: reverse; animation-duration: 30s; }
+@keyframes lp-spin { to { transform: rotate(360deg); } }
+.lp-cockpit { position: relative; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: var(--lp-radius);
+  box-shadow: 0 40px 80px -30px rgb(23 34 30 / .35), 0 12px 24px -12px rgb(23 34 30 / .15);
+  transform: rotateX(var(--tilt-x)) rotateY(calc(var(--tilt-y) - 6deg)) rotateZ(1deg); transform-style: preserve-3d; transition: transform .4s var(--lp-ease); overflow: hidden; }
+.lp-cockpit-bar { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--theme-border-subtle); font-size: 12px; font-weight: 600; color: var(--theme-muted-strong); }
+.lp-dots { display: inline-flex; gap: 5px; }
+.lp-dots i { width: 9px; height: 9px; border-radius: 50%; background: var(--theme-border-strong); }
+.lp-cockpit-title { flex: 1; }
+.lp-publish { position: relative; display: inline-grid; place-items: center; height: 28px; min-width: 96px; padding: 0 12px; border-radius: 8px; background: var(--theme-action); color: var(--theme-on-accent); overflow: hidden; }
+.lp-publish > span { grid-area: 1 / 1; display: inline-flex; gap: 4px; align-items: center; }
+.lp-publish-label { animation: lp-pub-a 9s infinite; }
+.lp-publish-done { opacity: 0; animation: lp-pub-b 9s infinite; }
+@keyframes lp-pub-a { 0%, 66% { opacity: 1; transform: none; } 68% { transform: scale(.9); } 70%, 96% { opacity: 0; transform: translateY(-120%); } 100% { opacity: 1; } }
+@keyframes lp-pub-b { 0%, 69% { opacity: 0; transform: translateY(120%); } 72%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.lp-publish { animation: lp-pub-bg 9s infinite; }
+@keyframes lp-pub-bg { 0%, 69% { background: var(--theme-action); } 72%, 96% { background: var(--theme-published); } }
+.lp-grid { position: relative; display: grid; grid-template-columns: 112px repeat(7, minmax(0, 1fr)); font-size: 11px; }
+.lp-grid-row { display: contents; }
+.lp-grid-head { padding: 8px 6px; text-align: center; font-weight: 700; color: var(--theme-muted); border-bottom: 1px solid var(--theme-border-subtle); text-transform: uppercase; letter-spacing: .06em; font-size: 10px; }
+.lp-grid-corner { text-align: left; padding-left: 14px; }
+.lp-person { display: flex; gap: 8px; align-items: center; padding: 8px 10px 8px 14px; border-bottom: 1px solid var(--theme-border-subtle); }
+.lp-person b { display: block; font-size: 11px; color: var(--lp-ink); white-space: nowrap; }
+.lp-person small { color: var(--theme-muted); font-size: 10px; }
+.lp-avatar { flex: none; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: var(--theme-on-accent); background: var(--lp-accent); }
+.lp-cell { border-bottom: 1px solid var(--theme-border-subtle); border-left: 1px solid var(--theme-border-subtle); padding: 6px 4px; min-height: 44px; display: flex; align-items: center; }
+.lp-shift { display: block; width: 100%; padding: 6px 4px; border-radius: 6px; text-align: center; font-weight: 700; font-size: 10.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  background: var(--lp-soft); color: var(--lp-deep); border-left: 3px solid var(--lp-accent); animation: lp-pop .5s var(--d, 0s) var(--lp-ease) both; }
+.tone-kitchen.lp-shift { background: var(--theme-warning-soft); color: var(--theme-warning-text); border-color: var(--theme-warning-border); }
+.tone-host.lp-shift { background: var(--theme-selected); }
+.tone-bar.lp-shift { background: var(--theme-surface-muted); color: var(--lp-ink); border-color: var(--theme-action); }
+.lp-avatar.tone-kitchen { background: var(--theme-warning-border); }
+.lp-avatar.tone-host { background: var(--theme-accent-deep); }
+.lp-avatar.tone-bar { background: var(--theme-action); }
+.lp-shift.is-off { background: var(--lp-red); color: var(--theme-on-accent); border-color: var(--lp-red); text-transform: uppercase; letter-spacing: .04em; font-size: 9px; }
+.lp-shift.is-ghost { background: transparent; border: 1px dashed var(--theme-border-strong); color: var(--theme-muted); opacity: .9; }
+@keyframes lp-pop { from { opacity: 0; transform: translateY(-10px) scale(.85); } 60% { transform: translateY(1px) scale(1.04); } }
+.lp-drag { position: absolute; left: calc(112px + (100% - 112px) / 7 * 6 + 4px); top: calc(33px + 44px * 2 + 8px); width: calc((100% - 112px) / 7 - 8px); pointer-events: none; animation: lp-drag 9s var(--lp-ease) infinite; }
+.lp-drag-chip { animation: none; box-shadow: 0 10px 20px -8px rgb(23 34 30 / .4); }
+.lp-cursor { position: absolute; right: -10px; bottom: -14px; fill: var(--lp-ink); stroke: var(--theme-surface); stroke-width: 1.5; }
+@keyframes lp-drag {
+  0%, 20% { opacity: 0; transform: translate(160px, 180px); }
+  26% { opacity: 1; transform: translate(150px, 170px) rotate(-3deg); }
+  44% { opacity: 1; transform: translate(0, -88px) rotate(-3deg); }
+  52%, 58% { opacity: 1; transform: translate(0, -88px) rotate(0); }
+  64%, 96% { opacity: 1; transform: translate(0, 0); }
+  100% { opacity: 0; transform: translate(0, 0); }
+}
+.lp-flag { position: absolute; right: 10px; top: 44px; display: inline-flex; gap: 6px; align-items: center; padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+  background: var(--lp-warm-soft); color: var(--theme-warning-text); border: 1px solid var(--lp-warm); opacity: 0; animation: lp-flag 9s var(--lp-ease) infinite; }
+@keyframes lp-flag { 0%, 44% { opacity: 0; transform: translateY(-6px); } 48%, 60% { opacity: 1; transform: none; } 66%, 100% { opacity: 0; transform: translateY(-6px); } }
+
+/* Phones */
+.lp-phone { position: absolute; right: -14px; bottom: -36px; width: 190px; height: 360px; border-radius: 30px; background: var(--theme-action); padding: 8px;
+  box-shadow: 0 40px 60px -24px rgb(23 34 30 / .5); transform: rotate(4deg) translateZ(60px); animation: lp-bob 6s ease-in-out infinite; }
+@keyframes lp-bob { 50% { transform: rotate(4deg) translateY(-10px); } }
+.lp-phone-notch { position: absolute; top: 14px; left: 50%; width: 56px; height: 14px; margin-left: -28px; border-radius: 10px; background: var(--theme-action); z-index: 2; }
+.lp-phone-screen { position: relative; height: 100%; border-radius: 23px; background: var(--theme-page); padding: 36px 12px 12px; overflow: hidden; font-size: 11px; }
+.lp-phone-hello { margin: 0; font-size: 16px; font-weight: 800; color: var(--lp-ink); }
+.lp-phone-sub { margin: 2px 0 10px; color: var(--theme-muted); }
+.lp-phone-card { background: var(--theme-surface); border-radius: 12px; padding: 10px; border: 1px solid var(--theme-border); display: grid; gap: 3px; margin-top: 8px; }
+.lp-phone-card strong { color: var(--lp-ink); font-size: 12px; }
+.lp-phone-card span { color: var(--theme-muted-strong); }
+.lp-phone-toast { position: absolute; left: 8px; right: 8px; top: 140px; display: flex; gap: 8px; padding: 10px; border-radius: 12px; background: var(--theme-surface);
+  box-shadow: 0 12px 24px -10px rgb(23 34 30 / .35); color: var(--lp-ink); line-height: 1.35; opacity: 0; animation: lp-toast 9s var(--lp-ease) infinite; }
+.lp-phone-toast svg { flex: none; color: var(--theme-published); margin-top: 2px; }
+.lp-phone-toast-2 { top: 204px; animation-name: lp-toast2; }
+@keyframes lp-toast { 0%, 71% { opacity: 0; transform: translateY(-20px) scale(.95); } 75%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+@keyframes lp-toast2 { 0%, 78% { opacity: 0; transform: translateY(-20px) scale(.95); } 82%, 96% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+.lp-phone-tabs { position: absolute; left: 12px; right: 12px; bottom: 12px; display: flex; justify-content: space-around; padding: 10px; border-radius: 14px; background: var(--theme-surface); border: 1px solid var(--theme-border); }
+.lp-phone-tabs i { width: 14px; height: 14px; border-radius: 4px; background: var(--theme-border-strong); }
+.lp-phone-tabs i:first-child { background: var(--lp-accent); }
+.lp-chip { position: absolute; display: inline-flex; align-items: center; gap: 6px; padding: 8px 12px; border-radius: 999px; background: var(--theme-surface);
+  border: 1px solid var(--theme-border); font-size: 12px; font-weight: 600; color: var(--lp-ink); box-shadow: 0 12px 24px -12px rgb(23 34 30 / .3); animation: lp-bob2 7s ease-in-out infinite; }
+.lp-chip svg { color: var(--lp-accent); }
+.lp-chip-a { left: -24px; bottom: 30px; }
+.lp-chip-b { right: 40px; top: -22px; animation-delay: -3s; }
+@keyframes lp-bob2 { 50% { transform: translateY(-8px); } }
+
+/* Marquee */
+.lp-marquee { border-block: 1px solid var(--theme-border); background: var(--theme-surface-soft); overflow: hidden; padding: 18px 0; }
+.lp-marquee-track { display: flex; width: max-content; animation: lp-marquee 40s linear infinite; }
+.lp-marquee:hover .lp-marquee-track { animation-play-state: paused; }
+.lp-marquee-set { display: flex; gap: 48px; padding-right: 48px; }
+.lp-marquee-set span { font-weight: 700; font-size: 15px; color: var(--theme-muted-strong); white-space: nowrap; display: inline-flex; align-items: center; gap: 48px; }
+.lp-marquee-set span::after { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--lp-accent); margin-right: -27px; }
+@keyframes lp-marquee { to { transform: translateX(-50%); } }
+
+/* Sections */
+.lp-section { max-width: 1200px; margin: 0 auto; padding: 112px 24px 0; }
+.lp-section-head { max-width: 720px; margin: 0 auto 56px; text-align: center; }
+.lp-kicker { margin: 0 0 12px; font-size: 13px; font-weight: 700; letter-spacing: .14em; text-transform: uppercase; color: var(--lp-accent); }
+.lp h2 { font-size: clamp(30px, 3.6vw, 46px); line-height: 1.08; letter-spacing: -.03em; color: var(--lp-ink); margin: 0 0 16px; font-weight: 800; }
+.lp-section-head > p:last-child, .lp-split-copy > p { font-size: 17px; line-height: 1.6; color: var(--theme-text-secondary); margin: 0; }
+[data-reveal] { opacity: 0; transform: translateY(28px); transition: opacity .8s var(--lp-ease), transform .8s var(--lp-ease); transition-delay: calc(var(--i, 0) * 70ms); }
+[data-reveal].is-in { opacity: 1; transform: none; }
+
+.lp-feature-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.lp-feature { position: relative; padding: 28px; border-radius: var(--lp-radius); border: 1px solid var(--theme-border); background: var(--theme-surface); overflow: hidden; }
+.lp-feature::before { content: ""; position: absolute; inset: 0; background: radial-gradient(400px circle at 0 0, var(--theme-selected), transparent 60%); opacity: 0; transition: opacity .4s; }
+.lp-feature:hover::before { opacity: 1; }
+.lp-feature:hover { border-color: var(--theme-border-hover); }
+.lp-feature > * { position: relative; }
+.lp-feature-icon { display: inline-grid; place-items: center; width: 44px; height: 44px; border-radius: 12px; background: var(--theme-selected); color: var(--lp-accent); margin-bottom: 18px; transition: transform .4s var(--lp-ease); }
+.lp-feature:hover .lp-feature-icon { transform: rotate(-8deg) scale(1.08); }
+.lp-feature h3 { font-size: 17px; margin: 0 0 8px; color: var(--lp-ink); }
+.lp-feature p { margin: 0; line-height: 1.6; color: var(--theme-text-secondary); font-size: 15px; }
+
+.lp-split { display: grid; grid-template-columns: 1fr 1fr; gap: 72px; align-items: center; }
+.lp-split-rev .lp-split-copy { order: 2; }
+.lp-checks { list-style: none; padding: 0; margin: 28px 0 0; display: grid; gap: 12px; }
+.lp-checks li { display: flex; gap: 10px; align-items: center; font-weight: 500; color: var(--lp-ink); }
+.lp-checks svg { flex: none; padding: 3px; width: 22px; height: 22px; border-radius: 50%; background: var(--theme-selected); color: var(--lp-accent); }
+
+.lp-panel { padding: 22px; border-radius: 22px; background: linear-gradient(160deg, var(--theme-surface-soft), var(--theme-surface)); border: 1px solid var(--theme-border); box-shadow: 0 40px 80px -40px rgb(23 34 30 / .3); }
+.lp-panel-head { display: flex; justify-content: space-between; align-items: center; font-weight: 800; color: var(--lp-ink); margin-bottom: 14px; }
+.lp-badge { font-size: 12px; padding: 4px 10px; border-radius: 999px; background: var(--lp-warm-soft); color: var(--theme-warning-text); }
+.lp-request { display: flex; align-items: center; gap: 12px; padding: 12px; border-radius: 12px; background: var(--theme-surface); border: 1px solid var(--theme-border-subtle); margin-bottom: 10px; }
+.is-in .lp-request { animation: lp-slide .6s calc(.3s + var(--i) * .15s) var(--lp-ease) both; }
+@keyframes lp-slide { from { opacity: 0; transform: translateX(30px); } }
+.lp-request-text { flex: 1; display: grid; gap: 2px; font-size: 13px; }
+.lp-request-text b { color: var(--lp-ink); }
+.lp-request-text small { color: var(--theme-muted-strong); font-size: 12px; }
+.lp-tag { font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 6px; background: var(--theme-surface-muted); color: var(--theme-muted-strong); }
+.lp-approve { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 8px; background: var(--lp-accent); color: var(--theme-on-accent); }
+.is-in .lp-approve { animation: lp-tap .5s calc(1.2s + var(--i) * .4s) both; }
+@keyframes lp-tap { 50% { transform: scale(.8); } }
+.lp-meter { display: flex; gap: 12px; align-items: center; margin-top: 18px; font-size: 13px; color: var(--theme-muted-strong); }
+.lp-meter b { color: var(--lp-ink); }
+.lp-meter-bar { flex: 1; height: 8px; border-radius: 99px; background: var(--theme-surface-muted); overflow: hidden; }
+.lp-meter-bar i { display: block; height: 100%; width: 96%; border-radius: inherit; background: linear-gradient(90deg, var(--lp-accent), var(--theme-published)); transform-origin: left; transform: scaleX(0); transition: transform 1.6s .6s var(--lp-ease); }
+.is-in .lp-meter-bar i { transform: scaleX(1); }
+
+.lp-phones { position: relative; min-height: 460px; }
+.lp-phone-static { position: absolute; left: 22%; top: 30px; right: auto; bottom: auto; width: 220px; height: 420px; transform: rotate(-4deg); animation: none; z-index: 2; }
+.lp-phone-back { left: 52%; top: 0; transform: rotate(6deg) scale(.92); z-index: 1; opacity: .95; }
+.lp-phone-row { display: grid; grid-template-columns: 36px 1fr auto; gap: 6px; align-items: center; padding: 10px; border-radius: 10px; background: var(--theme-surface); border: 1px solid var(--theme-border-subtle); margin-top: 8px; font-weight: 600; color: var(--lp-ink); }
+.is-in .lp-phone-row { animation: lp-rise .6s calc(.3s + var(--i) * .12s) var(--lp-ease) both; }
+.lp-phone-day { color: var(--lp-accent); }
+.lp-phone-loc { color: var(--theme-muted); font-weight: 500; }
+.lp-phone-cta, .lp-phone-ack { display: flex; gap: 6px; justify-content: center; align-items: center; margin-top: 12px; padding: 10px; border-radius: 10px; background: var(--lp-accent); color: var(--theme-on-accent); font-weight: 700; }
+.lp-phone-ack { background: var(--theme-selected); color: var(--lp-deep); }
+.lp-chip-c { left: 4%; bottom: 40px; z-index: 3; }
+
+.lp-steps { list-style: none; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; counter-reset: s; position: relative; }
+.lp-steps li { position: relative; padding: 28px 24px; border-radius: var(--lp-radius); background: var(--theme-surface-soft); border: 1px solid var(--theme-border-subtle); }
+.lp-step-n { display: block; font-size: 40px; font-weight: 800; letter-spacing: -.04em; background: linear-gradient(180deg, var(--lp-accent), var(--theme-border-strong)); -webkit-background-clip: text; background-clip: text; color: transparent; margin-bottom: 14px; }
+.lp-steps h3 { margin: 0 0 8px; font-size: 17px; color: var(--lp-ink); }
+.lp-steps p { margin: 0; color: var(--theme-text-secondary); line-height: 1.55; font-size: 15px; }
+
+.lp-trust { display: grid; grid-template-columns: 1.4fr 1fr; gap: 40px; align-items: center; margin-top: 112px; padding: 48px; border-radius: 24px; background: var(--theme-surface-soft); border: 1px solid var(--theme-border); }
+.lp-trust svg:first-child { color: var(--lp-accent); }
+.lp-trust h2 { font-size: 30px; margin-top: 12px; }
+.lp-trust p { margin: 0; color: var(--theme-text-secondary); line-height: 1.6; }
+.lp-trust-links { display: grid; gap: 10px; }
+.lp-trust-links a { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-radius: 12px; background: var(--theme-surface); border: 1px solid var(--theme-border); text-decoration: none; font-weight: 600; color: var(--lp-ink); transition: border-color .2s, transform .2s; }
+.lp-trust-links a:hover { border-color: var(--lp-accent); transform: translateX(4px); }
+
+.lp-plans { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
+.lp-plan { position: relative; display: flex; flex-direction: column; padding: 32px 28px; border-radius: 22px; border: 1px solid var(--theme-border); background: var(--theme-surface); }
+.lp-plan.is-featured { border: 2px solid var(--lp-accent); box-shadow: 0 30px 60px -30px var(--lp-accent); }
+.lp-plan-flag { position: absolute; top: -13px; left: 28px; padding: 4px 12px; border-radius: 999px; background: var(--lp-accent); color: var(--theme-on-accent); font-size: 12px; font-weight: 700; }
+.lp-plan h3 { margin: 0; font-size: 18px; color: var(--lp-ink); }
+.lp-plan-price { margin: 16px 0 0; font-size: 40px; font-weight: 800; letter-spacing: -.03em; color: var(--lp-ink); }
+.lp-plan-cadence { margin: 2px 0 14px; color: var(--theme-muted-strong); font-size: 13px; }
+.lp-plan-blurb { margin: 0 0 20px; color: var(--theme-text-secondary); line-height: 1.5; }
+.lp-plan ul { list-style: none; padding: 0; margin: 0 0 28px; display: grid; gap: 10px; flex: 1; }
+.lp-plan li { display: flex; gap: 8px; align-items: center; font-size: 14px; color: var(--lp-ink); }
+.lp-plan li svg { color: var(--lp-accent); flex: none; }
+.lp-plan .lp-btn { justify-content: center; }
+
+.lp-faq-list { max-width: 800px; margin: 0 auto; display: grid; gap: 12px; }
+.lp-faq details { border: 1px solid var(--theme-border); border-radius: 14px; background: var(--theme-surface); padding: 0 22px; transition: border-color .2s; }
+.lp-faq details[open] { border-color: var(--theme-border-hover); }
+.lp-faq summary { display: flex; justify-content: space-between; gap: 16px; align-items: center; padding: 20px 0; cursor: pointer; font-weight: 700; color: var(--lp-ink); list-style: none; }
+.lp-faq summary::-webkit-details-marker { display: none; }
+.lp-faq summary svg { flex: none; transition: transform .3s var(--lp-ease); color: var(--theme-muted); }
+.lp-faq details[open] summary svg { transform: rotate(180deg); }
+.lp-faq details p { margin: 0 0 20px; color: var(--theme-text-secondary); line-height: 1.6; }
+
+.lp-cta { max-width: 1200px; margin: 112px auto 0; padding: 0 24px; }
+.lp-cta-inner { position: relative; overflow: hidden; text-align: center; padding: 80px 32px; border-radius: 28px; background: var(--lp-deep); color: var(--theme-on-accent); }
+.lp-cta-inner::before { content: ""; position: absolute; inset: -40%; background: conic-gradient(from 0deg, transparent, var(--lp-accent), transparent 30%); animation: lp-spin 12s linear infinite; opacity: .5; }
+.lp-cta-inner::after { content: ""; position: absolute; inset: 2px; border-radius: 26px; background: var(--lp-deep); }
+.lp-cta-inner > * { position: relative; z-index: 1; }
+.lp-cta h2 { color: var(--theme-on-accent); }
+.lp-cta p { margin: 0 auto 32px; max-width: 520px; font-size: 17px; opacity: .85; }
+.lp-cta .lp-hero-ctas { justify-content: center; animation: none; }
+
+.lp-footer { margin-top: 112px; border-top: 1px solid var(--theme-border); background: var(--theme-surface-soft); }
+.lp-footer-inner { max-width: 1200px; margin: 0 auto; padding: 56px 24px 32px; display: grid; grid-template-columns: 2fr repeat(3, 1fr); gap: 32px; }
+.lp-footer-brand p { color: var(--theme-muted-strong); margin: 12px 0 0; font-size: 14px; }
+.lp-footer nav { display: grid; gap: 10px; align-content: start; }
+.lp-footer h4 { margin: 0 0 4px; font-size: 13px; text-transform: uppercase; letter-spacing: .1em; color: var(--lp-ink); }
+.lp-footer nav a { text-decoration: none; color: var(--theme-muted-strong); font-size: 14px; }
+.lp-footer nav a:hover { color: var(--lp-ink); }
+.lp-footer-legal { max-width: 1200px; margin: 0 auto; padding: 20px 24px 32px; border-top: 1px solid var(--theme-border-subtle); font-size: 13px; color: var(--theme-muted-strong); }
+
+.lp-cookies { position: fixed; z-index: 60; left: 16px; right: 16px; bottom: 16px; max-width: 640px; margin: 0 auto; display: flex; gap: 16px; align-items: center; padding: 16px 18px;
+  border-radius: 16px; background: var(--theme-surface); border: 1px solid var(--theme-border); box-shadow: 0 24px 48px -20px rgb(23 34 30 / .4); animation: lp-rise .6s 1s var(--lp-ease) both; }
+.lp-cookies p { margin: 0; font-size: 13px; line-height: 1.5; color: var(--theme-text-secondary); }
+.lp-cookies a { color: var(--lp-accent); font-weight: 600; }
+.lp-cookies > div { display: flex; gap: 8px; flex: none; }
+
+/* Responsive */
+@media (max-width: 1024px) {
+  .lp-hero-inner, .lp-split { grid-template-columns: 1fr; gap: 56px; }
+  .lp-split-rev .lp-split-copy { order: 0; }
+  .lp-feature-grid, .lp-plans { grid-template-columns: repeat(2, 1fr); }
+  .lp-steps { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 820px) {
+  .lp-nav nav { display: none; position: absolute; top: 68px; left: 0; right: 0; flex-direction: column; gap: 0; margin: 0; background: var(--theme-surface); border-bottom: 1px solid var(--theme-border); padding: 8px 16px 16px; }
+  .lp-nav nav.is-open { display: flex; }
+  .lp-nav nav a { padding: 12px 0; font-size: 16px; }
+  .lp-menu { display: inline-flex; }
+  .lp-nav-signin { display: none; }
+  .lp-nav-inner { padding: 0 16px; }
+  .lp-trust { grid-template-columns: 1fr; padding: 28px; }
+  .lp-footer-inner { grid-template-columns: 1fr 1fr; }
+  .lp-footer-brand { grid-column: 1 / -1; }
+}
+@media (max-width: 640px) {
+  .lp-hero { padding: 32px 16px 72px; }
+  .lp-section { padding: 80px 16px 0; }
+  .lp-cta { padding: 0 16px; }
+  .lp-feature-grid, .lp-plans, .lp-steps { grid-template-columns: 1fr; }
+  .lp-stage { min-height: 400px; }
+  .lp-grid { grid-template-columns: 74px repeat(7, minmax(0, 1fr)); }
+  .lp-person small, .lp-avatar.tone-server, .lp-person .lp-avatar { display: none; }
+  .lp-person { padding-left: 8px; }
+  .lp-shift { font-size: 8.5px; padding: 5px 1px; }
+  .lp-drag { left: calc(74px + (100% - 74px) / 7 * 6 + 4px); width: calc((100% - 74px) / 7 - 8px); }
+  .lp-flag, .lp-chip-b, .lp-orbit { display: none; }
+  .lp-phone { width: 150px; height: 290px; right: -4px; bottom: -70px; }
+  .lp-phone-static { left: 6%; width: 190px; height: 380px; }
+  .lp-phone-back { left: 40%; }
+  .lp-cookies { flex-direction: column; align-items: stretch; }
+  .lp-cookies > div .lp-btn { flex: 1; justify-content: center; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lp *, .lp *::before, .lp *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; }
+  [data-reveal] { opacity: 1; transform: none; }
+  .lp-drag, .lp-flag { display: none; }
+  .lp-publish-label { opacity: 1; }
+}
+
+html,body{margin:0;background:#ffffff;} :root{--theme-font-sans:Inter,ui-sans-serif,system-ui,sans-serif;} .lp svg{display:inline-block;vertical-align:middle}</style></head><body><div class="lp"><a class="lp-skip" href="#main">Skip to content</a><header class="lp-nav"><div class="lp-nav-inner"><a class="lp-brand" aria-label="Newfork home" href="#" data-discover="true"><span class="lp-brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>NEWFORK</a><nav aria-label="Primary"><a href="#features">Features</a><a href="#cockpit">Cockpit</a><a href="#crew">Crew app</a><a href="#pricing">Pricing</a><a href="#faq">FAQ</a><a href="#" data-discover="true">Contact</a></nav><div class="lp-nav-actions"><a class="lp-nav-signin" href="#" data-discover="true">Sign in</a><a class="lp-btn lp-btn-primary" href="#" data-discover="true">Start free <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a><button type="button" class="lp-menu" aria-label="Open menu" aria-expanded="false"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-menu"><line x1="4" x2="20" y1="12" y2="12"></line><line x1="4" x2="20" y1="6" y2="6"></line><line x1="4" x2="20" y1="18" y2="18"></line></svg></button></div></div></header><main id="main"><section class="lp-hero"><div class="lp-hero-bg" aria-hidden="true"><span class="lp-blob lp-blob-a"></span><span class="lp-blob lp-blob-b"></span><span class="lp-gridlines"></span></div><div class="lp-hero-inner"><div class="lp-hero-copy"><p class="lp-eyebrow"><span class="lp-pulse"></span> Scheduling for US restaurants</p><h1>The cockpit to <span class="lp-rotator" aria-live="off"><span class="lp-rotator-word">swap</span></span><br>your whole crew.</h1><p class="lp-lede">Newfork turns the Sunday-night spreadsheet into a five-minute job. Managers build the week with conflicts flagged in real time. Crew get every shift, swap and announcement on their phone.</p><div class="lp-hero-ctas"><a class="lp-btn lp-btn-primary lp-btn-lg" href="#" data-discover="true">Start free <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a><a class="lp-btn lp-btn-ghost lp-btn-lg" href="#cockpit">See how it works</a></div><ul class="lp-hero-proof"><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Free during early access</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> No app install for crew</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Set up in an afternoon</li></ul></div><div class="lp-stage" aria-hidden="true"><div class="lp-orbit lp-orbit-a"></div><div class="lp-orbit lp-orbit-b"></div><div class="lp-cockpit"><div class="lp-cockpit-bar"><span class="lp-dots"><i></i><i></i><i></i></span><span class="lp-cockpit-title">Schedule · Kadıköy · Oct 12–18</span><span class="lp-publish"><span class="lp-publish-label">Publish</span><span class="lp-publish-done"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg> Published</span></span></div><div class="lp-grid"><div class="lp-grid-head lp-grid-corner">Team</div><div class="lp-grid-head">Mon</div><div class="lp-grid-head">Tue</div><div class="lp-grid-head">Wed</div><div class="lp-grid-head">Thu</div><div class="lp-grid-head">Fri</div><div class="lp-grid-head">Sat</div><div class="lp-grid-head">Sun</div><div class="lp-grid-row" style="--row: 0;"><div class="lp-person"><span class="lp-avatar tone-server">A</span><span><b>Ayşe K.</b><small>Server</small></span></div><div class="lp-cell"><span class="lp-shift tone-server" style="--d: 0s;">9–5</span></div><div class="lp-cell"><span class="lp-shift tone-server" style="--d: 0.07s;">9–5</span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-server is-off" style="--d: 0.21000000000000002s;">Time off</span></div><div class="lp-cell"><span class="lp-shift tone-server" style="--d: 0.28s;">4–11</span></div><div class="lp-cell"><span class="lp-shift tone-server" style="--d: 0.35000000000000003s;">4–11</span></div><div class="lp-cell"></div></div><div class="lp-grid-row" style="--row: 1;"><div class="lp-person"><span class="lp-avatar tone-kitchen">J</span><span><b>José P.</b><small>Line cook</small></span></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 0.49000000000000005s;">7–3</span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 0.6300000000000001s;">7–3</span></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 0.7000000000000001s;">7–3</span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 0.8400000000000001s;">2–10</span></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 0.9100000000000001s;">2–10</span></div></div><div class="lp-grid-row" style="--row: 2;"><div class="lp-person"><span class="lp-avatar tone-host">M</span><span><b>Maya R.</b><small>Host</small></span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-host" style="--d: 1.05s;">5–10</span></div><div class="lp-cell"><span class="lp-shift tone-host is-ghost" style="--d: 1.12s;">Beşiktaş</span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-host" style="--d: 1.2600000000000002s;">5–10</span></div><div class="lp-cell"><span class="lp-shift tone-host" style="--d: 1.33s;">5–11</span></div><div class="lp-cell"></div></div><div class="lp-grid-row" style="--row: 3;"><div class="lp-person"><span class="lp-avatar tone-bar">A</span><span><b>Ali D.</b><small>Bartender</small></span></div><div class="lp-cell"></div><div class="lp-cell"></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-bar" style="--d: 1.6800000000000002s;">6–2</span></div><div class="lp-cell"><span class="lp-shift tone-bar" style="--d: 1.7500000000000002s;">6–2</span></div><div class="lp-cell"><span class="lp-shift tone-bar" style="--d: 1.8200000000000003s;">6–2</span></div><div class="lp-cell"><span class="lp-shift tone-bar" style="--d: 1.8900000000000001s;">4–12</span></div></div><div class="lp-grid-row" style="--row: 4;"><div class="lp-person"><span class="lp-avatar tone-kitchen">S</span><span><b>Sam T.</b><small>Dish</small></span></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 1.9600000000000002s;">11–7</span></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 2.1s;">11–7</span></div><div class="lp-cell"></div><div class="lp-cell"></div><div class="lp-cell"></div><div class="lp-cell"><span class="lp-shift tone-kitchen" style="--d: 2.3800000000000003s;">11–7</span></div></div><span class="lp-drag"><span class="lp-shift tone-server lp-drag-chip">5–11</span><svg class="lp-cursor" viewBox="0 0 24 24" width="22" height="22"><path d="M4 2l16 9-7 2-3 7z"></path></svg></span><span class="lp-flag"><svg xmlns="http://www.w3.org/2000/svg" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-ring"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M22 8c0-2.3-.8-4.3-2-6"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path><path d="M4 2C2.8 3.7 2 5.7 2 8"></path></svg> Ayşe prefers not to work Sun</span></div></div><div class="lp-phone"><div class="lp-phone-notch"></div><div class="lp-phone-screen"><p class="lp-phone-hello">Hi Ayşe</p><p class="lp-phone-sub">Your next shift</p><div class="lp-phone-card"><strong>Tue · 9:00 AM – 5:00 PM</strong><span>Server · Kadıköy</span></div><div class="lp-phone-toast"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-check2"><path d="M8 2v4"></path><path d="M16 2v4"></path><path d="M21 14V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h8"></path><path d="M3 10h18"></path><path d="m16 20 2 2 4-4"></path></svg><span><b>Schedule published</b><br>Oct 12–18 is live</span></div><div class="lp-phone-toast lp-phone-toast-2"><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-repeat2"><path d="m2 9 3-3 3 3"></path><path d="M13 18H7a2 2 0 0 1-2-2V6"></path><path d="m22 15-3 3-3-3"></path><path d="M11 6h6a2 2 0 0 1 2 2v10"></path></svg><span><b>Swap approved</b><br>José takes Fri 4–11</span></div><div class="lp-phone-tabs"><i></i><i></i><i></i><i></i></div></div></div><div class="lp-chip lp-chip-a"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg> 42 people · 3 locations</div><div class="lp-chip lp-chip-b"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-sparkles"><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"></path><path d="M20 3v4"></path><path d="M22 5h-4"></path><path d="M4 17v2"></path><path d="M5 18H3"></path></svg> 0 conflicts</div></div></div></section><section class="lp-marquee" aria-label="What Newfork handles"><div class="lp-marquee-track"><div class="lp-marquee-set" aria-hidden="false"><span>Weekly schedules</span><span>Shift swaps</span><span>Open shift pickups</span><span>Time off</span><span>Availability</span><span>Multi-location</span><span>Announcements</span><span>E-signatures</span><span>Onboarding</span><span>Schedule templates</span><span>PDF exports</span><span>Role-based access</span></div><div class="lp-marquee-set" aria-hidden="true"><span>Weekly schedules</span><span>Shift swaps</span><span>Open shift pickups</span><span>Time off</span><span>Availability</span><span>Multi-location</span><span>Announcements</span><span>E-signatures</span><span>Onboarding</span><span>Schedule templates</span><span>PDF exports</span><span>Role-based access</span></div></div></section><section class="lp-section" id="features"><div class="lp-section-head" data-reveal="true"><p class="lp-kicker">Features</p><h2>Everything between “who’s on tonight?” and a full house.</h2><p>One tool for the schedule, the requests and the conversations around it.</p></div><div class="lp-feature-grid"><article class="lp-feature" data-reveal="true" style="--i: 0;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-calendar-range" aria-hidden="true"><rect width="18" height="18" x="3" y="4" rx="2"></rect><path d="M16 2v4"></path><path d="M3 10h18"></path><path d="M8 2v4"></path><path d="M17 14h-6"></path><path d="M13 18H7"></path><path d="M7 14h.01"></path><path d="M17 18h.01"></path></svg></span><h3>Drag-and-drop weekly schedule</h3><p>Build the week in a grid that reads like your floor. Drafts stay private until you publish.</p></article><article class="lp-feature" data-reveal="true" style="--i: 1;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-bell-ring" aria-hidden="true"><path d="M10.268 21a2 2 0 0 0 3.464 0"></path><path d="M22 8c0-2.3-.8-4.3-2-6"></path><path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326"></path><path d="M4 2C2.8 3.7 2 5.7 2 8"></path></svg></span><h3>Conflicts before they happen</h3><p>Availability, approved time off, overlaps and rest gaps are flagged the moment you place a shift.</p></article><article class="lp-feature" data-reveal="true" style="--i: 2;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-repeat2" aria-hidden="true"><path d="m2 9 3-3 3 3"></path><path d="M13 18H7a2 2 0 0 1-2-2V6"></path><path d="m22 15-3 3-3-3"></path><path d="M11 6h6a2 2 0 0 1 2 2v10"></path></svg></span><h3>Swaps and pickups, approved up the chain</h3><p>Crew trade shifts among people who are actually eligible. The right manager approves in one tap.</p></article><article class="lp-feature" data-reveal="true" style="--i: 3;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-map-pin" aria-hidden="true"><path d="M20 10c0 4.993-5.539 10.193-7.399 11.799a1 1 0 0 1-1.202 0C9.539 20.193 4 14.993 4 10a8 8 0 0 1 16 0"></path><circle cx="12" cy="10" r="3"></circle></svg></span><h3>Built for more than one location</h3><p>Each location keeps its own manager. Shifts someone works elsewhere show as ghosts, so nobody gets double-booked.</p></article><article class="lp-feature" data-reveal="true" style="--i: 4;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-umbrella" aria-hidden="true"><path d="M22 12a10.06 10.06 1 0 0-20 0Z"></path><path d="M12 12v8a2 2 0 0 0 4 0"></path><path d="M12 2v1"></path></svg></span><h3>Time off without the text thread</h3><p>Requests land with the person who decides. Approved days block the grid automatically.</p></article><article class="lp-feature" data-reveal="true" style="--i: 5;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-megaphone" aria-hidden="true"><path d="m3 11 18-5v12L3 14v-3z"></path><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"></path></svg></span><h3>Announcements people acknowledge</h3><p>Post the new menu or the health inspection date and see exactly who has read it.</p></article><article class="lp-feature" data-reveal="true" style="--i: 6;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-file-pen-line" aria-hidden="true"><path d="m18 5-2.414-2.414A2 2 0 0 0 14.172 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2"></path><path d="M21.378 12.626a1 1 0 0 0-3.004-3.004l-4.01 4.012a2 2 0 0 0-.506.854l-.837 2.87a.5.5 0 0 0 .62.62l2.87-.837a2 2 0 0 0 .854-.506z"></path><path d="M8 18h1"></path></svg></span><h3>Documents and e-signatures</h3><p>Collect certifications and signed policies during onboarding, with expiry reminders built in.</p></article><article class="lp-feature" data-reveal="true" style="--i: 7;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-layers" aria-hidden="true"><path d="M12.83 2.18a2 2 0 0 0-1.66 0L2.6 6.08a1 1 0 0 0 0 1.83l8.58 3.91a2 2 0 0 0 1.66 0l8.58-3.9a1 1 0 0 0 0-1.83z"></path><path d="M2 12a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 12"></path><path d="M2 17a1 1 0 0 0 .58.91l8.6 3.91a2 2 0 0 0 1.65 0l8.58-3.9A1 1 0 0 0 22 17"></path></svg></span><h3>Templates and exports</h3><p>Save a good week as a template. Print or share a clean PDF for the back-of-house wall.</p></article><article class="lp-feature" data-reveal="true" style="--i: 8;"><span class="lp-feature-icon"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg></span><h3>Roles that match your restaurant</h3><p>Owner, admin, location manager and crew each see what they need, and nothing they should not.</p></article></div></section><section class="lp-section lp-split" id="cockpit"><div class="lp-split-copy" data-reveal="true"><p class="lp-kicker">Manager cockpit</p><h2>See the whole week. Fix it before it breaks.</h2><p>Your schedule, requests and team in one desktop view built for the person running the floor. Every warning shows where it matters, every decision takes one click.</p><ul class="lp-checks"><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Draft privately, publish when ready</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Availability and time off right in the grid</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Swap, pickup and time off requests in one inbox</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Each location manager sees their own door</li></ul></div><div class="lp-panel" data-reveal="true" aria-hidden="true"><div class="lp-panel-head"><span>Requests</span><span class="lp-badge">3 waiting</span></div><div class="lp-request" style="--i: 0;"><span class="lp-avatar tone-kitchen">J</span><span class="lp-request-text"><b>José P.</b><small>Swap Fri 4–11 with Ali D.</small></span><span class="lp-tag">Swap</span><span class="lp-approve"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg></span></div><div class="lp-request" style="--i: 1;"><span class="lp-avatar tone-kitchen">M</span><span class="lp-request-text"><b>Maya R.</b><small>Time off Sat Oct 17</small></span><span class="lp-tag">Time off</span><span class="lp-approve"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg></span></div><div class="lp-request" style="--i: 2;"><span class="lp-avatar tone-kitchen">S</span><span class="lp-request-text"><b>Sam T.</b><small>Pick up open shift Sun 11–7</small></span><span class="lp-tag">Pickup</span><span class="lp-approve"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg></span></div><div class="lp-meter"><span>Week coverage</span><span class="lp-meter-bar"><i></i></span><b>96%</b></div></div></section><section class="lp-section lp-split lp-split-rev" id="crew"><div class="lp-split-copy" data-reveal="true"><p class="lp-kicker">Crew app</p><h2>Your crew already has it. It’s their phone.</h2><p>No downloads and no group chats. Crew open the link, see their week, set their availability and trade shifts with people who can actually cover them.</p><ul class="lp-checks"><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Next shift front and center</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Request time off in three taps</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Sign documents and read announcements</li><li><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Notified the moment the schedule goes live</li></ul></div><div class="lp-phones" data-reveal="true" aria-hidden="true"><div class="lp-phone lp-phone-static"><div class="lp-phone-notch"></div><div class="lp-phone-screen"><p class="lp-phone-hello">This week</p><div class="lp-phone-row" style="--i: 0;"><span class="lp-phone-day">Tue</span><span>9–5</span><span class="lp-phone-loc">Kadıköy</span></div><div class="lp-phone-row" style="--i: 1;"><span class="lp-phone-day">Wed</span><span>9–5</span><span class="lp-phone-loc">Kadıköy</span></div><div class="lp-phone-row" style="--i: 2;"><span class="lp-phone-day">Fri</span><span>4–11</span><span class="lp-phone-loc">Kadıköy</span></div><div class="lp-phone-row" style="--i: 3;"><span class="lp-phone-day">Sat</span><span>4–11</span><span class="lp-phone-loc">Kadıköy</span></div><div class="lp-phone-cta"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-repeat2"><path d="m2 9 3-3 3 3"></path><path d="M13 18H7a2 2 0 0 1-2-2V6"></path><path d="m22 15-3 3-3-3"></path><path d="M11 6h6a2 2 0 0 1 2 2v10"></path></svg> Offer a swap</div></div></div><div class="lp-phone lp-phone-static lp-phone-back"><div class="lp-phone-notch"></div><div class="lp-phone-screen"><p class="lp-phone-hello">Announcement</p><div class="lp-phone-card"><strong>New fall menu</strong><span>Tasting Thursday 3 PM, all FOH.</span></div><div class="lp-phone-ack"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check"><path d="M20 6 9 17l-5-5"></path></svg> Acknowledged</div></div></div><span class="lp-chip lp-chip-c"><svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-smartphone"><rect width="14" height="20" x="5" y="2" rx="2" ry="2"></rect><path d="M12 18h.01"></path></svg> Works on any phone</span></div></section><section class="lp-section" id="how"><div class="lp-section-head" data-reveal="true"><p class="lp-kicker">How it works</p><h2>From sign-up to a published week in one afternoon.</h2></div><ol class="lp-steps"><li data-reveal="true" style="--i: 0;"><span class="lp-step-n">01</span><h3>Create your workspace</h3><p>Add your locations and the jobs you staff: server, line, host, bar.</p></li><li data-reveal="true" style="--i: 1;"><span class="lp-step-n">02</span><h3>Invite your team</h3><p>Send invites by email. People join from their phone in under two minutes.</p></li><li data-reveal="true" style="--i: 2;"><span class="lp-step-n">03</span><h3>Build and publish</h3><p>Lay out the week, resolve the flags, press Publish. Everyone is notified.</p></li><li data-reveal="true" style="--i: 3;"><span class="lp-step-n">04</span><h3>Let the crew self-serve</h3><p>Swaps, pickups, time off and availability flow to you for one-tap decisions.</p></li></ol></section><section class="lp-section lp-trust" data-reveal="true"><div><svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-shield-check" aria-hidden="true"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"></path><path d="m9 12 2 2 4-4"></path></svg><h2>Serious about your data.</h2><p>Every workspace is isolated at the database level. People see only what their role allows. We never ask for Social Security numbers.</p></div><div class="lp-trust-links"><a href="#" data-discover="true">Privacy policy <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a><a href="#" data-discover="true">Terms of service <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a><a href="#" data-discover="true">Accessibility <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a></div></section><section class="lp-section" id="pricing"><div class="lp-section-head" data-reveal="true"><p class="lp-kicker">Pricing</p><h2>Simple pricing. Free while we’re in early access.</h2><p>Join now and keep early-access terms when paid plans launch.</p></div><div class="lp-plans"><article class="lp-plan is-featured" data-reveal="true" style="--i: 0;"><span class="lp-plan-flag">Available now</span><h3>Early access</h3><p class="lp-plan-price">$0</p><p class="lp-plan-cadence">while in early access</p><p class="lp-plan-blurb">Everything Newfork does today, for restaurants joining early.</p><ul><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Unlimited locations</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Unlimited team members</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Schedule, requests and time off</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Announcements and documents</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Email support</li></ul><a class="lp-btn lp-btn-primary" href="#" data-discover="true">Start free</a></article><article class="lp-plan" data-reveal="true" style="--i: 1;"><h3>Team</h3><p class="lp-plan-price">Coming soon</p><p class="lp-plan-cadence">per location / month</p><p class="lp-plan-blurb">For a single restaurant that wants the full cockpit.</p><ul><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> One location</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Unlimited team members</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Schedule templates and exports</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Crew app for every employee</li></ul><a class="lp-btn lp-btn-ghost" href="#" data-discover="true">Join early access</a></article><article class="lp-plan" data-reveal="true" style="--i: 2;"><h3>Group</h3><p class="lp-plan-price">Coming soon</p><p class="lp-plan-cadence">per location / month</p><p class="lp-plan-blurb">For 2–5 location groups with a manager at each door.</p><ul><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Multiple locations</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Location managers and admins</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Cross-location ghost shifts</li><li><svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-check" aria-hidden="true"><path d="M20 6 9 17l-5-5"></path></svg> Priority support</li></ul><a class="lp-btn lp-btn-ghost" href="#" data-discover="true">Join early access</a></article></div></section><section class="lp-section lp-faq" id="faq"><div class="lp-section-head" data-reveal="true"><p class="lp-kicker">FAQ</p><h2>Questions, answered.</h2></div><div class="lp-faq-list" data-reveal="true"><details><summary>Who is Newfork for?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>Restaurants in the United States, from a single location to groups of a few locations with a manager at each one and an owner overseeing them all.</p></details><details><summary>Do my employees need to download anything?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>No. The crew app runs in the phone's browser. They sign in with the invite you send and see their shifts, requests and announcements right away.</p></details><details><summary>Can employees swap or pick up shifts on their own?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>They can ask. Newfork only offers a shift to people who work that job at that location, and the request goes to the manager who decides.</p></details><details><summary>What happens if I schedule someone during their time off?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>Newfork warns you while you are placing the shift. Availability is always a warning; approved time off is shown in red so it is hard to miss.</p></details><details><summary>Does Newfork do payroll or time clocks?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>Not today. Newfork focuses on scheduling and team operations so it does that job well. Time tracking is on our roadmap.</p></details><details><summary>How is my data protected?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>Every workspace is isolated at the database level, access follows each person's role, and connections are encrypted. See our Privacy page for details.</p></details><details><summary>Can I try it before paying?<svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-chevron-down" aria-hidden="true"><path d="m6 9 6 6 6-6"></path></svg></summary><p>Yes. Early access is free. Create a workspace, invite a few people and run a real week.</p></details></div></section><section class="lp-cta" data-reveal="true"><div class="lp-cta-inner"><h2>Next week’s schedule could already be done.</h2><p>Create your workspace, invite your crew and publish your first week today.</p><div class="lp-hero-ctas"><a class="lp-btn lp-btn-light lp-btn-lg" href="#" data-discover="true">Start free <svg xmlns="http://www.w3.org/2000/svg" width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="lucide lucide-arrow-right" aria-hidden="true"><path d="M5 12h14"></path><path d="m12 5 7 7-7 7"></path></svg></a><a class="lp-btn lp-btn-outline-light lp-btn-lg" href="#" data-discover="true">Talk to us</a></div></div></section></main><footer class="lp-footer"><div class="lp-footer-inner"><div class="lp-footer-brand"><a class="lp-brand" href="#" data-discover="true"><span class="lp-brand-mark" aria-hidden="true"><i></i><i></i><i></i></span>NEWFORK</a><p>Restaurant scheduling and team operations.</p></div><nav aria-label="Product"><h4>Product</h4><a href="#features">Features</a><a href="#cockpit">Manager cockpit</a><a href="#crew">Crew app</a><a href="#pricing">Pricing</a></nav><nav aria-label="Company"><h4>Company</h4><a href="#" data-discover="true">Contact</a><a href="#faq">FAQ</a><a href="#" data-discover="true">Sign in</a><a href="#" data-discover="true">Create account</a></nav><nav aria-label="Legal"><h4>Legal</h4><a href="#" data-discover="true">Privacy</a><a href="#" data-discover="true">Terms</a><a href="#" data-discover="true">Accessibility</a><a href="#" data-discover="true">Cookies &amp; privacy choices</a></nav></div><p class="lp-footer-legal">© 2026 Newfork. All rights reserved.</p></footer></div><script>
+document.querySelectorAll('[data-reveal]').forEach(function(n){
+ if(!('IntersectionObserver' in window)){n.classList.add('is-in');return;}
+ var o=new IntersectionObserver(function(es){es.forEach(function(e){if(e.isIntersecting){e.target.classList.add('is-in');o.unobserve(e.target);}})},{threshold:.15});o.observe(n);});
+var w=['schedule','swap','cover','publish'],i=0,el=document.querySelector('.lp-rotator');
+setInterval(function(){i=(i+1)%w.length;el.innerHTML='<span class="lp-rotator-word">'+w[i]+'</span>';},2200);
+var nav=document.querySelector('.lp-nav');addEventListener('scroll',function(){nav.classList.toggle('is-scrolled',scrollY>12)},{passive:true});
+var mb=document.querySelector('.lp-menu'),mn=document.querySelector('.lp-nav nav');mb&&mb.addEventListener('click',function(){mn.classList.toggle('is-open')});
+mn.querySelectorAll('a').forEach(function(a){a.addEventListener('click',function(){mn.classList.remove('is-open')})});
+var st=document.querySelector('.lp-stage');if(st&&!matchMedia('(prefers-reduced-motion: reduce)').matches){st.addEventListener('pointermove',function(e){var r=st.getBoundingClientRect(),x=(e.clientX-r.left)/r.width-.5,y=(e.clientY-r.top)/r.height-.5;st.style.setProperty('--tilt-x',(-y*6)+'deg');st.style.setProperty('--tilt-y',(x*8)+'deg')});st.addEventListener('pointerleave',function(){st.style.setProperty('--tilt-x','0deg');st.style.setProperty('--tilt-y','0deg')});}
+</script></body></html>

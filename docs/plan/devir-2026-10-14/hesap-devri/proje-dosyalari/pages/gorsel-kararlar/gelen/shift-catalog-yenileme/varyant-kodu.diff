@@ -1,0 +1,766 @@
+diff --git a/apps/web/src/settings/SettingsLayout.tsx b/apps/web/src/settings/SettingsLayout.tsx
+index 8ee2aae0..2fd74fbc 100644
+--- a/apps/web/src/settings/SettingsLayout.tsx
++++ b/apps/web/src/settings/SettingsLayout.tsx
+@@ -12,7 +12,9 @@ import {
+   SlidersHorizontal,
+ } from "lucide-react";
+ import { NavLink, Navigate, Outlet, useLocation } from "react-router";
++import { Clock3, Tags } from "lucide-react";
+ import { useAuth } from "../auth/AuthContext";
++import { shiftCatalogRedesign, shiftCatalogVariant } from "./shift-catalog-variant";
+ import {
+   canEnterSettings,
+   canOpenSettingsPage,
+@@ -114,7 +116,25 @@ export default function SettingsLayout() {
+     return <Navigate to="/app" replace />;
+   }
+ 
+-  const visibleGroups = groups
++  // Design preview: B and C give each catalog its own menu item.
++  const split = shiftCatalogRedesign && shiftCatalogVariant !== "A";
++  const shownGroups = groups.map((group) => ({
++    ...group,
++    items: group.items.flatMap((item) =>
++      split && item.label === "Shift catalog"
++        ? [
++            { ...item, label: "Shift types", icon: Clock3 } as unknown as typeof item,
++            {
++              ...item,
++              to: "/app/settings/scheduling/shift-labels",
++              label: "Shift labels",
++              icon: Tags,
++            } as unknown as typeof item,
++          ]
++        : [item],
++    ) as unknown as typeof group.items,
++  }));
++  const visibleGroups = shownGroups
+     .map((group) => ({
+       ...group,
+       // A link shows exactly when its page opens (SettingsPageRoute); Support
+diff --git a/apps/web/src/settings/ShiftCatalogList.tsx b/apps/web/src/settings/ShiftCatalogList.tsx
+index 6e75d266..2e9bae00 100644
+--- a/apps/web/src/settings/ShiftCatalogList.tsx
++++ b/apps/web/src/settings/ShiftCatalogList.tsx
+@@ -1,6 +1,10 @@
+-import { useState } from "react";
+-import { ArrowDown, ArrowUp, ArrowUpDown, Search, X } from "lucide-react";
++import { useState, type ReactNode } from "react";
++import { ArrowDown, ArrowUp, ArrowUpDown, Clock3, Search, Tags, X } from "lucide-react";
+ import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
++import { ListAddButton } from "../views/CatalogPageHeader";
++import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
++import { shiftCatalogRedesign, shiftCatalogVariant } from "./shift-catalog-variant";
++import "./shift-catalog-variants.css";
+ 
+ type Entry = {
+   id: string;
+@@ -23,6 +27,9 @@ export function ShiftCatalogList<T extends Entry>({
+   disabled,
+   reorderPending,
+   archivePending,
++  onAdd,
++  addDisabled = false,
++  canEdit = true,
+ }: {
+   items: T[];
+   types?: boolean;
+@@ -34,8 +41,12 @@ export function ShiftCatalogList<T extends Entry>({
+   disabled: boolean;
+   reorderPending: boolean;
+   archivePending: boolean;
++  onAdd?: () => void;
++  addDisabled?: boolean;
++  canEdit?: boolean;
+ }) {
+   const [search, setSearch] = useState("");
++  const [status, setStatus] = useState<"active" | "archived">("active");
+   const [sort, setSort] = useState<{
+     key: SortKey;
+     descending: boolean;
+@@ -43,7 +54,11 @@ export function ShiftCatalogList<T extends Entry>({
+   const active = items.filter((item) => !item.archived_at);
+   const visible = items.filter(
+     (item) =>
+-      (showArchived || !item.archived_at) &&
++      (shiftCatalogRedesign
++        ? status === "archived"
++          ? Boolean(item.archived_at)
++          : !item.archived_at
++        : showArchived || !item.archived_at) &&
+       item.name.toLowerCase().includes(search.trim().toLowerCase()),
+   );
+   if (sort)
+@@ -88,6 +103,34 @@ export function ShiftCatalogList<T extends Entry>({
+       </button>
+     );
+   }
++  if (shiftCatalogRedesign)
++    return (
++      <RedesignedList
++        types={types}
++        items={visible}
++        active={active}
++        search={search}
++        setSearch={setSearch}
++        status={status}
++        setStatus={setStatus}
++        sorted={Boolean(sort)}
++        clearSort={() => setSort(null)}
++        column={column}
++        time={time}
++        onEdit={onEdit}
++        onMove={onMove}
++        onArchive={onArchive}
++        disabled={disabled}
++        reorderPending={reorderPending}
++        archivePending={archivePending}
++        onAdd={onAdd}
++        addDisabled={addDisabled}
++        canEdit={canEdit}
++        hasAny={items.some((item) =>
++          status === "archived" ? item.archived_at : !item.archived_at,
++        )}
++      />
++    );
+   return (
+     <>
+       <div className="job-catalog-toolbar">
+@@ -242,3 +285,281 @@ export function ShiftCatalogList<T extends Entry>({
+     </>
+   );
+ }
++
++/** Minutes from start to end, across midnight when the end is earlier. */
++function lengthText(start?: string | null, end?: string | null): string {
++  if (!start || !end) return "—";
++  const minutes = (value: string) => {
++    const [h, m] = value.split(":").map(Number);
++    return (h ?? 0) * 60 + (m ?? 0);
++  };
++  let span = minutes(end) - minutes(start);
++  if (span <= 0) span += 24 * 60;
++  const hours = Math.floor(span / 60);
++  const rest = span % 60;
++  return rest ? `${hours} h ${rest} min` : `${hours} h`;
++}
++
++/** The day from 12 AM to 12 AM with the shift's hours in its own color. */
++function DayBar({ start, end, color }: { start?: string | null; end?: string | null; color: string }) {
++  if (!start || !end) return <span className="shift-day-bar" aria-hidden />;
++  const at = (value: string) => {
++    const [h, m] = value.split(":").map(Number);
++    return (((h ?? 0) * 60 + (m ?? 0)) / (24 * 60)) * 100;
++  };
++  const from = at(start);
++  const to = at(end);
++  const parts = to > from ? [[from, to]] : [[from, 100], [0, to]];
++  return (
++    <span className="shift-day-bar" aria-hidden>
++      {[25, 50, 75].map((tick) => (
++        <span key={tick} className="shift-day-tick" style={{ left: `${tick}%` }} />
++      ))}
++      {parts.map(([a, b]) => (
++        <span
++          key={a}
++          className="shift-day-fill"
++          style={{ left: `${a}%`, width: `${b! - a!}%`, backgroundColor: color }}
++        />
++      ))}
++    </span>
++  );
++}
++
++function RedesignedList<T extends Entry>({
++  types,
++  items,
++  active,
++  search,
++  setSearch,
++  status,
++  setStatus,
++  sorted,
++  clearSort,
++  column,
++  time,
++  onEdit,
++  onMove,
++  onArchive,
++  disabled,
++  reorderPending,
++  archivePending,
++  onAdd,
++  addDisabled,
++  canEdit,
++  hasAny,
++}: {
++  types: boolean;
++  items: T[];
++  active: T[];
++  search: string;
++  setSearch: (value: string) => void;
++  status: "active" | "archived";
++  setStatus: (value: "active" | "archived") => void;
++  sorted: boolean;
++  clearSort: () => void;
++  column: (key: SortKey, label: string) => ReactNode;
++  time: (value: string | null | undefined) => string;
++  onEdit: (item: T) => void;
++  onMove: (id: string, direction: -1 | 1) => void;
++  onArchive: (item: T) => void;
++  disabled: boolean;
++  reorderPending: boolean;
++  archivePending: boolean;
++  onAdd?: () => void;
++  addDisabled: boolean;
++  canEdit: boolean;
++  hasAny: boolean;
++}) {
++  const noun = types ? "shift type" : "shift label";
++  const rich = types && shiftCatalogVariant === "C";
++  const rowClass = `shift-v-row ${types ? (rich ? "shift-v-rich" : "shift-v-times") : "shift-v-name"}`;
++  const statusTabs = (
++    <div className="catalog-status-tabs" role="tablist" aria-label={`Shift ${types ? "type" : "label"} status`}>
++      {(
++        [
++          ["active", "Active"],
++          ["archived", "Archived"],
++        ] as const
++      ).map(([value, label]) => (
++        <button
++          key={value}
++          type="button"
++          role="tab"
++          data-shift-archived={value === "archived" ? "" : undefined}
++          aria-selected={status === value}
++          tabIndex={status === value ? 0 : -1}
++          className={status === value ? "active" : ""}
++          onClick={() => setStatus(value)}
++        >
++          {label}
++        </button>
++      ))}
++    </div>
++  );
++  return (
++    <>
++      <div className="job-catalog-toolbar catalog-toolbar">
++        <div className="catalog-toolbar-status-row">
++          {shiftCatalogVariant === "A" ? <ShiftCatalogTabs listStyle disabled={disabled} /> : statusTabs}
++        </div>
++        <div className="catalog-toolbar-filter-row">
++          {shiftCatalogVariant === "A" ? (
++            <select
++              className="toolbar-filter-select"
++              aria-label={`Shift ${types ? "type" : "label"} status`}
++              value={status}
++              onChange={(event) => setStatus(event.target.value as "active" | "archived")}
++            >
++              <option value="active">Active</option>
++              <option value="archived">Archived</option>
++            </select>
++          ) : null}
++          <label className="job-search toolbar-search">
++            <Search size={16} aria-hidden />
++            <input
++              aria-label={`Search shift ${types ? "types" : "labels"}`}
++              placeholder="Search by name"
++              value={search}
++              onChange={(event) => setSearch(event.target.value)}
++            />
++          </label>
++          {canEdit && onAdd ? (
++            <span data-shift-add className="shift-v-add">
++              <ListAddButton label={`New ${noun}`} disabled={addDisabled} onClick={onAdd} />
++            </span>
++          ) : null}
++        </div>
++      </div>
++      <div className="job-catalog shift-v-catalog" aria-label={types ? "Shift types" : "Shift labels"}>
++        <div className={`job-column-headings catalog-column-headings ${rowClass}`} role="row">
++          {column("name", types ? "Shift type" : "Shift label")}
++          {types && !rich && column("default_start_time", "Default start")}
++          {types && !rich && column("default_end_time", "Default end")}
++          {rich && column("default_start_time", "Default hours")}
++          {rich && <span className="shift-v-heading">Length</span>}
++          {rich && (
++            <span className="shift-v-heading shift-v-day-heading">
++              <span>12 AM</span>
++              <span>6 AM</span>
++              <span>12 PM</span>
++              <span>6 PM</span>
++              <span>12 AM</span>
++            </span>
++          )}
++          {sorted ? (
++            <button type="button" className="job-icon-button" aria-label="Clear column sorting" onClick={clearSort}>
++              <X size={14} />
++            </button>
++          ) : (
++            <span />
++          )}
++        </div>
++        {items.length === 0 ? (
++          <div className="catalog-table-empty">
++            <span className="catalog-table-empty-icon" aria-hidden>
++              {types ? <Clock3 size={22} /> : <Tags size={22} />}
++            </span>
++            <h2>
++              {hasAny
++                ? `No ${noun}s match your search.`
++                : status === "archived"
++                  ? `No archived ${noun}s`
++                  : `No ${noun}s yet`}
++            </h2>
++            <p>
++              {hasAny
++                ? "Try another search."
++                : status === "archived"
++                  ? `Archived ${noun}s will appear here.`
++                  : types
++                    ? "Add a service period such as Lunch or Dinner, with its default hours."
++                    : "Add a tag such as Training or Opener to mark shifts on the Schedule."}
++            </p>
++          </div>
++        ) : null}
++        {items.map((item) => (
++          <div key={item.id} className={`job-catalog-row ${rowClass}`} data-archived={Boolean(item.archived_at)}>
++            <button
++              type="button"
++              className="job-row-identity"
++              disabled={disabled}
++              aria-label={`Edit ${item.name}`}
++              onClick={() => onEdit(item)}
++            >
++              <span className="job-color-dot" style={{ backgroundColor: item.color }} />
++              <span className="job-name-stack">
++                <span className="job-row-name" title={item.name}>
++                  {item.name}
++                </span>
++                {types ? (
++                  <span className="shift-v-card-line">
++                    {time(item.default_start_time)} – {time(item.default_end_time)}
++                    {item.crosses_midnight ? " · Ends next day" : ""} ·{" "}
++                    {lengthText(item.default_start_time, item.default_end_time)}
++                  </span>
++                ) : null}
++              </span>
++            </button>
++            {types && !rich ? (
++              <>
++                <span className="shift-v-cell">{time(item.default_start_time)}</span>
++                <span className="shift-v-cell">
++                  {time(item.default_end_time)}
++                  {item.crosses_midnight ? <span className="shift-v-next"> · Ends next day</span> : null}
++                </span>
++              </>
++            ) : null}
++            {rich ? (
++              <>
++                <span className="shift-v-cell">
++                  {time(item.default_start_time)} – {time(item.default_end_time)}
++                  {item.crosses_midnight ? <span className="shift-v-next"> · Ends next day</span> : null}
++                </span>
++                <span className="shift-v-cell">{lengthText(item.default_start_time, item.default_end_time)}</span>
++                <span className="shift-v-cell shift-v-day">
++                  <DayBar start={item.default_start_time} end={item.default_end_time} color={item.color} />
++                </span>
++              </>
++            ) : null}
++            {canEdit ? (
++              <CatalogRowMenu name={item.name}>
++                <button type="button" disabled={disabled} onClick={() => onEdit(item)}>
++                  Edit {noun}
++                </button>
++                {!item.archived_at && (
++                  <>
++                    <button
++                      type="button"
++                      aria-label={`Move ${item.name} up`}
++                      disabled={disabled || reorderPending || Boolean(search.trim() || sorted) || active[0]?.id === item.id}
++                      onClick={() => onMove(item.id, -1)}
++                    >
++                      Move up
++                    </button>
++                    <button
++                      type="button"
++                      aria-label={`Move ${item.name} down`}
++                      disabled={disabled || reorderPending || Boolean(search.trim() || sorted) || active.at(-1)?.id === item.id}
++                      onClick={() => onMove(item.id, 1)}
++                    >
++                      Move down
++                    </button>
++                  </>
++                )}
++                <CatalogArchiveButton
++                  archived={Boolean(item.archived_at)}
++                  name={item.name}
++                  disabled={disabled || archivePending}
++                  onToggle={() => onArchive(item)}
++                />
++              </CatalogRowMenu>
++            ) : (
++              <span />
++            )}
++          </div>
++        ))}
++      </div>
++    </>
++  );
++}
+diff --git a/apps/web/src/settings/ShiftCatalogTabs.tsx b/apps/web/src/settings/ShiftCatalogTabs.tsx
+index e76fe6cf..45b42112 100644
+--- a/apps/web/src/settings/ShiftCatalogTabs.tsx
++++ b/apps/web/src/settings/ShiftCatalogTabs.tsx
+@@ -2,7 +2,13 @@ import { useLocation, useNavigate } from "react-router";
+ 
+ type CatalogTab = "types" | "labels";
+ 
+-export function ShiftCatalogTabs({ disabled = false }: { disabled?: boolean }) {
++export function ShiftCatalogTabs({
++  disabled = false,
++  listStyle = false,
++}: {
++  disabled?: boolean;
++  listStyle?: boolean;
++}) {
+   const location = useLocation();
+   const navigate = useNavigate();
+   const activeTab: CatalogTab = location.pathname.endsWith("/shift-labels")
+@@ -13,7 +19,7 @@ export function ShiftCatalogTabs({ disabled = false }: { disabled?: boolean }) {
+ 
+   return (
+     <div
+-      className="shift-catalog-tabs requests-tabs"
++      className={listStyle ? "catalog-status-tabs" : "shift-catalog-tabs requests-tabs"}
+       role="tablist"
+       aria-label="Shift catalog sections"
+       onKeyDown={(event) => {
+diff --git a/apps/web/src/settings/ShiftLabelsSettingsPage.tsx b/apps/web/src/settings/ShiftLabelsSettingsPage.tsx
+index 435cf116..9ab727d5 100644
+--- a/apps/web/src/settings/ShiftLabelsSettingsPage.tsx
++++ b/apps/web/src/settings/ShiftLabelsSettingsPage.tsx
+@@ -16,6 +16,8 @@ import { isGoneMeanwhile } from "../lib/catalog-refusals";
+ import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
+ import { CatalogDeleteAction } from "./CatalogDeleteAction";
+ import { ShiftCatalogList } from "./ShiftCatalogList";
++import { CatalogPageHeader } from "../views/CatalogPageHeader";
++import { shiftCatalogRedesign, shiftCatalogVariant } from "./shift-catalog-variant";
+ import {
+   listShiftLabels,
+   reorderShiftLabels,
+@@ -156,30 +158,40 @@ export default function ShiftLabelsSettingsPage() {
+     );
+   return (
+     <section
+-      className="settings-page jobs-settings-page shift-catalog-settings-page"
++      className={`settings-page jobs-settings-page shift-catalog-settings-page${shiftCatalogRedesign ? " list-page shift-v-page" : ""}`}
+       aria-labelledby="shift-labels-settings-title"
+     >
+-      <SettingsHeader
+-        icon={<Tags size={21} aria-hidden />}
+-        title="Shift labels"
+-        description="Reusable badge tags such as Training, Close, Expo, or Lead Server."
+-        action={
+-          <div className="shift-catalog-header-actions">
+-            <ShiftCatalogTabs
+-              disabled={saveMutation.isPending || deleteLocked}
+-            />
+-            <Button
+-              className="job-primary-button"
+-              type="button"
+-              disabled={!canEdit || saveMutation.isPending || deleteLocked}
+-              onClick={() => openEditor()}
+-            >
+-              <Plus size={16} aria-hidden />
+-              Add shift label
+-            </Button>
+-          </div>
+-        }
+-      />
++      {shiftCatalogRedesign ? (
++        <CatalogPageHeader
++          eyebrow="SETTINGS"
++          title={shiftCatalogVariant === "A" ? "Shift catalog" : "Shift labels"}
++          titleId="shift-labels-settings-title"
++          description={shiftCatalogVariant === "A" ? "Shift types and labels used across the Schedule." : "Reusable badge tags such as Training, Close, Expo, or Lead Server."}
++        />
++      ) : (
++        <SettingsHeader
++          icon={<Tags size={21} aria-hidden />}
++          title="Shift labels"
++          description="Reusable badge tags such as Training, Close, Expo, or Lead Server."
++          action={
++            <div className="shift-catalog-header-actions">
++              <ShiftCatalogTabs
++                disabled={saveMutation.isPending || deleteLocked}
++              />
++              <Button
++                className="job-primary-button"
++                type="button"
++                data-shift-add=""
++                disabled={!canEdit || saveMutation.isPending || deleteLocked}
++                onClick={() => openEditor()}
++              >
++                <Plus size={16} aria-hidden />
++                Add shift label
++              </Button>
++            </div>
++          }
++        />
++      )}
+       {editing ? (
+         <CatalogDrawer
+           label={editing === "new" ? "Add shift label" : `Edit ${editing.name}`}
+@@ -310,6 +322,9 @@ export default function ShiftLabelsSettingsPage() {
+           disabled={!canEdit || saveMutation.isPending || deleteLocked}
+           reorderPending={reorderMutation.isPending}
+           archivePending={archiveMutation.isPending}
++          onAdd={() => openEditor()}
++          addDisabled={saveMutation.isPending || deleteLocked}
++          canEdit={canEdit}
+         />
+       )}
+     </section>
+diff --git a/apps/web/src/settings/ShiftTypesSettingsPage.tsx b/apps/web/src/settings/ShiftTypesSettingsPage.tsx
+index 7100f043..c26f8848 100644
+--- a/apps/web/src/settings/ShiftTypesSettingsPage.tsx
++++ b/apps/web/src/settings/ShiftTypesSettingsPage.tsx
+@@ -18,6 +18,8 @@ import { isGoneMeanwhile } from "../lib/catalog-refusals";
+ import { ShiftCatalogTabs } from "./ShiftCatalogTabs";
+ import { CatalogDeleteAction } from "./CatalogDeleteAction";
+ import { ShiftCatalogList } from "./ShiftCatalogList";
++import { CatalogPageHeader } from "../views/CatalogPageHeader";
++import { shiftCatalogRedesign, shiftCatalogVariant } from "./shift-catalog-variant";
+ import {
+   listShiftTypes,
+   reorderShiftTypes,
+@@ -233,30 +235,40 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
+     );
+   return (
+     <section
+-      className="settings-page jobs-settings-page shift-catalog-settings-page"
++      className={`settings-page jobs-settings-page shift-catalog-settings-page${shiftCatalogRedesign ? " list-page shift-v-page" : ""}`}
+       aria-labelledby="shift-types-settings-title"
+     >
+-      <SettingsHeader
+-        icon={<Clock3 size={21} aria-hidden />}
+-        title="Shift types"
+-        description="Reusable service periods with default times and schedule colors."
+-        action={
+-          <div className="shift-catalog-header-actions">
+-            <ShiftCatalogTabs
+-              disabled={saveMutation.isPending || deleteLocked}
+-            />
+-            <Button
+-              className="job-primary-button"
+-              type="button"
+-              disabled={!canEdit || saveMutation.isPending || deleteLocked}
+-              onClick={() => openEditor()}
+-            >
+-              <Plus size={16} aria-hidden />
+-              Add shift type
+-            </Button>
+-          </div>
+-        }
+-      />
++      {shiftCatalogRedesign ? (
++        <CatalogPageHeader
++          eyebrow="SETTINGS"
++          title={shiftCatalogVariant === "A" ? "Shift catalog" : "Shift types"}
++          titleId="shift-types-settings-title"
++          description={shiftCatalogVariant === "A" ? "Shift types and labels used across the Schedule." : "Reusable service periods with default times and schedule colors."}
++        />
++      ) : (
++        <SettingsHeader
++          icon={<Clock3 size={21} aria-hidden />}
++          title="Shift types"
++          description="Reusable service periods with default times and schedule colors."
++          action={
++            <div className="shift-catalog-header-actions">
++              <ShiftCatalogTabs
++                disabled={saveMutation.isPending || deleteLocked}
++              />
++              <Button
++                className="job-primary-button"
++                type="button"
++                data-shift-add=""
++                disabled={!canEdit || saveMutation.isPending || deleteLocked}
++                onClick={() => openEditor()}
++              >
++                <Plus size={16} aria-hidden />
++                Add shift type
++              </Button>
++            </div>
++          }
++        />
++      )}
+       {editing ? (
+         <CatalogDrawer
+           label={editing === "new" ? "Add shift type" : `Edit ${editing.name}`}
+@@ -493,6 +505,9 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
+           disabled={!canEdit || saveMutation.isPending || deleteLocked}
+           reorderPending={reorderMutation.isPending}
+           archivePending={archiveMutation.isPending}
++          onAdd={() => openEditor()}
++          addDisabled={saveMutation.isPending || deleteLocked}
++          canEdit={canEdit}
+         />
+       )}
+     </section>
+diff --git a/apps/web/src/settings/shift-catalog-variant.ts b/apps/web/src/settings/shift-catalog-variant.ts
+new file mode 100644
+index 00000000..a67b4e6e
+--- /dev/null
++++ b/apps/web/src/settings/shift-catalog-variant.ts
+@@ -0,0 +1,16 @@
++// Design preview only (not for main): which Shift catalog design to draw.
++// The preview page puts "v=A|B|C" in the frame's hash or name; none = today's.
++export type ShiftCatalogVariant = "O" | "A" | "B" | "C";
++
++function read(): ShiftCatalogVariant {
++  if (typeof window === "undefined") return "O";
++  const fromHash = new URLSearchParams(window.location.hash.slice(1)).get("v");
++  const fromName = window.name.startsWith("pages:")
++    ? new URLSearchParams(window.name.slice(6)).get("v")
++    : null;
++  const value = (fromHash ?? fromName ?? "O").toUpperCase();
++  return value === "A" || value === "B" || value === "C" ? value : "O";
++}
++
++export const shiftCatalogVariant: ShiftCatalogVariant = read();
++export const shiftCatalogRedesign = shiftCatalogVariant !== "O";
+diff --git a/apps/web/src/settings/shift-catalog-variants.css b/apps/web/src/settings/shift-catalog-variants.css
+new file mode 100644
+index 00000000..56cf8bf6
+--- /dev/null
++++ b/apps/web/src/settings/shift-catalog-variants.css
+@@ -0,0 +1,127 @@
++/* Design preview only: Shift catalog in the shared list language (A, B, C). */
++.shift-v-page.list-page .shift-v-row {
++  display: grid;
++  align-items: center;
++  gap: 12px;
++}
++.shift-v-page.list-page .shift-v-row.shift-v-times {
++  grid-template-columns: minmax(0, 46fr) minmax(0, 24fr) minmax(0, 30fr) 32px;
++}
++.shift-v-page.list-page .shift-v-row.shift-v-name {
++  grid-template-columns: minmax(0, 1fr) 32px;
++}
++.shift-v-page.list-page .shift-v-row.shift-v-rich {
++  grid-template-columns: minmax(0, 24fr) minmax(0, 28fr) minmax(0, 12fr) minmax(0, 36fr) 32px;
++}
++.shift-v-page.list-page .job-catalog-row.shift-v-row {
++  min-height: 52px;
++  padding: 0 14px;
++}
++.shift-v-page.list-page .job-catalog-row .job-row-identity {
++  gap: 10px;
++}
++.shift-v-page .shift-v-cell {
++  min-width: 0;
++  overflow: hidden;
++  color: var(--theme-list-cell-text);
++  font-size: 13px;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.shift-v-page .shift-v-next {
++  color: var(--theme-muted);
++}
++.shift-v-page .shift-v-card-line {
++  display: none;
++}
++.shift-v-page .shift-v-add {
++  display: contents;
++}
++.shift-v-page .job-catalog-row[data-archived="true"] .job-row-identity:disabled {
++  color: var(--theme-text);
++  opacity: 1;
++}
++/* The day bar (C): 12 AM to 12 AM, the shift's hours in its own color. */
++.shift-v-page .shift-day-bar {
++  position: relative;
++  display: block;
++  height: 10px;
++  border-radius: 999px;
++  background: var(--theme-surface-muted);
++  overflow: hidden;
++}
++.shift-v-page .shift-day-tick {
++  position: absolute;
++  top: 0;
++  bottom: 0;
++  width: 1px;
++  background: var(--theme-border);
++}
++.shift-v-page .shift-day-fill {
++  position: absolute;
++  top: 0;
++  bottom: 0;
++  border-radius: 999px;
++}
++.shift-v-page .shift-v-day-heading {
++  display: flex;
++  justify-content: space-between;
++  font-size: 10px;
++  letter-spacing: 0.02em;
++}
++.shift-v-page .shift-v-heading {
++  min-width: 0;
++}
++.shift-v-page .catalog-status-tabs button:disabled {
++  cursor: default;
++}
++/* Phone (UI-14): one card per entry, like Locations. */
++@media (max-width: 720px) {
++  .shift-v-page.list-page .shift-v-catalog {
++    display: grid;
++    gap: 8px;
++    overflow: visible;
++    border: 0;
++    background: none;
++  }
++  .shift-v-page.list-page .shift-v-catalog .job-column-headings,
++  .shift-v-page .shift-v-cell {
++    display: none;
++  }
++  .shift-v-page.list-page .job-catalog-row.shift-v-row {
++    grid-template-columns: minmax(0, 1fr) 44px;
++    align-items: start;
++    min-height: 0;
++    padding: 14px 4px 14px 14px;
++    border: 1px solid var(--theme-list-frame);
++    border-radius: 8px;
++  }
++  .shift-v-page.list-page .job-row-identity {
++    min-height: 0;
++    align-items: flex-start;
++  }
++  .shift-v-page.list-page .job-color-dot {
++    margin-top: 7px;
++  }
++  .shift-v-page.list-page .job-row-name {
++    font-size: 15px;
++    line-height: 22px;
++  }
++  .shift-v-page .shift-v-card-line {
++    display: block;
++    margin-top: 2px;
++    color: var(--theme-list-cell-text);
++    font-size: 13px;
++    line-height: 18px;
++  }
++  .shift-v-page.list-page .job-row-menu > summary {
++    width: 40px;
++    height: 40px;
++  }
++  .shift-v-page.list-page .shift-v-catalog:has(> .catalog-table-empty) {
++    display: block;
++    overflow: hidden;
++    border: 1px solid var(--theme-list-frame);
++    border-radius: 8px;
++  }
++}

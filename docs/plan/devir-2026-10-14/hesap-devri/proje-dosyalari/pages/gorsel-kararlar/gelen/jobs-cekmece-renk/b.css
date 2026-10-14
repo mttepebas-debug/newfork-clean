@@ -1,0 +1,8 @@
+.catalog-drawer .job-drawer-header{background:#f7f9f8!important;border-bottom:1px solid #dce3df!important}
+.catalog-drawer .job-details-legend,.catalog-drawer .job-drawer-intro h3{font-size:11px!important;letter-spacing:.06em;text-transform:uppercase;color:#5f6b66!important}
+.catalog-drawer .job-drawer-controls{background:#f7f9f8;border-top:1px solid #dce3df;border-bottom:1px solid #dce3df}
+.catalog-drawer .job-drawer-employees{background:#fff}
+.catalog-drawer .job-employee-list{border:0!important;border-radius:0!important;margin:0!important}
+.catalog-drawer .job-employee-row{border-bottom:1px solid #e2e6e4}
+.catalog-drawer .job-employee-row:has(input:checked){background:#e7f1ed}
+.catalog-drawer .job-editor-footer{background:#f7f9f8!important;border-top:1px solid #dce3df!important}

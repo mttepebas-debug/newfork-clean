@@ -1,0 +1,65 @@
+<!-- @dsCard height=288 -->
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  html, body { margin: 0; height: 288px; background: var(--theme-page); }
+  .cover { position: relative; width: 960px; height: 288px; overflow: hidden; background: var(--theme-page); }
+  .art { position: absolute; left: 480px; top: 0; width: 480px; height: 288px; }
+  .text { position: absolute; left: 40px; bottom: 36px; max-width: 440px; }
+  .name { margin: 0; font-family: var(--font-sans); font-size: 88px; font-weight: 800; line-height: 0.95; letter-spacing: 0; color: var(--theme-text); }
+  .tagline { margin: 12px 0 0; font-family: var(--font-sans); font-size: 14px; color: var(--theme-muted); }
+  .accent { fill: var(--theme-accent); }
+  .deep { fill: var(--theme-accent-deep); }
+  .tint { fill: var(--theme-accent-soft); }
+  .ink { fill: var(--theme-text); }
+  .surface { fill: var(--theme-surface); }
+  .tile { rx: var(--schedule-badge-radius); }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <svg class="art" viewBox="0 0 480 288" aria-hidden="true">
+      <!--
+        blocks: theme-accent slab 168x288, theme-accent-soft field 312x232, theme-accent-deep 112x96, theme-text 56x56
+        arrangement: one tall green slab bleeding off top, right and bottom, a tint field beside it, deep and ink satellites
+        pattern: tiles cut by the radius token, some merged two-wide, "geometric, modular, dense UI": Newfork's face is the week grid of shift cards
+        steps: tile height schedule-add-shift-lane-height (28px), gap schedule-cell-edit-inset (4px), corner schedule-badge-radius (4px); 7 columns at a 40px pitch
+      -->
+      <rect class="tint" x="0" y="56" width="312" height="232"/>
+      <rect class="accent" x="312" y="0" width="168" height="288"/>
+      <rect class="ink" x="256" y="0" width="56" height="56"/>
+      <rect class="deep" x="368" y="192" width="112" height="96"/>
+
+      <rect class="tile accent" x="16" y="72" width="36" height="28"/>
+      <rect class="tile surface" x="96" y="72" width="76" height="28"/>
+      <rect class="tile deep" x="216" y="72" width="36" height="28"/>
+
+      <rect class="tile surface" x="56" y="104" width="36" height="28"/>
+      <rect class="tile accent" x="136" y="104" width="76" height="28"/>
+      <rect class="tile surface" x="256" y="104" width="36" height="28"/>
+      <rect class="tile surface" x="336" y="104" width="76" height="28"/>
+
+      <rect class="tile deep" x="16" y="136" width="76" height="28"/>
+      <rect class="tile surface" x="136" y="136" width="36" height="28"/>
+      <rect class="tile accent" x="176" y="136" width="76" height="28"/>
+
+      <rect class="tile accent" x="56" y="168" width="36" height="28"/>
+      <rect class="tile surface" x="96" y="168" width="36" height="28"/>
+      <rect class="tile surface" x="216" y="168" width="76" height="28"/>
+
+      <rect class="tile surface" x="16" y="200" width="36" height="28"/>
+      <rect class="tile deep" x="136" y="200" width="36" height="28"/>
+      <rect class="tile accent" x="176" y="200" width="36" height="28"/>
+
+      <rect class="tile accent" x="96" y="232" width="76" height="28"/>
+      <rect class="tile surface" x="256" y="232" width="36" height="28"/>
+    </svg>
+    <div class="text">
+      <h1 class="name">Newfork</h1>
+      <p class="tagline">Shift scheduling for multi-location restaurants.</p>
+    </div>
+  </div>
+</body>
+</html>

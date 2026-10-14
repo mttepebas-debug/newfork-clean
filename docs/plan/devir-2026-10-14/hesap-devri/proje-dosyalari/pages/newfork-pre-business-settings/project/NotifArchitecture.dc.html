@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<title>Bildirimler &mdash; mimari</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.h2{margin:0;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:#5f6b66}
+.spec{font-size:12.5px;color:#66716c;line-height:1.55}
+.hr{height:1px;background:#e2e6e4}
+.card{border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.pill{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700}
+.p-org{background:#fff7e2;color:#8a5a00}
+.p-me{background:#e7f1ed;color:#176b4e}
+table{border-collapse:collapse;width:100%}
+th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66;padding:0 14px 10px 0;border-bottom:1px solid #dce3df;vertical-align:bottom}
+td{font-size:13px;color:#1d2525;padding:12px 14px 12px 0;border-bottom:1px solid #f0f3f1;vertical-align:top;line-height:1.5}
+td strong{color:#17221e}
+.layer{display:flex;flex-direction:column;gap:9px;padding:20px 22px;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.layer h3{margin:0;font-size:15px;font-weight:700;color:#17221e}
+.layer p{margin:0;font-size:13px;line-height:1.55;color:#66716c}
+.mini{overflow:hidden;border:1px solid #dce3df;border-radius:9px;background:#ffffff}
+.mrow{display:grid;grid-template-columns:minmax(0,1fr) 84px 84px;gap:10px;align-items:center;padding:11px 14px;border-bottom:1px solid #e2e6e4;font-size:13px}
+.mrow:last-child{border-bottom:0}
+.mhead{background:#f7f9f8;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66}
+.mhead span:not(:first-child),.mrow span.c{text-align:center}
+.mrow input{width:16px;height:16px;accent-color:#176954}
+.mrow.lock{background:#fbfbfa;color:#8d9793}
+.why{display:block;margin-top:3px;font-size:11.5px;color:#8a5a00}
+.chain{display:grid;place-items:center;font-size:22px;color:#cbd4d0;padding:6px 0}
+.dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.navdemo{display:flex;flex-direction:column;gap:2px;padding:14px;border:1px solid #dce3df;border-radius:10px;background:#ffffff;max-width:290px}
+.ni{display:flex;align-items:center;gap:9px;min-height:34px;padding:0 10px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66}
+.ni.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.ni .dot{margin-left:6px}
+</style>
+</helmet>
+<div style="width: 1440px; height: 1620px; box-sizing: border-box; padding: 72px 80px; display: flex; flex-direction: column; gap: 34px; background: #ffffff;">
+
+  <div style="display: flex; flex-direction: column; gap: 10px;">
+    <span style="font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; color: #12624f;">Mimari &middot; Bildirimler</span>
+    <h1 style="margin: 0; font-size: 42px; line-height: 1.1; letter-spacing: -0.02em; color: #17221e;">&#304;&#351;letme &#231;er&#231;eveyi kurar, ki&#351;i i&#231;inde se&#231;er</h1>
+    <p style="margin: 0; max-width: 900px; font-size: 16px; line-height: 1.6; color: #66716c;">&#304;ki y&#252;zey, tek y&#246;nl&#252; bir ili&#351;ki: i&#351;letme hangi olaylar&#305;n duyurulaca&#287;&#305;n&#305;, kimin alabilece&#287;ini ve nelerin kapat&#305;lamayaca&#287;&#305;n&#305; belirler; ki&#351;i yaln&#305;z o &#231;er&#231;evenin i&#231;inde se&#231;im yapar. Kapal&#305; bir kutunun nedeni <strong style="color:#17221e;">ekranda yazar</strong> &mdash; bug&#252;n yaln&#305;z ekran okuyucuya s&#246;yleniyor.</p>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display: grid; grid-template-columns: minmax(0,1fr) 44px minmax(0,1fr); align-items: stretch;">
+    <div class="layer">
+      <span class="pill p-org">1 &middot; &#304;&#351;letme</span>
+      <h3>Settings &#9656; Notifications</h3>
+      <p>Owner ve admin. Uygulaman&#305;n bu i&#351;letmede ne duyuraca&#287;&#305;n&#305; kurar.</p>
+      <div class="mini" style="margin-top:6px;">
+        <div class="mrow mhead"><span>Olay</span><span>A&#231;&#305;k</span><span>Zorunlu</span></div>
+        <div class="mrow"><span>Vardiya listesi yay&#305;nland&#305;</span><span class="c"><input type="checkbox" checked aria-label="Vardiya listesi yay&#305;nland&#305; a&#231;&#305;k"></span><span class="c"><input type="checkbox" checked aria-label="Vardiya listesi yay&#305;nland&#305; zorunlu"></span></div>
+        <div class="mrow"><span>Vardiyan de&#287;i&#351;ti</span><span class="c"><input type="checkbox" checked aria-label="Vardiyan de&#287;i&#351;ti a&#231;&#305;k"></span><span class="c"><input type="checkbox" checked aria-label="Vardiyan de&#287;i&#351;ti zorunlu"></span></div>
+        <div class="mrow"><span>&#304;zin talebi geldi <span class="spec">&mdash; yaln&#305;z y&#246;netici</span></span><span class="c"><input type="checkbox" checked aria-label="&#304;zin talebi geldi a&#231;&#305;k"></span><span class="c"><input type="checkbox" aria-label="&#304;zin talebi geldi zorunlu"></span></div>
+        <div class="mrow"><span>Belgen dolmak &#252;zere</span><span class="c"><input type="checkbox" checked aria-label="Belgen dolmak &#252;zere a&#231;&#305;k"></span><span class="c"><input type="checkbox" aria-label="Belgen dolmak &#252;zere zorunlu"></span></div>
+      </div>
+      <p class="spec" style="margin-top:4px;"><strong style="color:#17221e;">Zorunlu</strong> = ki&#351;i kapatamaz. Vardiyas&#305;n&#305;n de&#287;i&#351;ti&#287;ini duymayan &#231;al&#305;&#351;an i&#351;letmenin sorunu; bu yüzden karar i&#351;letmenin.</p>
+    </div>
+    <div class="chain" style="align-self:center;">&rarr;</div>
+    <div class="layer">
+      <span class="pill p-me">2 &middot; Ki&#351;i</span>
+      <h3>Account &#9656; Notifications</h3>
+      <p>Herkes kendisi i&#231;in. Kanal global, abonelik i&#351;letme ba&#351;&#305;na.</p>
+      <div class="mini" style="margin-top:6px;">
+        <div class="mrow mhead"><span>Meyhouse</span><span>Uygulama</span><span>E-posta</span></div>
+        <div class="mrow lock"><span>Vardiya listesi yay&#305;nland&#305;<span class="why">&#304;&#351;letme bunu herkese zorunlu tuttu.</span></span><span class="c"><input type="checkbox" checked disabled aria-label="Vardiya listesi yay&#305;nland&#305;, uygulama"></span><span class="c"><input type="checkbox" checked disabled aria-label="Vardiya listesi yay&#305;nland&#305;, e-posta"></span></div>
+        <div class="mrow lock"><span>Vardiyan de&#287;i&#351;ti<span class="why">&#304;&#351;letme bunu herkese zorunlu tuttu.</span></span><span class="c"><input type="checkbox" checked disabled aria-label="Vardiyan de&#287;i&#351;ti, uygulama"></span><span class="c"><input type="checkbox" checked disabled aria-label="Vardiyan de&#287;i&#351;ti, e-posta"></span></div>
+        <div class="mrow lock"><span>&#304;zin talebi geldi<span class="why">Bu bildirim y&#246;neticilere gidiyor.</span></span><span class="c"><input type="checkbox" disabled aria-label="&#304;zin talebi geldi, uygulama"></span><span class="c"><input type="checkbox" disabled aria-label="&#304;zin talebi geldi, e-posta"></span></div>
+        <div class="mrow"><span>Belgen dolmak &#252;zere</span><span class="c"><input type="checkbox" checked aria-label="Belgen dolmak &#252;zere, uygulama"></span><span class="c"><input type="checkbox" aria-label="Belgen dolmak &#252;zere, e-posta"></span></div>
+      </div>
+      <p class="spec" style="margin-top:4px;">Kapal&#305; sat&#305;r&#305;n nedeni g&#246;r&#252;n&#252;r. &#304;&#351;letme bir olay&#305; tamamen kapat&#305;rsa sat&#305;r listede <strong style="color:#17221e;">hi&#231; &#231;&#305;kmaz</strong> &mdash; olmayan bir &#351;eyin d&#252;&#287;mesi g&#246;sterilmez.</p>
+    </div>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display:flex;flex-direction:column;gap:14px;">
+    <h2 class="h2">&#304;ki y&#252;zey &middot; kim, nerede, ne yapar</h2>
+    <table>
+      <thead><tr><th style="width:21%;">Y&#252;zey</th><th style="width:13%;">Kim</th><th style="width:30%;">Ne kurar</th><th>S&#305;n&#305;r</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Settings &#9656; Notifications</strong><br><span class="spec">/app/settings/notifications</span></td>
+          <td>Owner, admin</td>
+          <td>Hangi olaylar duyurulur, hangi rol alabilir, hangisi kapat&#305;lamaz, varsay&#305;lan a&#231;&#305;k m&#305;</td>
+          <td class="spec">Yaln&#305;z bu i&#351;letme. Kimsenin ki&#351;isel tercihini tek tek de&#287;i&#351;tirmez; &#231;er&#231;eveyi de&#287;i&#351;tirir.</td>
+        </tr>
+        <tr>
+          <td><strong>Account &#9656; Notifications</strong><br><span class="spec">/account/notifications</span></td>
+          <td>Herkes, kendisi i&#231;in</td>
+          <td>Kanallar (uygulama, e-posta) hesap genelinde; olay abonelikleri i&#351;letme ba&#351;&#305;na</td>
+          <td class="spec">&#304;&#351;letmenin &#231;er&#231;evesi. Kanal&#305; kapatmak zorunlu bildirimi de susturmaz &mdash; uygulama i&#231;i her zaman kal&#305;r.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="hr"></div>
+
+  <div style="display:grid;grid-template-columns:320px minmax(0,1fr);gap:56px;align-items:start;">
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <h2 class="h2">Say&#305; nerede &#231;&#305;kar</h2>
+      <div class="navdemo">
+        <span class="ni">Profile</span>
+        <span class="ni">Security</span>
+        <span class="ni">Preferences</span>
+        <span class="ni">Notifications</span>
+        <span class="ni on">Documents<span class="dot">2</span></span>
+        <span class="ni">Workspaces<span class="dot">1</span></span>
+      </div>
+      <p class="spec" style="margin:0;">Say&#305; <strong style="color:#17221e;">senden bir &#351;ey bekleniyor</strong> demektir, &ldquo;yeni bir &#351;ey oldu&rdquo; de&#287;il. Rozet etiketin hemen sa&#287;&#305;nda, ayn&#305; hizada durur &mdash; sat&#305;r&#305;n sonuna ka&#231;maz: 18px, 11px rakam, 6px bo&#351;luk. Rozet iOS kal&#305;b&#305;: tam yuvarlak kapsül, <code>danger</code> k&#305;rm&#305;z&#305; zemin, beyaz kal&#305;n rakam (18px, 11px/700, tabular). Etiketin sa&#287;&#305;na yap&#305;&#351;&#305;r ve 5px yukar&#305; kayar &mdash; harfin omzuna oturur, sat&#305;r&#305;n sonuna ka&#231;maz. Documents&#39;taki 2: bir eksik belge + bir geri d&#246;nen. Workspaces&#39;taki 1: cevap bekleyen davet.</p>
+    </div>
+
+    <div style="display:flex;flex-direction:column;gap:14px;">
+      <h2 class="h2">Rozet kural&#305;</h2>
+      <div style="display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;">
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Say&#305; = a&#231;&#305;k i&#351; say&#305;s&#305;</span>
+          <span class="spec">Okunmam&#305;&#351; bildirim de&#287;il. Okumakla kapanmaz; i&#351; bitince kapan&#305;r. Say&#305; bitince rozet kaybolur; okundu diye kaybolmaz. Tek k&#305;rm&#305;z&#305; nokta, tek anlam.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">&Uuml;st &#246;&#287;e toplar</span>
+          <span class="spec">Sidebar&#39;daki profil butonunda alt maddelerin toplam&#305; g&#246;r&#252;n&#252;r; account a&#231;&#305;l&#305;nca hangi sat&#305;rda oldu&#287;u belli olur.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">&#304;&#351;letme kapsam&#305;</span>
+          <span class="spec">Y&#246;netici kuyru&#287;undaki say&#305; (&ldquo;3 inceleme bekliyor&rdquo;) uygulama sidebar&#39;&#305;nda durur, account&#39;ta de&#287;il. Account yaln&#305;z <em>senin</em> i&#351;lerini sayar.</span>
+        </div>
+        <div class="card" style="padding:14px 17px;display:flex;flex-direction:column;gap:5px;">
+          <span style="font-size:13.5px;font-weight:700;color:#17221e;">Davet asla engel de&#287;il</span>
+          <span class="spec">Bekleyen davet art&#305;k araya giren bir ekran de&#287;il, Workspaces&#39;ta bir say&#305;. &ldquo;Not now&rdquo; butonuna gerek kalm&#305;yor &mdash; kald&#305;r&#305;ld&#305;.</span>
+        </div>
+      </div>
+      <p class="spec" style="margin:0;"><strong style="color:#17221e;">Bug&#252;n ne bozuk:</strong> kanal listesi koda g&#246;m&#252;l&#252; iki de&#287;er (<code>in_app</code>, <code>email</code>) ve tek sayfa hem kanal&#305; hem i&#351;letme matrisini ta&#351;&#305;d&#305;&#287;&#305; i&#231;in kendi i&#351;letme <code>&lt;select&gt;</code>&#39;ini yeti&#351;tirmi&#351;. Kilit gerek&#231;esi <code>aria-describedby</code> ile yaln&#305;z ekran okuyucuya gidiyor; g&#246;zle bakan kapal&#305; kutuyu g&#246;r&#252;p nedenini bilmiyor. Hi&#231;bir yerde rozet yok.</p>
+    </div>
+  </div>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1620}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

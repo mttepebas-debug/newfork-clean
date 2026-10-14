@@ -1,0 +1,696 @@
+diff --git a/apps/api/src/settings/important-dates-routes.test.ts b/apps/api/src/settings/important-dates-routes.test.ts
+index ccd56129..65c82ed1 100644
+--- a/apps/api/src/settings/important-dates-routes.test.ts
++++ b/apps/api/src/settings/important-dates-routes.test.ts
+@@ -195,7 +195,7 @@ describe("important date routes", () => {
+     const opened = "81000000-0000-4000-8000-000000000002";
+     const response = await app.inject({
+       method: "POST", url: base, headers: auth,
+-      payload: { ...date, type: "holiday", location_days: closedAtKadikoy, shift_choices: { [kept]: "keep", [opened]: "open" }, expected_fingerprint: "f1" },
++      payload: { ...date, type: "closed", location_days: closedAtKadikoy, shift_choices: { [kept]: "keep", [opened]: "open" }, expected_fingerprint: "f1" },
+     });
+     expect(response.statusCode).toBe(201);
+     expect(service.save).toHaveBeenCalledWith(expect.objectContaining({
+@@ -210,26 +210,27 @@ describe("important date routes", () => {
+     const app = appWith(service);
+     const response = await app.inject({
+       method: "POST", url: base, headers: auth,
+-      payload: { ...date, location_days: closedAtKadikoy, shift_choices: { "81000000-0000-4000-8000-000000000001": "delete" } },
++      payload: { ...date, type: "closed", location_days: closedAtKadikoy, shift_choices: { "81000000-0000-4000-8000-000000000001": "delete" } },
+     });
+     expect(response.statusCode).toBe(400);
+     expect(service.save).not.toHaveBeenCalled();
+     await app.close();
+   });
+ 
+-  it("refuses a type the drawer no longer has, and a day for a location the date is not for", async () => {
++  it("refuses an old type, a closing on a date that is not Closed, and a day for a location the date is not for", async () => {
+     const service = serviceMock();
+     const app = appWith(service);
+     const closedDay = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "closed_day" } });
+     const elsewhere = await app.inject({
+       method: "POST", url: base, headers: auth,
+-      payload: { ...date, location_days: { "34000000-0000-4000-8000-000000000009": { status: "closed" } } },
++      payload: { ...date, type: "closed", location_days: { "34000000-0000-4000-8000-000000000009": { status: "closed" } } },
+     });
+     const backwards = await app.inject({
+       method: "POST", url: base, headers: auth,
+-      payload: { ...date, location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } },
++      payload: { ...date, type: "closed", location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } },
+     });
+-    expect([closedDay.statusCode, elsewhere.statusCode, backwards.statusCode]).toEqual([400, 400, 400]);
++    const holidayClosing = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "holiday", location_days: closedAtKadikoy } });
++    expect([closedDay.statusCode, elsewhere.statusCode, backwards.statusCode, holidayClosing.statusCode]).toEqual([400, 400, 400, 400]);
+     expect(service.save).not.toHaveBeenCalled();
+     await app.close();
+   });
+@@ -251,7 +252,7 @@ describe("important date routes", () => {
+       new HttpError("Request conflicts with the current state", 409, { reason: "important_date.closure_changed" }),
+     );
+     const app = appWith(service);
+-    const response = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, location_days: closedAtKadikoy } });
++    const response = await app.inject({ method: "POST", url: base, headers: auth, payload: { ...date, type: "closed", location_days: closedAtKadikoy } });
+     expect(response.statusCode).toBe(409);
+     expect(response.json()).toMatchObject({ reason: "important_date.closure_changed" });
+     await app.close();
+diff --git a/apps/web/src/lib/importantDateTypes.ts b/apps/web/src/lib/importantDateTypes.ts
+index f0e25ed4..8442a727 100644
+--- a/apps/web/src/lib/importantDateTypes.ts
++++ b/apps/web/src/lib/importantDateTypes.ts
+@@ -4,4 +4,6 @@ import type { ImportantDateType } from "@newfork/shared";
+ export const importantDateTypeLabels: Record<ImportantDateType, string> = {
+   holiday: "Holiday",
+   event: "Event",
++  blackout: "Blackout",
++  closed: "Closed",
+ };
+diff --git a/apps/web/src/settings/ImportantDateDrawer.tsx b/apps/web/src/settings/ImportantDateDrawer.tsx
+index 107baa5a..2aa35184 100644
+--- a/apps/web/src/settings/ImportantDateDrawer.tsx
++++ b/apps/web/src/settings/ImportantDateDrawer.tsx
+@@ -4,6 +4,7 @@ import {
+   type ImportantDateClosurePreviewInput,
+   type ImportantDateClosureShift,
+   type ImportantDateInput,
++  type ImportantDateLocationDay,
+   type ImportantDateLocationDays,
+   type ImportantDateSaved,
+   type ImportantDateShiftChoice,
+@@ -27,7 +28,6 @@ import {
+   impactPhrase,
+   locationImpact,
+   shortHoursTag,
+-  statusOf,
+   tally,
+   type LocationStatus,
+ } from "./important-date-drawer-model";
+@@ -59,10 +59,10 @@ type Form = {
+ 
+ type Row = { id: string; name: string; live: boolean };
+ 
++// Only a Closed date changes a location's day (Mert, 2026-10-10 12:41Z).
+ const STATUSES: readonly [LocationStatus, string][] = [
+-  ["open", "Open"],
+-  ["short", "Short hours"],
+   ["closed", "Closed"],
++  ["short", "Short hours"],
+ ];
+ const CHOICES: readonly [ImportantDateShiftChoice, string][] = [
+   ["remove", "Remove"],
+@@ -105,7 +105,13 @@ function formOf(item: ImportantDate | "new", defaultIds: string[]): Form {
+   };
+ }
+ 
+-/** What the server is sent: the hours only when not all day, the days only of chosen locations. */
++/** A Closed date closes each chosen location unless it was given short hours; other types change no day. */
++function dayOf(form: Form, id: string): ImportantDateLocationDay | undefined {
++  if (form.type !== "closed") return undefined;
++  return form.days[id] ?? { status: "closed" };
++}
++
++/** What the server is sent: the hours only when not all day, the days only of a Closed date's chosen locations. */
+ function inputOf(form: Form, rows: readonly Row[]): ImportantDateInput {
+   const ids = form.whole ? [] : [...form.ids].sort();
+   const chosen = form.whole ? rows.filter((row) => row.live).map((row) => row.id) : ids;
+@@ -122,9 +128,10 @@ function inputOf(form: Form, rows: readonly Row[]): ImportantDateInput {
+     start_time: form.all_day ? null : form.start_time,
+     end_time: form.all_day ? null : form.end_time,
+     location_days: Object.fromEntries(
+-      Object.entries(form.days)
+-        .filter(([id]) => chosen.includes(id))
+-        .sort(([left], [right]) => left.localeCompare(right)),
++      [...chosen].sort().flatMap((id) => {
++        const day = dayOf(form, id);
++        return day ? [[id, day]] : [];
++      }),
+     ),
+   };
+ }
+@@ -196,6 +203,8 @@ export function ImportantDateDrawer({
+   const dirty = JSON.stringify(input) !== JSON.stringify(inputOf(baseline.current, rows));
+   const published = republish || editing === "new" || (editing.status !== "unpublished" && !editing.archived_at);
+   const changesDays = Object.keys(input.location_days).length > 0;
++  const closing = form.type === "closed";
++  const shownTab: Tab = tab === "shifts" && !closing ? "details" : tab;
+ 
+   // K13: what the date would land on, asked again once the form settles.
+   const previewInput: ImportantDateClosurePreviewInput | null =
+@@ -270,7 +279,7 @@ export function ImportantDateDrawer({
+   };
+   const setStatus = (id: string, status: LocationStatus) =>
+     setForm((current) => {
+-      const day = dayFor(status, current.days[id]);
++      const day = dayFor(status, dayOf(current, id));
+       const days = { ...current.days };
+       if (day) days[id] = day;
+       else delete days[id];
+@@ -340,7 +349,7 @@ export function ImportantDateDrawer({
+             {(
+               [
+                 ["details", "Details"],
+-                ["shifts", "Shifts"],
++                ...(closing ? [["shifts", "Shifts"]] : []),
+                 ...(editing === "new" ? [] : [["history", "History"]]),
+               ] as [Tab, string][]
+             ).map(([key, name]) => (
+@@ -349,7 +358,7 @@ export function ImportantDateDrawer({
+                 type="button"
+                 role="tab"
+                 id={`idd-tab-${key}`}
+-                aria-selected={tab === key}
++                aria-selected={shownTab === key}
+                 aria-controls="idd-panel"
+                 className="idd-tab"
+                 onClick={() => setTab(key)}
+@@ -365,8 +374,8 @@ export function ImportantDateDrawer({
+           </div>
+         </div>
+ 
+-        <div className="idd-body" id="idd-panel" role="tabpanel" aria-labelledby={`idd-tab-${tab}`} data-tab={tab}>
+-          {tab === "details" ? (
++        <div className="idd-body" id="idd-panel" role="tabpanel" aria-labelledby={`idd-tab-${shownTab}`} data-tab={shownTab}>
++          {shownTab === "details" ? (
+             <fieldset className="idd-details" disabled={busy || republish}>
+               <label className="idd-field">
+                 <span>Title</span>
+@@ -467,8 +476,8 @@ export function ImportantDateDrawer({
+                     .filter((row) => row.live || isChosen(row.id))
+                     .map((row) => {
+                       const chosen = isChosen(row.id);
+-                      const status = statusOf(form.days, row.id);
+-                      const day = form.days[row.id];
++                      const day = dayOf(form, row.id);
++                      const status: LocationStatus = day?.status ?? "open";
+                       const impact = locationImpact(
+                         status,
+                         tally(
+@@ -489,7 +498,9 @@ export function ImportantDateDrawer({
+                           <span className="idd-lname" title={row.name}>
+                             {row.name}
+                           </span>
+-                          {chosen ? (
++                          {chosen && !closing ? (
++                            <span className="idd-off">Usual hours</span>
++                          ) : chosen ? (
+                             <div className="idd-seg" role="radiogroup" aria-label={`${row.name} that day`}>
+                               {STATUSES.map(([key, name]) => (
+                                 <button
+@@ -508,7 +519,7 @@ export function ImportantDateDrawer({
+                             <span className="idd-off">Not included</span>
+                           )}
+                           <span className="idd-limp" data-tone={chosen ? impact.tone : "quiet"}>
+-                            {!chosen ? "—" : status !== "open" && checking ? "Checking…" : published ? impact.text : status === "open" ? "Usual hours" : ""}
++                            {!chosen || !closing ? "—" : checking ? "Checking…" : published ? impact.text : ""}
+                           </span>
+                           {chosen && day?.status === "short" ? (
+                             <div className="idd-hours">
+@@ -547,7 +558,7 @@ export function ImportantDateDrawer({
+                 <textarea value={form.note} maxLength={500} onChange={(event) => update({ note: event.target.value })} />
+               </label>
+             </fieldset>
+-          ) : tab === "shifts" ? (
++          ) : shownTab === "shifts" ? (
+             <ShiftsPanel
+               published={published}
+               changesDays={changesDays}
+@@ -587,7 +598,7 @@ export function ImportantDateDrawer({
+             checking={checking}
+             failed={preview.isError}
+             counts={counts}
+-            showReview={tab !== "shifts"}
++            showReview={shownTab !== "shifts"}
+             onReview={() => setTab("shifts")}
+           />
+           <div className="idd-actions">
+diff --git a/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx b/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
+index 59ce0e08..53b36795 100644
+--- a/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
++++ b/apps/web/src/settings/ImportantDatesSettingsPage.test.tsx
+@@ -108,7 +108,7 @@ const dates: ImportantDate[] = [
+     location_ids: [locationId],
+     location_name: "Main Dining",
+     title: "Private buyout",
+-    type: "event",
++    type: "closed",
+     starts_on: day(60),
+     ends_on: day(60),
+     recurrence: "none",
+@@ -270,7 +270,8 @@ describe("ImportantDatesSettingsPage", () => {
+     const holiday = (await screen.findByText("New Year's Day")).closest(".important-date-catalog-row") as HTMLElement;
+     const buyout = screen.getByText("Private buyout").closest(".important-date-catalog-row") as HTMLElement;
+     expect(within(holiday).getByText("None")).toBeTruthy();
+-    expect(within(buyout).getByText("Closed")).toBeTruthy();
++    // Its Type and its Impact both say Closed.
++    expect(within(buyout).getAllByText("Closed")).toHaveLength(2);
+     expect(screen.queryByText("Closed day")).toBeNull();
+   });
+ 
+@@ -282,7 +283,7 @@ describe("ImportantDatesSettingsPage", () => {
+       target: { value: "Kitchen maintenance" },
+     });
+     fireEvent.change(within(form).getByLabelText("Type"), {
+-      target: { value: "holiday" },
++      target: { value: "closed" },
+     });
+     fireEvent.change(within(form).getByLabelText("Starts"), {
+       target: { value: day(30) },
+@@ -315,7 +316,7 @@ describe("ImportantDatesSettingsPage", () => {
+         workspaceId,
+         expect.objectContaining({
+           title: "Kitchen maintenance",
+-          type: "holiday",
++          type: "closed",
+           location_ids: [],
+           all_day: true,
+           start_time: null,
+@@ -343,6 +344,12 @@ describe("ImportantDatesSettingsPage", () => {
+     fireEvent.change(within(form).getByLabelText("End time"), { target: { value: "09:00" } });
+     expect(within(form).getByText("End time must be after the start time.")).toBeTruthy();
+ 
++    // Only a Closed date gives a location its own day (Mert, 2026-10-10).
++    expect(within(form).queryByRole("radiogroup", { name: "Main Dining that day" })).toBeNull();
++    expect(within(form).queryByRole("tab", { name: /Shifts/ })).toBeNull();
++    fireEvent.change(within(form).getByLabelText("Type"), { target: { value: "closed" } });
++    expect(within(form).getByRole("tab", { name: /Shifts/ })).toBeTruthy();
++
+     fireEvent.click(
+       within(within(form).getByRole("radiogroup", { name: "Main Dining that day" })).getByRole("radio", { name: "Short hours" }),
+     );
+diff --git a/apps/web/src/settings/important-date-drawer-model.ts b/apps/web/src/settings/important-date-drawer-model.ts
+index dd5ce36c..ed77a251 100644
+--- a/apps/web/src/settings/important-date-drawer-model.ts
++++ b/apps/web/src/settings/important-date-drawer-model.ts
+@@ -13,10 +13,6 @@ export type LocationStatus = "open" | "short" | "closed";
+ 
+ export const SHORT_HOURS_DEFAULT = { opens: "10:00", closes: "15:00" } as const;
+ 
+-export function statusOf(days: ImportantDateLocationDays, locationId: string): LocationStatus {
+-  return days[locationId]?.status ?? "open";
+-}
+-
+ /** The day a status gives a location; short hours keep the hours already typed. */
+ export function dayFor(
+   status: LocationStatus,
+diff --git a/packages/shared/src/index.test.ts b/packages/shared/src/index.test.ts
+index 17157adf..94a15664 100644
+--- a/packages/shared/src/index.test.ts
++++ b/packages/shared/src/index.test.ts
+@@ -2011,26 +2011,31 @@ describe("important date schemas", () => {
+     location_days: {},
+   };
+ 
+-  it("accepts a holiday with short hours at one location (EKRAN-08)", () => {
++  it("accepts a Closed date with short hours at one location (EKRAN-08)", () => {
+     expect(
+       importantDateInputSchema.parse({
+         ...base,
++        type: "closed",
+         location_days: { [kadikoy]: { status: "short", opens: "10:00", closes: "15:00" } },
+       }),
+     ).toMatchObject({ title: "Christmas Eve", location_days: { [kadikoy]: { status: "short" } } });
+   });
+ 
+-  it("knows only Holiday and Event: closing is a location's day", () => {
++  it("knows Holiday, Event, Blackout and Closed; only Closed closes (Mert, 2026-10-10)", () => {
+     expect(() => importantDateInputSchema.parse({ ...base, type: "closed_day" })).toThrow();
+-    expect(() => importantDateInputSchema.parse({ ...base, type: "blackout" })).toThrow();
++    expect(importantDateInputSchema.parse({ ...base, type: "blackout" }).type).toBe("blackout");
++    expect(() => importantDateInputSchema.parse({ ...base, location_days: { [kadikoy]: { status: "closed" } } })).toThrow(
++      "Only a Closed date closes a location",
++    );
++    expect(() => importantDateInputSchema.parse({ ...base, type: "closed" })).toThrow("Choose a location to close");
+   });
+ 
+   it("refuses short hours that close before they open, and a day for a location left out", () => {
+     expect(() =>
+-      importantDateInputSchema.parse({ ...base, location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } }),
++      importantDateInputSchema.parse({ ...base, type: "closed", location_days: { [kadikoy]: { status: "short", opens: "15:00", closes: "10:00" } } }),
+     ).toThrow("Closes must be after opens.");
+     expect(() =>
+-      importantDateInputSchema.parse({ ...base, location_days: { "34000000-0000-4000-8000-000000000002": { status: "closed" } } }),
++      importantDateInputSchema.parse({ ...base, type: "closed", location_days: { "34000000-0000-4000-8000-000000000002": { status: "closed" } } }),
+     ).toThrow("A location's day needs the location chosen");
+   });
+ 
+diff --git a/packages/shared/src/index.ts b/packages/shared/src/index.ts
+index 1ce1b228..9c66e858 100644
+--- a/packages/shared/src/index.ts
++++ b/packages/shared/src/index.ts
+@@ -1089,7 +1089,8 @@ export type SchedulingSettingsInput = z.infer<
+ >;
+ 
+ /** A date is a Holiday or an Event; closing is a location's day (EKRAN-08). */
+-export const importantDateTypeSchema = z.enum(["holiday", "event"]);
++/** Only a Closed date closes a location or shortens its hours (Mert, 2026-10-10). */
++export const importantDateTypeSchema = z.enum(["holiday", "event", "blackout", "closed"]);
+ export type ImportantDateType = z.infer<typeof importantDateTypeSchema>;
+ 
+ export const importantDateRecurrenceSchema = z.enum(["none", "annual"]);
+@@ -1286,6 +1287,13 @@ export const importantDateInputSchema = importantDateSchema
+     if (reach.length && Object.keys(value.location_days).some((id) => !reach.includes(id))) {
+       issue.addIssue({ code: "custom", message: "A location's day needs the location chosen", path: ["location_days"] });
+     }
++    const days = Object.keys(value.location_days).length;
++    if (value.type === "closed" && !days) {
++      issue.addIssue({ code: "custom", message: "Choose a location to close", path: ["location_days"] });
++    }
++    if (value.type !== "closed" && days) {
++      issue.addIssue({ code: "custom", message: "Only a Closed date closes a location", path: ["location_days"] });
++    }
+   });
+ 
+ function checkImportantDateSpan(
+diff --git a/supabase/migrations/20261010140000_important_dates_location_days.sql b/supabase/migrations/20261010140000_important_dates_location_days.sql
+index 3c0653a7..1fbdb0ea 100644
+--- a/supabase/migrations/20261010140000_important_dates_location_days.sql
++++ b/supabase/migrations/20261010140000_important_dates_location_days.sql
+@@ -3,10 +3,11 @@
+ -- one by one. Rules: KARARLAR "Important Dates çekmecesi A (Stacked)" (1)-(9)
+ -- and Mert's decisions of 2026-10-10 (this thread's cards):
+ --
+---   types   a date is a Holiday or an Event; "Closed day" and "Blackout" go.
+---           Closing moves to the location rows: location_days holds
++--   types   a date is a Holiday, an Event, a Blackout or Closed (Mert,
++--           2026-10-10 12:41Z); only Closed reaches the shifts. A Closed date
++--           gives each of its locations its own day in location_days:
+ --           {"<location id>": {"status": "closed"} | {"status": "short",
+---           "opens": "10:00", "closes": "15:00"}}; a location left out is open.
++--           "opens": "10:00", "closes": "15:00"}}; the other types have none.
+ --   all day a date is all day (the default) or runs from start_time on its
+ --           first day to end_time on its last. A closed location is closed for
+ --           that span; short hours are the location's own.
+@@ -30,8 +31,8 @@ alter table public.important_dates
+   add column end_time time,
+   add column location_days jsonb not null default '{}'::jsonb;
+ 
+--- Live data is all test data (Mert, 2026-10-10): a closed day becomes a holiday
+--- closed at each of its locations, a blackout an event.
++-- Live data is all test data (Mert, 2026-10-10): a closed day becomes a Closed
++-- date closed at each of its locations.
+ update public.important_dates date_row
+ set location_days = coalesce((
+       select jsonb_object_agg(location.id::text, jsonb_build_object('status', 'closed'))
+@@ -54,10 +55,12 @@ alter table public.important_dates drop constraint important_dates_check1;
+ alter table public.important_dates drop column affects_scheduling;
+ 
+ alter type public.important_date_type rename to important_date_type_retired;
+-create type public.important_date_type as enum ('holiday', 'event');
++create type public.important_date_type as enum ('holiday', 'event', 'blackout', 'closed');
+ alter table public.important_dates alter column type drop default;
+ alter table public.important_dates alter column type type public.important_date_type
+-  using (case type::text when 'closed_day' then 'holiday' when 'blackout' then 'event' else type::text end)::public.important_date_type;
++  -- A closed day with no location left to close keeps only its name, as an event.
++  using (case when type::text <> 'closed_day' then type::text
++              when location_days <> '{}'::jsonb then 'closed' else 'event' end)::public.important_date_type;
+ alter table public.important_dates alter column type set default 'event';
+ drop type public.important_date_type_retired;
+ 
+@@ -66,7 +69,9 @@ alter table public.important_dates
+     (all_day and start_time is null and end_time is null)
+     or (not all_day and start_time is not null and end_time is not null
+         and (ends_on > starts_on or end_time > start_time))),
+-  add constraint important_dates_location_days_object check (jsonb_typeof(location_days) = 'object');
++  add constraint important_dates_location_days_object check (jsonb_typeof(location_days) = 'object'),
++  -- Only a Closed date reaches the shifts, and it closes or shortens somewhere.
++  add constraint important_dates_closed_days check ((type = 'closed') = (location_days <> '{}'::jsonb));
+ 
+ -- What a shift lost to a date became: opened (its person dropped) or removed.
+ alter table public.important_date_shift_releases
+@@ -628,7 +633,7 @@ begin
+   end if;
+   target_all_day := coalesce(target_all_day, true);
+   if char_length(btrim(coalesce(target_title, ''))) not between 1 and 120 or char_length(coalesce(target_note, '')) > 500
+-     or target_type not in ('holiday', 'event') or target_recurrence not in ('none', 'annual')
++     or target_type not in ('holiday', 'event', 'blackout', 'closed') or target_recurrence not in ('none', 'annual')
+      or target_starts_on is null or target_ends_on is null or target_ends_on < target_starts_on
+      or (target_all_day and (target_start_time is not null or target_end_time is not null))
+      or (not target_all_day and (target_start_time is null or target_end_time is null
+@@ -637,6 +642,10 @@ begin
+   end if;
+   target_location_days := app_private.important_date_location_days(target_workspace_id, target_location_ids,
+     target_location_days, before.location_days);
++  -- Only a Closed date gives its locations a day, and it gives at least one (Mert, 2026-10-10 12:41Z).
++  if (target_type = 'closed') <> (target_location_days <> '{}'::jsonb) then
++    raise exception 'valid location days required' using errcode = '22023';
++  end if;
+ 
+   -- K11. A save that changes nothing touches nothing.
+   if before.id is not null then
+diff --git a/supabase/seed.sql b/supabase/seed.sql
+index 27bf1aae..74c36af2 100644
+--- a/supabase/seed.sql
++++ b/supabase/seed.sql
+@@ -327,7 +327,7 @@ begin
+     jsonb_set(public.empty_weekly_preference('time_range'), '{days,5,all_day}', 'true'),
+     1, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
+ 
+-  -- A closed day is an important date whose location is Closed (FB-6.7,
++  -- A closed day is a Closed important date (FB-6.7,
+   -- BL-530, EKRAN-08); the Schedule reads its closures from the published ones.
+   insert into public.important_dates (
+     id, workspace_id, location_id, location_ids, title, type, starts_on, ends_on,
+@@ -335,7 +335,7 @@ begin
+   ) values (
+     '19000000-0000-4000-8000-000000000001', '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
+     '11000000-0000-4000-8000-000000000002', array['11000000-0000-4000-8000-000000000002']::uuid[],
+-    'Private event setup', 'event', schedule_week + 3, schedule_week + 3,
++    'Private event setup', 'closed', schedule_week + 3, schedule_week + 3,
+     '{"11000000-0000-4000-8000-000000000002": {"status": "closed"}}'::jsonb,
+     'published', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
+   );
+diff --git a/supabase/tests/announcements_and_dates_edge_cases.test.sql b/supabase/tests/announcements_and_dates_edge_cases.test.sql
+index 37861b87..40825d19 100644
+--- a/supabase/tests/announcements_and_dates_edge_cases.test.sql
++++ b/supabase/tests/announcements_and_dates_edge_cases.test.sql
+@@ -139,7 +139,7 @@ $$;
+ 
+ -- 3. The API reads the Schedule's closed days (BL-530) ---------------------------------
+ 
+-select tests.remember('r:date:closed', pg_temp.save_date('owner', array['K'], 'Inventory closed', kind => 'holiday', closed => true));
++select tests.remember('r:date:closed', pg_temp.save_date('owner', array['K'], 'Inventory closed', kind => 'closed', closed => true));
+ set local role service_role;
+ select lives_ok($$select count(*) from public.schedule_closures$$,
+   'BL-530: the API, as service_role, reads the Schedule''s closed days');
+@@ -410,15 +410,15 @@ select ok(pg_temp.has_notice('emre', tests.id('r:date:narrow')), 'BL-534: it rea
+ -- 13. A closed day closes the weeks still being planned, never a locked one (P09, K11) -------------
+ 
+ select is(pg_temp.try($$select pg_temp.save_date('owner', array['K'], 'Last Tuesday closed',
+-  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'holiday', closed => true)$$),
++  starts => public.schedule_current_week_start_service(tests.id('r')) - 6, kind => 'closed', closed => true)$$),
+   'P0001 important_date.past', 'K11: a closed day cannot be put on last week''s Tuesday');
+ select tests.remember('r:date:this-week', pg_temp.save_date('owner', array['K'], 'This Tuesday closed',
+-  starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'holiday', closed => true));
++  starts => public.schedule_current_week_start_service(tests.id('r')) + 1, kind => 'closed', closed => true));
+ -- Its anniversary falls on this week's Thursday, never on the Tuesday above (on a
+ -- Tuesday, three years before today would land on it and close it twice).
+ select tests.remember('r:date:yearly-closed', pg_temp.save_date('owner', array['K'], 'Yearly closed',
+   starts => (public.schedule_current_week_start_service(tests.id('r')) + 3 - interval '3 years')::date,
+-  kind => 'holiday', closed => true, recurrence => 'annual'));
++  kind => 'closed', closed => true, recurrence => 'annual'));
+ select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('r')
+            and c.closed_date = public.schedule_current_week_start_service(tests.id('r')) - 6), 0,
+   'P09: a closed day put on last week''s Tuesday leaves that locked week as it was');
+diff --git a/supabase/tests/announcements_and_dates_follow_k1_k6.test.sql b/supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
+index 060f300a..de9ed611 100644
+--- a/supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
++++ b/supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
+@@ -284,7 +284,7 @@ select is(pg_temp.try(format($$select public.read_important_date_history_service
+ 
+ -- 11. BL-530: a "Closed day" important date closes the location -----------------------------------
+ 
+-select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => current_date + 60, kind => 'holiday', closed => true, recurrence => 'annual'));
++select tests.remember('m:date:closed', pg_temp.save_date('owner', array['K'], 'Christmas', starts => current_date + 60, kind => 'closed', closed => true, recurrence => 'annual'));
+ select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = current_date + 60),
+   'BL-530: a Kadikoy closed day closes Kadikoy that day');
+ select ok(exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = (current_date + 60 + interval '1 year')::date),
+diff --git a/supabase/tests/bl064_conflict_severity.test.sql b/supabase/tests/bl064_conflict_severity.test.sql
+index 7e837363..8da6b3f4 100644
+--- a/supabase/tests/bl064_conflict_severity.test.sql
++++ b/supabase/tests/bl064_conflict_severity.test.sql
+@@ -45,7 +45,7 @@ select is(pg_temp.assess('{"id":"b1640000-0000-4000-8000-000000000008","start_ti
+ update public.workspace_scheduling_settings set conflict_rules=jsonb_set(conflict_rules,'{minimum_rest}','"block"') where workspace_id=(select w from f);
+ select is(pg_temp.assess('{"id":"b1640000-0000-4000-8000-000000000008","start_time":"18:00","end_time":"20:00"}')->>'conflict_severity','block','rest block policy is authoritative');
+ insert into public.important_dates (workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select w, loc, array[loc]::uuid[], ('2035-01-16')::date, ('2035-01-16')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from f;
++ select w, loc, array[loc]::uuid[], ('2035-01-16')::date, ('2035-01-16')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from f;
+ select is(pg_temp.assess('{"scheduled_date":"2035-01-16"}')->>'conflict_severity','confirm','closed location defaults to confirmation');
+ select throws_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.shift('{"scheduled_date":"2035-01-16"}'),null) from f$$,'PT409',null,'closed-location command requests current fingerprint');
+ select lives_ok($$select public.prepare_weekly_schedule_assignment(actor,w,pg_temp.shift('{"scheduled_date":"2035-01-16"}')||jsonb_build_object('availability_assessment_fingerprint',public.assess_weekly_shift_availability(w,emp,pg_temp.shift('{"scheduled_date":"2035-01-16","_exclude_shift_id":"b1640000-0000-4000-8000-000000000007"}')-'id')->>'fingerprint'),null) from f$$,'confirmation reuses canonical fingerprint and automatic audit');
+diff --git a/supabase/tests/closed_days_reach_the_shifts.test.sql b/supabase/tests/closed_days_reach_the_shifts.test.sql
+index 5d15a1f8..2cde926b 100644
+--- a/supabase/tests/closed_days_reach_the_shifts.test.sql
++++ b/supabase/tests/closed_days_reach_the_shifts.test.sql
+@@ -92,7 +92,7 @@ $$;
+ 
+ create function pg_temp.close_day(person text, keys text[], title text, day date, choices jsonb default '{}',
+   fingerprint text default null, id uuid default null, spec jsonb default null, all_day boolean default true,
+-  starts time default null, ends time default null, kind text default 'holiday') returns jsonb language sql as $$
++  starts time default null, ends time default null, kind text default 'closed') returns jsonb language sql as $$
+   select public.save_important_date_service(pg_temp.u(person), tests.id('c'), id, title, kind, day, day,
+     'none', '', pg_temp.locs(keys), (select d.revision from public.important_dates d where d.id = close_day.id),
+     all_day, starts, ends, coalesce(pg_temp.days(spec), pg_temp.closed(keys)), choices, fingerprint)
+@@ -365,7 +365,7 @@ update public.schedule_draft_shifts set scheduled_date = (tests.week(1) + 1 - in
+ where draft_id = tests.id('c:draft') and scheduled_date = tests.week(1) + 1;
+ insert into public.important_dates (workspace_id, title, type, starts_on, ends_on, recurrence, note, location_days,
+   location_ids, location_id, created_by, updated_by, status)
+-values (tests.id('c'), 'Founders closed', 'holiday', (tests.week(1) + 1 - interval '4 years')::date,
++values (tests.id('c'), 'Founders closed', 'closed', (tests.week(1) + 1 - interval '4 years')::date,
+   (tests.week(1) + 1 - interval '4 years')::date, 'annual', '', pg_temp.closed(array['K']), array[tests.id('c:K')], tests.id('c:K'),
+   pg_temp.u('ayse'), pg_temp.u('ayse'), 'unpublished');
+ select tests.remember('c:date:yearly', (select d.id from public.important_dates d
+@@ -483,9 +483,15 @@ select is(pg_temp.closed_reason(pg_temp.assess_at(tests.week(5), '08:00', '10:00
+ -- 8. What a date may say ----------------------------------------------------------------------
+ 
+ select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Old kind', tests.week(6), kind => 'closed_day')$$),
+-  '22023 ', 'Types: "Closed day" is no longer a type: closing is a location''s');
+-select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Old kind', tests.week(6), kind => 'blackout')$$),
+-  '22023 ', 'Types: nor is "Blackout"');
++  '22023 ', 'Types: "Closed day" is now "Closed"');
++select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Holiday', tests.week(6), kind => 'holiday')$$),
++  '22023 ', 'Types: only a Closed date closes a location (Mert, 2026-10-10 12:41Z)');
++select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Blackout', tests.week(6), kind => 'blackout')$$),
++  '22023 ', 'Types: a Blackout does not either');
++select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Closed nowhere', tests.week(6), spec => '{}')$$),
++  '22023 ', 'Types: a Closed date closes or shortens somewhere');
++select ok(pg_temp.close_day('ayse', array['K'], 'Blackout', tests.week(6), kind => 'blackout', spec => '{}') ? 'important_date_id',
++  'Types: a Blackout is a date of its own, reaching no shift');
+ select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Elsewhere', tests.week(6), spec => '{"B": {"status": "closed"}}')$$),
+   '22023 ', 'L1: a date cannot close a location it is not for');
+ select is(pg_temp.try($$select pg_temp.close_day('ayse', array['K'], 'Backwards', tests.week(6),
+diff --git a/supabase/tests/eligibility_matrix.test.sql b/supabase/tests/eligibility_matrix.test.sql
+index 0f6b5411..1c0162df 100644
+--- a/supabase/tests/eligibility_matrix.test.sql
++++ b/supabase/tests/eligibility_matrix.test.sql
+@@ -100,7 +100,7 @@ update public.employee_profiles set is_excluded_from_schedule=true where workspa
+ select is(pg_temp.candidate()->>'status','ineligible','excluded employee remains ineligible');
+ update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from ws);
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
++ select 'ad426000-0000-4000-8000-000000000015', w, loc, array[loc]::uuid[], ('2035-01-15')::date, ('2035-01-15')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
+ select is(pg_temp.candidate()->>'status','ineligible','location closure is not an availability override');
+ delete from public.important_dates where id='ad426000-0000-4000-8000-000000000015';
+ select is(pg_temp.candidate('{"date":"2035-03-11","start_time":"02:30","end_time":"04:00"}')->>'status','ineligible','nonexistent DST clock time remains blocked');
+diff --git a/supabase/tests/past_dates_and_ended_announcements.test.sql b/supabase/tests/past_dates_and_ended_announcements.test.sql
+index afa9d118..7d869b11 100644
+--- a/supabase/tests/past_dates_and_ended_announcements.test.sql
++++ b/supabase/tests/past_dates_and_ended_announcements.test.sql
+@@ -130,7 +130,7 @@ select is((select count(*)::integer from public.important_dates d where d.worksp
+ 
+ -- 3. KK-97: a closed day stays on the Schedule after its week has passed ---------------------
+ 
+-select tests.remember('p:date:closed-past', pg_temp.old_date('Water cut', pg_temp.b() - 6, pg_temp.b() - 6, kind => 'holiday', closed => true));
++select tests.remember('p:date:closed-past', pg_temp.old_date('Water cut', pg_temp.b() - 6, pg_temp.b() - 6, kind => 'closed', closed => true));
+ select is((select count(*)::integer from public.schedule_closures c where c.workspace_id = tests.id('p')
+            and c.location_id = tests.id('p:K') and c.closed_date = pg_temp.b() - 6), 1,
+   'KK-97: last week''s closed day still closes that day on the Schedule');
+diff --git a/supabase/tests/retired_objects_stay_gone.test.sql b/supabase/tests/retired_objects_stay_gone.test.sql
+index 222a361e..8b811d8e 100644
+--- a/supabase/tests/retired_objects_stay_gone.test.sql
++++ b/supabase/tests/retired_objects_stay_gone.test.sql
+@@ -495,8 +495,8 @@ select is(
+   'schedule_closures is the closed days, never a table of its own again (BL-530)'
+ );
+ select is(
+-  enum_range(null::public.important_date_type)::text[], array['holiday', 'event'],
+-  'an important date is a Holiday or an Event; closing is a location''s (EKRAN-08)'
++  enum_range(null::public.important_date_type)::text[], array['holiday', 'event', 'blackout', 'closed'],
++  'an important date is a Holiday, an Event, a Blackout or Closed; only Closed closes (EKRAN-08)'
+ );
+ 
+ select * from finish();
+diff --git a/supabase/tests/schedule_default_hours_review.test.sql b/supabase/tests/schedule_default_hours_review.test.sql
+index 4af7f20d..9d9bb656 100644
+--- a/supabase/tests/schedule_default_hours_review.test.sql
++++ b/supabase/tests/schedule_default_hours_review.test.sql
+@@ -92,7 +92,7 @@ select is(preview->'shifts'->0->'after_assessment'->>'operation','allowed','and
+ select ok((preview->'shifts'->0->'after_assessment'->>'has_availability_conflict')::boolean,'the review still shows the availability warning') from dhr;
+ -- Require confirmation still guards the other rules: the day closes (closed_location = confirm).
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select 'afa70000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], (week)::date, (week)::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from dhr;
++ select 'afa70000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], (week)::date, (week)::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), actor from dhr;
+ update dhr set preview=public.preview_schedule_default_hours_service(actor,w,session,command);
+ select is(preview->'shifts'->0->'after_assessment'->>'operation','warning_requires_override','soft policy requires a fresh override') from dhr;
+ update dhr set command=command||jsonb_build_object('overrides',jsonb_build_array(jsonb_build_object('shift_id',named,'note','Reviewed the new service reference hours')));
+diff --git a/supabase/tests/schedule_publication.test.sql b/supabase/tests/schedule_publication.test.sql
+index 4c36786a..c11e11e5 100644
+--- a/supabase/tests/schedule_publication.test.sql
++++ b/supabase/tests/schedule_publication.test.sql
+@@ -61,7 +61,7 @@ insert into public.schedule_draft_shifts (id, workspace_id, draft_id, location_i
+ select tests.remember('pub:timeoff:leave', gen_random_uuid());
+ select tests.approved_leave(tests.id('pub'), tests.id('pub:leaveemp'), tests.user('pub:owner'), tests.id('pub:K'), tests.week(1) + 2, '10:00', '14:00', tests.id('pub:timeoff:leave'));
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select gen_random_uuid(), tests.id('pub'), tests.id('pub:B'), array[tests.id('pub:B')]::uuid[], (tests.week(1) + 5)::date, (tests.week(1) + 5)::date, 'Deep clean', 'holiday', jsonb_build_object((tests.id('pub:B'))::text, jsonb_build_object('status', 'closed')), tests.user('pub:owner');
++ select gen_random_uuid(), tests.id('pub'), tests.id('pub:B'), array[tests.id('pub:B')]::uuid[], (tests.week(1) + 5)::date, (tests.week(1) + 5)::date, 'Deep clean', 'closed', jsonb_build_object((tests.id('pub:B'))::text, jsonb_build_object('status', 'closed')), tests.user('pub:owner');
+ 
+ -- authenticated/service_role have no USAGE on the tests schema, so every id a
+ -- role-switched statement needs is resolved here first, while still postgres.
+diff --git a/supabase/tests/schedule_read_model_rls.test.sql b/supabase/tests/schedule_read_model_rls.test.sql
+index eba61c7a..309d0b74 100644
+--- a/supabase/tests/schedule_read_model_rls.test.sql
++++ b/supabase/tests/schedule_read_model_rls.test.sql
+@@ -77,7 +77,7 @@ values
+   ('40000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '38000000-0000-4000-8000-000000000002', '36000000-0000-4000-8000-000000000001', true, '31000000-0000-4000-8000-000000000001');
+ 
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+-values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], pg_temp.wk(1), pg_temp.wk(1), 'Closed fixture', 'holiday', jsonb_build_object(('34000000-0000-4000-8000-000000000001')::text, jsonb_build_object('status', 'closed')), '31000000-0000-4000-8000-000000000001');
++values ('42000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '34000000-0000-4000-8000-000000000001', array['34000000-0000-4000-8000-000000000001']::uuid[], pg_temp.wk(1), pg_temp.wk(1), 'Closed fixture', 'closed', jsonb_build_object(('34000000-0000-4000-8000-000000000001')::text, jsonb_build_object('status', 'closed')), '31000000-0000-4000-8000-000000000001');
+ 
+ insert into public.schedule_location_publications (
+   id, workspace_id, location_id, week_start, version_number, status, published_by
+diff --git a/supabase/tests/weekly_schedule_acceptance.test.sql b/supabase/tests/weekly_schedule_acceptance.test.sql
+index 5df7e1b9..29f4dc5d 100644
+--- a/supabase/tests/weekly_schedule_acceptance.test.sql
++++ b/supabase/tests/weekly_schedule_acceptance.test.sql
+@@ -95,7 +95,7 @@ select ok(pg_temp.publication()->'findings'->0->>'availability_state' is null,'r
+ -- Require confirmation still guards the other rules (BL-186 keeps the
+ -- acceptance for them): a closed day, closed_location = confirm.
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select 'ad421000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-01-17')::date, ('2035-01-17')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from wp_fixture;
++ select 'ad421000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-01-17')::date, ('2035-01-17')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from wp_fixture;
+ create function pg_temp.closed(changes jsonb default '{}') returns jsonb language sql stable as $$
+  select jsonb_build_object('id','ad421000-0000-4000-8000-000000000020','scheduled_date','2035-01-17','job_id','ad421000-0000-4000-8000-000000000011')||changes
+ $$;
+diff --git a/supabase/tests/weekly_schedule_batch.test.sql b/supabase/tests/weekly_schedule_batch.test.sql
+index 56eb6aa2..098d7878 100644
+--- a/supabase/tests/weekly_schedule_batch.test.sql
++++ b/supabase/tests/weekly_schedule_batch.test.sql
+@@ -41,7 +41,7 @@ update ws set payload=jsonb_build_object('location_id',loc,'employee_id',emp,'jo
+ -- fix's second, independent conflict. Availability is only a warning since
+ -- BL-186, so a closure carries the acceptance these checks are about.
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select gen_random_uuid(), w, loc, array[loc]::uuid[], (d)::date, (d)::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws cross join unnest(array['2035-01-15'::date,'2035-01-19'::date]) d;
++ select gen_random_uuid(), w, loc, array[loc]::uuid[], (d)::date, (d)::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws cross join unnest(array['2035-01-15'::date,'2035-01-19'::date]) d;
+ update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
+ update ws set batch=jsonb_build_array(payload,payload||'{"scheduled_date":"2035-01-16"}');
+ create function pg_temp.create_batch(p jsonb default null,k uuid default null) returns jsonb language sql as $$
+@@ -92,7 +92,7 @@ select public.mutate_schedule_edit_shift_service(s.manager,s.w,s.session,e.revis
+  from ws s join public.schedule_edit_sessions e on e.id=s.session;
+ select is((pg_temp.create_batch()->>'revision')::integer,(select revision from public.schedule_edit_sessions where id=(select session from ws)),'retry returns current state instead of overwriting later edits');
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select gen_random_uuid(), w, loc, array[loc]::uuid[], ('2035-01-18')::date, ('2035-01-18')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
++ select gen_random_uuid(), w, loc, array[loc]::uuid[], ('2035-01-18')::date, ('2035-01-18')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
+ update ws s set original_revision=e.revision,request_key=gen_random_uuid(),payload=payload||'{"scheduled_date":"2035-01-18"}' from public.schedule_edit_sessions e where e.id=s.session;
+ select throws_ok($$select pg_temp.create_batch(jsonb_build_array(payload)) from ws$$,'PT409',null,'confirm policy cannot use an earlier conflict fingerprint');
+ update ws set payload=payload||jsonb_build_object('availability_assessment_fingerprint',public.assess_schedule_shift_service(manager,w,payload,null,session)->>'fingerprint');
+diff --git a/supabase/tests/weekly_schedule_integration.test.sql b/supabase/tests/weekly_schedule_integration.test.sql
+index 2454c9a1..4494ff9e 100644
+--- a/supabase/tests/weekly_schedule_integration.test.sql
++++ b/supabase/tests/weekly_schedule_integration.test.sql
+@@ -64,7 +64,7 @@ select lives_ok($$select pg_temp.mutate(payload||'{"note":"Changed display note"
+ select lives_ok($$select pg_temp.mutate(payload||'{"start_time":"19:00"}','update') from ws$$,'changed hours need no decision either');
+ -- Require confirmation still guards the other rules: a closed day (closed_location = confirm).
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select 'ad423000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], ('2035-01-19')::date, ('2035-01-19')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
++ select 'ad423000-0000-4000-8000-000000000020', w, loc, array[loc]::uuid[], ('2035-01-19')::date, ('2035-01-19')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
+ select throws_ok($$insert into public.schedule_edit_session_shifts(id,workspace_id,session_id,location_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
+  select gen_random_uuid(),w,session,loc,emp,job,'2035-01-19','18:00','20:00','explicit','America/Los_Angeles' from ws$$,'23514',null,'raw assignment cannot bypass the closed-day acceptance');
+ select throws_ok($$select pg_temp.mutate(payload||'{"time_basis":"unresolved","start_time":null,"end_time":null}','update') from ws$$,'22023',null,'assignment without hours or a named type is invalid');
+@@ -152,7 +152,7 @@ select lives_ok($$select pg_temp.apply_defaults()$$,'actual default-hour batch a
+ select is((select end_time::text from public.schedule_edit_session_shifts where id='ad423000-0000-4000-8000-000000000016'),'18:00:00','batch stores the reviewed current hours');
+ -- The shift's day closes: new hours on a closed day need the explicit bulk confirmation.
+ insert into public.important_dates (id, workspace_id, location_id, location_ids, starts_on, ends_on, title, type, location_days, created_by)
+- select 'ad423000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-02-01')::date, ('2035-02-01')::date, 'Closed', 'holiday', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
++ select 'ad423000-0000-4000-8000-000000000021', w, loc, array[loc]::uuid[], ('2035-02-01')::date, ('2035-02-01')::date, 'Closed', 'closed', jsonb_build_object((loc)::text, jsonb_build_object('status', 'closed')), owner_id from ws;
+ update public.shift_types set default_start_time='11:00' where id='ad423000-0000-4000-8000-000000000015';
+ update wd d set command=command||jsonb_build_object('expected_session_revision',e.revision) from public.schedule_edit_sessions e where e.id=d.session;
+ update wd set review=public.preview_schedule_default_hours_service(s.manager,s.w,wd.session,command) from ws s;

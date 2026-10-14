@@ -1,0 +1,12 @@
+import { chromium } from "/home/claude/newfork-clean/node_modules/.pnpm/playwright@1.63.0/node_modules/playwright/index.mjs";
+const b = await chromium.launch({ executablePath: "/opt/pw-browsers/chromium" });
+const ctx = await b.newContext({ viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 });
+const p = await ctx.newPage(); const errs = []; p.on("pageerror", e => errs.push(e.message));
+await p.goto("file:///mnt/project-files/pages/vardiya-degisim-indir/Vardiya-degisim-mockup.html"); await p.waitForTimeout(1200);
+const labels = await p.locator("[data-scn]").allTextContents();
+const idx = labels.findIndex(l => /Shift changes tablosu/.test(l));
+await p.locator(`[data-scn="${idx}"]`).click(); await p.waitForTimeout(300);
+await p.locator('#mgr-desk [data-row="r5"]').click(); await p.waitForTimeout(300);
+await p.locator(".desk").screenshot({ path: "vd5/r5-drawer.png" });
+console.log(errs);
+await b.close();

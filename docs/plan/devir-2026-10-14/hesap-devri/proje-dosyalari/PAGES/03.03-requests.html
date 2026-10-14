@@ -1,0 +1,223 @@
+<title>3.3 Requests · PAGES</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Light only, like the app; values are the app's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3; --surface: #ffffff; --soft2: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #66716c; --muted-strong: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --focus: #177a64; --bezel: #1d2525; --on-dark: #ffffff;
+  --warn-soft: #fff7e2; --warn-text: #5f491f; --warn-border: #bf872d;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); }
+body { color: var(--text); font-family: var(--font); font-size: 14px; }
+button { font: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.wrap { max-width: 1920px; margin: 0 auto; padding: 24px 24px 64px; display: grid; gap: 18px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.top { display: grid; gap: 10px; }
+.eyebrow { font-size: 12px; font-weight: 700; letter-spacing: 0.06em; color: var(--accent); text-transform: uppercase; }
+h1 { font-size: 26px; font-weight: 700; letter-spacing: -0.015em; margin: 0; display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+h1 .no { min-width: 44px; height: 34px; padding: 0 9px; border-radius: 8px; background: var(--text); color: var(--on-dark); display: inline-grid; place-items: center; font-size: 16px; font-variant-numeric: tabular-nums; }
+.lede { margin: 0; color: var(--body); line-height: 1.6; max-width: 90ch; }
+.facts { margin: 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; grid-template-columns: max-content 1fr; gap: 6px 16px; max-width: 120ch; font-size: 13.5px; line-height: 1.5; }
+.facts dt { font-weight: 650; color: var(--muted-strong); }
+.facts dd { margin: 0; color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.facts code { font: 12.5px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 6px; border-radius: 5px; }
+.facts a { color: var(--accent); font-weight: 600; }
+@media (max-width: 600px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 12px 28px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ctl-label { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted-strong); cursor: pointer; }
+.pills button:hover:not(:disabled):not([aria-pressed="true"]) { background: var(--soft2); }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.pills button:disabled { cursor: not-allowed; opacity: 0.45; }
+.pills .count { font-weight: 500; opacity: .7; font-variant-numeric: tabular-nums; }
+.tally { margin: 0; font-size: 12.5px; color: var(--muted); }
+.tally code { font: 12px ui-monospace, Consolas, monospace; background: var(--soft2); padding: 1px 5px; border-radius: 4px; }
+.restart { min-height: 32px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer; }
+.restart:hover { background: var(--soft2); }
+.stagebox { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 18px; min-width: 0; }
+@media (max-width: 600px) { .stagebox { padding: 10px; } }
+.frames { display: flex; gap: 24px; align-items: flex-start; min-width: 0; }
+.frames[data-layout="stack"] { flex-direction: column; }
+.fcol { display: grid; gap: 8px; min-width: 0; }
+.desk-col { flex: 1 1 auto; }
+.frames[data-layout="stack"] .desk-col { width: 100%; }
+.phone-col { flex: 0 0 auto; }
+.flabel { font-size: 11.5px; font-weight: 650; color: var(--muted-strong); text-transform: uppercase; letter-spacing: 0.05em; display: flex; gap: 10px; align-items: center; }
+.flabel span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--muted); }
+.fit { overflow: hidden; }
+.fit.scroll { overflow-x: auto; }
+.desk { width: 1440px; height: 900px; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; background: var(--page); transform-origin: 0 0; }
+.phone { width: 410px; height: 864px; padding: 10px; border-radius: 44px; background: var(--bezel); transform-origin: 0 0; }
+.phone .screen { width: 390px; height: 844px; border-radius: 34px; overflow: hidden; background: var(--surface); }
+iframe { display: block; width: 100%; height: 100%; border: 0; background: var(--page); }
+.notes { font-size: 13px; color: var(--muted-strong); line-height: 1.55; max-width: 120ch; margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.toast { position: fixed; left: 50%; bottom: 18px; transform: translateX(-50%); background: #111827; color: #fff; font-weight: 600; font-size: 13px; padding: 10px 14px; border-radius: 8px; opacity: 0; transition: opacity .15s; pointer-events: none; }
+.toast[data-open="true"] { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<main class="wrap">
+  <header class="top">
+    <span class="eyebrow">PAGES · uygulamanın bugünkü hâli</span>
+    <h1><span class="no">3.3</span>Requests</h1>
+    <p class="lede">İki sekme (Time off, Shift changes): izin talepleri ve vardiya değişimleri tek listede. Çekmeceler Important Dates diliyle: izin (Details · Shifts · Activity), cover ve open shift (adayı seç, tek adımda ver). Swap ve cover iki taraf anlaşınca listeye düşer.</p>
+    <dl class="facts">
+      <dt>Adres</dt><dd><code>/app/schedule/requests</code></dd>
+      <dt>Uygulamada</dt><dd>Sol menü → Schedule → Requests</dd>
+      <dt>Kim açar</dt><dd>Owner, admin, manager (manager yalnız kendi şubesi)</dd>
+      <dt>Kaynak</dt><dd>Gerçek uygulama kodu, main <code>28aeb82b</code> (2026-10-14); veri sahte (Harbor &amp; Vine demo restoranı). Bütün ekranlar: <a href="https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy" target="_blank" rel="noopener">PAGES dizini</a>.</dd>
+    </dl>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Kim açıyor</span><div class="pills"><button type="button" data-g="role" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="role" data-k="admin">Admin · Daniel Brooks</button><button type="button" data-g="role" data-k="manager">Manager · Rachel Adams (Downtown)</button><button type="button" data-g="role" data-k="custom">Shift Lead · Carlos Rivera (özel rol)</button><button type="button" data-g="role" data-k="employee">Employee · Maria Lopez</button></div></div>
+    </div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Parça</span><div class="pills"><button type="button" data-g="part" data-k="0">Roller <span class="count">6</span></button><button type="button" data-g="part" data-k="1">İzin çekmecesi · Review request <span class="count">23</span></button><button type="button" data-g="part" data-k="2">Cover ve Open shift çekmecesi · Review shift change <span class="count">10</span></button><button type="button" data-g="part" data-k="3">Takas penceresi · Swap request <span class="count">8</span></button><button type="button" data-g="part" data-k="4">Liste · sekmeler, süzgeç, arama <span class="count">8</span></button><button type="button" data-g="part" data-k="5">Bağlantıyla açılan talep · Request link <span class="count">3</span></button><button type="button" data-g="part" data-k="6">Sayfa durumları <span class="count">3</span></button></div></div></div>
+    <div class="controls"><div class="ctl"><span class="ctl-label">Senaryo</span><div class="pills" data-part="0"><button type="button" data-g="sc" data-k="owner">Owner · Mert Tepebas</button><button type="button" data-g="sc" data-k="manager">Manager · Rachel Adams (Downtown)</button><button type="button" data-g="sc" data-k="admin">Admin · Daniel Brooks: bütün talepler</button><button type="button" data-g="sc" data-k="single-type">Yalnız izinleri okuyabilen rol: sekme yok, yalnız Time off</button><button type="button" data-g="sc" data-k="employee">Employee Requests'e giremez: aynı adreste erişim kartı (You don't have access to Requests)</button><button type="button" data-g="sc" data-k="phone">Telefonda kart listesi ve kayan sekmeler (sağdaki telefon çerçevesi)</button></div><div class="pills" data-part="1" hidden><button type="button" data-g="sc" data-k="timeoff">İzin çekmecesi · Details: Ethan Brooks (Also off these days dolu)</button><button type="button" data-g="sc" data-k="timeoff-shifts">İzin çekmecesi · Shifts: açılacak vardiyalar</button><button type="button" data-g="sc" data-k="deny">İzni reddetme: gerekçe</button><button type="button" data-g="sc" data-k="timeoff-activity">İzin çekmecesi · Activity</button><button type="button" data-g="sc" data-k="deep-link">?request= bağlantısıyla doğrudan açılış (Emma Wilson)</button><button type="button" data-g="sc" data-k="open-in-schedule">&quot;Open in Schedule&quot; bağlantısı (Schedule'a götürür)</button><button type="button" data-g="sc" data-k="approve-dialog">Owner tek başına onaylar: &quot;Approve time off?&quot; (açılacak vardiya sayısı)</button><button type="button" data-g="sc" data-k="approved">Onaylandı: &quot;Time off approved.&quot;, talep listede kapandı</button><button type="button" data-g="sc" data-k="manager-vote">Müdür oyu: &quot;Your approval is saved. 1 location still to approve.&quot;, sonra View-only</button><button type="button" data-g="sc" data-k="manager-final">Son onay müdürde: &quot;Approve time off?&quot; penceresi (Jake Thompson)</button><button type="button" data-g="sc" data-k="deny-confirm">Reddetme: iki tık (Confirm deny)</button><button type="button" data-g="sc" data-k="denied">Reddedildi: &quot;Time off denied.&quot;</button><button type="button" data-g="sc" data-k="deny-error">Reddetme hatası: çekmecede hata satırı</button><button type="button" data-g="sc" data-k="changed">Talep değişmiş: &quot;This request changed. Review it again.&quot;</button><button type="button" data-g="sc" data-k="cancellation">İptal talebi: &quot;Cancellation&quot; (Jake Thompson), Decline / Approve</button><button type="button" data-g="sc" data-k="cancellation-approve">İptali onaylama: &quot;Approve cancellation?&quot;</button><button type="button" data-g="sc" data-k="revoke">Onaylı izni geri alma: &quot;Revoke time off?&quot; (Reason zorunlu)</button><button type="button" data-g="sc" data-k="revoked">Geri alındı: &quot;Time off revoked.&quot;</button><button type="button" data-g="sc" data-k="shorten">Shorten time off formu (Maria Lopez)</button><button type="button" data-g="sc" data-k="shortened">Kısaltıldı: &quot;Maria's time off is shorter…&quot;</button><button type="button" data-g="sc" data-k="shorten-none">Başlamış izin: &quot;No future approved hours remain.&quot;</button><button type="button" data-g="sc" data-k="view-only">Kapanmış talep, müdür: &quot;View-only access&quot;</button><button type="button" data-g="sc" data-k="fallback">Lokasyonun müdürü yok: &quot;No location manager can decide. An admin or owner decides.&quot;</button></div><div class="pills" data-part="2" hidden><button type="button" data-g="sc" data-k="cover">Cover çekmecesi: Noah Garcia</button><button type="button" data-g="sc" data-k="open">Open shift çekmecesi</button><button type="button" data-g="sc" data-k="cover-give">Adayı seç: &quot;Give shift to …&quot;</button><button type="button" data-g="sc" data-k="cover-given">Vardiya verildi: toast</button><button type="button" data-g="sc" data-k="cover-decline">Adayı reddetme: gerekçe ve iki tık</button><button type="button" data-g="sc" data-k="cover-close">Talebi kapatma: gerekçe ve onay (Close request)</button><button type="button" data-g="sc" data-k="cover-none">Aday yok: &quot;Nobody has asked yet…&quot;, &quot;Nobody to approve&quot;</button><button type="button" data-g="sc" data-k="cover-closed">Kapanmış cover/open: &quot;Approved. The shift is … now.&quot;</button><button type="button" data-g="sc" data-k="cover-check-failed">Uygunluk denetlenemedi: &quot;Eligibility could not be checked…&quot;</button><button type="button" data-g="sc" data-k="cover-manager">Müdür: kendi lokasyonundaki cover'ı tek başına verir (Give shift to Jake)</button></div><div class="pills" data-part="3" hidden><button type="button" data-g="sc" data-k="swap">Takas penceresi</button><button type="button" data-g="sc" data-k="swap-approved">Takas onaylandı: &quot;Swap approved.&quot;</button><button type="button" data-g="sc" data-k="swap-decline">Takas reddi: gerekçe ve iki tık &quot;Decline swap&quot;</button><button type="button" data-g="sc" data-k="swap-blocked">Takas engeli: Sophie Martin o gün izinli, Approve pasif</button><button type="button" data-g="sc" data-k="swap-other-manager">Müdür: &quot;Another location's manager also approves.&quot; (Uptown henüz onaylamadı)</button><button type="button" data-g="sc" data-k="swap-manager">Müdür: Uptown onayladı, son karar Rachel'da (Approve etkin)</button><button type="button" data-g="sc" data-k="case-link">?case= bağlantısıyla doğrudan açılış (bildirimden; Maria Lopez'in cover talebi)</button><button type="button" data-g="sc" data-k="case-missing">Bulunamayan ?case=: müdürün eski Shift Hub görünümü</button></div><div class="pills" data-part="4" hidden><button type="button" data-g="sc" data-k="only-timeoff">Time off sekmesi</button><button type="button" data-g="sc" data-k="shift-changes">Shift changes sekmesi</button><button type="button" data-g="sc" data-k="location">Lokasyon süzgeci: yalnız Uptown</button><button type="button" data-g="sc" data-k="search">Arama: &quot;Maria&quot;</button><button type="button" data-g="sc" data-k="search-empty">Sonuç yok: &quot;No requests match these filters.&quot;</button><button type="button" data-g="sc" data-k="tab-empty">Sekmede sonuç yok: &quot;No shift change requests match these filters.&quot;</button><button type="button" data-g="sc" data-k="closed">Kapanmış talepler listenin altında (Approved, Denied, Revoked)</button><button type="button" data-g="sc" data-k="pagination">Sayfalama: 50'lik sayfa, 2. sayfa (54 talep)</button></div><div class="pills" data-part="5" hidden><button type="button" data-g="sc" data-k="case-gone">Bağlantıdaki talep artık yok: &quot;Request unavailable&quot; + Show all requests</button><button type="button" data-g="sc" data-k="case-failed">Bağlantıdaki talep okunamadı: &quot;Request could not load&quot; + Try again</button><button type="button" data-g="sc" data-k="case-loading">Bağlantıdaki talep okunuyor: &quot;Loading request...&quot;</button></div><div class="pills" data-part="6" hidden><button type="button" data-g="sc" data-k="loading">Yükleniyor: listenin gri iskeleti</button><button type="button" data-g="sc" data-k="error">İzin talepleri okunamadı: listede çerçevesiz kart We couldn't load requests + Try again (Shift changes görünmeye devam eder)</button><button type="button" data-g="sc" data-k="no-access">Erişim yok kartı</button></div></div></div>
+    <p class="tally">7 parça · 61 senaryo. Bir senaryoya doğrudan bağlantı: sayfa linkinin sonuna <code>#senaryo-adı</code> (ör. <code>#owner</code>).</p>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Görünüm</span><div class="pills">
+        <button type="button" data-g="layout" data-k="auto">Otomatik</button>
+        <button type="button" data-g="layout" data-k="side">Yan yana</button>
+        <button type="button" data-g="layout" data-k="stack">Alt alta</button>
+      </div></div>
+      <div class="ctl"><span class="ctl-label">Masaüstü boyutu</span><div class="pills">
+        <button type="button" data-g="zoom" data-k="fit">Sığdır</button>
+        <button type="button" data-g="zoom" data-k="full">%100</button>
+      </div></div>
+      <button type="button" class="restart" id="restart">Baştan başlat</button>
+    </div>
+  </header>
+  <section class="stagebox" aria-label="Ekran">
+    <div class="frames" id="frames">
+      <div class="fcol desk-col"><div class="flabel">Masaüstü <span>1440 × 900</span><span id="desk-scale"></span></div><div class="fit" id="desk-fit"><div class="desk" id="desk"></div></div></div>
+      <div class="fcol phone-col"><div class="flabel">Telefon <span>390 × 844</span></div><div class="fit" id="phone-fit"><div class="phone"><div class="screen" id="phone"></div></div></div></div>
+    </div>
+  </section>
+  <ul class="notes">
+    <li>İki görüntü aynı demo veriyle çalışır: birinde kaydedilen değişiklik ötekine de gelir, adres değişince öteki de aynı adrese gider. Açık çekmece ya da pencere öbür görüntüye geçmez; senaryolar ikisini de aynı adımlarla açar.</li>
+    <li>Her açılış ve "Baştan başlat" senaryonun ilk hâline döner. Veri yalnız bu tarayıcıda kalır; e-posta, SMS ve dosya indirme çalışmaz.</li>
+    <li>Başka bir ekrana giden bağlantı o ekranın PAGES numarasını söyler ve yerinde kalır.</li>
+  </ul>
+</main>
+<div class="toast" id="toast" role="status"></div>
+<script>
+(function () {
+  var D = {"no":"3.3","roles":["owner","admin","manager","custom","employee"],"signedOut":false,"scenarios":[{"id":"owner","label":"Owner · Mert Tepebas","role":"owner","part":"Roller"},{"id":"manager","label":"Manager · Rachel Adams (Downtown)","role":"manager","part":"Roller"},{"id":"timeoff","label":"İzin çekmecesi · Details: Ethan Brooks (Also off these days dolu)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"timeoff-shifts","label":"İzin çekmecesi · Shifts: açılacak vardiyalar","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"deny","label":"İzni reddetme: gerekçe","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"cover","label":"Cover çekmecesi: Noah Garcia","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"open","label":"Open shift çekmecesi","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"swap","label":"Takas penceresi","role":"owner","part":"Takas penceresi · Swap request"},{"id":"only-timeoff","label":"Time off sekmesi","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"shift-changes","label":"Shift changes sekmesi","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"case-gone","label":"Bağlantıdaki talep artık yok: \"Request unavailable\" + Show all requests","role":"owner","part":"Bağlantıyla açılan talep · Request link"},{"id":"case-failed","label":"Bağlantıdaki talep okunamadı: \"Request could not load\" + Try again","role":"owner","part":"Bağlantıyla açılan talep · Request link"},{"id":"case-loading","label":"Bağlantıdaki talep okunuyor: \"Loading request...\"","role":"owner","part":"Bağlantıyla açılan talep · Request link"},{"id":"admin","label":"Admin · Daniel Brooks: bütün talepler","role":"admin","part":"Roller"},{"id":"single-type","label":"Yalnız izinleri okuyabilen rol: sekme yok, yalnız Time off","role":"custom","part":"Roller"},{"id":"employee","label":"Employee Requests'e giremez: aynı adreste erişim kartı (You don't have access to Requests)","role":"employee","part":"Roller"},{"id":"phone","label":"Telefonda kart listesi ve kayan sekmeler (sağdaki telefon çerçevesi)","role":"owner","part":"Roller"},{"id":"loading","label":"Yükleniyor: listenin gri iskeleti","role":"owner","part":"Sayfa durumları"},{"id":"error","label":"İzin talepleri okunamadı: listede çerçevesiz kart We couldn't load requests + Try again (Shift changes görünmeye devam eder)","role":"owner","part":"Sayfa durumları"},{"id":"no-access","label":"Erişim yok kartı","role":"manager","part":"Sayfa durumları"},{"id":"location","label":"Lokasyon süzgeci: yalnız Uptown","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"search","label":"Arama: \"Maria\"","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"search-empty","label":"Sonuç yok: \"No requests match these filters.\"","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"tab-empty","label":"Sekmede sonuç yok: \"No shift change requests match these filters.\"","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"closed","label":"Kapanmış talepler listenin altında (Approved, Denied, Revoked)","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"pagination","label":"Sayfalama: 50'lik sayfa, 2. sayfa (54 talep)","role":"owner","part":"Liste · sekmeler, süzgeç, arama"},{"id":"timeoff-activity","label":"İzin çekmecesi · Activity","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"deep-link","label":"?request= bağlantısıyla doğrudan açılış (Emma Wilson)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"open-in-schedule","label":"\"Open in Schedule\" bağlantısı (Schedule'a götürür)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"approve-dialog","label":"Owner tek başına onaylar: \"Approve time off?\" (açılacak vardiya sayısı)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"approved","label":"Onaylandı: \"Time off approved.\", talep listede kapandı","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"manager-vote","label":"Müdür oyu: \"Your approval is saved. 1 location still to approve.\", sonra View-only","role":"manager","part":"İzin çekmecesi · Review request"},{"id":"manager-final","label":"Son onay müdürde: \"Approve time off?\" penceresi (Jake Thompson)","role":"manager","part":"İzin çekmecesi · Review request"},{"id":"deny-confirm","label":"Reddetme: iki tık (Confirm deny)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"denied","label":"Reddedildi: \"Time off denied.\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"deny-error","label":"Reddetme hatası: çekmecede hata satırı","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"changed","label":"Talep değişmiş: \"This request changed. Review it again.\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"cancellation","label":"İptal talebi: \"Cancellation\" (Jake Thompson), Decline / Approve","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"cancellation-approve","label":"İptali onaylama: \"Approve cancellation?\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"revoke","label":"Onaylı izni geri alma: \"Revoke time off?\" (Reason zorunlu)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"revoked","label":"Geri alındı: \"Time off revoked.\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"shorten","label":"Shorten time off formu (Maria Lopez)","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"shortened","label":"Kısaltıldı: \"Maria's time off is shorter…\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"shorten-none","label":"Başlamış izin: \"No future approved hours remain.\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"view-only","label":"Kapanmış talep, müdür: \"View-only access\"","role":"manager","part":"İzin çekmecesi · Review request"},{"id":"fallback","label":"Lokasyonun müdürü yok: \"No location manager can decide. An admin or owner decides.\"","role":"owner","part":"İzin çekmecesi · Review request"},{"id":"cover-give","label":"Adayı seç: \"Give shift to …\"","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-given","label":"Vardiya verildi: toast","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-decline","label":"Adayı reddetme: gerekçe ve iki tık","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-close","label":"Talebi kapatma: gerekçe ve onay (Close request)","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-none","label":"Aday yok: \"Nobody has asked yet…\", \"Nobody to approve\"","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-closed","label":"Kapanmış cover/open: \"Approved. The shift is … now.\"","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-check-failed","label":"Uygunluk denetlenemedi: \"Eligibility could not be checked…\"","role":"owner","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"cover-manager","label":"Müdür: kendi lokasyonundaki cover'ı tek başına verir (Give shift to Jake)","role":"manager","part":"Cover ve Open shift çekmecesi · Review shift change"},{"id":"swap-approved","label":"Takas onaylandı: \"Swap approved.\"","role":"owner","part":"Takas penceresi · Swap request"},{"id":"swap-decline","label":"Takas reddi: gerekçe ve iki tık \"Decline swap\"","role":"owner","part":"Takas penceresi · Swap request"},{"id":"swap-blocked","label":"Takas engeli: Sophie Martin o gün izinli, Approve pasif","role":"owner","part":"Takas penceresi · Swap request"},{"id":"swap-other-manager","label":"Müdür: \"Another location's manager also approves.\" (Uptown henüz onaylamadı)","role":"manager","part":"Takas penceresi · Swap request"},{"id":"swap-manager","label":"Müdür: Uptown onayladı, son karar Rachel'da (Approve etkin)","role":"manager","part":"Takas penceresi · Swap request"},{"id":"case-link","label":"?case= bağlantısıyla doğrudan açılış (bildirimden; Maria Lopez'in cover talebi)","role":"owner","part":"Takas penceresi · Swap request"},{"id":"case-missing","label":"Bulunamayan ?case=: müdürün eski Shift Hub görünümü","role":"owner","part":"Takas penceresi · Swap request"}]};
+  var G = { sc: D.scenarios[0] ? D.scenarios[0].id : "", role: null, layout: "auto", zoom: "fit", part: "0" };
+  var partNames = []; D.scenarios.forEach(function (s) { if (partNames.indexOf(s.part) < 0) partNames.push(s.part); });
+  function partOf(id) { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === id) return String(partNames.indexOf(D.scenarios[i].part)); return "0"; }
+  // A bare #scenario-id in the page link opens that scenario.
+  try { var wanted = decodeURIComponent(location.hash.replace(/^#/, "")); if (wanted && D.scenarios.some(function (s) { return s.id === wanted; })) { G.sc = wanted; } } catch (e) {}
+  G.part = partOf(G.sc);
+  try { var saved = JSON.parse(localStorage.getItem("nf.pages.view") || "{}"); if (saved.layout) G.layout = saved.layout; if (saved.zoom) G.zoom = saved.zoom; } catch (e) {}
+  var frames = { desktop: null, phone: null };
+  function scenario() { for (var i = 0; i < D.scenarios.length; i++) if (D.scenarios[i].id === G.sc) return D.scenarios[i]; return D.scenarios[0]; }
+  function role() { var s = scenario(); return G.role || (s && s.role) || (D.roles[0] || ""); }
+  function mount() {
+    ["desktop", "phone"].forEach(function (name) {
+      var host = document.getElementById(name === "desktop" ? "desk" : "phone");
+      host.textContent = "";
+      var f = document.createElement("iframe");
+      var params = "s=" + encodeURIComponent(D.no) + "&sc=" + encodeURIComponent(G.sc) + "&role=" + encodeURIComponent(role()) + "&frame=" + name + "&n=" + Date.now();
+      f.name = "pages:" + params;
+      f.title = (name === "desktop" ? "Masaüstü" : "Telefon") + " görünümü, 3.3 Requests";
+      f.src = "app.html#" + params;
+      host.appendChild(f);
+      frames[name] = f;
+    });
+    sync();
+  }
+  // Each frame's saves and moves go to the other frame.
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (!m || m.nf !== "pages") return;
+    var other = event.source === (frames.desktop && frames.desktop.contentWindow) ? frames.phone
+      : event.source === (frames.phone && frames.phone.contentWindow) ? frames.desktop : null;
+    if (other && other.contentWindow) other.contentWindow.postMessage(m, "*");
+  });
+  function sync() {
+    document.querySelectorAll("[data-g]").forEach(function (b) {
+      var g = b.dataset.g, k = b.dataset.k;
+      var on = g === "role" ? role() === k : G[g] === k;
+      b.setAttribute("aria-pressed", String(on));
+    });
+    document.querySelectorAll("[data-part]").forEach(function (row) { row.hidden = row.dataset.part !== G.part; });
+  }
+  function fit() {
+    var box = document.getElementById("frames");
+    var width = box.clientWidth;
+    var side = G.layout === "side" || (G.layout === "auto" && (width - 410 - 24) / 1440 >= 0.62);
+    box.dataset.layout = side ? "side" : "stack";
+    var deskFit = document.getElementById("desk-fit");
+    var deskWidth = side ? width - 410 - 24 : width;
+    var desk = document.getElementById("desk");
+    var scale = G.zoom === "full" ? 1 : Math.min(1, deskWidth / 1440);
+    desk.style.transform = scale < 1 ? "scale(" + scale + ")" : "";
+    deskFit.style.width = Math.max(0, deskWidth) + "px";
+    deskFit.style.height = Math.round(900 * scale) + "px";
+    deskFit.classList.toggle("scroll", G.zoom === "full" && deskWidth < 1440);
+    document.getElementById("desk-scale").textContent = "· %" + Math.round(scale * 100);
+    var phoneFit = document.getElementById("phone-fit");
+    var phone = phoneFit.firstElementChild;
+    var pScale = Math.min(1, width / 410);
+    phone.style.transform = pScale < 1 ? "scale(" + pScale + ")" : "";
+    phoneFit.style.width = Math.round(410 * pScale) + "px";
+    phoneFit.style.height = Math.round(864 * pScale) + "px";
+  }
+  document.addEventListener("click", function (event) {
+    var b = event.target.closest && event.target.closest("[data-g]");
+    if (b && !b.disabled) {
+      var g = b.dataset.g, k = b.dataset.k;
+      if (g === "sc") { G.sc = k; G.role = null; mount(); }
+      else if (g === "part") { G.part = k; var first = null; for (var i = 0; i < D.scenarios.length; i++) if (String(partNames.indexOf(D.scenarios[i].part)) === k) { first = D.scenarios[i].id; break; } if (first) { G.sc = first; G.role = null; mount(); } else sync(); }
+      else if (g === "role") { G.role = k; mount(); }
+      else { G[g] = k; try { localStorage.setItem("nf.pages.view", JSON.stringify({ layout: G.layout, zoom: G.zoom })); } catch (e) {} sync(); fit(); }
+    }
+  });
+  document.getElementById("restart").addEventListener("click", mount);
+  try { new ResizeObserver(fit).observe(document.querySelector(".wrap")); } catch (e) { window.addEventListener("resize", fit); }
+  mount();
+  fit();
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "PAGES · uygulamanın güncel ekranları", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

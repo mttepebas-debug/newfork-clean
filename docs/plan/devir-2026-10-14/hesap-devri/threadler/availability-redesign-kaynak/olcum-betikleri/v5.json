@@ -1,0 +1,16 @@
+[
+ {"name":"v5-mine","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000},
+ {"name":"v5-type","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"#v5-q"},{"press":"w"},{"eval":"(()=>{const i=document.getElementById('v5-q');i.value='weekdays before 10am';i.dispatchEvent(new Event('input',{bubbles:true}))})()"}]},
+ {"name":"v5-added","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"eval":"(()=>{const i=document.getElementById('v5-q');i.focus();i.value='weekdays before 10am';i.dispatchEvent(new Event('input',{bubbles:true}))})()"},{"press":"Enter","after":300}]},
+ {"name":"v5-hover","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"hover":".v5-rule[data-rk='r:1080-1560']"}]},
+ {"name":"v5-edit","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"[data-act='v5-edit'][data-k='r:1080-1560']"}]},
+ {"name":"v5-new","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1100,"steps":[{"click":"[data-act='v5-new']"},{"click":"[data-act='v5-bq'][data-v='we']"},{"click":"[data-act='v5-bwhen'][data-v='between']"}]},
+ {"name":"v5-del","hash":"v=5&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"[data-act='v5-del'][data-k='all']"}]},
+ {"name":"v5-phone","hash":"v=5&s=mine&view=phone&about=0","w":1440,"h":900},
+ {"name":"v5-phone-sheet","hash":"v=5&s=mine&view=phone&about=0","w":1440,"h":900,"steps":[{"click":".phone [data-act='v5-edit'][data-k='r:1080-1560']"}]},
+ {"name":"v5-team","hash":"v=5&s=team&view=desk&about=0","w":1440,"h":900},
+ {"name":"v5-drawer","hash":"v=5&s=drawer&view=both&about=0","w":1700,"h":900},
+ {"name":"v5-types","hash":"v=5&s=mine&view=both&mode=types&about=0","w":1700,"h":1000},
+ {"name":"v5-about","hash":"v=5&s=mine&view=desk&about=1","w":1440,"h":900},
+ {"name":"v5-onboard","hash":"v=5&s=onboard&view=desk&about=0","w":1440,"h":1000}
+]

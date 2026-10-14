@@ -1,0 +1,320 @@
+<title>Newfork sayfa atlası</title>
+<style>
+/* Layout: one reading column; groups of page cards, two across on wide screens. Colors follow the app's own --theme tokens. */
+:root {
+  --bg: #f4f5f3; --surface: #ffffff; --text: #17221e; --muted: #5f6b66; --border: #dce3df;
+  --accent: #176954; --accent-soft: #e7f1ed; --planned: #8a5a00; --planned-soft: #fff7e2;
+  --font: Inter, "Segoe UI", system-ui, -apple-system, sans-serif;
+  --mono: ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --bg: #121815; --surface: #1a221e; --text: #e6ece9; --muted: #a3b0aa; --border: #2c3833;
+  --accent: #6cc7a9; --accent-soft: #1f3a31; --planned: #e8b65a; --planned-soft: #3a2f17; color-scheme: dark; } }
+:root[data-theme="dark"] {
+  --bg: #121815; --surface: #1a221e; --text: #e6ece9; --muted: #a3b0aa; --border: #2c3833;
+  --accent: #6cc7a9; --accent-soft: #1f3a31; --planned: #e8b65a; --planned-soft: #3a2f17; color-scheme: dark; }
+body { background: var(--bg); color: var(--text); font: 15px/1.5 var(--font); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 32px 56px; display: grid; gap: 28px; }
+header { display: grid; gap: 8px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; margin: 0; letter-spacing: -0.02em; text-wrap: balance; }
+.lede { margin: 0; max-width: 68ch; color: var(--muted); }
+.how { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; display: grid; gap: 8px; }
+.how h2 { font-size: 14px; margin: 0; }
+.how ol { margin: 0; padding-left: 20px; display: grid; gap: 4px; max-width: 75ch; }
+.meta { font-size: 13px; color: var(--muted); }
+section { display: grid; gap: 12px; }
+section > h2 { font-size: 13px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+ul.pages { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 460px), 1fr)); gap: 12px; }
+.page { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; display: grid; gap: 8px; align-content: start; min-width: 0; }
+.page.is-planned { background: transparent; border-style: dashed; }
+.page-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.page h3 { font-size: 17px; margin: 0; }
+.page h3 a { color: var(--accent); text-decoration: none; }
+.page h3 a:hover { text-decoration: underline; }
+.page h3 a::after { content: " ↗"; font-size: 13px; }
+a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
+.what { margin: 0; }
+dl { margin: 0; display: grid; gap: 4px; font-size: 13px; }
+dl > div { display: grid; grid-template-columns: 82px 1fr; gap: 8px; }
+dt { color: var(--muted); }
+dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+code, .mono { font-family: var(--mono); font-size: 12px; }
+code { background: var(--accent-soft); padding: 1px 5px; border-radius: 4px; margin-right: 2px; }
+.roles { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; }
+.chip { font-size: 12px; font-weight: 600; padding: 1px 8px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.chip-planned { background: var(--planned-soft); color: var(--planned); }
+.note { color: var(--muted); }
+</style>
+<div class="wrap">
+  <header>
+    <p class="eyebrow">Newfork · Harbor &amp; Vine demo</p>
+    <h1>Newfork sayfa atlası</h1>
+    <p class="lede">Uygulamanın her sayfası, gerçek uygulama koduyla ve sahte verilerle (Harbor &amp; Vine: iki şube, 16 çalışan) burada çalışır. Sayfayı açıp dener, yorum bırakır ya da yanında açık tutup koordinatöre yazarsın. Kod main'e girdikçe sayfalar aynı bağlantıda güncellenir.</p>
+    <p class="meta">18 sayfa yayında · kaynak main 021f82e0, aac05f76 · güncelleme 2026-10-10</p>
+  </header>
+  <div class="how">
+    <h2>Nasıl kullanılır</h2>
+    <ol>
+      <li>Sayfanın adına tıkla; yeni sekmede uygulamanın o ekranı açılır.</li>
+      <li>Sayfanın en üstünde, ortadaki küçük <strong>Atlas</strong> düğmesinden kim olarak gireceğini seç (Owner, Manager, Employee). Ekran o rolün gördüğü gibi değişir.</li>
+      <li>Yaptığın değişiklikler yalnız senin tarayıcında kalır. Aynı düğmedeki <strong>Reset demo data</strong> her şeyi baştaki hâline döndürür.</li>
+      <li>Yorumu sayfanın kendisine bırak; ya da sayfayı açık tutup proje sohbetinde hangi sayfadan söz ettiğini yazman yeterli.</li>
+    </ol>
+  </div>
+  
+  <section aria-labelledby="g-manage">
+    <h2 id="g-manage">Yönetici sayfaları</h2>
+    <ul class="pages">
+      <li class="page" id="schedule">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3" target="_blank" rel="noopener">Schedule</a></h3>
+          
+        </div>
+        <p class="what">Haftalık vardiya ızgarası: düzenleme, taslak, yayınlama, Templates, Auto-fill, Export. Ayrı bir test sayfasıdır, kendi thread'i günceller.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Schedule (yalnız bilgisayarda)</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/schedule</code> <code>/app/schedule/export</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main 021f82e0</span> · 2026-10-09</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="requests">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/UrzghhjFWPaARLiMvVDtHh" target="_blank" rel="noopener">Requests</a></h3>
+          
+        </div>
+        <p class="what">İzin talepleri (incelenecek / kapanan), vardiya değişim talepleri; onayla, reddet, kısalt, geri al.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Schedule → Requests</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/schedule/requests</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span> <span class="note">Manager yalnız kendi şubesini görür.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="employees">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/Goxfpr99qkgD2BvhNzgqvq" target="_blank" rel="noopener">Employees</a></h3>
+          
+        </div>
+        <p class="what">Çalışan listesi (All, Invited, Onboarding, Needs Attention, Active, Archived), çalışan çekmecesi, davet, rol, işten çıkarma, arşiv, yeni çalışan ekleme.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Employees</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/employees</code> <code>/app/employees/archive</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span> <span class="note">Manager kısmen düzenler.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="employee-documents">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/NDT8Pknf8cBDYL5Xfg57FY" target="_blank" rel="noopener">Employee Documents</a></h3>
+          
+        </div>
+        <p class="what">Çalışanların belgeleri: inceleme, onay, red, muafiyet, süre uzatma.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Employees → Documents</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/employees/documents</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span> <span class="note">Manager göremez.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="settings">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/2wDz2MV52Z7Yh2ba9wCwM3" target="_blank" rel="noopener">Settings</a></h3>
+          
+        </div>
+        <p class="what">General, Locations, Jobs, Notifications, Schedule rules, Conflict handling, Shift catalog, Roles &amp; permissions, Documents, Acknowledgements, Support.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü altı → Settings</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/settings/…</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span> <span class="note">Manager giremez.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="important-dates">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/GVghwvEPXvnuXNcrK8rjQp" target="_blank" rel="noopener">Important Dates</a></h3>
+          
+        </div>
+        <p class="what">Tatiller, kapalı günler, etkinlikler ve izin yasağı günleri; ekle, düzenle, yayından kaldır, arşivle.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Important Dates</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/important-dates</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="workspace">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/15R5uKzv3vk3YXqHuCE4eW" target="_blank" rel="noopener">Workspace</a></h3>
+          
+        </div>
+        <p class="what">Yöneticinin ana sayfası: yapılacaklar, kurulum listesi, bekleyen işler.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Workspace</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/workspace</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="availability">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/QrcLQxWwK8AXa1jsgP2uxv" target="_blank" rel="noopener">Availability</a></h3>
+          
+        </div>
+        <p class="what">Ekibin haftalık müsaitliği ve tercihleri.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Availability</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/availability</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+    </ul>
+  </section>
+  <section aria-labelledby="g-employee">
+    <h2 id="g-employee">Çalışan görünümü</h2>
+    <ul class="pages">
+      <li class="page" id="shift-hub">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/Am1yHdyPPjZoWGUmNPgWjC" target="_blank" rel="noopener">Shift Hub</a></h3>
+          
+        </div>
+        <p class="what">Çalışanın vardiya değişim merkezi: açık vardiyalar, takas, bırakma, devralma teklifleri.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Çalışan menüsü → Shift Hub (telefonda Requests)</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/employee-hub/shift-hub</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Employee</span> <span class="note">Yönetici Employee view ile görür.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="employee-hub">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/LhfGZAHzgp3SqbocbDNjEj" target="_blank" rel="noopener">Employee Home</a></h3>
+          
+        </div>
+        <p class="what">Çalışanın ana sayfası, kendi programı, izin talebi ve iptali, My Availability.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Çalışan menüsü → Home, Schedule, My Availability</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/employee-hub</code> <code>/app/employee-hub/schedule</code> <code>/app/employee-hub/my-availability</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Employee</span> <span class="note">Yönetici Employee view ile görür.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+    </ul>
+  </section>
+  <section aria-labelledby="g-shared">
+    <h2 id="g-shared">Herkesin sayfaları</h2>
+    <ul class="pages">
+      <li class="page" id="announcements">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/G8fpejMn36HA5JdCpXNZi2" target="_blank" rel="noopener">Announcements</a></h3>
+          
+        </div>
+        <p class="what">Duyurular: yönetici yazar ve yayınlar, çalışan okur ve onaylar.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Announcements</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/announcements</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span><span class="chip">Employee</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="notifications">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/7oqKomeCbuqhZXPfda2b5t" target="_blank" rel="noopener">Notifications</a></h3>
+          
+        </div>
+        <p class="what">Bildirim kutusu: okunmamış, kategoriler, bildirimden işe gitme.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü → Notifications</dd></div>
+          <div><dt>Adres</dt><dd><code>/app/notifications</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span><span class="chip">Employee</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="account">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/SGeFtkFq97b5YV814uY32d" target="_blank" rel="noopener">Account</a></h3>
+          
+        </div>
+        <p class="what">Profil, güvenlik, gelen kutusu, tercihler, bildirim tercihleri, workspace'ler, kişisel belgeler.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Sol menü altı → Account</dd></div>
+          <div><dt>Adres</dt><dd><code>/account/profile</code> <code>/account/…</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span><span class="chip">Employee</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+    </ul>
+  </section>
+  <section aria-labelledby="g-setup">
+    <h2 id="g-setup">Kurulum ve giriş</h2>
+    <ul class="pages">
+      <li class="page" id="workspace-hub">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/1zBhzWpfYAsVnc76j5YUhF" target="_blank" rel="noopener">Workspace Hub</a></h3>
+          
+        </div>
+        <p class="what">Workspace seçme, bekleyen davetler, workspace durumu.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Girişten sonra ya da workspace değiştiriciden</dd></div>
+          <div><dt>Adres</dt><dd><code>/workspaces</code> <code>/workspaces/status</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span><span class="chip">Admin</span><span class="chip">Manager</span><span class="chip">Employee</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="owner-onboarding">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/3MhoAGmcutqR5MYNdQ5WBP" target="_blank" rel="noopener">Owner Setup</a></h3>
+          
+        </div>
+        <p class="what">Yeni workspace kurulum sihirbazı (owner).</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>İlk kurulum</dd></div>
+          <div><dt>Adres</dt><dd><code>/onboarding</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Owner</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="employee-onboarding">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/1V1ykz2BSCxtnTHrwQ7iwd" target="_blank" rel="noopener">Employee Welcome</a></h3>
+          
+        </div>
+        <p class="what">Davet edilen çalışanın karşılama ve kurulum adımları.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Davet bağlantısından sonra</dd></div>
+          <div><dt>Adres</dt><dd><code>/welcome/…</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"><span class="chip">Employee</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="sign-in">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/9tGUpcDFPjzhxx9ZDFVNv9" target="_blank" rel="noopener">Sign In</a></h3>
+          
+        </div>
+        <p class="what">Giriş, kayıt, parola sıfırlama, hesap kurtarma, davet kabulü.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Giriş yapmamış kişi</dd></div>
+          <div><dt>Adres</dt><dd><code>/sign-in</code> <code>/forgot-password</code> <code>/reset-password</code> <code>/account-recovery</code> <code>/accept-invite</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"> <span class="note">Giriş yapmamış herkes.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+      <li class="page" id="public">
+        <div class="page-head">
+          <h3><a href="https://claude.ai/artifact/JZRq8dL1yfn6pi5CFGTTdr" target="_blank" rel="noopener">Public Pages</a></h3>
+          
+        </div>
+        <p class="what">Privacy, Terms, Accessibility, Contact, Your privacy choices.</p>
+        <dl>
+          <div><dt>Nerede</dt><dd>Herkese açık</dd></div>
+          <div><dt>Adres</dt><dd><code>/privacy</code> <code>/terms</code> <code>/accessibility</code> <code>/contact</code> <code>/your-privacy-choices</code></dd></div>
+          <div><dt>Kim görür</dt><dd class="roles"> <span class="note">Herkes, giriş gerekmez.</span></dd></div>
+          <div><dt>Sürüm</dt><dd><span class="mono">main aac05f76</span> · 2026-10-10</dd></div>
+        </dl>
+      </li>
+    </ul>
+  </section>
+</div>

@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Workspace seçici varyantları</title>
+<style>
+/* Layout: a control bar on top, then the real app desktop frame beside the phone frame. */
+:root {
+  --bg: #f4f5f3; --surface: #ffffff; --ink: #17221e; --muted: #5d6a64; --line: #dce3df;
+  --accent: #176954; --accent-ink: #ffffff; --warn-bg: #fff7e2; --warn-line: #edcfa1; --bar: #1d2525; --bar-ink: #ffffff; --bar-line: #6b7a74;
+  --font: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141a18; --surface: #1c2421; --ink: #e8eeeb; --muted: #a3b0aa; --line: #2f3a36; --accent: #4fb394; --accent-ink: #0d1613; --warn-bg: #2c2618; --warn-line: #5c4a26; --bar: #0d1211; --bar-ink: #e8eeeb; --bar-line: #4c5a55; color-scheme: dark; } }
+:root[data-theme="dark"] { --bg: #141a18; --surface: #1c2421; --ink: #e8eeeb; --muted: #a3b0aa; --line: #2f3a36; --accent: #4fb394; --accent-ink: #0d1613; --warn-bg: #2c2618; --warn-line: #5c4a26; --bar: #0d1211; --bar-ink: #e8eeeb; --bar-line: #4c5a55; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+.wrap { padding-inline: 16px; padding-block: 0 32px; max-width: 1760px; margin: 0 auto; }
+.bar { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 10; display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin: 0 -16px; padding: 10px 16px; background: var(--bar); color: var(--bar-ink); font-size: 13px; }
+.group { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.group b { margin-right: 2px; font-weight: 700; letter-spacing: .02em; }
+.bar button { border: 1px solid var(--bar-line); border-radius: 6px; background: transparent; color: var(--bar-ink); padding: 6px 10px; font: inherit; font-weight: 700; cursor: pointer; }
+.bar button[aria-pressed="true"] { background: var(--bar-ink); color: var(--bar); border-color: var(--bar-ink); }
+.bar button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+h1 { margin: 20px 0 4px; font-size: 22px; line-height: 1.25; text-wrap: balance; }
+.lede { margin: 0 0 14px; max-width: 72ch; color: var(--muted); }
+.cols { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; margin-bottom: 16px; }
+.card { min-width: 0; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); padding: 14px 16px; }
+.card h2 { margin: 0 0 8px; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+.card ul { margin: 0; padding-left: 18px; display: grid; gap: 6px; }
+.card code { font-size: 12px; background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 4px; overflow-wrap: anywhere; }
+.variant { border-color: var(--warn-line); background: var(--warn-bg); }
+.variant h3 { margin: 0 0 6px; font-size: 16px; }
+.variant p { margin: 0 0 6px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 16px; align-items: start; }
+.frame-label { margin: 0 0 6px; color: var(--muted); font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; font-variant-numeric: tabular-nums; }
+.desk-box, .phone-box { position: relative; overflow: hidden; border: 1px solid var(--line); border-radius: 10px; background: #fff; }
+.phone-box { border-radius: 28px; border: 8px solid #1f2624; }
+.desk-box iframe, .phone-box iframe { position: absolute; top: 0; left: 0; border: 0; transform-origin: 0 0; background: #fff; }
+.toast { position: fixed; left: 50%; bottom: 18px; z-index: 50; max-width: min(560px, calc(100vw - 32px)); transform: translateX(-50%); border-radius: 8px; background: var(--bar); color: var(--bar-ink); padding: 10px 14px; font-size: 13px; box-shadow: 0 10px 30px rgb(0 0 0 / 25%); }
+@media (max-width: 1100px) { .cols, .stage { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="bar" role="toolbar" aria-label="Görünüm">
+    <div class="group" id="g-v"><b>Varyant</b>
+      <button type="button" data-v="orig">Original</button>
+      <button type="button" data-v="a">A · Kaldır</button>
+      <button type="button" data-v="b">B · Görünür seçici</button>
+      <button type="button" data-v="c">C · Hesap menüsünde</button>
+      <button type="button" data-v="d">D · Settings'in üstünde</button>
+    </div>
+    <div class="group" id="g-s"><b>Senaryo</b>
+      <button type="button" data-s="multi">3 workspace + 1 davet</button>
+      <button type="button" data-s="single">Tek workspace</button>
+    </div>
+    <div class="group" id="g-m"><b>Menü</b>
+      <button type="button" data-m="open">Açık</button>
+      <button type="button" data-m="closed">Kapalı</button>
+      <button type="button" data-m="rail">Daraltılmış ray</button>
+    </div>
+    <div class="group"><button type="button" id="reset">Baştan başlat</button></div>
+  </div>
+
+  <h1>Sol menünün tepesindeki workspace seçici</h1>
+  <p class="lede">Çerçevelerdeki uygulama, main'deki gerçek kodun (68a6eaef, 13 Ekim) PAGES kopyasından alınmış gerçek parçalardır: Owner Mert Tepebas, Harbor &amp; Vine demo verisi. Seçiciye, menüdeki satırlara ve telefonda More'a tıklayabilirsin; başka workspace'e geçiş iki çerçevede birlikte olur. Bağlantılar sayfa değiştirmez, nereye gideceğini altta söyler.</p>
+
+  <div class="cols">
+    <section class="card" aria-labelledby="h-today">
+      <h2 id="h-today">Bugün ne var</h2>
+      <ul>
+        <li><b>Ne:</b> sol menünün en üstünde, ☰ düğmesinin yanındaki workspace adı. Kod: <code>apps/web/src/shell/WorkspaceSwitcher.tsx</code>, menüye <code>apps/web/src/shell/AppShell.tsx</code> satır 313'te giriyor.</li>
+        <li><b>Neden gizli:</b> tek workspace'te sadece kalın bir yazı, tıklanmıyor (satır 105–110). İkinci workspace ya da davet olunca düğmeye dönüşüyor ama çerçevesi ve zemini yok, yalnız fareyle üstüne gelince beliriyor; tek ipucu 15 piksellik ⇅ işareti (<code>apps/web/src/styles.css</code> satır 2956–2975).</li>
+        <li><b>Hata:</b> açılan menü 264 piksel, sol menü 288 piksel ve kenarı kesiyor (<code>overflow: hidden</code>, styles.css satır 2919–2925). Menünün sağ kenarı ve davetteki yeşil Answer düğmesi yarım görünüyor. Original'de "Açık"a bas, görürsün.</li>
+        <li><b>Kim görür:</b> masaüstünde owner, admin, manager ve masaüstündeki çalışan. Telefonda sol menü yok (720 pikselin altında gizli); müdür telefonda workspace değiştiremiyor, çalışan More → Switch workspace ile Account › Workspaces'e gidiyor.</li>
+      </ul>
+    </section>
+    <section class="card" aria-labelledby="h-overlap">
+      <h2 id="h-overlap">Aynı işi yapan yerler</h2>
+      <ul>
+        <li><b>Account › Workspaces</b> (<code>/account/workspaces</code>, <code>apps/web/src/account/WorkspacesPage.tsx</code>): bütün workspace'ler, Open düğmesi, davetler, varsayılan workspace, kapatma, sahiplik devri, Create workspace. Asıl yönetim yeri.</li>
+        <li><b>Workspace Hub</b> (<code>/workspaces</code>, <code>apps/web/src/shell/WorkspaceHubPage.tsx</code>): girişte birden çok workspace varsa açılan seçim ekranı; aynı liste, Open ve davetler.</li>
+        <li>Seçicinin "All workspaces" bağlantısı ve daraltılmış raydaki harf Hub'a gidiyor; çalışanın telefondaki "Switch workspace"i ise Account › Workspaces'e. Aynı iş için iki ayrı liste var.</li>
+        <li>Seçicinin kendine ait tek işi: sayfadan çıkmadan tek tıkla geçiş ve davet sayısı. Davet sayısı Account satırında zaten görünüyor.</li>
+      </ul>
+    </section>
+  </div>
+
+  <section class="card variant" aria-live="polite" id="vnote"></section>
+
+  <div class="stage" style="margin-top:16px">
+    <div style="min-width:0">
+      <p class="frame-label">Masaüstü · 1440 × 900</p>
+      <div class="desk-box" id="desk-box"><iframe id="desk" title="Masaüstü uygulama"></iframe></div>
+    </div>
+    <div>
+      <p class="frame-label">Telefon · 390 × 844 · More açık</p>
+      <div class="phone-box" id="phone-box"><iframe id="phone" title="Telefon uygulama"></iframe></div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="text/plain" id="d-css">__CSS__</script>
+<script type="text/plain" id="d-vcss">__VCSS__</script>
+<script type="text/plain" id="d-desk">__DESK__</script>
+<script type="text/plain" id="d-rail">__RAIL__</script>
+<script type="text/plain" id="d-phone">__PHONE__</script>
+<script type="text/plain" id="d-js">__JS__</script>
+<script>
+(function () {
+  var read = function (id) { return document.getElementById(id).textContent.replace(/<\\\/(script)/gi, '</$1'); };
+  var CSS = read('d-css'), VCSS = read('d-vcss'), DESK = read('d-desk'), RAIL = read('d-rail'), PHONE = read('d-phone'), JS = read('d-js');
+  var ALL = [
+    { id: 'hv', name: 'Harbor & Vine', role: 'Owner' },
+    { id: 'sl', name: 'Saltline Oyster Bar', role: 'Admin' },
+    { id: 'bk', name: 'Harbor & Vine Brooklyn', role: 'Owner', unfinished: true }
+  ];
+  var NOTES = {
+    orig: ['Original: bugünkü hâl', 'Kod değişmez. Ad yazı gibi duruyor, menü sol menünün kenarında kesiliyor, "All workspaces" Workspace Hub\'a gidiyor. Telefonda müdür için geçiş yok.'],
+    a: ['A · Kaldır', 'Seçici gider; tepede yalnız workspace adı kalır, daraltılmış rayda hiçbir şey kalmaz. Geçiş tek yerden: Account › Workspaces (davet sayısı Account satırında zaten var). Artısı: tek liste, en az kod, kesilen menü hatası kökten gider. Eksisi: geçiş için iki tık ve sayfa değişimi; birden çok restoranı olan owner için yavaş. Telefon değişmez.'],
+    b: ['B · Görünür seçici', 'Aynı yerde kalır ama gerçek bir düğme olur: çerçeveli kutu, workspace\'in harf rozeti, adı ve rolü, ⇅. Tek workspace\'te de tıklanır (boş liste + Manage workspaces). Menü düğmenin altına bağlı açılır, artık kesilmez; altta "All workspaces" yerine Account › Workspaces\'e giden "Manage workspaces". Daraltılmış rayda harf rozeti aynı menüyü sağa açar. Telefonda More\'un en üstüne aynı listeyi açan satır eklenir (müdür telefonda da geçiş yapar). Artısı: bugüne en yakın, hızlı geçiş, tek liste. Eksisi: tek workspace\'li kişi için de yer kaplar.'],
+    d: ['D · Settings\'in üstünde (Mert, 13 Ekim sabah 7:05)', 'Seçici tepeden kalkar; sol menünün altında, Settings\'in hemen üstünde öbür satırlarla aynı ölçüde bir satır olur: harf rozeti, workspace adı, ⇅. Davet sayısı bugünkü gibi Account satırında kalır (iki yerde aynı sayı olmasın diye). Tek workspace\'te de tıklanır. Menü satırın üstüne doğru açılır ve artık kesilmez; içeriği bugünküyle aynı (You are in, Switch to, davet ve Answer, All workspaces). Daraltılmış rayda rozet kalır, menü sağa açılır. Tepede ☰'nin yanında ad sade yazı olarak kalır (Mert, sabah 7:22). Telefon değişmez.'],
+    c: ['C · Hesap menüsünde', 'Tepede yalnız workspace adı kalır. Sol alttaki Account satırı bir düğmeye döner (Mert Tepebas, altında workspace adı); tıklayınca yukarı doğru menü açılır: kim olduğun, workspace listesi ve davet, Manage workspaces, Account settings, Sign out. Sign out satırı menünün içine taşınır. Telefonda More\'daki Account satırı aynı listeyi açar. Artısı: hesapla ilgili her şey tek yerde, menü sadeleşir (tasarım canvas\'ındaki öneri, BL-073). Eksisi: geçiş eskisinden bir adım daha gizli; Account sayfasına gitmek de bir tık uzar.']
+  };
+  var S = { v: 'd', s: 'multi', m: 'open', cur: 'hv' };
+  var toastEl = document.getElementById('toast'), toastTimer = 0;
+  var toast = function (t) { toastEl.textContent = t; toastEl.hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(function () { toastEl.hidden = true; }, 3600); };
+  var docFor = function (frame) {
+    var ws = S.s === 'multi' ? ALL : [ALL[0]];
+    var V = { v: S.v, frame: frame, ws: ws, inv: S.s === 'multi' ? [{ name: 'Cedar & Smoke BBQ' }] : [], cur: S.cur, collapsed: frame === 'desk' && S.m === 'rail', openMenu: S.m !== 'closed', phoneSheet: true };
+    var shell = frame === 'phone' ? PHONE : (V.collapsed ? RAIL : DESK);
+    return '<!doctype html><html lang="en" data-theme="light" style="color-scheme:light"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><style>' + CSS + '</style><style>' + VCSS + '</style></head><body><div id="root">' + shell + '</div><script>window.__V=' + JSON.stringify(V) + ';<\/script><script>' + JS + '<\/script></body></html>';
+  };
+  var render = function () {
+    ['g-v', 'g-s', 'g-m'].forEach(function (g) {
+      document.querySelectorAll('#' + g + ' button').forEach(function (b) {
+        var k = b.dataset.v ? 'v' : b.dataset.s ? 's' : 'm';
+        b.setAttribute('aria-pressed', String(b.dataset[k] === S[k]));
+      });
+    });
+    var n = NOTES[S.v];
+    document.getElementById('vnote').innerHTML = '<h3>' + n[0] + '</h3><p>' + n[1] + '</p>';
+    document.getElementById('desk').srcdoc = docFor('desk');
+    document.getElementById('phone').srcdoc = docFor('phone');
+    fit();
+  };
+  var fit = function () {
+    var db = document.getElementById('desk-box'), d = document.getElementById('desk');
+    var w = db.clientWidth, sc = Math.min(1, w / 1440);
+    d.style.width = '1440px'; d.style.height = '900px'; d.style.transform = 'scale(' + sc + ')';
+    db.style.height = Math.round(900 * sc) + 'px';
+    var pb = document.getElementById('phone-box'), p = document.getElementById('phone');
+    var avail = Math.min(390, document.querySelector('.wrap').clientWidth - 16);
+    var ps = Math.min(0.82, avail / 390);
+    p.style.width = '390px'; p.style.height = '844px'; p.style.transform = 'scale(' + ps + ')';
+    pb.style.width = Math.round(390 * ps) + 16 + 'px'; pb.style.height = Math.round(844 * ps) + 16 + 'px';
+  };
+  document.querySelectorAll('.bar [data-v],.bar [data-s],.bar [data-m]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.dataset.v ? 'v' : b.dataset.s ? 's' : 'm';
+      S[k] = b.dataset[k];
+      if (k === 's') S.cur = 'hv';
+      render();
+    });
+  });
+  document.getElementById('reset').addEventListener('click', function () { S = { v: S.v, s: 'multi', m: 'open', cur: 'hv' }; render(); });
+  window.addEventListener('message', function (e) {
+    var m = e.data; if (!m || !m.__sw) return;
+    if (m.type === 'toast') toast(m.text);
+    if (m.type === 'collapse') { S.m = S.m === 'rail' ? 'closed' : 'rail'; render(); }
+    if (m.type === 'switch') { S.cur = m.id; S.m = 'closed'; var w = ALL.find(function (x) { return x.id === m.id; }); render(); toast('Maket: ' + w.name + ' açıldı; Workspace sayfasına dönülür.'); }
+  });
+  window.addEventListener('resize', fit);
+  render();
+})();
+</script>
+</body>
+</html>

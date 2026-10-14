@@ -1,0 +1,302 @@
+<title>Requests Warnings Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one column; each block opens with a scenario card, then today's screen and five versions,
+   all drawn on the one-table Requests (EKRAN-02 C1). Deliberately single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --surface-muted: #f0f3f1;
+  --text: #17221e;
+  --body: #46514d;
+  --muted: #66716c;
+  --muted-strong: #50605a;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --frame: #d7dcda;
+  --head-bg: #e6ece8;
+  --head-line: #d3dbd6;
+  --head-text: #4f5d57;
+  --row-line: #e2e6e4;
+  --accent: #176954;
+  --selected: #e7f1ed;
+  --warn: #8a5a00;
+  --warn-soft: #fff7e2;
+  --warn-border: #e8cf98;
+  --warn-text: #5f491f;
+  --warn-bar: #e0a63a;
+  --warn-hatch: #f5dfa9;
+  --danger: #a43830;
+  --danger-soft: #fff0ee;
+  --green-soft: #e7f1ed;
+  --green-text: #176b4e;
+  --track-a: #dfe7e3;
+  --track-b: #cfe3da;
+  --track-bg: #eceeec;
+  --disabled-text: #9aa4a0;
+  --shadow: rgba(23, 34, 30, 0.10);
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+h1 { margin: 0 0 6px; color: var(--text); font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0 0 6px; max-width: 72ch; color: var(--muted-strong); }
+.rule { margin: 0; max-width: 72ch; color: var(--muted); font-size: 13px; }
+section.part { margin-top: 48px; display: grid; gap: 22px; }
+.part > h2 { margin: 0; color: var(--text); font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+
+.scenario { display: grid; margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.scenario > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 11px 16px; border-top: 1px solid var(--row-line); }
+.scenario > div:first-child { border-top: 0; }
+.scenario dt { padding-top: 2px; color: var(--head-text); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.scenario dd { margin: 0; min-width: 0; color: var(--text); font-size: 13.5px; }
+.scenario dd b { font-weight: 600; }
+.scenario .problem dd { color: var(--danger); }
+
+.specs { display: grid; gap: 30px; }
+.spec { display: grid; gap: 10px; }
+.spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 30px; justify-content: center; padding: 2px 9px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.spec-head strong { color: var(--text); font-size: 15px; }
+.note { margin: 0; color: var(--muted-strong); font-size: 13px; }
+.note .plus { color: var(--accent); font-weight: 700; }
+.note .minus { color: var(--danger); font-weight: 700; }
+.stage { min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); overflow-x: auto; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.tabs { display: flex; gap: 22px; margin-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.tabs span { padding: 0 2px 9px; color: var(--muted-strong); font-weight: 500; }
+.tabs span.on { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px var(--accent); }
+.tabs b { margin-left: 5px; font-weight: 600; }
+.table { min-width: 720px; border: 1px solid var(--frame); border-radius: 7px; background: var(--surface); overflow: hidden; }
+.thead, .tr { display: grid; grid-template-columns: 27% 12% 24% 16% 13% 8%; align-items: center; }
+.thead { height: 40px; background: var(--head-bg); border-bottom: 1px solid var(--head-line); color: var(--head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.thead span, .tr > span { min-width: 0; padding: 0 14px; }
+.tr { min-height: 52px; border-top: 1px solid var(--row-line); color: var(--body); font-size: 13px; }
+.thead + .tr { border-top: 0; }
+.tr.sel { background: var(--selected); }
+.tr > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { display: flex; align-items: center; gap: 10px; }
+.mark { display: inline-grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.mark.sys { border-radius: 8px; background: var(--surface-soft); }
+.stack { display: grid; min-width: 0; }
+.stack strong { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.stack small { overflow: hidden; color: var(--muted-strong); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.type { display: inline-flex; align-items: center; gap: 6px; }
+.type.sys { color: var(--text); font-weight: 600; }
+.chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.chip.amber { background: var(--warn-soft); color: var(--warn); }
+.chip.green { background: var(--green-soft); color: var(--green-text); }
+.chip.red { background: var(--danger-soft); color: var(--danger); }
+.rev { text-align: right; color: var(--muted); }
+.rev .warnc { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-weight: 600; }
+.pill { display: inline-flex; margin-left: 6px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--muted-strong); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.child { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px 0 54px; border-top: 1px dashed var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px; border-top: 1px solid var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log time { margin-left: auto; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* The review drawer opens over the right side of the table in the app; here it sits under it, right-aligned. */
+.duo { display: grid; gap: 14px; }
+.drawer { justify-self: end; width: min(100%, 440px); display: grid; gap: 12px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px var(--shadow); }
+.drawer-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.drawer-top small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.drawer-top h4 { margin: 2px 0 0; color: var(--text); font-size: 17px; }
+.panel { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
+.panel p { margin: 0; font-size: 13px; }
+.eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+.panel h5 { margin: 0; color: var(--text); font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: 600 13px var(--font); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn[disabled] { border-color: var(--row-line); background: var(--surface-muted); color: var(--disabled-text); }
+.elig { padding-left: 11px; border-left: 3px solid var(--danger); color: var(--danger); font-size: 13px; }
+.elig strong { color: var(--text); }
+.elig ul { margin: 4px 0 0; padding-left: 18px; }
+.callout { display: grid; gap: 5px; padding: 11px 13px; border: 1px solid var(--warn-border); border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 12.5px; }
+.callout-head { display: flex; align-items: center; gap: 7px; color: var(--warn); font-size: 13px; font-weight: 700; }
+.callout ul { margin: 0; padding-left: 20px; }
+.checks { width: 100%; border-collapse: collapse; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; }
+.checks th { padding: 6px 10px; background: var(--head-bg); color: var(--head-text); font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
+.checks td { padding: 7px 10px; border-top: 1px solid var(--row-line); }
+.checks td.short { color: var(--warn); font-weight: 600; }
+.checks td.ok { color: var(--accent); }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--warn); }
+.dot.ok { background: var(--accent); }
+.gauge { display: grid; gap: 5px; }
+.gauge-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.gauge-top span:last-child { color: var(--warn); font-weight: 600; }
+.bar { position: relative; height: 8px; border-radius: 999px; background: var(--track-bg); }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--warn-bar); }
+.gauge small { color: var(--muted); font-size: 11.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--warn-border); border-radius: 999px; background: var(--warn-soft); color: var(--warn-text); font-size: 12px; font-weight: 600; }
+.foot { color: var(--muted); font-size: 12px; }
+.lane { display: grid; gap: 5px; }
+.lane-name { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.lane-name strong { color: var(--text); }
+.lane-name span { color: var(--warn); font-weight: 600; }
+.track { display: grid; grid-template-columns: 2fr 1fr 2fr; height: 24px; font-size: 11px; font-weight: 600; }
+.seg { display: flex; align-items: center; justify-content: center; padding: 0 5px; overflow: hidden; white-space: nowrap; color: var(--text); }
+.seg.a { border-radius: 6px 0 0 6px; background: var(--track-a); }
+.seg.b { border-radius: 0 6px 6px 0; background: var(--track-b); }
+.seg.gap { background: repeating-linear-gradient(135deg, var(--warn-soft) 0 5px, var(--warn-hatch) 5px 7px); color: var(--warn-text); border-block: 1px solid var(--warn-border); }
+.ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; }
+  .stage { padding: 12px; }
+  h1 { font-size: 24px; }
+  .scenario > div { grid-template-columns: 1fr; gap: 2px; }
+}
+</style>
+
+<div class="wrap">
+  <h1>Requests: two warnings to choose</h1>
+  <p class="lead">Both blocks are drawn on the new Requests: one table for time off and every shift change. Each block starts with the situation, then today's screen, then five versions. The data is the same in every version, so only the design changes. Pick one per block.</p>
+  <p class="rule">Built in the app's own type and colours. The screens are drawn copies; nothing here is live.</p>
+
+  <section class="part" aria-labelledby="g2">
+    <h2 id="g2">1. Travel and rest warning on a shift swap</h2>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>Needs review</b> sekmesi → Ali'nin <b>Swap</b> satırı → satıra tıklayınca sağda açılan inceleme penceresi → "IF APPROVED" bölümü.</dd></div>
+      <div><dt>Kim bakıyor</dt><dd>Kadıköy müdürü <b>Ayşe</b>. Karar onun.</dd></div>
+      <div><dt>Ne oluyor</dt><dd><b>Ali</b>, Çarşamba 14 Ekim Kadıköy 3:30–11:00 PM vardiyasını <b>Deniz</b>'in Cuma 16 Ekim Beşiktaş 7:30 AM–3:00 PM vardiyasıyla değiştirmek istiyor; Deniz kabul etti. Onaylanırsa iki sorun çıkıyor. <b>Deniz</b> Çarşamba Beşiktaş'ta 3:00 PM'de çıkıp 3:30 PM'de Kadıköy'de başlıyor: yol için 30 dk kalıyor, kural 45 dk. <b>Ali</b> Perşembe Kadıköy'ü 11:30 PM'de kapatıp Cuma 7:30 AM'de Beşiktaş'ı açıyor: dinlenme 8 saat, kural 10 saat.</dd></div>
+      <div class="problem"><dt>Bugün sorun</dt><dd>Kural bir uyarı, engel değil; ama ekran engel gibi davranıyor: Approve kapalı, neden kırmızı yazıyla, rakam yok. Ayşe ne kadar eksik kaldığını göremiyor ve onaylayamıyor.</dd></div>
+    </dl>
+    <div class="specs" id="g2-specs"></div>
+  </section>
+
+  <section class="part" aria-labelledby="g3">
+    <h2 id="g3">2. The line the system writes when a manager shortens time off</h2>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>Closed</b> sekmesi (kapanmış talepler, en yeni üstte).</dd></div>
+      <div><dt>Kim bakıyor</dt><dd>Kadıköy müdürü <b>Ayşe</b>.</dd></div>
+      <div><dt>Ne oluyor</dt><dd><b>Ali</b>'nin 11 Ekim tam gün izni onaylıydı. 9 Ekim'de Ayşe, o günün akşam vardiyası (4:00–10:00 PM) için izni kısalttı; Ali o akşam çalışacak. Aynı listede Ali'nin 28 Eylül'deki <b>kendi</b> iptal isteği de duruyor.</dd></div>
+      <div class="problem"><dt>Bugün sorun</dt><dd>İki satır aynı görünüyor: ikisi de "Time off · Cancels approved time off". Hangisini Ali istedi, hangisini Ayşe yaptı, ne kadar kısaldı, listeden anlaşılmıyor.</dd></div>
+    </dl>
+    <div class="specs" id="g3-specs"></div>
+  </section>
+</div>
+
+<script>
+const ic = {
+  off: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 13l6 6M15 13l-6 6"/></svg>',
+  swap: '<svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>',
+  cover: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M3 20c0-3.3 2.7-6 6-6h1"/><circle cx="17" cy="17" r="3"/><path d="m21 21-1.8-1.8"/></svg>',
+  cut: '<svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  moon: '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  ret: '<svg class="i" viewBox="0 0 24 24"><path d="M5 4v9a3 3 0 0 0 3 3h11M15 12l4 4-4 4"/></svg>',
+};
+const typeLabel = { off: "Time off", swap: "Swap", cover: "Cover" };
+
+function row(r) {
+  const mark = r.sys ? `<span class="mark sys">${ic.cut}</span>` : `<span class="mark">${r.name[0]}</span>`;
+  const second = r.detail ? `<small>${r.detail}</small>` : "";
+  const review = r.warn ? `<span class="warnc">${ic.warn}${r.warn}</span>` : ic.chev;
+  return `<div class="tr${r.sel ? " sel" : ""}" role="row">
+    <span class="who">${mark}<span class="stack"><strong>${r.name}${r.pill ? '<span class="pill">System</span>' : ""}</strong>${second}</span></span>
+    <span class="type${r.typeSys ? " sys" : ""}">${ic[r.typeIcon ?? r.type]}${r.typeText ?? typeLabel[r.type]}</span>
+    <span class="num">${r.when}</span>
+    <span class="num${r.by ? "" : " muted"}">${r.by ?? "—"}</span>
+    <span><span class="chip ${r.tone}">${r.status}</span></span>
+    <span class="rev">${review}</span>
+  </div>${r.after ?? ""}`;
+}
+function table(rows, tabs) {
+  return `<div class="tabs" aria-hidden="true">${tabs}</div>
+  <div class="table" role="table"><div class="thead" role="row"><span>Employee</span><span>Type</span><span>When</span><span>Decide by</span><span>Status</span><span>Review</span></div>${rows.map(row).join("")}</div>`;
+}
+function spec(tag, title, stage, note, today) {
+  return `<div class="spec"><div class="spec-head"><span class="tag${today ? " today" : ""}">${tag}</span><strong>${title}</strong></div>
+  <div class="stage">${stage}</div><p class="note">${note}</p></div>`;
+}
+const note = (plus, minus) => `<span class="plus">+</span> ${plus} · <span class="minus">−</span> ${minus}`;
+
+/* G2: travel and rest on a swap */
+const openTabs = '<span class="on">Needs review<b>3</b></span><span>In progress<b>1</b></span><span>Closed</span>';
+function g2Rows(warnInRow) {
+  return [
+    { name: "Ali Person", detail: "for Deniz Person's Fri, Oct 16", type: "swap", when: "Wed, Oct 14 · 3:30–11:00 PM", by: "Oct 13, 9:00 AM", status: "Pending", tone: "amber", sel: true, warn: warnInRow ? 2 : 0 },
+    { name: "Emre Person", detail: "2 candidates", type: "cover", when: "Sat, Oct 17 · 11:00 AM–3:00 PM", by: "Oct 16, 12:00 PM", status: "Pending", tone: "amber" },
+    { name: "Busra Person", detail: "1 shift becomes open", type: "off", when: "Oct 20", by: "Oct 18, 5:00 PM", status: "Pending", tone: "amber", warn: 1 },
+  ];
+}
+const caseHead = `<div class="drawer-top"><div><small>Request review · Swap</small><h4>Ali Person ↔ Deniz Person</h4></div><span class="chip amber">Pending</span></div>`;
+const ifApproved = `<span class="eyebrow">IF APPROVED</span><h5>Ali gets Fri, Oct 16 · Besiktas · 7:30 AM–3:00 PM<br>Deniz gets Wed, Oct 14 · Kadikoy · 3:30–11:00 PM</h5>`;
+const approve = (on) => `<div class="actions"><button class="btn primary"${on ? "" : " disabled"}>Approve swap</button><button class="btn">Decline</button></div>`;
+const g2 = (body, warnInRow = false) =>
+  `<div class="duo"><div>${table(g2Rows(warnInRow), openTabs)}</div><div class="drawer">${caseHead}<div class="panel">${ifApproved}${body}</div></div></div>`;
+
+document.getElementById("g2-specs").innerHTML = [
+  spec("Today", "Blocked, the reasons in red", g2(`
+    <div class="elig"><strong>Deniz Person</strong> · gets the Kadikoy shift<ul><li>There is not enough travel time between locations.</li></ul></div>
+    <div class="elig"><strong>Ali Person</strong> · gets the Besiktas shift<ul><li>There is not enough rest time between shifts.</li></ul></div>
+    ${approve(false)}`), "Bugün: uyarı engel gibi; Approve kapalı, neden kırmızı, rakam yok. Tabloda satır hiçbir şey söylemiyor.", true),
+  spec("1", "One quiet callout", g2(`
+    <div class="callout" role="note"><span class="callout-head">${ic.warn}2 things to check. You can still approve.</span>
+      <ul class="num"><li>Deniz: 30 min to travel, rule 45 min (Besiktas ends 3:00 PM, Kadikoy starts 3:30 PM)</li>
+      <li>Ali: 8 h rest, rule 10 h (closes Thu 11:30 PM, opens Fri 7:30 AM)</li></ul></div>
+    ${approve(true)}`), note("tek kutu, iki satır; rakamlar ve saatler orada, Approve açık", "tabloda satır sessiz, Ayşe uyarıyı ancak pencereyi açınca görür")),
+  spec("2", "A small checks table", g2(`
+    <table class="checks"><thead><tr><th>Check</th><th>Person</th><th>Has</th><th>Rule</th></tr></thead><tbody class="num">
+      <tr><td><span class="dot"></span>Travel</td><td>Deniz</td><td class="short">30 min</td><td>45 min</td></tr>
+      <tr><td><span class="dot"></span>Rest</td><td>Ali</td><td class="short">8 h</td><td>10 h</td></tr>
+      <tr><td><span class="dot ok"></span>Location, job</td><td>Both</td><td class="ok">OK</td><td>—</td></tr></tbody></table>
+    ${approve(true)}`), note("geçen ve kalan bütün kontroller tek bakışta", "dar pencerede tablo kalabalık; neden kısa olduğu (saatler) yok")),
+  spec("3", "Two gauges", g2(`
+    <div class="gauge"><div class="gauge-top"><span>Deniz · travel between locations</span><span class="num">30 of 45 min</span></div><div class="bar"><i style="width:66.7%"></i></div><small class="num">Besiktas ends 3:00 PM · Kadikoy starts 3:30 PM</small></div>
+    <div class="gauge"><div class="gauge-top"><span>Ali · rest between shifts</span><span class="num">8 of 10 h</span></div><div class="bar"><i style="width:80%"></i></div><small class="num">Closes Thu 11:30 PM · opens Fri 7:30 AM</small></div>
+    ${approve(true)}`), note("ne kadar eksik kaldığı çubukta bir bakışta (30/45, 8/10)", "pencerede en çok yer kaplayan hâl; uygulamada başka yerde çubuk yok")),
+  spec("4", "A count in the table, chips in the review", g2(`
+    <div class="chips"><span class="wchip num">${ic.pin}Deniz · travel 30 / 45 min</span><span class="wchip num">${ic.moon}Ali · rest 8 / 10 h</span></div>
+    ${approve(true)}<p class="foot">Warnings only. Approving is still allowed.</p>`, true), note("Ayşe uyarıyı pencereyi açmadan tabloda görür: Review sütununda amber ⚠ 2, izindeki \"açılan vardiya\" sayısıyla aynı dil", "pencerede açıklama en kısa hâli; saatler yok")),
+  spec("5", "The gap on a timeline", g2(`
+    <div class="lane"><div class="lane-name"><strong>Deniz</strong><span class="num">30 min to travel · needs 45</span></div><div class="track"><span class="seg a">Besiktas</span><span class="seg gap num">30 min</span><span class="seg b">Kadikoy</span></div><div class="ticks num"><span>ends 3:00 PM</span><span>starts 3:30 PM</span></div></div>
+    <div class="lane"><div class="lane-name"><strong>Ali</strong><span class="num">8 h rest · needs 10</span></div><div class="track"><span class="seg a">Close</span><span class="seg gap num">8 h</span><span class="seg b">Open</span></div><div class="ticks num"><span>Thu 11:30 PM</span><span>Fri 7:30 AM</span></div></div>
+    ${approve(true)}`), note("neden kısa olduğu saatlerle çizili; iki vardiya arası taralı amber", "en karmaşık hâl; kuralın kaçta kaçının tuttuğu bir rakam olarak yok")),
+].join("");
+
+/* G3: the shortened time off line in Closed */
+const closedTabs = '<span>Needs review<b>3</b></span><span>In progress<b>1</b></span><span class="on">Closed</span>';
+const base = {
+  deniz: { name: "Deniz Person", type: "off", when: "Oct 9 – Oct 10", status: "Approved", tone: "green" },
+  emre: { name: "Emre Person", detail: "with Busra Person's Sun, Oct 4", type: "swap", when: "Sat, Oct 3 · 4:00–11:00 PM", status: "Completed", tone: "green" },
+  aliOwn: { name: "Ali Person", detail: "Cancels approved time off", type: "off", when: "Sep 28", status: "Approved", tone: "green" },
+  busra: { name: "Busra Person", type: "off", when: "Sep 21 – Sep 22", status: "Denied", tone: "red" },
+};
+const g3 = (short, own = base.aliOwn) => table([base.deniz, short, base.emre, own, base.busra], closedTabs);
+
+document.getElementById("g3-specs").innerHTML = [
+  spec("Today", "Two rows that look the same", g3({ name: "Ali Person", detail: "Cancels approved time off", type: "off", when: "Oct 11", status: "Approved", tone: "green" }),
+    "Bugün: 11 Eki satırı (Ayşe'nin kısaltması) ile 28 Eyl satırı (Ali'nin kendi iptali) aynı: ikisi de \"Time off · Cancels approved time off\".", true),
+  spec("1", "Say who and how much", g3(
+    { name: "Ali Person", detail: "Shortened by Ayse Person · 1 shift, 4:00–10:00 PM", type: "off", when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "Cancellation asked by Ali" }),
+    note("satır yerinde kalır, ikinci satır kimin ne yaptığını ve saati söyler", "fark yalnız küçük gri yazıda; hızlı bakışta iki satır yine benzer")),
+  spec("2", "A different marker and a System pill", g3(
+    { name: "Ali Person", detail: "Shortened for a shift", type: "off", when: "Oct 11", status: "Approved", tone: "green", sys: true, pill: true }),
+    note("sistemin yazdığı satır makas işareti ve \"System\" etiketiyle ilk bakışta ayrılır", "\"System\" kimin yaptığını (Ayşe) söylemez; kişi yuvarlağının yerini alır")),
+  spec("3", "Under the time off it changed", g3(
+    { name: "Ali Person", type: "off", when: "Oct 11", status: "Approved", tone: "green",
+      after: `<div class="child num">${ic.ret}Shortened by Ayse Person for 1 shift, 4:00–10:00 PM · Oct 9</div>` }),
+    note("kısaltma, değiştirdiği iznin hemen altında; ayrı bir talep gibi sayılmaz", "satır yüksekliği değişir; sayfalamada iç satır sayılmaz")),
+  spec("4", "A new value in the Type column", g3(
+    { name: "Ali Person", detail: "By Ayse Person · 4:00–10:00 PM", type: "off", typeIcon: "cut", typeText: "Shortened", typeSys: true, when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "", typeText: "Cancellation" }),
+    note("tabloda zaten olan Type sütunu söyler (Time off / Cancellation / Shortened); yeni sütun yok, Request type süzgecine de değer olarak girer", "Type'ta artık dört değil altı değer var")),
+  spec("5", "An activity line, not a request", table([
+      { ...base.deniz, after: `<div class="log num">${ic.cut}Ayse Person shortened Ali Person's Oct 11 time off for one shift (4:00–10:00 PM)<time>Oct 9</time></div>` },
+      base.emre, base.aliOwn, base.busra], closedTabs),
+    note("kısaltma talep gibi görünmez: durum etiketi olmayan, gri, tek cümlelik kayıt", "tablonun düzenini bozan tek satır biçimi; tıklanınca ne açılacağı belirsiz")),
+].join("");
+</script>

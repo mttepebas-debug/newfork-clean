@@ -1,0 +1,64 @@
+{
+ "screens": [
+  {
+   "label": "Schedule · Owner",
+   "as": "owner",
+   "route": "/app/schedule",
+   "width": 1440
+  },
+  {
+   "label": "Schedule · Hannah Lee (Manager)",
+   "as": "manager",
+   "route": "/app/schedule",
+   "width": 1440
+  },
+  {
+   "label": "Availability (ekip) · Owner",
+   "as": "owner",
+   "route": "/app/availability",
+   "width": 1440
+  },
+  {
+   "label": "Settings → Scheduling → Conflict handling",
+   "as": "owner",
+   "route": "/app/settings/scheduling/conflicts",
+   "width": 1440
+  },
+  {
+   "label": "Maria Lopez · My availability, telefon",
+   "as": "employee",
+   "route": "/app/employee-hub/my-availability",
+   "width": 390
+  },
+  {
+   "label": "Maria Lopez · Shift Hub, telefon",
+   "as": "employee",
+   "route": "/app/employee-hub/shift-hub",
+   "width": 390
+  },
+  {
+   "label": "Maria Lopez · Schedule, telefon",
+   "as": "employee",
+   "route": "/app/employee-hub/schedule",
+   "width": 390
+  },
+  {
+   "label": "Maria Lopez · Home, telefon",
+   "as": "employee",
+   "route": "/app/employee-hub",
+   "width": 390
+  }
+ ],
+ "personas": {
+  "owner": "Mert Tepebas · Owner",
+  "admin": "Laura Bennett · Admin",
+  "manager": "Hannah Lee · Manager, Downtown",
+  "employee": "Maria Lopez · Employee, Downtown",
+  "onboarding": "Ben Carter · yeni çalışan, onboarding'de",
+  "invited": "Chloe Adams · davet edildi, katılmadı",
+  "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi",
+  "nobusiness": "Alex Morgan · hesap var, workspace yok",
+  "signedout": "Giriş yapılmamış"
+ },
+ "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez). Schedule'ı düzenlemeyi (vardiya ekleme, sürükleme, yayın) tam deneyebileceğin ayrı kopya: Schedule test sayfası https://claude.ai/artifact/RNJEGWCDgdG2NpYRpWF4g3"
+}

@@ -1,0 +1,164 @@
+<title>Shift Change Icons</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap">
+<style>
+/* Icons for the three shift changes a manager decides on (Requests → Shift changes):
+   Swap, Pickup, Cover. Drawn on the app's 24 px grid with a 2 px round stroke, the same
+   family as the app's Lucide icons. The app is light only. */
+:root {
+  color-scheme: light;
+  --theme-page: #f4f5f3; --theme-surface: #ffffff; --theme-surface-soft: #f7f9f8; --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e; --theme-text-body: #1d2525; --theme-muted: #66716c; --theme-text-secondary: #50605a;
+  --theme-border: #dce3df; --theme-border-subtle: #e2e6e4; --theme-border-strong: #cbd4d0; --theme-border-hover: #95aaa1;
+  --theme-accent: #176954; --theme-accent-strong: #12624f; --theme-selected: #e7f1ed; --theme-focus: #177a64;
+  --theme-warning: #8a5a00; --theme-warning-soft: #fff7e2; --theme-success: #176b4e; --theme-success-soft: #e7f1ed;
+  --theme-danger-soft: #fff0ee; --theme-danger-strong: #a43830;
+  --theme-list-head: #e6ece8; --theme-list-head-border: #d3dbd6; --theme-list-head-text: #4f5d57; --theme-list-cell-text: #46514d;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--theme-page); }
+body { color: var(--theme-text); font-family: var(--font); font-size: 14px; -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+svg { flex: none; display: block; }
+.wrap { max-width: 1180px; margin: 0 auto; padding: 24px 20px 56px; display: grid; gap: 22px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-accent); }
+h1 { margin: 4px 0 6px; font-size: 26px; letter-spacing: -.015em; text-wrap: balance; }
+h2 { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.lede { margin: 0; max-width: 80ch; color: var(--theme-text-secondary); line-height: 1.55; }
+.panel { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 18px; display: grid; gap: 14px; min-width: 0; }
+.panel > p { margin: 0; color: var(--theme-text-secondary); line-height: 1.5; font-size: 13px; }
+
+/* Candidates */
+.group { display: grid; gap: 10px; }
+#groups { display: grid; gap: 22px; }
+.group-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.group-h b { font-size: 15px; }
+.group-h span { font-size: 12.5px; color: var(--theme-muted); }
+.cands { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px; }
+.cand { display: grid; align-content: start; gap: 6px; padding: 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; }
+.cand:hover { border-color: var(--theme-border-hover); }
+.cand[aria-pressed="true"] { border-color: var(--theme-accent); background: var(--theme-selected); box-shadow: inset 0 0 0 1px var(--theme-accent); }
+.cand[disabled] { cursor: default; }
+.cand .sizes { display: flex; align-items: center; gap: 10px; margin-bottom: 4px; }
+.cand .t { font-weight: 650; font-size: 13.5px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.cand .s { font-size: 12px; color: var(--theme-text-secondary); line-height: 1.35; }
+.tag { font-size: 10.5px; font-weight: 700; padding: 1px 6px; border-radius: 999px; background: var(--theme-success-soft); color: var(--theme-success); }
+.tag.today { background: var(--theme-surface-muted); color: var(--theme-text-secondary); }
+.bare { color: var(--theme-text-body); }
+
+/* The icon tile used in rows: a rounded square, so it never reads as a person's round avatar */
+.ti { display: grid; place-items: center; flex: none; border-radius: 8px; background: var(--theme-surface-muted); color: var(--theme-accent-strong); }
+.ti.s28 { width: 28px; height: 28px; border-radius: 7px; }
+.ti.s40 { width: 40px; height: 40px; border-radius: 10px; }
+
+/* Previews */
+.cmp { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 900px) { .cmp { grid-template-columns: minmax(0, 1fr); } }
+.cmp.one { grid-template-columns: minmax(0, 1fr); }
+.col { display: grid; gap: 10px; min-width: 0; align-content: start; }
+.col > b { font-size: 12px; color: var(--theme-muted); font-weight: 600; }
+.scroll { overflow-x: auto; }
+table.list { width: 100%; min-width: 600px; border-collapse: separate; border-spacing: 0; background: var(--theme-surface); border: 1px solid #d7dcda; border-radius: 6px; overflow: hidden; }
+table.list th { height: 38px; padding: 0 12px; text-align: left; background: var(--theme-list-head); border-bottom: 1px solid var(--theme-list-head-border); color: var(--theme-list-head-text); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; white-space: nowrap; }
+table.list td { white-space: nowrap; padding: 10px 12px; border-bottom: 1px solid var(--theme-border-subtle); color: var(--theme-list-cell-text); font-size: 13px; vertical-align: middle; }
+table.list td.who { color: var(--theme-text); font-weight: 600; }
+table.list tbody tr:last-child td { border-bottom: 0; }
+table.list th.ic, table.list td.ic { width: 52px; padding-right: 0; }
+.chip { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.chip[data-tone="green"] { background: var(--theme-success-soft); color: var(--theme-success); }
+.chip[data-tone="amber"] { background: var(--theme-warning-soft); color: var(--theme-warning); }
+.phone { width: 100%; max-width: 360px; display: grid; gap: 8px; padding: 12px; border: 1px solid var(--theme-border); border-radius: 18px; background: var(--theme-page); }
+.lc { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 11px 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); }
+.lc > :first-child { grid-row: span 2; }
+.lc .t { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc .s { font-size: 12.5px; color: var(--theme-text-secondary); grid-column: 2; min-width: 0; line-height: 1.4; }
+.lc .r { grid-row: 1 / span 2; grid-column: 3; }
+.av { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; background: var(--theme-surface-muted); color: var(--theme-text-secondary); }
+.note { margin: 0; font-size: 12.5px; color: var(--theme-text-secondary); line-height: 1.5; }
+</style>
+
+<div class="wrap">
+  <header>
+    <span class="eyebrow">Mockup · Requests → Shift changes · masaüstü ve telefon</span>
+    <h1>Vardiya değişikliği ikonları</h1>
+    <p class="lede">Müdürün Requests → Shift changes listesinde her satırın en başında türün ikonu. Swap'ın iki oku sabit; Pickup ve Cover için adaylar aşağıda. Bir adaya basınca alttaki masaüstü ve telefon satırları o ikonla güncellenir. Hepsi uygulamanın ikon ailesiyle (Lucide) aynı çizgide: 24'lük ızgara, 2 px yuvarlak uçlu çizgi. Satırdaki ikon yuvarlak değil köşeli karoda durur; yuvarlak karo kişi baş harfleri için.</p>
+  </header>
+
+  <section class="panel" aria-labelledby="h-icons">
+    <h2 id="h-icons">İkonlar</h2>
+    <div id="groups"></div>
+  </section>
+
+  <section class="panel" aria-labelledby="h-rows">
+    <h2 id="h-rows">Satırlarda</h2>
+    <div class="cmp one">
+      <div class="col"><b>Masaüstü · bugün (Original): ikon yok</b><div class="scroll" id="desk-old"></div></div>
+      <div class="col"><b>Masaüstü · yeni: satırın başında türün ikonu</b><div class="scroll" id="desk-new"></div></div>
+    </div>
+    <div class="cmp">
+      <div class="col"><b>Telefon · bugün (Original): türün baş harfi</b><div class="phone" id="ph-old"></div></div>
+      <div class="col"><b>Telefon · yeni: baş harfin yerine ikon</b><div class="phone" id="ph-new"></div></div>
+    </div>
+    <p class="note">Masaüstünde ikon kendi dar sütununda, Status'tan önce. Telefonda baş harf yuvarlağının yerine geçer. Type sütunundaki yazı kalır; ikon tek başına anlam taşımaz, ekran okuyucu yazıyı okur.</p>
+  </section>
+</div>
+
+<script>
+(() => {
+  const svg = (d, w) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${d}</svg>`;
+  // Each candidate: id, name, one line on what it says, path data.
+  const C = {
+    swap: [
+      { id: "swap", name: "Two arrows", say: "İki vardiya yer değiştirir.", tag: "Sabit", d: '<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>' },
+    ],
+    pickup: [
+      { id: "ph", name: "Raised hand", say: "\"I'll take it\": vardiyayı isteyen el kaldırır. Satırdaki \"3 want it\" ile aynı dil.", rec: true, d: '<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>' },
+      { id: "pa", name: "Into the tray", say: "Havuzdaki vardiya birinin eline geçer; çalışanın Release ikonunun tersi. Eksisi: \"indir\" ikonuna benziyor.", d: '<path d="M12 3v11"/><path d="m7.5 9.5 4.5 4.5 4.5-4.5"/><path d="M4 15v4a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-4"/>' },
+      { id: "pc", name: "Calendar plus", say: "Takvimine bir vardiya eklenir.", d: '<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/><path d="M12 12.5v6M9 15.5h6"/>' },
+      { id: "pt", name: "Dashed circle", say: "Bugün uygulamada açık vardiya işareti.", today: true, d: '<circle cx="12" cy="12" r="9" stroke-dasharray="3.6 3"/>' },
+    ],
+    cover: [
+      { id: "ca", name: "Steps in", say: "Biri gelir, arkadaşının yerine geçer.", rec: true, d: '<circle cx="9" cy="8" r="4"/><path d="M2 20a7 7 0 0 1 11.5-5.4"/><path d="M22 17h-7"/><path d="m18 13.5-3.5 3.5 3.5 3.5"/>' },
+      { id: "cb", name: "Person + check", say: "Biri kabul etti.", d: '<circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 11-5.7"/><path d="m15.5 18.5 2 2 4-4"/>' },
+      { id: "cc", name: "Umbrella", say: "\"Cover\": arkadaşını korur.", d: '<path d="M21 12a9 9 0 0 0-18 0Z"/><path d="M12 12v7a2 2 0 0 0 4 0"/><path d="M12 3V2"/>' },
+      { id: "ct", name: "Person + search", say: "Bugün uygulamada Cover ikonu (UserRoundSearch).", today: true, d: '<circle cx="10" cy="8" r="4"/><path d="M3 20a7 7 0 0 1 9.5-6.5"/><circle cx="17.5" cy="17.5" r="2.8"/><path d="m21.5 21.5-2-2"/>' },
+    ],
+  };
+  const pick = { swap: "swap", pickup: "ph", cover: "ca" };
+  const icon = (type) => C[type].find((c) => c.id === pick[type]);
+  const tile = (d, size) => `<span class="ti s${size}">${svg(d, size === 40 ? 20 : 16)}</span>`;
+  const HEAD = { swap: ["Swap", "iki vardiya el değiştirir"], pickup: ["Pickup", "release edilen vardiyayı biri ister"], cover: ["Cover", "sahibinin sorduğu biri kabul eder"] };
+  function groups() {
+    document.getElementById("groups").innerHTML = Object.keys(C).map((type) => `<div class="group"><div class="group-h"><b>${HEAD[type][0]}</b><span>${HEAD[type][1]}</span></div>
+      <div class="cands" role="group" aria-label="${HEAD[type][0]} icon">${C[type].map((c) => `<button type="button" class="cand" data-type="${type}" data-id="${c.id}" aria-pressed="${pick[type] === c.id}" ${type === "swap" ? "disabled" : ""}>
+        <span class="sizes">${tile(c.d, 40)}${tile(c.d, 28)}<span class="bare">${svg(c.d, 14)}</span></span>
+        <span class="t">${c.name}${c.rec ? '<span class="tag">Önerilen</span>' : ""}${c.today ? '<span class="tag today">Bugün</span>' : ""}${c.tag ? `<span class="tag today">${c.tag}</span>` : ""}</span>
+        <span class="s">${c.say}</span></button>`).join("")}</div></div>`).join("");
+  }
+  const ROWS = [
+    { type: "pickup", kind: "Pickup", who: "Maria Lopez", shift: "Fri, Oct 16 · 4p–10p", loc: "Downtown", status: ["3 want it", "amber"] },
+    { type: "cover", kind: "Cover", who: "Maria Lopez", shift: "Sat, Oct 17 · 11a–5p", loc: "Downtown", status: ["2 accepted", "amber"] },
+    { type: "swap", kind: "Swap", who: "Priya Shah ⇄ Daniel Brooks", shift: "Sun, Oct 18 ⇄ Tue, Oct 20", loc: "Downtown ⇄ Midtown", status: ["Needs decision", "amber"] },
+    { type: "pickup", kind: "Pickup", who: "Leo Park", shift: "Thu, Oct 15 · 4p–10p", loc: "Downtown", status: ["Approved", "green"] },
+  ];
+  const desk = (withIcon) => `<table class="list"><thead><tr>${withIcon ? '<th class="ic"><span hidden>Type</span></th>' : ""}<th>Status</th><th>Shift change</th><th>Type</th><th>Shift</th><th>Location</th></tr></thead><tbody>${ROWS.map((r) => `<tr>${withIcon ? `<td class="ic">${tile(icon(r.type).d, 28)}</td>` : ""}<td><span class="chip" data-tone="${r.status[1]}">${r.status[0]}</span></td><td class="who">${r.who}</td><td>${r.kind}</td><td>${r.shift}</td><td>${r.loc}</td></tr>`).join("")}</tbody></table>`;
+  const phone = (withIcon) => ROWS.map((r) => `<div class="lc">${withIcon ? tile(icon(r.type).d, 40) : `<span class="av">${r.kind[0]}</span>`}<span class="t">${r.who}</span><span class="s">${r.kind}<br>${r.shift}</span><span class="r"><span class="chip" data-tone="${r.status[1]}">${r.status[0]}</span></span></div>`).join("");
+  function rows() {
+    document.getElementById("desk-old").innerHTML = desk(false);
+    document.getElementById("desk-new").innerHTML = desk(true);
+    document.getElementById("ph-old").innerHTML = phone(false);
+    document.getElementById("ph-new").innerHTML = phone(true);
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest(".cand");
+    if (!b || b.disabled) return;
+    pick[b.dataset.type] = b.dataset.id;
+    groups(); rows();
+  });
+  groups(); rows();
+})();
+</script>

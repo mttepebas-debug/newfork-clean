@@ -1,0 +1,6 @@
+/* F · Zemin: who is in the job reads from the row colour */
+.catalog-drawer .job-employee-list .job-employee-row{transition:background-color 120ms ease-out,box-shadow 120ms ease-out}
+.catalog-drawer .job-employee-list .job-employee-row:hover,.catalog-drawer .job-employee-list .job-employee-row.sim-hover{background-color:#f0f3f1!important}
+.catalog-drawer .job-employee-list .job-employee-row:has(input:checked){background-color:#e7f1ed!important}
+.catalog-drawer .job-employee-list .job-employee-row[data-pending=true]{box-shadow:inset 3px 0 #176954!important}
+.catalog-drawer .job-employee-row input{accent-color:#176954!important}

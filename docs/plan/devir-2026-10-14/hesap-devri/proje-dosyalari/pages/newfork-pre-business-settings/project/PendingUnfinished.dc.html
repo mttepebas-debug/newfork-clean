@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Pick up where you left off</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.pb{display:flex;flex-direction:column;width:1440px;height:900px;background:#ffffff;color:#1d2525}
+.pb-top{display:flex;align-items:center;justify-content:space-between;gap:20px;height:62px;flex:0 0 62px;padding:0 32px;border-bottom:1px solid #dce3df;background:#ffffff;box-sizing:border-box}
+.pb-who{display:flex;align-items:center;gap:14px;min-width:0}
+.pb-who .av{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:999px;background:#e7f1ed;color:#12624f;font-size:11px;font-weight:700}
+.pb-who .mail{font-size:12.5px;color:#66716c}
+.pb-topnote{max-width:560px;font-size:12px;line-height:1.45;color:#8d9793;text-align:right}
+.pb-btn-tiny{min-height:32px;padding:0 12px;font-size:12.5px}
+.pb-brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.pb-account{display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
+.pb-account-id{display:grid;min-width:0;color:#66716c;font-size:12px;line-height:1.35}
+.pb-account-id strong{color:#17221e;font-size:13px}
+.pb-account-id span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-stage{width:600px;margin:auto;padding:32px 0;box-sizing:border-box}
+.pb-stage h1{margin:0 0 10px;color:#17221e;font-size:30px;line-height:1.2;font-weight:600}
+.pb-description{margin:0;color:#66716c;font-size:15px;line-height:1.55}
+.pb-section{margin-top:32px}
+.pb-section h2{margin:0 0 10px;color:#5f6b66;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.pb-section p{margin:0 0 12px;color:#66716c;font-size:13.5px;line-height:1.55}
+.pb-list{overflow:hidden;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.pb-row{display:flex;min-height:56px;align-items:center;justify-content:space-between;gap:16px;padding:10px 18px;border-bottom:1px solid #e2e6e4}
+.pb-row:last-child{border-bottom:0}
+.pb-row-text{display:grid;min-width:0;gap:2px;flex:1}
+.pb-row-head{display:flex;align-items:center;gap:5px;min-width:0}
+.pb-row-text strong{overflow:hidden;color:#17221e;font-size:14px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}
+.pb-row-meta{color:#66716c;font-size:12px;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pb-row-actions{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;gap:8px;min-width:200px}
+.pb-row-actions .pb-btn{min-width:96px;box-sizing:border-box}
+.pb-badge{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;background:#f0f3f1;color:#5f6b66;height:18px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap}
+.pb-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.pb-btn-primary{background:#176954;color:#ffffff}
+.pb-btn-secondary,.pb-btn-danger{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.sidenote{font-size:11.5px;color:#66716c;line-height:1.5}
+</style>
+</helmet>
+<div class="pb">
+  <header class="pb-top">
+    <span class="pb-brand">NEWFORK</span>
+    <span class="pb-who"><span class="av">MT</span><span class="mail">owner@newfork.test</span><button type="button" class="pb-btn pb-btn-secondary pb-btn-tiny">Sign out</button></span>
+  </header>
+  <main class="pb-stage" aria-labelledby="pu-t">
+    <h1 id="pu-t">Pick up where you left off</h1>
+    <p class="pb-description">Your progress is saved.</p>
+
+    <section class="pb-section">
+      <h2>In progress</h2>
+      <div class="pb-list">
+        <div class="pb-row">
+          <span class="pb-row-text"><span class="pb-row-head"><strong>Palo Alto Kitchen</strong><span class="pb-badge">Setup unfinished</span></span><span class="pb-row-meta">Owner</span></span>
+          <span class="pb-row-actions"><button type="button" class="pb-btn pb-btn-danger">Discard</button><button type="button" class="pb-btn pb-btn-primary">Setup</button></span>
+        </div>
+      </div>
+    </section>
+
+
+  </main>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

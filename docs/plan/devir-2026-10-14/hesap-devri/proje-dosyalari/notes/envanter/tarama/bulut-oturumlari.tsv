@@ -1,0 +1,40 @@
+session_01AfZGAbnzzkECFVtvwYX5QH	2026-10-09T04:43	2026-10-09T04:44	claude_code_cli	remote-control-sdk	main	Boş mesaj uyanman için	Train's 5 branches merged to main at a1c0ce64 with CI green; migration applied to the shared local DB. DURUM.md top line is stale and needs the coordinator to u
+session_016R738w4qGycqNTasCdDygF	2026-10-09T04:42	2026-10-09T04:42	claude_code_cli	remote-control-sdk	main	Uyanman için boş mesaj	
+session_01E2aWbDtqrrhhNGZshzwY4k	2026-10-09T03:52	2026-10-09T03:53	ios			Claude projesi remote telefonda görüntüleme	Cloud session opens from the phone's Code section; for local work, run `claude remote-control` in the coordinator folder.
+session_012MbYSirVoJSuqq44FPM5GG	2026-10-08T22:27	2026-10-08T22:29	claude_code_cli	remote-control-sdk	claude/hopeful-darwin-d59182	Plan the notification system rebuild (BILDIRIM)	
+session_01UwAwd66ACWSVuoUChYEKoc	2026-10-08T22:27	2026-10-08T22:29	claude_code_cli	remote-control-sdk	claude/inspiring-diffie-5b940d	Mirror Settings Locations as an artifact for tweaks (EKRAN-10 Locations)	
+session_016cne1Wisrp2LkEovaKSsV7	2026-10-08T22:26	2026-10-08T22:30	claude_code_cli	remote-control-sdk	claude/keen-brahmagupta-8c4853	Mirror Settings Jobs as an artifact for tweaks (EKRAN-10 Jobs)	
+session_0163UhyefcmMwSUiAR6yDTAx	2026-10-08T22:26	2026-10-08T22:29	claude_code_cli	remote-control-sdk	task/ekran-10	Inspect Settings General, 6+ designs (EKRAN-10 General)	
+session_01NC1Dn9WdiCkV7sxLigU9X5	2026-10-08T22:26	2026-10-08T22:29	claude_code_cli	remote-control-sdk	claude/inspiring-bose-9b7957	Test the Important Dates drawer, 5 designs (EKRAN-08)	
+session_01CsoJiyudD884gReWW9PKwE	2026-10-08T21:21	2026-10-09T04:12	claude_code_cli	remote-control-sdk	main	Koordinatör (v2)	Nothing running: the baseline-wait loop died at 03:04Z with the session restart, and no process remains to stop.
+session_0154ZskKbJACZEvK1i42UXLU	2026-10-08T13:00	2026-10-08T13:26	ios			İki CI koşturmanın etkileri	Three no-install ways to blank and wake the screen (power button recommended); sleep must be Never when plugged in.
+session_01V3Fuvsu8c3XfwdYVqWNUaL	2026-10-08T12:13	2026-10-08T13:00	claude_code_cli	remote-control-sdk	main	Dev sunucusu başlat	
+session_0165LnP6vdM11kXyWirh2HXf	2026-10-08T12:04	2026-10-08T22:30	claude_code_cli	remote-control-sdk	claude/amazing-goldstine-a31852	Discover the sign-in and join screens (EKRAN-16 keşif)	
+session_01UpnsKLZEzAeyLe8V92ho9y	2026-10-08T10:23	2026-10-08T22:30	claude_code_cli	remote-control-sdk	claude/zealous-napier-66b50d	Own the Employees screen to the finish (EKRAN-03)	
+session_01B92f6KEeXsszAE5UwDEtrC	2026-10-08T10:22	2026-10-08T22:28	claude_code_cli	remote-control-sdk	claude/optimistic-wilson-51a882	Re-measure and plan the authorization gaps (GUVENLIK-A)	
+session_01XHtcDmihQB5Cm5GM6TwLFv	2026-10-08T10:22	2026-10-08T22:32	claude_code_cli	remote-control-sdk	claude/magical-easley-1ef2ed	Own the Schedule screen to the finish (EKRAN-01)	
+session_01NczSKSiFgcdnig7W9jrxNc	2026-10-08T10:22	2026-10-08T22:30	claude_code_cli	remote-control-sdk	claude/nice-joliot-4b346e	Make three parallel lines safe on one machine (PARALEL-1)	
+session_01Thnq5KXmADB8cnNNCu744s	2026-10-08T10:22	2026-10-08T22:27	claude_code_cli	remote-control-sdk	claude/priceless-rosalind-240b76	Own the Requests screen end to end (EKRAN-02)	
+session_01AZm3t8mPtuQARWcwbuYrQt	2026-10-08T10:18	2026-10-09T02:17	claude_code_cli	remote-control-sdk	main	Koordinatör	
+session_014GxvdaB6w86rr7LGPpKp6A	2026-10-08T09:50	2026-10-08T09:50	claude_code_cli	remote-control-sdk	claude/amazing-goldstine-a31852	Discover the sign-in and join screens (EKRAN-16 keşif)	
+session_011gN92NNUWsUe1G4AvPvCmS	2026-10-08T09:50	2026-10-08T09:50	claude_code_cli	remote-control-sdk	claude/inspiring-bose-9b7957	Test the Important Dates drawer, 5 designs (EKRAN-08)	
+session_01HdWsdhmGfJMwCgN7eWhWoa	2026-10-08T09:50	2026-10-08T09:50	claude_code_cli	remote-control-sdk	claude/zealous-napier-66b50d	Own the Employees screen to the finish (EKRAN-03)	
+session_01JVFbZkuqm7s2PxJ9gZc2XA	2026-10-08T08:53	2026-10-08T09:50	claude_code_cli	remote-control-sdk	claude/priceless-rosalind-240b76	Own the Requests screen end to end (EKRAN-02)	
+session_01E7PS5meAqhEa5MVzFWwErD	2026-10-08T08:53	2026-10-08T10:02	claude_code_cli	remote-control-sdk	claude/optimistic-wilson-51a882	Re-measure and plan the authorization gaps (GUVENLIK-A)	
+session_018Dg5Qat4Kj5wrbQMD5MdXE	2026-10-08T08:44	2026-10-08T09:50	claude_code_cli	remote-control-sdk	claude/magical-easley-1ef2ed	Own the Schedule screen to the finish (EKRAN-01)	
+session_01QQHpve81VVqiDzsP61vhZs	2026-10-08T08:44	2026-10-08T09:51	claude_code_cli	remote-control-sdk	claude/nice-joliot-4b346e	Make three parallel lines safe on one machine (PARALEL-1)	
+session_01DzuuVtQzBptn1AcvcMZsLE	2026-10-08T08:41	2026-10-08T09:51	claude_code_cli	remote-control-sdk	main	Koordinatör	
+session_01C5q48MsU43uZny5b5tPQoB	2026-10-07T08:30	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/hopeful-darwin-d59182	Plan the notification system rebuild (BILDIRIM)	Dismantling audit + event inventory complete; plan staged on EKRAN-02 merge; visual variants at claude.ai/artifact/M8yVRt1fWEY8Wmv; awaiting Mert's answers to §
+session_01Rk5jk74Au3tXXi9YvDE9xV	2026-10-07T08:29	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/keen-brahmagupta-8c4853	Mirror Settings Jobs as an artifact for tweaks (EKRAN-10 Jobs)	fixes committed to main; awaiting feedback on 4 open design questions in JOBS-TWEAKS.md
+session_01LRjQDj1H9PE6AqYRXBTsP3	2026-10-07T08:27	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/inspiring-diffie-5b940d	Mirror Settings Locations as an artifact for tweaks (EKRAN-10 Locations)	Settings → Locations redesign approved (design A); spec doc at docs/plan/ekranlar/10-settings/LOCATIONS-TWEAKS.md; ready for coding
+session_014rsKkQ6hXkrvVHbmMaycDR	2026-10-07T08:26	2026-10-08T07:36	claude_code_cli	remote-control-sdk	task/ekran-10	Inspect Settings General, 6+ designs (EKRAN-10 General)	session suspended; design feedback logged; ready to resume with direction
+session_01DLfse5QwMi4SbQx6nBnSGq	2026-10-07T08:18	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/inspiring-bose-9b7957	Test the Important Dates drawer, 5 designs (EKRAN-08)	Emergency fix deployed to live (23:38) and main (green CI); backup at C:\Users\TheWe\Documents\Codex\newfork-clean\artifacts\ACIL-40001\live-backup-20261007T233
+session_01SUvwsjoxMmMYmTCqMkEiab	2026-10-07T08:13	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/amazing-goldstine-a31852	Discover the sign-in and join screens (EKRAN-16 keşif)	
+session_01VKLwgtMAiMbC9fRet1ePD5	2026-10-07T08:12	2026-10-08T06:54	claude_code_cli	remote-control-sdk	claude/optimistic-wilson-51a882	Re-measure and plan the authorization gaps (GUVENLIK-A)	
+session_013e2R9adFKsafTC58XDfjX7	2026-10-07T08:04	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/nice-joliot-4b346e	Make three parallel lines safe on one machine (PARALEL-1)	
+session_0131p6uFVEXbL3idPZAX1qFs	2026-10-07T08:01	2026-10-08T07:36	claude_code_cli	remote-control-sdk	claude/zealous-napier-66b50d	Own the Employees screen to the finish (EKRAN-03)	BL-969 ready (task/bl-969-2@6697bc01): account phone + old column migrations with guards; CI green; awaiting coordinator go
+session_011jpJuwTY2Y8p5ws6bY1ArM	2026-10-07T07:56	2026-10-08T07:31	claude_code_cli	remote-control-sdk	claude/magical-easley-1ef2ed	Own the Schedule screen to the finish (EKRAN-01)	
+session_01B2E97nXJSx4SipgpEEtAVk	2026-10-07T07:08	2026-10-08T07:36	claude_code_cli	remote-control-sdk	main	Dev sunucusu başlat	http://localhost:5555 (app) + http://localhost:5556 (API) running
+session_011VQWMbPaBxZREVHWg4vwF2	2026-10-07T06:40	2026-10-08T06:33	claude_code_cli	remote-control-sdk	claude/priceless-rosalind-240b76	Own the Requests screen end to end (EKRAN-02)	
+session_01F2hJAcvWZjnRQnakkc8sM6	2026-10-07T06:21	2026-10-07T08:00	claude_code_cli	remote-control-sdk	claude/objective-diffie-33fcc1	Build stage-3 coordination automation (OTOMASYON-3)	
+session_01KFP7ChVE8TB3qP2CVsVwka	2026-10-07T06:08	2026-10-08T06:43	claude_code_cli	remote-control-sdk	main	Koordinatör	

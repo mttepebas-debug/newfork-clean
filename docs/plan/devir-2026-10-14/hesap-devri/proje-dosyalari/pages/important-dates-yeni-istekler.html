@@ -1,0 +1,537 @@
+<title>Important Dates yeni istekler</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one reading column (plan text) with wide "screen" panels that copy the real drawer; light only, like the app. */
+:root {
+  --ink: #17221e;
+  --muted: #50605a;
+  --soft: #6b7873;
+  --line: #dce3df;
+  --line-2: #e2e6e4;
+  --ground: #f4f6f5;
+  --paper: #ffffff;
+  --accent: #176954;
+  --accent-soft: #dbece5;
+  --danger: #b84234;
+  --danger-soft: #fbeceb;
+  --amber: #8a4a06;
+  --amber-soft: #fff4e2;
+  --blue-soft: #e8eff8;
+  --sans: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { background: var(--ground); color: var(--ink); font: 15px/1.6 var(--sans); }
+.page { max-width: 1040px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 80px; display: grid; gap: 40px; }
+.read { max-width: 70ch; }
+h1, h2, h3 { text-wrap: balance; margin: 0; line-height: 1.25; }
+h1 { font-size: 32px; letter-spacing: -0.01em; }
+h2 { font-size: 22px; }
+h3 { font-size: 17px; }
+p { margin: 0; }
+.eyebrow { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); }
+.meta { color: var(--muted); font-size: 13.5px; }
+.stack { display: grid; gap: 14px; }
+.stack-s { display: grid; gap: 8px; }
+ul, ol { margin: 0; padding-left: 22px; display: grid; gap: 6px; }
+code { font-size: 13px; background: var(--paper); border: 1px solid var(--line-2); border-radius: 5px; padding: 0 5px; }
+a { color: var(--accent); }
+.quote { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; font-size: 14px; color: var(--muted); white-space: pre-line; }
+.quote b { color: var(--ink); }
+
+/* section heads */
+.sec { display: grid; gap: 18px; }
+.sec-head { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 22px; }
+.tag { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; border-radius: 999px; padding: 2px 10px; width: fit-content; }
+.tag.same { background: var(--accent-soft); color: #11513a; }
+.tag.new { background: var(--blue-soft); color: #234a7a; }
+.tag.later { background: var(--amber-soft); color: var(--amber); }
+.tag.conflict { background: var(--danger-soft); color: var(--danger); }
+
+/* summary table */
+.tbl-wrap { overflow-x: auto; background: var(--paper); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; vertical-align: top; padding: 10px 14px; border-bottom: 1px solid var(--line-2); }
+th { font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); background: #f7f9f8; }
+tr:last-child td { border-bottom: 0; }
+td.n { font-variant-numeric: tabular-nums; color: var(--muted); width: 36px; }
+
+/* before / after */
+.ba { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 470px), 1fr)); gap: 18px; align-items: start; }
+.panel { display: grid; gap: 8px; min-width: 0; }
+.panel-label { font-size: 13px; font-weight: 600; color: var(--muted); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.panel-label .pick { color: var(--accent); }
+.note { font-size: 13.5px; color: var(--muted); }
+.scroll { overflow-x: auto; }
+
+/* ---- drawer mockup (copies the real app) ---- */
+.dw { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; font-size: 13px; line-height: 1.4; color: var(--ink); min-width: 460px; box-shadow: 0 1px 2px rgba(23,34,30,.05); }
+.dw-pad { padding: 14px 16px; display: grid; gap: 12px; }
+.dw-top { padding: 12px 16px 0; border-bottom: 1px solid var(--line-2); display: grid; gap: 4px; }
+.dw-title { font-size: 16px; font-weight: 700; display: flex; gap: 8px; align-items: center; }
+.pill { font-size: 11px; font-weight: 600; background: var(--accent-soft); color: #11513a; border-radius: 999px; padding: 1px 8px; }
+.dw-sub { color: var(--soft); font-size: 12px; }
+.tabs { display: flex; gap: 18px; margin-top: 6px; }
+.tabs span { padding: 6px 0 8px; color: var(--soft); }
+.tabs span.on { color: var(--ink); font-weight: 600; border-bottom: 2px solid var(--accent); }
+.badge { background: var(--amber-soft); color: var(--amber); border-radius: 999px; font-size: 11px; padding: 0 6px; margin-left: 4px; font-weight: 600; }
+.lbl { font-weight: 600; font-size: 12.5px; }
+.inp { border: 1px solid #cbd4d0; border-radius: 6px; height: 32px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; gap: 6px; background: var(--paper); white-space: nowrap; }
+.inp.off { background: #eef1f0; color: #8b9893; border-color: var(--line-2); }
+.inp.edit { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.fld { display: grid; gap: 4px; }
+.row-between { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.cb { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; white-space: nowrap; }
+.cb i { width: 15px; height: 15px; border-radius: 4px; border: 1.5px solid #9aa7a2; display: inline-grid; place-items: center; font-style: normal; font-size: 11px; color: #fff; flex: none; }
+.cb i.on { background: var(--accent); border-color: var(--accent); }
+.cb i.on::after { content: "✓"; }
+.cb.big { font-size: 13px; font-weight: 600; align-items: flex-start; white-space: normal; }
+.cb.big i { margin-top: 2px; }
+.cb .hint { display: block; font-weight: 400; color: var(--soft); font-size: 12px; }
+.hl { outline: 2px dashed var(--accent); outline-offset: 3px; border-radius: 6px; }
+.hl-red { outline: 2px dashed var(--danger); outline-offset: 3px; border-radius: 6px; }
+
+.locs { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.loc-head { display: grid; grid-template-columns: 130px 1fr 92px; gap: 8px; background: #edf2ef; padding: 7px 12px; font-size: 11.5px; font-weight: 600; color: var(--muted); }
+.loc { display: grid; grid-template-columns: 130px 1fr 92px; gap: 8px; padding: 9px 12px; border-top: 1px solid var(--line-2); align-items: center; }
+.loc .name { display: flex; gap: 8px; align-items: center; font-weight: 600; }
+.loc .imp { text-align: right; font-size: 12px; color: var(--soft); }
+.loc .imp.red { color: var(--danger); font-weight: 600; }
+.loc .sub { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.seg { display: inline-grid; grid-auto-flow: column; border: 1px solid #cbd4d0; border-radius: 7px; padding: 2px; gap: 2px; background: #f4f6f5; }
+.seg span { padding: 3px 10px; border-radius: 5px; font-size: 12px; color: var(--soft); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.seg span.on { background: var(--paper); color: var(--ink); font-weight: 600; box-shadow: 0 0 0 1px #cbd4d0; }
+.seg span.on.red { color: var(--danger); box-shadow: 0 0 0 1px var(--danger); }
+.dot { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.dot.g { background: var(--accent); } .dot.a { background: #c07a1c; } .dot.r { background: var(--danger); }
+.small { font-size: 12px; color: var(--soft); }
+
+.shift-group { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.sg-head { background: #f7f9f8; padding: 7px 12px; font-size: 12px; font-weight: 600; color: var(--muted); display: flex; justify-content: space-between; }
+.shift { display: grid; grid-template-columns: 30px 1fr auto; gap: 10px; padding: 9px 12px; border-top: 1px solid var(--line-2); align-items: center; }
+.av { width: 28px; height: 28px; border-radius: 50%; background: #eef1f0; display: grid; place-items: center; font-size: 10.5px; font-weight: 600; color: var(--muted); }
+.who b { display: block; font-size: 13px; }
+.who .t { font-size: 12px; color: var(--soft); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.warn { color: var(--amber); font-weight: 600; }
+.pen { font-size: 12px; color: var(--accent); font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: default; }
+.chip-ed { background: var(--blue-soft); color: #234a7a; font-size: 11px; font-weight: 600; border-radius: 999px; padding: 0 7px; }
+.edit-row { grid-column: 2 / 4; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding-top: 2px; }
+.edit-row .inp { height: 28px; width: 104px; }
+.foot-warn { background: var(--amber-soft); color: #6b3a05; padding: 9px 16px; font-size: 12.5px; font-weight: 600; border-top: 1px solid #f1dfc0; }
+.foot { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-top: 1px solid var(--line-2); }
+.btn { border: 1px solid #cbd4d0; border-radius: 7px; padding: 6px 14px; font-size: 13px; background: var(--paper); }
+.btn.go { background: var(--accent); color: #fff; border-color: var(--accent); font-weight: 600; }
+.lnk-red { color: var(--danger); font-size: 13px; }
+
+/* notification cards */
+.notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+.ntf { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; display: grid; gap: 6px; font-size: 13px; }
+.ntf .who { font-size: 12px; color: var(--muted); font-weight: 600; }
+.ntf .tt { font-weight: 600; }
+.ntf .bd { color: var(--muted); }
+.ntf .ack { justify-self: start; background: var(--accent); color: #fff; border-radius: 6px; padding: 3px 10px; font-size: 12px; font-weight: 600; }
+.ntf .ack.off { background: #eef1f0; color: #8b9893; }
+
+/* questions */
+.q { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; gap: 10px; }
+.q ol { gap: 8px; }
+.rec { color: var(--accent); font-weight: 600; }
+.basis { font-size: 13px; color: var(--soft); }
+
+/* plan steps */
+.phases { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.phase { background: var(--paper); border: 1px solid var(--line); border-radius: 10px; padding: 16px; display: grid; gap: 10px; align-content: start; }
+.phase .k { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+.phase ul { font-size: 14px; }
+.phase.now { border-color: var(--accent); }
+@media (max-width: 560px) { h1 { font-size: 26px; } .page { padding-inline: 16px; } }
+</style>
+
+<div class="page">
+
+  <header class="read stack">
+    <span class="eyebrow">Important Dates çekmecesi · plan</span>
+    <h1>Mert'in 8:28'deki istekleri: plan ve ekranlar</h1>
+    <p class="meta">10 Ekim 2026 · saatler California saati · dal <code>claude/important-dates-drawer-a-q470vy</code>, son kayıt <code>e3c749a1</code> (5:41 öncesi hâl). Kod henüz yazılmadı; bu sayfa senin onayın için.</p>
+    <div class="quote"><b>Senin mesajın (8:28):</b> kısa saatli günlerde taşanlar Keep, taşımayanlar Remove. Shifts penceresinde her vardiyanın saati düzenlenebilsin, kayıtla birlikte post edilsin. Etkilenenler kişiye özel bildirim alsın. All day lokasyon satırına, saat kutularının hizasına. Çekmeceye "important date'i onayla" kutusu, Shifts sekmesine "vardiya değişikliğini onayla" kutusu; ikisi de seçiliyse vardiyası değişen kişi tek onayla ikisini birden onaylar. Bildirim tasarımı yapılacaklar listesine.</div>
+  </header>
+
+  <section class="sec">
+    <div class="sec-head">
+      <h2>Özet: altı istek</h2>
+      <p class="note">Her satırın ayrıntısı ve ekran çizimi aşağıda.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>İstek</th><th>Bugün dalda</th><th>Ne değişir</th><th>Önerdiğim yer</th></tr></thead>
+        <tbody>
+          <tr><td class="n">1</td><td>Taşan Keep, dışarıda kalan Remove</td><td>Zaten böyle</td><td>Değişmez</td><td><span class="tag same">Hazır</span></td></tr>
+          <tr><td class="n">2</td><td>Shifts sekmesinde vardiya saatini düzenleme</td><td>Yok</td><td>Her vardiyada saat düzenleme; Save'de yayına çıkar</td><td><span class="tag new">Bu dal</span></td></tr>
+          <tr><td class="n">3</td><td>Kişiye özel tek bildirim</td><td>Yalnız Remove edilen kişi kendi bildirimini alıyor</td><td>Open'a düşen ve saati değişen de kendi bildirimini alır</td><td><span class="tag new">Bu dal</span> + tasarımı <span class="tag later">Bildirim işi</span></td></tr>
+          <tr><td class="n">4</td><td>All day kalkar (9:29 mesajın)</td><td>Details'te All day kutusu ve saatler</td><td>Sıra Open · Closed · Short hours; Open ve Closed bütün gün, saat kutusu yalnız Short hours'ta</td><td><span class="tag new">Bu dal</span></td></tr>
+          <tr><td class="n">5</td><td>Important date onay kutusu</td><td>Yok (kural K7: "önemli tarihte onay yok")</td><td>Details'te "Ask people to acknowledge"</td><td><span class="tag later">Sonraki iş</span></td></tr>
+          <tr><td class="n">6</td><td>Vardiya değişikliği onay kutusu</td><td>Yok</td><td>Shifts'te ikinci kutu; ikisi seçiliyse tek onay</td><td><span class="tag later">Sonraki iş</span></td></tr>
+          <tr><td class="n">7</td><td>Tür listesi genel kategoriler + elle yazılan "Other" (8:32 mesajın)</td><td>Holiday ve Event</td><td>Senin seçtiğin türler eklenir; Other seçilince ad kutusu açılır</td><td><span class="tag new">Bu dal</span> (seçimine göre)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 1 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag same">1 · Değişmiyor</span>
+      <h2>Taşan vardiya Keep, saatlerin tamamen dışındaki Remove</h2>
+      <p class="read">Örnek: Harbor Thanksgiving'de 10 AM–3 PM açık. Priya'nın 6–9:30 AM vardiyası tamamen dışarıda, Remove gelir. Daniel'in 12–6 PM vardiyası 3 PM'den sonra taşıyor, Keep gelir. Dal bugün tam böyle çalışıyor. "Taşımayanlar" sözünü "saatlerin tamamen dışında kalanlar" diye okudum; yanlışsa söyle.</p>
+    </div>
+  </section>
+
+  <!-- 7 types -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag new">7 · Senin seçimini bekliyor</span>
+      <h2>Tür listesi: yalnız genel kategori, vardiyaya etkisi yok</h2>
+      <p class="read">Tür yalnız tarihin ne olduğunu söyler. Vardiyaya etkisi yoktur; o etki yalnız lokasyon satırından gelir: Open, Short hours, Closed, All day. Ayrıntı Note'a yazılır. Örnek: "Super Bowl Sunday" türü <b>Busy day</b>, Note'u "Expect a full bar after 3 PM", bütün lokasyonlar Open. Hiçbir vardiya değişmez, herkes bildirimi alır. Aşağıdaki listeden istediklerini seç; senin onayın olmadan listeye hiçbir şey girmez. <b>Other</b> sabit: seçilince altında "Type name" kutusu açılır, müdür türü elle yazar.</p>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>#</th><th>Tür (ekranda)</th><th>Ne için</th><th>Örnek</th><th>Önerim</th></tr></thead>
+        <tbody>
+          <tr><td class="n">T1</td><td><b>Holiday</b></td><td>Resmî ya da yerel tatil</td><td>Thanksgiving, July 4th</td><td><span class="tag same">Bugün var, kalsın</span></td></tr>
+          <tr><td class="n">T2</td><td><b>Event</b></td><td>Restoranda olacak bir şey</td><td>Private party, live music night, catering</td><td><span class="tag same">Bugün var, kalsın</span></td></tr>
+          <tr><td class="n">T3</td><td><b>Busy day</b></td><td>Yoğunluk uyarısı</td><td>Super Bowl Sunday, graduation weekend</td><td><span class="tag new">Öneriyorum</span></td></tr>
+          <tr><td class="n">T4</td><td><b>Celebration</b></td><td>Kutlama mesajı</td><td>Restaurant's 5th anniversary, team milestone</td><td><span class="tag new">Öneriyorum</span></td></tr>
+          <tr><td class="n">T5</td><td><b>Inspection</b></td><td>Denetim, bakım, temizlik günü</td><td>Health inspection, deep clean, hood cleaning</td><td><span class="tag new">Öneriyorum</span></td></tr>
+          <tr><td class="n">T6</td><td><b>Staff meeting</b></td><td>Toplantı ya da eğitim</td><td>All-staff meeting, new menu tasting</td><td><span class="tag new">Öneriyorum</span></td></tr>
+          <tr><td class="n">T7</td><td><b>Blackout</b></td><td>"İzin istenmeyen gün" uyarısı</td><td>Mother's Day weekend</td><td><span class="tag later">Önermiyorum</span></td></tr>
+          <tr><td class="n">T8</td><td><b>Weather</b></td><td>Hava uyarısı</td><td>Snowstorm, heat wave</td><td><span class="tag later">Önermiyorum</span></td></tr>
+          <tr><td class="n">—</td><td><b>Other</b></td><td>Listede olmayan her şey; adı elle yazılır</td><td>"Wine tasting"</td><td><span class="tag same">Senin isteğin, sabit</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="ba">
+      <div class="panel">
+        <div class="panel-label">Details · Type listesi açık</div>
+        <div class="scroll"><div class="dw"><div class="dw-pad">
+          <div class="grid2">
+            <div class="fld"><span class="lbl">Type</span><span class="inp edit">Busy day ▾</span>
+              <div class="locs" style="font-size:12.5px">
+                <div class="loc" style="grid-template-columns:1fr;border-top:0;padding:6px 10px">Holiday</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px">Event</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px;background:var(--accent-soft);font-weight:600">Busy day</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px">Celebration</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px">Inspection</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px">Staff meeting</div>
+                <div class="loc" style="grid-template-columns:1fr;padding:6px 10px">Other</div>
+              </div>
+            </div>
+            <div class="fld"><span class="lbl">Repeats</span><span class="inp">Does not repeat ▾</span></div>
+          </div>
+        </div></div></div>
+        <p class="note">Liste önerdiğim türlerle çizildi. Son hâli senin seçimin olur.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Details · Other seçili</div>
+        <div class="scroll"><div class="dw"><div class="dw-pad">
+          <div class="grid2">
+            <div class="fld"><span class="lbl">Type</span><span class="inp">Other ▾</span></div>
+            <div class="fld"><span class="lbl">Repeats</span><span class="inp">Does not repeat ▾</span></div>
+          </div>
+          <div class="fld hl"><span class="lbl">Type name</span><span class="inp edit">Wine tasting</span><span class="small">Shown in the list and to your team.</span></div>
+        </div></div></div>
+        <p class="note">Listede ve çalışanın ekranında "Wine tasting" yazar. Liste sayfasının süzgecinde bu kayıtlar "Other" altında toplanır. Ad boşsa Save açılmaz.</p>
+      </div>
+    </div>
+    <p class="note read"><b>Neden Blackout ve Weather'ı önermiyorum:</b> Sektörde "Blackout" izin istenemeyen gün demektir. Bizde türün etkisi olmayacağı için müdür izin taleplerinin engellendiğini sanır ama engellenmez. Weather'ın günü genelde önceden bilinmez; gerekirse Other ile yazılır. <b>Liste kısa kalsın:</b> uzun liste ayar cehennemine döner. Az kullanılan tür için Other var.</p>
+  </section>
+
+  <!-- 2 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag new">2 · Yeni</span>
+      <h2>Shifts sekmesinde her vardiyanın saati düzenlenir</h2>
+      <p class="read">Müdür Daniel'in 12–6 PM vardiyasını 12–3 PM yapar ve Save'e basar. Important date ile vardiya değişikliği aynı anda kaydedilir ve yayına çıkar. Daniel tek bildirim alır: "Your shift on Nov 26 changed: 12 PM–6 PM → 12 PM–3 PM." Yeni saat de Schedule'daki bütün kurallardan geçer: başka vardiyayla çakışma, onaylı izin, kapalı saat. Kural uyarı veriyorsa satırda görünür, engelliyorsa Save açılmaz.</p>
+    </div>
+    <div class="ba">
+      <div class="panel">
+        <div class="panel-label">Şimdi (dalda)</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="shift-group">
+              <div class="sg-head"><span>Harbor · Thu, Nov 26</span><span>2 shifts</span></div>
+              <div class="shift"><span class="av">PS</span><span class="who"><b>Priya Shah</b><span class="t">6 AM – 9:30 AM · Server · <span class="warn">Before opening</span></span></span><span class="seg"><span class="on red">Remove</span><span>Open shift</span><span>Keep</span></span></div>
+              <div class="shift"><span class="av">DK</span><span class="who"><b>Daniel Kim</b><span class="t">12 PM – 6 PM · Server · <span class="warn">Ends after 3 PM</span></span></span><span class="seg"><span>Remove</span><span>Open shift</span><span class="on">Keep</span></span></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="note">Saat değiştirilemiyor. Müdür önce kaydeder, sonra Schedule'a gidip vardiyayı ayrıca düzenler.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label"><span class="pick">Varyant A (önerilen)</span> · saatin yanında "Edit time"</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="shift-group">
+              <div class="sg-head"><span>Harbor · Thu, Nov 26</span><span>2 shifts</span></div>
+              <div class="shift"><span class="av">PS</span><span class="who"><b>Priya Shah</b><span class="t">6 AM – 9:30 AM · Server · <span class="warn">Before opening</span> · <span class="pen">Edit time</span></span></span><span class="seg"><span class="on red">Remove</span><span>Open shift</span><span>Keep</span></span></div>
+              <div class="shift"><span class="av">DK</span><span class="who"><b>Daniel Kim</b><span class="t">Server · <span class="chip-ed">Edited</span></span></span><span class="seg"><span>Remove</span><span>Open shift</span><span class="on">Keep</span></span>
+                <div class="edit-row hl"><span class="inp">12:00 PM ◷</span><span class="small">to</span><span class="inp edit">03:00 PM ◷</span><span class="small">was 12 PM – 6 PM</span><span class="pen">Fit to 10 AM–3 PM</span></div>
+              </div>
+            </div>
+          </div>
+          <div class="foot-warn">⚠ 1 shift will be removed · 1 shift changes time</div>
+        </div></div>
+        <p class="note">"Edit time"a basınca satırın altında iki saat kutusu açılır. Keep ve Open shift ile birlikte çalışır: Open shift + yeni saat, vardiyayı yeni saatle boş vardiyaya çevirir. Remove seçiliyse saat kutusu kapanır. "Fit to 10 AM–3 PM" tek tıkla vardiyayı açık saatlere sığdırır.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label">Varyant B · dördüncü seçenek "Edit time"</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="shift-group">
+              <div class="sg-head"><span>Harbor · Thu, Nov 26</span><span>2 shifts</span></div>
+              <div class="shift"><span class="av">PS</span><span class="who"><b>Priya Shah</b><span class="t">6 AM – 9:30 AM · Server</span></span><span class="seg"><span class="on red">Remove</span><span>Open</span><span>Keep</span><span>Edit time</span></span></div>
+              <div class="shift"><span class="av">DK</span><span class="who"><b>Daniel Kim</b><span class="t">12 PM – 6 PM · Server</span></span><span class="seg"><span>Remove</span><span>Open</span><span>Keep</span><span class="on">Edit time</span></span>
+                <div class="edit-row hl"><span class="inp">12:00 PM ◷</span><span class="small">to</span><span class="inp edit">03:00 PM ◷</span></div>
+              </div>
+            </div>
+          </div>
+        </div></div>
+        <p class="note">Saat düzenleme ayrı bir seçenek olur ve yalnız "Keep + yeni saat" demektir. Open shift'in saati değiştirilemez. Dört düğme telefonda tek satıra sığmaz, iki satıra iner.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag same">4 · Karar verildi (9:29)</span>
+      <h2>All day kalkar: Open ve Closed bütün gün, saat yalnız Short hours'ta</h2>
+      <p class="read">Senin 9:29 kararın: All day kutusu hiçbir yerde yok. Lokasyon satırında sıra Open · Closed · Short hours. Open ve Closed her zaman bütün gün geçerli, saat kutusu göstermez. Saat kutuları yalnız Short hours seçilince açılır. Details'te yalnız tarihler kalır; etkinlik saati Note'a yazılır. Sonucu: "1–5 PM arası kapalı, gerisi açık" gibi gün ortası kapanış girilemez; lokasyon ya bütün gün kapalıdır ya da tek bir aralıkta açıktır.</p>
+    </div>
+    <div class="ba">
+      <div class="panel">
+        <div class="panel-label">Şimdi (dalda)</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="grid2">
+              <div class="fld"><span class="lbl">Starts</span><span class="inp">11/26/2026 ▦</span><span class="inp off">09:00 AM</span></div>
+              <div class="fld"><span class="row-between"><span class="lbl">Ends</span><span class="cb hl-red"><i class="on"></i>All day</span></span><span class="inp">11/26/2026 ▦</span><span class="inp off">05:00 PM</span></div>
+            </div>
+            <div class="locs">
+              <div class="loc-head"><span>All locations</span><span>That day</span><span style="text-align:right">Shifts</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Downtown</span><span class="seg"><span><span class="dot g"></span>Open</span><span><span class="dot a"></span>Short hours</span><span class="on red"><span class="dot r"></span>Closed</span></span><span class="imp red">2 removed</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Harbor</span><span class="seg"><span><span class="dot g"></span>Open</span><span class="on"><span class="dot a"></span>Short hours</span><span><span class="dot r"></span>Closed</span></span><span class="imp red">1 removed · 1 kept</span>
+                <div class="sub"><span class="small">Opens</span><span class="inp">10:00 AM ◷</span><span class="small">Closes</span><span class="inp">03:00 PM ◷</span></div></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="note">All day bütün tarih için tek kutu. Saatler Details'teki Starts/Ends kutularında.</p>
+      </div>
+
+      <div class="panel">
+        <div class="panel-label"><span class="pick">Sonra</span></div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="grid2">
+              <div class="fld"><span class="lbl">Starts</span><span class="inp">11/26/2026 ▦</span></div>
+              <div class="fld"><span class="lbl">Ends</span><span class="inp">11/26/2026 ▦</span></div>
+            </div>
+            <div class="locs">
+              <div class="loc-head"><span>All locations</span><span>That day</span><span style="text-align:right">Shifts</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Downtown</span><span class="seg hl"><span><span class="dot g"></span>Open</span><span class="on red"><span class="dot r"></span>Closed</span><span><span class="dot a"></span>Short hours</span></span><span class="imp red">2 removed</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Midtown</span><span class="seg"><span class="on"><span class="dot g"></span>Open</span><span><span class="dot r"></span>Closed</span><span><span class="dot a"></span>Short hours</span></span><span class="imp">Usual hours</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Harbor</span><span class="seg"><span><span class="dot g"></span>Open</span><span><span class="dot r"></span>Closed</span><span class="on"><span class="dot a"></span>Short hours</span></span><span class="imp red">1 removed · 1 kept</span>
+                <div class="sub hl"><span class="small">Opens</span><span class="inp">10:00 AM ◷</span><span class="small">Closes</span><span class="inp">03:00 PM ◷</span></div></div>
+            </div>
+          </div>
+        </div></div>
+        <p class="note">Downtown bütün gün kapalı, saat kutusu yok. Midtown olağan saatlerinde açık. Harbor yalnız 10 AM–3 PM açık. Details'te All day ve saat kutuları yok.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- 3 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag new">3 · Yeni</span>
+      <h2>Kişiye özel tek bildirim</h2>
+      <p class="read">Herkes en çok bir bildirim alır. Vardiyası etkilenmeyen "important date posted" bildirimini alır. Vardiyası değişen ise iki bilgiyi tek bildirimde alır: tarih ve kendi vardiyasına ne olduğu. Bugün dalda bunun yalnız Remove kısmı var. Open'a düşen ve saati değişen kişiye de aynı kişisel bildirimi eklerim. Keep edilen ama saati değişmeyen kişinin vardiyası değişmemiştir, o genel bildirimi alır.</p>
+    </div>
+    <div class="notes">
+      <div class="ntf"><span class="who">Ali · Midtown, vardiyası yok</span><span class="tt">Thanksgiving · Thu, Nov 26</span><span class="bd">Downtown closed. Harbor open 10 AM–3 PM.</span></div>
+      <div class="ntf"><span class="who">Maria · Downtown, Remove</span><span class="tt">Thanksgiving · Downtown is closed on Nov 26</span><span class="bd">Your shift 9 AM–5 PM was removed.</span></div>
+      <div class="ntf"><span class="who">James · Downtown, Open shift</span><span class="tt">Thanksgiving · Downtown is closed on Nov 26</span><span class="bd">Your shift 4 PM–11 PM is now an open shift. You are no longer on it.</span></div>
+      <div class="ntf"><span class="who">Daniel · Harbor, saat düzenlendi</span><span class="tt">Thanksgiving · Harbor has short hours on Nov 26</span><span class="bd">Your shift changed: 12 PM–6 PM → 12 PM–3 PM.</span></div>
+    </div>
+    <p class="note read">Metinler örnek. Bildirimin son görünümü, aynı gün birden çok lokasyonda vardiyası olan kişi (örnek: Sara'nın sabah Downtown, akşam Harbor vardiyası var, ikisi de etkileniyor) ve ikinci, üçüncü lokasyondan gelen bildirimler, istediğin gibi yapılacaklar listesinin Bildirim bölümüne yazılır. Bugünkü kod aynı kişinin birden çok vardiyasını zaten tek bildirimde topluyor.</p>
+  </section>
+
+  <!-- 5 + 6 -->
+  <section class="sec">
+    <div class="sec-head">
+      <span class="tag later">5 ve 6 · Yeni, sonraki iş önerisi</span>
+      <span class="tag conflict">Eski kuralla çakışıyor: K7</span>
+      <h2>İki onay kutusu: tarih için ve vardiya değişikliği için</h2>
+      <p class="read">2 Ekim'de "önemli tarihte okundu onayı yok, çünkü önemli tarih bilgi verir, kişiden eylem beklemez" diye karar vermiştin (KARARLAR K7). Bu istek o kararın yerine geçer; onaylarsan K7 değişir. İki kutu da yeni kayıtta kapalı gelir, duyurudaki onay anahtarı gibi (K22).</p>
+    </div>
+    <div class="ba">
+      <div class="panel">
+        <div class="panel-label">Details sekmesi · tarih onayı</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <div class="locs"><div class="loc-head"><span>All locations</span><span>That day</span><span style="text-align:right">Shifts</span></div>
+              <div class="loc"><span class="name"><span class="cb"><i class="on"></i></span>Downtown</span><span class="seg"><span>Open</span><span class="on red">Closed</span><span>Short hours</span></span><span class="imp red">2 removed</span></div></div>
+            <span class="cb big hl"><i class="on"></i><span>Ask people to acknowledge this date<span class="hint">Everyone at Downtown, Harbor and Midtown sees an Acknowledge button.</span></span></span>
+            <div class="fld"><span class="lbl">Note</span><span class="inp" style="height:46px"></span></div>
+          </div>
+        </div></div>
+      </div>
+      <div class="panel">
+        <div class="panel-label">Shifts sekmesi · vardiya değişikliği onayı</div>
+        <div class="scroll"><div class="dw">
+          <div class="dw-pad">
+            <span class="cb big hl"><i class="on"></i><span>Ask people whose shift changes to acknowledge<span class="hint">4 people. They acknowledge the date and their shift change together.</span></span></span>
+            <div class="shift-group">
+              <div class="sg-head"><span>Downtown · Thu, Nov 26</span><span>2 shifts</span></div>
+              <div class="shift"><span class="av">ML</span><span class="who"><b>Maria Lopez</b><span class="t">9 AM – 5 PM · Server</span></span><span class="seg"><span class="on red">Remove</span><span>Open shift</span><span>Keep</span></span></div>
+            </div>
+          </div>
+        </div></div>
+      </div>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Tarih onayı</th><th>Vardiya onayı</th><th>Vardiyası etkilenmeyen (Ali)</th><th>Vardiyası değişen (Maria)</th></tr></thead>
+        <tbody>
+          <tr><td>Kapalı</td><td>Kapalı</td><td>Bildirim, onay yok</td><td>Kişisel bildirim, onay yok</td></tr>
+          <tr><td>Açık</td><td>Kapalı</td><td>Tarihi onaylar</td><td>Tarihi onaylar; vardiya değişikliği yalnız bilgi</td></tr>
+          <tr><td>Kapalı</td><td>Açık</td><td>Bildirim, onay yok</td><td>Vardiya değişikliğini onaylar</td></tr>
+          <tr><td>Açık</td><td>Açık</td><td>Tarihi onaylar</td><td><b>Tek onay</b>: tarih ve vardiya birlikte</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="notes">
+      <div class="ntf"><span class="who">Ali'nin gördüğü (tarih onayı açık)</span><span class="tt">Thanksgiving · Thu, Nov 26</span><span class="bd">Downtown closed. Harbor open 10 AM–3 PM.</span><span class="ack">Acknowledge</span></div>
+      <div class="ntf"><span class="who">Maria'nın gördüğü (ikisi de açık)</span><span class="tt">Thanksgiving · Downtown is closed on Nov 26</span><span class="bd">Your shift 9 AM–5 PM was removed.</span><span class="ack">Acknowledge date and shift change</span></div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>Eksik ya da yanlış olabilecek</h2></div>
+    <ul class="read">
+      <li><b>K7 çakışması.</b> Onay kutusu, 2 Ekim'deki "önemli tarihte onay yok" kararının yerine geçer. Onaylarsan karar defterinde değişir.</li>
+      <li><b>Kim onayladı, nerede görünür?</b> Duyuruda bunun için ayrı bir Acknowledge sekmesi var (kim onayladı, kim "Not yet", Remind). Önemli tarihte de böyle bir yer gerekir; çizimi sonraki işte.</li>
+      <li><b>Çalışan nerede onaylar?</b> Çalışan ekranları MVP'de sonraya kaldı. Onay düğmesi şimdilik bildirimde ve çalışanın önemli tarih görünümünde olur. Bildirim sistemi baştan kuruluyor (Bildirim işi), düğmenin yeri onunla birlikte netleşir.</li>
+      <li><b>Kayıt sonradan değişirse.</b> Duyuruda "onaylar kalsın / sıfırlansın" diye soruluyor (K27). Önemli tarihte de aynısını öneririm; sonraki işte sorarım.</li>
+      <li><b>Düzenlenen saat başka kurala takılabilir.</b> Örnek: Daniel'in yeni saati onaylı izniyle çakışıyor. Bu durumda Schedule'daki kural ne diyorsa çekmece de onu söyler.</li>
+      <li><b>Details'teki saatler kalktı (9:29).</b> "Health inspection 9–11 AM" gibi bir etkinliğin saati Note'a yazılır.</li>
+      <li><b>Tür kartını 8:32 mesajınla cevapladın</b> (bölüm 7). Bir kart hâlâ açık: kısa saatte Schedule uyarısı. Cevabı bu planı değiştirmez.</li>
+      <li><b>Bugünkü kayıtların türü.</b> Hepsi test verisi. Eski "Closed day" kayıtları Holiday olur, kapanışı lokasyon satırına geçer. "Blackout" kayıtları, Blackout'u seçmezsen Other + "Blackout" adıyla kalır.</li>
+    </ul>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>Sorularım</h2><p class="note">Kartlarla da soruyorum. Varyant seçimini yazarak söyle.</p></div>
+    <div class="q">
+      <h3>Soru 1 · Kapsam · cevaplandı</h3>
+      <p>9:21'de "İki iş" seçtin: bu dal 1, 2, 3, 4 ve 7; onay kutuları (5 ve 6) ayrı iş.</p>
+    </div>
+    <div class="q">
+      <h3>Soru 2 · Details'teki saat kutuları · cevaplandı</h3>
+      <p>9:29 mesajın: All day kalkar, Details'te saat kutusu yok, saat yalnız Short hours satırında. Bölüm 4 buna göre çizildi.</p>
+    </div>
+    <div class="q">
+      <h3>Soru 3 · Saat düzenleme: Varyant A mı B mi?</h3>
+      <p>Bölüm 2'deki çizimlere bak. Önerim A: dört düğme telefonda sığmıyor, A ile Open shift'in saati de değiştirilebiliyor. Beğendiğini yaz.</p>
+    </div>
+    <div class="q">
+      <h3>Soru 4 · Tür listesine hangileri girsin?</h3>
+      <p>Bölüm 7'deki tablodan numaralarıyla yaz, örneğin "T1, T2, T3, T5". Önerim T1–T6 ve Other. Listede olmayan bir tür istiyorsan adını yaz.</p>
+      <p class="basis">Dayanak: Mert'in 8:32 mesajı ("listeye benden onaysız bir şey ekleme", "Others ekle").</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>Bence</h2></div>
+    <div class="read stack-s">
+      <p>İsteklerin ürünü güçlendiriyor. Asıl kazanç saat düzenleme: müdür kısa saatli günü tek pencerede, tek kayıtla bitirir, Schedule'a ikinci kez gitmez. Kişiye özel tek bildirim de "bildirim gürültüsü yok" ilkemize tam uyuyor.</p>
+      <p>Onay kutularını ayrı işe bırakmamın nedeni şu: bunlar yeni bir sistem demek. Kim onaylamak zorunda, kim onayladı nerede görünür, çalışan nerede onaylar, kayıt değişince onaylar ne olur, hepsi ayrı kararlar. Duyurudaki onay sistemini (K22, K23, K27) örnek alıp ayrı işte doğru kurmak, bu dalı aylarca açık tutmaktan iyi. Maliyeti yok, $0.</p>
+      <p>Elediğim seçenekler: Bildirimleri Bildirim işi bitene kadar bekletmek. Bunu eledim, çünkü Remove bildirimi bugün zaten gidiyor; Open ve saat değişikliği için küçük bir ekleme yeterli. "Fit to hours" düğmesi olmadan yalnız saat kutuları da bir seçenekti, ama tek tık müdürün işini çok kısaltıyor ve yeni bir ayar ya da onay adımı eklemiyor.</p>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="sec-head"><h2>Plan</h2><p class="note">Soru 1'de "iki iş" seçilirse.</p></div>
+    <div class="phases">
+      <div class="phase now">
+        <span class="k">Bu dal</span>
+        <h3>Saat düzenleme, lokasyon satırı, kişisel bildirim, türler</h3>
+        <ul>
+          <li>Veritabanı: Closed her zaman bütün gün; saatli kapanış kalkar. Her vardiya için yeni başlangıç ve bitiş saati kaydedilir, Schedule kurallarından geçer. Migration henüz hiçbir yere uygulanmadı; aynı dosya değişir.</li>
+          <li>Kişisel bildirim: Open shift'e düşen ve saati değişen kişi.</li>
+          <li>Tür listesi: senin seçtiğin türler ve elle yazılan Other.</li>
+          <li>Çekmece: lokasyon satırı Open · Closed · Short hours, All day ve Details saatleri kalkar, seçtiğin varyantla saat düzenleme.</li>
+          <li>Testler, güvenlik incelemesi, ekran görüntüleri (1440 ve 390).</li>
+          <li>Bilgisayarındaki Claude: veritabanı testleri, e2e, tren. Canlıya senin "evet"inle.</li>
+        </ul>
+        <p class="note">Bitti ölçütü: Daniel'in vardiyası çekmeceden 12–3 PM yapılıp kaydedilince Schedule'da yeni saatle görünür ve Daniel tek bildirim alır. Harbor Short hours 10 AM–3 PM olunca yalnız bu saatlerin dışına taşan vardiyalar listeye düşer.</p>
+      </div>
+      <div class="phase">
+        <span class="k">Sonraki iş</span>
+        <h3>Onay kutuları</h3>
+        <ul>
+          <li>Önce kararlar: kim onaylamak zorunda, takip yeri, kayıt değişince ne olur. Duyurudaki kuralları örnek alıp kartla sorarım.</li>
+          <li>Ekran varyantları Artifact olarak, sen seçersin.</li>
+          <li>Sonra kod: iki kutu, tek onay kuralı, takip, çalışanın düğmesi.</li>
+        </ul>
+      </div>
+      <div class="phase">
+        <span class="k">Bildirim işi</span>
+        <h3>Yapılacaklar listesine not</h3>
+        <ul>
+          <li>Önemli tarih bildiriminin son tasarımı: etkilenmeyene "important date posted", vardiyası değişene "important date posted + your shift changed".</li>
+          <li>Aynı gün birden çok lokasyonda vardiyası olan, birden çok lokasyonda vardiyası etkilenen kişinin bildirimi.</li>
+          <li>Onay düğmesinin bildirimdeki yeri (sonraki işle birlikte).</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+</div>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Announcements ve Important Dates", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

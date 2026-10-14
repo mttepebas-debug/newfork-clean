@@ -1,0 +1,724 @@
+diff --git a/apps/web/src/communications/AnnouncementDrawerTabs.tsx b/apps/web/src/communications/AnnouncementDrawerTabs.tsx
+index 010d0aee..91bf47a3 100644
+--- a/apps/web/src/communications/AnnouncementDrawerTabs.tsx
++++ b/apps/web/src/communications/AnnouncementDrawerTabs.tsx
+@@ -10,7 +10,7 @@ import type {
+   AnnouncementShiftChoice,
+ } from "@newfork/shared";
+ import { Button } from "@newfork/ui";
+-import { X } from "lucide-react";
++import { Check, MapPin, Plus, Search, X } from "lucide-react";
+ import { Fragment, useState, type ReactNode } from "react";
+ import { AvailabilityClockInput } from "../availability/AvailabilityClockInput";
+ import {
+@@ -709,6 +709,15 @@ export function PublishingRow({
+ 
+ // ---------- Audience ----------
+ 
++// Variant preview (visual decision only): #audv=o|a|b|c on the demo page.
++const AUDIENCE_VARIANT = (() => {
++  try {
++    return new URLSearchParams(window.location.hash.slice(1)).get("audv") ?? "o";
++  } catch {
++    return "o";
++  }
++})();
++
+ export type Acknowledgements = {
+   people: NonNullable<AnnouncementDetail["acknowledgements"]>;
+   zone: string;
+@@ -799,6 +808,54 @@ export function AudienceTab({
+     setFilter(next);
+     setUnpicked(new Set());
+   };
++  if (AUDIENCE_VARIANT !== "o")
++    return (
++      <AudienceVariant
++        variant={AUDIENCE_VARIANT}
++        draft={draft}
++        update={update}
++        locked={locked}
++        list={list}
++        pool={pool}
++        shownByFilter={shown}
++        filterBar={
++          <div className="adv-filters">
++            <select aria-label="Location" value={filter.location} disabled={locked} onChange={(event) => reset({ ...filter, location: event.target.value })}>
++              <option value="">All locations</option>
++              {locationOptions.map((location) => (
++                <option key={location.id} value={location.id}>{location.name}</option>
++              ))}
++            </select>
++            <select aria-label="Department" value={department} disabled={locked} onChange={(event) => reset({ ...filter, department: event.target.value })}>
++              <option value="">All departments</option>
++              {departments.map((item) => (
++                <option key={item.id} value={item.id}>{item.name}</option>
++              ))}
++            </select>
++            <select aria-label="Job" value={job} disabled={locked} onChange={(event) => reset({ ...filter, job: event.target.value })}>
++              <option value="">All jobs</option>
++              {jobs.map((item) => (
++                <option key={item.id} value={item.id}>{item.name}</option>
++              ))}
++            </select>
++          </div>
++        }
++        unpicked={unpicked}
++        setUnpicked={setUnpicked}
++        resetFilter={() => reset({ location: "", department: "", job: "" })}
++        checkedLocations={checkedLocations}
++        recipientCount={recipientCount}
++        shiftPeople={shiftPeople}
++        problem={problem}
++        acks={acks}
++        added={added}
++        unknownAdded={unknownAdded}
++        notYet={notYet}
++        done={done}
++        asked={asked}
++        meta={meta}
++      />
++    );
+   return (
+     <>
+       <p className="ad-desc">Everyone at a checked location gets it. Add anyone else here.</p>
+@@ -1045,6 +1102,346 @@ export function AudienceTab({
+   );
+ }
+ 
++
++function AudienceVariant({
++  variant,
++  draft,
++  update,
++  locked,
++  list,
++  pool,
++  shownByFilter,
++  filterBar,
++  unpicked,
++  setUnpicked,
++  resetFilter,
++  checkedLocations,
++  recipientCount,
++  shiftPeople,
++  problem,
++  acks,
++  added,
++  unknownAdded,
++  notYet,
++  done,
++  asked,
++  meta,
++}: {
++  variant: string;
++  draft: AnnouncementDraft;
++  update: Update;
++  locked: boolean;
++  list: AnnouncementList;
++  pool: AnnouncementPerson[];
++  shownByFilter: AnnouncementPerson[];
++  filterBar: ReactNode;
++  unpicked: Set<string>;
++  setUnpicked: (next: Set<string>) => void;
++  resetFilter: () => void;
++  checkedLocations: { id: string; name: string; count: number | null }[];
++  recipientCount: number;
++  shiftPeople: { user_id: string; name: string; meta: string }[];
++  problem: string | undefined;
++  acks?: Acknowledgements;
++  added: AnnouncementPerson[];
++  unknownAdded: number;
++  notYet: NonNullable<AnnouncementDetail["acknowledgements"]>;
++  done: NonNullable<AnnouncementDetail["acknowledgements"]>;
++  asked: NonNullable<AnnouncementDetail["acknowledgements"]>;
++  meta: (person: AnnouncementPerson) => string;
++}) {
++  void list;
++  const [query, setQuery] = useState("");
++  const [chosen, setChosen] = useState<Set<string>>(new Set());
++  const [adding, setAdding] = useState(false);
++  const searchable = variant !== "a";
++  const words = query.trim().toLowerCase();
++  const shown = searchable
++    ? pool.filter((person) => !words || `${person.name} ${meta(person)}`.toLowerCase().includes(words))
++    : shownByFilter;
++  // A: everyone shown starts picked (today's rule). B and C: nobody until checked.
++  const isPicked = (id: string) => (searchable ? chosen.has(id) : !unpicked.has(id));
++  const picked = shown.filter((person) => isPicked(person.user_id));
++  const toggle = (id: string, on: boolean) => {
++    if (searchable) {
++      const next = new Set(chosen);
++      if (on) next.add(id);
++      else next.delete(id);
++      setChosen(next);
++    } else {
++      const next = new Set(unpicked);
++      if (on) next.delete(id);
++      else next.add(id);
++      setUnpicked(next);
++    }
++  };
++  const toggleAll = (on: boolean) => {
++    if (searchable) setChosen(on ? new Set(shown.map((person) => person.user_id)) : new Set());
++    else setUnpicked(on ? new Set() : new Set(shown.map((person) => person.user_id)));
++  };
++  const addPicked = () => {
++    const ids = picked.map((person) => person.user_id);
++    update((current) => ({ ...current, people: [...current.people, ...ids] }));
++    setChosen(new Set());
++    setQuery("");
++    setAdding(false);
++    resetFilter();
++  };
++  const remove = (person: { user_id: string; name: string }) =>
++    !locked &&
++    draft.people.includes(person.user_id) && (
++      <button
++        type="button"
++        className="adv-x"
++        aria-label={`Remove ${person.name}`}
++        onClick={() => update((current) => ({ ...current, people: current.people.filter((id) => id !== person.user_id) }))}
++      >
++        <X size={14} aria-hidden />
++      </button>
++    );
++  const personRow = (person: { user_id: string; name: string }, sub: string, end?: ReactNode) => (
++    <div className="adv-row" key={person.user_id}>
++      <span className="ad-avatar adv-av" aria-hidden>
++        {initials(person.name)}
++      </span>
++      <span className="adv-text">
++        <b>{person.name}</b>
++        <small>{sub}</small>
++      </span>
++      {end}
++      {remove(person)}
++    </div>
++  );
++  const pct = asked.length ? Math.round((done.length / asked.length) * 100) : 0;
++
++  const picker = (
++    <>
++      {searchable ? (
++        <label className="adv-search">
++          <Search size={15} aria-hidden />
++          <input
++            type="search"
++            placeholder="Search name, job or location"
++            aria-label="Search people"
++            value={query}
++            disabled={locked}
++            onChange={(event) => setQuery(event.target.value)}
++          />
++        </label>
++      ) : (
++        filterBar
++      )}
++      <div className="adv-list">
++        {shown.length ? (
++          <label className="adv-row adv-all">
++            <input
++              type="checkbox"
++              checked={picked.length === shown.length}
++              disabled={locked}
++              onChange={(event) => toggleAll(event.target.checked)}
++            />
++            <span className="adv-text">
++              <b>Select all</b>
++            </span>
++            <span className="adv-count">{shown.length}</span>
++          </label>
++        ) : (
++          <div className="adv-empty">
++            {pool.length ? "Nobody matches." : "Everyone already gets it."}
++          </div>
++        )}
++        {shown.map((person) => (
++          <label className="adv-row" key={person.user_id}>
++            <input
++              type="checkbox"
++              checked={isPicked(person.user_id)}
++              disabled={locked}
++              onChange={(event) => toggle(person.user_id, event.target.checked)}
++            />
++            <span className="ad-avatar adv-av" aria-hidden>
++              {initials(person.name)}
++            </span>
++            <span className="adv-text">
++              <b>{person.name}</b>
++              <small>{meta(person)}</small>
++            </span>
++          </label>
++        ))}
++      </div>
++    </>
++  );
++  const addFoot = (cancel?: ReactNode) => (
++    <div className="adv-foot">
++      <span className="adv-muted">{picked.length ? `${picked.length} selected` : "Pick people to add"}</span>
++      {cancel}
++      <Button type="button" className="adv-add" disabled={locked || !picked.length} onClick={addPicked}>
++        {picked.length ? `Add ${plural(picked.length, "person", "people")}` : "Add"}
++      </Button>
++    </div>
++  );
++
++  const who = (
++    <div className="adv-list">
++      {acks && (
++        <div className="adv-ack">
++          <div className="adv-ack-line">
++            <span>
++              <b>{done.length}</b> of {asked.length} acknowledged
++            </span>
++            <button
++              type="button"
++              className="adv-mini"
++              disabled={!notYet.length || acks.busy}
++              onClick={acks.onRemind}
++            >
++              {notYet.length ? `Remind ${notYet.length}` : "All done"}
++            </button>
++          </div>
++          <span className="adv-bar" aria-hidden>
++            <span style={{ width: `${pct}%` }} />
++          </span>
++        </div>
++      )}
++      {problem && (
++        <div className="ad-pane-error">
++          <FieldError message={problem} />
++        </div>
++      )}
++      {checkedLocations.length > 0 && (
++        <>
++          <div className="adv-group">From locations</div>
++          {checkedLocations.map((location) => (
++            <div className="adv-row" key={location.id}>
++              <span className="adv-ico" aria-hidden>
++                <MapPin size={14} />
++              </span>
++              <span className="adv-text">
++                <b>{location.name}</b>
++                <small>Everyone there{location.count !== null ? ` · ${plural(location.count, "person", "people")}` : ""}</small>
++              </span>
++            </div>
++          ))}
++        </>
++      )}
++      {(added.length > 0 || unknownAdded > 0) && (
++        <>
++          <div className="adv-group">
++            Added here · {added.length + unknownAdded}
++            {!locked && (
++              <button type="button" className="ad-link" onClick={() => update((current) => ({ ...current, people: [] }))}>
++                Clear
++              </button>
++            )}
++          </div>
++          {added.map((person) => personRow(person, meta(person)))}
++          {unknownAdded > 0 && (
++            <div className="adv-row">
++              <span className="adv-muted">{plural(unknownAdded, "other person", "other people")}</span>
++            </div>
++          )}
++        </>
++      )}
++      {shiftPeople.length > 0 && (
++        <>
++          <div className="adv-group">Their shift changes · {shiftPeople.length}</div>
++          {shiftPeople.map((person) => personRow(person, person.meta))}
++        </>
++      )}
++      {notYet.length > 0 && (
++        <>
++          <div className="adv-group" data-tone="amber">
++            Not yet · {notYet.length}
++          </div>
++          {notYet.map((person) => personRow(person, meta(person)))}
++        </>
++      )}
++      {done.length > 0 && (
++        <>
++          <div className="adv-group" data-tone="green">
++            Acknowledged · {done.length}
++          </div>
++          {done.map((person) =>
++            personRow(
++              person,
++              meta(person),
++              <span className="adv-when">
++                <Check size={13} aria-hidden />
++                {momentText(person.acknowledged_at!, acks!.zone, acks!.timeFormat)}
++              </span>,
++            ),
++          )}
++        </>
++      )}
++      {!checkedLocations.length && !added.length && !unknownAdded && !shiftPeople.length && !asked.length && !problem && (
++        <div className="adv-empty">Nobody yet. Check a location on Details or add people.</div>
++      )}
++    </div>
++  );
++  const ackFlag = (
++    <div className="ad-ack-flag adv-ackflag">
++      <Flag
++        label="Ask people to acknowledge"
++        hint="They see an Acknowledge button. You see who has and who hasn't."
++        checked={draft.ask_ack}
++        disabled={locked}
++        onChange={(ask) => update((current) => ({ ...current, ask_ack: ask }))}
++      />
++    </div>
++  );
++
++  if (variant === "c")
++    return (
++      <>
++        <section className="ad-pane adv-pane adv-one" aria-label="Who gets it">
++          <div className="adv-head">
++            <b>{adding ? "Add people" : "Who gets it"}</b>
++            {!adding && <span className="adv-pill">{plural(recipientCount, "person", "people")}</span>}
++            {!adding && !locked && (
++              <Button type="button" className="secondary-button adv-open" onClick={() => setAdding(true)}>
++                <Plus size={15} aria-hidden /> Add people
++              </Button>
++            )}
++          </div>
++          {adding ? (
++            <>
++              {picker}
++              {addFoot(
++                <Button type="button" className="secondary-button adv-add" onClick={() => { setAdding(false); setChosen(new Set()); setQuery(""); }}>
++                  Cancel
++                </Button>,
++              )}
++            </>
++          ) : (
++            who
++          )}
++        </section>
++        {ackFlag}
++      </>
++    );
++
++  return (
++    <>
++      <div className="ad-audience adv-two">
++        <section className="ad-pane adv-pane" aria-label="Add people">
++          <div className="adv-head">
++            <b>Add people</b>
++          </div>
++          {picker}
++          {!locked && addFoot()}
++        </section>
++        <section className="ad-pane adv-pane" aria-label="Who gets it">
++          <div className="adv-head">
++            <b>Who gets it</b>
++            <span className="adv-pill">{plural(recipientCount, "person", "people")}</span>
++          </div>
++          {who}
++        </section>
++      </div>
++      {ackFlag}
++    </>
++  );
++}
++
+ // ---------- Shifts ----------
+ 
+ export function effectiveChoice(
+diff --git a/apps/web/src/communications/announcement-drawer.css b/apps/web/src/communications/announcement-drawer.css
+index 1864b4b4..f0d51a44 100644
+--- a/apps/web/src/communications/announcement-drawer.css
++++ b/apps/web/src/communications/announcement-drawer.css
+@@ -1540,3 +1540,288 @@
+     order: -1;
+   }
+ }
++
++/* ---------- Audience variants (visual decision preview) ---------- */
++.announcement-drawer .ad-body[data-tab="aud"] > .adv-one {
++  flex: 1 1 auto;
++  min-height: 240px;
++}
++.announcement-drawer .adv-pane {
++  border-color: var(--theme-border);
++  border-radius: 10px;
++  background: var(--theme-surface);
++}
++.announcement-drawer .adv-head {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  min-height: 44px;
++  padding: 8px 12px;
++  border-bottom: 1px solid var(--theme-border-subtle);
++}
++.announcement-drawer .adv-head b {
++  color: var(--theme-text);
++  font-size: 13.5px;
++  font-weight: 650;
++}
++.announcement-drawer .adv-pill {
++  border-radius: 999px;
++  padding: 1px 8px;
++  background: var(--theme-surface-muted);
++  color: var(--theme-muted-strong);
++  font-size: 11.5px;
++  font-weight: 650;
++  font-variant-numeric: tabular-nums;
++}
++.announcement-drawer .adv-open {
++  margin-left: auto;
++  min-height: 30px;
++  padding: 0 10px;
++  font-size: 12.5px;
++  gap: 4px;
++}
++.announcement-drawer .adv-filters {
++  display: grid;
++  gap: 6px;
++  padding: 10px 12px;
++  border-bottom: 1px solid var(--theme-border-subtle);
++}
++.announcement-drawer .adv-filters select {
++  box-sizing: border-box;
++  min-width: 0;
++  height: 32px;
++  border: 1px solid var(--theme-border-control);
++  border-radius: 7px;
++  padding: 0 4px 0 8px;
++  background: var(--theme-surface);
++  color: var(--theme-text);
++  font: inherit;
++  font-size: 12.5px;
++  color-scheme: light;
++}
++.announcement-drawer .adv-search {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  margin: 10px 12px;
++  height: 34px;
++  border: 1px solid var(--theme-border-control);
++  border-radius: 8px;
++  padding: 0 10px;
++  color: var(--theme-muted);
++}
++.announcement-drawer .adv-search:focus-within {
++  outline: 2px solid var(--theme-focus);
++  outline-offset: 0;
++  border-color: var(--theme-focus);
++}
++.announcement-drawer .adv-search input {
++  flex: 1;
++  min-width: 0;
++  border: 0;
++  outline: 0;
++  background: transparent;
++  color: var(--theme-text);
++  font: inherit;
++  font-size: 13px;
++}
++.announcement-drawer .adv-list {
++  flex: 1 1 auto;
++  min-height: 0;
++  overflow-y: auto;
++  overscroll-behavior: contain;
++  padding: 4px 0 6px;
++}
++.announcement-drawer .adv-row {
++  display: flex;
++  align-items: center;
++  gap: 10px;
++  min-height: 44px;
++  padding: 5px 12px;
++  font-size: 13px;
++}
++.announcement-drawer label.adv-row {
++  cursor: pointer;
++}
++.announcement-drawer label.adv-row:hover {
++  background: var(--theme-surface-soft);
++}
++.announcement-drawer .adv-row input[type="checkbox"] {
++  flex: none;
++  margin: 0;
++}
++.announcement-drawer .adv-all {
++  position: sticky;
++  top: -4px;
++  z-index: 1;
++  min-height: 38px;
++  border-bottom: 1px solid var(--theme-border-subtle);
++  background: var(--theme-surface);
++}
++.announcement-drawer .adv-av {
++  flex: none;
++  width: 28px;
++  height: 28px;
++  font-size: 10.5px;
++}
++.announcement-drawer .adv-ico {
++  flex: none;
++  display: grid;
++  place-items: center;
++  width: 28px;
++  height: 28px;
++  border-radius: 8px;
++  background: var(--theme-selected);
++  color: var(--theme-accent);
++}
++.announcement-drawer .adv-text {
++  display: grid;
++  flex: 1 1 auto;
++  min-width: 0;
++  line-height: 1.3;
++}
++.announcement-drawer .adv-text b {
++  overflow: hidden;
++  color: var(--theme-text);
++  font-weight: 550;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.announcement-drawer .adv-text small {
++  overflow: hidden;
++  color: var(--theme-muted);
++  font-size: 11.5px;
++  text-overflow: ellipsis;
++  white-space: nowrap;
++}
++.announcement-drawer .adv-count {
++  flex: none;
++  color: var(--theme-muted-strong);
++  font-size: 12px;
++  font-variant-numeric: tabular-nums;
++}
++.announcement-drawer .adv-group {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  padding: 12px 12px 4px;
++  color: var(--theme-muted-strong);
++  font-size: 12px;
++  font-weight: 650;
++}
++.announcement-drawer .adv-group[data-tone="amber"] {
++  color: var(--theme-warning);
++}
++.announcement-drawer .adv-group[data-tone="green"] {
++  color: var(--theme-accent);
++}
++.announcement-drawer .adv-group .ad-link {
++  font-size: 12px;
++}
++.announcement-drawer .adv-when {
++  display: inline-flex;
++  flex: none;
++  align-items: center;
++  gap: 4px;
++  color: var(--theme-muted-strong);
++  font-size: 11.5px;
++  white-space: nowrap;
++}
++.announcement-drawer .adv-when svg {
++  color: var(--theme-accent);
++}
++.announcement-drawer .adv-x {
++  flex: none;
++  display: grid;
++  place-items: center;
++  width: 26px;
++  height: 26px;
++  border: 0;
++  border-radius: 6px;
++  background: none;
++  color: var(--theme-muted);
++}
++.announcement-drawer .adv-x:hover {
++  background: var(--theme-surface-muted);
++  color: var(--theme-text);
++}
++.announcement-drawer .adv-empty {
++  padding: 18px 14px;
++  color: var(--theme-muted);
++  font-size: 13px;
++}
++.announcement-drawer .adv-muted {
++  color: var(--theme-muted);
++  font-size: 12.5px;
++}
++.announcement-drawer .adv-foot {
++  display: flex;
++  align-items: center;
++  gap: 8px;
++  margin-top: auto;
++  padding: 8px 12px;
++  border-top: 1px solid var(--theme-border-subtle);
++}
++.announcement-drawer .adv-foot .adv-muted {
++  margin-right: auto;
++}
++.announcement-drawer .adv-add {
++  min-height: 32px;
++  padding: 0 12px;
++  font-size: 13px;
++}
++.announcement-drawer .adv-ack {
++  display: grid;
++  gap: 8px;
++  margin: 6px 12px 4px;
++  border-radius: 8px;
++  padding: 10px 12px;
++  background: var(--theme-surface-soft);
++}
++.announcement-drawer .adv-ack-line {
++  display: flex;
++  justify-content: space-between;
++  align-items: center;
++  gap: 8px;
++  color: var(--theme-muted-strong);
++  font-size: 12.5px;
++}
++.announcement-drawer .adv-ack-line b {
++  color: var(--theme-text);
++  font-size: 14px;
++}
++.announcement-drawer .adv-mini {
++  min-height: 28px;
++  border: 1px solid var(--theme-border-control);
++  border-radius: 7px;
++  padding: 0 10px;
++  background: var(--theme-surface);
++  color: var(--theme-text);
++  font-size: 12px;
++  font-weight: 600;
++}
++.announcement-drawer .adv-mini:disabled {
++  color: var(--theme-muted);
++  cursor: default;
++}
++.announcement-drawer .adv-bar {
++  display: block;
++  height: 6px;
++  border-radius: 999px;
++  background: var(--theme-surface-muted);
++  overflow: hidden;
++}
++.announcement-drawer .adv-bar span {
++  display: block;
++  height: 100%;
++  border-radius: inherit;
++  background: var(--theme-accent);
++}
++.announcement-drawer .adv-ackflag .ad-flag {
++  padding: 9px 12px;
++}
++@media (max-width: 640px) {
++  .announcement-drawer .adv-pane .adv-list {
++    max-height: 260px;
++  }
++}

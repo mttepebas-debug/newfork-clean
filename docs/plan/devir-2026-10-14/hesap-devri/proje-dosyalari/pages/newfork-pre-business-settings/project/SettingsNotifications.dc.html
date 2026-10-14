@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Settings &mdash; Notifications</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin="">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&amp;display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#f4f5f3;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.ic{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.side{width:268px;flex:0 0 268px;background:#ffffff;border-right:1px solid #dce3df;padding:20px 16px;display:flex;flex-direction:column;overflow:hidden}
+.id{display:flex;align-items:center;gap:10px;padding:0 6px 14px;margin-bottom:15px;border-bottom:1px solid #e2e6e4}
+.av{width:36px;height:36px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:13px;font-weight:700;flex:0 0 36px}
+.idn{display:grid;min-width:0}
+.idn strong{font-size:13px;color:#17221e}
+.idn span{font-size:11px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.back{display:flex;align-items:center;gap:10px;min-height:36px;margin-bottom:2px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:700;color:#5f6b66;text-decoration:none}
+.ni{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;margin-bottom:2px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66;text-decoration:none}
+.ni.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.dot{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.foot{margin-top:auto;display:flex;flex-direction:column;gap:2px;padding-top:14px;border-top:1px solid #e2e6e4}
+.main{flex-grow:1;min-width:0;padding:40px 48px;overflow:hidden}
+.ph h1{margin:0 0 7px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-0.01em;color:#17221e}
+.ph p{margin:0 0 22px;font-size:14px;color:#66716c;max-width:640px;line-height:1.55}
+.tabs{display:flex;gap:4px;margin-bottom:22px;border-bottom:1px solid #dce3df;max-width:780px}
+.tab{padding:9px 14px;border:0;border-bottom:2px solid transparent;background:transparent;font:inherit;font-size:13.5px;font-weight:700;color:#66716c;cursor:pointer}
+.tab.on{color:#12624f;border-bottom-color:#176954}
+.sec{border:1px solid #dce3df;border-radius:10px;background:#ffffff;padding:24px 26px;margin-bottom:16px;max-width:780px}
+.sech{margin:0 0 4px;font-size:15px;font-weight:700;color:#17221e}
+.secd{margin:0 0 18px;font-size:13px;color:#66716c;line-height:1.55}
+.crow{display:flex;align-items:flex-start;gap:12px;padding:14px 0;border-bottom:1px solid #e2e6e4}
+.crow:last-child{border-bottom:0}
+.crow input{width:17px;height:17px;margin:1px 0 0;accent-color:#176954;flex:0 0 17px}
+.crow label{font-size:14px;font-weight:600;color:#17221e;cursor:pointer}
+.crow small{display:block;margin-top:3px;font-size:12.5px;color:#66716c;line-height:1.5;font-weight:400}
+.bizrow{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:13px 0;border-bottom:1px solid #e2e6e4}
+.bizrow:last-child{border-bottom:0}
+.btn{display:inline-flex;box-sizing:border-box;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none}
+.b1{background:#176954;color:#ffffff}
+.b2{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.bar{display:flex;align-items:center;justify-content:flex-end;gap:10px;max-width:780px;padding-top:4px}
+.note{margin:14px 0 0;font-size:12.5px;color:#66716c;line-height:1.55;max-width:780px}
+.railtop{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e6e4}
+.collapse{display:inline-grid;place-items:center;width:38px;height:36px;flex:0 0 38px;border:0;border-radius:6px;background:transparent;color:#4b5551;cursor:pointer}
+.collapse:hover{background:#f0f3f1}
+.collapse .ic{width:18px;height:18px;flex:0 0 18px}
+</style>
+</helmet>
+<div style="display: flex; width: 1440px; height: 1180px; box-sizing: border-box; background: #f4f5f3;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true" focusable="false">
+    <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"></circle><path d="M4 21c0-4 3.6-6 8-6s8 2 8 6"></path></symbol>
+    <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 3l7 3v6c0 4.4-3 8-7 9-4-1-7-4.6-7-9V6z"></path><path d="M9.2 12l2 2 3.6-3.8"></path></symbol>
+    <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"></path><circle cx="16" cy="7" r="2"></circle><circle cx="10" cy="17" r="2"></circle></symbol>
+    <symbol id="i-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z"></path><path d="M10.4 20a2 2 0 003.2 0"></path></symbol>
+    <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="4" width="10" height="16" rx="1.5"></rect><path d="M14 10h5a1 1 0 011 1v9M7.5 8h3M7.5 12h3M7.5 16h3"></path></symbol>
+    <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8z"></path><path d="M14 3v5h5M9 13h6M9 17h4"></path></symbol>
+    <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"></circle><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4L5.6 5.6"></path></symbol>
+    <symbol id="i-pin" viewBox="0 0 24 24"><path d="M12 21s7-5.6 7-11a7 7 0 10-14 0c0 5.4 7 11 7 11z"></path><circle cx="12" cy="10" r="2.5"></circle></symbol>
+    <symbol id="i-case" viewBox="0 0 24 24"><rect x="3" y="7" width="18" height="13" rx="2"></rect><path d="M9 7V5.5A1.5 1.5 0 0110.5 4h3A1.5 1.5 0 0115 5.5V7M3 12h18"></path></symbol>
+    <symbol id="i-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"></rect><path d="M4 10h16M9 3v4M15 3v4"></path></symbol>
+    <symbol id="i-alert" viewBox="0 0 24 24"><path d="M12 3l9 16H3z"></path><path d="M12 9v4M12 16h0"></path></symbol>
+    <symbol id="i-scroll" viewBox="0 0 24 24"><path d="M6 4h10a2 2 0 012 2v12a2 2 0 002 2H8a2 2 0 01-2-2z"></path><path d="M6 4a2 2 0 00-2 2v2h2M10 9h6M10 13h6"></path></symbol>
+    <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M19 12H5M11 6l-6 6 6 6"></path></symbol>
+    <symbol id="i-out" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"></path></symbol>
+  </svg>
+
+  <aside class="side" aria-label="Account navigation">
+    <div class="railtop"><button type="button" class="collapse" aria-label="Collapse menu" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"></path></svg></button></div>
+    <div class="id">
+      <span class="av">MT</span>
+      <span class="idn"><strong>Mert Tepebaş</strong><span>owner@newfork.test</span></span>
+    </div>
+    <nav aria-label="Account">
+      <sc-for list="{{nav}}" as="row" hint-placeholder-count="6">
+        <a class="{{row.cls}}" href="{{row.href}}" aria-current="{{row.cur}}"><svg class="ic"><use href="{{row.icon}}"></use></svg>{{row.text}}<sc-if value="{{row.hasBadge}}" hint-placeholder-val="{{no}}"><span class="dot" style="margin-left: 2px; padding-left: 5px; top: -5px">{{row.badge}}</span></sc-if></a>
+      </sc-for>
+    </nav>
+    <div class="foot">
+      <a class="back" href="#back"><svg class="ic"><use href="#i-arrow"></use></svg>Back to Meyhouse</a>
+      <a class="ni" href="#signout"><svg class="ic"><use href="#i-out"></use></svg>Sign out</a>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="ph">
+      <h1>Notifications</h1>
+      <p>Where notifications reach you. What they are about is set inside each workspace.</p>
+    </div>
+
+    <div class="tabs" role="tablist" aria-label="Notifications">
+      <button type="button" class="tab on" role="tab" aria-selected="true">Delivery</button>
+      <button type="button" class="tab" role="tab" aria-selected="false">History</button>
+    </div>
+
+    <section class="sec">
+      <h2 class="sech">How we reach you</h2>
+      <p class="secd">Turn a channel off here and nothing from any workspace uses it.</p>
+      <div class="crow">
+        <input id="nt-app" type="checkbox" checked="">
+        <span><label for="nt-app">In the app</label><small>The bell in the sidebar, wherever you are working.</small></span>
+      </div>
+      <div class="crow">
+        <input id="nt-mail" type="checkbox" checked="">
+        <span><label for="nt-mail">Email</label><small>Sent to owner@newfork.test. Change the address under Security.</small></span>
+      </div>
+    </section>
+
+    <section class="sec">
+      <h2 class="sech">What you hear about</h2>
+      <p class="secd">One section per workspace, further down this page. Each workspace decides what it can tell you about; you choose inside that.</p>
+      <div class="bizrow">
+        <span style="display:grid;gap:4px;"><strong style="font-size:14px;color:#17221e;">Meyhouse</strong><span style="font-size:12.5px;color:#66716c;">Owner · 9 of 14 on · 3 the workspace keeps on</span></span>
+        <a class="btn b2" href="#mn">Jump to it</a>
+      </div>
+      <div class="bizrow">
+        <span style="display:grid;gap:4px;"><strong style="font-size:14px;color:#17221e;">Ridgeline Tavern</strong><span style="font-size:12.5px;color:#66716c;">Manager · all on</span></span>
+        <a class="btn b2" href="#mn2">Jump to it</a>
+      </div>
+      <div class="bizrow">
+        <span style="display:grid;gap:4px;"><strong style="font-size:14px;color:#17221e;">Harbour &amp; Co</strong><span style="font-size:12.5px;color:#66716c;">Employee · on hold, nothing is sent</span></span>
+      </div>
+    </section>
+
+    <div class="bar">
+      <button type="button" class="btn b2" disabled="" style="opacity:.55;cursor:default;">Discard</button>
+      <button type="button" class="btn b1" disabled="" style="opacity:.55;cursor:default;">Save changes</button>
+    </div>
+
+    <p class="note">Tek sayfa, iki bölüm: kanal hesap genelinde (burada), abonelikler işletme başına (aşağıda, yandaki board). Bugün de tek sayfa ama içine bir işletme <code>&lt;select&gt;</code>'i koymak zorunda kalmış — seçici kalkıyor, işletmeler alt alta bölüm oluyor. <strong style="color:#17221e;">History</strong> sekmesi bugün yazılmış ama hiçbir linkin göstermediği <code>/account/inbox</code> sayfasını görünür yapar.</p>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() {
+    const link = (text, icon, href, on, badge) => ({
+      text, icon, href,
+      cls: on ? 'ni on' : 'ni', cur: on ? 'page' : 'false',
+      hasBadge: Boolean(badge), badge: badge ?? '',
+    });
+    return {
+      yes: true, no: false,
+      nav: [
+        link('Profile', '#i-user', '#p', false),
+        link('Security', '#i-shield', '#s', false),
+        link('Preferences', '#i-sliders', '#r', false),
+        link('Notifications', '#i-bell', '#n', true),
+        link('Documents', '#i-file', '#d', false, '2'),
+        link('Workspaces', '#i-building', '#b', false, '1'),
+      ],
+    };
+  }
+}
+</script>
+</body>
+</html>

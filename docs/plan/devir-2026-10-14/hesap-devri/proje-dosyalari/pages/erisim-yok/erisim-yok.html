@@ -1,0 +1,359 @@
+<title>Erişim Yok Ekranları</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&display=swap">
+<style>
+/* Layout: left menu of every screen that shows the error, right the real app (desktop 1440 + phone 390). */
+/* Light only, like the app itself; values are newfork's --theme-* tokens. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3; --surface: #ffffff; --soft: #f0f3f1; --text: #17221e; --body: #1d2525;
+  --muted: #5f6b66; --border: #dce3df; --border-strong: #cbd4d0;
+  --accent: #176954; --accent-soft: #e3f0eb; --focus: #177a64; --bezel: #1d2525; --on-dark: #ffffff;
+  --lock: #424b48; --line: #9b2c2c; --line-soft: #fbeeee;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: ui-monospace, Consolas, "SF Mono", monospace;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--page); }
+body { color: var(--text); font-family: var(--font); font-size: 14px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); min-height: 100vh; }
+@media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
+
+/* Menu */
+.menu { border-right: 1px solid var(--border); background: var(--surface); padding-block: 20px 32px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: 16px; position: sticky; top: env(safe-area-inset-top, 0px); height: 100vh; overflow-y: auto; }
+@media (max-width: 900px) { .menu { position: static; height: auto; max-height: 46vh; border-right: 0; border-bottom: 1px solid var(--border); padding-right: max(16px, env(safe-area-inset-right, 0px)); } }
+.menu h1 { margin: 0 0 4px; font-size: 18px; letter-spacing: -0.01em; text-wrap: balance; }
+.menu .sub { margin: 0 0 16px; color: var(--muted); font-size: 12.5px; line-height: 1.5; }
+.group { margin-top: 18px; }
+.group h2 { margin: 0 0 6px; font-size: 11px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--muted); display: flex; align-items: center; gap: 8px; }
+.group h2 .n { font-variant-numeric: tabular-nums; background: var(--soft); border-radius: 999px; padding: 1px 7px; letter-spacing: 0; }
+.group p { margin: 0 0 8px; font-size: 12px; color: var(--muted); line-height: 1.45; }
+.items { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+.item { width: 100%; text-align: left; border: 0; background: transparent; border-radius: 7px; padding: 7px 9px; cursor: pointer; display: grid; gap: 1px; }
+.item:hover { background: var(--soft); }
+.item[aria-current="true"] { background: var(--accent-soft); }
+.item .t { font-weight: 600; font-size: 13.5px; }
+.item[aria-current="true"] .t { color: var(--accent); }
+.item .w { font-size: 12px; color: var(--muted); line-height: 1.35; }
+
+/* Viewer */
+.main { min-width: 0; padding-block: 22px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; gap: 16px; align-content: start; }
+@media (min-width: 901px) { .main { padding-left: 24px; padding-right: max(24px, env(safe-area-inset-right, 0px)); } }
+.head { display: grid; gap: 8px; }
+.eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; color: var(--accent); }
+.head h2 { margin: 0; font-size: 24px; letter-spacing: -0.015em; text-wrap: balance; }
+.quote { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; padding: 6px 12px; border-radius: 8px; background: var(--surface); border: 1px solid var(--border); font-weight: 600; color: var(--body); overflow-wrap: anywhere; }
+.quote svg { flex: none; color: var(--lock); }
+.facts { margin: 0; padding: 12px 16px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 16px; max-width: 120ch; font-size: 13.5px; line-height: 1.5; }
+.facts dt { font-weight: 650; color: var(--muted); }
+.facts dd { margin: 0; color: var(--body); min-width: 0; overflow-wrap: anywhere; }
+.facts code { font: 12.5px var(--mono); background: var(--soft); padding: 1px 6px; border-radius: 5px; }
+@media (max-width: 600px) { .facts { grid-template-columns: 1fr; } .facts dd { margin-bottom: 6px; } }
+.controls { display: flex; flex-wrap: wrap; gap: 10px 24px; align-items: center; }
+.ctl { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ctl-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.06em; }
+.pills { display: inline-flex; flex-wrap: wrap; padding: 3px; gap: 3px; background: var(--surface); border: 1px solid var(--border); border-radius: 9px; }
+.pills button { min-height: 32px; padding: 0 12px; border: 0; border-radius: 6px; background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); cursor: pointer; }
+.pills button[aria-pressed="true"] { background: var(--text); color: var(--on-dark); }
+.pills button:disabled { opacity: 0.45; cursor: not-allowed; }
+.ghost { min-height: 32px; padding: 0 12px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
+.ghost:hover { background: var(--soft); }
+
+.frames { display: grid; gap: 20px; grid-template-columns: minmax(0, 1fr); align-items: start; }
+.frames[data-layout="side"] { grid-template-columns: minmax(0, 1fr) auto; }
+.dev { display: grid; gap: 8px; min-width: 0; }
+.dev-label { font-size: 12px; font-weight: 650; color: var(--muted); display: flex; gap: 8px; align-items: baseline; }
+.dev-label span { font-weight: 400; font-variant-numeric: tabular-nums; }
+.screen-desk { position: relative; width: 100%; border: 1px solid var(--border-strong); border-radius: 10px; overflow: hidden; background: var(--surface); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.06); }
+.screen-desk .bar { height: 26px; background: var(--soft); border-bottom: 1px solid var(--border); display: flex; align-items: center; gap: 6px; padding: 0 10px; }
+.screen-desk .bar i { width: 9px; height: 9px; border-radius: 50%; background: var(--border-strong); }
+.screen-desk .bar b { margin-left: 10px; font: 11.5px var(--mono); font-weight: 400; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.viewport { position: relative; overflow: hidden; }
+.viewport iframe { position: absolute; left: 0; top: 0; border: 0; transform-origin: 0 0; background: var(--page); display: block; }
+.screen-phone { width: 414px; max-width: 100%; padding: 12px; border-radius: 38px; background: var(--bezel); box-shadow: 0 1px 2px rgba(23, 34, 30, 0.12); }
+.screen-phone .viewport { border-radius: 27px; background: var(--page); }
+.empty-note { padding: 20px; border: 1px dashed var(--border-strong); border-radius: 10px; color: var(--muted); background: var(--surface); line-height: 1.5; }
+.legend { font-size: 12.5px; color: var(--muted); line-height: 1.5; max-width: 110ch; margin: 0; }
+</style>
+
+<div class="layout">
+  <nav class="menu" aria-label="Hatanın çıktığı ekranlar">
+    <h1>Erişim yok ekranları</h1>
+    <p class="sub">"You don't have access to …" kartının ve uyarısının uygulamada çıktığı her yer. Görüntüler main'deki gerçek koddan (28aeb82b, 2026-10-14), örnek veriyle (Harbor &amp; Vine).</p>
+    <div id="groups"></div>
+  </nav>
+  <main class="main">
+    <header class="head">
+      <div class="eyebrow" id="eyebrow"></div>
+      <h2 id="title"></h2>
+      <div><span class="quote" id="quote"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg><span id="quote-text"></span></span></div>
+    </header>
+    <dl class="facts">
+      <dt>Nerede</dt><dd id="f-where"></dd>
+      <dt>Nasıl görünür</dt><dd id="f-how"></dd>
+      <dt>Ne zaman çıkar</dt><dd id="f-when"></dd>
+      <dt>Kim görür</dt><dd id="f-who"></dd>
+      <dt>Örnekte açan</dt><dd id="f-viewer"></dd>
+      <dt>Kod</dt><dd id="f-code"></dd>
+    </dl>
+    <div class="controls">
+      <div class="ctl"><span class="ctl-label">Hâl</span>
+        <div class="pills" role="group" aria-label="Hâl">
+          <button type="button" data-state="error">Hatalı hâli</button>
+          <button type="button" data-state="normal">Hatasız hâli</button>
+        </div>
+      </div>
+      <div class="ctl"><span class="ctl-label">Görünüm</span>
+        <div class="pills" role="group" aria-label="Görünüm">
+          <button type="button" data-view="both">Masaüstü + Telefon</button>
+          <button type="button" data-view="desk">Masaüstü</button>
+          <button type="button" data-view="phone">Telefon</button>
+        </div>
+      </div>
+      <button type="button" class="ghost" id="reload">Baştan aç</button>
+    </div>
+    <p class="legend" id="legend"></p>
+    <div class="frames" id="frames">
+      <section class="dev" id="dev-desk" aria-label="Masaüstü görünümü">
+        <div class="dev-label">Masaüstü <span id="desk-size">1440 × 900</span></div>
+        <div class="screen-desk"><div class="bar"><i></i><i></i><i></i><b id="url"></b></div><div class="viewport" id="desk"></div></div>
+      </section>
+      <section class="dev" id="dev-phone" aria-label="Telefon görünümü">
+        <div class="dev-label">Telefon <span>390 × 844</span></div>
+        <div class="screen-phone"><div class="viewport" id="phone"></div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<script>
+(function () {
+  var who = {
+    owner: "Owner · Mert Tepebas",
+    admin: "Admin · Daniel Brooks",
+    manager: "Manager · Rachel Adams (Downtown)",
+    custom: "Shift Lead · Carlos Rivera (özel rol)",
+    employee: "Employee · Maria Lopez (çalışan)"
+  };
+  var CARD = "Sayfa hiç çizilmez; yerine ortada tek bir kart gelir (C · Odak kartı): yeşil dairede kilit, “You don't have access to” ve sayfanın menüdeki adı, “Ask an admin if you need it.” ve kartın içinde tam genişlikte yeşil “Back to Home”. Sol menü (telefonda alt menü) yerinde kalır. Telefonda kart kenarlardan 12 piksel içeride durur.";
+  var API = "Sunucu bu kişiye “hayır” dediğinde: rolü ya da lokasyonları sayfa açıkken değişti, eski bir bağlantı ya da yer imiyle geldi, ya da başka lokasyonun kaydına giden bir bağlantıya tıkladı. İzni hiç olmayan kişi bu sayfayı menüde görmez; adresi elle yazar ya da eski bir bağlantıyla gelirse de aynı adreste bu kart çıkar, başka sayfaya atılmaz.";
+  var groups = [
+    { name: "Sayfanın yerine kart", note: "Sunucu “hayır” der; sayfa çizilmez, yalnız kart gelir.", items: [
+      { id: "workspace", t: "Workspace", w: "Sol menü → Workspace", q: "You don't have access to Workspace", s: "2.0", sc: "no-access", role: "custom", n: { s: "2.0", sc: "owner" }, who: "Workspace sayfasını açan yönetim rolleri (owner, admin, manager, özel rol).", code: "apps/web/src/views/WorkspacePage.tsx" },
+      { id: "schedule", t: "Schedule", w: "Sol menü → Schedule", q: "You don't have access to Schedule", s: "3.0", sc: "no-access", role: "manager", sched: true, n: { s: "3.0", sc: "owner" }, who: "Schedule'ı açan yönetim rolleri. Telefonda Schedule kapalıdır; telefon “Schedule is available on a computer.” gösterir, bu kartı göstermez.", code: "apps/web/src/views/SchedulePage.tsx" },
+      { id: "requests", t: "Requests", w: "Sol menü → Schedule → Requests", q: "You don't have access to Requests", s: "3.3", sc: "no-access", role: "manager", n: { s: "3.3", sc: "owner" }, who: "Talepleri gören yönetim rolleri.", code: "apps/web/src/views/ScheduleRequestsPage.tsx" },
+      { id: "lineup", t: "Lineup", w: "Sol menü → Schedule → Lineup", q: "You don't have access to Lineup", s: "3.4", sc: "no-access", role: "owner", n: { s: "3.4", sc: "owner" }, who: "Lineup'ı açan owner ve manager. Sayfa başlığı da kalkar, yalnız kart görünür.", code: "apps/web/src/views/LineupPage.tsx" },
+      { id: "employees", t: "Employees", w: "Sol menü → Employees", q: "You don't have access to Employees", s: "4.0", sc: "list-no-access", role: "custom", n: { s: "4.0", sc: "owner" }, who: "Çalışan listesini açan yönetim rolleri.", code: "apps/web/src/employees/EmployeesPage.tsx" },
+      { id: "employee-drawer", t: "Çalışan çekmecesi", w: "Employees → bir kişiye tıkla → sağdan açılan çekmece", q: "You don't have access to this employee", s: "4.0", sc: "na-drawer", role: "manager", n: { s: "4.0", sc: "drawer", role: "manager" }, how: "Liste arkada yerinde kalır; sağdan açılan çekmecenin içi kalkar, aynı kilitli kart çekmecenin içinde görünür.", when: "Kişinin kaydı bu kişinin lokasyonları dışına çıktıysa ya da başka lokasyonun kişisine giden bir bağlantıyla gelindiyse.", who: "Çalışan çekmecesini açan yönetim rolleri; en çok tek lokasyonlu manager.", code: "apps/web/src/employees/EmployeeDrawer.tsx" },
+      { id: "employee-documents", t: "Employee documents", w: "Sol menü → Employees → Documents", q: "You don't have access to Documents", s: "4.1", sc: "no-access", role: "custom", n: { s: "4.1", sc: "all" }, who: "Çalışan belgelerini gören owner ve özel roller.", code: "apps/web/src/documents/EmployeeDocumentsList.tsx" },
+      { id: "availability", t: "Availability", w: "Sol menü → Availability", q: "You don't have access to Availability", s: "5.0", sc: "no-access", role: "custom", n: { s: "5.0", sc: "owner" }, who: "Ekibin müsaitliğini gören yönetim rolleri.", code: "apps/web/src/views/AvailabilityPage.tsx" },
+      { id: "important-dates", t: "Important Dates", w: "Sol menü → Announcements → Important Dates", q: "You don't have access to Important Dates", s: "6.0", sc: "na-page", role: "manager", n: { s: "6.0", sc: "manager" }, who: "Önemli günleri gören yönetim rolleri.", code: "apps/web/src/views/ImportantDatesPage.tsx" },
+      { id: "employee-hub", t: "Employee Hub (çalışan)", w: "Çalışanın ana sayfası: Home, Schedule, Shift Hub, My Availability, More", q: "You don't have access to Employee Hub", s: "0.7", sc: "no-access", role: "employee", n: { s: "7.0", sc: "home", role: "employee" }, how: "Çalışan ekranı çizilmez, yalnız kart gelir. Çalışan ekranlarının hepsi aynı okumadan beslendiği için Home, My Schedule, Shift Hub ve My Availability'de aynı kart çıkar. Alt menü yerinde kalır.", who: "Çalışan.", code: "apps/web/src/views/EmployeeHubPage.tsx" },
+      { id: "employee-view", t: "Employee view (owner, manager)", w: "Sol menü altı → Employee view", q: "You don't have access to Employee Hub", s: "7.0", sc: "owner-no-record", role: "owner", roles: ["owner", "manager"], n: { s: "7.0", sc: "owner-record", role: "owner" }, how: "Çalışan görünümüne geçilir ama içerik yerine kart gelir.", when: "Owner ya da manager “Employee view”a geçtiğinde, kendisinin bir çalışan kaydı yoksa. Bu durum her zaman çıkar; bir yetki değişikliği gerekmez.", who: "Çalışan kaydı olmayan owner ve manager. Rol düğmesiyle ikisini de görebilirsin.", normalNote: "Hatasız hâli: owner'ın kendi çalışan kaydı varken Employee view.", code: "apps/web/src/views/EmployeeHubPage.tsx" },
+      { id: "announcements", t: "Announcements", w: "Sol menü → Announcements", q: "You don't have access to Announcements", s: "8.0", sc: "no-access", role: "employee", n: { s: "8.0", sc: "owner", role: "employee" }, who: "Duyuruları açan herkes (örnekte çalışan).", code: "apps/web/src/views/AnnouncementsPage.tsx" },
+      { id: "notifications", t: "Notifications", w: "Sol menü → Notifications (zil)", q: "You don't have access to Notifications", s: "9.0", sc: "no-access", role: "employee", n: { s: "9.0", sc: "owner", role: "employee" }, who: "Bildirimleri açan herkes (örnekte çalışan).", code: "apps/web/src/views/NotificationsPage.tsx" },
+      { id: "set-locations", t: "Settings → Locations", w: "Settings → Locations", q: "You don't have access to Locations", s: "10.1", sc: "denied", role: "owner", n: { s: "10.1", sc: "owner" }, who: "Settings'i açan owner ve admin.", code: "apps/web/src/settings/LocationsSettingsPage.tsx" },
+      { id: "set-jobs", t: "Settings → Jobs", w: "Settings → Jobs", q: "You don't have access to Jobs", s: "10.2", sc: "denied", role: "owner", n: { s: "10.2", sc: "owner" }, who: "Jobs sayfasını açan owner ve özel roller.", code: "apps/web/src/settings/JobsSettingsPage.tsx" },
+      { id: "set-notifications", t: "Settings → Notifications", w: "Settings → Notifications", q: "You don't have access to Notifications", s: "10.3", sc: "denied", role: "owner", n: { s: "10.3", sc: "owner" }, who: "Bu ayarı açan owner, admin ve özel roller.", code: "apps/web/src/settings/NotificationSettingsPage.tsx" },
+      { id: "set-scheduling", t: "Settings → Schedule rules", w: "Settings → Scheduling → Schedule rules", q: "You don't have access to Schedule rules", s: "10.4", sc: "denied", role: "owner", n: { s: "10.4", sc: "owner" }, who: "Bu ayarı açan owner ve özel roller.", code: "apps/web/src/settings/SchedulingSettingsPage.tsx" },
+      { id: "set-conflicts", t: "Settings → Conflict handling", w: "Settings → Scheduling → Conflict handling", q: "You don't have access to Conflict handling", s: "10.5", sc: "denied", role: "owner", n: { s: "10.5", sc: "owner" }, who: "Bu ayarı açan owner ve admin.", code: "apps/web/src/settings/ConflictHandlingSettingsPage.tsx" },
+      { id: "set-shift-types", t: "Settings → Shift types", w: "Settings → Scheduling → Shift types", q: "You don't have access to Shift types", s: "10.6", sc: "na-page", role: "owner", n: { s: "10.6", sc: "owner" }, who: "Bu ayarı açan owner. Sayfa başlığı ve sekmeler de kalkar, yalnız kart görünür.", code: "apps/web/src/settings/ShiftTypesSettingsPage.tsx" },
+      { id: "set-shift-labels", t: "Settings → Shift labels", w: "Settings → Scheduling → Shift labels", q: "You don't have access to Shift labels", s: "10.7", sc: "denied", role: "owner", n: { s: "10.7", sc: "owner" }, who: "Bu ayarı açan owner ve özel roller. Sayfa başlığı ve sekmeler de kalkar, yalnız kart görünür.", code: "apps/web/src/settings/ShiftLabelsSettingsPage.tsx" },
+      { id: "set-roles", t: "Settings → Roles & permissions", w: "Settings → Roles & permissions", q: "You don't have access to Roles & permissions", s: "10.8", sc: "denied", role: "owner", n: { s: "10.8", sc: "owner" }, who: "Rolleri gören yönetim rolleri.", code: "apps/web/src/settings/RolesSettingsPage.tsx" },
+      { id: "set-documents", t: "Settings → Documents", w: "Settings → Documents", q: "You don't have access to Documents", s: "10.10", sc: "denied", role: "owner", n: { s: "10.10", sc: "owner" }, who: "Bu ayarı açan owner, admin ve özel roller.", code: "apps/web/src/settings/DocumentsSettingsPage.tsx" },
+      { id: "set-acks", t: "Settings → Acknowledgements", w: "Settings → Acknowledgements", q: "You don't have access to Acknowledgements", s: "10.11", sc: "denied", role: "owner", n: { s: "10.11", sc: "owner" }, who: "Bu ayarı açan owner, manager ve özel roller.", code: "apps/web/src/settings/SignatureTemplatesSettingsPage.tsx" },
+      { id: "acc-notif", t: "Account → Notification preferences", w: "Sağ alt hesap menüsü → Account → Preferences → Notifications", q: "You don't have access to this workspace's notifications", s: "11.3", sc: "no-access", role: "employee", n: { s: "11.3", sc: "owner", role: "employee" }, how: "Bildirim tercihleri sayfasının yerine yalnız kart gelir; hesap menüsü yerinde kalır.", who: "Herkes (örnekte çalışan); kişinin bu workspace'teki erişimi kalkınca.", code: "apps/web/src/account/NotificationPreferencesPage.tsx" }
+    ] },
+    { name: "Adresi yazınca", note: "İzni hiç olmayan kişi adresi elle yazar ya da eski bir bağlantıyla gelir. Başka sayfaya atılmaz; aynı adreste kart çıkar.", items: [
+      { id: "addr-schedule", t: "Schedule (çalışan)", w: "Adres çubuğu → /app/schedule", q: "You don't have access to Schedule", s: "3.0", sc: "employee", role: "employee", n: { s: "7.1", sc: "week", role: "employee" }, who: "Çalışan; yönetimin Schedule'ını açamaz.", normalNote: "Hatasız hâli: çalışanın kendi programı (My Schedule).", code: "apps/web/src/auth/ActionRoute.tsx" },
+      { id: "addr-requests", t: "Requests (çalışan)", w: "Adres çubuğu → /app/schedule/requests", q: "You don't have access to Requests", s: "3.3", sc: "employee", role: "employee", n: { s: "3.3", sc: "owner" }, who: "Talepleri okuma izni olmayan herkes (örnekte çalışan).", code: "apps/web/src/views/ScheduleRequestsPage.tsx" },
+      { id: "addr-employees", t: "Employees (çalışan)", w: "Adres çubuğu → /app/employees", q: "You don't have access to Employees", s: "0.7", sc: "forbidden-route", role: "employee", n: { s: "4.0", sc: "owner" }, who: "Çalışan listesini okuma izni olmayan herkes (örnekte çalışan).", code: "apps/web/src/auth/PermissionRoute.tsx" },
+      { id: "addr-important-dates", t: "Important Dates", w: "Adres çubuğu → /app/announcements/important-dates", q: "You don't have access to Important Dates", s: "6.0", sc: "no-permission", role: "custom", n: { s: "6.0", sc: "list" }, who: "Önemli günleri okuma izni olmayan özel rol.", code: "apps/web/src/auth/ActionRoute.tsx" },
+      { id: "addr-announcements", t: "Announcements (çalışan)", w: "Adres çubuğu → /app/announcements", q: "You don't have access to Announcements", s: "8.0", sc: "no-permission", role: "employee", n: { s: "8.0", sc: "owner", role: "employee" }, who: "Duyuruları okuma izni olmayan çalışan.", code: "apps/web/src/auth/PermissionRoute.tsx" },
+      { id: "addr-settings", t: "Settings (manager)", w: "Adres çubuğu → /app/settings/…", q: "You don't have access to Settings", s: "10.8", sc: "manager-denied", role: "manager", n: { s: "10.8", sc: "owner" }, who: "Manager ve çalışan; Settings'in hiçbir sayfasını açamaz. Kart her Settings adresinde aynı: “Settings”.", normalNote: "Hatasız hâli: owner'ın açtığı Roles & permissions.", code: "apps/web/src/settings/SettingsLayout.tsx" },
+      { id: "addr-conflicts", t: "Conflict handling (admin)", w: "Adres çubuğu → /app/settings/scheduling/conflicts", q: "You don't have access to Conflict handling", s: "10.5", sc: "admin-no-rules", role: "admin", n: { s: "10.5", sc: "owner" }, who: "Settings'e girebilen ama bu sayfanın izni olmayan admin ya da özel rol. Settings menüsü yerinde kalır.", code: "apps/web/src/settings/SettingsPageRoute.tsx" }
+    ] },
+    { name: "Satır içi uyarı", note: "Sayfa açık kalır; yalnız bir bölümde tek satırlık uyarı çıkar.", items: [
+      { id: "set-general", t: "Settings → General", w: "Settings → General → kurulum listesi ve tercih edilen ad anahtarları", q: "You don't have access to this setting.", s: "10.0", sc: "checklist-no-access", role: "owner", n: { s: "10.0", sc: "owner" }, how: "Sayfa açık kalır. Anahtarın altında kırmızı tek satır çıkar, anahtar kapanır. Aynı satır “preferred name” anahtarında da çıkar.", who: "Settings → General'ı açan herkes.", code: "apps/web/src/settings/GeneralSettingsPage.tsx" },
+      { id: "set-sched-avail", t: "Settings → Schedule rules → Availability", w: "Settings → Scheduling → Schedule rules → alttaki Availability bölümü", q: "You don't have access to these availability settings.", s: "10.4", sc: "na-avail-settings", role: "owner", n: { s: "10.4", sc: "mode", role: "owner" }, how: "Üstteki program kuralları açık kalır; alttaki Availability bölümünün yerine tek satır gelir.", who: "Bu ayarı açan owner ve özel roller.", normalNote: "Hatasız hâli: Availability bölümü açık.", code: "apps/web/src/availability/WeeklyPreferenceSettings.tsx" },
+      { id: "drawer-availability", t: "Çalışan çekmecesi → Availability", w: "Employees ya da Availability → bir kişi → çekmecede Availability sekmesi", q: "You don't have access to this availability.", s: "4.0", sc: "drawer-availability-none", role: "owner", n: { s: "4.0", sc: "drawer", role: "owner" }, how: "Çekmece açık kalır; Availability bölümünün yerine tek satır gelir.", when: "Sunucu kişinin haftalık müsaitliğini bu kişiye vermediğinde. Örnekte Hannah Scott (henüz uygulamaya katılmamış, kaydı yok) için bugün de çıkıyor.", who: "Çalışan çekmecesini açan yönetim rolleri.", code: "apps/web/src/availability/WeeklyPreferencesPanel.tsx" },
+      { id: "avail-save", t: "Availability → kaydetme reddi", w: "Availability → bir kişi → Manager reminders → Save", q: "You don't have access to change this availability.", s: "5.0", sc: "save-refused", role: "manager", n: { s: "5.0", sc: "owner", role: "manager" }, how: "Form açık kalır, değişiklik kaybolmaz. Save düğmelerinin yanında kırmızı tek satır çıkar.", when: "Kaydet'e basıldığında sunucu reddederse.", who: "Müsaitlik düzenleyen yönetim rolleri.", normalNote: "Hatasız hâli: Availability listesi.", code: "apps/web/src/availability/WeeklyPreferencesForm.tsx" },
+      { id: "my-availability", t: "My Availability (çalışan)", w: "Çalışan alt menüsü → Availability → Availability sekmesi", q: "You don't have access to this availability.", s: "7.3", sc: "na-weekly", role: "employee", n: { s: "7.3", sc: "week" }, how: "Sekmeler yerinde kalır; haftalık tablonun yerine tek satır gelir.", who: "Çalışan.", code: "apps/web/src/availability/WeeklyPreferencesPanel.tsx" },
+      { id: "welcome-availability", t: "Employee welcome → Availability adımı", w: "Davetle katılan çalışanın kurulum adımları → Availability", q: "You don't have access to this availability.", s: "1.8", sc: "na-weekly", role: "employee", n: { s: "1.8", sc: "availability" }, how: "Adım başlığı yerinde kalır; haftalık tablonun yerine tek satır gelir.", who: "Kurulumu süren yeni çalışan.", code: "apps/web/src/employees/EmployeeOnboardingPage.tsx" },
+      { id: "doc-impact", t: "Çalışan çekmecesi → belge etkisi", w: "Employees → bir kişi → Employment → lokasyon ya da job değiştir", q: "You don't have access to check documents for these choices.", s: "4.0", sc: "na-doc-impact", role: "owner", n: { s: "4.0", sc: "doc-impact", role: "owner" }, how: "Çekmece açık kalır; seçimlerin altındaki belge etkisi kutusunda tek satır çıkar. Yeniden dene düğmesi yoktur.", when: "Lokasyon ya da job değişince hangi belgelerin isteneceği sorulur; sunucu reddederse.", who: "Çalışan düzenleyen yönetim rolleri.", normalNote: "Hatasız hâli: Uptown eklenince belge etkisi listesi.", code: "apps/web/src/documents/EmployeeAssignmentDocumentPreview.tsx" },
+      { id: "doc-drawer", t: "Belge çekmecesi", w: "Employees → Documents → bir belgeye tıkla", q: "You don't have access to this document.", s: "4.1", sc: "na-doc", role: "owner", n: { s: "4.1", sc: "review-drawer", role: "owner" }, how: "Liste arkada kalır; açılan belge çekmecesinin içinde tek satır çıkar.", who: "Çalışan belgelerini gören owner ve özel roller.", normalNote: "Hatasız hâli: inceleme bekleyen belge açık.", code: "apps/web/src/documents/DocumentReviewDrawer.tsx" }
+    ] },
+    { name: "Kodda var, ekranda çıkmıyor", note: "Metin kodda yazılı ama kullanıcı bugün başka bir mesaj görüyor.", items: [
+      { id: "doc-publish", t: "Settings \u2192 Documents \u2192 Publish", w: "Settings \u2192 Documents \u2192 satır menüsü (\u22ef) \u2192 Publish", q: "You don't have access to publish this document.", s: "10.10", sc: "na-publish", role: "owner", n: { s: "10.10", sc: "publish", role: "owner" }, how: "Kodda yazılı ama bugün kullanıcıya hiç çıkmıyor. Bu pencere sunucuya kendi yoluyla soruyor ve sunucunun \u201chayır\u201d bilgisini kaybediyor; bu yüzden kullanıcı bu satırın yerine \u201cWe couldn't load the publication impact\u201d kartını ve \u201cTry again\u201d düğmesini görüyor. Görüntü bugünkü hâli gösteriyor.", when: "Yayın penceresi açılırken sunucu reddederse.", who: "Belge türlerini yöneten owner, admin ve özel roller.", normalNote: "Hatasız hâli: Direct Deposit Form için yayın penceresi.", code: "apps/web/src/settings/DocumentPublicationDialog.tsx (satır 112) ve apps/web/src/settings/documents-data.ts (satır 38)" },
+      { id: "doc-unpublish", t: "Settings \u2192 Documents \u2192 Unpublish", w: "Settings \u2192 Documents \u2192 satır menüsü (\u22ef) \u2192 Unpublish", q: "You don't have access to unpublish this document.", s: "10.10", sc: "na-unpublish", role: "owner", n: { s: "10.10", sc: "unpublish", role: "owner" }, how: "Kodda yazılı ama bugün kullanıcıya hiç çıkmıyor. Bu pencere sunucuya kendi yoluyla soruyor ve sunucunun \u201chayır\u201d bilgisini kaybediyor; bu yüzden kullanıcı bu satırın yerine \u201cWe couldn't load the publication impact\u201d kartını ve \u201cTry again\u201d düğmesini görüyor. Görüntü bugünkü hâli gösteriyor.", when: "Unpublish penceresi açılırken sunucu reddederse.", who: "Belge türlerini yöneten owner, admin ve özel roller.", normalNote: "Hatasız hâli: Form W-4 için Unpublish penceresi.", code: "apps/web/src/settings/DocumentPublicationDialog.tsx (satır 112) ve apps/web/src/settings/documents-data.ts (satır 38)" }
+    ] }
+  ];
+
+  var all = [];
+  groups.forEach(function (g, gi) { g.items.forEach(function (it) { it.group = gi; all.push(it); }); });
+  var S = { id: all[0].id, state: "error", view: "both", role: null };
+  try { var saved = JSON.parse(localStorage.getItem("nf.noaccess.view") || "{}"); if (saved.view) S.view = saved.view; } catch (e) {}
+  try { var h = decodeURIComponent(location.hash.replace(/^#/, "")); if (h && all.some(function (x) { return x.id === h; })) S.id = h; } catch (e) {}
+
+  function el(tag, cls, text) { var n = document.createElement(tag); if (cls) n.className = cls; if (text != null) n.textContent = text; return n; }
+  var groupsBox = document.getElementById("groups");
+  groups.forEach(function (g) {
+    var box = el("section", "group");
+    var h = el("h2"); h.append(g.name + " "); h.appendChild(el("span", "n", String(g.items.length)));
+    box.appendChild(h); box.appendChild(el("p", null, g.note));
+    var ul = el("ul", "items");
+    g.items.forEach(function (it) {
+      var li = el("li"); var b = el("button", "item"); b.type = "button"; b.dataset.id = it.id;
+      b.appendChild(el("span", "t", it.t)); b.appendChild(el("span", "w", it.w));
+      b.addEventListener("click", function () { S.id = it.id; S.state = "error"; S.role = null; try { history.replaceState(null, "", "#" + it.id); } catch (e) {} render(); if (window.innerWidth <= 900) document.getElementById("title").scrollIntoView({ block: "start" }); });
+      li.appendChild(b); ul.appendChild(li);
+    });
+    box.appendChild(ul); groupsBox.appendChild(box);
+  });
+
+  function current() { for (var i = 0; i < all.length; i++) if (all[i].id === S.id) return all[i]; return all[0]; }
+  var frames = { desk: null, phone: null };
+  function target(it) {
+    if (S.state === "normal") return { s: it.n.s, sc: it.n.sc, role: it.n.role || S.role || it.role };
+    return { s: it.s, sc: it.sc, role: S.role || it.role };
+  }
+  function mount() {
+    var it = current(); var t = target(it);
+    var file = (t.s === "3.0" || t.s === "3.1" || t.s === "3.2") ? "app-schedule.html" : "app.html";
+    var stamp = Date.now();
+    ["desk", "phone"].forEach(function (name) {
+      var host = document.getElementById(name);
+      host.textContent = "";
+      frames[name] = null;
+      if ((name === "desk" && S.view === "phone") || (name === "phone" && S.view === "desk")) return;
+      var f = document.createElement("iframe");
+      var params = "s=" + encodeURIComponent(t.s) + "&sc=" + encodeURIComponent(t.sc) + "&role=" + encodeURIComponent(t.role) + "&frame=" + (name === "desk" ? "desktop" : "phone") + "&n=" + stamp;
+      f.name = "pages:" + params;
+      f.title = (name === "desk" ? "Masaüstü" : "Telefon") + " görünümü: " + it.t;
+      f.src = file + "#" + params;
+      f.style.width = (name === "desk" ? 1440 : 390) + "px";
+      f.style.height = (name === "desk" ? 900 : 844) + "px";
+      host.appendChild(f);
+      frames[name] = f;
+    });
+    fit();
+  }
+  // Each frame's saves and moves go to the other frame, as on the PAGES pages.
+  window.addEventListener("message", function (event) {
+    var m = event.data;
+    if (!m || m.nf !== "pages") return;
+    if (m.kind === "route" && event.source === (frames.desk && frames.desk.contentWindow)) document.getElementById("url").textContent = "app.newfork.com" + m.path;
+    var other = frames.desk && event.source === frames.desk.contentWindow ? frames.phone
+      : frames.phone && event.source === frames.phone.contentWindow ? frames.desk : null;
+    if (other && other.contentWindow) other.contentWindow.postMessage(m, "*");
+  });
+  function fit() {
+    var box = document.getElementById("frames");
+    var showDesk = S.view !== "phone", showPhone = S.view !== "desk";
+    document.getElementById("dev-desk").hidden = !showDesk;
+    document.getElementById("dev-phone").hidden = !showPhone;
+    var width = box.clientWidth;
+    var side = showDesk && showPhone && (width - 414 - 20) / 1440 >= 0.5;
+    box.dataset.layout = side ? "side" : "stack";
+    if (showDesk) {
+      var deskW = side ? width - 414 - 20 : width;
+      var vp = document.getElementById("desk");
+      var w = Math.max(200, deskW - 2);
+      var scale = w / 1440;
+      vp.style.height = Math.round(900 * scale) + "px";
+      if (frames.desk) frames.desk.style.transform = "scale(" + scale + ")";
+      document.getElementById("desk-size").textContent = "1440 × 900 · %" + Math.round(scale * 100);
+    }
+    if (showPhone) {
+      var pv = document.getElementById("phone");
+      var pw = Math.min(390, document.querySelector(".screen-phone").clientWidth - 24);
+      var ps = pw / 390;
+      pv.style.width = pw + "px";
+      pv.style.height = Math.round(844 * ps) + "px";
+      if (frames.phone) frames.phone.style.transform = "scale(" + ps + ")";
+    }
+  }
+  function render() {
+    var it = current();
+    document.querySelectorAll(".item").forEach(function (b) { b.setAttribute("aria-current", String(b.dataset.id === it.id)); });
+    document.getElementById("eyebrow").textContent = groups[it.group].name;
+    document.getElementById("title").textContent = it.t;
+    document.getElementById("quote-text").textContent = it.q;
+    document.getElementById("f-where").textContent = it.w;
+    document.getElementById("f-how").textContent = it.how || (it.group <= 1 ? CARD : "");
+    document.getElementById("f-when").textContent = it.when || (it.group === 1 ? "Kişinin bu sayfa için hiç izni yokken adresi elle yazdığında ya da eski bir bağlantı veya yer imiyle geldiğinde. Sayfa menüde görünmez." : API);
+    document.getElementById("f-who").textContent = it.who;
+    var t = target(it);
+    document.getElementById("f-viewer").textContent = who[t.role] || t.role;
+    var code = document.getElementById("f-code"); code.textContent = ""; code.appendChild(el("code", null, it.code));
+    document.getElementById("url").textContent = "";
+    document.getElementById("legend").textContent = S.state === "normal"
+      ? (it.normalNote || "Hatasız hâli: aynı ekran, aynı kişiyle, sunucu izin verdiğinde.") + " Hatalı hâline dönmek için “Hatalı hâli”ne bas."
+      : it.group <= 1
+        ? "Görüntü canlıdır: tıklayabilir, menüde gezebilirsin. “Back to Home” düğmesi o kişinin açabildiği sayfaya götürür."
+        : "Görüntü canlıdır: tıklayabilir, kaydırabilirsin. Telefonda uyarı ekranın altında kalabilir; telefonun içinde aşağı kaydır.";
+    // Role pills only where the error looks different per role.
+    var ctl = document.getElementById("role-ctl");
+    if (ctl) ctl.remove();
+    if (it.roles) {
+      ctl = el("div", "ctl"); ctl.id = "role-ctl";
+      ctl.appendChild(el("span", "ctl-label", "Kim açıyor"));
+      var pills = el("div", "pills"); pills.setAttribute("role", "group"); pills.setAttribute("aria-label", "Kim açıyor");
+      it.roles.forEach(function (r) {
+        var b = el("button", null, who[r]); b.type = "button";
+        b.setAttribute("aria-pressed", String((S.role || it.role) === r));
+        b.addEventListener("click", function () { S.role = r; render(); });
+        pills.appendChild(b);
+      });
+      ctl.appendChild(pills);
+      document.querySelector(".controls").insertBefore(ctl, document.getElementById("reload"));
+    }
+    document.querySelectorAll("[data-state]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.state === S.state)); });
+    document.querySelectorAll("[data-view]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.dataset.view === S.view)); });
+    mount();
+  }
+  document.querySelectorAll("[data-state]").forEach(function (b) { b.addEventListener("click", function () { S.state = b.dataset.state; render(); }); });
+  document.querySelectorAll("[data-view]").forEach(function (b) { b.addEventListener("click", function () { S.view = b.dataset.view; try { localStorage.setItem("nf.noaccess.view", JSON.stringify({ view: S.view })); } catch (e) {} render(); }); });
+  document.getElementById("reload").addEventListener("click", mount);
+  window.addEventListener("resize", fit);
+  render();
+})();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Ortak tasarım, raporlar ve araçlar", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

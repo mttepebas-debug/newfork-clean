@@ -1,0 +1,764 @@
+<title>Bildirim Varyantları</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: page chrome (Turkish) around fixed-size mockups of the real app (English), scaled to fit.
+   Single light theme on purpose: Newfork is light-only (CLAUDE.md 2.A.7); every color is set explicitly. */
+:root {
+  --page: #f4f5f3; --surface: #ffffff; --soft: #f7f9f8; --muted-bg: #f0f3f1;
+  --text: #17221e; --body: #1d2525; --muted: #66716c; --muted-strong: #5f6b66; --secondary: #50605a; --menu: #26352f;
+  --border: #dce3df; --border-subtle: #e2e6e4; --border-strong: #cbd4d0; --control: #7f8c86; --sidebar-line: #d9ddda;
+  --accent: #176954; --accent-strong: #12624f; --accent-soft: #dbece5; --selected: #e7f1ed; --focus: #177a64;
+  --warning: #8a5a00; --warning-soft: #fff7e2; --warning-border: #e9cf94;
+  --danger: #b84234; --success: #176b4e; --success-soft: #e7f1ed;
+  --list-frame: #d7dcda; --list-head: #e6ece8; --list-head-border: #d3dbd6; --list-head-text: #4f5d57; --list-cell: #46514d; --list-line: #dce1de;
+  --scrim: rgba(23, 34, 30, 0.28); --shadow: 0 18px 48px rgba(23, 34, 30, 0.18);
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font-family: var(--font); font-size: 14px; line-height: 1.45; }
+button { font: inherit; }
+svg.i { width: 18px; height: 18px; flex: 0 0 auto; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+svg.i.s14 { width: 14px; height: 14px; } svg.i.s16 { width: 16px; height: 16px; } svg.i.s20 { width: 20px; height: 20px; }
+
+/* ---------- Page chrome ---------- */
+.wrap { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; display: grid; gap: 20px; }
+.doc-head { display: grid; gap: 6px; }
+.eyebrow { margin: 0; color: var(--accent); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; }
+.doc-head h1 { margin: 0; color: var(--text); font-size: 30px; font-weight: 800; letter-spacing: -0.01em; text-wrap: balance; }
+.doc-head p.lede { margin: 0; max-width: 70ch; color: var(--secondary); font-size: 14px; }
+.vtabs { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.vtabs .grp-label { color: var(--muted-strong); font-size: 12px; font-weight: 600; margin-right: 2px; }
+.vtabs .sep { width: 1px; height: 24px; background: var(--border); margin-inline: 6px; }
+.vtab { height: 36px; padding: 0 14px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); color: var(--menu); font-size: 13px; font-weight: 600; cursor: pointer; }
+.vtab:hover { border-color: var(--control); }
+.vtab[aria-selected="true"] { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.vtab:focus-visible, .m button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.cap { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 16px 28px; padding: 18px 20px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.cap h2 { grid-column: 1 / -1; margin: 0; color: var(--text); font-size: 17px; font-weight: 700; }
+.cap ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; color: var(--body); font-size: 13.5px; }
+.cap .k { color: var(--muted-strong); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin: 0 0 6px; }
+.cap .q { color: var(--secondary); font-size: 13px; }
+.stage { position: relative; width: 100%; overflow: hidden; border-radius: 12px; }
+.frame { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+.today-unused { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.today figure { margin: 0; display: grid; gap: 8px; padding: 12px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.today img { width: 100%; height: auto; border: 1px solid var(--border-subtle); border-radius: 6px; display: block; }
+.today figcaption { color: var(--secondary); font-size: 13px; }
+.today .tall img { max-height: 560px; object-fit: cover; object-position: top; }
+.today { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; align-items: start; }
+.today a { color: var(--accent); }
+.status-strip { display: grid; gap: 6px; padding: 12px 14px; border-radius: 10px; background: var(--warning-soft); border: 1px solid var(--warning-border); color: var(--body); font-size: 14px; }
+.status-strip .st-k { font-size: 11px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: var(--warning); }
+.status-strip p { margin: 0; max-width: 110ch; }
+.st { display: inline-block; font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 999px; white-space: nowrap; vertical-align: middle; margin-left: 8px; letter-spacing: 0; text-transform: none; }
+.st-wait { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
+.st-half { white-space: normal; max-width: 100%; background: var(--muted-bg); color: var(--secondary); border: 1px solid var(--border-strong); }
+@media (max-width: 760px) { .cap { grid-template-columns: minmax(0, 1fr); } .today { grid-template-columns: minmax(0, 1fr); } }
+
+/* ---------- Mockup: the app (fixed 1280 x 800) ---------- */
+.m { width: 1280px; height: 840px; display: flex; overflow: hidden; border: 1px solid var(--border-strong); border-radius: 12px; background: var(--page); color: var(--body); font-size: 14px; box-shadow: 0 1px 2px rgba(23,34,30,0.06); }
+.m .sb { width: 264px; flex: 0 0 264px; display: flex; flex-direction: column; border-right: 1px solid var(--sidebar-line); background: var(--surface); }
+.m .sb-ws { height: 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; color: var(--text); font-size: 15px; font-weight: 700; }
+.m .sb-ws .grow { flex: 1; }
+.m .sb nav { display: grid; gap: 2px; padding: 8px; }
+.m .sb a { height: 40px; display: flex; align-items: center; gap: 12px; padding: 0 12px; border-radius: 8px; color: var(--text); font-size: 14.5px; font-weight: 600; text-decoration: none; }
+.m .sb a.sub { height: 34px; margin-left: 20px; padding-left: 12px; border-left: 2px solid var(--border-strong); border-radius: 0; font-size: 13.5px; }
+.m .sb a .grow { flex: 1; }
+.m .sb a.on { background: var(--selected); color: var(--accent); }
+.m .sb .foot { margin-top: auto; padding: 8px; border-top: 1px solid var(--border); display: grid; gap: 2px; }
+.m .avatar { width: 24px; height: 24px; border-radius: 50%; display: inline-grid; place-items: center; background: var(--accent-soft); color: var(--accent); font-size: 10px; font-weight: 700; }
+.m .badge { min-width: 22px; height: 22px; padding: 0 7px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--accent); color: #ffffff; font-size: 12px; font-weight: 700; }
+.m .main { flex: 1; min-width: 0; overflow: hidden; position: relative; }
+.m .pg { padding: 0 36px; }
+.m .ph { height: 142px; padding: 30px 0 18px; border-bottom: 1px solid var(--border); margin-bottom: 18px; display: grid; align-content: center; gap: 4px; }
+.m .ph .eyebrow { font-size: 10.5px; }
+.m .ph h2 { margin: 0; color: var(--text); font-size: 36px; font-weight: 800; letter-spacing: -0.015em; line-height: 1.1; }
+.m .ph p { margin: 0; color: var(--secondary); font-size: 13px; }
+.m .tline { height: 40px; display: flex; gap: 6px; border-bottom: 1px solid var(--border); margin-bottom: 10px; }
+.m .tline button { height: 40px; margin-bottom: -1px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; background: none; color: var(--muted); font-size: 13px; font-weight: 500; }
+.m .tline button.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+.m .filters { height: 36px; display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.m .filters .grow { flex: 1; }
+.m .select { height: 36px; display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; padding: 0 10px; border: 1px solid var(--control); border-radius: 6px; background: var(--surface); color: var(--text); font-size: 13px; }
+.m .w200 { width: 200px; }
+.m .muted { color: var(--secondary); font-size: 13px; }
+.m .btn { height: 36px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 0 14px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 13.5px; font-weight: 600; }
+.m .btn.dis { border-color: var(--border-subtle); background: var(--soft); color: #aeb9b4; }
+.m .btn.primary { border-color: var(--accent); background: var(--accent); color: #ffffff; }
+.m .btn.sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.m .ibtn { width: 32px; height: 32px; display: inline-grid; place-items: center; border: 0; border-radius: 6px; background: none; color: var(--muted); }
+.m .ibtn.off { color: #c6cfcb; }
+.m .cb { width: 16px; height: 16px; border: 1.5px solid var(--control); border-radius: 3px; background: var(--surface); display: inline-block; }
+.m .chip { height: 22px; display: inline-flex; align-items: center; gap: 5px; padding: 0 8px; border-radius: 11px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.m .chip.amber { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
+.m .chip.green { background: var(--success-soft); color: var(--success); border: 1px solid #b9d9cc; }
+.m .chip.grey { background: var(--muted-bg); color: var(--muted-strong); border: 1px solid var(--border); }
+.m .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: 0 0 8px; }
+.m .dot.off { background: transparent; }
+
+/* Center A: DOC-TABLE */
+.m .tbl { border: 1px solid var(--list-frame); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.m .row { display: grid; grid-template-columns: 44px minmax(0, 1fr) 150px 130px 56px; align-items: center; }
+.m .thead { height: 40px; background: var(--list-head); border-bottom: 1px solid var(--list-head-border); color: var(--list-head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.m .thead > span, .m .tr > span { padding: 0 14px; }
+.m .thead > span:first-child, .m .tr > span:first-child { padding: 0; display: grid; place-items: center; }
+.m .grp { height: 30px; display: flex; align-items: center; padding: 0 14px; background: var(--soft); border-bottom: 1px solid var(--list-line); color: var(--muted-strong); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.m .tr { min-height: 60px; border-bottom: 1px solid var(--list-line); color: var(--list-cell); font-size: 13px; }
+.m .tr:last-child { border-bottom: 0; }
+.m .tr .main-cell { display: flex; align-items: center; gap: 12px; min-width: 0; padding-block: 10px; }
+.m .tr .tt { display: grid; gap: 3px; min-width: 0; }
+.m .tr .tt b { color: var(--text); font-size: 13.5px; font-weight: 600; }
+.m .tr .tt .line { display: flex; align-items: center; gap: 8px; }
+.m .tr.read .tt b { font-weight: 500; color: var(--body); }
+.m .tr.done .tt b { color: var(--secondary); font-weight: 500; }
+.m .tr small { color: var(--secondary); font-size: 12.5px; }
+.m .tr .act { justify-self: center; }
+
+/* Center B: two lanes */
+.m .lane { border: 1px solid var(--list-frame); border-radius: 10px; background: var(--surface); overflow: hidden; margin-bottom: 18px; }
+.m .lane-h { height: 52px; display: flex; align-items: center; gap: 12px; padding: 0 16px; border-bottom: 1px solid var(--list-line); }
+.m .lane-h h3 { margin: 0; color: var(--text); font-size: 15px; font-weight: 700; }
+.m .lane-h .count { min-width: 24px; height: 22px; padding: 0 8px; border-radius: 11px; display: inline-grid; place-items: center; background: var(--warning-soft); color: var(--warning); font-size: 12px; font-weight: 700; border: 1px solid var(--warning-border); }
+.m .lane-h .count.g { background: var(--selected); color: var(--accent); border-color: #b9d9cc; }
+.m .lane-h .grow { flex: 1; }
+.m .li { height: 64px; display: grid; grid-template-columns: 36px minmax(0, 1fr) 170px 88px; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--list-line); }
+.m .li:last-child { border-bottom: 0; }
+.m .tile { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; background: var(--muted-bg); color: var(--menu); }
+.m .tile.req { background: #eaf1ee; color: var(--accent); }
+.m .tile.ppl { background: #eef0f6; color: #3b4a7a; }
+.m .tile.sch { background: #f3efe6; color: #6a5426; }
+.m .tile.ann { background: #f1edf3; color: #5b3f6b; }
+.m .li .tt { display: grid; gap: 2px; min-width: 0; }
+.m .li .tt b { color: var(--text); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m .li .tt small { color: var(--secondary); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m .li .btn { justify-self: end; }
+.m .li .right { justify-self: end; color: var(--secondary); font-size: 12.5px; }
+.m .ui { height: 56px; display: grid; grid-template-columns: 8px 36px minmax(0, 1fr) 110px; align-items: center; gap: 14px; padding: 0 16px; border-bottom: 1px solid var(--list-line); }
+.m .ui:last-child { border-bottom: 0; }
+.m .ui .tt { display: grid; gap: 2px; min-width: 0; }
+.m .ui .tt b { color: var(--text); font-size: 13.5px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m .ui.read .tt b { font-weight: 500; color: var(--body); }
+.m .ui .tt small { color: var(--secondary); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.m .ui .when { justify-self: end; color: var(--secondary); font-size: 12.5px; }
+.m .subgrp { height: 28px; display: flex; align-items: center; padding: 0 16px; background: var(--soft); border-bottom: 1px solid var(--list-line); color: var(--muted-strong); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Center C: flyout panel */
+.m .bg { padding: 0 36px; filter: saturate(0.9); }
+.m .scrim { position: absolute; inset: 0; background: var(--scrim); }
+.m .fly { position: absolute; top: 0; left: 0; bottom: 0; width: 440px; background: var(--surface); border-right: 1px solid var(--border-strong); box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.m .fly-h { height: 64px; display: flex; align-items: center; gap: 10px; padding: 0 16px 0 20px; border-bottom: 1px solid var(--border); }
+.m .fly-h h3 { margin: 0; color: var(--text); font-size: 18px; font-weight: 700; flex: 1; }
+.m .seg { margin: 14px 20px 6px; height: 36px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 8px; background: var(--muted-bg); border: 1px solid var(--border); }
+.m .seg button { border: 0; border-radius: 6px; background: none; color: var(--secondary); font-size: 13px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.m .seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23,34,30,0.12); }
+.m .seg .n { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; display: inline-grid; place-items: center; background: var(--warning-soft); color: var(--warning); font-size: 11px; font-weight: 700; }
+.m .seg .n.g { background: var(--selected); color: var(--accent); }
+.m .fl { flex: 1; overflow: hidden; padding: 6px 0; }
+.m .fi { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--list-line); }
+.m .fi .tt { display: grid; gap: 4px; min-width: 0; }
+.m .fi .tt b { color: var(--text); font-size: 13.5px; font-weight: 600; }
+.m .fi .tt small { color: var(--secondary); font-size: 12.5px; }
+.m .fi .acts { display: flex; align-items: center; gap: 8px; margin-top: 4px; }
+.m .fly-f { height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; border-top: 1px solid var(--border); }
+.m .link { color: var(--accent); font-size: 13.5px; font-weight: 600; display: inline-flex; align-items: center; gap: 6px; }
+
+/* Background page for C */
+.m .bgtbl { border: 1px solid var(--list-frame); border-radius: 8px; background: var(--surface); }
+.m .bgtbl .r { height: 52px; border-bottom: 1px solid var(--list-line); display: grid; grid-template-columns: 1.4fr 1fr 1fr 0.8fr; align-items: center; padding: 0 16px; color: var(--list-cell); font-size: 13px; }
+.m .bgtbl .r.h { height: 40px; background: var(--list-head); color: var(--list-head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* Settings + Account */
+.m .setcol { width: 232px; flex: 0 0 232px; border-right: 1px solid var(--border); background: var(--surface); padding: 22px 12px; display: grid; align-content: start; gap: 2px; }
+.m .setcol .t { display: flex; align-items: center; gap: 10px; padding: 0 10px 14px; color: var(--text); font-size: 15px; font-weight: 700; }
+.m .setcol .h { padding: 12px 10px 6px; color: var(--muted-strong); font-size: 10.5px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+.m .setcol a { height: 36px; display: flex; align-items: center; gap: 10px; padding: 0 10px; border-radius: 8px; color: var(--menu); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.m .setcol a.on { background: var(--selected); color: var(--accent); }
+.m .setmain { flex: 1; min-width: 0; padding: 0 36px; overflow: hidden; }
+.m .sh { padding: 30px 0 20px; border-bottom: 1px solid var(--border); margin-bottom: 20px; display: flex; gap: 14px; align-items: flex-start; }
+.m .sh .ico { width: 40px; height: 40px; border-radius: 10px; border: 1px solid var(--border); background: var(--surface); display: grid; place-items: center; color: var(--accent); flex: 0 0 40px; }
+.m .sh h2 { margin: 0 0 4px; color: var(--text); font-size: 26px; font-weight: 800; letter-spacing: -0.01em; }
+.m .sh p { margin: 0; color: var(--secondary); font-size: 13.5px; max-width: 64ch; }
+.m .rules { border: 1px solid var(--list-frame); border-radius: 8px; overflow: hidden; background: var(--surface); }
+.m .rr { display: grid; grid-template-columns: 230px minmax(0, 1fr) 80px 130px; align-items: center; min-height: 44px; border-bottom: 1px solid var(--list-line); font-size: 13px; color: var(--list-cell); }
+.m .rr > span { padding: 0 14px; }
+.m .rr:last-child { border-bottom: 0; }
+.m .rr.h { min-height: 40px; background: var(--list-head); border-bottom-color: var(--list-head-border); color: var(--list-head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.m .rr.g { min-height: 30px; background: var(--soft); color: var(--muted-strong); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.m .rr b { color: var(--text); font-weight: 600; }
+.m .yes { display: inline-flex; align-items: center; gap: 6px; color: var(--success); font-weight: 600; }
+.m .no { color: #9aa6a1; }
+.m .card { border: 1px solid var(--list-frame); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.m .sw-row { height: 84px; display: grid; grid-template-columns: minmax(0, 1fr) 56px; align-items: center; gap: 24px; padding: 0 20px; border-bottom: 1px solid var(--list-line); }
+.m .sw-row:last-child { border-bottom: 0; }
+.m .sw-row .tt { display: grid; gap: 4px; }
+.m .sw-row b { color: var(--text); font-size: 14px; font-weight: 600; }
+.m .sw-row small { color: var(--secondary); font-size: 13px; }
+.m .sw { width: 44px; height: 24px; border-radius: 12px; background: #c7d0cc; position: relative; justify-self: end; }
+.m .sw::after { content: ""; position: absolute; top: 3px; left: 3px; width: 18px; height: 18px; border-radius: 50%; background: #ffffff; box-shadow: 0 1px 2px rgba(0,0,0,0.2); }
+.m .sw.on { background: var(--accent); }
+.m .sw.on::after { left: 23px; }
+.m .sw.locked { background: #9cc2b5; }
+.m .savebar { display: flex; justify-content: flex-end; margin-top: 18px; }
+.m .note { display: flex; align-items: center; gap: 10px; height: 44px; padding: 0 14px; margin-bottom: 16px; border: 1px solid var(--border); border-radius: 8px; background: var(--soft); color: var(--secondary); font-size: 13px; }
+
+/* Account layout */
+.m.acc { background: var(--surface); }
+.m .accwrap { width: 100%; display: grid; grid-template-columns: 220px 720px; gap: 56px; justify-content: center; padding-top: 40px; }
+.m .accnav { display: grid; align-content: start; gap: 2px; }
+.m .accnav .me { display: flex; align-items: center; gap: 12px; padding: 0 10px 18px; color: var(--text); font-size: 15px; font-weight: 700; }
+.m .accnav .me .avatar { width: 36px; height: 36px; font-size: 13px; }
+.m .accnav a { height: 36px; display: flex; align-items: center; gap: 12px; padding: 0 10px; border-radius: 8px; color: var(--menu); font-size: 13.5px; font-weight: 600; text-decoration: none; }
+.m .accnav a.on { background: var(--selected); color: var(--accent); }
+.m .accnav hr { border: 0; border-top: 1px solid var(--border); margin: 12px 0; }
+.m .acchead { padding-bottom: 20px; border-bottom: 1px solid var(--border); margin-bottom: 18px; }
+.m .acchead h2 { margin: 0 0 6px; color: var(--text); font-size: 24px; font-weight: 800; }
+.m .acchead p { margin: 0; color: var(--secondary); font-size: 14px; }
+.m .pref { display: grid; grid-template-columns: minmax(0, 1fr) 110px 110px; align-items: center; min-height: 64px; border-bottom: 1px solid var(--border); }
+.m .pref.h { min-height: 36px; color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.m .pref .c { justify-self: center; }
+.m .pref .tt { display: grid; gap: 3px; }
+.m .pref b { color: var(--text); font-size: 14px; font-weight: 600; }
+.m .pref small { color: var(--secondary); font-size: 13px; }
+.m .always { display: inline-flex; align-items: center; gap: 6px; color: var(--secondary); font-size: 12.5px; font-weight: 600; }
+
+/* Phones: a 1280 x 900 sheet of three 390 x 844 phones */
+.m.phones { height: 940px; background: var(--page); justify-content: center; align-items: flex-start; gap: 40px; padding-top: 24px; border: 0; box-shadow: none; }
+.ph-col { display: grid; gap: 10px; justify-items: center; }
+.ph-col .lbl { color: var(--secondary); font-size: 13px; font-weight: 600; }
+.phone { width: 390px; height: 844px; border-radius: 40px; border: 10px solid #1d2525; background: var(--page); overflow: hidden; display: flex; flex-direction: column; position: relative; }
+.phone .status { height: 40px; flex: 0 0 40px; display: flex; align-items: center; justify-content: space-between; padding: 0 22px; color: var(--text); font-size: 13px; font-weight: 600; }
+.phone .ptop { height: 56px; flex: 0 0 56px; display: flex; align-items: center; gap: 12px; padding: 0 16px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.phone .ptop b { flex: 1; color: var(--text); font-size: 16px; font-weight: 700; }
+.phone .bellb { position: relative; width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; color: var(--text); }
+.phone .bellb .pip { position: absolute; top: 6px; right: 6px; min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--accent); color: #ffffff; font-size: 10.5px; font-weight: 700; display: grid; place-items: center; }
+.phone .pbody { flex: 1; overflow: hidden; padding: 16px; display: grid; align-content: start; gap: 10px; }
+.phone .ptitle { margin: 4px 0 2px; color: var(--text); font-size: 26px; font-weight: 800; }
+.phone .ptabs { height: 40px; display: flex; gap: 4px; border-bottom: 1px solid var(--border); }
+.phone .ptabs span { height: 40px; display: inline-flex; align-items: center; padding: 0 12px; margin-bottom: -1px; border-bottom: 2px solid transparent; color: var(--muted); font-size: 13px; font-weight: 500; }
+.phone .ptabs span.on { border-bottom-color: var(--accent); color: var(--text); font-weight: 600; }
+.phone .pc { display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: 12px; padding: 14px; border: 1px solid var(--list-frame); border-radius: 10px; background: var(--surface); }
+.phone .pc .tt { display: grid; gap: 4px; min-width: 0; }
+.phone .pc b { color: var(--text); font-size: 14px; font-weight: 600; }
+.phone .pc small { color: var(--secondary); font-size: 12.5px; }
+.phone .pc .meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-top: 4px; }
+.phone .pc.read b { font-weight: 500; }
+.phone .sec { display: flex; align-items: center; gap: 8px; margin-top: 6px; color: var(--text); font-size: 13px; font-weight: 700; }
+.phone .nav { height: 68px; flex: 0 0 68px; display: grid; grid-template-columns: repeat(5, 1fr); align-items: center; border-top: 1px solid var(--border); background: var(--surface); padding: 0 6px; }
+.phone .nav span { height: 52px; border-radius: 10px; display: grid; justify-items: center; align-content: center; gap: 3px; color: var(--secondary); font-size: 10.5px; font-weight: 600; position: relative; }
+.phone .nav span.on { background: var(--selected); color: var(--accent); }
+.phone .nav .pip { position: absolute; top: 4px; left: calc(50% + 4px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 8px; background: var(--accent); color: #ffffff; font-size: 10px; font-weight: 700; display: grid; place-items: center; }
+.phone .sheet-scrim { position: absolute; inset: 96px 0 68px 0; background: var(--scrim); }
+.phone .sheet { position: absolute; left: 0; right: 0; bottom: 68px; height: 600px; background: var(--surface); border-radius: 18px 18px 0 0; box-shadow: var(--shadow); display: flex; flex-direction: column; }
+.phone .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 10px auto 6px; }
+.phone .sheet-h { height: 48px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; }
+.phone .sheet-h b { color: var(--text); font-size: 18px; font-weight: 700; }
+.phone .sheet .seg { margin: 4px 16px 8px; }
+.phone .si { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; padding: 12px 16px; border-bottom: 1px solid var(--list-line); }
+.phone .si .tt { display: grid; gap: 3px; }
+.phone .si b { color: var(--text); font-size: 14px; font-weight: 600; }
+.phone .si small { color: var(--secondary); font-size: 12.5px; }
+.phone .si .acts { display: flex; gap: 8px; margin-top: 6px; }
+.phone .seg { height: 36px; display: grid; grid-template-columns: 1fr 1fr; padding: 3px; border-radius: 8px; background: var(--muted-bg); border: 1px solid var(--border); }
+.phone .seg span { border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; color: var(--secondary); font-size: 13px; font-weight: 600; }
+.phone .seg span.on { background: var(--surface); color: var(--text); box-shadow: 0 1px 2px rgba(23,34,30,0.12); }
+.phone .btn { height: 34px; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text); font-size: 13px; font-weight: 600; }
+.phone .btn.primary { background: var(--accent); border-color: var(--accent); color: #ffffff; }
+.phone .chip { height: 22px; display: inline-flex; align-items: center; padding: 0 8px; border-radius: 11px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+.phone .chip.amber { background: var(--warning-soft); color: var(--warning); border: 1px solid var(--warning-border); }
+.phone .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); margin-top: 6px; }
+.phone .dot.off { background: transparent; }
+.phone .tile { width: 36px; height: 36px; border-radius: 8px; display: grid; place-items: center; }
+.phone .tile.req { background: #eaf1ee; color: var(--accent); }
+.phone .tile.ppl { background: #eef0f6; color: #3b4a7a; }
+.phone .tile.sch { background: #f3efe6; color: #6a5426; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-bell" viewBox="0 0 24 24"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></symbol>
+  <symbol id="i-grid" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/></symbol>
+  <symbol id="i-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></symbol>
+  <symbol id="i-calc" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/><path d="m9 16 2 2 4-4"/></symbol>
+  <symbol id="i-cald" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18M8 14h.01M12 14h.01M16 14h.01M8 18h.01M12 18h.01"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+  <symbol id="i-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M6 21v-2a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v2"/></symbol>
+  <symbol id="i-out" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5-5M21 12H9"/></symbol>
+  <symbol id="i-swap" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-updown" viewBox="0 0 24 24"><path d="m7 15 5 5 5-5M7 9l5-5 5 5"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-file" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6M16 13H8M16 17H8"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-home" viewBox="0 0 24 24"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-arrow" viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="i-mail" viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2"/><path d="m22 7-10 5L2 7"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4M12 8h.01"/></symbol>
+  <symbol id="i-palette" viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="1.5"/><circle cx="17.5" cy="10.5" r="1.5"/><circle cx="8.5" cy="7.5" r="1.5"/><circle cx="6.5" cy="12.5" r="1.5"/><path d="M12 2a10 10 0 0 0 0 20c1 0 1.7-.8 1.7-1.7 0-.4-.2-.8-.4-1.1-.3-.3-.4-.7-.4-1.1 0-.9.8-1.7 1.7-1.7H17a5 5 0 0 0 5-5C22 6.5 17.5 2 12 2z"/></symbol>
+  <symbol id="i-building" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="2"/><path d="M9 22v-4h6v4M8 6h.01M16 6h.01M12 6h.01M12 10h.01M12 14h.01M16 10h.01M16 14h.01M8 10h.01M8 14h.01"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></symbol>
+  <symbol id="i-pin" viewBox="0 0 24 24"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-brief" viewBox="0 0 24 24"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"/></symbol>
+  <symbol id="i-more" viewBox="0 0 24 24"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></symbol>
+</svg>
+
+<div class="wrap">
+  <header class="doc-head">
+    <p class="eyebrow">BILDIRIM · 2026-10-07 taslak · durum 2026-10-09</p>
+    <h1>Bildirim sistemi: görsel varyantlar</h1>
+    <p class="lede">Aynı örnek her varyantta: Harbor Grill (Downtown, Midtown). Masaüstünde bakan Ayşe Kaya, Downtown müdürü; telefonda Ali Demir, garson; ayarlarda Burak Yilmaz, owner. Ekran metinleri uygulamadaki gibi İngilizce. Plan ve sorular: <code>docs/plan/tasks/BILDIRIM.md</code>. İlk sekme bugünkü uygulama (Original); öteki sekmeler önerilen yeni hâller.</p>
+  </header>
+
+  <div class="status-strip" role="note" aria-label="Karar durumu">
+    <span class="st-k">Karar bekliyor · 9 Ekim 2026</span>
+    <p><b>Henüz seçim yok.</b> Mert, 7 Ekim 2026: "bu en önemli işlerden 1 tanesi" ve bugünkü bildirim için "direk söksün atsın". Yani eski sistem yeni sistem gelince bütünüyle kalkar. <b>Uygulamada:</b> henüz koda girmedi; plan main'de (<code>docs/plan/tasks/BILDIRIM.md</code>), eski sistem main'de duruyor.</p>
+    <p><b>Bekleyen sorular:</b> G8 · 6 temel soru (kanal, workspace ayarı, karar kime gider, karar herkes için kapanır mı, yayında kime haber gider, açık vardiya günde tek satır) · G9 · merkez A/B/C, ayar A/B/C, telefon A/B/C · varsayılan bildirim kuralları (KARARLAR S-91, S-92) onay bekliyor.</p>
+  </div>
+
+  <div class="vtabs" role="tablist" aria-label="Varyantlar">
+    <span class="grp-label">Bugün</span>
+    <button class="vtab" role="tab" id="t-og" aria-controls="p-og" aria-selected="true">Original</button>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="grp-label">Bildirim merkezi</span>
+    <button class="vtab" role="tab" id="t-ca" aria-controls="p-ca" aria-selected="false">A · Tablo</button>
+    <button class="vtab" role="tab" id="t-cb" aria-controls="p-cb" aria-selected="false">B · İki şerit</button>
+    <button class="vtab" role="tab" id="t-cc" aria-controls="p-cc" aria-selected="false">C · Panel</button>
+    <button class="vtab" role="tab" id="t-ph" aria-controls="p-ph" aria-selected="false">Telefon</button>
+    <span class="sep" aria-hidden="true"></span>
+    <span class="grp-label">Ayarlar</span>
+    <button class="vtab" role="tab" id="t-sa" aria-controls="p-sa" aria-selected="false">A · Sayfa yok</button>
+    <button class="vtab" role="tab" id="t-sb" aria-controls="p-sb" aria-selected="false">B · Salt okunur</button>
+    <button class="vtab" role="tab" id="t-sc" aria-controls="p-sc" aria-selected="false">C · Üç anahtar</button>
+  </div>
+
+  <!-- ================= ORIGINAL (today's app) ================= -->
+  <section class="panel" id="p-og" role="tabpanel" aria-labelledby="t-og">
+    <div class="cap">
+      <h2>Original · bugünkü uygulama <span class="st st-half">Yarı karar: sökülecek, yerine ne geleceği bekliyor (G8, G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Notifications kutusu: Unread / Read sekmesi, kategori listesi, çoklu seçim, "Mark as read" (DOC-TABLE kararı, main'de).</li><li>Settings → Notifications: her kural için kanal, sıklık, gerekçe, "Safe test", "Reset". 9 Ekim'den beri (BL-1011) "Reset current category" ve "Reset all policies" kırmızı, iki tıkla çalışıyor; aşağıdaki görüntü ondan önce çekildi.</li><li>Account → Notifications: workspace seçimi, her kategori için "In app" ve "Email" kutusu.</li></ul></div>
+      <div><p class="k">Kaynak</p><p class="q">Görüntüler 7 Ekim 2026'da gerçek uygulamadan çekildi (BILDIRIM ekran görüntüleri). Notifications sayfasının kodu o günden beri değişmedi. Bugünkü main'in kopyası: <a href="https://claude.ai/artifact/7oqKomeCbuqhZXPfda2b5t" target="_blank" rel="noopener">Notifications atlas sayfası</a> · <a href="https://claude.ai/artifact/2wDz2MV52Z7Yh2ba9wCwM3" target="_blank" rel="noopener">Settings atlas sayfası</a>.</p></div>
+    </div>
+    <div class="today">
+      <figure><img src="shots/owner-app_notifications-1440.png" alt="Notifications inbox on desktop: Unread and Read tabs, All categories filter, Mark as read, empty table" width="1440" height="900" loading="lazy"><figcaption>Notifications kutusu · masaüstü 1440 (owner)</figcaption></figure>
+      <figure><img src="shots/owner-account_preferences_notifications-1440.png" alt="Account Notifications: workspace select and In app / Email checkboxes per category" width="1440" height="900" loading="lazy"><figcaption>Account → Notifications · kişisel ayar</figcaption></figure>
+      <figure><img src="shots/owner-app_settings_notifications-1440.png" alt="Settings Notifications: policy search, category and scope filters, reset buttons, per-rule cards with channels and cadence" width="1440" height="900" loading="lazy"><figcaption>Settings → Notifications · workspace kuralları (Reset düğmeleri bugün kırmızı, iki tık: BL-1011)</figcaption></figure>
+      <figure class="tall"><img src="shots/employee-app_notifications-390.png" alt="Employee Notifications inbox on phone" width="390" height="844" loading="lazy" style="max-width:390px"><figcaption>Notifications kutusu · telefon 390 (çalışan)</figcaption></figure>
+    </div>
+  </section>
+
+  <!-- ================= CENTER A ================= -->
+  <section class="panel" id="p-ca" role="tabpanel" aria-labelledby="t-ca" hidden>
+    <div class="cap">
+      <h2>A · Tablo (DOC-TABLE kararı), yeni içerikle <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>DOC-TABLE kararı aynen: Unread / Read sekmesi, kategori listesi, çoklu seçim, "Mark as read", çöp kutusu.</li><li>Karar bekleyen satırda sarı "To decide" etiketi ve son tarih; karar verilince yeşil "Done" olur, yeni satır gelmez.</li><li>Açık karar satırı silinemez (çöp soluk).</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 4 (karar kapanır). Tablo düzeni KARARLAR "Notifications" son hâliyle aynı.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m">
+        <aside class="sb">
+          <div class="sb-ws"><svg class="i"><use href="#i-menu"/></svg><span class="grow">Harbor Grill</span><svg class="i s16"><use href="#i-updown"/></svg></div>
+          <nav>
+            <a><svg class="i"><use href="#i-grid"/></svg>Workspace</a>
+            <a><svg class="i"><use href="#i-cal"/></svg><span class="grow">Schedule</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub">Requests</a>
+            <a><svg class="i"><use href="#i-users"/></svg><span class="grow">Employees</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub">Documents</a>
+            <a><svg class="i"><use href="#i-calc"/></svg>Availability</a>
+            <a><svg class="i"><use href="#i-cald"/></svg>Important Dates</a>
+            <a><svg class="i"><use href="#i-mega"/></svg>Announcements</a>
+            <a class="on"><svg class="i"><use href="#i-bell"/></svg><span class="grow">Notifications</span><span class="badge">6</span></a>
+          </nav>
+          <div class="foot">
+            <a><svg class="i"><use href="#i-user"/></svg>Employee view</a>
+            <a><span class="avatar">AK</span>Account</a>
+            <a><svg class="i"><use href="#i-out"/></svg>Sign out</a>
+          </div>
+        </aside>
+        <div class="main"><div class="pg">
+          <header class="ph"><p class="eyebrow">UPDATES. ALERTS. ACTIONS.</p><h2>Notifications</h2><p>4 decisions wait for you. 2 updates are unread.</p></header>
+          <div class="tline"><button class="on">Unread (6)</button><button>Read (14)</button></div>
+          <div class="filters"><span class="select w200">All categories <svg class="i s16"><use href="#i-down"/></svg></span><span class="grow"></span><span class="muted">0 selected</span><span class="btn dis"><svg class="i s14"><use href="#i-check"/></svg>Mark as read</span></div>
+          <div class="tbl">
+            <div class="row thead"><span><i class="cb"></i></span><span>Notification</span><span>Category</span><span>Received</span><span></span></div>
+            <div class="grp">Today</div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>Ali Demir asked for Tue, Oct 14 off</b><span class="chip amber">To decide · by Fri 6:00 PM</span></span><small>Time off · Downtown · 2 published shifts affected</small></span></span><span>Requests</span><span>9:42 AM</span><span class="act"><span class="ibtn off"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>Shift swap waits for your decision</b><span class="chip amber">To decide</span></span><small>Emre Sahin and Bob Lee · Fri, Oct 10, 5:00–11:00 PM</small></span></span><span>Requests</span><span>8:15 AM</span><span class="act"><span class="ibtn off"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>Ali Demir updated his availability</b></span><small>Changed days: Tue, Thu</small></span></span><span>Requests</span><span>9:10 AM</span><span class="act"><span class="ibtn"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="row tr done"><span><i class="cb"></i></span><span class="main-cell"><i class="dot off"></i><span class="tt"><span class="line"><b>Ali Demir's time off for Thu, Oct 9</b><span class="chip green"><svg class="i s14"><use href="#i-check"/></svg>Done · Approved by Can Ozturk</span></span><small>2 shifts are open in Downtown</small></span></span><span>Requests</span><span>10:05 AM</span><span class="act"><span class="ibtn"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="grp">Yesterday</div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>Food handler card ready for review</b><span class="chip amber">To decide</span></span><small>Mia Chen · Downtown</small></span></span><span>People</span><span>4:30 PM</span><span class="act"><span class="ibtn off"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>Onboarding ready for review</b><span class="chip amber">To decide</span></span><small>Jordan Price · Host · Downtown</small></span></span><span>People</span><span>11:02 AM</span><span class="act"><span class="ibtn off"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+            <div class="row tr"><span><i class="cb"></i></span><span class="main-cell"><i class="dot"></i><span class="tt"><span class="line"><b>New announcement: Fall menu tasting</b></span><small>From Zeynep Arslan · Please acknowledge by Sun, Oct 12</small></span></span><span>Announcements</span><span>2:00 PM</span><span class="act"><span class="ibtn"><svg class="i s16"><use href="#i-trash"/></svg></span></span></div>
+          </div>
+        </div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= CENTER B ================= -->
+  <section class="panel" id="p-cb" role="tabpanel" aria-labelledby="t-cb" hidden>
+    <div class="cap">
+      <h2>B · İki şerit: önce karar, sonra haber <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Üstte "To decide": yalnız açık kararlar, son tarihe göre sıralı, her satırda "Open".</li><li>Altta "Updates": günlere ayrılmış haberler; kapanan karar buraya "Approved by Can" diye iner.</li><li>Okundu yalnız Updates'te; kararı "okundu" yapmak onu bitirmez.</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 4. Emsal: When I Work "Things Needing Your Action" (karar akıştan ayrı).</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m">
+        <aside class="sb">
+          <div class="sb-ws"><svg class="i"><use href="#i-menu"/></svg><span class="grow">Harbor Grill</span><svg class="i s16"><use href="#i-updown"/></svg></div>
+          <nav>
+            <a><svg class="i"><use href="#i-grid"/></svg>Workspace</a>
+            <a><svg class="i"><use href="#i-cal"/></svg><span class="grow">Schedule</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub">Requests</a>
+            <a><svg class="i"><use href="#i-users"/></svg><span class="grow">Employees</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub">Documents</a>
+            <a><svg class="i"><use href="#i-calc"/></svg>Availability</a>
+            <a><svg class="i"><use href="#i-cald"/></svg>Important Dates</a>
+            <a><svg class="i"><use href="#i-mega"/></svg>Announcements</a>
+            <a class="on"><svg class="i"><use href="#i-bell"/></svg><span class="grow">Notifications</span><span class="badge">6</span></a>
+          </nav>
+          <div class="foot">
+            <a><svg class="i"><use href="#i-user"/></svg>Employee view</a>
+            <a><span class="avatar">AK</span>Account</a>
+            <a><svg class="i"><use href="#i-out"/></svg>Sign out</a>
+          </div>
+        </aside>
+        <div class="main"><div class="pg">
+          <header class="ph"><p class="eyebrow">UPDATES. ALERTS. ACTIONS.</p><h2>Notifications</h2><p>Decisions close for everyone as soon as one person decides.</p></header>
+          <section class="lane">
+            <div class="lane-h"><h3>To decide</h3><span class="count">4</span><span class="grow"></span><span class="muted">Oldest deadline first</span></div>
+            <div class="li"><span class="tile req"><svg class="i"><use href="#i-cal"/></svg></span><span class="tt"><b>Ali Demir asked for Tue, Oct 14 off</b><small>Time off · Downtown · 2 published shifts affected</small></span><span class="right"><span class="chip amber">Decide by Fri 6:00 PM</span></span><span class="btn sm">Open</span></div>
+            <div class="li"><span class="tile req"><svg class="i"><use href="#i-swap"/></svg></span><span class="tt"><b>Shift swap waits for your decision</b><small>Emre Sahin and Bob Lee · Fri, Oct 10, 5:00–11:00 PM</small></span><span class="right"><span class="chip amber">Shift starts Fri</span></span><span class="btn sm">Open</span></div>
+            <div class="li"><span class="tile ppl"><svg class="i"><use href="#i-file"/></svg></span><span class="tt"><b>Food handler card ready for review</b><small>Mia Chen · Downtown</small></span><span class="right">Since yesterday</span><span class="btn sm">Open</span></div>
+            <div class="li"><span class="tile ppl"><svg class="i"><use href="#i-user"/></svg></span><span class="tt"><b>Onboarding ready for review</b><small>Jordan Price · Host · Downtown</small></span><span class="right">Since yesterday</span><span class="btn sm">Open</span></div>
+          </section>
+          <section class="lane">
+            <div class="lane-h"><h3>Updates</h3><span class="count g">2 new</span><span class="grow"></span><span class="select w200">All categories <svg class="i s16"><use href="#i-down"/></svg></span><span class="btn sm"><svg class="i s14"><use href="#i-check"/></svg>Mark all as read</span></div>
+            <div class="subgrp">Today</div>
+            <div class="ui"><i class="dot"></i><span class="tile req"><svg class="i"><use href="#i-calc"/></svg></span><span class="tt"><b>Ali Demir updated his availability</b><small>Changed days: Tue, Thu</small></span><span class="when">9:10 AM</span></div>
+            <div class="ui read"><i class="dot off"></i><span class="tile req" style="color:#176b4e"><svg class="i"><use href="#i-check"/></svg></span><span class="tt"><b>Time off approved by Can Ozturk</b><small>Ali Demir · Thu, Oct 9 · 2 shifts are open in Downtown</small></span><span class="when">10:05 AM</span></div>
+            <div class="subgrp">Yesterday</div>
+            <div class="ui"><i class="dot"></i><span class="tile ann"><svg class="i"><use href="#i-mega"/></svg></span><span class="tt"><b>New announcement: Fall menu tasting</b><small>From Zeynep Arslan · Please acknowledge by Sun, Oct 12</small></span><span class="when">2:00 PM</span></div>
+          </section>
+        </div></div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= CENTER C ================= -->
+  <section class="panel" id="p-cc" role="tabpanel" aria-labelledby="t-cc" hidden>
+    <div class="cap">
+      <h2>C · Panel: işin üstünde açılır <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Sol menüde Notifications'a basınca bulunduğun sayfanın üstünde 440 px panel açılır; sayfa değişmez.</li><li>Panelde "To decide" ve "Updates" iki sekme; kararın "Open"ı ilgili kaydı açar, panel kapanır.</li><li>Eski bildirimler için "See all notifications" tam sayfaya gider (A'nın tablosu).</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 4. Müdürün 5 dakikalık işi: Requests'ten çıkmadan karar.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m">
+        <aside class="sb">
+          <div class="sb-ws"><svg class="i"><use href="#i-menu"/></svg><span class="grow">Harbor Grill</span><svg class="i s16"><use href="#i-updown"/></svg></div>
+          <nav>
+            <a><svg class="i"><use href="#i-grid"/></svg>Workspace</a>
+            <a><svg class="i"><use href="#i-cal"/></svg><span class="grow">Schedule</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub" style="color:#176954">Requests</a>
+            <a><svg class="i"><use href="#i-users"/></svg><span class="grow">Employees</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a class="sub">Documents</a>
+            <a><svg class="i"><use href="#i-calc"/></svg>Availability</a>
+            <a><svg class="i"><use href="#i-cald"/></svg>Important Dates</a>
+            <a><svg class="i"><use href="#i-mega"/></svg>Announcements</a>
+            <a class="on"><svg class="i"><use href="#i-bell"/></svg><span class="grow">Notifications</span><span class="badge">6</span></a>
+          </nav>
+          <div class="foot">
+            <a><svg class="i"><use href="#i-user"/></svg>Employee view</a>
+            <a><span class="avatar">AK</span>Account</a>
+            <a><svg class="i"><use href="#i-out"/></svg>Sign out</a>
+          </div>
+        </aside>
+        <div class="main">
+          <div class="bg">
+            <header class="ph"><p class="eyebrow">TIME OFF. SWAPS. COVERS.</p><h2>Requests</h2><p>Review what your team asked for.</p></header>
+            <div class="tline"><button class="on">Needs review (2)</button><button>Pending others (1)</button><button>Closed</button></div>
+            <div class="bgtbl">
+              <div class="r h"><span>Request</span><span>Employee</span><span>Dates</span><span>Status</span></div>
+              <div class="r"><span>Time off</span><span>Ali Demir</span><span>Tue, Oct 14</span><span>Needs review</span></div>
+              <div class="r"><span>Shift swap</span><span>Emre Sahin</span><span>Fri, Oct 10</span><span>Needs review</span></div>
+              <div class="r"><span>Cover</span><span>Bob Lee</span><span>Sat, Oct 11</span><span>Pending others</span></div>
+            </div>
+          </div>
+          <div class="scrim"></div>
+          <aside class="fly" aria-label="Notifications panel">
+            <div class="fly-h"><h3>Notifications</h3><span class="ibtn"><svg class="i"><use href="#i-x"/></svg></span></div>
+            <div class="seg"><button class="on">To decide <span class="n">4</span></button><button>Updates <span class="n g">2</span></button></div>
+            <div class="fl">
+              <div class="fi"><span class="tile req"><svg class="i"><use href="#i-cal"/></svg></span><span class="tt"><b>Ali Demir asked for Tue, Oct 14 off</b><small>Time off · Downtown · 2 published shifts affected</small><span class="acts"><span class="chip amber">Decide by Fri 6:00 PM</span><span style="flex:1"></span><span class="btn sm">Open</span></span></span></div>
+              <div class="fi"><span class="tile req"><svg class="i"><use href="#i-swap"/></svg></span><span class="tt"><b>Shift swap waits for your decision</b><small>Emre Sahin and Bob Lee · Fri, Oct 10, 5:00–11:00 PM</small><span class="acts"><span class="chip amber">Shift starts Fri</span><span style="flex:1"></span><span class="btn sm">Open</span></span></span></div>
+              <div class="fi"><span class="tile ppl"><svg class="i"><use href="#i-file"/></svg></span><span class="tt"><b>Food handler card ready for review</b><small>Mia Chen · Downtown · since yesterday</small><span class="acts"><span style="flex:1"></span><span class="btn sm">Open</span></span></span></div>
+              <div class="fi"><span class="tile ppl"><svg class="i"><use href="#i-user"/></svg></span><span class="tt"><b>Onboarding ready for review</b><small>Jordan Price · Host · Downtown · since yesterday</small><span class="acts"><span style="flex:1"></span><span class="btn sm">Open</span></span></span></div>
+            </div>
+            <div class="fly-f"><span class="link">See all notifications<svg class="i s16"><use href="#i-arrow"/></svg></span><span class="muted">Closes for everyone once decided</span></div>
+          </aside>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= PHONES ================= -->
+  <section class="panel" id="p-ph" role="tabpanel" aria-labelledby="t-ph" hidden>
+    <div class="cap">
+      <h2>Telefon · çalışan Ali Demir <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>A: DOC-TABLE'ın telefon kararı (kart satırları), Notifications alt çubukta (bugün "More" altında).</li><li>B: "To do" üstte, sonra haberler; yanıt düğmesi kartın içinde.</li><li>C: başlıktaki zil alttan açılan sayfa; alt çubuk değişmez.</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 5 (program değişikliği tek satır), Soru 6 (cover günde tek satır). Örnek satırlar her telefonda aynı.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m phones">
+        <div class="ph-col"><span class="lbl">A · Kart listesi</span>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>Harbor Grill</span></div>
+            <div class="pbody">
+              <h3 class="ptitle">Notifications</h3>
+              <div class="ptabs"><span class="on">Unread (4)</span><span>Read (9)</span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Emre asked you to swap</b><small>Fri, Oct 10, 5:00–11:00 PM · Downtown</small><span class="meta"><span class="chip amber">Reply needed</span><small>8:15 AM</small></span></span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Your schedule changed</b><small>Tue, Oct 14 removed · Thu, Oct 16 5:00–11:00 PM added</small><span class="meta"><span></span><small>7:50 AM</small></span></span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Time off approved</b><small>Thu, Oct 9 · approved by Can Ozturk</small><span class="meta"><span></span><small>Yesterday</small></span></span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Food handler card due in 7 days</b><small>Upload it by Wed, Oct 15</small><span class="meta"><span class="chip amber">To do</span><small>Mon</small></span></span></div>
+            </div>
+            <div class="nav"><span><svg class="i s20"><use href="#i-home"/></svg>Home</span><span><svg class="i s20"><use href="#i-cal"/></svg>Schedule</span><span><svg class="i s20"><use href="#i-swap"/></svg>Requests</span><span class="on"><svg class="i s20"><use href="#i-bell"/></svg>Notifications<i class="pip">4</i></span><span><svg class="i s20"><use href="#i-grid"/></svg>More</span></div>
+          </div>
+        </div>
+        <div class="ph-col"><span class="lbl">B · To do + Updates</span>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>Harbor Grill</span></div>
+            <div class="pbody">
+              <h3 class="ptitle">Notifications</h3>
+              <div class="sec">To do<span class="chip amber">2</span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Emre asked you to swap</b><small>Fri, Oct 10, 5:00–11:00 PM · Downtown</small><span class="meta"><span class="btn">Decline</span><span class="btn primary">Accept</span></span></span></div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Food handler card due in 7 days</b><small>Upload it by Wed, Oct 15</small><span class="meta"><span></span><span class="btn">Upload</span></span></span></div>
+              <div class="sec">Updates</div>
+              <div class="pc"><i class="dot"></i><span class="tt"><b>Your schedule changed</b><small>Tue, Oct 14 removed · Thu, Oct 16 5:00–11:00 PM added</small></span></div>
+              <div class="pc read"><i class="dot off"></i><span class="tt"><b>3 shifts need cover this week</b><small>Fri, Oct 10 · Sat, Oct 11 · Sun, Oct 12</small></span></div>
+            </div>
+            <div class="nav"><span><svg class="i s20"><use href="#i-home"/></svg>Home</span><span><svg class="i s20"><use href="#i-cal"/></svg>Schedule</span><span><svg class="i s20"><use href="#i-swap"/></svg>Requests</span><span class="on"><svg class="i s20"><use href="#i-bell"/></svg>Notifications<i class="pip">4</i></span><span><svg class="i s20"><use href="#i-grid"/></svg>More</span></div>
+          </div>
+        </div>
+        <div class="ph-col"><span class="lbl">C · Zil, alttan sayfa</span>
+          <div class="phone">
+            <div class="status"><span>9:41</span><span>Harbor Grill</span></div>
+            <div class="ptop"><b>Home</b><span class="bellb"><svg class="i s20"><use href="#i-bell"/></svg><i class="pip">4</i></span></div>
+            <div class="pbody">
+              <div class="pc read"><i class="dot off"></i><span class="tt"><b>Next shift</b><small>Thu, Oct 16 · 5:00–11:00 PM · Downtown</small></span></div>
+            </div>
+            <div class="sheet-scrim"></div>
+            <div class="sheet">
+              <div class="grab"></div>
+              <div class="sheet-h"><b>Notifications</b><svg class="i"><use href="#i-x"/></svg></div>
+              <div class="seg"><span class="on">To do · 2</span><span>Updates · 2</span></div>
+              <div class="si"><span class="tile req"><svg class="i"><use href="#i-swap"/></svg></span><span class="tt"><b>Emre asked you to swap</b><small>Fri, Oct 10, 5:00–11:00 PM · Downtown</small><span class="acts"><span class="btn">Decline</span><span class="btn primary">Accept</span></span></span></div>
+              <div class="si"><span class="tile ppl"><svg class="i"><use href="#i-file"/></svg></span><span class="tt"><b>Food handler card due in 7 days</b><small>Upload it by Wed, Oct 15</small><span class="acts"><span class="btn">Upload</span></span></span></div>
+            </div>
+            <div class="nav" style="position:relative;z-index:1"><span class="on"><svg class="i s20"><use href="#i-home"/></svg>Home</span><span><svg class="i s20"><use href="#i-cal"/></svg>Schedule</span><span><svg class="i s20"><use href="#i-swap"/></svg>Requests</span><span><svg class="i s20"><use href="#i-mega"/></svg>Notices</span><span><svg class="i s20"><use href="#i-grid"/></svg>More</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= SETTINGS A ================= -->
+  <section class="panel" id="p-sa" role="tabpanel" aria-labelledby="t-sa" hidden>
+    <div class="cap">
+      <h2>Ayar A · Workspace sayfası yok, kişisel yalnız e-posta <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Settings menüsünden Notifications kalkar (General, Locations, Jobs… kalır).</li><li>Account → Notifications: uygulama içi her zaman ("Always"), kişi yalnız e-postayı kategori kategori açar / kapatır; hesap güvenliği e-postası kilitli.</li><li>Tek Save sağ altta.</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 2 (önerilen) ve Soru 1 (e-posta kısa listesi). B ve C'de de bu kişisel sayfa aynı.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m acc">
+        <div class="accwrap">
+          <nav class="accnav">
+            <div class="me"><span class="avatar">BY</span>Burak Yilmaz</div>
+            <a><svg class="i s16"><use href="#i-user"/></svg>Profile</a>
+            <a><svg class="i s16"><use href="#i-shield"/></svg>Security</a>
+            <a><svg class="i s16"><use href="#i-palette"/></svg>Preferences</a>
+            <a class="on"><svg class="i s16"><use href="#i-bell"/></svg>Notifications</a>
+            <a><svg class="i s16"><use href="#i-building"/></svg>Workspaces</a>
+            <a><svg class="i s16"><use href="#i-file"/></svg>Documents</a>
+            <hr>
+            <a><svg class="i s16"><use href="#i-back"/></svg>Back to workspace</a>
+            <a><svg class="i s16"><use href="#i-out"/></svg>Sign out</a>
+          </nav>
+          <div>
+            <header class="acchead"><h2>Notifications</h2><p>Everything shows up in Notifications. Choose what we also email you.</p></header>
+            <div class="pref h"><span>Harbor Grill</span><span class="c">In app</span><span class="c">Email</span></div>
+            <div class="pref"><span class="tt"><b>Schedule</b><small>Your shifts and changes to them</small></span><span class="c always"><svg class="i s14"><use href="#i-check"/></svg>Always</span><span class="c"><i class="sw on" style="display:block"></i></span></div>
+            <div class="pref"><span class="tt"><b>Requests</b><small>Time off, swaps, covers and availability</small></span><span class="c always"><svg class="i s14"><use href="#i-check"/></svg>Always</span><span class="c"><i class="sw on" style="display:block"></i></span></div>
+            <div class="pref"><span class="tt"><b>People</b><small>Documents, onboarding and team changes</small></span><span class="c always"><svg class="i s14"><use href="#i-check"/></svg>Always</span><span class="c"><i class="sw" style="display:block"></i></span></div>
+            <div class="pref"><span class="tt"><b>Announcements</b><small>Posts and important dates</small></span><span class="c always"><svg class="i s14"><use href="#i-check"/></svg>Always</span><span class="c"><i class="sw" style="display:block"></i></span></div>
+            <div class="pref"><span class="tt"><b>Account security</b><small>Password, email and sign-in changes</small></span><span class="c always"><svg class="i s14"><use href="#i-check"/></svg>Always</span><span class="c always"><svg class="i s14"><use href="#i-lock"/></svg>Always</span></div>
+            <div class="savebar"><span class="btn dis">Save</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= SETTINGS B ================= -->
+  <section class="panel" id="p-sb" role="tabpanel" aria-labelledby="t-sb" hidden>
+    <div class="cap">
+      <h2>Ayar B · Salt okunur "kim neyi alır" <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Settings → Notifications kalır ama değiştirilemez: her olay için kime ve hangi kanaldan gittiği.</li><li>Owner kuralı görür, ayar aramaz; sayfanın altında kişisel e-postaya bağlantı.</li><li>Account → Notifications A'daki gibi.</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 2-b. Kurallar Soru 3 ve 5'in önerilen cevaplarıyla yazıldı.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m">
+        <aside class="sb">
+          <div class="sb-ws"><svg class="i"><use href="#i-menu"/></svg><span class="grow">Harbor Grill</span><svg class="i s16"><use href="#i-updown"/></svg></div>
+          <nav>
+            <a><svg class="i"><use href="#i-grid"/></svg>Workspace</a>
+            <a><svg class="i"><use href="#i-cal"/></svg><span class="grow">Schedule</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a><svg class="i"><use href="#i-users"/></svg><span class="grow">Employees</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a><svg class="i"><use href="#i-calc"/></svg>Availability</a>
+            <a><svg class="i"><use href="#i-cald"/></svg>Important Dates</a>
+            <a><svg class="i"><use href="#i-mega"/></svg>Announcements</a>
+            <a><svg class="i"><use href="#i-bell"/></svg><span class="grow">Notifications</span><span class="badge">2</span></a>
+          </nav>
+          <div class="foot">
+            <a class="on"><svg class="i"><use href="#i-gear"/></svg>Settings</a>
+            <a><svg class="i"><use href="#i-user"/></svg>Employee view</a>
+            <a><span class="avatar">BY</span>Account</a>
+          </div>
+        </aside>
+        <nav class="setcol">
+          <div class="t"><svg class="i"><use href="#i-gear"/></svg>Settings</div>
+          <div class="h">Organization</div>
+          <a><svg class="i s16"><use href="#i-gear"/></svg>General</a>
+          <a><svg class="i s16"><use href="#i-pin"/></svg>Locations</a>
+          <a><svg class="i s16"><use href="#i-brief"/></svg>Jobs</a>
+          <a class="on"><svg class="i s16"><use href="#i-bell"/></svg>Notifications</a>
+          <div class="h">Scheduling</div>
+          <a><svg class="i s16"><use href="#i-cal"/></svg>Schedule rules</a>
+          <a><svg class="i s16"><use href="#i-shield"/></svg>Conflict handling</a>
+          <a><svg class="i s16"><use href="#i-cal"/></svg>Shift catalog</a>
+          <div class="h">Access</div>
+          <a><svg class="i s16"><use href="#i-shield"/></svg>Roles &amp; permissions</a>
+          <a><svg class="i s16"><use href="#i-file"/></svg>Documents</a>
+        </nav>
+        <div class="setmain">
+          <header class="sh"><span class="ico"><svg class="i s20"><use href="#i-bell"/></svg></span><div><h2>Notifications</h2><p>Who is told about what. "Or admins and owner" means when the location has no manager. People choose their own email in Account → Notifications.</p></div></header>
+          <div class="rules">
+            <div class="rr h"><span>Event</span><span>Who is told</span><span>In app</span><span>Email</span></div>
+            <div class="rr g"><span>Requests</span><span></span><span></span><span></span></div>
+            <div class="rr"><span><b>Time off request</b></span><span>Location manager, or admins and owner</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span>If open 24 hours</span></div>
+            <div class="rr"><span><b>Time off decision</b></span><span>The employee</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span></div>
+            <div class="rr"><span><b>Swap, cover or pickup</b></span><span>Teammate, then location manager</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span>If open 24 hours</span></div>
+            <div class="rr"><span><b>Availability update</b></span><span>Managers, admins and owner</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+            <div class="rr g"><span>Schedule</span><span></span><span></span><span></span></div>
+            <div class="rr"><span><b>Schedule change</b></span><span>Only people whose shifts changed</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span></div>
+            <div class="rr"><span><b>Shifts left open</b></span><span>Location manager, or admins and owner</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+            <div class="rr g"><span>People</span><span></span><span></span><span></span></div>
+            <div class="rr"><span><b>Document to review</b></span><span>Location manager, or admins and owner</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+            <div class="rr"><span><b>Onboarding to review</b></span><span>Location manager, or admins and owner</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+            <div class="rr"><span><b>Document due or rejected</b></span><span>The employee</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span></div>
+            <div class="rr"><span><b>Preferred name to approve</b></span><span>Owner, admins and location manager</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+            <div class="rr g"><span>Announcements</span><span></span><span></span><span></span></div>
+            <div class="rr"><span><b>Announcement</b></span><span>People on the audience list</span><span class="yes"><svg class="i s14"><use href="#i-check"/></svg>Yes</span><span class="no">No</span></div>
+          </div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+  <!-- ================= SETTINGS C ================= -->
+  <section class="panel" id="p-sc" role="tabpanel" aria-labelledby="t-sc" hidden>
+    <div class="cap">
+      <h2>Ayar C · Üç workspace anahtarı <span class="st st-wait">Karar bekliyor (G9)</span></h2>
+      <div><p class="k">Ne</p><ul><li>Settings → Notifications'ta yalnız işletmeden işletmeye gerçekten değişen üç şey; geri kalan kurallar sabit.</li><li>Tek Save sağ altta; tür tür kart, gerekçe alanı, Reset ve "Safe test" yok.</li><li>Account → Notifications A'daki gibi.</li></ul></div>
+      <div><p class="k">Bağlı soru</p><p class="q">Soru 2-c. Anahtarlar Soru 3 (owner/admin kopyası), Soru 1 (program e-postası), Soru 6 (cover) ile bağlı.</p></div>
+    </div>
+    <div class="stage"><div class="frame">
+      <div class="m">
+        <aside class="sb">
+          <div class="sb-ws"><svg class="i"><use href="#i-menu"/></svg><span class="grow">Harbor Grill</span><svg class="i s16"><use href="#i-updown"/></svg></div>
+          <nav>
+            <a><svg class="i"><use href="#i-grid"/></svg>Workspace</a>
+            <a><svg class="i"><use href="#i-cal"/></svg><span class="grow">Schedule</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a><svg class="i"><use href="#i-users"/></svg><span class="grow">Employees</span><svg class="i s16"><use href="#i-down"/></svg></a>
+            <a><svg class="i"><use href="#i-calc"/></svg>Availability</a>
+            <a><svg class="i"><use href="#i-cald"/></svg>Important Dates</a>
+            <a><svg class="i"><use href="#i-mega"/></svg>Announcements</a>
+            <a><svg class="i"><use href="#i-bell"/></svg><span class="grow">Notifications</span><span class="badge">2</span></a>
+          </nav>
+          <div class="foot">
+            <a class="on"><svg class="i"><use href="#i-gear"/></svg>Settings</a>
+            <a><svg class="i"><use href="#i-user"/></svg>Employee view</a>
+            <a><span class="avatar">BY</span>Account</a>
+          </div>
+        </aside>
+        <nav class="setcol">
+          <div class="t"><svg class="i"><use href="#i-gear"/></svg>Settings</div>
+          <div class="h">Organization</div>
+          <a><svg class="i s16"><use href="#i-gear"/></svg>General</a>
+          <a><svg class="i s16"><use href="#i-pin"/></svg>Locations</a>
+          <a><svg class="i s16"><use href="#i-brief"/></svg>Jobs</a>
+          <a class="on"><svg class="i s16"><use href="#i-bell"/></svg>Notifications</a>
+          <div class="h">Scheduling</div>
+          <a><svg class="i s16"><use href="#i-cal"/></svg>Schedule rules</a>
+          <a><svg class="i s16"><use href="#i-shield"/></svg>Conflict handling</a>
+          <a><svg class="i s16"><use href="#i-cal"/></svg>Shift catalog</a>
+          <div class="h">Access</div>
+          <a><svg class="i s16"><use href="#i-shield"/></svg>Roles &amp; permissions</a>
+          <a><svg class="i s16"><use href="#i-file"/></svg>Documents</a>
+        </nav>
+        <div class="setmain">
+          <header class="sh"><span class="ico"><svg class="i s20"><use href="#i-bell"/></svg></span><div><h2>Notifications</h2><p>Decisions go to the location manager, and to admins and the owner when a location has no manager. Change only what your restaurants do differently.</p></div></header>
+          <div class="note"><svg class="i s16"><use href="#i-info"/></svg>Everyone still chooses their own email in Account → Notifications.</div>
+          <div class="card">
+            <div class="sw-row"><span class="tt"><b>Copy owner and admins on requests</b><small>Time off, shift changes and documents also reach the owner and every admin, not only the location manager.</small></span><i class="sw"></i></div>
+            <div class="sw-row"><span class="tt"><b>Email schedule changes to employees</b><small>People whose shifts changed also get an email when you publish.</small></span><i class="sw on"></i></div>
+            <div class="sw-row"><span class="tt"><b>Tell teammates about cover requests</b><small>Eligible teammates get one line a day listing shifts that need cover.</small></span><i class="sw on"></i></div>
+          </div>
+          <div class="savebar"><span class="btn dis">Save</span></div>
+        </div>
+      </div>
+    </div></div>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  var tabs = Array.prototype.slice.call(document.querySelectorAll('.vtab'));
+  function fit() {
+    document.querySelectorAll('.panel:not([hidden]) .stage').forEach(function (st) {
+      var f = st.firstElementChild, m = f.firstElementChild;
+      var w = m.offsetWidth, h = m.offsetHeight;
+      if (!w) return;
+      var s = Math.min(1, st.clientWidth / w);
+      f.style.transform = 'scale(' + s + ')';
+      st.style.height = Math.ceil(h * s) + 'px';
+    });
+  }
+  function show(tab) {
+    tabs.forEach(function (t) {
+      var on = t === tab;
+      t.setAttribute('aria-selected', on ? 'true' : 'false');
+      document.getElementById(t.getAttribute('aria-controls')).hidden = !on;
+    });
+    try { localStorage.setItem('bildirim-tab-2', tab.id); } catch (e) {}
+    fit();
+  }
+  tabs.forEach(function (t) { t.addEventListener('click', function () { show(t); }); });
+  var start = null;
+  var hash = (location.hash || '').replace('#', '');
+  if (hash) start = document.getElementById('t-' + hash);
+  if (!start) { try { start = document.getElementById(localStorage.getItem('bildirim-tab-2') || ''); } catch (e) {} }
+  show(start || tabs[0]);
+  window.addEventListener('resize', fit);
+  window.addEventListener('hashchange', function () { var t = document.getElementById('t-' + (location.hash || '').replace('#', '')); if (t) show(t); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(fit);
+})();
+</script>

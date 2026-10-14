@@ -1,0 +1,11 @@
+[
+ {"name":"v4-mine","hash":"v=4&s=mine&view=desk&about=0","w":1440,"h":1000},
+ {"name":"v4-mine-tue","hash":"v=4&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"[data-act='v4-sel'][data-day='1']"}]},
+ {"name":"v4-mine-knob","hash":"v=4&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"boxdrag":["[data-knob='4:0:0']",0.5,0.5,-6,0.5]},{"hover":"[data-knob='4:0:0']"}]},
+ {"name":"v4-phone","hash":"v=4&s=mine&view=phone&about=0","w":1440,"h":900},
+ {"name":"v4-phone-day","hash":"v=4&s=mine&view=phone&about=0","w":1440,"h":900,"steps":[{"click":"[data-act='v4-psel'][data-day='4']"}]},
+ {"name":"v4-team","hash":"v=4&s=team&view=desk&about=0","w":1440,"h":900},
+ {"name":"v4-drawer","hash":"v=4&s=drawer&view=both&about=0","w":1700,"h":900},
+ {"name":"v4-types","hash":"v=4&s=mine&view=both&mode=types&about=0","w":1700,"h":1000},
+ {"name":"v4-about","hash":"v=4&s=mine&view=desk&about=1","w":1440,"h":900}
+]

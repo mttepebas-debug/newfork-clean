@@ -1,0 +1,1013 @@
+<title>Shift Change Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap">
+<style>
+/* Layout: a guide column (scenario list + what happens) beside the live
+   frames: employee phone, manager desktop, manager phone. The app is light
+   only, so the page commits to the app's light tokens. */
+:root {
+  color-scheme: light;
+  --theme-page: #f4f5f3; --theme-surface: #ffffff; --theme-surface-soft: #f7f9f8; --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e; --theme-text-body: #1d2525; --theme-muted: #66716c; --theme-text-secondary: #50605a;
+  --theme-border: #dce3df; --theme-border-subtle: #e2e6e4; --theme-border-strong: #cbd4d0; --theme-border-control: #7f8c86; --theme-border-hover: #95aaa1;
+  --theme-accent: #176954; --theme-accent-strong: #12624f; --theme-accent-soft: #dbece5; --theme-selected: #e7f1ed; --theme-focus: #177a64;
+  --theme-danger: #b84234; --theme-danger-soft: #fff0ee; --theme-danger-strong: #a43830; --theme-danger-text: #653b36;
+  --theme-warning: #8a5a00; --theme-warning-soft: #fff7e2; --theme-warning-border: #bf872d; --theme-warning-text: #5f491f;
+  --theme-success: #176b4e; --theme-success-soft: #e7f1ed; --theme-info-soft: #e8eff8; --theme-info-text: #234a7a;
+  --theme-time-off: #d4162a; --theme-time-off-soft: #ffe2e5;
+  --theme-list-head: #e6ece8; --theme-list-head-border: #d3dbd6; --theme-list-head-text: #4f5d57; --theme-list-cell-text: #46514d;
+  --theme-on-accent: #ffffff; --bezel: #1d2525;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--theme-page); }
+body { color: var(--theme-text); font-family: var(--font); font-size: 14px; }
+button, input, textarea, select { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+.wrap { max-width: 1880px; margin: 0 auto; padding: 20px 20px 48px; display: grid; gap: 16px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+
+/* Guide */
+.top { display: grid; gap: 6px; }
+.eyebrow { font-size: 11.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-accent); }
+h1.page { margin: 0; font-size: 26px; letter-spacing: -.015em; text-wrap: balance; }
+.lede { margin: 0; max-width: 95ch; color: var(--theme-text-secondary); line-height: 1.55; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.guide { display: grid; gap: 14px; position: sticky; top: 12px; }
+@media (max-width: 1100px) { .guide { position: static; } }
+.panel { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.panel h2 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.scn-group { display: grid; gap: 4px; }
+.scn-group > b { font-size: 12px; color: var(--theme-muted); margin-top: 6px; }
+.scn { display: grid; grid-template-columns: 26px 1fr; gap: 8px; align-items: start; text-align: left; padding: 7px 8px; border: 0; border-radius: 8px; background: none; cursor: pointer; line-height: 1.35; }
+.scn:hover { background: var(--theme-surface-soft); }
+.scn[aria-pressed="true"] { background: var(--theme-selected); color: var(--theme-accent-strong); font-weight: 600; }
+.scn .n { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--theme-surface-muted); font-size: 11.5px; font-weight: 700; color: var(--theme-text-secondary); font-variant-numeric: tabular-nums; }
+.scn[aria-pressed="true"] .n { background: var(--theme-accent); color: var(--theme-on-accent); }
+.explain { display: grid; gap: 8px; line-height: 1.55; color: var(--theme-text-body); }
+.explain p { margin: 0; }
+.explain .who { font-size: 12px; color: var(--theme-muted); }
+.explain ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.explain .basis { font-size: 12px; color: var(--theme-text-secondary); border-top: 1px solid var(--theme-border-subtle); padding-top: 8px; }
+.reset { justify-self: start; min-height: 32px; padding: 0 12px; border: 1px solid var(--theme-border-strong); border-radius: 7px; background: var(--theme-surface); font-weight: 600; font-size: 13px; cursor: pointer; }
+
+/* Frames */
+.stage { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; min-width: 0; }
+.fcol { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.flabel { font-size: 11.5px; font-weight: 650; letter-spacing: .05em; text-transform: uppercase; color: var(--theme-text-secondary); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.flabel span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--theme-muted); }
+.persona { display: inline-flex; padding: 3px; gap: 3px; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 9px; }
+.persona button { min-height: 28px; padding: 0 10px; border: 0; border-radius: 6px; background: none; font-size: 12.5px; font-weight: 600; color: var(--theme-text-secondary); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.persona button[aria-pressed="true"] { background: var(--theme-text); color: var(--theme-on-accent); }
+.phone { width: 410px; max-width: 100%; padding: 10px; border-radius: 44px; background: var(--bezel); }
+.screen { position: relative; width: 390px; max-width: 100%; height: 800px; border-radius: 34px; overflow: hidden; background: var(--theme-page); display: flex; flex-direction: column; }
+.desk-fit { width: min(1080px, 100%); overflow-x: auto; border-radius: 10px; }
+.desk { position: relative; width: 1080px; height: 760px; border: 1px solid var(--theme-border); border-radius: 10px; overflow: hidden; background: var(--theme-page); display: grid; grid-template-columns: 220px 1fr; }
+
+/* ===== Employee phone app ===== */
+.app-status { height: 34px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 26px; font-size: 12.5px; font-weight: 600; background: var(--theme-surface); }
+.app-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.app-body::-webkit-scrollbar { display: none; }
+.app-pad { padding: 16px; display: grid; gap: 14px; }
+.nav { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--theme-border); background: var(--theme-surface); padding: 6px 4px 14px; }
+.nav button { border: 0; background: none; display: grid; justify-items: center; gap: 2px; padding: 6px 0; font-size: 11px; font-weight: 600; color: var(--theme-muted); cursor: pointer; position: relative; }
+.nav button svg { width: 22px; height: 22px; }
+/* On a real phone the bezel goes away: the screen is the page. */
+@media (max-width: 480px) {
+  .fcol { width: 100%; }
+  .phone { width: 100%; padding: 0; border-radius: 0; background: none; }
+  .screen { width: 100%; height: 760px; border-radius: 16px; border: 1px solid var(--theme-border); }
+}
+.nav button[aria-current="page"] { color: var(--theme-accent); }
+.nav .dot { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--theme-danger-strong); color: #fff; font-size: 9px; font-weight: 800; display: grid; place-items: center; }
+.ph-head { display: grid; gap: 4px; }
+.ph-head .eyebrow { font-size: 10.5px; }
+.ph-head h2 { margin: 0; font-size: 26px; letter-spacing: -.015em; display: flex; align-items: center; gap: 8px; }
+.ph-head p { margin: 0; color: var(--theme-text-secondary); font-size: 13px; }
+.bell { margin-left: auto; position: relative; width: 38px; height: 38px; border-radius: 10px; border: 1px solid var(--theme-border); background: var(--theme-surface); display: grid; place-items: center; cursor: pointer; }
+.bell .dot { position: absolute; top: -5px; right: -5px; min-width: 18px; height: 18px; border-radius: 999px; background: var(--theme-danger-strong); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+.hero { border-radius: 16px; padding: 16px; background: var(--theme-accent-strong); color: #fff; display: grid; gap: 6px; }
+.hero small { opacity: .85; font-size: 12px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; }
+.hero strong { font-size: 24px; letter-spacing: -.01em; }
+.hero span { opacity: .9; font-size: 13px; }
+.hero button { justify-self: start; margin-top: 6px; min-height: 36px; padding: 0 14px; border-radius: 9px; border: 0; background: #fff; color: var(--theme-accent-strong); font-weight: 700; cursor: pointer; }
+.sec-title { display: flex; justify-content: space-between; align-items: baseline; margin: 2px 0 -4px; }
+.sec-title h3 { margin: 0; font-size: 15px; }
+.sec-title button { border: 0; background: none; color: var(--theme-accent); font-weight: 600; font-size: 13px; cursor: pointer; }
+.rows { display: grid; gap: 8px; }
+.lcard { display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; gap: 2px 10px; align-items: center; padding: 11px 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; width: 100%; cursor: pointer; }
+.lcard:hover { background: var(--theme-surface-soft); }
+.date-tile { grid-row: span 2; width: 44px; height: 44px; border-radius: 9px; background: var(--theme-surface-muted); display: grid; place-items: center; align-content: center; line-height: 1; }
+.date-tile small { font-size: 10px; font-weight: 700; color: var(--theme-muted); text-transform: uppercase; }
+.date-tile b { font-size: 17px; }
+.lcard .t { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lcard .s { font-size: 12.5px; color: var(--theme-text-secondary); grid-column: 2; min-width: 0; }
+.lcard .r { grid-row: span 2; grid-column: 3; align-self: center; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.chip[data-tone="green"] { background: var(--theme-success-soft); color: var(--theme-success); }
+.chip[data-tone="gray"] { background: var(--theme-surface-muted); color: var(--theme-text-secondary); }
+.chip[data-tone="amber"] { background: var(--theme-warning-soft); color: var(--theme-warning); }
+.chip[data-tone="red"] { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
+.chip[data-tone="blue"] { background: var(--theme-info-soft); color: var(--theme-info-text); }
+
+/* Sheet (bottom) */
+.scrim { position: absolute; inset: 0; background: rgba(23, 34, 30, .42); display: flex; align-items: flex-end; z-index: 20; animation: fade .18s ease; }
+.sheet { width: 100%; max-height: 92%; overflow-y: auto; scrollbar-width: none; background: var(--theme-surface); border-radius: 20px 20px 0 0; padding: 8px 16px 22px; display: grid; gap: 14px; animation: up .22s cubic-bezier(.2, .8, .2, 1); }
+.sheet::-webkit-scrollbar { display: none; }
+.grab { width: 40px; height: 4px; border-radius: 4px; background: var(--theme-border-strong); justify-self: center; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.sheet-head h3 { margin: 0; font-size: 18px; }
+.x { width: 36px; height: 36px; border-radius: 9px; border: 1px solid var(--theme-border); background: var(--theme-surface); display: grid; place-items: center; cursor: pointer; }
+@keyframes up { from { transform: translateY(40px); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+.shiftbox { border: 1px solid var(--theme-border); border-radius: 12px; padding: 12px; display: grid; gap: 4px; background: var(--theme-surface-soft); }
+.shiftbox .d { font-size: 11.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--theme-muted); }
+.shiftbox .tm { font-size: 22px; font-weight: 700; letter-spacing: -.01em; }
+.shiftbox .m { font-size: 13px; color: var(--theme-text-secondary); }
+.actions3 { display: grid; gap: 8px; }
+.act { display: grid; grid-template-columns: 40px 1fr 18px; gap: 10px; align-items: center; padding: 12px; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-surface); text-align: left; cursor: pointer; }
+.act:hover:not(:disabled) { border-color: var(--theme-border-hover); background: var(--theme-surface-soft); }
+.act:disabled { opacity: .5; cursor: not-allowed; }
+.act .ic { width: 40px; height: 40px; border-radius: 10px; display: grid; place-items: center; background: var(--theme-selected); color: var(--theme-accent); }
+.act b { display: block; font-size: 14.5px; }
+.act span { font-size: 12.5px; color: var(--theme-text-secondary); }
+.banner { padding: 10px 12px; border-radius: 10px; font-size: 13px; line-height: 1.45; }
+.banner[data-tone="amber"] { background: var(--theme-warning-soft); color: var(--theme-warning-text); border: 1px solid #ecd9a8; }
+.banner[data-tone="red"] { background: var(--theme-danger-soft); color: var(--theme-danger-text); border: 1px solid #f1c9c3; }
+.banner[data-tone="green"] { background: var(--theme-success-soft); color: var(--theme-success); border: 1px solid #c4e0d4; }
+.banner[data-tone="blue"] { background: var(--theme-info-soft); color: var(--theme-info-text); border: 1px solid #c9d8ec; }
+.field { display: grid; gap: 6px; }
+.field > span { font-size: 13px; font-weight: 600; }
+.field > small { font-size: 12px; color: var(--theme-muted); }
+textarea, .input { width: 100%; min-height: 44px; padding: 10px 12px; border: 1px solid var(--theme-border-control); border-radius: 8px; background: var(--theme-surface); resize: vertical; }
+textarea { min-height: 76px; }
+.btn { min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--theme-border-strong); background: var(--theme-surface); font-weight: 650; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; }
+.btn:hover:not(:disabled) { border-color: var(--theme-border-hover); }
+.btn.primary { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--theme-on-accent); }
+.btn.primary:hover:not(:disabled) { background: var(--theme-accent-strong); }
+.btn.danger { background: var(--theme-surface); border-color: var(--theme-danger-strong); color: var(--theme-danger-strong); }
+.btn.danger.armed { background: var(--theme-danger-strong); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn-row.one { grid-template-columns: 1fr; }
+.pick { display: grid; grid-template-columns: 24px 36px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); cursor: pointer; text-align: left; width: 100%; }
+.pick[aria-checked="true"] { border-color: var(--theme-accent); background: var(--theme-selected); }
+.pick[aria-disabled="true"] { opacity: .55; cursor: not-allowed; }
+.box { width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--theme-border-control); display: grid; place-items: center; background: var(--theme-surface); }
+.pick[aria-checked="true"] .box { background: var(--theme-accent); border-color: var(--theme-accent); color: #fff; }
+.radio { border-radius: 50%; }
+.av { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; background: var(--theme-surface-muted); color: var(--theme-text-secondary); border: 1px solid var(--theme-border-strong); }
+.pick .t { font-weight: 600; font-size: 14px; }
+.pick .s { font-size: 12px; color: var(--theme-text-secondary); }
+.counter { font-size: 12.5px; color: var(--theme-text-secondary); font-variant-numeric: tabular-nums; }
+.toast { position: absolute; left: 12px; right: 12px; top: 44px; z-index: 40; background: var(--theme-text); color: #fff; padding: 12px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4; box-shadow: 0 10px 30px rgba(0,0,0,.25); animation: drop .25s ease; cursor: pointer; display: grid; gap: 2px; }
+.toast b { font-size: 13.5px; }
+.toast small { opacity: .7; font-size: 11px; }
+@keyframes drop { from { transform: translateY(-20px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Shift Hub tabs */
+.tabs { display: flex; gap: 6px; border-bottom: 1px solid var(--theme-border); overflow-x: auto; scrollbar-width: none; }
+.tabs button { position: relative; height: 40px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--theme-muted); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; }
+.tabs button[aria-current="page"] { border-bottom-color: var(--theme-accent); color: var(--theme-text); font-weight: 600; }
+.tabs .cnt { position: absolute; top: 3px; right: -4px; min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--theme-danger-strong); color: #fff; font-size: 9px; font-weight: 800; display: grid; place-items: center; }
+.tabs button.has-cnt { padding-right: 18px; }
+
+/* Swipe deck */
+.deck { position: relative; height: 430px; touch-action: pan-y; user-select: none; }
+.dcard { position: absolute; inset: 0; border-radius: 18px; background: var(--theme-surface); border: 1px solid var(--theme-border); box-shadow: 0 10px 30px rgba(16, 34, 26, .10); padding: 16px; display: grid; gap: 10px; align-content: start; cursor: grab; transition: transform .28s cubic-bezier(.2, .8, .2, 1), opacity .28s; will-change: transform; }
+.dcard.dragging { transition: none; cursor: grabbing; }
+.dcard.back1 { transform: translateY(12px) scale(.96); opacity: .9; }
+.dcard.back2 { transform: translateY(24px) scale(.92); opacity: .7; }
+.dcard .top-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.dcard .giver { display: flex; gap: 10px; align-items: center; }
+.dcard .giver b { display: block; font-size: 14px; }
+.dcard .giver span { font-size: 12.5px; color: var(--theme-text-secondary); }
+.dcard .note { padding: 10px 12px; border-radius: 10px; background: var(--theme-surface-soft); border: 1px solid var(--theme-border-subtle); font-size: 13px; line-height: 1.45; color: var(--theme-text-body); }
+.hours { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.hours div { padding: 8px 10px; border-radius: 10px; background: var(--theme-surface-muted); }
+.hours small { display: block; font-size: 11px; color: var(--theme-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .04em; }
+.hours b { font-size: 15px; font-variant-numeric: tabular-nums; }
+.stamp { position: absolute; top: 18px; padding: 4px 10px; border-radius: 8px; border: 2.5px solid; font-weight: 800; font-size: 18px; letter-spacing: .06em; opacity: 0; pointer-events: none; }
+.stamp.take { left: 18px; color: var(--theme-accent); border-color: var(--theme-accent); transform: rotate(-10deg); background: rgba(255,255,255,.9); }
+.stamp.pass { right: 18px; color: var(--theme-danger-strong); border-color: var(--theme-danger-strong); transform: rotate(10deg); background: rgba(255,255,255,.9); }
+.deck-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.deck-hint { text-align: center; font-size: 12px; color: var(--theme-muted); }
+.deck-empty { height: 100%; display: grid; place-items: center; text-align: center; gap: 6px; align-content: center; color: var(--theme-text-secondary); border: 1px dashed var(--theme-border-strong); border-radius: 18px; padding: 20px; }
+.deck-empty b { color: var(--theme-text); font-size: 15px; }
+@media (prefers-reduced-motion: reduce) { .dcard, .sheet, .scrim, .toast { transition: none !important; animation: none !important; } }
+
+/* Request card (employee) */
+.rcard { border: 1px solid var(--theme-border); border-radius: 14px; background: var(--theme-surface); padding: 14px; display: grid; gap: 10px; }
+.rcard .head { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.rcard .kind { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.people { display: grid; gap: 6px; }
+.person { display: grid; grid-template-columns: 30px 1fr auto; gap: 8px; align-items: center; font-size: 13px; }
+.person .av { width: 30px; height: 30px; font-size: 11px; }
+.give-get { display: grid; gap: 8px; }
+.give-get .lab { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; }
+.give-get .give .lab { color: var(--theme-danger-strong); }
+.give-get .get .lab { color: var(--theme-accent); }
+.arrow { justify-self: center; color: var(--theme-muted); }
+.notif { display: grid; grid-template-columns: 36px 1fr; gap: 10px; padding: 12px; border-bottom: 1px solid var(--theme-border-subtle); background: var(--theme-surface); text-align: left; border-left: 0; border-right: 0; border-top: 0; width: 100%; cursor: pointer; }
+.notif.unread { background: #f3f8f6; }
+.notif .ic { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--theme-selected); color: var(--theme-accent); }
+.notif b { font-size: 14px; display: block; }
+.notif span { font-size: 13px; color: var(--theme-text-secondary); line-height: 1.4; }
+.notif small { display: block; font-size: 11.5px; color: var(--theme-muted); margin-top: 2px; }
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.days button { border: 1px solid var(--theme-border); background: var(--theme-surface); border-radius: 10px; padding: 6px 0; display: grid; justify-items: center; gap: 1px; cursor: pointer; }
+.days button small { font-size: 10px; font-weight: 700; color: var(--theme-muted); text-transform: uppercase; }
+.days button b { font-size: 15px; }
+.days button i { width: 5px; height: 5px; border-radius: 50%; background: transparent; }
+.days button i.on { background: var(--theme-accent); }
+.days button[aria-pressed="true"] { background: var(--theme-text); border-color: var(--theme-text); color: #fff; }
+.days button[aria-pressed="true"] small { color: #cfd8d4; }
+.days button[aria-pressed="true"] i.on { background: #fff; }
+.loc { font-size: 12px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--theme-text-secondary); margin-top: 4px; }
+.mine { border-color: var(--theme-accent); background: var(--theme-selected); }
+
+/* ===== Manager desktop ===== */
+.side { background: var(--theme-surface); border-right: 1px solid var(--theme-border); padding: 16px 10px; display: grid; align-content: start; gap: 2px; }
+.side .ws { font-weight: 700; padding: 6px 10px 14px; }
+.side a svg { width: 18px; height: 18px; flex: none; }
+.side a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--theme-text-body); text-decoration: none; font-weight: 500; font-size: 13.5px; }
+.side a.on { background: var(--theme-selected); color: var(--theme-accent-strong); font-weight: 600; }
+.side a .dot { margin-left: auto; min-width: 18px; height: 18px; border-radius: 999px; background: var(--theme-danger-strong); color: #fff; font-size: 10px; font-weight: 800; display: grid; place-items: center; padding: 0 4px; }
+.main { padding: 0 32px; overflow-y: auto; min-width: 0; }
+.ph { padding: 32px 0 20px; display: grid; gap: 6px; }
+.ph .eyebrow { font-size: 11px; }
+.ph h2 { margin: 0; font-size: 30px; letter-spacing: -.015em; }
+.ph p { margin: 0; color: var(--theme-text-secondary); font-size: 13.5px; }
+.filters { display: flex; gap: 10px; margin: 10px 0 16px; }
+.filters .sel, .filters .search { height: 36px; border: 1px solid var(--theme-border-control); border-radius: 6px; background: var(--theme-surface); padding: 0 10px; display: flex; align-items: center; font-size: 13px; color: var(--theme-text-secondary); }
+.filters .sel { width: 200px; }
+.filters .search { flex: 1; }
+table.list { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--theme-surface); border: 1px solid #d7dcda; border-radius: 6px; overflow: hidden; }
+table.list th { height: 40px; padding: 0 14px; text-align: left; background: var(--theme-list-head); border-bottom: 1px solid var(--theme-list-head-border); color: var(--theme-list-head-text); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+table.list td { padding: 10px 14px; border-bottom: 1px solid var(--theme-border-subtle); color: var(--theme-list-cell-text); font-size: 13px; }
+table.list td:nth-child(2) { color: var(--theme-text); font-weight: 600; }
+table.list tbody tr { cursor: pointer; }
+table.list tbody tr:hover { background: var(--theme-surface-soft); }
+table.list tbody tr.sel { background: var(--theme-selected); }
+table.list tbody tr:last-child td { border-bottom: 0; }
+.drawer-wrap { position: absolute; inset: 0; background: rgba(23, 34, 30, .28); display: flex; justify-content: flex-end; z-index: 10; animation: fade .18s ease; }
+.drawer { width: 640px; max-width: 100%; height: 100%; background: var(--theme-surface); box-shadow: -12px 0 40px #10221a18; display: flex; flex-direction: column; animation: slide .22s cubic-bezier(.2, .8, .2, 1); }
+@keyframes slide { from { transform: translateX(40px); opacity: .5; } to { transform: none; opacity: 1; } }
+.dr-head { padding: 18px 22px 0; display: grid; gap: 10px; border-bottom: 1px solid var(--theme-border); }
+.dr-head .row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.dr-head h3 { margin: 0; font-size: 20px; letter-spacing: -.01em; }
+.dr-head p { margin: 2px 0 0; color: var(--theme-text-secondary); font-size: 13px; }
+.dr-tabs { display: flex; gap: 6px; }
+.dr-tabs button { height: 38px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--theme-muted); font-size: 13px; font-weight: 500; cursor: pointer; }
+.dr-tabs button[aria-current="page"] { border-bottom-color: var(--theme-accent); color: var(--theme-text); font-weight: 600; }
+.dr-body { flex: 1; overflow-y: auto; padding: 18px 22px; display: grid; gap: 16px; align-content: start; scrollbar-width: thin; }
+.dr-sec { display: grid; gap: 8px; }
+.dr-sec > h4 { margin: 0; font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.dr-foot { border-top: 1px solid var(--theme-border); padding: 14px 22px; display: flex; gap: 10px; justify-content: space-between; align-items: center; background: var(--theme-surface); }
+.dr-foot .right { display: flex; gap: 10px; }
+.cand { display: grid; grid-template-columns: 22px 36px minmax(0, 1fr); gap: 4px 12px; padding: 12px; border: 1px solid var(--theme-border); border-radius: 10px; cursor: pointer; text-align: left; background: var(--theme-surface); width: 100%; }
+.cand[aria-checked="true"] { border-color: var(--theme-accent); background: var(--theme-selected); }
+.cand[aria-disabled="true"] { cursor: default; opacity: .6; }
+.cand .radio-dot { width: 18px; height: 18px; border-radius: 50%; border: 1.5px solid var(--theme-border-control); display: grid; place-items: center; margin-top: 9px; }
+.cand[aria-checked="true"] .radio-dot::after { content: ""; width: 9px; height: 9px; border-radius: 50%; background: var(--theme-accent); }
+.cand .nm { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-weight: 600; }
+.metrics { grid-column: 3; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 4px; }
+.metric { padding: 6px 8px; border-radius: 8px; background: var(--theme-surface-soft); border: 1px solid var(--theme-border-subtle); display: grid; gap: 1px; min-width: 0; }
+.metric small { font-size: 10.5px; font-weight: 600; color: var(--theme-muted); text-transform: uppercase; letter-spacing: .04em; }
+.metric b { font-size: 13px; font-variant-numeric: tabular-nums; }
+.metric[data-tone="amber"] { background: var(--theme-warning-soft); border-color: #ecd9a8; }
+.metric[data-tone="amber"] b { color: var(--theme-warning); }
+.metric[data-tone="red"] { background: var(--theme-danger-soft); border-color: #f1c9c3; }
+.metric[data-tone="red"] b { color: var(--theme-danger-strong); }
+.metric[data-tone="green"] b { color: var(--theme-success); }
+.compare { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.compare > div { border: 1px solid var(--theme-border); border-radius: 10px; padding: 12px; display: grid; gap: 4px; }
+.compare h5 { margin: 0; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-muted); }
+.dlg-wrap { position: absolute; inset: 0; background: rgba(23, 34, 30, .35); display: grid; place-items: center; z-index: 30; }
+.dlg { width: 520px; max-width: calc(100% - 32px); background: var(--theme-surface); border-radius: 14px; padding: 20px; display: grid; gap: 14px; box-shadow: 0 20px 60px rgba(0,0,0,.2); }
+.dlg h3 { margin: 0; font-size: 18px; }
+.dlg p { margin: 0; color: var(--theme-text-secondary); line-height: 1.5; }
+.orph { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; padding: 10px 12px; border: 1px solid var(--theme-border); border-radius: 10px; }
+.seg { display: inline-flex; border: 1px solid var(--theme-border-strong); border-radius: 8px; overflow: hidden; }
+.seg button { border: 0; background: var(--theme-surface); padding: 6px 10px; font-size: 12.5px; font-weight: 600; cursor: pointer; color: var(--theme-text-secondary); }
+.seg button + button { border-left: 1px solid var(--theme-border-strong); }
+.seg button[aria-pressed="true"] { background: var(--theme-accent); color: #fff; }
+
+/* Manager phone: drawer full screen */
+.mphone .drawer { width: 100%; animation: up .22s ease; }
+.mphone .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-column: 2 / 4; }
+.mphone .cand { grid-template-columns: 22px 36px minmax(0, 1fr); }
+.mphone .compare { grid-template-columns: 1fr; }
+.mphone .dr-foot { flex-wrap: wrap; padding-bottom: 22px; }
+.mphone .dr-foot .right { width: 100%; }
+.mphone .dr-foot .right .btn { flex: 1; }
+.mphone .dr-foot > .btn { width: 100%; }
+.mlist { display: grid; gap: 8px; padding: 16px; }
+.hidden-desk { display: none; }
+
+/* ===== Swap decision: the app's H2 window (apps/web/src/views/swap-review.css,
+   KARARLAR "Takas inceleme penceresi H2"), same sizes and colours. ===== */
+.sw-wrap { position: absolute; inset: 0; z-index: 30; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--theme-text) 32%, transparent); }
+.sw { width: min(380px, 100%); max-height: 100%; overflow-y: auto; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-surface); box-shadow: 0 20px 60px color-mix(in srgb, var(--theme-text) 22%, transparent); }
+.sw-head { display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; align-items: center; padding: 6px 6px 0; }
+.sw-head h2 { grid-column: 2; margin: 0; color: var(--theme-text-secondary); font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-align: center; text-transform: uppercase; }
+.sw-x { grid-column: 3; display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--theme-muted); cursor: pointer; }
+.sw-x:hover { background: var(--theme-surface-soft); color: var(--theme-text); }
+.sw-names { margin: -8px 0 10px; padding: 0 14px; font-size: 14px; font-weight: 600; text-align: center; }
+.sw-body { display: grid; gap: 10px; padding: 0 14px 12px; font-variant-numeric: tabular-nums; }
+.sw-pair { display: grid; grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr); align-items: stretch; }
+.sw-shift { display: grid; min-width: 0; align-content: start; justify-items: center; gap: 2px; padding: 9px 10px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); text-align: center; }
+.sw-shift b { font-size: 12.5px; font-weight: 600; }
+.sw-shift > span { color: var(--theme-text-secondary); font-size: 12px; white-space: nowrap; }
+.sw-place { display: flex; align-items: center; justify-content: center; gap: 4px; max-width: 100%; overflow: hidden; }
+.sw-place svg { width: 12px; height: 12px; flex: none; }
+.sw-shift > .sw-hand { margin-top: 6px; color: var(--theme-text); font-size: 12.5px; font-weight: 600; }
+.sw-hand i { color: var(--theme-text-secondary); font-style: normal; font-weight: 400; }
+.sw-swapicon { display: grid; place-items: center; color: var(--theme-text); }
+.sw-swapicon svg { width: 15px; height: 15px; stroke-width: 2.4; }
+.sw-box { position: relative; display: flex; width: 100%; height: 44px; align-items: center; justify-content: center; margin: 6px 0 0; padding: 0 24px; border-radius: 6px; background: var(--theme-warning-soft); line-height: 1.3; }
+.sw-box svg { position: absolute; top: 50%; left: 10px; width: 14px; height: 14px; color: var(--theme-warning); stroke-width: 2.2; transform: translateY(-50%); }
+.sw-box > span { display: grid; text-align: center; }
+.sw-box strong { color: var(--theme-warning); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.sw-box small { color: var(--theme-warning-text); font-size: 11px; white-space: nowrap; }
+.sw-box[data-tone="ok"] { background: var(--theme-success-soft); }
+.sw-box[data-tone="ok"] svg, .sw-box[data-tone="ok"] strong { color: var(--theme-success); }
+.sw-box[data-tone="ok"] small { color: var(--theme-text-secondary); }
+.sw-box.new { outline: 1.5px dashed var(--theme-border-control); outline-offset: 2px; }
+.sw-note, .sw-blockers { margin: 0; font-size: 12px; }
+.sw-note { color: var(--theme-text-secondary); }
+.sw-blockers { padding-left: 18px; color: var(--theme-danger); }
+.sw-foot { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--theme-border); background: var(--theme-surface-soft); }
+.sw-deadline { flex: 1 1 140px; min-width: 0; margin-right: auto; color: var(--theme-text-secondary); font-size: 12px; font-variant-numeric: tabular-nums; }
+.sw-foot .btn { min-height: 34px; padding: 6px 14px; border-radius: 8px; font-size: 13px; font-weight: 600; flex: none; }
+.sw-decline > label { display: grid; gap: 6px; padding: 0 14px 12px; font-size: 12px; font-weight: 600; }
+.sw-decline textarea { width: 100%; min-height: 64px; padding: 8px 10px; border: 1px solid var(--theme-border-control); border-radius: 6px; font-weight: 400; resize: vertical; }
+/* Phone: the cards stack and the swap mark turns upright (as the app does under 480 px). */
+.sw.narrow .sw-pair { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto 32px auto; }
+.sw.narrow .sw-swapicon svg { transform: rotate(90deg); }
+.sw.narrow .sw-foot { flex-wrap: wrap; }
+.sw.narrow .sw-deadline { flex: 1 1 100%; }
+.sw.narrow .sw-foot .btn { min-height: 44px; flex: 1 1 0; }
+/* Guide: which state of the swap window is shown. */
+.cases { display: flex; flex-wrap: wrap; gap: 6px; }
+.cases button { min-height: 30px; padding: 0 10px; border: 1px solid var(--theme-border-strong); border-radius: 999px; background: var(--theme-surface); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.cases button[aria-pressed="true"] { background: var(--theme-text); border-color: var(--theme-text); color: var(--theme-on-accent); }
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <span class="eyebrow">Mockup · plan, kod değil</span>
+    <h1 class="page">Vardiya değişimi: release, cover, swap</h1>
+    <p class="lede">Soldan bir an seç; telefon, müdür masaüstü ve müdür telefonu o anı gösterir. Ekranlar tıklanır: düğmeler, kartı kaydırma, çekmece. Arayüz metni İngilizce, açıklamalar Türkçe. Kararların hepsi <code>/mnt/project-files/notes/vardiya-degisim/PLAN.md</code>'de.</p>
+  </header>
+  <div class="layout">
+    <aside class="guide">
+      <section class="panel" aria-label="Anlar">
+        <h2>Anlar</h2>
+        <div id="scn-list"></div>
+      </section>
+      <section class="panel" aria-label="Ne oluyor">
+        <h2>Ne oluyor</h2>
+        <div class="explain" id="explain"></div>
+        <button class="reset" type="button" id="reset">Baştan başlat</button>
+      </section>
+    </aside>
+    <section class="stage" aria-label="Ekranlar">
+      <div class="fcol" id="col-phone">
+        <div class="flabel">Çalışan telefonu <span>390 × 800</span>
+          <div class="persona" id="persona" role="group" aria-label="Kim bakıyor">
+            <button type="button" data-p="maria">Maria (veren)</button>
+            <button type="button" data-p="jake">Jake (alan)</button>
+          </div>
+        </div>
+        <div class="phone"><div class="screen" id="emp"></div></div>
+      </div>
+      <div class="fcol" id="col-mphone">
+        <div class="flabel">Müdür telefonu <span>Rachel · 390 × 800</span></div>
+        <div class="phone mphone"><div class="screen" id="mgr-phone"></div></div>
+      </div>
+      <div class="fcol" id="col-desk">
+        <div class="flabel">Müdür masaüstü <span>Rachel Adams · Downtown · 1080 × 760</span></div>
+        <div class="desk-fit"><div class="desk" id="mgr-desk"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- icons ----------
+  const I = {
+    home: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/></svg>',
+    cal: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/></svg>',
+    swap: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/></svg>',
+    grid: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>',
+    bell: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/></svg>',
+    x: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+    chev: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>',
+    back: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>',
+    release: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/></svg>',
+    cover: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M17 8h5M19.5 5.5v5"/></svg>',
+    check: '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+    down: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>',
+    warn: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>',
+    pin: '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 21s7-6.2 7-11.5a7 7 0 1 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+    users: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.6c2.6.1 4.6 1.9 5.3 5.4"/></svg>',
+    inbox: '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/></svg>',
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const ini = (n) => n.split(" ").map((p) => p[0]).join("").slice(0, 2);
+
+  // ---------- demo data (Harbor & Vine, Downtown) ----------
+  const SHIFT = { id: "s-fri", dow: "Fri", date: "Oct 16", day: 16, time: "4:00 PM – 10:00 PM", short: "4p–10p", job: "Server", loc: "Downtown", hrs: 6 };
+  const JAKE_SAT = { id: "s-sat", dow: "Sat", date: "Oct 17", day: 17, time: "4:00 PM – 10:00 PM", short: "4p–10p", job: "Server", loc: "Downtown", hrs: 6 };
+  const SOON = { id: "s-today", dow: "Today", date: "Oct 13", day: 13, time: "11:00 AM – 3:00 PM", short: "11a–3p", job: "Server", loc: "Downtown", hrs: 4 };
+  const TEAM = [
+    { id: "jake", name: "Jake Miller", job: "Server", week: 32, ok: true, note: "32 → 38 hrs this week" },
+    { id: "ana", name: "Ana Torres", job: "Server", week: 36, ok: true, note: "36 → 42 hrs · overtime", warn: "Overtime" },
+    { id: "leo", name: "Leo Park", job: "Server", week: 24, ok: true, note: "24 → 30 hrs this week" },
+    { id: "priya", name: "Priya Shah", job: "Server", week: 30, ok: true, note: "30 → 36 hrs this week" },
+    { id: "sam", name: "Sam Reed", job: "Server", week: 28, ok: false, note: "Works Fri 3p–9p · overlaps" },
+  ];
+  const OPEN = [
+    { id: "o1", from: "Maria Lopez", why: "Release", dow: "Fri", date: "Oct 16", day: 16, time: "4:00 PM – 10:00 PM", job: "Server", loc: "Downtown", note: "Family dinner came up. Section 4 is usually busy, thanks!", before: 32, after: 38 },
+    { id: "o2", from: "Daniel Brooks", why: "Release", dow: "Sun", date: "Oct 18", day: 18, time: "10:00 AM – 3:00 PM", job: "Server", loc: "Downtown", note: "", before: 32, after: 37 },
+    { id: "o3", from: "Shift without owner", why: "Posted by manager", dow: "Tue", date: "Oct 20", day: 20, time: "5:00 PM – 11:00 PM", job: "Server", loc: "Midtown", note: "", before: 32, after: 38, ot: false },
+  ];
+
+  // ---------- state ----------
+  const fresh = () => ({
+    persona: "maria",
+    empScreen: "home", // home | hub | notifs | who | detail
+    hubTab: "available",
+    sheet: null, // shift | release | cover | swap | invite | swapconfirm
+    sheetShift: SHIFT,
+    request: null, // { kind, status, picked, note, take }
+    deck: OPEN.map((o) => o.id),
+    deckDone: {},
+    coverPick: [],
+    swapPick: null,
+    toast: null,
+    whoDay: 16,
+    jakeView: null, // invite | swapconfirm
+    mgrOpen: null, // r1 r2 r3
+    mgrPick: null,
+    mgrTab: "request",
+    mgrArmed: false,
+    mgrDone: {},
+    orphan: false,
+    orphanChoice: {},
+    swCase: "travel", // which rule fails in the swap window
+    swDecl: false,
+  });
+  let S = fresh();
+  let scn = 0;
+
+  // ---------- scenarios ----------
+  const SCN = [
+    { group: "Çalışan · vardiyayı veren", label: "Vardiyaya basınca: üç seçenek", set: { persona: "maria", empScreen: "home", sheet: "shift" },
+      who: "Maria, telefon, Home",
+      text: "Maria Home'da Cuma vardiyasına basar. Aynı pencere Schedule'daki Who's working listesinden ve Shift Hub'dan da açılır. Üç ayrı, adlı seçenek: Release shift, Ask someone to cover, Swap.",
+      list: ["Vardiyada açık bir istek varsa diğer ikisi kapalıdır (cover ile release aynı anda olamaz).", "Vardiyaya 4 saat kalınca üçü de kapanır."],
+      basis: "Kararlar 04:01, 04:56, 06:43" },
+    { group: null, label: "Son 4 saat: istek açılamaz", set: { persona: "maria", empScreen: "home", sheet: "shift", sheetShift: SOON },
+      who: "Maria, bugünkü 11:00 vardiyası",
+      text: "Vardiyaya 4 saatten az kaldıysa üç seçenek de kapalıdır ve nedeni yazılır. Vardiya Maria'da kalır.",
+      list: ["Açık istekler de bu anda kendiliğinden kapanır; ilgili herkese bildirim gider."],
+      basis: "Karar 04:54, 04:56" },
+    { group: null, label: "Release: havuza bırak", set: { persona: "maria", empScreen: "home", sheet: "release" },
+      who: "Maria",
+      text: "Maria isteğe bağlı bir not yazar ve Release shift'e basar. Vardiya uygun herkese açılır; müdür onaylayana kadar Maria'nın sorumluluğunda kalır.",
+      list: ["Not yalnız veren tarafından yazılır.", "Gönderince My requests'te kart çıkar; onaya kadar Take back ile geri alabilir."],
+      basis: "Kararlar 04:01, 04:02, 04:52, 04:53" },
+    { group: null, label: "Cover: en çok 3 kişiye sor", set: { persona: "maria", empScreen: "home", sheet: "cover", coverPick: ["jake", "leo"] },
+      who: "Maria",
+      text: "Maria uygun kişiler listesinden en çok 3 kişi seçer. Aynı saatte vardiyası olan kişi seçilemez. Her kişinin yanında bu haftaki saati ve alırsa kaç saate çıkacağı görünür.",
+      list: ["Birkaç kişi kabul edebilir; aralarından müdür seçer.", "Herkes reddederse ya da süre dolarsa Maria yeniden 3 kişiye sorabilir ya da release'e çevirebilir.", "Cevapsız davetler vardiyaya 4 saat kala kapanır."],
+      basis: "Kararlar 04:55, 06:43" },
+    { group: null, label: "Swap: anlaşılan vardiyayı öner", set: { persona: "maria", empScreen: "home", sheet: "swap", swapPick: "s-sat" },
+      who: "Maria",
+      text: "Maria ile Jake önceden anlaştı. Maria kendi vardiyasını ve Jake'in vardiyasını seçer. Listede yalnız iki taraf için de çakışma yaratmayan vardiyalar var. Not isteğe bağlı.",
+      list: ["Jake onaylayınca istek müdüre gider; farklı lokasyonsa iki müdür de onaylar."],
+      basis: "Kararlar 05:02, 06:43" },
+    { group: null, label: "My requests: takip ve Take back", set: { persona: "maria", empScreen: "hub", hubTab: "requests", request: { kind: "release", status: "open", note: "Family dinner came up. Section 4 is usually busy, thanks!", takers: ["jake", "ana"] } },
+      who: "Maria, Shift Hub → My requests",
+      text: "Maria isteğinin durumunu görür: kaç kişi istedi, müdür ne zaman karar verecek. Take back onaya kadar çalışır; isteyenlere \"Maria kept this shift\" gider.",
+      list: ["Take back kırmızı ve iki tıkla çalışır (yıkıcı işlem kuralı)."],
+      basis: "Karar 04:52" },
+    { group: "Çalışan · alan", label: "Bildirim: Extra shift available", set: { persona: "jake", empScreen: "notifs" },
+      who: "Jake, uygun herkes",
+      text: "Release'te uygun herkese bildirim gider. Basınca doğrudan Available Shifts'teki kart destesi açılır.",
+      list: ["Bildirimler listesi uygulamanın bugünkü Notifications sayfasıyla aynı dilde."],
+      basis: "Karar 04:51" },
+    { group: null, label: "Available Shifts: kartı kaydır", set: { persona: "jake", empScreen: "hub", hubTab: "available" },
+      who: "Jake",
+      text: "Açık vardiyalar kart destesi olarak gelir. Sağa kaydır = I'll take it, sola kaydır = Not for me; kart animasyonla çıkar ve sıradaki gelir. Aynı iş kartın altındaki iki düğmeyle de yapılır.",
+      list: ["Kartta veren kişi, notu, vardiya ve saat etkisi var.", "Not for me kartı yalnız Jake'in listesinden kaldırır; kırmızı sayı düşer.", "Jake not yazamaz; yalnız ister ya da geçer."],
+      basis: "Kararlar 04:52, 04:53, 06:43" },
+    { group: null, label: "Cover daveti: Accept / Decline", set: { persona: "jake", empScreen: "home", jakeView: "invite", toast: { t: "Maria asked you to cover", s: "Fri, Oct 16 · 4p–10p · Server, Downtown" } },
+      who: "Jake, davet edilenlerden biri",
+      text: "Jake'e \"Maria asked you to cover\" bildirimi gelir. Kartta Maria'nın notu ve saat etkisi var. Accept ya da Decline; ikisi de tek tık, sebep yazılmaz.",
+      list: ["Kabul edince \"Accepted · Your manager decides\". Müdür başka birini seçerse Jake'e \"Someone else is covering\" gider."],
+      basis: "Kararlar 04:53, 06:43" },
+    { group: null, label: "Swap onayı: Confirm / Decline", set: { persona: "jake", empScreen: "home", jakeView: "swapconfirm", toast: { t: "Confirm your swap with Maria", s: "You give Sat, Oct 17 · You get Fri, Oct 16" } },
+      who: "Jake",
+      text: "Swap bir anlaşmanın onayıdır: \"Confirm your swap with Maria\". You give / You get alt alta, saat etkisi ve Maria'nın notu. Jake de isteğe bağlı not yazabilir; not cevap bildirimiyle Maria'ya gider.",
+      list: ["Confirm'den sonra müdüre gider; onaya kadar herkes kendi vardiyasında."],
+      basis: "Kararlar 05:02, 06:43" },
+    { group: null, label: "Schedule (telefon): Who's working", set: { persona: "jake", empScreen: "who", whoDay: 16 },
+      who: "Herkes",
+      text: "Telefonda Schedule büyük tablo yerine gün listesi: 7 günlük şerit, herhangi bir gün (izin günü de), lokasyona göre kim çalışıyor. Kendi vardiyan en üstte; basınca aynı \"Your shift\" penceresi açılır.",
+      list: ["Masaüstünde tablo aynen kalır."],
+      basis: "Karar 03:59" },
+    { group: "Müdür", label: "Requests → Shift changes tablosu", set: { mgrOpen: null },
+      who: "Rachel, masaüstü",
+      text: "İstekler Requests sayfasında satır satır, Announcements ve Important Dates'teki liste diliyle. Satıra basınca çekmece açılır.",
+      list: ["Müdüre ilk isteyende bir bildirim; sonra onaylanana kadar 12 saatte bir hatırlatma ve kapanmadan 4 saat önce son uyarı."],
+      basis: "Kararlar 05:03, 05:39, 06:43" },
+    { group: null, label: "Release kararı: aday seç, onayla", set: { mgrOpen: "r1", mgrPick: "jake" },
+      who: "Rachel",
+      text: "Çekmecede vardiya, Maria'nın notu ve isteyenler. Her aday için o günkü toplam saat, dönem toplam saati, komşu vardiyayla dinlenme ya da seyahat süresi ve availability. Müdür birini seçer, Approve'a basar.",
+      list: ["Ana fazla mesaiye giriyor, Leo'nun dinlenme süresi kısa: uyarı rengiyle görünür ama seçilebilir.", "Decline kırmızı ve iki tıkla; sebep isteğe bağlı, yazılırsa isteyen görür.", "Seçilmeyenlere \"Another teammate got it\" gider."],
+      basis: "Kararlar 04:52, 05:03, 06:43" },
+    { group: null, label: "Cover kararı: kabul edenler", set: { mgrOpen: "r2", mgrPick: "jake" },
+      who: "Rachel",
+      text: "Maria 3 kişiye sordu: ikisi kabul etti, biri reddetti. Müdür yalnız kabul edenler arasından seçer.",
+      list: ["Reddeden ve cevap vermeyen listede görünür ama seçilemez."],
+      basis: "Karar 06:43" },
+    { group: null, label: "Swap kararı: yön ve engeller", set: { mgrOpen: "r3", swCase: "three" }, cases: true,
+      who: "Rachel (ve Midtown müdürü)",
+      text: "Swap çekmece değil, uygulamadaki kilitli H2 penceresiyle açılır: iki vardiya kartı yan yana, her kartta kimden kime gittiği (Priya → Daniel). Bir kural tutmazsa o kartta turuncu kutu, öteki kartta aynı kural için yeşil kutu çıkar; hiçbir kural tutmazsa kutu yoktur. Aşağıdaki hâllerden birini seç.",
+      list: ["Yol, dinlenme ve availability uyarısı onayı engellemez. Onaylı izin engeller: Approve kapalıdır.", "Fazla mesai kutusu bugün uygulamada yok; senin 06:43 isteğin (dönem saati) için önerim, kesik çizgiyle işaretli.", "Telefonda kartlar alt alta, ⇄ dik durur (uygulamanın bugünkü telefon hâli).", "Farklı lokasyon: iki müdür onaylar. İlk onaydan sonra \"Midtown's manager decides next\" yazar.", "Decline'da sebep isteğe bağlı (karar 05:03); bugün uygulamada zorunlu, kodlarken değişecek."],
+      basis: "KARARLAR \"Takas inceleme penceresi H2\" (2026-10-07), Kararlar 05:02, 05:03, 06:43" },
+    { group: null, label: "Sahipsiz kalan vardiyalar", set: { mgrOpen: null, orphan: true },
+      who: "Rachel, bir çalışan işten çıkarıldıktan sonra",
+      text: "Atanmamış yayınlanan vardiya havuza kendiliğinden düşmez. Bir vardiya işten çıkarma ya da lokasyondan çıkarma yüzünden sahipsiz kalırsa müdüre her biri için sorulur: açık havuza konsun mu, atanmamış mı kalsın.",
+      list: ["Müdür Schedule'dan elle havuza koyamaz; tek yol bu soru ve çalışanın release'i."],
+      basis: "Kararlar 06:43, 07:08" },
+  ];
+
+  // ---------- helpers ----------
+  const teamById = (id) => TEAM.find((t) => t.id === id);
+  function flash(t, s) { S.toast = { t, s }; render(); setTimeout(() => { if (S.toast && S.toast.t === t) { S.toast = null; render(); } }, 3200); }
+  function setScn(i) {
+    scn = i;
+    const keepPersona = S.persona;
+    S = fresh();
+    Object.assign(S, JSON.parse(JSON.stringify(SCN[i].set)));
+    if (SCN[i].set.sheetShift) S.sheetShift = SCN[i].set.sheetShift;
+    if (!SCN[i].set.persona) S.persona = keepPersona;
+    renderGuide(); render();
+  }
+
+  // ---------- employee phone ----------
+  function nav(active, badges) {
+    const items = [["home", "Home", I.home], ["who", "Schedule", I.cal], ["hub", "Requests", I.swap], ["more", "More", I.grid]];
+    return `<nav class="nav" aria-label="Employee navigation">${items.map(([k, l, ic]) => `<button type="button" data-go="${k}" ${active === k ? 'aria-current="page"' : ""}>${ic}${badges[k] ? `<span class="dot">${badges[k]}</span>` : ""}${l}</button>`).join("")}</nav>`;
+  }
+  function shiftBox(sh, extra) {
+    return `<div class="shiftbox"><span class="d">${sh.dow}, ${sh.date}</span><span class="tm">${sh.time}</span><span class="m">${sh.job} · Harbor &amp; Vine ${sh.loc}${extra ? " · " + extra : ""}</span></div>`;
+  }
+  function deckCount() { return S.deck.filter((id) => !S.deckDone[id]).length; }
+
+  function empHome() {
+    const isJake = S.persona === "jake";
+    const name = isJake ? "Jake" : "Maria";
+    const next = isJake ? JAKE_SAT : SHIFT;
+    const up = isJake ? [JAKE_SAT, { dow: "Mon", date: "Oct 19", day: 19, short: "11a–5p", job: "Server", loc: "Downtown" }] : [SOON, SHIFT, { dow: "Sun", date: "Oct 18", day: 18, short: "4p–10p", job: "Server", loc: "Downtown" }];
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Harbor &amp; Vine</span><h2>Hi, ${name} <button type="button" class="bell" data-go="notifs" aria-label="Notifications">${I.bell}<span class="dot">${isJake ? 3 : 1}</span></button></h2></div>
+      <div class="hero"><small>Next shift · in 3 days</small><strong>${next.dow}, ${next.date}</strong><span>${next.time} · ${next.job} · ${next.loc}</span><button type="button" data-open-shift="${next.id}">View shift</button></div>
+      <div class="sec-title"><h3>Upcoming</h3><button type="button" data-go="who">Who's working</button></div>
+      <div class="rows">${up.map((u) => `<button type="button" class="lcard" data-open-shift="${u.id || ""}"><span class="date-tile"><small>${u.dow.slice(0, 3)}</small><b>${u.day}</b></span><span class="t">${u.short} · ${u.job}</span><span class="s">${u.loc}${u.id === "s-today" ? " · starts in 2 h" : ""}</span><span class="r">${I.chev}</span></button>`).join("")}</div>
+      ${isJake ? `<div class="sec-title"><h3>Extra shifts for you</h3><button type="button" data-go="hub">See all</button></div><div class="banner" data-tone="green">${deckCount()} open shifts match your position. Swipe through them in Requests → Available Shifts.</div>` : ""}
+    </div>`;
+  }
+
+  function empHub() {
+    const isJake = S.persona === "jake";
+    const tabs = [["available", "Available Shifts", isJake ? deckCount() : 1], ["requests", "My requests", isJake ? (S.jakeView ? 1 : 0) : 0], ["history", "History", 0]];
+    let body = "";
+    if (S.hubTab === "available") body = deckView();
+    else if (S.hubTab === "requests") body = myRequests();
+    else body = `<div class="rows">${["Swap with Priya · Approved · Oct 2", "Release · Taken by Leo · Sep 27"].map((t) => `<div class="lcard" style="cursor:default"><span class="date-tile"><small>Sep</small><b>${t.includes("Oct") ? 2 : 27}</b></span><span class="t">${t.split(" · ")[0]}</span><span class="s">${t.split(" · ").slice(1).join(" · ")}</span><span class="r"><span class="chip" data-tone="gray">Closed</span></span></div>`).join("")}</div>`;
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Work better together</span><h2>Shift Hub</h2><p>Pick up an open shift, or hand one off.</p></div>
+      <nav class="tabs" aria-label="Shift Hub views">${tabs.map(([k, l, c]) => `<button type="button" data-tab="${k}" class="${c ? "has-cnt" : ""}" ${S.hubTab === k ? 'aria-current="page"' : ""}>${l}${c ? `<span class="cnt" aria-hidden="true">${c}</span>` : ""}</button>`).join("")}</nav>
+      ${body}
+    </div>`;
+  }
+
+  function deckView() {
+    if (S.persona === "maria") {
+      return `<div class="rcard"><div class="head"><span class="kind">Open shift</span><span class="chip" data-tone="green">Eligible</span></div>${shiftBox({ dow: "Sun", date: "Oct 18", time: "10:00 AM – 3:00 PM", job: "Server", loc: "Downtown" })}<p class="counter" style="margin:0">Daniel Brooks released this shift.</p><div class="btn-row"><button type="button" class="btn">Not for me</button><button type="button" class="btn primary">I'll take it</button></div></div><p class="deck-hint">Maria sees the same deck as Jake. Switch to Jake above to try swiping.</p>`;
+    }
+    const left = S.deck.filter((id) => !S.deckDone[id]);
+    const taken = S.deck.filter((id) => S.deckDone[id] === "take");
+    const cards = left.slice(0, 3).map((id, i) => {
+      const o = OPEN.find((x) => x.id === id);
+      return `<article class="dcard ${i === 1 ? "back1" : i === 2 ? "back2" : ""}" data-card="${id}" style="z-index:${10 - i}" ${i === 0 ? 'tabindex="0" aria-label="' + esc(o.dow + ", " + o.date + ", " + o.time + ". Swipe right to take it, left to pass.") + '"' : 'aria-hidden="true"'}>
+        <span class="stamp take">TAKE</span><span class="stamp pass">PASS</span>
+        <div class="top-row"><span class="chip" data-tone="${o.why === "Release" ? "blue" : "amber"}">${o.why}</span><span class="chip" data-tone="green">${I.check} Eligible</span></div>
+        <div class="giver"><span class="av">${o.from.startsWith("Shift") ? "—" : ini(o.from)}</span><div><b>${esc(o.from)}</b><span>${o.from.startsWith("Shift") ? "Posted after a teammate left" : "can't make this shift"}</span></div></div>
+        ${shiftBox(o)}
+        ${o.note ? `<div class="note">“${esc(o.note)}”</div>` : ""}
+        <div class="hours"><div><small>This week now</small><b>${o.before} hrs</b></div><div><small>If you take it</small><b>${o.after} hrs</b></div></div>
+        <span class="counter">Your manager decides who gets it. It isn't on your schedule until then.</span>
+      </article>`;
+    }).join("");
+    const deck = left.length ? cards : `<div class="deck-empty"><b>You're all caught up</b><span>New open shifts that fit you show up here.</span></div>`;
+    return `<div class="deck" id="deck">${deck}</div>
+      <div class="deck-actions"><button type="button" class="btn" data-deck="pass" ${left.length ? "" : "disabled"}>${I.x} Not for me</button><button type="button" class="btn primary" data-deck="take" ${left.length ? "" : "disabled"}>${I.check} I'll take it</button></div>
+      <p class="deck-hint">Swipe right to take · left to pass · ${left.length} left</p>
+      ${taken.length ? `<div class="sec-title"><h3>Requested</h3></div><div class="rows">${taken.map((id) => { const o = OPEN.find((x) => x.id === id); return `<div class="lcard" style="cursor:default"><span class="date-tile"><small>${o.dow}</small><b>${o.day}</b></span><span class="t">${o.time.replace(":00", "").replace(":00", "")}</span><span class="s">Your manager decides</span><span class="r"><span class="chip" data-tone="amber">Requested</span></span></div>`; }).join("")}</div>` : ""}`;
+  }
+
+  function myRequests() {
+    if (S.persona === "jake") {
+      if (!S.jakeView) return `<div class="deck-empty" style="height:auto"><b>No requests</b><span>Requests you send or answer show up here.</span></div>`;
+      return S.jakeView === "invite" ? inviteCard() : swapConfirmCard();
+    }
+    const r = S.request;
+    if (!r) return `<div class="deck-empty" style="height:auto"><b>No open requests</b><span>Open a shift from Home or Schedule to release it, ask for cover or swap.</span></div>`;
+    if (r.status === "kept") return `<div class="banner" data-tone="green">You kept this shift. Jake and Ana were told.</div>`;
+    let people = "";
+    if (r.kind === "release") people = `<div class="people">${(r.takers || []).map((id) => { const t = teamById(id); return `<div class="person"><span class="av">${ini(t.name)}</span><span>${t.name}</span><span class="chip" data-tone="amber">Wants it</span></div>`; }).join("") || '<span class="counter">No one has asked yet.</span>'}</div>`;
+    if (r.kind === "cover") people = `<div class="people">${r.picked.map((id, i) => { const t = teamById(id); const st = i === 0 ? ["Accepted", "green"] : ["Waiting", "gray"]; return `<div class="person"><span class="av">${ini(t.name)}</span><span>${t.name}</span><span class="chip" data-tone="${st[1]}">${st[0]}</span></div>`; }).join("")}</div>`;
+    if (r.kind === "swap") people = `<div class="people"><div class="person"><span class="av">JM</span><span>Jake Miller</span><span class="chip" data-tone="gray">Waiting to confirm</span></div></div>`;
+    const title = r.kind === "release" ? "Released" : r.kind === "cover" ? "Cover requested" : "Swap proposed";
+    return `<div class="rcard">
+      <div class="head"><span class="kind">${title}</span><span class="chip" data-tone="amber">Your manager decides</span></div>
+      ${shiftBox(SHIFT)}
+      ${r.note ? `<div class="note" style="padding:10px 12px;border-radius:10px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);font-size:13px">“${esc(r.note)}”</div>` : ""}
+      ${people}
+      <div class="banner" data-tone="blue">You're still responsible for this shift until your manager approves. Open requests close at 12:00 PM Fri (4 hours before).</div>
+      ${r.kind === "release" ? `<button type="button" class="btn danger ${S.takeArmed ? "armed" : ""}" data-takeback>${S.takeArmed ? "Click again to take back" : "Take back shift"}</button>` : `<button type="button" class="btn danger ${S.takeArmed ? "armed" : ""}" data-takeback>${S.takeArmed ? "Click again to cancel" : "Cancel request"}</button>`}
+    </div>`;
+  }
+
+  function inviteCard() {
+    const v = S.inviteState;
+    if (v === "accepted") return `<div class="rcard"><div class="head"><span class="kind">Cover for Maria</span><span class="chip" data-tone="amber">Accepted</span></div>${shiftBox(SHIFT)}<div class="banner" data-tone="blue">Accepted · Your manager decides. It isn't on your schedule until then.</div></div>`;
+    if (v === "declined") return `<div class="banner" data-tone="green">You declined. Maria was told.</div>`;
+    return `<div class="rcard">
+      <div class="head"><span class="kind">Cover request</span><span class="chip" data-tone="blue">Answer by Fri 12:00 PM</span></div>
+      <div class="giver" style="display:flex;gap:10px;align-items:center"><span class="av">ML</span><div><b style="display:block">Maria Lopez asked you to cover</b><span class="counter">She also asked 2 teammates</span></div></div>
+      ${shiftBox(SHIFT)}
+      <div class="note" style="padding:10px 12px;border-radius:10px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);font-size:13px">“Family dinner came up. Section 4 is usually busy, thanks!”</div>
+      <div class="hours"><div><small>This week now</small><b>32 hrs</b></div><div><small>If you take it</small><b>38 hrs</b></div></div>
+      <div class="btn-row"><button type="button" class="btn" data-invite="decline">Decline</button><button type="button" class="btn primary" data-invite="accept">Accept</button></div>
+    </div>`;
+  }
+
+  function swapConfirmCard() {
+    const v = S.inviteState;
+    if (v === "accepted") return `<div class="rcard"><div class="head"><span class="kind">Swap with Maria</span><span class="chip" data-tone="amber">Confirmed</span></div><div class="banner" data-tone="blue">Confirmed · Waiting for your manager. You keep Sat until it's approved.</div></div>`;
+    if (v === "declined") return `<div class="banner" data-tone="green">You declined. Maria was told${S.replyNote ? " and got your note" : ""}.</div>`;
+    return `<div class="rcard">
+      <div class="head"><span class="kind">Confirm your swap with Maria</span></div>
+      <div class="give-get">
+        <div class="give"><span class="lab">You give</span>${shiftBox(JAKE_SAT)}</div>
+        <span class="arrow">${I.down}</span>
+        <div class="get"><span class="lab">You get</span>${shiftBox(SHIFT)}</div>
+      </div>
+      <div class="hours"><div><small>Hours this week</small><b>32 → 32</b></div><div><small>Rest before Fri</small><b>14 h ✓</b></div></div>
+      <div class="note" style="padding:10px 12px;border-radius:10px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);font-size:13px"><b style="font-size:12px;color:var(--theme-muted)">Maria</b><br>“As we said, thanks Jake!”</div>
+      <label class="field"><span>Note to Maria <small style="font-weight:400;color:var(--theme-muted)">· optional</small></span><textarea id="swap-reply" placeholder="Sent with your answer">${esc(S.replyNote || "")}</textarea></label>
+      <div class="btn-row"><button type="button" class="btn" data-invite="decline">Decline</button><button type="button" class="btn primary" data-invite="accept">Confirm swap</button></div>
+    </div>`;
+  }
+
+  function empNotifs() {
+    const isJake = S.persona === "jake";
+    const items = isJake ? [
+      ["Extra shift available", "Maria can't make Fri, Oct 16 · 4p–10p · Server, Downtown. Want it?", "2 min ago", "hub"],
+      ["Extra shift available", "Daniel can't make Sun, Oct 18 · 10a–3p · Server, Downtown.", "1 h ago", "hub"],
+      ["Your pickup is approved", "Sat, Oct 10 · 5p–11p is now on your schedule.", "Yesterday", null],
+    ] : [["Jake wants your shift", "Fri, Oct 16 · 4p–10p. Your manager decides.", "Just now", "req"]];
+    return `<div class="app-pad" style="padding-inline:0;gap:0"><div class="ph-head" style="padding:0 16px 12px"><span class="eyebrow">Inbox</span><h2>Notifications</h2></div>
+      ${items.map(([t, s, w, go], i) => `<button type="button" class="notif ${i < 2 ? "unread" : ""}" ${go ? `data-notif="${go}"` : ""}><span class="ic">${i === 2 ? I.check : I.swap}</span><span><b>${t}</b><span>${s}</span><small>${w}</small></span></button>`).join("")}</div>`;
+  }
+
+  function empWho() {
+    const days = [12, 13, 14, 15, 16, 17, 18];
+    const dows = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const me = S.persona === "jake" ? "Jake Miller" : "Maria Lopez";
+    const mine = { 16: S.persona === "maria" ? SHIFT : null, 17: S.persona === "jake" ? JAKE_SAT : null, 13: S.persona === "maria" ? SOON : null };
+    const crew = {
+      Downtown: [["Rachel Adams", "Manager", "10a–6p"], ["Priya Shah", "Server", "11a–5p"], ["Leo Park", "Host", "4p–10p"], ["Carlos Rivera", "Line Cook", "3p–11p"], ["Ana Torres", "Bartender", "5p–12a"]],
+      Midtown: [["Daniel Brooks", "Server", "4p–10p"], ["Sam Reed", "Server", "3p–9p"]],
+    };
+    const d = S.whoDay;
+    const my = mine[d];
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Schedule</span><h2>Who's working</h2><p>Week of Oct 12 · times in America/New York</p></div>
+      <div class="days" role="group" aria-label="Day">${days.map((x, i) => `<button type="button" data-day="${x}" aria-pressed="${d === x}"><small>${dows[i]}</small><b>${x}</b><i class="${mine[x] ? "on" : ""}"></i></button>`).join("")}</div>
+      ${my ? `<button type="button" class="lcard mine" data-open-shift="${my.id}"><span class="av" style="grid-row:span 2">${ini(me)}</span><span class="t">You · ${my.short}</span><span class="s">${my.job} · ${my.loc}</span><span class="r">${I.chev}</span></button>` : `<div class="banner" data-tone="blue">You're off on ${dows[days.indexOf(d)]}, Oct ${d}. Here's who's working.</div>`}
+      ${Object.entries(crew).map(([loc, list]) => `<div class="loc">${I.pin} ${loc} · ${list.length + (my && my.loc === loc ? 1 : 0)} working</div><div class="rows">${list.map(([n, j, t]) => `<div class="lcard" style="cursor:default"><span class="av" style="grid-row:span 2">${ini(n)}</span><span class="t">${n}</span><span class="s">${j}</span><span class="r" style="font-variant-numeric:tabular-nums;font-weight:600;font-size:13px">${t}</span></div>`).join("")}</div>`).join("")}
+    </div>`;
+  }
+
+  function sheetHtml() {
+    const sh = S.sheetShift;
+    const tooClose = sh.id === "s-today";
+    const close = `<button type="button" class="x" data-close aria-label="Close">${I.x}</button>`;
+    if (S.sheet === "shift") {
+      const open = S.request && S.request.status === "open";
+      return `<div class="sheet-head"><h3>Your shift</h3>${close}</div>${shiftBox(sh)}
+        ${tooClose ? `<div class="banner" data-tone="amber"><b>Too close to the shift.</b> Changes close 4 hours before it starts. Talk to your manager.</div>` : ""}
+        ${open ? `<div class="banner" data-tone="blue">This shift already has an open ${S.request.kind} request. Take it back first to choose something else.</div>` : ""}
+        <div class="actions3">
+          <button type="button" class="act" data-sheet="release" ${tooClose || open ? "disabled" : ""}><span class="ic">${I.release}</span><span><b>Release shift</b><span>Everyone eligible can ask for it. Your manager picks.</span></span>${I.chev}</button>
+          <button type="button" class="act" data-sheet="cover" ${tooClose || open ? "disabled" : ""}><span class="ic">${I.cover}</span><span><b>Ask someone to cover</b><span>Ask up to 3 teammates. Your manager picks from who accepts.</span></span>${I.chev}</button>
+          <button type="button" class="act" data-sheet="swap" ${tooClose || open ? "disabled" : ""}><span class="ic">${I.swap}</span><span><b>Swap</b><span>Already agreed with a teammate? Send it for approval.</span></span>${I.chev}</button>
+        </div>
+        <span class="counter">You stay responsible for this shift until a manager approves a change.</span>`;
+    }
+    if (S.sheet === "release") {
+      return `<div class="sheet-head"><button type="button" class="x" data-sheet="shift" aria-label="Back">${I.back}</button><h3>Release shift</h3>${close}</div>${shiftBox(sh)}
+        <label class="field"><span>Note for teammates <small style="font-weight:400;color:var(--theme-muted)">· optional</small></span><textarea id="rel-note" maxlength="200">Family dinner came up. Section 4 is usually busy, thanks!</textarea><small>Everyone eligible sees this note.</small></label>
+        <div class="banner" data-tone="blue">14 teammates can take this shift. They get a notification now.</div>
+        <div class="btn-row"><button type="button" class="btn" data-sheet="shift">Back</button><button type="button" class="btn primary" data-send="release">Release shift</button></div>`;
+    }
+    if (S.sheet === "cover") {
+      const n = S.coverPick.length;
+      return `<div class="sheet-head"><button type="button" class="x" data-sheet="shift" aria-label="Back">${I.back}</button><h3>Ask someone to cover</h3>${close}</div>${shiftBox(sh)}
+        <div class="sec-title"><h3 style="font-size:14px">Who should we ask?</h3><span class="counter">${n} of 3 picked</span></div>
+        <div class="rows" role="group" aria-label="Teammates">${TEAM.map((t) => { const on = S.coverPick.includes(t.id); const dis = !t.ok || (!on && n >= 3); return `<button type="button" class="pick" role="checkbox" aria-checked="${on}" ${dis ? 'aria-disabled="true"' : ""} data-pick="${t.id}"><span class="box">${on ? I.check : ""}</span><span class="av">${ini(t.name)}</span><span><span class="t">${t.name}</span><br><span class="s">${t.note}</span></span>${t.warn ? `<span class="chip" data-tone="amber">${t.warn}</span>` : !t.ok ? `<span class="chip" data-tone="gray">Busy</span>` : ""}</button>`; }).join("")}</div>
+        <label class="field"><span>Note <small style="font-weight:400;color:var(--theme-muted)">· optional</small></span><textarea id="cov-note">Family dinner came up. Section 4 is usually busy, thanks!</textarea></label>
+        <span class="counter">Unanswered asks close Fri 12:00 PM, 4 hours before the shift.</span>
+        <div class="btn-row"><button type="button" class="btn" data-sheet="shift">Back</button><button type="button" class="btn primary" data-send="cover" ${n ? "" : "disabled"}>Ask ${n || ""} ${n === 1 ? "teammate" : "teammates"}</button></div>`;
+    }
+    if (S.sheet === "swap") {
+      const opts = [
+        { id: "s-sat", who: "Jake Miller", sh: JAKE_SAT, ok: true },
+        { id: "s-sun", who: "Priya Shah", sh: { dow: "Sun", date: "Oct 18", time: "4:00 PM – 10:00 PM", job: "Server", loc: "Downtown" }, ok: true },
+        { id: "s-thu", who: "Leo Park", sh: { dow: "Thu", date: "Oct 15", time: "11:00 PM – 5:00 AM", job: "Server", loc: "Downtown" }, ok: false, why: "Only 6 h rest before your Fri shift" },
+      ];
+      return `<div class="sheet-head"><button type="button" class="x" data-sheet="shift" aria-label="Back">${I.back}</button><h3>Swap</h3>${close}</div>
+        <div class="give-get"><div class="give"><span class="lab" style="color:var(--theme-danger-strong);font-size:11px;font-weight:700;letter-spacing:.06em">You give</span>${shiftBox(sh)}</div></div>
+        <div class="sec-title"><h3 style="font-size:14px">You get</h3><span class="counter">Pick the shift you agreed on</span></div>
+        <div class="rows" role="radiogroup" aria-label="Shift you get">${opts.map((o) => { const on = S.swapPick === o.id; return `<button type="button" class="pick" role="radio" aria-checked="${on}" ${o.ok ? "" : 'aria-disabled="true"'} data-swap="${o.id}"><span class="box radio">${on ? I.check : ""}</span><span class="av">${ini(o.who)}</span><span><span class="t">${o.sh.dow}, ${o.sh.date} · ${o.sh.time.replace(/:00/g, "")}</span><br><span class="s">${o.who} · ${o.ok ? o.sh.job + " · " + o.sh.loc : o.why}</span></span>${o.ok ? "" : '<span class="chip" data-tone="gray">Conflict</span>'}</button>`; }).join("")}</div>
+        <label class="field"><span>Note to Jake <small style="font-weight:400;color:var(--theme-muted)">· optional</small></span><textarea id="swap-note">As we said, thanks Jake!</textarea></label>
+        <div class="btn-row"><button type="button" class="btn" data-sheet="shift">Back</button><button type="button" class="btn primary" data-send="swap" ${S.swapPick ? "" : "disabled"}>Send to Jake</button></div>`;
+    }
+    return "";
+  }
+
+  function renderEmp() {
+    const el = document.getElementById("emp");
+    let body = "";
+    let active = S.empScreen;
+    if (S.empScreen === "home") body = S.persona === "jake" && S.jakeView ? `<div class="app-pad"><div class="ph-head"><span class="eyebrow">From a notification</span><h2>${S.jakeView === "invite" ? "Cover request" : "Swap"}</h2></div>${S.jakeView === "invite" ? inviteCard() : swapConfirmCard()}</div>` : empHome();
+    if (S.empScreen === "hub") body = empHub();
+    if (S.empScreen === "notifs") { body = empNotifs(); active = "home"; }
+    if (S.empScreen === "who") body = empWho();
+    const isJake = S.persona === "jake";
+    const badges = { hub: isJake ? deckCount() + (S.jakeView && !S.inviteState ? 1 : 0) : 0 };
+    el.innerHTML = `<div class="app-status"><span>9:41</span><span>Harbor &amp; Vine</span></div>
+      <div class="app-body" id="emp-body">${body}</div>${nav(active, badges)}
+      ${S.sheet ? `<div class="scrim" data-scrim><div class="sheet" role="dialog" aria-modal="true" aria-label="Shift"><span class="grab"></span>${sheetHtml()}</div></div>` : ""}
+      ${S.toast ? `<div class="toast" role="status" data-toast><small>Newfork · now</small><b>${esc(S.toast.t)}</b><span>${esc(S.toast.s)}</span></div>` : ""}`;
+    document.querySelectorAll("#persona button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === S.persona)));
+    bindDeck();
+  }
+
+  // ---------- swipe deck ----------
+  function swipe(dir) {
+    const id = S.deck.find((x) => !S.deckDone[x]);
+    if (!id) return;
+    const card = document.querySelector(`.dcard[data-card="${id}"]`);
+    const finish = () => {
+      S.deckDone[id] = dir;
+      const o = OPEN.find((x) => x.id === id);
+      if (dir === "take") flash("Requested", `${o.dow}, ${o.date}. Your manager decides.`); else render();
+    };
+    if (!card || matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
+    card.style.transform = `translateX(${dir === "take" ? 520 : -520}px) rotate(${dir === "take" ? 18 : -18}deg)`;
+    card.style.opacity = "0";
+    card.querySelector(dir === "take" ? ".stamp.take" : ".stamp.pass").style.opacity = "1";
+    setTimeout(finish, 260);
+  }
+  function bindDeck() {
+    const deck = document.getElementById("deck");
+    if (!deck) return;
+    const top = deck.querySelector(".dcard:not(.back1):not(.back2)");
+    if (!top) return;
+    let x0 = 0, dx = 0, drag = false;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    top.addEventListener("pointerdown", (e) => { drag = true; x0 = e.clientX; dx = 0; top.classList.add("dragging"); top.setPointerCapture(e.pointerId); });
+    top.addEventListener("pointermove", (e) => {
+      if (!drag) return;
+      dx = e.clientX - x0;
+      top.style.transform = `translateX(${dx}px) rotate(${reduce ? 0 : dx / 18}deg)`;
+      top.querySelector(".stamp.take").style.opacity = String(Math.max(0, Math.min(1, dx / 90)));
+      top.querySelector(".stamp.pass").style.opacity = String(Math.max(0, Math.min(1, -dx / 90)));
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = false; top.classList.remove("dragging");
+      if (dx > 100) swipe("take");
+      else if (dx < -100) swipe("pass");
+      else { top.style.transform = ""; top.querySelectorAll(".stamp").forEach((s) => (s.style.opacity = "0")); }
+    };
+    top.addEventListener("pointerup", end);
+    top.addEventListener("pointercancel", end);
+    top.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") swipe("take"); if (e.key === "ArrowLeft") swipe("pass"); });
+  }
+
+  // ---------- manager ----------
+  const REQS = [
+    { id: "r1", kind: "Release", who: "Maria Lopez", shift: "Fri, Oct 16 · 4p–10p", status: ["3 want it", "amber"], since: "2 h", loc: "Downtown" },
+    { id: "r2", kind: "Cover", who: "Maria Lopez → 3 asked", shift: "Sat, Oct 17 · 11a–5p", status: ["2 accepted", "amber"], since: "40 min", loc: "Downtown" },
+    { id: "r3", kind: "Swap", who: "Priya Shah ⇄ Daniel Brooks", shift: "Sun, Oct 18 ⇄ Tue, Oct 20", status: ["Needs decision", "amber"], since: "5 h", loc: "Downtown + Midtown" },
+    { id: "r4", kind: "Release", who: "Leo Park", shift: "Thu, Oct 15 · 4p–10p", status: ["Approved · Ana", "green"], since: "Yesterday", loc: "Downtown" },
+  ];
+  const CANDS = {
+    r1: [
+      { id: "jake", name: "Jake Miller", tag: ["Asked 2 h ago", "gray"], day: ["6 h", "green"], period: ["38 / 80 h", "green"], rest: ["14 h before", "green"], avail: ["Available", "green"] },
+      { id: "ana", name: "Ana Torres", tag: ["Overtime", "amber"], day: ["11 h", "amber"], period: ["84 / 80 h", "red"], rest: ["12 h before", "green"], avail: ["Available", "green"] },
+      { id: "leo", name: "Leo Park", tag: ["Short rest", "amber"], day: ["6 h", "green"], period: ["54 / 80 h", "green"], rest: ["7 h · min 10", "red"], avail: ["Prefers off Fri", "amber"] },
+    ],
+    r2: [
+      { id: "jake", name: "Jake Miller", tag: ["Accepted", "green"], day: ["6 h", "green"], period: ["38 / 80 h", "green"], rest: ["14 h before", "green"], avail: ["Available", "green"] },
+      { id: "priya", name: "Priya Shah", tag: ["Accepted", "green"], day: ["6 h", "green"], period: ["66 / 80 h", "green"], rest: ["Travel 45 min · ok", "green"], avail: ["Available", "green"] },
+      { id: "leo", name: "Leo Park", tag: ["Declined", "gray"], off: true },
+    ],
+  };
+
+  // ---------- swap window (H2) ----------
+  const SW_CASES = [["clean", "Engel yok"], ["travel", "Yol"], ["rest", "Dinlenme"], ["three", "Üçü birden"], ["timeoff", "Onaylı izin"], ["hours", "Fazla mesai (öneri)"]];
+  const box = (tone, top, bottom, isNew) => ({ tone, top, bottom, isNew });
+  // Left card: Priya's Sunday shift, Daniel takes it. Right card: Daniel's Tuesday shift, Priya takes it.
+  function swBoxes(c) {
+    if (c === "travel") return [[box("warn", "30 min to travel", "45 min needed")], [box("ok", "Travel time OK", "45 min needed")]];
+    if (c === "rest") return [[box("ok", "12 h of rest", "10 h needed")], [box("warn", "8 h of rest", "10 h needed")]];
+    if (c === "three") return [
+      [box("warn", "30 min to travel", "45 min needed"), box("ok", "12 h of rest", "10 h needed"), box("warn", "Unavailable", "chose to take it")],
+      [box("ok", "Travel time OK", "45 min needed"), box("warn", "8 h of rest", "10 h needed"), box("ok", "Available", "on Tuesday")]];
+    if (c === "timeoff") return [[box("ok", "No time off", "on Sunday")], [box("warn", "On time off", "can't take this shift")]];
+    if (c === "hours") return [[box("warn", "84 h this period", "80 h limit", true)], [box("ok", "66 h this period", "80 h limit", true)]];
+    return [[], []];
+  }
+  function swCard(sh, from, to, boxes) {
+    return `<div class="sw-shift" role="group" aria-label="${sh.day}, ${sh.loc}, ${from} to ${to}">
+      <b>${sh.day}</b><span class="sw-place">${I.pin}<span>${sh.loc}</span></span><span>${sh.time}</span>
+      <span class="sw-hand">${from} <i aria-hidden="true">→</i> ${to}</span>
+      ${boxes.map((b) => `<p class="sw-box ${b.isNew ? "new" : ""}" data-tone="${b.tone}">${b.tone === "warn" ? I.warn : I.check}<span><strong>${b.top}</strong><small>${b.bottom}</small></span></p>`).join("")}
+    </div>`;
+  }
+  function swapWindow(isPhone) {
+    const [left, right] = swBoxes(S.swCase);
+    const timeOff = S.swCase === "timeoff";
+    const done = S.mgrDone.r3;
+    const cards = `<div class="sw-pair">${swCard({ day: "Sun, Oct 18", loc: "Downtown", time: "4:00 PM – 10:00 PM" }, "Priya", "Daniel", left)}<span class="sw-swapicon" aria-hidden="true">${I.swap}</span>${swCard({ day: "Tue, Oct 20", loc: "Midtown", time: "5:00 PM – 11:00 PM" }, "Daniel", "Priya", right)}</div>`;
+    const body = `<div class="sw-body">${cards}
+      ${timeOff ? `<ul class="sw-blockers" role="alert"><li>Priya has approved time off then. Their time off must be shortened before this swap.</li></ul>` : ""}
+      <p class="sw-note">Another location’s manager also approves.</p></div>`;
+    let foot;
+    if (done) foot = `<footer class="sw-foot"><span class="sw-deadline" role="status">${done === "approved" ? "Your approval is recorded. Midtown’s manager decides next." : "Swap declined. Priya and Daniel were told."}</span><button type="button" class="btn" data-mgr="close">Close</button></footer>`;
+    else if (S.swDecl) foot = `<div class="sw-decline"><label><span>Reason for Priya and Daniel <small style="font-weight:400;color:var(--theme-muted)">· optional</small></span><textarea id="sw-reason" rows="3"></textarea></label>
+      <footer class="sw-foot"><button type="button" class="btn" data-sw="back">Back</button><button type="button" class="btn danger ${S.mgrArmed ? "armed" : ""}" data-sw="confirm">${S.mgrArmed ? "Confirm decline" : "Decline swap"}</button></footer></div>`;
+    else foot = `<footer class="sw-foot"><span class="sw-deadline">Decide by Oct 18, 12:00 PM</span><button type="button" class="btn" data-sw="decline">Decline</button><button type="button" class="btn primary" data-mgr="approve" ${timeOff ? "disabled" : ""}>Approve</button></footer>`;
+    return `<div class="sw-wrap" data-mgr-scrim><div class="sw ${isPhone ? "narrow" : ""}" role="dialog" aria-modal="true" aria-labelledby="sw-t-${isPhone ? "p" : "d"}">
+      <header class="sw-head"><h2 id="sw-t-${isPhone ? "p" : "d"}">Swap request</h2><button type="button" class="sw-x" data-mgr="close" aria-label="Close">${I.x}</button></header>
+      <p class="sw-names">Priya Shah ⇄ Daniel Brooks</p>${body}${foot}</div></div>`;
+  }
+  function metric(label, v) { return `<span class="metric" data-tone="${v[1]}"><small>${label}</small><b>${v[0]}</b></span>`; }
+  function drawer(isPhone) {
+    const r = REQS.find((x) => x.id === S.mgrOpen);
+    if (!r) return "";
+    if (r.id === "r3") return swapWindow(isPhone);
+    const done = S.mgrDone[r.id];
+    const tabs = [["request", "Request"], ["history", "History"]];
+    let body = "";
+    if (S.mgrTab === "history") {
+      body = `<div class="dr-sec"><h4>History</h4><div class="rows">${["Maria released the shift · 2 h ago", "Jake asked for it · 2 h ago", "Ana asked for it · 1 h ago", "Reminder sent to Rachel · in 10 h"].map((t) => `<div class="lcard" style="cursor:default;grid-template-columns:1fr"><span class="t" style="font-weight:500">${t}</span></div>`).join("")}</div></div>`;
+    } else if (r.id === "r3") {
+      body = `<div class="dr-sec"><h4>Agreed swap</h4><div class="compare">
+          <div><h5>Priya Shah · Downtown</h5><b>Gives Sun, Oct 18 · 4p–10p</b><span class="counter">Gets Tue, Oct 20 · 5p–11p (Midtown)</span><div class="metrics" style="grid-column:auto;grid-template-columns:1fr 1fr">${metric("Day", ["6 h", "green"])}${metric("Period", ["66 / 80 h", "green"])}${metric("Travel", ["35 min · ok", "green"])}${metric("Availability", ["Available", "green"])}</div></div>
+          <div><h5>Daniel Brooks · Midtown</h5><b>Gives Tue, Oct 20 · 5p–11p</b><span class="counter">Gets Sun, Oct 18 · 4p–10p (Downtown)</span><div class="metrics" style="grid-column:auto;grid-template-columns:1fr 1fr">${metric("Day", ["6 h", "green"])}${metric("Period", ["72 / 80 h", "green"])}${metric("Rest", ["11 h before", "green"])}${metric("Availability", ["Prefers off Sun", "amber"])}</div></div>
+        </div></div>
+        <div class="dr-sec"><h4>Notes</h4><div class="note" style="padding:10px 12px;border-radius:10px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);font-size:13px"><b>Priya:</b> “Daniel and I talked Monday.”<br><b>Daniel:</b> “Confirmed, works for me.”</div></div>
+        <div class="banner" data-tone="blue">Two locations: Downtown (you) and Midtown (Marcus Hill) both approve. Midtown hasn't answered yet.</div>`;
+    } else {
+      const list = CANDS[r.id];
+      body = `<div class="dr-sec"><h4>Shift</h4>${shiftBox(r.id === "r1" ? SHIFT : { dow: "Sat", date: "Oct 17", time: "11:00 AM – 5:00 PM", job: "Server", loc: "Downtown" }, "owner Maria Lopez")}<div class="note" style="padding:10px 12px;border-radius:10px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);font-size:13px"><b>Maria:</b> “Family dinner came up. Section 4 is usually busy, thanks!”</div></div>
+        <div class="dr-sec"><h4>${r.id === "r1" ? "Who wants it · pick one" : "Asked 3 · pick from who accepted"}</h4>
+        <div class="rows" role="radiogroup" aria-label="Candidate">${list.map((c) => { const on = S.mgrPick === c.id; return `<button type="button" class="cand" role="radio" aria-checked="${on}" ${c.off ? 'aria-disabled="true"' : ""} data-cand="${c.id}"><span class="radio-dot"></span><span class="av">${ini(c.name)}</span><span><span class="nm">${c.name} <span class="chip" data-tone="${c.tag[1]}">${c.tag[0]}</span></span></span>${c.off ? "" : `<span class="metrics">${metric("Day total", c.day)}${metric("Pay period", c.period)}${metric("Rest / travel", c.rest)}${metric("Availability", c.avail)}</span>`}</button>`; }).join("")}</div></div>
+        <label class="field"><span>Reason if you decline <small style="font-weight:400;color:var(--theme-muted)">· optional, the employee sees it</small></span><textarea id="mgr-reason" placeholder="e.g. Ana would go into overtime"></textarea></label>`;
+    }
+    const pick = S.mgrPick ? (TEAM.find((t) => t.id === S.mgrPick) || { name: "Priya Shah" }).name.split(" ")[0] : null;
+    const foot = done ? `<div class="banner" data-tone="${done === "approved" ? "green" : "red"}" style="flex:1">${done === "approved" ? `Approved. ${pick || "They"} ${r.id === "r3" ? "swap once Midtown approves" : "now has the shift"}; others were told.` : "Declined. Everyone involved was told."}</div>`
+      : `<button type="button" class="btn danger ${S.mgrArmed ? "armed" : ""}" data-mgr="decline">${S.mgrArmed ? "Click again to decline" : "Decline"}</button>
+         <div class="right"><button type="button" class="btn" data-mgr="close">Close</button><button type="button" class="btn primary" data-mgr="approve" ${r.id === "r3" || S.mgrPick ? "" : "disabled"}>${r.id === "r3" ? "Approve for Downtown" : pick ? "Approve " + pick : "Approve"}</button></div>`;
+    return `<div class="drawer-wrap" data-mgr-scrim><aside class="drawer" role="dialog" aria-modal="true" aria-label="Shift change">
+      <div class="dr-head"><div class="row"><div><span class="chip" data-tone="${r.kind === "Swap" ? "blue" : r.kind === "Cover" ? "amber" : "gray"}">${r.kind}</span><h3 style="margin-top:6px">${r.id === "r3" ? "Priya ⇄ Daniel" : "Maria's " + r.shift.split(" · ")[0].split(",")[0] + " shift"}</h3><p>${r.shift} · ${r.loc} · waiting ${r.since}</p></div><button type="button" class="x" data-mgr="close" aria-label="Close">${I.x}</button></div>
+        <nav class="dr-tabs">${tabs.map(([k, l]) => `<button type="button" data-mtab="${k}" ${S.mgrTab === k ? 'aria-current="page"' : ""}>${l}</button>`).join("")}</nav></div>
+      <div class="dr-body">${body}</div>
+      <div class="dr-foot">${foot}</div>
+    </aside></div>`;
+  }
+  function orphanDlg() {
+    const rows = [["o-a", "Wed, Oct 14 · 5p–11p", "Server · Downtown"], ["o-b", "Sat, Oct 17 · 10a–4p", "Server · Downtown"], ["o-c", "Tue, Oct 20 · 5p–11p", "Server · Midtown"]];
+    return `<div class="dlg-wrap"><div class="dlg" role="dialog" aria-modal="true" aria-labelledby="orph-t">
+      <h3 id="orph-t">Jordan Lee's shifts have no owner</h3>
+      <p>Jordan was removed from the team. 3 upcoming shifts are now unassigned. Post each one to open shifts so eligible teammates can ask for it, or keep it unassigned for you to fill.</p>
+      <div class="rows">${rows.map(([id, t, m]) => { const c = S.orphanChoice[id] || "keep"; return `<div class="orph"><span><b>${t}</b><br><span class="counter">${m}</span></span><span class="seg" role="group" aria-label="${t}"><button type="button" data-orph="${id}:keep" aria-pressed="${c === "keep"}">Keep unassigned</button><button type="button" data-orph="${id}:post" aria-pressed="${c === "post"}">Post to open shifts</button></span></div>`; }).join("")}</div>
+      <div class="btn-row"><button type="button" class="btn" data-orph-done>Later</button><button type="button" class="btn primary" data-orph-done>Save</button></div>
+    </div></div>`;
+  }
+  function tableHtml() {
+    return `<table class="list"><thead><tr><th>Status</th><th>Request</th><th>Type</th><th>Shift</th><th>Location</th><th>Waiting</th></tr></thead><tbody>${REQS.map((r) => `<tr data-row="${r.id}" class="${S.mgrOpen === r.id ? "sel" : ""}" tabindex="0"><td><span class="chip" data-tone="${S.mgrDone[r.id] ? (S.mgrDone[r.id] === "approved" ? "green" : "red") : r.status[1]}">${S.mgrDone[r.id] ? (S.mgrDone[r.id] === "approved" ? "Approved" : "Declined") : r.status[0]}</span></td><td>${r.who}</td><td>${r.kind}</td><td>${r.shift}</td><td>${r.loc}</td><td>${r.since}</td></tr>`).join("")}</tbody></table>`;
+  }
+  function renderDesk() {
+    const el = document.getElementById("mgr-desk");
+    const pending = REQS.filter((r) => !S.mgrDone[r.id] && r.status[1] !== "green").length;
+    el.innerHTML = `<nav class="side" aria-label="Main"><div class="ws">Harbor &amp; Vine</div>${[["Home", I.home], ["Schedule", I.cal], ["Requests", I.inbox, pending], ["Employees", I.users], ["Announcements", I.bell]].map(([l, ic, n]) => `<a href="#" class="${l === "Requests" ? "on" : ""}" onclick="return false">${ic}${l}${n ? `<span class="dot">${n}</span>` : ""}</a>`).join("")}</nav>
+      <div class="main"><div class="ph"><span class="eyebrow">Team requests</span><h2>Requests</h2><p>Time off and shift changes waiting for your decision.</p></div>
+        <nav class="tabs" style="margin-bottom:10px"><button type="button">Time off</button><button type="button" aria-current="page" class="has-cnt">Shift changes<span class="cnt">${pending}</span></button><button type="button">Availability</button></nav>
+        <div class="filters"><span class="sel">All locations</span><span class="sel">Needs decision</span><span class="search">Search name or date</span></div>
+        ${tableHtml()}
+      </div>
+      ${S.mgrOpen ? drawer(false) : ""}${S.orphan ? orphanDlg() : ""}`;
+  }
+  function renderMPhone() {
+    const el = document.getElementById("mgr-phone");
+    el.innerHTML = `<div class="app-status"><span>9:41</span><span>Harbor &amp; Vine</span></div>
+      <div class="app-body"><div class="app-pad" style="padding-bottom:0"><div class="ph-head"><span class="eyebrow">Team requests</span><h2>Requests</h2></div>
+      <nav class="tabs"><button type="button">Time off</button><button type="button" aria-current="page">Shift changes</button></nav></div>
+      <div class="mlist">${REQS.map((r) => `<button type="button" class="lcard" data-row="${r.id}"><span class="av" style="grid-row:span 2">${r.kind[0]}</span><span class="t">${r.who}</span><span class="s">${r.shift}</span><span class="r"><span class="chip" data-tone="${S.mgrDone[r.id] ? (S.mgrDone[r.id] === "approved" ? "green" : "red") : r.status[1]}">${S.mgrDone[r.id] ? (S.mgrDone[r.id] === "approved" ? "Approved" : "Declined") : r.status[0]}</span></span></button>`).join("")}</div></div>
+      ${S.mgrOpen ? drawer(true) : ""}`;
+  }
+
+  // ---------- guide ----------
+  function renderGuide() {
+    let html = "", g = null;
+    SCN.forEach((s, i) => {
+      if (s.group && s.group !== g) { if (g !== null) html += "</div>"; g = s.group; html += `<div class="scn-group"><b>${s.group}</b>`; }
+      html += `<button type="button" class="scn" data-scn="${i}" aria-pressed="${i === scn}"><span class="n">${i + 1}</span><span>${s.label}</span></button>`;
+    });
+    html += "</div>";
+    document.getElementById("scn-list").innerHTML = html;
+    const s = SCN[scn];
+    document.getElementById("explain").innerHTML = `<p class="who">${s.who}</p><p>${s.text}</p>${s.list.length ? `<ul>${s.list.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}${s.cases ? `<div class="cases" role="group" aria-label="Hâl">${SW_CASES.map(([k, l]) => `<button type="button" data-sc="${k}" aria-pressed="${S.swCase === k}">${l}</button>`).join("")}</div>` : ""}<p class="basis">Dayanak: ${s.basis} (PLAN.md)</p>`;
+    const mgr = scn >= 11;
+    document.getElementById("col-desk").style.order = mgr ? -1 : 2;
+    document.getElementById("col-mphone").style.order = mgr ? 0 : 3;
+  }
+  function render() { renderEmp(); renderDesk(); renderMPhone(); }
+
+  // ---------- events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, [data-scrim], [data-toast], tr, [data-mgr-scrim]");
+    if (!t) return;
+    const d = t.dataset;
+    if (d.scn) { setScn(+d.scn); return; }
+    if (t.id === "reset") { setScn(scn); return; }
+    if (d.p) { S.persona = d.p; S.empScreen = "home"; S.sheet = null; S.jakeView = null; S.inviteState = null; render(); return; }
+    if (d.toast !== undefined) { S.toast = null; if (S.persona === "jake" && S.jakeView) { S.empScreen = "home"; } render(); return; }
+    if (d.scrim !== undefined && e.target === t) { S.sheet = null; render(); return; }
+    if (d.close !== undefined) { S.sheet = null; render(); return; }
+    if (d.go) { S.empScreen = d.go === "more" ? S.empScreen : d.go; S.sheet = null; if (d.go === "home") S.jakeView = null; render(); return; }
+    if (d.tab) { S.hubTab = d.tab; render(); return; }
+    if (d.notif) { if (d.notif === "hub") { S.empScreen = "hub"; S.hubTab = "available"; } else { S.persona = "maria"; S.empScreen = "hub"; S.hubTab = "requests"; S.request = S.request || { kind: "release", status: "open", note: "Family dinner came up. Section 4 is usually busy, thanks!", takers: ["jake"] }; } render(); return; }
+    if (d.openShift !== undefined) { if (!d.openShift) return; S.sheetShift = d.openShift === "s-today" ? SOON : d.openShift === "s-sat" ? JAKE_SAT : SHIFT; if (S.persona === "jake" && d.openShift !== "s-sat") return; S.sheet = "shift"; render(); return; }
+    if (d.sheet) { S.sheet = d.sheet; render(); return; }
+    if (d.pick) { if (t.getAttribute("aria-disabled") === "true") return; const i = S.coverPick.indexOf(d.pick); if (i >= 0) S.coverPick.splice(i, 1); else if (S.coverPick.length < 3) S.coverPick.push(d.pick); render(); return; }
+    if (d.swap) { if (t.getAttribute("aria-disabled") === "true") return; S.swapPick = d.swap; render(); return; }
+    if (d.send) {
+      const note = (document.getElementById(d.send === "release" ? "rel-note" : d.send === "cover" ? "cov-note" : "swap-note") || {}).value || "";
+      S.request = { kind: d.send, status: "open", note, picked: S.coverPick.slice(), takers: [] };
+      S.sheet = null; S.empScreen = "hub"; S.hubTab = "requests"; S.takeArmed = false;
+      flash(d.send === "release" ? "Shift released" : d.send === "cover" ? `Asked ${S.coverPick.length} ${S.coverPick.length === 1 ? "teammate" : "teammates"}` : "Swap sent to Jake", "You're still responsible until your manager approves.");
+      return;
+    }
+    if (d.takeback !== undefined) { if (!S.takeArmed) { S.takeArmed = true; render(); setTimeout(() => { if (S.takeArmed) { S.takeArmed = false; render(); } }, 3000); return; } S.takeArmed = false; S.request.status = "kept"; flash(S.request.kind === "release" ? "You kept your shift" : "Request cancelled", "Everyone who asked was told."); return; }
+    if (d.invite) { const r = document.getElementById("swap-reply"); S.replyNote = r ? r.value : ""; S.inviteState = d.invite === "accept" ? "accepted" : "declined"; flash(d.invite === "accept" ? (S.jakeView === "invite" ? "Accepted" : "Swap confirmed") : "Declined", d.invite === "accept" ? "Your manager decides." : "Maria was told."); return; }
+    if (d.deck) { swipe(d.deck); return; }
+    if (d.day) { S.whoDay = +d.day; render(); return; }
+    if (d.row) { S.mgrOpen = d.row; S.mgrTab = "request"; S.mgrArmed = false; S.swDecl = false; S.mgrPick = d.row === "r1" || d.row === "r2" ? (S.mgrPick || "jake") : null; render(); return; }
+    if (d.sc) { S.swCase = d.sc; S.mgrOpen = "r3"; S.swDecl = false; S.mgrArmed = false; delete S.mgrDone.r3; renderGuide(); render(); return; }
+    if (d.sw === "decline") { S.swDecl = true; S.mgrArmed = false; render(); return; }
+    if (d.sw === "back") { S.swDecl = false; S.mgrArmed = false; render(); return; }
+    if (d.sw === "confirm") { if (!S.mgrArmed) { S.mgrArmed = true; render(); setTimeout(() => { if (S.mgrArmed) { S.mgrArmed = false; render(); } }, 3000); return; } S.mgrArmed = false; S.swDecl = false; S.mgrDone.r3 = "declined"; render(); return; }
+    if (d.mtab) { S.mgrTab = d.mtab; render(); return; }
+    if (d.cand) { if (t.getAttribute("aria-disabled") === "true") return; S.mgrPick = d.cand; render(); return; }
+    if (d.mgr === "close" || (d.mgrScrim !== undefined && e.target === t)) { S.mgrOpen = null; S.mgrArmed = false; S.swDecl = false; render(); return; }
+    if (d.mgr === "approve") { S.mgrDone[S.mgrOpen] = "approved"; render(); return; }
+    if (d.mgr === "decline") { if (!S.mgrArmed) { S.mgrArmed = true; render(); setTimeout(() => { if (S.mgrArmed) { S.mgrArmed = false; render(); } }, 3000); return; } S.mgrArmed = false; S.mgrDone[S.mgrOpen] = "declined"; render(); return; }
+    if (d.orph) { const [id, v] = d.orph.split(":"); S.orphanChoice[id] = v; render(); return; }
+    if (d.orphDone !== undefined) { S.orphan = false; render(); return; }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") { if (S.sheet) { S.sheet = null; render(); } else if (S.mgrOpen === "r3" && S.swDecl) { S.swDecl = false; S.mgrArmed = false; render(); } else if (S.mgrOpen) { S.mgrOpen = null; render(); } }
+    if (e.key === "Enter" && e.target.matches("tr[data-row]")) { S.mgrOpen = e.target.dataset.row; render(); }
+  });
+
+  setScn(0);
+})();
+</script>

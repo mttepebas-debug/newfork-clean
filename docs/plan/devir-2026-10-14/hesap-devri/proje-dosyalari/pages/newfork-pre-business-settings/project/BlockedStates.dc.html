@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Waiting and blocked &mdash; five states</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.pb{display:flex;flex-direction:column;width:1440px;height:1440px;background:#ffffff;color:#1d2525}
+.pb-top{display:flex;align-items:center;justify-content:space-between;gap:20px;height:62px;flex:0 0 62px;padding:0 32px;border-bottom:1px solid #dce3df;background:#ffffff;box-sizing:border-box}
+.pb-who{display:flex;align-items:center;gap:14px;min-width:0}
+.pb-who .av{display:grid;place-items:center;width:28px;height:28px;flex:0 0 28px;border-radius:999px;background:#e7f1ed;color:#12624f;font-size:11px;font-weight:700}
+.pb-who .mail{font-size:12.5px;color:#66716c}
+.pb-topnote{max-width:560px;font-size:12px;line-height:1.45;color:#8d9793;text-align:right}
+.pb-btn-tiny{min-height:32px;padding:0 12px;font-size:12.5px}
+.pb-brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.pb-account{display:flex;flex-direction:column;align-items:stretch;gap:14px;min-width:0}
+.pb-account-id{display:grid;min-width:0;color:#66716c;font-size:12px;line-height:1.35}
+.pb-account-id strong{color:#17221e;font-size:13px}
+.pb-account-id span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.col{width:660px;margin:0 auto;padding:56px 0;box-sizing:border-box;display:flex;flex-direction:column;gap:26px}
+.state{display:flex;flex-direction:column;gap:10px;padding:24px 28px;border:1px solid #e2e6e4;border-radius:12px;background:#ffffff}
+.stag{display:inline-flex;align-self:flex-start;align-items:center;padding:2px 9px;border-radius:999px;background:#f0f3f1;color:#5f6b66;font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.state h2{margin:4px 0 0;color:#17221e;font-size:25px;line-height:1.2;font-weight:600}
+.state p{margin:0;color:#66716c;font-size:15px;line-height:1.55}
+.acts{display:flex;flex-wrap:wrap;gap:10px;margin-top:8px}
+.pb-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.pb-btn-primary{background:#176954;color:#ffffff}
+.pb-btn-secondary{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.lead{margin:0;color:#66716c;font-size:13px;line-height:1.6}
+.dot{display:inline-block;width:8px;height:8px;border-radius:999px;background:#cbd4d0;margin-right:8px}
+</style>
+</helmet>
+<div class="pb">
+  <header class="pb-top">
+    <span class="pb-brand">NEWFORK</span>
+    <span class="pb-who"><span class="av">MT</span><span class="mail">owner@newfork.test</span><button type="button" class="pb-btn pb-btn-secondary pb-btn-tiny">Sign out</button></span>
+  </header>
+  <div class="col">
+    <p class="lead"><strong style="color:#17221e;">Waiting, blocked and loading &mdash; the same frame every time.</strong> Loading is not a spinner and not a blank page: it is this frame with a different title, so the account block and the way out never disappear while something is being checked.</p>
+
+    <section class="state">
+      <span class="stag">Loading</span>
+      <h2><span class="dot"></span>Checking your account</h2>
+      <p>Nothing else on the screen moves. When the answer arrives only the title and the body change.</p>
+    </section>
+
+    <section class="state">
+      <span class="stag">Owner has not finished setup</span>
+      <h2>Almost ready</h2>
+      <p>Meyhouse is still being set up. You&#39;ll get access the moment the owner finishes.</p>
+      <div class="acts"><button type="button" class="pb-btn pb-btn-primary">Check again</button><button type="button" class="pb-btn pb-btn-secondary">Choose a workspace</button></div>
+    </section>
+
+    <section class="state">
+      <span class="stag">Load failed</span>
+      <h2>That workspace didn&#39;t load</h2>
+      <p>Something went wrong on our side, not yours.</p>
+      <div class="acts"><button type="button" class="pb-btn pb-btn-primary">Try again</button><button type="button" class="pb-btn pb-btn-secondary">Choose a workspace</button></div>
+    </section>
+
+    <section class="state">
+      <span class="stag">Suspended</span>
+      <h2>This workspace is on hold</h2>
+      <p>Harbour &amp; Co can&#39;t be opened right now. Your other workspaces are unaffected.</p>
+      <div class="acts"><button type="button" class="pb-btn pb-btn-primary">Choose a workspace</button></div>
+    </section>
+
+    <section class="state">
+      <span class="stag">Account recovery</span>
+      <h2>Bring your account back</h2>
+      <p>This account is scheduled for deletion. Restoring it cancels that and keeps everything you had.</p>
+      <div class="acts"><button type="button" class="pb-btn pb-btn-primary">Restore account</button></div>
+    </section>
+
+    <p class="lead">A&#231;&#305;k kalan bir madde: &ldquo;That workspace didn&#39;t load&rdquo; ekran&#305; bug&#252;n alt&#305;nda ham sunucu c&#252;mlesini bas&#305;yor. Metin kural&#305; (ham sunucu mesaj&#305; g&#246;sterilmez) bunu yasakl&#305;yor ama d&#252;zeltmesi koda ba&#287;lama i&#351;i &mdash; backlog&#39;da duruyor, burada bilerek &#231;izilmedi.</p>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1440}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

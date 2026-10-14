@@ -1,0 +1,11 @@
+/* C · Lines and shadows only, no new colors */
+.catalog-drawer .job-drawer-header{box-shadow:0 1px 0 #dce3df,0 4px 12px rgba(23,34,30,.06);position:relative;z-index:1;border-bottom:0!important}
+.catalog-drawer .job-details-legend,.catalog-drawer .job-drawer-intro h3{font-size:15px!important;font-weight:650!important;color:#17221e!important}
+.catalog-drawer .job-details-fields{border-bottom:1px solid #cbd4d0!important;padding-bottom:20px!important}
+.catalog-drawer .job-catalog-editor input:not([type=color]):not([type=checkbox]),.catalog-drawer select{border-color:#cbd4d0!important}
+.catalog-drawer .job-search{border-color:#cbd4d0!important}
+.catalog-drawer .job-employee-list{border-color:#cbd4d0!important;border-radius:10px!important;box-shadow:0 1px 3px rgba(23,34,30,.08)}
+.catalog-drawer .job-employee-row{border-bottom-color:#eef1ef!important}
+.catalog-drawer .job-employee-row:has(input:checked){box-shadow:inset 3px 0 0 #176954}
+.catalog-drawer .job-employee-row:has(input:checked) strong{color:#176954}
+.catalog-drawer .job-editor-footer{box-shadow:0 -4px 12px rgba(23,34,30,.06),0 -1px 0 #dce3df;border-top:0!important;position:relative;z-index:1}

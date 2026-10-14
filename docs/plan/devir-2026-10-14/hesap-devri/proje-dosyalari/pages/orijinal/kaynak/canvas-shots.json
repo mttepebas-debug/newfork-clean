@@ -1,0 +1,19 @@
+[
+ {"file":"sign-in","as":"signedout","route":"/sign-in","title":"Sign in"},
+ {"file":"sign-up","as":"signedout","route":"/sign-in","click":"create a workspace account","title":"Create a workspace account"},
+ {"file":"forgot-password","as":"signedout","route":"/forgot-password","title":"Forgot password"},
+ {"file":"hub-owner","as":"owner","route":"/workspaces","title":"Workspaces · Owner"},
+ {"file":"hub-invited","as":"invited","route":"/workspaces","title":"Workspaces · davet edildi, katılmadı"},
+ {"file":"hub-nobusiness","as":"nobusiness","route":"/workspaces","title":"Workspaces · workspace yok"},
+ {"file":"hub-newowner","as":"newowner","route":"/workspaces","title":"Workspaces · kurulum bitmedi"},
+ {"file":"owner-setup","as":"newowner","route":"/onboarding","title":"Owner kurulumu (/onboarding)"},
+ {"file":"employee-welcome","as":"onboarding","route":"/welcome","title":"Employee welcome (/welcome)"},
+ {"file":"account-profile","as":"owner","route":"/account/profile","title":"Account ▸ Profile"},
+ {"file":"account-security","as":"owner","route":"/account/security","title":"Account ▸ Security"},
+ {"file":"account-preferences","as":"owner","route":"/account/preferences","title":"Account ▸ Preferences"},
+ {"file":"account-notifications","as":"owner","route":"/account/preferences/notifications","title":"Account ▸ Notifications"},
+ {"file":"account-inbox","as":"owner","route":"/account/inbox","title":"Account ▸ Inbox"},
+ {"file":"account-documents","as":"employee","route":"/account/documents","title":"Account ▸ Documents · Maria Lopez"},
+ {"file":"settings-documents","as":"owner","route":"/app/settings/documents","title":"Settings ▸ Documents"},
+ {"file":"settings-notifications","as":"owner","route":"/app/settings/notifications","title":"Settings ▸ Notifications"}
+]

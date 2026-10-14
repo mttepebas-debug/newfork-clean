@@ -1,0 +1,275 @@
+ok 3.0 owner: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 manager: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 next: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 filter: /app/schedule?shiftTypes=00000403-0000-4000-8000-000000000403&jobs=00000304-0000-4000-8000-000000000304 «Schedule» | /app/schedule «»
+ok 3.0 settings: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 drafts: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 past-draft: /app/schedule?date=2026-10-07&view=week «Schedule» | /app/schedule «»
+ok 3.0 calendar: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 add: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 time-off: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 admin: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 shift-lead: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 read-only: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 employee: /app/schedule «» | /app/schedule «»
+ok 3.0 manager-ghost: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 phone: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 loading: /app/schedule «» | /app/schedule «»
+ok 3.0 error: /app/schedule «» | /app/schedule «»
+ok 3.0 no-access: /app/schedule «» | /app/schedule «»
+ok 3.0 prev: /app/schedule?date=2026-10-07&view=week «Schedule» | /app/schedule «»
+ok 3.0 return-cue: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 day: /app/schedule?date=2026-10-14&view=day «Schedule» | /app/schedule «»
+ok 3.0 day-header: /app/schedule?locations=00000101-0000-4000-8000-000000000101&date=2026-10-14&view=day «Schedule» | /app/schedule «»
+ok 3.0 day-next: /app/schedule?date=2026-10-15&view=day «Schedule» | /app/schedule «»
+ok 3.0 calendar-marks: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 calendar-month: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 calendar-year: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 calendar-week: /app/schedule?date=2026-09-28&view=week «Schedule» | /app/schedule «»
+ok 3.0 sort-job: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 badges-off: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 total-hours: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 edit-settings: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 unassigned-hidden: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 unassigned-unfrozen: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 default-times: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 loc-menu: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 loc-uptown: /app/schedule?locations=00000102-0000-4000-8000-000000000102 «Schedule» | /app/schedule «»
+ok 3.0 loc-header: /app/schedule?locations=00000101-0000-4000-8000-000000000101 «Schedule» | /app/schedule «»
+ok 3.0 merged: /app/schedule?layout=unified «Schedule» | /app/schedule «»
+ok 3.0 jobs-menu: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 jobs-kitchen: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 types-menu: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 employees-menu: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 hide-unscheduled: /app/schedule?hideUnscheduled=true «Schedule» | /app/schedule «»
+ok 3.0 chip-remove: /app/schedule?jobs=00000304-0000-4000-8000-000000000304 «Schedule» | /app/schedule «»
+ok 3.0 escape-clear: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 no-locations: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 published-menu: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 publish-hint: /app/schedule?date=2026-10-28&view=week «Schedule» | /app/schedule?date=2026-10-28&view=week «»
+ok 3.0 publish-draft: /app/schedule?date=2026-10-28&view=week&draft=5eed0000-0000-4000-8000-0000000002fa «Schedule» | /app/schedule?date=2026-10-28&view=week&draft=5eed0000-0000-4000-8000-0000000002fa «»
+ok 3.0 publish-no-draft: /app/schedule?date=2026-10-28&view=week «Schedule» | /app/schedule?date=2026-10-28&view=week «»
+ok 3.0 drafts-next: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 draft-view: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 draft-published-row: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 draft-delete: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 draft-deleted: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 template-from-window: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 drafts-error: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 draft-shifts-error: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 draft-unavailable: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 edit-live: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 edit-draft: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 edit-one-location: /app/schedule?mode=edit&locations=00000101-0000-4000-8000-000000000101 «Schedule» | /app/schedule?mode=edit&locations=00000101-0000-4000-8000-000000000101 «»
+ok 3.0 edit-resume: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 edit-other-week: /app/schedule?date=2026-10-14&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-14&view=week&mode=edit «»
+ok 3.0 discard-quiet: /app/schedule?mode=preview&date=2026-10-14&view=week «Schedule» | /app/schedule «»
+ok 3.0 discard-confirm: /app/schedule?mode=edit «Discard unsaved changes?» | /app/schedule?mode=edit «»
+ok 3.0 other-viewer: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 other-editor: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 locked: /app/schedule «Draft is being edited» | /app/schedule «»
+ok 3.0 idle-warning: /app/schedule?mode=edit «Keep editing?» | /app/schedule «»
+ok 3.0 idle-expired: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 recovered: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 edit-closed: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 edit-stale: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 today: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 unpublished-dot: /app/schedule?date=2026-10-28&view=week «Schedule» | /app/schedule «»
+ok 3.0 deadline: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 deadline-lead: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 partial-time-off: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 drag-time-off: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 closed-day: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 short-day: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 unassigned: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 stack: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 employee-drawer: /app/schedule «Profile» | /app/schedule «»
+ok 3.0 logo: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 logo-manager: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 no-employees: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 h-scroll: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 total-hours-note: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 card-variants: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 note-card: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 avail-mark: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 avail-popup: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 avail-off: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 changed-after: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 new-mark: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 staged: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 edited: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 overlap: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 saving: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 multi-select: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 select-all: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 delete-selected: /app/schedule?mode=edit «Delete selected shifts?» | /app/schedule?mode=edit «»
+ok 3.0 delete-selected-done: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 copy: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 paste: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 paste-empty: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 copy-many: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 paste-blocked: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 drag-move: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 drag-copy: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 new-mark-avail: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 drop-warning: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 drop-blocked: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 preset-click: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 preset-drag: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 preset-unavailable: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 undo: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 undo-refused: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 undo-stale: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 change-refused: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 menu-new: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 menu-live: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 menu-restore: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 menu-cell: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 menu-cell-presets: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 escape-layers: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-unassigned: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 editor-count: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-employee-list: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-no-qualified: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-edit: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 editor-time-error: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-time-empty: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-24h: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-labels: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-note: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-checking: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-check-failed: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-stale: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-delete: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-move: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-add-form: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-timeline: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-timeline-open: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-timeline-edit: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-paste: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 editor-closed-day: /app/schedule?date=2026-10-21&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-21&view=week&mode=edit «»
+ok 3.0 rule-warn: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 rule-block: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 save-menu: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-version: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 save-live-name: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 save-same-name: /app/schedule?date=2026-10-21&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-21&view=week&mode=edit «»
+ok 3.0 save-overwrite: /app/schedule?date=2026-10-21&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-21&view=week&mode=edit «»
+ok 3.0 save-done: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-shift-lead: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 save-owned: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Overwrite "Next week plan"?» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-stale: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Schedule save failed» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-failed: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Schedule save failed» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-failed-discard: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «Schedule save failed» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-exchange: /app/schedule?mode=edit «Schedule save failed» | /app/schedule?mode=edit «»
+ok 3.0 save-exchange-done: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 save-past-confirm: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «This changes shifts that already ran» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 save-past-blocked: /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «These changes cannot be saved» | /app/schedule?date=2026-10-21&view=week&mode=edit&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-step1: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-remove-all: /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-0000000002fa «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-0000000002fa «»
+ok 3.0 publish-no-changes: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-no-department: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-changed-since: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-preview-loading: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-preview-error: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-manager: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-save-and: /app/schedule?draft=7e17b6f3-c0fa-4543-adca-9975685f474a «Select locations to publish» | /app/schedule?draft=7e17b6f3-c0fa-4543-adca-9975685f474a «»
+ok 3.0 publish-ready: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-blocker: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-warnings: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-risks: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-availability: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-notes: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-show-shift: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801&mode=edit «Schedule» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801&mode=edit «»
+ok 3.0 publish-notify: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Notify employees» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-notify-search: /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-00000000033d «Notify employees» | /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-00000000033d «»
+ok 3.0 publish-no-affected: /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-0000000002fb «Notify employees» | /app/schedule?date=2026-10-21&view=week&draft=5eed0000-0000-4000-8000-0000000002fb «»
+ok 3.0 publish-done: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 publish-notified: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 publish-notify-warning: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 publish-stale: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-conflicts: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Select locations to publish» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-refreshed: /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «Pre-flight check» | /app/schedule?date=2026-10-21&view=week&draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.0 publish-continued: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 unpublish-picked: /app/schedule «Unpublish schedule» | /app/schedule «»
+ok 3.0 unpublish: /app/schedule «Unpublish schedule» | /app/schedule «»
+ok 3.0 unpublish-confirm: /app/schedule «Unpublish schedule» | /app/schedule «»
+ok 3.0 unpublish-done: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 unpublish-from-draft: /app/schedule?date=2026-10-21&view=week «Unpublish schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 unpublish-refresh-failed: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 templates-tab: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 templates-create: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule «»
+ok 3.0 templates-duplicate: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 templates-use-target: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 templates-use-open: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 templates-apply-blank: /app/schedule?date=2026-10-28&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-28&view=week&mode=edit «»
+ok 3.0 templates-merge: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 templates-replace: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.0 templates-departments: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 templates-archived-label: /app/schedule?date=2026-10-28&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-28&view=week&mode=edit «»
+ok 3.0 templates-apply-failed: /app/schedule?date=2026-10-28&view=week&mode=edit «Schedule» | /app/schedule?date=2026-10-28&view=week&mode=edit «»
+ok 3.0 autofill: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 autofill-reject: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 autofill-empty: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 autofill-applied: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 autofill-rejected: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 autofill-stale: /app/schedule?mode=edit «Review auto-fill» | /app/schedule?mode=edit «»
+ok 3.0 default-hours: /app/schedule?mode=edit «Review current default hours» | /app/schedule?mode=edit «»
+ok 3.0 default-hours-applied: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 default-hours-empty: /app/schedule?mode=edit «Review current default hours» | /app/schedule?mode=edit «»
+ok 3.0 default-hours-stale: /app/schedule?mode=edit «Review current default hours» | /app/schedule?mode=edit «»
+ok 3.0 default-hours-blocked: /app/schedule?mode=edit «Review current default hours» | /app/schedule?mode=edit «»
+ok 3.0 logo-dialog: /app/schedule «Schedule logo» | /app/schedule «»
+ok 3.0 logo-upload: /app/schedule «Schedule logo» | /app/schedule «»
+ok 3.0 logo-saved: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 logo-wrong-type: /app/schedule «Schedule logo» | /app/schedule «»
+ok 3.0 logo-too-big: /app/schedule «Schedule logo» | /app/schedule «»
+ok 3.0 logo-save-failed: /app/schedule «Schedule logo» | /app/schedule «»
+ok 3.0 editor-warned: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 drop-note: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 draft-delete-busy: /app/schedule?date=2026-10-21&view=week «Schedule» | /app/schedule?date=2026-10-21&view=week «»
+ok 3.0 leave-ask: /app/schedule?mode=edit «Save changes before leaving?» | /app/schedule?mode=edit «»
+ok 3.0 leave-keep: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.0 leave-discard: /app/schedule «Schedule» | /app/schedule «»
+ok 3.0 leave-save: /app/schedule?mode=edit «Save draft» | /app/schedule?mode=edit «»
+ok 3.0 leave-clean: /app/schedule?mode=edit «Schedule» | /app/schedule «»
+ok 3.1 owner: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 manager: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 excel: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 png: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 no-export: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 phone: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 print: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 print-a4: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 combine: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 merged: /app/schedule/export?layout=unified «Schedule» | /app/schedule/export?layout=unified «»
+ok 3.1 draft-source: /app/schedule/export?draft=00000801-0000-4000-8000-000000000801 «Schedule» | /app/schedule/export?draft=00000801-0000-4000-8000-000000000801 «»
+ok 3.1 editing: /app/schedule?mode=edit «Schedule» | /app/schedule?mode=edit «»
+ok 3.1 day-range: /app/schedule/export?view=day «Schedule» | /app/schedule/export?view=day «»
+ok 3.1 downloaded: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 download-again-failed: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 preparing: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 popup-blocked: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 prefs-not-saved: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 escape: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 short-names: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 short-names-manager: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 preview-failed: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.1 export-failed: /app/schedule/export «Schedule» | /app/schedule/export «»
+ok 3.2 owner: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 manager: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 rename: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 delete: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 read-only: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 phone: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 loading: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 error: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 empty: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 save-form: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 use-target: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 renamed: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 rename-taken: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 rename-changed: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 deleted: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+ok 3.2 delete-failed: /app/schedule/templates «Schedule» | /app/schedule/templates «»
+all scenarios opened

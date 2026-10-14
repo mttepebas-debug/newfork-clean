@@ -1,0 +1,1275 @@
+<title>Shift Change Mockup</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..800&display=swap">
+<style>
+/* One design language for release, cover and swap, taken from the app's locked
+   swap window (KARARLAR "Takas inceleme penceresi H2", apps/web/src/views/swap-review.css):
+   a small centred title, a centred shift card with its direction (Maria → Jake),
+   orange / green check boxes, and a grey footer with the buttons. Every window,
+   sheet and card in the process is built from these few parts. The app is light
+   only, so the page commits to the app's light tokens. */
+:root {
+  color-scheme: light;
+  --theme-page: #f4f5f3; --theme-surface: #ffffff; --theme-surface-soft: #f7f9f8; --theme-surface-muted: #f0f3f1;
+  --theme-text: #17221e; --theme-text-body: #1d2525; --theme-muted: #66716c; --theme-text-secondary: #50605a;
+  --theme-border: #dce3df; --theme-border-subtle: #e2e6e4; --theme-border-strong: #cbd4d0; --theme-border-control: #7f8c86; --theme-border-hover: #95aaa1;
+  --theme-accent: #176954; --theme-accent-strong: #12624f; --theme-selected: #e7f1ed; --theme-focus: #177a64;
+  --theme-danger: #b84234; --theme-danger-soft: #fff0ee; --theme-danger-strong: #a43830;
+  --theme-warning: #8a5a00; --theme-warning-soft: #fff7e2; --theme-warning-text: #5f491f;
+  --theme-success: #176b4e; --theme-success-soft: #e7f1ed;
+  --theme-list-head: #e6ece8; --theme-list-head-border: #d3dbd6; --theme-list-head-text: #4f5d57; --theme-list-cell-text: #46514d;
+  --theme-on-accent: #ffffff; --bezel: #1d2525;
+  --font: Inter, ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --ease: cubic-bezier(.2, .8, .2, 1);
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; background: var(--theme-page); }
+body { color: var(--theme-text); font-family: var(--font); font-size: 14px; -webkit-font-smoothing: antialiased; }
+button, input, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
+svg { flex: none; }
+
+/* ===== Page chrome: guide beside the frames ===== */
+.wrap { max-width: 1880px; margin: 0 auto; padding: 20px 20px 48px; display: grid; gap: 16px; }
+@media (max-width: 600px) { .wrap { padding-inline: 16px; } }
+.top { display: grid; gap: 6px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-accent); }
+h1.page { margin: 0; font-size: 26px; letter-spacing: -.015em; text-wrap: balance; }
+.lede { margin: 0; max-width: 95ch; color: var(--theme-text-secondary); line-height: 1.55; }
+.layout { display: grid; grid-template-columns: 300px minmax(0, 1fr); gap: 20px; align-items: start; }
+@media (max-width: 1100px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.guide { display: grid; gap: 14px; position: sticky; top: 12px; }
+@media (max-width: 1100px) { .guide { position: static; } }
+.panel { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; min-width: 0; }
+.panel h2 { margin: 0; font-size: 11px; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.scn-group { display: grid; gap: 2px; }
+.scn-group > b { font-size: 12px; color: var(--theme-muted); margin: 8px 0 2px; font-weight: 600; }
+.scn { display: grid; grid-template-columns: 24px 1fr; gap: 8px; align-items: start; text-align: left; padding: 7px 8px; border: 0; border-radius: 8px; background: none; cursor: pointer; line-height: 1.35; }
+.scn:hover { background: var(--theme-surface-soft); }
+.scn[aria-pressed="true"] { background: var(--theme-selected); color: var(--theme-accent-strong); font-weight: 600; }
+.scn .n { width: 22px; height: 22px; border-radius: 6px; display: grid; place-items: center; background: var(--theme-surface-muted); font-size: 11.5px; font-weight: 700; color: var(--theme-text-secondary); font-variant-numeric: tabular-nums; }
+.scn[aria-pressed="true"] .n { background: var(--theme-accent); color: var(--theme-on-accent); }
+.explain { display: grid; gap: 8px; line-height: 1.55; color: var(--theme-text-body); }
+.explain p { margin: 0; }
+.explain .who { font-size: 12px; color: var(--theme-muted); }
+.explain ul { margin: 0; padding-left: 18px; display: grid; gap: 3px; }
+.explain .basis { font-size: 12px; color: var(--theme-text-secondary); border-top: 1px solid var(--theme-border-subtle); padding-top: 8px; }
+.explain .opt-title { font-size: 12px; font-weight: 600; color: var(--theme-text-secondary); margin-top: 2px; }
+.pills { display: flex; flex-wrap: wrap; gap: 6px; }
+.pills button { min-height: 30px; padding: 0 10px; border: 1px solid var(--theme-border-strong); border-radius: 999px; background: var(--theme-surface); font-size: 12.5px; font-weight: 600; cursor: pointer; }
+.pills button[aria-pressed="true"] { background: var(--theme-text); border-color: var(--theme-text); color: var(--theme-on-accent); }
+.reset { justify-self: start; min-height: 32px; padding: 0 12px; border: 1px solid var(--theme-border-strong); border-radius: 8px; background: var(--theme-surface); font-weight: 600; font-size: 13px; cursor: pointer; }
+.stage { display: flex; flex-wrap: wrap; gap: 24px; align-items: flex-start; min-width: 0; }
+.fcol { display: grid; gap: 8px; min-width: 0; max-width: 100%; }
+.flabel { font-size: 11px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-text-secondary); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; min-height: 30px; }
+.flabel span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--theme-muted); }
+.persona { display: inline-flex; padding: 3px; gap: 3px; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 9px; }
+.persona button { min-height: 26px; padding: 0 10px; border: 0; border-radius: 6px; background: none; font-size: 12.5px; font-weight: 600; color: var(--theme-text-secondary); cursor: pointer; text-transform: none; letter-spacing: 0; }
+.persona button[aria-pressed="true"] { background: var(--theme-text); color: var(--theme-on-accent); }
+.phone { width: 410px; max-width: 100%; padding: 10px; border-radius: 46px; background: var(--bezel); }
+.screen { position: relative; width: 390px; max-width: 100%; height: 800px; border-radius: 36px; overflow: hidden; background: var(--theme-page); display: flex; flex-direction: column; }
+@media (max-width: 480px) {
+  .fcol { width: 100%; }
+  .phone { width: 100%; padding: 0; border-radius: 0; background: none; }
+  .screen { width: 100%; height: 760px; border-radius: 16px; border: 1px solid var(--theme-border); }
+}
+.desk-fit { width: min(1080px, 100%); overflow-x: auto; border-radius: 10px; }
+.desk { position: relative; width: 1080px; height: 760px; border: 1px solid var(--theme-border); border-radius: 10px; overflow: hidden; background: var(--theme-page); display: grid; grid-template-columns: 220px 1fr; }
+
+/* ===== Phone app shell ===== */
+.app-status { height: 36px; flex: none; display: flex; justify-content: space-between; align-items: center; padding: 0 28px; font-size: 12.5px; font-weight: 600; background: var(--theme-page); }
+.app-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overflow-x: hidden; scrollbar-width: none; }
+.app-body::-webkit-scrollbar { display: none; }
+.app-pad { padding: 8px 16px 20px; display: grid; gap: 16px; }
+.nav { flex: none; display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--theme-border); background: var(--theme-surface); padding: 6px 4px 16px; }
+.nav button { border: 0; background: none; display: grid; justify-items: center; gap: 3px; padding: 6px 0; font-size: 11px; font-weight: 600; color: var(--theme-muted); cursor: pointer; position: relative; }
+.nav button svg { width: 22px; height: 22px; }
+.nav button[aria-current="page"] { color: var(--theme-accent); }
+.dot-n { min-width: 16px; height: 16px; padding: 0 4px; border-radius: 999px; background: var(--theme-danger-strong); color: #fff; font-size: 9.5px; font-weight: 800; display: inline-grid; place-items: center; line-height: 1; }
+.nav .dot-n { position: absolute; top: 2px; left: calc(50% + 6px); }
+.ph-head { display: grid; gap: 4px; }
+.ph-head .eyebrow { font-size: 10.5px; }
+.ph-head h2 { margin: 0; font-size: 26px; letter-spacing: -.02em; display: flex; align-items: center; gap: 8px; }
+.ph-head p { margin: 0; color: var(--theme-text-secondary); font-size: 13px; }
+.bell { margin-left: auto; position: relative; width: 40px; height: 40px; border-radius: 12px; border: 1px solid var(--theme-border); background: var(--theme-surface); display: grid; place-items: center; cursor: pointer; }
+.bell .dot-n { position: absolute; top: -5px; right: -5px; }
+.sec { display: flex; justify-content: space-between; align-items: baseline; }
+.sec h3 { margin: 0; font-size: 13px; font-weight: 600; color: var(--theme-text-secondary); }
+.sec button { border: 0; background: none; color: var(--theme-accent); font-weight: 600; font-size: 13px; cursor: pointer; padding: 0; }
+.rows { display: grid; gap: 8px; }
+
+/* App list card (views/list-cards.css): page-level lists only. */
+.lc { display: grid; grid-template-columns: 40px minmax(0, 1fr) auto; gap: 1px 12px; align-items: center; padding: 11px 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; width: 100%; cursor: pointer; }
+.lc:hover { border-color: var(--theme-border-hover); }
+.lc.static { cursor: default; }
+.lc.static:hover { border-color: var(--theme-border); }
+.lc .t { font-weight: 600; font-size: 14px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.lc .s { font-size: 12.5px; color: var(--theme-text-secondary); grid-column: 2; min-width: 0; }
+.lc .r { grid-row: 1 / span 2; grid-column: 3; align-self: center; color: var(--theme-muted); font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+.lc.mine { border-color: var(--theme-accent); background: var(--theme-selected); }
+.tile { grid-row: span 2; width: 40px; height: 40px; border-radius: 10px; background: var(--theme-surface-muted); display: grid; place-items: center; align-content: center; line-height: 1.05; }
+.tile small { font-size: 9.5px; font-weight: 700; color: var(--theme-muted); text-transform: uppercase; letter-spacing: .04em; }
+.tile b { font-size: 16px; }
+.tile.ic { background: var(--theme-selected); color: var(--theme-accent); }
+.av { grid-row: span 2; width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; font-size: 11.5px; font-weight: 700; background: var(--theme-surface-muted); color: var(--theme-text-secondary); flex: none; }
+.lc .av { width: 40px; height: 40px; font-size: 12.5px; }
+.chip { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; line-height: 1.4; white-space: nowrap; }
+.chip[data-tone="green"] { background: var(--theme-success-soft); color: var(--theme-success); }
+.chip[data-tone="gray"] { background: var(--theme-surface-muted); color: var(--theme-text-secondary); }
+.chip[data-tone="amber"] { background: var(--theme-warning-soft); color: var(--theme-warning); }
+.chip[data-tone="red"] { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
+.empty { display: grid; gap: 4px; justify-items: center; text-align: center; padding: 28px 16px; border: 1px dashed var(--theme-border-strong); border-radius: 12px; color: var(--theme-text-secondary); font-size: 13px; }
+.empty b { color: var(--theme-text); font-size: 14px; }
+
+/* Shift Hub tabs (list-page tabs) */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--theme-border); overflow-x: auto; scrollbar-width: none; }
+.tabs button { position: relative; height: 40px; padding: 8px 12px; border: 0; border-bottom: 2px solid transparent; margin-bottom: -1px; background: none; color: var(--theme-muted); font-size: 13px; font-weight: 500; white-space: nowrap; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tabs button[aria-current="page"] { border-bottom-color: var(--theme-accent); color: var(--theme-text); font-weight: 600; }
+
+/* ===== The one window (H2 grammar) ===== */
+.w { display: flex; flex-direction: column; min-height: 0; background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 12px; overflow: hidden; }
+.w-head { flex: none; display: grid; grid-template-columns: 44px minmax(0, 1fr) 44px; grid-auto-rows: 44px; align-items: center; padding: 6px 6px 0; }
+.w-head h2 { grid-column: 2; margin: 0; color: var(--theme-text-secondary); font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-align: center; text-transform: uppercase; }
+.w-ic { display: grid; width: 44px; height: 44px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--theme-muted); cursor: pointer; }
+.w-ic:hover { background: var(--theme-surface-soft); color: var(--theme-text); }
+.w-ic.end { grid-column: 3; }
+.w-names { flex: none; margin: -8px 0 12px; padding: 0 16px; font-size: 14px; font-weight: 600; text-align: center; }
+.w-names i { font-style: normal; color: var(--theme-muted); font-weight: 500; }
+.w-body { flex: 1 1 auto; min-height: 0; overflow-y: auto; scrollbar-width: none; display: grid; gap: 12px; align-content: start; padding: 0 14px 14px; font-variant-numeric: tabular-nums; }
+.w-body::-webkit-scrollbar { display: none; }
+.w-foot { flex: none; display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--theme-border); background: var(--theme-surface-soft); }
+.w-meta { flex: 1 1 140px; min-width: 0; margin-right: auto; color: var(--theme-text-secondary); font-size: 12px; line-height: 1.4; }
+.w-meta.done { color: var(--theme-success); font-weight: 600; }
+.w-label { margin: 2px 0 -4px; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; color: var(--theme-text-secondary); display: flex; justify-content: space-between; gap: 8px; }
+.w-label span { text-transform: none; letter-spacing: 0; font-weight: 500; color: var(--theme-muted); }
+.w-label.with-chip { justify-content: flex-start; align-items: center; }
+.w-label.with-chip .chip { font-weight: 600; }
+.w-label.with-chip .chip[data-tone="amber"] { color: var(--theme-warning); }
+
+.hand i { color: var(--theme-text-secondary); font-style: normal; font-weight: 400; }
+.hand em { font-style: normal; color: var(--theme-muted); font-weight: 500; }
+
+/* Ticket: one shift in the Your shift window */
+.tk { display: grid; grid-template-columns: 58px minmax(0, 1fr); gap: 0 14px; align-items: center; padding: 14px 14px 0; border: 1px solid var(--theme-border); border-radius: 12px; background: var(--theme-surface); box-shadow: 0 1px 2px #10221a0d; }
+.tk-date { display: grid; justify-items: center; align-content: center; gap: 1px; width: 58px; height: 66px; border-radius: 10px; background: var(--theme-selected); color: var(--theme-accent-strong); line-height: 1.05; }
+.tk-date small { font-size: 10.5px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
+.tk-date b { font-size: 24px; font-weight: 700; letter-spacing: -.02em; }
+.tk-main { display: grid; gap: 4px; min-width: 0; }
+.tk-time { font-size: 17px; font-weight: 650; letter-spacing: -.01em; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tk-row { display: flex; align-items: center; gap: 5px; font-size: 12.5px; color: var(--theme-text-secondary); min-width: 0; white-space: nowrap; }
+.tk-row svg { width: 13px; height: 13px; color: var(--theme-muted); }
+.tk-row i { width: 3px; height: 3px; border-radius: 50%; background: var(--theme-border-strong); margin: 0 4px; }
+.tk-foot { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; margin: 12px -14px 0; padding: 9px 14px; border-top: 1px solid var(--theme-border-subtle); font-size: 12px; font-weight: 600; color: var(--theme-accent-strong); }
+.tk-foot span { font-weight: 500; color: var(--theme-muted); }
+.tk-foot.soon { color: var(--theme-warning); }
+.tk-foot .hand { color: var(--theme-text); font-weight: 600; }
+.tk-foot .hand i { color: var(--theme-muted); font-style: normal; font-weight: 400; }
+.tk-foot .hand em { font-style: normal; font-weight: 500; color: var(--theme-muted); }
+.tk.ghost { display: grid; place-items: center; min-height: 96px; padding: 14px; border-style: dashed; background: var(--theme-surface-soft); box-shadow: none; color: var(--theme-muted); font-size: 13px; }
+.tpair { display: grid; }
+.tpair .swapc { justify-self: center; position: relative; z-index: 1; display: grid; place-items: center; width: 32px; height: 32px; margin: -8px 0; border: 1px solid var(--theme-border); border-radius: 50%; background: var(--theme-surface); color: var(--theme-accent-strong); box-shadow: 0 2px 6px #10221a14; }
+.tpair .swapc svg { width: 15px; height: 15px; stroke-width: 2.4; transform: rotate(90deg); }
+
+/* Check box: one size, two short lines, icon fixed left (H2) */
+.ck { position: relative; display: flex; width: 100%; height: 44px; align-items: center; justify-content: center; margin: 6px 0 0; padding: 0 24px; border-radius: 6px; background: var(--theme-warning-soft); line-height: 1.3; }
+.ck svg { position: absolute; top: 50%; left: 10px; width: 14px; height: 14px; color: var(--theme-warning); stroke-width: 2.2; transform: translateY(-50%); }
+.ck > span { display: grid; text-align: center; }
+.ck strong { color: var(--theme-warning); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.ck small { color: var(--theme-warning-text); font-size: 11px; white-space: nowrap; }
+.ck[data-tone="ok"] { background: var(--theme-success-soft); }
+.ck[data-tone="ok"] svg, .ck[data-tone="ok"] strong { color: var(--theme-success); }
+.ck[data-tone="ok"] small { color: var(--theme-text-secondary); }
+.ck.new { outline: 1.5px dashed var(--theme-border-control); outline-offset: 2px; }
+.cks { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.cks .ck { margin: 0; }
+.cks.one { grid-template-columns: minmax(0, 1fr); }
+
+/* Manager checks: one list per person, warnings first, then what is fine.
+   Left-aligned rows read top to bottom; colour only where something needs a look. */
+.cl { list-style: none; margin: 0; padding: 0; display: grid; }
+.cl li { display: grid; grid-template-columns: 16px 100px minmax(0, 1fr); gap: 10px; align-items: start; padding: 8px 2px; border-top: 1px solid var(--theme-border-subtle); font-size: 13px; line-height: 1.4; }
+.cl li:first-child { border-top: 0; }
+.cl svg { width: 15px; height: 15px; margin-top: 1px; color: var(--theme-success); }
+.cl b { font-weight: 600; color: var(--theme-text-body); }
+.cl span { min-width: 0; color: var(--theme-text-secondary); }
+.cl li[data-tone="warn"] svg, .cl li[data-tone="warn"] b { color: var(--theme-warning); }
+.cl li[data-tone="block"] svg, .cl li[data-tone="block"] b { color: var(--theme-danger-strong); }
+.cl li[data-tone="warn"] span, .cl li[data-tone="block"] span { color: var(--theme-text); }
+.cl li.new { margin-top: 4px; padding-inline: 8px; border: 1.5px dashed var(--theme-border-control); border-radius: 6px; }
+.pr .more .cl { padding: 2px 10px; border-radius: 8px; background: var(--theme-surface); }
+/* Better than today: green arrow. In a swap the plain "fine" rows step back to grey so
+   worse (amber) and better (green) are what the eye finds. */
+.cl li[data-tone="good"] svg, .cl li[data-tone="good"] b { color: var(--theme-success); }
+.cl li[data-tone="good"] span { color: var(--theme-text); }
+.pb .cl li[data-tone="ok"] svg { color: var(--theme-muted); }
+/* A swap at a glance, read like Schedule: shifts are columns, rows are Owner / After swap / Approves */
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+table.trade { width: 100%; table-layout: fixed; border-collapse: separate; border-spacing: 0; border: 1px solid var(--theme-border); border-radius: 8px; font-size: 13px; }
+table.trade col.l { width: 84px; }
+table.trade th, table.trade td { padding: 9px 10px; text-align: center; vertical-align: middle; border-top: 1px solid var(--theme-border-subtle); }
+table.trade thead th, table.trade thead td { border-top: 0; vertical-align: top; }
+/* Every column is its own box: a line between the labels and the shifts, and between the two shifts */
+table.trade td + td, table.trade th + th, table.trade thead td + th, table.trade tbody th + td { border-left: 1px solid var(--theme-border-subtle); }
+table.trade tbody th { text-align: left; font-size: 12px; font-weight: 600; color: var(--theme-text-secondary); }
+.tr-sh { display: grid; justify-items: center; gap: 2px; font-weight: 400; }
+.tr-sh b { font-size: 13.5px; font-weight: 650; color: var(--theme-text); }
+.tr-sh > span { font-size: 12px; color: var(--theme-text-secondary); }
+.tr-sh .tr-loc { display: inline-flex; align-items: center; gap: 4px; margin: 4px 0 2px; padding: 1px 8px 1px 6px; border-radius: 999px; background: var(--theme-surface-muted); color: var(--theme-text-body); font-weight: 600; }
+.tr-p { display: flex; justify-content: center; align-items: center; gap: 8px; min-width: 0; }
+.tr-p > span:last-child, .tr-p b { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tr-p .av { grid-row: auto; width: 24px; height: 24px; font-size: 9.5px; }
+table.trade tr.after th, table.trade tr.after td { background: var(--theme-selected); }
+table.trade tr.after b { color: var(--theme-accent-strong); font-weight: 650; }
+.tr-a { display: grid; justify-items: center; gap: 2px; }
+.tr-a b { font-weight: 600; }
+/* Phone: two equal columns, everything centred; each row's name sits in a small caption row above it */
+table.trade.narrow th, table.trade.narrow td { padding: 9px 8px; }
+table.trade.narrow tr.cap th { padding: 4px 8px; font-size: 10.5px; font-weight: 600; letter-spacing: .07em; text-transform: uppercase; text-align: center; color: var(--theme-text-secondary); background: var(--theme-surface-soft); }
+table.trade.narrow tr.cap.after th { color: var(--theme-accent-strong); background: var(--theme-selected); }
+table.trade.narrow tr.cap + tr td { border-top: 0; }
+.w.sheet .cl li { grid-template-columns: 16px minmax(0, 1fr); gap: 2px 10px; }
+.w.sheet .cl li > span { grid-column: 2; }
+/* Phone: the person's line under the name runs the full width; the verdict stays beside the name */
+.w.sheet .pb-t { display: contents; }
+.w.sheet .pb-head .av { grid-row: 1 / span 2; }
+.w.sheet .pb-t b { grid-column: 2; grid-row: 1; }
+.w.sheet .pb-head > .st { grid-column: 3; grid-row: 1; }
+.w.sheet .pb-t small { grid-column: 2 / 4; grid-row: 2; }
+/* One person in a swap: who, what they take, whether it works for them */
+.pb { display: grid; gap: 10px; }
+.pb + .pb { padding-top: 16px; border-top: 1px solid var(--theme-border); }
+.pb-head { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; }
+.pb-head .av { grid-row: auto; }
+.pb-t { display: grid; min-width: 0; }
+.pb-t b { font-size: 14px; font-weight: 650; }
+.pb-t small { font-size: 12px; color: var(--theme-text-secondary); }
+/* Who approves: each location's manager, with where they are */
+.apv { list-style: none; margin: 0; padding: 0; display: grid; border: 1px solid var(--theme-border); border-radius: 8px; }
+.apv li { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; padding: 8px 12px; }
+.apv li + li { border-top: 1px solid var(--theme-border-subtle); }
+.apv .av { grid-row: auto; width: 28px; height: 28px; font-size: 10.5px; }
+.apv-t { display: grid; min-width: 0; }
+.apv-t b { font-size: 13px; font-weight: 600; }
+.apv-t small { font-size: 12px; color: var(--theme-text-secondary); }
+/* Over the buttons, like the Announcement drawer's band: only when something needs a look */
+.band { flex: 1 1 100%; display: flex; align-items: center; gap: 8px; margin: 0; padding: 8px 10px; border-radius: 6px; background: var(--theme-warning-soft); color: var(--theme-warning-text); font-size: 12.5px; line-height: 1.35; }
+.band svg { flex: none; width: 15px; height: 15px; color: var(--theme-warning); }
+.band[data-tone="block"] { background: var(--theme-danger-soft); color: var(--theme-danger-strong); }
+.band[data-tone="block"] svg { color: var(--theme-danger-strong); }
+.w-foot:has(.band) { flex-wrap: wrap; }
+
+/* Note from a person */
+.q { margin: 0; padding: 10px 12px; border-radius: 8px; background: var(--theme-surface-soft); font-size: 13px; line-height: 1.45; color: var(--theme-text-body); }
+.q b { display: block; font-size: 11.5px; font-weight: 600; color: var(--theme-muted); margin-bottom: 1px; }
+
+/* Field */
+.field { display: grid; gap: 6px; font-size: 12px; font-weight: 600; }
+.field small { font-weight: 400; color: var(--theme-muted); }
+textarea { width: 100%; min-height: 64px; padding: 9px 11px; border: 1px solid var(--theme-border-control); border-radius: 8px; background: var(--theme-surface); resize: vertical; font-size: 13px; font-weight: 400; line-height: 1.45; }
+
+/* Person row: choose, or read a status */
+.pr { display: grid; grid-template-columns: 20px 32px minmax(0, 1fr) auto; gap: 0 10px; align-items: center; width: 100%; padding: 9px 12px; border: 1px solid var(--theme-border); border-radius: 8px; background: var(--theme-surface); text-align: left; cursor: pointer; }
+.pr.read { grid-template-columns: 32px minmax(0, 1fr) auto; cursor: default; }
+.pr:not(.read):hover { border-color: var(--theme-border-hover); }
+.pr[aria-checked="true"] { border-color: var(--theme-accent); background: var(--theme-selected); }
+.pr[aria-disabled="true"] { cursor: not-allowed; opacity: .55; }
+.pr[aria-disabled="true"]:hover { border-color: var(--theme-border); }
+.pr .mark, .pr .av { grid-row: 1 / span 2; }
+.pr .t { grid-column: 3; grid-row: 1; font-weight: 600; font-size: 13.5px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pr .s { grid-column: 3; font-size: 12px; color: var(--theme-text-secondary); }
+.pr.read .t, .pr.read .s { grid-column: 2; }
+.pr .r { grid-column: -2 / -1; grid-row: 1 / span 2; justify-self: end; }
+.pr .more { grid-column: 1 / -1; margin-top: 10px; }
+.pr .more .ck[data-tone="ok"] { background: var(--theme-surface); }
+.mark { grid-row: span 2; width: 18px; height: 18px; border: 1.5px solid var(--theme-border-control); border-radius: 5px; display: grid; place-items: center; background: var(--theme-surface); color: #fff; }
+.mark.round { border-radius: 50%; }
+[aria-checked="true"] > .mark { background: var(--theme-accent); border-color: var(--theme-accent); }
+[aria-checked="true"] > .mark.round { background: var(--theme-surface); }
+[aria-checked="true"] > .mark.round::after { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--theme-accent); }
+.st { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 600; color: var(--theme-text-secondary); white-space: nowrap; }
+.st::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--theme-border-strong); }
+.st[data-tone="ok"] { color: var(--theme-success); }
+.st[data-tone="ok"]::before { background: var(--theme-success); }
+.st[data-tone="warn"] { color: var(--theme-warning); }
+.st[data-tone="warn"]::before { background: #d39b2a; }
+.st[data-tone="block"] { color: var(--theme-danger-strong); }
+.st[data-tone="block"]::before { background: var(--theme-danger-strong); }
+
+/* Request path: where the request is now */
+.path { list-style: none; margin: 0; padding: 0 4px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.path li { position: relative; display: grid; justify-items: center; gap: 6px; font-size: 11.5px; color: var(--theme-muted); text-align: center; line-height: 1.3; }
+.path li::before { content: ""; position: absolute; top: 7px; left: -50%; width: 100%; height: 2px; background: var(--theme-border); z-index: 0; }
+.path li:first-child::before { display: none; }
+.path li.done::before, .path li.now::before { background: var(--theme-accent); }
+.path .pd { position: relative; z-index: 1; width: 16px; height: 16px; border-radius: 50%; background: var(--theme-surface); border: 2px solid var(--theme-border-strong); display: grid; place-items: center; color: #fff; }
+.path .pd svg { width: 10px; height: 10px; stroke-width: 3.5; }
+.path li.done .pd { background: var(--theme-accent); border-color: var(--theme-accent); }
+.path li.now .pd { border-color: var(--theme-accent); box-shadow: 0 0 0 4px var(--theme-selected); }
+.path li.done, .path li.now { color: var(--theme-text); font-weight: 600; }
+
+/* Option rows (Your shift) */
+.opt { display: grid; grid-template-columns: 36px minmax(0, 1fr) 16px; gap: 12px; align-items: center; width: 100%; padding: 11px 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; cursor: pointer; }
+.opt:hover:not(:disabled) { border-color: var(--theme-border-hover); }
+.opt:disabled { opacity: .45; cursor: not-allowed; }
+.opt .oi { width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: var(--theme-selected); color: var(--theme-accent); }
+.opt .oi svg { width: 18px; height: 18px; }
+.opt b { display: block; font-size: 14px; font-weight: 600; }
+.opt span span { display: block; font-size: 12px; color: var(--theme-text-secondary); margin-top: 1px; }
+.opt > svg { color: var(--theme-muted); }
+
+/* Buttons */
+.btn { min-height: 34px; padding: 6px 14px; border-radius: 8px; border: 1px solid var(--theme-border-strong); background: var(--theme-surface); font-size: 13px; font-weight: 600; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: 6px; white-space: nowrap; }
+.btn:hover:not(:disabled) { border-color: var(--theme-border-hover); }
+.btn.go { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--theme-on-accent); }
+.btn.go:hover:not(:disabled) { background: var(--theme-accent-strong); }
+.btn.no { border-color: var(--theme-danger-strong); color: var(--theme-danger-strong); }
+.btn.no.armed { background: var(--theme-danger-strong); color: #fff; }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.btn svg { width: 15px; height: 15px; }
+
+/* Phone variants of the window: bottom sheet, roomy buttons */
+.scrim { position: absolute; inset: 0; z-index: 20; display: flex; align-items: flex-end; background: color-mix(in srgb, var(--theme-text) 34%, transparent); animation: fade .18s ease; }
+.w.sheet { width: 100%; max-height: 90%; border: 0; border-radius: 18px 18px 0 0; animation: up .24s var(--ease); }
+.w.sheet::before { content: ""; flex: none; align-self: center; width: 36px; height: 4px; margin-top: 8px; border-radius: 4px; background: var(--theme-border-strong); }
+.w.sheet .w-names { font-size: 15px; }
+.w.sheet .w-body { padding: 0 16px 16px; }
+.w.sheet .w-foot, .w.inline.roomy .w-foot { flex-wrap: wrap; padding: 10px 16px 18px; }
+.w.sheet .w-meta, .w.inline.roomy .w-meta { flex: 1 1 100%; }
+.w.sheet .w-foot .btn, .w.inline.roomy .w-foot .btn { min-height: 44px; flex: 1 1 0; font-size: 14px; }
+.w.inline { box-shadow: 0 1px 2px #10221a0d; }
+.w.inline .w-head { padding-top: 6px; }
+@keyframes up { from { transform: translateY(48px); opacity: .5; } to { transform: none; opacity: 1; } }
+@keyframes fade { from { opacity: 0; } to { opacity: 1; } }
+
+/* Manager containers: centred window (default) or right-hand drawer */
+.mscrim { position: absolute; inset: 0; z-index: 20; display: grid; place-items: center; padding: 16px; background: color-mix(in srgb, var(--theme-text) 32%, transparent); animation: fade .18s ease; }
+.mscrim.right { display: flex; justify-content: flex-end; align-items: stretch; padding: 0; }
+.w.modal { width: min(380px, 100%); max-height: 100%; box-shadow: 0 20px 60px color-mix(in srgb, var(--theme-text) 22%, transparent); animation: pop .2s var(--ease); }
+.w.modal.wide { width: min(440px, 100%); }
+.w.modal.xwide { width: min(500px, 100%); }
+.orph b { white-space: nowrap; }
+.w.drawer { width: 480px; max-width: 100%; height: 100%; border-radius: 0; border-width: 0 0 0 1px; box-shadow: -12px 0 40px #10221a18; animation: slide .22s var(--ease); }
+/* Drawer = the app's drawer shell (AnnouncementDrawer, CatalogDrawer): title left with
+   its status, one muted line under it, close right; white footer over a hairline. */
+.dh { flex: none; display: grid; grid-template-columns: minmax(0, 1fr) 32px; gap: 4px 10px; align-items: start; padding: 16px 16px 14px; border-bottom: 1px solid var(--theme-border); }
+.dh-title { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; font-size: 18px; font-weight: 650; line-height: 1.3; color: var(--theme-text); }
+.dh-sub { grid-column: 1; margin: 0; color: var(--theme-muted); font-size: 12px; line-height: 18px; }
+.dh-sub b { color: var(--theme-text); font-weight: 600; }
+.dh-x { grid-column: 2; grid-row: 1; display: grid; place-items: center; width: 32px; height: 32px; padding: 0; border: 0; border-radius: 6px; background: none; color: var(--theme-muted); cursor: pointer; }
+.dh-x:hover { background: var(--theme-surface-soft); color: var(--theme-text); }
+.w.drawer .w-body { padding: 16px; gap: 14px; }
+.w.drawer .w-foot { padding: 12px 16px; background: var(--theme-surface); }
+@keyframes pop { from { transform: scale(.97); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes slide { from { transform: translateX(40px); opacity: .5; } to { transform: none; opacity: 1; } }
+
+/* Toast = the phone's own notification banner */
+.toast { position: absolute; left: 10px; right: 10px; top: 40px; z-index: 40; background: color-mix(in srgb, var(--theme-surface) 86%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--theme-border); color: var(--theme-text); padding: 10px 12px; border-radius: 16px; font-size: 13px; line-height: 1.35; box-shadow: 0 12px 32px #10221a26; animation: drop .28s var(--ease); cursor: pointer; display: grid; grid-template-columns: 32px 1fr; gap: 0 10px; align-items: center; }
+.toast .ti { grid-row: span 3; width: 32px; height: 32px; border-radius: 9px; background: var(--theme-accent); color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 13px; }
+.toast small { color: var(--theme-muted); font-size: 11px; }
+.toast b { font-size: 13px; }
+.toast span { color: var(--theme-text-secondary); }
+@keyframes drop { from { transform: translateY(-16px); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* Swipe deck */
+.deck { position: relative; height: 452px; touch-action: pan-y; user-select: none; }
+.dcard { position: absolute; inset: 0; border-radius: 16px; box-shadow: 0 12px 32px #10221a14; cursor: grab; transition: transform .3s var(--ease), opacity .3s, border-color .2s; will-change: transform; }
+.dcard.dragging { transition: border-color .2s; cursor: grabbing; }
+.dcard.back1 { transform: translateY(10px) scale(.96); opacity: .85; pointer-events: none; }
+.dcard.back2 { transform: translateY(20px) scale(.92); opacity: .6; pointer-events: none; }
+.dcard .w-body { overflow: hidden; }
+.dcard .foot-note { margin: 0; text-align: center; font-size: 12px; color: var(--theme-muted); }
+.verdict { position: absolute; top: 12px; padding: 4px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; display: inline-flex; gap: 4px; align-items: center; opacity: 0; pointer-events: none; z-index: 2; }
+.verdict svg { width: 13px; height: 13px; }
+.verdict.take { left: 12px; background: var(--theme-accent); color: #fff; }
+.verdict.pass { right: 12px; background: var(--theme-danger-strong); color: #fff; }
+.deck-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.deck-actions .btn { min-height: 44px; font-size: 14px; }
+.hint { margin: -6px 0 0; text-align: center; font-size: 12px; color: var(--theme-muted); }
+@media (prefers-reduced-motion: reduce) { .dcard, .w, .scrim, .mscrim, .toast { transition: none !important; animation: none !important; } }
+
+/* Notifications (page) */
+.notifs { display: grid; }
+.notif { display: grid; grid-template-columns: 36px 1fr auto; gap: 2px 12px; padding: 12px 16px; border: 0; border-bottom: 1px solid var(--theme-border-subtle); background: none; text-align: left; width: 100%; cursor: pointer; }
+.notif .tile { grid-column: 1; grid-row: 1 / span 2; width: 36px; height: 36px; border-radius: 50%; }
+.notif .tile svg { width: 17px; height: 17px; }
+.notif b { font-size: 13.5px; }
+.notif > span:not(.tile) { grid-column: 2; font-size: 13px; color: var(--theme-text-secondary); line-height: 1.4; }
+.notif small { grid-column: 3; grid-row: 1; font-size: 11.5px; color: var(--theme-muted); }
+.notif.unread b::after { content: ""; display: inline-block; width: 7px; height: 7px; margin-left: 6px; border-radius: 50%; background: var(--theme-accent); vertical-align: middle; }
+
+/* Who's working (page) */
+.days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; }
+.days button { border: 1px solid var(--theme-border); background: var(--theme-surface); border-radius: 10px; padding: 6px 0; display: grid; justify-items: center; gap: 1px; cursor: pointer; }
+.days button small { font-size: 9.5px; font-weight: 700; color: var(--theme-muted); text-transform: uppercase; }
+.days button b { font-size: 15px; }
+.days button i { width: 5px; height: 5px; border-radius: 50%; }
+.days button i.on { background: var(--theme-accent); }
+.days button[aria-pressed="true"] { background: var(--theme-text); border-color: var(--theme-text); color: #fff; }
+.days button[aria-pressed="true"] small { color: #cfd8d4; }
+.days button[aria-pressed="true"] i.on { background: #fff; }
+.loc { display: flex; align-items: center; gap: 6px; font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--theme-text-secondary); }
+.loc svg { width: 12px; height: 12px; }
+.off-note { margin: 0; font-size: 13px; color: var(--theme-text-secondary); }
+
+/* ===== Manager desktop: list page ===== */
+.side { background: var(--theme-surface); border-right: 1px solid var(--theme-border); padding: 16px 10px; display: grid; align-content: start; gap: 2px; }
+.side .ws { font-weight: 700; padding: 6px 10px 14px; }
+.side a { display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: 8px; color: var(--theme-text-body); text-decoration: none; font-weight: 500; font-size: 13.5px; }
+.side a svg { width: 18px; height: 18px; }
+.side a.on { background: var(--theme-selected); color: var(--theme-accent-strong); font-weight: 600; }
+.side a .dot-n { margin-left: auto; }
+.main { padding: 0 32px; overflow-y: auto; min-width: 0; }
+.ph { padding: 32px 0 18px; display: grid; gap: 6px; }
+.ph .eyebrow { font-size: 11px; }
+.ph h2 { margin: 0; font-size: 30px; letter-spacing: -.015em; }
+.ph p { margin: 0; color: var(--theme-text-secondary); font-size: 13.5px; }
+.filters { display: flex; gap: 10px; margin: 12px 0 16px; }
+.filters span { height: 36px; border: 1px solid var(--theme-border-control); border-radius: 6px; background: var(--theme-surface); padding: 0 10px; display: flex; align-items: center; font-size: 13px; color: var(--theme-text-secondary); }
+.filters .sel { width: 200px; }
+.filters .search { flex: 1; }
+table.list { width: 100%; border-collapse: separate; border-spacing: 0; background: var(--theme-surface); border: 1px solid #d7dcda; border-radius: 6px; overflow: hidden; }
+table.list th { height: 40px; padding: 0 14px; text-align: left; background: var(--theme-list-head); border-bottom: 1px solid var(--theme-list-head-border); color: var(--theme-list-head-text); font-size: 11px; font-weight: 600; letter-spacing: .05em; text-transform: uppercase; }
+table.list td { padding: 10px 14px; border-bottom: 1px solid var(--theme-border-subtle); color: var(--theme-list-cell-text); font-size: 13px; }
+table.list th.ic, table.list td.ic { width: 54px; padding-right: 0; }
+.ki { display: grid; place-items: center; flex: none; background: var(--theme-surface-muted); color: var(--theme-accent-strong); }
+.ki.s28 { width: 28px; height: 28px; border-radius: 7px; }
+.ki.s28 svg { width: 16px; height: 16px; }
+.ki.s40 { width: 40px; height: 40px; border-radius: 10px; }
+.ki.s40 svg { width: 22px; height: 22px; }
+/* Request rows: the sentence starts with who would work the shift (Mert, 2026-10-14 00:28Z, 00:30Z) */
+table.list.rq td { vertical-align: top; padding-top: 12px; padding-bottom: 12px; }
+table.list.rq td.ic { padding-top: 11px; }
+table.list.rq td:nth-child(3), table.list.rq td:nth-child(4) { white-space: nowrap; width: 1%; }
+table.list.rq td:nth-child(3) { padding-top: 14px; }
+table.list.rq td:nth-child(4) { padding-top: 15px; }
+table.list.rq td:nth-child(2) { padding-top: 13px; }
+.rq-t { display: grid; gap: 3px; max-width: 560px; }
+.rq-t .lead { color: var(--theme-text); font-size: 13.5px; line-height: 1.45; }
+.rq-t .lead b, .rq-t .ln b { font-weight: 600; }
+.rq-t .ln { color: var(--theme-text); font-size: 13px; line-height: 1.45; }
+.rq-t .due { color: var(--theme-text-secondary); font-size: 12.5px; }
+.rc { display: grid; grid-template-columns: 40px minmax(0, 1fr); column-gap: 12px; row-gap: 3px; align-items: start; padding: 12px; border: 1px solid var(--theme-border); border-radius: 10px; background: var(--theme-surface); text-align: left; width: 100%; cursor: pointer; font: inherit; color: var(--theme-text); }
+.rc:hover { border-color: var(--theme-border-hover); }
+.rc .ki { grid-row: 1 / span 4; }
+.rc > :not(.ki) { grid-column: 2; min-width: 0; }
+.rc .lead { font-size: 14px; line-height: 1.4; }
+.rc .lead b, .rc .ln b { font-weight: 600; }
+.rc .ln { display: block; font-size: 12.5px; line-height: 1.5; color: var(--theme-text-secondary); font-variant-numeric: tabular-nums; }
+.rc .ln b { color: var(--theme-text); }
+.rc .ln svg { display: inline; vertical-align: -1px; margin-right: 2px; color: var(--theme-muted); }
+.rc .sw2 { display: grid; grid-template-columns: 1fr 1fr; margin-top: 4px; border: 1px solid var(--theme-border); border-radius: 8px; }
+.rc .sw2 .c { display: grid; gap: 1px; padding: 7px 10px; min-width: 0; font-size: 12.5px; line-height: 1.4; color: var(--theme-text-secondary); font-variant-numeric: tabular-nums; }
+.rc .sw2 .c + .c { border-left: 1px solid var(--theme-border); }
+.rc .sw2 b { color: var(--theme-text); font-weight: 600; }
+.rc .sw2 .io { margin-top: 2px; color: var(--theme-text); }
+.rc .sw2 .io2 { color: var(--theme-muted); }
+.rc .sw2 svg { display: inline; vertical-align: -1px; margin-right: 2px; color: var(--theme-muted); }
+.exp { font-variant-numeric: tabular-nums; }
+.exp.none { color: var(--theme-muted); }
+.exp.soon, .rc .ft .soon, .w-meta.soon { color: var(--theme-danger-strong); font-weight: 600; }
+.rc .ft { display: flex; align-items: center; flex-wrap: wrap; gap: 4px 8px; margin-top: 5px; font-size: 12px; color: var(--theme-muted); }
+table.list td small { display: block; color: var(--theme-muted); font-size: 12px; font-weight: 400; white-space: nowrap; }
+table.list tbody tr { cursor: pointer; }
+table.list tbody tr:hover { background: var(--theme-surface-soft); }
+table.list tbody tr:last-child td { border-bottom: 0; }
+.seg { display: inline-flex; border: 1px solid var(--theme-border-strong); border-radius: 8px; overflow: hidden; flex: none; }
+.seg button { border: 0; background: var(--theme-surface); padding: 6px 10px; font-size: 12px; font-weight: 600; cursor: pointer; color: var(--theme-text-secondary); }
+.seg button + button { border-left: 1px solid var(--theme-border-strong); }
+.seg button[aria-pressed="true"] { background: var(--theme-selected); color: var(--theme-accent-strong); }
+.orph { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border: 1px solid var(--theme-border); border-radius: 8px; font-size: 13px; }
+.orph small { display: block; color: var(--theme-text-secondary); font-size: 12px; }
+.mlist { display: grid; gap: 8px; padding: 0 16px 16px; }
+</style>
+
+<main class="wrap">
+  <header class="top">
+    <span class="eyebrow">Mockup · plan, kod değil · tek tasarım dili</span>
+    <h1 class="page">Vardiya değişimi: release, cover, swap</h1>
+    <p class="lede">Bütün pencereler aynı beş parçadan yapıldı: ortalı küçük başlık, ortalı vardiya kartı ve yönü (Maria → Jake), turuncu/yeşil kontrol kutuları, kişi satırı, altta gri şerit ve düğmeler. Kaynağı uygulamadaki kilitli swap penceresi (H2). Soldan bir an seç; ekranlar tıklanır, kartlar kaydırılır. Arayüz metni İngilizce, açıklamalar Türkçe. Kararlar <code>/mnt/project-files/notes/vardiya-degisim/PLAN.md</code>'de.</p>
+  </header>
+  <div class="layout">
+    <aside class="guide">
+      <section class="panel" aria-label="Anlar">
+        <h2>Anlar</h2>
+        <div id="scn-list"></div>
+      </section>
+      <section class="panel" aria-label="Ne oluyor">
+        <h2>Ne oluyor</h2>
+        <div class="explain" id="explain"></div>
+        <button class="reset" type="button" id="reset">Baştan başlat</button>
+      </section>
+    </aside>
+    <section class="stage" aria-label="Ekranlar">
+      <div class="fcol" id="col-phone">
+        <div class="flabel">Çalışan telefonu <span>390 × 800</span>
+          <div class="persona" id="persona" role="group" aria-label="Kim bakıyor">
+            <button type="button" data-p="maria">Maria (veren)</button>
+            <button type="button" data-p="jake">Jake (alan)</button>
+          </div>
+        </div>
+        <div class="phone"><div class="screen" id="emp"></div></div>
+      </div>
+      <div class="fcol" id="col-mphone">
+        <div class="flabel">Müdür telefonu <span>Rachel · 390 × 800</span></div>
+        <div class="phone"><div class="screen" id="mgr-phone"></div></div>
+      </div>
+      <div class="fcol" id="col-desk">
+        <div class="flabel">Müdür masaüstü <span>Rachel Adams · Downtown · 1080 × 760</span></div>
+        <div class="desk-fit"><div class="desk" id="mgr-desk"></div></div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  const svg = (d, w = 20, sw = 2) => `<svg width="${w}" height="${w}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
+  const I = {
+    home: svg('<path d="M3 10.5 12 3l9 7.5"/><path d="M5 9.5V21h14V9.5"/>'),
+    cal: svg('<rect x="3" y="4.5" width="18" height="16.5" rx="2"/><path d="M3 9.5h18M8 2.5v4M16 2.5v4"/>'),
+    swap: svg('<path d="M7 4 3 8l4 4"/><path d="M3 8h14"/><path d="m17 20 4-4-4-4"/><path d="M21 16H7"/>'),
+    grid: svg('<rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>'),
+    bell: svg('<path d="M6 8a6 6 0 1 1 12 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 0 0 4 0"/>', 18),
+    x: svg('<path d="M6 6l12 12M18 6 6 18"/>', 18),
+    chev: svg('<path d="m9 6 6 6-6 6"/>', 16),
+    back: svg('<path d="m15 6-6 6 6 6"/>', 18),
+    release: svg('<path d="M12 3v12"/><path d="m7 8 5-5 5 5"/><path d="M5 21h14"/>'),
+    cover: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><path d="M17 8h5M19.5 5.5v5"/>'),
+    check: svg('<path d="m5 12 5 5 9-10"/>', 14, 2.6),
+    warn: svg('<path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/>', 14),
+    pin: svg('<path d="M12 21s7-6.2 7-11.5a7 7 0 1 0-14 0C5 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/>', 12),
+    users: svg('<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.5 3.4-5.5 6.5-5.5s5.7 2 6.5 5.5"/><circle cx="17.5" cy="9" r="2.5"/><path d="M16 14.6c2.6.1 4.6 1.9 5.3 5.4"/>', 18),
+    inbox: svg('<path d="M3 13h5l2 3h4l2-3h5"/><path d="M5 5h14l2 8v6H3v-6z"/>', 18),
+    clock: svg('<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>', 14),
+    bag: svg('<rect x="3" y="7" width="18" height="13" rx="2"/><path d="M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/>', 14),
+    pickup: svg('<path d="M18 11V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2"/><path d="M14 10V4a2 2 0 0 0-2-2a2 2 0 0 0-2 2v2"/><path d="M10 10.5V6a2 2 0 0 0-2-2a2 2 0 0 0-2 2v8"/><path d="M18 8a2 2 0 1 1 4 0v6a8 8 0 0 1-8 8h-2c-2.8 0-4.5-.86-5.99-2.34l-3.6-3.6a2 2 0 0 1 2.83-2.82L7 15"/>'),
+    stepin: svg('<circle cx="9" cy="8" r="4"/><path d="M2 20a7 7 0 0 1 11.5-5.4"/><path d="M22 17h-7"/><path d="m18 13.5-3.5 3.5 3.5 3.5"/>'),
+    up: svg('<path d="M7 17 17 7"/><path d="M8 7h9v9"/>', 14, 2.4),
+    spark: svg('<path d="M12 3v4M12 17v4M3 12h4M17 12h4M6 6l2.5 2.5M15.5 15.5 18 18M18 6l-2.5 2.5M8.5 15.5 6 18"/>', 18),
+  };
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
+  const ini = (n) => n.split(" ").map((p) => p[0]).join("").slice(0, 2);
+  const first = (n) => n.split(" ")[0];
+
+  // ---------- demo data (Harbor & Vine) ----------
+  const SHIFT = { id: "s-fri", dow: "Fri", date: "Oct 16", day: 16, mon: "Oct", hrs: "6 h", when: "In 3 days", time: "4:00 PM – 10:00 PM", short: "4p–10p", job: "Server", loc: "Downtown" };
+  const JAKE_SAT = { id: "s-sat", dow: "Sat", date: "Oct 17", day: 17, mon: "Oct", hrs: "6 h", when: "In 4 days", time: "4:00 PM – 10:00 PM", short: "4p–10p", job: "Server", loc: "Downtown" };
+  const SOON = { id: "s-today", dow: "Tue", date: "Oct 13", day: 13, mon: "Oct", hrs: "4 h", when: "Starts in 2 h", soon: true, time: "11:00 AM – 3:00 PM", short: "11a–3p", job: "Server", loc: "Downtown" };
+  const TEAM = [
+    // Maria sees names and jobs only: other people's hours and overtime are for managers, admins and owners (Mert, 2026-10-13 12:01Z).
+    { id: "jake", name: "Jake Miller", s: "Server" },
+    { id: "ana", name: "Ana Torres", s: "Server" },
+    { id: "leo", name: "Leo Park", s: "Server" },
+    { id: "priya", name: "Priya Shah", s: "Server" },
+    { id: "sam", name: "Sam Reed", s: "Already working then", busy: true },
+  ];
+  const SWAP_OPTS = [
+    { id: "s-sat", who: "Jake Miller", sh: JAKE_SAT },
+    { id: "s-sun", who: "Priya Shah", sh: { dow: "Sun", date: "Oct 18", day: 18, when: "In 5 days", time: "4:00 PM – 10:00 PM", loc: "Downtown" } },
+    { id: "s-thu", who: "Leo Park", sh: { dow: "Thu", date: "Oct 15", day: 15, when: "In 2 days", time: "11:00 PM – 5:00 AM", loc: "Downtown" }, why: "Only 6 h of rest before your Friday" },
+  ];
+  const OPEN = [
+    { id: "o1", from: "Maria Lopez", dow: "Fri", date: "Oct 16", day: 16, hrs: "6 h", when: "In 3 days", time: "4:00 PM – 10:00 PM", loc: "Downtown", note: "Family dinner came up. Section 4 is usually busy, thanks!", wk: ["38 h this week", "32 h now"], avail: ["Available", "on Friday"] },
+    { id: "o2", from: "Daniel Brooks", dow: "Sun", date: "Oct 18", day: 18, hrs: "5 h", when: "In 5 days", time: "10:00 AM – 3:00 PM", loc: "Downtown", note: "", wk: ["37 h this week", "32 h now"], avail: ["Available", "on Sunday"], offFor: "jake" },
+    { id: "o3", from: null, dow: "Tue", date: "Oct 20", day: 20, hrs: "6 h", when: "In 7 days", time: "5:00 PM – 11:00 PM", loc: "Midtown", note: "", wk: ["38 h this week", "32 h now"], avail: ["Available", "on Tuesday"] },
+  ];
+  const ck = (tone, top, bottom, isNew) => ({ tone, top, bottom, isNew });
+  // Manager checks: [tone, rule, what it means for this person]. tone ok | warn | block.
+  // One row per candidate; the checks open when the row is chosen.
+  const CANDS = {
+    r1: [
+      { id: "jake", name: "Jake Miller", s: "Asked 2 h ago", rows: [["ok", "Hours", "6 h that day · 38 h this week"], ["ok", "Days in a row", "Day 4 in a row"], ["ok", "Rest", "14 h since his last shift · 10 h needed"], ["ok", "Availability", "Available Friday"]] },
+      { id: "ana", name: "Ana Torres", s: "Asked 1 h ago", rows: [["warn", "Hours", "44 h this week · 4 h over 40"], ["ok", "Days in a row", "Day 3 in a row"], ["ok", "Rest", "12 h since her last shift · 10 h needed"], ["ok", "Availability", "Available Friday"]] },
+      { id: "leo", name: "Leo Park", s: "Asked 20 min ago", rows: [["ok", "Hours", "6 h that day · 36 h this week"], ["warn", "Days in a row", "Day 7 with no day off"], ["warn", "Rest", "7 h after his Thursday close · 10 h needed"], ["ok", "Availability", "Available Friday"]] },
+    ],
+    r2: [
+      { id: "jake", name: "Jake Miller", s: "Accepted 30 min ago", rows: [["ok", "Hours", "6 h that day · 38 h this week"], ["ok", "Days in a row", "Day 5 in a row"], ["ok", "Rest", "16 h since his last shift · 10 h needed"], ["ok", "Availability", "Available Saturday"]] },
+      { id: "priya", name: "Priya Shah", s: "Accepted 10 min ago", rows: [["warn", "Hours", "10 h that day · 2 h over 8"], ["ok", "Days in a row", "Day 2 in a row"], ["ok", "Travel", "45 min after her Midtown shift · 45 min needed"], ["ok", "Availability", "Available Saturday"]] },
+      // Who declined is not shown to the manager (Mert 13:52); kept here so the count reads "2 of 3".
+      { id: "leo", name: "Leo Park", s: "Declined", off: true },
+    ],
+    r5: [
+      { id: "sam", name: "Sam Reed", s: "Asked 30 min ago", rows: [["ok", "Hours", "5 h that day · 34 h this week"], ["ok", "Days in a row", "Day 3 in a row"], ["ok", "Rest", "15 h since his last shift · 10 h needed"], ["ok", "Availability", "Available Tuesday"]] },
+    ],
+  };
+  // The manager sees what is being decided: a Pickup (a released shift someone asked for),
+  // a Cover request (people Maria asked; only who accepted) or a Swap.
+  const REQS = [
+    // Rows come soonest-expiring first. A request expires 4 h before its shift (the earlier
+    // shift in a swap); in its last 12 h the time turns red (Mert, 2026-10-14 08:30Z).
+    { id: "r5", kind: "Pickup", owner: "Chris Walker", sh: { day: "Tue, Oct 13", start: "6:00 PM", range: "6–11 PM", job: "Server", loc: "Midtown" }, tk: { dow: "Tue", date: "Oct 13", day: 13, mon: "Oct", hrs: "5 h", job: "Server", time: "6:00 PM – 11:00 PM", loc: "Midtown", when: "Today" }, due: ["Today, 2:00 PM", "today, 2:00 PM"], left: 5, status: ["1 wants it", "amber"] },
+    { id: "r1", kind: "Pickup", owner: "Maria Lopez", note: "Family dinner came up. Section 4 is usually busy, thanks!", sh: { day: "Fri, Oct 16", start: "4:00 PM", range: "4–10 PM", job: "Server", loc: "Downtown" }, tk: SHIFT, due: ["Fri, Oct 16, 12:00 PM", "Fri, 12:00 PM"], left: 75, status: ["3 want it", "amber"] },
+    { id: "r2", kind: "Cover", owner: "Maria Lopez", note: "Family dinner came up. Section 4 is usually busy, thanks!", sh: { day: "Sat, Oct 17", start: "11:00 AM", range: "11 AM–5 PM", job: "Server", loc: "Downtown" }, tk: { dow: "Sat", date: "Oct 17", day: 17, mon: "Oct", hrs: "6 h", job: "Server", time: "11:00 AM – 5:00 PM", loc: "Downtown", when: "In 4 days" }, due: ["Sat, Oct 17, 7:00 AM", "Sat, 7:00 AM"], left: 94, status: ["2 accepted", "amber"] },
+    { id: "r3", kind: "Swap", due: ["Sun, Oct 18, 11:00 AM", "Sun, 11:00 AM"], left: 122, status: ["Needs decision", "amber"] },
+    { id: "r4", kind: "Pickup", owner: "Ana Torres", taker: "Leo Park", sh: { day: "Thu, Oct 15", start: "4:00 PM", range: "4–10 PM", job: "Server", loc: "Downtown" }, status: ["Approved", "green"] },
+  ];
+  const SW_CASES = [["clean", "Engel yok"], ["travel", "Yol"], ["hours", "Fazla mesai"], ["days", "7 gün üst üste"], ["rest", "Dinlenme"], ["all", "Hepsi birden"]];
+  // A swap: two shifts change hands. Each one has its owner, who works it after, and the
+  // manager of its location who approves it (two locations, two approvals).
+  const SW_SHIFTS = [
+    { owner: "Priya Shah", to: "Daniel Brooks", dow: "Sun", date: "Oct 18", time: "3:00 – 11:00 PM", start: "3:00 PM", range: "3–11 PM", hrs: "8 h", job: "Server", loc: "Downtown", approver: "Rachel Adams", you: true },
+    { owner: "Daniel Brooks", to: "Priya Shah", dow: "Tue", date: "Oct 20", time: "5:00 – 11:00 PM", start: "5:00 PM", range: "5–11 PM", hrs: "6 h", job: "Server", loc: "Midtown", approver: "Marcus Green" },
+  ];
+  // What changes for each person if the swap goes through: warn = worse and over a rule,
+  // good = better than today, ok = fine. Hours always shows before → after.
+  function swEffects(c) {
+    const has = (k) => c === k || c === "all";
+    const d = {
+      hours: has("hours") ? ["warn", "Hours", "40 → 42 h in week of Oct 18 · 2 h over 40"] : ["ok", "Hours", "38 → 40 h in week of Oct 18"],
+      days: has("days") ? ["warn", "Days in a row", "Sunday is day 7 with no day off"] : ["ok", "Days in a row"],
+      rest: ["ok", "Rest"],
+      travel: has("travel") ? ["warn", "Travel", "30 min after his Midtown shift · 45 min needed"] : ["ok", "Travel"],
+      avail: ["ok", "Availability"],
+    };
+    const p = {
+      hours: ["good", "Hours", "42 → 40 h in week of Oct 18 · no overtime"],
+      days: has("days") ? ["good", "Days in a row", "Gets Sunday off · a 6-day run ends"] : ["ok", "Days in a row"],
+      rest: has("rest") ? ["warn", "Rest", "8 h until her Wed 7:00 AM shift · 10 h needed"] : ["ok", "Rest"],
+      travel: ["ok", "Travel"],
+      avail: ["ok", "Availability"],
+    };
+    return [Object.values(d), Object.values(p)];
+  }
+
+  // ---------- state ----------
+  const fresh = () => ({
+    persona: "maria", empScreen: "home", hubTab: "available",
+    sheet: null, sheetShift: SHIFT,
+    request: null, jakeReq: null,
+    deckDone: {}, coverPick: [], swapPick: null, toast: null, whoDay: 16,
+    takeArmed: false, replyNote: "",
+    mgrOpen: null, mgrPick: null, mgrArmed: false, mgrDecl: false, mgrDone: {}, mgrTaker: {},
+    orphan: false, orphanChoice: {},
+    swCase: "travel",
+  });
+  let S = fresh();
+  let scn = 0;
+
+  // ---------- scenarios ----------
+  const SCN = [
+    { group: "Çalışan · vardiyayı veren", label: "Vardiyaya basınca: üç seçenek", set: { persona: "maria", sheet: "shift" },
+      who: "Maria, telefon",
+      text: "Maria Home'da vardiyasına basar; alttan aynı pencere açılır. Başlık, ortalı vardiya kartı ve üç adlı seçenek. Aynı pencere Who's working listesinden de açılır.",
+      list: ["Vardiyada açık bir istek varsa seçenekler kapalıdır (cover ile release aynı anda olmaz).", "Pencerenin altındaki gri şerit her pencerede aynı yerde: ne olacağını söyler."],
+      basis: "Kararlar 04:01, 04:56, 06:43" },
+    { group: null, label: "Son 4 saat: istek açılamaz", set: { persona: "maria", sheet: "shift", sheetShift: "soon" },
+      who: "Maria, bugünkü 11:00 vardiyası",
+      text: "Vardiyaya 4 saatten az kaldıysa kartın altında turuncu kutu çıkar ve seçenekler kapanır. Uyarının dili müdürün swap penceresindeki kutuyla aynı.",
+      list: ["Açık istekler de bu anda kapanır; ilgili herkese bildirim gider."],
+      basis: "Karar 04:54, 04:56" },
+    { group: null, label: "Release: havuza bırak", set: { persona: "maria", sheet: "release" },
+      who: "Maria",
+      text: "Tek soru, tek düğme: isteğe bağlı not ve Release shift. Kartın altındaki yön satırı \"Maria → anyone eligible\" der; kime gideceği baştan görünür.",
+      list: ["Not yalnız veren tarafından yazılır.", "Müdür onaylayana kadar vardiya Maria'dadır; gri şerit bunu söyler."],
+      basis: "Kararlar 04:01, 04:02, 04:52, 04:53" },
+    { group: null, label: "Cover: en çok 3 kişiye sor", set: { persona: "maria", sheet: "cover", coverPick: ["jake", "leo"] },
+      who: "Maria",
+      text: "Kişi satırlarından en çok 3 kişi seçilir. Seçtikçe kartın yön satırı değişir: \"Maria → Jake, Leo\". O saatte çalışan kişi seçilemez. Listede yalnız ad ve pozisyon var: başkasının haftalık saati ve fazla mesaisi çalışana görünmez.",
+      list: ["Saat ve fazla mesaiyi yalnız müdür, admin ve owner görür (karar çekmecesindeki kutular).", "Kabul edenlerden müdür seçer.", "Herkes reddederse ya da süre dolarsa Maria yeniden 3 kişiye sorabilir ya da release'e çevirebilir."],
+      basis: "Kararlar 04:55, 06:43, 12:01" },
+    { group: null, label: "Swap: anlaşılan vardiyayı öner", set: { persona: "maria", sheet: "swap", swapPick: "s-sat" },
+      who: "Maria",
+      text: "Müdürün gördüğü H2 kart çifti burada da var: Maria'nın vardiyası \"Maria → Jake\", Jake'inki \"Jake → Maria\". Altta anlaşılan vardiya seçilir; çakışan vardiya nedeniyle birlikte kapalı.",
+      list: ["Jake onaylayınca istek müdüre gider; farklı lokasyonsa iki müdür onaylar."],
+      basis: "Kararlar 05:02, 06:43" },
+    { group: null, label: "My requests: yol çizgisi ve Take back", set: { persona: "maria", empScreen: "hub", hubTab: "requests", request: { kind: "release", status: "open", note: "Family dinner came up. Section 4 is usually busy, thanks!" } },
+      who: "Maria, Shift Hub → My requests",
+      text: "İstek aynı pencere kalıbında bir kart. Üstte yol çizgisi isteğin nerede olduğunu gösterir: Released → 2 want it → Manager picks. Altta isteyenler ve Take back.",
+      list: ["Take back kırmızı ve iki tıkla çalışır.", "Yol çizgisi tek yenilik; cover ve swap'ta da aynı üç adım."],
+      basis: "Karar 04:52" },
+    { group: "Çalışan · alan", label: "Bildirim: Extra shift available", set: { persona: "jake", empScreen: "notifs" },
+      who: "Jake, uygun herkes",
+      text: "Release'te uygun herkese bildirim gider. Basınca doğrudan kart destesi açılır.",
+      list: [], basis: "Karar 04:51" },
+    { group: null, label: "Available Shifts: kartı kaydır", set: { persona: "jake", empScreen: "hub", hubTab: "available" },
+      who: "Jake",
+      text: "Destedeki her kart aynı pencere kalıbında: başlık, ortalı vardiya kartı (\"Maria → you\"), not ve iki yeşil kutu (bu haftaki saat, müsaitlik). Sağa kaydır = alırım, sola = geç. Kart döner, yeşil ya da kırmızı etiket belirir.",
+      list: ["Kaydırmadan aynı iş alttaki iki düğmeyle ve klavyedeki ok tuşlarıyla da yapılır.", "Jake not yazamaz; yalnız ister ya da geçer."],
+      basis: "Kararlar 04:52, 04:53, 06:43" },
+    { group: null, label: "İzinli güne vardiya almak", set: { persona: "jake", empScreen: "hub", hubTab: "available", deckDone: { o1: "pass" } },
+      who: "Jake, Pazar günü onaylı izinli",
+      text: "Jake'in Pazar izni onaylı. Destedeki Pazar kartında yeşil müsaitlik kutusu yerine turuncu \"Off that day\" kutusu var. Sağa kaydırınca (ya da I'll take it) önce bir soru açılır: bu vardiya ona verilirse o günkü izni iptal olur. \"Take shift\" derse istek müdüre gider; \"Keep time off\" derse kart yerine döner.",
+      list: ["İzin, müdür vardiyayı Jake'e verdiği an iptal olur; müdür reddederse izin olduğu gibi kalır (önerim).", "Yalnız o günün izni düşer; çok günlük izinde diğer günler kalır (önerim).", "Müdürün karar çekmecesinde izinle ilgili hiçbir şey yazmaz.", "Cover davetini kabul ederken de aynı soru çıkar."],
+      basis: "Mert 13:52; 9 Ekim'deki \"onaylı izin hiçbir yolla ezilmez\" kuralını değiştirir" },
+    { group: null, label: "Cover daveti: Accept / Decline", set: { persona: "jake", sheet: "invite", toast: { t: "Maria asked you to cover", s: "Fri, Oct 16 · 4p–10p · Downtown" } },
+      who: "Jake, davet edilenlerden biri",
+      text: "Bildirime basınca aynı pencere açılır: \"Maria Lopez → you\", Maria'nın notu, Jake'in kendi kutuları. Decline ve Accept tek tık.",
+      list: ["Kabul edince My requests'te yol çizgisi: Maria asked → You accepted → Manager picks."],
+      basis: "Kararlar 04:53, 06:43" },
+    { group: null, label: "Swap onayı: Confirm / Decline", set: { persona: "jake", sheet: "swapconfirm", toast: { t: "Confirm your swap with Maria", s: "You give Sat, Oct 17 · You get Fri, Oct 16" } },
+      who: "Jake",
+      text: "Jake müdürle aynı kart çiftini görür; altında yalnız kendi kutuları. İsteğe bağlı not cevapla birlikte Maria'ya gider.",
+      list: ["Confirm'den sonra müdüre gider; onaya kadar herkes kendi vardiyasında."],
+      basis: "Kararlar 05:02, 06:43" },
+    { group: null, label: "Schedule (telefon): Who's working", set: { persona: "jake", empScreen: "who", whoDay: 16 },
+      who: "Herkes",
+      text: "Telefonda Schedule gün listesi: 7 günlük şerit ve lokasyona göre kim çalışıyor. Kendi vardiyan en üstte; basınca aynı \"Your shift\" penceresi açılır.",
+      list: ["Masaüstünde tablo aynen kalır."],
+      basis: "Karar 03:59" },
+    { group: "Müdür", label: "Requests → Shift changes tablosu", set: { mgrOpen: null },
+      who: "Rachel",
+      text: "Her satır türün ikonuyla başlar (Pickup el, Cover yerine geçen kişi, Swap iki ok). Sonra vardiyayı alacak kişinin adıyla başlayan bir cümle: kim, kimin vardiyası, saat, iş, lokasyon, gün. Son sütun Expires: isteğin kendiliğinden düşeceği an (vardiyanın başlamasından 4 saat önce); son 12 saatte kırmızı. Satırlar en yakın düşecek olandan başlar. Satıra basınca çekmece sağdan açılır; telefonda alttan.",
+      list: ["Kim girer, kim çıkar her satırda açık: pickup ve cover'da asıl sahip her zaman çıkar (\"The person you approve replaces Maria on this shift\"); swap'ta \"Daniel replaces Priya on Sun, Oct 18…\".", "Telefonda cümle kısa (kim, kimin vardiyası); gün, saat ve lokasyon altında; en altta durum ve son saat. Swap'ta iki vardiya yan yana: \"Daniel works it / instead of Priya\".", "Karar verilince: \"Ana Torres took over…\" + \"Ana replaces Maria on this shift\"; reddedilince \"Maria still works this shift\".", "İkon karosu masaüstünde ve telefonda aynı: 40 px.", "Örnek: Chris'in bu akşamki vardiyası bugün 2:00 PM'de düşüyor, 5 saat kaldı: kırmızı. Telefonda \"Expires today, 2:00 PM\" de kırmızı. Karar verilmiş satırda süre yok (—).", "Müdüre ilk isteyende bir bildirim; sonra 12 saatte bir hatırlatma ve kapanmadan 4 saat önce son uyarı."],
+      basis: "Kararlar 04:01, 05:03, 05:39, 06:43, 12:57, Mert 13:52; Mert 2026-10-14 00:28, 00:30, 00:53, 00:54, 08:30" },
+    { group: null, label: "Shift pickup: isteyenler", set: { mgrOpen: "r1", mgrPick: "jake" },
+      who: "Rachel",
+      text: "Başlık \"Shift pickup\", altında vardiyanın sahibi: \"Shift owner: Maria Lopez · Downtown\". Üstte vardiya, Maria'nın notu, sonra \"Who wants it\" ve hemen yanında \"3 want it\". Kişiye basınca kontrolleri açılır: önce uyarılar.",
+      list: ["Kontroller: Hours (günde 8, haftada 40 saati geçerse uyarı), Days in a row (7 gün üst üste uyarı), Rest ya da Travel, Availability.", "Uyarı varsa düğmelerin üstünde sarı şerit; onay düğmesi \"Give to Jake\".", "Onaylı izin satırı yok: izinli kişi vardiyayı kendi isteğiyle alıyorsa müdüre söylenmez."],
+      basis: "Kararlar 04:52, 05:03, 06:43, 12:57, Mert 13:52" },
+    { group: null, label: "Cover request: kabul edenler", set: { mgrOpen: "r2", mgrPick: "jake" },
+      who: "Rachel",
+      text: "Başlık \"Cover request\", altında \"Shift owner: Maria Lopez · Downtown\". Listede yalnız kabul edenler var (\"Who accepted\" ve yanında \"2 accepted\"); reddeden Leo görünmez.",
+      list: ["Priya'da Hours uyarısı: aynı gün Midtown'daki sabah vardiyasıyla 10 saat, günlük 8'i 2 saat geçiyor.", "Biri onaylanınca diğerlerine \"Someone else is covering\" gider."],
+      basis: "Kararlar 06:43, 12:57, Mert 13:52" },
+    { group: null, label: "Swap kararı: kimin vardiyası, kime geçiyor", set: { mgrOpen: "r3", swCase: "travel" }, cases: true,
+      who: "Rachel (Midtown'da Marcus da onaylar)",
+      text: "Üstteki tablo Schedule gibi okunur: iki sütun iki vardiya (gün, saat, lokasyon). Satırlar: Owner = vardiyanın asıl sahibi, After swap = swap olursa kim çalışır, Approves = o lokasyonun müdürü. Altında kişi kişi etkisi: kötüleşen turuncu ⚠, iyileşen yeşil ↗. Hâl seç:",
+      list: ["Lokasyonlar arası: her vardiya kendi lokasyonuyla; Downtown'ı Rachel, Midtown'ı Marcus onaylar.", "Hours her zaman önce → sonra (Priya 42 → 40 h: fazla mesaiden çıkıyor).", "Sorunsuz kontroller tek satırda: \"Also OK\".", "Uyarı onayı engellemez. Onaylı izin satırı yok: pickup ve cover kuralı swap'ta da geçerli (Mert 20:45)."],
+      basis: "Kararlar 05:02, 06:43, 12:57; Mert 13:07, 13:52, 13:57, 20:45" },
+    { group: null, label: "Sahipsiz kalan vardiyalar", set: { mgrOpen: null, orphan: true },
+      who: "Rachel, bir çalışan işten çıkarıldıktan sonra",
+      text: "Aynı pencere kalıbında soru: her sahipsiz vardiya için \"Keep unassigned\" ya da \"Post to open shifts\".",
+      list: ["Atanmamış yayınlanan vardiya havuza kendiliğinden düşmez; müdür elle havuza koyamaz."],
+      basis: "Kararlar 06:43, 07:08" },
+  ];
+
+  // ---------- shared parts ----------
+  function win({ cls = "", eyebrow, names, body, foot, back, close = "data-close", label, status, sub }) {
+    const id = "w" + Math.random().toString(36).slice(2, 7);
+    if (/\bdrawer\b/.test(cls)) return `<div class="w ${cls}" role="dialog" aria-modal="true" aria-labelledby="${id}">
+      <header class="dh"><h2 class="dh-title" id="${id}">${eyebrow}${status ? `<span class="chip" data-tone="${status[1]}">${status[0]}</span>` : ""}</h2>${close ? `<button type="button" class="dh-x" ${close} aria-label="Close">${I.x}</button>` : ""}${names || sub ? `<p class="dh-sub">${[names, sub].filter(Boolean).join(" · ")}</p>` : ""}</header>
+      <div class="w-body">${body}</div>
+      ${foot ? `<footer class="w-foot">${foot}</footer>` : ""}
+    </div>`;
+    return `<div class="w ${cls}" role="dialog" aria-modal="true" aria-labelledby="${id}">
+      <header class="w-head">${back ? `<button type="button" class="w-ic" ${back} aria-label="Back">${I.back}</button>` : ""}<h2 id="${id}">${eyebrow}</h2>${close ? `<button type="button" class="w-ic end" ${close} aria-label="Close">${I.x}</button>` : ""}</header>
+      ${names ? `<p class="w-names">${names}</p>` : ""}
+      <div class="w-body">${body}</div>
+      ${foot ? `<footer class="w-foot">${foot}</footer>` : ""}
+    </div>`;
+  }
+  function card(eyebrow, names, body, foot, cls = "") {
+    return `<section class="w inline ${cls}"><header class="w-head"><h2>${eyebrow}</h2></header>${names ? `<p class="w-names">${names}</p>` : ""}<div class="w-body">${body}</div>${foot ? `<footer class="w-foot">${foot}</footer>` : ""}</section>`;
+  }
+  function boxHtml(b) { return `<span class="ck ${b.isNew ? "new" : ""}" data-tone="${b.tone}">${b.tone === "warn" ? I.warn : I.check}<span><strong>${b.top}</strong><small>${b.bottom}</small></span></span>`; }
+  // Single shift in the "Your shift" window: a date tile beside the time, then job, place and when.
+  // Every single shift on the phone and in the release / cover windows: a date
+  // tile beside the time, job, length and place; the footer says who it goes to.
+  function ticket(sh, hand) {
+    return `<div class="tk" role="group" aria-label="${sh.dow}, ${sh.date}, ${sh.time}">
+      <span class="tk-date"><small>${sh.dow}</small><b>${sh.day}</b><small>${sh.mon || "Oct"}</small></span>
+      <span class="tk-main"><b class="tk-time">${sh.time}</b>
+        <span class="tk-row">${I.bag}${sh.job || "Server"}<i></i>${I.clock}${sh.hrs || "6 h"}</span>
+        <span class="tk-row">${I.pin}Harbor &amp; Vine ${sh.loc}</span></span>
+      <span class="tk-foot ${sh.soon ? "soon" : ""}">${hand ? `<span class="hand">${hand}</span><span>${sh.when || ""}</span>` : `${sh.when}<span>Scheduled</span>`}</span>
+    </div>`;
+  }
+  // Two shifts of a swap on the phone: tickets stacked, a round swap mark between them.
+  const tpair = (a, b) => `<div class="tpair">${a}<span class="swapc" aria-hidden="true">${I.swap}</span>${b}</div>`;
+  const dir = (a, b) => `${a} <i aria-hidden="true">→</i> ${b}`;
+  const cks = (list, one) => `<div class="cks ${one ? "one" : ""}">${list.map(boxHtml).join("")}</div>`;
+  const quote = (who, text) => `<p class="q"><b>${who}</b>“${esc(text)}”</p>`;
+  const st = (tone, text) => `<span class="st" data-tone="${tone}">${text}</span>`;
+  function path(steps) {
+    return `<ol class="path">${steps.map(([label, state]) => `<li class="${state}"><span class="pd">${state === "done" ? I.check : ""}</span>${label}</li>`).join("")}</ol>`;
+  }
+  const meta = (t, cls = "") => `<span class="w-meta ${cls}">${t}</span>`;
+  const RANK = { block: 0, warn: 1, good: 2, ok: 3 };
+  function checkList(rows) {
+    const sorted = [...rows].sort((a, b) => RANK[a[0]] - RANK[b[0]]);
+    return `<ul class="cl">${sorted.map(([tone, rule, text, isNew]) => `<li data-tone="${tone}" class="${isNew ? "new" : ""}">${tone === "ok" ? I.check : tone === "good" ? I.up : I.warn}<b>${rule}</b><span>${text}</span></li>`).join("")}</ul>`;
+  }
+  const warnCount = (rows) => rows.filter((r) => r[0] === "warn").length;
+  const blocked = (rows) => rows.some((r) => r[0] === "block");
+  function verdict(rows) {
+    const n = warnCount(rows);
+    return blocked(rows) ? st("block", "Can’t take it") : n ? st("warn", `${n} ${n === 1 ? "warning" : "warnings"}`) : st("ok", "All checks OK");
+  }
+  // A swap at a glance, read like Schedule: the two shifts are columns; rows say whose
+  // shift it is now, who works it after the swap, and which location's manager approves it.
+  function tradeTable(done, narrow) {
+    const approval = (sh) => sh.you ? (done === "approved" ? ["ok", "Approved"] : done === "declined" ? ["block", "Declined"] : ["", "Waiting"]) : done === "declined" ? ["", "Not needed"] : ["", "Waiting"];
+    const person = (n, strong) => `<span class="tr-p"><span class="av">${ini(n)}</span>${strong ? `<b>${n}</b>` : `<span>${n}</span>`}</span>`;
+    const head = SW_SHIFTS.map((sh) => `<th scope="col"><span class="tr-sh"><b>${sh.dow}, ${sh.date}</b><span>${sh.time}</span><span class="tr-loc">${I.pin}${sh.loc}</span><span>${sh.job} · ${sh.hrs}</span></span></th>`).join("");
+    const rows = [
+      ["Owner", "", SW_SHIFTS.map((sh) => person(sh.owner))],
+      ["After swap", "after", SW_SHIFTS.map((sh) => person(sh.to, true))],
+      ["Approves", "", SW_SHIFTS.map((sh) => { const [t, x] = approval(sh); return `<span class="tr-a"><b>${sh.you ? "You" : sh.approver}</b>${st(t, x)}</span>`; })],
+    ];
+    const cells = (list) => list.map((c) => `<td>${c}</td>`).join("");
+    if (narrow) return `<table class="trade narrow"><caption class="sr">Shifts in this swap</caption><colgroup><col><col></colgroup>
+      <thead><tr>${head}</tr></thead>
+      <tbody>${rows.map(([label, cls, list]) => `<tr class="cap ${cls}"><th colspan="2" scope="colgroup">${label}</th></tr><tr class="${cls}">${cells(list)}</tr>`).join("")}</tbody></table>`;
+    return `<table class="trade"><caption class="sr">Shifts in this swap</caption><colgroup><col class="l"><col><col></colgroup>
+      <thead><tr><td></td>${head}</tr></thead>
+      <tbody>${rows.map(([label, cls, list]) => `<tr class="${cls}"><th scope="row">${label}</th>${cells(list)}</tr>`).join("")}</tbody></table>`;
+  }
+  // One person after the swap: the shift they take, what gets worse, what gets better,
+  // and one line for the checks that stay fine. Hours always shows.
+  function swPerson(sh, rows) {
+    const shown = rows.filter((r) => r[0] !== "ok" || r[1] === "Hours");
+    const fine = rows.filter((r) => r[0] === "ok" && r[1] !== "Hours").map((r) => r[1]);
+    const list = checkList(fine.length ? shown.concat([["ok", "Also OK", fine.join(" · ")]]) : shown);
+    return `<section class="pb" aria-label="${sh.to}"><header class="pb-head"><span class="av">${ini(sh.to)}</span><span class="pb-t"><b>${sh.to}</b><small>Takes ${first(sh.owner)}’s ${sh.dow} shift · ${sh.loc}</small></span>${verdict(rows)}</header>${list}</section>`;
+  }
+  const bandHtml = (tone, text) => `<p class="band" data-tone="${tone}">${I.warn}<span>${text}</span></p>`;
+
+  // ---------- helpers ----------
+  const teamById = (id) => TEAM.find((t) => t.id === id);
+  function flash(t, s) { S.toast = { t, s }; render(); setTimeout(() => { if (S.toast && S.toast.t === t) { S.toast = null; render(); } }, 3200); }
+  const deckIds = () => (S.persona === "jake" ? ["o1", "o2", "o3"] : ["o2", "o3"]);
+  const deckLeft = () => deckIds().filter((id) => !S.deckDone[id]);
+  function setScn(i) {
+    scn = i;
+    const keep = { persona: S.persona };
+    S = fresh();
+    Object.assign(S, JSON.parse(JSON.stringify(SCN[i].set)));
+    if (SCN[i].set.sheetShift === "soon") S.sheetShift = SOON;
+    if (!SCN[i].set.persona) S.persona = keep.persona;
+    renderGuide(); render();
+  }
+
+  // ---------- employee phone: pages ----------
+  function nav(active, badges) {
+    const items = [["home", "Home", I.home], ["who", "Schedule", I.cal], ["hub", "Requests", I.swap], ["more", "More", I.grid]];
+    return `<nav class="nav" aria-label="Employee navigation">${items.map(([k, l, ic]) => `<button type="button" data-go="${k}" ${active === k ? 'aria-current="page"' : ""}>${ic}${badges[k] ? `<span class="dot-n">${badges[k]}</span>` : ""}${l}</button>`).join("")}</nav>`;
+  }
+  function shiftRow(u, extra) {
+    return `<button type="button" class="lc" data-open-shift="${u.id || ""}"><span class="tile"><small>${u.dow}</small><b>${u.day}</b></span><span class="t">${u.short} · ${u.job}</span><span class="s">${u.loc}${extra ? " · " + extra : ""}</span><span class="r">${I.chev}</span></button>`;
+  }
+  function empHome() {
+    const jake = S.persona === "jake";
+    const up = jake ? [JAKE_SAT, { dow: "Mon", date: "Oct 19", day: 19, short: "11a–5p", job: "Server", loc: "Downtown" }] : [SOON, SHIFT, { dow: "Sun", date: "Oct 18", day: 18, short: "4p–10p", job: "Server", loc: "Downtown" }];
+    const n = deckLeft().length;
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Harbor &amp; Vine</span><h2>Hi, ${jake ? "Jake" : "Maria"} <button type="button" class="bell" data-go="notifs" aria-label="Notifications">${I.bell}<span class="dot-n">${jake ? 3 : 1}</span></button></h2></div>
+      <div class="sec"><h3>Your next shifts</h3><button type="button" data-go="who">Who's working</button></div>
+      <div class="rows">${up.map((u) => shiftRow(u, u.id === "s-today" ? "starts in 2 h" : "")).join("")}</div>
+      ${n ? `<div class="sec"><h3>Extra shifts</h3></div><button type="button" class="lc" data-go="hub"><span class="tile ic">${I.spark}</span><span class="t">${n} open ${n === 1 ? "shift fits" : "shifts fit"} you</span><span class="s">Swipe through them in Requests</span><span class="r">${I.chev}</span></button>` : ""}
+    </div>`;
+  }
+  function empHub() {
+    const jake = S.persona === "jake";
+    const n = deckLeft().length;
+    const tabs = [["available", "Available Shifts", n], ["requests", "My requests", 0], ["history", "History", 0]];
+    let body;
+    if (S.hubTab === "available") body = deckView();
+    else if (S.hubTab === "requests") body = myRequests();
+    else body = `<div class="rows">${[["Oct", 2, "Swap with Priya", "Approved"], ["Sep", 27, "Released to Leo", "Approved"]].map(([m, d, t, s]) => `<div class="lc static"><span class="tile"><small>${m}</small><b>${d}</b></span><span class="t">${t}</span><span class="s">${s}</span><span class="r"></span></div>`).join("")}</div>`;
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Work better together</span><h2>Shift Hub</h2><p>Pick up an open shift, or hand one off.</p></div>
+      <nav class="tabs" aria-label="Shift Hub views">${tabs.map(([k, l, c]) => `<button type="button" data-tab="${k}" ${S.hubTab === k ? 'aria-current="page"' : ""}>${l}${c ? `<span class="dot-n" aria-label="${c} you can take">${c}</span>` : ""}</button>`).join("")}</nav>
+      ${body}
+    </div>`;
+  }
+  function deckCard(o, i) {
+    const from = o.from ? first(o.from) : "Open";
+    const body = `${ticket(o, dir(from, "you"))}${o.note ? quote(first(o.from), o.note) : ""}${cks([ck("ok", o.wk[0], o.wk[1]), o.offFor === S.persona ? ck("warn", "Off that day", "approved time off") : ck("ok", o.avail[0], o.avail[1])])}<p class="foot-note">Your manager picks who gets it.</p>`;
+    return `<article class="w dcard ${i === 1 ? "back1" : i === 2 ? "back2" : ""}" data-card="${o.id}" style="z-index:${10 - i}" ${i === 0 ? `tabindex="0" aria-label="${esc(o.dow + ", " + o.date + ", " + o.time)}. Swipe right to take it, left to pass."` : 'aria-hidden="true"'}>
+      <span class="verdict take">${I.check} Take</span><span class="verdict pass">${I.x} Pass</span>
+      <header class="w-head"><h2>Open shift</h2></header>
+      <p class="w-names">${o.from ? `${esc(o.from)} <i>can't make it</i>` : `Posted after a teammate left`}</p>
+      <div class="w-body">${body}</div>
+    </article>`;
+  }
+  function deckView() {
+    const left = deckLeft();
+    const taken = deckIds().filter((id) => S.deckDone[id] === "take");
+    const cards = left.slice(0, 3).map((id, i) => deckCard(OPEN.find((x) => x.id === id), i)).join("");
+    return `<div class="deck" id="deck">${left.length ? cards : `<div class="empty" style="height:100%;align-content:center"><b>You're all caught up</b>New open shifts that fit you show up here.</div>`}</div>
+      <div class="deck-actions"><button type="button" class="btn" data-deck="pass" ${left.length ? "" : "disabled"}>Not for me</button><button type="button" class="btn go" data-deck="take" ${left.length ? "" : "disabled"}>I'll take it</button></div>
+      <p class="hint">Swipe right to take · left to pass · ${left.length} left</p>
+      ${taken.length ? `<div class="sec"><h3>You asked for</h3></div><div class="rows">${taken.map((id) => { const o = OPEN.find((x) => x.id === id); return `<div class="lc static"><span class="tile"><small>${o.dow}</small><b>${o.day}</b></span><span class="t">${o.time}</span><span class="s">${o.loc}</span><span class="r">${st("warn", "Manager picks")}</span></div>`; }).join("")}</div>` : ""}`;
+  }
+  function myRequests() {
+    if (S.persona === "jake") {
+      if (!S.jakeReq) return `<div class="empty"><b>No requests</b>Requests you send or answer show up here.</div>`;
+      if (S.jakeReq === "cover") return card("Cover for Maria", "Maria Lopez → you", `${path([["Maria asked", "done"], ["You accepted", "done"], ["Manager picks", "now"]])}${ticket(SHIFT, dir("Maria", "Jake"))}`, meta("It isn't on your schedule until your manager approves."));
+      return card("Swap with Maria", "Maria Lopez ⇄ Jake Miller", `${path([["Maria sent", "done"], ["You confirmed", "done"], ["Manager", "now"]])}${tpair(ticket(SHIFT, dir("Maria", "Jake")), ticket(JAKE_SAT, dir("Jake", "Maria")))}`, meta("You keep Saturday until it's approved."));
+    }
+    const r = S.request;
+    if (!r) return `<div class="empty"><b>No open requests</b>Open a shift from Home to release it, ask for cover or swap.</div>`;
+    if (r.status === "kept") return `<div class="empty"><b>You kept your shift</b>Everyone who asked was told.</div>`;
+    const armed = S.takeArmed;
+    const takeBack = `<button type="button" class="btn no ${armed ? "armed" : ""}" data-takeback>${armed ? "Click again to confirm" : r.kind === "release" ? "Take back shift" : "Cancel request"}</button>`;
+    const closes = "Closes Oct 16, 12:00 PM, 4 h before the shift.";
+    if (r.kind === "release") {
+      const body = `${path([["Released", "done"], ["2 want it", "done"], ["Manager picks", "now"]])}${ticket(SHIFT, dir("Maria", "<em>anyone eligible</em>"))}${r.note ? quote("Your note", r.note) : ""}
+        <p class="w-label">Who wants it</p>
+        <div class="rows">${[["Jake Miller", "Asked 1 h ago"], ["Ana Torres", "Asked 20 min ago"]].map(([n, s]) => `<div class="pr read"><span class="av">${ini(n)}</span><span class="t">${n}</span><span class="s">${s}</span><span class="r">${st("warn", "Wants it")}</span></div>`).join("")}</div>`;
+      return card("Released", "Maria Lopez → <i>open shifts</i>", body, meta(closes) + takeBack, "roomy");
+    }
+    if (r.kind === "cover") {
+      const people = r.picked.map((id, i) => { const t = teamById(id); return `<div class="pr read"><span class="av">${ini(t.name)}</span><span class="t">${t.name}</span><span class="s">${i === 0 ? "Answered 5 min ago" : "Not answered yet"}</span><span class="r">${i === 0 ? st("ok", "Accepted") : st("", "Waiting")}</span></div>`; }).join("");
+      return card("Cover request", `Maria Lopez → ${r.picked.length} ${r.picked.length === 1 ? "teammate" : "teammates"}`, `${path([[`Asked ${r.picked.length}`, "done"], ["1 accepted", "done"], ["Manager picks", "now"]])}${ticket(SHIFT, dir("Maria", "?"))}<p class="w-label">Asked</p><div class="rows">${people}</div>`, meta(closes) + takeBack, "roomy");
+    }
+    return card("Swap", "Maria Lopez ⇄ Jake Miller", `${path([["Sent", "done"], ["Jake confirms", "now"], ["Manager", ""]])}${tpair(ticket(SHIFT, dir("Maria", "Jake")), ticket(JAKE_SAT, dir("Jake", "Maria")))}`, meta(closes) + takeBack, "roomy");
+  }
+  function empNotifs() {
+    const jake = S.persona === "jake";
+    const items = jake ? [
+      ["Extra shift available", "Maria can't make Fri, Oct 16 · 4p–10p, Downtown. Want it?", "2 min", "hub", I.spark],
+      ["Extra shift available", "Daniel can't make Sun, Oct 18 · 10a–3p, Downtown.", "1 h", "hub", I.spark],
+      ["Your pickup is approved", "Sat, Oct 10 · 5p–11p is on your schedule.", "1 d", null, I.check],
+    ] : [["Jake wants your shift", "Fri, Oct 16 · 4p–10p. Your manager picks.", "now", "req", I.release]];
+    return `<div class="app-pad" style="padding-inline:0;gap:8px"><div class="ph-head" style="padding:0 16px 4px"><span class="eyebrow">Inbox</span><h2>Notifications</h2></div>
+      <div class="notifs">${items.map(([t, s, w, go, ic], i) => `<button type="button" class="notif ${i < 2 ? "unread" : ""}" ${go ? `data-notif="${go}"` : ""}><span class="tile ic">${ic}</span><b>${t}</b><small>${w}</small><span>${s}</span></button>`).join("")}</div></div>`;
+  }
+  function empWho() {
+    const days = [12, 13, 14, 15, 16, 17, 18];
+    const dows = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+    const mine = S.persona === "maria" ? { 16: SHIFT, 13: SOON } : { 17: JAKE_SAT };
+    const crew = {
+      Downtown: [["Rachel Adams", "Manager", "10a–6p"], ["Priya Shah", "Server", "11a–5p"], ["Leo Park", "Host", "4p–10p"], ["Carlos Rivera", "Line Cook", "3p–11p"], ["Ana Torres", "Bartender", "5p–12a"]],
+      Midtown: [["Daniel Brooks", "Server", "4p–10p"], ["Sam Reed", "Server", "3p–9p"]],
+    };
+    const d = S.whoDay, my = mine[d];
+    return `<div class="app-pad">
+      <div class="ph-head"><span class="eyebrow">Schedule</span><h2>Who's working</h2><p>Week of Oct 12</p></div>
+      <div class="days" role="group" aria-label="Day">${days.map((x, i) => `<button type="button" data-day="${x}" aria-pressed="${d === x}"><small>${dows[i]}</small><b>${x}</b><i class="${mine[x] ? "on" : ""}"></i></button>`).join("")}</div>
+      ${my ? `<button type="button" class="lc mine" data-open-shift="${my.id}"><span class="av">You</span><span class="t">You · ${my.short}</span><span class="s">${my.job} · ${my.loc}</span><span class="r">${I.chev}</span></button>` : `<p class="off-note">You're off on ${dows[days.indexOf(d)]}, Oct ${d}.</p>`}
+      ${Object.entries(crew).map(([loc, list]) => `<div class="loc">${I.pin} ${loc} · ${list.length} working</div><div class="rows">${list.map(([n, j, t]) => `<div class="lc static"><span class="av">${ini(n)}</span><span class="t">${n}</span><span class="s">${j}</span><span class="r">${t}</span></div>`).join("")}</div>`).join("")}
+    </div>`;
+  }
+
+  // ---------- employee phone: windows ----------
+  function sheetHtml() {
+    const sh = S.sheetShift;
+    const tooClose = sh.id === "s-today";
+    const busy = S.request && S.request.status === "open";
+    const backToShift = 'data-sheet="shift"';
+    if (S.sheet === "shift") {
+      const off = tooClose || busy;
+      const body = `${ticket(sh)}
+        ${tooClose ? cks([ck("warn", "Changes are closed", "they close 4 h before a shift")], true) : ""}
+        ${busy ? cks([ck("warn", `${S.request.kind[0].toUpperCase() + S.request.kind.slice(1)} is open`, "take it back to change")], true) : ""}
+        <div class="rows">
+          <button type="button" class="opt" data-sheet="release" ${off ? "disabled" : ""}><span class="oi">${I.release}</span><span><b>Release shift</b><span>Anyone eligible can ask for it</span></span>${I.chev}</button>
+          <button type="button" class="opt" data-sheet="cover" ${off ? "disabled" : ""}><span class="oi">${I.cover}</span><span><b>Ask someone to cover</b><span>Ask up to 3 teammates</span></span>${I.chev}</button>
+          <button type="button" class="opt" data-sheet="swap" ${off ? "disabled" : ""}><span class="oi">${I.swap}</span><span><b>Swap</b><span>Already agreed on a trade</span></span>${I.chev}</button>
+        </div>`;
+      return win({ cls: "sheet", eyebrow: "Your shift", body, foot: meta(tooClose ? "Talk to your manager about this shift." : "You stay responsible until a manager approves a change.") });
+    }
+    if (S.sheet === "release") {
+      const body = `${ticket(sh, dir("Maria", "<em>anyone eligible</em>"))}
+        <label class="field">Note for teammates <small>Optional · everyone eligible sees it</small><textarea id="rel-note" maxlength="200">Family dinner came up. Section 4 is usually busy, thanks!</textarea></label>`;
+      return win({ cls: "sheet", eyebrow: "Release shift", names: "Maria Lopez → open shifts", back: backToShift, body, foot: meta("14 teammates get a notification. You stay responsible until your manager approves.") + `<button type="button" class="btn go" data-send="release">Release shift</button>` });
+    }
+    if (S.sheet === "cover") {
+      const n = S.coverPick.length;
+      const names = S.coverPick.map((id) => first(teamById(id).name));
+      const body = `${ticket(sh, dir("Maria", names.length ? names.join(", ") : "<em>pick up to 3</em>"))}
+        <p class="w-label">Who should we ask? <span>${n} of 3</span></p>
+        <div class="rows" role="group" aria-label="Teammates">${TEAM.map((t) => { const on = S.coverPick.includes(t.id); const dis = t.busy || (!on && n >= 3); return `<button type="button" class="pr" role="checkbox" aria-checked="${on}" ${dis ? 'aria-disabled="true"' : ""} data-pick="${t.id}"><span class="mark">${on ? I.check : ""}</span><span class="av">${ini(t.name)}</span><span class="t">${t.name}</span><span class="s">${t.s}</span><span class="r"></span></button>`; }).join("")}</div>
+        <label class="field">Note <small>Optional</small><textarea id="cov-note">Family dinner came up. Section 4 is usually busy, thanks!</textarea></label>`;
+      return win({ cls: "sheet", eyebrow: "Ask for cover", names: `Maria Lopez → ${n ? names.join(", ") : "<i>teammates</i>"}`, back: backToShift, body, foot: meta("Your manager picks from who accepts. Asks close 4 h before the shift.") + `<button type="button" class="btn go" data-send="cover" ${n ? "" : "disabled"}>Ask ${n || ""} ${n === 1 ? "teammate" : "teammates"}</button>` });
+    }
+    if (S.sheet === "swap") {
+      const pick = SWAP_OPTS.find((o) => o.id === S.swapPick);
+      const other = pick ? first(pick.who) : null;
+      const right = pick ? ticket(pick.sh, dir(other, "Maria")) : `<div class="tk ghost">Pick the shift you agreed on below</div>`;
+      const body = `${tpair(ticket(sh, dir("Maria", other || "?")), right)}
+        <p class="w-label">Which shift did you agree on?</p>
+        <div class="rows" role="radiogroup" aria-label="Shift you get">${SWAP_OPTS.map((o) => { const on = S.swapPick === o.id; return `<button type="button" class="pr" role="radio" aria-checked="${on}" ${o.why ? 'aria-disabled="true"' : ""} data-swap="${o.id}"><span class="mark round"></span><span class="av">${ini(o.who)}</span><span class="t">${o.sh.dow}, ${o.sh.date} · ${o.sh.time.replace(/:00/g, "")}</span><span class="s">${o.why ? o.why : o.who + " · " + o.sh.loc}</span><span class="r"></span></button>`; }).join("")}</div>
+        <label class="field">Note to ${other || "them"} <small>Optional</small><textarea id="swap-note">As we said, thanks!</textarea></label>`;
+      return win({ cls: "sheet", eyebrow: "Swap shifts", names: `Maria Lopez ⇄ ${pick ? pick.who : "<i>teammate</i>"}`, back: backToShift, body, foot: meta(`${other ? other + " confirms" : "They confirm"} first, then your manager decides.`) + `<button type="button" class="btn go" data-send="swap" ${pick ? "" : "disabled"}>Send to ${other || "teammate"}</button>` });
+    }
+    if (S.sheet === "invite") {
+      const body = `${ticket(SHIFT, dir("Maria", "Jake"))}${quote("Maria", "Family dinner came up. Section 4 is usually busy, thanks!")}${cks([ck("ok", "38 h this week", "32 h now"), ck("ok", "Available", "on Friday")])}`;
+      return win({ cls: "sheet", eyebrow: "Cover request", names: "Maria Lopez → you", body, foot: meta("Answer by Oct 16, 12:00 PM. Your manager picks from who accepts.") + `<button type="button" class="btn" data-invite="decline">Decline</button><button type="button" class="btn go" data-invite="accept">Accept</button>` });
+    }
+    if (S.sheet === "pickoff") {
+      const o = OPEN.find((x) => x.id === S.pickOff);
+      const body = `${ticket(o, dir(first(o.from), "you"))}${cks([ck("warn", "Time off ends that day", "if your manager approves")], true)}
+        <p class="w-meta" style="margin:0">You have approved time off on ${o.dow}, ${o.date}. If your manager gives you this shift, your time off for that day is cancelled. Other days stay as they are.</p>`;
+      return win({ cls: "sheet", eyebrow: "Take this shift?", names: `${esc(o.from)} → you`, body, foot: meta("Your manager picks who gets it.") + `<button type="button" class="btn" data-pickoff="keep">Keep time off</button><button type="button" class="btn go" data-pickoff="take">Take shift</button>` });
+    }
+    if (S.sheet === "swapconfirm") {
+      const body = `${tpair(ticket(JAKE_SAT, dir("Jake", "Maria")), ticket(SHIFT, dir("Maria", "Jake")))}
+        <p class="w-label">For you</p>${cks([ck("ok", "14 h of rest", "10 h needed"), ck("ok", "32 h this week", "no change")])}
+        ${quote("Maria", "As we said, thanks!")}
+        <label class="field">Note to Maria <small>Optional · sent with your answer</small><textarea id="swap-reply"></textarea></label>`;
+      return win({ cls: "sheet", eyebrow: "Confirm swap", names: "Jake Miller ⇄ Maria Lopez", body, foot: meta("After you confirm, your manager decides.") + `<button type="button" class="btn" data-invite="decline">Decline</button><button type="button" class="btn go" data-invite="accept">Confirm swap</button>` });
+    }
+    return "";
+  }
+
+  function renderEmp() {
+    const el = document.getElementById("emp");
+    let body = "", active = S.empScreen;
+    if (S.empScreen === "home") body = empHome();
+    if (S.empScreen === "hub") body = empHub();
+    if (S.empScreen === "notifs") { body = empNotifs(); active = "home"; }
+    if (S.empScreen === "who") body = empWho();
+    const badges = { hub: deckLeft().length };
+    el.innerHTML = `<div class="app-status"><span>9:41</span><span>Harbor &amp; Vine</span></div>
+      <div class="app-body">${body}</div>${nav(active, badges)}
+      ${S.sheet ? `<div class="scrim" data-scrim>${sheetHtml()}</div>` : ""}
+      ${S.toast ? `<div class="toast" role="status" data-toast><span class="ti">N</span><small>Newfork · now</small><b>${esc(S.toast.t)}</b><span>${esc(S.toast.s)}</span></div>` : ""}`;
+    document.querySelectorAll("#persona button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.p === S.persona)));
+    bindDeck();
+  }
+
+  // ---------- swipe deck ----------
+  function swipe(dir2) {
+    const id = deckLeft()[0];
+    if (!id) return;
+    const el = document.querySelector(`.dcard[data-card="${id}"]`);
+    const o0 = OPEN.find((x) => x.id === id);
+    if (dir2 === "take" && o0.offFor === S.persona) { S.pickOff = id; S.sheet = "pickoff"; render(); return; }
+    const finish = () => {
+      S.deckDone[id] = dir2;
+      const o = OPEN.find((x) => x.id === id);
+      if (dir2 === "take") flash("You asked for this shift", `${o.dow}, ${o.date}. Your manager picks.`); else render();
+    };
+    if (!el || matchMedia("(prefers-reduced-motion: reduce)").matches) { finish(); return; }
+    el.style.transform = `translateX(${dir2 === "take" ? 520 : -520}px) rotate(${dir2 === "take" ? 16 : -16}deg)`;
+    el.style.opacity = "0";
+    el.querySelector(dir2 === "take" ? ".verdict.take" : ".verdict.pass").style.opacity = "1";
+    setTimeout(finish, 260);
+  }
+  function bindDeck() {
+    const deck = document.getElementById("deck");
+    if (!deck) return;
+    const top = deck.querySelector(".dcard:not(.back1):not(.back2)");
+    if (!top) return;
+    let x0 = 0, dx = 0, drag = false;
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const paint = () => {
+      top.style.transform = `translateX(${dx}px) rotate(${reduce ? 0 : dx / 20}deg)`;
+      top.querySelector(".verdict.take").style.opacity = String(Math.max(0, Math.min(1, dx / 90)));
+      top.querySelector(".verdict.pass").style.opacity = String(Math.max(0, Math.min(1, -dx / 90)));
+      top.style.borderColor = dx > 30 ? "var(--theme-accent)" : dx < -30 ? "var(--theme-danger-strong)" : "";
+    };
+    top.addEventListener("pointerdown", (e) => { drag = true; x0 = e.clientX; dx = 0; top.classList.add("dragging"); top.setPointerCapture(e.pointerId); });
+    top.addEventListener("pointermove", (e) => { if (!drag) return; dx = e.clientX - x0; paint(); });
+    const end = () => {
+      if (!drag) return;
+      drag = false; top.classList.remove("dragging");
+      if (dx > 100) swipe("take");
+      else if (dx < -100) swipe("pass");
+      else { dx = 0; top.style.transform = ""; top.style.borderColor = ""; top.querySelectorAll(".verdict").forEach((s) => (s.style.opacity = "0")); }
+    };
+    top.addEventListener("pointerup", end);
+    top.addEventListener("pointercancel", end);
+    top.addEventListener("keydown", (e) => { if (e.key === "ArrowRight") swipe("take"); if (e.key === "ArrowLeft") swipe("pass"); });
+  }
+
+  // ---------- manager: decision windows ----------
+  function declineStep(who) {
+    return `<label class="field">Reason for ${who} <small>Optional · they see it</small><textarea id="mgr-reason" rows="3"></textarea></label>`;
+  }
+  function decisionWindow(narrow) {
+    const r = REQS.find((x) => x.id === S.mgrOpen);
+    if (!r) return "";
+    const done = S.mgrDone[r.id];
+    const cls = narrow ? "sheet" : "drawer";
+    const status = done ? decided(r, done) : r.status;
+    const head = { status: narrow ? null : status, sub: narrow ? "" : r.sh ? r.sh.loc : "Downtown ⇄ Midtown" };
+    const close = 'data-mgr="close"';
+    if (r.id === "r3") {
+      const rows = swEffects(S.swCase);
+      const people = SW_SHIFTS.map((sh, i) => swPerson(sh, rows[i])).join("");
+      let body = tradeTable(done, narrow) + `<p class="w-label">After the swap</p>` + people;
+      let foot;
+      const counts = SW_SHIFTS.map((sh, i) => [first(sh.to), warnCount(rows[i])]).filter(([, k]) => k);
+      const band = counts.length ? bandHtml("warn", `${counts.map(([who, k]) => `${k} ${k === 1 ? "warning" : "warnings"} for ${who}`).join(", ")}. You can still approve.`) : "";
+      if (done) foot = meta(done === "approved" ? "Your approval is recorded. Marcus Green decides for Midtown." : "Swap declined. Priya and Daniel were told.", done === "approved" ? "done" : "") + `<button type="button" class="btn" ${close}>Close</button>`;
+      else if (S.mgrDecl) { body = tradeTable(done, narrow) + declineStep("Priya and Daniel"); foot = `<button type="button" class="btn" data-mgr="back">Back</button><button type="button" class="btn no ${S.mgrArmed ? "armed" : ""}" data-mgr="confirm">${S.mgrArmed ? "Confirm decline" : "Decline swap"}</button>`; }
+      else foot = band + meta(`Expires ${r.due[0]}`) + `<button type="button" class="btn" data-mgr="decline">Decline</button><button type="button" class="btn go" data-mgr="approve">Approve swap</button>`;
+      return win({ cls, eyebrow: "Shift swap", names: "Priya Shah ⇄ Daniel Brooks", ...head, body, foot, close });
+    }
+    if (r.taker) {
+      const sh = { dow: "Thu", date: "Oct 15", day: 15, mon: "Oct", hrs: "6 h", job: "Server", time: "4:00 PM – 10:00 PM", loc: "Downtown", when: "In 2 days" };
+      return win({ cls, eyebrow: "Shift pickup", names: `Shift owner: <b>${r.owner}</b>`, ...head, body: ticket(sh, dir(first(r.owner), first(r.taker))), foot: meta(`Approved by you yesterday. ${first(r.taker)} and ${first(r.owner)} were told.`, "done") + `<button type="button" class="btn" ${close}>Close</button>`, close });
+    }
+    const list = CANDS[r.id].filter((c) => !c.off);
+    const pick = list.find((c) => c.id === S.mgrPick && !c.off);
+    const shift = r.tk;
+    const owner = first(r.owner);
+    const asked = list.length > 1 ? "everyone who asked" : first(list[0].name);
+    const rowsHtml = list.map((c) => {
+      const on = pick && pick.id === c.id;
+      return `<button type="button" class="pr" role="radio" aria-checked="${on}" ${c.off ? 'aria-disabled="true"' : ""} data-cand="${c.id}"><span class="mark round"></span><span class="av">${ini(c.name)}</span><span class="t">${c.name}</span><span class="s">${c.s}</span><span class="r">${c.off ? st("", "Declined") : verdict(c.rows)}</span>${on ? `<span class="more">${checkList(c.rows)}</span>` : ""}</button>`;
+    }).join("");
+    let body = `${ticket(shift, dir(owner, pick ? first(pick.name) : "?"))}${r.note ? quote(owner, r.note) : ""}
+      <p class="w-label with-chip">${r.kind === "Cover" ? "Who accepted" : "Who wants it"}<span class="chip" data-tone="amber">${r.status[0]}</span></p><div class="rows" role="radiogroup" aria-label="Who takes the shift">${rowsHtml}</div>`;
+    let foot;
+    const pn = pick ? warnCount(pick.rows) : 0;
+    const band = pick && pn ? bandHtml("warn", `${pn} ${pn === 1 ? "warning" : "warnings"} for ${first(pick.name)}. You can still approve.`) : "";
+    if (done) foot = meta(done === "approved" ? `Approved. ${first(pick.name)} replaces ${owner}; ${list.length > 1 ? `${owner} and everyone else were told` : `both were told`}.` : `Declined. ${owner} and ${asked} were told.`, done === "approved" ? "done" : "") + `<button type="button" class="btn" ${close}>Close</button>`;
+    else if (S.mgrDecl) { body = ticket(shift, dir(owner, "?")) + declineStep(`${owner} and ${asked}`); foot = `<button type="button" class="btn" data-mgr="back">Back</button><button type="button" class="btn no ${S.mgrArmed ? "armed" : ""}" data-mgr="confirm">${S.mgrArmed ? "Confirm decline" : r.kind === "Cover" ? "Decline cover" : "Decline pickup"}</button>`; }
+    else foot = band + meta(`Expires ${r.due[0].replace(/^Today/, "today")}`, r.left <= 12 ? "soon" : "") + `<button type="button" class="btn" data-mgr="decline">Decline</button><button type="button" class="btn go" data-mgr="approve" ${pick ? "" : "disabled"}>${pick ? "Give to " + first(pick.name) : "Approve"}</button>`;
+    // Header: the shift's owner; the status chip only once decided (the count sits by the list).
+    return win({ cls, eyebrow: kindName(r), names: `Shift owner: <b>${r.owner}</b>`, ...head, status: narrow || !done ? null : status, body, foot, close });
+  }
+  function orphanWindow() {
+    const rows = [["o-a", "Wed, Oct 14 · 5p–11p", "Server · Downtown"], ["o-b", "Sat, Oct 17 · 10a–4p", "Server · Downtown"], ["o-c", "Tue, Oct 20 · 5p–11p", "Server · Midtown"]];
+    const body = `<p class="w-meta" style="margin:0;text-align:center">Post each shift to open shifts so eligible teammates can ask for it, or keep it for you to fill.</p>
+      <div class="rows">${rows.map(([id, t, m]) => { const c = S.orphanChoice[id] || "keep"; return `<div class="orph"><span><b>${t}</b><small>${m}</small></span><span class="seg" role="group" aria-label="${t}"><button type="button" data-orph="${id}:keep" aria-pressed="${c === "keep"}">Keep unassigned</button><button type="button" data-orph="${id}:post" aria-pressed="${c === "post"}">Post to open shifts</button></span></div>`; }).join("")}</div>`;
+    return `<div class="mscrim">${win({ cls: "modal xwide", eyebrow: "Shifts without an owner", names: "Jordan Lee left the team", body, foot: meta("3 upcoming shifts") + `<button type="button" class="btn" data-orph-done>Later</button><button type="button" class="btn go" data-orph-done>Save</button>`, close: "data-orph-done" })}</div>`;
+  }
+  // Every row starts with the person who would work the shift, then says plainly who comes
+  // off it: in a pickup or cover the owner always comes off and the person approved works
+  // it (Mert, 2026-10-14 00:53Z). Then by when the manager decides (shift start − 4 h;
+  // the earlier shift in a swap). Desktop: full sentences. Phone: short sentence, one line
+  // per shift, the result beside the status chip.
+  const B = (n) => `<b>${n}</b>`;
+  const pos = (n) => `${n}’s`;
+  function reqText(r, narrow) {
+    const d = S.mgrDone[r.id];
+    if (r.kind === "Swap") {
+      const [a, b] = SW_SHIFTS;
+      const lead = `${B(a.to)} and ${B(b.to)} ${d === "declined" ? "asked to swap" : "want to swap"} ${narrow ? "shifts" : `their ${a.job} shifts`}.`;
+      // Phone: the two shifts side by side, like the swap drawer: day, time, place, who works it.
+      const lines = narrow
+        ? [`<span class="sw2">${SW_SHIFTS.map((x) => `<span class="c"><b>${x.dow}, ${x.date}</b><span>${x.range}</span><span>${I.pin}${x.loc}</span>${d === "declined" ? `<span class="io">${B(first(x.owner))} keeps it</span>` : `<span class="io">${B(first(x.to))} works it</span><span class="io2">instead of ${first(x.owner)}</span>`}</span>`).join("")}</span>`]
+        : d === "declined" ? [] : SW_SHIFTS.map((x) => `${B(first(x.to))} replaces ${first(x.owner)} on ${x.dow}, ${x.date}, ${x.start} at ${x.loc}.`);
+      const foot = narrow
+        ? (d === "declined" ? "Both keep their own shifts." : d ? "You approved." : `Expires ${r.due[1]}`)
+        : (d === "declined" ? "Daniel and Priya keep their own shifts. Declined by you just now." : d ? "You approved. Marcus Green decides for Midtown." : "");
+      return { lead, lines, foot, soon: narrow && !d && r.left <= 12 };
+    }
+    const sh = r.sh;
+    const cands = (CANDS[r.id] || []).filter((c) => !c.off);
+    const taker = r.taker || (d === "approved" && (cands.find((c) => c.id === S.mgrTaker[r.id]) || cands[0]).name);
+    const others = cands.length - 1;
+    const who = taker ? B(taker) : others === 0 ? B(cands[0].name) : others === 1 ? `${B(cands[0].name)} and ${B(cands[1].name)}` : `${B(cands[0].name)} and ${others} others`;
+    const verb = taker ? (r.kind === "Cover" ? "is covering" : "took over")
+      : r.kind === "Cover" ? "offered to cover"
+      : d ? "asked to take over" : others === 0 ? "wants to take over" : "want to take over";
+    const lead = `${who} ${verb} ${B(pos(r.owner))} ${narrow ? "" : sh.start + " "}${sh.job} shift${narrow ? "" : ` at ${sh.loc} on ${sh.day}`}.`;
+    const lines = narrow ? [`${sh.day} · ${sh.range} · ${I.pin}${sh.loc}`] : [];
+    const owner = first(r.owner);
+    // The result: who works it instead of the owner (or that the owner still does).
+    const result = taker ? `${first(taker)} replaces ${owner}${narrow ? "" : " on this shift"}.`
+      : d === "declined" ? `${owner} still works ${narrow ? "it" : "this shift"}.`
+      : others === 0 ? `If you approve, ${first(cands[0].name)} replaces ${owner} on this shift.`
+      : `The person you approve replaces ${owner} on this shift.`;
+    const when = r.taker ? " Approved by you yesterday." : d === "declined" ? " Declined by you just now." : d ? " Approved by you just now." : "";
+    const foot = narrow ? (taker || d === "declined" ? result : `Expires ${r.due[1]}`) : result + when;
+    return { lead, lines, foot, soon: narrow && !d && !r.taker && r.left <= 12 };
+  }
+  const kindName = (r) => r.kind === "Cover" ? "Cover request" : r.kind === "Swap" ? "Shift swap" : "Shift pickup";
+  // Expires: when the request closes on its own; red in its last 12 h. A decided request has none
+  // (a swap one manager approved still waits for the other, so it keeps its time).
+  function expCell(r) {
+    const d = S.mgrDone[r.id];
+    const open = !r.taker && (!d || (r.kind === "Swap" && d === "approved"));
+    return open ? `<span class="exp ${r.left <= 12 ? "soon" : ""}">${r.due[0]}</span>` : `<span class="exp none" aria-hidden="true">—</span><span class="sr">No expiry</span>`;
+  }
+  function tableHtml() {
+    return `<table class="list rq"><thead><tr><th class="ic"><span class="sr">Type</span></th><th>Request</th><th>Status</th><th>Expires</th></tr></thead><tbody>${REQS.map((r) => { const d = S.mgrDone[r.id]; const s = d ? decided(r, d) : r.status; const t = reqText(r, false); return `<tr data-row="${r.id}" tabindex="0"><td class="ic">${kindIcon(r, 40)}<span class="sr">${kindName(r)}</span></td><td><div class="rq-t"><span class="lead">${t.lead}</span>${t.lines.map((l) => `<span class="ln">${l}</span>`).join("")}${t.foot ? `<span class="due">${t.foot}</span>` : ""}</div></td><td><span class="chip" data-tone="${s[1]}">${s[0]}</span></td><td>${expCell(r)}</td></tr>`; }).join("")}</tbody></table>`;
+  }
+  function cardHtml(r) {
+    const d = S.mgrDone[r.id]; const s = d ? decided(r, d) : r.status; const t = reqText(r, true);
+    return `<button type="button" class="rc" data-row="${r.id}">${kindIcon(r, 40)}<span class="lead"><span class="sr">${kindName(r)}: </span>${t.lead}</span>${t.lines.map((l) => l.startsWith("<span") ? l : `<span class="ln">${l}</span>`).join("")}<span class="ft"><span class="chip" data-tone="${s[1]}">${s[0]}</span><span class="${t.soon ? "soon" : ""}">${t.foot}</span></span></button>`;
+  }
+  // A swap across two locations is approved only when both managers approve.
+  const decided = (r, d) => d === "declined" ? ["Declined", "red"] : r.id === "r3" ? ["Waiting for Midtown", "amber"] : ["Approved", "green"];
+  // Shift change type icon on a rounded-square tile (people keep round avatars).
+  const kindIcon = (r, size) => `<span class="ki s${size}" aria-hidden="true">${r.kind === "Swap" ? I.swap : r.kind === "Cover" ? I.stepin : I.pickup}</span>`;
+  const pendingCount = () => REQS.filter((r) => !S.mgrDone[r.id] && r.status[1] !== "green").length;
+  function renderDesk() {
+    const el = document.getElementById("mgr-desk");
+    const n = pendingCount();
+    el.innerHTML = `<nav class="side" aria-label="Main"><div class="ws">Harbor &amp; Vine</div>${[["Home", I.home], ["Schedule", I.cal], ["Requests", I.inbox, n], ["Employees", I.users], ["Announcements", I.bell]].map(([l, ic, c]) => `<a href="#" class="${l === "Requests" ? "on" : ""}" onclick="return false">${ic}${l}${c ? `<span class="dot-n">${c}</span>` : ""}</a>`).join("")}</nav>
+      <div class="main"><div class="ph"><span class="eyebrow">Team requests</span><h2>Requests</h2><p>Time off and shift changes waiting for your decision.</p></div>
+        <nav class="tabs"><button type="button">Time off</button><button type="button" aria-current="page">Shift changes${n ? ` <span class="dot-n">${n}</span>` : ""}</button><button type="button">Availability</button></nav>
+        <div class="filters"><span class="sel">All locations</span><span class="sel">Needs decision</span><span class="search">Search name or date</span></div>
+        ${tableHtml()}
+      </div>
+      ${S.mgrOpen ? `<div class="mscrim right" data-mgr-scrim>${decisionWindow(false)}</div>` : ""}${S.orphan ? orphanWindow() : ""}`;
+  }
+  function renderMPhone() {
+    const el = document.getElementById("mgr-phone");
+    el.innerHTML = `<div class="app-status"><span>9:41</span><span>Harbor &amp; Vine</span></div>
+      <div class="app-body"><div class="app-pad" style="padding-bottom:12px"><div class="ph-head"><span class="eyebrow">Team requests</span><h2>Requests</h2></div>
+      <nav class="tabs"><button type="button">Time off</button><button type="button" aria-current="page">Shift changes${pendingCount() ? ` <span class="dot-n">${pendingCount()}</span>` : ""}</button></nav></div>
+      <div class="mlist">${REQS.map(cardHtml).join("")}</div></div>
+      ${S.mgrOpen ? `<div class="scrim" data-mgr-scrim>${decisionWindow(true)}</div>` : ""}`;
+  }
+
+  // ---------- guide ----------
+  function renderGuide() {
+    let html = "", g = null;
+    SCN.forEach((s, i) => {
+      if (s.group && s.group !== g) { if (g !== null) html += "</div>"; g = s.group; html += `<div class="scn-group"><b>${s.group}</b>`; }
+      html += `<button type="button" class="scn" data-scn="${i}" aria-pressed="${i === scn}"><span class="n">${i + 1}</span><span>${s.label}</span></button>`;
+    });
+    html += "</div>";
+    document.getElementById("scn-list").innerHTML = html;
+    const s = SCN[scn];
+    const pills = (title, items, key, val) => `<p class="opt-title">${title}</p><div class="pills" role="group" aria-label="${title}">${items.map(([k, l]) => `<button type="button" data-${key}="${k}" aria-pressed="${val === k}">${l}</button>`).join("")}</div>`;
+    document.getElementById("explain").innerHTML = `<p class="who">${s.who}</p><p>${s.text}</p>
+      ${s.cases ? pills("Hâl", SW_CASES, "sc", S.swCase) : ""}
+      ${s.list.length ? `<ul>${s.list.map((x) => `<li>${x}</li>`).join("")}</ul>` : ""}<p class="basis">Dayanak: ${s.basis} (PLAN.md)</p>`;
+    const mgr = scn >= 11;
+    document.getElementById("col-desk").style.order = mgr ? -1 : 2;
+    document.getElementById("col-mphone").style.order = mgr ? 0 : 3;
+  }
+  function render() { renderEmp(); renderDesk(); renderMPhone(); }
+  function arm(key) { S[key] = true; render(); setTimeout(() => { if (S[key]) { S[key] = false; render(); } }, 3000); }
+
+  // ---------- events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("button, [data-scrim], [data-toast], tr, [data-mgr-scrim]");
+    if (!t) return;
+    const d = t.dataset;
+    if (d.scn) { setScn(+d.scn); return; }
+    if (t.id === "reset") { setScn(scn); return; }
+    if (d.sc) { S.swCase = d.sc; S.mgrOpen = "r3"; S.mgrDecl = false; S.mgrArmed = false; delete S.mgrDone.r3; renderGuide(); render(); return; }
+    if (d.p) { S.persona = d.p; S.empScreen = "home"; S.sheet = null; render(); return; }
+    if (d.toast !== undefined) { S.toast = null; render(); return; }
+    if (d.scrim !== undefined && e.target === t) { S.sheet = null; render(); return; }
+    if (d.close !== undefined) { S.sheet = null; render(); return; }
+    if (d.go) { if (d.go !== "more") S.empScreen = d.go; S.sheet = null; render(); return; }
+    if (d.tab) { S.hubTab = d.tab; render(); return; }
+    if (d.notif) { if (d.notif === "hub") { S.empScreen = "hub"; S.hubTab = "available"; } else { S.empScreen = "hub"; S.hubTab = "requests"; S.request = S.request || { kind: "release", status: "open", note: "Family dinner came up. Section 4 is usually busy, thanks!" }; } render(); return; }
+    if (d.openShift !== undefined) { if (!d.openShift) return; S.sheetShift = d.openShift === "s-today" ? SOON : d.openShift === "s-sat" ? JAKE_SAT : SHIFT; S.sheet = "shift"; render(); return; }
+    if (d.sheet) { S.sheet = d.sheet; render(); return; }
+    if (d.pick) { if (t.getAttribute("aria-disabled") === "true") return; const i = S.coverPick.indexOf(d.pick); if (i >= 0) S.coverPick.splice(i, 1); else if (S.coverPick.length < 3) S.coverPick.push(d.pick); render(); return; }
+    if (d.swap) { if (t.getAttribute("aria-disabled") === "true") return; S.swapPick = d.swap; render(); return; }
+    if (d.send) {
+      const note = (document.getElementById(d.send === "release" ? "rel-note" : d.send === "cover" ? "cov-note" : "swap-note") || {}).value || "";
+      S.request = { kind: d.send, status: "open", note, picked: S.coverPick.slice() };
+      S.sheet = null; S.empScreen = "hub"; S.hubTab = "requests"; S.takeArmed = false;
+      flash(d.send === "release" ? "Shift released" : d.send === "cover" ? `Asked ${S.coverPick.length} ${S.coverPick.length === 1 ? "teammate" : "teammates"}` : "Swap sent", "You stay responsible until your manager approves.");
+      return;
+    }
+    if (d.takeback !== undefined) { if (!S.takeArmed) { arm("takeArmed"); return; } S.takeArmed = false; S.request.status = "kept"; flash(S.request.kind === "release" ? "You kept your shift" : "Request cancelled", "Everyone involved was told."); return; }
+    if (d.invite) {
+      const kind = S.sheet === "invite" ? "cover" : "swap";
+      S.sheet = null;
+      if (d.invite === "accept") { S.jakeReq = kind; S.empScreen = "hub"; S.hubTab = "requests"; flash(kind === "cover" ? "Accepted" : "Swap confirmed", "Your manager decides."); }
+      else flash("Declined", "Maria was told.");
+      return;
+    }
+    if (d.deck) { swipe(d.deck); return; }
+    if (d.pickoff) { const id = S.pickOff; S.sheet = null; if (d.pickoff === "take") { S.deckDone[id] = "take"; const o = OPEN.find((x) => x.id === id); flash("You asked for this shift", `${o.dow}, ${o.date}. Your time off ends only if your manager approves.`); } else render(); return; }
+    if (d.day) { S.whoDay = +d.day; render(); return; }
+    if (d.row) { S.mgrOpen = d.row; S.mgrArmed = false; S.mgrDecl = false; S.mgrPick = ((CANDS[d.row] || [])[0] || {}).id || null; render(); return; }
+    if (d.cand) { if (t.getAttribute("aria-disabled") === "true") return; S.mgrPick = d.cand; render(); return; }
+    if (d.mgr === "close" || (d.mgrScrim !== undefined && e.target === t)) { S.mgrOpen = null; S.mgrArmed = false; S.mgrDecl = false; render(); return; }
+    if (d.mgr === "approve") { S.mgrDone[S.mgrOpen] = "approved"; if (S.mgrPick) S.mgrTaker[S.mgrOpen] = S.mgrPick; render(); return; }
+    if (d.mgr === "decline") { S.mgrDecl = true; S.mgrArmed = false; render(); return; }
+    if (d.mgr === "back") { S.mgrDecl = false; S.mgrArmed = false; render(); return; }
+    if (d.mgr === "confirm") { if (!S.mgrArmed) { arm("mgrArmed"); return; } S.mgrArmed = false; S.mgrDecl = false; S.mgrDone[S.mgrOpen] = "declined"; render(); return; }
+    if (d.orph) { const [id, v] = d.orph.split(":"); S.orphanChoice[id] = v; render(); return; }
+    if (d.orphDone !== undefined) { S.orphan = false; render(); return; }
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") {
+      if (S.sheet) { S.sheet = null; render(); }
+      else if (S.mgrOpen && S.mgrDecl) { S.mgrDecl = false; S.mgrArmed = false; render(); }
+      else if (S.mgrOpen) { S.mgrOpen = null; render(); }
+      else if (S.orphan) { S.orphan = false; render(); }
+    }
+    if (e.key === "Enter" && e.target.matches("tr[data-row]")) { S.mgrOpen = e.target.dataset.row; S.mgrPick = ((CANDS[S.mgrOpen] || [])[0] || {}).id || null; render(); }
+  });
+
+  setScn(0);
+})();
+</script>

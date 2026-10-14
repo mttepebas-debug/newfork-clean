@@ -1,0 +1,52 @@
+{
+ "screens": [
+  {
+   "label": "Announcements · Hannah Lee (Manager)",
+   "as": "manager",
+   "route": "/app/announcements",
+   "width": 1440
+  },
+  {
+   "label": "Announcements · Laura Bennett (Admin)",
+   "as": "admin",
+   "route": "/app/announcements",
+   "width": 1440
+  },
+  {
+   "label": "Announcements · Owner",
+   "as": "owner",
+   "route": "/app/announcements",
+   "width": 1440
+  },
+  {
+   "label": "Settings → Acknowledgements · Owner",
+   "as": "owner",
+   "route": "/app/settings/acknowledgements",
+   "width": 1440
+  },
+  {
+   "label": "Announcements · Maria Lopez (Employee), telefon",
+   "as": "employee",
+   "route": "/app/announcements",
+   "width": 390
+  },
+  {
+   "label": "Announcements · Maria Lopez (Employee), masaüstü",
+   "as": "employee",
+   "route": "/app/announcements",
+   "width": 1440
+  }
+ ],
+ "personas": {
+  "owner": "Mert Tepebas · Owner",
+  "admin": "Laura Bennett · Admin",
+  "manager": "Hannah Lee · Manager, Downtown",
+  "employee": "Maria Lopez · Employee, Downtown",
+  "onboarding": "Ben Carter · yeni çalışan, onboarding'de",
+  "invited": "Chloe Adams · davet edildi, katılmadı",
+  "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi",
+  "nobusiness": "Alex Morgan · hesap var, workspace yok",
+  "signedout": "Giriş yapılmamış"
+ },
+ "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."
+}

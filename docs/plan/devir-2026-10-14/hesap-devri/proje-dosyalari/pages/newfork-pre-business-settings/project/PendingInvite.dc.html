@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>You have an invitation</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.gate{display:flex;flex-direction:column;width:1440px;height:900px;background:#ffffff}
+.topbar{display:flex;align-items:center;justify-content:space-between;gap:20px;height:62px;flex:0 0 62px;padding:0 32px;border-bottom:1px solid #dce3df;background:#ffffff}
+.brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.who{display:flex;align-items:center;gap:14px}
+.who .id{display:flex;align-items:center;gap:9px}
+.who .av{width:28px;height:28px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:11px;font-weight:700}
+.who .mail{font-size:12.5px;color:#66716c}
+.body{flex-grow:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px 32px;box-sizing:border-box}
+.col{width:640px}
+h1{margin:0 0 10px;color:#17221e;font-size:30px;line-height:1.2;font-weight:600}
+.lead{margin:0 0 30px;color:#66716c;font-size:15px;line-height:1.55}
+.list{overflow:hidden;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.row{display:flex;min-height:56px;align-items:center;justify-content:space-between;gap:16px;padding:10px 18px;border-bottom:1px solid #e2e6e4}
+.row:last-child{border-bottom:0}
+.rl{display:flex;align-items:center;gap:13px;min-width:0}
+.mark{width:38px;height:38px;flex:0 0 38px;border-radius:9px;background:#f0f3f1;color:#5f6b66;display:grid;place-items:center;font-size:15px;font-weight:800}
+.rt{display:grid;min-width:0;gap:2px;flex:1}
+.rh{display:flex;align-items:center;gap:5px;min-width:0}
+.rt strong{overflow:hidden;color:#17221e;font-size:14px;font-weight:600;line-height:18px;text-overflow:ellipsis;white-space:nowrap}
+.rm{color:#66716c;font-size:12px;line-height:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ra{display:flex;flex:0 0 auto;align-items:center;justify-content:flex-end;gap:8px;min-width:200px}
+.ra .btn{min-width:96px;box-sizing:border-box}
+.badge{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;height:18px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap}
+.b-p{background:#fff7e2;color:#8a5a00}
+.btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.b2,.b3{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.after{margin:26px 0 0;font-size:13.5px;color:#66716c;line-height:1.6}
+.note{position:absolute;left:32px;bottom:22px;max-width:640px;font-size:12px;color:#8d9793;line-height:1.55}
+</style>
+</helmet>
+<div class="gate" style="position:relative;box-sizing:border-box;">
+  <header class="topbar">
+    <span class="brand">NEWFORK</span>
+    <span class="who">
+      <span class="id"><span class="av">AN</span><span class="mail">alexa@newfork.test</span></span>
+      <button type="button" class="btn b2" style="min-height:32px;padding:0 12px;font-size:12.5px;">Sign out</button>
+    </span>
+  </header>
+  <div class="body">
+    <main class="col" aria-labelledby="pi-t">
+      <h1 id="pi-t">Meyhouse invited you</h1>
+      <p class="lead">Deniz Kaya asked you to join as a Server at Palo Alto. Declining can&#39;t be undone.</p>
+      <div class="list">
+        <div class="row">
+          <span class="rl">
+            <span class="mark">M</span>
+            <span class="rt"><span class="rh"><strong>Meyhouse</strong><span class="badge b-p">Expires in 6 days</span></span><span class="rm">Server &middot; Palo Alto</span></span>
+          </span>
+          <span class="ra"><button type="button" class="btn b3">Decline</button><button type="button" class="btn b1">Join</button></span>
+        </div>
+      </div>
+      <p class="after">Joining starts a short setup. If you are not ready, leave it &mdash; the invitation waits here until it expires.</p>
+    </main>
+  </div>
+  <p class="note"><strong style="color:#5f6b66;">&ldquo;Not now&rdquo; kalkt&#305;.</strong> Ekran art&#305;k araya giren bir kap&#305; de&#287;il: gidecek bir yerin varsa uygulamaya inersin ve davet Workspaces&#39;ta bir say&#305; olur. Bu ekran yaln&#305;z gidecek ba&#351;ka yer yokken &#231;&#305;kar, o y&#252;zden &ldquo;&#351;imdi de&#287;il&rdquo; diyecek bir buton gerekmiyor. Ayr&#305;ca sat&#305;r art&#305;k rol&#252; ve daveti g&#246;nderen ki&#351;iyi de s&#246;yl&#252;yor &mdash; bu <code>accountPendingInvitationSchema</code>&#39;ya iki alan eklemek demek (D5).</p>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":900}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

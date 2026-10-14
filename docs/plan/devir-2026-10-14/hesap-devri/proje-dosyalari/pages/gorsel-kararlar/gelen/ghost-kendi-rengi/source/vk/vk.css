@@ -1,0 +1,108 @@
+/* Ghost card colors (Mert, 2026-10-12): the ghost mirrors the real shift
+   card in its own shift type color, only in a dead tone. "Original" is
+   main's grey hatch. The frame, layout and text stay the real card's. */
+
+/* Shared by every variant: the real card's text colors come back. */
+html:not([data-vk-ghost="original"]) .schedule-shift-badge[data-ghost="true"] {
+  --gk-dead: color-mix(in oklab, var(--shift-color) 45%, #8e9692);
+}
+html:not([data-vk-ghost="original"]) .schedule-shift-badge[data-ghost="true"] strong {
+  color: #26312d;
+}
+html:not([data-vk-ghost="original"]) .schedule-shift-badge[data-ghost="true"] .schedule-shift-time {
+  color: #34413c;
+}
+html:not([data-vk-ghost="original"]) .schedule-shift-badge[data-ghost="true"] .schedule-shift-labels {
+  color: #2d574c;
+}
+html:not([data-vk-ghost="original"]) .schedule-shift-badge[data-ghost="true"] .schedule-shift-badge-markers {
+  color: #4a5651;
+}
+
+/* A · the real card's formula on a color drained toward grey. */
+html[data-vk-ghost="a"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--gk-dead) 60%, #26332e);
+  background: color-mix(in srgb, var(--gk-dead) 16%, var(--theme-surface));
+}
+
+/* B · same color, much paler: a faded print of the real card. */
+html[data-vk-ghost="b"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 38%, #c9cfcc);
+  background: color-mix(in srgb, var(--shift-color) 6%, var(--theme-surface));
+}
+
+/* C · dead tone with today's fine hatch, in the card's own color. */
+html[data-vk-ghost="c"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--gk-dead) 55%, #6b7470);
+  background: repeating-linear-gradient(
+    135deg,
+    color-mix(in srgb, var(--gk-dead) 30%, var(--theme-surface)) 0 1px,
+    color-mix(in srgb, var(--gk-dead) 11%, var(--theme-surface)) 1px 5px
+  );
+}
+
+/* D · pale and sunk in: a soft inner shadow in its own color on the top
+   edge, a thin light line on the bottom. */
+html[data-vk-ghost="d"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 45%, #a7b0ac);
+  background: color-mix(in srgb, var(--shift-color) 9%, var(--theme-surface-muted));
+  box-shadow:
+    inset 0 2px 4px color-mix(in srgb, var(--shift-color) 28%, transparent),
+    inset 0 -1px 0 rgb(255 255 255 / 0.9);
+}
+
+/* E · literally the real card, then 70% of the color drained. */
+html[data-vk-ghost="e"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 65%, #26332e);
+  background: color-mix(in srgb, var(--shift-color) 13%, var(--theme-surface));
+  filter: saturate(0.3);
+}
+
+/* F · dead tone with a dashed edge in the same tone. */
+html[data-vk-ghost="f"] .schedule-shift-badge[data-ghost="true"] {
+  border: 1px dashed color-mix(in srgb, var(--gk-dead) 70%, #26332e);
+  background: color-mix(in srgb, var(--gk-dead) 12%, var(--theme-surface));
+}
+
+/* Mert, 2026-10-12 14:04 PT: "more like a button you cannot press,
+   lifeless". G-J look switched off: flat, no shadow, quiet grey text in
+   normal weight. G, H and J keep the text at AA (4.5:1); I does not. */
+html:is([data-vk-ghost="g"], [data-vk-ghost="h"], [data-vk-ghost="j"]) .schedule-shift-badge[data-ghost="true"]
+  :is(strong, .schedule-shift-labels, .schedule-shift-time, .schedule-shift-badge-markers) {
+  color: #5f6965;
+}
+html:is([data-vk-ghost="g"], [data-vk-ghost="h"], [data-vk-ghost="i"], [data-vk-ghost="j"]) .schedule-shift-badge[data-ghost="true"] strong {
+  font-weight: 500;
+}
+
+/* G · a switched-off grey button; its own color is a faint left edge. */
+html[data-vk-ghost="g"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: #d3d8d6;
+  background: #eef0ef;
+  box-shadow: inset 3px 0 0 color-mix(in srgb, var(--shift-color) 45%, #d3d8d6);
+}
+
+/* H · its own color drained almost to grey. */
+html[data-vk-ghost="h"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 30%, #cfd4d2);
+  background: color-mix(in srgb, var(--shift-color) 9%, #f1f3f2);
+  filter: grayscale(0.55);
+  box-shadow: none;
+}
+
+/* I · the real card, see-through: the classic disabled button. */
+html[data-vk-ghost="i"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 65%, #26332e);
+  background: color-mix(in srgb, var(--shift-color) 13%, var(--theme-surface));
+  box-shadow: none;
+  opacity: 0.45;
+}
+
+/* J · its own color under a white veil, like fogged glass. */
+html[data-vk-ghost="j"] .schedule-shift-badge[data-ghost="true"] {
+  border-color: color-mix(in srgb, var(--shift-color) 28%, #d9dddb);
+  background:
+    linear-gradient(rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.72)),
+    color-mix(in srgb, var(--shift-color) 30%, var(--theme-surface));
+  box-shadow: none;
+}

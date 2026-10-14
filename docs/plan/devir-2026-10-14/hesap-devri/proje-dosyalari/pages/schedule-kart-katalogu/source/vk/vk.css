@@ -1,0 +1,218 @@
+/* Card catalog page, "Yeni" look (Mert's comments, 2026-10-12). The card
+   carries data-rk-look itself; a cell follows its nearest wrapper: #root on
+   the grid, the sample's frame in the catalog. !important only where main's
+   own rules are more specific. */
+
+/* Words centred between the card's edges, the same room on both sides: the
+   widest corner mark plus a gap (ShiftCard --rk-side, vk/side.ts). */
+.schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content {
+  padding-right: var(--rk-side) !important;
+  padding-left: var(--rk-side) !important;
+}
+/* The column measurer keeps the same room, so the column widens instead. */
+#root[data-rk-look="yeni"] .schedule-badge-width-measure {
+  padding-right: calc(8px + var(--rk-side-read));
+  padding-left: calc(8px + var(--rk-side-read));
+}
+#root[data-rk-look="yeni"] .schedule-grid-exact[aria-label*="editable"] .schedule-badge-width-measure {
+  padding-right: calc(8px + var(--rk-side-edit));
+  padding-left: calc(8px + var(--rk-side-edit));
+}
+
+/* LIVE: top right, the green of NEW. */
+.schedule-shift-badge .rk-mark-label {
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  font-size: 9px;
+  font-weight: 750;
+  line-height: 13px;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.schedule-shift-badge .rk-live-label {
+  border-color: color-mix(in srgb, var(--theme-success) 45%, transparent);
+  background: var(--theme-success-soft);
+  color: var(--theme-success);
+}
+
+/* An edited live shift reads as a new one: NEW, no stripe. */
+.schedule-shift-badge[data-rk-look="yeni"][data-publication-state="unlocked-modified"]:not([data-selected="true"]) {
+  box-shadow: none;
+}
+
+/* Saving: a spinner in the top-right corner instead of the strip. */
+.schedule-shift-badge .rk-save-spinner {
+  display: inline-grid;
+  place-items: center;
+  color: var(--theme-text-secondary, #596660);
+}
+.schedule-shift-badge .rk-save-spinner[data-delayed] {
+  color: var(--theme-warning);
+}
+.schedule-shift-badge .rk-save-spinner svg {
+  animation: rk-spin 0.9s linear infinite;
+}
+@keyframes rk-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .schedule-shift-badge .rk-save-spinner svg {
+    animation-duration: 2.4s;
+  }
+}
+
+/* A closed day looks like time off; "Closed" only on hover. */
+[data-rk-look="yeni"] .schedule-cell[data-closed="true"] {
+  background-color: var(--theme-time-off-soft);
+  background-image: none;
+}
+[data-rk-look="yeni"] .schedule-cell[data-closed="true"]:hover {
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--theme-time-off) 55%, transparent);
+}
+[data-rk-look="yeni"] .schedule-cell[data-closed="true"]:not(:has(.schedule-shift-badge)):hover::before {
+  content: "Closed";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: grid;
+  place-items: center;
+  color: var(--theme-danger-strong);
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  pointer-events: none;
+}
+
+/* A shift dragged over time off: the red frame stays, no words. */
+[data-rk-look="yeni"] .schedule-cell[data-availability-kind="time_off"][data-drop-status="blocked"]::after {
+  content: none;
+}
+
+/* Open shifts: "x2" top left (Mert, 2026-10-12, 17:04); the top-right marks
+   go back to the corner. vk/side.ts keeps the words clear of both. */
+.schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-stack-count {
+  right: auto;
+  left: 5px;
+}
+.schedule-shift-badge[data-rk-look="yeni"][data-stack-count] .schedule-shift-badge-markers {
+  right: 6px;
+}
+
+/* Every line on its own row, never a second one (Mert, 2026-10-12, 17:04):
+   the column is as wide as the widest line; when even the fitted week is
+   narrower, the line ends in "…" (the card's name says it in full). */
+.schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content {
+  align-items: center;
+}
+.schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > * {
+  max-width: 100%;
+  overflow: hidden !important;
+  overflow-wrap: normal !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+/* Every card's first line starts at the top of the card, so first lines line
+   up along a row whatever a card holds below them (Mert, 2026-10-14 01:15Z,
+   "Her zaman için ilk satır ... aynı hizada"); what is left over goes below
+   the words. */
+.schedule-shift-badge[data-rk-look="yeni"] {
+  justify-content: flex-start;
+}
+
+/* Every top mark sits level with the card's first line (Mert, 2026-10-14
+   01:15Z: "Her zaman için ilk satır meta datayla aynı hizada olsun"): the
+   card keeps that line's middle in --rk-l1-mid (vk/line1.ts). The top-right
+   row moves only with the chosen "!" and LIVE (5 and 1); the other drafts on
+   the drafts board stay where they were drawn. */
+:is([data-rk-unavail="u5"][data-rk-live="l1"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-markers,
+.schedule-shift-badge[data-rk-look="yeni"][data-ghost="true"] .schedule-shift-badge-markers,
+.schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-stack-count {
+  top: var(--rk-l1-mid, 13.5px);
+  transform: translateY(-50%);
+}
+
+/* Tight band (the grid's shell, data-rk-band): a fitted week too narrow for
+   the side room. The words take the card's width. Reading, the marks stay
+   beside the first line, which keeps clear of them: centred while it can be,
+   sliding away from a mark only as far as it must. While editing, every card
+   keeps a row of its own for the top marks above the words (LIVE does not fit
+   beside a name there) and NEW one below (vk/side.ts TIGHT, less the card's
+   6px padding and 1px border, 3px clear of the words). */
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content {
+  padding-right: 2px !important;
+  padding-left: 2px !important;
+}
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child {
+  display: flex;
+  align-self: stretch;
+}
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::before,
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"])
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::after {
+  flex: 1 1 0;
+  content: "";
+}
+/* The words start 4px past a mark (vk/line1.ts firstLineInset): its reach
+   from the outer edge, less the border, the card's padding (8px; 5px
+   compact) and the words' own 2px. */
+.schedule-grid-exact[data-rk-band="tight"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::before {
+  min-width: max(0px, calc(var(--rk-l1-left, 0px) - 7px));
+}
+.schedule-grid-exact[data-rk-band="tight"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::after {
+  min-width: max(0px, calc(var(--rk-l1-right, 0px) - 7px));
+}
+.schedule-grid-exact[data-rk-band="compact"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::before {
+  min-width: max(0px, calc(var(--rk-l1-left, 0px) - 4px));
+}
+.schedule-grid-exact[data-rk-band="compact"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child::after {
+  min-width: max(0px, calc(var(--rk-l1-right, 0px) - 4px));
+}
+/* Clip band: the name already fills the card and ends in "…". */
+.schedule-grid-exact[data-rk-band="clip"]
+  .schedule-cell:not([data-editing="true"]) .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong:first-child {
+  align-self: stretch;
+  padding-right: max(0px, calc(var(--rk-l1-right, 0px) - 4px));
+  padding-left: max(0px, calc(var(--rk-l1-left, 0px) - 4px));
+}
+/* Editing: the marks' own row, its middle 13.5px down (6px + a 15px mark). */
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-rk-look="yeni"][data-rk-top="true"] {
+  --rk-l1-mid: 13.5px !important;
+}
+/* A ghost's pin is 17px, 2px taller than the row's 15px marks: 2px higher. */
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-rk-look="yeni"][data-ghost="true"][data-rk-top="true"] {
+  --rk-l1-mid: 11.5px !important;
+}
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-cell[data-editing="true"] .schedule-shift-badge[data-rk-look="yeni"][data-rk-top="true"] .schedule-shift-badge-content {
+  padding-top: 18px;
+}
+.schedule-grid-exact:is([data-rk-band="tight"], [data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-shift-badge[data-rk-look="yeni"][data-rk-bottom="true"] .schedule-shift-badge-content {
+  padding-bottom: 16px;
+}
+/* Compact band: narrower still, the name a point smaller (12px to 11px) so it
+   stays whole; only past that does a name end in "…" (clip). */
+.schedule-grid-exact:is([data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-shift-badge[data-rk-look="yeni"] .schedule-shift-badge-content > strong {
+  font-size: 11px;
+}
+.schedule-grid-exact:is([data-rk-band="compact"], [data-rk-band="clip"])
+  .schedule-shift-badge[data-rk-look="yeni"] {
+  padding-right: 5px;
+  padding-left: 5px;
+}

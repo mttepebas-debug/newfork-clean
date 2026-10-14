@@ -1,0 +1,1 @@
+[{"name":"probe","hash":"v=1&s=mine&view=phone&about=0","w":1440,"h":900,"steps":[{"click":"[data-act='v1-sheet'][data-day='4']"},{"eval":"(()=>{const e=document.querySelector('.sheet .seg');const c=getComputedStyle(e);console.error('SEG',c.display,c.width,c.marginLeft,e.className, getComputedStyle(e.parentElement).display)})()"}]}]

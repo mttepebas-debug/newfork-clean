@@ -1,0 +1,2147 @@
+{
+ "screens": [
+  {
+   "no": "1.0",
+   "title": "Sign in",
+   "area": "sign-in",
+   "path": "/sign-in",
+   "match": "^/sign-in/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Giriş ekranı: e-posta ve parola, parolamı unuttum bağlantısı, davetle gelen kişi için hesap açma.",
+   "nerede": "Uygulamanın adresi açılınca, oturum yoksa",
+   "kim": "Oturumu olmayan herkes",
+   "scenarios": [
+    {
+     "id": "form",
+     "label": "Giriş formu"
+    },
+    {
+     "id": "expired",
+     "label": "Oturum süresi doldu",
+     "setup": "session-expired"
+    },
+    {
+     "id": "create",
+     "label": "Workspace hesabı aç",
+     "steps": [
+      {
+       "click": "text=Create a workspace account"
+      }
+     ]
+    },
+    {
+     "id": "invite",
+     "label": "Davetle gelen kişi",
+     "state": {
+      "from": "/invite/accept?token=demo"
+     }
+    },
+    {
+     "id": "wrong",
+     "label": "Yanlış parola",
+     "steps": [
+      {
+       "fill": "input[type=email]",
+       "value": "owner@harborvine.test"
+      },
+      {
+       "fill": "input[type=password]",
+       "value": "wrong-password"
+      },
+      {
+       "click": "button[type=submit]"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "1.1",
+   "title": "Forgot password",
+   "area": "sign-in",
+   "path": "/forgot-password",
+   "match": "^/forgot-password/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Parola sıfırlama bağlantısı isteme ekranı.",
+   "nerede": "Sign in → \"Forgot password?\"",
+   "kim": "Oturumu olmayan herkes",
+   "scenarios": [
+    {
+     "id": "form",
+     "label": "Boş form"
+    },
+    {
+     "id": "sent",
+     "label": "Bağlantı gönderildi",
+     "steps": [
+      {
+       "fill": "input[type=email]",
+       "value": "owner@harborvine.test"
+      },
+      {
+       "click": "text=Send reset link"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "1.2",
+   "title": "Reset password",
+   "area": "sign-in",
+   "path": "/reset-password",
+   "match": "^/reset-password/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "E-postadaki bağlantıyla gelen kişinin yeni parola belirlediği ekran.",
+   "nerede": "Parola sıfırlama e-postasındaki bağlantı",
+   "kim": "Bağlantıyla gelen kişi",
+   "scenarios": [
+    {
+     "id": "invalid",
+     "label": "Bağlantısız açılış (geçersiz)"
+    },
+    {
+     "id": "valid",
+     "label": "Geçerli bağlantı: yeni parola",
+     "path": "/reset-password#token_hash=demo-reset-link"
+    }
+   ]
+  },
+  {
+   "no": "1.3",
+   "title": "Account recovery",
+   "area": "sign-in",
+   "path": "/account-recovery",
+   "match": "^/account-recovery/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Hesabına giremeyen kişinin yardım istediği ekran.",
+   "nerede": "Sign in → hesap kurtarma bağlantısı",
+   "kim": "Oturumu olmayan herkes",
+   "scenarios": [
+    {
+     "id": "form",
+     "label": "Bağlantısız açılış (düğme kapalı)"
+    },
+    {
+     "id": "link",
+     "label": "E-postadaki bağlantıyla",
+     "path": "/account-recovery?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48"
+    },
+    {
+     "id": "restored",
+     "label": "Hesap geri geldi",
+     "steps": [
+      {
+       "click": "text=Restore my account"
+      }
+     ],
+     "path": "/account-recovery?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48"
+    }
+   ]
+  },
+  {
+   "no": "1.4",
+   "title": "Accept invitation",
+   "area": "employee-onboarding",
+   "path": "/invite/accept",
+   "match": "^/(accept-invite|invite/accept)/?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Davet bağlantısıyla gelen kişinin daveti kabul ettiği ekran. Oturumu yoksa önce 1.0 Sign in'e (davet senaryosu) gider.",
+   "nerede": "Davet e-postasındaki bağlantı",
+   "kim": "Davet edilen kişi (giriş yapmış)",
+   "scenarios": [
+    {
+     "id": "valid",
+     "label": "Geçerli davet",
+     "path": "/invite/accept?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48"
+    },
+    {
+     "id": "expired",
+     "label": "Süresi dolmuş",
+     "path": "/invite/accept?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48-expired"
+    },
+    {
+     "id": "revoked",
+     "label": "Geri alınmış",
+     "path": "/invite/accept?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48-revoked"
+    },
+    {
+     "id": "replaced",
+     "label": "Yerine yenisi gönderilmiş (Resend sonrası eski bağlantı)",
+     "path": "/invite/accept?token=8f2c41d9b7a64e0c9d3b5a7e1f6c2d48-replaced"
+    },
+    {
+     "id": "broken",
+     "label": "Bozuk bağlantı",
+     "path": "/invite/accept?token=abc"
+    }
+   ]
+  },
+  {
+   "no": "1.5",
+   "title": "Workspace hub",
+   "area": "workspace-hub",
+   "path": "/workspaces",
+   "match": "^/workspaces/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Girişten sonra workspace seçimi, bekleyen davetler, yeni workspace kurma.",
+   "nerede": "Girişten sonraki ilk ekran; sol üst workspace menüsü → All workspaces",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "join",
+     "label": "Davete katıl",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Join Cedar & Smoke BBQ"
+      }
+     ]
+    },
+    {
+     "id": "closed",
+     "label": "Kapalı workspace nedeni",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Why Pier 9 Kitchen is not open"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "1.6",
+   "title": "Workspace status",
+   "area": "workspace-hub",
+   "path": "/workspaces/status",
+   "match": "^/workspaces/status(/[^/]+)?/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Askıya alınmış ya da kapanmış workspace'in durum ekranı.",
+   "nerede": "Workspace hub → durumu sorunlu workspace",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "1.7",
+   "title": "Owner setup",
+   "area": "owner-onboarding",
+   "path": "/onboarding",
+   "match": "^/onboarding/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Yeni workspace kurulum sihirbazı: işletme, lokasyonlar, ekip, ilk program.",
+   "nerede": "Workspace hub → Create a workspace",
+   "kim": "Workspace kuran owner",
+   "scenarios": [
+    {
+     "id": "start",
+     "label": "İlk adım: workspace adı",
+     "role": "owner"
+    },
+    {
+     "id": "next",
+     "label": "Ad girildi, sonraki adım",
+     "role": "owner",
+     "steps": [
+      {
+       "fill": "main input",
+       "value": "Harbor & Vine Seaport"
+      },
+      {
+       "click": "text=Continue"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "1.8",
+   "title": "Employee welcome",
+   "area": "employee-onboarding",
+   "path": "/welcome",
+   "match": "^/welcome(/.*)?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Davet edilen çalışanın karşılama adımları: profil, belgeler, onaylar.",
+   "nerede": "Daveti kabul eden çalışanın ilk girişi",
+   "kim": "Yeni çalışan",
+   "scenarios": [
+    {
+     "id": "start",
+     "label": "Karşılama",
+     "role": "employee"
+    },
+    {
+     "id": "begin",
+     "label": "Başla: ilk adım",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Begin"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "1.9",
+   "title": "Check your email",
+   "area": "sign-in",
+   "path": "/sign-in",
+   "match": "^/sign-in/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Hesap açtıktan sonra çıkan ekran: e-posta onay bağlantısı gönderildi, adresi onaylayıp giriş yap. Hesap, adres onaylanana kadar oturum açmaz.",
+   "nerede": "Sign in → \"Create a workspace account\" (ya da davet bağlantısıyla gelince hesap aç) → Create account",
+   "kim": "Yeni hesap açan kişi",
+   "scenarios": [
+    {
+     "id": "workspace",
+     "label": "Workspace hesabı açtıktan sonra",
+     "steps": [
+      {
+       "click": "text=Create a workspace account"
+      },
+      {
+       "fill": "input[type=email]",
+       "value": "new.owner@harborvine.test"
+      },
+      {
+       "fill": "input[type=password]",
+       "value": "[GIZLI-CIKARILDI]"
+      },
+      {
+       "click": "button[type=submit]"
+      }
+     ]
+    },
+    {
+     "id": "invite",
+     "label": "Davetle gelen kişi hesap açtıktan sonra",
+     "state": {
+      "from": "/invite/accept?token=demo"
+     },
+     "steps": [
+      {
+       "fill": "input[type=email]",
+       "value": "hannah.scott@harborvine.test"
+      },
+      {
+       "fill": "input[type=password]",
+       "value": "[GIZLI-CIKARILDI]"
+      },
+      {
+       "click": "button[type=submit]"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "2.0",
+   "title": "Workspace",
+   "area": "workspace",
+   "path": "/app/workspace",
+   "match": "^/app/workspace/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Yöneticinin ana sayfası: yapılacaklar, kurulum listesi, bekleyen işler.",
+   "nerede": "Sol menü → Workspace",
+   "kim": "Owner, admin, manager",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "customize",
+     "label": "Kartları özelleştir",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Customize"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "3.0",
+   "title": "Schedule",
+   "area": "schedule",
+   "path": "/app/schedule",
+   "match": "^/app/schedule/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Haftalık vardiya ızgarası: düzenleme, taslak, yayınlama, Auto-fill.",
+   "nerede": "Sol menü → Schedule",
+   "kim": "Owner, admin, manager (telefonda kapalı)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "next",
+     "label": "Sonraki hafta",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Next week"
+      }
+     ]
+    },
+    {
+     "id": "filter",
+     "label": "Karta tıklayınca filtre",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[data-shift-badge]:not([data-ghost=\"true\"])"
+      }
+     ]
+    },
+    {
+     "id": "settings",
+     "label": "Görünüm ayarları",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Settings",
+       "within": "main"
+      }
+     ]
+    },
+    {
+     "id": "drafts",
+     "label": "Taslak menüsü",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Draft selector: New Schedule"
+      }
+     ]
+    },
+    {
+     "id": "past-draft",
+     "label": "Geçen haftanın taslağı: salt okunur",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Previous week"
+      },
+      {
+       "wait": 900
+      },
+      {
+       "click": "text=Draft selector: New Schedule"
+      }
+     ]
+    },
+    {
+     "id": "calendar",
+     "label": "Takvim açık: seçili haftanın günlerinde üzerine gelme",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Open schedule calendar"
+      }
+     ]
+    },
+    {
+     "id": "add",
+     "label": "Boş taslakta vardiya ekleme",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Draft selector: New Schedule"
+      },
+      {
+       "click": "text=New Schedule (blank)"
+      },
+      {
+       "click": "button[aria-label^=\"Add shift for Carlos Rivera\"]"
+      }
+     ]
+    },
+    {
+     "id": "time-off",
+     "label": "Tam gün izinli hücrede Add shift yok (Maria Lopez)",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Draft selector: New Schedule"
+      },
+      {
+       "click": "text=New Schedule (blank)"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "3.1",
+   "title": "Schedule export",
+   "area": "schedule",
+   "path": "/app/schedule/export",
+   "match": "^/app/schedule/export/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Programın PDF ve Excel dışa aktarma önizlemesi.",
+   "nerede": "Sol menü → Schedule",
+   "kim": "Owner, admin, manager (telefonda kapalı)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "excel",
+     "label": "Excel biçimi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Excel"
+      }
+     ]
+    },
+    {
+     "id": "png",
+     "label": "PNG biçimi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=PNG"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "3.2",
+   "title": "Schedule templates",
+   "area": "schedule",
+   "path": "/app/schedule/templates",
+   "match": "^/app/schedule/templates/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Haftalık şablonlar: kaydet, uygula.",
+   "nerede": "Sol menü → Schedule",
+   "kim": "Owner, admin, manager (telefonda kapalı)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "rename",
+     "label": "Şablonun adını değiştirme",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Rename template Standard week"
+      }
+     ]
+    },
+    {
+     "id": "delete",
+     "label": "Şablonu silme (iki tık)",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Delete template Standard week"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "3.3",
+   "title": "Requests",
+   "area": "requests",
+   "path": "/app/schedule/requests",
+   "match": "^/app/schedule/requests/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "İki sekme (Time off, Shift changes): izin talepleri ve vardiya değişimleri tek listede. Çekmeceler Important Dates diliyle: izin (Details · Shifts · Activity), cover ve open shift (adayı seç, tek adımda ver). Swap ve cover iki taraf anlaşınca listeye düşer.",
+   "nerede": "Sol menü → Schedule → Requests",
+   "kim": "Owner, admin, manager (manager yalnız kendi şubesi)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "timeoff",
+     "label": "İzin çekmecesi: Ethan Brooks",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Ethan Brooks, Time off\"]"
+      }
+     ]
+    },
+    {
+     "id": "timeoff-shifts",
+     "label": "İzin çekmecesi · Shifts sekmesi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Ethan Brooks, Time off\"]"
+      },
+      {
+       "click": "text=Shifts"
+      }
+     ]
+    },
+    {
+     "id": "deny",
+     "label": "İzni reddetme: gerekçe",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Ethan Brooks, Time off\"]"
+      },
+      {
+       "click": "text=Deny"
+      }
+     ]
+    },
+    {
+     "id": "cover",
+     "label": "Cover çekmecesi: Noah Garcia",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Noah Garcia, Cover\"]"
+      }
+     ]
+    },
+    {
+     "id": "open",
+     "label": "Open shift çekmecesi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Open shift, Open shift\"]"
+      }
+     ]
+    },
+    {
+     "id": "swap",
+     "label": "Takas penceresi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "[aria-label^=\"Jake Thompson, Swap\"]"
+      }
+     ]
+    },
+    {
+     "id": "only-timeoff",
+     "label": "Time off sekmesi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Time off"
+      }
+     ]
+    },
+    {
+     "id": "shift-changes",
+     "label": "Shift changes sekmesi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Shift changes"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "4.0",
+   "title": "Employees",
+   "area": "employees",
+   "path": "/app/employees",
+   "match": "^/app/employees/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Çalışan listesi (All, Invited, Onboarding, Needs Attention, Active), çalışan çekmecesi, davet, rol, yeni çalışan.",
+   "nerede": "Sol menü → Employees",
+   "kim": "Owner, admin, manager (manager kısmen düzenler)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "drawer",
+     "label": "Çalışan çekmecesi: Maria Lopez",
+     "role": "owner",
+     "path": "/app/employees?employeeId=00000601-0000-4000-8000-000000000601&section=profile"
+    },
+    {
+     "id": "uptown",
+     "label": "Lokasyon süzgeci: Uptown (Uptown'da ikinci lokasyon olarak çalışanlar ve owner da listede)",
+     "role": "owner",
+     "path": "/app/employees?location=00000102-0000-4000-8000-000000000102"
+    },
+    {
+     "id": "add",
+     "label": "Yeni çalışan",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Add employee"
+      }
+     ]
+    },
+    {
+     "id": "invited",
+     "label": "Davet edilenler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Invited"
+      }
+     ]
+    },
+    {
+     "id": "attention",
+     "label": "Needs Attention",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Needs Attention"
+      }
+     ]
+    },
+    {
+     "id": "reminder",
+     "label": "Davet bekleyen kişi: Hannah Scott, Access (Send reminder)",
+     "role": "owner",
+     "path": "/app/employees?employeeId=000006e1-0000-4000-8000-0000000006e1&section=access"
+    },
+    {
+     "id": "manager-invite",
+     "label": "Müdür, sahibin gönderdiği daveti görür: Kevin Nguyen, Access (Send reminder, Copy link, Revoke)",
+     "role": "manager",
+     "path": "/app/employees?employeeId=000006e2-0000-4000-8000-0000000006e2&section=access"
+    }
+   ]
+  },
+  {
+   "no": "4.1",
+   "title": "Employee documents",
+   "area": "employee-documents",
+   "path": "/app/employees/documents",
+   "match": "^/app/employees/documents/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Çalışan belgeleri: inceleme, onay, red, muafiyet, süre uzatma.",
+   "nerede": "Sol menü → Employees → Documents",
+   "kim": "Owner, admin",
+   "scenarios": [
+    {
+     "id": "all",
+     "label": "Bütün belgeler",
+     "role": "owner"
+    },
+    {
+     "id": "review",
+     "label": "İnceleme bekleyenler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Needs review"
+      }
+     ]
+    },
+    {
+     "id": "missing",
+     "label": "Eksikler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Missing"
+      }
+     ]
+    },
+    {
+     "id": "expired",
+     "label": "Süresi geçenler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Expired"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "4.2",
+   "title": "Employees archive",
+   "area": "employees",
+   "path": "/app/employees/archive",
+   "match": "^/app/employees/archive/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Arşivlenmiş çalışanlar ve geri alma.",
+   "nerede": "Employees → Archived",
+   "kim": "Owner, admin, manager",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    }
+   ]
+  },
+  {
+   "no": "5.0",
+   "title": "Availability",
+   "area": "availability",
+   "path": "/app/availability",
+   "match": "^/app/availability/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Ekibin haftalık müsaitliği ve tercihleri.",
+   "nerede": "Sol menü → Availability",
+   "kim": "Owner, admin, manager",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "missing",
+     "label": "Göndermeyenler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Not submitted"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "6.0",
+   "title": "Important Dates",
+   "area": "important-dates",
+   "path": "/app/important-dates",
+   "match": "^/app/important-dates/?$",
+   "roles": [
+    "owner",
+    "manager"
+   ],
+   "signedOut": false,
+   "ne": "Tatiller, kapalı günler, etkinlikler ve izin yasağı günleri: ekle, düzenle, yayından kaldır, arşivle.",
+   "nerede": "Sol menü → Important Dates",
+   "kim": "Owner, admin, manager (manager yalnız kendi şubesi)",
+   "scenarios": [
+    {
+     "id": "list",
+     "label": "Yaklaşan günler",
+     "role": "owner"
+    },
+    {
+     "id": "new",
+     "label": "Yeni gün çekmecesi",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=New date"
+      }
+     ]
+    },
+    {
+     "id": "edit",
+     "label": "Thanksgiving'i düzenle",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Actions for Thanksgiving"
+      },
+      {
+       "click": "text=Edit date"
+      }
+     ]
+    },
+    {
+     "id": "past",
+     "label": "Geçmiş günler",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Past"
+      }
+     ]
+    },
+    {
+     "id": "manager",
+     "label": "Manager · yalnız Downtown",
+     "role": "manager"
+    }
+   ]
+  },
+  {
+   "no": "7.0",
+   "title": "Employee home",
+   "area": "employee-hub",
+   "path": "/app/employee-hub",
+   "match": "^/app/employee-hub/?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Çalışanın ana sayfası: sıradaki vardiya, duyurular, hatırlatmalar.",
+   "nerede": "Çalışan menüsü → Home",
+   "kim": "Çalışan",
+   "scenarios": [
+    {
+     "id": "home",
+     "label": "Ana sayfa",
+     "role": "employee"
+    },
+    {
+     "id": "timeoff",
+     "label": "İzin iste",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Request time off"
+      }
+     ]
+    },
+    {
+     "id": "shift",
+     "label": "Vardiya ayrıntısı",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=View shift"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "7.1",
+   "title": "My schedule",
+   "area": "employee-hub",
+   "path": "/app/employee-hub/schedule",
+   "match": "^/app/employee-hub/schedule(/.*)?/?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Çalışanın kendi programı.",
+   "nerede": "Çalışan menüsü → Schedule",
+   "kim": "Çalışan",
+   "scenarios": [
+    {
+     "id": "week",
+     "label": "Bu hafta",
+     "role": "employee"
+    },
+    {
+     "id": "next",
+     "label": "Sonraki hafta",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Next week"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "7.2",
+   "title": "Shift Hub",
+   "area": "shift-hub",
+   "path": "/app/employee-hub/shift-hub",
+   "match": "^/app/employee-hub/shift-hub(/.*)?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Vardiya değişim merkezi: açık vardiyalar, takas, bırakma, devralma teklifleri. Onaylı izinle çakışan vardiya soluk kartla, nedeniyle gösterilir.",
+   "nerede": "Çalışan menüsü → Shift Hub",
+   "kim": "Çalışan",
+   "scenarios": [
+    {
+     "id": "available",
+     "label": "Açık vardiyalar",
+     "role": "employee"
+    },
+    {
+     "id": "time-off",
+     "label": "İzinli saate denk gelen açık vardiya (Fri, soluk kart)",
+     "role": "employee"
+    },
+    {
+     "id": "cover",
+     "label": "Vardiyayı üstlenme isteği",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Request to cover"
+      }
+     ]
+    },
+    {
+     "id": "mine",
+     "label": "Taleplerim",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=My requests"
+      }
+     ]
+    },
+    {
+     "id": "history",
+     "label": "Geçmiş",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=History"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "7.3",
+   "title": "My availability",
+   "area": "employee-hub",
+   "path": "/app/employee-hub/my-availability",
+   "match": "^/app/employee-hub/my-availability(/.*)?/?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Çalışanın haftalık tercihleri ve izin talebi.",
+   "nerede": "Çalışan menüsü → My Availability",
+   "kim": "Çalışan",
+   "scenarios": [
+    {
+     "id": "week",
+     "label": "Haftalık tercihler",
+     "role": "employee"
+    },
+    {
+     "id": "add",
+     "label": "Pazartesiye saat ekle",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Add hours on Monday"
+      }
+     ]
+    },
+    {
+     "id": "timeoff",
+     "label": "İzin talepleri sekmesi",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Time Off Requests"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "7.4",
+   "title": "More",
+   "area": "employee-hub",
+   "path": "/app/employee-hub/more",
+   "match": "^/app/employee-hub/more/?$",
+   "roles": [
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Telefondaki \"More\" menüsü: çalışanın geri kalan sayfaları.",
+   "nerede": "Telefon alt menüsü → More",
+   "kim": "Çalışan",
+   "scenarios": [
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "8.0",
+   "title": "Announcements",
+   "area": "announcements",
+   "path": "/app/announcements",
+   "match": "^/app/announcements/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Duyurular listesi, yeni duyuru, onay (acknowledgement) takibi.",
+   "nerede": "Sol menü → Announcements",
+   "kim": "Herkes (yazma owner, admin, manager)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "new",
+     "label": "Yeni duyuru",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=New announcement"
+      }
+     ]
+    },
+    {
+     "id": "drafts",
+     "label": "Taslaklar",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Draft"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "8.1",
+   "title": "Announcement detail",
+   "area": "announcements",
+   "path": "/app/announcements",
+   "match": "^/app/announcements/[^/]+/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Tek bir duyurunun sayfası ve onay durumu.",
+   "nerede": "Announcements → bir duyuru",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "employee",
+     "label": "Çalışan okuyor (onay bekliyor)",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Actions for Walk-in cooler repair on Tuesday"
+      },
+      {
+       "click": "text=View announcement"
+      }
+     ]
+    },
+    {
+     "id": "owner",
+     "label": "Owner düzenliyor",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Actions for Thanksgiving prix fixe menu"
+      },
+      {
+       "click": "text=Edit announcement"
+      }
+     ]
+    },
+    {
+     "id": "manager",
+     "label": "Manager düzenliyor",
+     "role": "manager",
+     "steps": [
+      {
+       "click": "text=Actions for Server section rotation"
+      },
+      {
+       "click": "text=Edit announcement"
+      }
+     ]
+    }
+   ],
+   "via": "^/app/announcements/?$"
+  },
+  {
+   "no": "9.0",
+   "title": "Notifications",
+   "area": "notifications",
+   "path": "/app/notifications",
+   "match": "^/app/notifications/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Bildirim kutusu.",
+   "nerede": "Sol menü → Notifications",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "read",
+     "label": "Okunanlar",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Read ("
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.0",
+   "title": "Settings · General",
+   "area": "settings",
+   "path": "/app/settings/general",
+   "match": "^/app/settings/general/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "İşletme adı, logo, saat dilimi ve genel ayarlar; kurulum listesi.",
+   "nerede": "Sol menü altı → Settings → General",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "checklist",
+     "label": "Kurulum listesi gizli",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Hide checklist"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.1",
+   "title": "Settings · Locations",
+   "area": "settings",
+   "path": "/app/settings/locations",
+   "match": "^/app/settings/locations/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Lokasyonlar: adres, telefon, saat dilimi; yeni lokasyon, arşiv.",
+   "nerede": "Sol menü altı → Settings → Locations",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "new",
+     "label": "Yeni lokasyon",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=New location"
+      }
+     ]
+    },
+    {
+     "id": "edit",
+     "label": "Downtown'u düzenle",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Actions for Harbor & Vine Downtown"
+      },
+      {
+       "click": "text=Edit location"
+      }
+     ]
+    },
+    {
+     "id": "archived",
+     "label": "Arşiv",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Archived"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.2",
+   "title": "Settings · Jobs",
+   "area": "settings",
+   "path": "/app/settings/jobs",
+   "match": "^/app/settings/jobs/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Departmanlar ve job'lar; job'a çalışan atama.",
+   "nerede": "Sol menü altı → Settings → Jobs",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "addjob",
+     "label": "Bar'a job ekle",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Add job to Bar"
+      }
+     ]
+    },
+    {
+     "id": "people",
+     "label": "Bartender çalışanları",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Manage employees for Bartender"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.3",
+   "title": "Settings · Notifications",
+   "area": "settings",
+   "path": "/app/settings/notifications",
+   "match": "^/app/settings/notifications/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Workspace bildirim kuralları: kim, hangi kanaldan, ne zaman.",
+   "nerede": "Sol menü altı → Settings → Notifications",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    }
+   ]
+  },
+  {
+   "no": "10.4",
+   "title": "Settings · Schedule rules",
+   "area": "settings",
+   "path": "/app/settings/scheduling",
+   "match": "^/app/settings/scheduling/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Program kuralları: hafta başlangıcı, yayın, mesai sınırları.",
+   "nerede": "Sol menü altı → Settings → Schedule rules",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    }
+   ]
+  },
+  {
+   "no": "10.5",
+   "title": "Settings · Conflict handling",
+   "area": "settings",
+   "path": "/app/settings/scheduling/conflicts",
+   "match": "^/app/settings/scheduling/conflicts/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Çakışma kuralları: izin, müsaitlik, üst üste vardiya; uyar ya da engelle.",
+   "nerede": "Sol menü altı → Settings → Conflict handling",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    }
+   ]
+  },
+  {
+   "no": "10.6",
+   "title": "Settings · Shift catalog",
+   "area": "settings",
+   "path": "/app/settings/scheduling/shift-types",
+   "match": "^/app/settings/scheduling/shift-types/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Vardiya türleri (Breakfast, Lunch, Dinner, Close) ve varsayılan saatleri.",
+   "nerede": "Sol menü altı → Settings → Shift catalog",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "edit",
+     "label": "Breakfast'ı düzenle",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Edit Breakfast"
+      }
+     ]
+    },
+    {
+     "id": "new",
+     "label": "Yeni vardiya türü",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Add shift type"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.7",
+   "title": "Settings · Shift labels",
+   "area": "settings",
+   "path": "/app/settings/scheduling/shift-labels",
+   "match": "^/app/settings/scheduling/shift-labels/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Vardiya etiketleri (Training, Opener, Closer, Private event).",
+   "nerede": "Sol menü altı → Settings → Shift labels",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "edit",
+     "label": "Training'i düzenle",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Edit Training"
+      }
+     ]
+    },
+    {
+     "id": "new",
+     "label": "Yeni etiket",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Add shift label"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.8",
+   "title": "Settings · Roles & permissions",
+   "area": "settings",
+   "path": "/app/settings/roles",
+   "match": "^/app/settings/roles/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Roller ve izinleri; yeni rol, rol kopyalama.",
+   "nerede": "Sol menü altı → Settings → Roles & permissions",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "new",
+     "label": "Yeni rol",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=New role"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.9",
+   "title": "Settings · Role detail",
+   "area": "settings",
+   "path": "/app/settings/roles/00000c05-0000-4000-8000-000000000c05",
+   "match": "^/app/settings/roles/[^/]+/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Tek bir rolün izinleri (örnek: Shift Lead).",
+   "nerede": "Settings → Roles & permissions → bir rol",
+   "kim": "Owner, admin",
+   "scenarios": [
+    {
+     "id": "custom",
+     "label": "Özel rol: Shift Lead",
+     "role": "owner"
+    },
+    {
+     "id": "builtin",
+     "label": "Hazır rol: Manager",
+     "role": "owner",
+     "path": "/app/settings/roles/00000c03-0000-4000-8000-000000000c03"
+    }
+   ]
+  },
+  {
+   "no": "10.10",
+   "title": "Settings · Documents",
+   "area": "settings",
+   "path": "/app/settings/documents",
+   "match": "^/app/settings/documents/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Çalışanlardan istenen belge türleri (W-4, I-9, Food Handler Card).",
+   "nerede": "Sol menü altı → Settings → Documents",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "new",
+     "label": "Yeni belge türü",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=New document"
+      }
+     ]
+    },
+    {
+     "id": "drafts",
+     "label": "Taslaklar",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Draft"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.11",
+   "title": "Settings · Acknowledgements",
+   "area": "settings",
+   "path": "/app/settings/acknowledgements",
+   "match": "^/app/settings/acknowledgements/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "İmzalı onay şablonları (Employee Handbook, Tip Pooling Policy) ve saklama süreleri.",
+   "nerede": "Sol menü altı → Settings → Acknowledgements",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "preview",
+     "label": "Handbook önizleme",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Actions for Employee Handbook"
+      },
+      {
+       "click": "text=Preview template"
+      }
+     ]
+    },
+    {
+     "id": "retention",
+     "label": "Saklama süreleri",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Retention"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "10.12",
+   "title": "Settings · Support",
+   "area": "settings",
+   "path": "/app/settings/support",
+   "match": "^/app/settings/support/?$",
+   "roles": [
+    "owner"
+   ],
+   "signedOut": false,
+   "ne": "Destek: e-posta ve tanı bilgisi.",
+   "nerede": "Sol menü altı → Settings → Support",
+   "kim": "Owner, admin (manager Settings'e giremez)",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    }
+   ]
+  },
+  {
+   "no": "11.0",
+   "title": "Account · Profile",
+   "area": "account",
+   "path": "/account/profile",
+   "match": "^/account/profile/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Ad, telefon, profil fotoğrafı.",
+   "nerede": "Sol menü altı → Account → Profile",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "11.1",
+   "title": "Account · Security",
+   "area": "account",
+   "path": "/account/security",
+   "match": "^/account/security/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "E-posta ve parola değişimi, öbür oturumları kapatma, hesabı silme.",
+   "nerede": "Sol menü altı → Account → Security",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "delete",
+     "label": "Hesabı silme",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Delete account"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "11.2",
+   "title": "Account · Preferences",
+   "area": "account",
+   "path": "/account/preferences",
+   "match": "^/account/preferences/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Görünüm, saat ve tarih biçimi.",
+   "nerede": "Sol menü altı → Account → Preferences",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "11.3",
+   "title": "Account · Notification preferences",
+   "area": "account",
+   "path": "/account/preferences/notifications",
+   "match": "^/account/preferences/notifications/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Kişinin kendi bildirim tercihleri, kategori kategori.",
+   "nerede": "Sol menü altı → Account → Notification preferences",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "expand",
+     "label": "Schedule bildirimlerini aç",
+     "role": "owner",
+     "steps": [
+      {
+       "click": "text=Expand individual notifications for Schedule"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "11.4",
+   "title": "Account · Workspaces",
+   "area": "account",
+   "path": "/account/workspaces",
+   "match": "^/account/workspaces/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Kişinin bütün workspace'leri ve bekleyen davetleri.",
+   "nerede": "Sol menü altı → Account → Workspaces",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "11.5",
+   "title": "Account · Documents",
+   "area": "account",
+   "path": "/account/documents",
+   "match": "^/account/documents/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Kişinin kendi belgeleri ve imzaladığı onaylar.",
+   "nerede": "Sol menü altı → Account → Documents",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    },
+    {
+     "id": "policies",
+     "label": "Policies & Agreements",
+     "role": "employee",
+     "steps": [
+      {
+       "click": "text=Policies & Agreements"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "no": "11.6",
+   "title": "Account · Inbox",
+   "area": "account",
+   "path": "/account/inbox",
+   "match": "^/account/inbox/?$",
+   "roles": [
+    "owner",
+    "manager",
+    "employee"
+   ],
+   "signedOut": false,
+   "ne": "Workspace'i olmayan kişinin bildirim kutusu (hesap bildirimleri).",
+   "nerede": "Sol menü altı → Account → Inbox",
+   "kim": "Herkes",
+   "scenarios": [
+    {
+     "id": "owner",
+     "label": "Owner · Mert Tepebas",
+     "role": "owner"
+    },
+    {
+     "id": "manager",
+     "label": "Manager · Rachel Adams (Downtown)",
+     "role": "manager"
+    },
+    {
+     "id": "employee",
+     "label": "Employee · Maria Lopez",
+     "role": "employee"
+    }
+   ]
+  },
+  {
+   "no": "12.0",
+   "title": "Privacy",
+   "area": "public",
+   "path": "/privacy",
+   "match": "^/privacy/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Herkese açık Privacy sayfası.",
+   "nerede": "Sayfa altındaki bağlantılar",
+   "kim": "Herkes, girişsiz",
+   "scenarios": [
+    {
+     "id": "page",
+     "label": "Sayfa"
+    }
+   ]
+  },
+  {
+   "no": "12.1",
+   "title": "Terms",
+   "area": "public",
+   "path": "/terms",
+   "match": "^/terms/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Herkese açık Terms sayfası.",
+   "nerede": "Sayfa altındaki bağlantılar",
+   "kim": "Herkes, girişsiz",
+   "scenarios": [
+    {
+     "id": "page",
+     "label": "Sayfa"
+    }
+   ]
+  },
+  {
+   "no": "12.2",
+   "title": "Accessibility",
+   "area": "public",
+   "path": "/accessibility",
+   "match": "^/accessibility/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Herkese açık Accessibility sayfası.",
+   "nerede": "Sayfa altındaki bağlantılar",
+   "kim": "Herkes, girişsiz",
+   "scenarios": [
+    {
+     "id": "page",
+     "label": "Sayfa"
+    }
+   ]
+  },
+  {
+   "no": "12.3",
+   "title": "Contact",
+   "area": "public",
+   "path": "/contact",
+   "match": "^/contact/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Herkese açık Contact sayfası.",
+   "nerede": "Sayfa altındaki bağlantılar",
+   "kim": "Herkes, girişsiz",
+   "scenarios": [
+    {
+     "id": "page",
+     "label": "Sayfa"
+    }
+   ]
+  },
+  {
+   "no": "12.4",
+   "title": "Your privacy choices",
+   "area": "public",
+   "path": "/your-privacy-choices",
+   "match": "^/your-privacy-choices/?$",
+   "roles": [],
+   "signedOut": true,
+   "ne": "Herkese açık Your privacy choices sayfası.",
+   "nerede": "Sayfa altındaki bağlantılar",
+   "kim": "Herkes, girişsiz",
+   "scenarios": [
+    {
+     "id": "page",
+     "label": "Sayfa"
+    }
+   ]
+  }
+ ]
+}

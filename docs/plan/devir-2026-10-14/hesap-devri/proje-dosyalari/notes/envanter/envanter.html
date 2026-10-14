@@ -1,0 +1,417 @@
+<title>Code İlerleme Envanteri</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: tek sütun rapor; üstte hüküm + sayılar, ortada ekran ekran açılır bölümler, sonda kurtarma sırası. Telefon önce. */
+:root{
+  --bg:#f6f8f7; --surface:#ffffff; --ink:#17231e; --muted:#5b6b64; --line:#dbe3df; --accent:#1f7a4d; --accent-soft:#e3f1ea;
+  --s-main:#1f7a4d; --s-main-bg:#e3f1ea;
+  --s-part:#0f6f78; --s-part-bg:#dff1f2;
+  --s-dal:#2f5fb3; --s-dal-bg:#e4ecfa;
+  --s-tas:#7a4bb0; --s-tas-bg:#efe7f8;
+  --s-kay:#9a5b00; --s-kay-bg:#fbf0dc;
+  --s-ack:#56626b; --s-ack-bg:#eceff1;
+  --risk:#b4232c; --risk-bg:#fbe5e6;
+  --s-yol:#0b6b3a; --s-yol-bg:#c9ecd8; --s-x:#7b8580; --s-x-bg:#f0f2f1;
+  --f-body:"Instrument Sans", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"JetBrains Mono", ui-monospace, "SFMono-Regular", Consolas, monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101614; --surface:#17201d; --ink:#e6eeea; --muted:#9aaba3; --line:#2a3631; --accent:#5cc493; --accent-soft:#16352a;
+  --s-main:#6fd09f; --s-main-bg:#173328; --s-part:#62c7cf; --s-part-bg:#123236;
+  --s-dal:#8fb0f0; --s-dal-bg:#1b2840; --s-tas:#c3a1ec; --s-tas-bg:#2b2140;
+  --s-kay:#f0b65a; --s-kay-bg:#3a2a10; --s-ack:#b3bec6; --s-ack-bg:#262d32;
+  --risk:#ff8f95; --risk-bg:#3d1a1d; --s-yol:#9ff0c2; --s-yol-bg:#14402a; --s-x:#98a39e; --s-x-bg:#232a27; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#101614; --surface:#17201d; --ink:#e6eeea; --muted:#9aaba3; --line:#2a3631; --accent:#5cc493; --accent-soft:#16352a;
+  --s-main:#6fd09f; --s-main-bg:#173328; --s-part:#62c7cf; --s-part-bg:#123236;
+  --s-dal:#8fb0f0; --s-dal-bg:#1b2840; --s-tas:#c3a1ec; --s-tas-bg:#2b2140;
+  --s-kay:#f0b65a; --s-kay-bg:#3a2a10; --s-ack:#b3bec6; --s-ack-bg:#262d32;
+  --risk:#ff8f95; --risk-bg:#3d1a1d; --s-yol:#9ff0c2; --s-yol-bg:#14402a; --s-x:#98a39e; --s-x-bg:#232a27; color-scheme:dark }
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:15px;line-height:1.55;padding-inline:16px;padding-block:20px 48px}
+.wrap{max-width:860px;margin:0 auto;display:flex;flex-direction:column;gap:28px}
+h1,h2,h3{text-wrap:balance;line-height:1.2;margin:0}
+h1{font-size:1.75rem;font-weight:700;letter-spacing:-.01em}
+h2{font-size:1.25rem;font-weight:700}
+h3{font-size:1rem;font-weight:600}
+p{margin:0}
+a{color:var(--accent);text-underline-offset:2px}
+a:focus-visible,button:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:4px}
+code,.mono{font-family:var(--f-mono);font-size:.82em;overflow-wrap:anywhere}
+.eyebrow{font-size:.72rem;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600}
+.lead{color:var(--muted);max-width:65ch}
+header{display:flex;flex-direction:column;gap:8px}
+.verdict{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px;display:flex;flex-direction:column;gap:12px}
+.verdict-top{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.big{font-size:1.5rem;font-weight:700}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:.78rem;font-weight:600;padding:2px 9px;border-radius:999px;max-width:100%}
+.pill.ok{background:var(--s-main-bg);color:var(--s-main)}
+.evid{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:4px;color:var(--ink)}
+.evid li{max-width:70ch}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:flex;flex-direction:column;gap:2px}
+.stat b{font-size:1.5rem;font-variant-numeric:tabular-nums}
+.stat span{font-size:.82rem;color:var(--muted)}
+.stat.s-M b{color:var(--s-main)} .stat.s-P b{color:var(--s-part)} .stat.s-D b{color:var(--s-dal)} .stat.s-T b{color:var(--s-tas)} .stat.s-R b{color:var(--s-kay)} .stat.s-A b{color:var(--s-ack)}
+.legend{display:flex;flex-wrap:wrap;gap:8px}
+.st{display:inline-block;font-size:.72rem;font-weight:600;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.st.M{background:var(--s-main-bg);color:var(--s-main)} .st.P{background:var(--s-part-bg);color:var(--s-part)} .st.D{background:var(--s-dal-bg);color:var(--s-dal)} .st.T{background:var(--s-tas-bg);color:var(--s-tas)} .st.R{background:var(--s-kay-bg);color:var(--s-kay)} .st.A{background:var(--s-ack-bg);color:var(--s-ack)}
+.st.pc{background:var(--risk-bg);color:var(--risk)}
+.st.Y{background:var(--s-yol-bg);color:var(--s-yol)} .st.L{background:var(--risk-bg);color:var(--risk)} .st.X{background:var(--s-x-bg);color:var(--s-x)}
+.bar .Y{background:var(--s-yol)} .bar .L{background:var(--risk)}
+.stat.s-Y b{color:var(--s-yol)} .stat.s-L b{color:var(--risk)}
+details.list{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+details.list>summary{cursor:pointer;padding:12px 16px;font-weight:600}
+details.list .screen-body{padding-top:0}
+.filters{display:flex;flex-wrap:wrap;gap:6px;position:sticky;top:env(safe-area-inset-top,0px);background:var(--bg);padding-block:8px;z-index:2}
+.filters button{font:inherit;font-size:.8rem;border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:4px 11px;cursor:pointer}
+.filters button[aria-pressed="true"]{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+details.screen{background:var(--surface);border:1px solid var(--line);border-radius:10px}
+details.screen>summary{list-style:none;cursor:pointer;padding:14px 16px;display:flex;flex-direction:column;gap:6px}
+details.screen>summary::-webkit-details-marker{display:none}
+.sum-row{display:flex;justify-content:space-between;gap:10px;align-items:baseline}
+.sum-row h3::before{content:"▸ ";color:var(--muted)}
+details[open] .sum-row h3::before{content:"▾ "}
+.bar{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line)}
+.bar i{display:block}
+.bar .M{background:var(--s-main)} .bar .P{background:var(--s-part)} .bar .D{background:var(--s-dal)} .bar .T{background:var(--s-tas)} .bar .R{background:var(--s-kay)} .bar .A{background:var(--s-ack)}
+.counts{font-size:.8rem;color:var(--muted);font-variant-numeric:tabular-nums}
+.screen-body{padding:0 16px 16px;display:flex;flex-direction:column;gap:12px}
+.note{font-size:.88rem;color:var(--muted);max-width:70ch}
+.sess{font-size:.82rem;color:var(--muted)}
+ul.items{list-style:none;margin:0;padding:0;display:flex;flex-direction:column}
+ul.items li{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:9px 0;border-top:1px solid var(--line)}
+ul.items li .st{align-self:start;margin-top:2px;min-width:74px;text-align:center}
+ul.items li .txt{min-width:0;display:flex;flex-direction:column;gap:2px}
+ul.items li .t{font-weight:500}
+ul.items li .w{font-size:.84rem;color:var(--muted);overflow-wrap:anywhere}
+.flag{color:var(--risk);font-weight:600}
+.tablewrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;min-width:560px;font-size:.86rem}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:.72rem;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600}
+td.n{font-variant-numeric:tabular-nums;text-align:right}
+ol.plan{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:12px}
+ol.plan li{max-width:72ch}
+ol.plan li b{display:block}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:10px}
+section{display:flex;flex-direction:column;gap:12px}
+footer{font-size:.8rem;color:var(--muted)}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+<header>
+  <span class="eyebrow">Newfork · 2026-10-09 · main <span class="mono">d68aa958</span></span>
+  <h1>Code ilerlemesi, bugünkü repoda nerede?</h1>
+  <p class="lead">Bilgisayarındaki bu repoya ait 289 Code oturumunda yazdığın 1654 mesaj tek tek okundu. İçlerindeki 264 ürün kararı, bugünkü GitHub repo’su ve canlı uygulamayla karşılaştırıldı. Her madde için kanıt (commit, dal, dosya ya da tasarım sayfası) yazılı.</p>
+</header>
+
+<section class="verdict" aria-labelledby="v-h">
+  <div class="verdict-top">
+    <span class="big" id="v-h">Geri gidiş: yok</span>
+    <span class="pill ok">Project’e geçince hiçbir şey silinmedi ya da geri alınmadı</span>
+  </div>
+  <ul class="evid">
+    <li>Geçiş anındaki main (<code>7ecbcc74</code>, 2026-10-09 02:02 UTC) ve PC’deki main yedeği (<code>9f287986</code>) ikisi de bugünkü main’in içinde. Main geri sarılmamış.</li>
+    <li>O andan beri main’e 51 commit girdi. Bunların hiçbiri “revert” (geri alma) değil; yeni veritabanı değişikliklerinde silme (DROP) ya da yetki geri alma (REVOKE) yok.</li>
+    <li>Silinen tek dosya iki eski komut: eski koordinatörün <code>/durum</code> ve <code>/oto</code> komutları. Project’e geçişle bilerek emekliye ayrıldılar.</li>
+    <li>Değişen testler gevşemedi, sıkılaştı: yetki daraltması (GA-2) ve Undo’nun “geri gelemeyen adım” davranışı. Karantinadaki tek e2e testi listeden çıktı, yeniden koşuyor.</li>
+    <li>PC’deki commit edilmemiş 13 çalışma klasörü GitHub’a yedeklendi (<code>backup/uncommitted/*</code>). İçlerinde ürün kodu yok: ajan notları, yalnız satır sonu farkı olan 3 ayar dosyası, main’de zaten olan e2e değişikliği, bir ekran görüntüsü betiği.</li>
+  </ul>
+  <p class="note">Asıl sorun geri gidiş değil, <b>main’e hiç girmemiş iş</b>. Code oturumlarında seçtiğin şeylerin önemli bir kısmı bir dalda, bir tasarım sayfasında ya da yalnız karar defterinde bekliyor. Atlas ve canlı uygulama yalnız main’i gösterdiği için bunlar “kaybolmuş” görünüyor. Aşağıda hepsi tek tek.</p>
+</section>
+
+<section aria-labelledby="c-h">
+  <h2 id="c-h">Sayılar</h2>
+  <div class="stats" id="stats"></div>
+  <div class="legend" id="legend"></div>
+</section>
+
+<section aria-labelledby="t-h">
+  <h2 id="t-h">289 oturumun taraması</h2>
+  <div class="card">
+    <p><b>Kod olarak kaybolan hiçbir şey yok.</b> Oturumlardaki 264 kararın 116’sı zaten bilinen maddelerdi (aşağıdaki ekran listeleri). Kalan 148 yeni maddenin 108’i main’de duruyor, 19’u sonradan senin başka bir kararınla değişti. Yalnız bir dalda kalmış yeni bir kod çıkmadı.</p>
+    <p class="note">Yeni bulunan ve main’de olmayan 21 madde ekran listelerine eklendi (çoğu yalnız karar defterinde ya da rafta). Hiçbir yerde kaydı olmayan tek madde ürün adı kararı (Giriş bölümünde, “Hiçbir yerde”).</p>
+    <details class="list"><summary>Main’de doğrulanan eski kararlar (108)</summary><div class="screen-body"><ul class="items" id="oldm"></ul></div></details>
+    <details class="list"><summary>Sonradan senin başka kararınla değişenler (19)</summary><div class="screen-body"><ul class="items" id="oldx"></ul></div></details>
+    <p class="note">Okuma: tarihe göre 6 gruba bölünüp her dosya baştan sona okundu. Süreç konuşmaları (git, tren, CI, izin, sunucu) atlandı. 30 madde kod okumasıyla doğrulandı, “düşük güven” işaretli.</p>
+  </div>
+</section>
+
+<section aria-labelledby="s-h">
+  <h2 id="s-h">Code oturumları</h2>
+  <p class="note">Bilgisayarındaki dökümde 576 oturum var. 459’u bu repoya ait (2026-09-16 → 2026-10-09); 289’unda senin mesajın var ve hepsi okundu. Aşağıdaki tablo bunların son iki gününü (Code bölümünde görünen 42 oturum, 16 iş hattı) gösteriyor.</p>
+  <p class="note"><b>Eski repo:</b> bilgisayarındaki 576 dökümün 117’si eski <code>C:\Users\TheWe\newfork</code> klasörüne ait: 117 oturum, 2026-07-07 → 09-24, 1006 mesaj, taranmadı. newfork-clean 2026-08-18’de bilerek sıfırdan kuruldu; o oturumların işi bu repoda hiç olmadı.</p>
+  <div class="tablewrap"><table>
+    <thead><tr><th>İş hattı</th><th>Oturum</th><th>Son hâli</th><th>Bölüm</th></tr></thead>
+    <tbody id="sessions"></tbody>
+  </table></div>
+</section>
+
+<section aria-labelledby="e-h">
+  <h2 id="e-h">Ekran ekran</h2>
+  <div class="filters" role="group" aria-label="Duruma göre süz" id="filters"></div>
+  <div id="screens" style="display:flex;flex-direction:column;gap:12px"></div>
+</section>
+
+<section aria-labelledby="k-h">
+  <h2 id="k-h">Kurtarma sırası (önerim)</h2>
+  <div class="card">
+    <p class="note">Senin önceliğin (2026-10-09): önce main yeşil, sonra Schedule’ı bitirmek. Bu sıra ona uyuyor; Schedule birinci hat olarak sürer, aşağıdakiler ikinci hatta, sırayla. Kayıt düzeltmesi de gerekiyor: saat dilimi kararın (U11, “Evet kabul”) ile KARARLAR:150 çelişiyor; ürün adı kararı hiçbir kayıtta yok.</p>
+    <ol class="plan">
+      <li><b>Yedekleme: tamam.</b> PC’deki 101 dal, commit edilmemiş 13 klasör ve tasarım kaynakları (80 tasarım sayfası; Locations, Jobs, General, Important Dates, Bildirim kaynakları; tek tablo önce/sonra görüntüleri) artık GitHub’da: <code>backup/tasarim-kaynaklari@dee23faf</code>. Bundan sonra bilgisayar bozulsa da Code’daki hiçbir iş kaybolmaz.</li>
+      <li><b>Schedule’ın 2026-10-09 seçimlerini kodla</b> (madde 1, 3, 4, 15, 16) ve DB-4’ü (“Published by” adı, yayında izin denetimi) yeni main’e taşı. DB-4 dalda hazır ve incelenmişti.</li>
+      <li><b>Requests ekranı: trende.</b> Senin isteğinle canlıya gidiyor. Eski not: En büyük tek parça emeğin: tek tablo, telefon kartları, H2 takas penceresi, uyarı kutuları, sayfalama. Dal main’in 150 commit gerisinde ve her gün daha da geride kalıyor. Gönderimden önce penceredeki “On time off / chose to work” kutusu çıkmalı (2026-10-09 izin kuralı), veritabanı değişikliğinin numarası yenilenmeli, <code>task/ekran-02-c2-css</code>’teki iki düzeltme de eklenmeli. Senden: takas penceresine son bakış (B4) ve G13’ün üç küçük sorusu.</li>
+      <li><b>Employees liste dili (c1a) Requests’in hemen ardından binsin.</b> Yeşil “Add employee” filtre satırında ve sayfalama. Çakışmasız biniyor (denendi).</li>
+      <li><b>Üç eski seçimi tek kopyalık daldan çıkar</b> (<code>task/fb-6.7-ui</code>): duyuruda iki tık kırmızı Archive, amber “Acknowledge again”, önemli tarihte History sekmesi. Dalın geri kalanı eskidi.</li>
+      <li><b>Kararı verilmiş, küçük, kodlanmamış işler:</b> bütün Settings sayfalarında Archive iki tık kırmızı (BL-595), “I am waiting for an invitation” metni, Account’ta adsız “Create workspace”, Workspace ana sayfasında yalnız yayındaki duyurular (K28), Settings → Roles’ta Time off “View” seviyesinin kalkması.</li>
+      <li><b>BL-969:</b> ad, adres ve telefonun ABD kuralı veritabanında. Dalda hazır, 3 güvenlik ONAY’ı var; yeniden numara ve canlı ölçüm ister.</li>
+      <li><b>Onayladığın ama hiç kodlanmamış tasarımlar:</b> Settings → Locations A, Jobs V1 (önce 4 sorunun cevabı), Important Dates çekmecesi A + L1 (önce veri modeli), Employees telefon kartları, Shift Hub “emin misin?” penceresi (S4-E), duyuruların yeni yaşam döngüsü (K19–K28).</li>
+    </ol>
+    <p class="note">Dal silme yasak listesi (tek kopya): <code>task/ekran-02-c2r</code>, <code>task/ekran-03-c1a</code>, <code>backup/task/bl-969</code>, <code>task/fb-6.7-ui</code>, <code>task/ekran-02-c2-css</code>, <code>task/arayuz-salt-hata</code>, <code>task/ekran-02-c3</code>, <code>archive/var-ekran-12</code>, <code>task/avail-design</code>, <code>archive/ekran-01-db4</code>.</p>
+  </div>
+</section>
+
+<section aria-labelledby="src-h">
+  <h2 id="src-h">Kaynaklar</h2>
+  <ul class="evid">
+    <li>Git ölçümü bu thread’de: <code>git merge-base --is-ancestor</code>, <code>git log 7ecbcc74..d68aa958</code>, <code>git diff --name-status</code>, <code>git cherry</code> (repo <a href="https://github.com/mttepebas-debug/newfork-clean/commits/main" target="_blank" rel="noopener">mttepebas-debug/newfork-clean</a>).</li>
+    <li>Schedule dışı denetim: <code>/mnt/project-files/notes/sayfa-kayip-denetimi.md</code> (200 madde, satır satır kanıt).</li>
+    <li>Schedule denetimi: <code>/mnt/project-files/notes/schedule-kayip-ozellikler.md</code> + main’e 2026-10-09’da giren seçimler (<code>362d0ccf</code>).</li>
+    <li>Oturum özetleri: <code>/mnt/project-files/notes/oturum-ozetleri/</code> (şu an Jobs hazır; ötekiler yazılıyor).</li>
+    <li>Yedekler: <code>backup/yedek-dallar-listesi@81a33f27</code> (101 dal), <code>backup/uncommitted/*</code> (13 klasör), <code>backup/tasarim-kaynaklari@dee23faf</code> (1961 dosya).</li>
+  </ul>
+  <p class="note">Canlı veritabanı sorgulanmadı; canlı durumu main’den çıkarıldı (main’e giren her şey yayına çıkar, veritabanı değişiklikleri kayıtlı canlı adımlarla uygulanır).</p>
+</section>
+<footer>Hazırlayan: “Code ilerlemesi envanteri” thread’i · 2026-10-09 · salt okuma, hiçbir dala dokunulmadı.</footer>
+</div>
+
+<script>
+const OLD_M=[["Account", "Uygulama kabuğu değişmez; kişisel öğeler sol alttaki hesap düğmesinde; Account menüsünde bekleyen belge/davet için sayı rozeti; ham bildirim anahtarları ekranda görünmez.", "AccountLayout.tsx:57-110 countAccountAttention + account-nav-count rozeti; JOIN-011 (c3e4af2) main'de", "2026-09-19", "low"], ["Account", "Kaybedilecek kişi ya da veri olmayan yarım kurulumu silmek parola istemez.", "KARARLAR:272 'Kaybedilecek kişi ya da veri yoksa silmek için parola istenmez'; WorkspacesPage.tsx:328-330 unfinishedSetup → parola yok", "2026-09-19", "low"], ["Account", "Herkes acil durum kişisini onboarding'de ya da Account → Profile'da ekler/düzenler; yalnız owner için zorunlu değil.", "apps/web/src/account/ProfilePage.tsx:85-88 emergencyContact; KARARLAR:360 'Emergency contact'; :387 owner'ın acil durum kişisi", "2026-09-22", "high"], ["Account", "Workspace kapatma/devir/hesap silme engelleri geliştirici dili olmadan, kişi kişi değil tek toplu cümleyle yazılır.", "71c8fc4 ve 70bca49 origin/main'in atası (merge-base --is-ancestor)", "2026-09-22", "high"], ["Account", "Zamanlanmış workspace kapatma da parola ister (kurulumu bitmemiş workspace hariç).", "apps/web/src/account/WorkspacesPage.tsx:323-331 (iki modda da password; unfinishedSetup hariç)", "2026-09-22", "high"], ["Account", "Workspace kapatma panelinde erişimi olan kişi sayısı kişinin kendisi hariç yazılır; sayı yalnız kapatma panelinde.", "apps/web/src/account/WorkspacesPage.tsx:1071-1072 ('1 other person has access' / 'N other people have access')", "2026-09-22", "high"], ["Announcements", "Çalışanın Announcements'ı: yalnız kendi atamalarına yönelik duyurular, All/Published düğmeleri yok, sütunlar Announcement/Published date/Published by/Status, onayla yeşil tik ve satır listede kalır, çalışana 'Create' me…", "apps/web/src/views/AnnouncementsPage.tsx:284 ('Published by' sütunu); 'Acknowledge' main'de 51 sonuç; hedefleme KARARLAR K19–K28. Çalışan g…", "2026-09-16", "low"], ["Availability", "Müsaitlikteki yönetici notu kişisel değil, yöneticiler arası tek ortak not; çalışana hiçbir yerde görünmez; müsaitlik güncellenince o kişiyi yöneten herkes (Ayşe dahil) bildirim alır.", "KARARLAR:92 'Manager note (2026-09-26)' manager_weekly_reminders; :94 güncelleme bildirimi (rütbe şartı yok). Bildirim teslimi yeni bildiri…", "2026-09-25", "low"], ["Availability", "Çalışan employee üstüne terfi edince kendi müsaitlik haftası ve geçmişi silinir (Manager note ile).", "KARARLAR.md:178 (M14); main migration 20261007010000_availability_writes_ask_the_core.sql:18 'A promotion above employee deletes the person…", "2026-10-04", "high"], ["Documents", "Belgeler üç yerde: Settings → Documents tanımlar, onboarding onları ister, Employees → Documents yöneticinin takibi, Account → Documents kişinin kendi belgeleri; bildirimler de Settings (workspace) ve Account (kişi) ola…", "AccountLayout.tsx:40 /account/documents; Settings → Documents (row 129); Settings → Notifications ayrı kalır (row 199)", "2026-09-19", "low"], ["Documents", "Taslak belge tanımı yayınlanana kadar hiçbir şeyi etkilemez (onboarding'i de).", "KARARLAR S-88 (satır 620): 'Taslak belge tanımı etkisizdir'", "2026-09-23", "high"], ["Documents", "Sahiplik devriyle owner olan kişinin açık belge zorunlulukları devir anında muaf olur; eski owner'ın muafiyeti (onaylar dahil) kalkar.", "migration 20260928040000_the_new_owner_is_asked_for_no_document.sql (main, :12 eski owner'ın muafiyeti geri alınır, :56 acknowledgement dah…", "2026-09-28", "high"], ["Documents", "Belge örneklerinde ve hazır şablonlarda W-4 ve I-9 yok.", "KARARLAR.md:122; git grep 'W-4|I-9' apps packages supabase/migrations boş", "2026-10-04", "low"], ["Employee Hub", "Çalışan hub'ının sayfa içi gezinme düğmeleri (Home, Schedule, Time Tracking, Shift Hub, My Team, My Availability, Line-up) kaldırılır; gezinme sol menüde.", "KARARLAR §1.5 Gezinme ('sayfa içi hub sekmeleri kaldırılır'); EmployeeHubPage.tsx:40 'Navigation between these pages lives in the app sideb…", "2026-09-16", "high"], ["Employee Hub", "Çalışan sayfalarının başlığında yeşil üst yazı + küçük açıklama; 'Employee Demo' yazısı kalkar, metin çalışana göre yazılır.", "EmployeeHubPage.tsx:42-68 pageCopy (eyebrow + description); 'Employee Demo' main'de 0 sonuç", "2026-09-16", "high"], ["Employee Hub", "Çalışanın Schedule'ı yönetimdeki ızgara ve süzgeçlerle aynı, yalnız okunur, yalnız yayınlanmış; Publish/Draft/Export/New yok; bütün takım görünür; 'My Schedule' yalnız kendi vardiyalarını bırakır; süzgeçler kendi lokasy…", "apps/web/src/employee-hub/EmployeeScheduleBoard.tsx:26 ('no mutation handlers. The API returns published rows only'), :292 ('My Schedule' /…", "2026-09-16", "low"], ["Employee Hub", "Çalışan Schedule'ında boşa ya da ızgara dışına tıklama süzgeçleri adım adım sıfırlar; takvimde güne tıklamak o güne gider; soldaki mini takvim ikonu yalnız aç/kapa yapar; sol kenar kesik görünmez.", "EmployeeScheduleBoard.tsx:138-185 (katman katman sıfırlama: unscheduled → süzgeçler → lokasyon); takvim ve kenar davranışı elle doğrulanmadı", "2026-09-16", "low"], ["Employees", "Employees çekmecesinde de kayıt için en az bir iş ve bir lokasyon şart (Remote / Exclude hariç); şart yoksa Save kapalı.", "KARARLAR:105 ('En az 1 lokasyon her zaman zorunludur'; ret employee.primary_job_required); 155 oturumunun 09-22 ölçümü 'kaydet butonu açılm…", "2026-09-19", "high"], ["Employees", "Davet yönetiminde gönder, yeniden gönder, bağlantıyı kopyala, iptal.", "apps/web/src/employees/EmployeeDrawer.tsx:3553 'Copy link'; Send reminder row 41", "2026-09-21", "low"], ["Employees", "Müdür kişiyi yalnız kendi lokasyonundan çıkarır, tamamen işten çıkarma admin/owner'ın; talepler bir üst kademeye gider; açık vardiya alımını vardiyanın lokasyonu onaylar.", "KARARLAR P07 (satır 38): 'manager yalnız kendi lokasyonunda karar verir, tamamen işten çıkarma admin ya da owner'ındır'; row 49 (lokasyonda…", "2026-09-23", "high"], ["Employees", "Owner yalnız Management → Owner işine otomatik atanır; lokasyonlar (kurulumda ya da sonra) owner'a otomatik atanır, çekmecede işaretli ve kaldırılamaz.", "KARARLAR:104 (main'de 04a97650)", "2026-09-27", "high"], ["Employees", "Owner'ın kaydında lokasyon, birincil lokasyon, iş ve birincil iş zorunlu değil; ızgaradan gizlemek için Exclude; A–Z sıralamada adının baş harfiyle.", "KARARLAR:104 ('Kaydederken birincil lokasyon ve birincil iş zorunlu değildir', 'A–Z sıralamada adının baş harfine göre')", "2026-09-27", "high"], ["Employees", "Listede 'No location' süzgeci kalır; ama lokasyonsuz kayıt yine reddedilir.", "KARARLAR:105 'En az 1 lokasyon her zaman zorunludur'; 'No location' süzgecinin kodu ayrıca doğrulanmadı", "2026-09-27", "low"], ["Employees", "Owner kendi Owner işini kaldıramaz, Owner işi Management'ta kalır; Exclude'dan önce taslağa yazılmış yayınlanmamış vardiya taslakta kalır, müdür görüp siler.", "docs/plan/tasks/BL-218.md:135 (cevaplar); S3 testi main 2cdffd2c 'a draft shift written before the exclusion stays until the manager delete…", "2026-09-28", "high"], ["Employees", "Çekmecede owner özel alanları görür; bağlı hesapta Invite görünmez; yönetilen lokasyon listesi kişinin zaten çalıştığı lokasyonu sunmaz.", "main 99c006ef 'no invitation for a linked account, and managed locations never offer where they work' (FB-6.2 .7b); 'Manages' listesi sonra…", "2026-09-29", "low"], ["Employees", "'Manages without working there' bölümü ekran, API, yetki ve veritabanıyla birlikte sökülür; yerine 'Exclude from schedule' kullanılır.", "main 59340aeb, bf52f5e1; KARARLAR.md:391-392", "2026-09-30", "high"], ["Employees", "Owner işi herkesin çekmecesinde kilitli; owner bütün lokasyonlara atanır, kutucuklar işaretli ve kilitli, birincil lokasyon seçeneği yok; Owner işi birincil sayılmaz (kural 9–12).", "main 04a97650 (S4), a469905e, 362712f0; KARARLAR.md:104", "2026-09-30", "high"], ["Employees", "Role & Access'te Manager rolü verilince Management → Manager işi kendiliğinden işaretlenmez; rol ve iş ayrı.", "EmployeeDrawer.tsx:975-978 rol değişimi işlere dokunmuyor; KARARLAR'da ayrı satır yok", "2026-09-30", "low"], ["Employees", "Müdür kişinin bütün lokasyon adlarını görür; ara sıra çalıştığı lokasyonu da yönetir ('böyle kalsın').", "KARARLAR.md:88 (BL-417, kod değişmez), :89 (teyit 2026-10-01 ~17:45Z)", "2026-10-01", "low"], ["Global UI", "Koyu tema emekli; yalnız açık tema ve --theme-* token'ları.", "CLAUDE.md §3.A.7 'Yalnız light tema'; KARARLAR UI-05 light-only token sözleşmesi", "2026-09-17", "high"], ["Global UI", "Yıkıcı düğmeler iki tık: ilk tık kırmızı onaya döner; Add location / Send reminder / Resend yeşil kalır; zaten kırmızı düğmeler dururken yumuşak, onayda koyulaşır.", "packages/ui ConfirmButton / useConfirmClick (KARARLAR UI-12, satır 605); CLAUDE.md §3.A.7", "2026-09-17", "high"], ["Global UI", "Tarayıcının onay kutusu (window.confirm/prompt) kullanılmaz; uygulamanın kendi onay penceresi.", "apps/web/src/shell/ConfirmDialog.tsx:147; CLAUDE.md §3.A.7 'Tarayıcı diyaloğu yok'; KARARLAR:346", "2026-09-23", "high"], ["Global UI", "Eski iki-tık kopyaları ortak bileşene taşınır, onay metni her yerde 'Confirm delete' gibi aynı.", "'Confirm delete' main'de 12 sonuç; packages/ui ConfirmButton (KARARLAR UI-12)", "2026-09-23", "low"], ["Global UI", "Telefonda (≤720px) yönetim ekranlarına alt gezinme çubuğu (varyant A) gelir.", "main 74bb480e (BL-192); BACKLOG.md:2573 kapandı; shell/management-mobile-nav.css", "2026-09-28", "high"], ["Global UI", "Telefon düzenine geçiş tek eşik 720px (Employee Hub 760→720); Employee Hub alt çubuğu renkleri token'a geçer.", "main 2ca3803e 'one phone breakpoint at 720px, bar colors from theme tokens'; KARARLAR.md:607 UI-14", "2026-09-28", "high"], ["Global UI", "Workspace seçicisindeki aşağı/yukarı ok yalnız başka workspace ya da bekleyen davet varken görünür.", "origin/main apps/web/src/shell/WorkspaceSwitcher.tsx:102-107 (elsewhere 0 ve waiting 0 ise yalnız ad), :135 ChevronsUpDown; prototipten kal…", "2026-10-05", "low"], ["Notifications", "Aynı turda admin/owner'a iki izin bildirimi düşecekse zilde tek satır gider.", "KARARLAR.md:155; main 1f39a559 (FB-6.3 .8b), canlıda", "2026-10-01", "low"], ["Onboarding", "Çalışan onboarding'inde profil tek adım iki sayfa: Personal information → Emergency contact; belgeler tek adımda ayrı sayfalar.", "apps/web/src/employees/EmployeeOnboardingPage.tsx:146-153 ('One step, two pages'); belge adımı row 136", "2026-09-18", "high"], ["Onboarding", "Kayıt ekranı ad sormaz, sihirbaz sorar; ad ve soyad zorunlu, göbek adı isteğe bağlı; owner kurulumunda preferred name yok, çalışan onboarding'inde isteğe bağlı; çekmecede Middle name isteğe bağlı.", "SignInPage.tsx'te ad alanı yok; OwnerOnboardingPage.tsx:962 'Middle name optional', :992 'Add a preferred name later in Account › Profile';…", "2026-09-22", "high"], ["Onboarding", "Owner kurulumunda First / Middle / Last aynı satırda (2fr/1fr/2fr), 44 px yükseklik.", "apps/web/src/styles.css:11237 'grid-template-columns: 2fr 1fr 2fr'; OwnerOnboardingPage.tsx:962", "2026-09-22", "high"], ["Onboarding", "Owner'ın resmî adı kurulum sihirbazının 1. adımında zorunlu sorulur; sonradan değişir, değişiklik kaydı tutulur.", "BACKLOG BL-080 kapandı; KARARLAR:298-301 Legal name 'Boş kalamaz'; OwnerOnboardingPage.tsx:962 ad alanları", "2026-09-25", "high"], ["Other", "Yeniden yazmak yerine bütün yetki kontrolleri tek bir merkezde (authorize) toplanır (FOUNDATION-B).", "CLAUDE.md §3.A.1 app_private.authorize() / scope_set(); FOUNDATION-B aşamaları main'de", "2026-09-23", "high"], ["Other", "Kiosk ve zaman takibi, eski müsaitlik sistemi, eski takas akışı ve Line Up silinir; sonra sıfırdan tasarlanır.", "KARARLAR:556 'Silinenler: kiosk, zaman takibi, eski availability sistemi, eski Requests → Shift changes takas akışı'; Line Up kapsam dışı", "2026-09-23", "high"], ["Other", "Ürün vizyonu (KARAR-001): 2–5 lokasyon, önce müdür ve owner, çalışan ekranları sonra aynı kalitede, müdür masaüstü / çalışan telefon, rakipler yalnız referans.", "CLAUDE.md §1 Vizyon (main); KARARLAR P-ilkeleri", "2026-10-01", "low"], ["Other", "Ekran ekran ilerleme planı; yoldaki bulgular gruplu backlog'a önem/risk işaretiyle.", "origin/main docs/plan/EKRAN-PLANI.md ve docs/plan/ekranlar/; BACKLOG '(leave: / do:)' biçimi.", "2026-10-05", "high"], ["Other", "Vizyon: 2–5 lokasyonlu ilk müşteri, MVP'de müdür/owner önce, çalışan aynı kalitede sonra, rakipler yalnız referans, dört anti-hedef.", "origin/main CLAUDE.md §1 ve KARARLAR.md:22.", "2026-10-05", "low"], ["Requests", "İzin oylaması (FB-6.3): karar talebin bütünü için; lokasyonlardan herhangi bir yetkili müdür karar verir; tarih birincil lokasyonun saat dilimiyle.", "KARARLAR S-12 (satır 158, birincil lokasyon saat dilimi); KARARLAR 'İzin' bölümü FB-6.3. Quote oturum özetinden", "2026-09-27", "low"], ["Requests", "Onaylı takastan sonra hafta yayından kaldırılırsa yeni taslak takası son yayından alır; takas geri alınmaz.", "main 51bf2b8e (BL-230, migration 20260928020000); BACKLOG.md:2575 BL-230 kapandı", "2026-09-28", "high"], ["Requests", "Owner'ın kendi izin talebi onay beklemeden geçer; belge durumuna bağlanmaz.", "main 8dfdfcbe (BL-221); BACKLOG.md:2577 kapandı; KARARLAR.md:108 owner belge kısıtına girmez", "2026-09-28", "high"], ["Requests", "İzin modeli: izin kişiye ait; atandığı her lokasyonun müdürü oy verir, tek ret reddeder, oy açıkken değişir, çalışan yalnız 'Pending' görür; onayda çakışan yayınlı vardiyalar open olur ve müdürlere bildirim.", "KARARLAR.md:147-153 (İzin); main FB-6.3 a1daf55a..d3d4e25c, 52fa0024 'time off reads its progress and closes on its deadline'", "2026-10-01", "high"], ["Requests", "Karar süresi (workspace ayarı, varsayılan 24 saat) dolunca izin kendiliğinden reddedilir; oy vermemiş lokasyonların müdürlerine 12 saat önce hatırlatma.", "KARARLAR.md:150 'Süre' (varsayılan 24, otomatik red, 12 saat önce hatırlatma); main 52fa0024 (FB-6.3.4)", "2026-10-01", "high"], ["Requests", "Müdürün izin talebine eş müdür değil admin/owner karar verir; bekleyen talebi yalnız karar verenler ve sahibi görür (kapanmış ve iptal talebi dahil).", "KARARLAR.md:151-152; main a13df69b 'the Requests queue reads only the time off its reader decides' (FB-6.3.8c)", "2026-10-01", "high"], ["Requests", "'Decide by' / 'Decision by' talebin saat diliminde ve dilim adıyla yazılır.", "KARARLAR.md:157; main 0865fe5e", "2026-10-01", "high"], ["Requests", "Talep sahibinin kendi talebi kuyrukta yok, owner'ın kendi otomatik onaylı izni Requests'te görünmez; talepten sonra atanan müdür görür ama oy veremez.", "KARARLAR.md:152 (S4, S5); main 21abd43e (FB-6.3.8c)", "2026-10-01", "high"], ["Requests", "Çok lokasyonlu çalışanın tam gün izni birincil lokasyonun gece yarısında başlar (U12).", "KARARLAR.md:150 'izin saatleri birincil lokasyonun saat dilimiyle talep anında sabitlenir' (bugünkü kural); U12 kaydı BELGE-MIMARISI-uzlasm…", "2026-10-03", "high"], ["Requests", "Özel rolde Shift changes (takas, devir, cover) için \"View\" seviyesi kalır: rol talepleri görür ama Approve/Decline yoktur (Time off'taki kaldırma yalnız izin için).", "KARARLAR.md:507; davranış bugünkü gibi kaldı: packages/shared/src/authorization-matrix.expected.json'da requests.read (:1071) ile exchange.…", "2026-10-06", "low"], ["Schedule", "Telefonda Export düğmesi yok; dışa aktarma masaüstünden.", "KARARLAR:438 ('Telefonda Export yok (kullanıcı kararı 2026-09-16)'); schedule/export-v2/export-v2.css:60", "2026-09-17", "high"], ["Schedule", "'Save as template' hem taslak menüsünde hem Templates ekranında; şablon uygula Add/Replace onaylı; adlar korunur.", "apps/web/src/schedule/components/DraftDropdownMenu.tsx ve ScheduleTemplateDialogs.tsx ('Save as template', 'Overwrite'); KARARLAR §1.5 Sche…", "2026-09-17", "low"], ["Schedule", "Bir kişiye aynı anda iki vardiya taslakta da yazılamaz; aynı saatte iki lokasyonda olamaz.", "time_overlap engeli: supabase/migrations/20261008110559_one_eligibility_engine.sql:283; BL-081 kapandı (6401acd main'de)", "2026-09-22", "low"], ["Schedule", "Plan kilidi yalnız aynı taslakta (A); farklı taslaklar birbirini kilitlemez; yayında 'değişti' uyarısı. Employees kayıt yetkileri 1A–6A.", "KARARLAR:125 ('Kilit yalnız aynı taslaktadır'), :128 migration 20260924152910; KARARLAR §1.1 'Çalışan kaydı'. Quote oturum özetinden", "2026-09-24", "high"], ["Schedule", "Başkasının açık düzenlemesini kimse devralamaz; kilit 4 dk hareketsizlikte düşer.", "KARARLAR:126 'Devralma yok (kullanıcı kararı, 2026-09-25)'", "2026-09-25", "high"], ["Schedule", "Kapsamı dışında lokasyon içeren şablonu yeniden adlandırma/silme yalnız admin/owner (K-2); kilit taslak başına (K-3); yöneticiye onaylı izni kısaltma eylemi (K-4).", "K-2: KARARLAR B3 satır 134 + FB-6.1 .4 b126918; K-4: apps/web/src/views/TimeOffShorten.tsx:15,52 'Shorten time off' (BL-127 kapandı), KARAR…", "2026-09-25", "high"], ["Schedule", "Zamanlanmış dışa aktarma kaydını müdür yalnız bütün lokasyonları kendisininse görür; silinmiş lokasyon şablon/taslak yetkisinde sayılmaz.", "KARARLAR:138 Q-A, :140 Q-B, :141 Q-C", "2026-09-25", "high"], ["Schedule", "Çok lokasyonlu taslakta müdür yalnız kendi lokasyonlarının ızgarasını görür ve düzenler; başka lokasyondaki vardiyalar ghost; kaydet/yayınla yalnız kendi lokasyonları; bütün lokasyonlarına sahip değilse taslağı kısmen b…", "KARARLAR:132-134 B1–B3; FB-6.1 .4 b126918 (Ayşe × delete_schedule_draft_service out_of_scope)", "2026-09-25", "high"], ["Schedule", "'Exclude from schedule' yalnız yeni açılan taslağı etkiler; yayınlanmış vardiyalar düşmez.", "KARARLAR:104 'Exclude from schedule' ve P09 (satır 40)", "2026-09-27", "high"], ["Schedule", "Müdür vardiya notu (BL-199): yalnız owner/müdür görür, 500 karakter, ızgarada işaret, bir sonraki yayında bildirim, takasta not vardiyada kalır.", "BL-199 main'de (76704d9c 'BL-199 done on main with green CI'); ShiftQuickEditor.test.tsx:1333 maxLength 500; eae2638d not köşesi", "2026-09-28", "high"], ["Schedule", "Unassigned satırında birden çok vardiya eklerken not alanı kapalı; not yalnız tek vardiyaya; notlu açık vardiya yığılmaz.", "ShiftQuickEditor.tsx:462 'A note goes on one shift only (user, 2026-09-28)', :997 'Notes go on one shift at a time.'; 2d2b6a45; 8b4a4fe2", "2026-09-28", "high"], ["Schedule", "Müdür notu olan vardiya rozetinde köşe işareti (tasarım 2); üzerine gelince not okunur.", "main eae2638d 'a shift with a manager note carries an ink corner'; ShiftNoteCorner.tsx; ShiftCard.tsx:138", "2026-09-28", "high"], ["Schedule", "Bozulan Schedule davranışları geri gelsin: görünüm kipinde Unassigned pasif, sürüklemede yeşil/kırmızı hedef, Ctrl+V Paste mode, Esc/boş tıkla kademeli iptal, ilk boş tık alttaki öğeye geçmez.", "8f7c0f93 (BL-332 Unassigned pasif); App.test.tsx:3202 'Paste mode on'; ScheduleRow.tsx drop hedefi; 7e19a76b (pencere içi basış); KARARLAR.…", "2026-09-29", "low"], ["Schedule", "Templates penceresi de öteki sağ üst pencerelerin B stiline geçsin.", "main 9b169ce5 'the Templates window in the quiet style of the other schedule windows'; 2026-10-09 üç yeni varyant reddedildi, bugünkü kalır…", "2026-09-29", "high"], ["Schedule", "Boş çalışan listesinde 'No employees' satırı yok; gün hücreleri beyaz, toplam saat satırı çalışan sütunu renginde, lokasyon ayracı ve yapışkan ilk hücre düzgün.", "main 3922a4c7 'empty employee grid reads as blank rows', 37500b36 'lock the empty-grid colours and total guide lines'", "2026-09-29", "high"], ["Schedule", "New Schedule menüsünde taslak satırında kırmızı iki tık Delete; masaüstünde üzerine gelince/odakta, dokunmatikte hep görünür.", "DraftDropdownMenu.tsx:315-317 ConfirmButton aria-label 'Delete <draft>'", "2026-09-29", "high"], ["Schedule", "New Schedule panelindeki 'Enter open · Esc close' kısayol ipucu kalkar.", "origin/main'de 'schedule-menu-hint' sınıfı yok (git grep boş)", "2026-09-29", "high"], ["Schedule", "Yayındaki taslak menüde kendi adıyla ve sağında yeşil 'Published' etiketiyle görünür.", "main 73483adf 'names the live draft'; migration 20260929110000_the_publication_names_its_source_draft.sql", "2026-09-29", "high"], ["Schedule", "Unpublish penceresinin köşedeki X düğmesi düzelir.", "main 4c205f9b 'the Unpublish window's close button is an icon in the corner'; KARARLAR.md:445 X 18px", "2026-09-29", "high"], ["Schedule", "Schedule Job/Position sıralamasında Management işleri her zaman en altta; owner tek satır.", "main eb97ac27 (EMP-001 C2); KARARLAR.md:105 (K5)", "2026-09-30", "high"], ["Schedule", "Publish penceresindeki bekleyen izin notunu yayın izni olan rol de görür (ayrıntısız).", "KARARLAR.md:156 'Kodda bugünkü davranış; değişiklik yok'", "2026-10-01", "high"], ["Schedule", "Pazartesi sütunu ve lokasyon ayracındaki kartların sol kenarı görünür olsun.", "main 8ff3a6ce 'Monday and first-day-of-location cards keep their left edge (G14)'", "2026-10-01", "high"], ["Schedule", "Schedule düzenleme şeridinde basılı Availability ve Paste mode düğmeleri açık yeşil zeminli (UI-15).", "KARARLAR.md:608; origin/main apps/web/src/styles.css:4611 `.schedule-edit-banner button[aria-pressed=\"true\"]`.", "2026-10-04", "high"], ["Schedule", "Schedule üst çubuk eylem düğmeleri siyah kalır (yeşile dönmez).", "KARARLAR.md:419; kod zaten --theme-action (#111827) ile siyah; değişiklik gerekmedi.", "2026-10-05", "high"], ["Schedule", "Görünüm modunda Unassigned satırı gizlenir; düzenlemede görünür.", "KARARLAR.md:452; BL-681; main 2402a349 'view mode shows no Unassigned row' (EKRAN-01 #25).", "2026-10-05", "high"], ["Schedule", "Schedule ekranında sayfa başlığı yok.", "KARARLAR.md:451; main'deki Schedule başlıksız (bugünkü hâl).", "2026-10-05", "low"], ["Schedule", "Müsaitlik \"!\" işaretleri (boş hücre köşesi, çakışan kart, ad hücresi) üzerine gelince hafif büyüme animasyonu gösterir, tıklanınca yalnız tarih ve saati yazan küçük pencere açar; Esc, boşa tıklama ya da aynı \"!\"e yenide…", "KARARLAR.md:482; main 924cb773 (VAR-UYG): apps/web/src/schedule/components/AvailabilityMarkButton.tsx:127 (.schedule-availability-mark-wind…", "2026-10-06", "high"], ["Schedule", "\"!\" penceresinin beş düzeltmesi: kapanınca seçili vardiya seçili kalır; pencerede \"by <isim>\" yok; kart yazısı hep ortada, gerekirse kart genişler; açık pencere varken başka \"!\"e tıklamak onu açar; \"!\"ler yalnız Edit mo…", "KARARLAR.md:483; main 924cb773: ScheduleGrid.tsx:175 showAvailabilityMarks = showAvailability && Boolean(session); ScheduleTopBar.tsx:308 u…", "2026-10-06", "high"], ["Schedule", "Ad hücresindeki \"!\" yalnız iki durumda çıkar: çakışmayan vardiya köşe \"!\"ini örttüğünde ya da kişi o hafta birden çok gün müsait değilse; çok vardiyalı hücrede \"!\" yalnız çakışan kartlarda görünür (önceki \"Durum 1\" seçi…", "KARARLAR.md:484; main: apps/web/src/schedule/components/ScheduleRow.tsx:231 nameCellShowsAvailabilityMark; scheduleAvailabilityMark.test.ts…", "2026-10-06", "high"], ["Schedule", "Müsait-değil işaretli boş hücrede turuncu tarama kalkar, yerine hücrenin sağ üst köşesinde turuncu \"!\"; o güne çakışan vardiya yazıldıysa \"!\" kartın içinde (TIME OFF kısmı schedule-6).", "KARARLAR.md:477 (BL-524, BL-525); main 924cb773 (VAR-UYG) ve e4231bfb; ScheduleRow.tsx köşe butonu, ScheduleEmployeeCard eski CalendarOff s…", "2026-10-06", "high"], ["Schedule", "Schedule telefonda (768 px altı) tamamen kapalı: menüde yok, adresle açılırsa \"Schedule is available on a computer.\"; Workspace'teki \"Open Schedule\" gibi sayfa içi bağlantılar da telefonda gizli.", "KARARLAR.md:476, S-30 (:488); main 0987c9b8 + 54688945: apps/web/src/App.tsx:314,327,340 DesktopOnlyRoute; apps/web/src/views/WorkspacePage…", "2026-10-06", "high"], ["Schedule", "Vardiya sürüklenirken hücre üç renkle yanar: kabul yeşil, geçilebilir müsaitlik uyarısı amber, gerçek engel (izin, yanlış lokasyon/iş) kırmızı.", "KARARLAR.md:461; main 4d2e571a (DRAG-UI) + 22f53aef (DRAG-API): styles.css:5834-5848 data-drop-status allowed/blocked/warning; ScheduleRow.…", "2026-10-06", "high"], ["Schedule", "Schedule düzenlemede Undo yalnız son Save draft'tan sonraki adımları geri alır; Save draft Undo geçmişini temizler.", "KARARLAR.md:469; main ec38901d supabase/migrations/20261007120000_schedule_undo_goes_back_on_the_server.sql:19,95 (schedule_edit_undo_barri…", "2026-10-06", "high"], ["Schedule", "Publish → Pre-flight'ta sayım yalnız üstte, sade cümleyle: \"1 shift needs a fix before you can publish. 1 more to review.\" (BL-441).", "KARARLAR.md:478; main: PublishScheduleDialog.test.tsx:178, PublishPreflightPanel.test.tsx:122, App.test.tsx:4928", "2026-10-06", "high"], ["Schedule", "Schedule ızgarasında 'by role' sıralamasında Jobs süzgecinde seçilmeyen işlerin grubu ve vardiyaları görünmesin (hata, BL-974).", "main ab4e68b6 'fix(schedule): by role shows only the jobs the Jobs filter keeps (BL-974)' (scheduleFilterModel.ts, scheduleEmployeeSort.ts,…", "2026-10-08", "high"], ["Settings", "Settings → Locations: Address ve Phone number sütunları, kısa ad listede yok; kaynak/biçim açıklamaları kalkar; telefon isteğe bağlı; kısa ad zorunlu, öneriyle (Deniz→DNZ), büyük harf, en az 2, hata yalnız kaydederken; …", "apps/web/src/settings/LocationsSettingsPage.test.tsx:33-59 ('shows address and phone columns without short names', 'fills the suggestion on…", "2026-09-17", "high"], ["Settings", "Workspace ayarında Preferred name için Auto approve / Manager approval; onaylı ad Schedule, izin ve listelerde görünür, yasal belgelerde asla.", "apps/web/src/settings/GeneralSettingsPage.tsx:62-71 (preferred-name-approval); KARARLAR:302-305; supabase/tests/the_schedule_uses_the_prefe…", "2026-09-22", "high"], ["Settings", "Settings'te takas/cover/pickup için yalnız süre (dinlenme/yol) kuralları; kurala uymayan talep yönetici onayında açıkça gösterilir.", "KARARLAR P24 (satır 55) 'dinlenme ve yol ihlali onay ekranında açıkça gösterilir'; Requests uyarı kutuları row 9", "2026-09-23", "low"], ["Settings", "Müdür Settings'i yalnız okur (katalog), yalnız kendi lokasyonları.", "KARARLAR S5 (row 169: organizasyon ayarı izinleri müdüre verilemez) ve row 181 (yetkisizde no access kartı); quote oturum özetinden", "2026-09-23", "low"], ["Settings", "Management departmanı ve Owner işi kurulumda kendiliğinden oluşan korunan kayıtlar; Owner işi yalnız owner'da; Management'a başka işler eklenebilir ve Job sıralamasında en altta gruplanır.", "KARARLAR:105 (main'de 62cfd10c), :415 (Job/Position sıralaması, eb97ac27)", "2026-09-27", "high"], ["Settings", "Müdür rolü Settings kataloğunu salt okur; müdür tipi role roles.* verilemez; Acknowledgements katalog gibi salt okunur; Important dates'te kendi lokasyonları + genel.", "KARARLAR.md:107 (K14 S1–S4; S4 2026-10-02 K6 ile genişledi); main 7f596d11 'organization Edit and roles.read stay with owner and admin'", "2026-09-28", "low"], ["Settings", "Settings → Jobs departman rozeti tek işte '1 job' yazar.", "main 31d4c67b 'Settings > Jobs says 1 job, not 1 jobs'; JobsSettingsPage.tsx:747", "2026-10-01", "high"], ["Shift Hub", "Shift Hub başlığı Employees başlığıyla aynı ölçüde; Home ve takvim kalkar, 'WORK BETTER TOGETHER' üst yazı olur, tanıtım cümleleri silinir, Available / My requests / History sekmeleri çizginin altında, boş durum ortalı.", "apps/web/src/views/EmployeeHubPage.tsx:52-55 (eyebrow 'WORK BETTER TOGETHER'); apps/web/src/employee-hub/shift-exchanges/ShiftExchangeHub.t…", "2026-09-16", "low"], ["Sign in/Join", "Bir kez workspace'e bağlanmış kişi işaretlenir; hiç bağlanmamış yeni kişi ile workspace'siz kalmış eski kişi farklı ekran görür.", "KARARLAR:269 'Bir kez karşılanmış kişi (workspace'i kapansa, devretse ya da çıkarılsa da) yeniden \"yeni\" sayılmaz' (KARAR-001 2026-10-01 on…", "2026-09-18", "low"], ["Sign in/Join", "Sign in / Sign up'ta Email ile Password arasındaki büyük boşluk hatası düzelsin.", "8cff17e 'fix(web): sign-in fields no longer take the stage's 96px padding' origin/main'in atası", "2026-09-25", "high"], ["Sign in/Join", "Davet kabulü onaylı e-posta ister (Confirm email açık); hesap başına parola deneme sınırı lansman ön koşulu; güvenlik hataları kendi formunun altında.", "supabase/config.toml:232 enable_confirmations=true; migration 20260928050000_an_invitation_needs_a_confirmed_email.sql; d330b24d (BL-283); …", "2026-09-28", "low"], ["Sign in/Join", "En kısa parola 8 karakter.", "supabase/config.toml:188 minimum_password_length = 8", "2026-09-29", "high"], ["Workspace", "Workspace değiştirici yalnız başka workspace ya da bekleyen davet varken açılır.", "apps/web/src/shell/WorkspaceSwitcher.tsx:103 (başka workspace ve davet yoksa düz ad)", "2026-09-21", "high"], ["Workspace", "Askıdaki, kapanan workspace ve çıkarılan üye için ayrı durum ekranları.", "apps/web/src/shell/WorkspaceStatusPage.tsx:93 ('is on hold'), :104 ('has closed'); KARARLAR S-86 K5", "2026-09-21", "high"], ["Workspace", "Askıya alma nedenleri belge eksikliği/süresi ve yönetici kararıdır; workspace kapanınca kişi 'askıdasın' değil 'workspace kapandı' görür.", "WorkspaceStatusPage.tsx:93 '<ad> is on hold' / :104 '<ad> has closed'; KARARLAR S-86 K5 (kişinin ve workspace'in askısı ayrı cümle)", "2026-09-22", "high"], ["Workspace", "Ürünün temel modeli: kurulumda ≥1 lokasyon/departman/iş; çalışan kaydı için ≥1 lokasyon ve iş ya da Remote/Exclude; admin bütün lokasyonlar, manager yalnız kendi lokasyonları; onaylı izin kesin çakışma; müsaitlik yalnız…", "KARARLAR §1.1 (satır 85-86 roller), :105 (lokasyon/iş zorunlu), :196 (onaylı izin engel, 2026-10-09), M1 (müsaitlik uyarı)", "2026-09-23", "high"], ["Workspace", "Kurulumda Management departmanı ve altında Owner ve Manager işleri kendiliğinden oluşur; Manager sıradan iştir.", "main 362712f0 'Manager is an ordinary job', 62cfd10c; KARARLAR.md:105", "2026-09-30", "high"]];
+const OLD_X=[["Announcements", "Audience filtresinde tıklanan tek seçilir, filtreler birbirini daraltır, 'Add combination' filtreleri sıfırlar.", "17:53 'karar değişikliği yapıyorum' ile iki liste yan yana (D1) geçti: KARARLAR.md:517 (D1)", "2026-10-04"], ["Availability", "Settings'te müsaitlik ayarı üç kademe (Uyar/Yumuşak/Sert).", "KARARLAR:195 ('eski Uyar/Yumuşak/Sert ayarı kalk[tı]', 2026-09-26) ve M1 'her zaman yalnız uyarı'", "2026-09-24"], ["Availability", "Owner ve admin kendi müsaitlik notunu yazar; not yalnız alt rütbe hakkında.", "KARARLAR:91 'Müsaitlik notu yalnız çalışan için (2026-09-26; aynı günün owner ve admin kendi notunu yazar kararının yerine)'", "2026-09-25"], ["Availability", "Müsaitlikte hafta seçici; her hafta ayrı girilsin ve çekmecede de hafta seçiciyle görünsün (BL-536).", "2026-10-04 Mert'in M1 kararı: haftalık tek tablo, tarih/hafta seçici yok; BL-536 kapandı (KARARLAR.md:165, BACKLOG.md:3183)", "2026-10-02"], ["Documents", "İki listeli Audience tasarımı Documents'ın hedef seçimine de uygulansın.", "18:16 düzeltmesiyle belge hedefi karma akışa döndü ('Who needs it' kuralı + davette sapma); 'kural + elle kişi listesi' reddedildi: KARARLAR.md:117", "2026-10-04"], ["Employee Hub", "Çalışanın Line Up sayfası: bugünün dizilimi ya da ortada 'Your plan is on its way', sade gün takvimi.", "KARARLAR P13 (satır 44) ve satır 556: Line Up kapsam dışı, sonra sıfırdan; FOUNDATION-B 5.6'da silindi; K:372 eski lineup bağlantıları More'a gider", "2026-09-16"], ["Employees", "Management işleri her zaman birincil; çekmecede seçeneği yok; Exclude işaretlenirse kişi Schedule'da tamamen gizlenir.", "KARARLAR:105 '2026-09-27'nin \"Management işleri her zaman birincildir\" kuralı kalktı' (S2, 2026-09-30); yalnız Owner işi birincil olamaz", "2026-09-27"], ["Employees", "Yalnız yönettiği lokasyon listede 'Manages' etiketiyle görünür.", "KARARLAR:103 '\"yalnız yönetir\" lokasyonu yok' (Mert 2026-09-30, EMP-001 S1, bf52f5e1)", "2026-09-27"], ["Employees", "Yalnız Management işi olan owner olmayan kişi birincil işsiz kaydedilir, en az 1 lokasyon şart; Remote/Exclude muafiyeti kalır.", "2026-09-30 EMP-001 S2 ile geri alındı: herkes birincil iş ister (main 362712f0; KARARLAR.md:105); Remote/Exclude muafiyeti kısmı yürürlükte (0a1fe4d8)", "2026-09-29"], ["Employees", "'Manages without working there' alanı varyant C ve listede 'Manages <lokasyon>' çipi (A) seçildi.", "Aynı gün EMP-001 kuralı 6 ile söküldü: main 59340aeb, bf52f5e1; KARARLAR.md:391", "2026-09-30"], ["Other", "Bütün düğme/arama/açılır listeleri gerçek davranışıyla gösteren ve değerlerini canlı değiştiren UI Lab test ortamı.", "Mert 2026-09-18/19 (oturum 143 özeti): 'UI Lab şu an için ertelendi. Onu hiçbir şekilde kullanmıyoruz.' + 'Yedekle ve kapat'; UI-LAB-001 kapatıldı", "2026-09-17"], ["Other", "Tüm uygulamanın tıklanabilir, gerçek verili, paylaşılmayan prototipi; sonra bırakıldı, iş gerçek uygulamada sürer.", "446 2026-10-05T18:41Z Mert durdurdu; masaüstü/telefon ayrımı 18:22Z; kanonik klasör C:\\Users\\TheWe\\Documents\\Codex\\newfork-prototype.", "2026-10-05"], ["Schedule", "G14 müsaitlik görünümü: belirgin turuncu tarama, ince çerçeve, kartta turuncu '!', üzerine gelince balon; t0 müsaitlik / t3 izin tonu; çakışan vardiya için tasarım yapılmaz (18:08–19:30).", "Önce main'e girdi (aedf014f, KARARLAR.md:421-435); 2026-10-06 Mert kararıyla tarama kalktı, '!' penceresi geldi (KARARLAR.md:477, main e4231bfb)", "2026-10-01"], ["Schedule", "Turuncu ve kırmızının renk körlüğünde karışması için ek şekil işareti ertelendi (BL-525).", "BACKLOG.md:2371 BL-525 kapandı; 2026-10-06 '!' ve düz kırmızı tasarımı (KARARLAR.md:477) ile ayrışma", "2026-10-01"], ["Settings", "Yayındaki belge satırı solmaz, her zaman tıklanır ve düzenleme çekmecesi açılır.", "KARARLAR:547: yayımlanmış belge tanımı salt okunur (guard_document_definition_edit, U44 2026-09-30); 'Who needs it' değişikliği önizleme + Apply ile (row 138)", "2026-09-18"], ["Settings", "Conflict handling'de müsaitlik için Warn / Hard block ayarı.", "Aynı gün ~13:45Z M8: 'availibility hiçbir zaman hard block olmasın. settingsten kaldıralım' (KARARLAR.md:171); satır 179 S15", "2026-10-04"], ["Sign in/Join", "Bekleyen davet ekranında 'Not now' kalkar; tablonun altında 'Your own business' + 'Create your own business'; davetli kişi uygulamaya inerken araya ekran girmez.", "Sonra KARARLAR §1.2 (KARAR-001, 2026-10-01; 2026-10-05 A görünümü): bekleyen davet her girişte ilk ekranda 'Active invitation found', 'Not now' tek workspace'e…", "2026-09-19"], ["Sign in/Join", "Birden çok workspace'te son kullanılana inilir.", "KARARLAR:279 Favori workspace: işaretli yoksa sistem tahmin etmez, her girişte sorar (row 99)", "2026-09-21"], ["Workspace", "Stripe ödemesi şimdilik yok.", "KARARLAR:312 ve P13: Stripe MVP'de (Mert 2026-10-07 ters çevirdi)", "2026-09-22"]];
+const ST={M:"Main’de",Y:"Trende",P:"Kısmen",D:"Yalnız dalda",T:"Tasarım sayfasında",R:"Yalnız kayıtta",L:"Hiçbir yerde",A:"Seçimin bekleniyor",X:"Sonradan değişti"};
+const STLONG={M:"Main’de ve canlıda",Y:"Trende: canlıya gidiyor",L:"Kodda da kayıtta da yok",P:"Kısmen: veri main’de, ekran yok",D:"Kodu yazılmış, yalnız bir dalda",T:"Yalnız tasarım sayfasında, kod yok",R:"Kararın var, kod da tasarım da yok",A:"Senin cevabın ya da seçimin bekleniyor"};
+const L=(u)=>`<a href="${u}" target="_blank" rel="noopener">sayfa</a>`;
+const SCREENS=[
+{id:"schedule",name:"Schedule",code:"EKRAN-01",sess:"“Own the Schedule screen to the finish” (3 oturum) + bu Project’teki Schedule tasarım thread’leri",
+ note:"Undo düzeltmesi, şablonlar ve saat girişi Code’dan sonra main’e girdi. 2026-10-09 sabahki 6 seçimin kayıtta, kodu sırada. Beş varyant sayfası seçimini bekliyor.",
+ items:[
+ ["M","Undo son yazılan adımı geri alır; geri gelemeyen adım listeden çıkar ve ekran nedenini söyler (BL-762, BL-998–1000)","main 029c1c57, 91700ad0; canlı sürümler 20261009080320, 20261009084804"],
+ ["M","Şablon kaydında çalışan adları korunur; departmanlar “Only some departments” altında (#28, #29)","main ca0553bd, b82fc5a4"],
+ ["M","Vardiya penceresinde saat kişisel 12/24 tercihine uyar (BL-055); 24 saatte dakika beklenir (BL-613)","main 3e2be180, d4920c84"],
+ ["M","By role görünümü yalnız Jobs süzgecinin bıraktığı işleri gösterir (BL-974)","main ab4e68b6"],
+ ["M","Madde 6: onaylı izin hücresi bugünkü gibi kalır (düz kırmızı, “TIME OFF”)","Seçimin 2026-10-09 08:13Z; kod zaten main’de. Tam gün izin hücresine tıklama (a)/(b) açık"],
+ ["D","DB-4: “Published by Unknown” yerine yayınlayanın adı; onaylı izin yayında yeniden denetlenir; geçilemeyen bulgu yayını durdurur (BL-371, 174, 510, 701)","archive/ekran-01-db4@f5282ef2, 7 commit, güvenlik ONAY’ı almıştı; main’de draftMenuLabels.ts:24 hâlâ “Unknown”"],
+ ["R","Madde 1: ad yanındaki “!” → yalnız müsait olunmayan hücreler açık turuncu (A)","Seçimin 2026-10-09 08:13Z, KARARLAR’da; kod yok"],
+ ["R","Madde 3: yayın işareti varyant 6 (yayınlanmışta işaret yok, yayınlanmamışta “NEW”)","Seçimin 2026-10-09 08:21Z; kod yok"],
+ ["R","Madde 4: sürüklerken o lokasyonda alamayanlar gizlenir (B)","Seçimin 2026-10-09 08:21Z; kod yok"],
+ ["R","Madde 15: “!” penceresi kaydırınca kapanır (B)","Seçimin 2026-10-09 08:13Z; kod yok"],
+ ["R","Madde 16: izin hücresinde üstüne gelme ve sürükleme “sakin” (A)","Seçimin 2026-10-09 08:13Z; kod yok"],
+ ["R","Onaylı izinle 1 dakika bile çakışan vardiya alınamaz; izni kısaltarak vardiya alma akışı kalkar (BL-995)","Kural 2026-10-09 05:57Z; eski akış (G9b) hâlâ main’de ve canlıda"],
+ ["R","Müsaitlik sayfası tasarım seçimleri (✅ Done)","Seçimler bitti, kod işi açılmadı · "+L("https://claude.ai/artifact/37To9ekKGsDrQNSmmKYvXx")],
+ ["A","Madde 2, 5, 7, 8, 9: New Schedule penceresi, Export menüsü, üst çubuk taşması, Unpublish penceresi, Review default hours","Bugünkü hâl main’de; varyantlar üst çubuk sayfasında · "+L("https://claude.ai/artifact/WFnZBHaAo32rVHKDUkzXJe")],
+ ["A","Madde 10: ghost vardiya rengi ve animasyonu (2. tur)","Bugünkü “11b” main’de; eski 14 varyant archive/ghost-color-mockups · "+L("https://claude.ai/artifact/2oRzMjRe1hRRgYhDzRyxJE")],
+ ["A","Madde 11–14: Edit shift, Add shift, Unassigned penceresi ve hücre animasyonu","Varyantlar hazır · "+L("https://claude.ai/artifact/JLkkPNRt2bhD5DNSsZxWoH")],
+ ["A","Şablon penceresi: A, B, C reddedildi; yeni yön","Bugünkü pencere kalıyor (2026-10-09 08:05Z)"],
+ ["R","By department sıralaması, Management en altta (2026-09-27)","KARARLAR:105 “ayrı iş, yapılmadı” (BL-218 .6); ScheduleTopBar.tsx:33 yalnız alphabetical ve byJob"],
+ ["R","Boş yeni taslakta “yayınlanmışları ghost göster” anahtarı, kapalı başlar, son seçim hatırlanır (K16, 2026-09-25/28)","KARARLAR:136 (B4, FB-6.1b); görev dosyası hâlâ taslak; kod yok"],
+ ["R","Taslakta başka lokasyonun müdürüne ortak çalışma daveti","BACKLOG BL-126; kod yok"],
+ ["R","Haftalık e-posta kuralı Export paneline taşınır; müdür kendi lokasyonlarınınkini düzenler (2026-10-01)","KARARLAR:142, :474; BL-437, BL-494 açık; Export panelinde bölüm yok"],
+ ["R","Schedule’daki “belge eksik” uyarısı rütbeye göre görünür (2026-10-03)","KARARLAR:112 yalnız taslak, rafta; kod yok"],
+ ["A","Dar pencerede üst çubuk (#86) ve tek lokasyonda Pazar (#87): 2026-10-06 varyantları","Seçim yok; varyantlar archive/var-ekran-12@d7c4130b"],
+ ["A","İki Templates yüzeyi (#88): pencere mi, ayrı sayfa mı; Templates #28 #29 için kapanış bakışın","Karar yok; kod main’de (ca0553bd)"],
+ ["A","S24 (BL-759) ve S25 (BL-238) soruları","DURUM B16’da seni bekliyor"],
+ ["D","Eski varyant dalları: üst çubuk A/B/C, hücre modeli, sağ üst pencere stil A/B/C, müsaitlik lab’ı","archive/var-ekran-12, archive/schedule-dialog-mockups, archive/avail-design; bilerek main dışı, artık GitHub’da"]
+]},
+{id:"requests",name:"Requests + Shift Hub (müdür)",code:"EKRAN-02",sess:"“Own the Requests screen end to end” (3 oturum); bu Project’te “Swap onay penceresi karşılaştırma”",
+ note:"Verinin ve yetkinin yarısı main’de ve canlıda. Ekranda gördüğün her şey task/ekran-02-c2r@8ef7b05a dalındaydı; senin isteğinle şu an canlıya gidiyor (trende). Kaybolan bir takas penceresi düzeltmesi yok: 2026-10-07’deki 25 düzeltmenin hepsi bu dalda.",
+ items:[
+ ["M","Takas onayının veri kuralları: eş müdür ve kendi talebi onaylanamaz, owner takası, ret gerekçesi yalnız başvurana (S1, S3, S5, BL-910)","main 123b2310, da3ca9d2, 5ba14e37, 2bb02e30, 7c7b5513"],
+ ["M","İzin ilerleme paneli “a — kontrol listesi”","main TimeOffProgressPanel.tsx:6"],
+ ["M","Time off “Older” sayfalaması talep kaybetmez (BL-724)","main 666ff634, fcbb8e24"],
+ ["Y","Requests tek tablo: All · Time off · Swap · Cover · Open shift, bekleyen sayısı, Decide by sırası","c2r 80efc170, bd0a29d6, 77e8fb19 …; main hâlâ iki sekme (ScheduleRequestsPage.tsx:228-249)"],
+ ["Y","Telefonda talep başına kart (“önce telefon düzelsin”, 2026-10-07)","c2r 9dd28b73, bd0a29d6"],
+ ["Y","H2 takas inceleme penceresi (“şu harika bunu kilitledik”, 2026-10-07)","c2r 568badc0 …; main’de SwapReview.tsx yok. “On time off / chose to work” kutusu yeni izin kuralına aykırı, çıkmalı"],
+ ["Y","Uyarı kutuları (turuncu / yeşil, sabit 44 px)","c2r 8927ab9d, 12e56061; ölçü migration’ı 20261008111900 canlıda yok, yeni numara ister"],
+ ["Y","Takas penceresi düğmeleri 34 px (“H2 deki daha estetik”)","c2r 4903f87f; KARARLAR’a yazılmamış · "+L("https://claude.ai/artifact/PYbKyq7WaoWmZ7yRoCzT22")],
+ ["Y","S7: arama ve açılır liste kenarı koyu #7f8c86","c2r 7e9a0f4f; main styles.css:85 hâlâ #aeb9b4"],
+ ["Y","Ortak sayfalama 25 / 50 / 100, varsayılan 50","c2r 5f836e62 (ListPagination.tsx); main’de yok"],
+ ["Y","Takas satırı Shift Hub yerine H2 penceresini açar","c2r 568badc0"],
+ ["D","Shift Hub CSS’i tema renklerine geçer; çalışan Home’daki “Open shifts” kısayolu düzelir","Yalnız task/ekran-02-c2-css@463119cc; c2r’ye alınmamış"],
+ ["D","Telefonda ikon düğmeleri 44 × 44, durum çipi tema rengine","task/arayuz-salt-hata@125728ca"],
+ ["P","Cover listesi: onaylı izinli kişi çıkmaz, müsait olmayan etiketle görünür, çalışan kendi müsaitliğini rızasıyla ezebilir","Main’de (KARARLAR:194-195); izni rızayla ezme kısmı 2026-10-09 kuralıyla değişti (BL-995)"],
+ ["P","G1: kararı veremeyen müdür soluk düğme + kilit satırı görür","Takas penceresinde c2r’de; cover ve open shift için hiçbir yerde yok (ShiftExchangeHub.tsx:1235)"],
+ ["P","S3: Time off’ta “View” seviyesi kalkar","Veri main’de; Settings → Roles ekranı hâlâ sunuyor (role-permissions.ts:70)"],
+ ["P","Belgesi eksik müdür Requests’i görür, oy veremez","Veri main’de; ekran hâlâ Account → Documents’a yönlendiriyor"],
+ ["P","Gizli not yalnız karar verebilene","Veri main’de; vaka geçmişinde başlıklı gösterim yok"],
+ ["R","Shift Hub’da yıkıcı düğmeler kırmızı ve iki tık (Decline application, Close search)","Kod yok (BL-748)"],
+ ["A","Sıralama oku hep görünsün mü (Soru-2)","c2r bunu senden habersiz değiştiriyor; gönderimden önce sorulmalı"],
+ ["A","G3: müdürün kısalttığı izin satırı Closed listesinde nasıl görünsün","5 varyant · "+L("https://claude.ai/artifact/E6DvBpyyt8rZeDv7opzj1j")],
+ ["A","G13’ün üç küçük sorusu ve takas penceresine son bakış (B4)","“Swap onay penceresi karşılaştırma” thread’inde"]
+]},
+{id:"employees",name:"Employees",code:"EKRAN-03",sess:"“Own the Employees screen to the finish” (3 oturum)",
+ note:"2026-10-06 tarihli altı ürün kararının hiçbiri kodda yok. Kodu hazır tek seçim c1a dalında.",
+ items:[
+ ["M","ABD form kuralı ekranda: Türkçe harf yasağı, sabit gri “+1”","main 9e7abc62 (BL-503)"],
+ ["M","EMP-001 çekmece kararları (2026-09-30)","main; EMP-001 dallarının hepsi main’de"],
+ ["M","Employees → Documents: ortak liste dili ve 142 px iskelet","main ded7d5f3, list-page.css:8-18"],
+ ["D","Ortak liste dili + yeşil “Add employee” filtre satırında (“1 · C … çok beğendim”)","task/ekran-03-c1a@8cc2fbec; main’de düğme hâlâ başlıkta (EmployeesPage.tsx:245)"],
+ ["D","Sayfalama 25 / 50 / 100","task/ekran-03-c1a@8cc2fbec"],
+ ["D","Ad, adres ve telefonun ABD kuralı veritabanında (BL-969, /code-review max’in 15 bulgusu)","backup/task/bl-969@d3e8e6ad, 20 commit, 3 ONAY; main’in 120 commit gerisinde"],
+ ["T","Telefonda kişi başına kart (varyant 1, 2026-10-07)","Yalnız taslak archive/var-ekran-12; kod yok"],
+ ["R","Owner’ın Location hücresi “Kadikoy +1” (2026-10-06)","Kod yok"],
+ ["R","Telefonda Terminate / Restore görünsün","Kod yok"],
+ ["R","E-posta workspace içinde tekil","Kod yok"],
+ ["R","Restore aynı hesapla geri verir, yeni davet yok","Kod yok"],
+ ["R","“Send reminder” aynı bağlantıyla yeni e-posta (bugün hata veriyor)","Kod yok"],
+ ["R","İşten çıkarmada bekleyen izinler sessizce geri çekilir","Kod yok"],
+ ["R","Internal note yalnız üst rütbeye görünür","Kod yok"],
+ ["R","Özel bilgi (adres, doğum tarihi, acil kişi) yalnız alt rütbe için okunur","Kod yok"],
+ ["T","Add employee → üçüncü adım “Documents (N)”","Yalnız tasarım sayfası (Onboarding Documents)"],
+ ["P","Owner’ın çalışan kaydı kurulumda kendiliğinden açılır, bütün lokasyonlarda çalışır","Main’de (KARARLAR:104); 2026-09-27 kararıyla sonradan eklenen iş artık otomatik atanmıyor"],
+ ["A","History satırında kim ve hangi lokasyon; arşivli lokasyondan çıkarma (Soru-9, Soru-10)","Sorulmadı"]
+]},
+{id:"availability",name:"Availability + çalışan görünümü",code:"EKRAN-04, 11–14",sess:"Requests ve Schedule oturumlarının içinden; ayrı oturum yok",
+ note:"Müsaitlik modeli ve ilk seçimler main’de. EKRAN-04 ve çalışan ekranları (11–14) turu hiç başlamadı.",
+ items:[
+ ["M","Müsaitlik modeli: haftalık tek tablo, hep uyarı, hiç engel değil (AVAIL-002, 19 commit)","main de747b73..ff422433"],
+ ["M","S1 A+C, S2 B, S3 B seçimleri (şeritte Availability, not kartı, Pre-flight tek satır)","main 0ee7ba7a, b5ca9106, 1834b0c3"],
+ ["M","Tablo kuralları: 76 px hücre, %13 ad sütunu, ortak liste iskeleti","main 2f71a9bc"],
+ ["M","Kaydedilmemiş değişiklik penceresi (beyaz vazgeç, kırmızı Discard); birden çok saat aralığı","main da241b2c, 67b5ece5, 90a52555"],
+ ["M","Çalışan görünümüne geçiş (Employee view), telefonda “Requests” adı","main EmployeeViewSwitch.tsx, EmployeeMobileNav.tsx"],
+ ["D","Availability’de koyu kenar ve sayfalama (ortak liste parçaları)","task/ekran-02-c3@74fffb2e"],
+ ["T","S4-E: çalışanın Shift Hub’da “emin misin?” penceresi (önerilenin yerine seçtin)","Yalnız lab dalında task/avail-design@8066c66a"],
+ ["P","S5-B: müdürün onayında “unavailable ama kendi rızasıyla” satırı","Takas için c2r’de; cover ve open shift için yok"],
+ ["A","Telefonda Availability görünümü; yöneticinin kendi “My availability”si; saat değişince işaretin kayması (S11, S12)","Sorulmadı"]
+]},
+{id:"giris",name:"Giriş, katılım, Workspace, Account, yasal, pazarlama",code:"EKRAN-16, 05, 15, 17",sess:"“Discover the sign-in and join screens” (3 oturum)",
+ note:"Giriş keşfindeki 14 “Değiştir” seçiminin hiçbiri kodda ve kayıtta yok. Giriş modeli e-posta servisi bağlanana kadar bekliyor (S-118); ama bir kısmı modelden bağımsız tek satır metin.",
+ items:[
+ ["M","Forgot password akışı, prebiz çerçevesi, owner kurulumu 3. ve 4. adım","main b8e68b99…, 37912a90"],
+ ["M","Account: Profile yeniden düzeni, Workspaces “Open” satırları, “Cancel change” kırmızı, workspace kapatma, ortak kaydedilmemiş penceresi","main 25324b92, 4ab56841, da241b2c"],
+ ["M","Workspace ana sayfasında “bugün” her lokasyonun kendi gününe göre","main dfa86eec"],
+ ["M","Beş yasal sayfa; marka yazı tipi ve tek yeşil değişkeni","main PublicTrustPages.tsx, 7759b75f, e5af7fed"],
+ ["R","“I have an invitation” → “I am waiting for an invitation” (iki kez seçtin)","Kod yok (WorkspaceHubPage.tsx:223)"],
+ ["R","Bekleyen davet ekranı “Active invitation found” (A görünümü)","Kod yok"],
+ ["R","Sign in’de ham “Invalid login credentials” ve “Failed to fetch” metinleri","Kod yok (AuthContext.tsx:265)"],
+ ["R","Giriş keşfinin öteki 10 “Değiştir”i: odak kaybı, 13 px telefon yazısı, geri dönüş yolu, paylaşılan cihaz, davet bağlantısı","Kod yok; seçimler yalnız tasarım sayfasının kaydında · "+L("https://claude.ai/artifact/PEYuSjGWXGN9dkb9LipikY")],
+ ["R","Favori workspace yoksa her girişte sor; “Create your own business” 0–1 davette görünsün; “Continue setup” metni","Kod kararına aykırı"],
+ ["R","Kurulumu bitmemiş workspace davet gönderemez (BL-419)","Kod yok"],
+ ["R","Account → Create workspace ad penceresi açmasın","Kod kararına aykırı (WorkspacesPage.tsx:985)"],
+ ["R","Workspace ana sayfası yalnız yayındaki duyuruları gösterir (K28)","Kod yok"],
+ ["P","Account menüsünde Workspaces ve Documents onboarding bitene kadar kapalı","Menü main’de (AccountLayout.tsx:24-45); kapalı olma kodda bulunamadı (düşük güven)"],
+ ["P","Yarım kalan çalışan, yarım workspace ve reddedilen davet için 5-A, 6-A, 7-A seçimleri","6-A ve 7-A main’de; 5-A doğrulanamadı (düşük güven)"],
+ ["P","Owner kurulumunda iş taşıma ve açılır listenin yeri","Lokasyon ve departman adımları main’de; iş taşıma doğrulanamadı (düşük güven)"],
+ ["R","Deneme süresi hesap başına bir kez; her workspace ayrı abonelik","KARARLAR:314; ödeme ekranı henüz yok"],
+ ["L","“Newfork” yer tutucu ad: ürün adı Linear, Stripe gibi kısa olacak, alan adı kısa ad + yeni uzantı; ad ve logo bekletildi (2026-10-04)","KARARLAR, BACKLOG, SORULAR, EKRAN-PLANI’nda yok; yalnız eski Claude hafızasında (düşük güven)"],
+ ["D","Herkese açık tanıtım sayfası, 15 sn hareketli film, /cookies","claude/newfork-clean-landing-*, claude/motion-graphics-hero-*; seçim yok"],
+ ["A","Giriş modeli ve tasarım kitabı (sembol, motto, hareket)","E-posta servisini bekliyor · "+L("https://claude.ai/artifact/BZkoou6GKHrEwcwoDZYqQu")]
+]},
+{id:"docs",name:"Documents + Announcements",code:"EKRAN-06, 07",sess:"Code’da ayrı oturum yok; seçimler 2026-10-03/05 eski oturumlarından",
+ note:"Liste dili ve FB-6.6 / FB-6.7 A main’de. Duyuru dalındaki üç seçimin tek kopyası task/fb-6.7-ui’da.",
+ items:[
+ ["M","Settings → Documents tablo, boş tabloda açık zemin, yeşil “New document”, ortak liste dili","main 915ed719, ded7d5f3, 529d6e98"],
+ ["M","Owner kendi belgesini yükleyebilir; resmî adı yalnız owner/admin onaylar; çekmecede yazılan her alan korunur","main 4398563c, a2f4848f, e56d1989"],
+ ["M","Belge bakım işi süresiz belgede çökmez (BL-965)","main 9be1b990 …"],
+ ["M","Duyuru ve önemli tarih kuralları K1–K18; duyuru listesi ortak dilde","main fc1c83fe …, 600e974d"],
+ ["D","Duyuruda “Delete” yerine iki tık kırmızı “Archive” + Restore","Yalnız task/fb-6.7-ui@a5570e5f; main AnnouncementsPage.tsx:438 hâlâ Delete"],
+ ["D","Metni değişen duyuruda amber “Acknowledge again”","Yalnız task/fb-6.7-ui"],
+ ["D","Pencere eylemleri sol altta bir şeritte (B1-A)","Yalnız task/fb-6.7-ui"],
+ ["P","C3: yayından sonra değişen müsaitlik balonu","Lab sürümü yalnız dalda"],
+ ["R","Settings sayfalarında Archive iki tık kırmızı (BL-595, “evet settings archive de iki tık kırmızı olsun”)","Kod yok; yalnız Notifications’ta yapıldı (BL-1011)"],
+ ["R","Bütün liste sayfalarında sayfalama ve telefonda kart satırı","Kod yok (ortak parça c2r’de)"],
+ ["R","Duyurunun yeni yaşam döngüsü K19–K28 ve pencere düğmeleri","Yalnız KARARLAR ve tasarım sayfaları"],
+ ["R","Boş duyuru listesi açık zemin, yeni metin","Kod yok"],
+ ["T","Onboarding belgeleri karma akış; “Who needs it” önizleme + Apply; çalışan yalnız “Required” görür","Yalnız tasarım sayfası (Onboarding Documents)"],
+ ["T","Duyuru sayfasında istenmeden değişen parçalar geri gelsin: arama, durum süzgeçleri, satır ikonu, yeni duyuru animasyonu, başlık logosu (2026-10-04)","Yalnız duyuru akış taslağında · "+L("https://claude.ai/artifact/PTP2tPTT4ReU1QBgSMG3u5")],
+ ["R","Belge mimarisi uzlaşması (U1–U12) rafta; FB-6.6 bugünkü hâliyle kapandı (2026-10-03)","docs/plan/research/BELGE-MIMARISI-uzlasma-2026-10-03.md (main 519eb287)"],
+ ["A","EKRAN-06’nın 10 ve EKRAN-07’nin açık soruları; arşivlenen yayındaki belge türü (BL-821)","Sorulmadı"]
+]},
+{id:"settings",name:"Settings + Important Dates + Notifications",code:"EKRAN-10, 08, 09",sess:"General, Locations, Jobs, Important Dates, BILDIRIM oturumları (2’şer–3’er oturum)",
+ note:"Onayladığın üç Settings tasarımı (Locations A, Jobs V1, Important Dates A + L1) kodda yok ve kod işi hiç açılmadı. Kaynak dosyaları artık GitHub yedeğinde.",
+ items:[
+ ["M","Organizasyon ayarı izinleri yalnız owner ve admin’de (GA-2, BL-178)","main 7f596d11 … a1c0ce64; canlı"],
+ ["M","İş, departman, etiket kaydı başka workspace’e taşınamaz (GA-1)","main, migration 20261007230000"],
+ ["M","Settings → Notifications sıfırlama düğmeleri kırmızı, iki tık (BL-1011)","main a8d545d3, f6c24d5f"],
+ ["M","İşler ve departmanlar A→Z; Settings sayfaları API’den okur","main 1a608c01"],
+ ["M","Important Dates: Upcoming / Past / Archived sekmeleri, “New date”, çakışmada PT409","main 3767fb91, ded7d5f3, 5a9b80ff"],
+ ["M","Gelen kutusu sütunlu tablo ve son hâli","main 24ffc0db, c3b770e2"],
+ ["T","Settings → Locations A (“a”, “Tamam”, 2026-10-07)","Kod yok · "+L("https://claude.ai/artifact/Lru9WAg6HaSbdErLyMhU26"),1],
+ ["T","Settings → Jobs V1 + üç düzenleme (yalnız sayı sütunu, “Check to assign” kalkar, çerçeveli dolgu satırları)","Kod yok · "+L("https://claude.ai/artifact/BUJShpW3rXDGFVNyEygDZr"),1],
+ ["T","Important Dates çekmecesi A + L1, kaydırma yok","Kod yok; yeni veri tablosu gerekiyor · "+L("https://claude.ai/artifact/Pt7K2NVLwFx6TPS9ZuXNKX"),1],
+ ["D","Önemli tarih penceresinde History sekmesi (B3-A); kapalı günde etkilenen vardiyalar listesi (C1-B)","Yalnız task/fb-6.7-ui 6bd73c05, 526e66fd"],
+ ["P","Conflict handling’de kapalı gün kuralı (C2-A)","İşlev main’de, adlar ve Warn yok"],
+ ["R","Important Dates boş liste açık zeminde; Archive iki tık kırmızı","Kod yok"],
+ ["R","Bildirim sistemini sıfırdan kurma (“en önemli işlerden 1 tanesi”)","Yalnız plan main’de (BILDIRIM.md)"],
+ ["R","Saat dilimi modeli U11 (“Evet kabul”, 2026-10-03): saatler lokasyonun diliminden, birincil lokasyonu olmayana workspace saati","Rafta; KARARLAR:150 hâlâ “lokasyonsuz kişide cihazın saati” diyor. Kayıt çelişkisi"],
+ ["A","Jobs’un 4 + 1 açık sorusu (“dönünce cevaplayacağım, unutma”, 2026-10-07 23:45Z)","Hâlâ cevapsız; SORULAR.md’de bile yok"],
+ ["A","Settings General: “hiçbirisini beğenmedim”; yeni yön","KARARLAR’a yazılmamış · "+L("https://claude.ai/artifact/Kwz63F5JeddW5S7y2kSsAi"),1],
+ ["A","Bildirim merkezi ve ayar sayfası varyantları (G8, G9)","Seçim yok · "+L("https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv"),1],
+ ["A","GA-3: Settings yazmaları yetki merkezinden geçsin; ücretli /code-review ultra ister misin (B19)","Başlamadı"]
+]},
+{id:"surec",name:"Genel arayüz, güvenlik, süreç",code:"GUVENLIK-A, PARALEL-1, OTOMASYON-3",sess:"GUVENLIK-A (3), PARALEL-1 (3), OTOMASYON-3 (1), Koordinatör (4), Dev sunucusu (2)",
+ note:"Bu hatların işi main’de. Eski yerel koordinatör ve /oto Project’e geçişte bilerek kapandı.",
+ items:[
+ ["M","GA-1, GA-2, GA-4 yetki açıkları kapandı ve canlıda","main; dallardaki kopyalar rebase’le aynı içerik"],
+ ["M","Tek makinede üç paralel hat: kilit, tren, guard (PARALEL-1)","main 487600cb …"],
+ ["M","Tren, main alarmı, karantina kuralları; CI tek runner","main b865697d, c2d06109"],
+ ["M","Project’e geçiş: tek koordinatör, eski /durum ve /oto emekli","main ed024912, 543d3c78"],
+ ["T","Marka tasarım dili sayfası (Design System) kurulup kodla eşitlenecek","Yalnız tasarım sayfası · "+L("https://claude.ai/artifact/8MxRCs7ZwPT5k75RZix5gj")+"; Inter ve tek yeşil main’de"],
+ ["R","MVP öncesi rol × erişim test kampanyası (1 owner, 3 admin, 3 manager, 5 employee)","BACKLOG BL-838; test yok"],
+ ["M","e2e her testten sonra sayfaları kapatır; karantinadaki test yeniden koşuyor (BL-990)","main 32227d7f, 880e0c70"]
+]}
+];
+const SESS=[
+ ["Schedule (EKRAN-01)",3,"Undo, şablonlar ve saat girişi main’de; DB-4 dalda","schedule"],
+ ["Requests (EKRAN-02)",3,"Ekran işi c2r dalında, main’de değil","requests"],
+ ["Employees (EKRAN-03)",3,"BL-969 dalda hazır, “koordinatörün gönder’ini bekliyor” diye kaldı","employees"],
+ ["Giriş keşfi (EKRAN-16)",3,"14 seçim tasarım sayfasında; kod yok","giris"],
+ ["Important Dates (EKRAN-08)",3,"A + L1 seçildi; acil PT409 düzeltmesi canlıda","settings"],
+ ["Settings General (EKRAN-10)",2,"“Hiçbiri”; yön bekliyor","settings"],
+ ["Settings Locations (EKRAN-10)",2,"A onaylandı, “kodlamaya hazır” diye kaldı","settings"],
+ ["Settings Jobs (EKRAN-10)",2,"V1 onaylandı; 4 soru cevapsız","settings"],
+ ["Bildirim sistemi (BILDIRIM)",2,"Plan main’de, varyantlar seçim bekliyor","settings"],
+ ["Yetki açıkları (GUVENLIK-A)",3,"GA-1, GA-2, GA-4 main’de","surec"],
+ ["Üç paralel hat (PARALEL-1)",3,"main’de","surec"],
+ ["Otomasyon (OTOMASYON-3)",1,"main’de; Project’e geçişte emekli","surec"],
+ ["Koordinatör",4,"Project koordinatörüne devredildi","surec"],
+ ["Dev sunucusu",2,"Kod işi yok","surec"],
+ ["Uyanma mesajları",2,"Kod işi yok","surec"],
+ ["Telefondan sohbetler",2,"CI etkileri, telefonda görüntüleme; kod işi yok","surec"]
+];
+const order=["M","Y","P","D","T","R","L","A"];
+const all=SCREENS.flatMap(s=>s.items);
+const tot={};order.forEach(k=>tot[k]=all.filter(i=>i[0]===k).length);
+document.getElementById("stats").innerHTML=
+ `<div class="stat"><b>${all.length}</b><span>izlenen madde</span></div>`+
+ order.map(k=>`<div class="stat s-${k}"><b>${tot[k]}</b><span>${STLONG[k]}</span></div>`).join("");
+document.getElementById("legend").innerHTML=order.map(k=>`<span class="st ${k}">${ST[k]}</span>`).join("")+`<span class="st pc">kaynağı yeni yedekte</span>`;
+document.getElementById("sessions").innerHTML=SESS.map(r=>`<tr><td>${r[0]}</td><td class="n">${r[1]}</td><td>${r[2]}</td><td><a href="#${r[3]}">${SCREENS.find(s=>s.id===r[3]).name}</a></td></tr>`).join("");
+let filt=null;
+function render(){
+ document.getElementById("screens").innerHTML=SCREENS.map(s=>{
+  const c={};order.forEach(k=>c[k]=s.items.filter(i=>i[0]===k).length);
+  const n=s.items.length;
+  const items=s.items.filter(i=>!filt||i[0]===filt);
+  if(filt&&!items.length) return "";
+  return `<details class="screen" id="${s.id}" ${filt?"open":""}>
+  <summary><div class="sum-row"><h3>${s.name}</h3><span class="eyebrow">${s.code}</span></div>
+  <div class="bar" aria-hidden="true">${order.map(k=>c[k]?`<i class="${k}" style="width:${c[k]/n*100}%"></i>`:"").join("")}</div>
+  <span class="counts">${n} madde · ${order.filter(k=>c[k]).map(k=>`${ST[k]} ${c[k]}`).join(" · ")}</span></summary>
+  <div class="screen-body"><p class="note">${s.note}</p><p class="sess">Code oturumu: ${s.sess}</p>
+  <ul class="items">${items.map(i=>`<li><span class="st ${i[0]}">${ST[i[0]]}</span><div class="txt"><span class="t">${i[1]}</span><span class="w">${i[2]}${i[3]?' · <span class="flag">kaynak: backup/tasarim-kaynaklari</span>':""}</span></div></li>`).join("")}</ul></div></details>`;
+ }).join("");
+}
+const fb=document.getElementById("filters");
+fb.innerHTML=`<button type="button" data-k="" aria-pressed="true">Hepsi</button>`+order.map(k=>`<button type="button" data-k="${k}" aria-pressed="false">${ST[k]} (${tot[k]})</button>`).join("");
+fb.addEventListener("click",e=>{const b=e.target.closest("button");if(!b)return;filt=b.dataset.k||null;fb.querySelectorAll("button").forEach(x=>x.setAttribute("aria-pressed",String(x===b)));render();});
+render();
+const li=(st,r,ev)=>`<li><span class="st ${st}">${r[0]}</span><div class="txt"><span class="t">${r[1]}</span><span class="w">${r[3]||""}${ev?" · "+ev:""}${r[4]==="low"?" · düşük güven":""}</span></div></li>`;
+document.getElementById("oldm").innerHTML=OLD_M.map(r=>li("M",r,r[2])).join("");
+document.getElementById("oldx").innerHTML=OLD_X.map(r=>li("X",r,r[2])).join("");
+if(location.hash){const d=document.getElementById(location.hash.slice(1));if(d&&d.tagName==="DETAILS")d.open=true;}
+document.addEventListener("click",e=>{const a=e.target.closest('a[href^="#"]');if(!a)return;const d=document.getElementById(a.getAttribute("href").slice(1));if(d&&d.tagName==="DETAILS")d.open=true;});
+</script>

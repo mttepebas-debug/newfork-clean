@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>İşten çıkarma bildirimi</title>
+<style>
+:root{--theme-page:#f4f5f3;--theme-surface:#fff;--theme-text:#17221e;--theme-muted:#66716c;--theme-border:#dce3df;--theme-accent:#176954;--theme-selected:#e7f1ed;--theme-warning:#8a5a00;--theme-warning-soft:#fff7e2;--theme-danger:#b84234}
+*{box-sizing:border-box}
+body{margin:0;background:var(--theme-page);color:var(--theme-text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif;padding:16px}
+h1{font-size:20px;margin:0 0 6px}
+p.lead{margin:0 0 16px;color:var(--theme-muted);max-width:900px}
+.cols{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:16px}
+.col{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:10px;padding:14px}
+.col h2{font-size:15px;margin:0 0 4px}
+.col .why{font-size:12px;color:var(--theme-muted);margin:0 0 12px}
+.tag{display:inline-block;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--theme-selected);color:var(--theme-accent);margin-left:6px}
+.where{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--theme-muted);margin:14px 0 6px}
+.warn{margin:0;padding:10px 12px;border-left:3px solid #ba5a45;background:#fff4f1;color:#704035;font-size:12px;line-height:1.45}
+.diff{background:#fff1a8}
+.inbox{border:1px solid var(--theme-border);border-radius:8px;overflow:hidden}
+.row{display:flex;gap:10px;padding:10px 12px;border-top:1px solid var(--theme-border)}
+.row:first-child{border-top:0}
+.row.unread{background:#f7fbf9}
+.dot{width:8px;height:8px;border-radius:50%;background:var(--theme-accent);margin-top:6px;flex:none}
+.row.read .dot{background:transparent}
+.row strong{display:block;color:var(--theme-accent);text-decoration:underline}
+.row .body{font-size:12px;color:var(--theme-text)}
+.row .meta{font-size:11px;color:var(--theme-muted);margin-top:2px}
+.empty{font-size:12px;color:var(--theme-muted);padding:10px 12px;font-style:italic}
+.card{border:1px solid var(--theme-border);border-radius:8px;padding:10px 12px}
+.card b{display:block}
+.card span{font-size:12px;color:var(--theme-muted)}
+</style>
+</head>
+<body>
+<h1>İşten çıkarmada boşalan vardiyaların bildirimi</h1>
+<p class="lead">Örnek: Kadıköy'de çalışan Ali'yi owner Olcay işten çıkarıyor. Ali'nin henüz başlamamış iki yayınlanmış vardiyası açığa düşüyor. Bugün Terminate penceresi "manager follow-ups" diyor ama hiçbir müdüre bir şey gitmiyor. Kadıköy müdürü Ayşe boşluğu ancak Schedule'a bakınca görüyor. Karar defterine göre (KK-174) bildirim yalnız o lokasyonun müdürüne gider, Ali'ye ve boşalan vardiya yoksa kimseye gitmez. Aşağıda değişen tek görünen şey: Ayşe'nin bildirim kutusundaki satır, ayarlardaki yeni bildirim satırı ve Terminate penceresindeki cümle. A ile B arasındaki tek fark sarı işaretli cümle.</p>
+<div class="cols">
+
+<section class="col">
+<h2>Orijinal (bugün)</h2>
+<p class="why">Pencere takip işi oluşacağını söylüyor, oluşmuyor.</p>
+<div class="where">Employees → çalışan çekmecesi → Terminate penceresi</div>
+<p class="warn">Access will be suspended. Published shifts that haven't started yet will become open and create manager follow-ups.</p>
+<div class="where">Ayşe'nin bildirimleri (Notifications)</div>
+<div class="inbox"><div class="empty">Hiçbir şey gelmiyor.</div></div>
+<div class="where">Settings → Notifications</div>
+<div class="card"><span>Bu bildirim için satır yok.</span></div>
+</section>
+
+<section class="col">
+<h2>A <span class="tag">Önerilen</span></h2>
+<p class="why">Pencere cümlesi aynı kalır; artık doğrudur. Ayşe bildirimi alır.</p>
+<div class="where">Employees → çalışan çekmecesi → Terminate penceresi</div>
+<p class="warn">Access will be suspended. Published shifts that haven't started yet will become open and create manager follow-ups.</p>
+<div class="where">Ayşe'nin bildirimleri (Notifications)</div>
+<div class="inbox">
+<div class="row unread"><span class="dot"></span><div><strong>Ali's 2 shifts are unassigned</strong><div class="body">Sat, Oct 18, 10:00 AM–4:00 PM (Kadikoy); Sun, Oct 19, 4:00 PM–10:00 PM (Kadikoy)</div><div class="meta">Termination open shifts · Action needed · just now</div></div></div>
+</div>
+<div class="where">Settings → Notifications (yeni satır, Schedule grubunda)</div>
+<div class="card"><b>Shifts left open by a termination</b><span>Controls alerts sent to location managers when terminating an employee leaves published shifts open.</span></div>
+</section>
+
+<section class="col">
+<h2>B</h2>
+<p class="why">Pencere kimin haber alacağını açıkça söyler.</p>
+<div class="where">Employees → çalışan çekmecesi → Terminate penceresi</div>
+<p class="warn">Access will be suspended. Published shifts that haven't started yet will become open, <span class="diff">and the managers of their location will be notified.</span></p>
+<div class="where">Ayşe'nin bildirimleri (Notifications)</div>
+<div class="inbox">
+<div class="row unread"><span class="dot"></span><div><strong>Ali's 2 shifts are unassigned</strong><div class="body">Sat, Oct 18, 10:00 AM–4:00 PM (Kadikoy); Sun, Oct 19, 4:00 PM–10:00 PM (Kadikoy)</div><div class="meta">Termination open shifts · Action needed · just now</div></div></div>
+</div>
+<div class="where">Settings → Notifications (yeni satır, Schedule grubunda)</div>
+<div class="card"><b>Shifts left open by a termination</b><span>Controls alerts sent to location managers when terminating an employee leaves published shifts open.</span></div>
+</section>
+
+</div>
+<p class="lead" style="margin-top:16px">Bildirime tıklayınca Schedule ilk boşalan vardiyanın haftasında açılır. Üç vardiyadan fazlası "+N more" ile kısalır (izin onayındaki bildirimle aynı biçim). İşten çıkaran kişi kendisi o lokasyonun müdürüyse ona bildirim gitmez; pencereyi zaten kendisi gördü.</p>
+</body>
+</html>

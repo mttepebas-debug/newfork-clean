@@ -1,0 +1,521 @@
+<title>Tek cümlelik uyarılar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: left list of the 17 places; right a place's card, switches, and two live frames (desktop 1280, phone 390).
+   Single light theme on purpose: the app itself is light-only (CLAUDE.md §3.A.7). Tokens are the app's own --theme-*. */
+:root{
+  --theme-page:#f4f5f3;--theme-surface:#ffffff;--theme-surface-soft:#f7f9f8;--theme-surface-muted:#f0f3f1;
+  --theme-text:#17221e;--theme-text-body:#1d2525;--theme-muted:#66716c;--theme-muted-strong:#5f6b66;
+  --theme-border:#dce3df;--theme-border-subtle:#e2e6e4;--theme-border-strong:#cbd4d0;--theme-border-control:#7f8c86;--theme-border-hover:#95aaa1;
+  --theme-accent:#176954;--theme-accent-strong:#12624f;--theme-accent-soft:#dbece5;--theme-accent-deep:#244c3d;--theme-selected:#e7f1ed;
+  --theme-focus:#177a64;--theme-text-secondary:#50605a;--theme-danger-soft:#fff0ee;--theme-danger-text:#653b36;--theme-danger:#b84234;
+  --theme-list-frame:#d7dcda;--theme-list-head:#e6ece8;--theme-list-head-text:#4f5d57;--theme-warning-soft:#fff7e2;--theme-warning-text:#5f491f;
+  --raw-red:#a23725;--raw-box:#d9dfdc;--raw-card:#d8ddda;--raw-grey:#66706c;--raw-ink:#24382f;--raw-eh:#28583f;
+  --sans:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+  color-scheme:light;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--theme-page);color:var(--theme-text);font:14px/1.45 var(--sans)}
+button{font:inherit}
+.wrap{display:grid;grid-template-columns:300px minmax(0,1fr);min-height:100vh}
+aside.menu{background:var(--theme-surface);border-right:1px solid var(--theme-border);padding:22px 14px 40px;position:sticky;top:0;height:100vh;overflow:auto}
+.menu h1{font-size:19px;margin:0 6px 6px;text-wrap:balance}
+.menu .lead{margin:0 6px 16px;color:var(--theme-muted);font-size:13px}
+.menu h2{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--theme-muted);margin:18px 6px 6px;display:flex;gap:8px;align-items:center}
+.menu h2 span{background:var(--theme-surface-muted);border-radius:999px;padding:0 7px;font-size:11px;color:var(--theme-text-secondary)}
+.menu .gnote{margin:0 6px 6px;color:var(--theme-muted);font-size:12px}
+.menu button.item{display:block;width:100%;text-align:left;border:0;background:none;border-radius:8px;padding:7px 10px;cursor:pointer;color:var(--theme-text)}
+.menu button.item b{display:block;font-size:14px;font-weight:600}
+.menu button.item small{display:block;color:var(--theme-muted);font-size:12px}
+.menu button.item:hover{background:var(--theme-surface-soft)}
+.menu button.item[aria-current="true"]{background:var(--theme-selected)}
+.menu button.item:focus-visible,.seg button:focus-visible{outline:2px solid var(--theme-focus);outline-offset:2px}
+main.stage{padding:22px max(16px,env(safe-area-inset-right,0px)) 60px max(24px,env(safe-area-inset-left,0px));min-width:0}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--theme-accent);font-weight:700;margin:0}
+.stage h2.title{font-size:26px;margin:4px 0 12px;text-wrap:balance}
+.facts{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:10px;padding:14px 16px;display:grid;grid-template-columns:150px minmax(0,1fr);gap:6px 14px;max-width:1040px;font-size:14px}
+.facts dt{color:var(--theme-muted);font-weight:600}
+.facts dd{margin:0;min-width:0}
+.facts code{font-size:12px;background:var(--theme-surface-muted);padding:1px 6px;border-radius:4px}
+.tag{display:inline-block;font-size:12px;border-radius:999px;padding:1px 9px;font-weight:600}
+.tag.own{background:var(--theme-warning-soft);color:var(--theme-warning-text)}
+.tag.done{background:var(--theme-accent-soft);color:var(--theme-accent-deep)}
+.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;margin:16px 0 10px}
+.bar .lab{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--theme-muted);font-weight:700;margin-right:6px}
+.seg{display:inline-flex;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:9px;padding:3px;gap:2px;flex-wrap:wrap}
+.seg button{border:0;background:none;border-radius:7px;padding:6px 12px;cursor:pointer;color:var(--theme-text-secondary);font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--theme-text);color:#fff}
+.vnote{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:10px;padding:12px 16px;max-width:1040px;font-size:14px}
+.vnote b{font-weight:650}
+.copy{margin-top:8px;color:var(--theme-text-secondary);font-size:13px}
+.frames{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;margin-top:16px}
+.fcap{font-size:13px;color:var(--theme-muted);margin:0 0 6px}.fcap b{color:var(--theme-text)}
+.dframe{border:1px solid var(--theme-border-strong);border-radius:10px;background:var(--theme-surface);overflow:hidden}
+.dframe .chrome{height:28px;border-bottom:1px solid var(--theme-border);display:flex;align-items:center;gap:6px;padding:0 10px;background:var(--theme-surface-soft);font:12px ui-monospace,Menlo,monospace;color:var(--theme-muted)}
+.dframe .chrome i{width:9px;height:9px;border-radius:50%;background:var(--theme-border-strong);display:inline-block}
+.scaler{overflow:hidden;position:relative}
+.scaler > .screen{transform-origin:0 0;position:absolute;left:0;top:0}
+.pframe{border:10px solid #1d2422;border-radius:34px;background:var(--theme-surface);overflow:hidden}
+.none{width:330px;padding:28px 20px;border:1px dashed var(--theme-border-strong);border-radius:12px;color:var(--theme-muted);font-size:13px;background:var(--theme-surface)}
+
+/* ---------- the app, approximated with its own tokens ---------- */
+.screen{background:var(--theme-page);color:var(--theme-text);font:14px/1.45 var(--sans);overflow:hidden;position:relative}
+.app{display:grid;grid-template-columns:232px minmax(0,1fr);height:100%}
+.side{background:var(--theme-surface);border-right:1px solid var(--theme-border);padding:14px 10px;display:flex;flex-direction:column;gap:2px}
+.side .ws{font-weight:700;font-size:13px;padding:6px 10px 14px}
+.side .nv{padding:7px 10px;border-radius:7px;font-size:13px;color:var(--theme-text-secondary)}
+.side .nv.sub{padding-left:26px;font-size:12px}
+.side .nv.on{background:var(--theme-selected);color:var(--theme-accent-deep);font-weight:600}
+.content{position:relative;overflow:hidden;padding:26px 32px}
+.ph h1{font-size:24px;margin:0 0 4px}.ph .eb{font-size:11px;letter-spacing:.08em;color:var(--theme-accent);font-weight:700}.ph p{margin:0 0 18px;color:var(--theme-muted);font-size:13px}
+.tbl{background:var(--theme-surface);border:1px solid var(--theme-list-frame);border-radius:8px;overflow:hidden}
+.tbl .h{background:var(--theme-list-head);height:36px;border-bottom:1px solid var(--theme-border);display:grid;align-items:center;padding:0 16px;font-size:12px;font-weight:600;color:var(--theme-list-head-text)}
+.tbl .r{height:48px;border-top:1px solid var(--theme-border-subtle);display:grid;align-items:center;padding:0 16px;font-size:13px;color:var(--theme-text-body)}
+.chipx{display:inline-block;font-size:12px;padding:1px 8px;border-radius:999px;background:var(--theme-accent-soft);color:var(--theme-accent-deep)}
+.tool{display:flex;gap:8px;margin-bottom:12px}.tool span{border:1px solid var(--theme-border);background:var(--theme-surface);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--theme-text-secondary)}
+.dim{position:absolute;inset:0;background:rgb(23 34 30 / 32%)}
+.drawer{position:absolute;top:0;right:0;bottom:0;width:460px;background:var(--theme-surface);border-left:1px solid var(--theme-border);box-shadow:-12px 0 32px rgb(23 34 30 / 12%);display:flex;flex-direction:column}
+.drawer .dh{display:flex;justify-content:space-between;align-items:center;padding:16px 16px 12px;border-bottom:1px solid var(--theme-border-subtle)}
+.drawer .dh b{font-size:16px}
+.xbtn{width:30px;height:30px;border:1px solid var(--theme-border);border-radius:6px;display:grid;place-items:center;color:var(--theme-text-secondary);background:var(--theme-surface)}
+.drawer .db{padding:16px 0;flex:1;overflow:hidden;display:flex;flex-direction:column}
+.sect{padding:0 20px 18px}.sect h3{font-size:14px;margin:0 0 8px}.sect .muted{color:var(--theme-muted);font-size:13px}
+.etabs{display:flex;gap:16px;padding:0 20px;border-bottom:1px solid var(--theme-border-subtle);margin-bottom:14px;font-size:13px;color:var(--theme-muted)}.etabs span{padding:8px 0}.etabs .on{color:var(--theme-text);font-weight:600;border-bottom:2px solid var(--theme-accent)}
+.sheetback{position:absolute;inset:0;background:rgb(23 34 30 / 35%);display:grid;place-items:center}
+.sheet{width:480px;background:#fff;border:1px solid var(--theme-border);border-radius:22px;padding:28px}
+.sheet .sh{display:flex;justify-content:space-between;align-items:center;margin-bottom:12px}.sheet .sh h2{font-size:20px;margin:0}
+.eh-primary{display:flex;align-items:center;justify-content:center;min-height:48px;border-radius:10px;background:var(--raw-eh);color:#fff;font-weight:600;font-size:14px;margin-top:16px}
+.win{position:absolute;left:50%;top:70px;transform:translateX(-50%);width:640px;background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:12px;box-shadow:0 16px 40px rgb(23 34 30 / 18%)}
+.win .wh{display:flex;justify-content:space-between;align-items:center;padding:16px 18px;border-bottom:1px solid var(--theme-border-subtle)}.win .wh b{font-size:16px}
+.win .wt{display:flex;gap:18px;padding:0 18px;border-bottom:1px solid var(--theme-border-subtle);font-size:13px;color:var(--theme-muted)}.win .wt span{padding:9px 0}.win .wt .on{color:var(--theme-text);font-weight:600;border-bottom:2px solid var(--theme-accent)}
+.win .wb{padding:16px 18px;min-height:280px}
+.backlink{display:inline-flex;gap:6px;align-items:center;border:0;background:none;color:var(--theme-text-secondary);font-size:13px;padding:0}
+.setrail{display:grid;grid-template-columns:200px minmax(0,1fr);height:100%}
+.rail{background:var(--theme-surface);border-right:1px solid var(--theme-border);padding:16px 10px;font-size:12px;color:var(--theme-text-secondary);display:flex;flex-direction:column;gap:2px}
+.rail b{font-size:13px;color:var(--theme-text);padding:4px 10px 10px}.rail span{padding:6px 10px;border-radius:6px}.rail span.on{background:var(--theme-selected);color:var(--theme-accent-deep);font-weight:600}.rail i{font-style:normal;font-size:10px;letter-spacing:.08em;color:var(--theme-muted);padding:10px 10px 2px}
+.card{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:8px}
+.srow{display:flex;justify-content:space-between;align-items:center;gap:16px;padding:16px 24px;border-top:1px solid var(--theme-border-subtle)}
+.srow b{font-size:14px}.srow p{margin:2px 0 0;color:var(--theme-muted);font-size:13px}
+.ghostbtn{border:1px solid var(--theme-border);border-radius:6px;padding:6px 12px;font-size:12px;color:var(--theme-muted);background:var(--theme-surface-soft);white-space:nowrap}
+.rolelist{display:grid;grid-template-columns:220px minmax(0,1fr);gap:16px}
+.rolelist .rl{display:flex;flex-direction:column;gap:2px}.rolelist .rl span{padding:9px 12px;border-radius:7px;background:var(--theme-surface);border:1px solid var(--theme-border-subtle);font-size:13px}
+.rp{border:1px solid var(--theme-border);border-radius:7px;background:var(--theme-surface);padding:0 0 24px;min-height:300px}
+.rp .rt{display:flex;gap:16px;padding:0 20px;border-bottom:1px solid var(--theme-border-subtle);font-size:13px;color:var(--theme-muted);margin-bottom:16px}.rp .rt span{padding:10px 0}
+.hub{max-width:860px;margin:0 auto}
+.hubh{font-size:22px;font-weight:700;margin:0 0 4px}
+.sxlist{display:grid;grid-template-columns:320px minmax(0,1fr);gap:16px}
+.sxcard{background:var(--theme-surface);border:1px solid var(--theme-border);border-radius:14px;padding:12px 14px;font-size:13px;margin-bottom:8px}
+/* phone shell */
+.pshell{display:flex;flex-direction:column;height:100%}
+.ptop{height:52px;background:var(--theme-surface);border-bottom:1px solid var(--theme-border);display:flex;align-items:center;gap:10px;padding:0 14px;font-weight:700;font-size:14px;flex:none}
+.ptop .burger{width:18px;height:12px;border-top:2px solid var(--theme-text);border-bottom:2px solid var(--theme-text);position:relative}.ptop .burger:after{content:"";position:absolute;left:0;right:0;top:3px;border-top:2px solid var(--theme-text)}
+.pmain{flex:1;position:relative;overflow:hidden;padding:18px 16px}
+.pnav{height:62px;background:var(--theme-surface);border-top:1px solid var(--theme-border);display:grid;grid-template-columns:repeat(5,1fr);font-size:10px;color:var(--theme-muted);text-align:center;align-items:center;flex:none}
+.pnav .on{color:var(--theme-accent);font-weight:700}
+.screen.phone .drawer{width:100%;border-left:0}
+.screen.phone .sheetback{place-items:end stretch}
+.screen.phone .sheet{width:100%;border-radius:22px 22px 0 0;padding:24px 22px 28px}
+.screen.phone .ph h1{font-size:20px}
+
+/* ---------- Original looks (today on main) ---------- */
+.o-desk{margin:0;padding:32px 16px;text-align:center;color:var(--theme-text-secondary)}
+.o-empty{max-width:640px;padding:30px;border:1px solid var(--raw-card);border-radius:7px;background:var(--theme-surface)}
+.o-empty h2{font-size:19px;margin:0 0 10px}.o-empty p{color:var(--raw-grey);line-height:1.55;margin:0 0 14px}
+.o-sbtn{display:inline-flex;gap:6px;align-items:center;border:1px solid var(--theme-border-control);border-radius:6px;padding:7px 12px;background:var(--theme-surface);font-size:13px;font-weight:600}
+.o-sx{display:flex;flex-direction:column;align-items:center;text-align:center;gap:12px;padding:40px 24px;background:var(--theme-page);border:1px dashed var(--theme-border-strong);border-radius:16px}
+.o-sx h2,.o-sx h3{margin:0;font-size:17px}.o-sx p{margin:0;max-width:380px;color:var(--theme-text-secondary);font-size:13px}
+.o-sxbtn{min-height:44px;padding:10px 16px;border:1px solid var(--theme-border);border-radius:10px;background:var(--theme-surface);display:inline-flex;align-items:center;gap:6px;font-size:13px}
+.o-cte{min-height:260px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:40px 20px;background:var(--theme-surface-soft);color:var(--theme-muted);text-align:center}
+.o-cte .ic{width:48px;height:48px;border-radius:50%;background:var(--theme-accent-soft);color:var(--theme-accent);display:grid;place-items:center}
+.o-cte h2{margin:0;font-size:15px;font-weight:600;color:var(--theme-text)}.o-cte p{margin:0;font-size:13px;color:var(--theme-text-secondary)}
+.o-adnote{border-radius:7px;padding:8px 10px;background:var(--theme-surface-muted);color:var(--theme-muted-strong);font-size:12.5px;line-height:1.5;margin:0 16px}
+.o-adnote.red{background:var(--theme-danger-soft);color:var(--theme-danger-text)}
+.o-alert12{margin:0 16px 16px;font-size:12px;color:var(--raw-ink)}
+.o-p13{margin:0;font-size:13px;line-height:1.5;color:var(--raw-ink)}
+.o-formerr{margin:0;padding:0 24px 16px;color:var(--raw-red);font-size:13px}
+.o-state{padding:28px;border:1px solid var(--raw-box);border-radius:7px;background:var(--theme-surface);color:var(--theme-muted);font-size:13px;margin:0 20px}
+.o-state.err{color:var(--raw-red);margin:16px 0 0}
+.o-state.err button{border:0;background:none;text-decoration:underline;color:inherit;padding:0;cursor:pointer}
+.o-winempty{margin:12px 2px;color:var(--theme-muted);font-size:12px}
+
+/* ---------- Variants ---------- */
+.btn-g{display:flex;align-items:center;justify-content:center;min-height:40px;border-radius:6px;background:var(--theme-accent);color:#fff;font-weight:600;font-size:14px;border:0;padding:0 16px}
+.btn-w{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:36px;border-radius:6px;background:var(--theme-surface);color:var(--theme-text);font-weight:600;font-size:13px;border:1px solid var(--theme-border-control);padding:0 14px;white-space:nowrap}
+.icirc{border-radius:50%;display:grid;place-items:center;background:var(--theme-accent-soft);color:var(--theme-accent-deep);flex:none}
+.icirc.load{background:var(--theme-danger-soft);color:var(--theme-danger-text)}
+/* decided C card (no access + LoadError) */
+.cC{display:flex;flex-direction:column;align-items:center;gap:16px;max-width:440px;margin:56px auto;border:1px solid var(--theme-border);border-radius:12px;padding:36px 32px 28px;background:var(--theme-surface);box-shadow:0 1px 2px rgb(23 34 30 / 6%),0 8px 24px rgb(23 34 30 / 6%);text-align:center;color:var(--theme-muted)}
+.cC h2{margin:0;color:var(--theme-text);font-size:19px;line-height:1.35;text-wrap:balance}.cC p{margin:0;font-size:14px}
+.cC .t{display:flex;flex-direction:column;gap:6px}.cC .btn-g,.cC .btn-w{align-self:stretch;min-height:40px}
+.screen.phone .cC{margin:24px 0;padding:28px 20px 20px}
+/* A · same family */
+.vA-M{display:flex;flex-direction:column;align-items:center;gap:12px;text-align:center;padding:40px 28px;color:var(--theme-muted)}
+.vA-M h3{margin:0;color:var(--theme-text);font-size:16px;text-wrap:balance}.vA-M p{margin:0;font-size:13px}.vA-M .t{display:flex;flex-direction:column;gap:4px}
+.vA-S{display:flex;gap:8px;align-items:center;color:var(--theme-muted);font-size:13px;padding:0 24px 16px}
+/* B · quiet empty state */
+.vB{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;text-align:center;min-height:240px;padding:36px 24px;background:var(--theme-surface-soft);border:1px solid var(--theme-border-subtle);border-radius:8px;color:var(--theme-text-secondary)}
+.vB.inset{border:0;border-radius:0;margin:0}
+.vB h3{margin:0;font-size:15px;font-weight:600;color:var(--theme-text)}.vB p{margin:0;font-size:13px}
+.vB-S{display:flex;gap:8px;align-items:center;margin:0 24px 16px;border-radius:7px;padding:8px 10px;background:var(--theme-surface-muted);color:var(--theme-muted-strong);font-size:12.5px}
+/* C · strip */
+.vC{display:flex;gap:12px;align-items:flex-start;padding:14px 16px;background:var(--theme-surface-soft);border:1px solid var(--theme-border);border-radius:8px}
+.vC .t{flex:1;min-width:0}.vC b{display:block;font-size:14px}.vC p{margin:2px 0 0;font-size:13px;color:var(--theme-text-secondary)}
+.vC .ic{color:var(--theme-accent-deep);margin-top:1px;flex:none}
+.screen.phone .vC{flex-wrap:wrap}.screen.phone .vC .btn-w{flex-basis:100%}
+.vC-S{display:flex;gap:8px;align-items:center;margin:0 24px 16px;padding:8px 12px;background:var(--theme-surface-soft);border:1px solid var(--theme-border);border-radius:7px;font-size:13px;color:var(--theme-text-secondary)}
+.inset-pad{padding:0 20px}
+@media (max-width:860px){.wrap{grid-template-columns:1fr}aside.menu{position:static;height:auto;border-right:0;border-bottom:1px solid var(--theme-border)}.facts{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+<div class="wrap">
+  <aside class="menu" aria-label="Yerler">
+    <h1>Tek cümlelik uyarılar</h1>
+    <p class="lead">Uygulamada bir sayfanın, çekmecenin ya da pencerenin yerine tek cümle çıkan 17 yer. Görüntüler bugünkü main'deki koddan, örnek veriyle; varyantlar henüz kodda değil.</p>
+    <div id="menu"></div>
+  </aside>
+  <main class="stage">
+    <p class="eyebrow" id="grp"></p>
+    <h2 class="title" id="ttl"></h2>
+    <dl class="facts" id="facts"></dl>
+    <div class="bar">
+      <div><span class="lab">Görünüm</span><span class="seg" id="segV"></span></div>
+      <div><span class="lab">Ekran</span><span class="seg" id="segF"></span></div>
+    </div>
+    <div class="vnote" id="vnote"></div>
+    <div class="frames" id="frames"></div>
+  </main>
+</div>
+
+<script>
+const IC = {
+  lock:'<rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/>',
+  monitor:'<rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/>',
+  cloud:'<path d="m2 2 20 20"/><path d="M5.78 5.78A7 7 0 0 0 9 19h8.5a4.5 4.5 0 0 0 1.31-.19"/><path d="M21.53 16.5A4.5 4.5 0 0 0 17.5 10h-1.79A7 7 0 0 0 10 5.07"/>',
+  gone:'<circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3M13.5 8.5l-5 5M8.5 8.5l5 5"/>',
+  swap:'<path d="M8 3 4 7l4 4M4 7h16M16 21l4-4-4-4M20 17H4"/>',
+  x:'<path d="M18 6 6 18M6 6l12 12"/>',
+  refresh:'<path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8M21 3v5h-5M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16M8 16H3v5"/>',
+  back:'<path d="m12 19-7-7 7-7M19 12H5"/>'
+};
+const svg=(n,s=16)=>`<svg width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${IC[n]}</svg>`;
+const X=`<span class="xbtn">${svg('x',15)}</span>`;
+
+/* ---------- shells ---------- */
+const MGR=['Workspace','Schedule','·Requests','·Lineup','Employees','·Documents','Availability','Announcements','·Important Dates','Notifications','Settings'];
+const EMP=['Home','Schedule','Shift Hub','My Availability','More'];
+function deskShell(kind,active,inner){
+  const items=(kind==='emp'?EMP:MGR).map(n=>{const sub=n.startsWith('·');const t=sub?n.slice(1):n;return `<div class="nv${sub?' sub':''}${t===active?' on':''}">${t}</div>`}).join('');
+  return `<div class="app"><nav class="side"><div class="ws">Harbor &amp; Vine</div>${items}</nav><div class="content">${inner}</div></div>`;
+}
+function phoneShell(kind,active,inner,opts={}){
+  const nav=kind==='emp'?`<div class="pnav">${EMP.map(n=>`<span class="${n===active?'on':''}">${n}</span>`).join('')}</div>`:'';
+  return `<div class="pshell"><div class="ptop"><span class="burger"></span>Harbor &amp; Vine</div><div class="pmain" style="${opts.pad===0?'padding:0':''}">${inner}</div>${nav}</div>`;
+}
+const header=(eb,t,d)=>`<div class="ph">${eb?`<div class="eb">${eb}</div>`:''}<h1>${t}</h1>${d?`<p>${d}</p>`:''}</div>`;
+function table(cols,rows,tpl){return `<div class="tbl"><div class="h" style="grid-template-columns:${tpl}">${cols.map(c=>`<span>${c}</span>`).join('')}</div>${rows.map(r=>`<div class="r" style="grid-template-columns:${tpl}">${r.map(c=>`<span>${c}</span>`).join('')}</div>`).join('')}</div>`}
+const settingsRail=(on)=>`<div class="rail"><b>Settings</b><i>WORKSPACE</i>${['General','Locations','Jobs','Notifications'].map(n=>`<span class="${n===on?'on':''}">${n}</span>`).join('')}<i>SCHEDULING</i>${['Schedule rules','Conflict handling','Shift catalog'].map(n=>`<span class="${n===on?'on':''}">${n}</span>`).join('')}<i>ACCESS</i>${['Roles & permissions','Documents','Acknowledgements'].map(n=>`<span class="${n===on?'on':''}">${n}</span>`).join('')}</div>`;
+
+/* ---------- notice pieces per variant ---------- */
+// n = {icon,title,text,action,primary}; size L (whole area) | M (inside drawer/panel/window) | S (one row)
+function decided(n){ // LoadError C: already decided (Mert: "Evet, ikisi de C")
+  return `<section class="cC"><span class="icirc load" style="width:56px;height:56px">${svg('cloud',26)}</span><div class="t"><h2>${n.title}</h2><p>${n.text}</p><p style="color:var(--theme-text-body)">Check your connection, then try again.</p></div><span class="btn-w">${svg('refresh',15)} Try again</span></section>`;
+}
+function notice(v,n,size,phone){
+  if(n.decided) return decided(n);
+  const btn = n.action ? (size==='L'||n.primary ? `<span class="btn-g">${n.action}</span>` : `<span class="btn-w">${n.action}</span>`) : '';
+  if(v==='A'){
+    if(size==='L') return `<section class="cC"><span class="icirc" style="width:56px;height:56px">${svg(n.icon,26)}</span><div class="t"><h2>${n.title}</h2><p>${n.text}</p></div>${btn}</section>`;
+    if(size==='M') return `<section class="vA-M"><span class="icirc" style="width:48px;height:48px">${svg(n.icon,22)}</span><div class="t"><h3>${n.title}</h3><p>${n.text}</p></div>${btn}</section>`;
+    return `<p class="vA-S">${svg(n.icon,15)}<span>${n.title}</span></p>`;
+  }
+  if(v==='B'){
+    if(size==='S') return `<p class="vB-S">${svg(n.icon,14)}<span>${n.title}</span></p>`;
+    return `<section class="vB${size==='M'&&n.flush?' inset':''}"><span class="icirc" style="width:48px;height:48px">${svg(n.icon,22)}</span><h3>${n.title}</h3><p>${n.text}</p>${n.action?`<span class="btn-w">${n.action}</span>`:''}</section>`;
+  }
+  if(v==='C'){
+    if(size==='S') return `<p class="vC-S"><span style="color:var(--theme-accent-deep);display:flex">${svg(n.icon,15)}</span><span>${n.title}</span></p>`;
+    return `<section class="vC"><span class="ic">${svg(n.icon,20)}</span><div class="t"><b>${n.title}</b><p>${n.text}</p></div>${n.action?`<span class="btn-w">${n.action}</span>`:''}</section>`;
+  }
+}
+
+/* ---------- the 17 places ---------- */
+const NA='Ask an admin if you need it.';
+const P=[
+ {g:'Bir sayfanın yerine',id:'desk',name:'Schedule (telefonda)',where:'Sol menü → Schedule (ve Export, Templates), telefonda',when:'Müdür ya da owner Schedule\'ı telefondan açınca. Schedule telefonda kapalı (CLAUDE.md §1).',who:'Owner, admin, müdür',code:'auth/DesktopOnlyRoute.tsx:11',orig:'Ortada gri tek satır: "Schedule is available on a computer." Ne simge ne düğme; kişi nereye gideceğini bilmiyor.',
+  only:'phone',size:'L',kind:'mgr',active:'Schedule',
+  n:{icon:'monitor',title:'Schedule opens on a computer',text:'Building the week needs a bigger screen. Today\'s team is in Lineup.',action:'Open Lineup',primary:true},
+  origHtml:()=>`<p class="o-desk">Schedule is available on a computer.</p>`},
+ {g:'Bir sayfanın yerine',id:'ehsched',name:'Employee Hub → Schedule',where:'Çalışan: alt menü → Schedule',when:'Çalışanın programı yüklenemeyince. Sunucunun kendi İngilizce cümlesini gösteriyor.',who:'Çalışan',code:'employee-hub/EmployeeScheduleBoard.tsx:124',orig:'Gri çerçeveli kutu, "Schedule is unavailable", altında sunucunun ham cümlesi ("Failed to fetch") ve Retry.',
+  size:'L',kind:'emp',active:'Schedule',decidedNote:true,
+  n:{decided:true,title:'We couldn\'t load your schedule',text:'Your schedule didn\'t load. Nothing was changed.'},
+  origHtml:()=>`<div class="o-empty"><h2>Schedule is unavailable</h2><p>Failed to fetch</p><span class="o-sbtn">${svg('refresh',15)} Retry</span></div>`},
+ {g:'Bir sayfanın yerine',id:'sxhub',name:'Shift Hub (yüklenemedi)',where:'Çalışan: alt menü → Shift Hub',when:'Shift Hub yüklenemeyince ya da sunucu reddedince. Sunucunun ham cümlesi görünüyor.',who:'Çalışan',code:'employee-hub/shift-exchanges/ShiftExchangeHub.tsx:401',own:'Takas thread\'inin ekranı',orig:'Kesik çizgili gri alan, "Shift Hub is unavailable", ham cümle ve Retry.',
+  size:'L',kind:'emp',active:'Shift Hub',decidedNote:true,
+  n:{decided:true,title:'We couldn\'t load Shift Hub',text:'Shift Hub didn\'t load. Nothing was changed.'},
+  origHtml:()=>`<div class="o-sx"><h2>Shift Hub is unavailable</h2><p>Failed to fetch</p><span class="o-sxbtn">${svg('refresh',15)} Retry</span></div>`},
+ {g:'Bir alanın yerine',id:'req',name:'Requests → olmayan talep',where:'Sol menü → Schedule → Requests (bildirimdeki eski bağlantı)',when:'Adresteki talep listede yoksa ya da sunucu reddederse; tablo yerine çıkıyor.',who:'Owner, admin, müdür',code:'views/ScheduleRequestsPage.tsx:416',orig:'Tablonun yerinde boş durum: yeşil daire, "Request unavailable", "This request is no longer available.", beyaz "Show all requests".',
+  size:'M',kind:'mgr',active:'Requests',ctx:'table',
+  n:{icon:'gone',title:'This request isn\'t available',text:'It may have been closed, or it isn\'t shared with you.',action:'Show all requests',flush:true},
+  origHtml:()=>`<div class="o-cte"><span class="ic">${svg('swap',22)}</span><h2>Request unavailable</h2><p>This request is no longer available.</p><span class="o-sbtn">Show all requests</span></div>`},
+ {g:'Bir alanın yerine',id:'sxreq',name:'Shift Hub → olmayan talep',where:'Çalışan: Shift Hub → talep bağlantısı',when:'Adresteki takas talebi bulunamayınca; sağdaki ayrıntı alanında.',who:'Çalışan',code:'employee-hub/shift-exchanges/ShiftExchangeHub.tsx:794',own:'Takas thread\'inin ekranı',orig:'Kesik çizgili alan, "Request unavailable" ve iki cümlelik uzun açıklama; düğme kutunun dışında.',
+  size:'M',kind:'emp',active:'Shift Hub',ctx:'sx',
+  n:{icon:'gone',title:'This request isn\'t available',text:'It may have been closed, or it isn\'t shared with you.',action:'Back to requests'},
+  origHtml:()=>`<div class="o-sx">${svg('swap',28)}<h3>Request unavailable</h3><p>It may be outside this date range or your current access. Your current schedule remains the source of responsibility.</p></div><div style="margin-top:12px"><span class="o-sxbtn">Back to requests</span></div>`},
+ {g:'Bir pencerenin içinde',id:'sheet',name:'Employee Hub → olmayan vardiya',where:'Çalışan: Home → vardiya bağlantısı',when:'Adresteki vardiya artık programda yoksa; pencere açılıyor.',who:'Çalışan',code:'employee-hub/ShiftSheet.tsx:123',orig:'Pencere başlığı "Shift unavailable", iki cümle, yeşil "Open my schedule". Görünüm fena değil; yalnız başlık ve dil öbürleriyle aynı değil.',
+  size:'M',kind:'emp',active:'Home',ctx:'sheet',
+  n:{icon:'gone',title:'This shift isn\'t available',text:'It may have changed or moved out of this week.',action:'Open my schedule',primary:true},
+  origHtml:()=>`<div class="sh"><h2>Shift unavailable</h2>${X}</div><p style="margin:0;color:var(--theme-text-secondary)">This shift may have changed or is outside the current schedule range. Refresh your schedule to see the latest information.</p><div class="eh-primary">Open my schedule</div>`},
+ {g:'Bir çekmecenin içinde',id:'annr',name:'Announcements → olmayan duyuru (okuyan)',where:'Sol menü → Announcements ya da Important Dates → duyuru bağlantısı',when:'Adresteki duyuru listede yoksa.',who:'Duyuruyu yöneten olmayan herkes',code:'communications/AnnouncementReader.tsx:82',orig:'Çekmecenin tepesinde küçük gri kutu: "This announcement is no longer available." Düğme yok.',
+  size:'M',kind:'mgr',active:'Announcements',ctx:'drawer',dtitle:'Announcement',
+  n:{icon:'gone',title:'This announcement isn\'t available',text:'It may have been removed, or it isn\'t shared with you.',action:'Close'},
+  origHtml:()=>`<p class="o-adnote">This announcement is no longer available.</p>`},
+ {g:'Bir çekmecenin içinde',id:'annm',name:'Announcements → reddedilen duyuru (yöneten)',where:'Sol menü → Announcements → duyuru',when:'Sunucu duyuruyu bu kişiye açmayınca.',who:'Owner, admin, müdür',code:'communications/AnnouncementDrawer.tsx:115',orig:'Aynı küçük kutu, bu kez kırmızı. Kırmızı "hata" diyor; oysa bu bir yetki durumu.',
+  size:'M',kind:'mgr',active:'Announcements',ctx:'drawer',dtitle:'Announcement',
+  n:{icon:'gone',title:'This announcement isn\'t available',text:'It may have been removed, or it isn\'t shared with you.',action:'Close'},
+  origHtml:()=>`<p class="o-adnote red">This announcement is no longer available.</p>`},
+ {g:'Bir çekmecenin içinde',id:'docd',name:'Document details çekmecesi',where:'Employees → Documents → bir belge (ayrıca çalışan çekmecesi ve Account → Documents)',when:'Sunucu belgeyi bu kişiye açmayınca.',who:'Belge görebilen herkes',code:'documents/DocumentReviewDrawer.tsx:121',orig:'Çekmecede 12 piksel koyu tek satır; kenarlara yapışık, simge ve düğme yok.',
+  size:'M',kind:'mgr',active:'Documents',ctx:'drawer',dtitle:'Document details',
+  n:{icon:'lock',title:'You don\'t have access to this document',text:NA,action:'Close'},
+  origHtml:()=>`<p class="o-alert12">You don't have access to this document.</p>`},
+ {g:'Bir çekmecenin içinde',id:'docpub',name:'Settings → Documents → Publish',where:'Settings → Access → Documents → bir belge → Publish ya da Pause',when:'Sunucu yayın önizlemesini reddedince. (Bugün kodda bir hata yüzünden bu satır hiç çıkmıyor; ayrı düzeltilecek.)',who:'Owner, admin',code:'settings/DocumentPublicationDialog.tsx:112',orig:'Başlık ve açıklamanın altında 13 piksel düz paragraf.',
+  size:'M',kind:'mgr',active:'Settings',ctx:'drawer',dtitle:'Publish document',intro:'Employees in the selected locations get this document. Check who is affected before you publish.',
+  n:{icon:'lock',title:'You don\'t have access to publish this document',text:NA,action:'Close'},
+  origHtml:()=>`<div style="padding:18px 20px"><p class="o-p13">You don't have access to publish this document.</p></div>`},
+ {g:'Bir bölümün içinde',id:'docimp',name:'Çalışan çekmecesi → belge etkisi',where:'Employees → bir kişi → Job ya da Location değiştir',when:'Değişikliğin belge etkisini görme izni yoksa.',who:'Müdür',code:'documents/EmployeeAssignmentDocumentPreview.tsx:49',orig:'Bölüm başlığı ve altında düz paragraf.',
+  size:'S2',kind:'mgr',active:'Employees',ctx:'empdrawer',sect:'Document assignment impact',
+  n:{icon:'lock',title:'You don\'t have access to document checks',text:NA},
+  origHtml:()=>`<p class="o-p13">You don't have access to check documents for these choices.</p>`},
+ {g:'Bir bölümün içinde',id:'avail',name:'Çalışan çekmecesi → Availability',where:'Employees → bir kişi → Availability (ayrıca My Availability ve onboarding adımı)',when:'Sunucu bu kişinin tercihlerini açmayınca.',who:'Müdür; çalışan kendi ekranında',code:'availability/WeeklyPreferencesPanel.tsx:97',orig:'Sınıfı olmayan düz paragraf; çekmecede kenara yapışık.',
+  size:'M',kind:'mgr',active:'Employees',ctx:'empdrawer',tab:'Availability',
+  n:{icon:'lock',title:'You don\'t have access to this availability',text:NA},
+  origHtml:()=>`<div role="alert"><p style="margin:0">You don't have access to this availability.</p></div>`},
+ {g:'Bir bölümün içinde',id:'availset',name:'Settings → Schedule rules → Availability',where:'Settings → Scheduling → Schedule rules → "Availability and staffing"',when:'Sunucu bu ayarları açmayınca.',who:'Admin, owner',code:'availability/WeeklyPreferenceSettings.tsx:67',orig:'Bölüm başlığının altında 14 piksel düz paragraf.',
+  size:'M',kind:'mgr',active:'Settings',ctx:'setsection',rail:'Schedule rules',sect:'Availability and staffing',sdesc:'How far ahead people share their hours, and the staffing you need.',
+  n:{icon:'lock',title:'You don\'t have access to availability settings',text:NA},
+  origHtml:()=>`<p style="margin:0;font-size:14px;color:var(--raw-ink)">You don't have access to these availability settings.</p>`},
+ {g:'Bir satırın altında',id:'general',name:'Settings → General → iki satır',where:'Settings → General → "Setup checklist" ve "Preferred names"',when:'Sunucu bu iki ayarı açmayınca; satırın düğmesi de kapanıyor.',who:'Admin',code:'settings/GeneralSettingsPage.tsx:245 ve :312',orig:'Satırın altında kırmızı 13 piksel cümle. Kırmızı "bir şey bozuldu" diyor.',
+  size:'S',kind:'mgr',active:'Settings',ctx:'rows',
+  n:{icon:'lock',title:'You don\'t have access to this setting.'},
+  origHtml:()=>`<p class="o-formerr">You don't have access to this setting.</p>`},
+ {g:'Bir alanın yerine',id:'role',name:'Settings → Roles → olmayan rol',where:'Settings → Access → Roles & permissions → rol bağlantısı',when:'Adresteki rol listede yoksa.',who:'Owner, admin',code:'settings/RolesSettingsPage.tsx:270',orig:'Sağ panelin içinde ikinci bir gri çerçeve: kutu içinde kutu.',
+  size:'M',kind:'mgr',active:'Settings',ctx:'roles',
+  n:{icon:'gone',title:'This role isn\'t available',text:'It may have been deleted. Pick a role from the list.'},
+  origHtml:()=>`<p class="o-state">Role not found. Select a role from the list.</p>`},
+ {g:'Bir çekmecenin yerine',id:'job',name:'Settings → Jobs → olmayan iş',where:'Settings → Workspace → Jobs → iş bağlantısı',when:'Adresteki iş listede yoksa. Mert: "çok amatör".',who:'Owner, admin',code:'settings/JobsSettingsPage.tsx:610',own:'Jobs thread\'i bu sayfadaki seçimi bekliyor',orig:'Tablonun altında kırmızı çerçeveli kutu ve altı çizili "Dismiss". Varyantlarda bunun yerine iş çekmecesi açılır ve içinde uyarı çıkar.',
+  size:'M',kind:'mgr',active:'Settings',ctx:'jobs',
+  n:{icon:'gone',title:'This job isn\'t available',text:'It may have been archived or deleted.',action:'Close'},
+  origHtml:()=>`<p class="o-state err">This job is no longer available. <button type="button">Dismiss</button></p>`},
+ {g:'Bir pencerenin içinde',id:'tpl',name:'New Schedule → olmayan şablon',where:'Schedule → New Schedule ▾ → Templates → şablon',when:'Seçilen şablon bu arada silindiyse.',who:'Owner, admin, müdür',code:'schedule/components/NewScheduleTemplates.tsx:77',orig:'"All templates" bağlantısının altında 12 piksel gri satır: "This template is gone. Go back to the list."',
+  only:'desktop',size:'M',kind:'mgr',active:'Schedule',ctx:'window',
+  n:{icon:'gone',title:'This template isn\'t available',text:'It may have been deleted.',action:'All templates'},
+  origHtml:()=>`<button class="backlink">${svg('back',14)} All templates</button><p class="o-winempty">This template is gone. Go back to the list.</p>`},
+];
+
+const VARS=[
+ ['O','Original (bugün)','<b>Original (bugün main\'de):</b> 17 yer, 9 ayrı görünüm. Kimi gri satır, kimi kırmızı satır, kimi kutu içinde kutu; ikisi sunucunun ham İngilizce cümlesini gösteriyor. Çoğunda ne simge ne bir sonraki adım var.'],
+ ['A','A · Aynı aile','<b>A · Aynı aile:</b> Erişim kartının (C) akrabası. Sayfanın yerine çıkan uyarı C kartının kendisi. Çekmece ya da pencere içinde aynı kartın çerçevesiz hâli: daire içinde simge, başlık, tek cümle, tek düğme. Tek satırlık yerde gri küçük kilit ve cümle; kırmızı yok.'],
+ ['B','B · Sade boş durum','<b>B · Sade boş durum:</b> Listelerin bugünkü "boş" görünümü (açık gri zemin, yeşil daire, küçük başlık, beyaz düğme) her yerde. Kart gölgesi yok. Tek satırlık yerde açık gri kutu içinde kilit ve cümle.'],
+ ['C','C · Bilgi şeridi','<b>C · Bilgi şeridi:</b> Alanın tepesinde yatay şerit: solda simge, ortada başlık ve cümle, sağda düğme. Alan kalabalık görünmez; telefonda düğme alta iner. Tek satırlık yerde aynı şeridin küçüğü.'],
+];
+let cur=P[0].id,v='O',fmode='both';
+try{const s=JSON.parse(localStorage.getItem('tcu')||'{}');if(s.cur&&P.some(p=>p.id===s.cur))cur=s.cur;if(s.v)v=s.v;if(s.f)fmode=s.f}catch(e){}
+
+/* ---------- context renderers ---------- */
+function body(p,phone){
+  const showOrig=v==='O';
+  const N=()=>notice(v,p.n,p.size==='S2'?'S':p.size,phone);
+  const pick=()=>showOrig?p.origHtml():N();
+  const ctx=p.ctx||'page';
+  if(ctx==='page'){
+    const inner=showOrig?p.origHtml():N();
+    if(p.kind==='emp') return inner;
+    return inner;
+  }
+  if(ctx==='table'){
+    const head=header('','Requests','Time off and shift changes that need an answer.');
+    const tools=`<div class="tool"><span>All 4</span><span>Time off 3</span><span>Shift changes 1</span><span style="margin-left:auto">All locations</span></div>`;
+    const ins=showOrig?p.origHtml():`<div style="padding:${v==='C'?'14px':'0'}">${N()}</div>`;
+    const tpl=phone?'1fr 1fr':'1.4fr 1fr 1fr 1fr';
+    return head+tools+`<div class="tbl"><div class="h" style="grid-template-columns:${tpl}"><span>Employee</span><span>Type</span>${phone?'':'<span>Dates</span><span>Status</span>'}</div>${ins}</div>`;
+  }
+  if(ctx==='sx'){
+    const list=`<div><div class="sxcard"><b>Open shift · Fri 5 PM</b><div style="color:var(--theme-muted)">Server · Downtown</div></div><div class="sxcard"><b>Swap · Sat 11 AM</b><div style="color:var(--theme-muted)">with Dana Lee</div></div></div>`;
+    const det=showOrig?p.origHtml():N();
+    return `<div class="hub"><div class="hubh">Shift Hub</div><p style="margin:0 0 16px;color:var(--theme-muted);font-size:13px">Pick up, cover or swap shifts.</p>${phone?det:`<div class="sxlist">${list}<div>${det}</div></div>`}</div>`;
+  }
+  return '';
+}
+function overlayCtx(p,phone){
+  const showOrig=v==='O';
+  const N=()=>notice(v,p.n,p.size==='S2'?'S':p.size,phone);
+  const ctx=p.ctx;
+  if(ctx==='drawer'){
+    const back = p.active==='Documents'
+      ? header('EMPLOYEES','Documents','Review employee documents, delivery status and expiration.')+table(['Employee','Document','Status'],[['Alex Kim','Food handler card','<span class="chipx">Completed</span>'],['Dana Lee','I-9','<span class="chipx">Completed</span>'],['Sam Ortiz','Alcohol permit','<span class="chipx">Completed</span>']],'1fr 1.4fr 1fr')
+      : p.active==='Settings' ? header('','Documents','Document types your team signs or uploads.')+table(['Document','Locations','Status'],[['Food handler card','All','Published'],['Alcohol permit','Downtown','Draft']],'1.4fr 1fr 1fr')
+      : header('','Announcements','Posts your team reads.')+table(['Title','Audience','Posted'],[['Patio opens Friday','All','Oct 12'],['New allergen menu','Kitchen','Oct 10']],'1.6fr 1fr 1fr');
+    const intro=p.intro?`<p style="margin:0 20px 14px;color:var(--theme-text-secondary);font-size:13px">${p.intro}</p>`:'';
+    const inner=showOrig?p.origHtml():(v==='C'?`<div class="inset-pad">${N()}</div>`:v==='B'?`<div class="inset-pad">${N()}</div>`:N());
+    return {back, over:`<div class="dim"></div><div class="drawer"><div class="dh"><b>${p.dtitle}</b>${X}</div><div class="db">${intro}${inner}</div></div>`};
+  }
+  if(ctx==='empdrawer'){
+    const back=header('','Employees','Your team and how to reach them.')+table(['Name','Job','Location'],[['Alex Kim','Server','Downtown'],['Dana Lee','Host','Downtown'],['Sam Ortiz','Line cook','Uptown']],'1.2fr 1fr 1fr');
+    let sec;
+    if(p.tab){
+      const inner=showOrig?`<div style="padding:0">${p.origHtml()}</div>`:(v==='A'?N():`<div class="inset-pad">${N()}</div>`);
+      sec=`<div class="etabs"><span>Profile</span><span>Jobs</span><span class="on">Availability</span><span>Documents</span></div>${inner}`;
+    } else {
+      const inner=showOrig?`<div class="sect"><h3>${p.sect}</h3>${p.origHtml()}</div>`:`<div class="sect" style="padding:0"><h3 style="padding:0 20px;font-size:14px;margin:0 0 8px">${p.sect}</h3>${notice(v,p.n,'S',phone).replace('class="vA-S"','class="vA-S" style="padding:0 20px 16px"').replace('margin:0 24px 16px','margin:0 20px 16px')}</div>`;
+      sec=`<div class="etabs"><span class="on">Profile</span><span>Jobs</span><span>Availability</span><span>Documents</span></div><div class="sect"><h3>Jobs and locations</h3><div class="muted">Server · Downtown → <b style="color:var(--theme-text)">Server · Uptown</b></div></div>${inner}`;
+    }
+    return {back, over:`<div class="dim"></div><div class="drawer"><div class="dh"><b>Alex Kim</b>${X}</div><div class="db">${sec}</div></div>`};
+  }
+  if(ctx==='sheet'){
+    const back=`<div class="hub"><div class="hubh">Good afternoon, Alex</div><p style="margin:0 0 16px;color:var(--theme-muted);font-size:13px">Your next shift is Friday at 5 PM.</p><div class="sxcard"><b>Fri 5 PM – 11 PM</b><div style="color:var(--theme-muted)">Server · Downtown</div></div><div class="sxcard"><b>Sat 11 AM – 4 PM</b><div style="color:var(--theme-muted)">Server · Downtown</div></div></div>`;
+    let sh;
+    if(showOrig) sh=p.origHtml();
+    else if(v==='A') sh=`<div class="sh"><span></span>${X}</div>${notice('A',p.n,'M').replace('padding:40px 28px','')}`.replace('class="btn-g"','class="eh-primary" style="align-self:stretch"');
+    else if(v==='B') sh=`<div class="sh"><span></span>${X}</div>${notice('B',p.n,'M')}`;
+    else sh=`<div class="sh"><h2 style="font-size:18px">Shift</h2>${X}</div>${notice('C',p.n,'M')}`;
+    return {back, over:`<div class="sheetback"><div class="sheet">${sh}</div></div>`};
+  }
+  if(ctx==='window'){
+    const back=header('','Schedule','Week of Oct 12 – 18 · Downtown')+table(['Employee','Mon','Tue','Wed','Thu'],[['Alex Kim','5–11','','5–11',''],['Dana Lee','','11–4','','11–4'],['Sam Ortiz','8–2','8–2','','8–2']],'1.4fr 1fr 1fr 1fr 1fr');
+    const wb=showOrig?p.origHtml():`<button class="backlink">${svg('back',14)} All templates</button><div style="margin-top:12px">${notice(v,{...p.n,action:v==='C'?'All templates':null},'M')}</div>`;
+    return {back, over:`<div class="dim"></div><div class="win"><div class="wh"><b>New schedule</b>${X}</div><div class="wt"><span>Blank</span><span>Copy a week</span><span class="on">Templates</span></div><div class="wb">${wb}</div></div>`};
+  }
+  return null;
+}
+function settingsCtx(p,phone){
+  const showOrig=v==='O';
+  const N=(s)=>notice(v,p.n,s||p.size,phone);
+  let main='';
+  if(p.ctx==='setsection'){
+    const inner=showOrig?`<div style="padding:0 24px 20px">${p.origHtml()}</div>`:`<div style="padding:0 24px 20px">${v==='A'?N('M').replace('padding:40px 28px','padding:24px 12px'):N('M')}</div>`;
+    main=header('','Schedule rules','How Schedule checks hours, breaks and availability.')+`<div class="card"><div style="padding:18px 24px 10px"><b>Overtime</b><p style="margin:2px 0 0;color:var(--theme-muted);font-size:13px">Warn after 40 hours a week.</p></div></div><div class="card" style="margin-top:14px"><div style="padding:18px 24px 12px"><b>${p.sect}</b><p style="margin:2px 0 0;color:var(--theme-muted);font-size:13px">${p.sdesc}</p></div>${inner}</div>`;
+  }
+  if(p.ctx==='rows'){
+    const line=showOrig?p.origHtml():N('S');
+    main=header('','General','Name, time zone and how your workspace starts up.')+`<div class="card"><div style="padding:16px 24px"><b>Workspace name</b><p style="margin:2px 0 0;color:var(--theme-muted);font-size:13px">Harbor &amp; Vine</p></div><div class="srow"><div><b>Setup checklist</b><p>Shows the first steps on Workspace.</p></div><span class="ghostbtn">Hide checklist</span></div>${line}<div class="srow"><div><b>Preferred names</b><p>When someone asks to use another name.</p></div><span class="ghostbtn">Answer them here</span></div>${line}</div>`;
+  }
+  if(p.ctx==='roles'){
+    const inner=showOrig?p.origHtml():`<div style="padding:0 20px">${v==='A'?N('M'):N('M')}</div>`;
+    const list=`<div class="rl"><span>Owner</span><span>Admin</span><span>Manager</span><span>Shift Lead</span></div>`;
+    main=header('','Roles & permissions','Who can see and change what.')+(phone?`<div class="rp"><div class="rt"><span>Permissions</span><span>People</span></div>${inner}</div>`:`<div class="rolelist">${list}<div class="rp"><div class="rt"><span>Permissions</span><span>People</span></div>${inner}</div></div>`);
+  }
+  if(p.ctx==='jobs'){
+    const tbl=table(['Job','Department','People'],[['Server','Front of house','12'],['Host','Front of house','4'],['Line cook','Kitchen','9']],phone?'1.2fr 1fr .5fr':'1.6fr 1.2fr .6fr');
+    main=header('WORKSPACE','Jobs','The jobs people work, grouped by department.')+`<div class="tool"><span>Active 3</span><span>Archived 1</span></div>`+tbl+(showOrig?p.origHtml():'');
+    if(!showOrig){
+      const inner=v==='A'?N('M'):`<div class="inset-pad">${N('M')}</div>`;
+      return {main, over:`<div class="dim"></div><div class="drawer"><div class="dh"><b>Job</b>${X}</div><div class="db">${inner}</div></div>`};
+    }
+  }
+  return {main};
+}
+
+function screenHtml(p,phone){
+  const kind=p.kind;
+  const isSettings=['setsection','rows','roles','jobs'].includes(p.ctx);
+  const ov=overlayCtx(p,phone);
+  if(isSettings){
+    const r=settingsCtx(p,phone);
+    const on={setsection:'Schedule rules',rows:'General',roles:'Roles & permissions',jobs:'Jobs'}[p.ctx];
+    if(phone) return phoneShell(kind,p.active,`<div style="display:flex;gap:14px;overflow:hidden;white-space:nowrap;font-size:12px;color:var(--theme-text-secondary);margin:-6px 0 14px">${['General','Locations','Jobs','Schedule rules','Roles & permissions'].map(n=>`<span style="${n===on?'color:var(--theme-accent-deep);font-weight:700':''}">${n}</span>`).join('')}</div>${r.main}${r.over||''}`);
+    return deskShell(kind,p.active,`<div class="setrail" style="margin:-26px -32px;height:calc(100% + 52px)">${settingsRail(on)}<div style="padding:26px 32px;position:relative;overflow:hidden">${r.main}${r.over||''}</div></div>`);
+  }
+  if(ov){
+    const inner=ov.back+ov.over;
+    return phone?phoneShell(kind,p.active,inner):deskShell(kind,p.active,inner);
+  }
+  let inner=body(p,phone);
+  if(p.id==='desk'&&v!=='O') inner=inner; // card already centered
+  if(kind==='emp'&&p.ctx!=='sx') inner=`<div class="hub">${inner}</div>`;
+  return phone?phoneShell(kind,p.active,inner):deskShell(kind,p.active,inner);
+}
+
+/* ---------- page ---------- */
+function renderMenu(){
+  const groups=[...new Set(P.map(p=>p.g))];
+  document.getElementById('menu').innerHTML=groups.map(g=>{
+    const items=P.filter(p=>p.g===g);
+    return `<h2>${g}<span>${items.length}</span></h2>`+items.map(p=>`<button class="item" type="button" data-id="${p.id}" aria-current="${p.id===cur}"><b>${p.name}</b><small>${p.where.split(' (')[0]}</small></button>`).join('');
+  }).join('');
+  document.querySelectorAll('.item').forEach(b=>b.onclick=()=>{cur=b.dataset.id;save();render()});
+}
+function seg(el,opts,val,set){el.innerHTML=opts.map(([k,l])=>`<button type="button" data-k="${k}" aria-pressed="${k===val}">${l}</button>`).join('');el.querySelectorAll('button').forEach(b=>b.onclick=()=>{set(b.dataset.k);save();render()})}
+function save(){try{localStorage.setItem('tcu',JSON.stringify({cur,v,f:fmode}))}catch(e){}}
+function fit(){
+  document.querySelectorAll('.scaler').forEach(s=>{
+    const sc=s.firstElementChild,w=+s.dataset.w,h=+s.dataset.h,max=+s.dataset.max;
+    let avail=max;if(!s.closest('.pframe')){const fr=document.getElementById('frames');const ph=fr.querySelector('.pframe')?380:0;let room=fr.clientWidth-ph;if(room<520)room=fr.clientWidth;avail=Math.min(max,room-2);}
+    const k=Math.min(1,avail/w);
+    sc.style.transform=`scale(${k})`;s.style.width=(w*k)+'px';s.style.height=(h*k)+'px';
+  });
+}
+function render(){
+  const p=P.find(x=>x.id===cur);
+  renderMenu();
+  document.getElementById('grp').textContent=p.g;
+  document.getElementById('ttl').textContent=p.name;
+  const n=p.n;
+  const newCopy=n.decided?`<b>${n.title}</b> · ${n.text} · Try again`:`<b>${n.title}</b>${n.text?' · '+n.text:''}${n.action?' · düğme: '+n.action:''}`;
+  document.getElementById('facts').innerHTML=
+    `<dt>Nerede</dt><dd>${p.where}</dd><dt>Ne zaman çıkar</dt><dd>${p.when}</dd><dt>Kim görür</dt><dd>${p.who}</dd>`+
+    `<dt>Bugün nasıl</dt><dd>${p.orig}</dd><dt>Yeni metin</dt><dd>${newCopy}${n.decided?' <span class="tag done">Karar verildi: "We couldn\'t load" kartı C (Mert)</span>':''}</dd>`+
+    (p.own?`<dt>Sahibi</dt><dd><span class="tag own">${p.own}</span></dd>`:'')+`<dt>Kod</dt><dd><code>apps/web/src/${p.code}</code></dd>`;
+  seg(document.getElementById('segV'),VARS.map(x=>[x[0],x[1]]),v,k=>v=k);
+  seg(document.getElementById('segF'),[['both','Masaüstü + Telefon'],['desk','Masaüstü'],['phone','Telefon']],fmode,k=>fmode=k);
+  document.getElementById('vnote').innerHTML=VARS.find(x=>x[0]===v)[2]+(n.decided&&v!=='O'?'<div class="copy">Bu yer yükleme hatası: üç varyantta da kararlaştırılmış C görünümlü "We couldn\'t load" kartı çıkar.</div>':'')+`<div class="copy">Metin üç varyantta aynı; yalnız görünüm değişir. Bilinmeyen kayıt ile yetki dışı kayıt aynı cümleyi alır ("isn't available"), kaydın var olup olmadığı söylenmez.</div>`;
+  const fr=document.getElementById('frames');let h='';
+  const showD=fmode!=='phone',showP=fmode!=='desk';
+  if(showD){
+    h+= p.only==='phone'
+      ? `<div><p class="fcap"><b>Masaüstü</b></p><div class="none">Bu uyarı masaüstünde çıkmaz: Schedule bilgisayarda açılır.</div></div>`
+      : `<div style="flex:0 1 auto;min-width:0"><p class="fcap"><b>Masaüstü</b> 1280 × 780</p><div class="dframe"><div class="chrome"><i></i><i></i><i></i>&nbsp;app.newfork.com</div><div class="scaler" data-w="1280" data-h="780" data-max="1000"><div class="screen" style="width:1280px;height:780px">${screenHtml(p,false)}</div></div></div></div>`;
+  }
+  if(showP){
+    h+= p.only==='desktop'
+      ? `<div><p class="fcap"><b>Telefon</b></p><div class="none">Bu uyarı telefonda çıkmaz: Schedule telefonda kapalı.</div></div>`
+      : `<div style="flex:0 0 auto"><p class="fcap"><b>Telefon</b> 390 × 780</p><div class="pframe"><div class="scaler" data-w="390" data-h="780" data-max="330"><div class="screen phone" style="width:390px;height:780px">${screenHtml(p,true)}</div></div></div></div>`;
+  }
+  fr.innerHTML=h;fit();
+}
+addEventListener('resize',fit);
+render();
+</script>
+
+<!-- nf-kaynak-bandi:start -->
+<script>
+(function () {
+  var c = {"chip": "Project'te sıfırdan", "line": "Bu Project'te sıfırdan yazıldı.", "folder": "Ortak tasarım, raporlar ve araçlar", "tip": "Bu Project'in bir thread'inde sıfırdan yazıldı (2026-10-09 ve sonrası).", "index": "https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471", "bg": "#dff0e8", "fg": "#11513a"};
+  function mount() {
+    if (!document.body || document.getElementById('nf-kaynak-bandi')) return;
+    var host = document.createElement('div');
+    host.id = 'nf-kaynak-bandi';
+    host.setAttribute('style', 'display:block!important;position:relative!important;z-index:2147483646!important;margin:0!important;padding:0!important;width:auto!important;flex:0 0 auto!important;grid-column:1/-1!important;float:none!important;');
+    var root = host.attachShadow ? host.attachShadow({ mode: 'open' }) : host;
+    root.innerHTML = '<style>' +
+      '.b{all:initial;box-sizing:border-box;display:flex;flex-wrap:wrap;align-items:center;gap:4px 10px;padding:6px 40px 6px 14px;min-height:32px;position:relative;' +
+      'background:#f7f8f7;border-bottom:1px solid #d6ddda;color:#33403b;font:13px/1.35 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;}' +
+      '.chip{display:inline-block;padding:1px 9px;border-radius:999px;font-weight:600;font-size:12px;white-space:nowrap;background:' + c.bg + ';color:' + c.fg + ';}' +
+      '.t{min-width:0;}.f{color:#5a6762;white-space:nowrap;}' +
+      'a{color:#176954;font-weight:600;text-decoration:underline;text-underline-offset:2px;white-space:nowrap;}' +
+      'button{all:initial;position:absolute;right:8px;top:50%;transform:translateY(-50%);width:24px;height:24px;border-radius:6px;cursor:pointer;color:#5a6762;font:16px/24px sans-serif;text-align:center;}' +
+      'button:hover{background:#e6ebe9;}button:focus-visible,a:focus-visible{outline:2px solid #176954;outline-offset:2px;}' +
+      '</style><div class="b" role="note" aria-label="Sayfanın kaynağı"><span class="chip"></span><span class="t"></span><span class="f"></span>' +
+      (c.index ? '<a target="_blank" rel="noopener">Artifact dizini ↗</a>' : '') +
+      '<button type="button" aria-label="Bandı gizle" title="Bandı gizle">×</button></div>';
+    root.querySelector('.chip').textContent = c.chip;
+    root.querySelector('.chip').title = c.tip;
+    root.querySelector('.t').textContent = c.line;
+    root.querySelector('.f').textContent = 'Klasör: ' + c.folder;
+    var l = root.querySelector('a'); if (l) l.href = c.index;
+    root.querySelector('button').addEventListener('click', function () { host.remove(); });
+    document.body.insertBefore(host, document.body.firstChild);
+  }
+  if (document.body) mount(); else document.addEventListener('DOMContentLoaded', mount);
+})();
+</script>
+<!-- nf-kaynak-bandi:end -->

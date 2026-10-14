@@ -1,0 +1,649 @@
+<title>Requests Warnings Lab</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap">
+<style>
+/* Layout: one column; each block opens with a scenario card, then today's screen and five versions,
+   all drawn on the one-table Requests (EKRAN-02 C1). Deliberately single light theme: Newfork is light-only. */
+:root {
+  color-scheme: light;
+  --page: #f4f5f3;
+  --surface: #ffffff;
+  --surface-soft: #f7f9f8;
+  --surface-muted: #f0f3f1;
+  --text: #17221e;
+  --body: #46514d;
+  --muted: #66716c;
+  --muted-strong: #50605a;
+  --border: #dce3df;
+  --border-strong: #cbd4d0;
+  --frame: #d7dcda;
+  --head-bg: #e6ece8;
+  --head-line: #d3dbd6;
+  --head-text: #4f5d57;
+  --row-line: #e2e6e4;
+  --accent: #176954;
+  --selected: #e7f1ed;
+  --warn: #8a5a00;
+  --warn-soft: #fff7e2;
+  --warn-border: #e8cf98;
+  --warn-text: #5f491f;
+  --warn-bar: #e0a63a;
+  --warn-hatch: #f5dfa9;
+  --danger: #a43830;
+  --danger-soft: #fff0ee;
+  --green-soft: #e7f1ed;
+  --green-text: #176b4e;
+  --track-a: #dfe7e3;
+  --track-b: #cfe3da;
+  --track-bg: #eceeec;
+  --disabled-text: #9aa4a0;
+  --shadow: rgba(23, 34, 30, 0.10);
+  --shadow-soft: rgba(23, 34, 30, 0.06);
+  --font: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font: 14px/1.5 var(--font); }
+.wrap { max-width: 1080px; margin: 0 auto; padding-inline: 20px; padding-block: 36px 72px; }
+h1 { margin: 0 0 6px; color: var(--text); font-size: 28px; letter-spacing: -0.02em; text-wrap: balance; }
+.lead { margin: 0 0 6px; max-width: 72ch; color: var(--muted-strong); }
+.rule { margin: 0; max-width: 72ch; color: var(--muted); font-size: 13px; }
+section.part { margin-top: 48px; display: grid; gap: 22px; }
+.part > h2 { margin: 0; color: var(--text); font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+
+.scenario { display: grid; margin: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); overflow: hidden; }
+.scenario > div { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; padding: 11px 16px; border-top: 1px solid var(--row-line); }
+.scenario > div:first-child { border-top: 0; }
+.scenario dt { padding-top: 2px; color: var(--head-text); font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; }
+.scenario dd { margin: 0; min-width: 0; color: var(--text); font-size: 13.5px; }
+.scenario dd b { font-weight: 600; }
+.scenario .problem dd { color: var(--danger); }
+
+.specs { display: grid; gap: 30px; }
+.spec { display: grid; gap: 10px; }
+.spec-head { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tag { display: inline-flex; min-width: 30px; justify-content: center; padding: 2px 9px; border-radius: 999px; background: var(--text); color: var(--surface); font-size: 12px; font-weight: 700; }
+.tag.today { background: var(--border-strong); color: var(--text); }
+.spec-head strong { color: var(--text); font-size: 15px; }
+.note { margin: 0; color: var(--muted-strong); font-size: 13px; }
+.note .plus { color: var(--accent); font-weight: 700; }
+.note .minus { color: var(--danger); font-weight: 700; }
+.stage { min-width: 0; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--page); overflow-x: auto; }
+.num { font-variant-numeric: tabular-nums; }
+svg.i { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+.tabs { display: flex; gap: 22px; margin-bottom: 10px; border-bottom: 1px solid var(--border); font-size: 13px; }
+.tabs span { padding: 0 2px 9px; color: var(--muted-strong); font-weight: 500; }
+.tabs span.on { color: var(--text); font-weight: 600; box-shadow: inset 0 -2px var(--accent); }
+.tabs b { margin-left: 5px; font-weight: 600; }
+.table { min-width: 720px; border: 1px solid var(--frame); border-radius: 7px; background: var(--surface); overflow: hidden; }
+.thead, .tr { display: grid; grid-template-columns: 27% 12% 24% 16% 13% 8%; align-items: center; }
+.thead { height: 40px; background: var(--head-bg); border-bottom: 1px solid var(--head-line); color: var(--head-text); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.thead span, .tr > span { min-width: 0; padding: 0 14px; }
+.tr { min-height: 52px; border-top: 1px solid var(--row-line); color: var(--body); font-size: 13px; }
+.thead + .tr { border-top: 0; }
+.tr.sel { background: var(--selected); }
+.tr > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who { display: flex; align-items: center; gap: 10px; }
+.mark { display: inline-grid; width: 30px; height: 30px; flex: none; place-items: center; border: 1px solid var(--border-strong); border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.mark.sys { border-radius: 8px; background: var(--surface-soft); }
+.stack { display: grid; min-width: 0; }
+.stack strong { overflow: hidden; color: var(--text); font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.stack small { overflow: hidden; color: var(--muted-strong); font-size: 12px; text-overflow: ellipsis; white-space: nowrap; }
+.type { display: inline-flex; align-items: center; gap: 6px; }
+.type.sys { color: var(--text); font-weight: 600; }
+.chip { display: inline-flex; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; }
+.chip.amber { background: var(--warn-soft); color: var(--warn); }
+.chip.green { background: var(--green-soft); color: var(--green-text); }
+.chip.red { background: var(--danger-soft); color: var(--danger); }
+.rev { text-align: right; color: var(--muted); }
+.rev .warnc { display: inline-flex; align-items: center; gap: 4px; color: var(--warn); font-weight: 600; }
+.pill { display: inline-flex; margin-left: 6px; padding: 0 7px; border: 1px solid var(--border-strong); border-radius: 999px; color: var(--muted-strong); font-size: 11px; font-weight: 700; vertical-align: 1px; }
+.child { display: flex; align-items: center; gap: 8px; min-height: 34px; padding: 0 14px 0 54px; border-top: 1px dashed var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log { display: flex; align-items: center; gap: 8px; min-height: 38px; padding: 0 14px; border-top: 1px solid var(--row-line); background: var(--surface-soft); color: var(--muted-strong); font-size: 12.5px; }
+.log time { margin-left: auto; color: var(--muted); }
+.muted { color: var(--muted); }
+
+/* The review drawer opens over the right side of the table in the app; here it sits under it, right-aligned. */
+.duo { display: grid; gap: 14px; }
+.drawer { justify-self: end; width: min(100%, 440px); display: grid; gap: 12px; padding: 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 12px 28px var(--shadow); }
+.drawer-top { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
+.drawer-top small { display: block; color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+.drawer-top h4 { margin: 2px 0 0; color: var(--text); font-size: 17px; }
+.panel { display: grid; gap: 9px; padding: 14px; border: 1px solid var(--border); border-radius: 9px; background: var(--surface-soft); }
+.panel p { margin: 0; font-size: 13px; }
+.eyebrow { color: var(--muted); font-size: 11px; font-weight: 700; letter-spacing: 0.08em; }
+.panel h5 { margin: 0; color: var(--text); font-size: 13.5px; font-weight: 600; line-height: 1.45; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; }
+.btn { display: inline-flex; align-items: center; min-height: 36px; padding: 0 13px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text); font: 600 13px var(--font); }
+.btn.primary { border-color: var(--accent); background: var(--accent); color: var(--surface); }
+.btn[disabled] { border-color: var(--row-line); background: var(--surface-muted); color: var(--disabled-text); }
+.elig { padding-left: 11px; border-left: 3px solid var(--danger); color: var(--danger); font-size: 13px; }
+.elig strong { color: var(--text); }
+.elig ul { margin: 4px 0 0; padding-left: 18px; }
+.callout { display: grid; gap: 5px; padding: 11px 13px; border: 1px solid var(--warn-border); border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 12.5px; }
+.callout-head { display: flex; align-items: center; gap: 7px; color: var(--warn); font-size: 13px; font-weight: 700; }
+.callout ul { margin: 0; padding-left: 20px; }
+.checks { width: 100%; border-collapse: collapse; border: 1px solid var(--border); background: var(--surface); font-size: 12.5px; }
+.checks th { padding: 6px 10px; background: var(--head-bg); color: var(--head-text); font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-align: left; text-transform: uppercase; }
+.checks td { padding: 7px 10px; border-top: 1px solid var(--row-line); }
+.checks td.short { color: var(--warn); font-weight: 600; }
+.checks td.ok { color: var(--accent); }
+.dot { display: inline-block; width: 8px; height: 8px; margin-right: 6px; border-radius: 50%; background: var(--warn); }
+.dot.ok { background: var(--accent); }
+.gauge { display: grid; gap: 5px; }
+.gauge-top { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.gauge-top span:last-child { color: var(--warn); font-weight: 600; }
+.bar { position: relative; height: 8px; border-radius: 999px; background: var(--track-bg); }
+.bar i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: var(--warn-bar); }
+.gauge small { color: var(--muted); font-size: 11.5px; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.wchip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border: 1px solid var(--warn-border); border-radius: 999px; background: var(--warn-soft); color: var(--warn-text); font-size: 12px; font-weight: 600; }
+.foot { color: var(--muted); font-size: 12px; }
+.lane { display: grid; gap: 5px; }
+.lane-name { display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
+.lane-name strong { color: var(--text); }
+.lane-name span { color: var(--warn); font-weight: 600; }
+.track { display: grid; grid-template-columns: 2fr 1fr 2fr; height: 24px; font-size: 11px; font-weight: 600; }
+.seg { display: flex; align-items: center; justify-content: center; padding: 0 5px; overflow: hidden; white-space: nowrap; color: var(--text); }
+.seg.a { border-radius: 6px 0 0 6px; background: var(--track-a); }
+.seg.b { border-radius: 0 6px 6px 0; background: var(--track-b); }
+.seg.gap { background: repeating-linear-gradient(135deg, var(--warn-soft) 0 5px, var(--warn-hatch) 5px 7px); color: var(--warn-text); border-block: 1px solid var(--warn-border); }
+.ticks { display: flex; justify-content: space-between; color: var(--muted); font-size: 11px; }
+
+/* Review window, six fresh designs: white surface, hairlines, one green action, amber only for warnings. */
+.rw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap: 26px; }
+.rw-item { display: grid; gap: 10px; align-content: start; min-width: 0; }
+.rw { display: flex; flex-direction: column; min-width: 0; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 28px var(--shadow); overflow: hidden; }
+.rw-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; padding: 20px 20px 0; }
+.rw-title { margin: 0; color: var(--text); font-size: 17px; font-weight: 650; letter-spacing: -0.01em; }
+.rw-sub { margin: 3px 0 0; color: var(--muted); font-size: 12.5px; }
+.rw-x { display: grid; flex: none; width: 28px; height: 28px; place-items: center; border-radius: 6px; color: var(--muted); }
+.rw-body { display: grid; flex: 1; align-content: start; gap: 16px; padding: 18px 20px 20px; min-width: 0; }
+.rw-foot { display: flex; justify-content: flex-end; align-items: center; gap: 8px; padding: 14px 20px; border-top: 1px solid var(--row-line); }
+.rw-foot .grow { margin-right: auto; color: var(--muted); font-size: 12.5px; }
+.rw-label { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.rw-lede { margin: 0; color: var(--text); font-size: 15px; line-height: 1.45; }
+.rw-hr { height: 1px; margin: 0; border: 0; background: var(--row-line); }
+.rw-list { display: grid; gap: 8px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.rw-list li { display: flex; gap: 10px; align-items: baseline; min-width: 0; }
+.rw-list .to { margin-left: auto; color: var(--text); font-weight: 600; white-space: nowrap; }
+.rw-dot { display: inline-block; flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--warn-bar); transform: translateY(-1px); }
+.rw-warn { color: var(--warn); }
+.rw-kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 9px 16px; margin: 0; font-size: 13px; }
+.rw-kv dt { color: var(--muted); }
+.rw-kv dd { margin: 0; color: var(--text); font-weight: 500; text-align: right; }
+.rw-kv dd.rw-warn { color: var(--warn); font-weight: 600; }
+.rw-ledger { display: grid; font-size: 13px; }
+.rw-ledger .r { display: grid; grid-template-columns: minmax(0, 1fr) 64px 16px 64px; gap: 8px; align-items: baseline; padding: 11px 0; border-top: 1px solid var(--row-line); }
+.rw-ledger .r.h { padding: 0 0 8px; border-top: 0; }
+.rw-ledger .r.h span { color: var(--muted); font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; }
+.rw-ledger .when { display: grid; min-width: 0; color: var(--text); }
+.rw-ledger .when small { color: var(--muted); font-size: 12px; }
+.rw-ledger .when em { color: var(--warn); font-size: 12px; font-style: normal; font-weight: 600; }
+.rw-ledger .arrow { color: var(--muted); }
+.rw-ledger .new { color: var(--text); font-weight: 600; }
+.rw-person { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+.rw-avatar { display: grid; width: 32px; height: 32px; place-items: center; border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.rw-person p { margin: 0; font-size: 13px; }
+.rw-person strong { color: var(--text); font-weight: 600; }
+.rw-person .rw-warn { font-size: 12.5px; font-weight: 600; }
+.rw-checks { display: grid; gap: 9px; margin: 0; padding: 0; list-style: none; font-size: 13px; }
+.rw-checks li { display: grid; grid-template-columns: 18px minmax(0, 1fr) auto; gap: 8px; align-items: baseline; }
+.rw-checks .ok { color: var(--accent); }
+.rw-checks .val { color: var(--muted); }
+.rw-checks .rw-warn .val { color: var(--warn); font-weight: 600; }
+.rw-q { margin: 0; color: var(--text); font-size: 22px; font-weight: 650; letter-spacing: -0.02em; line-height: 1.2; }
+.rw-days { display: grid; gap: 10px; }
+.rw-day { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 12px; align-items: center; }
+.rw-tile { display: grid; place-items: center; height: 46px; border: 1px solid var(--border); border-radius: 8px; color: var(--text); font-size: 16px; font-weight: 650; line-height: 1; }
+.rw-tile small { color: var(--muted); font-size: 10px; font-weight: 600; letter-spacing: 0.06em; }
+.rw-day p { margin: 0; font-size: 13px; }
+.rw-day span { color: var(--muted); font-size: 12.5px; }
+.rw-strip { display: flex; gap: 8px; align-items: center; padding: 9px 12px; border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 12.5px; }
+
+/* Compact review windows (G–J): 330–380 px wide, 12–14 px type, 30 px buttons. */
+.rc-intro { display: grid; gap: 4px; margin-top: 10px; }
+.rc-intro h3 { margin: 0; color: var(--text); font-size: 16px; letter-spacing: -0.01em; text-wrap: balance; }
+.rc-intro p { margin: 0; max-width: 72ch; color: var(--muted-strong); font-size: 13px; }
+.rc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 360px), 1fr)); gap: 26px 22px; align-items: start; }
+.rc-item { display: grid; gap: 10px; min-width: 0; }
+.rc { width: 100%; max-width: 380px; min-width: 0; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); box-shadow: 0 1px 2px var(--shadow-soft), 0 8px 24px var(--shadow); overflow: hidden; color: var(--body); font-size: 12.5px; }
+.rc-g { max-width: 330px; }
+.rc-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 10px; padding: 12px 14px 10px; }
+.rc-kicker { display: block; color: var(--muted-strong); font-size: 10.5px; font-weight: 600; letter-spacing: 0.07em; text-transform: uppercase; }
+.rc-title { margin: 2px 0 0; color: var(--text); font-size: 14px; font-weight: 600; line-height: 1.3; }
+.rc-meta { margin: 2px 0 0; color: var(--muted-strong); font-size: 12px; }
+.rc-x { display: grid; flex: none; width: 24px; height: 24px; place-items: center; border-radius: 6px; color: var(--muted); font-size: 12px; }
+.rc-body { display: grid; gap: 10px; min-width: 0; padding: 0 14px 12px; }
+.rc-foot { display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 6px; padding: 9px 14px; border-top: 1px solid var(--row-line); background: var(--surface-soft); }
+.rc-foot .grow { flex: 1 1 140px; min-width: 0; margin-right: auto; color: var(--muted-strong); font-size: 12px; }
+.btn.sm { min-height: 30px; padding: 0 11px; border-radius: 6px; font-size: 12.5px; }
+/* G */
+.rc-rows { display: grid; margin: 0; padding: 0; list-style: none; border-top: 1px solid var(--row-line); }
+.rc-rows li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1px 10px; padding: 7px 0; border-bottom: 1px solid var(--row-line); }
+.rc-day { color: var(--text); font-weight: 600; }
+.rc-to { color: var(--text); font-weight: 600; }
+.rc-to::before { content: "→ "; color: var(--muted); font-weight: 400; }
+.rc-where { grid-column: 1 / -1; color: var(--muted-strong); font-size: 12px; }
+.rc-warnline { display: flex; align-items: center; gap: 7px; margin: 0; color: var(--warn); font-size: 12px; font-weight: 600; }
+.rc-dot { flex: none; width: 6px; height: 6px; border-radius: 50%; background: var(--warn-bar); }
+/* H */
+.rc-pair { display: grid; grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr); align-items: stretch; }
+.rc-shift { display: grid; align-content: start; gap: 2px; min-width: 0; padding: 9px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+.rc-shift b { color: var(--text); font-size: 12.5px; font-weight: 600; }
+.rc-shift span { color: var(--muted-strong); font-size: 12px; }
+.rc-shift .rc-hand { margin-top: 6px; color: var(--text); font-size: 12.5px; }
+.rc-shift .rc-hand i { color: var(--muted); font-style: normal; }
+.rc-shift .rc-flag { margin-top: 4px; color: var(--warn); font-size: 11.5px; font-weight: 600; }
+.rc-swapicon { display: grid; place-items: center; color: var(--muted); font-size: 14px; }
+/* H2: a twist on H. Darker swap mark, a pin by the location, both names in one
+   weight, a warning only when a rule is broken, Decide by at the bottom. */
+.rc-wide { grid-column: 1 / -1; }
+.rc-states { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 22px; }
+.rc-state { display: grid; flex: 1 1 340px; gap: 6px; min-width: 0; max-width: 380px; margin: 0; }
+.rc-state figcaption { color: var(--muted-strong); font-size: 12px; font-weight: 600; }
+.rc-swapicon.dark { color: var(--text); }
+.rc-swapicon.dark svg { width: 17px; height: 17px; stroke-width: 2.4; }
+.rc-shift .rc-loc { display: flex; align-items: center; gap: 4px; }
+.rc-shift .rc-loc svg { width: 12px; height: 12px; color: var(--muted-strong); }
+.rc-shift .rc-hand2 { margin-top: 6px; color: var(--text); font-size: 12.5px; font-weight: 600; }
+.rc-shift .rc-hand2 i { color: var(--muted-strong); font-style: normal; font-weight: 400; }
+.rc-shift .rc-alert { display: grid; grid-template-columns: 13px minmax(0, 1fr); gap: 6px; margin: 6px 0 0; padding-top: 7px; border-top: 1px dashed var(--warn-border); color: var(--warn-text); font-size: 11.5px; line-height: 1.4; }
+.rc-shift .rc-alert svg { width: 13px; height: 13px; margin-top: 1px; color: var(--warn); }
+.rc-shift .rc-alert span { color: inherit; font-size: inherit; }
+/* H2: everything in a shift badge is centred. */
+.rc-wide .rc-shift { justify-items: center; text-align: center; }
+.rc-wide .rc-shift .rc-loc { justify-content: center; }
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: flex-start; gap: 5px; width: 100%; text-align: center; }
+.rc-wide .rc-shift .rc-alert svg { flex: none; }
+/* H2: the title is centred over the window; the left padding balances the close button. */
+.rc-wide .rc-head > div { flex: 1; padding-left: 34px; text-align: center; }
+/* H2: room around the swap mark, which sits in the exact middle of the gap. */
+.rc-wide .rc-pair { grid-template-columns: minmax(0, 1fr) 32px minmax(0, 1fr); }
+.rc-wide .rc-swapicon.dark svg { width: 15px; height: 15px; }
+/* H2: a warning is a small amber box, two short lines, no rule line above it. */
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: flex-start; gap: 5px; width: 100%; box-sizing: border-box; margin: 6px 0 0; padding: 4px 6px; border: 0; border-radius: 6px; background: var(--warn-soft); line-height: 1.3; }
+.rc-wide .rc-shift .rc-alert svg { flex: none; width: 12px; height: 12px; margin-top: 1px; }
+.rc-wide .rc-shift .rc-alert-t { display: grid; text-align: center; }
+.rc-wide .rc-shift .rc-alert-t strong { color: var(--warn); font-size: 11.5px; font-weight: 600; }
+.rc-wide .rc-shift .rc-alert-t small { color: var(--warn-text); font-size: 11px; }
+.rc-wide .rc-shift .rc-alert.ok { background: var(--green-soft); }
+.rc-wide .rc-shift .rc-alert.ok svg { color: var(--green-text); }
+.rc-wide .rc-shift .rc-alert.ok .rc-alert-t strong { color: var(--green-text); }
+.rc-wide .rc-shift .rc-alert.ok .rc-alert-t small { color: var(--muted-strong); }
+/* H2: the mark is 14 px and sits in the middle of the two lines; no line wraps. */
+.rc-wide .rc-shift .rc-alert { align-items: center; gap: 6px; padding: 5px 6px; }
+.rc-wide .rc-shift .rc-alert svg { width: 14px; height: 14px; margin: 0; stroke-width: 2.2; }
+.rc-wide .rc-shift .rc-alert-t strong, .rc-wide .rc-shift .rc-alert-t small { white-space: nowrap; }
+/* H2: every warning box has one fixed size, the card's full inner width and 44 px high;
+   the mark and the words sit in its exact middle. */
+.rc-wide .rc-shift .rc-alert { display: flex; justify-content: center; align-items: center; justify-self: stretch; width: 100%; height: 44px; box-sizing: border-box; padding: 0 8px; }
+/* The words sit in the box's exact middle; the mark keeps its place at the left edge. */
+.rc-wide .rc-shift .rc-alert { position: relative; padding: 0 26px; }
+.rc-wide .rc-shift .rc-alert svg { position: absolute; top: 50%; left: 10px; transform: translateY(-50%); }
+/* I */
+.rc-handoffs { display: grid; margin: 0; padding: 0; list-style: none; }
+.rc-handoffs li { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--row-line); }
+.rc-handoffs li:first-child { padding-top: 2px; border-top: 0; }
+.rc-avs { display: inline-flex; align-items: center; gap: 4px; }
+.rc-av { display: grid; width: 24px; height: 24px; place-items: center; border-radius: 50%; background: var(--surface-muted); color: var(--muted-strong); font-size: 10.5px; font-weight: 600; }
+.rc-av.to { background: var(--selected); color: var(--green-text); }
+.rc-avs i { color: var(--muted); font-size: 11px; font-style: normal; }
+.rc-hl { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 2px 8px; min-width: 0; }
+.rc-hl b { color: var(--text); font-weight: 600; }
+.rc-hl small { flex-basis: 100%; color: var(--muted-strong); font-size: 12px; }
+.rc-tag { padding: 1px 7px; border-radius: 999px; background: var(--warn-soft); color: var(--warn); font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+/* J */
+.rc-chips { display: flex; gap: 6px; }
+.rc-chip { padding: 1px 7px; border: 1px solid var(--border); border-radius: 999px; color: var(--muted-strong); font-size: 11px; font-weight: 600; }
+.rc-chip.amber { border-color: var(--warn-soft); background: var(--warn-soft); color: var(--warn); }
+.rc-head .rc-chips + .rc-title { margin-top: 6px; }
+.rc-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+.rc-table th { padding: 0 0 6px; color: var(--muted-strong); font-size: 10.5px; font-weight: 600; letter-spacing: 0.06em; text-align: left; text-transform: uppercase; }
+.rc-table td { padding: 7px 0; border-top: 1px solid var(--row-line); vertical-align: top; }
+.rc-table th:last-child, .rc-table td:last-child { text-align: right; }
+.rc-table td b { display: block; color: var(--text); font-weight: 600; }
+.rc-meters { display: grid; gap: 7px; padding: 9px 10px; border-radius: 8px; background: var(--surface-soft); }
+.rc-meter-row { display: grid; grid-template-columns: minmax(0, 1fr) 56px 76px; gap: 10px; align-items: center; font-size: 12px; }
+.rc-meter { height: 4px; overflow: hidden; border-radius: 999px; background: var(--track-bg); }
+.rc-meter i { display: block; height: 100%; border-radius: inherit; background: var(--warn-bar); }
+.rc-meter-row .num { color: var(--warn); font-weight: 600; text-align: right; }
+
+@media (max-width: 640px) {
+  .wrap { padding-inline: 16px; }
+  .stage { padding: 12px; }
+  h1 { font-size: 24px; }
+  .scenario > div { grid-template-columns: 1fr; gap: 2px; }
+}
+</style>
+
+<style>
+/* Status: green = decided, amber = half, grey = waiting. Same app colours. */
+.status { display: grid; gap: 10px; margin-top: 18px; padding: 14px 16px; border: 1px solid var(--warn-border); border-radius: 10px; background: var(--surface); }
+.status h2 { margin: 0; color: var(--text); font-size: 15px; }
+.status ul { display: grid; gap: 6px; margin: 0; padding-left: 18px; font-size: 13px; color: var(--body); }
+.status li b { color: var(--text); font-weight: 600; }
+.status .removed { margin: 0; color: var(--muted-strong); font-size: 12.5px; }
+.sec-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.sec-head h2 { margin: 0; color: var(--text); font-size: 21px; letter-spacing: -0.01em; text-wrap: balance; }
+.st { display: inline-flex; padding: 2px 10px; border-radius: 999px; font-size: 12px; font-weight: 700; white-space: nowrap; }
+.st-done { background: var(--green-soft); color: var(--green-text); }
+.st-half { background: var(--warn-soft); color: var(--warn); }
+.st-wait { background: var(--surface-muted); color: var(--muted-strong); border: 1px solid var(--border-strong); }
+.tag.keep { background: var(--accent); }
+.decided { margin: 0; padding: 11px 13px; border-left: 3px solid var(--accent); background: var(--surface); color: var(--body); font-size: 13px; max-width: 80ch; }
+.decided b { color: var(--text); font-weight: 600; }
+.open-q { margin: 0; padding: 11px 13px; border: 1px dashed var(--warn-border); border-radius: 8px; background: var(--warn-soft); color: var(--warn-text); font-size: 13px; }
+.open-q ul { margin: 4px 0 0; padding-left: 18px; }
+.rc-wide .rc-foot .btn.h2b { min-height: 34px; padding: 0 13px; border-radius: 6px; font-size: 13px; }
+</style>
+
+<div class="wrap">
+  <h1>Requests: the swap review window and the shortened time off line</h1>
+  <p class="lead">Güncel hâl (2026-10-09). Takas inceleme penceresi H2 kararlaştı ve kilitlendi; sayfada yalnız o kaldı. Müdürün kısalttığı izin satırı (G3) hâlâ seçim bekliyor: bugünkü satır ve beş varyant. Üstteki "Orijinal · bugünkü uygulama" düğmesi main'deki gerçek Requests ekranını açar.</p>
+  <p class="rule">Built in the app's own type and colours. The screens are drawn copies; nothing here is live.</p>
+
+  <section class="status" aria-labelledby="st-t">
+    <h2 id="st-t">Durum: yarı karar · bekleyen sorular</h2>
+    <ul>
+      <li><b>G3 (Soru-4):</b> müdürün kısalttığı izin satırı nasıl ayrılsın? Beş varyant aşağıda; önerilen 4 (Type sütununda "Shortened").</li>
+      <li><b>G13-1:</b> öteki vardiyanın komşusu yoksa yeşil kutu "No shift nearby / 10 h needed" yazsın mı? Önerilen: evet.</li>
+      <li><b>G13-2:</b> pencerede "Decide by" saatinin yanına saat dilimi adı eklensin mi (tabloda var)? Önerilen: eklensin.</li>
+      <li><b>G13-3:</b> telefonda iki kart alt alta, ⇄ dikey dönsün mü? Önerilen: evet.</li>
+      <li><b>B4:</b> tek tablo ve H2 penceresine gerçek ekranda bakış (dal trene binmeden önce).</li>
+    </ul>
+    <p class="removed">Sayfadan kaldırılanlar (Mert'in seçimiyle düştü): bölüm 1'in "bugün" çizimi ve 1–5 uyarı varyantları (G2, H2 yerine geçti); pencere tasarımları A–F, G, H, I, J; "Onaylı izni var, kendi rızasıyla" hâli (2026-10-09 kararı).</p>
+  </section>
+
+  <section class="part" aria-labelledby="rw">
+    <div class="sec-head"><h2 id="rw">1. The swap review window (H2)</h2><span class="st st-done">Karar verildi</span></div>
+    <p class="decided"><b>Karar:</b> takas inceleme penceresi H2 (Mert, 2026-10-07 ~07:40Z: "bunu kabul ettim. karar olarak alalım"); temel hâl kilitli (~07:44Z: "şu harika bunu kilitledik"); uyarı kutuları kesin (~08:05Z: "onaylıyorum hepsini"); düğmeler 34 px (23:47Z: "H2 deki daha estetik"). Kaynak: KARARLAR "Takas inceleme penceresi H2". <b>Uygulamada:</b> koda girdi, main'de değil: <code>task/ekran-02-c2r</code> dalında, EKRAN-02 kurtarmasıyla trene gidiyor. İzin kutusu dalda hâlâ var; gönderilmeden önce çıkarılmalı (BL-995).</p>
+    <div class="rc-grid">
+      <div class="rc-item rc-wide">
+        <div class="spec-head"><span class="tag keep">H2</span><strong>Temel hâl (kilitli) ve bu takas</strong></div>
+        <div class="rc-states">
+          <figure class="rc-state">
+            <figcaption>Kural ihlali varsa (bu takas)</figcaption>
+            <div class="rc">
+              <div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+              <div class="rc-body num">
+                <div class="rc-pair">
+                  <div class="rc-shift">
+                    <b>Wed, Oct 14</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span>
+                    <span>3:30 PM – 11:00 PM</span>
+                    <span class="rc-hand2">Carlos <i>→</i> Aisha</span>
+                    <p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p>
+                  </div>
+                  <span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span>
+                  <div class="rc-shift">
+                    <b>Fri, Oct 16</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span>
+                    <span>7:30 AM – 3:00 PM</span>
+                    <span class="rc-hand2">Aisha <i>→</i> Carlos</span>
+                    <p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>8 h of rest</strong><small>10 h needed</small></span></p>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div>
+            </div>
+          </figure>
+          <figure class="rc-state">
+            <figcaption>Kural ihlali yoksa</figcaption>
+            <div class="rc">
+              <div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+              <div class="rc-body num">
+                <div class="rc-pair">
+                  <div class="rc-shift">
+                    <b>Wed, Oct 14</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span>
+                    <span>3:30 PM – 11:00 PM</span>
+                    <span class="rc-hand2">Carlos <i>→</i> Aisha</span>
+                  </div>
+                  <span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span>
+                  <div class="rc-shift">
+                    <b>Fri, Oct 16</b>
+                    <span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span>
+                    <span>7:30 AM – 3:00 PM</span>
+                    <span class="rc-hand2">Aisha <i>→</i> Carlos</span>
+                  </div>
+                </div>
+              </div>
+              <div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div>
+            </div>
+          </figure>
+        </div>
+        <p class="note">Kilitli temel hâl: ortalı başlık, iki ortalı kart, arada koyu ⇄, konum simgesi, iki isim aynı kalınlıkta; altta solda "Decide by", sağda beyaz Decline ve yeşil Approve (34 px). Kural tutmazsa ilgili kartta uyarı kutusu çıkar; uyarı onayı engellemez.</p>
+      </div>
+
+      <div class="rc-item rc-wide">
+        <div class="spec-head"><span class="tag keep">H2</span><strong>Kural ihlali hâlleri (uyarı kutuları, kesin)</strong></div>
+        <div class="rc-states"><figure class="rc-state"><figcaption>Yalnız yol süresi</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Carlos <i>→</i> Aisha</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Aisha <i>→</i> Carlos</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Travel time OK</strong><small>45 min needed</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Yalnız dinlenme süresi</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Carlos <i>→</i> Aisha</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>12 h of rest</strong><small>10 h needed</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Aisha <i>→</i> Carlos</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>8 h of rest</strong><small>10 h needed</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Müsait değil, kendi rızasıyla</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Carlos <i>→</i> Aisha</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>Unavailable</strong><small>chose to take it</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Aisha <i>→</i> Carlos</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Available</strong><small>on Friday</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div></div></figure><figure class="rc-state"><figcaption>Bir kartta iki uyarı</figcaption><div class="rc">
+<div class="rc-head"><div><span class="rc-kicker">Swap request</span><h4 class="rc-title">Carlos Rivera ⇄ Aisha Johnson</h4></div><span class="rc-x" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></svg></span></div>
+<div class="rc-body num"><div class="rc-pair"><div class="rc-shift"><b>Wed, Oct 14</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Downtown</span><span>3:30 PM – 11:00 PM</span><span class="rc-hand2">Carlos <i>→</i> Aisha</span><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>30 min to travel</strong><small>45 min needed</small></span></p><p class="rc-alert"><svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg><span class="rc-alert-t"><strong>Unavailable</strong><small>chose to take it</small></span></p></div><span class="rc-swapicon dark" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg></span><div class="rc-shift"><b>Fri, Oct 16</b><span class="rc-loc"><svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>Uptown</span><span>7:30 AM – 3:00 PM</span><span class="rc-hand2">Aisha <i>→</i> Carlos</span><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Travel time OK</strong><small>45 min needed</small></span></p><p class="rc-alert ok"><svg class="i" viewBox="0 0 24 24"><path d="m5 12 5 5L20 7"/></svg><span class="rc-alert-t"><strong>Available</strong><small>on Friday</small></span></p></div></div></div>
+<div class="rc-foot"><span class="grow num">Decide by Oct 13, 9:00 AM</span><button class="btn h2b">Decline</button><button class="btn h2b primary">Approve</button></div></div></figure></div>
+        <p class="note">Bir kuralı tutmayan vardiyanın kartında turuncu kutu çıkar; öteki kartta aynı kural tutuyorsa yeşil kutuyla yazılır, kart boş kalmaz. Hiç tutmazlık yoksa kutu çıkmaz. Kutu sabit: kartın iç genişliği × 44 px; simge solda, yazı tam ortada. Müsaitlik çalışanın kendi rızasıyla ezilebilir ("Unavailable / chose to take it"). <b>Kaldırıldı (Mert, 2026-10-09):</b> "On time off / chose to work" kutusu ve "Onaylı izni var, kendi rızasıyla" hâli; onaylı izinle çakışan vardiya artık hiçbir yolla alınamaz (KARARLAR §1.1, BL-995).</p>
+      </div>
+    </div>
+    <div class="open-q"><b>Yarı açık küçük sorular (G13):</b><ul><li>Komşu vardiya yoksa yeşil kutu "No shift nearby / 10 h needed" (dal bugün böyle).</li><li>"Decide by" saat dilimi adsız (tabloda "Istanbul time" yazıyor).</li><li>Telefonda kartlar alt alta, ⇄ dikey (dal bugün böyle).</li></ul></div>
+  </section>
+
+  <section class="part" aria-labelledby="g3">
+    <div class="sec-head"><h2 id="g3">2. The line the system writes when a manager shortens time off (G3)</h2><span class="st st-wait">Karar bekliyor</span></div>
+    <dl class="scenario">
+      <div><dt>Nerede</dt><dd>Requests → <b>All</b> (ya da <b>Time off</b>) sekmesi → listenin alt kısmı: kapanmış talepler, en yeni karar üstte. Çizimde yalnız o kısım var.</dd></div>
+      <div><dt>Kim bakıyor</dt><dd>Kadıköy müdürü <b>Hannah</b>.</dd></div>
+      <div><dt>Ne oluyor</dt><dd><b>Carlos</b>'nin 11 Ekim tam gün izni onaylıydı. 9 Ekim'de Hannah, o günün akşam vardiyası (4:00–10:00 PM) için izni kısalttı; Carlos o akşam çalışacak. Aynı listede Carlos'un 28 Eylül'deki <b>kendi</b> iptal isteği de duruyor.</dd></div>
+      <div class="problem"><dt>Bugün sorun</dt><dd>İki satır aynı görünüyor: ikisi de "Time off · Cancels approved time off". Hangisini Carlos istedi, hangisini Hannah yaptı, ne kadar kısaldı, listeden anlaşılmıyor.</dd></div>
+    </dl>
+    <div class="specs" id="g3-specs"></div>
+  </section>
+</div>
+
+<script>
+const ic = {
+  off: '<svg class="i" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 2v4M16 2v4M9 13l6 6M15 13l-6 6"/></svg>',
+  swap: '<svg class="i" viewBox="0 0 24 24"><path d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></svg>',
+  cover: '<svg class="i" viewBox="0 0 24 24"><circle cx="9" cy="8" r="4"/><path d="M3 20c0-3.3 2.7-6 6-6h1"/><circle cx="17" cy="17" r="3"/><path d="m21 21-1.8-1.8"/></svg>',
+  cut: '<svg class="i" viewBox="0 0 24 24"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><path d="M20 4 8.1 15.9M14.5 14.5 20 20M8.1 8.1 12 12"/></svg>',
+  warn: '<svg class="i" viewBox="0 0 24 24"><path d="M12 9v4M12 17h.01M10.3 3.9 1.8 18a2 2 0 0 0 1.7 3h17a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></svg>',
+  chev: '<svg class="i" viewBox="0 0 24 24"><path d="m9 6 6 6-6 6"/></svg>',
+  pin: '<svg class="i" viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  moon: '<svg class="i" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>',
+  ret: '<svg class="i" viewBox="0 0 24 24"><path d="M5 4v9a3 3 0 0 0 3 3h11M15 12l4 4-4 4"/></svg>',
+};
+const typeLabel = { off: "Time off", swap: "Swap", cover: "Cover" };
+
+function row(r) {
+  const mark = r.sys ? `<span class="mark sys">${ic.cut}</span>` : `<span class="mark">${r.name[0]}</span>`;
+  const second = r.detail ? `<small>${r.detail}</small>` : "";
+  const review = r.warn ? `<span class="warnc">${ic.warn}${r.warn}</span>` : ic.chev;
+  return `<div class="tr${r.sel ? " sel" : ""}" role="row">
+    <span class="who">${mark}<span class="stack"><strong>${r.name}${r.pill ? '<span class="pill">System</span>' : ""}</strong>${second}</span></span>
+    <span class="type${r.typeSys ? " sys" : ""}">${ic[r.typeIcon ?? r.type]}${r.typeText ?? typeLabel[r.type]}</span>
+    <span class="num">${r.when}</span>
+    <span class="num${r.by ? "" : " muted"}">${r.by ?? "—"}</span>
+    <span><span class="chip ${r.tone}">${r.status}</span></span>
+    <span class="rev">${review}</span>
+  </div>${r.after ?? ""}`;
+}
+function table(rows, tabs) {
+  return `<div class="tabs" aria-hidden="true">${tabs}</div>
+  <div class="table" role="table"><div class="thead" role="row"><span>Employee</span><span>Type</span><span>When</span><span>Decide by</span><span>Status</span><span>Review</span></div>${rows.map(row).join("")}</div>`;
+}
+function spec(tag, title, stage, note, today) {
+  return `<div class="spec"><div class="spec-head"><span class="tag${today ? " today" : ""}">${tag}</span><strong>${title}</strong></div>
+  <div class="stage">${stage}</div><p class="note">${note}</p></div>`;
+}
+const note = (plus, minus) => `<span class="plus">+</span> ${plus} · <span class="minus">−</span> ${minus}`;
+
+/* G3: the shortened time off line among closed requests */
+const closedTabs = '<span class="on">All<b>4</b></span><span>Time off<b>2</b></span><span>Swap<b>1</b></span><span>Cover<b>1</b></span><span>Open shift</span>';
+const base = {
+  deniz: { name: "Aisha Johnson", type: "off", when: "Oct 9 – Oct 10", status: "Approved", tone: "green" },
+  emre: { name: "Tom Becker", detail: "with Priya Patel's Sun, Oct 4", type: "swap", when: "Sat, Oct 3 · 4:00–11:00 PM", status: "Completed", tone: "green" },
+  aliOwn: { name: "Carlos Rivera", detail: "Cancels approved time off", type: "off", when: "Sep 28", status: "Approved", tone: "green" },
+  busra: { name: "Priya Patel", type: "off", when: "Sep 21 – Sep 22", status: "Denied", tone: "red" },
+};
+const g3 = (short, own = base.aliOwn) => table([base.deniz, short, base.emre, own, base.busra], closedTabs);
+
+document.getElementById("g3-specs").innerHTML = [
+  spec("Original", "Two rows that look the same", g3({ name: "Carlos Rivera", detail: "Cancels approved time off", type: "off", when: "Oct 11", status: "Approved", tone: "green" }),
+    "Bugünkü satır metni: 11 Eki satırı (Hannah'ın kısaltması) ile 28 Eyl satırı (Carlos'un kendi iptali) aynı: ikisi de \"Time off · Cancels approved time off\".", true),
+  spec("1", "Say who and how much", g3(
+    { name: "Carlos Rivera", detail: "Shortened by Hannah Lee · 1 shift, 4:00–10:00 PM", type: "off", when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "Cancellation asked by Carlos" }),
+    note("satır yerinde kalır, ikinci satır kimin ne yaptığını ve saati söyler", "fark yalnız küçük gri yazıda; hızlı bakışta iki satır yine benzer")),
+  spec("2", "A different marker and a System pill", g3(
+    { name: "Carlos Rivera", detail: "Shortened for a shift", type: "off", when: "Oct 11", status: "Approved", tone: "green", sys: true, pill: true }),
+    note("sistemin yazdığı satır makas işareti ve \"System\" etiketiyle ilk bakışta ayrılır", "\"System\" kimin yaptığını (Hannah) söylemez; kişi yuvarlağının yerini alır")),
+  spec("3", "Under the time off it changed", g3(
+    { name: "Carlos Rivera", type: "off", when: "Oct 11", status: "Approved", tone: "green",
+      after: `<div class="child num">${ic.ret}Shortened by Hannah Lee for 1 shift, 4:00–10:00 PM · Oct 9</div>` }),
+    note("kısaltma, değiştirdiği iznin hemen altında; ayrı bir talep gibi sayılmaz", "satır yüksekliği değişir; sayfalamada iç satır sayılmaz")),
+  spec("4 · Önerilen", "A new value in the Type column", g3(
+    { name: "Carlos Rivera", detail: "By Hannah Lee · 4:00–10:00 PM", type: "off", typeIcon: "cut", typeText: "Shortened", typeSys: true, when: "Oct 11", status: "Approved", tone: "green" },
+    { ...base.aliOwn, detail: "", typeText: "Cancellation" }),
+    note("tabloda zaten olan Type sütunu söyler (Time off / Cancellation / Shortened); yeni sütun yok; tür sekmelerinde Time off altında kalır", "Type'ta artık dört değil altı değer var")),
+  spec("5", "An activity line, not a request", table([
+      { ...base.deniz, after: `<div class="log num">${ic.cut}Hannah Lee shortened Carlos Rivera's Oct 11 time off for one shift (4:00–10:00 PM)<time>Oct 9</time></div>` },
+      base.emre, base.aliOwn, base.busra], closedTabs),
+    note("kısaltma talep gibi görünmez: durum etiketi olmayan, gri, tek cümlelik kayıt", "tablonun düzenini bozan tek satır biçimi; tıklanınca ne açılacağı belirsiz")),
+].join("");
+</script>
+
+<!-- nf-orijinal:start -->
+<style>
+:root { --nfo-ink: #17221e; --nfo-muted: #5b6662; --nfo-line: #dce3df; --nfo-page: #f4f5f3; --nfo-green: #12624f; --nfo-green-soft: #e3efe9; }
+#nfo-bar { position: relative; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; flex: none; width: 100%;
+  padding: 8px 16px; background: #fff; border-bottom: 1px solid var(--nfo-line); font: 500 13px/1.3 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); box-sizing: border-box; }
+html.nfo-o #nfo-bar { position: fixed; z-index: 2147483600; top: 0; left: 0; right: 0; }
+html.nfo-o, html.nfo-o body { overflow: hidden !important; }
+#nfo-bar .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; }
+#nfo-bar .nfo-seg button { border: 0; background: #fff; color: var(--nfo-ink); font: inherit; font-weight: 600; padding: 7px 14px; cursor: pointer; }
+#nfo-bar .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-bar .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green); color: #fff; }
+#nfo-bar button:focus-visible, #nfo-tools select:focus-visible, #nfo-tools button:focus-visible { outline: 2px solid var(--nfo-green); outline-offset: 2px; }
+#nfo-bar .nfo-hint { color: var(--nfo-muted); font-weight: 500; }
+@media (max-width: 700px) { #nfo-bar .nfo-hint { display: none; } }
+#nfo-view { position: fixed; z-index: 2147483500; top: 52px; left: 0; right: 0; bottom: 0; background: var(--nfo-page); display: flex; flex-direction: column; font: 500 13px/1.35 Inter, ui-sans-serif, system-ui, "Segoe UI", sans-serif; color: var(--nfo-ink); }
+#nfo-view[hidden] { display: none; }
+#nfo-tools { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--nfo-line); background: #fff; }
+#nfo-tools label { display: inline-flex; gap: 6px; align-items: center; font-weight: 600; }
+#nfo-tools select { font: inherit; font-weight: 500; padding: 6px 8px; border: 1px solid var(--nfo-line); border-radius: 6px; background: #fff; color: var(--nfo-ink); max-width: 72vw; }
+#nfo-tools .nfo-seg { display: inline-flex; border: 1px solid var(--nfo-line); border-radius: 6px; overflow: hidden; }
+#nfo-tools .nfo-seg button { border: 0; background: #fff; font: inherit; padding: 6px 10px; cursor: pointer; color: var(--nfo-ink); }
+#nfo-tools .nfo-seg button + button { border-left: 1px solid var(--nfo-line); }
+#nfo-tools .nfo-seg button[aria-pressed="true"] { background: var(--nfo-green-soft); color: var(--nfo-green); font-weight: 700; }
+#nfo-note { color: var(--nfo-muted); padding: 6px 16px; font-size: 12px; }
+#nfo-stage { flex: 1; overflow: auto; display: flex; justify-content: center; align-items: flex-start; padding: 12px; box-sizing: border-box; }
+#nfo-holder { position: relative; flex: none; box-shadow: 0 6px 24px rgb(0 0 0 / 0.08); border: 1px solid var(--nfo-line); border-radius: 8px; overflow: hidden; background: #fff; }
+#nfo-frame { border: 0; display: block; transform-origin: 0 0; background: #fff; }
+</style>
+<div id="nfo-bar" role="group" aria-label="Görünüm">
+  <span class="nfo-seg">
+    <button type="button" data-nfo="o" aria-pressed="false">Orijinal · bugünkü uygulama</button>
+    <button type="button" data-nfo="v" aria-pressed="true">Varyantlar</button>
+  </span>
+  <span class="nfo-hint" id="nfo-hint"></span>
+</div>
+<div id="nfo-view" hidden>
+  <div id="nfo-tools">
+    <label>Ekran <select id="nfo-screen"></select></label>
+    <label>Kim bakıyor <select id="nfo-as"></select></label>
+    <span class="nfo-seg" role="group" aria-label="Genişlik">
+      <button type="button" data-w="1440" aria-pressed="true">Masaüstü 1440</button>
+      <button type="button" data-w="390" aria-pressed="false">Telefon 390</button>
+    </span>
+  </div>
+  <div id="nfo-note"></div>
+  <div id="nfo-stage"><div id="nfo-holder"><iframe id="nfo-frame" title="Bugünkü uygulama" src="about:blank"></iframe></div></div>
+</div>
+<script>
+(() => {
+  const CFG = {"screens": [{"label": "Requests · Owner", "as": "owner", "route": "/app/schedule/requests", "width": 1440}, {"label": "Requests · Hannah Lee (Manager)", "as": "manager", "route": "/app/schedule/requests", "width": 1440}, {"label": "Requests · Laura Bennett (Admin)", "as": "admin", "route": "/app/schedule/requests", "width": 1440}, {"label": "Requests · telefon", "as": "owner", "route": "/app/schedule/requests", "width": 390}], "personas": {"owner": "Mert Tepebas · Owner", "admin": "Laura Bennett · Admin", "manager": "Hannah Lee · Manager, Downtown", "employee": "Maria Lopez · Employee, Downtown", "onboarding": "Ben Carter · yeni çalışan, onboarding'de", "invited": "Chloe Adams · davet edildi, katılmadı", "newowner": "Jordan Hayes · yeni owner, kurulum bitmedi", "nobusiness": "Alex Morgan · hesap var, workspace yok", "signedout": "Giriş yapılmamış"}, "note": "Bugünkü main'in gerçek web kodu; veriler gerçek API ve veritabanından 9 Ekim 2026'da Harbor & Vine demo restoranıyla kaydedildi. Gezinme, sekmeler, çekmeceler ve pencereler çalışır; kaydetme kapalı (hiçbir şey değişmez)."};
+  const bar = document.getElementById("nfo-bar");
+  const view = document.getElementById("nfo-view");
+  const frame = document.getElementById("nfo-frame");
+  const holder = document.getElementById("nfo-holder");
+  const stage = document.getElementById("nfo-stage");
+  const screenSel = document.getElementById("nfo-screen");
+  const asSel = document.getElementById("nfo-as");
+  const widthBtns = [...document.querySelectorAll("#nfo-tools [data-w]")];
+  document.getElementById("nfo-note").textContent = CFG.note;
+  document.getElementById("nfo-hint").textContent = CFG.hint || "Orijinal: bugün main'de çalışan ekran, gerçek kodla. Varyantlar: bu sayfanın önerileri.";
+  // The bar sits in the page flow at the very top, so the page's own drawers and fixed parts cover it as usual.
+  document.body.prepend(bar);
+  function place() { view.style.top = bar.offsetHeight + "px"; }
+  CFG.screens.forEach((s, i) => screenSel.add(new Option(s.label, String(i))));
+  Object.entries(CFG.personas).forEach(([key, label]) => asSel.add(new Option(label, key)));
+  let state = { screen: 0, as: CFG.screens[0].as, width: CFG.screens[0].width || 1440, loaded: null, started: false };
+  let remember = (key, value) => { try { localStorage.setItem("nfo." + key, value); } catch (e) {} };
+  let recall = (key) => { try { return localStorage.getItem("nfo." + key); } catch (e) { return null; } };
+
+  function fit() {
+    const w = state.width, h = w < 600 ? 844 : 900;
+    frame.style.width = w + "px";
+    frame.style.height = (w < 600 ? h : Math.max(h, stage.clientHeight - 24)) + "px";
+    const room = stage.clientWidth - 24;
+    const scale = w > room ? room / w : 1;
+    frame.style.transform = scale < 1 ? `scale(${scale})` : "";
+    const fh = parseFloat(frame.style.height);
+    if (scale < 1) frame.style.height = (Math.max(h, (stage.clientHeight - 24) / scale)) + "px";
+    holder.style.width = (w * scale) + "px";
+    holder.style.height = (parseFloat(frame.style.height) * scale) + "px";
+  }
+  function load(route) {
+    const hash = "as=" + encodeURIComponent(state.as) + "&route=" + encodeURIComponent(route);
+    state.loaded = state.as;
+    frame.src = "today/index.html?" + Date.now().toString(36) + "#" + hash;
+  }
+  function go() {
+    const s = CFG.screens[state.screen];
+    if (state.loaded === state.as && frame.contentWindow) {
+      frame.contentWindow.postMessage({ type: "nf-go", route: s.route }, "*");
+    } else load(s.route);
+  }
+  function show(which) {
+    const o = which === "o";
+    if (o) window.scrollTo(0, 0);
+    document.documentElement.classList.toggle("nfo-o", o);
+    view.hidden = !o;
+    place();
+    bar.querySelectorAll("[data-nfo]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.nfo === which)));
+    remember("tab", which);
+    if (o && !state.started) { state.started = true; fit(); load(CFG.screens[state.screen].route); }
+    if (o) fit();
+  }
+  function setWidth(w) {
+    state.width = w;
+    widthBtns.forEach((b) => b.setAttribute("aria-pressed", String(Number(b.dataset.w) === w)));
+    fit();
+  }
+  bar.addEventListener("click", (e) => { const b = e.target.closest("[data-nfo]"); if (b) show(b.dataset.nfo); });
+  screenSel.addEventListener("change", () => {
+    state.screen = Number(screenSel.value);
+    const s = CFG.screens[state.screen];
+    const personaChanged = s.as !== state.as;
+    state.as = s.as; asSel.value = s.as;
+    setWidth(s.width || 1440);
+    if (personaChanged) load(s.route); else go();
+  });
+  asSel.addEventListener("change", () => { state.as = asSel.value; load(CFG.screens[state.screen].route); });
+  widthBtns.forEach((b) => b.addEventListener("click", () => setWidth(Number(b.dataset.w))));
+  window.addEventListener("resize", () => { place(); if (!view.hidden) fit(); });
+  asSel.value = state.as;
+  setWidth(state.width);
+  if (recall("tab") === "o") show("o");
+})();
+</script>
+<!-- nf-orijinal:end -->

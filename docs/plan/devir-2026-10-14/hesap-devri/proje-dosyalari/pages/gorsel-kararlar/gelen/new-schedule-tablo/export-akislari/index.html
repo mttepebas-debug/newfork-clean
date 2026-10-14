@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Export akışları</title>
+<style>
+:root{
+  --surface:#fff; --soft:#f7f9f8; --muted-bg:#f0f3f1; --text:#17221e; --body:#1d2525;
+  --muted:#66716c; --sec:#50605a; --border:#dce3df; --border-strong:#cbd4d0;
+  --accent:#176954; --accent-soft:#dbece5; --accent-deep:#244c3d; --dark:#1c2430;
+  --warn-bg:#fbf3e2; --warn:#7a5a14; --page:#eef1ef;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--text);font:14px/1.45 Inter,system-ui,-apple-system,"Segoe UI",sans-serif}
+.wrap{max-width:1560px;margin:0 auto;padding:28px 16px 64px}
+h1{font-size:24px;margin:0 0 6px}
+.lead{color:var(--sec);max-width:980px;margin:0 0 6px}
+.note{background:#fff;border:1px solid var(--border);border-radius:10px;padding:12px 16px;max-width:980px;margin:14px 0 6px;color:var(--body)}
+.note b{color:var(--text)}
+section.flow{margin-top:40px}
+.flow-head{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+.flow-head h2{font-size:19px;margin:0}
+.tag{font-size:12px;font-weight:600;padding:2px 8px;border-radius:99px;background:var(--accent-soft);color:var(--accent-deep)}
+.tag.today{background:#e6e8ec;color:#3b4250}
+.flow-desc{color:var(--sec);margin:6px 0 4px;max-width:1100px}
+.pm{display:flex;gap:28px;flex-wrap:wrap;margin:6px 0 14px;font-size:13px}
+.pm div{max-width:520px} .pm b{display:block;font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted)}
+.frames{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+figure{margin:0;width:740px;max-width:100%}
+figcaption{margin-top:8px;color:var(--body);font-size:13.5px}
+figcaption .n{display:inline-grid;place-items:center;width:22px;height:22px;border-radius:50%;background:var(--dark);color:#fff;font-size:12px;font-weight:700;margin-right:6px}
+.screen{background:#e9edeb;border:1px solid var(--border-strong);border-radius:12px;padding:10px;overflow:hidden;position:relative}
+
+/* app toolbar hint */
+.bar{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-bottom:10px}
+.chipbtn{font-size:11.5px;font-weight:600;border:1px solid var(--border-strong);background:#fff;border-radius:7px;padding:4px 8px;color:var(--text)}
+.chipbtn.on{border-color:var(--accent);background:var(--accent-soft);color:var(--accent-deep)}
+.bar .sp{flex:1}
+.edit-pill{font-size:11.5px;font-weight:700;background:var(--warn-bg);color:var(--warn);border-radius:7px;padding:4px 8px}
+.btn-dark{font-size:11.5px;font-weight:700;background:var(--dark);color:#fff;border-radius:7px;padding:5px 9px}
+.btn-green{font-size:11.5px;font-weight:700;background:var(--accent);color:#fff;border-radius:7px;padding:5px 9px}
+
+/* window */
+.win{background:var(--surface);border-radius:12px;box-shadow:0 10px 30px rgba(20,40,30,.18);border:1px solid var(--border);position:relative;overflow:hidden}
+.whead{display:flex;align-items:center;gap:16px;padding:0 12px 0 16px;border-bottom:1px solid var(--border);height:44px}
+.tab{font-weight:600;color:var(--sec);height:44px;display:flex;align-items:center;gap:6px;border-bottom:2px solid transparent;font-size:13.5px}
+.tab .c{font-size:11px;background:var(--muted-bg);border-radius:99px;padding:0 6px;color:var(--muted)}
+.tab.on{color:var(--text);border-bottom-color:var(--accent)}
+.whead .sp{flex:1}
+.x{width:24px;height:24px;display:grid;place-items:center;color:var(--muted);font-size:16px}
+.g{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:#fff;font-weight:700;border-radius:8px;padding:7px 12px;font-size:12.5px;border:0}
+.g.dk{background:var(--dark)}
+.w{display:inline-flex;align-items:center;gap:6px;background:#fff;color:var(--text);font-weight:700;border-radius:8px;padding:7px 12px;font-size:12.5px;border:1px solid var(--border-strong)}
+.g[disabled],.w[disabled]{opacity:.4}
+.wbody{padding:12px 14px 14px}
+.src{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--sec);margin-bottom:10px;flex-wrap:wrap}
+.src .dot{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.src .dot.ed{background:#d39b1b}
+.src b{color:var(--text)}
+.fchip{font-size:11px;font-weight:600;background:var(--accent-soft);color:var(--accent-deep);border-radius:99px;padding:1px 7px}
+.ex{display:grid;grid-template-columns:1fr 228px;gap:14px}
+.pv{border:1px solid var(--border-strong);border-radius:8px;height:252px;position:relative;overflow:hidden;background:#fff}
+.pv.dim{filter:grayscale(.4);opacity:.45}
+.pv .lbl{position:absolute;left:8px;bottom:6px;font-size:10px;font-weight:700;color:var(--muted);background:#fff;padding:0 3px}
+.pv .gridhd{height:22px;background:#e9f2ee;border-bottom:1px solid var(--border)}
+.pv .rows{position:absolute;inset:22px 0 0 0;background:
+  repeating-linear-gradient(to bottom,transparent 0 25px,var(--border) 25px 26px),
+  repeating-linear-gradient(to right,transparent 0 59px,var(--border) 59px 60px)}
+.pv .blk{position:absolute;height:15px;width:50px;border-radius:3px;border:1px solid #9aa6e8;background:#e6e9fb}
+.pv .blk.g2{border-color:#86c9a9;background:#e3f4ec}
+.pv .blk.p2{border-color:#e7a3c0;background:#fbe7ef}
+.set h6{margin:0 0 5px;font-size:10.5px;letter-spacing:.05em;color:var(--muted)}
+.set .files{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:10px}
+.set .file{border:1px solid var(--border);border-radius:8px;text-align:center;font-size:11.5px;font-weight:700;padding:8px 2px}
+.set .file.on{border:2px solid var(--accent);background:#f3f9f6}
+.set .seg{display:grid;grid-template-columns:1fr 1fr;background:var(--muted-bg);border-radius:8px;padding:3px;margin-bottom:10px;font-size:11.5px;font-weight:600;text-align:center}
+.set .seg span{padding:4px}.set .seg .on{background:#fff;border-radius:6px;box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.set .tg{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:600;margin-bottom:7px}
+.set .tg i{width:26px;height:14px;border-radius:99px;background:var(--accent);position:relative}
+.set .tg i:after{content:"";position:absolute;right:2px;top:2px;width:10px;height:10px;border-radius:50%;background:#fff}
+.set .acts{display:flex;gap:6px;justify-content:flex-end;margin-top:10px;flex-wrap:wrap}
+.set.off{opacity:.4;pointer-events:none}
+
+/* save forms */
+.save{border:1px solid var(--border-strong);border-radius:10px;padding:10px 12px;margin-bottom:10px;background:var(--soft)}
+.save h5{margin:0 0 6px;font-size:13px}
+.radio{display:flex;align-items:center;gap:8px;font-size:12.5px;margin:4px 0}
+.radio i{width:14px;height:14px;border-radius:50%;border:2px solid var(--border-control,#7f8c86);flex:none}
+.radio i.on{border:4px solid var(--accent)}
+.inp{border:1px solid var(--border-control,#7f8c86);border-radius:7px;background:#fff;padding:5px 8px;font-size:12.5px;min-width:220px;display:inline-block}
+.small{font-size:11.5px;color:var(--sec)}
+.row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.saved{display:flex;align-items:center;gap:8px;background:#eef7f2;border:1px solid #bfe0cf;color:var(--accent-deep);border-radius:9px;padding:7px 10px;font-size:12.5px;margin-bottom:10px}
+.saved .ck{width:16px;height:16px;border-radius:50%;background:var(--accent);color:#fff;display:grid;place-items:center;font-size:10px;font-weight:800}
+.warnbox{display:flex;gap:8px;background:var(--warn-bg);color:var(--warn);border-radius:8px;padding:8px 10px;font-size:12.5px;margin-bottom:10px}
+.pick{display:flex;gap:6px;align-items:center;margin-bottom:8px;flex-wrap:wrap}
+.pk{border:1px solid var(--border-strong);border-radius:99px;padding:3px 10px;font-size:11.5px;font-weight:600}
+.pk.on{border:2px solid var(--accent);background:var(--accent-soft)}
+.strike{position:relative}
+.strike:after{content:"";position:absolute;inset:-4px -6px;border:2px dashed #c2410c;border-radius:10px}
+.redlbl{font-size:11px;font-weight:700;color:#c2410c;margin:-2px 0 6px}
+
+/* stepper */
+.steps{display:flex;align-items:center;gap:10px;margin-bottom:12px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.steps .s{display:flex;align-items:center;gap:6px}
+.steps .s b{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;background:var(--muted-bg);color:var(--muted);font-size:11px}
+.steps .s.on{color:var(--text)} .steps .s.on b{background:var(--accent);color:#fff}
+.steps .s.done{color:var(--accent-deep)} .steps .s.done b{background:var(--accent-soft);color:var(--accent-deep)}
+.steps .ln{flex:0 0 40px;height:2px;background:var(--border-strong)}
+.stepbody{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.sum{border:1px solid var(--border);border-radius:9px;padding:10px 12px;font-size:12.5px}
+.sum li{margin:3px 0}
+.sum ul{margin:6px 0 0;padding-left:18px}
+
+/* dialog overlay */
+.ovl{position:absolute;inset:0;background:rgba(16,24,20,.35);display:grid;place-items:center}
+.dlg{background:#fff;border-radius:12px;width:380px;padding:16px;box-shadow:0 14px 40px rgba(0,0,0,.25)}
+.dlg h4{margin:0 0 4px;font-size:15px}
+.dlg .acts{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+
+/* source menu */
+.srcsel{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-strong);border-radius:8px;padding:4px 9px;font-weight:700;color:var(--text);background:#fff}
+.srcsel:after{content:"▾";color:var(--muted);font-size:11px}
+.menu{position:absolute;left:14px;top:84px;width:330px;background:#fff;border:1px solid var(--border-strong);border-radius:10px;box-shadow:0 12px 30px rgba(0,0,0,.18);padding:6px;z-index:3;font-size:12.5px}
+.menu h6{margin:6px 8px 3px;font-size:10.5px;letter-spacing:.05em;color:var(--muted)}
+.menu .it{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px;border-radius:7px}
+.menu .it.on{background:var(--accent-soft)}
+.menu .it .m{color:var(--muted);font-size:11.5px;white-space:nowrap}
+.menu .badge{font-size:10.5px;font-weight:700;background:var(--warn-bg);color:var(--warn);border-radius:99px;padding:0 6px}
+.toast{position:absolute;right:16px;bottom:16px;background:#fff;border:1px solid var(--border);border-left:4px solid var(--accent);border-radius:9px;padding:8px 12px;font-size:12.5px;box-shadow:0 8px 20px rgba(0,0,0,.15);z-index:4}
+.toast b{display:block}
+hr.sep{border:0;border-top:1px solid var(--border-strong);margin:44px 0 0}
+@media (max-width:800px){.ex,.stepbody{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Export: ekranda ne varsa o, kayıt yok</h1>
+  <p class="lead">Mock-up, kod değil. Senin kuralın (Mert, 2026-10-12 19:53 PT): Export'a basıldığı an ekrandaki son görüntü export edilir; preview modunda da edit modunda da aynı. Kimse draft kaydetmeye zorlanmaz. Neyin görüneceğini kullanıcı grid'de ayarlar, sonra Export'a gider. Export açıkken draft ya da schedule değiştirilmez.</p>
+  <div class="note"><b>Değişen tek şey:</b> düzenlerken Export'a basınca kaydetme adımı yok. Düzenleme açık ve kaydedilmemiş kalır; export'u kapatınca kaldığın yerden devam edersin.</div>
+  <div class="note"><b>Dosyaya girmeyenler:</b> yalnız düzenlerken görünen işaretler ("NEW" etiketi, çakışma uyarısı, sürükleme izi) dosyada çıkmaz. Unassigned satırı bugünkü export ayarına bağlı kalır.</div>
+  <div class="note"><b>Önceki öneriler (A–D, kaydetmeli):</b> geçersiz; ayrı dosyada duruyor: <code>eski-v1-kaydetmeli.html</code>.</div>
+  <div id="flows"></div>
+</div>
+<script>
+const filters = `<span class="chipbtn">All locations ▾</span><span class="chipbtn on">Kitchen ▾</span><span class="chipbtn">All employees ▾</span>`;
+function bar(editing){
+  return `<div class="bar">${filters}<span class="sp"></span>${editing?`<span class="edit-pill">Editing · 3 changes</span><span class="chipbtn">Discard</span><span class="btn-dark">Save draft ▾</span>`:`<span class="btn-dark">Short-staffed backup ▾</span><span class="btn-green">Publish</span>`}</div>`;
+}
+function head(){
+  return `<div class="whead"><span class="tab">Schedules <span class="c">3</span></span><span class="tab">Templates <span class="c">3</span></span><span class="tab on">Export</span><span class="sp"></span><span class="g">＋ Blank schedule</span><span class="x">✕</span></div>`;
+}
+let seed=7; function rnd(){seed=(seed*9301+49297)%233280;return seed/233280}
+function preview(dim, label){
+  seed = 11; let b='';
+  for(let r=0;r<8;r++){ for(let c=0;c<9;c++){ if(rnd()<.33){ const k=rnd(); b+=`<span class="blk ${k<.3?'g2':k<.45?'p2':''}" style="top:${r*26+5}px;left:${c*60+5}px"></span>`; } } }
+  return `<div class="pv ${dim?'dim':''}"><div class="gridhd"></div><div class="rows"></div>${b}<span class="lbl">${label||'PDF'}</span></div>`;
+}
+function settings(off, dl){
+  return `<div class="set ${off?'off':''}"><h6>FILE</h6><div class="files"><span class="file on">PDF</span><span class="file">Image</span><span class="file">Excel</span></div>
+  <h6>SEND TO</h6><div class="seg"><span class="on">Download</span><span>Printer</span></div>
+  <h6>LAYOUT</h6><div class="tg">Locations side by side <i></i></div><div class="tg">One long page <i></i></div>
+  <div class="acts"><span class="w">Open in a tab</span><span class="g dk">${dl||'Download PDF'}</span></div></div>`;
+}
+function src(html){return `<div class="src">${html}</div>`}
+const filt = `<span class="fchip">Kitchen</span><span class="fchip">2 locations</span>`;
+function exportBody({top='',srcLine='',dim=false,off=false,dl,label}={}){
+  return `<div class="wbody">${top}${srcLine}<div class="ex">${preview(dim,label)}${settings(off,dl)}</div></div>`;
+}
+function win(inner, extra=''){return `<div class="win">${head()}${inner}${extra}</div>`}
+function frame(n, editing, w, cap){return `<figure><div class="screen">${bar(editing)}${w}</div><figcaption><span class="n">${n}</span>${cap}</figcaption></figure>`}
+function flow(id, title, tag, desc, frames, plus, minus){
+  return `<section class="flow" id="${id}"><div class="flow-head"><h2>${title}</h2>${tag}</div><p class="flow-desc">${desc}</p>
+  ${plus?`<div class="pm"><div><b>Artı</b>${plus}</div><div><b>Eksi</b>${minus}</div></div>`:''}
+  <div class="frames">${frames.join('')}</div></section>`;
+}
+const today = '<span class="tag today">Bugünkü test sayfası</span>';
+const savedLine = name => `<div class="saved"><span class="ck">✓</span><span>Saved as draft <b>“${name}”</b> · now exporting it</span></div>`;
+const out = [];
+
+/* ORIGINAL */
+out.push(flow('bugun','Bugün (test sayfası)', today,
+ 'Düzenlerken Export sekmesi yalnız bir not ve "Save draft and export" düğmesi gösterir. Basınca main\'deki Save draft penceresi açılır; kaydedince export gelir. Sekmelerin altında isim çipleri var.',
+ [
+  frame(1,true,win(`<div class="wbody"><div class="warnbox">🔒 Export shows what is on the grid. Save this edit as a draft and the export opens with it.</div><span class="g">Save draft and export</span><div style="height:16px"></div></div>`),'Düzenlerken Export sekmesi: önce kaydetmen isteniyor.'),
+  frame(2,true,win(exportBody({srcLine:src(`<span class="dot"></span>Draft “Short-staffed backup” · Oct 12 – Oct 18`), dim:true}),
+    `<div class="ovl"><div class="dlg"><h4>Save draft</h4><div class="small">Save your changes before you export.</div><div style="margin-top:10px" class="radio"><i class="on"></i>Update “Short-staffed backup”</div><div class="radio"><i></i>Save as a new draft</div><div class="acts"><span class="w">Cancel</span><span class="g">Save draft</span></div></div></div>`),'Kaydetmeye zorluyor. <b>Kalkacak.</b>'),
+  frame(3,false,win(`<div class="wbody"><div class="strike"><div class="pick"><span class="small" style="font-weight:700">Schedule</span><span class="pk">Published schedule</span><span class="pk">Halloween week…</span><span class="pk on">Short-staffed backup</span></div></div><div class="redlbl" style="margin-top:8px">Kaldırılacak: isim çipleri</div>${src(`<span class="dot"></span>Draft “Short-staffed backup” · Oct 12 – Oct 18 · 32 shifts`)}<div class="ex">${preview()}${settings()}</div></div>`),'Kaydedince export geliyor; sekmelerin altında isim çipleri var. <b>İkisi de kalkacak.</b>')
+ ]));
+
+/* A */
+out.push(flow('yeni','Yeni · Ekrandakini direkt export','<span class="tag">kayıt yok</span>',
+ 'Export sekmesinde kaynak seçimi yok; üstte tek satır, neyin export edildiğini söyler. Ayarlar (PDF / Image / Excel, side by side, one long page) ve önizleme hemen açılır.',
+ [
+  frame(1,false,win(exportBody({srcLine:src(`<span class="dot"></span><b>Published schedule</b> · Oct 12 – Oct 18 · 32 of 41 shifts · ${filt}`)})),'Preview modu, Kitchen filtresi açık. Export grid\'de gördüğünü verir. Çip satırı yok.').replace('Short-staffed backup ▾','Published ▾'),
+  frame(2,true,win(exportBody({srcLine:src(`<span class="dot ed"></span><b>Short-staffed backup</b> · editing, 3 changes not saved · Oct 12 – Oct 18 · 32 of 41 shifts · ${filt}`)})),'Edit modu: Save draft sorulmaz. Kaydedilmemiş düzenleme dahil ekrandaki hâl export edilir; düzenleme açık kalır.'),
+  frame(3,true,win(exportBody({srcLine:src(`<span class="dot ed"></span><b>Short-staffed backup</b> · editing, 3 changes not saved · Oct 12 – Oct 18 · 18 of 41 shifts · <span class="fchip">Kitchen</span><span class="fchip">Downtown</span>`)})).replace('<span class="chipbtn">All locations ▾</span>','<span class="chipbtn on">Downtown ▾</span>'),'Başka görüntü mü lazım? Export\'u kapat, grid\'de filtreyi değiştir (burada Downtown), tekrar aç. Dosya ve layout seçimin aynı kalır.')
+ ]));
+
+document.getElementById('flows').innerHTML = out.join('<hr class="sep">');
+</script>
+</body>
+</html>

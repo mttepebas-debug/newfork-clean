@@ -1,0 +1,95 @@
+/* ===== Study 8 · ÇATAL (Tine) — today's Newfork design language, refined.
+   Only the app's own --theme-* colours, Inter, 6px controls / 8–10px cards, green action, white dismiss, red destructive.
+   Calm and flat: white panels on the page ground, separated by borders, no shadows on page boxes (design system rule).
+   One signature, taken from the name: the three tines of a fork. It marks the brand, each location and each shift,
+   and it tops every lineup card as a triple hairline in that shift's colour. (Mert 2026-10-13, mockup only.) */
+.tema-8 { font-feature-settings: "cv11", "ss01"; }
+.tema-8 .mk-desk, .tema-8 .main, .tema-8 .topbar.under, .tema-8 .lu-top { background: var(--theme-page); }
+
+/* the tine mark: three tines on a base, drawn in --m */
+.tema-8 .cph-dot, .tema-8 .loc-hd h2 i, .tema-8 .lt-type i, .tema-8 .ck-locname i {
+  --m: var(--theme-accent);
+  border-radius: 0; box-shadow: none;
+  background:
+    linear-gradient(90deg, var(--m) 0 2px, transparent 2px calc(50% - 1px), var(--m) calc(50% - 1px) calc(50% + 1px), transparent calc(50% + 1px) calc(100% - 2px), var(--m) calc(100% - 2px)) top / 100% calc(100% - 2px) no-repeat,
+    linear-gradient(var(--m), var(--m)) bottom / 100% 2px no-repeat;
+}
+.tema-8 .cph-dot { width: 14px; height: 22px; flex-basis: 14px; align-self: center;
+  background:
+    linear-gradient(90deg, var(--m) 0 2px, transparent 2px 6px, var(--m) 6px 8px, transparent 8px 12px, var(--m) 12px 14px) top / 14px 9px no-repeat,
+    linear-gradient(var(--m), var(--m)) 0 9px / 14px 2px no-repeat,
+    linear-gradient(var(--m), var(--m)) 6px 11px / 2px 11px no-repeat; }
+.tema-8 .loc-hd h2 i { --m: var(--c); width: 12px; height: 13px; }
+.tema-8 .lt-type i { --m: var(--t); width: 10px; height: 11px; }
+.tema-8 .ck-locname i { --m: var(--c, var(--theme-accent)); width: 9px; height: 10px; }
+
+/* sidebar */
+.tema-8 .side { border-right-color: var(--theme-border); }
+.tema-8 .nav { border-radius: 6px; }
+.tema-8 .nav.active { background: var(--theme-selected); color: var(--theme-accent-strong); box-shadow: inset 2px 0 0 var(--theme-accent); }
+.tema-8 .nav .new { border-radius: 4px; border-color: var(--theme-accent-soft); }
+
+/* page header + toolbar */
+.tema-8 .cph { border-bottom-color: var(--theme-border); }
+.tema-8 .cph-eyebrow { color: var(--theme-accent-strong); letter-spacing: .16em; }
+.tema-8 .cph h1 { font-weight: 700; letter-spacing: -.02em; color: var(--theme-text); }
+.tema-8 .cph p { color: var(--theme-text-secondary); }
+.tema-8 .tb-btn { border-radius: 6px; border-color: var(--theme-border-strong); }
+.tema-8 .tb-btn:hover { border-color: var(--theme-border-hover); background: var(--theme-surface-soft); }
+.tema-8 .tb-split .tb-btn:first-child { border-radius: 6px 0 0 6px; }
+.tema-8 .tb-split .tb-btn:last-child { border-radius: 0 6px 6px 0; }
+.tema-8 .tb-btn.btn-green { background: var(--theme-accent); border-color: var(--theme-accent); color: var(--theme-on-accent, #fff); }
+.tema-8 .tb-btn.btn-green:hover { background: var(--theme-accent-strong); border-color: var(--theme-accent-strong); }
+.tema-8 .day-strip { border-bottom-color: var(--theme-border); }
+.tema-8 .day-strip .day[aria-pressed="true"] { color: var(--theme-accent-strong); box-shadow: inset 0 -2px 0 var(--theme-accent); }
+.tema-8 .day-strip .day[aria-pressed="true"] b { color: var(--theme-text); font-weight: 800; }
+
+/* location panel: white, bordered, flat */
+.tema-8 .loc-sec { background: var(--theme-surface); border: 1px solid var(--theme-border); border-radius: 10px; box-shadow: none; padding: 0 16px 16px; gap: 14px; }
+.tema-8 .loc-sec > .loc-hd { margin: 0 -16px; padding: 16px 16px 14px; background: var(--theme-surface); border-bottom: 1px solid var(--theme-border-subtle); border-radius: 10px 10px 0 0; gap: 3px; }
+.tema-8 .loc-hd h2 { font-size: 20px; font-weight: 800; letter-spacing: -.015em; gap: 10px; }
+.tema-8 .loc-sec > .loc-hd > span:not(.loc-n) { font-size: 12.5px; color: var(--theme-muted); letter-spacing: .01em; }
+.tema-8 .loc-sec > .loc-hd .loc-n { color: var(--theme-muted); font-variant-numeric: tabular-nums; }
+
+/* lineup card: the triple tine rule on top, in the shift colour */
+.tema-8 .lt-card, .tema-8 .bd-col {
+  --tl: var(--t, var(--theme-border-strong));
+  border: 1px solid var(--theme-border); border-top: 0; border-radius: 8px; box-shadow: none; padding-top: 7px;
+  background-color: var(--theme-surface);
+  background-image: linear-gradient(var(--tl), var(--tl)), linear-gradient(var(--tl), var(--tl)), linear-gradient(var(--tl), var(--tl));
+  background-size: 100% 1px; background-position: 0 0, 0 3px, 0 6px; background-repeat: no-repeat;
+}
+.tema-8 .lt-card.is-empty, .tema-8 .bd-col.empty { --tl: color-mix(in srgb, var(--t, #b8c4bf) 40%, #fff); background-color: var(--theme-surface-soft); }
+.tema-8 .lt-card .lt-hd, .tema-8 .bd-col .bd-hd { background: var(--theme-surface); border-radius: 0; }
+.tema-8 .lt-card.is-empty .lt-hd, .tema-8 .bd-col.empty .bd-hd { background: transparent; }
+.tema-8 .lt-type { font-weight: 750; letter-spacing: -.005em; }
+.tema-8 .lt-card .lt-hd { border-bottom-color: var(--theme-border-subtle); }
+.tema-8 .ackbar { height: 4px; border-radius: 2px; background: var(--theme-border-subtle); }
+.tema-8 .ackbar i { background: var(--theme-accent); }
+
+/* department tables */
+.tema-8 .dept-stack { padding: 12px 14px 4px; }
+.tema-8 .dept-tbl, .tema-8 .dept-stack > .dept-tbl + .dept-tbl .dept-hd { border-color: var(--theme-border-subtle); }
+.tema-8 .dept-hd { background: var(--theme-surface); color: var(--theme-text-secondary); font-size: 10.5px; letter-spacing: .14em; padding: 11px 12px 9px; border-bottom-color: var(--theme-border-subtle); }
+.tema-8 table.lt th { background: var(--theme-surface-soft); color: var(--theme-muted); font-size: 10px; letter-spacing: .08em; font-weight: 700; border-bottom-color: var(--theme-border-subtle); }
+.tema-8 table.lt td { border-bottom-color: var(--theme-border-subtle); color: var(--theme-text-body); }
+.tema-8 table.lt tr.grp td { background: var(--theme-surface); color: var(--theme-text); }
+.tema-8 table.lt tr.row:hover td { background: var(--theme-surface-soft); }
+
+/* controls: one 6px family */
+.tema-8 .cell-sel, .tema-8 .cell-btn.dd, .tema-8 .tin, .tema-8 .callbtn, .tema-8 .restorebtn, .tema-8 .jobadd { border-radius: 6px; }
+.tema-8 .cell-sel, .tema-8 .cell-btn.dd, .tema-8 .tin { border-color: var(--theme-border-strong); box-shadow: none; }
+.tema-8 .cell-sel:hover, .tema-8 .cell-btn.dd:hover, .tema-8 .tin:hover { border-color: var(--theme-border-hover); background-color: var(--theme-surface); }
+.tema-8 .cell-btn.name-dd .nm { font-weight: 700; }
+.tema-8 .jobadd { border-color: var(--theme-border-strong); color: var(--theme-accent-strong); }
+.tema-8 .jobadd:hover { background: var(--theme-selected); border-color: var(--theme-accent); }
+
+/* B rail, C board, popovers, phone */
+.tema-8 .ck-block { border-color: var(--theme-border); border-radius: 10px; }
+.tema-8 .ck-h { color: var(--theme-text-secondary); letter-spacing: .14em; }
+.tema-8 .pc { border-color: var(--theme-border); border-radius: 8px; box-shadow: none; }
+.tema-8 .pop, .tema-8 .modal { border-color: var(--theme-border-strong); border-radius: 8px; }
+.tema-8 .phone-scr { background: var(--theme-page); }
+.tema-8 .ph-card { border-color: var(--theme-border); border-radius: 10px; }
+.tema-8 .ph-card > div[style*="#f1f6ee"] { background: var(--theme-surface) !important; border: 1px solid var(--theme-border); border-top: 3px double var(--theme-accent); border-radius: 8px !important; }
+.tema-8 .ph-week button[aria-pressed="true"] { background: var(--theme-selected); color: var(--theme-accent-strong); }

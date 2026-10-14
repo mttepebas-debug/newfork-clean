@@ -1,0 +1,109 @@
+/* ===== Theme 2 · MENU — the printed menu card. Warm paper, black ink, oxblood, serif heads, hairline rules.
+   Free-hand theme (Mert 2026-10-13). Same markup and behaviour as the mockups; only the look changes. */
+.tema-2 {
+  --paper: #f3ece0; --sheet: #fffcf6; --sheet-2: #faf5ec; --ink: #1b1712; --ink-2: #4a4036; --ink-3: #8a7d6c;
+  --hair: #dfd3c0; --hair-2: #c9b99f; --ox: #7d1d16; --ox-2: #9e2a20; --ox-soft: #f6e4df; --olive: #4f6b2c;
+  --serif: "Fraunces", Georgia, "Times New Roman", serif;
+  --theme-font-sans: "Instrument Sans", ui-sans-serif, system-ui, sans-serif;
+  --chrome-bg: #1b1712; --chrome-fg: #f6efe3; --chrome-muted: #a89a86; --chrome-line: #3a3128; --chrome-chip: #2a241d;
+  font-family: var(--theme-font-sans);
+}
+.tema-2, .tema-2 .mk-desk, .tema-2 .app, .tema-2 .main { background: var(--paper); }
+.tema-2 .mk-seg button[aria-pressed="true"] { background: var(--chrome-fg); color: var(--ink); }
+
+/* sidebar: the menu's spine */
+.tema-2 .side { background: var(--sheet-2); border-right: 1px solid var(--hair); }
+.tema-2 .side-top strong { font-family: var(--serif); font-size: 18px; font-weight: 600; font-style: italic; letter-spacing: -.01em; }
+.tema-2 .nav { color: var(--ink-2); border-radius: 0; }
+.tema-2 .nav.active { background: transparent; color: var(--ox); font-weight: 700; box-shadow: inset 0 -1px 0 var(--ox); }
+.tema-2 .nav .new { background: transparent; color: var(--ox); border: 1px solid var(--ox); border-radius: 0; font-family: var(--serif); font-style: italic; text-transform: none; letter-spacing: 0; }
+
+/* header: a menu masthead */
+.tema-2 .lu-top { background: var(--paper) !important; }
+.tema-2 .cph { border-bottom: 3px double var(--ink); height: 150px; }
+.tema-2 .cph-eyebrow { color: var(--ox); font-family: var(--serif); font-style: italic; font-size: 13px; font-weight: 500; letter-spacing: .01em; text-transform: none; }
+.tema-2 .cph h1 { font-family: var(--serif); font-size: 54px; font-weight: 600; letter-spacing: -.035em; color: var(--ink); font-variation-settings: "opsz" 144; }
+.tema-2 .cph-dot { background: var(--ox); width: 8px; height: 8px; flex-basis: 8px; box-shadow: none; transform: rotate(45deg); border-radius: 1px; }
+.tema-2 .cph p { color: var(--ink-2); font-size: 13px; }
+
+/* toolbar: square, inked */
+.tema-2 .topbar.under { background: var(--paper) !important; }
+.tema-2 .tb-btn { background: var(--sheet); border: 1px solid var(--ink); color: var(--ink); border-radius: 0; font-weight: 600; }
+.tema-2 .tb-btn:hover { background: var(--ink); color: var(--sheet); }
+.tema-2 .tb-split .tb-btn:first-child, .tema-2 .tb-split .tb-btn:last-child { border-radius: 0; }
+.tema-2 .tb-split .tb-btn:last-child { font-family: var(--serif); font-size: 14px; font-style: italic; }
+.tema-2 .tb-split.away .tb-btn { background: #f7e7c9; border-color: #8a5a00; color: #5b3a00; }
+.tema-2 .tb-btn.btn-green { background: var(--ox); border-color: var(--ox); color: #fff8ef; letter-spacing: .08em; text-transform: uppercase; font-size: 11.5px; }
+.tema-2 .tb-btn.btn-green:hover { background: var(--ox-2); color: #fff; }
+.tema-2 .day-strip { border-bottom: 1px solid var(--ink) !important; }
+.tema-2 .day-strip .day, .tema-2 .day-strip button { color: var(--ink-3); }
+.tema-2 .day-strip [aria-pressed="true"] { color: var(--ox) !important; box-shadow: inset 0 -3px 0 var(--ox); font-weight: 700; }
+
+/* location: a menu page */
+.tema-2 .loc-sec { background: var(--sheet); border: 1px solid var(--hair-2); border-radius: 0; box-shadow: 6px 6px 0 -1px var(--paper), 6px 6px 0 0 var(--hair-2); }
+.tema-2 .loc-sec > .loc-hd { padding: 22px 16px 14px; border-bottom: 0; }
+.tema-2 .loc-hd h2 { font-family: var(--serif); font-size: 30px; font-weight: 600; letter-spacing: -.02em; font-variation-settings: "opsz" 96; }
+.tema-2 .loc-hd h2 i { display: none; }
+.tema-2 .loc-hd > span { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 14px; }
+.tema-2 .loc-hd::after { content: "— ◆ —"; display: block; color: var(--ox); font-size: 9px; margin-top: 8px; letter-spacing: .4em; }
+
+/* lineup = a course on the menu */
+.tema-2 .lt-card { background: transparent; border: 0; border-top: 1px solid var(--ink); border-radius: 0; box-shadow: none; }
+.tema-2 .lt-card .lt-hd { background: transparent; border-bottom: 1px solid var(--hair); }
+.tema-2 .lt-card.is-collapsed .lt-hd { border-bottom: 0; }
+.tema-2 .lt-card.is-empty { border-top-color: var(--hair-2); }
+.tema-2 .lt-card.is-empty .lt-hd { background: transparent; }
+.tema-2 .lt-card.is-empty .empty-note { font-family: var(--serif); font-style: italic; }
+.tema-2 .lt-type { font-family: var(--serif); font-size: 21px; font-weight: 600; letter-spacing: -.01em; }
+.tema-2 .lt-type i { width: 7px; height: 7px; border-radius: 0; transform: rotate(45deg); }
+.tema-2 .pill { border-radius: 0; font-size: 9.5px !important; letter-spacing: .12em; text-transform: uppercase; background: transparent !important; }
+.tema-2 .pill.draft { color: var(--ink-3); border-color: var(--hair-2); }
+.tema-2 .pill.shared { color: var(--olive); border-color: var(--olive); }
+.tema-2 .pill.editing { color: #8a5a00; border-color: #8a5a00; }
+.tema-2 .ackbar { background: var(--hair); border-radius: 0; }
+.tema-2 .ackbar i { background: var(--ox); border-radius: 0; }
+.tema-2 .ackbtn { font-family: var(--serif); font-style: italic; color: var(--ink-2); font-size: 13px; }
+
+/* tables: menu sections with hairlines */
+.tema-2 .dept-tbl, .tema-2 .dept-stack > .dept-tbl { background: transparent; border: 0 !important; border-radius: 0 !important; }
+.tema-2 .dept-hd { background: transparent; border: 0 !important; justify-content: center; align-items: center; gap: 14px; padding: 16px 12px 6px; font-family: var(--serif); font-size: 13px; font-weight: 600; letter-spacing: .3em; color: var(--ox); }
+.tema-2 .dept-hd::before, .tema-2 .dept-hd::after { content: ""; flex: 0 0 40px; height: 1px; background: var(--ox); opacity: .5; }
+.tema-2 table.lt thead th { background: transparent; color: var(--ink-3); font-size: 9.5px; letter-spacing: .16em; border-bottom: 1px solid var(--ink); }
+.tema-2 table.lt td { border-bottom: 1px dotted var(--hair-2); color: var(--ink); }
+.tema-2 table.lt tr.grp td { background: transparent; color: var(--ink); font-family: var(--serif); font-style: italic; font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; border-bottom: 1px solid var(--hair); padding-top: 12px; }
+.tema-2 table.lt tbody tr:not(.grp):hover > td { background: rgb(125 29 22 / 3%); }
+.tema-2 .cell-sel, .tema-2 .cell-btn.dd { background-color: transparent !important; border: 0 !important; border-bottom: 1px solid var(--hair-2) !important; border-radius: 0 !important; color: var(--ink) !important; }
+.tema-2 .cell-sel:hover, .tema-2 .cell-btn.dd:hover { border-bottom-color: var(--ink) !important; background-color: rgb(27 23 18 / 3%) !important; }
+.tema-2 .cell-btn.name-dd { font-family: var(--serif); font-size: 15px; font-weight: 600; }
+.tema-2 .tin { background: transparent !important; border: 0 !important; border-bottom: 1px solid var(--hair-2) !important; border-radius: 0 !important; box-shadow: none !important; font-variant-numeric: tabular-nums; font-size: 13px; }
+.tema-2 .tin:focus { outline: 0; border-bottom: 2px solid var(--ox) !important; background: var(--ox-soft) !important; }
+.tema-2 .jobadd { border-radius: 0; border-color: var(--ink); color: var(--ink); background: transparent; }
+.tema-2 .jobadd:hover { background: var(--ink); color: var(--sheet); }
+.tema-2 .callbtn { border-radius: 0; background: transparent; border-color: var(--ox); color: var(--ox); }
+.tema-2 .callbtn:hover { background: var(--ox); color: #fff8ef; }
+.tema-2 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td, .tema-2 table.lt tbody tr:has(.callbtn.armed) > td { background: var(--ox-soft) !important; }
+.tema-2 table.lt tbody tr:has(.callbtn:not(:disabled):hover) > td:first-child { box-shadow: inset 3px 0 0 var(--ox); }
+
+/* notes, banners, popovers */
+.tema-2 .banner { border-radius: 0; }
+.tema-2 .banner.warn { background: #fbf1dc; border-color: #d9b56a; color: #5b3a00; }
+.tema-2 .banner.ok { background: #eef2e4; border-color: #b6c49a; color: #3a4f1f; }
+.tema-2 .pop, .tema-2 .modal, .tema-2 .modal-card { border-radius: 0 !important; background: #fffcf6 !important; border: 1px solid #1b1712 !important; box-shadow: 8px 8px 0 -1px #f3ece0, 8px 8px 0 0 #1b1712 !important; }
+.tema-2 .pop .pop-hd strong { font-family: "Fraunces", Georgia, serif; font-size: 16px; }
+.tema-2 .pop .mi, .tema-2 .pop .mi .box { border-radius: 0; }
+.tema-2 .pop .mi[aria-checked="true"] .box { background: #7d1d16; border-color: #7d1d16; color: #fff; }
+.tema-2 .pop .nf-btn, .tema-2 .nf-btn { border-radius: 0; background: #7d1d16; }
+.tema-2 .nf-btn.secondary { background: transparent; color: var(--ink); border: 1px solid var(--ink); }
+.tema-2 .toast { border-radius: 0; background: var(--ink); color: var(--sheet); }
+
+/* B rail and C board */
+.tema-2 .ck-rail > *, .tema-2 .ck-card { border-radius: 0 !important; background: var(--sheet) !important; border-color: var(--hair-2) !important; }
+.tema-2 .bd-col { border-radius: 0; background: var(--sheet); border-color: var(--hair-2); }
+.tema-2 .bd-col .bd-hd { background: transparent; border-radius: 0; border-top: 2px solid var(--ink); }
+.tema-2 .bd-col .lt-type { font-size: 18px; }
+.tema-2 .pc { border-radius: 0; background: var(--sheet); border-color: var(--hair); }
+
+/* phone */
+.tema-2 .mk-phone-col { background: #e6dccb; }
+.tema-2 .ph-ack { background: var(--ox); border-radius: 0; }
+.tema-2 .loc-sec > .loc-hd { background: transparent !important; }

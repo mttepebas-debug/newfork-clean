@@ -1,0 +1,9 @@
+[
+ {"name":"v3-mine","hash":"v=3&s=mine&view=desk&about=0","w":1440,"h":1000},
+ {"name":"v3-mine-paint","hash":"v=3&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"[data-act='v3-pat'][data-id='wkdy']"},{"boxdrag":["[data-cell='e:0']",0.5,0.5,0.5,0.5]},{"eval":"0"}]},
+ {"name":"v3-mine-exact","hash":"v=3&s=mine&view=desk&about=0","w":1440,"h":1000,"steps":[{"click":"[data-act='v3-day'][data-day='4']"}]},
+ {"name":"v3-phone","hash":"v=3&s=mine&view=phone&about=0","w":1440,"h":900},
+ {"name":"v3-team","hash":"v=3&s=team&view=desk&about=0","w":1440,"h":900},
+ {"name":"v3-drawer","hash":"v=3&s=drawer&view=both&about=0","w":1700,"h":900},
+ {"name":"v3-types","hash":"v=3&s=mine&view=both&mode=types&about=0","w":1700,"h":1000}
+]

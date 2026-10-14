@@ -1,0 +1,23 @@
+Eski sayfa atlası yedeği (2026-10-11). Library'den silinmeden önce canlı sürümlerden alındı.
+Her dosya çift tıkla tarayıcıda açılır. Dizindeki bağlantılar silinen Library sayfalarına gider, çalışmaz; sayfaları bu klasörden açın.
+Yerini PAGES aldı: https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy
+
+dosya | ekran | eski bağlantı | derlendiği main
+00-dizin.html | Sayfa atlası dizini | https://claude.ai/artifact/CgRj1az35H4TAz2NM3Na1p | 
+01-requests.html | Requests | https://claude.ai/artifact/UrzghhjFWPaARLiMvVDtHh | aac05f76
+02-employees.html | Employees | https://claude.ai/artifact/Goxfpr99qkgD2BvhNzgqvq | aac05f76
+03-employee-documents.html | Employee Documents | https://claude.ai/artifact/NDT8Pknf8cBDYL5Xfg57FY | aac05f76
+04-settings.html | Settings | https://claude.ai/artifact/2wDz2MV52Z7Yh2ba9wCwM3 | aac05f76
+05-important-dates.html | Important Dates | https://claude.ai/artifact/GVghwvEPXvnuXNcrK8rjQp | aac05f76
+06-workspace.html | Workspace | https://claude.ai/artifact/15R5uKzv3vk3YXqHuCE4eW | aac05f76
+07-availability.html | Availability | https://claude.ai/artifact/QrcLQxWwK8AXa1jsgP2uxv | aac05f76
+08-shift-hub.html | Shift Hub | https://claude.ai/artifact/Am1yHdyPPjZoWGUmNPgWjC | aac05f76
+09-employee-hub.html | Employee Home | https://claude.ai/artifact/LhfGZAHzgp3SqbocbDNjEj | aac05f76
+10-announcements.html | Announcements | https://claude.ai/artifact/G8fpejMn36HA5JdCpXNZi2 | aac05f76
+11-notifications.html | Notifications | https://claude.ai/artifact/7oqKomeCbuqhZXPfda2b5t | aac05f76
+12-account.html | Account | https://claude.ai/artifact/SGeFtkFq97b5YV814uY32d | aac05f76
+13-workspace-hub.html | Workspace Hub | https://claude.ai/artifact/1zBhzWpfYAsVnc76j5YUhF | aac05f76
+14-owner-onboarding.html | Owner Setup | https://claude.ai/artifact/3MhoAGmcutqR5MYNdQ5WBP | aac05f76
+15-employee-onboarding.html | Employee Welcome | https://claude.ai/artifact/1V1ykz2BSCxtnTHrwQ7iwd | aac05f76
+16-sign-in.html | Sign In | https://claude.ai/artifact/9tGUpcDFPjzhxx9ZDFVNv9 | aac05f76
+17-public.html | Public Pages | https://claude.ai/artifact/JZRq8dL1yfn6pi5CFGTTdr | aac05f76

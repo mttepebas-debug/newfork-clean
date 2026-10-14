@@ -1,0 +1,254 @@
+<title>Newfork MVP Yol Haritası</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: tek sütun rapor; üstte kısa cevap, sonra müşteri yolculuğu tablosu, gereken işler, faz planı, kararlar. */
+:root{
+  --bg:#f4f5f3; --surface:#ffffff; --soft:#f0f3f1; --line:#dce3df;
+  --fg:#17221e; --muted:#5f6b66; --accent:#176954; --accent-soft:#dbece5;
+  --ok:#176b4e; --ok-soft:#e7f1ed; --warn:#8a5a00; --warn-soft:#fff4d6;
+  --bad:#b84234; --bad-soft:#fdecea;
+  --sans:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#111816; --surface:#18211e; --soft:#1e2925; --line:#2c3a35;
+  --fg:#e6eeea; --muted:#9aaaa3; --accent:#5fc0a2; --accent-soft:#1f3b33;
+  --ok:#6fcfa6; --ok-soft:#1d342b; --warn:#e6b85a; --warn-soft:#3a2f17;
+  --bad:#f08a7d; --bad-soft:#3d2220; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#111816; --surface:#18211e; --soft:#1e2925; --line:#2c3a35;
+  --fg:#e6eeea; --muted:#9aaaa3; --accent:#5fc0a2; --accent-soft:#1f3b33;
+  --ok:#6fcfa6; --ok-soft:#1d342b; --warn:#e6b85a; --warn-soft:#3a2f17;
+  --bad:#f08a7d; --bad-soft:#3d2220; color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);font-size:15px;line-height:1.55}
+.wrap{max-width:960px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:36px}
+h1,h2,h3{text-wrap:balance;margin:0;line-height:1.25}
+h1{font-size:30px;letter-spacing:-.01em}
+h2{font-size:21px}
+h3{font-size:16px}
+p{margin:0;max-width:70ch}
+.eyebrow{font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.meta{color:var(--muted);font-size:13px}
+section{display:flex;flex-direction:column;gap:14px}
+.lead{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:20px 22px;display:flex;flex-direction:column;gap:10px}
+.lead p{font-size:16px}
+.stats{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:14px 16px;display:flex;flex-direction:column;gap:4px}
+.stat b{font-size:24px;font-variant-numeric:tabular-nums}
+.stat span{font-size:13px;color:var(--muted)}
+@media (max-width:700px){.stats{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.tablebox{overflow-x:auto;background:var(--surface);border:1px solid var(--line);border-radius:10px}
+table{border-collapse:collapse;width:100%;min-width:640px}
+th,td{text-align:left;vertical-align:top;padding:11px 14px;border-bottom:1px solid var(--line)}
+th{font-size:12px;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);background:var(--soft);font-weight:600}
+tr:last-child td{border-bottom:0}
+td.who{white-space:nowrap;color:var(--muted);font-size:13px}
+.pill{display:inline-block;font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;white-space:nowrap}
+.p-ok{background:var(--ok-soft);color:var(--ok)}
+.p-mid{background:var(--warn-soft);color:var(--warn)}
+.p-no{background:var(--bad-soft);color:var(--bad)}
+.p-info{background:var(--accent-soft);color:var(--accent)}
+.id{font-family:var(--mono);font-size:12px;color:var(--muted)}
+.group{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:18px 20px;display:flex;flex-direction:column;gap:12px}
+.group header{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+ol.items,ul.items{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:9px}
+ol.items li,ul.items li{max-width:78ch}
+.items li strong{font-weight:600}
+.money{font-variant-numeric:tabular-nums;color:var(--accent);font-weight:600}
+details{background:var(--soft);border-radius:8px;padding:10px 14px}
+summary{cursor:pointer;font-weight:600}
+summary:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+details ul{margin:10px 0 2px;padding-left:20px;display:flex;flex-direction:column;gap:6px}
+.phases{display:flex;flex-direction:column;gap:12px}
+.phase{display:grid;grid-template-columns:92px minmax(0,1fr);gap:16px;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px 18px}
+.phase .tag{font-weight:700;color:var(--accent);font-size:14px;display:flex;flex-direction:column;gap:6px}
+.phase .body{display:flex;flex-direction:column;gap:8px;min-width:0}
+.phase .done{font-size:13px;color:var(--muted)}
+.phase .done b{color:var(--fg)}
+@media (max-width:560px){.phase{grid-template-columns:1fr;gap:8px}}
+.four{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:700px){.four{grid-template-columns:1fr}}
+.four .group h3{font-size:15px}
+.note{font-size:13px;color:var(--muted);max-width:80ch}
+a{color:var(--accent)}
+</style>
+
+<div class="wrap">
+
+<header style="display:flex;flex-direction:column;gap:8px">
+  <span class="eyebrow">Newfork · repo ve uygulama incelemesi</span>
+  <h1>MVP'ye çıkmak için ne gerekiyor</h1>
+  <p class="meta">14 Ekim 2026, sabah 4:00 (California). Kaynak: main'deki güncel kod (be055596), karar defteri, backlog, ekran listeleri, proje notları. Salt okuma; hiçbir kod değişmedi.</p>
+</header>
+
+<section>
+  <div class="lead">
+    <span class="eyebrow">Kısa cevap</span>
+    <p><strong>Uygulamanın kendisi büyük ölçüde var.</strong> Schedule, Requests, Employees, Settings, çalışan ekranları, kurulum sihirbazı ve davet akışı çalışıyor; yetki altyapısı ve test sayısı bu aşamadaki bir ürün için çok güçlü.</p>
+    <p><strong>MVP'yi durduran şey ekranlar değil, "satış ve açılış" katmanı.</strong> Kartla ödeme hiç yok. Canlıda e-posta çalışmıyor, bu yüzden davet ve şifre sıfırlama gitmiyor. Yasal sayfalar "henüz ticari ürün değildir" diyor. Tanıtım sayfası yok. Bir hata olduğunda ne kullanıcı ne sen haberdar oluyorsun.</p>
+    <p><strong>İkinci büyük konu ilerleme hızı.</strong> Açık backlog yaklaşık 670 madde, Mert'e açık soru yaklaşık 35. Her şeyi bitirmeye çalışırsak MVP çok uzar; aşağıda neyin şart, neyin sonra olabileceğini ayırdım.</p>
+  </div>
+  <div class="stats">
+    <div class="stat"><b>64</b><span>harita sayfası (PAGES), hepsi uygulamada var</span></div>
+    <div class="stat"><b>~670</b><span>açık backlog maddesi (2 kritik, 19 yüksek)</span></div>
+    <div class="stat"><b>~35</b><span>sana açık soru (kararlar)</span></div>
+    <div class="stat"><b>0</b><span>ödeme kodu (Stripe)</span></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">1 · MVP'nin tanımı, bugünkü hâliyle</span>
+  <h2>Müşterinin yolculuğu adım adım</h2>
+  <p class="note">MVP tanımı repo kurallarındaki cümle: owner workspace'i kurar, davet eder, Schedule yayınlar, günlük değişiklikleri yönetir, kartla öder; çalışan katılır, onboarding'i bitirir, programı görür, talep gönderir, kararı görür.</p>
+  <div class="tablebox">
+  <table>
+    <thead><tr><th>Kim</th><th>Adım</th><th>Durum</th><th>Bugün ne oluyor</th></tr></thead>
+    <tbody>
+      <tr><td class="who">Owner</td><td>Siteyi bulur, hesap açar</td><td><span class="pill p-mid">Kısmen</span></td><td>Giriş ekranında "Create account" var. Tanıtım ve fiyat sayfası yok; adres doğrudan giriş ekranına düşüyor. Onay e-postası Supabase'in deneme servisiyle gidiyor (saatte yaklaşık 2 e-posta).</td></tr>
+      <tr><td class="who">Owner</td><td>Workspace'i kurar (kurulum sihirbazı)</td><td><span class="pill p-ok">Var</span></td><td>Çalışıyor. Açık hatalar: önceki adımı tekrar kaydedince ilerleme geri sarıyor; kurulumda sıraya konan davetler bitişte sessizce düşüyor.</td></tr>
+      <tr><td class="who">Owner</td><td>Ekibi davet eder</td><td><span class="pill p-no">Canlıda bozuk</span></td><td>Canlıda e-posta anahtarı yok: çalışan kaydı açılıyor ama davet "gönderilemedi" hatası veriyor. Yedek yol olarak "bağlantıyı kopyala" var.</td></tr>
+      <tr><td class="who">Owner / müdür</td><td>Schedule hazırlar ve yayınlar</td><td><span class="pill p-ok">Var</span></td><td>Uygulamanın en olgun ekranı. Açık: başka lokasyona taşınan vardiyadan sonra yayınlanmış haftada Edit açılmıyor; yayın kuralları paketi (izin kontrolü, "Published by" adı) bir dalda bekliyor.</td></tr>
+      <tr><td class="who">Owner / müdür</td><td>Günlük değişiklikleri yönetir (izin, takas, devir)</td><td><span class="pill p-mid">Kısmen</span></td><td>Requests çalışıyor. Takas ekranlarının yeni tasarımı hazır, "kodla" bekliyor. Takas ve devir reddinde neden yazmıyor (yaklaşık 15 yer).</td></tr>
+      <tr><td class="who">Owner</td><td>Kartla öder</td><td><span class="pill p-no">Yok</span></td><td>Stripe kodu yok. Kurulum bitince 14 günlük deneme kaydı yazılıyor ama hiçbir yer onu okumuyor: deneme bitince hiçbir şey olmuyor. İkinci workspace açan owner yeniden deneme alabiliyor.</td></tr>
+      <tr><td class="who">Çalışan</td><td>Daveti kabul eder, katılır</td><td><span class="pill p-mid">Kısmen</span></td><td>Ekranlar var; e-posta gelmediği için canlıda bağlantıyı elle iletmek gerekiyor. "Active invitation found" ekranı karar verilmiş ama hiç kodlanmamış.</td></tr>
+      <tr><td class="who">Çalışan</td><td>Onboarding'i bitirir</td><td><span class="pill p-mid">Kısmen</span></td><td>Otomatik aktifleşme çalışıyor. Müdürün elle "aktif et" düğmesi canlıda bir ayar açılmadan hata veriyor (eski SSN döneminden kalan güvenlik kilidi).</td></tr>
+      <tr><td class="who">Çalışan</td><td>Programını görür (telefon)</td><td><span class="pill p-ok">Var</span></td><td>Employee Hub → Schedule, Shift Hub, My Availability çalışıyor. Telefonda "Who's working" gün listesi tasarımı hazır, kodlanmadı.</td></tr>
+      <tr><td class="who">Çalışan</td><td>Talep gönderir, kararı görür</td><td><span class="pill p-ok">Var</span></td><td>İzin ve takas talebi gidiyor, karar uygulama içi bildirimle görünüyor. E-posta ya da telefon bildirimi (push, SMS) kodu yok.</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">2 · Gereken işler</span>
+  <h2>MVP listesi</h2>
+
+  <div class="group">
+    <header><span class="pill p-no">Şart</span><h3>A. Açılışı durduranlar: satış ve altyapı</h3></header>
+    <ol class="items">
+      <li><strong>Kartla ödeme (Stripe).</strong> Fiyat modeli kararı; Stripe test modunda ödeme sayfası, müşteri portalı (kart değiştirme, iptal) ve ödeme olaylarını alan bağlantı; owner için Billing ekranı; deneme bitince ne olacağı (uyarı, sonra kilit); "bir owner bir kez deneme" kuralı. Senin işin: şirket ve banka bilgisiyle Stripe hesabını açmak <span class="id">(BL-059)</span>.</li>
+      <li><strong>E-posta servisi.</strong> Resend hesabı, gönderen alan adının doğrulanması (planlanan: mail.tepebash.com), canlıya anahtar ve gönderen adresleri; kayıt ve şifre e-postaları için Supabase'e aynı servis bağlanır. Bu açılınca bekleyen giriş modeli kararı (önerilen: e-posta + 6 haneli kod) da açılır <span class="id">(BL-027)</span>.</li>
+      <li><strong>Yasal sayfalar.</strong> Privacy ve Terms'te gerçek metin, iade politikası (Stripe canlı hesap bunu ister), şirket adı ve iletişim; "Pre-release" bandı kalkar; Privacy'deki "şifreli SSN alanı" cümlesi silinir <span class="id">(BL-1092, BL-635)</span>.</li>
+      <li><strong>Tanıtım sayfası ve fiyat sayfası.</strong> Bugün ana adres doğrudan giriş ekranına gidiyor. Gereken: ne yaptığımızı anlatan tek sayfa, fiyat, "Start free trial" düğmesi. Marka seçimleri (sembol, motto, yerleşim) buna bağlı <span class="id">(BL-034)</span>.</li>
+      <li><strong>Kendi alan adın.</strong> Uygulama ve e-posta için; Vercel'e ve Resend'e bağlanır.</li>
+      <li><strong>Hata ve güvenlik temeli.</strong> Bir ekran çökünce beyaz sayfa yerine "bir şey ters gitti" ekranı <span class="id">(BL-1075)</span>; hata izleme (hata olunca sana haber gelir); tarayıcı güvenlik başlıkları (bugün hiç yok); API'de genel istek sınırı; veritabanı yedeği.</li>
+      <li><strong>Canlı ayarlar.</strong> Onboarding'de elle aktif etme kilidinin açılması; her dakika çağrılıp boşa dönen dört otomatik görev adresinin (ödeme, e-posta, push) temizlenmesi.</li>
+    </ol>
+  </div>
+
+  <div class="group">
+    <header><span class="pill p-no">Şart</span><h3>B. Çekirdek akışlardaki hatalar</h3></header>
+    <p class="note">Backlog'da önem derecesi kritik ya da yüksek olan ve MVP akışına dokunanlar. Bunlarla açılırsak ilk müşteri bunlara çarpar.</p>
+    <ol class="items">
+      <li><strong>Rol × erişim test turu:</strong> her rolün her ekranda neyi görüp yapabildiğinin baştan sona denenmesi. Daha önce bunu "MVP öncesi kapı" diye işaretlemiştin <span class="id">(BL-838)</span>.</li>
+      <li>Yoğun anda veritabanı tekrar hatalarının bütün workspace'lerin bağlantılarını tüketebilmesi; büyük kısmı düzeldi, yayın önizlemesi hâlâ açık <span class="id">(BL-958, kritik)</span>.</li>
+      <li>Başka lokasyona taşınan vardiyadan sonra yayınlanmış haftanın Edit'i açılmıyor <span class="id">(BL-759)</span>.</li>
+      <li>Vardiyası olan güne "Closed day" kaydedilemiyor <span class="id">(BL-882)</span>.</li>
+      <li>Hazır gelen Manager rolünde belge izni yok: yeni workspace'te müdür ekibinin belgelerini göremiyor, onaylayamıyor <span class="id">(BL-560)</span>.</li>
+      <li>Kurulum sihirbazı: sıraya konan davetlerin sessizce düşmesi, ilerlemenin geri sarılması, 3. adımda "Management" kaldırılınca Manager işinin yanlışlıkla arşivlenmesi <span class="id">(BL-917, BL-632, BL-1016)</span>.</li>
+      <li>Takasta yol/dinlenme kuralı uyarmak yerine engelliyor <span class="id">(BL-725)</span>; iki lokasyonlu izin onayı takılıyor olabilir <span class="id">(BL-990)</span>; eski "izni kısaltıp vardiya al" akışı yeni kurala aykırı, sökülmesi yarım <span class="id">(BL-995)</span>.</li>
+      <li>Undo, filtre ya da gün görünümü yüzünden müdürün görmediği bir değişikliği geri alabiliyor <span class="id">(BL-997)</span>.</li>
+    </ol>
+    <details>
+      <summary>Orta önemde diğerleri (10 madde)</summary>
+      <ul>
+        <li>Teslim tarihi olan belgeyi ana lokasyonu olmayan owner gönderemiyor <span class="id">(BL-559)</span>.</li>
+        <li>Yayınlanmış belge türü arşivlenince istenmeye devam ediyor <span class="id">(BL-821)</span>.</li>
+        <li>Takas ve devir reddinde neden yazmıyor <span class="id">(BL-1042)</span>.</li>
+        <li>Duyuru taslağını başkaları görüp yayınlayabiliyor, "Delete" silmiyor <span class="id">(BL-860)</span>.</li>
+        <li>Duyuruyu düzenlemek bütün okundu onaylarını sessizce siliyor <span class="id">(BL-861)</span>.</li>
+        <li>Zamanlanmış duyuru, yazarı görevden alınsa da yayınlanıyor <span class="id">(BL-859)</span>.</li>
+        <li>Arşivlenen kişinin açık daveti kendi workspace'ini açmasını engelliyor <span class="id">(BL-921)</span>.</li>
+        <li>Ortak cihazda sonraki kullanıcı öncekinin son sayfasına düşüyor <span class="id">(BL-627)</span>.</li>
+        <li>"Geçen hafta" tarayıcının tarihiyle hesaplanıyor, lokasyonun saatiyle değil <span class="id">(BL-1057)</span>.</li>
+        <li>Employees'ta "Send reminder" hep hata veriyor; geriye tarihli işten çıkarma çalışılmış vardiyaları da boşaltıyor (Employees ekran listesi).</li>
+      </ul>
+    </details>
+  </div>
+
+  <div class="group">
+    <header><span class="pill p-mid">Önemli</span><h3>C. Tasarımı hazır, "kodla" ya da seçim bekleyenler</h3></header>
+    <ul class="items">
+      <li><strong>Vardiya değişimi</strong> (release, cover, swap; müdür çekmecesi, telefon kartları) — plan ve mockup hazır, "kodla" bekliyor.</li>
+      <li><strong>Availability yeniden tasarımı</strong> ("tercih, garanti değil"; turuncu "!") — plan hazır, "kodla" bekliyor.</li>
+      <li><strong>Vardiya kartı işaretleri</strong> — şu an kodlanıyor.</li>
+      <li><strong>Tek cümlelik uyarılar</strong> (17 yer), <strong>Jobs çekmece rengi</strong>, <strong>Schedule üst çubuk</strong> — senin seçimini bekliyor.</li>
+      <li><strong>Onaylı ama kodlanmamış:</strong> Schedule'da şablon önizleme ve şablonu ızgarada düzenleme; Important Dates çekmecesi; Settings → Locations; Employees'ta geri alma (Restore) ve yeniden işe alma akışı.</li>
+      <li><strong>Lineup yeniden tasarımı</strong> — tasarım turunda. Karar defterinde "Lineup sonradan sıfırdan tasarlanacak, bugün yatırım yapılmaz" yazıyor; MVP'de olup olmadığı netleşmeli (aşağıda soru).</li>
+    </ul>
+  </div>
+
+  <div class="group">
+    <header><span class="pill p-info">Önerim: MVP sonrası</span><h3>D. Kapsam dışı bırakmayı önerdiklerim (senin onayınla)</h3></header>
+    <ul class="items">
+      <li><strong>Bildirim sisteminin baştan tasarımı.</strong> Zaten ayrı projeye bırakmıştın. MVP'de bugünkü uygulama içi bildirim yeterli; e-posta yalnız davet, şifre ve hesap için. Bunsuz: açılış birkaç tur öne gelir. Bununla: 29 ayar kartı ve 18 eksik olay MVP'yi uzatır.</li>
+      <li><strong>Telefon uygulaması, push ve SMS.</strong> Web telefonda çalışıyor; uygulama mağazası MVP sonrası.</li>
+      <li><strong>Düşük önemli backlog (~410 madde).</strong> Yalnız MVP ekranlarına dokunan ve göze batanlar ekran turunda alınır, gerisi bekler.</li>
+      <li><strong>Lineup'ın yeni tasarımı</strong>, eğer MVP'de değilse: bugünkü Lineup kalır, yeni tasarım açılıştan sonra.</li>
+    </ul>
+    <p class="note">Bu maddeleri kendiliğimden atmıyorum; aşağıdaki karar listesinde soruyorum.</p>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">3 · İlerleme planı</span>
+  <h2>Fazlar ve sıra</h2>
+  <p class="note">Süre tahmini vermiyorum, çünkü hız büyük ölçüde senin karar hızına ve aynı anda kaç kod thread'i çalıştığına bağlı (bugün 1). Sıra ve "bitti" ölçütü net. Faz 1 hemen başlayabilir; diğerleriyle paralel yürür çünkü çoğu senin hesap açman demek.</p>
+  <div class="phases">
+    <div class="phase"><div class="tag">Faz 0<span class="pill p-info">Sen</span></div><div class="body"><h3>Kapsam kararı</h3><p>Bu listeyi onayla ya da düzelt; aşağıdaki 8 karar. Onaylanan liste tek MVP listesi olur, yeni madde ancak senin kararınla girer.</p><p class="done"><b>Bitti:</b> MVP listesi karar defterinde, D bölümündeki her madde "MVP'de / sonra" olarak işaretli.</p></div></div>
+    <div class="phase"><div class="tag">Faz 1<span class="pill p-info">Sen + Claude</span></div><div class="body"><h3>Hesaplar ve altyapı</h3><p>Alan adı; Resend hesabı ve alan doğrulama; Stripe hesabı (test modu hemen, canlı en sonda); Supabase ve Vercel planlarının ticari kullanıma uygunluğu; yasal metin kaynağı. Claude her adım için Cmd'siz, ekran ekran yönerge yazar.</p><p class="done"><b>Bitti:</b> canlıda davet e-postası gerçekten bir gelen kutusuna düşüyor; Stripe test anahtarları hazır.</p></div></div>
+    <div class="phase"><div class="tag">Faz 2<span class="pill p-info">Claude</span></div><div class="body"><h3>Çekirdek hata paketi</h3><p>B bölümündeki maddeler, önce kritik ve yüksekler; ardından rol × erişim test turu. Dalda bekleyen yayın kuralları paketi ve Undo düzeltmesi main'e alınır.</p><p class="done"><b>Bitti:</b> B listesinde açık madde yok; rol × erişim turu yeşil.</p></div></div>
+    <div class="phase"><div class="tag">Faz 3<span class="pill p-info">Claude, seçimlerinle</span></div><div class="body"><h3>Hazır tasarımları kodlama</h3><p>Sıra önerim: vardiya kartı işaretleri (sürüyor) → vardiya değişimi → Availability → Employees geri alma → Important Dates çekmecesi → Settings → Locations. Lineup, Faz 0 kararına göre.</p><p class="done"><b>Bitti:</b> C listesindeki "MVP'de" maddeleri main'de, PAGES sayfaları güncel.</p></div></div>
+    <div class="phase"><div class="tag">Faz 4<span class="pill p-info">Claude</span></div><div class="body"><h3>Giriş ve katılım</h3><p>E-posta bağlanınca: giriş modeli, "Active invitation found" ekranı, kurulum sihirbazı hataları, ekranda ham hata metni kalmaması.</p><p class="done"><b>Bitti:</b> yeni bir kişi e-postasıyla kaydolup, kurulum yapıp, davet gönderip, davetlinin katılmasını bağlantı kopyalamadan tamamlıyor.</p></div></div>
+    <div class="phase"><div class="tag">Faz 5<span class="pill p-info">Claude, kararlarınla</span></div><div class="body"><h3>Satış katmanı</h3><p>Yasal sayfalar → tanıtım ve fiyat sayfası → Billing ekranı ve Stripe (test modu) → deneme süresi kuralları.</p><p class="done"><b>Bitti:</b> test kartıyla abone olunuyor, deneme bitince uyarı ve kilit çalışıyor, iptal portaldan yapılıyor.</p></div></div>
+    <div class="phase"><div class="tag">Faz 6<span class="pill p-info">Claude</span></div><div class="body"><h3>Açılış hazırlığı</h3><p>Hata izleme, güvenlik başlıkları, istek sınırı, yedek kontrolü; uçtan uca "yeni restoran" provası (sıfırdan hesap → Schedule yayını → çalışanın telefonunda talep → ödeme).</p><p class="done"><b>Bitti:</b> prova hatasız; bir hata olunca sana haber geliyor.</p></div></div>
+    <div class="phase"><div class="tag">Faz 7<span class="pill p-info">Sen</span></div><div class="body"><h3>Pilot ve ücretli açılış</h3><p>1–3 pilot restoran (Meyhouse demosu dahil) ücretsiz kullanır; geri bildirim turu; Stripe canlı moda geçiş ve fiyat senin onayınla.</p><p class="done"><b>Bitti:</b> ilk ücretli abonelik.</p></div></div>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">4 · Para</span>
+  <h2>Aylık tahmini maliyet</h2>
+  <p class="note">Liste fiyatları, son bildiğim hâliyle; hesap açmadan önce kontrol edilir. Bugün hangi planda olduğunu ölçmedim.</p>
+  <div class="tablebox">
+  <table>
+    <thead><tr><th>Servis</th><th>Neden</th><th>Maliyet</th></tr></thead>
+    <tbody>
+      <tr><td>Vercel Pro</td><td>Ücretsiz plan ticari kullanıma izin vermiyor</td><td class="money">$20 / ay</td></tr>
+      <tr><td>Supabase Pro</td><td>Günlük yedek, uykuya geçmeme, daha yüksek sınırlar</td><td class="money">$25 / ay</td></tr>
+      <tr><td>Resend</td><td>Ücretsiz plan ayda 3.000 e-posta; ilk restoranlar için yeter</td><td class="money">$0, büyüyünce $20 / ay</td></tr>
+      <tr><td>Stripe</td><td>Aylık ücret yok; işlem başına kesinti</td><td class="money">%2,9 + 30¢, abonelik için +%0,7</td></tr>
+      <tr><td>Hata izleme (ör. Sentry)</td><td>Ücretsiz katman başlangıç için yeter</td><td class="money">$0</td></tr>
+      <tr><td>Alan adı</td><td>Uygulama ve e-posta</td><td class="money">~$12–20 / yıl</td></tr>
+      <tr><td>Yasal metin</td><td>Avukat ya da hazır şablon hizmeti</td><td class="money">Seçime göre</td></tr>
+    </tbody>
+  </table>
+  </div>
+</section>
+
+<section>
+  <span class="eyebrow">5 · Senden gereken kararlar</span>
+  <h2>Faz 0 soruları</h2>
+  <ol class="items">
+    <li>Bu MVP listesini (A, B, C ve D önerileri) onaylıyor musun?</li>
+    <li>Fiyat modeli: lokasyon başına, çalışan başına ya da sabit paket?</li>
+    <li>Alan adı ve faturada görünecek şirket bilgisi.</li>
+    <li>E-posta servisini (Resend) ne zaman bağlayalım? Giriş modeli kararı buna bağlı.</li>
+    <li>Ücretli planlar: Vercel Pro ve Supabase Pro'ya geçiş (toplam yaklaşık $45 / ay).</li>
+    <li>Yasal metinler: avukat mı, hazır şablon hizmeti mi?</li>
+    <li>Lineup yeni tasarımı MVP'de mi, açılıştan sonra mı?</li>
+    <li>Hız: birbirine dokunmayan işlerde aynı anda 2 kod thread'i çalışsın mı? (bugün 1)</li>
+  </ol>
+</section>
+
+<section>
+  <span class="eyebrow">6 · İşin dört başlığı</span>
+  <div class="four">
+    <div class="group"><h3>Anladığım</h3><p>Repoyu ve uygulamayı bir bütün olarak inceleyip MVP'ye çıkmak için gerekenlerin listesini ve bir ilerleme planını istedin. Kod değişmedi.</p></div>
+    <div class="group"><h3>Eksik ya da yanlış olabilecek</h3><p>Ekran listeleri ve durum sayfası 8–9 Ekim'de kalmış; o günden beri main'e çok iş girdi, yani "bitti" sayıları gerçekte daha yüksek. Vercel, Supabase ve Resend'in canlı ayarlarını görmedim; son ölçüm 6 Ekim.</p></div>
+    <div class="group"><h3>Sorularım</h3><p>Yukarıdaki 8 karar. İlk üçü (liste onayı, fiyat modeli, alan adı) diğer her şeyi açıyor.</p></div>
+    <div class="group"><h3>Bence</h3><p>En büyük risk ekranları mükemmelleştirirken satış katmanının hiç başlamaması. Faz 1'i (hesaplar) hemen başlatalım, D'deki maddeleri sonraya bırakalım ve görsel varyant turlarını yalnız MVP ekranlarına ayıralım. Elenen seçenek: önce bütün ekran listelerini bitirmek; 670 maddeyle açılışı belirsiz bir tarihe iter.</p></div>
+  </div>
+</section>
+
+</div>

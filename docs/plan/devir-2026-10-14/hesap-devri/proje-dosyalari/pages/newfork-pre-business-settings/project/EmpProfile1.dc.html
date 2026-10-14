@@ -1,0 +1,154 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Your details</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#ffffff;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+.pb{display:grid;grid-template-columns:280px minmax(0,1fr);width:1440px;height:1000px;background:#ffffff}
+.pb-side{display:flex;height:1000px;flex-direction:column;justify-content:space-between;gap:18px;padding:28px 22px;border-right:1px solid #dce3df;background:#f0f3f1;box-sizing:border-box}
+.pb-brand{color:#12624f;font-size:13px;font-weight:800;letter-spacing:.08em}
+.wz{display:flex;flex-direction:column;gap:13px;margin-top:22px}
+.wzname{font-size:14px;font-weight:700;color:#17221e}
+.wzctx,.wzprog{font-size:11.5px;color:#66716c}
+.bar{height:5px;border-radius:999px;background:#dce3df;overflow:hidden}
+.bar span{display:block;height:100%;background:#176954}
+.steps{display:flex;flex-direction:column;gap:3px;margin-top:6px}
+.step{display:flex;align-items:center;gap:9px;padding:7px 9px;border-radius:7px;font-size:13px;font-weight:600;color:#5f6b66}
+.step.on{background:#ffffff;color:#12624f;font-weight:700}
+.step.done{color:#176b4e}
+.step em{font-style:normal;font-weight:500;color:#8d9793;font-size:12px}
+.num{display:grid;place-items:center;width:20px;height:20px;flex:0 0 20px;border-radius:999px;border:1px solid #cbd4d0;font-size:11px;font-weight:700;background:#ffffff}
+.step.on .num{border-color:#176954;background:#176954;color:#ffffff}
+.step.done .num{border-color:#176b4e;background:#e7f1ed;color:#176b4e}
+.pb-account-id{display:grid;min-width:0;color:#66716c;font-size:12px;line-height:1.35;margin-top:14px;padding-top:14px;border-top:1px solid #dce3df}
+.ways{display:flex;flex-direction:column;gap:2px;margin-bottom:2px}
+.way{display:flex;align-items:center;gap:9px;width:100%;min-height:32px;padding:0 9px;border:0;border-radius:7px;background:transparent;color:#5f6b66;font:inherit;font-size:12.5px;font-weight:600;text-align:left;cursor:pointer}
+.way:hover{background:#ffffff;color:#17221e}
+.way svg{width:15px;height:15px;flex:0 0 15px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.way-danger:hover{background:#fff0ee;color:#b84234}
+.pb-acct{display:flex;align-items:center;gap:8px;margin-top:16px;padding:7px 7px 7px 11px;border:1px solid #cbd4d0;border-radius:8px;background:#ffffff}
+.pb-acct .pb-account-id{flex:1;min-width:0;margin:0;padding:0;border-top:0}
+.pb-out{display:grid;place-items:center;width:32px;height:32px;flex:0 0 32px;min-height:0;padding:0;border:0;border-radius:6px;background:transparent;color:#5f6b66;cursor:pointer}
+.pb-out:hover{background:#fff0ee;color:#b84234}
+.pb-out svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.pb-account-id strong{color:#17221e;font-size:13px}
+.stagewrap{display:flex;flex-direction:column;height:1000px}
+.pb-stage{width:760px;margin:0 auto;padding:60px 0 24px;box-sizing:border-box;flex-grow:1}
+.pb-stage h1{margin:0 0 10px;color:#17221e;font-size:30px;line-height:1.2;font-weight:600}
+.pb-description{margin:0 0 28px;color:#66716c;font-size:15px;line-height:1.55}
+.pgs{display:flex;gap:8px;margin-bottom:24px}
+.pg{display:inline-flex;align-items:center;padding:4px 11px;border-radius:999px;font-size:12px;font-weight:700;background:#f0f3f1;color:#5f6b66}
+.pg.on{background:#176954;color:#ffffff}
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px;align-items:start}
+.fld{display:grid;gap:7px;align-content:start}
+.fld.wide{grid-column:1 / -1}
+.fld label{font-size:13px;font-weight:700;color:#17221e}
+.fld input,.fld select{height:42px;padding:0 12px;border:1px solid #cbd4d0;border-radius:6px;background:#ffffff;color:#1d2525;font:inherit;font-size:14px}
+.fld input[readonly]{border-color:#e2e6e4;background:#f7f9f8;color:#66716c}
+.fld small{font-size:12px;color:#66716c;line-height:1.5}
+.h2{margin:26px 0 12px;color:#5f6b66;font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase}
+.h2:first-of-type{margin-top:0}
+.share{overflow:hidden;border:1px solid #dce3df;border-radius:10px;background:#ffffff}
+.srow{display:flex;align-items:center;justify-content:space-between;gap:16px;min-height:52px;padding:8px 16px;border-bottom:1px solid #e2e6e4}
+.srow:last-child{border-bottom:0}
+.sname{display:grid;gap:2px;min-width:0}
+.sname strong{font-size:14px;font-weight:600;color:#17221e}
+.sname span{font-size:12px;line-height:15px;color:#66716c}
+.opt{display:flex;align-items:center;gap:8px;flex:0 0 auto;font-size:13px;color:#1d2525}
+.opt input{width:16px;height:16px;accent-color:#176954}
+.pb-bar{display:flex;align-items:center;gap:10px;padding:16px 0;border-top:1px solid #dce3df;background:#ffffff;width:760px;margin:0 auto;box-sizing:border-box}
+.pb-bar-end{margin-left:auto;display:flex;gap:10px}
+.pb-btn{display:inline-flex;min-height:36px;align-items:center;justify-content:center;gap:7px;padding:0 14px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:13px;font-weight:700;white-space:nowrap;cursor:pointer;text-decoration:none;box-sizing:border-box}
+.pb-btn-primary{background:#176954;color:#ffffff}
+.pb-btn-secondary{border-color:#cbd4d0;background:#ffffff;color:#17221e}
+.pb-btn-sm{min-height:30px;padding:0 10px;font-size:12.5px;width:100%;justify-content:flex-start}
+</style>
+</helmet>
+<div class="pb">
+  <aside class="pb-side">
+    <div>
+      <span class="pb-brand">NEWFORK</span>
+      <div class="wz">
+        <span class="wzname">Meyhouse</span>
+        <span class="wzctx">Employee onboarding</span>
+        <div class="bar"><span style="width:0%;"></span></div>
+        <span class="wzprog">0 of 4 steps done</span>
+        <div class="steps">
+          <span class="step on"><span class="num">1</span>Profile</span>
+          <span class="step"><span class="num">2</span>Documents</span>
+          <span class="step"><span class="num">3</span>Availability&nbsp;<em>(optional)</em></span>
+          <span class="step"><span class="num">4</span>Review</span>
+        </div>
+      </div>
+    </div>
+    <div>
+      <button type="button" class="way"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h7"/><path d="M19 12h-9M16 9l3 3-3 3"/></svg>Leave for now</button>
+      <div class="pb-acct">
+        <span class="pb-account-id"><strong>Alexa Nalbant</strong><span>alexa@newfork.test</span></span>
+        <button type="button" class="pb-out" aria-label="Sign out" title="Sign out"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"/></svg></button>
+      </div>
+    </div>
+  </aside>
+  <div class="stagewrap">
+    <main class="pb-stage" aria-labelledby="e1-t">
+      <h1 id="e1-t">Your details</h1>
+      <p class="pb-description">Only your manager sees these.</p>
+      <div class="pgs"><span class="pg on">1 &middot; You</span><span class="pg">2 &middot; Emergency contact</span></div>
+      <h2 class="h2">You</h2>
+      <div class="grid">
+        <div class="fld"><label for="e1-fn">First name</label><input id="e1-fn" type="text" value="Alexa" readonly></div>
+        <div class="fld"><label for="e1-ln">Last name</label><input id="e1-ln" type="text" value="Nalbant" readonly><small>Name and email come from your account. Change them under Account &#9656; Profile.</small></div>
+        <div class="fld"><label for="e1-mail">Email</label><input id="e1-mail" type="email" value="alexa@newfork.test" readonly></div>
+        <div class="fld"><label for="e1-phone">Phone</label><input id="e1-phone" type="tel" value="+90 532 000 00 00"></div>
+        <div class="fld"><label for="e1-dob">Date of birth</label><input id="e1-dob" type="date" value="1998-04-11"></div>
+      </div>
+
+      <h2 class="h2">Address</h2>
+      <div class="grid">
+        <div class="fld wide"><label for="e1-street">Street address</label><input id="e1-street" type="text" placeholder="Bağdat Cad. No 12/3"></div>
+        <div class="fld"><label for="e1-city">City</label><input id="e1-city" type="text" value="&#304;stanbul"></div>
+        <div class="fld"><label for="e1-district">District or region</label><input id="e1-district" type="text" placeholder="Kad&#305;k&#246;y"></div>
+        <div class="fld"><label for="e1-zip">Postal code</label><input id="e1-zip" type="text" placeholder="34710"></div>
+        <div class="fld"><label for="e1-country">Country</label><select id="e1-country"><option selected>T&#252;rkiye</option><option>United States</option><option>United Kingdom</option></select></div>
+      </div>
+
+      <h2 class="h2">What the team can see</h2>
+      <div class="share">
+        <div class="srow">
+          <span class="sname"><strong>Date of birth</strong><span>Your manager always sees it.</span></span>
+          <label class="opt"><input type="checkbox"> Share with the team</label>
+        </div>
+        <div class="srow">
+          <span class="sname"><strong>Email</strong><span>alexa@newfork.test</span></span>
+          <label class="opt"><input type="checkbox" checked> Share with the team</label>
+        </div>
+        <div class="srow">
+          <span class="sname"><strong>Phone</strong><span>+90 532 000 00 00</span></span>
+          <label class="opt"><input type="checkbox" checked> Share with the team</label>
+        </div>
+      </div>
+    </main>
+    <footer class="pb-bar">
+      <button type="button" class="pb-btn pb-btn-secondary">Back</button>
+      <div class="pb-bar-end"><button type="button" class="pb-btn pb-btn-primary">Continue</button></div>
+    </footer>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1000}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>

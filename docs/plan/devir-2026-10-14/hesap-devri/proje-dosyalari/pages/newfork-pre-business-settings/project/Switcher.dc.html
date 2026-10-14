@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Account and workspace switcher</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+body{margin:0;font-family:Inter,ui-sans-serif,system-ui,"Segoe UI",sans-serif;background:#f6f7f5;color:#1d2525;-webkit-font-smoothing:antialiased}
+a{color:#12624f}a:hover{color:#176954}
+code{font-family:ui-monospace,"Cascadia Mono",Menlo,monospace;font-size:.92em;color:#12624f}
+.ic{width:16px;height:16px;flex:0 0 16px;stroke:currentColor;fill:none;stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.side{width:288px;flex:0 0 288px;background:#ffffff;border-right:1px solid #dce3df;padding:16px 14px;display:flex;flex-direction:column;overflow:visible}
+.brand{padding:0;color:#12624f;font-size:12.5px;font-weight:800;letter-spacing:.08em}
+.nv{display:flex;align-items:center;gap:10px;min-height:36px;padding:0 10px;margin-bottom:2px;border-radius:7px;font-size:13.5px;font-weight:600;color:#5f6b66;text-decoration:none}
+.nv.on{background:#e7f1ed;color:#12624f;font-weight:700}
+.nv .n{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px}
+.foot{margin-top:auto;display:flex;flex-direction:column;gap:6px;padding-top:12px;border-top:1px solid #e2e6e4}
+.acct{display:flex;align-items:stretch;border:1px solid #cbd4d0;border-radius:9px;background:#ffffff;overflow:hidden}
+.acctmain{display:flex;align-items:center;gap:10px;flex-grow:1;min-width:0;padding:9px 10px;border:0;background:transparent;font:inherit;text-align:left;cursor:pointer}
+.acctmain:hover{background:#f7f9f8}
+.av{width:30px;height:30px;flex:0 0 30px;border-radius:999px;background:#e7f1ed;color:#12624f;display:grid;place-items:center;font-size:11.5px;font-weight:700}
+.tx{display:grid;min-width:0;gap:1px}
+.tx strong{font-size:13px;color:#17221e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tx span{font-size:11.5px;color:#66716c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.acctmain .n{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;margin-left:2px;padding:0 5px;border-radius:999px;background:#b84234;color:#ffffff;font-size:11px;font-weight:700;line-height:1;font-variant-numeric:tabular-nums;letter-spacing:.01em;position:relative;top:-5px;flex:0 0 auto}
+.switchbtn{display:grid;place-items:center;width:42px;flex:0 0 42px;border:0;border-left:1px solid #e2e6e4;background:#f7f9f8;color:#5f6b66;cursor:pointer}
+.switchbtn:hover{background:#f0f3f1;color:#12624f}
+.switchbtn[aria-expanded="true"]{background:#e7f1ed;color:#12624f}
+.signout{display:flex;align-items:center;gap:10px;min-height:34px;padding:0 10px;border-radius:7px;font-size:13px;font-weight:600;color:#5f6b66;text-decoration:none}
+.main{flex-grow:1;min-width:0;padding:34px 40px;background:#f6f7f5;overflow:hidden}
+.pop{position:absolute;left:300px;bottom:74px;width:344px;border:1px solid #cbd4d0;border-radius:10px;background:#ffffff;box-shadow:0 16px 40px rgb(22 35 30 / 14%);overflow:hidden;z-index:5}
+.psec{padding:10px 8px 8px}
+.plab{display:block;padding:0 10px 6px;font-size:10.5px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;color:#5f6b66}
+.pitem{display:flex;align-items:center;gap:10px;width:100%;padding:9px 10px;border:0;border-radius:8px;background:transparent;font:inherit;text-align:left;cursor:pointer}
+.pitem:hover{background:#f7f9f8}
+.pitem.cur{background:#e7f1ed}
+.pmark{width:28px;height:28px;flex:0 0 28px;border-radius:7px;background:#f0f3f1;color:#5f6b66;display:grid;place-items:center;font-size:12px;font-weight:800}
+.pitem.cur .pmark{background:#176954;color:#ffffff}
+.ptx{display:grid;min-width:0;gap:2px;flex-grow:1}
+.prh{display:flex;align-items:center;gap:5px;min-width:0}
+.ptx strong{font-size:13.5px;color:#17221e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ptx span{font-size:11.5px;color:#66716c}
+.pdiv{height:1px;background:#e2e6e4}
+.badge{display:inline-flex;flex:0 0 auto;align-items:center;justify-content:center;height:18px;padding:0 8px;border-radius:999px;font-size:11px;font-weight:600;line-height:1;white-space:nowrap}
+.b-p{background:#fff7e2;color:#8a5a00}
+.btn{display:inline-flex;min-height:30px;align-items:center;justify-content:center;gap:6px;padding:0 11px;border:1px solid transparent;border-radius:7px;font:inherit;font-size:12.5px;font-weight:700;white-space:nowrap;cursor:pointer;box-sizing:border-box}
+.b1{background:#176954;color:#ffffff}
+.pfoot{display:block;padding:11px 18px;border-top:1px solid #e2e6e4;background:#f7f9f8;font-size:12.5px;font-weight:700;color:#12624f;text-decoration:none}
+.card{border:1px solid #dce3df;border-radius:10px;background:#ffffff;padding:20px 22px}
+.note{margin:20px 0 0;font-size:12.5px;color:#66716c;line-height:1.6;max-width:720px}
+.railtop{display:flex;align-items:center;gap:10px;min-height:44px;margin-bottom:14px;padding-bottom:8px;border-bottom:1px solid #e2e6e4}
+.collapse{display:inline-grid;place-items:center;width:38px;height:36px;flex:0 0 38px;border:0;border-radius:6px;background:transparent;color:#4b5551;cursor:pointer}
+.collapse:hover{background:#f0f3f1}
+.collapse .ic{width:18px;height:18px;flex:0 0 18px}
+</style>
+</helmet>
+<div style="position: relative; display: flex; width: 1440px; height: 1180px; box-sizing: border-box; background: #f6f7f5;">
+
+  <svg width="0" height="0" style="position:absolute;" aria-hidden="true" focusable="false">
+    <symbol id="s-home" viewBox="0 0 24 24"><path d="M4 11l8-7 8 7"/><path d="M6 10v9a1 1 0 001 1h10a1 1 0 001-1v-9"/></symbol>
+    <symbol id="s-cal" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="16" rx="2"/><path d="M4 10h16M9 3v4M15 3v4"/></symbol>
+    <symbol id="s-clock" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="s-star" viewBox="0 0 24 24"><path d="M12 4l2.4 4.9 5.4.8-3.9 3.8.9 5.4-4.8-2.6-4.8 2.6.9-5.4L4.2 9.7l5.4-.8z"/></symbol>
+    <symbol id="s-users" viewBox="0 0 24 24"><circle cx="9" cy="8" r="3.4"/><path d="M3 20c0-3.2 2.7-5 6-5s6 1.8 6 5M16 5.5a3.4 3.4 0 010 6.4M17.5 20c0-2-.6-3.4-1.6-4.3"/></symbol>
+    <symbol id="s-mega" viewBox="0 0 24 24"><path d="M4 10v4a1 1 0 001 1h3l6 4V5L8 9H5a1 1 0 00-1 1z"/><path d="M18 9.5a4 4 0 010 5"/></symbol>
+    <symbol id="s-bell" viewBox="0 0 24 24"><path d="M18 9a6 6 0 10-12 0c0 5-2 6-2 6h16s-2-1-2-6z"/><path d="M10.4 20a2 2 0 003.2 0"/></symbol>
+    <symbol id="s-gear" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 3v2.5M12 18.5V21M21 12h-2.5M5.5 12H3M18.4 5.6l-1.8 1.8M7.4 16.6l-1.8 1.8M18.4 18.4l-1.8-1.8M7.4 7.4L5.6 5.6"/></symbol>
+    <symbol id="s-out" viewBox="0 0 24 24"><path d="M15 17l5-5-5-5M20 12H9M11 4H6a2 2 0 00-2 2v12a2 2 0 002 2h5"/></symbol>
+    <symbol id="s-switch" viewBox="0 0 24 24"><path d="M7 4L4 7l3 3M4 7h11a4 4 0 014 4M17 20l3-3-3-3M20 17H9a4 4 0 01-4-4"/></symbol>
+    <symbol id="s-check" viewBox="0 0 24 24"><path d="M5 13l4.5 4.5L19 7"/></symbol>
+  </svg>
+
+  <aside class="side" aria-label="Meyhouse">
+    <div class="railtop"><button type="button" class="collapse" aria-label="Collapse menu" aria-expanded="true"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><span class="brand">NEWFORK</span></div>
+    <nav aria-label="Meyhouse navigation">
+      <a class="nv" href="#h"><svg class="ic"><use href="#s-home"/></svg>Home</a>
+      <a class="nv on" href="#sc" aria-current="page"><svg class="ic"><use href="#s-cal"/></svg>Schedule</a>
+      <a class="nv" href="#av"><svg class="ic"><use href="#s-clock"/></svg>Availability</a>
+      <a class="nv" href="#im"><svg class="ic"><use href="#s-star"/></svg>Important dates</a>
+      <a class="nv" href="#em"><svg class="ic"><use href="#s-users"/></svg>Employees<span class="n">3</span></a>
+      <a class="nv" href="#an"><svg class="ic"><use href="#s-mega"/></svg>Announcements</a>
+      <a class="nv" href="#nt"><svg class="ic"><use href="#s-bell"/></svg>Notifications</a>
+      <a class="nv" href="#st"><svg class="ic"><use href="#s-gear"/></svg>Settings</a>
+    </nav>
+    <div class="foot">
+      <div class="acct">
+        <button type="button" class="acctmain" aria-label="Mert Tepeba&#351; &mdash; open your account">
+          <span class="av">MT</span>
+          <span class="tx"><strong>Mert Tepeba&#351;</strong><span>Meyhouse &middot; Owner</span></span>
+          <span class="n">3</span>
+        </button>
+        <button type="button" class="switchbtn" aria-label="Switch workspace" aria-expanded="true" aria-haspopup="menu">
+          <svg class="ic"><use href="#s-switch"/></svg>
+        </button>
+      </div>
+      <a class="signout" href="#so"><svg class="ic"><use href="#s-out"/></svg>Sign out</a>
+    </div>
+  </aside>
+
+  <div class="pop" role="menu" aria-label="Switch workspace">
+    <div class="psec">
+      <span class="plab">You are in</span>
+      <button type="button" class="pitem cur" role="menuitem">
+        <span class="pmark">M</span>
+        <span class="ptx"><strong>Meyhouse</strong><span>Owner</span></span>
+        <svg class="ic" style="color:#176954;"><use href="#s-check"/></svg>
+      </button>
+    </div>
+    <div class="pdiv"></div>
+    <div class="psec">
+      <span class="plab">Switch to</span>
+      <button type="button" class="pitem" role="menuitem">
+        <span class="pmark">R</span>
+        <span class="ptx"><strong>Ridgeline Tavern</strong><span>Manager</span></span>
+      </button>
+      <button type="button" class="pitem" role="menuitem">
+        <span class="pmark">P</span>
+        <span class="ptx"><strong>Palo Alto Kitchen</strong><span>Owner &middot; setup unfinished</span></span>
+      </button>
+    </div>
+    <div class="pdiv"></div>
+    <div class="psec">
+      <span class="plab">Invitation</span>
+      <div class="pitem" style="cursor:default;">
+        <span class="pmark">J</span>
+        <span class="ptx"><span class="prh"><strong>Juniper</strong><span class="badge b-p">Expires tomorrow</span></span></span>
+        <button type="button" class="btn b1">Join</button>
+      </div>
+    </div>
+    <a class="pfoot" href="#all">All workspaces &rarr;</a>
+  </div>
+
+  <main class="main">
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:24px;">
+      <div>
+        <h1 style="margin:0 0 6px;font-size:28px;font-weight:700;line-height:1.15;letter-spacing:-0.01em;color:#17221e;">Schedule</h1>
+        <p style="margin:0;font-size:14px;color:#66716c;">Week of 21 September</p>
+      </div>
+    </div>
+    <div class="card" style="height:300px;display:grid;place-items:center;color:#8d9793;font-size:13px;">
+      the page you were on stays where it is
+    </div>
+
+    <p class="note"><strong style="color:#17221e;">Tek kontrol, iki eylem.</strong> &Uuml;stteki i&#351;letme switcher&#39;&#305; ile alttaki hesap butonu birle&#351;ti ve altta duruyor. G&#246;vdesine bas&#305;nca hesap a&#231;&#305;l&#305;r, <strong style="color:#17221e;">Profile sekmesinde ba&#351;lar</strong>; sa&#287;daki ikona bas&#305;nca i&#351;letme listesi a&#231;&#305;l&#305;r. Rozet hesab&#305;n toplam&#305;n&#305; ta&#351;&#305;yor (2 belge + 1 davet); a&#231;&#305;l&#305;nca hangi sat&#305;rda oldu&#287;u g&#246;r&#252;l&#252;yor. Sidebar&#39;&#305;n tepesi navigasyona kal&#305;yor, i&#351;in kendisine.</p>
+    <p class="note">Bug&#252;n bu yuva bo&#351;: <code>AppShell.tsx:318</code>&#39;de i&#351;letme ad&#305; <code>data-organization-switcher-slot=&quot;tbd&quot;</code> i&#351;aretli bir <code>div</code>&#39;de duruyor, t&#305;klanm&#305;yor; hesap butonu ise <code>:449</code>&#39;da ayr&#305;ca var. &#304;kisi tek bile&#351;ene iniyor, uygulama kabu&#287;unun geri kalan&#305;na dokunulmuyor.</p>
+  </main>
+
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":1440,"height":1180}}'>
+class Component extends DCLogic {
+  renderVals() { return {}; }
+}
+</script>
+</body>
+</html>
