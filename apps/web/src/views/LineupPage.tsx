@@ -10,6 +10,7 @@ import { useScheduleQuery } from "../schedule/hooks/useScheduleQuery";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import { lineupDay, lineupWeek, type LineupLocation, type LineupShift } from "../schedule/lineup";
 import { addDays, formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
+import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "./lineup-page.css";
@@ -34,6 +35,15 @@ function shortDate(iso: string): string {
   return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
     weekday: "short",
     month: "short",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
+function dayName(iso: string): string {
+  return new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
     day: "numeric",
     timeZone: "UTC",
   });
@@ -159,7 +169,16 @@ export function LineupPage() {
         </select>
       </div>
 
-      {week.length ? (
+      {query.isLoading ? (
+        <div className="lineup-days" aria-hidden>
+          {Array.from({ length: 7 }, (_, index) => (
+            <span key={index} className="lineup-days-outline">
+              <Skeleton width={26} height={9} className="on-page" />
+              <Skeleton width={14} height={11} className="on-page" />
+            </span>
+          ))}
+        </div>
+      ) : week.length ? (
         <nav className="lineup-days" aria-label="Days of the week">
           {week.map((day) => {
             const { weekday, day: number } = stripDay(day);
@@ -181,14 +200,14 @@ export function LineupPage() {
       ) : null}
 
       {query.isLoading ? (
-        <p className="lineup-state" role="status">Loading lineups…</p>
+        <LineupOutline />
       ) : query.error ? (
-        <div className="lineup-state lineup-error" role="alert">
-          <span>The lineup could not be loaded.</span>
-          <button type="button" className="secondary-button" onClick={() => void query.refetch()}>
-            Try again
-          </button>
-        </div>
+        <LoadError
+          title="We couldn't load the lineup"
+          detail={`${dayName(date)} didn't load. Nothing was changed.`}
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : !lineups.length ? (
         <p className="lineup-state">No locations to show.</p>
       ) : (
@@ -198,6 +217,54 @@ export function LineupPage() {
           ))}
         </div>
       )}
+    </section>
+  );
+}
+
+/** The lineup's loading outline: one location frame at the real sizes. */
+function LineupOutline() {
+  return (
+    <LoadingOutline label="Loading lineups" className="lineup-locations">
+      <article className="lineup-location lineup-outline">
+        <header className="lineup-location-head">
+          <Skeleton width={190} height={15} className="lineup-outline-title" />
+          <Skeleton width={150} height={9} className="lineup-outline-date" />
+        </header>
+        <OutlineShift rows={0} />
+        <OutlineShift rows={3} />
+        <OutlineShift rows={0} />
+      </article>
+    </LoadingOutline>
+  );
+}
+
+function OutlineShift({ rows }: { readonly rows: number }) {
+  return (
+    <section className="lineup-shift lineup-outline-shift">
+      <div className="lineup-shift-head">
+        <Skeleton width={64} height={14} />
+        <Skeleton width={58} />
+      </div>
+      {rows ? (
+        <div className="lineup-departments">
+          <div className="lineup-outline-department">
+            <Skeleton width={110} height={9} />
+            <span />
+          </div>
+          <div className="lineup-table-wrap">
+            <div className="lineup-outline-head" />
+            {Array.from({ length: rows }, (_, row) => (
+              <div className="lineup-outline-row" key={row}>
+                <Skeleton width={`${52 - row * 6}%`} />
+                <Skeleton width="48%" />
+                <Skeleton width="56%" />
+                <Skeleton width="70%" />
+                <Skeleton width="30%" />
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }

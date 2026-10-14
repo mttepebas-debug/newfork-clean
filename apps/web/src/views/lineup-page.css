@@ -125,11 +125,64 @@
   color: var(--theme-muted);
 }
 
-.lineup-error {
+/* Loading outline (Mert 2026-10-14, "B"): the same frames at the real sizes. */
+.lineup-days-outline {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border-bottom: 3px solid transparent;
+}
+
+.lineup-outline-shift {
+  --lineup-shift: var(--theme-border);
+}
+
+.lineup-location-head .lineup-outline-title {
+  margin: 0 auto 7px;
+}
+
+.lineup-location-head .lineup-outline-date {
+  margin: 0 auto;
+}
+
+.lineup-outline-department {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--theme-danger-text);
+}
+
+.lineup-outline-department span {
+  flex: 1;
+  height: 1px;
+  background: var(--theme-border-subtle);
+}
+
+.lineup-outline-head {
+  height: 32px;
+  border-bottom: 1px solid var(--theme-list-head-border, var(--theme-border));
+  background: var(--theme-list-head, var(--theme-surface-soft));
+}
+
+.lineup-outline-row {
+  display: grid;
+  grid-template-columns: 26% 1fr 1fr 24% 1fr;
+  height: 44px;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.lineup-outline-row + .lineup-outline-row {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+.lineup-outline-row .nf-skeleton:first-child {
+  margin-left: 20px;
+}
+
+.lineup-outline-row .nf-skeleton:not(:first-child) {
+  margin: 0 auto;
 }
 
 .lineup-locations {
