@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type { ActiveWorkspaceContext, NotificationUserPreferencesResponse } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
@@ -51,13 +51,14 @@ function renderPage() {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter>
         <NotificationPreferencesPage />
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 
 function expandGroup(label = "Schedule") {
@@ -336,5 +337,55 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to this workspace's notifications" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+describe("loading and errors (B look)", () => {
+  it("shows a loading outline, then a card with Try again instead of the raw error", async () => {
+    vi.mocked(getNotificationPreferences).mockReset().mockReturnValueOnce(new Promise(() => {}) as never);
+    const { unmount } = renderPage();
+    expect(screen.getByRole("status").textContent).toContain("Loading notification preferences");
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    unmount();
+
+    vi.mocked(getNotificationPreferences).mockRejectedValueOnce(new Error("Gateway timeout"));
+    renderPage();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load your notification preferences" })).toBeTruthy();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
+    vi.mocked(getNotificationPreferences).mockResolvedValue(preferencesFixture());
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load your notification preferences" })).toBeNull();
+  });
+
+  it("keeps the last choices and says so when a refresh fails", async () => {
+    vi.mocked(getNotificationPreferences).mockReset().mockResolvedValueOnce(preferencesFixture());
+    const { client } = renderPage();
+    expect(await screen.findByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
+    vi.mocked(getNotificationPreferences).mockRejectedValueOnce(new Error("Gateway timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Your notification choices didn't refresh.");
+    expect(screen.getByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+  });
+
+  it("drops the old choices when a refresh says the person no longer has access", async () => {
+    vi.mocked(getNotificationPreferences).mockReset().mockResolvedValueOnce(preferencesFixture());
+    const { client } = renderPage();
+    expect(await screen.findByRole("checkbox", { name: "Schedule In-app" })).toBeTruthy();
+    vi.mocked(getNotificationPreferences).mockRejectedValueOnce(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect(await screen.findByRole("heading", { name: "You don't have access to this workspace's notifications" })).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: "Schedule In-app" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
 });

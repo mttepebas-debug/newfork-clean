@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -111,7 +112,7 @@ function mount(path = "/app/settings/roles") {
   const client = new QueryClient({
     defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
   });
-  return render(
+  const view = render(
     <QueryClientProvider client={client}>
       <MemoryRouter initialEntries={[path]}>
         <Routes>
@@ -123,6 +124,7 @@ function mount(path = "/app/settings/roles") {
       </MemoryRouter>
     </QueryClientProvider>,
   );
+  return { ...view, client };
 }
 beforeEach(() => {
   vi.clearAllMocks();
@@ -491,5 +493,44 @@ describe("RolesSettingsPage", () => {
     expect(
       screen.getByRole("checkbox", { name: "Schedule Edit" }),
     ).toHaveProperty("checked", false);
+  });
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("Roles loading and error", () => {
+  it("outlines the list while roles load", async () => {
+    vi.mocked(loadRoleWorkspace).mockReturnValueOnce(new Promise(() => {}));
+    mount();
+    expect((await screen.findByRole("status")).textContent).toBe("Loading roles");
+    expect(screen.queryByText("Loading roles...")).toBeNull();
+  });
+
+  it("shows the card with Try again, not the server's sentence, when roles fail", async () => {
+    vi.mocked(loadRoleWorkspace).mockRejectedValueOnce(new Error("roles service down"));
+    mount();
+    expect(await screen.findByRole("heading", { name: "We couldn't load roles" })).toBeTruthy();
+    expect(screen.queryByText("roles service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "We couldn't load roles" })).toBeNull());
+    expect(loadRoleWorkspace).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the last roles and says so when a refresh fails", async () => {
+    const { client } = mount();
+    expect(await screen.findByRole("button", { name: "New role" })).toBeTruthy();
+    const tabs = () => Array.from((screen.getByLabelText("Role") as HTMLSelectElement).options);
+    await screen.findByLabelText("Role");
+    const before = tabs().map((tab) => tab.textContent);
+    expect(before.some((name) => name?.includes("Manager"))).toBe(true);
+    vi.mocked(loadRoleWorkspace).mockRejectedValueOnce(new Error("roles service down"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("Roles didn't refresh. This is the last list that loaded.");
+    expect(tabs().map((tab) => tab.textContent)).toEqual(before);
+    expect(screen.getByRole("button", { name: "New role" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load roles" })).toBeNull();
+    expect(screen.queryByText("roles service down")).toBeNull();
   });
 });

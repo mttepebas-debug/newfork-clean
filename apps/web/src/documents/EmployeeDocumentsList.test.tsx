@@ -251,4 +251,39 @@ describe("personal list (Account › Documents)", () => {
     expect((await screen.findByRole("alert")).textContent).toContain("Documents didn't refresh.");
     expect(screen.getByRole("heading", { name: empty.textContent ?? "" })).toBeTruthy();
   });
+
+  it("keeps saying nothing is asked of the person when a refresh fails", async () => {
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    vi.mocked(listDocuments).mockReset().mockResolvedValueOnce([] as never);
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter>
+          <EmployeeDocumentsList
+            audience={{ workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", selfOnly: true }}
+            userId="d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"
+            canReview={false}
+            personal
+          />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByText("Nothing has been asked of you here.")).toBeTruthy();
+    vi.mocked(listDocuments).mockRejectedValue(new Error("Gateway timeout"));
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Documents didn't refresh.");
+    expect(screen.getByText("Nothing has been asked of you here.")).toBeTruthy();
+    expect(screen.queryByRole("table")).toBeNull();
+    expect(screen.queryByRole("heading", { name: /No documents/ })).toBeNull();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+  });
+
+  it("puts the failed-load card one level under the workspace heading on the personal page", async () => {
+    vi.mocked(listDocuments).mockReset().mockRejectedValue(new Error("Documents unavailable"));
+    renderList(true);
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load documents" }).tagName).toBe("H3");
+    expect(screen.queryByText("Nothing has been asked of you here.")).toBeNull();
+  });
 });

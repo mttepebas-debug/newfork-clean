@@ -7,6 +7,7 @@ import { documentQueryKey, listDocuments } from "../documents/document-data";
 import { isObligationClosed } from "../documents/document-rules";
 import { EmployeeDocumentsList } from "../documents/EmployeeDocumentsList";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { AccountPageHeader } from "./components";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 
@@ -84,8 +85,23 @@ export default function AccountDocumentsPage() {
           Policies &amp; Agreements
         </button>
       </div>
-      {workspaces.error ? (
-        <p role="alert">Your workspaces could not be loaded.</p>
+      {workspaces.isLoading ? (
+        <ListOutline label="Loading your documents" rows={4} columns={2} />
+      ) : null}
+      {workspaces.error && !workspaces.data ? (
+        <LoadError
+          title="We couldn't load your workspaces"
+          detail="Your documents didn't load. Nothing was changed."
+          retrying={workspaces.isFetching}
+          onRetry={() => void workspaces.refetch()}
+        />
+      ) : null}
+      {workspaces.error && workspaces.data ? (
+        <RefreshError
+          message="Your workspaces didn't refresh. These are the last ones that loaded."
+          retrying={workspaces.isFetching}
+          onRetry={() => void workspaces.refetch()}
+        />
       ) : null}
       {linked.map((workspace) => (
         <WorkspaceDocuments
@@ -100,7 +116,7 @@ export default function AccountDocumentsPage() {
           }
         />
       ))}
-      {linked.length === 0 && !workspaces.isLoading && !workspaces.error ? (
+      {workspaces.data && linked.length === 0 ? (
         <p>You are not in a workspace yet.</p>
       ) : null}
     </section>

@@ -31,6 +31,7 @@ import { DocumentSettingsEditor } from "./DocumentSettingsEditor";
 import { formatsLabel } from "../documents/document-rules";
 
 import { isNoAccess } from "../lib/no-access";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
@@ -347,14 +348,24 @@ export default function DocumentsSettingsPage() {
             </p>
           ) : null}
           {query.isLoading ? (
-            <p className="settings-state">Loading document types...</p>
+            <ListOutline label="Loading document types" rows={5} columns={3} />
           ) : null}
-          {query.error ? (
-            <p className="settings-state error" role="alert">
-              {errorText(query.error)}
-            </p>
+          {query.error && !query.data ? (
+            <LoadError
+              title="We couldn't load document types"
+              detail="Document types didn't load. Nothing was changed."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
           ) : null}
-          {!query.isLoading && !query.error ? (
+          {query.error && query.data ? (
+            <RefreshError
+              message="Document types didn't refresh. This is the last list that loaded."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null}
+          {query.data ? (
             <div className="job-catalog" aria-label="Document types">
               <div className="job-column-headings catalog-column-headings document-catalog-row">
                 {sortColumn("title", "Document name")}

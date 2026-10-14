@@ -25,6 +25,8 @@ import {
 import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { isNoAccess } from "../lib/no-access";
+import { LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 
 export default function GeneralSettingsPage() {
   const { context, refresh } = useAuth();
@@ -212,16 +214,23 @@ export default function GeneralSettingsPage() {
             </p>
           </div>
           <div className="setup-checklist-settings-control">
-            <span>
-              {checklistClosed
-                ? "Hidden from Workspace"
-                : "Visible on Workspace"}
-            </span>
+            {checklistQuery.isLoading ? (
+              <LoadingOutline label="Loading setup checklist setting">
+                <Skeleton width={150} height={12} />
+              </LoadingOutline>
+            ) : checklistQuery.data !== undefined ? (
+              <span>
+                {checklistClosed
+                  ? "Hidden from Workspace"
+                  : "Visible on Workspace"}
+              </span>
+            ) : null}
             <Button
               type="button"
               disabled={
                 !canEdit ||
-                checklistQuery.isLoading ||
+                checklistQuery.data === undefined ||
+                isNoAccess(checklistQuery.error) ||
                 checklistMutation.isPending
               }
               onClick={() => checklistMutation.mutate(!checklistClosed)}
@@ -231,7 +240,23 @@ export default function GeneralSettingsPage() {
             </Button>
           </div>
         </div>
-        {checklistQuery.error || checklistMutation.error ? (
+        {/* A failed read is not a failed save (Mert 2026-10-14, "B"). */}
+        {isNoAccess(checklistQuery.error) ? (
+          <p className="form-error" role="alert">
+            You don't have access to this setting.
+          </p>
+        ) : checklistQuery.error ? (
+          <RefreshError
+            message={
+              checklistQuery.data !== undefined
+                ? "This setting didn't refresh. This is the last value that loaded."
+                : "This setting didn't load. Nothing was changed."
+            }
+            retrying={checklistQuery.isFetching}
+            onRetry={() => void checklistQuery.refetch()}
+          />
+        ) : null}
+        {checklistMutation.error ? (
           <p className="form-error" role="alert">
             Setup checklist visibility could not be saved.
           </p>
@@ -251,16 +276,23 @@ export default function GeneralSettingsPage() {
             </p>
           </div>
           <div className="setup-checklist-settings-control">
-            <span>
-              {preferredApproval === "manager"
-                ? "Answered here before it is used"
-                : "Used as soon as it is entered"}
-            </span>
+            {preferredQuery.isLoading ? (
+              <LoadingOutline label="Loading preferred name setting">
+                <Skeleton width={190} height={12} />
+              </LoadingOutline>
+            ) : preferredQuery.data !== undefined ? (
+              <span>
+                {preferredApproval === "manager"
+                  ? "Answered here before it is used"
+                  : "Used as soon as it is entered"}
+              </span>
+            ) : null}
             <Button
               type="button"
               disabled={
                 !canEdit ||
-                preferredQuery.isLoading ||
+                preferredQuery.data === undefined ||
+                isNoAccess(preferredQuery.error) ||
                 preferredMutation.isPending
               }
               onClick={() =>
@@ -276,7 +308,22 @@ export default function GeneralSettingsPage() {
             </Button>
           </div>
         </div>
-        {preferredQuery.error || preferredMutation.error ? (
+        {isNoAccess(preferredQuery.error) ? (
+          <p className="form-error" role="alert">
+            You don't have access to this setting.
+          </p>
+        ) : preferredQuery.error ? (
+          <RefreshError
+            message={
+              preferredQuery.data !== undefined
+                ? "This setting didn't refresh. This is the last value that loaded."
+                : "This setting didn't load. Nothing was changed."
+            }
+            retrying={preferredQuery.isFetching}
+            onRetry={() => void preferredQuery.refetch()}
+          />
+        ) : null}
+        {preferredMutation.error ? (
           <p className="form-error" role="alert">
             That setting could not be saved.
           </p>

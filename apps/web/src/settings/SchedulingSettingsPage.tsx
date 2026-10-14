@@ -19,6 +19,7 @@ import "./scheduling-settings.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
@@ -145,12 +146,22 @@ export default function SchedulingSettingsPage() {
         description="Week boundaries, publishing targets, and availability preferences."
       />
       {query.isLoading ? (
-        <p className="settings-state">Loading scheduling rules...</p>
+        <LinesOutline label="Loading schedule rules" lines={5} />
       ) : null}
-      {query.error ? (
-        <p className="settings-state error" role="alert">
-          {errorText(query.error)}
-        </p>
+      {query.error && !query.data ? (
+        <LoadError
+          title="We couldn't load schedule rules"
+          detail="Schedule rules didn't load. Nothing was changed."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {query.error && query.data ? (
+        <RefreshError
+          message="Schedule rules didn't refresh. These are the last rules that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       {query.data ? (
         <section
