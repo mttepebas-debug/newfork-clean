@@ -2860,6 +2860,14 @@ p {
   min-height: 100vh;
   background: var(--theme-page);
 }
+/* Before the app opens, so there is no shell around the card. */
+.document-access-error {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: var(--theme-page);
+}
 .nf-button {
   display: inline-flex;
   min-height: 42px;
