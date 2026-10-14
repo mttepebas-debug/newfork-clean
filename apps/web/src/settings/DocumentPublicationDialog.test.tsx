@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { RequestError } from "../lib/request-error";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, expect, it, vi } from "vitest";
 import {
   defaultDocumentLifecycleSettings,
@@ -174,4 +175,60 @@ it("separates the selected intersection and matching employees from former-targe
     screen.getByText(/Former Target.*Close former assignment/),
   ).toBeTruthy();
   expect(publishDocumentType).not.toHaveBeenCalled();
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+function mountWith(client: QueryClient) {
+  render(
+    <QueryClientProvider client={client}>
+      <DocumentPublicationDialog workspaceId={id} document={document} onClose={close} onSaved={saved} />
+    </QueryClientProvider>,
+  );
+}
+const newClient = () =>
+  new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } });
+
+it("outlines the publication impact while it loads", () => {
+  vi.mocked(previewDocumentPublication).mockReturnValueOnce(new Promise(() => {}));
+  mount();
+  expect(screen.getByRole("status").textContent).toContain("Loading publication impact");
+});
+
+it("shows the load-error card with Try again when the impact does not load", async () => {
+  vi.mocked(previewDocumentPublication).mockRejectedValueOnce(new Error("impact service down"));
+  mount();
+  const card = await screen.findByRole("alert");
+  expect(within(card).getByRole("heading", { level: 3, name: "We couldn't load the publication impact" })).toBeTruthy();
+  expect(screen.queryByText("impact service down")).toBeNull();
+  expect(screen.getByRole("button", { name: "Confirm publish" })).toHaveProperty("disabled", true);
+  fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+  expect(await screen.findByText("North")).toBeTruthy();
+  expect(screen.queryByRole("heading", { name: "We couldn't load the publication impact" })).toBeNull();
+});
+
+it("says a refused impact in its own sentence", async () => {
+  vi.mocked(previewDocumentPublication).mockRejectedValueOnce(
+    new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+  );
+  mount();
+  expect((await screen.findByRole("alert")).textContent).toBe("You don't have access to publish this document.");
+  expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+  expect(screen.queryByText("Forbidden")).toBeNull();
+});
+
+it("holds Confirm and says so when the impact does not refresh", async () => {
+  const client = newClient();
+  mountWith(client);
+  await screen.findByText("North");
+  vi.mocked(previewDocumentPublication).mockRejectedValueOnce(new Error("impact service down"));
+  await act(async () => {
+    await client.refetchQueries();
+  });
+  expect(
+    await screen.findByText("The employee impact didn't refresh. Try again before you publish."),
+  ).toBeTruthy();
+  expect(screen.getByText("North")).toBeTruthy();
+  fireEvent.change(screen.getByLabelText("Reason"), { target: { value: "Publish" } });
+  expect(screen.getByRole("button", { name: "Confirm publish" })).toHaveProperty("disabled", true);
+  expect(screen.queryByText("impact service down")).toBeNull();
 });
