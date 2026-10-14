@@ -43,7 +43,7 @@ function Harness({ initialTab = "schedules", session = false, templateProps, ...
     onPreviewDraft: vi.fn(), onEditDraft: vi.fn(), onEditPublishedSchedule: vi.fn(), onStartBlankDraft: vi.fn(), onDeleteDraft: vi.fn(),
     onUnpublishSchedule: vi.fn(),
     templates: {
-      templates: [TEMPLATE], loading: false, loadError: null, onRetry: vi.fn(), canManage: true, drafts: [LIVE, OTHER], departments: [],
+      templates: [TEMPLATE], loading: false, loadError: false, onRetry: vi.fn(), canManage: true, drafts: [LIVE, OTHER], departments: [],
       session: session ? ({ id: "s", shifts: [{ id: "x" }] } as never) : null,
       saving, onSavingChange: setSaving, draftOnScreen: null, step, onStepChange: setStep,
       canStartEdit: true, onUseInto: vi.fn(), onCreate: vi.fn(async () => undefined), onRename: vi.fn(async () => undefined),
@@ -146,13 +146,33 @@ describe("New Schedule window · Templates · reading and refusals", () => {
     expect(within(windowRoot).queryByRole("button", { name: "More for Lunch week" })).toBeNull();
   });
 
-  it("says the list did not load and offers Retry, instead of 'No templates yet'", () => {
+  it("says the list did not load and offers Try again, instead of 'No templates yet'", () => {
     const onRetry = vi.fn();
-    render(<Harness initialTab="templates" templateProps={{ templates: [], loadError: "Templates could not be loaded.", onRetry }} />);
+    render(<Harness initialTab="templates" templateProps={{ templates: [], loadError: true, onRetry }} />);
     const windowRoot = openWindow();
     expect(within(windowRoot).queryByText(/No templates yet/)).toBeNull();
-    expect(within(windowRoot).getByRole("alert").textContent).toContain("Templates could not be loaded.");
-    fireEvent.click(within(windowRoot).getByRole("button", { name: "Retry" }));
+    expect(within(windowRoot).getByRole("heading", { name: "We couldn't load templates" })).toBeTruthy();
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "Try again" }));
+    expect(onRetry).toHaveBeenCalled();
+  });
+
+  it("shows the list in grey while templates load", () => {
+    render(<Harness initialTab="templates" templateProps={{ templates: [], loading: true }} />);
+    const windowRoot = openWindow();
+    expect(within(windowRoot).getByText("Loading templates")).toBeTruthy();
+    expect(within(windowRoot).queryByText(/No templates yet/)).toBeNull();
+  });
+
+  it("keeps the last templates with a refresh line when a reload fails", () => {
+    const onRetry = vi.fn();
+    render(<Harness initialTab="templates" templateProps={{ loadError: true, onRetry }} />);
+    const windowRoot = openWindow();
+    expect(within(windowRoot).getByText("Lunch week")).toBeTruthy();
+    expect(
+      within(windowRoot).getByText("Templates didn't refresh. This is the last list that loaded."),
+    ).toBeTruthy();
+    expect(within(windowRoot).queryByRole("heading", { name: "We couldn't load templates" })).toBeNull();
+    fireEvent.click(within(windowRoot).getByRole("button", { name: "Try again" }));
     expect(onRetry).toHaveBeenCalled();
   });
 

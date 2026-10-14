@@ -671,10 +671,11 @@ describe("PublishScheduleDialog", () => {
 
     expect(await screen.findByText("Loading publish preview")).toBeTruthy();
     expect(
-      await screen.findByText("Publish preview could not be loaded."),
+      await screen.findByRole("heading", { name: "We couldn't load the publish preview" }),
     ).toBeTruthy();
+    expect(screen.queryByText("preview failed")).toBeNull();
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     await waitFor(() => expect(onPreview).toHaveBeenCalledTimes(2));
     expect(await screen.findByText("Live · 2 shifts")).toBeTruthy();

@@ -10,6 +10,7 @@ import { type JSX, type ReactNode, useEffect, useLayoutEffect, useMemo, useRef, 
 import { createPortal } from "react-dom";
 
 import { requestErrorText } from "../../lib/request-error";
+import { ListOutline, LoadError, RefreshError } from "../../shell/LoadState";
 import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
 import { agoText, plural } from "./newScheduleWindowText";
 
@@ -34,8 +35,8 @@ export interface TemplateUseOption {
 export interface NewScheduleTemplatesProps {
   readonly templates: readonly ScheduleTemplateSummary[];
   readonly loading: boolean;
-  /** Why the list did not load, with Retry; never shown as "No templates yet". */
-  readonly loadError: string | null;
+  /** The list did not load: said with Try again, never shown as "No templates yet". */
+  readonly loadError: boolean;
   readonly onRetry: () => void;
   /** Save template, Use, Rename and Delete; a role that only reads templates sees the list. */
   readonly canManage: boolean;
@@ -100,14 +101,27 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
   const [renaming, setRenaming] = useState<string | null>(null);
   const [name, setName] = useState("");
   const [error, setError] = useState<string | null>(null);
+  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
+  if (props.loading && !props.templates.length) return <ListOutline label="Loading templates" rows={3} columns={1} inset />;
+  if (props.loadError && !props.templates.length) {
+    return (
+      <LoadError
+        title="We couldn't load templates"
+        detail="Your saved templates didn't load. Nothing was changed."
+        retrying={props.loading}
+        onRetry={props.onRetry}
+        inset
+        level={3}
+      />
+    );
+  }
   const loadError = props.loadError ? (
-    <p className="new-schedule-window-error" role="alert">
-      {props.loadError}{" "}
-      <button type="button" className="new-schedule-window-link" onClick={props.onRetry}>Retry</button>
-    </p>
+    <RefreshError
+      message="Templates didn't refresh. This is the last list that loaded."
+      retrying={props.loading}
+      onRetry={props.onRetry}
+    />
   ) : null;
-  if (props.loading && !props.templates.length) return <p className="new-schedule-window-empty">Loading templates…</p>;
-  if (loadError && !props.templates.length) return loadError;
   if (!props.templates.length) {
     return <p className="new-schedule-window-empty">No templates yet. Save a draft as a template to reuse its week.</p>;
   }
