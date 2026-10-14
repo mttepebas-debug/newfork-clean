@@ -163,7 +163,7 @@ export default function NotificationPreferencesPage() {
         retrying={query.isFetching} onRetry={() => void query.refetch()} /> : null}
     {mutation.error ? <p className="form-error" role="alert">
       {changedElsewhere(mutation.error) ? changedElsewhereLine : mutation.error.message}</p> : null}
-    {data ? <>
+    {data && !isNoAccess(query.error) ? <>
     <div className="notification-preference-list" aria-label="Workspace notification channels">
       <div className="notification-matrix-header notification-matrix-grid">
         <span aria-hidden="true" />
