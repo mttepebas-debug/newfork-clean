@@ -110,6 +110,27 @@ describe("LineupPage", () => {
     expect(within(card).getByRole("region", { name: "Dinner" })).toBeTruthy();
   });
 
+  it("shows a grey outline of the lineup while it loads, and says so once", async () => {
+    read.mockReturnValue(new Promise(() => undefined));
+    renderPage();
+    const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
+    expect(loading.getAttribute("aria-busy")).toBe("true");
+    expect(loading.textContent).toBe("Loading lineups");
+    expect(loading.querySelector(".lineup-location.lineup-outline")).toBeTruthy();
+    expect(screen.queryByRole("navigation", { name: "Days of the week" })).toBeNull();
+  });
+
+  it("gives the load-error card and tries again from it", async () => {
+    read.mockRejectedValueOnce(new RequestError("Down", "server_error", undefined, 500));
+    renderPage("/app/schedule/lineup?date=2026-10-14");
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load the lineup" })).toBeTruthy();
+    expect(within(card).getByText("Wednesday, October 14 didn't load. Nothing was changed.")).toBeTruthy();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("article", { name: "Downtown" })).toBeTruthy();
+    expect(read).toHaveBeenCalledTimes(2);
+  });
+
   it("gives the one no-access card when the core says no", async () => {
     read.mockRejectedValue(new RequestError("Not allowed", "authz.out_of_scope", "schedule.read", 403));
     renderPage();

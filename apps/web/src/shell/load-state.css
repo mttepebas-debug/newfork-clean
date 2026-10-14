@@ -1,0 +1,160 @@
+/* LoadState (Mert 2026-10-14, "B"): loading outline and the load-error card.
+   Tokens only. The error card is NoAccessState's family. */
+
+.nf-skeleton {
+  display: block;
+  flex: none;
+  max-width: 100%;
+  border-radius: 4px;
+  background: linear-gradient(
+    90deg,
+    var(--theme-surface-muted) 0%,
+    var(--theme-surface-soft) 45%,
+    var(--theme-surface-muted) 90%
+  );
+  background-size: 240% 100%;
+  animation: nf-skeleton 1.3s ease-in-out infinite;
+}
+
+/* A bar that sits on the grey page itself, not inside a white frame. */
+.nf-skeleton.on-page {
+  background-image: linear-gradient(
+    90deg,
+    var(--theme-border-subtle) 0%,
+    var(--theme-surface-muted) 45%,
+    var(--theme-border-subtle) 90%
+  );
+}
+
+@keyframes nf-skeleton {
+  from {
+    background-position: 120% 0;
+  }
+  to {
+    background-position: -120% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nf-skeleton,
+  .load-error-retry .spinning {
+    animation: none;
+  }
+}
+
+/* Generic list outline: same frame and row height as the list pages. */
+.nf-list-outline > div {
+  overflow: hidden;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+
+.nf-list-outline-head {
+  height: 36px;
+  border-bottom: 1px solid var(--theme-list-head-border, var(--theme-border));
+  background: var(--theme-list-head, var(--theme-surface-soft));
+}
+
+.nf-list-outline-row {
+  display: grid;
+  height: 48px;
+  align-items: center;
+  gap: 16px;
+  padding: 0 16px;
+}
+
+.nf-list-outline-row + .nf-list-outline-row {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+.load-error {
+  display: flex;
+  min-height: 240px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 8px;
+  padding: 32px 20px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  text-align: center;
+}
+
+.load-error-icon {
+  display: inline-flex;
+  width: 48px;
+  height: 48px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--theme-danger-soft);
+  color: var(--theme-danger-text);
+}
+
+.load-error-copy {
+  display: grid;
+  gap: 4px;
+  max-width: 46ch;
+}
+
+.load-error-copy h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.load-error-copy p {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.load-error-copy .load-error-help {
+  color: var(--theme-text-body);
+}
+
+.load-error .load-error-retry {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  padding: 0 14px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.load-error .load-error-retry:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+
+.load-error .load-error-retry:disabled {
+  cursor: progress;
+  color: var(--theme-muted);
+}
+
+.load-error-retry:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+.load-error-retry .spinning {
+  animation: load-error-spin 0.9s linear infinite;
+}
+
+@keyframes load-error-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
