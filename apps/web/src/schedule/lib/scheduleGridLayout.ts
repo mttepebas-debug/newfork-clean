@@ -222,6 +222,48 @@ export function scheduleGridFitCards({
   return { band: "side", widths: null, fits: false };
 }
 
+/**
+ * A fitted week's columns: one location's week (its days share the box) or
+ * several locations side by side (each week fills one screen). The week takes
+ * the first band its cards fit in, and the widths that band was chosen with,
+ * so the employee column gives up the room the band counted on (a flexible
+ * employee column grows to its 200px before the days get any). Narrower than
+ * the cards' hours, one location's week scrolls with full-width cards.
+ */
+export function scheduleGridFittedColumns({
+  width,
+  columns,
+  showTotalHours,
+  needs,
+  weeklyLocations,
+}: {
+  readonly width: number;
+  readonly columns: number;
+  readonly showTotalHours: boolean;
+  /** null until the cards are measured. */
+  readonly needs: ScheduleCardNeeds | null;
+  readonly weeklyLocations: boolean;
+}): {
+  readonly band: ScheduleCardBand;
+  readonly fits: boolean;
+  readonly widths: ScheduleGridWeeklyLocationWidths | null;
+} {
+  const fit =
+    needs && width > 0
+      ? scheduleGridFitCards({ width, columns: weeklyLocations ? 7 : columns, showTotalHours, needs })
+      : null;
+  const band = fit?.band ?? "side";
+  if (weeklyLocations) {
+    return {
+      band,
+      fits: fit ? fit.fits : true,
+      widths: fit ? fit.widths : scheduleGridWeeklyLocationWidths({ width, showTotalHours }),
+    };
+  }
+  const fits = fit ? fit.fits : scheduleGridFitsVisibleDays({ width, columns, showTotalHours });
+  return { band, fits, widths: fits ? (fit?.widths ?? null) : null };
+}
+
 export function createScheduleGridTemplateColumns({
   columns,
   fitVisibleColumns = false,

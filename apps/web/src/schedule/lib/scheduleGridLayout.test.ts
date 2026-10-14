@@ -12,6 +12,7 @@ import {
   createScheduleGridTemplateColumns,
   scheduleGridFitCards,
   scheduleGridFitsVisibleDays,
+  scheduleGridFittedColumns,
   scheduleGridWeeklyLocationWidths,
   resolveScheduleInteractionLocationId,
 } from "./scheduleGridLayout";
@@ -242,6 +243,46 @@ describe("scheduleGridLayout", () => {
     expect(fitAt(800)).toEqual({ band: "side", widths: null, fits: false });
     // The totals column keeps its 120px.
     expect(fitAt(1720, true)).toEqual({ band: "side", widths: { day: 200, employee: 200 }, fits: true });
+  });
+
+  // Review finding: one location's fitted week used a flexible employee
+  // column, which grows to 200px before the days get any, so a band chosen
+  // with a 144px employee column cut the hours.
+  it("gives one location's fitted week the widths its band was chosen with", () => {
+    const needs = { side: 150, tight: 130, compact: 120, time: 90 };
+    const fitted = (width: number, time = needs.time) =>
+      scheduleGridFittedColumns({
+        width,
+        columns: 7,
+        showTotalHours: false,
+        needs: { ...needs, time },
+        weeklyLocations: false,
+      });
+    // 790px box: the hours need 90px; seven days of (790 - 144) / 7 keep them.
+    const narrow = fitted(790);
+    expect(narrow).toEqual({ band: "clip", fits: true, widths: { day: 646 / 7, employee: 144 } });
+    expect(narrow.widths!.day).toBeGreaterThanOrEqual(needs.time);
+    expect(
+      createScheduleGridTemplateColumns({
+        columns: 7,
+        fitVisibleColumns: narrow.fits,
+        locationWidths: narrow.widths,
+        showTotalHours: false,
+      }),
+    ).toBe(`144px repeat(7, ${646 / 7}px)`);
+    // Hours that need 95px do not fit: the week scrolls with full-width cards.
+    expect(fitted(790, 95)).toEqual({ band: "side", fits: false, widths: null });
+    // Unmeasured, it fits while every day keeps 88px.
+    expect(
+      scheduleGridFittedColumns({ width: 975, columns: 7, showTotalHours: false, needs: null, weeklyLocations: false }),
+    ).toEqual({ band: "side", fits: true, widths: null });
+    expect(
+      scheduleGridFittedColumns({ width: 790, columns: 7, showTotalHours: false, needs: null, weeklyLocations: false }).fits,
+    ).toBe(false);
+    // Several locations side by side keep their seven-day widths.
+    expect(
+      scheduleGridFittedColumns({ width: 1135, columns: 14, showTotalHours: false, needs: null, weeklyLocations: true }),
+    ).toEqual({ band: "side", fits: true, widths: { day: 935 / 7, employee: 200 } });
   });
 
   it("puts each location's whole week on one screen while its cards' words fit", () => {

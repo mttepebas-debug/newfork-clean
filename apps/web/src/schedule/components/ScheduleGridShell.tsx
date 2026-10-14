@@ -14,10 +14,8 @@ import {
   calculateScheduleGridFillerHeight,
   createScheduleGridTemplateColumns,
   scheduleGridEmployeeColumnWidth,
-  scheduleGridFitCards,
-  scheduleGridFitsVisibleDays,
+  scheduleGridFittedColumns,
   scheduleGridHorizontalNavHeight,
-  scheduleGridWeeklyLocationWidths,
   scheduleGridTotalRowHeight,
   type ScheduleCardBand,
   type ScheduleCardNeeds,
@@ -145,31 +143,23 @@ export function ScheduleGridShell({
   // Cards do not change size mid-drag; skip re-reading them every frame.
   const dragging = Boolean(dragPointer);
   // A fitted week (one location's, or several side by side, each filling one
-  // screen) takes the first band its cards fit in. Narrower than the cards'
-  // hours, the days keep the cards' full width and the week scrolls.
-  const cardFit =
-    cardNeeds && viewportWidth > 0 && (fitWeeklyLocations || fitVisibleColumns)
-      ? scheduleGridFitCards({
+  // screen) takes the first band its cards fit in, with that band's widths.
+  // A fitted week that would squeeze days below what their cards need (a
+  // phone, a tablet, a narrow window) scrolls instead (BL-205).
+  const fitted =
+    fitWeeklyLocations || fitVisibleColumns
+      ? scheduleGridFittedColumns({
           width: viewportWidth,
-          columns: fitWeeklyLocations ? 7 : columns,
+          columns,
           showTotalHours,
           needs: cardNeeds,
+          weeklyLocations: fitWeeklyLocations,
         })
       : null;
-  const locationWidths = fitWeeklyLocations
-    ? cardFit
-      ? cardFit.widths
-      : scheduleGridWeeklyLocationWidths({ width: viewportWidth, showTotalHours })
-    : null;
+  const locationWidths = fitted?.widths ?? null;
   const effectiveDayColumnMinWidth = locationWidths?.day ?? dayColumnMinWidth;
-  // A fitted week that would squeeze days below a readable width (a phone, a
-  // tablet, a narrow window) scrolls instead (BL-205).
-  const fitsColumns =
-    fitVisibleColumns &&
-    (cardFit
-      ? cardFit.fits
-      : scheduleGridFitsVisibleDays({ width: viewportWidth, columns, showTotalHours }));
-  const cardBand: ScheduleCardBand = cardFit?.band ?? "side";
+  const fitsColumns = fitVisibleColumns && Boolean(fitted?.fits);
+  const cardBand: ScheduleCardBand = fitted?.band ?? "side";
   const [hasHorizontalOverflow, setHasHorizontalOverflow] = useState(false);
   const totalBottomOffsetPx = hasHorizontalOverflow
     ? scheduleGridHorizontalNavHeight
