@@ -43,6 +43,7 @@ import { isNoAccess } from "../lib/no-access";
 import { requestErrorText, ScreenError } from "../lib/request-error";
 import { todayIn } from "../lib/today";
 import { NoAccessState } from "../shell/NoAccessState";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { Tooltip } from "../shell/Tooltip";
 import { EmployeeDrawer } from "../employees/EmployeeDrawer";
 import { ScheduleFilterCommandStrip } from "../schedule/components/ScheduleFilterCommandStrip";
@@ -54,7 +55,6 @@ import {
 } from "../schedule/components/ScheduleContextMenu";
 import { ScheduleGrid } from "../schedule/components/ScheduleGrid";
 import { ScheduleTopBar, ScheduleViewModeControls } from "../schedule/components/ScheduleTopBar";
-import { ScheduleState } from "../schedule/components/ScheduleState";
 import { ShiftQuickEditor } from "../schedule/components/ShiftQuickEditor";
 import { resolveTimeInputFormat } from "../schedule/timeInput";
 import type { PresetCreateTarget } from "../schedule/components/SchedulePresetRows";
@@ -434,7 +434,7 @@ export function SchedulePage({
     readonly ScheduleTemplateSummary[]
   >([]);
   const [templatesLoading, setTemplatesLoading] = useState(false);
-  const [templatesLoadError, setTemplatesLoadError] = useState<string | null>(null);
+  const [templatesLoadError, setTemplatesLoadError] = useState(false);
   const [templatesStep, setTemplatesStep] = useState<NewScheduleTemplatesStep>({ kind: "list" });
   const [templatesSaving, setTemplatesSaving] = useState(false);
   // "Use" with no edit open: the picked schedule opens for editing, then the window comes back at this template.
@@ -1009,12 +1009,13 @@ export function SchedulePage({
   const loadTemplates = async () => {
     if (!context || !gates.templatesRead) return;
     setTemplatesLoading(true);
-    setTemplatesLoadError(null);
+    setTemplatesLoadError(false);
     try {
       setTemplates((await listScheduleTemplates(context.workspace.id)).templates);
     } catch (error) {
-      // The tab says it, with Retry; an empty list would read as "No templates yet".
-      setTemplatesLoadError(requestErrorText(error, "Templates could not be loaded."));
+      // The tab says it, with Try again; an empty list would read as "No templates yet".
+      console.error(error);
+      setTemplatesLoadError(true);
     } finally {
       setTemplatesLoading(false);
     }
@@ -1909,14 +1910,14 @@ export function SchedulePage({
     if (query.error && !isNoAccess(query.error)) console.error(query.error);
   }, [query.error]);
 
+  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
   if (query.isPending)
     return (
-      <ScheduleState
-        title="Loading Schedule"
-        detail="Getting this week's shifts."
-      />
+      <section className="schedule-page" aria-label="Schedule">
+        <ScheduleGridOutline />
+      </section>
     );
-  if (query.isError)
+  if (query.isError && (!query.data || isNoAccess(query.error)))
     return isNoAccess(query.error) ? (
       <NoAccessState
         subject="this schedule"
@@ -1950,16 +1951,18 @@ export function SchedulePage({
             />
           </div>
         </header>
-        <ScheduleState
-          title="Schedule unavailable"
-          detail="This week's schedule could not be loaded. Try again."
-          error
+        <LoadError
+          title="We couldn't load Schedule"
+          detail="This week's shifts didn't load. Nothing was changed."
+          retrying={query.isFetching}
           onRetry={() => void query.refetch()}
         />
       </section>
     );
 
   const model = { ...query.data, shifts: effectiveShifts };
+  const draftUnread = Boolean(activeDraftId && !gridEditSession && previewSource.error);
+  const draftLoading = Boolean(activeDraftId && !gridEditSession && !previewSource.error && previewSource.shifts === null);
   const dropReviewAsk = dropReview.review
     ? scheduleDropReviewAsk(model, dropReview.review.drop.items.map((item) => item.input), dropReview.review.assessments)
     : null;
@@ -2693,16 +2696,12 @@ export function SchedulePage({
         actions={topBarActions}
       />
       <ScheduleFilterCommandStrip chips={filterChips} />
-      {activeDraftId && !gridEditSession && previewSource.error ? (
-        <div className="schedule-operation-error" role="alert">
-          This draft's shifts could not be loaded.
-          <Button
-            className="schedule-operation-retry"
-            onClick={previewSource.retry}
-          >
-            Retry
-          </Button>
-        </div>
+      {query.isError ? (
+        <RefreshError
+          message="This week's schedule didn't refresh. These are the last shifts that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
       ) : null}
       {operationError ? (
         <div className="schedule-operation-error" role="alert">
@@ -2793,6 +2792,16 @@ export function SchedulePage({
           </button>
         </div>
       ) : null}
+      {/* A draft whose shifts haven't loaded is not an empty draft. */}
+      {draftUnread ? (
+        <LoadError
+          title="We couldn't load this draft"
+          detail="This draft's shifts didn't load. Nothing was changed."
+          onRetry={previewSource.retry}
+        />
+      ) : draftLoading ? (
+        <ScheduleGridOutline />
+      ) : (
       <ScheduleGrid
         model={sortedModel}
         timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
@@ -2951,6 +2960,7 @@ export function SchedulePage({
           setQueryIds("locations", locationIds);
         }}
       />
+      )}
       {gridEditSession &&
       (pasteArmed || pasteBlockedReason || pasteModeNotice) ? (
         <div
@@ -3599,3 +3609,8 @@ function blurScheduleEditorActivationTarget(): void {
 }
 
 export default SchedulePage;
+
+/** The week in grey while it loads, where the grid goes. */
+function ScheduleGridOutline() {
+  return <ListOutline label="Loading Schedule" rows={8} columns={8} />;
+}
