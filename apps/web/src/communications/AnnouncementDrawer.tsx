@@ -58,6 +58,7 @@ import {
   setAnnouncementState,
 } from "./communications-data";
 import "./announcement-drawer.css";
+import { LinesOutline, LoadError } from "../shell/LoadState";
 
 /** Everything a post's change can show up in. */
 export const announcementQueryKeys = [
@@ -110,14 +111,20 @@ export function AnnouncementDrawer({
             </div>
           </header>
           <div className="ad-body">
-            {detail.error ? (
+            {detail.error && isNoAccess(detail.error) ? (
               <p className="ad-note" data-tone="red" role="alert">
-                {isNoAccess(detail.error)
-                  ? "This announcement is no longer available."
-                  : "This announcement couldn't load. Close it and try again."}
+                This announcement is no longer available.
               </p>
+            ) : detail.error ? (
+              <LoadError
+                inset
+                title="We couldn't load this announcement"
+                detail="It didn't load. Nothing was changed."
+                retrying={detail.isFetching}
+                onRetry={() => void detail.refetch()}
+              />
             ) : (
-              <p className="ad-muted">Loading…</p>
+              <LinesOutline label="Loading announcement" lines={4} />
             )}
           </div>
         </div>

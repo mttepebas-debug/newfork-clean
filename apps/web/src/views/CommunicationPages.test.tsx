@@ -329,3 +329,25 @@ describe("no access (FB-6.1.9)", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });
+
+// Loading and error look the same everywhere (Mert 2026-10-14, "B").
+describe("notifications loading and error", () => {
+  it("outlines the rows while the inbox loads", () => {
+    vi.mocked(getNotifications).mockReturnValue(new Promise(() => undefined));
+    renderRoute("/app/notifications", <NotificationsPage />);
+    const loading = screen.getByText("Loading notifications").closest("[role=status]") as HTMLElement;
+    expect(loading.querySelectorAll(".nf-list-outline-row").length).toBeGreaterThan(0);
+  });
+
+  it("gives the load-error card, not the raw error, and tries again", async () => {
+    vi.mocked(getNotifications)
+      .mockRejectedValueOnce(new Error("Failed to fetch"))
+      .mockResolvedValue({ workspace_id: workspaceId, unread_count: 0, next_cursor: null, notifications: [] });
+    renderRoute("/app/notifications", <NotificationsPage />);
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load notifications" })).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "No unread notifications" })).toBeTruthy();
+  });
+});

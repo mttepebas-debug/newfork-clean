@@ -1,7 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 
-import { ListOutline, LoadError, LoadingOutline, Skeleton } from "./LoadState";
+import { LinesOutline, ListOutline, LoadError, LoadingOutline, Skeleton } from "./LoadState";
 
 // Loading and error, one look everywhere (Mert 2026-10-14, "B").
 
@@ -56,5 +56,30 @@ describe("LoadError", () => {
     render(<LoadError title="We couldn't open this document" detail="The link has expired." />);
     expect(screen.queryByRole("button")).toBeNull();
     expect(screen.queryByText("Check your connection, then try again.")).toBeNull();
+  });
+});
+
+describe("inset pieces", () => {
+  it("draws list rows without a frame or header inside a list that has them", () => {
+    render(<ListOutline label="Loading requests" rows={2} inset />);
+    const status = screen.getByRole("status");
+    expect(status.className).toContain("inset");
+    expect(status.querySelector(".nf-list-outline-head")).toBeNull();
+    expect(status.querySelectorAll(".nf-list-outline-row")).toHaveLength(2);
+  });
+
+  it("gives an inset card that can take focus on its heading", () => {
+    const ref = { current: null as HTMLHeadingElement | null };
+    render(<LoadError title="We couldn't load this request" detail="The request didn't load. Nothing was changed." inset headingRef={ref} />);
+    const card = screen.getByRole("region", { name: "We couldn't load this request" });
+    expect(card.className).toBe("load-error inset");
+    // Focus reads it; it is not a live alert as well.
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(ref.current?.tabIndex).toBe(-1);
+  });
+
+  it("outlines a few lines for a panel", () => {
+    render(<LinesOutline label="Loading shift details" lines={2} />);
+    expect(screen.getByRole("status").querySelectorAll(".nf-skeleton")).toHaveLength(2);
   });
 });

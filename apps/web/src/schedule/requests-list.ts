@@ -219,6 +219,7 @@ export function useRequests(
     locations: openTimeOff.data?.locations ?? closedTimeOff.data?.locations ?? [],
     timeFormat: openTimeOff.data?.timeFormat ?? closedTimeOff.data?.timeFormat ?? "12h",
     isLoading: (can.timeOff && (openTimeOff.isLoading || closedTimeOff.isLoading)) || (can.shiftChanges && exchanges.isLoading),
+    isFetching: (can.timeOff && (openTimeOff.isFetching || closedTimeOff.isFetching)) || (can.shiftChanges && exchanges.isFetching),
     error,
     failure: error ? requestFailureKind(error) : null,
     retry: () => {
