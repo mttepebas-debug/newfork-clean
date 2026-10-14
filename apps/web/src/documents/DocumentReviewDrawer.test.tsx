@@ -1536,3 +1536,27 @@ describe("typed fields beyond the draft", () => {
     expect(screen.queryByLabelText("Type your full name")).toBeNull();
   });
 });
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+it("outlines the document while it loads", async () => {
+  vi.mocked(getDocument).mockReturnValueOnce(new Promise(() => {}));
+  page();
+  expect(await screen.findByText("Loading document")).toBeTruthy();
+  expect(screen.queryByText("Loading document…")).toBeNull();
+});
+
+it("shows the load-error card with Try again, not the server's sentence", async () => {
+  vi.mocked(getDocument)
+    .mockRejectedValueOnce(new Error("Document service unavailable"))
+    .mockResolvedValue(detail());
+  page();
+  expect(
+    await screen.findByRole("heading", { level: 3, name: "We couldn't load this document" }),
+  ).toBeTruthy();
+  expect(screen.queryByText("Document service unavailable")).toBeNull();
+  fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+  await waitFor(() =>
+    expect(screen.queryByRole("heading", { name: "We couldn't load this document" })).toBeNull(),
+  );
+  expect(screen.queryByText("Loading document")).toBeNull();
+});
