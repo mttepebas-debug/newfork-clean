@@ -127,6 +127,8 @@ export function EmployeeDocumentsList(props: {
   const noneYet =
     items.length === 0 && filter === "all" && !search.trim() && !location && !type;
   // Refused: only the no-access card, no header, filters or empty table.
+  // Employees → Documents answers before this (EmployeeDocumentsPage); the
+  // employee drawer and Account › Documents land here.
   const refused = Boolean(query.error) && isNoAccess(query.error);
   const sortBy = (key: typeof sort.key) =>
     setSort((s) => ({ key, descending: s.key === key && !s.descending }));

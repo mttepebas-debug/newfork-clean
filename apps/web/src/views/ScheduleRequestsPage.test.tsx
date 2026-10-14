@@ -210,7 +210,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
-    activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
+    activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"], actions: ["workspace.read", "employee_hub.read"] };
     renderPage("/app/schedule/requests?tab=availability");
     // The old link opens team Availability, which shows the card in place,
     // not a silent trip home (Mert 2026-10-14).

@@ -169,11 +169,20 @@ describe("noAccessHomePath", () => {
   // Employee Hub, not to a Workspace card that refuses them again.
   it("sends an employee to Employee Hub, whatever the core opens", () => {
     const employee = {
-      ...managerWith(["workspace.read", "schedule.read"]),
+      ...managerWith(["workspace.read", "employee_hub.read"]),
       membership: { role: "employee" },
     } as unknown as ActiveWorkspaceContext;
     expect(noAccessHomePath(employee, "/app/employees")).toBe("/app/employee-hub");
     expect(noAccessHomePath(employee, "/app/employee-hub")).toBe(hubPath);
+    expect(noAccessHomePath(employee, "/app/employee-hub/")).toBe(hubPath);
+  });
+
+  it("sends an employee the core holds out of Employee Hub straight to the hub", () => {
+    const employee = {
+      ...managerWith(["workspace.read"]),
+      membership: { role: "employee" },
+    } as unknown as ActiveWorkspaceContext;
+    expect(noAccessHomePath(employee, "/app/employees")).toBe(hubPath);
   });
 
   it("sends a person with no workspace loaded to the hub", () => {
