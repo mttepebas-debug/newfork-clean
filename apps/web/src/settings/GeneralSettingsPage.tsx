@@ -230,6 +230,7 @@ export default function GeneralSettingsPage() {
               disabled={
                 !canEdit ||
                 checklistQuery.data === undefined ||
+                isNoAccess(checklistQuery.error) ||
                 checklistMutation.isPending
               }
               onClick={() => checklistMutation.mutate(!checklistClosed)}
@@ -291,6 +292,7 @@ export default function GeneralSettingsPage() {
               disabled={
                 !canEdit ||
                 preferredQuery.data === undefined ||
+                isNoAccess(preferredQuery.error) ||
                 preferredMutation.isPending
               }
               onClick={() =>
