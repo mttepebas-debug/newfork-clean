@@ -11,6 +11,7 @@ import {
   saveWeeklyPreferenceSettings,
 } from "./availability-data";
 import { isNoAccess } from "../lib/no-access";
+import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import "./weekly-preferences.css";
 
 export function WeeklyPreferenceSettingsPanel({
@@ -62,27 +63,39 @@ function ConnectedSettings({ workspaceId }: { workspaceId: string }) {
       : 0;
   // BL-798: the core's "no" reads as a sentence; retrying cannot change it.
   const noAccess = isNoAccess(query.error);
-  const error = query.isError ? (
-    <p role="alert">
-      {noAccess
-        ? "You don't have access to these availability settings."
-        : query.error.message}
-    </p>
-  ) : null;
+  if (noAccess)
+    return (
+      <section className="weekly-preferences-panel">
+        <p role="alert">You don't have access to these availability settings.</p>
+      </section>
+    );
+  // Loading and error in the "B" look (Mert 2026-10-14); never the server's sentence.
   if (!query.data || [401, 403, 404].includes(status))
     return (
       <section className="weekly-preferences-panel">
-        {error ?? <p role="status">Loading availability settings...</p>}
-        {error && !noAccess && (
-          <button type="button" onClick={() => void query.refetch()}>
-            Retry
-          </button>
+        {query.isError ? (
+          <LoadError
+            inset
+            level={3}
+            title="We couldn't load availability settings"
+            detail="Availability settings didn't load. Nothing was changed."
+            retrying={query.isFetching}
+            onRetry={() => void query.refetch()}
+          />
+        ) : (
+          <LinesOutline label="Loading availability settings" lines={4} />
         )}
       </section>
     );
   return (
     <>
-      {error}
+      {query.isError ? (
+        <RefreshError
+          message="Availability settings didn't refresh. These are the last settings that loaded."
+          retrying={query.isFetching}
+          onRetry={() => void query.refetch()}
+        />
+      ) : null}
       <WeeklyPreferenceSettings
         model={query.data}
         onSave={save}
