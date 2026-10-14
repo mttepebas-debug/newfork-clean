@@ -681,6 +681,42 @@ describe("PublishScheduleDialog", () => {
     expect(await screen.findByText("Live · 2 shifts")).toBeTruthy();
   });
 
+  // BL-299: a new choice drops the last preview, so a failed preview is never shown over an old one.
+  it("drops the last preview on a new choice and says plainly when the next one fails", async () => {
+    const onPreview = vi
+      .fn()
+      .mockResolvedValueOnce(preview)
+      .mockRejectedValueOnce(new Error("relation x does not exist"))
+      .mockResolvedValue(preview);
+
+    render(
+      <PublishScheduleDialog
+        drafts={[draft]}
+        locations={[location]}
+        employees={[employee]}
+        departments={[department, backDepartment]}
+        onClose={vi.fn()}
+        onPreview={onPreview}
+        onPublish={vi.fn()}
+      />,
+    );
+
+    expect(await screen.findByText("Live · 2 shifts")).toBeTruthy();
+    fireEvent.click(screen.getByLabelText("Back of House"));
+
+    expect(
+      await screen.findByRole("heading", { name: "We couldn't load the publish preview" }),
+    ).toBeTruthy();
+    expect(screen.queryByText("Live · 2 shifts")).toBeNull();
+    expect(screen.queryByText(/does not exist/)).toBeNull();
+
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByText("Live · 2 shifts")).toBeTruthy();
+    expect(
+      screen.queryByRole("heading", { name: "We couldn't load the publish preview" }),
+    ).toBeNull();
+  });
+
   it("shows notify search only when many employees are affected", async () => {
     const manyEmployees = Array.from({ length: 15 }, (_, index) => ({
       ...employee,
