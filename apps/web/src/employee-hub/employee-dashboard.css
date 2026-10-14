@@ -700,21 +700,6 @@
   color: var(--eh-muted);
   padding: 22px 0 8px;
 }
-.eh-panel-error {
-  font-size: 12px;
-  padding: 20px 0;
-  color: var(--eh-muted);
-}
-.eh-panel-error button {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  min-height: 44px;
-  color: var(--eh-green);
-  padding: 0;
-  border: 0;
-  background: transparent;
-}
 .eh-error {
   color: #a34b32;
   font-size: 12px;
