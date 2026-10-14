@@ -5968,6 +5968,67 @@ describe("App", () => {
     consoleError.mockRestore();
   }, 15_000);
 
+  it("shows the no-access card, not the last shifts, when a refresh is refused", async () => {
+    const weekStart = "2026-11-16";
+    vi.mocked(getScheduleReadModel).mockImplementation(async () => {
+      if (vi.mocked(unpublishSchedule).mock.calls.length) {
+        throw new ScheduleRequestError("Forbidden by authz.out_of_scope", 403, {
+          reason: "authz.out_of_scope",
+        });
+      }
+      return scheduleFixtureForWeek(weekStart);
+    });
+    vi.mocked(previewScheduleUnpublish).mockResolvedValueOnce({
+      status: "unpublish_ready",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      locations: [
+        {
+          location_id: scheduleFixture.locations[0]!.id,
+          location_name: scheduleFixture.locations[0]!.name,
+          publication_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab",
+          version: 1,
+          shift_count: 1,
+        },
+      ],
+      fingerprint: "e".repeat(64),
+    });
+    vi.mocked(unpublishSchedule).mockResolvedValueOnce({
+      status: "unpublished",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      location_ids: [scheduleFixture.locations[0]!.id],
+      publication_ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab"],
+      unpublished_at: "2026-08-17T12:05:00Z",
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    expect(container.querySelectorAll(".schedule-shift-badge").length).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish schedule" }));
+    const unpublishDialog = await screen.findByRole("dialog", { name: "Unpublish schedule" });
+    fireEvent.click(within(unpublishDialog).getByLabelText(/Main Dining/));
+    fireEvent.click(within(unpublishDialog).getByRole("button", { name: "Unpublish 1 location" }));
+    fireEvent.click(within(unpublishDialog).getByRole("button", { name: "Confirm unpublish" }));
+
+    expect(
+      await screen.findByRole(
+        "heading",
+        { name: "You don't have access to this schedule" },
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy();
+    expect(container.querySelector(".schedule-shift-badge")).toBeNull();
+    expect(
+      screen.queryByText("This week's schedule didn't refresh. These are the last shifts that loaded."),
+    ).toBeNull();
+    expect(screen.queryByText(/authz\./)).toBeNull();
+  }, 15_000);
+
   it("shows the error card, not last week's shifts, when the next week cannot be read", async () => {
     const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
     vi.mocked(getScheduleReadModel).mockImplementation(async (_workspaceId, date) => {

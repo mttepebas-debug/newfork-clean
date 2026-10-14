@@ -27,6 +27,21 @@ describe("live preview source resolution", () => {
     expect(result.current.shifts?.[0]?.id).toBe("b-shift");
     expect(result.current.requestedKey).toBe(result.current.resolvedKey);
   });
+  // A live refresh re-reads the open draft: its last shifts stay on the grid meanwhile, never an empty or grey week.
+  it("keeps the same draft's last shifts while it is read again, but not another draft's", async () => {
+    const again = deferred<{ shifts: ScheduleShift[] }>();
+    vi.mocked(fetchScheduleDraftShifts).mockReset().mockResolvedValueOnce({ shifts: shifts("a-1") }).mockReturnValueOnce(again.promise);
+    const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: base });
+    await waitFor(() => expect(result.current.shifts?.[0]?.id).toBe("a-1"));
+    rerender({ ...base, modelVersion: 2 });
+    expect(result.current.shifts?.[0]?.id).toBe("a-1");
+    expect(result.current.resolvedKey).toBeNull();
+    await act(async () => again.resolve({ shifts: shifts("a-2") }));
+    expect(result.current.shifts?.[0]?.id).toBe("a-2");
+    vi.mocked(fetchScheduleDraftShifts).mockReturnValueOnce(new Promise(() => {}));
+    rerender({ ...base, modelVersion: 2, activeDraftId: "b" });
+    expect(result.current.shifts).toBeNull();
+  });
   it("invalidates the old snapshot during loading, edit entry and workspace changes", async () => {
     vi.mocked(fetchScheduleDraftShifts).mockResolvedValue({ shifts: shifts("a") });
     const { result, rerender } = renderHook(props => usePreviewSource(props), { initialProps: base });
