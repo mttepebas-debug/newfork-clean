@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../fixtures/test";
 import { psql } from "../global-setup";
 
 // SEC-003 (BL-268): taking over a workspace on Account > Workspaces needs the

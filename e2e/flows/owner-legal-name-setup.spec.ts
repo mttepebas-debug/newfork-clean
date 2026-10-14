@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type Page } from "../fixtures/test";
 import { psql } from "../global-setup";
 
 // BL-080: the owner's legal name (the name on their ID) is taken at the first

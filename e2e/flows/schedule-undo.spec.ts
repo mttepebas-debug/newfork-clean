@@ -1,5 +1,5 @@
 import { execSync } from "node:child_process";
-import { expect, test } from "@playwright/test";
+import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { round, signIn } from "../fixtures/world";
 

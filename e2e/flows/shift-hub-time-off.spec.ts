@@ -1,6 +1,6 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { signIn, type Person } from "../fixtures/world";
 

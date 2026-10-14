@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page } from "@playwright/test";
+import { expect, test, type Browser, type Page } from "../fixtures/test";
 import { draftName, round, signIn, type Person } from "../fixtures/world";
 
 // FOUNDATION-B 3b (user decision 2026-09-24, option A): only a draft is

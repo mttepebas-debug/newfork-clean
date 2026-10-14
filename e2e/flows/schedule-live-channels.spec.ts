@@ -1,4 +1,4 @@
-import { expect, test, type Browser, type Page, type Request } from "@playwright/test";
+import { expect, test, type Browser, type Page, type Request } from "../fixtures/test";
 import { draftName, round, signIn, type Person } from "../fixtures/world";
 
 // EKRAN-01 DB-2: a schedule change goes live to its own location's channel
