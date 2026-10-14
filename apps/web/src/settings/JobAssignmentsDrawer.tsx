@@ -119,12 +119,15 @@ export function JobAssignmentsDrawer({
     if (employeeList.current) employeeList.current.scrollTop = 0;
   }, [deferredSearch, location, filter]);
   // A first page that doesn't fill the list can't be scrolled: load on.
+  const loadedPages = data.data?.pages.length ?? 0;
   useEffect(() => {
     if (employeeList.current?.scrollHeight) loadMoreNearEnd();
-  });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only when a page arrives
+  }, [loadedPages]);
   function loadMoreNearEnd() {
     const list = employeeList.current;
-    if (!list || !data.hasNextPage || data.isFetching) return;
+    // After a failure only Retry asks again; scrolling doesn't loop the request.
+    if (!list || !data.hasNextPage || data.isFetching || data.isError) return;
     if (list.scrollTop + list.clientHeight >= list.scrollHeight - 240)
       void data.fetchNextPage();
   }
