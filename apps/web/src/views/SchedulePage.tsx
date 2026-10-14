@@ -344,6 +344,17 @@ export function SchedulePage({
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
   const [operationError, setOperationError] = useState<string | null>(null);
+  // An edit asked for while the drafts list could not be read: "Try again"
+  // repeats that ask (blank, or the published or draft schedule it named).
+  const [draftsUnread, setDraftsUnread] = useState<
+    { readonly source: "blank" | "edit"; readonly draftId: string | null } | null
+  >(null);
+  const [draftsRetrying, setDraftsRetrying] = useState(false);
+  const loadedWeek = query.data?.week_start;
+  useEffect(() => {
+    // The ask belonged to the week it was made in.
+    setDraftsUnread(null);
+  }, [loadedWeek]);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
@@ -892,32 +903,48 @@ export function SchedulePage({
 
   // BL-394: editing starts from a fresh drafts list; if it cannot load, say so
   // plainly and stop, with the reason in the console.
-  const refreshDraftsBeforeEdit = async (): Promise<boolean> => {
+  const refreshDraftsBeforeEdit = async (
+    ask: { readonly source: "blank" | "edit"; readonly draftId: string | null },
+  ): Promise<boolean> => {
     try {
       await refreshDrafts();
+      setDraftsUnread(null);
       return true;
     } catch (error) {
       console.error(error);
-      setOperationError("Drafts could not be loaded. Try again.");
+      setDraftsUnread(ask);
       return false;
     }
   };
 
   const startBlankDraftFromMenu = async () => {
-    if (!(await refreshDraftsBeforeEdit())) return;
+    if (!(await refreshDraftsBeforeEdit({ source: "blank", draftId: null }))) return;
     return acquire("blank");
   };
 
   const previewDraftFromMenu = async (draftId: string | null) => {
     if (!context || !query.data) return;
     setOperationError(null);
+    setDraftsUnread(null);
     // One cancellable source read feeds both grid and export.
     setScheduleMode("preview", draftId);
   };
 
   const editDraftFromMenu = async (draftId: string | null) => {
-    if (!(await refreshDraftsBeforeEdit())) return;
+    if (!(await refreshDraftsBeforeEdit({ source: "edit", draftId }))) return;
     return acquire(draftId ? "draft" : "published", draftId);
+  };
+
+  const retryDraftsUnread = async () => {
+    if (!draftsUnread) return;
+    setDraftsRetrying(true);
+    try {
+      await (draftsUnread.source === "blank"
+        ? startBlankDraftFromMenu()
+        : editDraftFromMenu(draftsUnread.draftId));
+    } finally {
+      setDraftsRetrying(false);
+    }
   };
 
   // "Use" with no edit open: the picked schedule opens for editing, then the
@@ -2701,6 +2728,14 @@ export function SchedulePage({
           message="This week's schedule didn't refresh. These are the last shifts that loaded."
           retrying={query.isFetching}
           onRetry={() => void query.refetch()}
+        />
+      ) : null}
+      {/* Once an edit of this week is open, "editing didn't start" no longer holds. */}
+      {draftsUnread && !gridEditSession ? (
+        <RefreshError
+          message="The drafts didn't load, so editing didn't start. Nothing was changed."
+          retrying={draftsRetrying}
+          onRetry={() => void retryDraftsUnread()}
         />
       ) : null}
       {operationError ? (
