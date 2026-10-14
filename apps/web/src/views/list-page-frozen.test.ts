@@ -28,6 +28,10 @@ describe("frozen list pages", () => {
     // Settings → Jobs joined the shared list look on 2026-10-14 (Mert's
     // comment on its page: "sadece liste scroll up down olsun").
     "jobs-catalog-page",
+    // Locations, Shift catalog and Shift labels too (Mert 2026-10-14, card
+    // "Hepsinde sabit").
+    "locations-catalog-settings-page",
+    "shift-catalog-settings-page",
   ];
 
   it("is loaded with the shared list look", () => {
