@@ -18,6 +18,7 @@ import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { ShiftCatalogHeader, ShiftCatalogToolbar } from "./ShiftCatalogTabs";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { ShiftCatalogList } from "./ShiftCatalogList";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import {
   listShiftTypes,
   reorderShiftTypes,
@@ -437,15 +438,18 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
           </form>
         </CatalogDrawer>
       ) : null}
-      {query.isLoading || query.error ? (
+      {query.isLoading || (query.error && !query.data) ? (
         <>
           <ShiftCatalogToolbar disabled={saveMutation.isPending || deleteLocked} />
           {query.isLoading ? (
-            <p className="settings-state">Loading shift types...</p>
+            <ListOutline label="Loading shift types" rows={5} columns={4} />
           ) : (
-            <p className="settings-state error" role="alert">
-              {errorText(query.error)}
-            </p>
+            <LoadError
+              title="We couldn't load shift types"
+              detail="Shift types didn't load. Nothing was changed."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
           )}
         </>
       ) : (
@@ -457,11 +461,21 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
           addDisabled={saveMutation.isPending || deleteLocked}
           tabsDisabled={saveMutation.isPending || deleteLocked}
           notice={
-            !editing && formError ? (
-              <p className="settings-state error" role="alert">
-                {formError}
-              </p>
-            ) : null
+            <>
+              {/* The open drawer says it for itself. */}
+              {query.error && !editing ? (
+                <RefreshError
+                  message="Shift types didn't refresh. This is the last list that loaded."
+                  retrying={query.isFetching}
+                  onRetry={() => void query.refetch()}
+                />
+              ) : null}
+              {!editing && formError ? (
+                <p className="settings-state error" role="alert">
+                  {formError}
+                </p>
+              ) : null}
+            </>
           }
           onEdit={openEditor}
           onMove={move}

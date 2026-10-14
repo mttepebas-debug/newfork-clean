@@ -493,3 +493,23 @@ describe("RolesSettingsPage", () => {
     ).toHaveProperty("checked", false);
   });
 });
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("Roles loading and error", () => {
+  it("outlines the list while roles load", async () => {
+    vi.mocked(loadRoleWorkspace).mockReturnValueOnce(new Promise(() => {}));
+    mount();
+    expect((await screen.findByRole("status")).textContent).toBe("Loading roles");
+    expect(screen.queryByText("Loading roles...")).toBeNull();
+  });
+
+  it("shows the card with Try again, not the server's sentence, when roles fail", async () => {
+    vi.mocked(loadRoleWorkspace).mockRejectedValueOnce(new Error("roles service down"));
+    mount();
+    expect(await screen.findByRole("heading", { name: "We couldn't load roles" })).toBeTruthy();
+    expect(screen.queryByText("roles service down")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("heading", { name: "We couldn't load roles" })).toBeNull());
+    expect(loadRoleWorkspace).toHaveBeenCalledTimes(2);
+  });
+});
