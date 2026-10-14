@@ -125,7 +125,7 @@ function ConnectedPreferences({
       {query.isError ? (
         <div role="alert">
           <p>Availability didn't refresh. This is the last version that loaded.</p>
-          <button type="button" onClick={() => void query.refetch()}>
+          <button type="button" disabled={query.isFetching} onClick={() => void query.refetch()}>
             Try again
           </button>
         </div>

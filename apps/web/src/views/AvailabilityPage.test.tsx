@@ -1,4 +1,5 @@
 import {
+  act,
   cleanup,
   fireEvent,
   render,
@@ -270,6 +271,20 @@ describe("weekly team availability", () => {
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
     expect(screen.queryByRole("alert")).toBeNull();
+  });
+  it("keeps the table when a refresh fails, says so, and tries again", async () => {
+    const client = renderPage();
+    await screen.findByText("Alex Kim");
+    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new Error("Could not load"));
+    await act(async () => {
+      await client.invalidateQueries({ queryKey: ["weekly-preferences"] });
+    });
+    expect((await screen.findByRole("alert")).textContent).toContain("Team availability didn't refresh. This is the last view that loaded.");
+    expect(screen.queryByText("Could not load")).toBeNull();
+    expect(screen.getByText("Alex Kim")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(loadWeeklyTeam).toHaveBeenCalledTimes(3);
   });
   it("draws the table's outline while team availability loads", async () => {
     vi.mocked(loadWeeklyTeam).mockReturnValueOnce(new Promise(() => {}));
