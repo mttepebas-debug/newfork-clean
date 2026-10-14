@@ -114,8 +114,9 @@ export function EmployeeDocumentsList(props: {
     currentIndex >= 0 ? currentIndex + 1 : (selected?.ordinal ?? 0);
   const next = visible[nextIndex];
   // Nothing asked of this person here: one line says so, no empty table.
+  // A failed refresh keeps the last answer, so it doesn't turn this into a table.
   const nothingAsked =
-    personal && !query.isLoading && !query.error && items.length === 0;
+    personal && Boolean(query.data) && !isNoAccess(query.error) && items.length === 0;
   // BL-834: nothing here at all is not a filter miss.
   const noneYet =
     items.length === 0 && filter === "all" && !search.trim() && !location && !type;
@@ -129,12 +130,6 @@ export function EmployeeDocumentsList(props: {
           {blockers.map((item) => item.title).join(", ")}.
         </p>
       )}
-      {nothingAsked ? (
-        <p className="employee-documents-none">
-          Nothing has been asked of you here.
-        </p>
-      ) : null}
-      {nothingAsked ? null : <>
       {query.error && query.data && !isNoAccess(query.error) ? (
         <RefreshError
           message="Documents didn't refresh. This is the last list that loaded."
@@ -142,6 +137,12 @@ export function EmployeeDocumentsList(props: {
           onRetry={() => void query.refetch()}
         />
       ) : null}
+      {nothingAsked ? (
+        <p className="employee-documents-none">
+          Nothing has been asked of you here.
+        </p>
+      ) : null}
+      {nothingAsked ? null : <>
       <div className="catalog-toolbar">
         <div className="catalog-toolbar-status-row">
           <div className="catalog-status-tabs" aria-label="Document status">
