@@ -1268,7 +1268,7 @@ describe("App", () => {
     expect(
       screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
     ).toBe("/app/workspace");
-    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    expect(screen.queryByText("We couldn't load Schedule")).toBeNull();
     expect(screen.queryByText(/authz\./)).toBeNull();
     // BL-392: a refusal shows the card alone, no week navigation.
     expect(screen.queryByRole("button", { name: "Previous week" })).toBeNull();
@@ -5735,15 +5735,12 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByText("Schedule unavailable", {}, { timeout: 5000 }),
-    ).toBeTruthy();
-    expect(
-      screen.getByText("This week's schedule could not be loaded. Try again."),
+      await screen.findByRole("heading", { name: "We couldn't load Schedule" }, { timeout: 5000 }),
     ).toBeTruthy();
     expect(screen.queryByText(/invalid_type/)).toBeNull();
     expect(consoleError).toHaveBeenCalled();
 
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
 
     expect(
       await screen.findByRole(
@@ -5752,7 +5749,7 @@ describe("App", () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "We couldn't load Schedule" })).toBeNull();
     consoleError.mockRestore();
   });
 
@@ -5766,10 +5763,11 @@ describe("App", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }));
     fireEvent.click(await screen.findByRole("tab", { name: /^Templates/ }));
 
-    // The tab says it, with Retry, not "No templates yet" (S18).
-    const alert = await screen.findByRole("alert");
-    expect(alert.textContent).toContain("Templates could not be loaded.");
-    expect(within(alert).getByRole("button", { name: "Retry" })).toBeTruthy();
+    // The tab says it, with Try again, not "No templates yet" (S18).
+    const heading = await screen.findByRole("heading", { name: "We couldn't load templates" });
+    expect(
+      within(heading.closest("[role='alert']") as HTMLElement).getByRole("button", { name: "Try again" }),
+    ).toBeTruthy();
     expect(screen.queryByText(/No templates yet/)).toBeNull();
     expect(screen.queryByText(/invalid_type/)).toBeNull();
   });
@@ -5783,9 +5781,9 @@ describe("App", () => {
     render(<App />);
 
     expect(
-      await screen.findByText("Schedule unavailable", {}, { timeout: 5000 }),
+      await screen.findByRole("heading", { name: "We couldn't load Schedule" }, { timeout: 5000 }),
     ).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Next week" })).toBeTruthy();
     // The label comes from the address, not from the week that failed to load:
     // the week's first day, Monday while its settings are unread (BL-451); the
@@ -5807,7 +5805,7 @@ describe("App", () => {
         { timeout: 5000 },
       ),
     ).toBeTruthy();
-    expect(screen.queryByText("Schedule unavailable")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "We couldn't load Schedule" })).toBeNull();
     consoleError.mockRestore();
   });
 
@@ -5817,7 +5815,7 @@ describe("App", () => {
     window.history.pushState({}, "", "/app/schedule?date=2026-09-09");
     testAuth.role = "owner";
     render(<App />);
-    await screen.findByText("Schedule unavailable", {}, { timeout: 5000 });
+    await screen.findByRole("heading", { name: "We couldn't load Schedule" }, { timeout: 5000 });
 
     fireEvent.click(screen.getByRole("button", { name: "Week of Sep 7, 2026" }));
 
@@ -5827,7 +5825,7 @@ describe("App", () => {
     consoleError.mockRestore();
   });
 
-  it("says above the grid when a draft's shifts cannot load, and retries (BL-324)", async () => {
+  it("says in the grid's place when a draft's shifts cannot load, and retries (BL-324)", async () => {
     const weekStart = "2026-11-16";
     const draft = {
       id: "99999999-9999-4999-8999-999999999994",
@@ -5868,15 +5866,17 @@ describe("App", () => {
     testAuth.role = "owner";
     const { container } = render(<App />);
 
-    const row = await screen.findByText(
-      "This draft's shifts could not be loaded.",
-      {},
+    const heading = await screen.findByRole(
+      "heading",
+      { name: "We couldn't load this draft" },
       { timeout: 5000 },
     );
     expect(screen.queryByText(/does not exist/)).toBeNull();
+    // An unread draft is not an empty one: no grid until its shifts arrive.
+    expect(container.querySelector(".schedule-shift-badge")).toBeNull();
     fireEvent.click(
-      within(row.closest("[role='alert']") as HTMLElement).getByRole("button", {
-        name: "Retry",
+      within(heading.closest("[role='alert']") as HTMLElement).getByRole("button", {
+        name: "Try again",
       }),
     );
 
@@ -5886,9 +5886,143 @@ describe("App", () => {
       ).toContain("10:00 AM - 2:00 PM"),
     );
     expect(
-      screen.queryByText("This draft's shifts could not be loaded."),
+      screen.queryByRole("heading", { name: "We couldn't load this draft" }),
     ).toBeNull();
     consoleError.mockRestore();
+  }, 15_000);
+
+  it("keeps the last shifts with a refresh line when the week's read fails after an unpublish", async () => {
+    const weekStart = "2026-11-16";
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockImplementation(async () => {
+      if (vi.mocked(unpublishSchedule).mock.calls.length) {
+        throw new ScheduleRequestError('relation "x" does not exist', 500, {
+          error: 'relation "x" does not exist',
+        });
+      }
+      return scheduleFixtureForWeek(weekStart);
+    });
+    vi.mocked(previewScheduleUnpublish).mockResolvedValueOnce({
+      status: "unpublish_ready",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      locations: [
+        {
+          location_id: scheduleFixture.locations[0]!.id,
+          location_name: scheduleFixture.locations[0]!.name,
+          publication_id: "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab",
+          version: 1,
+          shift_count: 1,
+        },
+      ],
+      fingerprint: "e".repeat(64),
+    });
+    vi.mocked(unpublishSchedule).mockResolvedValueOnce({
+      status: "unpublished",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      location_ids: [scheduleFixture.locations[0]!.id],
+      publication_ids: ["aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaab"],
+      unpublished_at: "2026-08-17T12:05:00Z",
+    });
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole(
+        "button",
+        { name: "Draft selector: New Schedule" },
+        { timeout: 5000 },
+      ),
+    );
+    const shiftsBefore = container.querySelectorAll(".schedule-shift-badge").length;
+    expect(shiftsBefore).toBeGreaterThan(0);
+    fireEvent.click(screen.getByRole("button", { name: "Unpublish schedule" }));
+    const unpublishDialog = await screen.findByRole("dialog", {
+      name: "Unpublish schedule",
+    });
+    fireEvent.click(within(unpublishDialog).getByLabelText(/Main Dining/));
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", {
+        name: "Unpublish 1 location",
+      }),
+    );
+    fireEvent.click(
+      within(unpublishDialog).getByRole("button", {
+        name: "Confirm unpublish",
+      }),
+    );
+
+    expect(
+      await screen.findByText(
+        "This week's schedule didn't refresh. These are the last shifts that loaded.",
+        {},
+        { timeout: 5000 },
+      ),
+    ).toBeTruthy();
+    // The grid stays; the page never drops to the error card.
+    expect(screen.queryByRole("heading", { name: "We couldn't load Schedule" })).toBeNull();
+    expect(container.querySelectorAll(".schedule-shift-badge").length).toBe(shiftsBefore);
+    expect(screen.queryByText(/does not exist/)).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
+  it("shows the error card, not last week's shifts, when the next week cannot be read", async () => {
+    const consoleError = vi.spyOn(console, "error").mockImplementation(() => {});
+    vi.mocked(getScheduleReadModel).mockImplementation(async (_workspaceId, date) => {
+      if (date === "2026-09-16") throw new Error("boom");
+      return scheduleFixtureForWeek("2026-09-07");
+    });
+    window.history.pushState({}, "", "/app/schedule?date=2026-09-09");
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+    await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 });
+
+    fireEvent.click(screen.getByRole("button", { name: "Next week" }));
+
+    expect(
+      await screen.findByRole("heading", { name: "We couldn't load Schedule" }, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(container.querySelector(".schedule-shift-badge")).toBeNull();
+    expect(
+      screen.queryByText("This week's schedule didn't refresh. These are the last shifts that loaded."),
+    ).toBeNull();
+    consoleError.mockRestore();
+  }, 15_000);
+
+  it("shows the week in grey, not an empty draft, while a draft's shifts load", async () => {
+    const weekStart = "2026-11-16";
+    const draft = {
+      id: "99999999-9999-4999-8999-999999999995",
+      workspace_id: scheduleFixture.workspace_id,
+      week_start: weekStart,
+      name: "Plan D",
+      revision: 2,
+      created_by: "88888888-8888-4888-8888-888888888888",
+      updated_by: "88888888-8888-4888-8888-888888888888",
+      created_at: "2026-08-17T12:00:00Z",
+      updated_at: "2026-08-17T12:00:00Z",
+    };
+    vi.mocked(getScheduleReadModel).mockResolvedValue(
+      scheduleFixtureForWeek(weekStart),
+    );
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([draft]));
+    vi.mocked(fetchScheduleDraftShifts).mockImplementation(
+      () => new Promise(() => {}),
+    );
+    window.history.pushState(
+      {},
+      "",
+      `/app/schedule?date=${weekStart}&draft=${draft.id}`,
+    );
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    expect(
+      await screen.findByText("Loading Schedule", {}, { timeout: 5000 }),
+    ).toBeTruthy();
+    expect(container.querySelector(".schedule-shift-badge")).toBeNull();
   }, 15_000);
 
   it("keeps a failed drafts refresh on menu open in the console, not as an unhandled rejection", async () => {
