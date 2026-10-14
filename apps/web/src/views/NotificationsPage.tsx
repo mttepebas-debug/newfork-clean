@@ -137,7 +137,6 @@ export function NotificationsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="notifications"
         homeHref={noAccessHomePath(context, "/app/notifications")}
       />
     );

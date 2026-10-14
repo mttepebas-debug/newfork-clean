@@ -106,7 +106,6 @@ export default function RolesSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="roles"
         homeHref={noAccessHomePath(context, "/app/settings/roles")}
       />
     );

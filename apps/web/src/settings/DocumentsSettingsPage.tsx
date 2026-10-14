@@ -229,7 +229,6 @@ export default function DocumentsSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="document settings"
         homeHref={noAccessHomePath(context, "/app/settings/documents")}
       />
     );

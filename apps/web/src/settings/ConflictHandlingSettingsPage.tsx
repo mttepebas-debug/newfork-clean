@@ -135,7 +135,6 @@ export default function ConflictHandlingSettingsPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="conflict rules"
         homeHref={noAccessHomePath(context, "/app/settings/scheduling/conflicts")}
       />
     );

@@ -1,12 +1,12 @@
 import type { ReactNode } from "react";
-import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { appLandingPath } from "../auth/resolveLanding";
+import { NoAccessRoute } from "../shell/NoAccessState";
 import { canOpenSettingsPage, type SettingsPage } from "./settings-access";
 
 /**
  * A Settings page, opened by the same gate as its link in the Settings rail
- * (settings-access.ts). Somebody it does not open lands where they belong.
+ * (settings-access.ts). Somebody it does not open sees the no-access card in
+ * its place (Mert 2026-10-14: "kart çıksın").
  */
 export function SettingsPageRoute({
   children,
@@ -16,7 +16,6 @@ export function SettingsPageRoute({
   readonly page: SettingsPage;
 }) {
   const { context } = useAuth();
-  if (!canOpenSettingsPage(context, page))
-    return <Navigate to={appLandingPath(context)} replace />;
+  if (!canOpenSettingsPage(context, page)) return <NoAccessRoute />;
   return children;
 }

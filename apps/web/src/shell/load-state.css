@@ -80,27 +80,59 @@
   border-top: 1px solid var(--theme-border-subtle);
 }
 
+/* The full card has NoAccessState's box, look "C" (Mert 2026-10-14): narrow,
+   centered, the same on every screen. */
 .load-error {
   display: flex;
-  min-height: 240px;
+  width: 100%;
+  max-width: 440px;
+  box-sizing: border-box;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 14px;
-  border: 1px solid var(--theme-list-frame, var(--theme-border));
-  border-radius: 8px;
-  padding: 32px 20px;
+  gap: 16px;
+  margin: 56px auto;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  padding: 36px 32px 28px;
   background: var(--theme-surface);
+  box-shadow: 0 1px 2px rgb(23 34 30 / 6%), 0 8px 24px rgb(23 34 30 / 6%);
   color: var(--theme-muted);
   text-align: center;
 }
 
+.load-error:not(.inset) .load-error-icon {
+  width: 56px;
+  height: 56px;
+}
+
+.load-error:not(.inset) .load-error-copy :is(h2, h3, h4) {
+  font-size: 19px;
+  text-wrap: balance;
+}
+
+.load-error:not(.inset) .load-error-retry {
+  align-self: stretch;
+  justify-content: center;
+  min-height: 40px;
+}
+
+@media (max-width: 720px) {
+  .load-error:not(.inset) {
+    width: auto;
+    margin: 24px 12px;
+    padding: 28px 20px 20px;
+  }
+}
+
 .load-error.inset {
-  min-height: 0;
+  max-width: none;
+  margin: 0;
   border: 0;
   border-radius: 0;
   padding: 28px 16px;
   background: transparent;
+  box-shadow: none;
 }
 
 .load-error-icon {

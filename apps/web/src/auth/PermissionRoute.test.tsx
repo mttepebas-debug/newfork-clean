@@ -75,13 +75,18 @@ describe("PermissionRoute", () => {
     currentContext = baseContext;
   });
 
-  it("redirects an employee away from a management direct URL", () => {
+  it("shows an employee the no-access card at a management direct URL", () => {
     renderGuard();
 
-    expect(screen.getByRole("heading", { name: "Employee Hub" })).toBeTruthy();
-    expect(screen.getByLabelText("Current path").textContent).toBe(
-      "/app/employee-hub",
-    );
+    // The card in place, not a silent trip home (Mert 2026-10-14).
+    expect(
+      screen.getByRole("heading", { name: "You don't have access to Employees" }),
+    ).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Employees" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Employee Hub" })).toBeNull();
+    expect(
+      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+    ).toBe("/app/employee-hub");
   });
 
   it("allows manager-class routes when role and permission match", () => {

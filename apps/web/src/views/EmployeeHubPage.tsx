@@ -111,7 +111,6 @@ export function EmployeeHubPage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="Employee Hub"
         homeHref={noAccessHomePath(context, "/app/employee-hub")}
       />
     );

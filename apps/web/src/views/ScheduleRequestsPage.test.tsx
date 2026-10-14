@@ -212,7 +212,10 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("preserves team access control for an employee following an old availability link", async () => {
     activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"] };
     renderPage("/app/schedule/requests?tab=availability");
-    await screen.findByRole("heading", { name: "Employee Hub" });
+    // The old link opens team Availability, which shows the card in place,
+    // not a silent trip home (Mert 2026-10-14).
+    await screen.findByRole("heading", { name: "You don't have access to Availability" });
+    expect(screen.getByRole("link", { name: "Back to Home" }).getAttribute("href")).toBe("/app/employee-hub");
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // KARARLAR Schedule → Requests, Ek 2026-10-07: the tabs are request types,
@@ -642,10 +645,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   // EKRAN-02 B1: the page's door asks the core, like its tabs do.
-  it("sends away someone whose role names a request permission the core does not grant here", async () => {
+  // The card in place, not a silent trip home (Mert 2026-10-14).
+  it("shows the no-access card to someone whose role names a request permission the core does not grant here", async () => {
     activeContext = { ...context, actions: context.actions.filter(action => action !== "requests.read" && action !== "exchange.read") };
     renderPage();
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Requests" })).toBeTruthy();
+    expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
     expect(fetchRequests).not.toHaveBeenCalled();
   });
   it("hides the time off queue from someone the core does not let read it", async () => {
@@ -1029,7 +1034,7 @@ describe("no access (FB-6.1.9)", () => {
   it("shows the no-access card, not the raw error, when the API refuses requests (FB-6.1.9)", async () => {
     readFailure = { status: 403, body: { error: "Forbidden", reason: "authz.missing_permission" } };
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to requests" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Requests" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });

@@ -1958,7 +1958,6 @@ export function SchedulePage({
   if (query.isError && (!query.data || isNoAccess(query.error)))
     return isNoAccess(query.error) ? (
       <NoAccessState
-        subject="this schedule"
         homeHref={noAccessHomePath(context, scheduleBasePath)}
       />
     ) : (

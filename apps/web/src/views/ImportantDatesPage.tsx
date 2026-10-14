@@ -57,7 +57,7 @@ export function ImportantDatesPage() {
     if (announcementId) navigate(base, { replace: true, preventScrollReset: true });
   };
   if (isNoAccess(dates.error))
-    return <NoAccessState subject="important dates" homeHref={noAccessHomePath(context, base)} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, base)} />;
   const timeFormat = dates.data?.time_format ?? "12h";
   const needle = search.trim().toLowerCase();
   const rows = (dates.data?.dates ?? [])

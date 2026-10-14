@@ -121,14 +121,9 @@ export function LineupPage() {
     />
   );
 
-  if (query.error && isNoAccess(query.error)) {
-    return (
-      <section className="lineup-page list-page" aria-labelledby="lineup-title">
-        {header}
-        <NoAccessState subject="the lineup" homeHref={noAccessHomePath(context, "/app/schedule/lineup")} />
-      </section>
-    );
-  }
+  // No access: the card alone, nothing of the page around it (Mert 2026-10-14).
+  if (query.error && isNoAccess(query.error))
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/schedule/lineup")} />;
 
   const timeFormat = model?.settings.time_format ?? "12h";
   const week = model ? lineupWeek(model.week_start) : [];

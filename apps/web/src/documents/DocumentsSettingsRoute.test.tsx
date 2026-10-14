@@ -83,13 +83,26 @@ it("supports old employee-only settings bookmarks without granting definition ac
   mount("/app/settings/documents");
   expect(await screen.findByText("Employee documents")).toBeTruthy();
 });
+// A refused address shows the no-access card in place, never a silent trip
+// elsewhere (Mert 2026-10-14).
+async function expectRefused() {
+  expect(
+    await screen.findByRole("heading", { name: "You don't have access to Documents" }),
+  ).toBeTruthy();
+  expect(
+    screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
+  ).toBe("/app/workspace");
+  expect(screen.queryByText("Workspace fallback")).toBeNull();
+  expect(screen.queryByText("Definitions page")).toBeNull();
+  expect(screen.queryByText(/Employee documents/)).toBeNull();
+}
 it("denies the employee route when the core does not open documents.read", async () => {
   mount("/app/employees/documents");
-  expect(await screen.findByText("Workspace fallback")).toBeTruthy();
+  await expectRefused();
 });
 it("does not turn a legacy employee deep link into definition permission", async () => {
   mount("/app/settings/documents?requirement=abc");
-  expect(await screen.findByText("Workspace fallback")).toBeTruthy();
+  await expectRefused();
 });
 it("does not open definitions to somebody the core holds back, whatever their role grants", async () => {
   // An admin whose required document is overdue: the role still lists the
@@ -97,5 +110,5 @@ it("does not open definitions to somebody the core holds back, whatever their ro
   auth.permissions = ["workspace.read", "documents.read", "employee_documents.read"];
   auth.actions = ["workspace.read"];
   mount("/app/settings/documents");
-  expect(await screen.findByText("Workspace fallback")).toBeTruthy();
+  await expectRefused();
 });

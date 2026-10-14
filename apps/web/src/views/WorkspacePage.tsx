@@ -109,7 +109,6 @@ export function WorkspacePage() {
   if (isNoAccess(query.error))
     return (
       <NoAccessState
-        subject="this workspace"
         homeHref={noAccessHomePath(context, "/app/workspace")}
       />
     );

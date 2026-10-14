@@ -277,7 +277,6 @@ export default function EmployeesPage() {
   if (isNoAccess(employees.error))
     return (
       <NoAccessState
-        subject="employees"
         homeHref={noAccessHomePath(context, "/app/employees")}
       />
     );

@@ -206,22 +206,14 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     reorderMutation.mutate(ids);
   };
 
-  // The API's "no" gets the one no-access card, never its raw sentence.
-  // The card takes the catalog's place, not the page's: the title and the
-  // Shift types | Shift labels switch stay, so the other tab is still reachable.
+  // The API's "no" gets the one no-access card, never its raw sentence, and
+  // the card alone: no title, no tabs (Mert 2026-10-14). Both tabs open by the
+  // same Settings gate, so a "no" here is a "no" there too.
   if (isNoAccess(query.error))
     return (
-      <section
-        className="settings-page jobs-settings-page shift-catalog-settings-page list-page"
-        aria-labelledby="shift-types-settings-title"
-      >
-        <ShiftCatalogHeader titleId="shift-types-settings-title" />
-        <ShiftCatalogToolbar />
-        <NoAccessState
-          subject="shift types"
-          homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
-        />
-      </section>
+      <NoAccessState
+        homeHref={noAccessHomePath(context, "/app/settings/scheduling/shift-types")}
+      />
     );
   return (
     <section

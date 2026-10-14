@@ -41,8 +41,8 @@ import {
 } from "../schedule/requests-list";
 
 import { ListOutline, LoadError } from "../shell/LoadState";
-import { NoAccessState } from "../shell/NoAccessState";
-import { appLandingPath, noAccessHomePath } from "../auth/resolveLanding";
+import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
+import { noAccessHomePath } from "../auth/resolveLanding";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -52,8 +52,9 @@ export function ScheduleRequestsPage() {
     return <Navigate to="/app/availability" replace />;
   }
   // EKRAN-02 B1: the door asks the core, like the tabs do.
+  // Neither type opens: the no-access card in place (Mert 2026-10-14).
   if (!can(context, "requests.read") && !can(context, "exchange.read"))
-    return <Navigate to={appLandingPath(context)} replace />;
+    return <NoAccessRoute />;
   return (
       <AvailabilityDraftScope
         labels={{
@@ -325,7 +326,6 @@ function ScheduleRequestsPageContent() {
   if (data.failure === "no_access")
     return (
       <NoAccessState
-        subject="requests"
         homeHref={noAccessHomePath(context, "/app/schedule/requests")}
       />
     );

@@ -477,7 +477,7 @@ export default function JobsSettingsPage() {
 
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(data.error))
-    return <NoAccessState subject="positions" homeHref={noAccessHomePath(context, "/app/settings/jobs")} />;
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/settings/jobs")} />;
 
   const addButton =
     canEdit && tab !== "archived" ? (

@@ -2,18 +2,23 @@
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter } from "react-router";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { RequestError } from "../lib/request-error";
 import { listDocuments } from "./document-data";
 import { EmployeeDocumentsList } from "./EmployeeDocumentsList";
+import EmployeeDocumentsPage from "./EmployeeDocumentsPage";
 
-vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: null }) }));
+const auth = vi.hoisted(() => ({ context: null as unknown }));
+vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context: auth.context }) }));
 vi.mock("./document-data", async (importOriginal) => ({
   ...(await importOriginal<typeof import("./document-data")>()),
   listDocuments: vi.fn(),
 }));
 
 describe("no access (FB-6.1.9)", () => {
+  afterEach(() => {
+    auth.context = null;
+  });
   it("shows the no-access card, not the raw error, when the API refuses these documents (FB-6.1.9)", async () => {
     vi.mocked(listDocuments).mockRejectedValue(
       new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
@@ -32,6 +37,32 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to these documents" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" }).getAttribute("href")).toBe("/workspaces");
     expect(screen.queryByText("Forbidden")).toBeNull();
+    // The card alone: no status tabs, filters or empty table (Mert 2026-10-14).
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
+    expect(screen.queryByRole("combobox")).toBeNull();
+    expect(screen.queryByRole("table")).toBeNull();
+  });
+
+  it("drops the Employees → Documents page title too, and names the page", async () => {
+    vi.mocked(listDocuments).mockRejectedValue(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    auth.context = {
+      userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
+      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "Meyhouse" },
+      membership: { role: "manager" },
+      actions: ["workspace.read"],
+    };
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/app/employees/documents"]}>
+          <EmployeeDocumentsPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    expect(await screen.findByRole("heading", { name: "You don't have access to Documents" })).toBeTruthy();
+    expect(screen.getAllByRole("heading")).toHaveLength(1);
+    expect(screen.queryAllByRole("button")).toHaveLength(0);
   });
 });
 

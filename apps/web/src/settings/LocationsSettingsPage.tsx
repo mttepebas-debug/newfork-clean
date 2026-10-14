@@ -217,7 +217,6 @@ export default function LocationsSettingsPage() {
   if (isNoAccess(locations.error))
     return (
       <NoAccessState
-        subject="locations"
         homeHref={noAccessHomePath(context, "/app/settings/locations")}
       />
     );
