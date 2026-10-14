@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -164,7 +165,7 @@ describe("WorkspacePage setup checklist", () => {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false }, mutations: { retry: false } },
     });
-    return render(
+    const view = render(
       <QueryClientProvider client={client}>
         <MemoryRouter initialEntries={["/app/workspace"]}>
           <Routes>
@@ -174,6 +175,7 @@ describe("WorkspacePage setup checklist", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
+    return { ...view, client };
   }
 
   // BL-804: at the locations' midnight the counts move to the new day on
@@ -286,9 +288,40 @@ describe("WorkspacePage setup checklist", () => {
   it("words a failed page read for the person", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new TypeError("Failed to fetch"));
     renderPage();
+    const card = await screen.findByRole("alert");
+    expect(within(card).getByRole("heading", { name: "We couldn't load Workspace" })).toBeTruthy();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
+  });
+
+  // Loading and error in the "B" look (Mert 2026-10-14).
+  it("outlines the cards while Workspace loads, then loads again from Try again", async () => {
+    vi.mocked(getWorkspaceDashboard).mockReturnValueOnce(new Promise(() => {}) as never);
+    const { unmount } = renderPage();
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Workspace")).toBe(true);
+    expect(screen.queryByText("Loading Workspace...")).toBeNull();
+    unmount();
+
+    vi.mocked(getWorkspaceDashboard).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    renderPage();
+    const card = await screen.findByRole("alert");
+    fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
+    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load Workspace" })).toBeNull();
+  });
+
+  it("keeps the last cards and says so when a refresh fails", async () => {
+    const { client } = renderPage();
+    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    const cards = document.querySelectorAll(".workspace-widget").length;
+    expect(cards).toBeGreaterThan(0);
+    vi.mocked(getWorkspaceDashboard).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["workspace-dashboard"] });
+    });
     expect(
-      await screen.findByText("Newfork could not finish that. Try again in a moment."),
+      await screen.findByText("Workspace didn't refresh. These are the last numbers that loaded."),
     ).toBeTruthy();
+    expect(document.querySelectorAll(".workspace-widget").length).toBe(cards);
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
   it("words a failed layout save for the person", async () => {
@@ -306,10 +339,12 @@ describe("WorkspacePage setup checklist", () => {
   it("says the checklist could not be loaded when its read fails", async () => {
     vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValue(new TypeError("Failed to fetch"));
     renderPage();
-    expect(
-      await screen.findByText("Setup checklist progress could not be loaded."),
-    ).toBeTruthy();
+    const card = await screen.findByRole("heading", { name: "We couldn't load the setup checklist" });
+    expect(card.tagName).toBe("H3");
     expect(screen.queryByText("Setup checklist progress could not be saved.")).toBeNull();
+    // Unknown is not zero: no "0 of N" and no list of unvisited steps.
+    expect(screen.queryByText(/required visits complete/)).toBeNull();
+    expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 
   // BL-278 (7): a failed check must not show zero shift changes waiting.
@@ -329,6 +364,22 @@ describe("WorkspacePage setup checklist", () => {
     renderPage();
     await screen.findByText("Shift changes");
     expect(vi.mocked(getExchanges)).not.toHaveBeenCalled();
+  });
+
+  it("keeps the last checklist visits and says so when a refresh fails", async () => {
+    const { client } = renderPage();
+    const checklist = await screen.findByRole("region", { name: "Setup checklist" });
+    const items = checklist.querySelectorAll(".owner-setup-checklist-item").length;
+    expect(items).toBeGreaterThan(0);
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(new TypeError("Failed to fetch"));
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["owner-setup-checklist"] });
+    });
+    expect(
+      await screen.findByText("The setup checklist didn't refresh. These are the last visits that loaded."),
+    ).toBeTruthy();
+    expect(checklist.querySelectorAll(".owner-setup-checklist-item").length).toBe(items);
+    expect(within(checklist).getByText(/required visits complete/)).toBeTruthy();
   });
 
   it("shows a visit-based setup checklist to owner roles", async () => {
