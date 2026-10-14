@@ -1,11 +1,12 @@
 import { vi } from "vitest";
 
-/** Tests only: makes `window.matchMedia` answer like a phone-wide (390 px)
- * window. Undo with `vi.unstubAllGlobals()`. */
+/** Tests only: makes `window.matchMedia` answer that the list pages' phone
+ * layout (720 px and below) is on; other queries stay off. Undo with
+ * `vi.unstubAllGlobals()`. */
 export function stubPhoneWidth(): void {
   vi.stubGlobal("matchMedia", (media: string) => ({
     media,
-    matches: /max-width:\s*(720|767)px/.test(media),
+    matches: media === "(max-width: 720px)",
     addEventListener: () => undefined,
     removeEventListener: () => undefined,
   }));

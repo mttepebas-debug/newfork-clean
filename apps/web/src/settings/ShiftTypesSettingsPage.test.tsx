@@ -293,6 +293,7 @@ describe("shift type default review", () => {
 
 // Shift catalog, design A (Mert 2026-10-12): the shared list language.
 describe("shift catalog list", () => {
+  afterEach(() => vi.unstubAllGlobals());
   function renderList() {
     const client = new QueryClient({
       defaultOptions: { queries: { retry: false } },
@@ -362,7 +363,6 @@ describe("shift catalog list", () => {
     expect(
       container.querySelector(".catalog-toolbar-filter-row .list-add-button"),
     ).toBeNull();
-    vi.unstubAllGlobals();
   });
 
   it("closes the list with archived types, marked Archived and restorable", async () => {
