@@ -39,7 +39,7 @@ export function LoadingOutline({
   readonly children: ReactNode;
 }) {
   return (
-    <div className={className ? `nf-loading ${className}` : "nf-loading"} role="status" aria-busy="true">
+    <div className={className ? `nf-loading ${className}` : "nf-loading"} role="status">
       <span className="sr-only">{label}</span>
       <div aria-hidden>{children}</div>
     </div>

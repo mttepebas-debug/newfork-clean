@@ -6,14 +6,15 @@ import { ListOutline, LoadError, LoadingOutline, Skeleton } from "./LoadState";
 // Loading and error, one look everywhere (Mert 2026-10-14, "B").
 
 describe("LoadingOutline", () => {
-  it("is one busy status that reads its label and hides the grey bars", () => {
+  it("is one status that reads its label and hides the grey bars", () => {
     render(
       <LoadingOutline label="Loading lineups">
         <Skeleton width={120} height={14} />
       </LoadingOutline>,
     );
     const status = screen.getByRole("status");
-    expect(status.getAttribute("aria-busy")).toBe("true");
+    // aria-busy would make some screen readers skip the label.
+    expect(status.hasAttribute("aria-busy")).toBe(false);
     expect(status.textContent).toBe("Loading lineups");
     const bar = status.querySelector(".nf-skeleton") as HTMLElement;
     expect(bar.closest("[aria-hidden]")).toBeTruthy();
