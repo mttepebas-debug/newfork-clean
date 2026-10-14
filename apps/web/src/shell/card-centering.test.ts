@@ -75,11 +75,19 @@ describe("full load-error card placement", () => {
 
   it("covers the Shift catalog and Account frames and drops their scrollbar stripe", () => {
     const frames = selectorOf(css, "flex: 1 0 auto");
-    expect(frames).toContain(".shift-catalog-shell > .shift-catalog-panel:has(> * > .load-error:not(.inset))");
-    expect(frames).toContain(".account-content-scroll > .account-main:has(> * > .load-error:not(.inset))");
+    expect(frames).toContain(".shift-catalog-shell > .shift-catalog-panel:has(> * > .load-error:not(.inset):last-child)");
+    expect(frames).toContain(".account-content-scroll > .account-main:has(> * > .load-error:not(.inset):last-child)");
+    // A list under the card keeps the area's bottom space.
+    expect(selectorOf(css, "padding-bottom: 0")).not.toMatch(/\.load-error:not\(\.inset\)\)/);
     const gutter = selectorOf(css, "scrollbar-gutter: auto");
     expect(gutter).toContain(".shift-catalog-panel > * > .load-error:not(.inset)");
     expect(gutter).toContain(".account-content-scroll:has(> .account-main > * > .load-error:not(.inset))");
+  });
+
+  it("widens Account's column for the card but keeps its header and tabs at the column's width", () => {
+    const column = ".account-content-scroll > .account-main:has(> * > .load-error:not(.inset):last-child)";
+    expect(body(css, column)).toMatch(/max-width: none/);
+    expect(body(css, `${column} > * > :not(.load-error)`)).toMatch(/max-width: 720px/);
   });
 
   it("leaves a card inside a list, drawer or panel where it is", () => {

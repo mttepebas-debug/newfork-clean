@@ -534,160 +534,164 @@ export default function WorkspacesPage() {
           onRetry={() => void workspacesQuery.refetch()}
         />
       ) : null}
-      {/* The kit rows are list items, so the container says it is their list. */}
-      <div className="workspace-list" role="list" aria-label="Workspaces">
-        {invitations.map(invitation => (
-          <InvitationRow key={invitation.id} invitation={invitation} />
-        ))}
-        {workspacesQuery.data && orderedWorkspaces.length === 0 ? (
-          <div className="workspace-row empty-workspace-row" role="listitem">
-            <div>
-              <strong>No workspaces yet</strong>
-              <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
-              {canCreate ? <Button type="button" disabled={setup.busy} onClick={startSetup}>Create workspace</Button> : null}
+      {/* The kit rows are list items, so the container says it is their list.
+          With nothing to list under a failed load, the card stays last on the
+          page and sits in its middle. */}
+      {workspacesQuery.error && !workspacesQuery.data && invitations.length === 0 ? null : (
+        <div className="workspace-list" role="list" aria-label="Workspaces">
+          {invitations.map(invitation => (
+            <InvitationRow key={invitation.id} invitation={invitation} />
+          ))}
+          {workspacesQuery.data && orderedWorkspaces.length === 0 ? (
+            <div className="workspace-row empty-workspace-row" role="listitem">
+              <div>
+                <strong>No workspaces yet</strong>
+                <span>{invitations.length > 0 ? "Respond to your invitation to continue." : "Create your first workspace to continue."}</span>
+                {canCreate ? <Button type="button" disabled={setup.busy} onClick={startSetup}>Create workspace</Button> : null}
+              </div>
             </div>
-          </div>
-        ) : null}
-        {orderedWorkspaces.map((workspace) => {
-          const activating = activatingWorkspaceId === workspace.id;
-          const lifecycleStatus = workspace.lifecycleStatus ?? "active";
-          const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
-          const isCurrent = workspace.id === currentWorkspaceId;
-          const onboarding = workspace.status === "pending";
-          // An employer draft is active but not set up: its owner continues it, it
-          // is not opened. Another member can only open it and wait, as before.
-          const draft = unfinishedSetup(workspace);
-          const hasOwnerActions = workspace.role === "owner" && (
-            (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
-            pendingTransfer?.role === "initiator"
-          );
-          const actionsOpen = openActionsWorkspaceId === workspace.id;
-          return (
-            <BusinessRow
-              key={workspace.id}
-              name={workspace.name}
-              role={roleLabel[workspace.role]}
-              current={isCurrent}
-              badge={
-                <>
-                  {onboarding ? <StatusBadge tone="progress">Onboarding in progress</StatusBadge> : null}
-                  {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
-                  {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
-                  {lifecycleStatus === "closure_scheduled"
-                    ? <StatusBadge>{workspace.closureEffectiveAt
-                        ? `Scheduled closure · ${formatDate(workspace.closureEffectiveAt, "")}`
-                        : "Closes on its scheduled date"}</StatusBadge>
-                    : null}
-                  {pendingTransfer
-                    ? <StatusBadge tone="progress">Ownership transfer {pendingTransfer.role === "target" ? "needs response" : "pending"}</StatusBadge>
-                    : null}
-                </>
-              }
-            >
-                {onboarding ? (
-                  <Button
-                    className="pb-btn pb-btn-primary"
-                    type="button"
-                    aria-label={`Continue onboarding for ${workspace.name}`}
-                    onClick={() => navigate(`/welcome/${workspace.id}`)}
-                  >
-                    Continue
-                  </Button>
-                ) : (
-                  <Button
-                    className="pb-btn pb-btn-primary"
-                    type="button"
-                    aria-label={draft ? `Continue setup for ${workspace.name}` : `Open ${workspace.name}`}
-                    disabled={activating}
-                    onClick={() => activate(workspace)}
-                  >
-                    {activating ? "Opening" : draft ? "Continue" : "Open"}
-                  </Button>
-                )}
-                <div className="workspace-actions-menu" ref={actionsOpen ? actionsMenuRef : undefined}>
-                    <button
-                      ref={(element) => {
-                        if (element) actionTriggerRefs.current.set(workspace.id, element);
-                        else actionTriggerRefs.current.delete(workspace.id);
-                      }}
+          ) : null}
+          {orderedWorkspaces.map((workspace) => {
+            const activating = activatingWorkspaceId === workspace.id;
+            const lifecycleStatus = workspace.lifecycleStatus ?? "active";
+            const pendingTransfer = workspace.pendingOwnershipTransfer ?? null;
+            const isCurrent = workspace.id === currentWorkspaceId;
+            const onboarding = workspace.status === "pending";
+            // An employer draft is active but not set up: its owner continues it, it
+            // is not opened. Another member can only open it and wait, as before.
+            const draft = unfinishedSetup(workspace);
+            const hasOwnerActions = workspace.role === "owner" && (
+              (!pendingTransfer && (lifecycleStatus === "active" || lifecycleStatus === "closure_scheduled")) ||
+              pendingTransfer?.role === "initiator"
+            );
+            const actionsOpen = openActionsWorkspaceId === workspace.id;
+            return (
+              <BusinessRow
+                key={workspace.id}
+                name={workspace.name}
+                role={roleLabel[workspace.role]}
+                current={isCurrent}
+                badge={
+                  <>
+                    {onboarding ? <StatusBadge tone="progress">Onboarding in progress</StatusBadge> : null}
+                    {draft ? <StatusBadge tone="progress">Setup in progress</StatusBadge> : null}
+                    {workspace.isActive ? <StatusBadge>Default</StatusBadge> : null}
+                    {lifecycleStatus === "closure_scheduled"
+                      ? <StatusBadge>{workspace.closureEffectiveAt
+                          ? `Scheduled closure · ${formatDate(workspace.closureEffectiveAt, "")}`
+                          : "Closes on its scheduled date"}</StatusBadge>
+                      : null}
+                    {pendingTransfer
+                      ? <StatusBadge tone="progress">Ownership transfer {pendingTransfer.role === "target" ? "needs response" : "pending"}</StatusBadge>
+                      : null}
+                  </>
+                }
+              >
+                  {onboarding ? (
+                    <Button
+                      className="pb-btn pb-btn-primary"
                       type="button"
-                      className="workspace-actions-trigger"
-                      aria-label={`Actions for ${workspace.name}`}
-                      aria-haspopup="menu"
-                      aria-expanded={actionsOpen}
-                      onClick={() => setOpenActionsWorkspaceId(current => current === workspace.id ? null : workspace.id)}
-                      onKeyDown={(event) => {
-                        if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
-                        event.preventDefault();
-                        setOpenActionsWorkspaceId(workspace.id);
-                        const key = event.key === "ArrowDown" ? "Home" : "End";
-                        window.requestAnimationFrame(() => moveMenuFocus(key));
-                      }}
+                      aria-label={`Continue onboarding for ${workspace.name}`}
+                      onClick={() => navigate(`/welcome/${workspace.id}`)}
                     >
-                      <Ellipsis size={18} aria-hidden />
-                    </button>
-                    {actionsOpen ? (
-                      <div
-                        className="workspace-actions-popover"
-                        role="menu"
+                      Continue
+                    </Button>
+                  ) : (
+                    <Button
+                      className="pb-btn pb-btn-primary"
+                      type="button"
+                      aria-label={draft ? `Continue setup for ${workspace.name}` : `Open ${workspace.name}`}
+                      disabled={activating}
+                      onClick={() => activate(workspace)}
+                    >
+                      {activating ? "Opening" : draft ? "Continue" : "Open"}
+                    </Button>
+                  )}
+                  <div className="workspace-actions-menu" ref={actionsOpen ? actionsMenuRef : undefined}>
+                      <button
+                        ref={(element) => {
+                          if (element) actionTriggerRefs.current.set(workspace.id, element);
+                          else actionTriggerRefs.current.delete(workspace.id);
+                        }}
+                        type="button"
+                        className="workspace-actions-trigger"
                         aria-label={`Actions for ${workspace.name}`}
-                        onKeyDown={(event) => { if (moveMenuFocus(event.key)) event.preventDefault(); }}
+                        aria-haspopup="menu"
+                        aria-expanded={actionsOpen}
+                        onClick={() => setOpenActionsWorkspaceId(current => current === workspace.id ? null : workspace.id)}
+                        onKeyDown={(event) => {
+                          if (event.key !== "ArrowDown" && event.key !== "ArrowUp") return;
+                          event.preventDefault();
+                          setOpenActionsWorkspaceId(workspace.id);
+                          const key = event.key === "ArrowDown" ? "Home" : "End";
+                          window.requestAnimationFrame(() => moveMenuFocus(key));
+                        }}
                       >
-                        <button
-                          role="menuitem"
-                          type="button"
-                          disabled={workspace.isActive || onboarding || defaultingWorkspaceId === workspace.id}
-                          onClick={() => {
-                            closeActionsMenu(workspace.id);
-                            void makeDefault(workspace);
-                          }}
+                        <Ellipsis size={18} aria-hidden />
+                      </button>
+                      {actionsOpen ? (
+                        <div
+                          className="workspace-actions-popover"
+                          role="menu"
+                          aria-label={`Actions for ${workspace.name}`}
+                          onKeyDown={(event) => { if (moveMenuFocus(event.key)) event.preventDefault(); }}
                         >
-                          {workspace.isActive ? <Check size={15} aria-hidden /> : <Star size={15} aria-hidden />}
-                          {workspace.isActive
-                            ? "Default workspace"
-                            : defaultingWorkspaceId === workspace.id
-                              ? "Setting default"
-                              : "Set as default"}
-                        </button>
-                        {hasOwnerActions ? <div className="workspace-actions-separator" role="separator" /> : null}
-                        {lifecycleStatus === "active" && !pendingTransfer ? (
-                          hasOwnerActions ? (
-                          <>
-                            <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
-                              onClick={() => { closeActionsMenu(workspace.id); beginTransfer(workspace); }}>
-                              <Crown size={15} aria-hidden /> Transfer ownership
-                            </button>
+                          <button
+                            role="menuitem"
+                            type="button"
+                            disabled={workspace.isActive || onboarding || defaultingWorkspaceId === workspace.id}
+                            onClick={() => {
+                              closeActionsMenu(workspace.id);
+                              void makeDefault(workspace);
+                            }}
+                          >
+                            {workspace.isActive ? <Check size={15} aria-hidden /> : <Star size={15} aria-hidden />}
+                            {workspace.isActive
+                              ? "Default workspace"
+                              : defaultingWorkspaceId === workspace.id
+                                ? "Setting default"
+                                : "Set as default"}
+                          </button>
+                          {hasOwnerActions ? <div className="workspace-actions-separator" role="separator" /> : null}
+                          {lifecycleStatus === "active" && !pendingTransfer ? (
+                            hasOwnerActions ? (
+                            <>
+                              <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
+                                onClick={() => { closeActionsMenu(workspace.id); beginTransfer(workspace); }}>
+                                <Crown size={15} aria-hidden /> Transfer ownership
+                              </button>
+                              <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
+                                onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "scheduled_end_period"); }}>
+                                <CalendarClock size={15} aria-hidden /> Schedule closure
+                              </button>
+                              <div className="workspace-actions-separator" role="separator" />
+                              <button role="menuitem" type="button" className="workspace-actions-danger" disabled={closingWorkspaceId === workspace.id}
+                                onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "immediate"); }}>
+                                <Trash2 size={15} aria-hidden /> Close immediately
+                              </button>
+                            </>
+                            ) : null
+                          ) : null}
+                          {hasOwnerActions && lifecycleStatus === "closure_scheduled" && !pendingTransfer ? (
                             <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
-                              onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "scheduled_end_period"); }}>
-                              <CalendarClock size={15} aria-hidden /> Schedule closure
+                              onClick={() => { closeActionsMenu(workspace.id); void cancelClosure(workspace); }}>
+                              <X size={15} aria-hidden /> Cancel closure
                             </button>
-                            <div className="workspace-actions-separator" role="separator" />
-                            <button role="menuitem" type="button" className="workspace-actions-danger" disabled={closingWorkspaceId === workspace.id}
-                              onClick={() => { closeActionsMenu(workspace.id); beginClosure(workspace, "immediate"); }}>
-                              <Trash2 size={15} aria-hidden /> Close immediately
+                          ) : null}
+                          {hasOwnerActions && pendingTransfer?.role === "initiator" ? (
+                            <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
+                              onClick={() => { closeActionsMenu(workspace.id); void cancelTransfer(workspace); }}>
+                              <X size={15} aria-hidden /> Cancel transfer
                             </button>
-                          </>
-                          ) : null
-                        ) : null}
-                        {hasOwnerActions && lifecycleStatus === "closure_scheduled" && !pendingTransfer ? (
-                          <button role="menuitem" type="button" disabled={closingWorkspaceId === workspace.id}
-                            onClick={() => { closeActionsMenu(workspace.id); void cancelClosure(workspace); }}>
-                            <X size={15} aria-hidden /> Cancel closure
-                          </button>
-                        ) : null}
-                        {hasOwnerActions && pendingTransfer?.role === "initiator" ? (
-                          <button role="menuitem" type="button" disabled={transferringWorkspaceId === workspace.id}
-                            onClick={() => { closeActionsMenu(workspace.id); void cancelTransfer(workspace); }}>
-                            <X size={15} aria-hidden /> Cancel transfer
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-            </BusinessRow>
-          );
-        })}
-      </div>
+                          ) : null}
+                        </div>
+                      ) : null}
+                    </div>
+              </BusinessRow>
+            );
+          })}
+        </div>
+      )}
       {transferTarget ? (
         <section
           className="workspace-transfer-panel"

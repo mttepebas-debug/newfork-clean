@@ -134,20 +134,27 @@
   flex-direction: column;
 }
 /* Shift catalog and Account wrap the page in frames of their own: the area,
-   each frame and the page stretch down as one column. */
-.settings-content:has(> .shift-catalog-shell > .shift-catalog-panel > * > .load-error:not(.inset)),
-.account-content-scroll:has(> .account-main > * > .load-error:not(.inset)) {
+   each frame and the page stretch down as one column, when nothing follows
+   the card. */
+.settings-content:has(> .shift-catalog-shell > .shift-catalog-panel > * > .load-error:not(.inset):last-child),
+.account-content-scroll:has(> .account-main > * > .load-error:not(.inset):last-child) {
   display: flex;
   flex-direction: column;
   padding-bottom: 0;
 }
-.settings-content > .shift-catalog-shell:has(> .shift-catalog-panel > * > .load-error:not(.inset)),
-.shift-catalog-shell > .shift-catalog-panel:has(> * > .load-error:not(.inset)),
-:is(.shift-catalog-panel, .account-main) > :has(> .load-error:not(.inset)),
-.account-content-scroll > .account-main:has(> * > .load-error:not(.inset)) {
+.settings-content > .shift-catalog-shell:has(> .shift-catalog-panel > * > .load-error:not(.inset):last-child),
+.shift-catalog-shell > .shift-catalog-panel:has(> * > .load-error:not(.inset):last-child),
+:is(.shift-catalog-panel, .account-main) > :has(> .load-error:not(.inset):last-child),
+.account-content-scroll > .account-main:has(> * > .load-error:not(.inset):last-child) {
   display: flex;
+  max-width: none;
   flex: 1 0 auto;
   flex-direction: column;
+}
+/* Account's column widens so the card can reach the area's middle; the
+   header and tabs above it keep the column's width. */
+.account-content-scroll > .account-main:has(> * > .load-error:not(.inset):last-child) > * > :not(.load-error) {
+  max-width: 720px;
 }
 /* Only when nothing follows the card: content under it (Workspaces keeps its
    invitations) is never pushed down. */
@@ -170,13 +177,13 @@
 }
 
 @media (max-width: 720px) {
-  .account-layout-grid:has(> .account-content-scroll > .account-main > * > .load-error:not(.inset)) {
+  .account-layout-grid:has(> .account-content-scroll > .account-main > * > .load-error:not(.inset):last-child) {
     display: flex;
     min-height: 100dvh;
     box-sizing: border-box;
     flex-direction: column;
   }
-  .account-layout-grid > .account-content-scroll:has(> .account-main > * > .load-error:not(.inset)) {
+  .account-layout-grid > .account-content-scroll:has(> .account-main > * > .load-error:not(.inset):last-child) {
     flex: 1 0 auto;
   }
 }

@@ -367,6 +367,21 @@ describe("WorkspacesPage", () => {
     expect(screen.queryByRole("heading", { name: "We couldn't load your workspaces" })).toBeNull();
   });
 
+  it("leaves the failed card last on the page, so it can sit in the middle, unless invitations follow", async () => {
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
+    const { unmount } = renderPage();
+    const card = await screen.findByRole("alert");
+    expect(card.nextElementSibling).toBeNull();
+    expect(screen.queryByRole("list", { name: "Workspaces" })).toBeNull();
+    unmount();
+
+    vi.mocked(listAccountWorkspaces).mockRejectedValueOnce(new Error("Unavailable"));
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderPage();
+    expect(await screen.findByRole("button", { name: "Join Northstar" })).toBeTruthy();
+    expect(screen.getByRole("alert").nextElementSibling?.getAttribute("aria-label")).toBe("Workspaces");
+  });
+
   it("keeps the last workspaces and says so when a refresh fails", async () => {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     vi.mocked(listAccountWorkspaces).mockResolvedValue([ownerWorkspace]);
