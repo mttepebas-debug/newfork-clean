@@ -1524,6 +1524,11 @@
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--job-accent) 13%, transparent);
   outline: none;
 }
+/* The search box's own frame shows its focus; the field inside stays bare. */
+.job-assignment-drawer .job-search.job-search input:focus {
+  border: 0;
+  box-shadow: none;
+}
 .jobs-settings-page .job-catalog-editor textarea::placeholder {
   color: var(--job-muted);
   opacity: 1;
