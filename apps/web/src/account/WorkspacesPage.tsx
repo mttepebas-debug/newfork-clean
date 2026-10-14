@@ -8,6 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { InvitationRow } from "../employees/InvitationRow";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { BusinessRow, StatusBadge, roleLabel } from "../shell/prebiz/PreBiz";
 import { useStartOwnerSetup } from "../shell/CreateOrganizationButton";
 import { RequestError } from "../lib/request-error";
@@ -101,11 +102,6 @@ export default function WorkspacesPage() {
   const workspaces = workspacesQuery.data ?? [];
   const loading = workspacesQuery.isPending;
   const loaded = workspacesQuery.isSuccess;
-  const listError = workspacesQuery.isError
-    ? workspacesQuery.error instanceof Error
-      ? workspacesQuery.error.message
-      : "Workspaces could not be loaded"
-    : null;
   const setWorkspaces = (
     update: WorkspaceSummary[] | ((current: WorkspaceSummary[]) => WorkspaceSummary[]),
   ): void => {
@@ -418,10 +414,10 @@ export default function WorkspacesPage() {
 
   // What went wrong belongs next to the thing that went wrong, not at the end
   // of the page. Only one of these is ever on screen at a time.
-  const errorNotice = error ?? setup.error ?? listError ? (
+  const errorNotice = error ?? setup.error ? (
     <div className="workspace-error-notice">
       <p className="form-error" role="alert">
-        {error ?? setup.error ?? listError}
+        {error ?? setup.error}
       </p>
       {/* The refusal named the transfer, so the way out is a button rather
           than directions to a menu. */}
@@ -522,17 +518,28 @@ export default function WorkspacesPage() {
           </div>
         </div>
       ))}
-      {loading ? (
-        <p className="settings-state" role="status">
-          Loading workspaces...
-        </p>
+      {loading ? <ListOutline label="Loading workspaces" rows={3} columns={2} /> : null}
+      {workspacesQuery.error && !workspacesQuery.data ? (
+        <LoadError
+          title="We couldn't load your workspaces"
+          detail="Your workspaces didn't load. Nothing was changed."
+          retrying={workspacesQuery.isFetching}
+          onRetry={() => void workspacesQuery.refetch()}
+        />
+      ) : null}
+      {workspacesQuery.error && workspacesQuery.data ? (
+        <RefreshError
+          message="Your workspaces didn't refresh. These are the last ones that loaded."
+          retrying={workspacesQuery.isFetching}
+          onRetry={() => void workspacesQuery.refetch()}
+        />
       ) : null}
       {/* The kit rows are list items, so the container says it is their list. */}
       <div className="workspace-list" role="list" aria-label="Workspaces">
         {invitations.map(invitation => (
           <InvitationRow key={invitation.id} invitation={invitation} />
         ))}
-        {orderedWorkspaces.length === 0 && !loading ? (
+        {workspacesQuery.data && orderedWorkspaces.length === 0 ? (
           <div className="workspace-row empty-workspace-row" role="listitem">
             <div>
               <strong>No workspaces yet</strong>
