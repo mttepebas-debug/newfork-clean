@@ -2211,11 +2211,24 @@ describe("EmployeeDrawer record actions follow the server", () => {
     expect(screen.queryByRole("button", { name: /^(Save|Done|Terminate employee)$/ })).toBeNull();
   });
 
-  it("keeps any other failure as the drawer's error line", async () => {
+  it("shows the load-error card for any other failure, not the server's sentence", async () => {
     detailFailure = new RequestError("Employee directory service is not configured", undefined, undefined, 503);
     renderDrawer("profile");
-    expect(await screen.findByRole("alert")).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load this employee" })).toBeTruthy();
+    expect(screen.getByText("This employee didn't load. Nothing was changed.")).toBeTruthy();
+    expect(screen.queryByText("Employee directory service is not configured")).toBeNull();
     expect(screen.queryByRole("heading", { name: /You don't have access/ })).toBeNull();
+    vi.mocked(getEmployeeDetail).mockResolvedValue(detail);
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await screen.findByLabelText("First name")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load this employee" })).toBeNull();
+  });
+
+  it("shows a grey outline while the employee loads", async () => {
+    vi.mocked(getEmployeeDetail).mockReturnValueOnce(new Promise(() => {}));
+    renderDrawer("profile");
+    expect(await screen.findByText("Loading employee")).toBeTruthy();
+    expect(screen.queryByText("Loading employee...")).toBeNull();
   });
 });
 
@@ -2533,7 +2546,7 @@ describe("EmployeeDrawer EMP-001 look", () => {
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
     renderDrawer(section, detail, null);
     const heading = await screen.findByRole("heading", { level: 2, name: title });
-    await waitFor(() => expect(screen.queryByText("Loading employee...")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Loading employee")).toBeNull());
     expect(heading.closest(".employee-section-header")!.querySelector("p")).toBeNull();
   });
 
@@ -2635,6 +2648,26 @@ describe("EmployeeDrawer EMP-001 look", () => {
     });
     expect(screen.queryByText(/Remove the workspace profile photo shown/)).toBeNull();
     expect(screen.getByText("Profile photo removal")).toBeTruthy();
+  });
+
+  it("outlines the profile photo while it loads", async () => {
+    vi.mocked(getEmployeeAvatar).mockReturnValueOnce(new Promise(() => {}));
+    renderDrawer("access");
+    expect(await screen.findByText("Loading profile photo")).toBeTruthy();
+    expect(screen.queryByText("Loading profile photo...")).toBeNull();
+  });
+
+  it("shows the load-error card with Try again when the profile photo fails", async () => {
+    vi.mocked(getEmployeeAvatar).mockRejectedValueOnce(new Error("Storage unavailable"));
+    renderDrawer("access");
+    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load the profile photo" })).toBeTruthy();
+    expect(screen.queryByText("Storage unavailable")).toBeNull();
+    expect(screen.queryByText("Profile photo unavailable")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "We couldn't load the profile photo" })).toBeNull(),
+    );
+    expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
   });
 
   it("keeps no photo note for a reader who cannot remove the photo", async () => {
@@ -2787,8 +2820,10 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     await pickManager();
     vi.mocked(getEmployeeDetail).mockRejectedValue(new Error("Failed to fetch"));
     fireEvent.click(save());
-    expect(await screen.findByText(/^Role saved\. Couldn't reload this employee\./)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(
+      await screen.findByText(/^Role saved\. This employee didn't refresh\. This is the last version that loaded\.$/),
+    ).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 
@@ -3172,7 +3207,7 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
   it("leaves Preferred name out when the person has none", async () => {
     renderDrawer("profile");
     await screen.findByLabelText("First name");
-    await waitFor(() => expect(screen.queryByText("Loading employee...")).toBeNull());
+    await waitFor(() => expect(screen.queryByText("Loading employee")).toBeNull());
     expect(screen.queryByLabelText("Preferred name")).toBeNull();
   });
 
@@ -3391,11 +3426,17 @@ describe("EmployeeDrawer words (EKRAN-03)", () => {
 // EKRAN-03 #49: the drawer when something is missing.
 describe("EmployeeDrawer when something is missing (EKRAN-03)", () => {
   // BL-244: an empty picker on a saved person looked like no assignments.
-  it("says the pick lists did not load on somebody already saved, with Retry", async () => {
+  it("says the pick lists did not load on somebody already saved, with Try again", async () => {
     vi.mocked(loadEmployeeReferenceData).mockRejectedValueOnce(new Error("down"));
     renderDrawer("employment");
-    expect(await screen.findByText(/Couldn't load locations, jobs or roles\./)).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Retry" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load locations, jobs and roles" })).toBeTruthy();
+    expect(screen.queryByText("down")).toBeNull();
+    const reads = vi.mocked(loadEmployeeReferenceData).mock.calls.length;
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await waitFor(() =>
+      expect(screen.queryByRole("heading", { name: "We couldn't load locations, jobs and roles" })).toBeNull(),
+    );
+    expect(vi.mocked(loadEmployeeReferenceData).mock.calls.length).toBe(reads + 1);
   });
 
   // BL-402: out of reach, the drawer does not draw a nameless record beside the card.

@@ -37,6 +37,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 // The location filter's value for people who work nowhere (K6); a location's
 // value is its id.
 const noLocation = "none";
@@ -380,6 +381,14 @@ export default function EmployeesPage() {
         </div>
       </div>
 
+      {employees.error && employees.data ? (
+        <RefreshError
+          className="employees-refresh"
+          message="The employee list didn't refresh. This is the last list that loaded."
+          retrying={employees.isFetching}
+          onRetry={() => void employees.refetch()}
+        />
+      ) : null}
       <div className="employee-table-wrap employee-people-wrap">
         <table className="employee-table">
           <colgroup>
@@ -456,14 +465,21 @@ export default function EmployeesPage() {
           }
         />
         {employees.isLoading ? (
-          <p className="employees-state">Loading employees...</p>
+          <ListOutline
+            label="Loading employees"
+            rows={8}
+            columns={Math.max(2, visibleColumns.length)}
+            inset
+          />
         ) : null}
-        {employees.error ? (
-          <p className="employees-state error" role="alert">
-            {employees.error instanceof Error
-              ? employees.error.message
-              : "Employees unavailable"}
-          </p>
+        {employees.error && !employees.data ? (
+          <LoadError
+            inset
+            title="We couldn't load employees"
+            detail="The employee list didn't load. Nothing was changed."
+            retrying={employees.isFetching}
+            onRetry={() => void employees.refetch()}
+          />
         ) : null}
         {!employees.isLoading &&
         !employees.error &&

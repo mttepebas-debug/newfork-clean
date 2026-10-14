@@ -1,4 +1,5 @@
 import {
+  act,
   fireEvent,
   render,
   screen,
@@ -209,6 +210,67 @@ describe("no access (FB-6.1.9)", () => {
     expect(await screen.findByRole("heading", { name: "You don't have access to employees" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
+// Loading and error in the "B" look (Mert 2026-10-14).
+describe("EmployeesPage loading and error", () => {
+  // The answers are queued before rendering; the client is returned so a test can refresh.
+  function renderQueued(initialEntry = "/app/employees") {
+    window.localStorage.clear();
+    currentContext = context;
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    render(
+      <QueryClientProvider client={client}>
+        <MemoryRouter initialEntries={[initialEntry]}>
+          <EmployeesPage />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    return client;
+  }
+
+  it("shows the list's grey outline under the column headers while employees load", async () => {
+    vi.mocked(listEmployees).mockReset().mockReturnValue(new Promise(() => {}));
+    renderQueued();
+    const outline = await screen.findByRole("status");
+    expect(outline.textContent).toBe("Loading employees");
+    expect(screen.getAllByRole("columnheader").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Loading employees...")).toBeNull();
+  });
+
+  it("shows the card with Try again, not the raw error, when employees fail to load", async () => {
+    vi.mocked(listEmployees)
+      .mockReset()
+      .mockRejectedValueOnce(new RequestError("connect ECONNREFUSED", "network", undefined, 503))
+      .mockResolvedValue(employees);
+    renderQueued();
+    expect(await screen.findByRole("heading", { name: "We couldn't load employees" })).toBeTruthy();
+    expect(screen.getByText("The employee list didn't load. Nothing was changed.")).toBeTruthy();
+    expect(screen.queryByText("connect ECONNREFUSED")).toBeNull();
+    expect(screen.queryByRole("heading", { name: "No employees yet" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load employees" })).toBeNull();
+  });
+
+  it("keeps the last list and says so when a refresh fails", async () => {
+    vi.mocked(listEmployees).mockReset().mockResolvedValueOnce(employees);
+    const client = renderQueued();
+    expect(await inTable().findByText("Alex Kim")).toBeTruthy();
+    vi.mocked(listEmployees)
+      .mockRejectedValueOnce(new RequestError("Gateway timeout", "network", undefined, 504))
+      .mockResolvedValue(employees);
+    await act(async () => {
+      await client.refetchQueries();
+    });
+    const line = await screen.findByRole("alert");
+    expect(line.textContent).toContain("The employee list didn't refresh. This is the last list that loaded.");
+    expect(inTable().getByText("Alex Kim")).toBeTruthy();
+    expect(screen.queryByText("Gateway timeout")).toBeNull();
+    fireEvent.click(within(line).getByRole("button", { name: "Try again" }));
+    await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
+    expect(listEmployees).toHaveBeenCalledTimes(3);
   });
 });
 

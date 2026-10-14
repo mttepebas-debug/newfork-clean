@@ -1641,6 +1641,12 @@
 .employees-state.error {
   color: #a23725;
 }
+.employees-refresh {
+  width: 100%;
+  max-width: 1320px;
+  margin: 0 auto;
+  align-self: stretch;
+}
 
 .employee-drawer-layer {
   position: fixed;
@@ -2184,6 +2190,14 @@
   display: grid;
   place-items: center;
   color: #64716b;
+}
+.employee-avatar-outline > div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.employee-avatar-outline .employee-avatar-skeleton {
+  border-radius: 50%;
 }
 .employee-avatar-control > div {
   display: grid;
