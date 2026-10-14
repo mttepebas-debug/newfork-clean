@@ -8,6 +8,8 @@
    sideways would otherwise keep almost nothing for the list).
    Settings → Jobs joined on 2026-10-14 (Mert, on its page: "sadece liste
    scroll up down olsun").
+   Locations, Shift catalog and Shift labels joined the same day (Mert's
+   card: "Hepsinde sabit").
    Selectors carry `.list-page` three times so a page's own sheet (loaded
    later, at most `.x.list-page.list-page .frame`) cannot undo the frame. */
 @media (min-height: 560px) {
@@ -18,7 +20,9 @@
       .notifications-page,
       .announcements-page,
       .document-catalog-settings-page,
-      .jobs-catalog-page
+      .jobs-catalog-page,
+      .locations-catalog-settings-page,
+      .shift-catalog-settings-page
     ).list-page.list-page {
     display: flex;
     height: 100%;
@@ -32,7 +36,9 @@
       .notifications-page,
       .announcements-page,
       .document-catalog-settings-page,
-      .jobs-catalog-page
+      .jobs-catalog-page,
+      .locations-catalog-settings-page,
+      .shift-catalog-settings-page
     ).list-page.list-page
     > *,
   .employee-documents-page.list-page.list-page > .employee-documents-list > * {
@@ -45,7 +51,9 @@
       .requests-page,
       .notifications-page,
       .document-catalog-settings-page,
-      .jobs-catalog-page
+      .jobs-catalog-page,
+      .locations-catalog-settings-page,
+      .shift-catalog-settings-page
     ).list-page.list-page.list-page
     > :is(.employee-table-wrap, .job-catalog),
   .employee-documents-page.list-page.list-page.list-page
