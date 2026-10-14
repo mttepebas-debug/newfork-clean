@@ -125,6 +125,27 @@
   }
 }
 
+/* A page that is only this card (or keeps just its header above it) puts the
+   card in the middle of the space left, like NoAccessState (Mert 2026-10-14). */
+:is(.app-main, .settings-content) > :has(> .load-error:not(.inset)) {
+  display: flex;
+  min-height: 100%;
+  box-sizing: border-box;
+  flex-direction: column;
+}
+:is(.app-main, .settings-content) > * > .load-error:not(.inset) {
+  margin-block: auto;
+}
+/* The card alone: the page's own uneven top and bottom space goes, so the
+   card is in the exact middle. */
+:is(.app-main, .settings-content) > :has(> .load-error:not(.inset):only-child) {
+  padding-block: 24px;
+}
+.app-main:has(> * > .load-error:not(.inset), .settings-content > * > .load-error:not(.inset)),
+.settings-content:has(> * > .load-error:not(.inset)) {
+  scrollbar-gutter: auto;
+}
+
 .load-error.inset {
   max-width: none;
   margin: 0;

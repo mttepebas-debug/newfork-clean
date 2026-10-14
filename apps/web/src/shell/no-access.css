@@ -3,7 +3,9 @@
    (load-state.css) has the same box. Tokens only. */
 .no-access {
   display: flex;
+  width: 100%;
   max-width: 440px;
+  box-sizing: border-box;
   flex-direction: column;
   align-items: center;
   gap: 16px;
@@ -50,9 +52,36 @@
   text-decoration: none;
 }
 
+/* A page's card sits in the middle of the page area, the space the menus
+   leave, on any screen size (Mert 2026-10-14). The area becomes a column, so
+   the card's auto margins split the free height; a card taller than the area
+   starts at the top and scrolls. A card inside a drawer keeps its place. */
+:is(.app-main, .settings-content):has(> .no-access) {
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+:is(.app-main, .settings-content) > .no-access {
+  margin: auto;
+}
+/* The scroll area keeps no empty stripe for a scrollbar here, or the card
+   would sit off-center by its width. */
+.app-main:has(> .no-access, .settings-content > .no-access),
+.settings-content:has(> .no-access) {
+  scrollbar-gutter: auto;
+}
+
 @media (max-width: 720px) {
   .no-access {
+    width: auto;
     margin: 24px 12px;
     padding: 28px 20px 20px;
+  }
+  :is(.app-main, .settings-content):has(> .no-access) {
+    padding: 24px 12px;
+  }
+  :is(.app-main, .settings-content) > .no-access {
+    width: 100%;
+    margin: auto 0;
   }
 }
