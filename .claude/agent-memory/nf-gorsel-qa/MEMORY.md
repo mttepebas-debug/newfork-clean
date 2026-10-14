@@ -12,3 +12,4 @@
 - [Availability design artifact, local render](avail-design-artifact-local-render.md) — save artifact files + static server + postMessage availgo; lab-only styles and old-look bubbles; Settings menu clipped at 375
 - [Font swap before/after trick](font-swap-before-after-trick.md) — Segoe override via addStyleTag; Inter wraps at 375/360 (Schedule bar, Availability tabs), 390 Settings button
 - [DOC-TABLE list pages QA paths](doc-table-list-pages-qa-paths.md) — routes, world roles, important-dates mock, Playwright traps, pre-existing a11y gaps
+- [C3 list-chrome QA tricks](c3-list-chrome-qa-tricks.md) — toast-over-drawer via ui dist import, Requests search double frame, S7 gaps, vite --force blank first load
