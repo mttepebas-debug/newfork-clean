@@ -78,6 +78,12 @@ describe("inset pieces", () => {
     expect(ref.current?.tabIndex).toBe(-1);
   });
 
+  it("titles the card one level below a drawer's own title", () => {
+    render(<LoadError title="We couldn't load this announcement" detail="It didn't load. Nothing was changed." inset level={3} />);
+    expect(screen.getByRole("heading", { level: 3, name: "We couldn't load this announcement" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 2 })).toBeNull();
+  });
+
   it("outlines a few lines for a panel", () => {
     render(<LinesOutline label="Loading shift details" lines={2} />);
     expect(screen.getByRole("status").querySelectorAll(".nf-skeleton")).toHaveLength(2);

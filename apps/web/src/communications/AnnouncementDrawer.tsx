@@ -118,6 +118,7 @@ export function AnnouncementDrawer({
             ) : detail.error ? (
               <LoadError
                 inset
+                level={3}
                 title="We couldn't load this announcement"
                 detail="It didn't load. Nothing was changed."
                 retrying={detail.isFetching}

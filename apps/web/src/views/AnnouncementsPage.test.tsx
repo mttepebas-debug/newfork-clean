@@ -976,6 +976,6 @@ describe("loading and error", () => {
     renderList(`/app/announcements/${id}`);
     const card = await screen.findByRole("alert");
     expect(card.className).toContain("inset");
-    expect(within(card).getByRole("heading", { name: "We couldn't load this announcement" })).toBeTruthy();
+    expect(within(card).getByRole("heading", { level: 3, name: "We couldn't load this announcement" })).toBeTruthy();
   });
 });

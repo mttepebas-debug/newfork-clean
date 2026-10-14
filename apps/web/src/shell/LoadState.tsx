@@ -94,6 +94,7 @@ export function LoadError({
   retrying = false,
   inset = false,
   headingRef,
+  level = 2,
   className,
 }: {
   /** e.g. "We couldn't load the lineup". */
@@ -113,9 +114,12 @@ export function LoadError({
    * so it is not also a live alert (it would be read twice, button and all).
    */
   readonly headingRef?: RefObject<HTMLHeadingElement | null>;
+  /** 3 inside a drawer or panel whose own title is an h2. */
+  readonly level?: 2 | 3;
   readonly className?: string;
 }) {
   const titleId = useId();
+  const Heading = level === 3 ? "h3" : "h2";
   const classes = ["load-error", inset ? "inset" : "", className ?? ""].filter(Boolean).join(" ");
   return (
     <section className={classes} role={headingRef ? undefined : "alert"} aria-labelledby={titleId}>
@@ -123,9 +127,9 @@ export function LoadError({
         <CloudOff size={22} />
       </span>
       <div className="load-error-copy">
-        <h2 id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
+        <Heading id={titleId} ref={headingRef} tabIndex={headingRef ? -1 : undefined}>
           {title}
-        </h2>
+        </Heading>
         <p>{detail}</p>
         {onRetry ? <p className="load-error-help">Check your connection, then try again.</p> : null}
       </div>
