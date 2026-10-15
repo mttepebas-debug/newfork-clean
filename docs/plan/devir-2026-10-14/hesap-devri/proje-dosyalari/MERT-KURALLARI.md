@@ -70,6 +70,7 @@ Not: Thread'de "PR oluştur" düğmesi görünürse basma; her şey trenle gidiy
 - Artifact'taki sayfa, uygulamadaki güncel hâliyle birebir görünmeli ve çalışmalı: bütün elementler, düğmeler, çekmeceler, efektler, fonksiyonlar.
 - Artifact hem görsel sunumdur hem deneme ortamıdır.
 - Planlanan bir arayüz değişikliğinde mutlaka varyantlar sun. Mert görerek ve deneyerek karar verir. Her varyant sayfasında orijinal (bugünkü main hâli) de varyantların yanında, seçilebilir bir seçenek olarak ve 'Orijinal' etiketiyle durur (Mert, 2026-10-09 07:35Z). Varyant sayfası yayınlanınca thread seçim kartı ya da 'hangisini yapayım' sorusu göndermez; bağlantıyı ve nasıl bakılacağını bir kez yazar, sonra bekler. Mert sayfaya bakıp istediği zaman yazar ya da yorum bırakır (Mert, 2026-10-09 07:55Z).
+- Varyantlar en iyisini hedefler (Mert, 2026-10-15 08:49Z): akış, mimari, işleyiş, tasarım, UI ve UX için en iyi uygulama, en çok kabul görmüş ve en profesyonel çözüm. Bugünkü ürün doğru kabul edilmez, üzerine yama yapılmaz. Yalnız fontlar ve renkler tasarım dilimize uyar (ör. uygulama yeşilse varyant mavi olmaz). Bu, eski "varyantlar sade ve Orijinal'e yakın" kuralının yerini alır. Varyant sayfasının biçimi aynı kalır: etkileşimli, rol ve olay denemeli, masaüstü ve telefon yan yana ya da alt alta.
 
 Örnek: Yeni sepet çekmecesi için A (sağdan kayan), B (alttan açılan), C (tam ekran) varyantlarını aynı Artifact'ta sekmelerle sun; her biri tıklanabilir ve çalışır olsun.
 

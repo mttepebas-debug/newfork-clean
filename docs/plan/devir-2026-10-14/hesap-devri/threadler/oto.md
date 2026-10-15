@@ -173,7 +173,8 @@ Sonra: koordinatörün ilettiği her yeni madde gelen/<MADDE>/ klasöründen ekl
   Mert seçince madde DECIDED_CODE + "Karara bağlanmış"a taşınır,
   seçim koordinatör üzerinden sahibi olan thread'e gider.
 Kurallar: Mert'le Türkçe, Kaliforniya saati; çıplak plan numarası yok
-  (numara yalnız parantezde); varyantlar yalın, Original'e yakın;
+  (numara yalnız parantezde); varyantlar en iyi uygulamayı hedefler
+  (bugünkü ürün doğru kabul edilmez, yama yok; yalnız font ve renk bizden);
   başka thread'in sayfası baştan sona okunmadan yayına konmaz;
   şifre, token yazılmaz; Artifact silinmez (Mert istemedikçe).
 Rapor: koordinatöre, sade dille, sürüm numarasıyla.

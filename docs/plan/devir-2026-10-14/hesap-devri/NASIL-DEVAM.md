@@ -79,7 +79,7 @@ Koordinatör hafızasının özü (eski `MEMORY.md`'den, yeni koordinatörün de
 - Otomasyon durdurulmuş (12 Ekim): kendiliğinden yeni thread, görev ya da backlog maddesi açılmaz; Mert'in doğrudan istekleri yapılır.
 - Mert'in kullanım uyarısı: kullanım yükselince "dur" yazacak; cevaplar ve raporlar kısa tutulur.
 - PAGES (ekran ekran Artifact belgeleme) 2026-10-15'te emekli (Mert). `PAGES/_kaynak` yalnız varyantlardaki "Original" görüntüsünü demo veriyle çekmek için bir araçtır; güncel tutulmaz, yayınlanmaz.
-- Arayüz: kodlamadan önce Original + varyantlar; varyantlar sade ve Original'e yakın; açılır pencereler düğmesine bağlı; seçim kartı yok.
+- Arayüz: kodlamadan önce Original + varyantlar; varyantlar en iyisini hedefler: akış, mimari, işleyiş, UI ve UX için en iyi uygulama ve en profesyonel, en çok kabul görmüş tasarım; bugünkü ürün doğru kabul edilmez, üzerine yama yapılmaz; yalnız font ve renkler tasarım dilimize uyar (Mert, 15 Ekim); açılır pencereler düğmesine bağlı; seçim kartı yok.
 
 ## Adım 4. Proje dosyalarını geri kur (yeni projede ilk bulut thread'i)
 
