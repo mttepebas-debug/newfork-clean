@@ -1,5 +1,7 @@
 # Devir raporu: Takas kırmızı düğmeler (vardiya bırakma, cover, swap)
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 Yazıldı: 2026-10-14 ~09:50 California. Yazan: bu thread'in Claude'u.
 
 ## 1. Thread adı ve amacı

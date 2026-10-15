@@ -4,6 +4,9 @@ Bu klasördeki dosyalar, proje koordinatörünün kalıcı hafızasıdır. Her d
 
 Kaynak: `/tmp/claude/memory/team/silo/` (kopyalama tarihi 2026-10-14). Dosyaları yalnız kopyaladım, içeriklerini değiştirmedim. İki istisna var: aşağıdaki gizli değer çıkarması ve 15 Ekim'de PAGES'in emekliye ayrılması (Mert'in kararı): `MEMORY.md`'deki PAGES görevleri çıkarıldı, `sayfa-atlasi.md` "emekli" notuna çevrildi.
 
+## Yeni hesapta nasıl kullanılır (15 Ekim: yeni hesapta Projects yok)
+Bu hafıza eski hesabın Projects koordinatörüne aitti. Yeni hesapta koordinatör yok; yerine tek Claude Code ana oturumu çalışır (`../NASIL-DEVAM.md` bölüm 0). Ana oturum bu dosyaları okur ve işe yarayanları kendi Claude Code hafızasına kaydeder: Mert'in kuralları, ürün kuralları, git ve güvenlik kuralları, açık işlerin durumu. Projects'e bağlı olanlar alınmaz: 5 dakikalık thread raporu, thread sayıları takibi (#14), `message_thread` / `send_message` / karar kartı püf noktaları, thread ve oturum kimlikleri (`cmsg_…`, `cse_…`), "PC tren thread'ine ilet" akışı (yeni hesapta treni ana oturum kendisi koşar). `/mnt/project-files/X` yolları `PD\X` olarak okunur (PD = `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\`).
+
 ## Dosyalar (MEMORY.md + 18 bilgi dosyası = 19 dosya; bu BENIOKU.md hariç)
 1. MEMORY.md (dizin)
 2. artifact-silme-onayi.md

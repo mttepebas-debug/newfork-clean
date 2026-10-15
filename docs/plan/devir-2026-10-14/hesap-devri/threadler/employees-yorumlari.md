@@ -1,5 +1,7 @@
 # Devir raporu: "Employees yorumları" thread'i
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 > **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
 
 Yazan: bu thread'in Claude'u, 14 Ekim 2026 sabah 9:45 (California saati).

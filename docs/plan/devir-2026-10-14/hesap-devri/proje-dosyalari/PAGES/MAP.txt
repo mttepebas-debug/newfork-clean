@@ -22,9 +22,9 @@ Dizin: https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy
 1.10	Almost ready	/app	https://claude.ai/artifact/R79CMAJ6118AxAtn4C8SrY	68a6eaef
 1.11	That workspace didn't load	/app	https://claude.ai/artifact/CYXR9A9L3gjBfXQu93VRsD	68a6eaef
 2.0	Workspace	/app/workspace	https://claude.ai/artifact/4EbXXuT4EY6NcLqfAJUuBy	28aeb82b
-3.0	Schedule	/app/schedule	https://claude.ai/artifact/J6tWENw7QTf6gHoP8jtPAu	28aeb82b
-3.1	Schedule export	/app/schedule/export	https://claude.ai/artifact/DEctBmqXhDLRpumfifre4c	28aeb82b
-3.2	Schedule templates	/app/schedule/templates	https://claude.ai/artifact/7PPX8YQ3AUPQNSskTJuW6M	28aeb82b
+3.0	Schedule	/app/schedule	https://claude.ai/artifact/J6tWENw7QTf6gHoP8jtPAu	9b871a97
+3.1	Schedule export	/app/schedule/export	https://claude.ai/artifact/DEctBmqXhDLRpumfifre4c	9b871a97
+3.2	Schedule templates	/app/schedule/templates	https://claude.ai/artifact/7PPX8YQ3AUPQNSskTJuW6M	9b871a97
 3.3	Requests	/app/schedule/requests	https://claude.ai/artifact/LjHpcgS38GsQAvnMyemaoH	28aeb82b
 3.4	Lineup	/app/schedule/lineup	https://claude.ai/artifact/AJqKmK2HZcmwV8tooCtusz	28aeb82b
 4.0	Employees	/app/employees	https://claude.ai/artifact/3W6vH1fCZAP7KvzQcMgnUW	28aeb82b

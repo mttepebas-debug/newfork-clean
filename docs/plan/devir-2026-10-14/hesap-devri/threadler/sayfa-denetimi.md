@@ -1,5 +1,7 @@
 # Devir raporu — "Sayfa sayfa kayıp ve güncellik denetimi"
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 Hazırlayan: bu thread'in Claude'u, 2026-10-14 (California saatiyle 09:45 civarı).
 Thread kökü: `cmsg_013zBzr8GJv9vVEM4zDoaKrVLdQe82L7XsAeqVzC17s5K5`. Oturum sayfası: https://claude.ai/code/session_01Ugsi3nzmxVN79dmGB4mouo
 

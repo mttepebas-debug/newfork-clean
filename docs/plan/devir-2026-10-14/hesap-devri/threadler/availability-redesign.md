@@ -1,5 +1,7 @@
 # Devir raporu · Availability yeniden kurgu (Important Dates thread'i)
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 > **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
 
 Yazan: Important Dates thread'inin Claude'u, 2026-10-14 ~16:55 UTC (09:55 AM Kaliforniya).
@@ -78,7 +80,7 @@ Kod hiç başlamadı; dal, worktree ya da taslak kod yok. Mert "kodla" deyince i
 
 **Üç parçada ortak olanlar**
 - Sınıf: **incelemeli**. Her parça nf-guvenlik ONAY'ı alır ve 1440 ile 390 görüntüsü çekilir.
-- e2e PC (Remote Control) thread'inde koşar. Main'e yalnız trenle gider.
+- e2e Mert'in bilgisayarında, ana oturumda koşar. Main'e yalnız trenle gider.
 - Migration beklenmiyor; veri modeli aynı kalıyor.
 
 ## 4. Mert'ten beklenen

@@ -1,5 +1,7 @@
 # /oto thread'i: devir raporu
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 > **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
 
 Yazan: /oto thread'inin Claude'u. Tarih: 14 Ekim 2026, sabah 9:45 (Kaliforniya).
@@ -14,7 +16,7 @@ Thread: "/oto" (proje sohbetinde, Mert'in 11 Ekim sabah 7:01 isteğiyle açıld�
 - **Mert'in kuralları:**
   - 11 Ekim 1:15 PM: bütün bekleyen görsel kararlar bu sayfada, ekran ekran sekmelerde; yeni görsel karar çıktıkça buraya eklenir.
   - 11 Ekim 2:53 PM: çıplak plan numarası yok; madde sade sözle anlatılır, numara yalnız sonda parantez içinde.
-  - Kural 12: thread'ler Original ve varyantları `/mnt/project-files/pages/gorsel-kararlar/gelen/<MADDE>/` altına yazar, yolu koordinatör üzerinden gönderir, /oto sayfaya ekler.
+  - Kural 12: thread'ler Original ve varyantları `/mnt/project-files/pages/gorsel-kararlar/gelen/<MADDE>/` altına yazar, yolu koordinatör üzerinden gönderir, /oto sayfaya ekler. (Yeni hesapta: varyant `PD\pages\gorsel-kararlar\gelen\<MADDE>\` altına yazılır, sayfayı ana oturum günceller.)
 - **Akış:**
   1. Koordinatör bir madde iletir: klasör, sahibi olan thread, canlı sayfa linki.
   2. /oto maddeyi doğru sekmeye ekler, kaynak bandını uygular, sayfayı aynı linke yayınlar.
@@ -125,7 +127,7 @@ Thread: "/oto" (proje sohbetinde, Mert'in 11 Ekim sabah 7:01 isteğiyle açıld�
 
 ## 5. Mert'ten beklenen
 
-1. Yukarıdaki açık sorulara cevap. Sayfada ya da proje sohbetinde yazılabilir; cevap maddenin sahibi olan thread'e gider. En yeni ve kodu bekleten sorular:
+1. Yukarıdaki açık sorulara cevap. Sayfada ya da proje sohbetinde yazılabilir; cevap maddenin sahibi olan thread'e gider. (Yeni hesapta: cevap ana oturuma yazılır.) En yeni ve kodu bekleten sorular:
    - Erişim yok kartı (O1)
    - Tek cümlelik uyarılar (O2)
    - Jobs çekmecesi rengi (A7)
@@ -137,7 +139,7 @@ Thread: "/oto" (proje sohbetinde, Mert'in 11 Ekim sabah 7:01 isteğiyle açıld�
 ## 6. Yeni hesapta /oto'yu yeniden kurmak
 
 ### Önce
-- Yeni hesapta project'i kur. Repo `mttepebas-debug/newfork-clean`, proje dosyaları aynı klasör (`/mnt/project-files`).
+- Yeni hesapta Projects yok: ana oturumu kur (`../NASIL-DEVAM.md` adım 2–4). Repo `mttepebas-debug/newfork-clean`, proje dosyaları PD (`/mnt/project-files/X` = `PD\X`).
 - Bu dosya ve `devir/threadler/oto-kaynak/` yerinde olmalı.
 
 ### Adımlar (yeni /oto thread'inin yapacakları)

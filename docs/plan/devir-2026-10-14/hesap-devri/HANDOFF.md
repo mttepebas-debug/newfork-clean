@@ -9,13 +9,15 @@ Kurulum adımları ayrı dosyada: `NASIL-DEVAM.md` (bu klasörde). Devri bekleti
 
 ## 0. Bir bakışta
 
+- **Yeni hesapta Claude Projects yok (Mert, 15 Ekim 2026).** Koordinatör, thread'ler, PC tren thread'i, karar kartları ve `/mnt/project-files` yeni hesapta yok. Yerine tek bir Claude Code oturumu ("ana oturum", masaüstü uygulamasında `C:\Users\TheWe\Documents\Codex\newfork-clean`) hepsini yapar; proje dosyaları bilgisayardaki `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` klasöründe (PD) durur. Bu dosyada ve raporlarda geçen "thread", "koordinatör", "karar kartı", `/mnt/project-files/X` gibi kelimeler `NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur.
+- **CLAUDE.md hâlâ Projects düzenini anlatıyor** (§5 "İş Claude Projects'te yürür"). Yeni düzene göre taslak hazır: bu dalda commit `f9d83e6a` ("docs(claude): run the workflow in one Claude Code session, no Projects (draft)"); açıklaması `CLAUDE-MD-TASLAGI.md`. Main'e yalnız Mert yeni hesabın ana oturumunda kendi sözüyle "onaylıyorum" yazınca, trenle girer. O zamana kadar CLAUDE.md'deki "thread / koordinatör" sözlükle okunur.
 - **Sayfa sayfa belgeleme (PAGES) emekli (Mert, 15 Ekim 2026).** Yeni hesap bu kurala uymaz, eski PAGES sayfalarını yeniden kurmaz ve yayınlamaz. Eski sayfalar eski hesapta olduğu gibi kalır. `PAGES/_kaynak` yalnız bir araç olarak kalır: varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için; güncel tutulmaz, yayınlanmaz (bölüm 6, madde 2).
 - **Kod tarafında hiçbir şey kaybolmuyor.** Bütün thread'lerin kodu ya main'de ya kendi GitHub dalında. Push'lanmamış kod yalnız Mert'in bilgisayarında, eski yerel dallarda var; onlar da GitHub'a `yedek/2026-10-14/...` adıyla yedeklendi (28 yeni ref, bölüm 1.3).
-- **Main:** `9b871a97` (14 Ekim sabah 5:30). Tren kuyruğu boş. Canlı veritabanında yarım adım yok.
+- **Main:** `9b871a97` (14 Ekim sabah 5:30); 15 Ekim'de iki belge treniyle `2f2f744c`. Tren kuyruğu boş. Canlı veritabanında yarım adım yok.
 - **Kaybolabilecek tek şey proje dosyalarıydı** (`/mnt/project-files`, 418 MB, 2.162 dosya: planlar, notlar, mockup'lar, demo uygulama aracı, thread raporları). Yeni hesapta bu klasör olmayacak. Üç yere kopyalandı (bölüm 1).
 - **Bütün Artifact'lar (128 sayfa) bu hesaba ait.** Yeni hesap onları göremez, güncelleyemez. Her birinin kaynak dosyası eşleştirildi; kaynağı olmayanların yayındaki hâli indirildi. Liste: `artifactler/ARTIFACTLER.md`.
 - **Mert'ten 30'a yakın karar bekleniyor.** Hepsi tek listede, bölüm 2'de. Hiçbiri devri durdurmuyor.
-- **"Devredilmesi güvenli değil" diyen thread yok.** Ama beş konu bir koşul gerçekleşene kadar bekletilmeli (Remote Control tren thread'i, canlı veritabanı bağlantısı, eski hesaptaki zamanlanmış görevler, eski sayfadaki süresi dolmuş anahtarlar, Meyhouse demo verisi). Ayrıntı `GUVENLI-OLMAYANLAR.md`.
+- **"Devredilmesi güvenli değil" diyen thread yok.** Ama beş konu bir koşul gerçekleşene kadar bekletilmeli (bilgisayardaki tren, canlı veritabanı bağlantısı, eski hesaptaki zamanlanmış görevler, eski sayfadaki süresi dolmuş anahtarlar, Meyhouse demo verisi). Ayrıntı `GUVENLI-OLMAYANLAR.md`.
 
 ---
 
@@ -24,8 +26,8 @@ Kurulum adımları ayrı dosyada: `NASIL-DEVAM.md` (bu klasörde). Devri bekleti
 ### 1.1 GitHub: `claude/hesap-devri-bqus46` dalı
 Repo: https://github.com/mttepebas-debug/newfork-clean/tree/claude/hesap-devri-bqus46
 Klasör: `docs/plan/devir-2026-10-14/hesap-devri/`
-- `HANDOFF.md` (bu dosya), `NASIL-DEVAM.md`, `GUVENLI-OLMAYANLAR.md`, `PC-ISTEGI.md`
-- `threadler/`: 16 thread'in kendi devir raporu (her biri: amaç, bitenler, yarım iş, Mert'ten beklenen, dal, dosyalar, bulgular, yeni thread brief'i)
+- `HANDOFF.md` (bu dosya), `NASIL-DEVAM.md`, `GUVENLI-OLMAYANLAR.md`, `PC-ISTEGI.md`, `CLAUDE-MD-TASLAGI.md` (CLAUDE.md'nin Projects'siz taslağının açıklaması)
+- `threadler/`: 17 thread'in kendi devir raporu (15 Ekim'de Bildirim sistemi eklendi) (her biri: amaç, bitenler, yarım iş, Mert'ten beklenen, dal, dosyalar, bulgular, yeni thread brief'i)
 - `koordinator-hafiza/`: koordinatörün kalıcı hafızası (19 dosya + `MEMORY.md` dizini)
 - `artifactler/`: 128 Artifact'ın kaynak eşlemesi (`ARTIFACTLER.md`) ve kaynağı olmayan 32 sayfanın kopyası (`yedek/`)
 - `ENVANTER-PROJE-DOSYALARI.md`: proje dosyalarının klasör klasör ne olduğu
@@ -40,8 +42,9 @@ Bu daldan önce iki thread kendi yedeğini ayrı dala koydu:
 ### 1.2 Mert'in bilgisayarı: tam kopya
 `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\`
 - `proje-dosyalari\`: `/mnt/project-files`'ın **tamamı** (büyük html, png, zip dahil), açılmış hâlde.
-- `arsiv\proje-dosyalari.tar.xz.partNN`: aynı içeriğin sıkıştırılmış parçaları. Yeni hesabın bulut thread'i bunları alıp `/mnt/project-files`'ı birebir geri kurar (`NASIL-DEVAM.md` adım 4). Böylece raporlardaki bütün `/mnt/project-files/...` yolları yeni hesapta da çalışır.
-- Not: Windows klasör adlarında büyük-küçük harf ayırmaz. Bu yüzden açılmış kopyada `PAGES\` ve `pages\` tek klasörde birleşmiş görünür; dosya kaybı yok (aynı adlı dosya yok). Asıl yedek `arsiv\` parçalarıdır; yeni hesap onları Linux'ta açtığı için iki klasör ayrı kalır.
+  Yeni hesapta **canlı çalışma klasörü budur** (PD): raporlardaki `/mnt/project-files/X` = `PD\X`. 15 Ekim'de eklenen dosyalar da buraya kopyalandı.
+- `arsiv\proje-dosyalari.tar.xz.partNN`: 14 Ekim içeriğinin sıkıştırılmış, dokunulmaz yedeği. Yeni hesapta geri kurulmaz; yalnız PD bozulursa diye durur.
+- Not: Windows klasör adlarında büyük-küçük harf ayırmaz. Bu yüzden PD'de `PAGES\` ve `pages\` tek klasörde birleşmiş görünür; dosya kaybı yok (aynı adlı dosya yok). Raporlardaki `PAGES/...` ve `pages/...` yolları PD'de aynı `pages\` klasörüne çıkar.
 - `pc-envanter.md`: bilgisayarda yalnız yerelde duranların listesi (PC tren thread'i yazdı).
 
 Kopyadan çıkarılanlar (bilerek): `*.session.json` dosyaları; içinde süresi dolmuş test oturum anahtarı bulunan iki eski "Today" sayfasında anahtarlar "REDACTED" yapıldı; yerel test dünyasının demo parolası 40 dosyada `[GIZLI-CIKARILDI]` yapıldı (bölüm 7).
@@ -66,7 +69,7 @@ Yerinde kalanlar (GitHub'a gitmez, yeni hesap aynı diski kullandığı için ka
 
 ## 2. Mert'ten beklenenler (tek liste)
 
-Hepsi yeni hesapta da sorulabilir; hiçbiri devri durdurmaz. Önerilen seçenek ilk sırada.
+Hepsi yeni hesapta da sorulabilir (ana oturum numaralı seçenekle sorar; son seçenek "Yazarak cevap vereceğim"); hiçbiri devri durdurmaz. Önerilen seçenek ilk sırada. "Thread" sütunu işin eski adıdır; raporu `threadler/` altında.
 
 ### Hemen (devrin kendisi için)
 1. ~~Sayfa haritası (PAGES) linkleri hangi hesapta?~~ Kalktı: PAGES emekli (Mert, 15 Ekim).
@@ -100,18 +103,18 @@ Hepsi yeni hesapta da sorulabilir; hiçbiri devri durdurmaz. Önerilen seçenek 
 21. MVP listesi onayı. 22. Fiyat modeli (lokasyon başı / çalışan başı / sabit). 23. Alan adı ve şirket bilgisi. 24. E-posta servisinin (Resend) ne zaman bağlanacağı. 25. Vercel Pro ($20/ay) ve Supabase Pro ($25/ay). 26. Yasal metinler avukattan mı şablondan mı. 27. Lineup MVP'de mi. 28. İşçi sınırı 2 olsun mu.
 
 ### Canlı veri
-29. Meyhouse demo verisi (Palo Alto, 19–25 Ekim haftası): testten sonra silinsin mi. Silme geri alınamaz; yalnız Mert'in PC tren thread'inde kendi yazdığı "evet"le.
+29. Meyhouse demo verisi (Palo Alto, 19–25 Ekim haftası): testten sonra silinsin mi. Silme geri alınamaz; yalnız Mert'in ana oturumda kendi yazdığı "evet"le.
 
 ### Diğer
 30. Sayfa denetimi planının ikinci aşaması (tasarlanmış ama kodlanmamış işler) ne zaman.
 31. Jobs: "renk görsellerini bilgisayarına kopyalayayım mı" sorusu (yeni durumda gereksiz).
-32. Bilgisayardaki Claude hafızası (34 dosya, `C:\Users\TheWe\.claude\projects\C--Users-TheWe-Documents-Codex-newfork-clean\memory\`): yerinde kalsın (önerilen: aynı Windows kullanıcısı, yeni hesap da görür) · kendin `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\pc-hafiza\` klasörüne kopyala · yeni tren thread'ine kopyalama izni ver.
+32. Bilgisayardaki Claude hafızası (34 dosya, `C:\Users\TheWe\.claude\projects\C--Users-TheWe-Documents-Codex-newfork-clean\memory\`): yerinde kalsın (önerilen: aynı Windows kullanıcısı, yeni hesap da görür) · kendin `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\pc-hafiza\` klasörüne kopyala · yeni hesabın ana oturumuna kopyalama izni ver.
 
 ---
 
 ## 3. Açık thread'ler, tek tek
 
-Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda yeni hesapta o işi açacak brief taslağı var. Aşağıda kısa hâl.
+Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda o işi yeni hesapta sürdürmek için ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesaj ("brief taslağı") var. Aşağıda kısa hâl. 15 Ekim'de açılan Bildirim sistemi işinin raporu: `threadler/bildirim-sistemi.md` ve `threadler/bildirim-sistemi-kaynak/YENI-HESAP-MESAJI.md` (güncel, Projects'siz hâli bu pakette ve PD'de; `claude/project-thread-bb8xot` dalındaki kopya Projects'li eski hâldir).
 
 ### 3.1 Vardiya kartı, hayalet vardiya ve sürükleme → `threadler/vardiya-karti.md`
 - **Bitenler:** yeni kart görünümü (LIVE/NEW işaretleri, tek satır yazı, sütun genişliği kademeleri, kapalı gün, "!" ad hücresinde) main `80c772bf`; NEW'in saate binmemesi main `9b871a97`.
@@ -159,7 +162,7 @@ Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda yeni hesapta 
 - **Durum:** sayfa sürüm 34, eski hesapta. Kaynak ve bütün ek dosyalar `threadler/oto-kaynak/` (124 MB; büyük kısmı 1.2'deki tam kopyada).
 - **Yeni hesapta:** sayfa yeni Artifact olarak, 64 MB'lık yayın sınırı yüzünden birkaç parçada kurulur; içindeki eski linkler yeni linklerle değiştirilir.
 - **Mert'ten:** karar 17 ve 3.
-- **Not:** `gelen/` altındaki 6 klasör sayfaya hiç girmedi (job-ikonlari, lineup-durumlar, lineup-satir, lineup-telefon, liste-secim-envanteri, yukleme-hata); yeni koordinatör hangisinin gireceğine bakmalı.
+- **Not:** `gelen/` altındaki 6 klasör sayfaya hiç girmedi (job-ikonlari, lineup-durumlar, lineup-satir, lineup-telefon, liste-secim-envanteri, yukleme-hata); yeni hesabın ana oturumu hangisinin gireceğine bakmalı.
 
 ### 3.9 Takas (vardiya bırakma, cover, swap) → `threadler/takas.md`
 - **Bitenler:** reddet/kapat düğmeleri kırmızı ve iki tık; Shift Hub sekmeleri ve sayılar (main'de).
@@ -200,10 +203,11 @@ Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda yeni hesapta 
 - **En önemli bulgular:** ödeme kodu yok; canlıda e-posta yok (davet ve şifre sıfırlama gitmiyor); yasal sayfalar "Pre-release"; hata sınırı ve hata izleme yok; `DURUM.md` ve ekran listeleri 7–9 Ekim'de kalmış.
 - **Mert'ten:** karar 21–28.
 
-### 3.17 Bilgisayarındaki Claude 2 (tren) → `/mnt/project-files/yerel-durum-2026-10-14.md`
+### 3.17 Bilgisayarındaki Claude 2 (tren) → `yerel-durum-2026-10-14.md` (PD kökünde)
 - **Durum:** main `9b871a97` = origin; `coord/kayit2` `39955a3f`, bekleyen kayıt yok; kilit boş; tren yok; runner çevrimiçi.
 - **Yapılıyor:** `PC-ISTEGI.md`'deki yerel yedek.
-- **Yeni hesapta:** Remote Control thread'i yeniden kurulur (`NASIL-DEVAM.md` adım 6). Supabase connector'ı yeni hesapta bağlanmadan canlı migration yapılamaz.
+- **Yeni hesapta:** tren thread'i yeniden kurulmaz; treni, kilidi, yerel e2e'yi ve canlı migration'ı ana oturum yapar (`NASIL-DEVAM.md` bölüm 0 ve adım 7). Eski PC thread'i boşta olmadan yeni hesapta tren koşulmaz. Supabase MCP ana oturumda bağlanmadan canlı migration yapılamaz.
+- **15 Ekim:** main `2f2f744c` (iki belge treni: PAGES emekliliği `d6441377`, varyant kuralı ve `varyant-sayfasi` skill'i `2f2f744c`).
 
 ---
 
@@ -261,23 +265,23 @@ Bu görevler eski hesabın kullanımı biterse çalışmaz; kaybolan bir şey ol
 
 ## 6. Yeni hesaba taşınacak ortak bulgular ve dersler
 
-Thread raporlarında tekrar eden, her yeni thread'in bilmesi gerekenler:
+Thread raporlarında tekrar eden, yeni hesapta her oturumun bilmesi gerekenler:
 
-1. **Artifact:** iki hesap birbirinin sayfasını görmez. Günde 200 yayın sınırı var (yeniden yayın da sayılır; 17:00 California'da sıfırlanır). Bir yayın en çok 64 MB. Var olan sayfaya yayından önce `list scope:files` ya da `read` gerekir; ilk deneme "canlı sürümü okumadın" diye reddedilirse bu okuma sayılır. `/mnt/project-files`'tan doğrudan yayın "source file changed" hatası verebilir: önce oturumun geçici klasörüne kopyala. Tek dosyalık büyük `app.html` yayın denetimine takılabilir: `app.js`'e böl. Yayından önce kaynak bandı: `python3 /mnt/project-files/pages/kaynak-bandi/bant.py SAYFA.html ARTIFACT-ID`.
-2. **Demo uygulama aracı (eski PAGES; yalnız varyantlardaki "Original" görüntüsü için, yayın ve güncel tutma yok):** araç = `PAGES/_kaynak/`, ortak derlemeler `PAGES/app.html` ve `PAGES/app-schedule.html`, bunlara varyant enjekte eden `pages/gorsel-kararlar/mkapps.py`; dokuz `gorsel-kararlar/gelen/` klasörü ve "Bekleyen görsel kararlar" sayfası bunlara dayanır, silinmez. Kurulum: `PAGES/_kaynak` → `apps/web/.temp/pages` (`.env` dahil, değerleri demo) → `python3 tools/screens.py` → `PAGES_OUT=… node .temp/pages/tools/build-pages.mjs <numaralar>` → `check-scenarios.mjs`. Önce `pnpm --filter @newfork/ui --filter @newfork/shared build`; `node_modules` bağlantıları kök, `apps/web`, `packages/ui`, `packages/shared`. Vite'ta `dedupe: ["react","react-dom"]`. Her senaryo dünyayı sıfırlar; localStorage senaryolar arasında sızar. Artifact HTML'i sunucu tarafında kopyalanamaz, her sayfa `app.html`'i (2,4 MB; Schedule 8,4 MB) ek dosya olarak taşır. Tek dosyaya gömülü derlemede üst düzey `await import(x)` x tanımlanmadan okunur (TDZ hatası): beklemeden, en sonda çağır.
-3. **Playwright (bulut):** `executablePath: '/opt/pw-browsers/chromium'`.
-4. **Git:** dalın main'de olup olmadığı `git cherry` ile ölçülmez; ağaç ya da `git patch-id --stable`. Tren cherry-pick listesiyle kalkar, birleştirme commit'i trene girmez. Bulut thread'i yalnız kendi `claude/...` dalına push eder; force, mirror, prune yasak. Alt ajana "ana klasörde dal değiştirme" açıkça yazılır (nf-guvenlik bir kez `checkout --detach` yaptı).
+1. **Artifact:** iki hesap birbirinin sayfasını görmez. Günde 200 yayın sınırı var (yeniden yayın da sayılır; 17:00 California'da sıfırlanır). Bir yayın en çok 64 MB. Var olan sayfaya yayından önce `list scope:files` ya da `read` gerekir; ilk deneme "canlı sürümü okumadın" diye reddedilirse bu okuma sayılır. Eski hesapta `/mnt/project-files`'tan doğrudan yayın "source file changed" hatası veriyordu; yeni hesapta da sorun çıkarsa önce oturumun geçici klasörüne kopyala. Tek dosyalık büyük `app.html` yayın denetimine takılabilir: `app.js`'e böl. Yayından önce kaynak bandı: `python PD\pages\kaynak-bandi\bant.py SAYFA.html ARTIFACT-ID`. Ana oturumda Artifact yayın aracı yoksa sayfa tarayıcıda dosyadan açılır.
+2. **Demo uygulama aracı (eski PAGES; yalnız varyantlardaki "Original" görüntüsü için, yayın ve güncel tutma yok):** araç = `PAGES/_kaynak/`, ortak derlemeler `PAGES/app.html` ve `PAGES/app-schedule.html`, bunlara varyant enjekte eden `pages/gorsel-kararlar/mkapps.py`; dokuz `gorsel-kararlar/gelen/` klasörü ve "Bekleyen görsel kararlar" sayfası bunlara dayanır, silinmez. Kurulum: `PAGES/_kaynak` → `apps/web/.temp/pages` (`.env` dahil, değerleri demo) → `python3 tools/screens.py` → `PAGES_OUT=… node .temp/pages/tools/build-pages.mjs <numaralar>` → `check-scenarios.mjs`. Önce `pnpm --filter @newfork/ui --filter @newfork/shared build`; `node_modules` bağlantıları kök, `apps/web`, `packages/ui`, `packages/shared`. Vite'ta `dedupe: ["react","react-dom"]`. Her senaryo dünyayı sıfırlar; localStorage senaryolar arasında sızar. Artifact HTML'i sunucu tarafında kopyalanamaz, her sayfa `app.html`'i (2,4 MB; Schedule 8,4 MB) ek dosya olarak taşır. Tek dosyaya gömülü derlemede üst düzey `await import(x)` x tanımlanmadan okunur (TDZ hatası): beklemeden, en sonda çağır. Araç eski hesapta Linux bulut kabında koşuyordu; bilgisayarda ilk kullanımda komutlar Windows'a uyarlanır (`python3` yerine `python`, yollar PD altında).
+3. **Playwright:** bilgisayarda repo kurulumunun kendisi; yalnız claude.ai/code bulut oturumunda `executablePath: '/opt/pw-browsers/chromium'`.
+4. **Git:** dalın main'de olup olmadığı `git cherry` ile ölçülmez; ağaç ya da `git patch-id --stable`. Tren cherry-pick listesiyle kalkar, birleştirme commit'i trene girmez. Dallara yalnız ileri push; force, mirror, prune yasak (bulut oturumu yalnız kendi `claude/...` dalına). Alt ajana "ana klasörde dal değiştirme" açıkça yazılır (nf-guvenlik bir kez `checkout --detach` yaptı).
 5. **Mert'le iletişim:** Türkçe, sade, California saati; plan numarası yalnız parantezde; çoktan seçmeli sorunun son seçeneği "Yazarak cevap vereceğim"; varyant sayfasında "hangisi?" kartı yok, link bir kez verilir; Original her zaman ilk sırada; varyantlar en iyisini hedefler: akış, mimari, işleyiş, UI ve UX için en iyi uygulama ve en profesyonel, en çok kabul görmüş tasarım; bugünkü ürün doğru kabul edilmez, üzerine yama yapılmaz; yalnız font ve renkler tasarım dilimize uyar (Mert, 15 Ekim); görsel düzeltme hızlı. Mert'e git komutu verilmez.
 6. **Ürün kuralları (son günlerde eklenen):** erişim yoksa sayfa çizilmez, aynı adreste yalnız C kartı, sayfa alanının ortasında; bir kez yüklenen liste yenileme hatasında kapanmaz; Availability yalnız tercih (uyarı, onay yok); onaylı izin her zaman engel; iki lokasyonlu swap'ta tek müdürün reddi yeter; telefonda yazı kutuları 16 px; telefonda kaydırma çubuğu yok; Settings liste sayfalarında yalnız liste kayar.
-7. **Kayıtlar bayat:** `DURUM.md` 9 Ekim'de, ekran listeleri 7–8 Ekim'de kalmış (MVP raporu). Yeni koordinatör ilk iş `DURUM.md`'yi bugüne çeker.
+7. **Kayıtlar bayat:** `DURUM.md` 9 Ekim'de, ekran listeleri 7–8 Ekim'de kalmış (MVP raporu). Yeni hesabın ana oturumu ilk iş `PD\DURUM.md`'yi bugüne çeker.
 
 ## 7. Güvenlik notları
 
-- **Süresi dolmuş test anahtarları:** eski bir "Today" sayfasının kopyasında 8 test oturumunun erişim ve yenileme anahtarı vardı (süreleri 10 Ekim'de doldu, rol `authenticated`, test kişileri). Bu sayfa iki yerde: `/mnt/project-files/pages/orijinal/today/index.html` ve /oto sayfasının `embed/eski/today/index.html` eki. Devir kopyalarında anahtarlar "REDACTED" yapıldı. Eski hesaptaki yayında hâlâ duruyor (karar 3).
+- **Süresi dolmuş test anahtarları:** eski bir "Today" sayfasının kopyasında 8 test oturumunun erişim ve yenileme anahtarı vardı (süreleri 10 Ekim'de doldu, rol `authenticated`, test kişileri). Bu sayfa iki yerde: `PD\pages\orijinal\today\index.html` ve /oto sayfasının `embed/eski/today/index.html` eki. Devir kopyalarında anahtarlar "REDACTED" yapıldı. Eski hesaptaki yayında hâlâ duruyor (karar 3).
 - **Koordinatör hafızası:** bulut test veritabanının şifresi `[GİZLİ-ÇIKARILDI]` yapıldı (canlı şifre değildi).
 - **Audience deneme sayfası:** demo giriş şifresi `DEMO-SIFRE-CIKARILDI` yapıldı.
 - **Yerel test sunucusu (`pages/orijinal/kaynak/`):** imza anahtarı ve test şifresi `[GIZLI-CIKARILDI]` yapıldı.
-- **Demo uygulama parolası:** yerel test dünyasının kişilerinin ortak demo parolası (giriş ekranı senaryolarında yazılan) 40 dosyada `[GIZLI-CIKARILDI]` yapıldı: `screens.py`, `screens.json`, `10-giris-hesap.py`, `world.sql` ve derlenmiş `app*.html` kopyaları. Demo uygulama aracını kullanacak thread kendi yerel demo parolasını seçip `PAGES/_kaynak/tools/sc/10-giris-hesap.py` (`PW = ...`) ve `pages/orijinal/kaynak/` dosyalarına aynı değeri yazar; canlıyla ilgisi yok.
+- **Demo uygulama parolası:** yerel test dünyasının kişilerinin ortak demo parolası (giriş ekranı senaryolarında yazılan) 40 dosyada `[GIZLI-CIKARILDI]` yapıldı: `screens.py`, `screens.json`, `10-giris-hesap.py`, `world.sql` ve derlenmiş `app*.html` kopyaları. Demo uygulama aracını kullanacak oturum kendi yerel demo parolasını seçip `PAGES/_kaynak/tools/sc/10-giris-hesap.py` (`PW = ...`) ve `pages/orijinal/kaynak/` dosyalarına aynı değeri yazar; canlıyla ilgisi yok.
 - **`.env` dosyaları (20 adet):** hepsi demo anahtar ve yerel adres. GitHub kopyasında adları `env.demo.txt` yapıldı (repo `.env`'i dışarıda tutuyor); bilgisayardaki tam kopyada asıl adlarıyla.
 - **Kopyalanmayanlar:** `artifacts/note-mark-r3/.session.json`, "devir testi" oturumları (okunmadı, özetlenmedi).
 - Tarama yöntemi ve sonuçları: `NASIL-DEVAM.md` ek A.

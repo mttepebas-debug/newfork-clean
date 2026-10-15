@@ -1,5 +1,7 @@
 # Devir raporu: "Jobs devir dosyası" thread'i
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 > **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
 
 Yazıldı: 2026-10-14, yaklaşık 16:50Z (California 09:50). Yazan: bu thread'in Claude'u. Kaynak: thread geçmişi, git, /mnt/project-files.
@@ -71,7 +73,7 @@ Dal: `claude/project-thread-8tmjta`. Son push'lanmış commit `bf250ae6`. Push'l
 - **Bilinen:** Eski Jobs oturumu (EKRAN-10-JOBS) bu worktree'yi açtı ama içine commit yazmadı. İçindeki `artifacts\devir\DEVIR-EKRAN-10-JOBS.md`, main'deki `docs/plan/devir-2026-10-08/EKRAN-10-JOBS.md` ile aynı; tek fark baştaki "from:" yorum satırı. Bu, bu thread'in daha önce Mert'in bilgisayarından okuyup karşılaştırdığı bilgi.
 - **Bilinmeyen:** Bulut thread'i Mert'in bilgisayarını göremez; worktree'nin bugünkü durumunu kontrol etmedim.
 - **Hafızadaki kural:** bu worktree "SİLME" listesinde.
-- **Yeni hesapta:** bilgisayardaki (Remote Control) thread şunu koşsun: `git -C <yol> status --porcelain --ignored` ve `git cherry -v origin/main claude/keen-brahmagupta-8c4853`. Temizse ve Mert onaylarsa silinebilir. Silmeden önce `artifacts\devir\` klasörünün yedeği alınmalı.
+- **Yeni hesapta:** ana oturum (bilgisayarda) şunu koşsun: `git -C <yol> status --porcelain --ignored` ve `git cherry -v origin/main claude/keen-brahmagupta-8c4853`. Temizse ve Mert onaylarsa silinebilir. Silmeden önce `artifacts\devir\` klasörünün yedeği alınmalı.
 - **İlgili ikinci worktree:** `C:\Users\TheWe\Documents\Codex\newfork-wt\ekran-10-jobs`, dal `task/ekran-10-jobs` (ce9b24cd). Üç commit'i de main'de, yalnız `.md`. Aynı kontrol uygulanır.
 
 ## 4. Mert'ten beklenen

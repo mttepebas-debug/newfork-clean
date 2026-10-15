@@ -1,5 +1,7 @@
 # Devir: "MVP listesi ve ilerleme planı" thread'i
 
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu rapor eski hesabın Projects düzeninde yazıldı. "Thread", "koordinatör", "proje sohbeti", "karar kartı", "PC tren thread'i / Remote Control", "brief" ve `/mnt/project-files/X` yolları `../NASIL-DEVAM.md` bölüm 0'daki sözlükle okunur: iş tek bir Claude Code oturumunda (ana oturum, Mert'in bilgisayarında) yürür; proje dosyaları `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\` (PD) altındadır ve `/mnt/project-files/X` = `PD\X`; sondaki "brief" ana oturuma (ya da ek oturuma) yapıştırılacak ilk mesajdır; karar kartı yerine numaralı seçenekli soru sorulur.
+
 - Yazıldığı an: 14 Ekim 2026, sabah 9:50 (California).
 - Thread: Newfork-clean project'i, Mert'in 14 Ekim sabah 3:45 (California) tarihli mesajıyla açılan thread ("repoyu appi genel şartlarıyla incelesen? mvp ye çıkmamız için neler gerek bana bir liste ve ilerleme planı yapsan?").
 - İş türü: salt okuma. Kod değişmedi, main'e ya da canlıya dokunulmadı.
@@ -149,7 +151,7 @@ Mert'in bugün hangi planda olduğu ölçülmedi.
 
 ## 6. Yeni hesapta nasıl devam edilir
 - Bu iş salt okumaydı; sürdürülecek kod yok. Yeni hesapta yapılacak tek şey, Mert'in §5'teki kararlarını alıp planı başlatmak.
-- Dosya `/mnt/project-files/notes/mvp/mvp-yol-haritasi.html`. Yeni hesap project dosyalarını görmüyorsa Mert bu dosyayı oradan indirip yerel depoya koyar. Önerilen yer: `C:\Users\TheWe\Documents\Codex\newfork-pages\mvp-yol-haritasi.html`. Bu thread repoya commit atmadı.
+- Dosya `/mnt/project-files/notes/mvp/mvp-yol-haritasi.html`. Yeni hesapta dosya bilgisayarda: `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\notes\mvp\mvp-yol-haritasi.html`; tarayıcıda açılır. Bu thread repoya commit atmadı.
 - Sayıları kullanmadan önce yeniden ölçün; main değişmiş olabilir. Ölçüm kaynakları:
   - `git log origin/main`;
   - `e2e/flows/`;
@@ -162,7 +164,7 @@ Bağlam: 14 Ekim 2026 incelemesi /mnt/project-files/devir/threadler/mvp.md ve
 notes/mvp/mvp-yol-haritasi.html (main be055596). Salt okur incelemeydi.
 Önce: main'in bugünkü sha'sıyla şu dört şeyi yeniden ölç: ödeme kodu, canlı e-posta,
 yasal sayfa bandı, açık kritik/yüksek backlog.
-Mert'e karar kartlarıyla sor (her kartın son seçeneği "Yazarak cevap vereceğim"):
+Mert'e numaralı seçenekli sorularla sor (her sorunun son seçeneği "Yazarak cevap vereceğim"):
 §5'teki 8 karar. Önce durduranlar: liste onayı, fiyat modeli, alan adı.
 Bitti ölçütü: onaylı MVP listesi KARARLAR.md "1.4 MVP sınırı"na yazılmış
 (kayıt thread'i yazar); Faz 1 hesap adımları Mert için ekran ekran yönerge olarak hazır.

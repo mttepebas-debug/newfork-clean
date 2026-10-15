@@ -1,4 +1,7 @@
 # Newfork-clean
+
+> **Yeni hesapta Projects yok (15 Ekim 2026):** bu, eski Projects koordinatörünün hafızası. Nasıl kullanılacağı `BENIOKU.md`'de; Projects'e bağlı satırlar (5 dakikalık rapor, thread sayıları, message_thread, kimlikler) yeni hesapta geçersiz, `/mnt/project-files/X` = `PD\X`.
+
 Repo https://github.com/mttepebas-debug/newfork-clean. Owner Mert (GitHub mttepebas-debug), Windows PC, Claude Desktop. ALWAYS write to Mert in Turkish, times in California (UTC−7 in Oct).
 
 ## Mert's standing rules (include relevant ones in briefs)
