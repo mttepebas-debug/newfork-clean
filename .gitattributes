@@ -1,3 +1,6 @@
 supabase/**/*.sql text eol=lf
 # Function bodies intentionally keep embedded CR bytes; store verbatim.
 supabase/migrations/20260909003001_schedule_time_source_snapshots.sql -text
+
+# Windows batch files keep CRLF (cmd.exe misreads labels and blocks on LF).
+*.cmd text eol=crlf
