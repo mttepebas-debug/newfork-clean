@@ -7,7 +7,7 @@ Tarih: 15 Ekim 2026. Mert'in seçimi: "Taslağı hazırla" (CLAUDE.md'deki Proje
 
 ## Nerede
 - GitHub, dal `claude/hesap-devri-bqus46`, iki commit, ikisi birlikte uygulanır: `f9d83e6a` ("docs(claude): run the workflow in one Claude Code session, no Projects (draft)") ve `5cf9d7bc` ("docs(claude): keep a second reviewer for risky steps in the one-session draft"). Yalnız `CLAUDE.md` değişir.
-- Main'e girmedi. Main'deki `CLAUDE.md` ile taslağın tabanı aynı (15 Ekim, main `2f2f744c`), bu yüzden tek commit olarak temiz uygulanır.
+- Main'e girmedi. Main'deki `CLAUDE.md` ile taslağın tabanı aynı (15 Ekim, main `2f2f744c`), bu yüzden iki commit sırayla temiz uygulanır.
 
 ## Önce / sonra (özet)
 | Yer | Bugün | Taslakta |
