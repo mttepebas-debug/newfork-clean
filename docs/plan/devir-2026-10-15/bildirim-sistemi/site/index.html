@@ -1,0 +1,753 @@
+<title>Bildirim Sistemi Planı</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: a plan document in the app's own look. Sticky tab strip, one section shown at a time, tables in their own scroll boxes. Light only, like the app. */
+:root {
+  --page: #f4f5f3; --surface: #ffffff; --soft: #f7f9f8; --text: #17221e; --body: #1d2525; --muted: #5f6b66; --line: #dce3df; --line-strong: #cbd4d0;
+  --accent: #176954; --accent-soft: #e7f1ed; --accent-deep: #244c3d; --focus: #177a64;
+  --z: #a43830; --z-soft: #fff0ee; --o: #8a5a00; --o-soft: #fff7e2; --i: #234a7a; --i-soft: #e8eff8;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--body); font: 15px/1.6 var(--sans); }
+.wrap { max-width: 1120px; margin: 0 auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 0 64px; }
+header.top { padding-block: 32px 8px; display: grid; gap: 8px; }
+.eyebrow { font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--accent); margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.1; letter-spacing: -0.02em; margin: 0; color: var(--text); text-wrap: balance; }
+.sub { color: var(--muted); margin: 0; max-width: 70ch; }
+.stop { display: inline-flex; gap: 8px; align-items: center; background: var(--o-soft); color: #5f491f; border: 1px solid #ecd9a8; border-radius: 8px; padding: 6px 10px; font-size: 13px; font-weight: 600; width: fit-content; max-width: 100%; }
+nav.tabs { position: sticky; top: env(safe-area-inset-top, 0px); z-index: 5; background: var(--page); border-bottom: 1px solid var(--line); margin-top: 16px; }
+nav.tabs .in { display: flex; gap: 2px; overflow-x: auto; scrollbar-width: none; }
+nav.tabs a { flex: 0 0 auto; padding: 12px 12px 10px; color: var(--muted); text-decoration: none; font-weight: 600; font-size: 14px; border-bottom: 2px solid transparent; }
+nav.tabs a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); }
+nav.tabs a:focus-visible, a:focus-visible, button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+section.pane { padding-top: 28px; display: grid; gap: 20px; }
+section.pane[hidden] { display: none !important; }
+h2 { font-size: 24px; letter-spacing: -0.01em; margin: 0; color: var(--text); text-wrap: balance; }
+h3 { font-size: 17px; margin: 0; color: var(--text); }
+p { margin: 0; }
+.prose { max-width: 72ch; display: grid; gap: 10px; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+a { color: var(--accent); }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px; display: grid; gap: 10px; align-content: start; min-width: 0; }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+.grid4 { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+@media (max-width: 860px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } .grid4 { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.stat { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 2px; }
+.stat b { font-size: 26px; color: var(--text); font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.stat span { color: var(--muted); font-size: 13px; }
+.thesis { font-size: 19px; line-height: 1.5; color: var(--text); max-width: 64ch; border-left: 3px solid var(--accent); padding-left: 16px; }
+ul.list, ol.list { margin: 0; padding-left: 20px; display: grid; gap: 6px; }
+.four { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 860px) { .four { grid-template-columns: minmax(0, 1fr); } }
+.four .card h3 { display: flex; gap: 8px; align-items: center; }
+.four .card h3 span { font-size: 11px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); }
+.ask { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-soft); }
+.lvl { display: inline-flex; align-items: center; font-size: 12px; font-weight: 700; padding: 1px 8px; border-radius: 999px; white-space: nowrap; }
+.lvl.z { background: var(--z-soft); color: var(--z); }
+.lvl.o { background: var(--o-soft); color: var(--o); }
+.lvl.i { background: var(--i-soft); color: var(--i); }
+.lvl.n { background: #eef0ef; color: var(--muted); }
+.ch { display: inline-flex; gap: 3px; flex-wrap: wrap; }
+.ch i { font-style: normal; font-size: 11px; font-weight: 700; border: 1px solid var(--line-strong); border-radius: 4px; padding: 0 5px; color: var(--accent-deep); background: var(--soft); }
+.tablebox { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: #e6ece8; color: #4f5d57; font-size: 11.5px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; position: sticky; top: 0; }
+tr:last-child td { border-bottom: 0; }
+td.t { font-weight: 600; color: var(--text); }
+td .en { font-family: var(--mono); font-size: 12px; color: var(--accent-deep); }
+td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.filters { display: flex; flex-wrap: wrap; gap: 10px 14px; align-items: end; }
+.filters label { display: grid; gap: 4px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.filters select, .filters input { font: inherit; font-size: 14px; padding: 7px 10px; border: 1px solid #7f8c86; border-radius: 6px; background: var(--surface); color: var(--text); min-width: 0; }
+.filters input { width: 220px; max-width: 100%; }
+.count { color: var(--muted); font-size: 13px; margin-left: auto; }
+.pipe { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.pipe span { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-weight: 600; color: var(--text); font-size: 14px; }
+.pipe em { font-style: normal; color: var(--muted); }
+.steps { counter-reset: s; display: grid; gap: 12px; }
+.slice { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 4px 14px; }
+.slice .no { grid-row: span 3; width: 36px; height: 36px; border-radius: 50%; background: var(--accent-soft); color: var(--accent); font-weight: 800; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+.slice .meta { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); }
+.slice .meta b { color: var(--text); font-weight: 600; }
+.need { color: #5f491f; background: var(--o-soft); border-radius: 6px; padding: 2px 8px; font-size: 13px; font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; }
+.chips span { font-size: 12.5px; border: 1px solid var(--line); background: var(--soft); border-radius: 999px; padding: 2px 10px; }
+.src { font-size: 13px; color: var(--muted); display: grid; gap: 4px; }
+.src a { word-break: break-word; }
+details.card summary { cursor: pointer; font-weight: 700; color: var(--text); }
+.frame-embed { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--surface); }
+.frame-embed iframe { display: block; width: 100%; height: 1320px; border: 0; }
+pre.mermaid { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px; overflow-x: auto; margin: 0; }
+.prec { display: grid; gap: 6px; counter-reset: p; margin: 0; padding: 0; list-style: none; }
+.prec li { counter-increment: p; display: grid; grid-template-columns: 28px minmax(0, 1fr); gap: 10px; align-items: baseline; }
+.prec li::before { content: counter(p); font-weight: 800; color: var(--accent); font-variant-numeric: tabular-nums; }
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Newfork · bildirim sistemi · 14 Ekim 2026</p>
+  <h1>Bildirim sistemi planı</h1>
+  <p class="sub">Eski bildirim sistemini sökmek ve yenisini sıfırdan kurmak için plan: ne bildirilir, kime, hangi yoldan; kim neyi kapatabilir; motor nasıl kurulur; hangi sırayla yapılır.</p>
+  <p class="stop">Kod yazılmadı, silinmedi. Sen izin verene kadar yalnız okuma ve plan.</p>
+</header>
+
+<nav class="tabs" aria-label="Bölümler"><div class="in" id="tabnav">
+  <a href="#ozet">Özet</a>
+  <a href="#arastirma">Araştırma</a>
+  <a href="#kanallar">Kanallar</a>
+  <a href="#kurallar">Kurallar</a>
+  <a href="#liste">Bildirim listesi</a>
+  <a href="#motor">Motor</a>
+  <a href="#ekranlar">Ekranlar</a>
+  <a href="#sokum">Söküm</a>
+  <a href="#yol">Yol haritası</a>
+</div></nav>
+
+<!-- ============ ÖZET ============ -->
+<section class="pane" id="ozet">
+  <p class="thesis">Her bildirim kişinin uygulamadaki listesine düşer. Önemli olanlar ayrıca telefona ya da e-postaya gider. Kimin neyi alacağını ürün belirler; owner yalnız gürültü yapabilecek birkaç bildirimi kapatır, kişi yalnız ek kanalları seçer.</p>
+
+  <div class="grid4">
+    <div class="stat"><b>65</b><span>bildirim türü (14 zorunlu, 42 önemli, 9 isteğe bağlı)</span></div>
+    <div class="stat"><b>3</b><span>seviye: zorunlu, önemli, isteğe bağlı</span></div>
+    <div class="stat"><b>3 + 1</b><span>kanal: uygulama, telefon, e-posta; kısa mesaj hazır ama kapalı</span></div>
+    <div class="stat"><b>$20/ay</b><span>tek ek maliyet: e-posta (Resend Pro), ilk müşteriyle</span></div>
+  </div>
+
+  <div class="four">
+    <div class="card">
+      <h3><span>1</span> Anladığım</h3>
+      <ul class="list">
+        <li>Eski bildirim sistemi bütünüyle gidecek; yenisi eskisine bakılmadan, profesyonel uygulamaların yaptığı gibi kurulacak.</li>
+        <li>Kanallar: uygulama içi; e-posta (Resend, henüz bağlı değil); telefona bildirim (web push). Kısa mesajın altyapısı hazır olacak ama ücretli olduğu için kapalı. Mobil uygulama sonra.</li>
+        <li>Açık soruların cevabı "sektörde nasıl yapılıyorsa o". Ben araştırıp öneriyorum, sen onaylıyorsun.</li>
+        <li>Bu aşama yalnız okuma ve plan. Kod silmek ya da yazmak için önce senden izin alacağım.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3><span>2</span> Eksik ya da yanlış olabilecek</h3>
+      <ul class="list">
+        <li><b>Öncelik çakışıyor.</b> 9 Ekim'de "önce Schedule bitsin, bildirim sonra" demiştin (S-117). Bu isteğin onun yerine geçtiğini varsaydım.</li>
+        <li><b>Arada bildirim olmayacak.</b> Sökümden yeni sistem gelene kadar uygulamada bildirim yok. Canlı kullanıcı olmadığı için daha önce kabul edilmişti (S-96).</li>
+        <li><b>5 iş eski bildirim kodunun içinde çalışıyor</b> (belgesi geciken kişiyi kısıtlama, süresi dolan takası kapatma, takas geçmişi, hesap güvenliği kaydı, Workspace sayfasındaki belge işleri). Önce bunlar taşınmalı; yoksa sessizce bozulurlar.</li>
+        <li><b>Telefona bildirim için uygulama "ana ekrana eklenebilir" olmalı.</b> Bugün bunun parçaları (manifest, service worker) yok; yeni kurulacak. iPhone'da kişi uygulamayı ana ekrana eklemeden bildirim alamaz; bu Apple'ın kuralı.</li>
+        <li><b>Canlıda e-posta hiç gitmiyor</b> (anahtar yok). Resend hesabı ve alan adı doğrulaması olmadan e-posta yalnız kodda hazır olur.</li>
+        <li><b>Vardiya değişimi tasarımı henüz kodlanmadı.</b> Listedeki kapatma, takas ve açık vardiya bildirimleri o tasarıma göre yazıldı; o iş kodlanırken gelir.</li>
+        <li><b>Söküm listesi 7 Ekim'de ölçüldü.</b> Main o günden beri değişti; söküm başlamadan yeniden ölçülecek.</li>
+      </ul>
+    </div>
+    <div class="card ask">
+      <h3><span>3</span> Sorularım</h3>
+      <ol class="list">
+        <li><b>Sökümle başlayayım mı?</b> Evet dersen ilk iş korunacak 5 işi taşımak, sonra eski sistemi sökmek. Bunu thread'de tek tıkla soruyorum.</li>
+        <li><b>Ekranlar:</b> Ekranlar sekmesinde her başlıkta Orijinal ve öneriler var. Önerilenleri beğenmediğin yer olursa yazman yeterli.</li>
+        <li><b>Sonra sorulacak:</b> telefona bildirim için bir kütüphane (<code>web-push</code>, ücretsiz) ve Resend hesabı. İkisini de o dilime gelince ayrıca soracağım.</li>
+      </ol>
+    </div>
+    <div class="card">
+      <h3><span>4</span> Bence</h3>
+      <ul class="list">
+        <li><b>Motoru kendimiz, kendi veritabanımızda kuralım.</b> Ek maliyet $0; workspace sınırı bugünkü yetki sistemimizde kalır; 65 tür ve 3 kanal için hazır servis fazla. Yedek plan: Novu Cloud ($30/ay).</li>
+        <li><b>Kim neyi alır, ürün kuralı olsun.</b> Owner'a tür tür ayar sormayalım; bugünkü Settings sayfasının karmaşası buradan geliyor.</li>
+        <li><b>Bildirim kutusu sol menüden açılan panel olsun,</b> yanında tam sayfa. Telefonda Home'daki zil tam ekran liste açsın.</li>
+        <li><b>Yayındaki "Notify" seçimi kalksın.</b> Vardiyası değişen herkes kendiliğinden haber alır; yayınlayan isterse kısa not ekler.</li>
+        <li><b>Sıra:</b> korunacak işleri taşı → sök → çekirdek → kutu ekranları → ayarlar → e-posta → telefon.</li>
+        <li><b>Elenenler:</b> Knock (10 bin mesajdan sonra $250/ay), SuprSend (tercihler $250/ay planında), Novu'yu kendi sunucumuzda çalıştırmak (MongoDB, Redis ve S3 ister), tür başına ayar tablosu (bugünkü karmaşa geri gelir).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Para</h3>
+    <div class="tablebox"><table>
+      <thead><tr><th>Ne</th><th>Ne zaman</th><th>Aylık</th><th>Not</th></tr></thead>
+      <tbody>
+        <tr><td class="t">Motor, uygulama içi, canlı güncelleme</td><td>Hemen</td><td class="num">$0</td><td>Mevcut Supabase ve Vercel içinde.</td></tr>
+        <tr><td class="t">Telefona bildirim (web push)</td><td>Telefon dilimi</td><td class="num">$0</td><td>Apple, Google ve Mozilla'nın gönderim servisleri ücretsiz.</td></tr>
+        <tr><td class="t">E-posta (Resend Pro)</td><td>İlk gerçek müşteri</td><td class="num">$20</td><td>Ücretsiz plan günde 100 e-posta; 100 kişilik bir yayın tek başına bitirir. Pro: ayda 50 bin.</td></tr>
+        <tr><td class="t">Kısa mesaj</td><td>Sen açınca</td><td class="num">~$2 + mesaj başı $0.004–0.0083</td><td>Numara ve kayıt ücreti ayrıca (Kanallar sekmesi). Şimdi hiçbir şey satın alınmaz.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+</section>
+
+<!-- ============ ARAŞTIRMA ============ -->
+<section class="pane" id="arastirma" hidden>
+  <div class="prose">
+    <h2>Profesyonel uygulamalar nasıl yapıyor</h2>
+    <p>Bildirim servisleri (Knock, Novu, Courier, SuprSend), iş uygulamaları (Slack, GitHub, Linear, Asana, Notion) ve vardiya rakipleri (7shifts, When I Work, Deputy, Sling, Connecteam, Homebase) incelendi. Kaynaklar sayfanın sonunda; fiyatlar 14 Ekim 2026'da okundu.</p>
+  </div>
+
+  <div class="card">
+    <h3>Her sistemde aynı yedi adım</h3>
+    <div class="pipe"><span>Olay</span><em>→</em><span>Şablon</span><em>→</em><span>Alıcılar</span><em>→</em><span>Tercih kontrolü</span><em>→</em><span>Kanal seçimi</span><em>→</em><span>Gönderim</span><em>→</em><span>Takip</span></div>
+    <p class="muted small">Örnek: "Rachel izni onayladı" (olay) → "Your time off Oct 20–22 is approved" (şablon) → Tom (alıcı) → Tom e-postayı kapatmış mı (tercih) → telefon (kanal) → Apple'ın servisine gönder → ulaştı mı, açıldı mı.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Güvenilirlik: bildirim kaybolmaz, iki kez gitmez</h3>
+      <ul class="list">
+        <li><b>Aynı işlemde yazmak.</b> İzin onayı ve bildirimi veritabanına birlikte yazılır; biri olur öbürü olmaz durumu kalmaz.</li>
+        <li><b>Tek anahtar.</b> Her gönderimin kendi anahtarı var; aynı e-posta yeniden denense bile kişiye bir kez ulaşır (Resend bunu 24 saat tutar).</li>
+        <li><b>Yeniden deneme.</b> Gönderim düşerse artan aralıklarla yeniden denenir; birkaç denemeden sonra "başarısız" olarak kaydedilir.</li>
+        <li><b>Birleştirme.</b> Aynı anda gelen benzer bildirimler tek satır olur ("Maria ve 3 kişi müsaitliğini güncelledi").</li>
+        <li><b>İptal.</b> Sebebi ortadan kalkan bekleyen bildirim gitmez (vardiya silindiyse hatırlatması da gider).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Bildirim kutusunda iyi örnekler</h3>
+      <ul class="list">
+        <li>Zil ve küçük pencere hızlı bakış için; geçmiş için ayrı tam sayfa.</li>
+        <li>Rozet "görmediklerin"; kutu açılınca söner. Satır tıklanınca okunur.</li>
+        <li>Karar isteyen iş ayrı görünür. When I Work'te "Things needing your action" bölümü var.</li>
+        <li>Onay ve ret düğmeleri satırın içinde; sayfaya gitmeden biter.</li>
+        <li>Boş kutuda "All caught up"; hata olunca dürüst mesaj.</li>
+        <li>7shifts geçmişi 3 ay tutuyor; bizim kararımız 90 gün (S-92).</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Organizasyon kapatınca kişi geri açabilir mi?</h3>
+    <div class="tablebox"><table>
+      <thead><tr><th>Ürün</th><th>Organizasyon ne yapabilir</th><th>Kişi değiştirebilir mi</th></tr></thead>
+      <tbody>
+        <tr><td class="t">Courier</td><td>Her konu için açık, kapalı ya da <b>zorunlu</b>. Zorunlu, kişinin seçimini yok sayar.</td><td>Evet, zorunlular hariç</td></tr>
+        <tr><td class="t">SuprSend</td><td>Konu kapatırsa kişi açmış olsa bile gelmez. Abonelikten çıkış, STOP ve telefon izni her şeyin önünde.</td><td>Yalnız izin verilen içinde</td></tr>
+        <tr><td class="t">Knock</td><td>Varsayılanları belirler; isterse zorla kapatır.</td><td>Evet, zorlanmadıkça</td></tr>
+        <tr><td class="t">Novu</td><td>"Kritik" bildirimler ayar ekranında görünmez, kapatılamaz (parola sıfırlama gibi).</td><td>Evet, kritikler hariç</td></tr>
+        <tr><td class="t">Slack, GitHub, Jira, Teams</td><td>Kişinin bildirimine dokunmaz; yalnız kimin herkese mesaj atabileceğini ya da alan adını sınırlar.</td><td>Kişi her şeye sahip</td></tr>
+        <tr><td class="t">Deputy</td><td>Kısa mesajı işletme düzeyinde açıp kapatır.</td><td>Evet</td></tr>
+        <tr><td class="t">Sling</td><td>"Yönetici çalışanın bildirimini değiştiremez."</td><td>Kişi her şeye sahip</td></tr>
+        <tr><td class="t">When I Work</td><td>Plan hangi uyarıların olacağını belirler.</td><td>Olanların içinde seçer</td></tr>
+      </tbody>
+    </table></div>
+    <p class="muted small">Ortak desen: organizasyonun üç gücü var: varsayılanı koymak, kapatmak, zorunlu yapmak. Organizasyonun kapattığını kişi açamaz; varsayılanı kişi değiştirebilir. Bizim modelimiz bunu izliyor (Kurallar sekmesi).</p>
+  </div>
+
+  <div class="card">
+    <h3>Vardiya rakipleri</h3>
+    <div class="tablebox"><table>
+      <thead><tr><th>Ürün</th><th>Kutu</th><th>Kanallar</th><th>Kim ayarlar</th><th>Dikkat çeken</th></tr></thead>
+      <tbody>
+        <tr><td class="t">7shifts</td><td>Sağ üstte zil; 3 ay geçmiş</td><td>Telefon, e-posta, kısa mesaj</td><td>Kişi, tür × kanal</td><td>İkisi açıksa yalnız telefona gönderir; telefon "önerilen".</td></tr>
+        <tr><td class="t">When I Work</td><td>"Things needing your action", "Awaiting others", "Notifications"</td><td>E-posta, telefon; çıkış yapmışsa kısa mesaj</td><td>Kişi; rol neyi göreceğini belirler</td><td>Kısa mesaj günde en çok 20. Program değişikliği yalnız 2 gün içindeyse telefona.</td></tr>
+        <tr><td class="t">Deputy</td><td>Web'de zil, telefonda push</td><td>Push, kısa mesaj (ek ücret)</td><td>İşletme kısa mesajı açar; hatırlatma süresini müdür seçer</td><td>Denemede kısa mesaj kapalı.</td></tr>
+        <tr><td class="t">Sling</td><td>Uygulama içi</td><td>E-posta, push</td><td>Yalnız kişi</td><td>E-postada "hemen / 15 dakikada bir / saatte bir".</td></tr>
+        <tr><td class="t">Connecteam</td><td>Bildirim merkezi</td><td>Push, e-posta, kısa mesaj (ücret gösterilir)</td><td>Kişi; yayında yönetici "bildirme" diyebilir</td><td>Bildirimin kendi menüsünden "bu türü kapat".</td></tr>
+        <tr><td class="t">Homebase</td><td>Uygulama içi</td><td>E-posta, push, kısa mesaj</td><td>Çalışan profilinde</td><td>Yayında, değişiklikte ve vardiyadan önce otomatik.</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <details class="card">
+    <summary>Kaynaklar (tarihleriyle)</summary>
+    <div class="src">
+      <a href="https://docs.knock.app/preferences/tenant-preferences" target="_blank" rel="noopener">Knock: tenant preferences</a>
+      <a href="https://knock.app/pricing" target="_blank" rel="noopener">Knock: fiyatlar</a>
+      <a href="https://novu.co/pricing" target="_blank" rel="noopener">Novu: fiyatlar</a>
+      <a href="https://docs.novu.co/platform/concepts/preferences" target="_blank" rel="noopener">Novu: preferences, critical workflows</a>
+      <a href="https://docs.novu.co/community/self-hosting-novu/overview" target="_blank" rel="noopener">Novu: kendi sunucunda çalıştırma şartları</a>
+      <a href="https://www.courier.com/docs/platform/tenants/user-tenant-preferences" target="_blank" rel="noopener">Courier: tenant preferences, REQUIRED</a>
+      <a href="https://docs.suprsend.com/docs/preference-evaluation" target="_blank" rel="noopener">SuprSend: preference evaluation</a>
+      <a href="https://www.suprsend.com/pricing" target="_blank" rel="noopener">SuprSend: fiyatlar</a>
+      <a href="https://www.magicbell.com/pricing" target="_blank" rel="noopener">MagicBell: fiyatlar</a>
+      <a href="https://supabase.com/docs/guides/queues" target="_blank" rel="noopener">Supabase Queues</a>
+      <a href="https://vercel.com/docs/cron-jobs/usage-and-pricing" target="_blank" rel="noopener">Vercel Cron: Hobby günde bir kez (güncelleme 2026-07-15)</a>
+      <a href="https://resend.com/pricing" target="_blank" rel="noopener">Resend: fiyatlar</a>
+      <a href="https://resend.com/docs/dashboard/emails/idempotency-keys" target="_blank" rel="noopener">Resend: idempotency keys</a>
+      <a href="https://www.saasui.design/blog/saas-notification-center-ux-patterns" target="_blank" rel="noopener">SaaS notification center UX patterns (2026-07-27)</a>
+      <a href="https://docs.knock.app/in-app-ui/feeds/overview" target="_blank" rel="noopener">Knock: seen / read / archived</a>
+      <a href="https://linear.app/docs/inbox" target="_blank" rel="noopener">Linear: Inbox</a>
+      <a href="https://kb.7shifts.com/hc/en-us/articles/29771113662099" target="_blank" rel="noopener">7shifts: notification settings (2026-07-24)</a>
+      <a href="https://help.wheniwork.com/articles/setting-your-alert-preferences/" target="_blank" rel="noopener">When I Work: alert preferences (2025-08-06)</a>
+      <a href="https://help.wheniwork.com/articles/viewing-notifications-computer/" target="_blank" rel="noopener">When I Work: notification center</a>
+      <a href="https://help.deputy.com/hc/en-au/articles/4621872438671" target="_blank" rel="noopener">Deputy: SMS notifications</a>
+      <a href="https://support.getsling.com/en/articles/1078442-notification-settings" target="_blank" rel="noopener">Sling: notification settings (2025-07-21)</a>
+      <a href="https://help.connecteam.com/en/articles/6444946-the-notifications-center" target="_blank" rel="noopener">Connecteam: notifications center</a>
+      <a href="https://help.homebase.ai/en/articles/9778589-staff-notification-settings" target="_blank" rel="noopener">Homebase: staff notification settings (2025-11-17)</a>
+      <a href="https://slack.com/help/articles/214888418" target="_blank" rel="noopener">Slack: DND defaults</a>
+      <a href="https://docs.github.com/en/subscriptions-and-notifications/get-started/configuring-notifications" target="_blank" rel="noopener">GitHub: configuring notifications</a>
+      <a href="https://web.dev/articles/push-notifications-permissions-ux" target="_blank" rel="noopener">web.dev: push permission UX (2025-03-26)</a>
+      <a href="https://caniuse.com/push-api" target="_blank" rel="noopener">caniuse: Push API</a>
+      <a href="https://webkit.org/?p=16535" target="_blank" rel="noopener">WebKit: Declarative Web Push (2025-03-27)</a>
+      <a href="https://www.ftc.gov/business-guidance/resources/can-spam-act-compliance-guide-business" target="_blank" rel="noopener">FTC: CAN-SPAM rehberi</a>
+      <a href="https://support.google.com/mail/answer/15263077?hl=en" target="_blank" rel="noopener">Gmail: abonelikten çıkış kuralları</a>
+      <a href="https://www.twilio.com/en-us/sms/pricing/us" target="_blank" rel="noopener">Twilio: ABD kısa mesaj fiyatı</a>
+      <a href="https://support.twilio.com/hc/en-us/articles/1260803965530" target="_blank" rel="noopener">Twilio: 10DLC kayıt ücretleri</a>
+      <a href="https://activeprospect.com/blog/tcpa-revocation-of-consent/" target="_blank" rel="noopener">FCC TCPA iptal kuralı (2026-08-19)</a>
+      <a href="https://www.nory.ai/blog/predictive-scheduling-laws" target="_blank" rel="noopener">Öngörülebilir program yasaları (2026-08-18)</a>
+    </div>
+  </details>
+</section>
+
+<!-- ============ KANALLAR ============ -->
+<section class="pane" id="kanallar" hidden>
+  <div class="prose"><h2>Kanallar</h2><p>Her bildirim uygulama içine düşer. Dış kanallar (telefon, e-posta, ileride kısa mesaj) bunun üstüne eklenir.</p></div>
+  <div class="grid2">
+    <div class="card">
+      <h3>Uygulama içi · her zaman açık</h3>
+      <p>Bildirimin kaydı budur; kimse kapatamaz. Kişi bir bildirimi e-postada kaçırsa bile listede bulur. 90 gün tutulur; hesap güvenliği 1 yıl (S-92). Liste canlı güncellenir: yeni bildirim gelince rozet sayfa yenilenmeden artar.</p>
+    </div>
+    <div class="card">
+      <h3>Telefona bildirim (web push) · ücretsiz</h3>
+      <ul class="list">
+        <li>Uygulama kapalıyken telefonun ekranına düşer. Tarayıcıların yaklaşık %97'si destekliyor.</li>
+        <li><b>Android ve bilgisayar:</b> kişi Turn on'a basar, tarayıcı izin sorar, biter.</li>
+        <li><b>iPhone:</b> önce Safari'den "Ana Ekrana Ekle", sonra uygulamayı oradan açıp Turn on (iOS 16.4 ve sonrası). iOS 26'da ana ekrana eklenen site kendiliğinden uygulama gibi açılıyor; adım kısalıyor.</li>
+        <li>İzin sayfa açılır açılmaz istenmez; kişi programını bir kez gördükten sonra küçük bir kartla sorulur. Reddeden yine Account'tan açabilir.</li>
+        <li>iPhone'da abonelik bazen kendiliğinden düşüyor. Telefona gidemeyen önemli bildirim e-postayla gider.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>E-posta (Resend) · $20/ay</h3>
+      <ul class="list">
+        <li>Her olay için tek e-posta; konu satırı olanı söyler ("Your schedule for Oct 20–26 is out"); içinde workspace adı ve doğrudan bağlantı.</li>
+        <li>Alan adı doğrulaması (SPF, DKIM, DMARC) şart; Gmail ve Outlook doğrulanmamış e-postayı reddediyor. Ayrı bir alt alan adı (ör. <code>mail.</code>) önerilir.</li>
+        <li>İsteğe bağlı bildirimlerde tek tıkla "bunları e-postayla gönderme" bağlantısı (Gmail kuralı). Zorunlu ve önemlilerde yok.</li>
+        <li>Geri dönen ya da şikâyet edilen adrese e-posta durur; kişiye uygulamada söylenir.</li>
+        <li>Çalışanla iş ilişkisi hakkındaki e-posta ABD yasasında (CAN-SPAM) "işlemsel" sayılıyor; reklam e-postası kurallarına girmiyor.</li>
+        <li>Davet, parola sıfırlama, haftalık program ve hesap silme e-postaları bugün de ayrı yoldan gidiyor; bu sistemin dışında kalır (S-96).</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Kısa mesaj · hazır ama kapalı</h3>
+      <ul class="list">
+        <li>Kodda kanal olarak hazır olur; owner'ın ekranında "Paid" etiketiyle kapalı görünür. Hiçbir hesap ya da numara alınmaz.</li>
+        <li>Açmak için: sağlayıcı (Telnyx mesaj başı $0.004 ya da Twilio $0.0083), numara (~$1–2/ay) ve kayıt (ücretsiz toll-free doğrulaması ya da 10DLC: $4.50–46 bir kez, $15 inceleme, $1.50–10/ay).</li>
+        <li>Yasal şartlar: kişiden açık izin (ne zaman, nereden, hangi metinle kaydedilir), STOP ile çıkış, HELP cevabı, kişi başı günde en çok 20 mesaj (When I Work'ün sınırı).</li>
+      </ul>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Mobil uygulama · sonra</h3>
+    <p>Aynı motor, yeni bir kanal. Bildirim listesi ve kurallar değişmez; yalnız "telefona gönder" adımı uygulamanın kendi bildirim servisine de gider.</p>
+  </div>
+  <div class="card">
+    <h3>Hangi bildirim hangi kanaldan</h3>
+    <ul class="list">
+      <li><b>Zorunlu:</b> uygulama içi ve e-posta, her zaman. Telefon açıksa oraya da.</li>
+      <li><b>Önemli:</b> uygulama içi her zaman; telefon ve e-posta varsayılan açık, kişi istediğini kapatır.</li>
+      <li><b>İsteğe bağlı:</b> uygulama içi ve telefon varsayılan açık; e-posta varsayılan kapalı.</li>
+      <li>Kişi bir konu için telefonu seçtiyse ama hiçbir cihazında telefon bildirimi açık değilse, o bildirim e-postayla gider.</li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ KURALLAR ============ -->
+<section class="pane" id="kurallar" hidden>
+  <div class="prose"><h2>Kurallar: kim neyi kapatabilir</h2><p>Ayar cehennemi olmasın diye seçim yalnız gereken yerde. Çoğu kişi ayar sayfasını hiç açmadan doğru bildirimleri alır.</p></div>
+
+  <div class="grid3">
+    <div class="card">
+      <h3><span class="lvl z">Zorunlu</span></h3>
+      <p>Hesap ve güvenlik, ödeme, sahiplik, rol değişikliği, workspace'ten çıkarılma, workspace kapanışı.</p>
+      <p class="muted small">Kimse kapatamaz. Hep e-postayla da gider. Ayar ekranında kilitli görünür.</p>
+    </div>
+    <div class="card">
+      <h3><span class="lvl o">Önemli</span></h3>
+      <p>Onay bekleyen işler, kişinin kendi vardiya değişiklikleri, kendi talebinin sonucu, ona isimle sorulan kapatma ve takas, belge işleri, duyurular.</p>
+      <p class="muted small">Owner kapatamaz. Kişi uygulama içini kapatamaz; yalnız telefon ve e-postayı seçer.</p>
+    </div>
+    <div class="card">
+      <h3><span class="lvl i">İsteğe bağlı</span></h3>
+      <p>Açık vardiyalar, müsaitlik güncellemeleri, yeni üye katıldı; sonra: vardiya hatırlatması, yayınlanmamış hafta uyarısı.</p>
+      <p class="muted small">Owner workspace için kapatabilir; kapatınca kimse açamaz. Kişi de kendisi için kapatabilir.</p>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Owner'ın ayarı (Settings → Notifications)</h3>
+      <ul class="list">
+        <li>E-posta ve telefon bildirimi workspace için açık ya da kapalı.</li>
+        <li>Kısa mesaj: "Paid" etiketiyle kapalı.</li>
+        <li>İsteğe bağlı bildirimler: tek tek açık ya da kapalı.</li>
+        <li>"Always sent" listesi: neyin neden kapatılamadığı, açılınca okunur.</li>
+        <li>Owner'a sorulmayanlar: kim neyi alır, hangi rol, hangi lokasyon. Bunlar ürün kuralı.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Kişinin ayarı (Account → Notifications)</h3>
+      <ul class="list">
+        <li>Kanallar: uygulama içi (kilitli açık), e-posta, telefon bildirimi (cihaz başına), kısa mesaj (şimdilik "Not available").</li>
+        <li>Kısa tablo: 5–7 konu × e-posta / telefon. Konular role göre: çalışan "My schedule, Shift changes, Open shifts, Time off, Documents, Announcements"; müdür "Approvals, Needs attention, Team updates, My schedule, My requests, Announcements".</li>
+        <li>Owner'ın kapattığı konu kişinin tablosunda görünmez.</li>
+        <li>Birden çok workspace'i olan kişi her workspace için ayrı seçer.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Bir bildirim gidecek mi: karar sırası</h3>
+    <p class="muted small">Yukarıdaki kural aşağıdakini ezer.</p>
+    <ol class="prec">
+      <li><span><b>Zorunlu mu?</b> Evetse gider; başka hiçbir şeye bakılmaz.</span></li>
+      <li><span><b>Owner kapattı mı?</b> Kapattıysa gitmez; kişi açmış olsa bile.</span></li>
+      <li><span><b>Kanal kapanmış mı?</b> E-postadan "bunları gönderme"ye basmış, adres geri dönüyor, telefon izni geri alınmış ya da kısa mesaja STOP yazmışsa o kanaldan gitmez.</span></li>
+      <li><span><b>Kişi ne seçti?</b> Seçtiyse o geçerli.</span></li>
+      <li><span><b>Hiçbiri yoksa</b> ürünün varsayılanı (Kanallar sekmesindeki tablo).</span></li>
+    </ol>
+    <p class="muted small">Uygulama içi bu sıraya girmez: owner'ın kapatmadığı her bildirim kişinin listesine düşer.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Alıcı kuralı</h3>
+      <ul class="list">
+        <li>Alıcı rol adından değil, yetkiden bulunur: o işi görebilen ve karar verebilen kişi (bugünkü yetki sistemi).</li>
+        <li>Karar veren lokasyonun müdürü; müdür yoksa admin ve owner.</li>
+        <li>Senin istisnaların korunur: müsaitlik değişikliği kişinin bütün müdürlerine; tercih edilen ad owner, admin'ler ve karar veren müdüre.</li>
+        <li>Yazan, onaylayan ya da yayınlayan kendi yaptığı iş için bildirim almaz.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Gürültü kuralları</h3>
+      <ul class="list">
+        <li>Bir olay, kişi başına tek bildirim (S-95). İzin onayı ve "2 shifts opened" ayrı ayrı gitmez.</li>
+        <li>Biri karar verince öbür karar verenlerin kartı "Approved by Rachel Adams" olur; yeni bildirim gitmez.</li>
+        <li>Değişmeyen kayıt sessiz (müsaitlikte değişiklik yoksa bildirim yok).</li>
+        <li>Yeniden yayında yalnız vardiyası değişen kişi haber alır.</li>
+        <li>Aynı anda gelen benzer bildirimler tek satır olur.</li>
+        <li>Belge hatırlatması sınırlı: son tarihten 7 gün ve 1 gün önce, bir de gününde. Bugün her sabah sınırsız gidiyor.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Okundu, görüldü, bitti</h3>
+      <ul class="list">
+        <li>Rozet "görmediklerin" sayısıdır; kutu açılınca söner.</li>
+        <li>Satır tıklanınca okunur; "Mark all as read" hepsini okur.</li>
+        <li>Karar isteyen satır karar verilince kapanır ve sonucu gösterir.</li>
+        <li>Sessiz saat ve günlük özet MVP'de yok (S-92); motor ileride ekleyebilecek şekilde kurulur.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Schedule yayını</h3>
+      <ul class="list">
+        <li>Bugünkü "Notify" adımı (kime haber verileceğini seçmek) kalkar.</li>
+        <li>Yayın penceresinde tek satır: "12 people will be told about their shifts".</li>
+        <li>İsteğe bağlı kısa not: "What changed?" Not bildirime eklenir.</li>
+        <li>Neden: haber vermemek çalışanın vardiyasını kaçırması demek; bazı ABD şehirlerinde (Berkeley, Emeryville) programın bildirildiğinin kaydı yasal olarak da gerekiyor.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ LİSTE ============ -->
+<section class="pane" id="liste" hidden>
+  <div class="prose">
+    <h2>Bildirim listesi</h2>
+    <p>Uygulamadaki 162 olayın envanterinden (7 Ekim) ve o günden sonraki kararlardan çıkarıldı. Örnek başlıklar uygulamadaki gibi İngilizce. Kanallar: <span class="ch"><i>U</i></span> uygulama içi, <span class="ch"><i>T</i></span> telefona bildirim, <span class="ch"><i>E</i></span> e-posta (varsayılan; kişi önemli ve isteğe bağlılarda değiştirebilir).</p>
+  </div>
+  <div class="filters">
+    <label for="f-cat">Konu<select id="f-cat"></select></label>
+    <label for="f-lvl">Seviye<select id="f-lvl"><option value="">Hepsi</option><option value="Z">Zorunlu</option><option value="O">Önemli</option><option value="I">İsteğe bağlı</option></select></label>
+    <label for="f-now">Bugün<select id="f-now"><option value="">Hepsi</option></select></label>
+    <label for="f-q">Ara<input id="f-q" type="search" placeholder="izin, takas, Maria…"></label>
+    <span class="count" id="f-count"></span>
+  </div>
+  <div class="tablebox" style="max-height: 78vh;"><table id="cat">
+    <thead><tr><th>Ne olur</th><th>Nerede</th><th>Kime</th><th>Örnek başlık</th><th>Tür</th><th>Seviye</th><th>Kanal</th><th>Bugün</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <p class="muted small">"Bugün" sütunu eski sistemin durumu: <b>Var</b> (gidiyor), <b>Değişiyor</b> (gidiyor ama yanlış kişiye ya da yanlış metinle), <b>Yok</b> (gitmesi gerekirken gitmiyor), <b>Vardiya değişimi</b> (onaylı tasarımla gelir), <b>Sonra</b> (MVP sonrası), <b>Stripe</b> (ödeme işiyle gelir), <b>Ayrı yol</b> (bildirim sistemi dışında).</p>
+</section>
+
+<!-- ============ MOTOR ============ -->
+<section class="pane" id="motor" hidden>
+  <div class="prose"><h2>Motor: kendimiz mi kuralım, hazır mı alalım</h2><p>Öneri: kendi veritabanımızda kuralım. Hazır servislerin en ucuz ciddi seçeneği Novu Cloud; yedek plan o.</p></div>
+  <div class="tablebox"><table>
+    <thead><tr><th>Seçenek</th><th>Aylık</th><th>Artısı</th><th>Eksisi</th></tr></thead>
+    <tbody>
+      <tr><td class="t">Kendimiz (Postgres) <span class="lvl o">Önerilen</span></td><td class="num">$0</td><td>Workspace sınırı bugünkü yetki sistemimizde kalır; veri tek yerde; bildirim içeriği vardiya verisine doğrudan bağlı; bağımlılık yok.</td><td>Hazır kutu ekranı ve şablon editörü yok; biz yazarız. Bizim ölçekte küçük iş.</td></tr>
+      <tr><td class="t">Novu Cloud</td><td class="num">$0 → $30</td><td>Ayda 10 bin çalıştırma ücretsiz; React 19 ile çalışan hazır kutu; çok kiracılı yapı var.</td><td>Kişi, workspace ve tercih verisinin ikinci kopyası dışarıda; ikinci bir sistemi güvende ve eşit tutmak gerekir.</td></tr>
+      <tr><td class="t">Knock</td><td class="num">$0 → $250</td><td>En cilalısı; tercih ve workspace modeli güçlü.</td><td>Ayda 10 bin mesajdan sonra $250. On müşteride aşılır (ayda 20–50 bin mesaj tahmini).</td></tr>
+      <tr><td class="t">SuprSend</td><td class="num">$250</td><td>Kategori ve workspace tercihleri iyi.</td><td>Tercihler ve özet yalnız $250'lık planda; çok kiracılık ek ücret.</td></tr>
+      <tr><td class="t">Courier</td><td class="num">gönderim başı $0.005</td><td>"Zorunlu" durumu hazır.</td><td>Hacimle büyüyen fatura; kayıt 30 gün.</td></tr>
+      <tr><td class="t">MagicBell</td><td class="num">$249</td><td>Hazır kutu.</td><td>Ücretsiz plan ayda 1.000 gönderim.</td></tr>
+      <tr><td class="t">Novu kendi sunucumuzda</td><td class="num">sunucu maliyeti</td><td>Açık kaynak.</td><td>MongoDB, Redis ve S3 ister; en az 4 işlemcili, 8 GB'lık bir sunucu. Vercel + Supabase yapımıza uymuyor.</td></tr>
+    </tbody>
+  </table></div>
+  <p class="muted small">Hazıra geçme zamanı: Slack ya da Teams gibi çok sayıda yeni kanal, kod bilmeyenlerin şablon düzenlemesi ya da ayda 100 binden fazla mesaj.</p>
+
+  <div class="card">
+    <h3>Nasıl çalışır</h3>
+    <pre class="mermaid">
+flowchart LR
+  A["İş olur: izin onaylandı"] -->|aynı işlemde| B["Bildirim yazılır: alıcılar ve kurallar"]
+  B --> C["Uygulama içi liste"]
+  B --> D["Gönderim kuyruğu: telefon, e-posta"]
+  C -->|canlı sinyal| R["Rozet ve liste yenilenir"]
+  E["Zamanlayıcı, dakikada bir"] --> F["Gönderici API"]
+  D --> F
+  F --> G["Resend e-posta"]
+  F --> H["Apple, Google, Mozilla telefon"]
+  F -.->|kapalı| S["Kısa mesaj"]
+  G -->|ulaştı, geri döndü| K["Gönderim kaydı"]
+  H --> K
+</pre>
+    <p class="muted small">Bu, 7 Ekim kararıyla aynı: uygulama içi bildirim aynı işlemde tek tabloya yazılır, kuyruk yalnız dış kanallar için, canlı kanal yalnız "yeni bir şey var" sinyali taşır (S-91). Zamanlayıcı yolu bugün de kullanılan yol (veritabanı zamanlayıcısı → API); Vercel'in ücretsiz planı dakikalık zamanlayıcıya izin vermiyor.</p>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Parçalar (sade dille)</h3>
+      <ul class="list">
+        <li><b>Bildirim türleri listesi:</b> 65 türün adı, konusu, seviyesi, varsayılan kanalları. Yalnız veritabanında (S-91).</li>
+        <li><b>Bildirimler:</b> kişinin listesi; okundu, görüldü, karar sonucu.</li>
+        <li><b>Gönderimler:</b> her dış gönderimin kuyruğu ve kaydı: ne zaman, hangi kanal, ulaştı mı.</li>
+        <li><b>Kişi tercihleri</b> ve <b>workspace ayarları.</b></li>
+        <li><b>Telefon abonelikleri:</b> cihaz başına bir satır.</li>
+        <li><b>E-posta engel listesi:</b> geri dönen ve şikâyet eden adresler.</li>
+        <li><b>Kısa mesaj izinleri:</b> kapalı; alanlar hazır.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Güvenlik ve test</h3>
+      <ul class="list">
+        <li>Bir workspace başkasının bildirimini göremez; her yeni tablo ve fonksiyon bugünkü yetki çekirdeğinden geçer, yetki tablosunda sınıflanır.</li>
+        <li>Canlı kanal özel (private); yalnız sinyal taşır, içerik taşımaz.</li>
+        <li>Her gönderimin tek anahtarı var; iki kez gitmez. Düşen gönderim artan aralıklarla yeniden denenir.</li>
+        <li>Testler: veritabanı testleri (kim alır, kim almaz, owner kapatınca, kişi kapatınca), API testleri, ekran testleri ve uçtan uca akışlar (izin iste → müdür görür → onaylar → çalışan görür).</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ EKRANLAR ============ -->
+<section class="pane" id="ekranlar" hidden>
+  <div class="prose">
+    <h2>Ekranlar</h2>
+    <p>Beş başlık: bildirim kutusu, telefon, kişisel ayar, organizasyon ayarı, telefona bildirim izni. Her birinde Orijinal (bugünkü ekran) ve öneriler; öneriler tıklanır. Beğenmediğin yer olursa yazman yeterli.</p>
+    <p><a href="screens.html" target="_blank" rel="noopener">Ekranları tam sayfada aç</a></p>
+  </div>
+  <div class="frame-embed"><iframe id="screens" title="Bildirim ekranları" data-src="screens.html" loading="lazy"></iframe></div>
+</section>
+
+<!-- ============ SÖKÜM ============ -->
+<section class="pane" id="sokum" hidden>
+  <div class="prose"><h2>Söküm planı</h2><p>Eski sistem tek parça olarak gider; ikiz sistem kalmaz (kural §3.A.4). Sayılar 7 Ekim ölçümünden; söküm başlamadan yeniden ölçülür.</p></div>
+
+  <div class="card ask">
+    <h3>Önce taşınacak 5 iş</h3>
+    <p class="muted small">Bunlar bugün bildirim kodunun içinde çalışıyor. Taşınmadan sökülürse hata vermeden bozulurlar.</p>
+    <div class="tablebox"><table>
+      <thead><tr><th>İş</th><th>Taşınmazsa ne olur</th><th>Nereye</th></tr></thead>
+      <tbody>
+        <tr><td class="t">Belgesi geciken çalışanı kısıtlamak</td><td>Süresi geçen belge kişiyi artık kısıtlamaz.</td><td>Yeni bir bakım zamanlayıcısı</td></tr>
+        <tr><td class="t">Süresi dolan takası kapatmak</td><td>Vardiyası geçmiş takas "open" kalır.</td><td>Aynı bakım zamanlayıcısı</td></tr>
+        <tr><td class="t">Takas geçmişini yazmak</td><td>Shift Hub'daki takas geçmişi boş kalır.</td><td>Takas kodunun kendisi</td></tr>
+        <tr><td class="t">Hesap güvenliği kaydı</td><td>Parola ve e-posta değişiklikleri denetim kaydına düşmez.</td><td>API kaydı doğrudan yazar</td></tr>
+        <tr><td class="t">Workspace sayfasındaki belge işleri</td><td>İşler üretilmez; Workspace sayfası hata verir.</td><td>İş üretimi kalır, bildirim kutucuğu kalkar</td></tr>
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Silinecekler</h3>
+      <ul class="list">
+        <li>Veritabanında 18 tablo, 50 fonksiyon, 3 tetikleyici, 1 zamanlayıcı, 2 erişim kuralı.</li>
+        <li>API'de 10 yol (7 dosya).</li>
+        <li>Web'de 17 dosya: Notifications sayfası, Settings → Notifications, Account → Notifications, Account → Inbox ve yardımcıları.</li>
+        <li>Ortak pakette 5 dosya (eski tür listesi ve ayar kuralları).</li>
+        <li>10 veritabanı testi dosyası.</li>
+        <li>6 izin (ör. "test bildirimi gönder", "teslim kaydını gör") ve 2 yetki eylemi.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Düzenlenecekler</h3>
+      <ul class="list">
+        <li>Bildirim çağıran 21 iş fonksiyonu (duyuru, önemli gün, izin, takas, müsaitlik, belge, işten çıkarma, yayın): yalnız bildirim satırları çıkar.</li>
+        <li>Yayın penceresindeki "Notify" adımı; Workspace sayfasındaki bildirim kutucuğu; sol menü ve telefon menüsündeki Notifications.</li>
+        <li>37 veritabanı testi, 5 uçtan uca test.</li>
+        <li>Silinen her şey "geri gelmesin" testine eklenir.</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="grid2">
+    <div class="card">
+      <h3>Dokunulmayacaklar</h3>
+      <ul class="list">
+        <li>Davet ve davet hatırlatma e-postası, parola sıfırlama, haftalık program e-postası, hesap silme e-postaları (S-96).</li>
+        <li>Kayıt ve e-posta değişikliği doğrulaması (Supabase).</li>
+        <li>Zamanlanmış duyuru ve izin süresi zamanlayıcıları: kalır, yalnız içlerindeki bildirim çağrısı çıkar.</li>
+        <li>Kalan izinler: "bildirimleri gör", "kendi bildirimlerini gör", "kendi tercihlerini değiştir".</li>
+      </ul>
+    </div>
+    <div class="card">
+      <h3>Canlı veritabanı</h3>
+      <ul class="list">
+        <li>Söküm "silen" bir değişiklik; riskli sayılır. Güvenlik incelemesi onayı, koordinatörün "gönder"i ve trenin testleri yeşil olunca uygulanır (S-40, S-107).</li>
+        <li>Önce yedek: silinecek her fonksiyonun ve tablonun tanımı kaydedilir; yeri thread'de yazılır.</li>
+        <li>Canlıdaki bildirim verisi test verisi; taşınmaz (S-91).</li>
+        <li>Canlı değişikliği bilgisayarındaki tren thread'i yapar; bulut thread'i yapmaz.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ YOL HARİTASI ============ -->
+<section class="pane" id="yol" hidden>
+  <div class="prose"><h2>Yol haritası</h2><p>Her dilim kendi dalında, sırayla, trenle main'e gider. Aynı anda tek kod thread'i çalışır. Her dilim dokunduğu PAGES sayfalarını da günceller.</p></div>
+  <div class="steps" id="slices"></div>
+  <p class="muted small">İncelemeli dilimler (yetki, veritabanı, canlı değişiklik) bağımsız güvenlik incelemesinden geçer; ekran değiştiyse masaüstü ve telefon görüntüsü eklenir.</p>
+</section>
+</div>
+
+<script>
+(function () {
+  /* ---------- tabs ---------- */
+  var panes = Array.prototype.slice.call(document.querySelectorAll("section.pane"));
+  var links = Array.prototype.slice.call(document.querySelectorAll("#tabnav a"));
+  function show(id) {
+    if (!panes.some(function (p) { return p.id === id; })) id = "ozet";
+    panes.forEach(function (p) { p.hidden = p.id !== id; });
+    links.forEach(function (a) { if (a.getAttribute("href") === "#" + id) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current"); });
+    if (id === "ekranlar") { var f = document.getElementById("screens"); if (!f.getAttribute("src")) f.setAttribute("src", f.getAttribute("data-src")); }
+    try { localStorage.setItem("nf-plan-tab", id); } catch (e) {}
+  }
+  links.forEach(function (a) { a.addEventListener("click", function (e) { e.preventDefault(); var id = a.getAttribute("href").slice(1); show(id); try { history.replaceState(null, "", "#" + id); } catch (x) {} window.scrollTo(0, 0); }); });
+  var start = (location.hash || "").slice(1);
+  if (!start) { try { start = localStorage.getItem("nf-plan-tab") || ""; } catch (e) {} }
+  show(start || "ozet");
+
+  /* ---------- catalog ---------- */
+  // [konu, ne olur, nerede, kime, örnek başlık, tür K=karar ister B=bilgi, seviye Z/O/I/-, kanal, bugün]
+  var C = [
+    ["Schedule", "Hafta yayınlandı", "Schedule → Publish", "Vardiyası olan çalışanlar; yeniden yayında yalnız vardiyası değişenler", "Your schedule for Oct 19–25 is out", "B", "O", "UTE", "Değişiyor"],
+    ["Schedule", "Yayından sonra vardiyam değişti (saat, gün, iş)", "Schedule → Publish", "O çalışan", "Your Tue shift moved to 4p–10p", "B", "O", "UTE", "Değişiyor"],
+    ["Schedule", "Bana yeni vardiya eklendi", "Schedule → Publish", "O çalışan", "New shift: Thu, Oct 22 · 11a–4p", "B", "O", "UTE", "Değişiyor"],
+    ["Schedule", "Vardiyam başkasına verildi, açığa alındı ya da silindi", "Schedule → Publish", "Vardiyanın eski sahibi", "Your Wed, Oct 21 shift was removed", "B", "O", "UTE", "Yok"],
+    ["Schedule", "Hafta yayından kaldırıldı (bekleyen talepler tek bildirimle kapanır)", "Schedule → Unpublish", "O haftada vardiyası olanlar", "Your Oct 19–25 schedule was taken back", "B", "O", "UTE", "Yok"],
+    ["Schedule", "Vardiyalar sahipsiz kaldı (işten çıkarma, lokasyondan çıkarma)", "Employees → Terminate / Remove from location", "O lokasyonun müdürleri", "3 shifts are left without anyone", "K", "O", "UET", "Değişiyor"],
+    ["Schedule", "Kapalı gün vardiyamı düşürdü", "Announcements → Important dates", "O çalışan", "Thu, Nov 26 is closed. Your shift was removed.", "B", "O", "UTE", "Var"],
+    ["Schedule", "Zamanlanmış program e-postası 3 hatadan sonra durdu", "Schedule → Export", "Kuralı kuran kişi", "Weekly schedule email stopped", "K", "O", "UE", "Yok"],
+    ["Schedule", "Hafta yayınlanmadı (hafta başlamadan 3 gün önce)", "Sistem", "Lokasyon müdürleri", "Oct 19–25 isn't published yet", "B", "I", "UE", "Sonra"],
+    ["Schedule", "Vardiya hatırlatması (2 saat önce)", "Sistem", "O çalışan", "Your shift starts at 4p", "B", "I", "T", "Sonra"],
+
+    ["Shift changes", "Ekstra vardiya herkese açıldı", "Requests · Schedule", "Alabilecek çalışanlar", "Extra shift available: Sat, Oct 17 · 5p–11p", "K", "I", "UT", "Vardiya değişimi"],
+    ["Shift changes", "Açık vardiyayı başkası aldı", "Sistem", "Talip olan öbürleri", "Another teammate got this shift", "B", "I", "U", "Vardiya değişimi"],
+    ["Shift changes", "Sahibi vardiyasını geri aldı", "Requests", "Talip olanlar", "Maria kept this shift", "B", "I", "U", "Vardiya değişimi"],
+    ["Shift changes", "İsimle kapatma istendi (en çok 3 kişi)", "Requests → Ask to cover", "Seçilen kişiler", "Maria asked you to cover", "K", "O", "UTE", "Değişiyor"],
+    ["Shift changes", "Kapatmayı başkası üstlendi", "Sistem", "Sorulan öbürleri", "Someone else is covering", "B", "O", "U", "Vardiya değişimi"],
+    ["Shift changes", "Kimse kapatamadı (Ask someone else / Release to everyone)", "Sistem", "İsteyen", "No one could cover your Sat shift", "K", "O", "UTE", "Vardiya değişimi"],
+    ["Shift changes", "Takas teklifi", "Requests → Swap", "Karşı taraf", "Confirm your swap with Maria", "K", "O", "UTE", "Değişiyor"],
+    ["Shift changes", "Karşı taraf cevap verdi", "Requests", "İsteyen", "Jake accepted your swap", "B", "O", "UT", "Var"],
+    ["Shift changes", "Değişim onay bekliyor (yalnız anlaşma olunca, ilk talepte)", "Requests", "Karar veren müdür; yoksa admin ve owner", "Shift change needs your approval", "K", "O", "UET", "Değişiyor"],
+    ["Shift changes", "Onay hatırlatması (12 saatte bir; kapanmadan 4 saat önce son uyarı)", "Sistem", "Karar veren müdür", "Still waiting: shift change for Fri", "K", "O", "UET", "Vardiya değişimi"],
+    ["Shift changes", "Değişimin sonucu", "Requests → Approve / Decline", "İlgili çalışanlar", "Your swap is approved", "B", "O", "UTE", "Değişiyor"],
+    ["Shift changes", "Talep kapandı (vardiyadan 4 saat önce)", "Sistem", "Talepteki herkes", "This request closed", "B", "O", "U", "Vardiya değişimi"],
+    ["Shift changes", "Sahipsiz vardiya açık vardiyalara konsun mu", "Sistem", "Lokasyon müdürü", "Post this shift to open shifts?", "K", "O", "UE", "Vardiya değişimi"],
+
+    ["Time off", "İzin talebi", "Requests → Time off", "Lokasyon müdürleri; yoksa admin ve owner", "Time off request from Tom Becker", "K", "O", "UET", "Var"],
+    ["Time off", "Karar hatırlatması (son karara 12 saat)", "Sistem", "Karar vermeyen müdür; sonra admin ve owner", "Decide by Sun: Tom Becker's time off", "K", "O", "UET", "Var"],
+    ["Time off", "İzin kararı (sonuç başlıkta, gerekçe yalnız başvurana)", "Requests → Approve / Decline", "Başvuran", "Your time off Oct 20–22 is approved", "B", "O", "UTE", "Değişiyor"],
+    ["Time off", "İzin kısaltıldı", "Requests → Shorten time off", "Başvuran ve onaylayanlar", "Your time off now ends Oct 21", "B", "O", "UTE", "Değişiyor"],
+    ["Time off", "Onaylı izin vardiya açtı", "Requests → Approve", "Ayrı bildirim yok: karar kartında görünür", "Approved · 2 shifts open", "B", "-", "", "Değişiyor"],
+    ["Time off", "Çalışan talebini geri çekti", "Requests", "Ayrı bildirim yok: müdürün kartı “Withdrawn” olur", "Withdrawn by Tom Becker", "B", "-", "", "Değişiyor"],
+
+    ["Availability", "Çalışan müsaitliğini değiştirdi (yalnız gerçek değişiklik)", "Availability", "Kişinin bütün müdürleri", "Sophie Martin updated availability", "B", "I", "U", "Değişiyor"],
+    ["Availability", "Owner müsaitlik düzenini değiştirdi", "Settings → Schedule rules", "Bütün çalışanlar", "Availability now works week by week", "B", "O", "UE", "Var"],
+
+    ["Lineup", "Günün Lineup'ı paylaşıldı", "Schedule → Lineup → Share", "Lineup'taki kişiler", "Today's lineup for Downtown", "B", "O", "UT", "Sonra"],
+    ["Lineup", "Başka lokasyondan kişi alındı", "Schedule → Lineup", "O kişi ve kaynak lokasyonun müdürü", "Luis is working at Uptown today", "B", "O", "UT", "Sonra"],
+
+    ["People", "Davet kabul edildi, kişi katıldı", "Davet bağlantısı", "Davet eden", "Luis Hernandez joined Harbor & Vine", "B", "I", "U", "Yok"],
+    ["People", "Davet reddedildi", "Davet bağlantısı", "Davet eden", "Ana Silva declined the invitation", "B", "I", "U", "Yok"],
+    ["People", "Davet iptal (davetli hesabını sildi)", "Sistem", "Davet eden", "An invitation was cancelled", "B", "I", "U", "Var"],
+    ["People", "Onboarding incelemeye geldi", "Employee welcome → Submit", "Lokasyon müdürü; yoksa admin ve owner", "Onboarding ready for review", "K", "O", "UET", "Yok"],
+    ["People", "Onboarding'de düzeltme istendi", "Employees → Onboarding review", "Çalışan", "One onboarding step needs a change", "K", "O", "UTE", "Yok"],
+    ["People", "Onboarding tamamlandı", "Employees → Onboarding review", "Çalışan", "You're all set at Harbor & Vine", "B", "O", "UE", "Yok"],
+    ["People", "Tercih edilen ad istendi", "Account → Profile", "Owner, admin'ler ve karar veren müdür", "Maria Lopez asked to be called Mari", "K", "O", "UE", "Var"],
+    ["People", "Tercih edilen ad kararı", "Employees", "Çalışan", "Your preferred name is approved", "B", "O", "U", "Var"],
+    ["People", "Kişi lokasyonsuz kaldı", "Employees → Remove from location", "İşten çıkarabilenler", "Luis Hernandez has no location", "K", "O", "UE", "Değişiyor"],
+    ["People", "Rolüm değişti", "Employees → Role", "O kişi", "You're now a manager at Downtown", "B", "Z", "UE", "Yok"],
+    ["People", "Erişimim bitti (işten çıkarma, erişimi kaldırma)", "Employees → Terminate / Remove access", "O kişi", "Your access to Harbor & Vine ended", "B", "Z", "E", "Yok"],
+    ["People", "Geri alındım (Restore)", "Employees → Restore", "O kişi ve lokasyon müdürü", "Welcome back to Harbor & Vine", "B", "Z", "UE", "Yok"],
+    ["People", "Sahiplik devri istendi", "Settings → Transfer ownership", "Hedef kişi", "Mert wants to make you the owner", "K", "Z", "UE", "Yok"],
+    ["People", "Sahiplik devri kabul, ret ya da iptal", "Settings → Transfer ownership", "Karşı taraf", "Ownership transfer accepted", "B", "Z", "UE", "Yok"],
+
+    ["Documents", "Belge istendi (yükle ya da imzala; toplu tek bildirim)", "Settings → Documents · kurallar", "Çalışan", "Sign the updated tip policy", "K", "O", "UTE", "Değişiyor"],
+    ["Documents", "Belge incelemeye geldi (ilk karar öbürlerinin kartını kapatır)", "Account → Documents → Upload", "Belge karar verenleri", "Luis uploaded a food handler card", "K", "O", "UE", "Değişiyor"],
+    ["Documents", "Belge kararı", "Employees → Documents", "Çalışan", "Your food handler card was approved", "B", "O", "UTE", "Var"],
+    ["Documents", "Belge son tarihi yaklaşıyor (7 gün, 1 gün, gününde)", "Sistem", "Çalışan", "Due Tue: sign the tip policy", "K", "O", "UTE", "Değişiyor"],
+    ["Documents", "Belgenin süresi doluyor (30, 7, 1 gün)", "Sistem", "Çalışan ve belge karar verenleri", "Food handler card expires in 14 days", "B", "O", "UE", "Değişiyor"],
+    ["Documents", "Erişim kısıtlandı ya da geri geldi", "Sistem", "Çalışan", "Upload your food handler card to see your schedule", "K", "O", "UTE", "Var"],
+
+    ["Announcements", "Duyuru ya da önemli gün yayınlandı", "Announcements → Publish", "Yalnız hedef kitle; yazan hariç", "Walk-in cooler repair on Tuesday", "B", "O", "UT", "Değişiyor"],
+    ["Announcements", "Remind", "Announcements → Remind", "Henüz okumayanlar", "Reminder: Holiday hours", "B", "O", "UT", "Yok"],
+    ["Announcements", "Duyuru iptal (yayından kaldırıldı)", "Announcements → Unpublish", "Görmüş olanlar", "Holiday party is cancelled", "B", "O", "U", "Yok"],
+    ["Announcements", "İçerik değişti", "Announcements → Edit", "Henüz onaylamamışlar", "Updated: Walk-in cooler repair", "B", "O", "U", "Değişiyor"],
+    ["Announcements", "Zamanlanmış yayın başarısız", "Sistem", "Yazan", "Couldn't publish “Holiday hours”", "K", "O", "UE", "Yok"],
+
+    ["Account", "Parola değişti (öteki oturumlar kapandı; tek bildirim)", "Account → Security", "Kişi", "Your password was changed", "B", "Z", "UE", "Değişiyor"],
+    ["Account", "Giriş e-postası değişti, istendi ya da iptal edildi", "Account → Security", "Kişi (iki adres)", "Your sign-in email changed", "B", "Z", "UE", "Değişiyor"],
+    ["Account", "Öteki oturumlar kapatıldı", "Account → Security", "Kişi", "You signed out everywhere else", "B", "Z", "U", "Var"],
+    ["Account", "Yeni cihazdan giriş", "Sistem", "Kişi", "New sign-in: Chrome on Windows", "B", "Z", "E", "Sonra"],
+    ["Account", "Davet, parola sıfırlama, hesap silme e-postaları", "—", "—", "Bugünkü kendi e-posta yollarıyla gider", "B", "Z", "E", "Ayrı yol"],
+
+    ["Workspace & billing", "Workspace kapanışı planlandı ya da iptal edildi", "Settings → General", "Bütün üyeler", "Harbor & Vine closes on Nov 30", "B", "Z", "UE", "Yok"],
+    ["Workspace & billing", "Deneme süresi bitiyor (3 gün kala)", "Stripe", "Owner", "Your trial ends in 3 days", "K", "Z", "UE", "Stripe"],
+    ["Workspace & billing", "Ödeme başarısız ya da doğrulama gerekiyor", "Stripe", "Owner", "Payment failed. Update your card.", "K", "Z", "UE", "Stripe"],
+    ["Workspace & billing", "Fatura ödendi", "Stripe", "Owner", "Receipt for October", "B", "Z", "E", "Stripe"],
+    ["Workspace & billing", "Abonelik durdu", "Stripe", "Owner ve admin'ler; durunca herkes", "Harbor & Vine is paused", "B", "Z", "UE", "Stripe"]
+  ];
+  var LV = { Z: ["z", "Zorunlu"], O: ["o", "Önemli"], I: ["i", "İsteğe bağlı"], "-": ["n", "—"] };
+  var CAT_TR = { "Schedule": "Schedule", "Shift changes": "Vardiya değişimi", "Time off": "İzin", "Availability": "Müsaitlik", "Lineup": "Lineup", "People": "Kişiler", "Documents": "Belgeler", "Announcements": "Duyurular", "Account": "Hesap ve güvenlik", "Workspace & billing": "Workspace ve ödeme" };
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  var fCat = document.getElementById("f-cat"), fLvl = document.getElementById("f-lvl"), fNow = document.getElementById("f-now"), fQ = document.getElementById("f-q");
+  fCat.innerHTML = '<option value="">Hepsi</option>' + Object.keys(CAT_TR).map(function (k) { return '<option value="' + k + '">' + CAT_TR[k] + "</option>"; }).join("");
+  var nows = []; C.forEach(function (r) { if (nows.indexOf(r[8]) < 0) nows.push(r[8]); });
+  fNow.innerHTML += nows.map(function (n) { return '<option value="' + n + '">' + n + "</option>"; }).join("");
+  function chan(s) { if (!s) return '<span class="muted">—</span>'; return '<span class="ch">' + s.split("").map(function (c) { return "<i>" + c + "</i>"; }).join("") + "</span>"; }
+  function draw() {
+    var q = fQ.value.trim().toLocaleLowerCase("tr");
+    var rows = C.filter(function (r) {
+      return (!fCat.value || r[0] === fCat.value) && (!fLvl.value || r[6] === fLvl.value) && (!fNow.value || r[8] === fNow.value) && (!q || r.join(" ").toLocaleLowerCase("tr").indexOf(q) >= 0);
+    });
+    var last = null;
+    document.querySelector("#cat tbody").innerHTML = rows.map(function (r) {
+      var head = "";
+      if (r[0] !== last) { last = r[0]; head = '<tr><td colspan="8" style="background:#f7f9f8;font-weight:700;color:#244c3d">' + CAT_TR[r[0]] + "</td></tr>"; }
+      var lv = LV[r[6]];
+      return head + '<tr><td class="t">' + esc(r[1]) + "</td><td>" + esc(r[2]) + "</td><td>" + esc(r[3]) + '</td><td><span class="en">' + esc(r[4]) + "</span></td><td>" + (r[5] === "K" ? "Karar ister" : "Bilgi") + '</td><td><span class="lvl ' + lv[0] + '">' + lv[1] + "</span></td><td>" + chan(r[7]) + "</td><td>" + esc(r[8]) + "</td></tr>";
+    }).join("");
+    document.getElementById("f-count").textContent = rows.length + " / " + C.length + " satır";
+  }
+  [fCat, fLvl, fNow].forEach(function (el) { el.addEventListener("change", draw); });
+  fQ.addEventListener("input", draw);
+  draw();
+  var counts = { Z: 0, O: 0, I: 0 }; C.forEach(function (r) { if (counts[r[6]] !== undefined) counts[r[6]]++; });
+
+  /* ---------- roadmap ---------- */
+  var S = [
+    ["Korunacak 5 işi taşı", "Belge kısıtlama, takas kapanışı, takas geçmişi, güvenlik kaydı ve Workspace belge işleri bildirim kodundan çıkıp kendi yerine geçer.", "Eski bildirim kodu hâlâ var ama bu 5 iş onsuz çalışıyor; testleri yeşil.", "İncelemeli", "Başlama izni"],
+    ["Eski sistemi sök", "Tablolar, fonksiyonlar, zamanlayıcı, API yolları, üç bildirim sayfası, Notify adımı ve testleri gider; “geri gelmesin” testine eklenir.", "Kodda ve veritabanında bildirim kalıntısı yok; tren yeşil; canlıda yedekten sonra uygulandı.", "İncelemeli · canlı silme", ""],
+    ["Çekirdek", "Bildirim türleri listesi, bildirimler, gönderimler, tercihler, workspace ayarları; “gidecek mi” kuralı; yetki tablosu.", "Veritabanı testleri: kim alır, kim almaz, owner kapatınca, kişi kapatınca, başka workspace göremez.", "İncelemeli", ""],
+    ["Bildirim üretenler", "Schedule, izin, takas, müsaitlik, kişiler, belgeler, duyurular ve hesap kendi bildirimini yazar (listedeki 65 tür; vardiya değişimi satırları o işle).", "Her tür için en az bir test: doğru kişi, tek bildirim, yazan hariç.", "İncelemeli", ""],
+    ["Bildirim kutusu ekranları", "Sol menüden açılan panel, tam sayfa, telefonda zil ve tam ekran liste, rozet, canlı güncelleme, satırda Accept / Decline.", "Uçtan uca akış: izin iste → müdür panelde görür → onaylar → çalışan görür. 1440 ve 390 görüntüleri.", "İncelemeli", "Ekran seçimleri"],
+    ["Ayar ekranları", "Account → Notifications (kanallar + kısa tablo) ve Settings → Notifications (kanallar, isteğe bağlılar, her zaman gidenler).", "Owner kapatınca kişinin tablosundan kalkar; kişi kapatınca o kanaldan gitmez.", "İncelemeli", ""],
+    ["E-posta", "Resend ile gönderim, e-posta şablonları, “bunları gönderme” bağlantısı, geri dönen adresin durdurulması.", "Test adresine gerçek e-posta gider; aynı bildirim iki kez gitmez.", "İncelemeli", "Resend hesabı, alan adı, $20/ay"],
+    ["Telefona bildirim", "Ana ekrana eklenebilir uygulama parçaları, cihaz aboneliği, izin kartı, iPhone adımları, gönderici.", "Android Chrome'da ve ana ekrandaki iPhone'da bildirim düşer; izin reddinde e-posta yedeği.", "İncelemeli", "web-push kütüphanesi onayı"],
+    ["Kısa mesaj altyapısı (kapalı)", "İzin alanları, STOP listesi, kanal kapısı; sağlayıcı bağlanmaz.", "Kanal kapalıyken hiçbir yol kısa mesaj göndermez (test).", "Normal", ""],
+    ["Son kontrol", "Bütün akışların uçtan uca testleri, PAGES sayfaları, karar defterine kurallar.", "Tren yeşil; PAGES'te yeni ekranlar; eski sayfalar haritadan kalktı.", "Normal", ""]
+  ];
+  document.getElementById("slices").innerHTML = S.map(function (s, i) {
+    return '<div class="slice"><span class="no">' + (i + 1) + "</span><h3>" + s[0] + "</h3><p>" + s[1] + '</p><div class="meta"><span><b>Bitti:</b> ' + s[2] + "</span><span><b>Sınıf:</b> " + s[3] + "</span>" + (s[4] ? '<span class="need">Senden: ' + s[4] + "</span>" : "") + "</div></div>";
+  }).join("");
+})();
+</script>

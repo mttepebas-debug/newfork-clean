@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bildirim Ekranları</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* Layout: one strip of screen tabs, one row of version pills, the screen in a device frame, a short note beside it. Light only, like the app. */
+:root {
+  --page: #f4f5f3; --surface: #ffffff; --text: #17221e; --muted: #5f6b66; --line: #dce3df;
+  --accent: #176954; --accent-soft: #e7f1ed; --warn: #8a5a00; --warn-soft: #fff7e2; --focus: #177a64;
+  --sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 var(--sans); padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); padding-block: 16px 32px; }
+h1 { font-size: 20px; margin: 0; letter-spacing: -0.01em; }
+.lead { color: var(--muted); margin: 4px 0 0; max-width: 72ch; }
+.tabs { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 12px; }
+.tabs button, .pills button, .seg button { font: inherit; cursor: pointer; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 999px; padding: 6px 12px; font-weight: 600; }
+.tabs button[aria-selected="true"] { background: var(--text); color: #fff; border-color: var(--text); }
+.bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: center; margin-bottom: 12px; }
+.pills, .seg { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.pills button[aria-pressed="true"], .seg button[aria-pressed="true"] { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+.pills .rec { font-size: 11px; font-weight: 700; color: var(--accent); margin-left: 4px; }
+.seg-label { color: var(--muted); font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em; margin-right: 2px; }
+button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.stage { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 16px; align-items: start; }
+.frame { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; min-width: 0; }
+.frame-head { display: flex; justify-content: space-between; gap: 8px; padding: 8px 12px; border-bottom: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+.viewport { overflow: auto; background: #e9ecea; display: flex; justify-content: center; }
+.viewport iframe { border: 0; display: block; background: #fff; transform-origin: top left; }
+.viewport.is-phone { padding: 16px 0; }
+.viewport.is-phone iframe { border-radius: 24px; box-shadow: 0 0 0 8px #1d2525; }
+.note { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; display: grid; gap: 10px; min-width: 0; }
+.note h2 { font-size: 15px; margin: 0; }
+.note p { margin: 0; color: var(--text); }
+.note ul { margin: 0; padding-left: 18px; display: grid; gap: 4px; }
+.note .muted { color: var(--muted); font-size: 13px; }
+.tag { display: inline-block; font-size: 11px; font-weight: 700; padding: 1px 7px; border-radius: 999px; background: var(--accent-soft); color: var(--accent); }
+.tag.orig { background: #eef0ef; color: var(--muted); }
+.try { background: var(--warn-soft); color: #5f491f; border-radius: 8px; padding: 8px 10px; font-size: 13px; }
+@media (max-width: 1180px) { .stage { grid-template-columns: minmax(0, 1fr); } }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+
+<h1>Bildirim ekranları: Orijinal ve öneriler</h1>
+<p class="lead">Her başlıkta önce bugünkü ekran (Orijinal), sonra öneriler. Öneriler tıklanır: sekmeler, düğmeler ve ayarlar çalışır. Ekrandaki yazılar uygulamadaki gibi İngilizce.</p>
+
+<div class="tabs" role="tablist" id="tabs"></div>
+<div class="bar">
+  <div class="pills" id="pills" aria-label="Sürüm"></div>
+  <div class="seg" id="roles" aria-label="Kim bakıyor"></div>
+  <div class="seg" id="devices" aria-label="Cihaz"></div>
+</div>
+<div class="stage">
+  <div class="frame">
+    <div class="frame-head"><span id="where"></span><span id="size"></span></div>
+    <div class="viewport" id="vp"><iframe id="ifr" title="Ekran" loading="eager"></iframe></div>
+  </div>
+  <aside class="note" id="note" aria-live="polite"></aside>
+</div>
+
+<script>
+(function () {
+  var ROLE_TR = { owner: "Owner", manager: "Müdür", employee: "Çalışan" };
+  var DEV_TR = { "iphone-safari": "iPhone, Safari", "iphone-app": "iPhone, ana ekrandan", chrome: "Android, Chrome" };
+  // o = Original in PAGES app.html; v = variants in mock.html. frame: desktop|phone.
+  var TABS = [
+    { id: "inbox", t: "Bildirim kutusu", frame: "desktop", roles: ["manager", "owner", "employee"],
+      o: { s: "9.0", where: "Sol menü → Notifications", text: "Bugün sol menüdeki Notifications ayrı bir sayfa açar. Okunmamış, okunmuş, kategori süzgeci, seçip okundu yapma ve silme var. Karar isteyen iş (onay, takas) ayrı görünmez." },
+      v: {
+        A: { rec: 1, hash: "v=inbox-A&f=desktop&open=1", title: "Menüden açılan panel",
+          text: "Sol menüdeki Notifications tıklanınca sayfa değişmez; yanında bir panel açılır. Üstte üç sekme: All, Needs action, Unread. Onay isteyenler panelden Review ile açılır. Altta See all notifications tam sayfayı açar.",
+          why: ["Uygulamada üst çubuk yok; zil için her sayfaya yeni bir çubuk eklemek gerekmez.", "Rozet panel açılınca söner; satır tıklanınca okunur (7shifts, Linear, Knock aynı).", "Müdür işini bırakmadan bakar, sayfadan çıkmaz."],
+          tryit: "Panelde Needs action sekmesine geç; See all notifications ile tam sayfayı aç." },
+        B: { hash: "v=inbox-B&f=desktop", title: "Liste ve ayrıntı yan yana",
+          text: "Notifications ayrı sayfa olarak kalır; solda liste, sağda seçilen bildirimin ayrıntısı ve düğmeleri.",
+          why: ["E-posta kutusu gibi tanıdık.", "Her bakışta sayfa değişir; müdür çalıştığı ekrandan ayrılır.", "Ayrıntı çoğu bildirimde bir iki satır; sağ taraf boş kalır."] },
+        C: { hash: "v=inbox-C&f=desktop&open=1", title: "Üst çubukta zil",
+          text: "Her sayfanın üstüne ince bir çubuk ve sağ köşede zil eklenir; zil bir pencere açar.",
+          why: ["En yaygın web düzeni (7shifts, Homebase).", "Uygulamaya yeni bir üst çubuk ekler; bütün sayfaların üst boşluğu değişir.", "Sol menüdeki Notifications kalkar ya da ikiz olur."] }
+      } },
+    { id: "phone", t: "Telefon", frame: "phone", roles: ["employee", "manager"],
+      o: { s: "9.0", where: "Alt menü → More → Notifications", text: "Bugün telefonda bildirimler More menüsünün içinde, masaüstü sayfasının dar hâli." },
+      v: {
+        A: { rec: 1, hash: "v=inbox-A&f=phone", title: "Zil tam ekran liste açar",
+          text: "Home'daki zil (bugün de var) tam ekran bir liste açar. Cover ve takas isteklerinde Accept / Decline doğrudan listede.",
+          why: ["Telefonda küçük pencere sıkışır; tam ekran okunur.", "En sık iş olan cevap vermek tek dokunuşla biter.", "Geri oku Home'a döner; yeni sayfa ezberlemek yok."],
+          tryit: "Home'da sağ üstteki zile dokun; Jake'in isteğinde Accept'e bas." },
+        B: { hash: "v=inbox-B&f=phone", title: "Liste, dokununca ayrıntı",
+          text: "Liste ayrı sayfa; bir satıra dokununca ayrıntı sayfası açılır, düğmeler orada.",
+          why: ["Her cevap için iki dokunuş ve bir geri.", "Ayrıntı sayfası çoğu bildirimde listedeki satırı tekrar eder."] }
+      } },
+    { id: "me", t: "Kişisel ayar", frame: "desktop", roles: ["employee", "manager"], devices: ["desktop", "phone"],
+      o: { s: "11.3", where: "Account → Notifications", text: "Bugün her bildirim türü için ayrı satır ve kanal anahtarları; kategori açılıp kapanır. Uzun ve teknik." },
+      v: {
+        A: { rec: 1, hash: "v=me-A", title: "Kanallar ve kısa tablo",
+          text: "Üstte kanallar: uygulama içi (hep açık), e-posta, telefon bildirimi, kısa mesaj (şimdilik kapalı). Altta 5–7 satırlık tablo: hangi konu hangi kanaldan gelsin. Hesap ve güvenlik satırı kilitli.",
+          why: ["7shifts, When I Work ve Customer.io aynı düzeni kullanır: konu × kanal.", "Tür başına 50 satır yerine 6 konu; ayar cehennemi yok.", "Kapatılamayanlar kilitli görünür, kişi neden geldiğini bilir."],
+          tryit: "Phone alerts'te Turn on'a bas; tabloda bir kutuyu değiştirince Save açılır." },
+        B: { hash: "v=me-B", title: "Kanal başına üç seçenek",
+          text: "Her kanal için Everything / Only important / Off. Tablo yok.",
+          why: ["En sade hâli.", "Kişi 'açık vardiyalar telefona gelsin, duyurular gelmesin' diyemez.", "'Only important' ne demek, ayrıca açıklamak gerekir."] }
+      } },
+    { id: "org", t: "Organizasyon ayarı", frame: "desktop", roles: ["owner"],
+      o: { s: "10.3", where: "Settings → Notifications", text: "Bugün owner her bildirim türü için kanal, alıcı, rol ve lokasyon kapsamı seçer. Teknik terimler ve çok sayıda anahtar var." },
+      v: {
+        A: { rec: 1, hash: "v=org-A&r=owner", title: "Kanallar, isteğe bağlılar, her zaman gidenler",
+          text: "Üç bölüm: kanallar (e-posta, telefon bildirimi açık / kapalı; kısa mesaj ücretli olduğu için kapalı), isteğe bağlı bildirimler (owner kapatabilir), her zaman gidenler (kapalı bir liste, açılınca okunur).",
+          why: ["Kim neyi alır ürün kuralıdır, owner'a sorulmaz (SuprSend, Courier, Knock modeli).", "Owner'ın kapatabildiği tek şey gürültü olabilecekler.", "Ekranda toplam 8 anahtar."],
+          tryit: "Always sent satırını aç; bir anahtarı kapatınca Save açılır." },
+        B: { hash: "v=org-B&r=owner", title: "Ayrı sayfa yok, General'de iki anahtar",
+          text: "Settings → Notifications kalkar; General sayfasına e-posta ve telefon bildirimi anahtarları eklenir.",
+          why: ["En az ekran.", "Açık vardiya gibi gürültülü bildirimleri kapatma yolu kalmaz."] },
+        C: { hash: "v=org-C&r=owner", title: "Her tür ayrı satır",
+          text: "Bütün bildirim türleri (yaklaşık 50) tabloda; owner her biri için kanal seçer.",
+          why: ["En çok kontrol.", "Bugünkü sayfaya yakın; aynı karmaşa geri gelir.", "Owner'ın çoğu satıra hiç dokunmayacağı biliniyor (7shifts'in yardım sayfası da 'varsayılan önerilir' diyor)."] }
+      } },
+    { id: "push", t: "Telefona bildirim izni", frame: "phone", roles: ["employee"], devices3: ["iphone-safari", "iphone-app", "chrome"],
+      o: { s: "7.0", sc: "home", where: "Çalışanın Home sayfası", text: "Bugün telefona bildirim (push) yok. Orijinal olarak bugünkü Home gösteriliyor." },
+      v: {
+        A: { rec: 1, hash: "v=push-A", title: "Home'da bir kez soran kart",
+          text: "Çalışan programını ilk kez açtıktan sonra Home'un altında küçük bir kart: Get alerts on this phone → Turn on. iPhone'da Safari'deyse önce 'ana ekrana ekle' adımlarını gösterir; sonra tarayıcının kendi izin kutusu çıkar.",
+          why: ["Tarayıcılar sayfa açılır açılmaz sorulan izni gizliyor; değer görüldükten sonra sormak öneriliyor (web.dev).", "iPhone'da web uygulaması yalnız ana ekrana eklenince bildirim alabiliyor (iOS 16.4+).", "Not now'a basan yine Account'tan açabilir."],
+          tryit: "Üstteki cihazı değiştir; Turn on'a bas." },
+        B: { hash: "v=push-B", title: "Yalnız Account'ta",
+          text: "Kart yok. Telefon bildirimi yalnız Account → Notifications'tan açılır.",
+          why: ["Hiç rahatsız etmez.", "Çoğu çalışan Account sayfasına girmez; telefon bildirimi neredeyse hiç açılmaz."] }
+      } }
+  ];
+  var state = { tab: "inbox", ver: "A", role: null, dev: null, dev3: "iphone-safari" };
+  try { var saved = JSON.parse(localStorage.getItem("nf-screens") || "null"); if (saved && saved.tab) state = Object.assign(state, saved); } catch (e) {}
+  var $ = function (id) { return document.getElementById(id); };
+  function tab() { return TABS.filter(function (t) { return t.id === state.tab; })[0] || TABS[0]; }
+  function btn(label, pressed, on, extra) {
+    var b = document.createElement("button"); b.type = "button"; b.innerHTML = label; b.setAttribute("aria-pressed", pressed ? "true" : "false"); b.onclick = on; if (extra) extra(b); return b;
+  }
+  function render() {
+    var T = tab();
+    if (!T.v[state.ver] && state.ver !== "O") state.ver = "A";
+    if (!state.role || T.roles.indexOf(state.role) < 0) state.role = T.roles[0];
+    var devs = T.devices || null;
+    if (devs && devs.indexOf(state.dev) < 0) state.dev = devs[0];
+    try { localStorage.setItem("nf-screens", JSON.stringify(state)); } catch (e) {}
+    var tabs = $("tabs"); tabs.innerHTML = "";
+    TABS.forEach(function (x) { var b = btn(x.t, false, function () { state.tab = x.id; state.ver = "A"; render(); }); b.setAttribute("role", "tab"); b.setAttribute("aria-selected", x.id === T.id ? "true" : "false"); tabs.appendChild(b); });
+    var pills = $("pills"); pills.innerHTML = "";
+    pills.appendChild(btn("Orijinal", state.ver === "O", function () { state.ver = "O"; render(); }));
+    Object.keys(T.v).forEach(function (k) { pills.appendChild(btn(k + (T.v[k].rec ? '<span class="rec">Önerilen</span>' : ""), state.ver === k, function () { state.ver = k; render(); })); });
+    var roles = $("roles"); roles.innerHTML = "";
+    if (T.roles.length > 1) { roles.insertAdjacentHTML("beforeend", '<span class="seg-label">Kim</span>'); T.roles.forEach(function (r) { roles.appendChild(btn(ROLE_TR[r], state.role === r, function () { state.role = r; render(); })); }); }
+    var dv = $("devices"); dv.innerHTML = "";
+    if (devs) { dv.insertAdjacentHTML("beforeend", '<span class="seg-label">Ekran</span>'); devs.forEach(function (d) { dv.appendChild(btn(d === "phone" ? "Telefon" : "Masaüstü", state.dev === d, function () { state.dev = d; render(); })); }); }
+    if (T.devices3 && state.ver !== "O") { dv.insertAdjacentHTML("beforeend", '<span class="seg-label">Cihaz</span>'); T.devices3.forEach(function (d) { dv.appendChild(btn(DEV_TR[d], state.dev3 === d, function () { state.dev3 = d; render(); })); }); }
+    var frame = devs ? state.dev : T.frame;
+    var src, where, note;
+    if (state.ver === "O") {
+      src = "app.html#s=" + T.o.s + "&sc=" + (T.o.sc || state.role) + "&role=" + state.role + "&frame=" + frame + "&n=1";
+      where = T.o.where;
+      note = '<span class="tag orig">Orijinal</span><h2>Bugünkü ekran</h2><p>' + T.o.text + "</p>";
+    } else {
+      var V = T.v[state.ver];
+      src = "mock.html#" + V.hash + (V.hash.indexOf("&r=") < 0 ? "&r=" + state.role : "") + (V.hash.indexOf("&f=") < 0 ? "&f=" + frame : "") + (T.devices3 ? "&d=" + state.dev3 : "");
+      where = (V.rec ? "Önerilen · " : "") + "Sürüm " + state.ver;
+      note = '<span class="tag">' + (V.rec ? "Önerilen" : "Sürüm " + state.ver) + "</span><h2>" + V.title + "</h2><p>" + V.text + "</p><ul>" + V.why.map(function (w) { return "<li>" + w + "</li>"; }).join("") + "</ul>" + (V.tryit ? '<p class="try">Dene: ' + V.tryit + "</p>" : "");
+    }
+    $("where").textContent = where; $("note").innerHTML = note;
+    var vp = $("vp"), ifr = $("ifr");
+    // A new frame per screen: changing only the part after # would not reload the page inside.
+    if (ifr.getAttribute("data-src") !== src) { var nf = document.createElement("iframe"); nf.id = "ifr"; nf.title = "Ekran"; nf.setAttribute("data-src", src); vp.replaceChild(nf, ifr); ifr = nf; }
+    var w = frame === "phone" ? 390 : 1440, h = frame === "phone" ? 844 : 900;
+    vp.className = "viewport" + (frame === "phone" ? " is-phone" : "");
+    var avail = vp.clientWidth - (frame === "phone" ? 32 : 0);
+    var scale = Math.min(1, avail / w);
+    ifr.style.width = w + "px"; ifr.style.height = h + "px"; ifr.style.transform = "scale(" + scale + ")";
+    vp.style.height = Math.round(h * scale + (frame === "phone" ? 32 : 0)) + "px";
+    ifr.style.marginRight = (scale < 1 ? -(w * (1 - scale)) : 0) + "px";
+    $("size").textContent = (frame === "phone" ? "Telefon " : "Masaüstü ") + w + " px" + (scale < 1 ? " · %" + Math.round(scale * 100) + " küçültüldü" : "");
+    if (!ifr.getAttribute("src")) ifr.setAttribute("src", src);
+  }
+  // The mock reports clicks it cannot follow (e.g. "Open in Requests").
+  window.addEventListener("message", function (e) { if (e.data && e.data.nfmock) { var n = $("note"); var p = n.querySelector(".said") || n.appendChild(document.createElement("p")); p.className = "muted said"; p.textContent = e.data.msg; } });
+  var rt; window.addEventListener("resize", function () { clearTimeout(rt); rt = setTimeout(render, 120); });
+  render();
+})();
+</script>
+</body>
+</html>
