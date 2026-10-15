@@ -109,7 +109,7 @@ extend("3.0", [
 
 extend("3.0", [
     sc("loc-menu", "Lokasyon filtresi menüsü açık (All locations, Merge locations)", O, [click("All locations")]),
-    sc("loc-uptown", "Tek lokasyona süzülmüş ızgara (Uptown)", O, [click("All locations"), click("Harbor & Vine Uptown", within='[data-topbar-filter-content="locations"]'), key("Escape"), wait(600)]),
+    sc("loc-uptown", "Tek lokasyona süzülmüş ızgara (Uptown): hafta ekrana sığar", O, [click("All locations"), click("Harbor & Vine Uptown", within='[data-topbar-filter-content="locations"]'), key("Escape"), wait(600)]),
     sc("loc-header", "Lokasyon başlığına tık: o lokasyona süzer (Downtown)", O, [click('.schedule-location-header'), wait(600)]),
     sc("merged", "Merge locations: birleşik görünüm (kartta lokasyon adı)", O, [click("All locations"), click("Merge locations"), key("Escape"), wait(600)]),
     sc("jobs-menu", "İş filtresi: departman grupları", O, [click("All jobs")]),
@@ -142,7 +142,7 @@ extend("3.0", [
 ], part="New Schedule penceresi · Schedules")
 
 extend("3.0", [
-    sc("edit-live", "Yayındaki haftayı düzenleme (Edit live schedule): kartlar canlı, Unassigned satırı", O, LIVE),
+    sc("edit-live", "Yayındaki haftayı düzenleme (Edit live schedule): yayındaki kartlar sağ üstte yeşil LIVE, Unassigned satırı", O, LIVE),
     sc("edit-draft", "Kayıtlı taslağı düzenleme (Edit Next week plan)", O, NEXT_DRAFT_EDIT),
     sc("edit-one-location", "Yalnız bir lokasyonu düzenleme: Downtown süzülüyken Edit live schedule", O,
        [click("All locations"), click("Harbor & Vine Downtown", within='[data-topbar-filter-content="locations"]'), key("Escape"), wait(400)] + LIVE),
@@ -175,8 +175,8 @@ extend("3.0", [
     sc("deadline", "Bu hafta yayında değil: lokasyon noktası kırmızı (ipucu: \"Schedule week is underway…\")", O, setup="schedule-this-week-unpublished"),
     sc("deadline-lead", "Yayınlayamayan rolde son gün uyarısı yok (Shift Lead)", C, setup="schedule-this-week-unpublished"),
     sc("partial-time-off", "Kısmi izin hücresi (Noah Garcia, Thu 3 PM sonrası): kırmızı zemin, Add shift var", O, LIVE + [act("scroll", cell("noah", 3))]),
-    sc("drag-time-off", "İzinli hücreye sürükleme anı: \"Can't place a shift here\"", O, LIVE + [act("drag", card("maria", 1), to=cell("maria", 2), hold=True)]),
-    sc("closed-day", "Kapalı gün (Kitchen deep clean, gelecek Salı): başlıkta kilit, hücreler kapalı", O, NEXT + [act("hover", '[aria-label^="Closed:"]')]),
+    sc("drag-time-off", "İzinli hücreye sürükleme anı: kırmızı çerçeve, kartta \"Time off\" etiketi", O, LIVE + [act("drag", card("maria", 1), to=cell("maria", 2), hold=True)]),
+    sc("closed-day", "Kapalı gün (Kitchen deep clean, gelecek Salı): başlıkta kilit ve \"Closed · …\", hücreler izinli gün gibi pembe", O, NEXT + [act("hover", '[aria-label^="Closed:"]')]),
     sc("short-day", "Kısa saatli gün (Hartwell private buyout, Uptown): başlıkta \"Short hours\" satırı", O, NEXT + [act("hover", '.schedule-day-post[data-day="short"]')]),
     sc("unassigned", "Unassigned satırı: \"3 open shifts\"", O, LIVE),
     sc("stack", "Unassigned yığını \"x3\": Count 3 ile eklenen aynı açık vardiyalar", O, LIVE + [CL(addbtn(None, 2)), wait(700), click("Increase count"), click("Increase count"), click("Add 3 shifts"), wait(1500)]),
@@ -190,17 +190,17 @@ extend("3.0", [
 
 CARDP = "Vardiya kartı ve rozetleri"
 extend("3.0", [
-    sc("card-variants", "Kartta etiket, gece yarısını geçen \"+1\", saati gizli kart, not köşesi", O, setup="schedule-card-variants"),
-    sc("note-card", "Not köşesi: üzerine gelince not kartı (Carlos Rivera, Mon)", O, [act("hover", card("carlos", 0))], setup="schedule-card-variants"),
-    sc("avail-mark", "Uygunluk \"!\": adın yanında ve boş hücrede (düzenlemede, Availability on)", O, LIVE),
+    sc("card-variants", "Kartta etiket, gece yarısını geçen \"+1\", saati gizli kart, yönetici notu ataşı", O, setup="schedule-card-variants"),
+    sc("note-card", "Yönetici notu ataşı: üzerine gelince not kartı (Carlos Rivera, Mon)", O, [act("hover", card("carlos", 0) + " .schedule-shift-note-corner"), wait(600)], setup="schedule-card-variants"),
+    sc("avail-mark", "Uygunluk \"!\": düzenlemede yayındaki kartlarınki adın yanında, boş hücrede köşede (Availability on)", O, LIVE),
     sc("avail-popup", "Uygunluk \"!\" penceresi", O, LIVE + [click(".schedule-availability-mark")]),
     sc("avail-off", "Availability off: turuncu \"!\" gizli, kırmızı izin kalır", O, LIVE + [click("Availability on"), wait(400)]),
-    sc("changed-after", "Kartta \"!\" ve \"Changed after publishing\" (Priya Patel, Tue)", O, LIVE + [act("scroll", card("priya", 1)), wait(300), CL(card("priya", 1) + " .schedule-availability-mark-card"), wait(500)], setup="schedule-changed-after-publish"),
+    sc("changed-after", "Düzenlemede yayındaki kartın \"!\"i Priya Patel'in adının yanında; penceresinde Salı altında \"Changed after publishing\"", O, LIVE + [CL('.schedule-availability-mark-name[aria-label^="Priya Patel"]'), wait(500)], setup="schedule-changed-after-publish"),
     sc("new-mark", "Düzenlemede yeni vardiya: \"New\" işareti", O, ADD_CARLOS + SAVE_EDITOR),
-    sc("staged", "Yayındaki vardiya kaldırılmak üzere: \"Staged for removal\"", O, LIVE + [act("context", card("carlos", 1)), click("Unpublish shift"), wait(900), act("hover", card("carlos", 1))]),
-    sc("edited", "Değiştirilen canlı vardiya: \"Edited - updates the live shift on next publish\"", O, LIVE + [act("dblclick", card("carlos", 1)), wait(600), fill('textarea', "Cover the pass"), click("Save", within='[role="dialog"]'), wait(1200)]),
+    sc("staged", "Yayındaki vardiya kaldırılmak üzere: soluk gri, üstü çizili, simge yok (Carlos Rivera, Tue)", O, LIVE + [act("context", card("carlos", 1)), click("Unpublish shift"), wait(900), act("hover", card("carlos", 1))]),
+    sc("edited", "Değiştirilen canlı vardiya: sağ altta NEW, şerit ve kalem yok (üzerine gelince \"Edited - updates the live shift on next publish\")", O, LIVE + [act("dblclick", card("carlos", 1)), wait(600), fill('textarea', "Cover the pass"), click("Save", within='[role="dialog"]'), wait(1200)]),
     sc("overlap", "Çakışan iki vardiya: hücrede çakışma işareti (Carlos, Mon)", O, LIVE + [CL(addbtn("carlos", 0)), wait(700), click("Breakfast", within='[role="group"][aria-label="Shift type"]'), click("Add shift", within='[role="dialog"]'), wait(1500)]),
-    sc("saving", "Kartta \"Saving\" / \"Still saving — please wait\" (taşıma cevap bekliyor)", O, LIVE + [act("drag", card("daniel", 1), to=cell("daniel", 2)), wait(4500)], hold=[r"/shifts/[0-9a-f-]+$"]),
+    sc("saving", "Taşıma cevap bekliyor: kartın sağ üstünde dönen kaydetme işareti (uzun sürünce amber, \"Still saving\")", O, LIVE + [act("drag", card("daniel", 1), to=cell("daniel", 2)), wait(4500)], hold=[r"/shifts/[0-9a-f-]+$"]),
 ], part=CARDP)
 
 SEL = "Seçim, kopyala-yapıştır, sürükle"

@@ -21,7 +21,7 @@ Yazıldı: 2026-10-14, 09:50 California (16:50Z). Yazan: bu thread'in Claude'u.
 
 ## 3. Yarım kalan iş: tam olarak nerede durdu
 ### 3a–3b. Eski PAGES işi (bitti, yeni hesapta yapılmaz)
-Schedule (3.0), Export (3.1) ve Templates (3.2) PAGES sayfaları eski hesapta 9b871a97'den yayınlandı; demo uygulama aracına (`PAGES/_kaynak`) 4 düzeltme yazıldı (yukarıdaki güncelleme notu). PAGES emekli: bu sayfalar yeni hesapta kurulmaz, yayınlanmaz. Araç düzeltmelerinin yedeği `ust-cubuk-kaynak/kaynak-degisen/` ve `kaynak-farki.diff`'te; araç yalnız varyant sayfalarındaki "Original" görüntüsü için kullanılır.
+Schedule (3.0), Export (3.1) ve Templates (3.2) PAGES sayfaları eski hesapta 9b871a97'den yayınlandı; demo uygulama aracına (`PAGES/_kaynak`) 4 düzeltme yazıldı (yukarıdaki güncelleme notu; GitHub'daki paket kopyasına 15 Ekim'de eklendi, bilgisayardaki 14 Ekim yedeğinde yok: orada `kaynak-degisen/`'den alınır). PAGES emekli: bu sayfalar yeni hesapta kurulmaz, yayınlanmaz. Araç düzeltmelerinin yedeği `ust-cubuk-kaynak/kaynak-degisen/` ve `kaynak-farki.diff`'te; araç yalnız varyant sayfalarındaki "Original" görüntüsü için kullanılır.
 
 ### 3c. Parça 3: şablonu ızgarada önizleme ve düzenleme (başlamadı)
 - Mert 2026-10-12'de onayladı. Not: `/mnt/project-files/pages/gorsel-kararlar/gelen/new-schedule-tablo/KARARLAR-NOTU.md`.

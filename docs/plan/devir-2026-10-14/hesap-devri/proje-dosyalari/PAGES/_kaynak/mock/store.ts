@@ -49,6 +49,14 @@ export function domainStore<T>(name: string, seed: () => T): Store<T> {
   return store;
 }
 
+// Work that reads several stores at once (the Schedule's closures from the
+// announcements) runs again once every store is back to its seed.
+const afterReseed: (() => void)[] = [];
+export function onReseed(fn: () => void): void {
+  afterReseed.push(fn);
+}
+
 export function reseedAll(): void {
   for (const reseed of reseeders) reseed();
+  for (const fn of afterReseed) fn();
 }

@@ -3861,7 +3861,7 @@
     },
     {
      "id": "loc-uptown",
-     "label": "Tek lokasyona süzülmüş ızgara (Uptown)",
+     "label": "Tek lokasyona süzülmüş ızgara (Uptown): hafta ekrana sığar",
      "role": "owner",
      "steps": [
       {
@@ -4369,7 +4369,7 @@
     },
     {
      "id": "edit-live",
-     "label": "Yayındaki haftayı düzenleme (Edit live schedule): kartlar canlı, Unassigned satırı",
+     "label": "Yayındaki haftayı düzenleme (Edit live schedule): yayındaki kartlar sağ üstte yeşil LIVE, Unassigned satırı",
      "role": "owner",
      "steps": [
       {
@@ -4790,7 +4790,7 @@
     },
     {
      "id": "drag-time-off",
-     "label": "İzinli hücreye sürükleme anı: \"Can't place a shift here\"",
+     "label": "İzinli hücreye sürükleme anı: kırmızı çerçeve, kartta \"Time off\" etiketi",
      "role": "owner",
      "steps": [
       {
@@ -4813,7 +4813,7 @@
     },
     {
      "id": "closed-day",
-     "label": "Kapalı gün (Kitchen deep clean, gelecek Salı): başlıkta kilit, hücreler kapalı",
+     "label": "Kapalı gün (Kitchen deep clean, gelecek Salı): başlıkta kilit ve \"Closed · …\", hücreler izinli gün gibi pembe",
      "role": "owner",
      "steps": [
       {
@@ -4986,19 +4986,22 @@
     },
     {
      "id": "card-variants",
-     "label": "Kartta etiket, gece yarısını geçen \"+1\", saati gizli kart, not köşesi",
+     "label": "Kartta etiket, gece yarısını geçen \"+1\", saati gizli kart, yönetici notu ataşı",
      "role": "owner",
      "setup": "schedule-card-variants",
      "part": "Vardiya kartı ve rozetleri"
     },
     {
      "id": "note-card",
-     "label": "Not köşesi: üzerine gelince not kartı (Carlos Rivera, Mon)",
+     "label": "Yönetici notu ataşı: üzerine gelince not kartı (Carlos Rivera, Mon)",
      "role": "owner",
      "steps": [
       {
        "act": "hover",
-       "target": "[data-drop-cell=\"true\"][data-employee-id=\"00000607-0000-4000-8000-000000000607\"][data-location-id=\"00000101-0000-4000-8000-000000000101\"][data-date=\"{week+0}\"] [data-shift-badge]:not([data-ghost=\"true\"])"
+       "target": "[data-drop-cell=\"true\"][data-employee-id=\"00000607-0000-4000-8000-000000000607\"][data-location-id=\"00000101-0000-4000-8000-000000000101\"][data-date=\"{week+0}\"] [data-shift-badge]:not([data-ghost=\"true\"]) .schedule-shift-note-corner"
+      },
+      {
+       "wait": 600
       }
      ],
      "setup": "schedule-card-variants",
@@ -5006,7 +5009,7 @@
     },
     {
      "id": "avail-mark",
-     "label": "Uygunluk \"!\": adın yanında ve boş hücrede (düzenlemede, Availability on)",
+     "label": "Uygunluk \"!\": düzenlemede yayındaki kartlarınki adın yanında, boş hücrede köşede (Availability on)",
      "role": "owner",
      "steps": [
       {
@@ -5066,7 +5069,7 @@
     },
     {
      "id": "changed-after",
-     "label": "Kartta \"!\" ve \"Changed after publishing\" (Priya Patel, Tue)",
+     "label": "Düzenlemede yayındaki kartın \"!\"i Priya Patel'in adının yanında; penceresinde Salı altında \"Changed after publishing\"",
      "role": "owner",
      "steps": [
       {
@@ -5079,15 +5082,8 @@
        "wait": 1200
       },
       {
-       "act": "scroll",
-       "target": "[data-drop-cell=\"true\"][data-employee-id=\"00000603-0000-4000-8000-000000000603\"][data-location-id=\"00000101-0000-4000-8000-000000000101\"][data-date=\"{week+1}\"] [data-shift-badge]:not([data-ghost=\"true\"])"
-      },
-      {
-       "wait": 300
-      },
-      {
        "act": "click",
-       "target": "[data-drop-cell=\"true\"][data-employee-id=\"00000603-0000-4000-8000-000000000603\"][data-location-id=\"00000101-0000-4000-8000-000000000101\"][data-date=\"{week+1}\"] [data-shift-badge]:not([data-ghost=\"true\"]) .schedule-availability-mark-card"
+       "target": ".schedule-availability-mark-name[aria-label^=\"Priya Patel\"]"
       },
       {
        "wait": 500
@@ -5129,7 +5125,7 @@
     },
     {
      "id": "staged",
-     "label": "Yayındaki vardiya kaldırılmak üzere: \"Staged for removal\"",
+     "label": "Yayındaki vardiya kaldırılmak üzere: soluk gri, üstü çizili, simge yok (Carlos Rivera, Tue)",
      "role": "owner",
      "steps": [
       {
@@ -5160,7 +5156,7 @@
     },
     {
      "id": "edited",
-     "label": "Değiştirilen canlı vardiya: \"Edited - updates the live shift on next publish\"",
+     "label": "Değiştirilen canlı vardiya: sağ altta NEW, şerit ve kalem yok (üzerine gelince \"Edited - updates the live shift on next publish\")",
      "role": "owner",
      "steps": [
       {
@@ -5230,7 +5226,7 @@
     },
     {
      "id": "saving",
-     "label": "Kartta \"Saving\" / \"Still saving — please wait\" (taşıma cevap bekliyor)",
+     "label": "Taşıma cevap bekliyor: kartın sağ üstünde dönen kaydetme işareti (uzun sürünce amber, \"Still saving\")",
      "role": "owner",
      "steps": [
       {

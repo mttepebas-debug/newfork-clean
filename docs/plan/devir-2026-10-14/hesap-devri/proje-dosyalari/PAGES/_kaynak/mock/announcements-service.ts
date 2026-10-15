@@ -13,7 +13,7 @@ import { notifyUsers, replayed, withdrawNotices } from "./communications-service
 import { viewerPermissions } from "./access";
 import { currentScenario } from "../pages";
 import { UPTOWN_MANAGER, userIdOf } from "./requests-people";
-import { domainStore } from "./store";
+import { domainStore, onReseed } from "./store";
 import { addDays, iso, localInstant, mondayOf, todayIn, uuid } from "./time";
 import { viewerIdentity, viewerRole } from "./viewer";
 import {
@@ -884,3 +884,6 @@ export function announcementsRoutes(route: Route): void {
 }
 
 syncSchedule();
+// A scenario's fresh start reseeds the world with no closures: fill them again,
+// and save so the other frame's earlier, empty world does not win.
+onReseed(() => { syncSchedule(); persist(); });

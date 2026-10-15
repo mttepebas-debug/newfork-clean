@@ -33,7 +33,11 @@ const visible = (el: Element) => {
   // A closed <details> keeps its contents laid out; only its summary shows.
   const closed = el.closest("details:not([open])");
   if (closed && !el.closest("summary")) return false;
-  if (el.closest("[inert], [hidden], [aria-hidden=true]")) return false;
+  if (el.closest("[inert], [hidden]")) return false;
+  // Hidden from screen readers by an ancestor (the page behind a dialog), not a
+  // decorative mark that is itself aria-hidden but on screen (the note's paperclip).
+  const silent = el.closest("[aria-hidden=true]");
+  if (silent && silent !== el) return false;
   const box = (el as HTMLElement).getBoundingClientRect?.();
   return !!box && box.width > 0 && box.height > 0 && getComputedStyle(el).visibility !== "hidden";
 };

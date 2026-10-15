@@ -53,7 +53,7 @@ Mert'in çalışma kuralları (2026-10-09) tam metin: /mnt/project-files/MERT-KU
 14. Thread sayıları takibi (Mert 2026-10-12): Koordinatör thread listesindeki Working, Waiting on you ve Idle gruplarının thread sayılarını izler. Bir sayı değiştiği an Mert'e proje sohbetinde yazar: değişikliği 5N1K ile açıklar (hangi thread, ne oldu, ne zaman, nerede, neden, kim) ve Mert'in bir şey yapması gerekiyorsa yapması ve yapmaması gerekenleri basamak basamak, detaylı anlatır.
 15. Kapsam dışı bırakma (Mert 2026-10-14 20:08): Mert'in isteğindeki her maddeyi yüzde yüz kapsamak zorunda değilsin. Bir özellik ürünün kalitesini, kullanım deneyimini ya da arayüz tasarımını belirgin biçimde düşürüyorsa ve o özellik olmadan daha küçük ama daha kaliteli bir sonuç çıkıyorsa, o özelliği kapsam dışı bırakmayı önerebilirsin. Bu durumda özelliği kendiliğinden atma: Mert'e sade ve anlaşılır bir dille neden daha iyi olacağını anlat, 5N1K ve "özellikle / özelliksiz" senaryolarının sonuçlarını göster ve onayını iste. Onay gelmeden o özellik kapsamdan çıkmaz.
 ```
-Not: 12. maddedeki link eski hesabındır. Yeni /oto sayfası yayınlanınca (adım 7) bu satırdaki link yenisiyle değiştirilir.
+Not: 12. maddedeki link eski hesabındır. Yeni /oto sayfası yayınlanınca (adım 5) bu satırdaki link yenisiyle değiştirilir.
 
 ## Adım 3. Yeni koordinatörün hafızası
 

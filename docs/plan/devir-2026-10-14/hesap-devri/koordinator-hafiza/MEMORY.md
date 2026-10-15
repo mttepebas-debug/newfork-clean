@@ -53,7 +53,8 @@ Repo https://github.com/mttepebas-debug/newfork-clean. Owner Mert (GitHub mttepe
 
 ## Gotchas
 - Coordinator has no Write tool (memory via update_memory, ≤16KB). message_thread: needs the thread ROOT id of a thread with a session (not my own post); no angle-bracket placeholders. send_message to sessions fails; use message_thread. start_thread_session ack needs thread_id; with no user msg id, post_message first and start on that post.
-Artifact comments on a thread's own mockup are handled by that thread. /mnt/project-files has no Windows path (Project → Files).
+- Artifact comments on a thread's own mockup are handled by that thread. /mnt/project-files has no Windows path (Project → Files).
+- Auto-mode classifier may refuse Artifact republishes when it only has a coordinator relay ("External System Writes"); attach Mert's own message that asked for it.
 - When nudging a thread to keep going, restate the goal so it doesn't drift.
 - Artifact limit counts re-publishes too (account-wide 200/day): republish only when content really changed.
 - PAGES RETIRED (Mert 2026-10-15): no screen-by-screen Artifact docs; old PAGES Artifacts are never rebuilt or republished; no thread gets a "update PAGES" step. PAGES/_kaynak stays only as the demo-app tool for "Original" views on variant pages (Mert picked "keep the tool only"). Publish guard may refuse one-file app.html: split into app.js.
