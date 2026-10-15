@@ -204,7 +204,7 @@ Paket iki yerde aynı: proje dosyalarında `/mnt/project-files/devir/threadler/b
 ## 11. Mert'in kuralları (bu işte özellikle)
 - Türkçe, sade; numara tek başına yazılmaz (önce ne olduğu, numara parantezde); saatler California.
 - Kod silme, sökme, yazma için önce izin (bu thread'in kök koşulu).
-- Varyant sayfasında Orijinal seçilebilir, varyantlar sade ve Orijinal'e yakın, popover kendi düğmesine bağlı. Yayından sonra "hangisi?" kartı yok.
+- Varyant sayfasında Orijinal seçilebilir, varyantlar en iyisini hedefler: akış, mimari, işleyiş, UI ve UX için en iyi uygulama ve en profesyonel, en çok kabul görmüş tasarım; bugünkü ürün doğru kabul edilmez, üzerine yama yapılmaz; yalnız font ve renkler tasarım dilimize uyar (Mert, 15 Ekim), popover kendi düğmesine bağlı. Yayından sonra "hangisi?" kartı yok.
 - Komut verilmez; Mert git komutu yazmaz.
 - Canlı DB'ye yazmak ve CLAUDE.md değişikliği Mert'in PC thread'inde kendi yazılı onayıyla.
 - Yeni bağımlılık, ücretli servis, gizli anahtar Mert'e sorulur.
