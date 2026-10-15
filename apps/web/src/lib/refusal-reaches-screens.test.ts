@@ -9,6 +9,10 @@ import {
 import { getEmployeeHub } from "../employee-hub/employee-hub-data";
 import { listEmployees } from "../employees/employee-data";
 import { getScheduleRequests } from "../schedule/requests-data";
+import {
+  getDocumentTargetOptions,
+  previewDocumentPublication,
+} from "../settings/documents-data";
 import { getNotificationSettings } from "../settings/notification-settings-data";
 import { loadSchedulingSettings } from "../settings/organization-data";
 import { isNoAccess } from "./no-access";
@@ -40,6 +44,8 @@ const reads: Array<[string, () => Promise<unknown>]> = [
   ["Announcements", () => getAnnouncements(workspace)],
   ["Notifications", () => getNotifications(workspace)],
   ["Employee Hub", () => getEmployeeHub(workspace, "2026-09-21", "2026-09-27")],
+  ["Settings > Documents (targets)", () => getDocumentTargetOptions(workspace)],
+  ["Settings > Documents > Publish impact", () => previewDocumentPublication(workspace, workspace)],
   ["Settings > Notifications", () => getNotificationSettings(workspace)],
   ["Settings > Scheduling", () => loadSchedulingSettings(workspace)],
   ["Account > Notification preferences", () => getNotificationPreferences(workspace)],

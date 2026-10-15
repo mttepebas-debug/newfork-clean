@@ -5,7 +5,7 @@ import {
   type DocumentType,
   type DocumentTypeInput,
 } from "@newfork/shared";
-import { supabaseClient } from "../lib/supabase";
+import { apiRequest, supabaseClient } from "../lib/supabase";
 
 import { readSettings } from "../lib/settings-read";
 function client() {
@@ -13,35 +13,14 @@ function client() {
   return supabaseClient;
 }
 
-
-async function request(
-  workspaceId: string,
-  path: string,
-  init: RequestInit = {},
-) {
-  const storage = client();
-  const token =
-    (await storage.auth.getSession()).data.session?.access_token;
-  if (!token) throw new Error("A current session is required");
-  const response = await fetch(
-    `${import.meta.env.VITE_API_URL ?? (import.meta.env.DEV ? "http://localhost:9999" : "")}/v1/workspaces/${workspaceId}/document-types${path}`,
-    {
-      ...init,
-      headers: {
-        Authorization: `Bearer ${token}`,
-        ...(init.body ? { "Content-Type": "application/json" } : {}),
-        ...init.headers,
-      },
-    },
+// Through the shared request helper, so a refusal keeps its status and authz
+// reason and the dialog can tell "you may not" from "it didn't load".
+function request(workspaceId: string, path: string, init: RequestInit = {}) {
+  return apiRequest(
+    client(),
+    `/v1/workspaces/${workspaceId}/document-types${path}`,
+    init,
   );
-  const body = (await response.json().catch(() => null)) as unknown;
-  if (!response.ok)
-    throw new Error(
-      typeof body === "object" && body && "error" in body
-        ? String(body.error)
-        : "Document type operation failed",
-    );
-  return body;
 }
 
 export async function listDocumentTypes(
