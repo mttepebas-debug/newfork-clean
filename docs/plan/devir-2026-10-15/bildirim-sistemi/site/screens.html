@@ -69,7 +69,7 @@ button:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
 (function () {
   var ROLE_TR = { owner: "Owner", manager: "Müdür", employee: "Çalışan" };
   var DEV_TR = { "iphone-safari": "iPhone, Safari", "iphone-app": "iPhone, ana ekrandan", chrome: "Android, Chrome" };
-  // o = Original in PAGES app.html; v = variants in mock.html. frame: desktop|phone.
+  // o = Original in app.html (app snapshot); v = variants in mock.html. frame: desktop|phone.
   var TABS = [
     { id: "inbox", t: "Bildirim kutusu", frame: "desktop", roles: ["manager", "owner", "employee"],
       o: { s: "9.0", where: "Sol menü → Notifications", text: "Bugün sol menüdeki Notifications ayrı bir sayfa açar. Okunmamış, okunmuş, kategori süzgeci, seçip okundu yapma ve silme var. Karar isteyen iş (onay, takas) ayrı görünmez." },

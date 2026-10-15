@@ -6,7 +6,7 @@ const o = {};
 async function grab(no, sc, role, frame, map) {
   const w = frame === 'phone' ? 390 : 1440;
   const p = await b.newPage({ viewport: { width: w, height: 900 } });
-  await p.goto(`file:///mnt/project-files/PAGES/app.html#s=${no}&sc=${sc}&role=${role}&frame=${frame}&n=1`);
+  await p.goto(`${new URL('./site/app.html', import.meta.url).href}#s=${no}&sc=${sc}&role=${role}&frame=${frame}&n=1`);
   await p.waitForTimeout(3500);
   for (const [k, s] of Object.entries(map)) o[k] = await p.evaluate((s) => { const e = document.querySelector(s); return e ? e.outerHTML : null; }, s);
   if (!o.css) o.css = await p.evaluate(() => [...document.styleSheets].map(s => { try { return [...s.cssRules].map(r => r.cssText).join('\n'); } catch (e) { return ''; } }).join('\n'));

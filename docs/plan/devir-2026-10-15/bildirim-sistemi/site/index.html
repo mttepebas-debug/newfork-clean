@@ -602,7 +602,7 @@ flowchart LR
 
 <!-- ============ YOL HARİTASI ============ -->
 <section class="pane" id="yol" hidden>
-  <div class="prose"><h2>Yol haritası</h2><p>Her dilim kendi dalında, sırayla, trenle main'e gider. Aynı anda tek kod thread'i çalışır. Her dilim dokunduğu PAGES sayfalarını da günceller.</p></div>
+  <div class="prose"><h2>Yol haritası</h2><p>Her dilim kendi dalında, sırayla, trenle main'e gider. Aynı anda tek kod thread'i çalışır.</p></div>
   <div class="steps" id="slices"></div>
   <p class="muted small">İncelemeli dilimler (yetki, veritabanı, canlı değişiklik) bağımsız güvenlik incelemesinden geçer; ekran değiştiyse masaüstü ve telefon görüntüsü eklenir.</p>
 </section>
@@ -744,7 +744,7 @@ flowchart LR
     ["E-posta", "Resend ile gönderim, e-posta şablonları, “bunları gönderme” bağlantısı, geri dönen adresin durdurulması.", "Test adresine gerçek e-posta gider; aynı bildirim iki kez gitmez.", "İncelemeli", "Resend hesabı, alan adı, $20/ay"],
     ["Telefona bildirim", "Ana ekrana eklenebilir uygulama parçaları, cihaz aboneliği, izin kartı, iPhone adımları, gönderici.", "Android Chrome'da ve ana ekrandaki iPhone'da bildirim düşer; izin reddinde e-posta yedeği.", "İncelemeli", "web-push kütüphanesi onayı"],
     ["Kısa mesaj altyapısı (kapalı)", "İzin alanları, STOP listesi, kanal kapısı; sağlayıcı bağlanmaz.", "Kanal kapalıyken hiçbir yol kısa mesaj göndermez (test).", "Normal", ""],
-    ["Son kontrol", "Bütün akışların uçtan uca testleri, PAGES sayfaları, karar defterine kurallar.", "Tren yeşil; PAGES'te yeni ekranlar; eski sayfalar haritadan kalktı.", "Normal", ""]
+    ["Son kontrol", "Bütün akışların uçtan uca testleri, karar defterine kurallar.", "Tren yeşil; uçtan uca testler yeşil; kurallar defterde.", "Normal", ""]
   ];
   document.getElementById("slices").innerHTML = S.map(function (s, i) {
     return '<div class="slice"><span class="no">' + (i + 1) + "</span><h3>" + s[0] + "</h3><p>" + s[1] + '</p><div class="meta"><span><b>Bitti:</b> ' + s[2] + "</span><span><b>Sınıf:</b> " + s[3] + "</span>" + (s[4] ? '<span class="need">Senden: ' + s[4] + "</span>" : "") + "</div></div>";

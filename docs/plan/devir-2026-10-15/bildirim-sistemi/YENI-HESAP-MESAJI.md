@@ -5,4 +5,6 @@ GitHub'daki mttepebas-debug/newfork-clean reposunda `claude/project-thread-bb8xo
 1. Plan sayfasını bu hesapta yeniden yayınla. Dosyalar klasördeki `site/` içinde. Yeni linki bana ver.
 2. Bana tek bir karar kartıyla "Bildirim planına göre koda başlayayım mı?" diye sor.
 
+Eski ekran ekran PAGES belgeleme kuralı emekli: PAGES sayfası kurma ya da güncelleme.
+
 Ben "Başla" demeden hiçbir kod silinmeyecek, sökülmeyecek ya da yazılmayacak. Bu dal main'e gitmez; yalnız okumak için.

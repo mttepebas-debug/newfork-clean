@@ -37,7 +37,7 @@ Yazıldı: 2026-10-14 ~22:45 California (2026-10-15 05:45Z). Yazan: bu thread'in
   - Organizasyon ayarı: A, B, C.
   - Telefona bildirim izni: A, B.
 
-  Her başlıkta önerilen A. Varyantlar gerçek uygulama kabuğuyla çizildi (PAGES'ten alınan menü, ayar rayı, telefon menüsü ve CSS). Orijinal sekmesi gerçek PAGES `app.html`'i gösterir.
+  Her başlıkta önerilen A. Varyantlar gerçek uygulama kabuğuyla çizildi (uygulamanın ekran kopyasından alınan menü, ayar rayı, telefon menüsü ve CSS). Orijinal sekmesi bu kopyayı (`site/app.html`) gösterir.
 - **Mert'in sorusu cevaplandı (2026-10-14 22:24 California):** "Schedule bitsin dediğin ne, bitmeyen ne var, bildirime engel olur mu?" Cevabın özü §6'da.
 - Repo'da kod değişikliği **yok**. Bu thread'in dalı `claude/project-thread-bb8xot`, yalnız bu devir dosyalarını taşır (§7).
 
@@ -151,10 +151,12 @@ Paket iki yerde aynı: proje dosyalarında `/mnt/project-files/devir/threadler/b
 | `site/screens.html` | Varyant görüntüleyici: 5 başlık, Orijinal + A/B/C, rol ve cihaz seçimi | Plan sayfasının Ekranlar sekmesi bunu iframe'de açar |
 | `site/mock.html` | Varyantların kendisi (yapılmış dosya; uygulamanın CSS'i ve kabuk HTML'i gömülü) | `screens.html` bunu `#v=inbox-A&f=desktop&r=manager` gibi adreslerle açar |
 | `mock-src.js`, `mock.css` | Varyant kaynak kodu | Değiştirince `python3 build-mock.py <paket klasörü>` → `site/mock.html` yeniden yazılır |
-| `ext/frag.json`, `ext/icons.json` | PAGES'ten çıkarılmış gerçek kabuk parçaları (menü, ayar rayı, hesap menüsü, telefon menüsü) + 101 lucide ikonu | `build-mock.py` bunları okur |
-| `extract2.mjs` | `frag.json`'u PAGES `app.html`'den yeniden çıkarır (Playwright) | Yalnız PAGES değişince; yol içinde `/mnt/project-files/PAGES/app.html` yazılı, yeni yerde düzelt |
+| `ext/frag.json`, `ext/icons.json` | `site/app.html`'den çıkarılmış gerçek kabuk parçaları (menü, ayar rayı, hesap menüsü, telefon menüsü) + 101 lucide ikonu | `build-mock.py` bunları okur |
+| `extract2.mjs` | `frag.json`'u `site/app.html`'den yeniden çıkarır (Playwright) | Normalde gerekmez; yalnız varyantların kabuğu yenilenecekse |
 | `shotmock.mjs`, `shotpage.mjs` | Ekran görüntüsü betikleri (1440 ve 390) | Kontrol için; Playwright yolu `/opt/node-tools/...` bulut ortamına göre, değiştirilmeli |
-| `site/app.html` (3 MB) | PAGES'in tam uygulama kopyası (main 28aeb82b); "Orijinal" sekmeleri bunu açar. Demo parola değerleri `demo-password-1/2` ile değiştirildi | Yayında `site/` içindeki öbür dosyalarla birlikte gider; ayrıca bir şey yapılmaz |
+| `site/app.html` (3 MB) | Uygulamanın ekran kopyası (main 28aeb82b); "Orijinal" sekmeleri bunu açar. Planın parçasıdır; güncellenmez, ayrı sayfa olarak kurulmaz. Demo parola değerleri `demo-password-1/2` ile değiştirildi | Yayında `site/` içindeki öbür dosyalarla birlikte gider; ayrıca bir şey yapılmaz |
+
+**PAGES kuralı emekli (Mert, 2026-10-15):** yeni hesapta ekran ekran PAGES sayfaları kurulmaz ve güncellenmez; bu hesaptaki PAGES Artifact'leri de yeniden kurulmaz. `site/app.html` yalnız bu planın "Orijinal" görünümü için pakette.
 
 **Yeni hesapta yeniden yayın:**
 - Artifact `publish`, `file_path` = `site/index.html`.
@@ -180,7 +182,7 @@ Paket iki yerde aynı: proje dosyalarında `/mnt/project-files/devir/threadler/b
    - Başla (önerilen) / Önce düzelt / Schedule bitsin.
    - Dayanak: S-96 ve Mert'in 2026-10-14 isteği.
    - Ekran varyantı için kart gönderme.
-4. "Başla" gelirse yol haritası şöyle. Her dilim ayrı dal ve tren; aynı anda tek kod işi; incelemeli dilimler `nf-guvenlik` ONAY'ından geçer; her dilim dokunduğu PAGES sayfasını günceller.
+4. "Başla" gelirse yol haritası şöyle. Her dilim ayrı dal ve tren; aynı anda tek kod işi; incelemeli dilimler `nf-guvenlik` ONAY'ından geçer.
    1. **Korunacak 5 işi taşı** (K1–K5). Bitti: eski kod hâlâ var ama bu 5 iş onsuz çalışıyor, testler yeşil.
    2. **Sök.** Önce söküm listesini yeniden ölç. Yedek al (silinecek fonksiyon ve tabloların tanımı). Silen migration riskli sayılır: ONAY + koordinatör "gönder" + tren CI yeşil. Silinenler `retired_objects_stay_gone`'a girer. Canlı uygulamayı PC thread'i yapar.
    3. **Çekirdek:** tür listesi, bildirimler, gönderimler, tercihler, workspace ayarları, "gidecek mi" kuralı, yetki matrisi ve katalog sınıflaması.
@@ -190,7 +192,7 @@ Paket iki yerde aynı: proje dosyalarında `/mnt/project-files/devir/threadler/b
    7. **E-posta:** Mert'in Resend hesabı, alan adı doğrulaması ve $20/ay onayı gerekir.
    8. **Telefona bildirim:** `web-push` onayı gerekir; manifest + service worker + VAPID.
    9. **Kısa mesaj altyapısı (kapalı).**
-   10. **Uçtan uca testler, PAGES, KARARLAR.**
+   10. **Uçtan uca testler, KARARLAR.**
 5. Mert'in plan kararlarını (seviyeler, ekran seçimleri, motor) onayladığı anda KARARLAR'a yeni madde olarak yaz (o işin dalında).
 
 ## 10. Mert'ten beklenenler
@@ -214,4 +216,4 @@ Paket iki yerde aynı: proje dosyalarında `/mnt/project-files/devir/threadler/b
 - **iframe:** adresin yalnız `#` sonrası değişince sayfa yeniden yüklenmez. `screens.html` her ekranda yeni bir iframe oluşturur; böyle kalmalı.
 - **CSS:** uygulamanın `secondary-button` sınıfının boyutu yok (yalnız renk). Varyantlarda `nf-btn nf-btn-lg` kullan.
 - **Mermaid:** etiketlerde `<br/>` kullanma; tek satır etiket yaz.
-- **Bulut ortamı:** unpkg ve jsdelivr çıkış vekilinde kapalı. İkonlar bu yüzden PAGES paketinden çıkarıldı (`icons.json`).
+- **Bulut ortamı:** unpkg ve jsdelivr çıkış vekilinde kapalı. İkonlar bu yüzden uygulama kopyasından çıkarıldı (`icons.json`).
