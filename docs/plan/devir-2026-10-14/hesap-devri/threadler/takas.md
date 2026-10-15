@@ -14,8 +14,8 @@ Yazıldı: 2026-10-14 ~09:50 California. Yazan: bu thread'in Claude'u.
 
 ## 3. Yarım kalanlar ve sıradaki adım
 1. **Plan "kodla" bekliyor.** Plan: [PLAN.md](/mnt/project-files/notes/vardiya-degisim/PLAN.md). Karar tablosu UTC saatli; yeni karar oraya yazılır.
-2. **Mockup yeniden yayını bekliyor.** 08:30–10:34Z değişiklikleri kaynakta var, yayında yok (günlük 200 yayın sınırı doldu). Eski hesapta 17:05 California (2026-10-15 00:05Z) için kendine uyandırma kuruldu. Yeni hesapta bu çalışmaz: yeni hesap mockup'ı **kendi hesabında yeni bir Artifact olarak** yayınlar (eski linki göremez/güncelleyemez). Kaynak: `/mnt/project-files/pages/vardiya-degisim-mockup.html` (önce `gorsel-kararlar/gelen/vardiya-degisim/index.html` oraya kopyalanır).
-3. **Eski Artifact'taki 11 açık yorum** yayından sonra kapatılacaktı (eski hesapta). Hepsine cevap yazıldı; içerikleri kaynağa işlendi. Yeni hesapta yapılacak bir şey yok; eski hesapta açık kalabilirler.
+2. **Eski hesapta yayınlandı (2026-10-14 17:06 California, sürüm 3); 11 yorum kapatıldı.** Yeni hesap için: eski link yeni hesapta açılmaz; yeni hesap mockup'ı **kendi hesabında yeni bir Artifact olarak** yayınlar (eski linki göremez/güncelleyemez). Kaynak: `/mnt/project-files/pages/vardiya-degisim-mockup.html` (önce `gorsel-kararlar/gelen/vardiya-degisim/index.html` oraya kopyalanır).
+3. Eski Artifact'taki yorumların hepsi işlendi ve kapatıldı; yeni hesapta yapılacak bir şey yok.
 4. **Meyhouse demo verisi canlıda** (Palo Alto, 19–25 Ekim haftası, test için). Mert'e "testten sonra silelim mi?" teklifi açık. Silme canlı veri silmedir: Mert'in kendi yazılı "evet"i ve PC thread'i gerekir.
 5. **KARARLAR taslağı trende bekliyor:** izinli güne vardiya alma/swap kuralı, [kararlar-taslak-izinli-gun.md](/mnt/project-files/notes/vardiya-degisim/kararlar-taslak-izinli-gun.md). Koordinatöre verilmişti; `docs/plan/KARARLAR.md`'de olup olmadığı kontrol edilmeli.
 6. **Açık sorular (Mert'e):**
@@ -52,7 +52,7 @@ Yazıldı: 2026-10-14 ~09:50 California. Yazan: bu thread'in Claude'u.
 ## 7. Artifact'lar
 | Ne | Link (eski hesap) | Kaynak |
 |---|---|---|
-| Vardiya değişim mockup (v2 yayında) | https://claude.ai/artifact/723BAcPXjhxwYePzqDGSxk | `/mnt/project-files/pages/vardiya-degisim-mockup.html` ← `gorsel-kararlar/gelen/vardiya-degisim/index.html` |
+| Vardiya değişim mockup (sürüm 3, son hal) | https://claude.ai/artifact/723BAcPXjhxwYePzqDGSxk | `/mnt/project-files/pages/vardiya-degisim-mockup.html` ← `gorsel-kararlar/gelen/vardiya-degisim/index.html` |
 
 Liste: `/mnt/project-files/pages/LISTE.md`. Yeni hesap yeni link alır; LISTE.md'ye yeni satır yazılır, eski link silinmez.
 

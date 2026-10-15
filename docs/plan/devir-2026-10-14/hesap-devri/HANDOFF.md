@@ -9,9 +9,10 @@ Kurulum adımları ayrı dosyada: `NASIL-DEVAM.md` (bu klasörde). Devri bekleti
 
 ## 0. Bir bakışta
 
+- **Sayfa sayfa belgeleme (PAGES) emekli (Mert, 15 Ekim 2026).** Yeni hesap bu kurala uymaz, eski PAGES sayfalarını yeniden kurmaz ve yayınlamaz. Eski sayfalar eski hesapta olduğu gibi kalır. `PAGES/_kaynak` yalnız bir araç olarak kalır: varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için; güncel tutulmaz, yayınlanmaz (bölüm 6, madde 2).
 - **Kod tarafında hiçbir şey kaybolmuyor.** Bütün thread'lerin kodu ya main'de ya kendi GitHub dalında. Push'lanmamış kod yalnız Mert'in bilgisayarında, eski yerel dallarda var; onlar da GitHub'a `yedek/2026-10-14/...` adıyla yedeklendi (28 yeni ref, bölüm 1.3).
 - **Main:** `9b871a97` (14 Ekim sabah 5:30). Tren kuyruğu boş. Canlı veritabanında yarım adım yok.
-- **Kaybolabilecek tek şey proje dosyalarıydı** (`/mnt/project-files`, 418 MB, 2.162 dosya: planlar, notlar, mockup'lar, PAGES kaynakları, thread raporları). Yeni hesapta bu klasör olmayacak. Üç yere kopyalandı (bölüm 1).
+- **Kaybolabilecek tek şey proje dosyalarıydı** (`/mnt/project-files`, 418 MB, 2.162 dosya: planlar, notlar, mockup'lar, demo uygulama aracı, thread raporları). Yeni hesapta bu klasör olmayacak. Üç yere kopyalandı (bölüm 1).
 - **Bütün Artifact'lar (128 sayfa) bu hesaba ait.** Yeni hesap onları göremez, güncelleyemez. Her birinin kaynak dosyası eşleştirildi; kaynağı olmayanların yayındaki hâli indirildi. Liste: `artifactler/ARTIFACTLER.md`.
 - **Mert'ten 30'a yakın karar bekleniyor.** Hepsi tek listede, bölüm 2'de. Hiçbiri devri durdurmuyor.
 - **"Devredilmesi güvenli değil" diyen thread yok.** Ama beş konu bir koşul gerçekleşene kadar bekletilmeli (Remote Control tren thread'i, canlı veritabanı bağlantısı, eski hesaptaki zamanlanmış görevler, eski sayfadaki süresi dolmuş anahtarlar, Meyhouse demo verisi). Ayrıntı `GUVENLI-OLMAYANLAR.md`.
@@ -68,7 +69,7 @@ Yerinde kalanlar (GitHub'a gitmez, yeni hesap aynı diski kullandığı için ka
 Hepsi yeni hesapta da sorulabilir; hiçbiri devri durdurmaz. Önerilen seçenek ilk sırada.
 
 ### Hemen (devrin kendisi için)
-1. **Sayfa haritası (PAGES) linkleri hangi hesapta?** (a) Yeni hesapta yeni linklerle yeniden kurulsun, harita ve dizin yeni linklere geçsin (önerilen: eski hesabın kullanımı bitiyor, sayfaları güncelleyemeyecek). (b) Eski hesap açıkken eski linkler oradan güncellensin. Soran: Erişim yok ve Üst çubuk thread'leri.
+1. ~~Sayfa haritası (PAGES) linkleri hangi hesapta?~~ Kalktı: PAGES emekli (Mert, 15 Ekim).
 2. **Eski hesaptaki 5 zamanlanmış görev** (bugün 17:05–17:10'da eski sayfaları yeniden yayınlayacaklar): kalsın (önerilen: zararsız, eski linkler güncel kalır) ya da kapatılsın.
 3. **Eski görsel kararlar sayfasındaki süresi dolmuş 8 test anahtarı:** "temizle" dersen eski hesaptaki yayından o dosya temizlenir. Yeni hesaba yalnız temizlenmiş kopya gidiyor.
 
@@ -121,8 +122,8 @@ Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda yeni hesapta 
 
 ### 3.2 Üst çubuk ve Schedule pencereleri → `threadler/ust-cubuk.md`
 - **Bitenler:** Export'a kaydetmeden gitme, New Schedule penceresi B görünümü (Mert canlıda kontrol etti), Templates düzeltmeleri.
-- **Yarım:** (a) PAGES 3.0/3.1/3.2 main `9b871a97`'den derlendi, 274 senaryo açılıyor, **yayınlanmadı** (yayın sınırı). Hazır dosyalar `threadler/ust-cubuk-kaynak/pages-9b/`. (b) PAGES ortak aracına 4 düzeltme yazılmayı bekliyor (`ust-cubuk-kaynak/kaynak-degisen/`, fark `kaynak-farki.diff`); biri gerçek hata: kapalı günler hiçbir PAGES sayfasında görünmüyordu. (c) Parça 3 başlamadı.
-- **Mert'ten:** karar 12 ve karar 1.
+- **Yarım:** Parça 3 başlamadı. (PAGES yayını ve PAGES araç düzeltmeleri PAGES emekli olduğu için düştü. Araç düzeltmeleri `ust-cubuk-kaynak/kaynak-degisen/`'de duruyor; demo uygulama aracı bir gün Schedule "Original" görüntüsü için kullanılırsa uygulanır: kapalı günler o araçta görünmüyor.)
+- **Mert'ten:** karar 12.
 - **Bulgular:** senaryo dosyası değişince `python3 tools/screens.py` mutlaka yeniden koşulur; tam 3.x denetimi ~45 dakika; backlog adayı: şablon adı çakışmasında web'deki `name_taken` dalı ölü.
 
 ### 3.3 Sayfa sayfa kayıp ve güncellik denetimi → `threadler/sayfa-denetimi.md`
@@ -174,13 +175,13 @@ Her thread'in tam raporu: `threadler/<ad>.md`. Her raporun sonunda yeni hesapta 
 - **Kayıt düzeltmesi:** KARARLAR "Liste sayfalarında üst kısım sabit" kaydındaki "son iki satırın menüsü yukarı açılır" cümlesi eskidi (menü aşağı açılır, yer yoksa yukarı).
 
 ### 3.12 Sol menüde gizli organizasyon seçici → `threadler/org-secici.md`
-- **Bitti.** Seçici Settings'in üstünde, ad tepede de kalıyor (main'de, PAGES 0.1/0.3/0.4 güncel). Resolve etmek güvenli.
+- **Bitti.** Seçici Settings'in üstünde, ad tepede de kalıyor (main'de). Resolve etmek güvenli.
 - **Backlog adayları:** yönetici telefonda workspace değiştiremiyor; seçicinin Escape/dışarı tıklama testleri yok.
 
 ### 3.13 Erişim yok hatası ekranları → `threadler/erisim-yok.md`
 - **Bitenler:** tek erişim standardı (C kartı, sayfa adıyla, sayfa alanının ortasında, 440 px), yükleme hatası kartı aynı biçimde, Announcements/Important Dates yenileme hatasında listeyi koruyor (main `be055596`).
-- **Yarım:** (a) PAGES'in `be055596`'dan yenilenmesi (yayın sınırı; adımlar raporda 4.1). (b) Tek cümlelik uyarılar Mert'in seçimini bekliyor.
-- **Mert'ten:** karar 6 ve 1.
+- **Yarım:** Tek cümlelik uyarılar Mert'in seçimini bekliyor. (PAGES'i yenileme işi PAGES emekli olduğu için düştü.)
+- **Mert'ten:** karar 6.
 - **Backlog adayları:** `documents-data.ts` hatanın nedenini kaybediyor; Account → Documents yükleme hatası başlığı yanlış.
 
 ### 3.14 Restoran job ikon paketi → `threadler/job-ikonlari.md`
@@ -222,14 +223,14 @@ Hepsinin işi bitti ya da sonraki thread'lere devredildi; yeni hesaba taşınaca
 | Schedule test sayfası ve yeni şablon penceresi | Test sayfası; New Schedule penceresi Üst çubuk'ta bitti |
 | Kaybolan Schedule özellikleri · Müsaitlik ve izin hücreleri · Vardiya ekleme ve düzenleme pencereleri · Saat girişi hataları · Undo neyi geri alıyor | Schedule incelemeleri ve düzeltmeleri |
 | Reset all policies onayı | Bildirim ayarı sıfırlama |
-| Uygulama sayfaları atlası | Eski atlas; yerini PAGES aldı, eski atlas silindi |
+| Uygulama sayfaları atlası | Eski atlas; yerini PAGES aldı, eski atlas silindi. PAGES de 15 Ekim'de emekli oldu |
 | Swap onay penceresi karşılaştırma | Takas penceresi kararı |
 | Code ve repo ilerleme envanteri | 9–10 Ekim envanteri |
 | /oto (iki eski oturum) | Öncülleri; güncel /oto 3.8 |
 | BL-969 önce ve sonra listesi | Telefon alanı işi (`notes/bl-969/`) |
 | FB-6.7 sayfasındaki resimler | Görseller Mert'in bilgisayarına kondu (`pages/fb-6-7-yedek-2026-10-13.zip`) |
 | Artifact klasörleri ve kaynak etiketi | Kaynak bandı ve Artifact dizini (`pages/kaynak-bandi/`) |
-| PAGES klasörü ekran belgeleri | PAGES haritası kuruldu (`PAGES/README.md`) |
+| PAGES klasörü ekran belgeleri | PAGES haritası kuruldu; 15 Ekim'de emekli edildi |
 | Eski Shift Hub yönetici ekranları · Bildirim ayarı kapsam yazısı · Belge ve müsaitlik reddi hata anahtarı · Pasif üye yetki hatası ayrımı · Başlangıç bitişe eşit uyarı metni · Logo yanıtı kaybolunca silinme | 11 Ekim backlog işleri, main'de |
 | Schedule taslak satırı ve takvim efekti | main'de |
 | İzin / Schedule / Çalışanlar ve iş yeri / Rol ve bildirim ayarı / İlk kurulum / Duyuru reddi nedenini söylesin | Ret mesajlarının nedeni söylemesi, main'de |
@@ -246,15 +247,15 @@ Bu listedeki başlıklar thread adlarıdır; içerikleri tek tek okunmadı, duru
 
 | Ne | Ne zaman | Ne yapar | Öneri |
 |---|---|---|---|
-| Zamanlanmış görev "Publish Schedule PAGES" | 14 Ekim 17:10 | Eski 3.0/3.1/3.2 linklerine yayın + `_kaynak` araç düzeltmeleri | Kalsın; çalışmazsa iş yeni hesapta (3.2) |
+| Zamanlanmış görev "Publish Schedule PAGES" | 14 Ekim 17:10 | Eski 3.0/3.1/3.2 linklerine yayın | Çalıştı ya da sona erdi; PAGES emekli, yeni hesapta yapılmaz |
 | "Liste envanteri sayfasını yayınla" | 17:05 | Jobs thread'inde yeni sayfa | Kalsın |
 | "Republish shift change mockup" | 17:05 | Takas mockup'ı + 11 yorum kapatma | Kalsın |
 | "Job çizim sayfasını 17:00'de güncelle" | 17:05 | Job ikon galerisi 173 parça | Kalsın |
-| "PAGES yenileme be055596" | 17:10 | 36+ PAGES sayfası yeniden yayın | Kalsın |
+| "PAGES yenileme be055596" | 15 Ekim 00:10Z | PAGES sayfaları yeniden yayın | Artık etkin değil (15 Ekim kontrol); PAGES emekli, yeni hesapta yapılmaz |
 | Koordinatörün "5 dakikalık thread raporu" zinciri | sürekli | Proje sohbetine durum | Devirden sonra "raporu durdur" |
 | Gece yerel iş kontrolü | kapalı | — | Kapalı kalsın |
 
-Bu görevler eski hesabın kullanımı biterse çalışmaz; kaybolan bir şey olmaz, çünkü aynı işler yeni hesapta kaynak dosyalardan yapılabilir. İkisi aynı anda çalışırsa da zarar yok: farklı hesaplar farklı linklere yayınlar. Tek dikkat: `/mnt/project-files/PAGES/_kaynak` ve `MAP.txt` dosyalarına bu görevler eski projede yazar; yeni projeye o yazılar geçmez. Yeni hesap 3.2 ve 3.13'teki işleri kendi kopyasında baştan yapar.
+Bu görevler eski hesabın kullanımı biterse çalışmaz; kaybolan bir şey olmaz, çünkü aynı işler yeni hesapta kaynak dosyalardan yapılabilir. İkisi aynı anda çalışırsa da zarar yok: farklı hesaplar farklı linklere yayınlar. PAGES ile ilgili görevlerin işi yeni hesapta yapılmaz (PAGES emekli).
 
 ---
 
@@ -263,7 +264,7 @@ Bu görevler eski hesabın kullanımı biterse çalışmaz; kaybolan bir şey ol
 Thread raporlarında tekrar eden, her yeni thread'in bilmesi gerekenler:
 
 1. **Artifact:** iki hesap birbirinin sayfasını görmez. Günde 200 yayın sınırı var (yeniden yayın da sayılır; 17:00 California'da sıfırlanır). Bir yayın en çok 64 MB. Var olan sayfaya yayından önce `list scope:files` ya da `read` gerekir; ilk deneme "canlı sürümü okumadın" diye reddedilirse bu okuma sayılır. `/mnt/project-files`'tan doğrudan yayın "source file changed" hatası verebilir: önce oturumun geçici klasörüne kopyala. Tek dosyalık büyük `app.html` yayın denetimine takılabilir: `app.js`'e böl. Yayından önce kaynak bandı: `python3 /mnt/project-files/pages/kaynak-bandi/bant.py SAYFA.html ARTIFACT-ID`.
-2. **PAGES derlemesi (bulut):** `PAGES/_kaynak` → `apps/web/.temp/pages` (`.env` dahil, değerleri demo) → `python3 tools/screens.py` → `PAGES_OUT=… node .temp/pages/tools/build-pages.mjs <numaralar>` → `check-scenarios.mjs`. Önce `pnpm --filter @newfork/ui --filter @newfork/shared build`; `node_modules` bağlantıları kök, `apps/web`, `packages/ui`, `packages/shared`. Vite'ta `dedupe: ["react","react-dom"]`. Her senaryo dünyayı sıfırlar; localStorage senaryolar arasında sızar.
+2. **Demo uygulama aracı (eski PAGES; yalnız varyantlardaki "Original" görüntüsü için, yayın ve güncel tutma yok):** `PAGES/_kaynak` → `apps/web/.temp/pages` (`.env` dahil, değerleri demo) → `python3 tools/screens.py` → `PAGES_OUT=… node .temp/pages/tools/build-pages.mjs <numaralar>` → `check-scenarios.mjs`. Önce `pnpm --filter @newfork/ui --filter @newfork/shared build`; `node_modules` bağlantıları kök, `apps/web`, `packages/ui`, `packages/shared`. Vite'ta `dedupe: ["react","react-dom"]`. Her senaryo dünyayı sıfırlar; localStorage senaryolar arasında sızar.
 3. **Playwright (bulut):** `executablePath: '/opt/pw-browsers/chromium'`.
 4. **Git:** dalın main'de olup olmadığı `git cherry` ile ölçülmez; ağaç ya da `git patch-id --stable`. Tren cherry-pick listesiyle kalkar, birleştirme commit'i trene girmez. Bulut thread'i yalnız kendi `claude/...` dalına push eder; force, mirror, prune yasak. Alt ajana "ana klasörde dal değiştirme" açıkça yazılır (nf-guvenlik bir kez `checkout --detach` yaptı).
 5. **Mert'le iletişim:** Türkçe, sade, California saati; plan numarası yalnız parantezde; çoktan seçmeli sorunun son seçeneği "Yazarak cevap vereceğim"; varyant sayfasında "hangisi?" kartı yok, link bir kez verilir; Original her zaman ilk sırada; varyantlar sade ve Original'e yakın; görsel düzeltme hızlı. Mert'e git komutu verilmez.
@@ -276,7 +277,7 @@ Thread raporlarında tekrar eden, her yeni thread'in bilmesi gerekenler:
 - **Koordinatör hafızası:** bulut test veritabanının şifresi `[GİZLİ-ÇIKARILDI]` yapıldı (canlı şifre değildi).
 - **Audience deneme sayfası:** demo giriş şifresi `DEMO-SIFRE-CIKARILDI` yapıldı.
 - **Yerel test sunucusu (`pages/orijinal/kaynak/`):** imza anahtarı ve test şifresi `[GIZLI-CIKARILDI]` yapıldı.
-- **PAGES demo parolası:** yerel test dünyasının kişilerinin ortak demo parolası (giriş ekranı senaryolarında yazılan) 40 dosyada `[GIZLI-CIKARILDI]` yapıldı: `screens.py`, `screens.json`, `10-giris-hesap.py`, `world.sql` ve derlenmiş `app*.html` kopyaları. PAGES'i yeniden derleyecek thread kendi yerel demo parolasını seçip `PAGES/_kaynak/tools/sc/10-giris-hesap.py` (`PW = ...`) ve `pages/orijinal/kaynak/` dosyalarına aynı değeri yazar; canlıyla ilgisi yok.
+- **Demo uygulama parolası:** yerel test dünyasının kişilerinin ortak demo parolası (giriş ekranı senaryolarında yazılan) 40 dosyada `[GIZLI-CIKARILDI]` yapıldı: `screens.py`, `screens.json`, `10-giris-hesap.py`, `world.sql` ve derlenmiş `app*.html` kopyaları. Demo uygulama aracını kullanacak thread kendi yerel demo parolasını seçip `PAGES/_kaynak/tools/sc/10-giris-hesap.py` (`PW = ...`) ve `pages/orijinal/kaynak/` dosyalarına aynı değeri yazar; canlıyla ilgisi yok.
 - **`.env` dosyaları (20 adet):** hepsi demo anahtar ve yerel adres. GitHub kopyasında adları `env.demo.txt` yapıldı (repo `.env`'i dışarıda tutuyor); bilgisayardaki tam kopyada asıl adlarıyla.
 - **Kopyalanmayanlar:** `artifacts/note-mark-r3/.session.json`, "devir testi" oturumları (okunmadı, özetlenmedi).
 - Tarama yöntemi ve sonuçları: `NASIL-DEVAM.md` ek A.

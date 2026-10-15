@@ -2,7 +2,7 @@
 
 Bu klasördeki dosyalar, proje koordinatörünün kalıcı hafızasıdır. Her dosyada tek bir bilgi var: bir karar, bir kural, bir thread'in durumu ya da bir püf noktası. `MEMORY.md` dizin dosyasıdır. Önce onu okuyun, diğer dosyalara oradan gidin. Diğer dosyaların başındaki `name`, `description` ve `type` alanları dosyanın ne anlattığını söyler.
 
-Kaynak: `/tmp/claude/memory/team/silo/` (kopyalama tarihi 2026-10-14). Dosyaları yalnız kopyaladım, içeriklerini değiştirmedim. Tek istisna aşağıdaki gizli değer çıkarmasıdır.
+Kaynak: `/tmp/claude/memory/team/silo/` (kopyalama tarihi 2026-10-14). Dosyaları yalnız kopyaladım, içeriklerini değiştirmedim. İki istisna var: aşağıdaki gizli değer çıkarması ve 15 Ekim'de PAGES'in emekliye ayrılması (Mert'in kararı): `MEMORY.md`'deki PAGES görevleri çıkarıldı, `sayfa-atlasi.md` "emekli" notuna çevrildi.
 
 ## Dosyalar (MEMORY.md + 18 bilgi dosyası = 19 dosya; bu BENIOKU.md hariç)
 1. MEMORY.md (dizin)

@@ -1,5 +1,7 @@
 # Devir raporu: "Eski atlas silme" thread'i (sonra backlog listesi ve belge saat dilimi kararı)
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Thread: proje sohbetindeki "gözükmüyor başka threads e devret" mesajıyla açılan thread.
 Rapor tarihi: 14 Ekim 2026, 09:45 civarı (Kaliforniya saati).
 
@@ -64,7 +66,7 @@ Bitti ölçütü:
 - document_employee_timezone yalnız birincil lokasyondan okur; employee_profiles.document_timezone ve onu kullanan kod silinir, retired_objects_stay_gone'a eklenir.
 - Kuralı bozan test verisi düzeltilir ya da silinir.
 - Jobs tablosuna ızgaradan gizleme alanı; Schedule okuması bu işi göstermez; iş çekmecesinde düğme.
-- Önce kırmızı pgTAP ve vitest; yetki matrisi ve katalog güncel; PAGES sayfaları yenilenir.
+- Önce kırmızı pgTAP ve vitest; yetki matrisi ve katalog güncel.
 Sınıf: incelemeli (yetki, canlı DDL, var olan fonksiyon gövdesi değişiyor → canlıda riskli migration: nf-guvenlik ONAY + koordinatör "gönder").
 İlgili kararlar: KARARLAR "Owner'ın çalışan kaydı", "Management departmanı ve Owner işi" (ikisi de güncellenecek).
 Not: Mert'e plan numarası tek başına yazılmaz; saatler Kaliforniya saatiyle.

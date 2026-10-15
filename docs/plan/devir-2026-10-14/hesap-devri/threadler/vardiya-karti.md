@@ -1,5 +1,7 @@
 # Devir raporu · Vardiya kartı
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Yazan: "Vardiya kartı" thread'inin Claude'u, 2026-10-14 ~16:50 UTC (09:50 AM Kaliforniya).
 Thread: https://claude.ai (Project → thread "Vardiya kartı"), kök mesaj `cmsg_013zBzr8GJv9vVEM4zDoaKrVYDCaHRPBwN4oG2GS9gzxhB`.
 
@@ -71,7 +73,6 @@ Yok. Her şey push'lanmış ve inceleme onaylı. Nokta commit'i bilerek tutuluyo
 ## 8. Artifact'lar (bu hesapta; yeni hesap göremez)
 - Kart işaret taslakları: https://claude.ai/artifact/7xJNYsZbknmsvGPk5jdd7p. Kaynak: `/mnt/project-files/pages/gorsel-kararlar/gelen/kart-isaretleri-40/yayin/index.html`. Betik ayrı gidiyor: `yayin/split-app.mjs`.
 - Schedule kart kataloğu: https://claude.ai/artifact/S9fM4Yfc7SLhro3frLo9gL. Kaynak: `/mnt/project-files/pages/schedule-kart-katalogu/index.html` + `app.html`.
-- PAGES 3.0 Schedule sayfası bu thread'in değil, Üst çubuk thread'inin.
 - Yeni hesapta gerekirse bu kaynaklardan yeniden yayınlanır. Bu thread yeni Artifact yayınlamadı.
 
 ## 9. Yeni hesaba taşınacak bulgular ve kurallar

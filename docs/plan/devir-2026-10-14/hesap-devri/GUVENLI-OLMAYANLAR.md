@@ -35,11 +35,11 @@ Ama beş konu, bir koşul gerçekleşmeden yeni hesapta başlatılırsa iki hesa
 
 ## 3. Eski hesaptaki zamanlanmış görevler (bugün 17:05–17:10)
 
-**Neden dikkat:** beş görev eski hesapta, eski sayfa linklerine yayın yapacak ve eski projenin `/mnt/project-files/PAGES/` dosyalarını güncelleyecek. Yeni hesabın dosyaları ve linkleri ayrı olduğu için çarpışma yok, ama yeni projede aynı işi ikinci kez yapmak gerekir.
+**Neden dikkat:** beş görev eski hesapta, eski sayfa linklerine yayın yapacaktı. Üçü sayfa sayfa belgeleme (PAGES) sayfalarını güncelliyordu (Üst çubuk, Erişim yok, Jobs), ikisi görsel karar sayfalarını (Takas mockup'ı, Job çizimleri). Yeni hesabın dosyaları ve linkleri ayrı olduğu için çarpışma yok.
 
-**Ne yapılır:** dokunma (önerilen). Eski hesabın kullanımı yeterse eski linkler güncel kalır; yetmezse görevler sessizce çalışmaz. Yeni hesapta aynı işler raporlardaki adımlarla baştan yapılır (Üst çubuk 3a, Erişim yok 4.1, Jobs 3.2, Takas 3.2, Job ikonları 4).
+**Ne yapılır:** dokunma (önerilen). Eski hesabın kullanımı yeterse eski linkler güncel kalır; yetmezse görevler sessizce çalışmaz. PAGES 15 Ekim'de emekli oldu (Mert): yeni hesapta PAGES sayfaları kurulmaz, güncellenmez, yayınlanmaz. Takas mockup'ı ve Job çizim sayfası, o işler yeni hesapta açılınca kendi kaynak dosyalarından yeni linkle yayınlanır (Takas 3.2, Job ikonları 4).
 
-**Ne zaman kapsama alınır:** yeni hesapta PAGES yeniden kurulunca (adım 7, sıra 3) bu görevlerin işi yeni hesapta yapılmış olur; eski görevleri kapatmak gerekmez.
+**Ne zaman kapsama alınır:** gerekmez. Eski görevleri kapatmak da gerekmez.
 
 ## 4. Eski görsel kararlar sayfasındaki süresi dolmuş anahtarlar
 

@@ -1,5 +1,7 @@
 # /oto thread'i: devir raporu
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Yazan: /oto thread'inin Claude'u. Tarih: 14 Ekim 2026, sabah 9:45 (Kaliforniya).
 Thread: "/oto" (proje sohbetinde, Mert'in 11 Ekim sabah 7:01 isteğiyle açıldı).
 
@@ -146,7 +148,7 @@ Thread: "/oto" (proje sohbetinde, Mert'in 11 Ekim sabah 7:01 isteğiyle açıld�
 3. Yeni Artifact ID'si çıkınca:
    1. Bandı o ID ile uygula.
    2. Bir kez daha yayınla. Parçalarda eski ID geçmiyor; yalnız bant taşıyor.
-   3. Yeni linki koordinatöre ver. Koordinatör hafızaya ve PAGES dizinine yazar.
+   3. Yeni linki koordinatöre ver. Koordinatör hafızaya yazar.
 4. Bütün maddeleri 1440 ve 390 genişlikte aç (`araclar/chk28.mjs` örneği) ve hata olmadığını gör.
 5. **Bilinen engel:**
    - Kart işaretleri taslak sayfasının 7. sürümünün kopyası (`gelen/kart-isaretleri-40/index.html`, strip'lenmiş) yayın denetimine "artifact-pr-review" gerekçesiyle takıldı.

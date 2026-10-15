@@ -42,8 +42,8 @@ Mert 09:26'da (Kaliforniya 02:26) "Buraya kadar yeterli" dedi. Çizim durdu. Hi�
 ## 4. Galeri sayfası ve kaynak dosyalar
 ### Galeri (eski hesapta)
 - https://claude.ai/artifact/XxfpgGwRtUH2P5jJKup5qi ("Job ikon paketi"). Kartlarda numara, Lineup boyutlarında (52, 44, 32 px) önizleme, tur filtresi ve 3 telefonlu Lineup örneği var.
-- **Yayındaki hâli 158 parçalı** (9. turdan önce). Günlük 200 sayfa yayın sınırı doldu.
-- Bu hesapta zamanlanmış bir görev var: "Job çizim sayfasını 17:00'de güncelle". 15 Ekim 00:05 UTC'de (14 Ekim 17:05 Kaliforniya) sayfayı 173 parçayla yeniden yayınlar ve thread'e link yazar. Eski hesabın kullanımı biterse görev çalışmayabilir. Bu bir kayıp değildir: güncel sayfa `index.html` dosyasında hazır.
+- **Yayındaki hâli 173 parçalı** (sürüm 6, 14 Ekim 17:06 Kaliforniya). 9. turun 40 çizimi dahil, hepsi "bekliyor".
+- Zamanlanmış görev ("Job çizim sayfasını 17:00'de güncelle") bu yayını yaptı ve bitti. Bu hesapta başka zamanlanmış görev yok.
 - **Yeni hesap bu Artifact'ı göremez.** Mert'in iki hesabı birbirinin yayınladığı sayfayı görmüyor. Yeni hesap galeriyi kendi hesabında yeni bir Artifact olarak yayınlamalı (bölüm 8'deki brief).
 
 ### Kaynak dosyalar (tek doğru kaynak)
@@ -123,4 +123,4 @@ Bitti ölçütü: galeri yeni hesapta yayında; Mert'in verdiği her numara stat
 - GitHub: `claude/project-thread-5du9p3@ca24250`, 14 Ekim 09:55 civarı (Kaliforniya) push'landı. 227 dosya, yalnız `docs/plan/devir-2026-10-14/job-ikonlari/`. Force push yok, main'e dokunulmadı, PR yok.
 - Güvenlik incelemesi (nf-guvenlik): `ONAY @ca24250`. Sır, token ya da şifre yok; betikler yalnız paket klasörüne yazıyor; galeri sayfası dışarıya veri göndermiyor.
 - Repodaki `DEVIR.md`, bu raporun push öncesi kopyasıdır. Tek farkı bu bölümdeki commit satırı.
-- Zamanlanmış görev ("Job çizim sayfasını 17:00'de güncelle") 15 Ekim 00:05 UTC'de koşacak. Konteyner yenilense de çalışsın diye görev metni güncellendi: kopyayı kendisi hazırlıyor.
+- Zamanlanmış görev 15 Ekim 00:05 UTC'de koştu; galeri 173 parçayla yayınlandı (sürüm 6). Mert o saate kadar yeni tut/sil yazmamıştı, paket değişmedi.

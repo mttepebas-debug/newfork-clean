@@ -28,7 +28,6 @@ Raporlarda geçen `/mnt/project-files/X` yolu, bilgisayarda `...\proje-dosyalari
    - `C:\Users\TheWe\Documents\Codex\newfork-clean` (varsayılan)
    - `C:\Users\TheWe\Documents\Codex\newfork-pages`
    - `C:\Users\TheWe\Desktop`
-   - (eski hesapta bağlam kaynağı olarak "PAGES" klasörü vardı; aynısı isteniyorsa `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\PAGES`)
 6. **Connectors:** Supabase (canlı migration için şart), GitHub. Bunlar bağlanmadan canlı veritabanı adımı yapılamaz.
 
 ### Proje talimatı (eski projeden birebir)
@@ -48,12 +47,7 @@ Mert'in çalışma kuralları (2026-10-09) tam metin: /mnt/project-files/MERT-KU
 8. Çoktan seçmeli sorular (Mert 2026-10-10): Mert'e sorulan her çoktan seçmeli sorunun (karar kartları dahil) son seçeneği, Mert'in yazı yazarak cevap verebileceği bir seçenek olsun (örnek: "Yazarak cevap vereceğim"). Sorular detaylı anlatılsın.
 9. Detaylı anlatım (Mert 2026-10-10): Mert "detaylı anlat", "örneklendir", "betimle", "anlamadım" gibi bir şey sorduğunda cevap yeniden yazılır ve şu maddelerden uygun olanların hepsini içerir: 5N1K'ya uygun cevap, önce/sonra, bugünkü hâl ve plan/taslak karşılaştırması, mümkünse ekran görüntüsü, ya da Artifact çizimiyle görsel anlatım.
 10. Saat (Mert 2026-10-10): Mert'e yazılan her saat referansı onun saatiyle (California, Pacific saati; Ekim'de UTC−7) verilir. UTC saati Mert'e yazılmaz. Örnek: 12:41 UTC → sabah 5:41. Kart etiketleri ve dosya adları da dahil.
-11. Ekran belgeleri, PAGES (Mert 2026-10-10, kapsam 2026-10-12'de genişledi):
-   a. Amaç: PAGES, uygulamanın tam haritasıdır: her olası sayfa, her sayfadaki bütün parçalar (çekmece, pencere, sekme, ortak bileşen, boş/hata/yükleniyor hâli, rol farkları) ve bütün senaryolar, sayfa → parça → senaryo diye gruplanmış olarak Library'deki PAGES klasöründe (büyük harfle) Artifact olarak durur ve her zaman main'deki güncel uygulamayı gösterir. Mert bu haritayı her sayfanın testi ve arayüz geliştirmesi için kullanır; hiçbir sayfa, parça ya da senaryo eksik kalmaz.
-   b. Her kod işi, konusu ne olursa olsun, iş bitiminde kodun dokunduğu her sayfanın, parçanın ve durumun PAGES artifact'ını ve Artifact klasör dizinindeki yerini günceller (aynı bağlantıya yeni sürüm). Yoksa oluşturur. Ortak bir parça değişince onu gösteren bütün sayfalar yenilenir. Haritada olmayan bir sayfa, parça ya da senaryo görülürse eklenir. İş, bu güncelleme yapılmadan bitmiş sayılmaz. Ayrıntı: /mnt/project-files/PAGES/README.md.
-   c. Numaralama: her route ayrı bir artifact. 1.0 Auth, auth'a bağlı ekranlar 1.1, 1.2 … Sonra 2 Workspace, 3 Schedule ve diğer route'lar sırayla. Liste ve bağlantılar PAGES dizin sayfasında ve Artifact klasör dizininde tutulur.
-   d. Her artifact masaüstü ve mobil görüntüyü birlikte ve senkron çalışır gösterir (masaüstü görüntü okunur boyutta). Üstte rol değiştirici (kim açıyor, kim görüyor) bulunur. Örnek senaryolar içerir. Şablon: Library > Artifacts > "Done - Important Date Drawer Designs".
-   e. Yayınlamadan önce kaynak bandı kuralı uygulanır: python3 /mnt/project-files/pages/kaynak-bandi/bant.py.
+11. (Boş: eski "Ekran belgeleri, PAGES" kuralı Mert'in 2026-10-15 kararıyla kaldırıldı. Ekran ekran Artifact belgesi tutulmaz, eski PAGES sayfaları yeniden kurulmaz.)
 12. Görsel kararlar tek sayfada (Mert 2026-10-11): görsel karar bekleyen her şey "Bekleyen görsel kararlar" sayfasında (https://claude.ai/artifact/JqDJXpTnExgEuNnjhxpimG), ekran ekran sekmelerde durur. Yeni çıkan görsel karar da oraya eklenir: varyant HTML'i /mnt/project-files/pages/gorsel-kararlar/gelen/ altına yazılır, yolu koordinatöre bildirilir; sayfayı /oto thread'i günceller.
 13. Plan numaraları (Mert 2026-10-11): Mert'e "BL-1028", "S-14", "K16", "G13" gibi plan, kayıt ya da karar numaralarıyla referans verilmez. Önce maddenin ne olduğu sade sözlerle anlatılır (örnek: "belge reddinde ekrana doğru uyarının çıkması"). Numara gerekiyorsa cümlenin sonunda parantez içinde verilir (örnek: "... uyarının çıkması (BL-1028)"). Thread başlıkları, karar kartları ve Artifact sayfaları da dahil.
 14. Thread sayıları takibi (Mert 2026-10-12): Koordinatör thread listesindeki Working, Waiting on you ve Idle gruplarının thread sayılarını izler. Bir sayı değiştiği an Mert'e proje sohbetinde yazar: değişikliği 5N1K ile açıklar (hangi thread, ne oldu, ne zaman, nerede, neden, kim) ve Mert'in bir şey yapması gerekiyorsa yapması ve yapmaması gerekenleri basamak basamak, detaylı anlatır.
@@ -70,7 +64,7 @@ Bu proje eski hesaptan devredildi (14 Ekim 2026). Hafızana şunu kaydet ve ilk 
 1) Devir paketi GitHub'da: mttepebas-debug/newfork-clean, dal claude/hesap-devri-bqus46, klasör docs/plan/devir-2026-10-14/hesap-devri/ (HANDOFF.md, NASIL-DEVAM.md, GUVENLI-OLMAYANLAR.md, threadler/, koordinator-hafiza/, artifactler/).
 2) Eski koordinatörün hafızası koordinator-hafiza/MEMORY.md ve yanındaki 18 dosya; oradaki kuralları ve thread durumlarını kendi hafızana al. Eski thread kimlikleri (cmsg_..., cse_...) ve eski Artifact linkleri yeni hesapta çalışmaz; yalnız tarihçe.
 3) Proje dosyaları (/mnt/project-files) bilgisayarımda tam kopya olarak duruyor: C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\. İlk thread bunu NASIL-DEVAM.md adım 4'e göre /mnt/project-files'a geri kursun.
-4) Bütün Artifact'lar yeni hesapta yeniden yayınlanacak; eşleme artifactler/ARTIFACTLER.md.
+4) Artifact'lar yalnız açık işler için ve gerektikçe yeniden yayınlanır; eşleme artifactler/ARTIFACTLER.md. PAGES (sayfa sayfa belgeleme) 2026-10-15'te emekli: hiçbir işe "PAGES'i güncelle" adımı eklenmez, eski PAGES sayfaları yeniden kurulmaz.
 5) Mert'ten bekleyen kararlar HANDOFF.md bölüm 2'de; bana tek tek, karar kartıyla, önerilen seçenek ilk ve son seçenek "Yazarak cevap vereceğim".
 ```
 
@@ -84,6 +78,7 @@ Koordinatör hafızasının özü (eski `MEMORY.md`'den, yeni koordinatörün de
 - Bekletilenler: giriş ekranları (WorkspaceHubPage, WorkspaceStatusPage, ProtectedRoute) Mert "başla" diyene kadar; tasarım tuvali; giriş modeli kararı e-posta servisine kadar. Vercel yalnız main'den yayın.
 - Otomasyon durdurulmuş (12 Ekim): kendiliğinden yeni thread, görev ya da backlog maddesi açılmaz; Mert'in doğrudan istekleri yapılır.
 - Mert'in kullanım uyarısı: kullanım yükselince "dur" yazacak; cevaplar ve raporlar kısa tutulur.
+- PAGES (ekran ekran Artifact belgeleme) 2026-10-15'te emekli (Mert). `PAGES/_kaynak` yalnız varyantlardaki "Original" görüntüsünü demo veriyle çekmek için bir araçtır; güncel tutulmaz, yayınlanmaz.
 - Arayüz: kodlamadan önce Original + varyantlar; varyantlar sade ve Original'e yakın; açılır pencereler düğmesine bağlı; seçim kartı yok.
 
 ## Adım 4. Proje dosyalarını geri kur (yeni projede ilk bulut thread'i)
@@ -109,11 +104,10 @@ Arşiv bulunamazsa yedek yol: GitHub'daki `docs/plan/devir-2026-10-14/hesap-devr
 
 Eşleme: `/mnt/project-files/devir/artifactler/ARTIFACTLER.md`. Her satırda eski link, kaynak dosya, varsa indirilmiş kopya.
 Sıra (yeni hesapta da günde 200 yayın sınırı var; bir günde bitmeyebilir):
-1. **PAGES haritası** (route başına 60+ sayfa, dizin ve "Artifact dizini"): güncel main'den yeniden derlenir, eskisini kopyalamak yerine. Derleme yöntemi `HANDOFF.md` bölüm 6 madde 2. Her yeni link `PAGES/_kaynak/tools/pages.json`, `PAGES/MAP.txt`, `PAGES/README.md`, `pages/kaynak-bandi/artifactlar.json`'a yazılır, sonra dizin yeniden yayınlanır. Bant yeni ID ile basılır (ilk yayından sonra ID belli olur, bandı basıp bir kez daha yayınla).
-2. **Bekleyen görsel kararlar** (/oto): `threadler/oto.md` bölüm 6. Parça parça yayın (64 MB sınırı).
-3. **Açık işlerin mockup'ları:** Lineup telefon ve masaüstü, Takas mockup'ı, Job ikon galerisi, Jobs çekmece renk varyantları, tek cümlelik uyarılar, atanmamış lokasyon hücresi, Availability tasarımları, liste seçim envanteri, kart işaret taslakları, kart kataloğu.
-4. **Bitmiş (✅ Done) ve tarihçe sayfaları:** yalnız Mert isterse. Kaynakları dosyada duruyor.
-5. Her yeni link Mert'in bilgisayarındaki `C:\Users\TheWe\Documents\Codex\newfork-pages\README.md` satırına "yeni hesap" sütunu olarak eklenir (CLAUDE.md §7: iki hesabın linki).
+1. **Bekleyen görsel kararlar** (/oto): `threadler/oto.md` bölüm 6. Parça parça yayın (64 MB sınırı).
+2. **Açık işlerin mockup'ları:** Lineup telefon ve masaüstü, Takas mockup'ı, Job ikon galerisi, Jobs çekmece renk varyantları, tek cümlelik uyarılar, atanmamış lokasyon hücresi, Availability tasarımları, liste seçim envanteri, kart işaret taslakları, kart kataloğu.
+3. **Bitmiş (✅ Done) ve tarihçe sayfaları:** yalnız Mert isterse. Eski PAGES sayfaları (tabloda "PAGES" satırları) yayınlanmaz. Kaynakları dosyada duruyor.
+4. Her yeni link Mert'in bilgisayarındaki `C:\Users\TheWe\Documents\Codex\newfork-pages\README.md` satırına "yeni hesap" sütunu olarak eklenir (CLAUDE.md §7: iki hesabın linki).
 
 ## Adım 6. PC tren thread'ini (Remote Control) yeniden kur
 
@@ -138,18 +132,17 @@ Her thread'in raporunun sonunda hazır brief var. Koordinatör işçi sınırın
 |---|---|---|---|
 | 1 | Proje dosyalarını geri kur | adım 4 | Her şey buna bağlı |
 | 2 | PC tren thread'i | adım 6 | Main'e giriş tek yol |
-| 3 | PAGES yeniden kurulum (Üst çubuk 3.x + Erişim yok yenilemesi birlikte) | `threadler/ust-cubuk.md` §10, `threadler/erisim-yok.md` §9 | Mert'in test haritası; Mert'in karar 1'ine göre |
-| 4 | /oto görsel kararlar sayfası | `threadler/oto.md` §6 | Mert'in bütün görsel kararları burada |
-| 5 | Vardiya kartı (turuncu nokta) | `threadler/vardiya-karti.md` §10 | Kod hazır, tek karar |
-| 6 | Jobs çekmece rengi | `threadler/jobs.md` §9 | Tek karar sonra küçük kod |
-| 7 | Lineup | `threadler/lineup.md` §10 | Tasarım sürüyor |
-| 8 | Job ikonları | `threadler/job-ikonlari.md` §8 | Galeri yayını + keep/sil |
-| 9 | Availability yeniden kurgu | `threadler/availability-redesign.md` §10 | "Kodla" bekliyor |
-| 10 | Takas | `threadler/takas.md` §9 | "Kodla" bekliyor |
-| 11 | Atanmamış lokasyon hücresi | `threadler/izinli-gunde-add-shift.md` | Seçim bekliyor |
-| 12 | Birincil lokasyon zorunlu / Exclude from schedule | `threadler/eski-atlas.md` §7 | İki kart cevabı sonra |
-| 13 | MVP planı | `threadler/mvp.md` §7 | 8 karar |
-| 14 | Dalda bekleyenler 2. aşama | `threadler/sayfa-denetimi.md` §9 | Mert "başla" deyince |
+| 3 | /oto görsel kararlar sayfası | `threadler/oto.md` §6 | Mert'in bütün görsel kararları burada |
+| 4 | Vardiya kartı (turuncu nokta) | `threadler/vardiya-karti.md` §10 | Kod hazır, tek karar |
+| 5 | Jobs çekmece rengi | `threadler/jobs.md` §9 | Tek karar sonra küçük kod |
+| 6 | Lineup | `threadler/lineup.md` §10 | Tasarım sürüyor |
+| 7 | Job ikonları | `threadler/job-ikonlari.md` §8 | Galeri yayını + keep/sil |
+| 8 | Availability yeniden kurgu | `threadler/availability-redesign.md` §10 | "Kodla" bekliyor |
+| 9 | Takas | `threadler/takas.md` §9 | "Kodla" bekliyor |
+| 10 | Atanmamış lokasyon hücresi | `threadler/izinli-gunde-add-shift.md` | Seçim bekliyor |
+| 11 | Birincil lokasyon zorunlu / Exclude from schedule | `threadler/eski-atlas.md` §7 | İki kart cevabı sonra |
+| 12 | MVP planı | `threadler/mvp.md` §7 | 8 karar |
+| 13 | Dalda bekleyenler 2. aşama | `threadler/sayfa-denetimi.md` §9 | Mert "başla" deyince |
 | — | Employees yorumları, Availability üst bölümü, Org seçici | — | Bitti; yalnız yeni istek gelirse |
 
 Brief'lerde geçen `/mnt/project-files/...` yolları adım 4'ten sonra yeni projede aynen çalışır.
@@ -194,7 +187,7 @@ Yöntem: kopyalanan her metin ve html dosyasında şu kalıplar arandı: JWT (`e
 |---|---|---|
 | 8 süresi dolmuş JWT + 4 yenileme anahtarı | `pages/orijinal/today/index.html` (ve /oto eki) | `REDACTED` |
 | Yerel test imza anahtarı ve şifresi | `pages/orijinal/kaynak/` (gateway.mjs, keys.mjs, record.mjs, postgrest.conf) | `[GIZLI-CIKARILDI]` |
-| Yerel test dünyasının demo parolası | 40 dosya (screens.py/json, 10-giris-hesap.py, world.sql, derlenmiş app*.html) | `[GIZLI-CIKARILDI]`; PAGES'i derleyen thread yeni yerel demo parolası seçer |
+| Yerel test dünyasının demo parolası | 40 dosya (screens.py/json, 10-giris-hesap.py, world.sql, derlenmiş app*.html) | `[GIZLI-CIKARILDI]`; demo uygulama aracını kullanan thread yeni yerel demo parolası seçer |
 | Bulut test veritabanı şifresi | koordinatör hafızası kopyası | `[GİZLİ-ÇIKARILDI]` |
 | Audience deneme sayfası demo şifresi | `pages/gorsel-kararlar/gelen/announcements-audience/` | `DEMO-SIFRE-CIKARILDI` |
 | `.env` dosyaları (20) | çeşitli | yalnız demo değer; GitHub'da `env.demo.txt` adıyla |

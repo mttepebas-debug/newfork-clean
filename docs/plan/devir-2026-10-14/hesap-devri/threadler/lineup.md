@@ -1,5 +1,7 @@
 # Lineup devir raporu (14 Ekim 2026, 09:50 California)
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Yeni hesaptaki Claude bu dosyayı, sonra `PLAN.md`'yi okuyarak başlar. Kurallar repo `CLAUDE.md`'dedir. Mert'e Türkçe ve sade yazılır, saatler California saatiyle verilir.
 
 ## 1. Thread
@@ -112,7 +114,6 @@ Lineup kodu (düzenleme, call off, notlar, yayın) Mert "kodla" deyince başlar 
 ## 7. Artifact'lar (eski hesapta; yeni hesap bunları göremez)
 - Telefon taslağı: https://claude.ai/artifact/HpPEjjYzgm6WPxrmJejGwG. Kaynağı `lineup-telefon/index.html`. Mert'in yorumu cevaplandı ve kapatıldı.
 - Masaüstü taslakları: https://claude.ai/artifact/T4Heypx662YmYWSnG36yxW. Kaynağı `lineup/` (`build.py`).
-- PAGES 3.4 Lineup: https://claude.ai/artifact/AJqKmK2HZcmwV8tooCtusz.
 - Yeni telefon tasarımları Artifact olarak yayınlanmadı; yalnız dosya.
 
 Yeni hesapta link gerekirse kaynaktan yeniden yayınlanır. Mert iki hesabın sayfalarını birbirinden göremez.
@@ -140,6 +141,6 @@ Yok. Push'lanmamış kod yok; bütün tasarım işi `/mnt/project-files` altınd
 Şu an: dört telefon tasarımı /mnt/project-files/pages/gorsel-kararlar/gelen/lineup-satir/index.html'de. Mert'in seçimini ve rapor §3'teki açık sorularını bekle. Düzeltmeyi kaynak/ içinde yap, build.py ile kur, index.html'i aynı yere koy, Mert'e tek satırla bildir.
 "Kodla" gelirse: PLAN.md §12 aşama 0'dan başla (kararlar KARARLAR.md'ye, sonra veritabanı; incelemeli iş, nf-guvenlik ONAY, canlı migration kuralları CLAUDE.md §5).
 Sahiplik: Lineup ekranları ve apps/web/src/shell/LoadState.tsx.
-Dokunma: giriş ekranları (bekletmede), Takas ekranları, PAGES 10.2.
+Dokunma: giriş ekranları (bekletmede), Takas ekranları.
 Dal: güncel origin/main'den yeni claude/... dalı; PR yok, main'e yalnız tren.
 ```

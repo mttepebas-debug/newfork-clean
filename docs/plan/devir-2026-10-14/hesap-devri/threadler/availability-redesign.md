@@ -1,5 +1,7 @@
 # Devir raporu · Availability yeniden kurgu (Important Dates thread'i)
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Yazan: Important Dates thread'inin Claude'u, 2026-10-14 ~16:55 UTC (09:55 AM Kaliforniya).
 Thread: Project → "Important Dates" thread'i. Kök mesaj: `cmsg_013zBzr8GJv9vVEM4zDoaKrVF9qY395yPWmWkPPzNfPD9w`.
 
@@ -33,7 +35,7 @@ Thread iki iş yaptı:
 | Sütunlar: Important Dates | `8a254585` |
 | Sütunlar: Announcements | `dd0302a6` |
 
-PAGES 6.0 (Important Dates) ve 8.0 (Announcements) sayfaları `28aeb82b`'den yeniden kuruldu; sütun değişikliği bunun içinde. Bu sayfaların sahibi PAGES/erişim thread'i.
+PAGES 6.0 (Important Dates) ve 8.0 (Announcements) sayfaları `28aeb82b`'den yeniden kuruldu; sütun değişikliği bunun içinde.
 
 ### 2b. Availability (tasarım bitti, kod yok)
 - **Keşif.** Bugün nerede ne olduğu: `/mnt/project-files/notes/availability/1-kesif.md`.
@@ -78,7 +80,6 @@ Kod hiç başlamadı; dal, worktree ya da taslak kod yok. Mert "kodla" deyince i
 - Sınıf: **incelemeli**. Her parça nf-guvenlik ONAY'ı alır ve 1440 ile 390 görüntüsü çekilir.
 - e2e PC (Remote Control) thread'inde koşar. Main'e yalnız trenle gider.
 - Migration beklenmiyor; veri modeli aynı kalıyor.
-- PAGES'te etkilenen sayfalar: 5.0 Availability, 7.3 My availability, 4.0 Employees çekmecesi, 1.8 Employee welcome (onboarding) ve Schedule'daki toast. 3.0 Schedule sayfasının sahibi Üst çubuk thread'i.
 
 ## 4. Mert'ten beklenen
 1. **"kodla" (Availability).** Önerim parça 1'den başlamak. En küçük parça o ve Schedule'daki can sıkıcı onay kutusunu hemen kaldırıyor.
@@ -149,11 +150,6 @@ Bu thread'in yayınladıkları:
 | https://claude.ai/artifact/Gqga77Bp6Dt4bmmF4Mw471 | Kaynak bandı dizini | `/mnt/project-files/pages/kaynak-bandi/dizin.html` | Artık başka thread'ler güncelliyor |
 
 - **Availability mockup'ları yayınlanmadı**, çünkü o gün Artifact sınırı doluydu. Mert dosyayı açarak seçti. Yeni hesapta link gerekirse `availability-tercih/index.html` tek dosya olarak yayınlanır.
-- İlgili PAGES sayfaları başka thread'lerin; hepsi `28aeb82b`'den kuruldu:
-  - 5.0 Availability: https://claude.ai/artifact/8Dda7vpsNDFZey5WygaA4R
-  - 7.3 My availability: https://claude.ai/artifact/QxggDkv4nCCT2sAuxufJbd
-  - 6.0 Important Dates: https://claude.ai/artifact/YG5Dx2CvskoemPFVoKg2ff
-  - 8.0 Announcements: https://claude.ai/artifact/JC7V6cGGgXpKH9BrJGH7W5
 - Mert'in Important Dates için verdiği referans tasarım: https://claude.ai/artifact/Pt7K2NVLwFx6TPS9ZuXNKX. Görünümü main'e işlendi.
 - Bu devirde yeni Artifact yayınlanmadı ve hiçbiri silinmedi.
 
@@ -211,7 +207,6 @@ Bitti ölçütü:
 - Çalışanın programında "You marked this time unavailable" etiketi (1440 ve 390 görüntüsü).
 - Onboarding, My Availability, çekmece ve Availability sayfasında aynı ad ve aynı açıklama cümlesi; "Manager notes" adı.
 - KARARLAR "Müsaitlik tercih" (4). bendi düzeltildi (devir raporu §9).
-- PAGES notu: 5.0, 7.3, 4.0, 1.8 sayfa sahiplerine; Schedule toast'ı 3.0 sahibine (Üst çubuk).
 Dokun: apps/web/src/schedule (useShiftEditor, ScheduleConflictSheet, SchedulePage drop review), apps/web/src/availability metinleri, ilgili testler · Dokunma: işaretin kartta/hücrede çizimi (Vardiya kartı thread'inin; Nokta commit'i 70f3004a), auth ekranları, main'e doğrudan push.
 Sınıf: incelemeli (birden çok ekran, paylaşılan bileşen) · migration yok.
 İlgili kararlar: KARARLAR "Müsaitlik tercih" (2026-10-13), M8 (kısmen yerine geçti), M12, P24; Mert 2026-10-13 14:43 UTC "4".

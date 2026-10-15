@@ -1,5 +1,7 @@
 # Devir raporu: "Employees yorumları" thread'i
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Yazan: bu thread'in Claude'u, 14 Ekim 2026 sabah 9:45 (California saati).
 Thread: proje sohbetinde "employees ! important dates değil" mesajıyla açılan thread (cmsg_013zBzr8GJv9vVEM4zDoaKrVKyzVBLEj84oSeTurX5ZWNF).
 
@@ -35,14 +37,11 @@ Yok. Thread'i resolve etmek güvenli.
 - Deneme sayfası kaynağı: /mnt/project-files/pages/employees-deneme/ (employees-deneme.html + app.html; 304a2667'den derlendi). Yayınlanmış hâli: https://claude.ai/artifact/PWQ1pURnXfq8uTxQ6Rc6ke (eski hesapta; yeni hesap göremez, artık main'deki PAGES 4.0 yeterli).
 
 ## Yeni hesaba taşınacak bulgular
-1. Employees → Documents sayfası da `employees-page` sınıfını taşıyor (apps/web/src/documents/EmployeeDocumentsPage.tsx). Bu yüzden `.employees-page` ile yazılan bir telefon kuralı Documents'a da gider. c8c6ea0f'teki kenardan kenara kuralı Documents'a da uygulanıyor; bilerek mi, PAGES 4.1 yenilenirken bakılmalı. Yalnız Employees listesine kural yazmak için `.employee-people-wrap` kullan.
-2. PAGES düzeneğinde telefon sayfası sabit yükseklikli, overflow gizli bir sütun; dikey kaydırıcı listenin kutusu. Kutuya `overflow: visible` vermek kartları kesip kaydırmayı öldürür; tek yön için `overflow-x: hidden; overflow-y: auto`.
+1. Employees → Documents sayfası da `employees-page` sınıfını taşıyor (apps/web/src/documents/EmployeeDocumentsPage.tsx). Bu yüzden `.employees-page` ile yazılan bir telefon kuralı Documents'a da gider. c8c6ea0f'teki kenardan kenara kuralı Documents'a da uygulanıyor; bilerek mi, Documents ekranına dokunan ilk işte bakılmalı. Yalnız Employees listesine kural yazmak için `.employee-people-wrap` kullan.
+2. Demo uygulama aracında (eski PAGES düzeneği) telefon sayfası sabit yükseklikli, overflow gizli bir sütun; dikey kaydırıcı listenin kutusu. Kutuya `overflow: visible` vermek kartları kesip kaydırmayı öldürür; tek yön için `overflow-x: hidden; overflow-y: auto`.
 3. Telefondaki kaydırma çubuğu kuralı `!important` ile yazıldı, çünkü bazı kutular kendi "thin" ya da "stable" ayarını taşıyor. Yeni bir ekranda telefonda çubuk istenirse bu kural bilinçli olarak delinmeli; varsayılan "çubuk yok" (Mert, 12 Ekim akşamı: "bu dokunmatik ekranlı bir telefon").
 4. Mert'in deneme sayfasına bıraktığı yorumlar çoğu zaman Claude'a gönderilmiş olmuyor; o zaman yorumun altına cevap yazılamıyor ve kapatılamıyor. Cevap thread'de verilir.
 5. Bulutta testten önce `pnpm --filter @newfork/ui --filter @newfork/shared build` gerekir, yoksa vitest `@newfork/ui`'yi bulamaz. Playwright bulutta `executablePath: '/opt/pw-browsers/chromium'` ile açılır.
-
-## PAGES için not
-Main 71b4c9ec'den sonra telefon görünümü değişen sayfalar: kabuk 0.x, giriş 1.x, 2.0, 3.3 Requests, 4.x, 5.0, 6.0, 7.x, 8.x, 9.0, 10.x, 11.x, 12.x (sağdaki çubuk yok, içerik sağ kenarda 16 px'e kadar). 4.0'da telefonda kartlar. Schedule 3.0–3.2 telefonda kapalı uyarısı olduğu için pratikte aynı. Bu bilgi koordinatöre 12 Ekim akşamı iletildi; PAGES thread'inin yeniden derleyip derlemediğini yeni hesap PAGES sayfalarının üstündeki sha'dan kontrol etsin.
 
 ## Brief taslağı (yalnız Mert yeni Employees yorumu yazarsa)
 "Employees sayfası için Mert'in yeni yorumlarını oku ve kodla. Önceki iş main'de (kartlar c1c891c2, çubuksuz telefon 304a2667). Telefon kurallarını yalnız Employees listesine yazacaksan `.employee-people-wrap` kullan; ortak telefon kenar boşluğu yedi liste ekranında ortak, Mert söylemeden yalnız Employees değişir. Görünüm açık kalıyorsa önce Original + varyant göster. Türkçe, sade yaz; saatler California saati."

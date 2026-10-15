@@ -1,5 +1,7 @@
 # Devir raporu: Availability üst bölüm / sabit liste başlıkları
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Thread: "Availability üst bölüm" (proje sohbetinde Mert'in 2026-10-13 03:00Z mesajı).
 Rapor tarihi: 2026-10-14. Durum: **iş bitti, hepsi main'de.**
 
@@ -47,7 +49,7 @@ Hiçbir şey. Thread'i resolve etmek güvenli.
 - Test sayfası (bu hesapta): https://claude.ai/artifact/2TT6LzGoz92k86YKHfjWvA, sürüm 5. Dokuz ekran var: Workspace, Availability, Employees, Employees → Documents, Requests, Announcements, Important Dates, Notifications ve Settings → Documents.
   - Yeni hesap bu bağlantıyı göremez.
   - Kaynağı kaydedildi: `/mnt/project-files/pages/sabit-listeler/`. Giriş sayfası `index.html`, `app.html` ve ekran dosyaları orada. Gerekirse yeni hesap oradan yeniden yayınlar.
-  - Sayfa 2026-10-13 dalından kuruldu, bugünkü main'den eski. Asıl güncel harita PAGES'tir.
+  - Sayfa 2026-10-13 dalından kuruldu, bugünkü main'den eski.
 
 ## Yeni hesaba taşınacak bulgular
 1. **KARARLAR'da eskimiş bir cümle var.** "Liste sayfalarında üst kısım sabit" kaydında hâlâ "Settings → Documents'ta son iki satırın "⋯" menüsü yukarı açılır." yazıyor.
@@ -56,7 +58,7 @@ Hiçbir şey. Thread'i resolve etmek güvenli.
 2. **Kayan çerçeve içindeki her açılır menü kesilir.** Satır menüleri `CatalogRowMenu` ile pencereye sabitlenerek açılmalı. Yeni bir liste sayfasına `position: absolute` açılır menü eklemek aynı e2e hatasını geri getirir.
 3. **Kural yükleme sırası.** Sayfaların kendi CSS'i daha sonra yüklendiği için kural `.list-page` sınıfını üç kez tekrarlıyor. Yeni bir liste sayfası kurala girecekse adı `list-page-frozen.css`'teki listeye eklenir ve testine yazılır.
 4. **Kayan çerçeveye `position: relative` gerekiyor.** Yoksa içindeki `.sr-only` etiketleri sayfayı uzatıyor; Announcements'ta bu yaşandı.
-5. **Bulutta e2e koşmuyor** (veritabanı yok). Bu işte en yakın kontrol PAGES düzeneğinde Playwright ile tıklamaydı: `/mnt/project-files/PAGES/_kaynak` kopyalanır, `build-pages.mjs` ile kurulur ve her menü açılıp düğmeleri gerçekten tıklanabilir mi diye denenir.
+5. **Bulutta e2e koşmuyor** (veritabanı yok). Bu işte en yakın kontrol demo uygulama aracında (eski PAGES düzeneği) Playwright ile tıklamaydı: `/mnt/project-files/PAGES/_kaynak` kopyalanır, `build-pages.mjs` ile kurulur ve her menü açılıp düğmeleri gerçekten tıklanabilir mi diye denenir.
 
 ## Brief taslağı
 Gerekmiyor; açık iş yok. Yalnız 1. bulgu için kayıt thread'ine tek satır yeter:

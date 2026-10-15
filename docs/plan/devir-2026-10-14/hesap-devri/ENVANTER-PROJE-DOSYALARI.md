@@ -33,14 +33,16 @@ Yöntem: klasör listesi, boyut (`du -sh`), dosya sayısı (`find | wc -l`), REA
 |---|---|---|---|
 | `pages/` | 380 MB | 1671 | Artifact sayfalarının yayın dosyaları, varyantlar, kaynaklar |
 | `notes/` | 21 MB | 282 | Thread notları, planlar, oturum özetleri, ekran görüntüleri |
-| `PAGES/` | 19 MB | 166 | Uygulamanın güncel ekran haritası (route başına numaralı Artifact) |
+| `PAGES/` | 19 MB | 166 | Eski ekran haritası (route başına numaralı Artifact; 15 Ekim'de emekli) |
 | `uploads/` | 1,5 MB | 14 | Mert'in projeye eklediği görseller |
 | `raporlar/` | 584 KB | 5 | İlerleme raporu Artifact'ı |
 | `devir/` | — | — | Bu envanterin de yazıldığı devir klasörü (kapsam dışı) |
 
 ---
 
-## 3. `PAGES/` — uygulamanın ekran haritası (güncel, ÇEKİRDEK)
+## 3. `PAGES/` — uygulamanın ekran haritası (EMEKLİ, 15 Ekim 2026)
+
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları yeni hesapta kurulmaz, yayınlanmaz, güncellenmez; eski Artifact'leri yeniden kurulmaz. Yalnız `_kaynak/` demo uygulama aracı olarak kalır: varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için. Aşağıdaki tablo 14 Ekim'deki durumdur.
 
 Ne: Uygulamanın her adresi ayrı, numaralı bir Artifact (0.1 Shell … 12.4 Your privacy choices). Her sayfa main'deki gerçek web kodunu örnek veriyle (Harbor & Vine) çalıştırır, masaüstü 1440 ve telefon 390 yan yana. Dizin: https://claude.ai/artifact/YSQYTSXbT8CdQLGR6ozWcy. Sahibi: "PAGES ekran belgeleri" thread'i (plan: `notes/pages-belgeleri/PLAN.md`). Kural: proje talimatı #11 / CLAUDE.md §6.
 

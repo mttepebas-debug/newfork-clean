@@ -1,5 +1,7 @@
 # Devir: "Schedule: izinli kişiye başka lokasyonda Add shift" thread'i
 
+> **PAGES emekli (Mert, 15 Ekim 2026):** ekran ekran belge sayfaları (PAGES) artık kurulmaz, güncellenmez, yayınlanmaz; eski PAGES Artifact'leri yeni hesapta yeniden kurulmaz. Bu rapordaki PAGES adımları çıkarıldı; kalan PAGES sözleri yalnız geçmiş bilgisidir. `PAGES/_kaynak` yalnız varyant sayfalarındaki "Original" görüntüsünü demo veriyle çekmek için araç olarak kalır.
+
 Thread: https://claude.ai/code/project/chan_013zBzr8GJv9vVEM4zDoaKrV?thread=cmsg_013zBzr8GJv9vVEM4zDoaKrVJwkXvpk98NaLi5sbbTVruR
 Rapor tarihi: 14 Ekim 2026, California saatiyle sabah 9:45 civarı.
 Dal: `claude/time-off-mark-all-locations-cg3rn2` @ `3a6e6038` (GitHub'da; yalnız belge).
@@ -20,7 +22,6 @@ Dal: `claude/time-off-mark-all-locations-cg3rn2` @ `3a6e6038` (GitHub'da; yalnı
   - ghost kart asıl vardiyanın renginde olsun ama soluk, cansız, içe çökük ve geri planda dursun; asıl kart canlı kalsın; ghost'taki yazılar asıl karttakiyle aynı renk ve okunaklılıkta olsun (D'ye uygulandı, 11 Ekim, California saatiyle sabah 4:15 civarı).
   - Son D hâli için Mert'in onayı gelmedi.
 - **Kodlama işi açılmadı:** henüz uygulama kodunda değişiklik yok.
-- **PAGES 3.0 Schedule:** düzeltme main'e girdikten sonra güncellenmesi gerekiyordu; koordinatöre bildirildi. Yapılıp yapılmadığını PAGES thread'inin devir raporundan kontrol et.
 
 ## Mert'ten beklenen
 1. Varyant seçimi: A, B, C ya da D (yeniden kurulan sayfada bakarak).
@@ -60,6 +61,6 @@ Seçimden sonra kod: önce KARARLAR'a kural (§3.A.7), sonra TDD
 çift tıklama onCreate çağırmaz). Varyant bayrağı ve seçilmeyen varyantlar
 gerçek koda girmez. Sınıf: normal; ghost görünümü değişirse bütün Schedule
 ekranları etkilenir, 1440 ve 390 görüntüsü al.
-Bitti ölçütü: web vitest, lint, typecheck yeşil; dal push; PAGES 3.0 güncel.
+Bitti ölçütü: web vitest, lint, typecheck yeşil; dal push.
 İlgili: BL-995, BL-1022, KARARLAR §1.1.
 ```
