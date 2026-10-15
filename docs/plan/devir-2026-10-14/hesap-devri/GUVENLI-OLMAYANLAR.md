@@ -19,7 +19,7 @@ Ama beş konu, bir koşul gerçekleşmeden yeni hesapta başlatılırsa iki hesa
 2. `node scripts/lock.mjs status` boş, koşan tren yok;
 3. Mert eski hesapta proje sohbetine "raporu durdur" yazdı (adım 1, NASIL-DEVAM.md).
 
-**Nasıl:** `NASIL-DEVAM.md` adım 2–4 (ana oturumu aç, ilk mesaj). Ana oturum ilk iş `node scripts/main-watch.mjs --since 2f2f744c` ve `node scripts/lock.mjs status` koşar; çıkış 0 değilse ya da kilit doluysa tren koşmaz, Mert'e söyler.
+**Nasıl:** `NASIL-DEVAM.md` adım 2–4 (ana oturumu aç, ilk mesaj). Ana oturum ilk iş `node scripts/main-watch.mjs --since 9b871a97` ve `node scripts/lock.mjs status` koşar. Çıkış 1'de yeni iş başlamaz; 2 ya da 3'te main temiz sayılmaz (CLAUDE.md §5.6); kilit doluysa tren koşmaz; her durumda Mert'e söyler.
 
 **Açık kalan küçük karar:** bilgisayardaki Claude hafızasının (34 dosya) devir klasörüne kopyalanmasını izin denetimi engelledi. Dosyalar yerinde (`C:\Users\TheWe\.claude\projects\C--Users-TheWe-Documents-Codex-newfork-clean\memory\`) ve aynı Windows kullanıcısı kullanılacağı için kaybolmaz. İstersen kendin kopyalarsın ya da yeni hesabın ana oturumuna izin verirsin.
 

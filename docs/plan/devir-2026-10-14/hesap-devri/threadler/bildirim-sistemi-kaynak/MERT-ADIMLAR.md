@@ -6,7 +6,7 @@ Yeni hesapta Projects yok. Önerilen yol: önce devir talimatlarıyla yeni hesap
 1. Bir şey yapman gerekmiyor. Bildirim thread'indeki "koda başlayayım mı?" sorusunu burada cevaplama; aynı soru yeni hesapta yeniden sorulacak.
 
 ## B. Yeni hesapta: önce ana oturum
-2. Devir talimatlarıyla ana oturumu kur. Talimat dosyası: `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\devir\NASIL-DEVAM.md` (adım 2–4).
+2. Devir talimatlarıyla ana oturumu kur. Talimat dosyası: `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\devir\NASIL-DEVAM.md` (adım 2–4). Aynı dosya GitHub'da: dal `claude/hesap-devri-bqus46`, `docs/plan/devir-2026-10-14/hesap-devri/NASIL-DEVAM.md`. Başlığının altında "15 Ekim'de Projects'siz düzene göre yeniden yazıldı" yazmalı; yazmıyorsa GitHub'dakini kullan.
 3. Ana oturum ilk kontrolde GitHub bağlantısının (`gh`) açık olduğunu söyler. Talimatta bu adım var.
 
 ## C. Yeni hesapta: bildirim işi
