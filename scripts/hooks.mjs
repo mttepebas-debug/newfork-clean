@@ -1,24 +1,26 @@
 #!/usr/bin/env node
 // WORKFLOW-V2 (spec §5.5, §8.2): the coordinator session's two hooks, wired in .claude/settings.json.
-//   agent-report   SubagentStop: the agent's last message -> docs/plan/gunluk/<day>/<HHMM>-<job>-<agent>-<id8>.md,
-//                  so no report is lost to a missed notification or a compacted context.
-//   session-start  SessionStart (startup, resume, clear, compact): the top of DURUM.md back into the context.
-// Both read the hook JSON on stdin and never fail the session (exit 0). settings.json is shared by every
-// session, so the CLI writes under CLAUDE_PROJECT_DIR only in the coordinator's checkout (branch coord/kayit2).
-// A folder off that branch that still has DURUM.md is the coordinator's checkout caught mid-rebase or on a
-// detached HEAD: its agent report goes to <OPS_DIR>/gunluk-yedek/<day>/ instead of being lost, and the
-// coordinator moves it into the daily log later. Anywhere else the CLI does nothing (session-start gives no
-// DURUM.md off coord/kayit2). Secrets in an agent's message are masked before it is written.
+//   agent-report   SubagentStop: the agent's last message -> <OPS_DIR>/ajan-raporlari/<day>/<HHMM>-<job>-<agent>-<id8>.md,
+//                  so no report is lost to a missed notification or a compacted context. Outside the repo:
+//                  docs/plan/gunluk is frozen since 2026-10-09.
+//   session-start  SessionStart (startup, resume, clear, compact): the top of DURUM.md (DURUM_PATH, the
+//                  project-files folder) back into the context.
+// Both read the hook JSON on stdin and never fail the session (exit 0). settings.json is shared by every session,
+// so the CLI acts only in the coordinator's checkout: since 2026-10-15 that is the one session opened in the main
+// folder (branch main, not a linked worktree). Anywhere else it does nothing. Secrets in an agent's message are
+// masked before it is written.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { OPS_DIR, redact } from "./ops.mjs";
+import { DURUM_PATH, OPS_DIR, redact } from "./ops.mjs";
 
-const COORD_BRANCH = "coord/kayit2";
+const git = (dir, args) => execFileSync("git", ["-C", dir, ...args], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 }).trim();
 export function isCoordinatorCheckout(dir) {
   try {
-    return execFileSync("git", ["-C", dir, "branch", "--show-current"], { encoding: "utf8", stdio: ["ignore", "pipe", "ignore"], timeout: 5000 }).trim() === COORD_BRANCH;
+    if (git(dir, ["branch", "--show-current"]) !== "main") return false;
+    const [gitDir, commonDir] = git(dir, ["rev-parse", "--git-dir", "--git-common-dir"]).split(/\r?\n/);
+    return path.resolve(dir, gitDir) === path.resolve(dir, commonDir); // a linked worktree's git dir is under the common one
   } catch {
     return false;
   }
@@ -55,8 +57,8 @@ function lastText(file) {
   return "";
 }
 
-// `root` holds the <day>/ folders: the daily log by default, <OPS_DIR>/gunluk-yedek for the fallback.
-export function agentReport(input, { projectDir, now = new Date(), root = path.join(projectDir, "docs", "plan", "gunluk") }) {
+// `root` holds the <day>/ folders.
+export function agentReport(input, { root, now = new Date() }) {
   const text = String(input.last_assistant_message ?? "").trim() || lastText(input.agent_transcript_path).trim();
   const job = safe(jobOf(text) ?? "is-yok", 40) || "is-yok";
   const agent = safe(input.agent_type ?? "ajan", 24) || "ajan";
@@ -71,18 +73,19 @@ export function agentReport(input, { projectDir, now = new Date(), root = path.j
 }
 
 const MAX = 6000;
-export function sessionStart(input, { projectDir }) {
+export function sessionStart(input, { durumPath }) {
+  if (!durumPath) return null;
   let durum;
   try {
-    durum = fs.readFileSync(path.join(projectDir, "DURUM.md"), "utf8");
+    durum = fs.readFileSync(durumPath, "utf8");
   } catch {
     return null;
   }
-  const head = durum.length > MAX ? `${durum.slice(0, MAX)}\n… (devamı DURUM.md'de)` : durum;
+  const head = durum.length > MAX ? `${durum.slice(0, MAX)}\n… (devamı ${durumPath})` : durum;
   return {
     hookSpecificOutput: {
       hookEventName: "SessionStart",
-      additionalContext: `Koordinatörün panosu, DURUM.md (${input.source ?? "?"}). Koordinatörsen işe buradan devam et; değilsen yalnız bilgi içindir.\n\n${head}`,
+      additionalContext: `Koordinatörün panosu, DURUM.md (${input.source ?? "?"}), ${durumPath}. Koordinatörsen işe buradan devam et; değilsen yalnız bilgi içindir.\n\n${head}`,
     },
   };
 }
@@ -96,13 +99,11 @@ async function main([cmd]) {
   } catch {}
   const projectDir = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   try {
-    const coord = isCoordinatorCheckout(projectDir);
     if (cmd === "agent-report") {
-      if (coord) agentReport(input, { projectDir });
-      else if (fs.existsSync(path.join(projectDir, "DURUM.md"))) agentReport(input, { projectDir, root: path.join(OPS_DIR, "gunluk-yedek") });
+      if (isCoordinatorCheckout(projectDir)) agentReport(input, { root: path.join(OPS_DIR, "ajan-raporlari") });
     } else if (cmd === "session-start") {
-      if (!coord) return;
-      const out = sessionStart(input, { projectDir });
+      if (!isCoordinatorCheckout(projectDir)) return;
+      const out = sessionStart(input, { durumPath: DURUM_PATH });
       if (out) process.stdout.write(JSON.stringify(out));
     } else process.stderr.write("usage: node scripts/hooks.mjs agent-report|session-start   (hook JSON on stdin)\n");
   } catch (err) {
