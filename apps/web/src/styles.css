@@ -2786,7 +2786,12 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
+  /* The reason sits above Cancel and Save; the footer grows to hold it. */
+  .employee-drawer-footer:has(.employee-save-held) {
+    flex-basis: auto;
+  }
   .employee-save-held {
+    order: -1;
     flex-basis: 100%;
     max-width: none;
   }
