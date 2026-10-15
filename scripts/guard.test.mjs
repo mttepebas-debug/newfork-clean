@@ -12,6 +12,8 @@ import { execFileSync, spawnSync } from "node:child_process";
 const root = fs.mkdtempSync(path.join(os.tmpdir(), "newfork-coord-test-"));
 process.env.NEWFORK_LOCK_DIR = path.join(root, "locks");
 process.env.NEWFORK_INBOX_DIR = path.join(root, "inbox");
+// the main checkout the guard protects (CLAUDE.md §3.B.1): a throwaway clone, never the real newfork-clean
+process.env.NEWFORK_MAIN_DIR = path.join(root, "newfork-clean");
 
 const { evaluate, isRecordFile, inWorkerTree, segments } = await import("./guard.mjs");
 
@@ -599,4 +601,68 @@ test("a worker cannot cp, mv or sed -i onto the audit log; read-only grep, cat, 
   const ps = evaluate({ tool_name: "PowerShell", session_id: "s", cwd: repo, agent_id: "a10", tool_input: { command: `Copy-Item C:/tmp/fake.log ${log}` } });
   assert.equal(ps.block, true);
   for (const cmd of [`grep -c train-push ${log}`, `cat ${log}`, `tail -n 20 ${log}`, `sed -n 1,5p ${log}`, `grep -n push ${log} | head`]) assert.equal(worker(cmd).block, false, cmd);
+});
+
+// ---- the main checkout is Mert's (CLAUDE.md §3.B.1): no Edit/Write on a tracked or new file there ---------------
+
+const mainDir = process.env.NEWFORK_MAIN_DIR;
+execFileSync("git", ["clone", "-q", origin, mainDir], { stdio: "ignore" });
+git(mainDir, "checkout", "-q", "-B", "main");
+fs.writeFileSync(path.join(mainDir, ".gitignore"), "artifacts/\n.claude/worktrees/\n.env.local\n");
+fs.writeFileSync(path.join(mainDir, "README.md"), "x\n");
+git(mainDir, "add", ".gitignore", "README.md");
+git(mainDir, "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "-m", "files");
+fs.appendFileSync(path.join(mainDir, ".git", "info", "exclude"), "CLAUDE.local.md\n");
+const sideTree = path.join(root, "newfork-wt", "x");
+git(mainDir, "worktree", "add", "-q", "-b", "task/x", sideTree);
+const agentTree = path.join(mainDir, ".claude", "worktrees", "agent-m1");
+git(mainDir, "worktree", "add", "-q", "-b", "task/agent-m1", agentTree);
+const edit = (file, extra = {}) => evaluate({ tool_name: "Edit", session_id: "s", cwd: mainDir, tool_input: { file_path: file }, ...extra });
+const MAIN_REFUSAL = /ana klasör \(main\) Mert'indir/;
+
+test("main checkout: Edit or Write on a tracked or a new file is refused and logged", () => {
+  for (const [tool, file] of [
+    ["Edit", path.join(mainDir, "README.md")],
+    ["Write", path.join(mainDir, "apps", "web", "src", "new.ts")],
+    ["MultiEdit", path.join(mainDir, ".gitignore").replaceAll("\\", "/")],
+    ["NotebookEdit", path.join(mainDir, "x.ipynb")],
+  ]) {
+    const key = tool === "NotebookEdit" ? "notebook_path" : "file_path";
+    const r = evaluate({ tool_name: tool, session_id: "s", cwd: mainDir, tool_input: { [key]: file } });
+    assert.equal(r.block, true, file);
+    assert.match(r.message, MAIN_REFUSAL);
+    assert.equal(auditLines().at(-1).event, "main-edit-blocked");
+  }
+});
+
+test("main checkout: git-ignored files (CLAUDE.local.md, .env.local, artifacts/) stay writable", () => {
+  for (const file of ["CLAUDE.local.md", ".env.local", "artifacts/run/shot.png"]) assert.equal(edit(path.join(mainDir, file)).block, false, file);
+});
+
+test("main checkout: a ../newfork-wt worktree and an agent worktree under .claude/worktrees are not the main folder", () => {
+  assert.equal(edit(path.join(sideTree, "README.md"), { cwd: sideTree }).block, false);
+  assert.equal(edit(path.join(agentTree, "README.md"), { cwd: agentTree, agent_id: "m1" }).block, false);
+  const rec = edit(path.join(agentTree, "docs", "plan", "KARARLAR.md"), { cwd: agentTree, agent_id: "m1" });
+  assert.equal(rec.block, true); // the record-file rule still holds there
+  assert.match(rec.message, /yalnız koordinatör yazar/);
+});
+
+test("main checkout: off branch main the rule does not apply; a folder git cannot read is allowed and logged", () => {
+  git(mainDir, "switch", "-q", "-c", "mert-deneme");
+  try {
+    assert.equal(edit(path.join(mainDir, "README.md")).block, false);
+  } finally {
+    git(mainDir, "switch", "-q", "main");
+  }
+  const broken = path.join(mainDir, "broken");
+  fs.mkdirSync(broken, { recursive: true });
+  fs.writeFileSync(path.join(broken, ".git"), "gitdir: ./nowhere\n");
+  assert.equal(edit(path.join(broken, "a.ts")).block, false);
+  assert.equal(auditLines().at(-1).event, "main-edit-check-error");
+  fs.rmSync(broken, { recursive: true, force: true });
+});
+
+test("outside the main checkout an edit asks git nothing and logs nothing", () => {
+  assert.equal(edit(path.join(root, "elsewhere", "notes.md")).block, false);
+  assert.deepEqual(auditLines(), []);
 });

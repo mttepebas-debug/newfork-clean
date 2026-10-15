@@ -21,6 +21,9 @@ export const NOT_ON_PC =
 // The guard's audit.log goes to the temp folder off the PC: a cloud thread's log matters only to itself.
 export const OPS_DIR = pcPath(process.env.NEWFORK_INBOX_DIR, ".newfork-inbox") ?? path.join(os.tmpdir(), "newfork-ops");
 
+// Mert's main checkout (CLAUDE.md §3.B.1). NEWFORK_MAIN_DIR overrides it (tests only); null off Mert's PC.
+export const MAIN_DIR = pcPath(process.env.NEWFORK_MAIN_DIR, "newfork-clean");
+
 // The coordinator's board (Mert, 2026-10-15): DURUM.md lives in the project-files folder, outside the repo.
 // NEWFORK_DURUM overrides it (tests only); null off Mert's PC.
 export const DURUM_PATH = pcPath(process.env.NEWFORK_DURUM, "newfork-pages/hesap-devri-2026-10-14/proje-dosyalari/DURUM.md");

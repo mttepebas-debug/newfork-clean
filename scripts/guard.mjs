@@ -11,15 +11,17 @@
 //   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log, e2e/karantina.txt), by edit or by commit,
 //   and never pushes to the coordinator's branch coord/kayit2. It never runs scripts/train.mjs and never writes
 //   <OPS_DIR>/audit.log (Edit/Write, a redirection, tee or a content cmdlet).
+// - The main checkout is Mert's (CLAUDE.md §3.B.1): while it is on branch main, no Edit/Write lands on a file there
+//   that git tracks or would track; git-ignored files (CLAUDE.local.md, .env.local, artifacts/) stay writable.
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
 // - Commands the settings deny list refuses are logged when tried.
 // Every decision lands in <OPS_DIR>/audit.log (one JSON object per line, secrets masked).
 // Fail-closed only for a push to main: if evaluate() itself breaks, that push is refused.
 import fs from "node:fs";
 import path from "node:path";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
-import { OPS_DIR, redact } from "./ops.mjs";
+import { MAIN_DIR, OPS_DIR, redact } from "./ops.mjs";
 export { ciState, runningRuns, redact } from "./ops.mjs";
 
 const AUDIT = () => path.join(OPS_DIR, "audit.log");
@@ -522,12 +524,50 @@ function backupBranches(seg, cwd, base) {
 const SUBST = /\$\(|`/;
 const SUBST_PUSH_MAIN = /\bgit\b[^;&|\n]*\bpush\b[^;&|\n]*\bmain\b/;
 
+// The main checkout (MAIN_DIR) is Mert's (CLAUDE.md §3.B.1). An edit there is refused when that folder is the
+// repo's primary worktree, on branch main, and the file is not git-ignored. Its linked worktrees
+// (.claude/worktrees/*) and a nested repo are other folders. When git cannot answer, the edit passes and is
+// logged: a broken check must not stop every session.
+const MAIN_REFUSAL = "Reddedildi: ana klasör (main) Mert'indir; işi kendi worktree'nde yap (CLAUDE.md §3.B.1).";
+const winCase = (p) => (process.platform === "win32" ? p.toLowerCase() : p);
+const inside = (dir, file) => {
+  const rel = path.relative(winCase(path.resolve(dir)), winCase(path.resolve(file)));
+  return !rel.startsWith("..") && !path.isAbsolute(rel);
+};
+// "blocked" | "error: <why>" | null (not the main checkout's tracked side)
+function mainCheckoutEdit(file) {
+  if (!MAIN_DIR || !file || !inside(MAIN_DIR, file)) return null;
+  let dir = path.dirname(path.resolve(file));
+  while (!fs.existsSync(dir) && path.dirname(dir) !== dir) dir = path.dirname(dir);
+  try {
+    const [gitDir, commonDir, top] = git(dir, ["rev-parse", "--path-format=absolute", "--git-dir", "--git-common-dir", "--show-toplevel"]).split(/\r?\n/);
+    if (winCase(path.resolve(gitDir)) !== winCase(path.resolve(commonDir))) return null; // a linked worktree
+    if (winCase(path.resolve(top)) !== winCase(path.resolve(MAIN_DIR))) return null; // a nested repo
+    if (git(dir, ["branch", "--show-current"]) !== "main") return null;
+    const r = spawnSync("git", ["-C", top, "check-ignore", "-q", "--", path.resolve(file)], { encoding: "utf8", timeout: 5000 });
+    if (r.status === 0) return null;
+    if (r.status === 1) return "blocked";
+    return `error: git check-ignore ${String(r.stderr || r.error?.message || r.status).trim()}`;
+  } catch (err) {
+    return `error: ${String(err?.stderr || err?.message || err).trim().split("\n")[0]}`;
+  }
+}
+
 const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
 function evaluateEdit(input) {
   const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
   if (isAuditLog(file) && byWorker(input, input.cwd)) {
     audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "audit-write-by-worker-blocked" });
     return { block: true, message: AUDIT_REFUSAL };
+  }
+  const main = mainCheckoutEdit(file);
+  if (main) {
+    const entry = { session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file };
+    if (main === "blocked") {
+      audit({ ...entry, event: "main-edit-blocked" });
+      return { block: true, message: MAIN_REFUSAL };
+    }
+    audit({ ...entry, event: "main-edit-check-error", error: main.slice("error: ".length) });
   }
   // the session's own folder decides, so a worker cannot reach the coordinator's file by absolute path
   if (!isRecordFile(file) || !(byWorker(input, input.cwd) || inWorkerTree(file))) return { block: false };
