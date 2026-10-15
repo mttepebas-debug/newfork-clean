@@ -2128,6 +2128,38 @@ describe("employee assignment document impact", () => {
   });
 });
 
+describe("employee assignment document check refused", () => {
+  const saveHeldByDocumentCheck =
+    "You can't save these changes without access to check documents.";
+  it("says next to Save why it is held when the document check is refused", async () => {
+    vi.mocked(previewEmployeeDocumentAssignments).mockRejectedValueOnce(
+      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
+    );
+    const fixture = {
+      ...detail,
+      user_id: context.userId,
+      locations: [
+        ...detail.locations,
+        {
+          ...detail.locations[0]!,
+          id: "11000000-0000-4000-8000-000000000002",
+          name: "Secondary Branch",
+          primary: false,
+        },
+      ],
+    } satisfies EmployeeDetail;
+    renderDrawer("employment", fixture);
+    await employeeLoaded();
+    expect(screen.queryByText(saveHeldByDocumentCheck)).toBeNull();
+    fireEvent.click(screen.getByRole("checkbox", { name: "Secondary Branch" }));
+    const reason = await screen.findByText(saveHeldByDocumentCheck);
+    const save = screen.getByRole("button", { name: "Save changes" });
+    expect(save).toHaveProperty("disabled", true);
+    expect(save.getAttribute("aria-describedby")).toBe(reason.id);
+    expect(screen.queryByText("Forbidden")).toBeNull();
+  });
+});
+
 // FB-6.2 .7a: the buttons open from what the server says this reader may do
 // to this record (detail.allowed), whatever the reader's permissions say.
 describe("EmployeeDrawer record actions follow the server", () => {

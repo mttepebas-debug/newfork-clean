@@ -2349,6 +2349,13 @@
   align-items: center;
   gap: 8px;
 }
+.employee-save-held {
+  margin: 0;
+  max-width: 260px;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.35;
+}
 .employee-drawer-actions .nf-button {
   min-height: 38px;
   padding: 8px 13px;
@@ -2776,7 +2783,12 @@
   }
   .employee-drawer-actions {
     width: 100%;
+    flex-wrap: wrap;
     justify-content: flex-end;
+  }
+  .employee-save-held {
+    flex-basis: 100%;
+    max-width: none;
   }
   .employee-dirty {
     display: none;

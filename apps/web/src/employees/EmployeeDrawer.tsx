@@ -312,6 +312,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     (documentPreview.isPending ||
       documentPreview.isFetching ||
       Boolean(documentPreview.error));
+  // A refused check has no retry: Save says why it stays held.
+  const saveHeldByRefusal =
+    needsDocumentPreview &&
+    !documentPreview.isFetching &&
+    isNoAccess(documentPreview.error);
+  const saveHeldReasonId = useId();
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
   const roleSaved = detail.data?.role_id ?? "";
@@ -1643,9 +1649,17 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       : "Invite"}
                   </Button>
                 ) : null}
+                {canSubmit && saveHeldByRefusal ? (
+                  <p id={saveHeldReasonId} className="employee-save-held">
+                    You can't save these changes without access to check documents.
+                  </p>
+                ) : null}
                 {canSubmit ? (
                   <Button
                     type="submit"
+                    aria-describedby={
+                      saveHeldByRefusal ? saveHeldReasonId : undefined
+                    }
                     disabled={
                       busy ||
                       documentPreviewBlocked ||
