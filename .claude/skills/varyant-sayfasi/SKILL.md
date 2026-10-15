@@ -16,7 +16,7 @@ Kullanıcı bir ekran ya da parça için görsel varyant istediğinde bu adımla
 
 1. **Konuyu daralt.** Tam yer, rol(ler) ve çözülecek şey tek cümle. Aynı konu daha önce çalışılmış mı bak (proje kararları, eski varyant klasörleri, oturum özetleri). Daha önce reddedilen yaklaşımı tekrar önerme.
 
-2. **Orijinal'i gerçek koddan kur.** Bugünkü hâl, uygulamanın güncel main kodundan ve örnek veriyle çalışır; elle çizim değil. Orijinal karşılaştırma içindir, doğru kabul edilmez.
+2. **Orijinal'i gerçek koddan kur.** Bugünkü hâl, uygulamanın kodundan ve örnek veriyle çalışır; elle çizim değil. Hangi sürümden kurulduğunu not dosyasına yaz. Orijinal karşılaştırma içindir, doğru kabul edilmez.
 
 3. **Önce araştır, sonra tasarla.** Hedef en iyi çözüm, bugünkü ürüne yama değil.
    - Bu işin iyi ürünlerde ve kabul görmüş tasarım kılavuzlarında nasıl çözüldüğüne kısaca bak. Rakipler yalnız referanstır, kopyalanmaz.
@@ -40,11 +40,11 @@ Kullanıcı bir ekran ya da parça için görsel varyant istediğinde bu adımla
 
 7. **Yayınla.** Artifact olarak yayınla. Aynı konunun yeni turu aynı bağlantıya yeni sürüm olur, yeni bağlantı açılmaz. Günlük yayın sınırını gözet.
 
-8. **Bir kez bildir.** Bağlantıyı ve sayfaya nasıl bakılacağını tek mesajla yaz. "Hangisini yapayım?" sorusu ya da karar kartı gönderme; kullanıcı bakıp kendisi yazar.
+8. **Bir kez bildir.** Bağlantıyı ve sayfaya nasıl bakılacağını tek mesajla yaz. "Hangisini yapayım?" sorusu ya da karar kartı gönderme: görsel seçimde Claude'un önerisi zayıf dayanaktır, seçimi kullanıcı sayfayı deneyerek yapar ve kendisi yazar. (Varyant dışındaki sorular projenin soru kuralına göre sorulur.)
 
 9. **Yorum gelirse yeni tur.** Aynı sayfaya "Tur 2" olarak eklenir; yorum ve tarih not dosyasına yazılır.
 
-10. **Seçim gelince kaydet, koda geçme.** Seçimi not dosyasına yaz. Seçim ortak bir değeri (boşluk, font, düğme biçimi) değiştiriyorsa önce projenin karar kaydına yazılır. Kodlama kullanıcının ayrıca "kodla" demesiyle ayrı iş olarak başlar.
+10. **Seçim gelince kaydet, koda geçme.** Seçimi not dosyasına ve projenin karar kaydına yaz (seçilen ve reddedilen varyantlarla). Seçim ortak bir değeri (boşluk, font, düğme biçimi) değiştiriyorsa kural önce karar kaydına yazılır, uymayan ekranlar adıyla söylenir. Kodlama kullanıcının ayrıca "kodla" demesiyle ayrı iş olarak başlar.
 
 ## Yapma
 - Kod commit'i, main'e dokunma, kullanıcıya git ya da komut sorusu.
@@ -52,6 +52,7 @@ Kullanıcı bir ekran ya da parça için görsel varyant istediğinde bu adımla
 
 ## Newfork projesinde (newfork-clean)
 - Tasarım dili: `apps/web/src/styles.css` (`--theme-*`), `docs/design-canvas.md`; yalnız açık tema; aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı; tarayıcı diyaloğu yok.
-- Orijinal: bulut thread'inde PAGES demo uygulama aracı (`/mnt/project-files/PAGES/_kaynak/`, yalnız Orijinal görüntüsü için; güncel tutulmaz, yayınlanmaz); bilgisayarda gerçek uygulama.
-- Dosyalar: `/mnt/project-files/pages/gorsel-kararlar/gelen/<konu>/` (sayfa, `README.md`: kaynak main sürümü, tarih California saatiyle, her varyant bir satır, turlar; görüntüler). Yolu koordinatöre bildir; "Bekleyen görsel kararlar" sayfasına eklenir.
+- Orijinal: bulut thread'inde PAGES demo uygulama aracı (`/mnt/project-files/PAGES/_kaynak/`, yalnız Orijinal görüntüsü için; güncel tutulmaz, yayınlanmaz; README'ye aracın derlendiği main sürümü yazılır, güncel main'den geride olabilir); bilgisayarda gerçek uygulama.
+- Dosyalar: `/mnt/project-files/pages/gorsel-kararlar/gelen/<konu>/` (sayfa, `README.md`: Orijinal'in kaynak sürümü, tarih California saatiyle, her varyant bir satır, turlar; görüntüler). Yolu koordinatöre bildir; "Bekleyen görsel kararlar" sayfasına eklenir.
+- Seçim `docs/plan/KARARLAR.md`'ye thread'in dalında girer (CLAUDE.md §6).
 - Kurallar: repo `CLAUDE.md` ve `docs/plan/KARARLAR.md` geçerlidir; bu skill onlarla çelişirse onlar kazanır.
