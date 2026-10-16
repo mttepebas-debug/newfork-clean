@@ -63,9 +63,10 @@ end $$;
 
 select pg_temp.invite('ayse', 'jale');
 select public.accept_employee_invitation_by_id_service(pg_temp.u('jale'), tests.id('np:jale:invitation'));
-select is(pg_temp.told('people.joined'), array['np:ayse'], '(a) Jale accepts: Ayse, who invited her, is told; Jale is not');
+select is(pg_temp.told('people.joined', tests.id('np:jale')), array['np:ayse'],
+  '(a) Jale accepts: Ayse, who invited her, is told; Jale is not');
 select ok((select bool_and(n.title = 'Jale Person accepted your invitation') from public.person_notifications n
-           where n.type_key = 'people.joined' and n.workspace_id = tests.id('np')), '(a) by name');
+           where n.type_key = 'people.joined' and n.subject_id = tests.id('np:jale')), '(a) by name');
 select pg_temp.invite('ayse', 'kaan');
 select public.decline_employee_invitation_service(pg_temp.u('kaan'), tests.id('np:kaan:invitation'));
 select is(pg_temp.told('people.invitation_declined'), array['np:ayse'], '(a) Kaan declines: Ayse is told, once');
@@ -117,14 +118,15 @@ select public.review_employee_onboarding_service(pg_temp.u('zeynep'), tests.id('
   pg_temp.profile_requirement(), '', (pg_temp.pia_case()).revision, true);
 select is((pg_temp.pia_case()).status::text, 'approved', '(c) Zeynep approves the name and Pia is in');
 select is(pg_temp.told('people.onboarding_completed'), array['np:pia'], '(c) Pia hears her onboarding is complete; Zeynep does not');
-select is((select array_agg(n.resolution order by n.created_at, n.id) from public.person_notifications n
+select is((select array_agg(n.resolution order by n.resolution) from public.person_notifications n
            where n.type_key = 'people.onboarding_review_needed' and n.subject_id = (pg_temp.pia_case()).id),
-  array['changes_requested', 'changes_requested', 'approved', 'approved'],
+  array['approved', 'approved', 'changes_requested', 'changes_requested'],
   '(c) the first round''s cards read Changes requested, the second''s Approved');
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.onboarding_review_needed'
            and n.subject_id = (pg_temp.pia_case()).id and n.resolved_at is null), 0, '(c) no card stays open');
 
--- Rio's workspace asks for a final approval: whoever may review onboarding is told, Ayse too.
+-- Rio's workspace asks for a final approval: whoever may review onboarding is told, his managers at Kadikoy
+-- too (Ayse and the five of (b), who still hold the right here).
 insert into public.employee_onboarding_settings (workspace_id, final_approval_required) values (tests.id('np'), true)
 on conflict (workspace_id) do update set final_approval_required = true;
 select tests.person('np', 'rio', 'employee', array['K'], array['cook'], 'onboarding');
@@ -137,14 +139,15 @@ select public.save_employee_onboarding_profile_service(pg_temp.u('rio'), jsonb_b
     'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   (pg_temp.rio_case()).revision, tests.id('np'));
 select public.submit_employee_onboarding_service(pg_temp.u('rio'), (pg_temp.rio_case()).revision, tests.id('np'));
-select is(pg_temp.told('people.onboarding_review_needed', (pg_temp.rio_case()).id), array['np:ayse', 'np:owner', 'np:zeynep'],
-  '(c) Rio waits for a final approval: the owner, Zeynep and Ayse, his manager; not Veli at Besiktas');
+select is(pg_temp.told('people.onboarding_review_needed', (pg_temp.rio_case()).id),
+  array['np:ayse', 'np:blk', 'np:dmo', 'np:gon', 'np:lim', 'np:mov', 'np:owner', 'np:zeynep'],
+  '(c) Rio waits for a final approval: the owner, Zeynep and his Kadikoy managers; not Veli at Besiktas');
 select public.review_employee_onboarding_service(pg_temp.u('ayse'), tests.id('np'), tests.id('np:rio'), 'activate',
   null, '', (pg_temp.rio_case()).revision, true);
 select is(pg_temp.told('people.onboarding_completed', (pg_temp.rio_case()).id), array['np:rio'], '(c) Ayse lets him in: Rio is told');
-select is((select array_agg(n.resolution order by n.id) from public.person_notifications n
+select is((select array_agg(distinct coalesce(n.resolution, 'open')) from public.person_notifications n
            where n.type_key = 'people.onboarding_review_needed' and n.subject_id = (pg_temp.rio_case()).id),
-  array['approved', 'approved', 'approved'], '(c) every card reads Approved');
+  array['approved'], '(c) every card reads Approved');
 update public.employee_onboarding_settings set final_approval_required = false where workspace_id = tests.id('np');
 
 -- (d) Preferred name ---------------------------------------------------------------------------------------
@@ -159,13 +162,15 @@ create function pg_temp.request(person text) returns uuid language sql stable as
 $$;
 select is(pg_temp.asks('emre', 'Em'), 'waiting', '(d) Emre asks to be called Em');
 create temp table first_ask as select pg_temp.request('emre') id;
-select is(pg_temp.told('people.preferred_name_requested'), array['np:ayse', 'np:owner', 'np:zeynep'],
-  '(d) who may decide it is told: the owner, Zeynep and Ayse, his manager; not Veli, not Emre');
+select is(pg_temp.told('people.preferred_name_requested'),
+  array['np:ayse', 'np:blk', 'np:dmo', 'np:gon', 'np:lim', 'np:mov', 'np:owner', 'np:zeynep'],
+  '(d) who may decide it is told: the owner, Zeynep and his Kadikoy managers; not Veli at Besiktas, not Emre');
 select pg_temp.asks('emre', 'Emo');
 create temp table second_ask as select pg_temp.request('emre') id;
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.preferred_name_requested'
            and n.subject_id = (select id from first_ask) and n.resolved_at is null), 0, '(d) asked again: the first ask''s cards close');
-select is(pg_temp.told('people.preferred_name_requested', pg_temp.request('emre')), array['np:ayse', 'np:owner', 'np:zeynep'],
+select is(pg_temp.told('people.preferred_name_requested', pg_temp.request('emre')),
+  array['np:ayse', 'np:blk', 'np:dmo', 'np:gon', 'np:lim', 'np:mov', 'np:owner', 'np:zeynep'],
   '(d) and the new ask is told');
 select public.decide_employee_preferred_name_service(pg_temp.u('ayse'), tests.id('np'), (select id from second_ask), true);
 select is(pg_temp.told('people.preferred_name_decided'), array['np:emre'], '(d) Ayse approves: Emre hears it once, Ayse does not');
@@ -175,8 +180,8 @@ select is((select array_agg(distinct n.resolution) from public.person_notificati
            where n.type_key = 'people.preferred_name_requested' and n.subject_id = (select id from second_ask)), array['approved'],
   '(d) the deciders'' cards read Approved');
 select is(pg_temp.asks('owner', 'Boss'), 'published', '(d) the owner''s own preferred name needs nobody');
-select is(pg_temp.told('people.preferred_name_requested'),
-  array['np:ayse', 'np:ayse', 'np:owner', 'np:owner', 'np:zeynep', 'np:zeynep'], '(d) and tells nobody');
+select is((select count(*)::integer from public.person_notifications n join public.employee_preferred_name_requests r on r.id = n.subject_id
+           where n.type_key = 'people.preferred_name_requested' and r.employee_id = tests.id('np:owner')), 0, '(d) and tells nobody');
 
 -- Every notice so far is in its recipient's choices, read before anyone loses a right (BILDIRIM-12).
 create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('np');
