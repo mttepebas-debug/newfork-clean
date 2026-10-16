@@ -214,6 +214,35 @@ select public.set_employee_document_exemption_service(tests.user('dc:owner'), te
 select is((select count(*)::integer from public.person_notifications where type_key = 'documents.requested' and user_id = tests.user('dc:emre')), 2,
   '(f) the exemption taken back asks Emre again');
 
+-- (h) Access, on every path --------------------------------------------------------------------------
+-- Whoever is restricted hears it, and hears when it lifts, however the suspension comes and goes: a
+-- document type taken down (Dmo), a document sent just after its due date and then approved (Lim).
+
+create function pg_temp.access_told(person text) returns text[] language sql stable as $$
+  select coalesce(array_agg(n.data ->> 'state' order by n.data ->> 'state'), '{}') from public.person_notifications n
+  where n.type_key = 'documents.access_changed' and n.user_id = tests.user('dc:' || person)
+$$;
+create temp table allergen as select pg_temp.document('Allergen sheet', true, false) id;
+-- ponytail: Dmo's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from allergen) and lifecycle_user_id = tests.user('dc:dmo');
+select pg_temp.check();
+select is(pg_temp.access_told('dmo'), array['restricted'], '(h) Dmo is restricted and told');
+create temp table allergen_down as select public.preview_document_publication_service(tests.user('dc:owner'), tests.id('dc'), id) preview
+from allergen;
+select public.set_document_publication_service(tests.user('dc:owner'), tests.id('dc'), (select id from allergen),
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Unpublish', 'draft')
+from allergen_down;
+select is(pg_temp.access_told('dmo'), array['restored', 'restricted'], '(h) the allergen sheet taken down: Dmo hears access is back');
+
+-- ponytail: Lim's card fell due a moment ago; he sends it before the daily check runs.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '30 seconds'
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:lim');
+select pg_temp.send('lim', (select card from docs));
+select pg_temp.review('zeynep', 'lim', (select card from docs), 'approve');
+select is(pg_temp.access_told('lim'), array['restored', 'restricted'],
+  '(h) Lim, restricted the moment he sent it late, hears both: restricted, then back on approval');
+
 -- (g) The owner hands the workspace over -------------------------------------------------------------
 -- The documents the owner was excused from are asked of them now.
 
