@@ -45,7 +45,10 @@ jobs:
   # Database tests (pgTAP) run against a fresh local Supabase: migrations + seed.sql only
   # (the gitignored local fixture is absent in CI). Only files listed in
   # supabase/tests/ci-green.txt run; the list may grow, never shrink (FOUNDATION-B stage 1a).
+  # CI-E2E-FIRST (Mert, 2026-10-16): db waits for check, so a run starts with only
+  # check and e2e queued and the runners pick both up at once (see e2e below).
   db:
+    needs: [check]
     runs-on: *runner
     timeout-minutes: 25
     steps:
@@ -149,10 +152,15 @@ jobs:
   # Browser tests (Playwright): the real sign-in screen, API and web app against a
   # fresh local Supabase; people come from the test world builder with a password
   # (FOUNDATION-B stage 2d).
-  # e2e waits for check and db: three heavy jobs at once on the one PC timed
-  # tests out under load (VAR-E2E-2, BL-764).
+  # Three heavy jobs at once on the one PC timed tests out under load
+  # (VAR-E2E-2, BL-764), so this run never has more than two going: e2e,
+  # the longest job (~7-10 min), starts first with no `needs`, beside
+  # check, and db follows check (~5 + ~3 min) on the same lane. Before,
+  # e2e needed [check, db] and started last (~15 min a run); now the run
+  # is e2e plus db-budget (~12 min). CI-E2E-FIRST (Mert, 2026-10-16).
+  # No runner labels: with one runner online every job still runs, one
+  # after another; a label only one runner had would leave e2e queued.
   e2e:
-    needs: [check, db]
     runs-on: *runner
     timeout-minutes: 30
     steps:
