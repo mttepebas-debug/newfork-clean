@@ -125,7 +125,8 @@ select ok((pg_temp.latest('emre', 'schedule.shift_added')).title like 'New shift
 select is(pg_temp.schedule_notices('ali') + pg_temp.schedule_notices('deniz') + pg_temp.schedule_notices('emre'), 5,
   '(b) one notice per person for this publish');
 select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
-           where w.label in ('nu:owner', 'nu:ayse', 'nx:owner', 'nx:xena')), 0, '(b) the managers and another workspace: nothing');
+           where w.label in ('nu:owner', 'nu:ayse', 'nx:owner', 'nx:xena') and n.type_key like 'schedule.%'), 0,
+  '(b) the managers and another workspace: nothing');
 
 -- (c) Nothing changed -------------------------------------------------------------------------------
 

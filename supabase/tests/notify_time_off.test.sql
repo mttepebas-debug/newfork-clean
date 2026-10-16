@@ -232,7 +232,8 @@ select ok((select title like 'Your time off % was revoked' and body = 'We need y
            where type_key = 'time_off.decided' and subject_id = tests.id('nt:emre:2') and event_key like '%:revoked'),
   '(e) saying it was revoked and why');
 
-select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id where w.label like 'nx:%'), 0,
+select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
+           where w.label like 'nx:%' and n.workspace_id = tests.id('nt')), 0,
   'another workspace hears nothing of this one');
 
 -- Who hears a notice may choose about it: Blkd asks for time off, then misses a required document; the
