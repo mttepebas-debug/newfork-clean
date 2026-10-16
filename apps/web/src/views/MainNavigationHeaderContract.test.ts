@@ -28,11 +28,6 @@ const topLevelPages = [
     catalogTitle: "Announcements",
   },
   {
-    label: "Notifications",
-    path: "src/views/NotificationsPage.tsx",
-    catalogTitle: "Notifications",
-  },
-  {
     label: "Schedule Requests",
     path: "src/views/ScheduleRequestsPage.tsx",
     catalogTitle: "Requests",
@@ -44,7 +39,7 @@ describe("main navigation header contract", () => {
     const styles = readFileSync("src/styles.css", "utf8").replace(/\s+/g, " ");
 
     expect(styles).toContain(
-      ".workspace-page, .availability-page, .important-dates-page, .employees-page, .announcements-page, .notifications-page, .requests-page {",
+      ".workspace-page, .availability-page, .important-dates-page, .employees-page, .announcements-page, .requests-page {",
     );
     expect(styles).toContain("width: min(100% - 64px, 1320px);");
     expect(styles).toContain("padding: 30px 0 44px;");

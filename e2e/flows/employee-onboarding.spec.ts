@@ -128,9 +128,6 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await expect(invitee).toHaveURL(/\/workspaces$/);
   await invitee.getByRole("button", { name: `Continue onboarding for World ${run}`, exact: true }).click();
   await expect(invitee).toHaveURL(new RegExp(welcome));
-  // Their own notifications open all the same (D4).
-  await invitee.goto("/account/inbox");
-  await expect(invitee.getByLabel("Notification category")).toBeVisible();
 
   // The Kadikoy manager who reviews documents approves the card from
   // Employees > Documents.

@@ -32,8 +32,6 @@ describe("settings page alignment styles", () => {
     );
     expect(ruleBody(".roles-page")).not.toContain("width:");
     expect(ruleBody(".acknowledgement-page")).not.toContain("width:");
-    expect(ruleBody(".notification-settings")).not.toContain("max-width:");
-    expect(ruleBody(".notification-settings")).not.toContain("width:");
   });
 
   it.each(["shift-catalog-settings-page", "acknowledgement-page"])(

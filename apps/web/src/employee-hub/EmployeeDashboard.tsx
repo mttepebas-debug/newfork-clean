@@ -33,8 +33,6 @@ import {
 } from "./dashboard-model";
 import { CardHeading } from "./DashboardPrimitives";
 import {
-  NotificationBell,
-  RecentChanges,
   Announcements,
   ComingUpDates,
 } from "./DashboardCommunications";
@@ -124,9 +122,6 @@ export function EmployeeDashboard({
           >
             <span className="eh-avatar">{firstName?.slice(0, 1)}</span>
           </Link>
-          {context?.permissions.includes("notifications.read") && (
-            <NotificationBell workspaceId={model.workspace_id} />
-          )}
         </div>
       </div>
       <CatalogPageHeader
@@ -437,9 +432,6 @@ export function EmployeeDashboard({
           employeeId={model.employee.id}
           online={online}
         />
-        {context?.permissions.includes("notifications.read") && (
-          <RecentChanges workspaceId={model.workspace_id} />
-        )}
         {readsPosts && <Announcements workspaceId={model.workspace_id} />}
         <section className="eh-card eh-team">
           <CardHeading icon={<Users size={18} />} title="Your team" />
@@ -474,10 +466,6 @@ export function EmployeeDashboard({
         <span>
           <Sparkles size={14} /> A clear day starts here.
         </span>
-        <Link to="/account/preferences/notifications">
-          Notification preferences
-          <ArrowUpRight size={13} />
-        </Link>
       </footer>
       {selected && (
         <ShiftSheet shift={selected} model={model} onClose={closeDetail} />

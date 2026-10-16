@@ -1,6 +1,5 @@
 import {
   ArrowLeft,
-  Bell,
   FileText,
   LogOut,
   Palette,
@@ -25,11 +24,6 @@ const accountNav = [
   { to: "/account/profile", label: "Profile", icon: UserRound },
   { to: "/account/security", label: "Security", icon: ShieldCheck },
   { to: "/account/preferences", label: "Preferences", icon: Palette },
-  {
-    to: "/account/preferences/notifications",
-    label: "Notifications",
-    icon: Bell,
-  },
   {
     to: "/account/workspaces",
     label: "Workspaces",

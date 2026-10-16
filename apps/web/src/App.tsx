@@ -13,7 +13,6 @@ import { SettingsPageRoute } from "./settings/SettingsPageRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
-import { DocumentNotificationRedirect } from "./documents/DocumentNotificationRedirect";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
@@ -54,9 +53,6 @@ const PrivacyChoicesPage = lazy(() =>
   })),
 );
 const PreferencesPage = lazy(() => import("./account/PreferencesPage"));
-const NotificationPreferencesPage = lazy(
-  () => import("./account/NotificationPreferencesPage"),
-);
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
 const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
@@ -69,7 +65,6 @@ const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
 const AnnouncementsPage = lazy(() => import("./views/AnnouncementsPage"));
 const ImportantDatesPage = lazy(() => import("./views/ImportantDatesPage"));
-const NotificationsPage = lazy(() => import("./views/NotificationsPage"));
 const EmployeeDocumentsPage = lazy(() => import("./documents/EmployeeDocumentsPage"));
 const EmployeesPage = lazy(() => import("./employees/EmployeesPage"));
 const AcceptInvitationPage = lazy(
@@ -105,9 +100,6 @@ const LocationsSettingsPage = lazy(
   () => import("./settings/LocationsSettingsPage"),
 );
 const JobsSettingsPage = lazy(() => import("./settings/JobsSettingsPage"));
-const NotificationSettingsPage = lazy(
-  () => import("./settings/NotificationSettingsPage"),
-);
 const SchedulingSettingsPage = lazy(
   () => import("./settings/SchedulingSettingsPage"),
 );
@@ -259,14 +251,6 @@ export function App() {
                 ),
               )}
               <Route
-                path="/app/account/documents"
-                element={
-                  <ProtectedRoute>
-                    <DocumentNotificationRedirect />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
                 path="/account"
                 element={
                   <ProtectedRoute>
@@ -277,12 +261,7 @@ export function App() {
                 <Route index element={<Navigate to="profile" replace />} />
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="security" element={<SecurityPage />} />
-                <Route path="inbox" element={<NotificationsPage />} />
                 <Route path="preferences" element={<PreferencesPage />} />
-                <Route
-                  path="preferences/notifications"
-                  element={<NotificationPreferencesPage />}
-                />
                 <Route path="workspaces" element={<WorkspacesPage />} />
                 <Route path="documents" element={<AccountDocumentsPage />} />
               </Route>
@@ -472,7 +451,6 @@ export function App() {
                     </ActionRoute>
                   }
                 />
-                <Route path="notifications" element={<NotificationsPage />} />
                 <Route
                   path="account/security"
                   element={<Navigate to="/account/security" replace />}
@@ -500,14 +478,6 @@ export function App() {
                     element={
                       <SettingsPageRoute page="jobs">
                         <JobsSettingsPage />
-                      </SettingsPageRoute>
-                    }
-                  />
-                  <Route
-                    path="notifications"
-                    element={
-                      <SettingsPageRoute page="notifications">
-                        <NotificationSettingsPage />
                       </SettingsPageRoute>
                     }
                   />

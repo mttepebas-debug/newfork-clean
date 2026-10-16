@@ -21,16 +21,8 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 vi.mock("../lib/supabase", () => ({ supabaseClient: null }));
 vi.mock("../account/AccountAvatar", () => ({ CurrentUserAvatar: () => null }));
-vi.mock("../communications/use-account-notification-realtime", () => ({
-  useAccountNotificationRealtime: vi.fn(),
-}));
 vi.mock("../employee-hub/shift-exchanges/useExchangeRealtime", () => ({
   useExchangeRealtime: vi.fn(),
-}));
-vi.mock("../communications/communications-data", () => ({
-  getNotifications: vi.fn().mockResolvedValue({ unread_count: 0 }),
-  notificationChangeEventName: "notice",
-  notificationChangeStorageKey: "notice-key",
 }));
 
 const owner = {
@@ -47,6 +39,7 @@ const owner = {
     "availability.read",
     "important_dates.read",
     "announcements.read",
+    // Still a key in the role's list; since BILDIRIM-02 it opens no page.
     "notifications.read",
   ],
   actions: [] as string[],
@@ -60,7 +53,6 @@ const manager = {
     "schedule.time_off_requests.read",
     "employees.read",
     "availability.read",
-    "notifications.read",
   ],
 };
 
@@ -115,7 +107,6 @@ describe("ManagementMobileNav in the app shell", () => {
       "Availability",
       "Announcements",
       "Important Dates",
-      "Notifications",
       "Settings",
       "Account",
       "Sign out",
@@ -126,13 +117,13 @@ describe("ManagementMobileNav in the app shell", () => {
     context = manager;
     mount();
     expect(names(bar())).toEqual(["Schedule", "Requests", "Lineup", "Employees", "More"]);
-    expect(names(morePages())).toEqual(["Availability", "Notifications", "Account", "Sign out"]);
+    expect(names(morePages())).toEqual(["Availability", "Account", "Sign out"]);
   });
 
   it("with an employee record of their own, More offers the employee view (FB-6.2.8)", () => {
     context = { ...manager, actions: ["employee_hub.read"] };
     mount();
-    expect(names(morePages())).toEqual(["Availability", "Notifications", "Employee view", "Account", "Sign out"]);
+    expect(names(morePages())).toEqual(["Availability", "Employee view", "Account", "Sign out"]);
   });
 
   it("employee: no management bar (the Employee Hub bar serves them)", () => {

@@ -142,8 +142,6 @@ export const exchangeInvalidationPrefixes = [
   "schedule-requests",
   "schedule-read",
   "workspace-dashboard",
-  "notifications",
-  "inbox",
 ] as const;
 export async function refreshExchangeSurfaces(
   client: QueryClient,

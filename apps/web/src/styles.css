@@ -8276,113 +8276,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
-.schedule-publish-notify {
-  display: grid;
-  gap: 10px;
-}
-.schedule-publish-notify-heading {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-.schedule-publish-notify-heading > div:first-child {
-  display: grid;
-  gap: 2px;
-}
-.schedule-publish-notify-heading > div:first-child > span,
-.schedule-publish-notify-list strong {
-  color: var(--theme-text);
-  font-size: 13px;
-  font-weight: 500;
-}
-.schedule-publish-notify-heading small,
-.schedule-publish-notify-list p {
-  margin: 0;
-  color: var(--theme-muted);
-  font-size: 12px;
-}
-.schedule-publish-notify-heading > div:last-child {
-  display: flex;
-  gap: 6px;
-}
-.schedule-publish-notify-heading button {
-  min-height: 28px;
-  white-space: nowrap;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 0 10px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 500;
-}
-.schedule-publish-notify-heading button:hover {
-  background: var(--theme-surface-muted);
-}
-.schedule-publish-notify-search {
-  display: grid;
-  grid-template-columns: 16px minmax(0, 1fr);
-  gap: 8px;
-  align-items: center;
-  border: 1px solid var(--theme-muted);
-  border-radius: 6px;
-  padding: 6px 10px;
-  background: var(--theme-surface);
-  color: var(--theme-muted);
-}
-.schedule-publish-notify-search:focus-within {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: 1px;
-}
-.schedule-publish-notify-search input {
-  min-width: 0;
-  border: 0;
-  background: transparent;
-  color: var(--theme-text);
-  font: inherit;
-  font-size: 13px;
-  outline: none;
-}
-.schedule-publish-notify-search input::placeholder {
-  color: var(--theme-muted);
-}
-.schedule-publish-notify-list {
-  display: grid;
-  max-height: 280px;
-  overflow-y: auto;
-  border: 1px solid var(--theme-border-subtle);
-  border-radius: 8px;
-}
-.schedule-publish-notify-list label {
-  display: grid;
-  grid-template-columns: 16px 22px minmax(0, 1fr);
-  gap: 9px;
-  align-items: center;
-  min-height: 34px;
-  padding: 4px 10px;
-  border-bottom: 1px solid var(--theme-border-subtle);
-  cursor: pointer;
-}
-.schedule-publish-notify-list label:last-child {
-  border-bottom: 0;
-}
-.schedule-publish-notify-list input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--theme-accent);
-}
-.schedule-publish-notify-list label > span {
-  width: 22px;
-  height: 22px;
-  border-radius: 999px;
-}
-.schedule-publish-notify-list p {
-  padding: 12px;
-}
 .schedule-publication-footer-summary {
   min-width: 0;
   margin-right: auto;
@@ -12205,39 +12098,11 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 
 /* Phase 8 communication and operations */
-.nav-unread {
-  min-width: 20px;
-  height: 20px;
-  margin-left: auto;
-  padding: 0 5px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  background: #b33a35;
-  color: var(--theme-on-accent);
-  font-size: 10px;
-  font-weight: 800;
-}
-.nav-unread-collapsed {
-  position: absolute;
-  top: -7px;
-  right: -10px;
-  z-index: 20;
-  min-width: 16px;
-  height: 16px;
-  margin-left: 0;
-  padding: 0 4px;
-  border: 2px solid #fff;
-  border-radius: 999px;
-  font-size: 9px;
-  line-height: 1;
-}
 .workspace-page,
 .availability-page,
 .important-dates-page,
 .employees-page,
 .announcements-page,
-.notifications-page,
 .requests-page {
   box-sizing: border-box;
   min-width: 0;
@@ -12642,143 +12507,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-color: #27735b;
   color: #1c5f4b;
 }
-.notification-empty {
-  min-height: 430px;
-  display: grid;
-  place-content: center;
-  justify-items: center;
-  color: #748079;
-  text-align: center;
-}
-.notification-empty h2 {
-  margin: 12px 0 3px;
-  color: #2c3934;
-  font-size: 16px;
-}
-.notification-empty p {
-  margin: 0;
-  font-size: 12px;
-}
-/* Notifications: a framed table like Employees → Documents; day groups are
-   in-table sub-heading rows (KARARLAR "Notifications (gelen kutusu)"). On a
-   phone the table scrolls sideways inside its frame, the page does not. */
-.notification-table {
-  min-width: 720px;
-}
-/* Column shares (KARARLAR Genel → "Liste sayfalarının ortak dili"):
-   select 44, Notification 58%, Category 16%, Received 14%, delete 56. */
-.notification-table .notification-select-cell {
-  width: 44px;
-  padding: 0 0 0 14px;
-}
-.notification-table .notification-category-cell {
-  width: 16%;
-}
-.notification-table .notification-received-cell {
-  width: 14%;
-}
-.notification-table .notification-actions-cell {
-  width: 56px;
-}
-.notification-select-cell input {
-  width: 16px;
-  height: 16px;
-  margin: 0;
-  accent-color: var(--theme-accent);
-  cursor: pointer;
-}
-.notification-table tbody tr[data-selected="true"] {
-  background: var(--theme-selected);
-}
-.notification-selected-count {
-  margin-left: auto;
-  color: var(--theme-text-secondary);
-  font-size: 13px;
-  white-space: nowrap;
-}
-.notifications-page.list-page .catalog-toolbar-filter-row {
-  gap: 14px;
-}
-.notification-title-link {
-  color: inherit;
-  text-decoration: none;
-}
-.notification-title-link:hover strong {
-  text-decoration: underline;
-}
-.notification-delete {
-  display: grid;
-  width: 32px;
-  height: 32px;
-  place-items: center;
-}
-.notification-table tbody tr {
-  height: auto;
-  cursor: default;
-}
-.notification-table tbody td {
-  padding: 12px 14px;
-  vertical-align: top;
-}
-.notification-table tbody td.notification-select-cell {
-  padding: 14px 0 0 14px;
-}
-.notification-table tbody td.notification-actions-cell {
-  padding: 4px 12px;
-}
-.notification-table .notification-main-cell,
-.notification-table .notification-category-cell {
-  white-space: normal;
-}
-.notification-main-cell strong {
-  display: block;
-  color: var(--theme-text);
-  font-size: 13px;
-  font-weight: 650;
-}
-.notification-main-cell p {
-  margin: 3px 0 0;
-  color: var(--theme-text-secondary);
-  font-size: 13px;
-  line-height: 1.45;
-}
-.notifications-page.list-page .notification-table .notification-day-row th {
-  position: static;
-  height: auto;
-  padding: 6px 14px;
-  border-bottom: 1px solid var(--theme-border-subtle);
-  background: var(--theme-surface-soft);
-  color: var(--theme-muted-strong);
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.05em;
-}
-.notification-table tbody tr.notification-day-row:hover,
-.notification-table tbody tr.notification-detail-row:hover {
-  background: transparent;
-}
-.notification-table tbody tr.notification-detail-row td {
-  padding: 0 14px 14px 58px;
-  white-space: normal;
-}
-.notification-table-wrap > .catalog-table-empty {
-  min-height: 320px;
-}
-/* Phone: the opened shift details stay in view while the row scrolls. */
-@media (max-width: 720px) {
-  .notification-table tbody tr.notification-detail-row td {
-    padding-left: 14px;
-  }
-  .notifications-page .notification-detail-row .notification-shift-details {
-    position: sticky;
-    left: 0;
-    max-width: calc(100vw - 58px);
-  }
-}
-.notification-load-more {
-  display: flex;
-  margin: 20px auto 0;
-}
 
 @media (max-width: 980px) {
   .owner-setup-checklist-list {
@@ -12806,14 +12534,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 @media (max-width: 720px) {
   /* On a phone these pages reach both edges with the 16 px gutter, as
      Employees and Announcements did first (Mert 2026-10-13: "sağa sola
-     dayansın", then "evet tabiki" for Workspace, Availability, Notifications
-     and Requests). */
+     dayansın", then "evet tabiki" for Workspace, Availability and
+     Requests). */
   .workspace-page,
   .availability-page,
   .important-dates-page,
   .employees-page,
   .announcements-page,
-  .notifications-page,
   .requests-page {
     width: auto;
     margin-inline: 0;

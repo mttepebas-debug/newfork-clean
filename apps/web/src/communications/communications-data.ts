@@ -7,8 +7,6 @@ import {
   announcementStateResultSchema,
   communicationSavedResultSchema,
   importantDateListSchema,
-  notificationCategorySchema,
-  notificationInboxSchema,
   ownerSetupChecklistItemIdSchema,
   ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
@@ -17,8 +15,6 @@ import {
   type AnnouncementDraft,
   type AnnouncementIntent,
   type AnnouncementStateAction,
-  type NotificationAction,
-  type NotificationCategory,
   type OwnerSetupChecklistItemId,
   type WorkspaceManualTodoInput,
   type WorkspaceLayoutInput,
@@ -29,9 +25,6 @@ import {
   newforkApiUrl,
   supabaseClient,
 } from "../lib/supabase";
-
-export const notificationChangeStorageKey = "newfork.notifications.changed";
-export const notificationChangeEventName = "newfork:notifications-changed";
 
 async function request(
   workspaceId: string,
@@ -214,60 +207,4 @@ export async function acknowledgeAnnouncement(
     `/communications/announcements/${announcementId}/acknowledge`,
     { method: "POST" },
   );
-}
-export async function getNotifications(
-  workspaceId: string,
-  options: {
-    category?: NotificationCategory;
-    readState?: "all" | "seen" | "unseen" | "read" | "unread";
-    severity?: "info" | "success" | "warning" | "action_required";
-    unreadOnly?: boolean;
-    cursor?: string;
-    limit?: number;
-  } = {},
-) {
-  const query = new URLSearchParams({
-    unread_only: String(options.unreadOnly ?? false),
-    limit: String(options.limit ?? 30),
-  });
-  if (options.category)
-    query.set("category", notificationCategorySchema.parse(options.category));
-  if (options.readState) query.set("read_state", options.readState);
-  if (options.severity) query.set("severity", options.severity);
-  if (options.cursor) query.set("cursor", options.cursor);
-  return notificationInboxSchema.parse(
-    await request(
-      workspaceId,
-      `/communications/notifications?${query.toString()}`,
-    ),
-  );
-}
-export async function actOnNotification(
-  workspaceId: string,
-  action: NotificationAction,
-) {
-  const result = communicationSavedResultSchema.parse(
-    await request(workspaceId, "/communications/notifications/action", {
-      method: "POST",
-      body: JSON.stringify(action),
-    }),
-  );
-  announceNotificationChange("");
-  return result;
-}
-
-export function announceNotificationChange(workspaceId: string): void {
-  if (typeof window === "undefined") return;
-  const detail = { workspaceId, changedAt: Date.now() };
-  window.dispatchEvent(
-    new CustomEvent(notificationChangeEventName, { detail }),
-  );
-  try {
-    window.localStorage.setItem(
-      notificationChangeStorageKey,
-      JSON.stringify(detail),
-    );
-  } catch {
-    // Best-effort cross-tab invalidation. The custom event updates this tab.
-  }
 }

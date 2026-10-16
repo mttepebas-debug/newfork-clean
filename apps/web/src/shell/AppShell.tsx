@@ -1,7 +1,5 @@
-import { useAccountNotificationRealtime } from "../communications/use-account-notification-realtime";
 import type { Permission } from "@newfork/shared";
 import {
-  Bell,
   CalendarCheck,
   CalendarDays,
   ChevronDown,
@@ -16,8 +14,8 @@ import {
   Settings,
   Users,
 } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useState, type ComponentType } from "react";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
@@ -33,11 +31,6 @@ import {
   isEmployeeViewPath,
 } from "./EmployeeViewSwitch";
 
-import {
-  getNotifications,
-  notificationChangeEventName,
-  notificationChangeStorageKey,
-} from "../communications/communications-data";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 import { requestAppNavigation } from "./leave-guard";
@@ -168,13 +161,6 @@ const navItems: readonly NavItem[] = [
     parentTo: "/app/announcements",
     roles: ["owner", "admin", "manager"],
   },
-  {
-    to: "/app/notifications",
-    label: "Notifications",
-    icon: Bell,
-    anyOf: ["notifications.read"],
-    section: "shared",
-  },
 ];
 
 const settingsNavItem: NavItem = {
@@ -191,7 +177,6 @@ const settingsNavItem: NavItem = {
 
 export function AppShell() {
   const { context, account, signOut } = useAuth();
-  useAccountNotificationRealtime(account?.userId ?? context?.userId);
   useExchangeRealtime(context);
   const [collapsed, setCollapsed] = useState(false);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
@@ -199,15 +184,7 @@ export function AppShell() {
   );
   const location = useLocation();
   const phone = usePhoneWidth();
-  const workspaceId = context?.workspace.id ?? "";
-  const queryClient = useQueryClient();
   const permissions = new Set(context?.permissions ?? []);
-  const notificationQuery = useQuery({
-    queryKey: ["notifications", account?.userId ?? context?.userId, workspaceId, "sidebar"],
-    queryFn: () => getNotifications(workspaceId, { limit: 1 }),
-    enabled: Boolean(workspaceId),
-    refetchInterval: 60_000,
-  });
   // What the account area is waiting for, totalled. The same query the account
   // nav runs, so opening the account costs no second fetch.
   const accountAttention = useQuery({
@@ -221,37 +198,6 @@ export function AppShell() {
   const accountWaiting =
     (accountAttention.data?.documents ?? 0) +
     (accountAttention.data?.workspaces ?? 0);
-  useEffect(() => {
-    if (!workspaceId) return;
-    const invalidateNotifications = () => {
-      void queryClient.invalidateQueries({ queryKey: ["notifications"] });
-      void queryClient.invalidateQueries({ queryKey: ["announcements"] });
-      void queryClient.invalidateQueries({ queryKey: ["workspace-dashboard"] });
-    };
-    const handleLocalEvent = (event: Event) => {
-      const detail = (event as CustomEvent<{ workspaceId?: string }>).detail;
-      if (!detail?.workspaceId || detail.workspaceId === workspaceId) {
-        invalidateNotifications();
-      }
-    };
-    const handleStorage = (event: StorageEvent) => {
-      if (event.key !== notificationChangeStorageKey || !event.newValue) return;
-      try {
-        const parsed = JSON.parse(event.newValue) as { workspaceId?: string };
-        if (!parsed.workspaceId || parsed.workspaceId === workspaceId) {
-          invalidateNotifications();
-        }
-      } catch {
-        invalidateNotifications();
-      }
-    };
-    window.addEventListener(notificationChangeEventName, handleLocalEvent);
-    window.addEventListener("storage", handleStorage);
-    return () => {
-      window.removeEventListener(notificationChangeEventName, handleLocalEvent);
-      window.removeEventListener("storage", handleStorage);
-    };
-  }, [queryClient, workspaceId]);
   if (!context) return null;
   const isEmployee = context.membership.role === "employee";
   // Owner, admin and manager with an employee record of their own switch to
@@ -266,7 +212,7 @@ export function AppShell() {
       (!item.roles || item.roles.includes(shellRole)) &&
       // KARARLAR "Schedule telefonda tamamen kapalı": a phone shows no Schedule entry.
       !(phone && item.to === "/app/schedule") &&
-      (item.to === "/app/notifications" || item.anyOf.some((permission) => permissions.has(permission))),
+      item.anyOf.some((permission) => permissions.has(permission)),
   );
   const visibleSidebarItems = visibleNavItems.filter(
     (item) =>
@@ -319,10 +265,6 @@ export function AppShell() {
         <nav className="sidebar-nav" aria-label="Primary">
           {visibleSidebarItems.map((item, index) => {
             const Icon = item.icon;
-            const unreadCount =
-              item.to === "/app/notifications"
-                ? (notificationQuery.data?.unread_count ?? 0)
-                : 0;
             const previous = visibleSidebarItems[index - 1];
             const startsEmployeeSection =
               item.section === "employee" && previous?.section === "management";
@@ -365,26 +307,10 @@ export function AppShell() {
                 >
                   <span className="nav-icon-frame">
                     <Icon size={18} aria-hidden />
-                    {collapsed && unreadCount > 0 ? (
-                      <span
-                        className="nav-unread nav-unread-collapsed"
-                        aria-label={`${unreadCount} unread`}
-                      >
-                        {unreadCount > 99 ? "99+" : unreadCount}
-                      </span>
-                    ) : null}
                   </span>
                   <span className={collapsed ? "rail-flyout" : undefined}>
                     {item.label}
                   </span>
-                  {!collapsed && unreadCount > 0 ? (
-                    <span
-                      className="nav-unread"
-                      aria-label={`${unreadCount} unread`}
-                    >
-                      {unreadCount > 99 ? "99+" : unreadCount}
-                    </span>
-                  ) : null}
                 </NavLink>
                 {hasChildren && !collapsed ? (
                   <button

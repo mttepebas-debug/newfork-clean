@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { Bell, Megaphone, ChevronRight, ArrowUpRight } from "lucide-react";
+import { Megaphone, ChevronRight, ArrowUpRight } from "lucide-react";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -8,92 +8,9 @@ import {
   isUnderway,
   type TimeFormat,
 } from "../communications/announcement-model";
-import {
-  getAnnouncements,
-  getNotifications,
-} from "../communications/communications-data";
+import { getAnnouncements } from "../communications/communications-data";
 import { CardHeading } from "./DashboardPrimitives";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
-function useInbox(workspaceId: string) {
-  const { context } = useAuth();
-  return useQuery({
-    queryKey: ["notifications", workspaceId, context?.userId, "hub-preview"],
-    queryFn: () => getNotifications(workspaceId, { limit: 5 }),
-    refetchInterval: 60_000,
-  });
-}
-export function NotificationBell({ workspaceId }: { workspaceId: string }) {
-  const query = useInbox(workspaceId);
-  const count = query.data?.unread_count ?? 0;
-  return (
-    <Link
-      className="eh-icon-button eh-bell"
-      to="/app/notifications"
-      aria-label={`Notifications${count ? `, ${count} unread` : ""}`}
-    >
-      <Bell size={20} />
-      {count > 0 && <span>{count > 9 ? "9+" : count}</span>}
-    </Link>
-  );
-}
-export function RecentChanges({ workspaceId }: { workspaceId: string }) {
-  const query = useInbox(workspaceId);
-  const visible =
-    query.data?.notifications.filter(
-      (item) => item.visibility_state === "visible",
-    ) ?? [];
-  return (
-    <section className="eh-card eh-changes">
-      <CardHeading
-        title="Latest updates"
-        icon={<Bell size={18} />}
-        to="/app/notifications"
-      />
-      {query.isError && query.data ? (
-        <RefreshError
-          message="Updates didn't refresh. These are the last ones that loaded."
-          retrying={query.isFetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {query.isError && !query.data ? (
-        <LoadError
-          inset
-          level={3}
-          title="We couldn't load your updates"
-          detail="Your updates didn't load. Nothing was changed."
-          retrying={query.isFetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : query.isLoading ? (
-        <LinesOutline label="Loading your updates" lines={3} />
-      ) : (
-        visible.slice(0, 3).map((item) => (
-          <Link
-            className="eh-list-link"
-            key={item.id}
-            to={item.action_url ?? "/app/notifications"}
-          >
-            <span
-              className={`eh-update-dot${item.read_at ? " is-read" : ""}`}
-            />
-            <span>
-              <strong>{item.title}</strong>
-              <small>{item.safe_preview || item.body}</small>
-            </span>
-            <ChevronRight size={15} />
-          </Link>
-        ))
-      )}
-      {query.data && !visible.length && (
-        <p className="eh-empty">
-          You’re up to date. Schedule changes and request updates will appear
-          here.
-        </p>
-      )}
-    </section>
-  );
-}
 /** One read for both Home cards that show posts. */
 function useHubAnnouncements(workspaceId: string) {
   const { context } = useAuth();

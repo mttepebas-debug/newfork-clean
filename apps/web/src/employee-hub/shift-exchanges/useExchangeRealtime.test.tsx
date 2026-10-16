@@ -53,7 +53,7 @@ function setup() {
     ["schedule-read", "workspace", "2030-01-07", "week"],
     ["schedule-read", "workspace", "2030-01-14", "week"],
     ["employee-hub", "workspace", "schedule"],
-    ["notifications", "workspace", "sidebar"],
+    ["workspace-dashboard", "workspace"],
     ["schedule-read", "another-workspace", "2030-01-07", "week"],
     ["unrelated-form", "workspace"],
   ];
@@ -113,7 +113,7 @@ describe("joining only a channel the person may join", () => {
 });
 
 describe("workspace staffing and exchange invalidation", () => {
-  it("combines domain, inbox and recovery signals without postponing the first refresh", async () => {
+  it("combines domain and recovery signals without postponing the first refresh", async () => {
     const { client, unmount } = setup();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     changed();
@@ -227,7 +227,7 @@ describe("workspace staffing and exchange invalidation", () => {
     unmount();
   });
 
-  it("invalidates both cached weeks, the hub and inbox without replacing their data", async () => {
+  it("invalidates both cached weeks, the hub and the dashboard without replacing their data", async () => {
     const { client, keys, unmount } = setup();
     act(() =>
       realtime.channels[0]?.broadcast?.({

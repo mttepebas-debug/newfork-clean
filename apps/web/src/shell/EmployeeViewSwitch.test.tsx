@@ -28,7 +28,7 @@ const owner = {
     status: "active",
     allLocations: true,
   },
-  permissions: ["workspace.read", "schedule.read", "employees.read", "notifications.read"],
+  permissions: ["workspace.read", "schedule.read", "employees.read"],
   actions: ["employee_hub.read"],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
@@ -38,11 +38,6 @@ const owner = {
 let current: ActiveWorkspaceContext = owner;
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: current, signOut: vi.fn() }),
-}));
-vi.mock("../communications/communications-data", () => ({
-  getNotifications: vi.fn().mockResolvedValue({ unread_count: 0, items: [] }),
-  notificationChangeEventName: "newfork:notifications-changed",
-  notificationChangeStorageKey: "newfork.notifications.changed",
 }));
 
 const sidebar = () => within(screen.getByRole("complementary", { name: "Application sidebar" }));

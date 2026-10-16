@@ -799,14 +799,6 @@ vi.mock("./schedule/hooks/useScheduleViewerPresence", () => ({
 }));
 
 vi.mock("./communications/communications-data", () => ({
-  notificationChangeEventName: "newfork:notifications-changed",
-  notificationChangeStorageKey: "newfork.notifications.changed",
-  getNotifications: vi.fn().mockResolvedValue({
-    workspace_id: scheduleFixture.workspace_id,
-    unread_count: 0,
-    next_cursor: null,
-    notifications: [],
-  }),
   getWorkspaceDashboard: vi.fn().mockResolvedValue({
     workspace_id: scheduleFixture.workspace_id,
     display_name: "Development user",
@@ -839,7 +831,6 @@ vi.mock("./communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
   saveAnnouncement: vi.fn(),
   transitionAnnouncement: vi.fn(),
-  actOnNotification: vi.fn(),
 }));
 
 describe("App", () => {
@@ -5245,10 +5236,7 @@ describe("App", () => {
       ...scheduleFixture.employees[0]!,
       id: `55555555-5555-4555-8555-${String(600 + index).padStart(12, "0")}`,
       employee_code: `NF-${String(600 + index).padStart(3, "0")}`,
-      display_name:
-        index === 1
-          ? "Bailey Notify"
-          : `Notify ${String(index + 1).padStart(2, "0")}`,
+      display_name: `Employee ${String(index + 1).padStart(2, "0")}`,
     }));
     const affectedEmployeeIds = publishEmployees.map((employee) => employee.id);
     const readModelMock = vi.mocked(getScheduleReadModel);
@@ -5303,12 +5291,6 @@ describe("App", () => {
       location_ids: [scheduleFixture.locations[0]!.id],
       publication_ids: ["bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb"],
       published_shift_count: 1,
-      notification_count: 0,
-      notification_warning: {
-        code: "notification_enqueue_unavailable",
-        message:
-          "Schedule published, but employee notifications could not be created.",
-      },
       published_at: "2026-08-17T12:05:00Z",
     });
 
@@ -5356,30 +5338,7 @@ describe("App", () => {
     expect(screen.getByText("2026-08-17 · Main Dining")).toBeTruthy();
     // Soft findings are confirmed from the recap without a reason form.
     expect(screen.queryByRole("textbox", { name: "Reason" })).toBeNull();
-    await clickReadyButton(screen, "Next");
-    await waitFor(() =>
-      expect(
-        container.querySelector(
-          ".schedule-publication-steps span[data-active='true']",
-        )?.textContent,
-      ).toContain("Notify"),
-    );
-    expect(
-      screen.getByText("15 of 15 employees will be notified"),
-    ).toBeTruthy();
-    fireEvent.change(
-      screen.getByRole("textbox", { name: "Search employees" }),
-      {
-        target: { value: "Bailey" },
-      },
-    );
-    const notifyList = container.querySelector<HTMLElement>(
-      ".schedule-publish-notify-list",
-    );
-    expect(notifyList).toBeTruthy();
-    expect(within(notifyList!).getByText("Bailey Notify")).toBeTruthy();
-    expect(within(notifyList!).queryByText("Notify 15")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
+    await clickReadyButton(screen, "Publish 1 location");
 
     await waitFor(() =>
       expect(publishScheduleDraft).toHaveBeenCalledWith(
@@ -5390,7 +5349,6 @@ describe("App", () => {
             finding_id: "closed-location-finding",
           },
         ],
-        affectedEmployeeIds,
         {
           fingerprint: "a".repeat(64),
           decisions: [
@@ -5405,11 +5363,7 @@ describe("App", () => {
     expect(
       await screen.findByText("Schedule published"),
     ).toBeTruthy();
-    expect(
-      screen.getByText(
-        "Schedule published, but employee notifications could not be created.",
-      ),
-    ).toBeTruthy();
+    expect(screen.getByText("1 location and 1 change published.")).toBeTruthy();
     readModelMock.mockResolvedValue(scheduleFixture);
   });
 
@@ -5447,11 +5401,9 @@ describe("App", () => {
     readModelMock.mockResolvedValue(scheduleFixture);
   });
 
-  // BL-311: both toasts count in the singular ("1 location", "1 employee").
-  it.each([
-    [0, "1 location and 0 changes published."],
-    [1, "1 location, 0 changes, 1 employee notified."],
-  ])("returns to the live schedule after publishing a draft preview (%i notified)", async (notificationCount, toastText) => {
+  // BL-311: the toast counts in the singular ("1 location").
+  it("returns to the live schedule after publishing a draft preview", async () => {
+    const toastText = "1 location and 0 changes published.";
     const draft = {
       id: "99999999-9999-4999-8999-999999999997",
       workspace_id: scheduleFixture.workspace_id,
@@ -5533,7 +5485,6 @@ describe("App", () => {
       // BL-614: the server counts every published shift; the toast counts changes.
       published_shift_count: 12,
       published_at: "2026-08-17T12:05:00Z",
-      notification_count: notificationCount,
     });
 
     window.history.pushState(
@@ -5559,7 +5510,6 @@ describe("App", () => {
     const publishDialog = await screen.findByRole("dialog", {
       name: "Select locations to publish",
     });
-    await clickReadyButton(within(publishDialog), "Next");
     await clickReadyButton(within(publishDialog), "Next");
     fireEvent.click(
       within(publishDialog).getByRole("button", { name: "Publish 1 location" }),
@@ -6501,8 +6451,6 @@ describe("App", () => {
     ).toBeTruthy();
     // Risks are confirmed from the recap; there is no extra checkbox.
     expect(within(screen.getByRole("dialog")).queryByRole("checkbox")).toBeNull();
-    await clickReadyButton(screen, "Next");
-    expect(screen.getByText("1 of 1 employee will be notified")).toBeTruthy();
     const publishButton = screen.getByRole("button", {
       name: "Publish 1 location",
     });
@@ -6518,7 +6466,6 @@ describe("App", () => {
             finding_id: "risk-advance-notice",
           },
         ],
-        [scheduleFixture.employees[0]!.id],
         {
           fingerprint: "b".repeat(64),
           decisions: [
@@ -6638,7 +6585,6 @@ describe("App", () => {
       screen.getByRole("button", { name: "Publish another draft" }),
     );
     await clickReadyButton(screen, "Next");
-    await clickReadyButton(screen, "Next");
     await clickReadyButton(screen, "Publish 1 location");
 
     expect(
@@ -6651,8 +6597,7 @@ describe("App", () => {
         ".schedule-publication-steps span[data-active='true']",
       )?.textContent,
     ).toContain("Pre-flight");
-    await clickReadyButton(screen, "Next");
-    fireEvent.click(screen.getByRole("button", { name: "Publish 1 location" }));
+    await clickReadyButton(screen, "Publish 1 location");
 
     await waitFor(() =>
       expect(publishScheduleDraft).toHaveBeenLastCalledWith(
@@ -6663,7 +6608,6 @@ describe("App", () => {
             finding_id: "stale-availability-finding",
           },
         ],
-        [scheduleFixture.employees[0]!.id],
         {
           fingerprint: "d".repeat(64),
           decisions: [
@@ -6754,7 +6698,6 @@ describe("App", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Publish another draft" }),
     );
-    await clickReadyButton(screen, "Next");
     await clickReadyButton(screen, "Next");
     await clickReadyButton(screen, "Publish 1 location");
 
@@ -7345,6 +7288,26 @@ describe("App", () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(window.location.pathname).toBe("/app/employee-hub");
+  });
+
+  // BILDIRIM-02 (KARARLAR S-123, S-96): the old notification screens are gone
+  // until the new system lands; their addresses fall through to the landing page.
+  it.each([
+    ["owner", "/app/notifications", "/app/workspace"],
+    ["owner", "/app/settings/notifications", "/app/workspace"],
+    ["owner", "/account/inbox", "/app/workspace"],
+    ["owner", "/account/preferences/notifications", "/app/workspace"],
+    ["employee", "/app/notifications", "/app/employee-hub"],
+    ["employee", "/account/inbox", "/app/employee-hub"],
+    ["employee", "/app/account/documents?kind=document", "/app/employee-hub"],
+  ] as const)("sends a %s from the retired notification address %s to %s", async (role, address, landing) => {
+    window.history.pushState({}, "", address);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs(role);
+
+    await waitFor(() => expect(window.location.pathname).toBe(landing));
+    expect(screen.queryByRole("heading", { name: /Notifications|Inbox/ })).toBeNull();
   });
 
   it("shows employee-only users the no-access card at the manager Workspace route", async () => {

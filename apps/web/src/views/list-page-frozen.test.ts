@@ -22,7 +22,6 @@ describe("frozen list pages", () => {
     "availability-page",
     "employees-page",
     "requests-page",
-    "notifications-page",
     "announcements-page",
     "document-catalog-settings-page",
     // Settings → Jobs joined the shared list look on 2026-10-14 (Mert's

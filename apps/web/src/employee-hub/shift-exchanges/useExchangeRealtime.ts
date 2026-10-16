@@ -9,7 +9,7 @@ import { refreshExchangeSurfaces } from "./exchange-data";
  * Events only invalidate authenticated reads; they never set assignment data.
  * The channel opens only for someone the core lets join it (its policy asks
  * exchange.offer_own): a refused private join holds every other join on the
- * shared socket for ~5 s, the person's own notifications included (BL-115).
+ * shared socket for ~5 s (BL-115).
  * The 60 s fallback and the online/visible refreshes need no channel, so
  * everyone in the workspace keeps them (BL-152).
  */
@@ -49,7 +49,7 @@ export function useExchangeRealtime(
       if (disposed) return;
       pending = true;
       if (!canRefresh() || refreshing || queued !== undefined) return;
-      // Domain and inbox commits commonly arrive 45–220ms apart. The window
+      // Related commits commonly arrive 45–220ms apart. The window
       // starts at the first signal, so ongoing events cannot postpone it.
       queued = window.setTimeout(() => void flush(), 250);
     };

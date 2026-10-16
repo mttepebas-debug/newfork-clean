@@ -1,14 +1,12 @@
 import {
   ArrowLeftRight,
   ArrowUpRight,
-  Bell,
   CalendarDays,
   Home,
   LayoutDashboard,
   LayoutGrid,
   LogOut,
   Megaphone,
-  Settings2,
   UserCircle,
 } from "lucide-react";
 import { Link, NavLink, useLocation } from "react-router";
@@ -77,13 +75,6 @@ export function EmployeeMorePage() {
       enabled: context?.permissions.includes("announcements.read"),
     },
     {
-      label: "Notifications",
-      detail: "Your latest updates",
-      to: "/app/notifications",
-      icon: Bell,
-      enabled: Boolean(context),
-    },
-    {
       label: "My account",
       detail: "Your profile and preferences",
       to: "/account/profile",
@@ -95,13 +86,6 @@ export function EmployeeMorePage() {
       detail: context?.workspace.name ?? "Your workspaces",
       to: "/account/workspaces",
       icon: ArrowLeftRight,
-      enabled: true,
-    },
-    {
-      label: "Notification preferences",
-      detail: "Choose how you hear from us",
-      to: "/account/preferences/notifications",
-      icon: Settings2,
       enabled: true,
     },
   ];

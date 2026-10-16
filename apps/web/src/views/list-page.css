@@ -1,5 +1,5 @@
 /* DOC-TABLE: the one look of the list pages — Settings → Documents,
-   Employees → Documents, Announcements, Important Dates, Notifications and
+   Employees → Documents, Announcements, Important Dates and
    Availability (KARARLAR Genel → "Liste sayfalarının ortak dili"). A page
    joins by adding `list-page` to its section; nothing else reads these rules.
    Selectors carry `.list-page` twice where a page's own stylesheet (loaded
@@ -126,8 +126,7 @@
   font-size: 13px;
 }
 
-/* The add button (green below) and the Notifications bulk button (white), 36 high,
-   as wide as its words. */
+/* The add button (green below), 36 high, as wide as its words. */
 .list-page .list-add-button {
   display: inline-flex;
   box-sizing: border-box;
@@ -157,8 +156,7 @@
   outline-offset: 2px;
 }
 /* A list page's own add action (New document, New announcement, New date) is
-   green, the action colour (Mert, 2026-10-06, list system 1). The Notifications
-   bulk button keeps the white style above. */
+   green, the action colour (Mert, 2026-10-06, list system 1). */
 .list-page .list-add-button.list-add-action {
   border-color: var(--theme-accent);
   background: var(--theme-accent);

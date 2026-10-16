@@ -119,23 +119,6 @@
   border-radius: 50%;
   font-size: 13px;
 }
-.eh-bell {
-  position: relative;
-}
-.eh-bell > span {
-  position: absolute;
-  right: 0;
-  top: 0;
-  background: #ac5035;
-  color: #fff;
-  min-width: 19px;
-  padding: 2px 4px;
-  border: 2px solid var(--eh-wash);
-  border-radius: 12px;
-  font-size: 10px;
-  line-height: 13px;
-  text-align: center;
-}
 .eh-eyebrow {
   display: flex;
   align-items: center;
@@ -532,7 +515,7 @@
   border-bottom: 0;
   padding-bottom: 0;
 }
-.eh-list-link > span:not(.eh-update-dot) {
+.eh-list-link > span {
   min-width: 0;
   flex: 1;
 }
@@ -557,16 +540,6 @@
 .eh-list-link > svg {
   flex-shrink: 0;
   color: var(--eh-muted);
-}
-.eh-update-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: #659361;
-  flex-shrink: 0;
-}
-.eh-update-dot.is-read {
-  background: var(--theme-border);
 }
 .eh-notice-category {
   text-transform: uppercase;

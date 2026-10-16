@@ -66,7 +66,6 @@ export const announcementQueryKeys = [
   "important-dates",
   "schedule-read",
   "employee-hub",
-  "notifications",
   "workspace-dashboard",
 ] as const;
 

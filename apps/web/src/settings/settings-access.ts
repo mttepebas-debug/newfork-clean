@@ -23,10 +23,6 @@ export const settingsPageGates = {
   general: [{ permission: "settings.general.read" }],
   locations: [{ permission: "settings.locations.read" }],
   jobs: [{ action: "settings.jobs.read" }],
-  notifications: [
-    { action: "settings.notifications.read" },
-    { action: "settings.notifications.write" },
-  ],
   scheduling: [{ permission: "settings.schedule_rules.read" }],
   conflicts: [{ action: "settings.conflict_rules.write" }],
   shiftCatalog: [{ action: "settings.shift_catalog.read" }],
@@ -75,7 +71,6 @@ const settingsHomeOrder = [
   ["shiftCatalog", "/app/settings/scheduling/shift-types"],
   ["conflicts", "/app/settings/scheduling/conflicts"],
   ["scheduling", "/app/settings/scheduling"],
-  ["notifications", "/app/settings/notifications"],
   ["roles", "/app/settings/roles"],
   ["documents", "/app/settings/documents"],
 ] as const satisfies readonly (readonly [SettingsPage, string])[];

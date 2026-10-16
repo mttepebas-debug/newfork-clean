@@ -132,18 +132,6 @@ function coreAllows(persona: Persona, action: AuthzAction): boolean {
     // set, read: a manager where they work.
     case "settings.locations.read":
       return placesTried.some((locations) => expected(actor, action, { locations }));
-    // org rows without a twin cell: settings.notifications.read is org/read,
-    // settings.notifications.write org/write (20260924123013).
-    case "settings.notifications.read":
-    case "settings.notifications.write": {
-      const permission =
-        action === "settings.notifications.read"
-          ? "notifications.settings.read"
-          : "notifications.settings.write";
-      if (persona.role === "employee") return false;
-      if (!actor.permissions.includes(permission)) return false;
-      return persona.role !== "manager" || action === "settings.notifications.read";
-    }
     // person, read (employee documents): owner and admin anywhere, a manager
     // where they work.
     case "documents.read":
@@ -163,8 +151,6 @@ const modelledActions = [
   "settings.signature_templates.read",
   "settings.conflict_rules.write",
   "settings.locations.read",
-  "settings.notifications.read",
-  "settings.notifications.write",
   "documents.read",
 ] as const satisfies readonly AuthzAction[];
 
@@ -200,14 +186,17 @@ function contextOf(persona: Persona): ActiveWorkspaceContext {
   };
 }
 
-/* The gates before the move, copied from origin/main a205e2a6. */
+/*
+ * The gates before the move, copied from origin/main a205e2a6, less the
+ * Notifications page: BILDIRIM-02 took it out (KARARLAR S-123), so a role
+ * holding only the notification keys opens no Settings page any more.
+ */
 
 /** App.tsx: each Settings route's guard. */
 const before = {
   general: { anyOf: ["settings.general.read"] },
   locations: { anyOf: ["settings.locations.read"] },
   jobs: { anyOf: ["settings.jobs.read"] },
-  notifications: { anyOf: ["notifications.settings.read", "notifications.settings.write"] },
   scheduling: { anyOf: ["settings.schedule_rules.read"] },
   conflicts: { anyOf: ["schedule.conflict_rules.manage"] },
   shiftCatalog: { anyOf: ["settings.shift_catalog.read"] },
@@ -232,7 +221,6 @@ const railBefore: Record<SettingsPage, readonly Permission[]> = {
   general: ["settings.general.read"],
   locations: ["settings.locations.read"],
   jobs: ["settings.jobs.read"],
-  notifications: ["notifications.settings.read", "notifications.settings.write"],
   scheduling: ["settings.schedule_rules.read"],
   conflicts: ["schedule.conflict_rules.manage"],
   shiftCatalog: ["settings.shift_catalog.read"],
@@ -252,8 +240,6 @@ function enteredSettingsBefore(context: ActiveWorkspaceContext) {
       "settings.schedule_rules.read",
       "schedule.conflict_rules.manage",
       "roles.read",
-      "notifications.settings.read",
-      "notifications.settings.write",
     ].some((permission) => context.permissions.includes(permission as Permission)) ||
     ["settings.documents.read", "documents.read", "settings.signature_templates.read"].some(
       (action) => context.actions.includes(action as AuthzAction),
@@ -276,14 +262,11 @@ function homeBefore(context: ActiveWorkspaceContext) {
             ? "/app/settings/scheduling/conflicts"
             : permissions.has("settings.schedule_rules.read")
               ? "/app/settings/scheduling"
-              : permissions.has("notifications.settings.read") ||
-                  permissions.has("notifications.settings.write")
-                ? "/app/settings/notifications"
-                : permissions.has("roles.read")
-                  ? "/app/settings/roles"
-                  : permissions.has("documents.read")
-                    ? "/app/settings/documents"
-                    : "/app/schedule";
+              : permissions.has("roles.read")
+                ? "/app/settings/roles"
+                : permissions.has("documents.read")
+                  ? "/app/settings/documents"
+                  : "/app/schedule";
 }
 
 const pages = Object.keys(before) as SettingsPage[];
@@ -364,7 +347,6 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     };
     expect(pages.filter((page) => routeOpenedBefore(context, page) !== canOpenSettingsPage(context, page))).toEqual([
       "jobs",
-      "notifications",
       "conflicts",
       "shiftCatalog",
       "roles",
@@ -400,7 +382,6 @@ describe("App.tsx Settings routes", () => {
       ["general", "general"],
       ["locations", "locations"],
       ["jobs", "jobs"],
-      ["notifications", "notifications"],
       ["scheduling", "scheduling"],
       ["scheduling/conflicts", "conflicts"],
       ["scheduling/shift-types", "shiftCatalog"],

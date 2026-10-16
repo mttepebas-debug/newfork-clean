@@ -18,10 +18,7 @@ vi.mock("../employee-hub/shift-exchanges/exchange-data", () => ({
   getExchanges: vi.fn(), getExchangeCandidates: vi.fn(), getExchangePreview: vi.fn(),
   changeExchange: vi.fn(), refreshExchangeSurfaces: vi.fn(), ExchangeError: class extends Error {},
 }));
-import {
-  getAnnouncements,
-  getNotifications,
-} from "../communications/communications-data";
+import { getAnnouncements } from "../communications/communications-data";
 import {
   actOnEmployeeRequest,
   getEmployeeHub,
@@ -218,7 +215,6 @@ vi.mock("../schedule/requests-data", async (importOriginal) => {
 });
 vi.mock("../communications/communications-data", () => ({
   getAnnouncements: vi.fn(),
-  getNotifications: vi.fn(),
 }));
 vi.mock("../employee-hub/employee-hub-data", () => ({
   getEmployeePersonalTasks: vi.fn().mockResolvedValue([]),
@@ -283,12 +279,6 @@ describe("EmployeeHubPage", () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [] });
     context.permissions = ["workspace.read", "schedule.read"];
     context.actions = [];
-    vi.mocked(getNotifications).mockResolvedValue({
-      workspace_id: workspaceId,
-      unread_count: 0,
-      next_cursor: null,
-      notifications: [],
-    });
     vi.mocked(getAnnouncements).mockResolvedValue({
       workspace_id: workspaceId,
       can_manage: false,
@@ -304,6 +294,17 @@ describe("EmployeeHubPage", () => {
     vi.mocked(getEmployeePersonalTasks).mockResolvedValue([]);
     vi.mocked(changeEmployeePersonalTask).mockResolvedValue([]);
   });
+  // BILDIRIM-02 (KARARLAR S-123, S-96): no bell, no updates card, no
+  // preferences link until the new notification system lands.
+  it("shows Home without the old notification bell, updates card or preferences link", async () => {
+    context.permissions = [...context.permissions, "notifications.read"];
+    renderPage();
+    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /^Notifications/ })).toBeNull();
+    expect(screen.queryByRole("heading", { name: "Latest updates" })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Notification preferences/ })).toBeNull();
+  });
+
   it("lets the employee reach More without loading the schedule service", async () => {
     renderPage("/app/employee-hub/more");
     expect(
@@ -319,21 +320,13 @@ describe("EmployeeHubPage", () => {
     expect(screen.queryByText("You’re all caught up")).toBeNull();
   });
 
-  it("keeps the daily hub usable if both communication panels fail", async () => {
-    context.permissions = [
-      ...context.permissions,
-      "notifications.read",
-      "announcements.read",
-    ];
+  it("keeps the daily hub usable if the notices panel fails", async () => {
+    context.permissions = [...context.permissions, "announcements.read"];
     context.actions = ["announcement.read"];
-    vi.mocked(getNotifications).mockRejectedValue(
-      new Error("Updates unavailable"),
-    );
     vi.mocked(getAnnouncements).mockRejectedValue(
       new Error("Notices unavailable"),
     );
     renderPage();
-    expect(await screen.findByRole("heading", { name: "We couldn't load your updates" })).toBeTruthy();
     expect(await screen.findByRole("heading", { name: "We couldn't load team notices" })).toBeTruthy();
     expect(screen.queryByText(/unavailable/)).toBeNull();
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
@@ -362,20 +355,16 @@ describe("EmployeeHubPage", () => {
     expect(screen.queryByText("Unavailable")).toBeNull();
   });
 
-  it("keeps the updates and notices cards' last answer when their refresh fails", async () => {
-    context.permissions = [...context.permissions, "notifications.read", "announcements.read"];
+  it("keeps the notices card's last answer when its refresh fails", async () => {
+    context.permissions = [...context.permissions, "announcements.read"];
     context.actions = ["announcement.read"];
     const { client } = renderPageWithFixture(fixture);
-    expect(await screen.findByText(/You’re up to date/)).toBeTruthy();
     expect(await screen.findByText("No new notices. Enjoy a little quiet.")).toBeTruthy();
-    vi.mocked(getNotifications).mockRejectedValueOnce(new Error("Updates unavailable"));
     vi.mocked(getAnnouncements).mockRejectedValueOnce(new Error("Notices unavailable"));
     await act(async () => {
       await client.refetchQueries({ predicate: (query) => query.queryKey.includes("hub-preview") });
     });
-    expect(await screen.findByText("Updates didn't refresh. These are the last ones that loaded.")).toBeTruthy();
-    expect(screen.getByText("Team notices didn't refresh. These are the last ones that loaded.")).toBeTruthy();
-    expect(screen.getByText(/You’re up to date/)).toBeTruthy();
+    expect(await screen.findByText("Team notices didn't refresh. These are the last ones that loaded.")).toBeTruthy();
     expect(screen.getByText("No new notices. Enjoy a little quiet.")).toBeTruthy();
     expect(screen.queryByText(/unavailable/)).toBeNull();
   });
@@ -737,7 +726,7 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByRole("tab", { name: "Availability" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByLabelText("Start")).toBeNull();
     expect(screen.queryByLabelText("Starts on")).toBeNull();
-    expect(screen.getByText(/manager may miss the notification/)).toBeTruthy();
+    expect(screen.getByText(/do not change assigned shifts/)).toBeTruthy();
     fireEvent.click(day);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledWith(workspaceId,
