@@ -86,6 +86,8 @@ import {
   createCommunicationService,
   type CommunicationService,
 } from "./communications/communication-service";
+import { registerMaintenanceRoutes } from "./maintenance/maintenance-routes";
+import { createMaintenanceWorker, type MaintenanceWorker } from "./maintenance/maintenance-worker";
 import { registerNotificationOutboxRoutes } from "./notifications/notification-outbox-routes";
 import {
   createNotificationOutboxWorker,
@@ -195,6 +197,10 @@ export interface BuildAppOptions {
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationOutboxCron?: {
+    readonly cronSecret?: string;
+  };
+  readonly maintenanceWorker?: MaintenanceWorker | null;
+  readonly maintenanceCron?: {
     readonly cronSecret?: string;
   };
 }
@@ -341,6 +347,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.notificationOutboxWorker === undefined
       ? createNotificationOutboxWorkerFromEnvironment()
       : options.notificationOutboxWorker;
+  const maintenanceWorker =
+    options.maintenanceWorker === undefined
+      ? createMaintenanceWorkerFromEnvironment()
+      : options.maintenanceWorker;
   const notificationSettingsService =
     options.notificationSettingsService ??
     createNotificationSettingsServiceFromEnvironment();
@@ -815,6 +825,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     cronSecret:
       options.notificationOutboxCron?.cronSecret ?? process.env.CRON_SECRET,
   });
+  registerMaintenanceRoutes(app, {
+    worker: maintenanceWorker,
+    cronSecret: options.maintenanceCron?.cronSecret ?? process.env.CRON_SECRET,
+  });
   registerScheduleRequestsRoutes(app, {
     service: scheduleRequestsService,
     contextResolver,
@@ -1140,6 +1154,12 @@ function createSignatureSettingsServiceFromEnvironment(): SignatureSettingsServi
   return url && serviceRoleKey
     ? createSignatureSettingsService({ url, serviceRoleKey })
     : null;
+}
+
+function createMaintenanceWorkerFromEnvironment(): MaintenanceWorker | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && serviceRoleKey ? createMaintenanceWorker({ url, serviceRoleKey }) : null;
 }
 
 function createNotificationOutboxWorkerFromEnvironment(): NotificationOutboxWorker | null {

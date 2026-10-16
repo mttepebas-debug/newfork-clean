@@ -1,5 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
-import { createNotificationOutboxWorkerWithClient, readDocumentMaintenance } from "./notification-outbox-worker";
+import { createNotificationOutboxWorker, createNotificationOutboxWorkerWithClient } from "./notification-outbox-worker";
+
+const { createClient } = vi.hoisted(() => ({ createClient: vi.fn() }));
+vi.mock("@supabase/supabase-js", () => ({ createClient }));
 
 describe("notification outbox worker", () => {
   it("leases a bounded batch and processes each item", async () => {
@@ -141,135 +144,22 @@ describe("notification outbox worker", () => {
       dead_lettered: 1,
     });
   });
-  it("delivers deadline events produced by maintenance in the same batch", async () => {
-    let deadlineEventReady = false;
-    const prepareBatch = vi.fn(async () => {
-      deadlineEventReady = true;
-      return { expired: 1, invalidated: 0, skipped_busy: 0 };
-    });
-    const rpc = vi.fn(async (name: string) => ({
-      error: null,
-      data:
-        name === "lease_notification_outbox_service"
-          ? deadlineEventReady
-            ? [
-                {
-                  id: "e1500000-0000-4000-8000-000000000009",
-                  event_id: "e1510000-0000-4000-8000-000000000009",
-                  attempt_count: 1,
-                },
-              ]
-            : []
-          : { status: "processed" },
-    }));
-    const worker = createNotificationOutboxWorkerWithClient(
-      { rpc },
-      { prepareBatch },
-    );
-    await expect(worker.runBatch()).resolves.toMatchObject({
-      maintenance: { expired: 1 },
-      leased: 1,
-      processed: 1,
+
+  // BILDIRIM-01 (K1, K2): expired shift exchanges and document deadlines run on the maintenance
+  // cron; the outbox worker only delivers, so tearing it down leaves that work running.
+  it("leaves shift exchange and document maintenance to the maintenance cron", async () => {
+    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    createClient.mockReturnValue({ rpc });
+    const worker = createNotificationOutboxWorker({ url: "http://db.test", serviceRoleKey: "service" });
+
+    await expect(worker.runBatch()).resolves.toEqual({
+      leased: 0,
+      processed: 0,
+      skipped: 0,
+      retried: 0,
+      dead_lettered: 0,
       failed: 0,
     });
-    expect(prepareBatch).toHaveBeenCalledTimes(1);
-  });
-  it("reports maintenance failure while keeping unrelated notifications flowing", async () => {
-    const rpc = vi
-      .fn()
-      .mockResolvedValueOnce({
-        data: [
-          {
-            id: "e1500000-0000-4000-8000-000000000010",
-            event_id: "e1510000-0000-4000-8000-000000000010",
-            attempt_count: 1,
-          },
-        ],
-        error: null,
-      })
-      .mockResolvedValueOnce({ data: { status: "processed" }, error: null });
-    const worker = createNotificationOutboxWorkerWithClient(
-      { rpc },
-      {
-        prepareBatch: async () => {
-          throw new Error("maintenance unavailable");
-        },
-      },
-    );
-    await expect(worker.runBatch()).resolves.toMatchObject({
-      maintenance: { failed: true },
-      processed: 1,
-      failed: 1,
-    });
-  });
-  it("isolates document maintenance failure from shift maintenance and outbox delivery", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
-    const prepareBatch = vi
-      .fn()
-      .mockResolvedValue({ expired: 0, invalidated: 0, skipped_busy: 0 });
-    const worker = createNotificationOutboxWorkerWithClient(
-      { rpc },
-      {
-        prepareBatch,
-        prepareDocuments: async () => {
-          throw new Error("document maintenance unavailable");
-        },
-      },
-    );
-    await expect(worker.runBatch()).resolves.toMatchObject({
-      maintenance: { expired: 0 },
-      documentMaintenance: { failed: true },
-      leased: 0,
-      failed: 1,
-    });
-    expect(prepareBatch).toHaveBeenCalledOnce();
-    expect(rpc).toHaveBeenCalledWith(
-      "lease_notification_outbox_service",
-      expect.anything(),
-    );
-  });
-  // BL-965: the failure used to leave only { failed: true }; the message is what the cron route logs.
-  it("keeps each maintenance failure's message", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
-    const worker = createNotificationOutboxWorkerWithClient(
-      { rpc },
-      {
-        prepareBatch: async () => {
-          throw new Error("shift maintenance unavailable");
-        },
-        prepareDocuments: async () => {
-          throw new Error('null value in column "notification_key"');
-        },
-      },
-    );
-    await expect(worker.runBatch()).resolves.toMatchObject({
-      maintenance: { failed: true, error: "shift maintenance unavailable" },
-      documentMaintenance: { failed: true, error: 'null value in column "notification_key"' },
-    });
-  });
-  it("reads the cases document maintenance skipped after an error, 0 when the database does not say", () => {
-    expect(readDocumentMaintenance({ checked: 3, enqueued: 1, failed_cases: 1 })).toEqual({ checked: 3, enqueued: 1, failed_cases: 1 });
-    expect(readDocumentMaintenance({ checked: 3, enqueued: 1 })).toEqual({ checked: 3, enqueued: 1, failed_cases: 0 });
-  });
-  it("runs document maintenance even when shift maintenance fails", async () => {
-    const rpc = vi.fn().mockResolvedValue({ data: [], error: null });
-    const prepareDocuments = vi
-      .fn()
-      .mockResolvedValue({ checked: 2, enqueued: 1 });
-    const worker = createNotificationOutboxWorkerWithClient(
-      { rpc },
-      {
-        prepareBatch: async () => {
-          throw new Error("shift maintenance unavailable");
-        },
-        prepareDocuments,
-      },
-    );
-    await expect(worker.runBatch()).resolves.toMatchObject({
-      maintenance: { failed: true },
-      documentMaintenance: { checked: 2, enqueued: 1 },
-      failed: 1,
-    });
-    expect(prepareDocuments).toHaveBeenCalledOnce();
+    expect(rpc.mock.calls.map(([name]) => name)).toEqual(["lease_notification_outbox_service"]);
   });
 });

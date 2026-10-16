@@ -24,35 +24,9 @@ interface NotificationRpcClient {
   }>;
 }
 
-const maintenanceSchema = z.object({
-  expired: z.number().int().nonnegative(),
-  invalidated: z.number().int().nonnegative(),
-  skipped_busy: z.number().int().nonnegative(),
-});
-type MaintenanceResult = z.infer<typeof maintenanceSchema>;
-
-const documentMaintenanceSchema = z.object({
-  checked: z.number().int().nonnegative(),
-  enqueued: z.number().int().nonnegative(),
-  // BL-965: cases the database skipped after an error; a database without the field skipped none
-  failed_cases: z.number().int().nonnegative().default(0),
-});
-type DocumentMaintenanceResult = z.infer<typeof documentMaintenanceSchema>;
-export const readDocumentMaintenance = (data: unknown): DocumentMaintenanceResult => documentMaintenanceSchema.parse(data);
-
-/** A maintenance step that threw; the cron route logs the message (BL-965). */
-export interface MaintenanceFailure {
-  readonly failed: true;
-  readonly error: string;
-}
-const maintenanceFailure = (error: unknown): MaintenanceFailure => ({
-  failed: true,
-  error: error instanceof Error ? error.message : String(error),
-});
-
+// Delivery only. Closing expired shift exchanges and document deadlines run on the maintenance
+// cron (apps/api/src/maintenance, BILDIRIM-01), so this worker can go without taking them along.
 export interface NotificationOutboxBatchResult {
-  documentMaintenance?: DocumentMaintenanceResult | MaintenanceFailure;
-  maintenance?: MaintenanceResult | MaintenanceFailure;
   leased: number;
   processed: number;
   skipped: number;
@@ -77,30 +51,12 @@ export function createNotificationOutboxWorker(options: {
   const client = createClient(options.url, options.serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   }) as unknown as NotificationRpcClient;
-  return createNotificationOutboxWorkerWithClient(client, {
-    ...options,
-    prepareDocuments: async () => {
-      const result = await client.rpc("documents_maintain_service", {
-        target_batch_size: 100,
-      });
-      if (result.error) throw new Error(result.error.message);
-      return readDocumentMaintenance(result.data);
-    },
-    prepareBatch: async () => {
-      const result = await client.rpc("shift_exchanges_maintain_service", {
-        target_batch_size: 100,
-      });
-      if (result.error) throw new Error(result.error.message);
-      return maintenanceSchema.parse(result.data);
-    },
-  });
+  return createNotificationOutboxWorkerWithClient(client, options);
 }
 
 export function createNotificationOutboxWorkerWithClient(
   client: NotificationRpcClient,
   options: {
-    readonly prepareDocuments?: () => Promise<DocumentMaintenanceResult>;
-    readonly prepareBatch?: () => Promise<MaintenanceResult>;
     readonly workerId?: string;
     readonly batchSize?: number;
     readonly leaseSeconds?: number;
@@ -117,24 +73,6 @@ export function createNotificationOutboxWorkerWithClient(
 
   return {
     async runBatch() {
-      // Deadline closures produce their outbox events before this batch leases work.
-      // A maintenance fault remains observable without blocking unrelated delivery.
-      let maintenance: NotificationOutboxBatchResult["maintenance"];
-      if (options.prepareBatch) {
-        try {
-          maintenance = await options.prepareBatch();
-        } catch (error) {
-          maintenance = maintenanceFailure(error);
-        }
-      }
-      let documentMaintenance: NotificationOutboxBatchResult["documentMaintenance"];
-      if (options.prepareDocuments) {
-        try {
-          documentMaintenance = await options.prepareDocuments();
-        } catch (error) {
-          documentMaintenance = maintenanceFailure(error);
-        }
-      }
       const leaseResponse = await client.rpc(
         "lease_notification_outbox_service",
         {
@@ -153,11 +91,7 @@ export function createNotificationOutboxWorkerWithClient(
         skipped: 0,
         retried: 0,
         dead_lettered: 0,
-        failed:
-          (maintenance && "failed" in maintenance ? 1 : 0) +
-          (documentMaintenance && "failed" in documentMaintenance ? 1 : 0),
-        ...(documentMaintenance ? { documentMaintenance } : {}),
-        ...(maintenance ? { maintenance } : {}),
+        failed: 0,
       };
 
       for (const item of leased) {

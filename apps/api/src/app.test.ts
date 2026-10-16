@@ -227,6 +227,37 @@ describe("api app", () => {
     expect(runBatch).toHaveBeenCalledTimes(1);
   });
 
+  // BILDIRIM-01 (K1, K2): the maintenance cron the database calls every minute.
+  it("runs the maintenance worker only with the cron secret", async () => {
+    const result = {
+      shiftExchanges: { expired: 1, invalidated: 0, skipped_busy: 0 },
+      documents: { checked: 3, enqueued: 0, failed_cases: 0, suspended: 1 },
+      failed: 0,
+    };
+    const runBatch = vi.fn(async () => result);
+    const app = buildApp({
+      maintenanceWorker: { runBatch },
+      maintenanceCron: { cronSecret: "maintenance-cron-secret" },
+    });
+
+    const denied = await app.inject({
+      method: "POST",
+      url: "/internal/cron/maintenance",
+      headers: { authorization: "Bearer wrong" },
+    });
+    expect(denied.statusCode).toBe(401);
+    expect(runBatch).not.toHaveBeenCalled();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/internal/cron/maintenance",
+      headers: { authorization: "Bearer maintenance-cron-secret" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(result);
+    expect(runBatch).toHaveBeenCalledTimes(1);
+  });
+
   it("runs the workspace retention worker only with the cron secret", async () => {
     const runBatch = vi.fn(async () => ({
       checked: 2,

@@ -22,26 +22,8 @@ export function registerNotificationOutboxRoutes(
         .send({ error: "Notification cron is not configured" });
     if (!hasCronSecret(request, options.cronSecret))
       return reply.status(401).send({ error: "Invalid cron secret" });
-    const result = await options.worker.runBatch();
-    // BL-965: a failed maintenance step left only a flag in this answer, which nothing reads, so
-    // document maintenance failed every minute for weeks unseen. The server log says so now.
-    const steps = [
-      ["shift exchange maintenance", result.maintenance],
-      ["document maintenance", result.documentMaintenance],
-    ] as const;
-    for (const [step, outcome] of steps) {
-      if (outcome && "failed" in outcome) request.log.error({ step, error: outcome.error }, "notification maintenance failed");
-    }
-    const documents = result.documentMaintenance;
-    if (documents && "failed_cases" in documents && documents.failed_cases > 0)
-      request.log.warn({ failedCases: documents.failed_cases }, "document maintenance skipped cases after errors");
-    // The message stays in the log: internals never reach an answer (app.ts). A failed step answers
-    // { failed: true } as before; a successful document step now also carries failed_cases.
-    return reply.send({
-      ...result,
-      ...(result.maintenance && "failed" in result.maintenance ? { maintenance: { failed: true } } : {}),
-      ...(documents && "failed" in documents ? { documentMaintenance: { failed: true } } : {}),
-    });
+    // Maintenance and its failure log (BL-965) moved to /internal/cron/maintenance (BILDIRIM-01).
+    return reply.send(await options.worker.runBatch());
   };
 
   app.get("/internal/cron/notification-outbox", handler);
