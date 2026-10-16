@@ -1,0 +1,198 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+
+-- BILDIRIM-U2 (KARARLAR S-123, S-95, P07; docs/plan/research/BILDIRIM-URETICILER.md §2.3): time off writes its
+-- own notices into the new core.
+--   (a) a request reaches who decides it: the location's manager; an admin and the owner only where no
+--       manager can; the owner's own time off asks nobody;
+--   (b) a decision tells the person who asked once, with the outcome; the first decision closes every
+--       decider's card ("Approved by ..."); the one who decided hears nothing;
+--   (c) withdrawing closes the deciders' cards and writes nothing new;
+--   (d) twelve hours before the deadline the managers who have not decided are reminded, once; where no
+--       manager can decide, an admin and the owner are told once instead;
+--   (e) shortening tells the person and whoever approved it, never the one who shortened it; revoking
+--       tells the person;
+--   (f) the two helpers that find recipients ask the core, not role names.
+
+select tests.world('nt');
+select tests.world('nx');
+-- Kadikoy (K) has a manager; Besiktas (B) has none.
+select tests.person('nt', 'ayse', 'manager', array['K'], array['cook']);
+select tests.person('nt', 'zeynep', 'admin', array['K'], array['server']);
+select tests.person('nt', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('nt', 'deniz', 'employee', array['B'], array['cook']);
+select tests.person('nt', 'ali', 'employee', array['K', 'B'], array['cook']);
+select tests.person('nx', 'xena', 'manager', array['K'], array['cook']);
+
+create temp table who as
+select label, tests.user(label) uid
+from unnest(array['nt:owner', 'nt:ayse', 'nt:zeynep', 'nt:emre', 'nt:deniz', 'nt:ali', 'nx:owner', 'nx:xena']) label;
+grant select on who to public;
+-- Who got a notice of this type about this request, one label per notice.
+create function pg_temp.told(type_key text, rid uuid) returns text[] language sql stable as $$
+  select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
+  from public.person_notifications n join who w on w.uid = n.user_id
+  where n.type_key = told.type_key and n.subject_id = rid
+$$;
+create function pg_temp.decide(person text, rid uuid, verdict text, note text default '') returns jsonb language sql as $$
+  select public.decide_time_off_service(tests.user('nt:' || person), tests.id('nt'), rid, verdict, note,
+    app_private.time_off_impact(tests.id('nt'), rid) ->> 'fingerprint')
+$$;
+create function pg_temp.card(person text, rid uuid) returns text language sql stable as $$
+  select coalesce(n.resolution, 'open') || ' by ' || coalesce(w.label, '-')
+  from public.person_notifications n left join who w on w.uid = n.resolved_by
+  where n.type_key = 'time_off.requested' and n.subject_id = rid and n.user_id = tests.user('nt:' || person)
+$$;
+create function pg_temp.status(rid uuid) returns text language sql stable as $$
+  select r.status::text from public.schedule_time_off_requests r where r.id = rid
+$$;
+
+-- (f) The helpers -------------------------------------------------------------------------------------
+
+select is(app_private.notify_holders(tests.id('nt'), 'time_off.decide_alone', null, tests.id('nt:emre')),
+  array(select tests.user(x) from unnest(array['nt:owner', 'nt:zeynep']) x order by 1),
+  '(f) who may decide alone, by the core: the owner and the admin');
+select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', array[tests.id('nt:K')], tests.id('nt:emre'), 'time_off.decide_alone'),
+  array[tests.user('nt:ayse')], '(f) at Kadikoy the manager decides');
+select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', array[tests.id('nt:B')], tests.id('nt:deniz'), 'time_off.decide_alone'),
+  array(select tests.user(x) from unnest(array['nt:owner', 'nt:zeynep']) x order by 1),
+  '(f) at Besiktas, with no manager, the admin and the owner');
+select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', '{}', tests.id('nt:emre'), 'time_off.decide_alone'),
+  array(select tests.user(x) from unnest(array['nt:owner', 'nt:zeynep']) x order by 1),
+  '(f) with no location, the admin and the owner');
+
+-- (a) A request ---------------------------------------------------------------------------------------
+
+select tests.remember('nt:emre:2', tests.leave('nt', 'emre', 2));
+select is(pg_temp.told('time_off.requested', tests.id('nt:emre:2')), array['nt:ayse'],
+  '(a) Emre''s request reaches the Kadikoy manager only; not the admin, the owner or another workspace');
+select ok((select title = 'Time off request from Emre Person' and url like '/app/schedule/requests?tab=time-off&request=%'
+           from public.person_notifications where type_key = 'time_off.requested' and subject_id = tests.id('nt:emre:2')),
+  '(a) it names who asked and opens the request');
+select is(pg_temp.told('time_off.requested', tests.id('nt:emre:2')) || pg_temp.told('time_off.decided', tests.id('nt:emre:2')),
+  array['nt:ayse'], '(a) one notice; Emre is not told of his own request');
+
+select tests.remember('nt:deniz:2', tests.leave('nt', 'deniz', 2));
+select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:owner', 'nt:zeynep'],
+  '(a) Besiktas has no manager: the admin and the owner decide Deniz''s');
+
+select tests.remember('nt:owner:2', tests.leave('nt', 'owner', 2));
+select is(pg_temp.status(tests.id('nt:owner:2')), 'approved', '(a) the owner''s own time off is recorded approved');
+select is(pg_temp.told('time_off.requested', tests.id('nt:owner:2')) || pg_temp.told('time_off.decided', tests.id('nt:owner:2')),
+  '{}'::text[], '(a) and asks nobody, tells nobody');
+
+-- (b) A decision --------------------------------------------------------------------------------------
+
+select pg_temp.decide('ayse', tests.id('nt:emre:2'), 'approve', 'Enjoy');
+select is(pg_temp.told('time_off.decided', tests.id('nt:emre:2')), array['nt:emre'],
+  '(b) the approval tells Emre once, not Ayse who approved it');
+select ok((select title like 'Your time off % is approved' and body = 'Enjoy'
+           from public.person_notifications where type_key = 'time_off.decided' and subject_id = tests.id('nt:emre:2')),
+  '(b) with the outcome in the title and the note');
+select is(pg_temp.card('ayse', tests.id('nt:emre:2')), 'approved by nt:ayse', '(b) Ayse''s card is closed as approved');
+
+select pg_temp.decide('zeynep', tests.id('nt:deniz:2'), 'deny', 'Short-staffed');
+select is(pg_temp.told('time_off.decided', tests.id('nt:deniz:2')), array['nt:deniz'], '(b) a decline tells Deniz once');
+select ok((select title like 'Your time off % is declined' from public.person_notifications
+           where type_key = 'time_off.decided' and subject_id = tests.id('nt:deniz:2')), '(b) and says so');
+select is(pg_temp.card('owner', tests.id('nt:deniz:2')), 'declined by nt:zeynep',
+  '(b) the owner''s card says the admin declined it; no new notice for the owner');
+select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:owner', 'nt:zeynep'], '(b) nothing more was written');
+
+-- Besiktas gets a manager: Ali, who works at both, is decided at both.
+select tests.person('nt', 'mehmet', 'manager', array['B'], array['cook']);
+insert into who values ('nt:mehmet', tests.user('nt:mehmet'));
+select tests.remember('nt:ali:2', tests.leave('nt', 'ali', 2));
+select is(pg_temp.told('time_off.requested', tests.id('nt:ali:2')), array['nt:ayse', 'nt:mehmet'],
+  '(b) Ali works at both: each location''s manager is asked');
+select pg_temp.decide('ayse', tests.id('nt:ali:2'), 'approve');
+select is(pg_temp.status(tests.id('nt:ali:2')), 'pending', '(b) Kadikoy approved; Besiktas still decides');
+select is(pg_temp.card('mehmet', tests.id('nt:ali:2')), 'open by -', '(b) so Mehmet''s card stays open');
+select is(pg_temp.told('time_off.decided', tests.id('nt:ali:2')), '{}'::text[], '(b) and Ali hears nothing yet');
+select pg_temp.decide('mehmet', tests.id('nt:ali:2'), 'approve');
+select is(pg_temp.told('time_off.decided', tests.id('nt:ali:2')), array['nt:ali'], '(b) the last approval tells Ali once');
+select is(pg_temp.card('ayse', tests.id('nt:ali:2')), 'approved by nt:mehmet', '(b) and Ayse''s card says Mehmet settled it');
+
+-- Not decided in time: the system declines it.
+select tests.remember('nt:emre:3', tests.leave('nt', 'emre', 3));
+update public.schedule_time_off_requests set decide_by = now() - interval '1 minute' where id = tests.id('nt:emre:3');
+select app_private.time_off_sweep();
+select ok((select title like 'Your time off % wasn''t decided in time' from public.person_notifications
+           where type_key = 'time_off.decided' and subject_id = tests.id('nt:emre:3') and user_id = tests.user('nt:emre')),
+  '(b) not decided in time: Emre hears it was declined for that');
+select is(pg_temp.card('ayse', tests.id('nt:emre:3')), 'expired by -', '(b) and Ayse''s card closes');
+
+-- A cancellation of approved time off is a request too.
+create temp table cancel_ask as
+select (public.request_time_off_cancellation_service(tests.user('nt:emre'), tests.id('nt'), tests.id('nt:emre:2'),
+  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('nt:emre:2')),
+  (select jsonb_agg(jsonb_build_object('segment_id', s.id, 'starts_at', s.starts_at, 'ends_at', s.ends_at))
+   from public.schedule_time_off_segments s where s.request_id = tests.id('nt:emre:2')),
+  'Plans changed', gen_random_uuid()) ->> 'request_id')::uuid rid;
+select is(pg_temp.told('time_off.requested', (select rid from cancel_ask)), array['nt:ayse'],
+  '(b) a cancellation request reaches the manager');
+select ok((select title = 'Emre Person asked to cancel time off' from public.person_notifications
+           where type_key = 'time_off.requested' and subject_id = (select rid from cancel_ask)), '(b) and says what it is');
+
+-- (c) Withdrawn ---------------------------------------------------------------------------------------
+
+select public.employee_request_action_service(tests.user('nt:emre'), tests.id('nt'), (select rid from cancel_ask), 'time_off', 'cancel',
+  (select r.revision from public.schedule_time_off_requests r where r.id = (select rid from cancel_ask)));
+select is(pg_temp.card('ayse', (select rid from cancel_ask)), 'withdrawn by nt:emre', '(c) withdrawing closes Ayse''s card');
+select is(pg_temp.told('time_off.decided', (select rid from cancel_ask)) || pg_temp.told('time_off.requested', (select rid from cancel_ask)),
+  array['nt:ayse'], '(c) and writes nothing new');
+
+-- (d) Reminders ---------------------------------------------------------------------------------------
+
+select tests.remember('nt:emre:5', tests.leave('nt', 'emre', 5));
+-- Deniz asks while Besiktas has its manager; then Mehmet's access ends and nobody there can decide it.
+select tests.remember('nt:deniz:5', tests.leave('nt', 'deniz', 5));
+select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:5')), array['nt:mehmet'], '(d) Mehmet is asked');
+select public.remove_employee_access_service(tests.user('nt:owner'), tests.id('nt'), tests.id('nt:mehmet'));
+select tests.remember('nt:emre:6', tests.leave('nt', 'emre', 6));
+update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
+where id in (tests.id('nt:emre:5'), tests.id('nt:deniz:5'));
+select app_private.time_off_sweep();
+select app_private.time_off_sweep();
+select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:emre:5')), array['nt:ayse'],
+  '(d) twelve hours before the deadline the manager who has not decided is reminded, once over two passes');
+select ok((select title like 'Decide by %: Emre Person''s time off' from public.person_notifications
+           where type_key = 'time_off.decision_reminder' and subject_id = tests.id('nt:emre:5')), '(d) naming the day and the person');
+select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:deniz:5')), array['nt:owner', 'nt:zeynep'],
+  '(d) no manager can decide Deniz''s now: the admin and the owner are told once, not twice');
+select ok((select bool_and(title = 'Deniz Person''s time off waits for an admin') from public.person_notifications
+           where type_key = 'time_off.decision_reminder' and subject_id = tests.id('nt:deniz:5')),
+  '(d) saying no manager can decide it');
+select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:emre:6')), '{}'::text[], '(d) a request not near its deadline: nothing');
+select pg_temp.decide('ayse', tests.id('nt:emre:5'), 'approve');
+select is((select resolution from public.person_notifications
+           where type_key = 'time_off.decision_reminder' and subject_id = tests.id('nt:emre:5')), 'approved',
+  '(d) the decision closes the reminder too');
+
+-- (e) Shortened, revoked ------------------------------------------------------------------------------
+
+select public.shorten_time_off_service(tests.user('nt:zeynep'), tests.id('nt'), tests.id('nt:emre:5'),
+  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('nt:emre:5')),
+  (select jsonb_agg(jsonb_build_object('segment_id', s.id, 'starts_at', s.starts_at, 'ends_at', s.starts_at + interval '2 hours'))
+   from public.schedule_time_off_segments s where s.request_id = tests.id('nt:emre:5')),
+  'Needed for the morning', gen_random_uuid());
+select is(pg_temp.told('time_off.shortened', tests.id('nt:emre:5')), array['nt:ayse', 'nt:emre'],
+  '(e) shortening tells Emre and Ayse who approved it, once each; not Zeynep who shortened it');
+select is(
+  array(select title from public.person_notifications where type_key = 'time_off.shortened' and subject_id = tests.id('nt:emre:5') order by title),
+  array['Emre Person''s time off was shortened', 'Your time off was shortened'], '(e) each in their own words');
+
+select public.revoke_time_off_service(tests.user('nt:ayse'), tests.id('nt'), tests.id('nt:emre:2'),
+  (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('nt:emre:2')), 'We need you that week');
+select is(pg_temp.told('time_off.decided', tests.id('nt:emre:2')), array['nt:emre', 'nt:emre'],
+  '(e) revoking tells Emre once more; Ayse who revoked it hears nothing');
+select ok((select title like 'Your time off % was revoked' and body = 'We need you that week' from public.person_notifications
+           where type_key = 'time_off.decided' and subject_id = tests.id('nt:emre:2') and event_key like '%:revoked'),
+  '(e) saying it was revoked and why');
+
+select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id where w.label like 'nx:%'), 0,
+  'another workspace hears nothing of this one');
+
+select * from finish();
+rollback;
