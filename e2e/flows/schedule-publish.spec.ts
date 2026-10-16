@@ -70,7 +70,6 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   await expect(publishDialog).toContainText("Select locations to publish");
   await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
-  await publishDialog.getByRole("button", { name: "Next", exact: true }).click();
   await publishDialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
   await expect(ayse.getByRole("button", { name: "Published", exact: true })).toBeVisible();

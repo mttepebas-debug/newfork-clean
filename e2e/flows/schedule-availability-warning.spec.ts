@@ -167,10 +167,9 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
     await expect(dialog.getByText("No blockers · one thing to glance at", { exact: true })).toHaveCount(0);
     await expect(dialog.getByRole("checkbox")).toHaveCount(0);
     await expect(dialog.getByText(/Previously accepted|Acknowledged by/)).toHaveCount(0);
-    const next = dialog.getByRole("button", { name: "Next", exact: true });
-    await expect(next).toBeEnabled();
-    await next.click();
-    await dialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
+    const publish = dialog.getByRole("button", { name: "Publish 1 location", exact: true });
+    await expect(publish).toBeEnabled();
+    await publish.click();
     await expect(ayse.getByRole("dialog")).toHaveCount(0);
   }
   await ayse.getByRole("button", { name: "Publish", exact: true }).click();

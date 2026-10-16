@@ -139,7 +139,6 @@ test("a location-scoped manager cannot reach the other location, and only the ad
 
   await zeynepDialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(zeynep.getByTestId("schedule-publish-preview")).toBeVisible();
-  await zeynepDialog.getByRole("button", { name: "Next", exact: true }).click();
   await zeynepDialog.getByRole("button", { name: "Publish 2 locations", exact: true }).click();
   await expect(zeynep.getByRole("dialog")).toHaveCount(0);
   await expect(zeynep.getByRole("button", { name: "Published", exact: true })).toBeVisible();

@@ -59,7 +59,6 @@ async function saveAndPublish(ayse: Page, draftName: string, weekIsLive: boolean
   await expect(dialog).toContainText("Select locations to publish");
   await dialog.getByRole("button", { name: "Next", exact: true }).click();
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
-  await dialog.getByRole("button", { name: "Next", exact: true }).click();
   await dialog.getByRole("button", { name: "Publish 1 location", exact: true }).click();
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
 }
