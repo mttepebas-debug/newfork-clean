@@ -27,7 +27,7 @@ create function pg_temp.notices(type_key text) returns text[] language sql stabl
   select coalesce(array_agg(l.label order by l.label collate "C"), '{}')
   from public.person_notifications n
   join (select label, tests.user(label) uid
-        from unnest(array['na:owner', 'na:zeynep', 'na:ayse', 'na:ali', 'na:aydan', 'na:sami', 'na:remzi',
+        from unnest(array['na:owner', 'na:zeynep', 'na:ayse', 'na:ali', 'na:aydan', 'na:pelin', 'na:sami', 'na:remzi',
                           'nb:owner', 'nb:xena']) label) l on l.uid = n.user_id
   where n.type_key = notices.type_key
 $$;
@@ -82,6 +82,8 @@ create temp table closing as
 select public.request_workspace_closure_service(tests.user('na:owner'), tests.id('na'), 'scheduled_end_period', null, true) j;
 select is(pg_temp.notices('workspace.closure_scheduled'), array['na:ali', 'na:aydan', 'na:ayse', 'na:zeynep'],
   '(d) a scheduled closing tells every member, not the owner who scheduled it, nor those whose access ended, nor another workspace');
+select is((select count(*)::integer from public.person_notifications where user_id = tests.user('na:pelin')), 0,
+  '(d) nor Pelin, invited and not joined');
 select is((select count(*)::integer from public.person_notifications
            where type_key = 'workspace.closure_scheduled' and user_id = tests.user('na:ali')), 1,
   '(d) one notice each');
