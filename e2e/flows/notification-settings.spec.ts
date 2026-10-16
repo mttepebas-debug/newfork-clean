@@ -16,7 +16,7 @@ import { psql } from "../global-setup";
 const world: { readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
 );
-const shots = fileURLToPath(new URL("../../artifacts/bildirim-11/", import.meta.url));
+const shots = fileURLToPath(new URL("../../artifacts/bildirim-11b/", import.meta.url));
 
 function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
@@ -25,6 +25,7 @@ function sql(query: string): string {
 let w: string;
 let ownerEmail: string;
 let employeeEmail: string;
+let managerEmail: string;
 
 test.beforeAll(() => {
   test.setTimeout(180_000);
@@ -32,10 +33,13 @@ test.beforeAll(() => {
   const printed = sql(`
     select tests.world('${w}');
     select tests.person('${w}', 'ada', 'employee', array['K'], array['cook']);
+    select tests.person('${w}', 'mia', 'manager', array['K'], array['cook']);
     select tests.password('${w}:owner', '${world.password}');
-    select tests.password('${w}:ada', '${world.password}');`).split(/\r?\n/);
-  ownerEmail = printed.at(-2)!;
-  employeeEmail = printed.at(-1)!;
+    select tests.password('${w}:ada', '${world.password}');
+    select tests.password('${w}:mia', '${world.password}');`).split(/\r?\n/);
+  ownerEmail = printed.at(-3)!;
+  employeeEmail = printed.at(-2)!;
+  managerEmail = printed.at(-1)!;
   mkdirSync(shots, { recursive: true });
 });
 
@@ -94,30 +98,33 @@ test("an optional topic the owner turns off is gone from a person's table", asyn
 
 test("a person's channel choice holds after a reload", async ({ browser }) => {
   const employee = await open(browser, employeeEmail, "/account/preferences/notifications");
-  const timeOffEmail = employee.getByRole("checkbox", { name: "Time off by email" });
-  await expect(timeOffEmail).toBeChecked();
+  // My requests is time off and shift changes together (BILDIRIM-11b): its box writes both.
+  const requestsEmail = employee.getByRole("checkbox", { name: "My requests by email" });
+  await expect(requestsEmail).toBeChecked();
   await expect(employee.getByRole("button", { name: "Save" })).toBeDisabled();
-  await timeOffEmail.click();
+  await requestsEmail.click();
   await employee.getByRole("button", { name: "Save" }).click();
   await expect(employee.getByText("Notification choices saved")).toBeVisible();
   expect(
-    sql(`select enabled from public.notification_preferences
-         where workspace_id = tests.id('${w}') and topic_key = 'time_off' and channel = 'email';`),
-  ).toBe("f");
+    sql(`select string_agg(topic_key || '=' || enabled, ',' order by topic_key) from public.notification_preferences
+         where workspace_id = tests.id('${w}') and channel = 'email';`),
+  ).toBe("shift_changes=false,time_off=false");
 
   await employee.reload();
-  await expect(employee.getByRole("checkbox", { name: "Time off by email" })).not.toBeChecked();
-  await expect(employee.getByRole("checkbox", { name: "Time off by phone alerts" })).toBeChecked();
+  await expect(employee.getByRole("checkbox", { name: "My requests by email" })).not.toBeChecked();
+  await expect(employee.getByRole("checkbox", { name: "My requests by phone alerts" })).toBeChecked();
   await expect(employee.getByRole("button", { name: "Save" })).toBeDisabled();
 });
 
-test("both pages at desktop 1440 and phone 390", async ({ browser }) => {
+test("both pages at desktop 1440 and phone 390, Account as an employee and as a manager", async ({ browser }) => {
   const desktop = { viewport: { width: 1440, height: 1200 }, reducedMotion: "reduce" as const };
   const phone = { viewport: { width: 390, height: 1700 }, hasTouch: true, isMobile: true, reducedMotion: "reduce" as const };
   for (const [label, options] of [["1440", desktop], ["390", phone]] as const) {
-    const account = await open(browser, employeeEmail, "/account/preferences/notifications", options);
-    await expect(topics(account)).toBeVisible();
-    await account.screenshot({ path: `${shots}${label}-account-notifications.png` });
+    for (const [who, email] of [["employee", employeeEmail], ["manager", managerEmail]] as const) {
+      const account = await open(browser, email, "/account/preferences/notifications", options);
+      await expect(topics(account).getByRole("rowheader", { name: /^My requests/ })).toBeVisible();
+      await account.screenshot({ path: `${shots}${label}-account-notifications-${who}.png` });
+    }
 
     const settings = await open(browser, ownerEmail, "/app/settings/notifications", options);
     await expect(settings.getByRole("group", { name: "Optional notifications" })).toBeVisible();
