@@ -11,7 +11,8 @@
 --   * a preferred name waiting for an answer tells the domain's own deciders (whoever the core lets decide
 --     it); asked again or cleared, the old ask's cards close; the first answer closes them all and tells the
 --     person.
--- Every notice is guarded: one that fails is logged, and the people work stands.
+-- Every event's notice work (who to tell, the cards it closes, the notice) runs in one guarded helper: a
+-- failure is logged, and the people work stands.
 
 -- A person's name as the workspace shows it.
 create function app_private.people_name(target_employee uuid)
@@ -81,7 +82,8 @@ $$;
 revoke all on function app_private.people_tell_invitation(public.employee_invitations, text, uuid) from public;
 
 -- Who may act on an onboarding sent in, now: a changed legal name waiting (onboarding.legal_name), and a
--- final approval when the workspace asks for one (onboarding.review). Documents are the Documents notice's.
+-- final approval when its case asks for one (onboarding.review, the same case flag the send-in reads).
+-- Documents are the Documents notice's.
 create function app_private.onboarding_reviewers(target_case public.employee_onboarding_cases)
 returns uuid[]
 language sql
@@ -95,7 +97,7 @@ as $$
                     and r.status <> 'completed'::public.employee_onboarding_requirement_status)
     union
     select unnest(app_private.notify_holders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
-    where public.employee_onboarding_final_approval_required(target_case.workspace_id)
+    where target_case.final_approval_required
   ) reviewers
 $$;
 
@@ -113,6 +115,109 @@ as $$
 $$;
 
 revoke all on function app_private.onboarding_person(public.employee_onboarding_cases) from public;
+
+-- An onboarding's notices, by event, guarded as one: who to tell, the cards it closes, and the notice.
+--   submitted: the person's "needs a change" card closes; who may act on it now is told;
+--   changes:   the reviewers' cards close; the person hears what to change (reason);
+--   reviewed:  something was approved but the person is not in yet; once nothing in it is left for anyone
+--              (onboarding_reviewers is empty: only documents wait, the Documents notice's), the cards close;
+--   completed: every card closes; the person hears they are in.
+create function app_private.onboarding_tell(target_case public.employee_onboarding_cases, event text, actor uuid,
+  reason text default null)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+begin
+  if event = 'submitted' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'resubmitted', actor);
+    return app_private.people_tell('people.onboarding_review_needed', target_case.workspace_id,
+      app_private.onboarding_reviewers(target_case),
+      'onboarding:' || target_case.id::text || ':submitted:' || target_case.revision::text,
+      app_private.people_name(target_case.employee_id) || '''s onboarding is ready for review', null,
+      '/app/employees?employeeId=' || target_case.employee_id::text, actor, 'onboarding_case', target_case.id,
+      jsonb_build_object('employee_id', target_case.employee_id));
+  elsif event = 'changes' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'changes_requested', actor);
+    return app_private.people_tell('people.onboarding_change_requested', target_case.workspace_id,
+      array[app_private.onboarding_person(target_case)],
+      'onboarding:' || target_case.id::text || ':changes:' || target_case.revision::text,
+      'Your onboarding needs a change', btrim(reason),
+      '/onboarding?workspace=' || target_case.workspace_id::text, actor, 'onboarding_case', target_case.id, '{}'::jsonb);
+  elsif event = 'reviewed' then
+    if cardinality(app_private.onboarding_reviewers(target_case)) = 0 then
+      return app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
+    end if;
+    return 0;
+  elsif event = 'completed' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
+    return app_private.people_tell('people.onboarding_completed', target_case.workspace_id,
+      array[app_private.onboarding_person(target_case)],
+      'onboarding:' || target_case.id::text || ':completed',
+      'Your onboarding is complete',
+      'You can use ' || (select w.name from public.workspaces w where w.id = target_case.workspace_id) || ' now.',
+      '/app', actor, 'onboarding_case', target_case.id, '{}'::jsonb);
+  end if;
+  return 0;
+exception when others then
+  raise warning 'onboarding_tell: % notices for % skipped: % (%)', event, target_case.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+revoke all on function app_private.onboarding_tell(public.employee_onboarding_cases, text, uuid, text) from public;
+
+-- A preferred name asked (or cleared), guarded as one: the earlier ask's cards close; a waiting ask tells the
+-- deciders the domain found (asked is null when nothing waits).
+create function app_private.preferred_name_tell_asked(target_workspace uuid, target_employee uuid, replaced uuid[],
+  asked uuid, wanted text, deciders uuid[], actor uuid)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+begin
+  perform app_private.notification_resolve(target_workspace, 'preferred_name_request', r, 'closed', actor)
+  from unnest(coalesce(replaced, '{}')) r;
+  if asked is null then
+    return 0;
+  end if;
+  return app_private.people_tell('people.preferred_name_requested', target_workspace, deciders,
+    'preferred_name:' || asked::text,
+    app_private.people_name(target_employee) || ' asked to be called ' || wanted, null,
+    '/app/employees?employeeId=' || target_employee::text, actor, 'preferred_name_request', asked,
+    jsonb_build_object('employee_id', target_employee, 'requested_name', wanted));
+exception when others then
+  raise warning 'preferred_name_tell_asked: notices for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+revoke all on function app_private.preferred_name_tell_asked(uuid, uuid, uuid[], uuid, text, uuid[], uuid) from public;
+
+-- A preferred name answered, guarded as one: every decider's card closes; the person hears it.
+create function app_private.preferred_name_tell_answered(request public.employee_preferred_name_requests, approve boolean,
+  actor uuid)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+begin
+  perform app_private.notification_resolve(request.workspace_id, 'preferred_name_request', request.id,
+    case when approve then 'approved' else 'declined' end, actor);
+  return app_private.people_tell('people.preferred_name_decided', request.workspace_id,
+    array(select e.user_id from public.employee_profiles e where e.id = request.employee_id and e.workspace_id = request.workspace_id),
+    'preferred_name:' || request.id::text || ':decided',
+    case when approve then 'You''ll be called ' || request.requested_name
+         else 'Your preferred name "' || request.requested_name || '" wasn''t approved' end, null,
+    '/account/profile', actor, 'preferred_name_request', request.id,
+    jsonb_build_object('outcome', case when approve then 'approved' else 'declined' end));
+exception when others then
+  raise warning 'preferred_name_tell_answered: notices for % skipped: % (%)', request.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+revoke all on function app_private.preferred_name_tell_answered(public.employee_preferred_name_requests, boolean, uuid) from public;
 
 CREATE OR REPLACE FUNCTION "app_private"."accept_employee_invitation_for_user"("target_user_id" "uuid", "target_invitation_id" "uuid", "invitation_token_hash" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -433,9 +538,6 @@ begin
     'onboarding_case',
     target_case.id::text
   );
-  -- Sent again: the person's "needs a change" card is done.
-  perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'resubmitted',
-    target_user_id);
 
   if not exists(select 1 from public.employee_onboarding_requirements r where r.case_id=target_case.id and app_private.document_activation_blocked(r)) and not target_case.final_approval_required
     and not exists (
@@ -453,13 +555,8 @@ begin
     );
   end if;
 
-  -- It waits: who may act on it now is told (onboarding_reviewers).
-  perform app_private.people_tell('people.onboarding_review_needed', target_case.workspace_id,
-    app_private.onboarding_reviewers(target_case),
-    'onboarding:' || target_case.id::text || ':submitted:' || target_case.revision::text,
-    app_private.people_name(target_case.employee_id) || '''s onboarding is ready for review', null,
-    '/app/employees?employeeId=' || target_case.employee_id::text, target_user_id, 'onboarding_case', target_case.id,
-    jsonb_build_object('employee_id', target_case.employee_id));
+  -- It waits: the person's "needs a change" card closes and who may act on it now is told (onboarding_tell).
+  perform app_private.onboarding_tell(target_case, 'submitted', target_user_id);
   return target_case.revision;
 end;
 $$;
@@ -542,14 +639,8 @@ begin
       update public.employee_onboarding_cases set status = 'changes_requested'::public.employee_onboarding_case_status, revision = revision + 1,
         updated_at = now() where id = target_case.id returning revision into expected_revision;
       -- Back with the person: the reviewers' cards close, and the person hears what to change.
-      perform app_private.notification_resolve(target_workspace_id, 'onboarding_case', target_case.id, 'changes_requested',
-        actor_user_id);
-      perform app_private.people_tell('people.onboarding_change_requested', target_workspace_id,
-        array[target_employee_user_id],
-        'onboarding:' || target_case.id::text || ':changes:' || expected_revision::text,
-        'Your onboarding needs a change', btrim(review_reason),
-        '/onboarding?workspace=' || target_workspace_id::text, actor_user_id, 'onboarding_case', target_case.id,
-        jsonb_build_object('requirement_id', requirement.id));
+      select * into target_case from public.employee_onboarding_cases where id = target_case.id;
+      perform app_private.onboarding_tell(target_case, 'changes', actor_user_id, review_reason);
     else
       update public.employee_onboarding_cases set revision = revision + 1, updated_at = now()
       where id = target_case.id returning revision into expected_revision;
@@ -568,6 +659,11 @@ begin
           actor_user_id,
           'employee.auto_activated_after_review'
         );
+      end if;
+      -- Not let in yet: the cards close once nothing in it is left for their holders (onboarding_tell).
+      select * into target_case from public.employee_onboarding_cases where id = target_case.id;
+      if target_case.status <> 'approved'::public.employee_onboarding_case_status then
+        perform app_private.onboarding_tell(target_case, 'reviewed', actor_user_id);
       end if;
     end if;
   elsif review_action = 'activate' then
@@ -648,13 +744,7 @@ begin
   );
 
   -- Every card on it closes; the person hears they are in (not when they let themselves in).
-  perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved',
-    actor_user_id);
-  perform app_private.people_tell('people.onboarding_completed', target_case.workspace_id,
-    array[app_private.onboarding_person(target_case)],
-    'onboarding:' || target_case.id::text || ':completed',
-    'Your onboarding is complete', 'You can use ' || (select w.name from public.workspaces w where w.id = target_case.workspace_id) || ' now.',
-    '/app', actor_user_id, 'onboarding_case', target_case.id, '{}'::jsonb);
+  perform app_private.onboarding_tell(target_case, 'completed', actor_user_id);
   return next_revision;
 end;
 $$;
@@ -700,8 +790,8 @@ begin
       returning id
     )
     select coalesce(array_agg(gone.id), '{}') into replaced from gone;
-    perform app_private.notification_resolve(target_workspace_id, 'preferred_name_request', r, 'closed', actor_user_id)
-    from unnest(replaced) r;
+    -- The earlier ask's cards close (preferred_name_tell_asked).
+    perform app_private.preferred_name_tell_asked(target_workspace_id, target_employee_id, replaced, null, null, '{}', actor_user_id);
     update public.employee_profiles set preferred_name = '', updated_at = now()
     where id = target_employee_id;
     return 'cleared';
@@ -737,9 +827,6 @@ begin
     returning id
   )
   select coalesce(array_agg(gone.id), '{}') into replaced from gone;
-  -- The earlier ask's cards close: the latest is the one waiting.
-  perform app_private.notification_resolve(target_workspace_id, 'preferred_name_request', r, 'closed', actor_user_id)
-  from unnest(replaced) r;
 
   insert into public.employee_preferred_name_requests (
     workspace_id, employee_id, requested_name, status, requested_by,
@@ -754,14 +841,9 @@ begin
   )
   returning id into asked;
 
-  -- Waiting: the deciders the domain found above are told.
-  if approval <> 'auto' then
-    perform app_private.people_tell('people.preferred_name_requested', target_workspace_id, deciders,
-      'preferred_name:' || asked::text,
-      app_private.people_name(target_employee_id) || ' asked to be called ' || cleaned, null,
-      '/app/employees?employeeId=' || target_employee_id::text, actor_user_id, 'preferred_name_request', asked,
-      jsonb_build_object('employee_id', target_employee_id, 'requested_name', cleaned));
-  end if;
+  -- The earlier ask's cards close; waiting, the deciders the domain found above are told.
+  perform app_private.preferred_name_tell_asked(target_workspace_id, target_employee_id, replaced,
+    case when approval <> 'auto' then asked end, cleaned, deciders, actor_user_id);
 
   if approval = 'auto' then
     update public.employee_profiles
@@ -812,15 +894,7 @@ begin
       and workspace_id = target_workspace_id;
   end if;
 
-  -- The first answer closes every decider's card and tells the person.
-  perform app_private.notification_resolve(target_workspace_id, 'preferred_name_request', request_row.id,
-    case when approve then 'approved' else 'declined' end, actor_user_id);
-  perform app_private.people_tell('people.preferred_name_decided', target_workspace_id,
-    array(select e.user_id from public.employee_profiles e where e.id = request_row.employee_id and e.workspace_id = target_workspace_id),
-    'preferred_name:' || request_row.id::text || ':decided',
-    case when approve then 'You''ll be called ' || request_row.requested_name
-         else 'Your preferred name "' || request_row.requested_name || '" wasn''t approved' end, null,
-    '/account/profile', actor_user_id, 'preferred_name_request', request_row.id,
-    jsonb_build_object('outcome', case when approve then 'approved' else 'declined' end));
+  -- The first answer closes every decider's card and tells the person (preferred_name_tell_answered).
+  perform app_private.preferred_name_tell_answered(request_row, approve, actor_user_id);
 end;
 $$;
