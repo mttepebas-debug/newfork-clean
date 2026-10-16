@@ -1,0 +1,116 @@
+/* The frozen top of every screen (Mert 2026-10-16, "header ve tableri freeze
+   yap bütün ekranlarda"; phone "B"). useFrozenTop.ts marks the pieces above
+   the content (the page heading, then tabs and bars) and gives each its
+   resting place (--frozen-top), the gap above it (--frozen-gap) and the page
+   background behind it (--frozen-bg). A window shorter than 560 px scrolls
+   the whole page as before. */
+@media (min-height: 560px) {
+  /* Doubled to win over a piece's own position (a phone's Account menu is static). */
+  [data-frozen-piece][data-frozen-piece] {
+    position: sticky;
+    top: var(--frozen-top, 0px);
+    z-index: 6;
+    background-color: var(--frozen-bg);
+    /* The page background fills the gap above the piece, so the content
+       passing under it never shows between two pieces. */
+    box-shadow: 0 calc(-1 * var(--frozen-gap, 0px)) 0 0 var(--frozen-bg);
+    /* The browser keeps the content still by anchoring to something on
+       screen; a piece that stays put must not be that anchor, or its folding
+       would scroll the page. */
+    overflow-anchor: none;
+  }
+  [data-frozen-measuring] [data-frozen-piece][data-frozen-piece] {
+    position: relative;
+    top: auto;
+  }
+  /* Once the content moves, a hairline marks where it passes under the top. */
+  [data-frozen-scrolled] [data-frozen-last][data-frozen-last] {
+    box-shadow:
+      0 calc(-1 * var(--frozen-gap, 0px)) 0 0 var(--frozen-bg),
+      0 1px 0 0 var(--theme-border);
+  }
+}
+
+/* Phone "B": the heading folds to one line once the page has moved; the tabs
+   stay under it. The eyebrow, the description, the heading's icon, a
+   heading block with no control in it and Employee Hub's workspace bar fold
+   away. Selectors repeat their attributes to win over each page's own sheet
+   (the list pages pin their heading at 142 px). */
+@media (max-width: 720px) and (min-height: 560px) {
+  [data-frozen-folded][data-frozen-folded] .eh-context-bar[data-frozen-piece],
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece]
+    :is(
+      .catalog-page-eyebrow,
+      .settings-heading-icon,
+      .catalog-page-actions:not(:has(button, a, select))
+    ),
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece]:is(
+      .catalog-page-header,
+      .settings-page-header,
+      .account-page-header
+    )
+    :is(h1 + p, .catalog-page-heading > p) {
+    display: none;
+  }
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]:is(
+      .catalog-page-header,
+      .settings-page-header,
+      .account-page-header
+    ) {
+    display: flex;
+    height: auto;
+    min-height: 0;
+    flex-direction: row;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px 12px;
+    margin-bottom: 0;
+    padding-top: 10px;
+    padding-bottom: 10px;
+    text-align: left;
+  }
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]
+    :is(.catalog-page-heading, .catalog-page-heading > *, h1) {
+    min-width: 0;
+    margin: 0;
+  }
+  /* The title takes the row; tabs in the heading (Acknowledgements) keep
+     their own full row under it, as before folding. */
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]
+    > :has(> h1) {
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]
+    > :not(:has(> h1)) {
+    width: auto;
+    flex: 0 0 auto;
+  }
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]
+    > :has([role="tablist"]) {
+    flex: 1 1 100%;
+  }
+  [data-frozen-folded][data-frozen-folded]
+    [data-frozen-piece][data-frozen-piece]
+    h1 {
+    overflow: hidden;
+    font-size: 19px;
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  /* Folded while the page itself scrolls: the last piece's margin keeps the
+     page its length, so the content does not jump. */
+  [data-frozen-folded="page"][data-frozen-folded]:not([data-frozen-measuring])
+    [data-frozen-last][data-frozen-last][data-frozen-last] {
+    margin-bottom: var(--frozen-fold-mb, 0px);
+  }
+}

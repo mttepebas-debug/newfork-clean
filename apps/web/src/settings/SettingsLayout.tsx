@@ -11,6 +11,8 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router";
+import { useState } from "react";
+import { useFrozenTop } from "../shell/useFrozenTop";
 import { NoAccessRoute } from "../shell/NoAccessState";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -104,6 +106,8 @@ const groups = [
 export default function SettingsLayout() {
   const { context } = useAuth();
   const location = useLocation();
+  const [content, setContent] = useState<HTMLElement | null>(null);
+  useFrozenTop(content);
   // Nobody's settings: the no-access card, not a silent trip home (Mert 2026-10-14).
   if (!canEnterSettings(context)) return <NoAccessRoute subject="Settings" />;
 
@@ -154,7 +158,7 @@ export default function SettingsLayout() {
           ))}
         </nav>
       </aside>
-      <main className="settings-content">
+      <main className="settings-content" ref={setContent}>
         <Outlet />
       </main>
     </div>

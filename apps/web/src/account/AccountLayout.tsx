@@ -8,7 +8,8 @@ import {
   Warehouse,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useFrozenTop } from "../shell/useFrozenTop";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import "./account.css";
@@ -44,6 +45,14 @@ export default function AccountLayout() {
   const { pathname } = useLocation();
   const contentRef = useRef<HTMLElement>(null);
   const navRef = useRef<HTMLElement>(null);
+  const [content, setContent] = useState<HTMLElement | null>(null);
+  const [grid, setGrid] = useState<HTMLElement | null>(null);
+  const contentBox = useCallback((element: HTMLElement | null) => {
+    contentRef.current = element;
+    setContent(element);
+  }, []);
+  // On a phone the whole document scrolls and the Account menu stays above the page too.
+  useFrozenTop(content, grid);
   // A number here means somebody is waiting for an answer. It closes when the
   // thing is done, not when the tab is opened, so it cannot be cleared by
   // looking at it.
@@ -70,7 +79,7 @@ export default function AccountLayout() {
 
   return (
     <div className="account-shell">
-      <div className="account-layout-grid">
+      <div className="account-layout-grid" ref={setGrid}>
         <aside className="account-sidebar" aria-label="Account navigation">
         <div className="account-identity">
           <AccountAvatar globalUrl={account?.avatarUrl} name={account?.displayName ?? "Account"} className="account-avatar" />
@@ -122,7 +131,7 @@ export default function AccountLayout() {
           </button>
         </div>
         </aside>
-        <main className="account-content-scroll" ref={contentRef}>
+        <main className="account-content-scroll" ref={contentBox}>
           <div className="account-main">
             <Outlet />
           </div>

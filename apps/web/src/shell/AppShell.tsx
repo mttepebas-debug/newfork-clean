@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ComponentType } from "react";
+import { useFrozenTop } from "./useFrozenTop";
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
@@ -179,6 +180,8 @@ export function AppShell() {
   const { context, account, signOut } = useAuth();
   useExchangeRealtime(context);
   const [collapsed, setCollapsed] = useState(false);
+  const [main, setMain] = useState<HTMLElement | null>(null);
+  useFrozenTop(main);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
     () => new Set(["/app/schedule", "/app/employees", "/app/announcements"]),
   );
@@ -431,7 +434,7 @@ export function AppShell() {
           </button>
         </div>
       </aside>
-      <main className="app-main">
+      <main className="app-main" ref={setMain}>
         <Outlet />
       </main>
       {employeeShell && <EmployeeMobileNav />}
