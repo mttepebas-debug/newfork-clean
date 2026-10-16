@@ -7,6 +7,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - İstisna: Settings katalog yazmaları (`src/settings/organization-data.ts`: lokasyon, departman, job, shift type, label, logo) ve hesap profili (`lib/supabase.ts`) tarayıcıdan doğrudan supabase-js + RLS ile gider; DB reddi API'den geçmez, web'de çevrilir (`message()`).
 - Workspace'e bağlı her sorgunun anahtarının ilk öğesi `src/auth/tenant-query-cache.ts` listesinde olmalı; yoksa workspace değişince eski workspace'in verisi önbellekte kalır.
 - Realtime kanalı hep `{ config: { private: true } }`, kapanışta `removeChannel`. Reddedilen katılım ~5 sn sürer ve aynı soketteki öteki katılımları bekletir (ölçüm 2026-09-26).
+- `notifications:<user>` (`notifications/useNotificationsRealtime.ts`): içeriksiz sinyal; veri API'den. Kişi yalnız kendi kanalına katılır (account.self), katılım reddedilmez (BILDIRIM-10).
 - `can(ctx, action)`: hedefsiz → `ctx.actions` (sunucunun cevabı), hedefli → shared `expected()` ikizi. Yeni rota `ActionRoute`; `PermissionRoute` ve kalan `permissions.includes` yerleri (Settings, Employee Hub) eski, sayaç `rg "permissions\??\.includes"` yalnız azalır. İzin anahtarı → aksiyon 1:1 değil (`schedule.time_off_requests.read` → `requests.read`); kaynak `supabase/schema.sql` `authz_actions`.
 - Erişim-yok kartı `src/shell/NoAccessState.tsx`; "Back to Home" `noAccessHomePath()`, asla `/app`.
 - DB kuralı istemcide ikinci kez yazılmaz, istemci bayrağı gönderilmez; form önce reddedecekse kural shared'de şemanın yanında saf fonksiyondur (`managerLocationRefusal`).
