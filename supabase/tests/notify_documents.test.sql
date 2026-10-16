@@ -148,26 +148,31 @@ $$;
 -- Emre's tip policy is due in 7 days, then tomorrow; Ali's card expires in 14 days.
 update public.employee_onboarding_requirements set deadline_at = (select at_time from check_time) + interval '7 days'
 where id = (pg_temp.req('emre', (select policy from docs))).id;
+-- ponytail: approved two months ago, so the 30-day warning is not inside the time since approval.
 update public.employee_document_submissions set expiry_date = ((select at_time from check_time)
-  at time zone app_private.document_employee_timezone(tests.id('dc'), tests.id('dc:ali')))::date + 14
+  at time zone app_private.document_employee_timezone(tests.id('dc'), tests.id('dc:ali')))::date + 14,
+  reviewed_at = now() - interval '60 days'
 where id = (pg_temp.req('ali', (select card from docs))).approved_document_id;
 select pg_temp.check();
 select pg_temp.check();
-select is(pg_temp.told('documents.due_soon'), array['dc:emre'], '(e) Emre''s policy, due in 7 days: told once over two checks');
+select is(pg_temp.told('documents.due_soon', (pg_temp.req('emre', (select policy from docs))).id), array['dc:emre'],
+  '(e) Emre''s policy, due in 7 days: told once over two checks (everybody else''s is due soon too, each their own)');
 select is(pg_temp.told('documents.expiring'), array['dc:ali', 'dc:owner', 'dc:zeynep'],
   '(e) Ali''s card expires in 14 days: Ali, and who may review him, once');
 select is(pg_temp.told('documents.access_changed'), array['dc:blk'], '(e) Blk''s access is restricted: told once');
 update public.employee_onboarding_requirements set deadline_at = (select at_time from check_time) + interval '1 day'
 where id = (pg_temp.req('emre', (select policy from docs))).id;
 select pg_temp.check();
-select is(pg_temp.told('documents.due_soon'), array['dc:emre', 'dc:emre'], '(e) due tomorrow: once more');
+select is(pg_temp.told('documents.due_soon', (pg_temp.req('emre', (select policy from docs))).id), array['dc:emre', 'dc:emre'],
+  '(e) due tomorrow: once more');
 -- Blk's deadline moves out again: the restriction lifts.
 update public.employee_onboarding_requirements set deadline_at = now() + interval '7 days', document_suspended_at = null
 where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:blk');
 select pg_temp.check();
 select is(pg_temp.told('documents.access_changed'), array['dc:blk', 'dc:blk'], '(e) and told once more that access is back');
 select is(
-  (select array_agg(n.data ->> 'state' order by n.data ->> 'state') from public.person_notifications n where n.type_key = 'documents.access_changed'),
+  (select array_agg(n.data ->> 'state' order by n.data ->> 'state') from public.person_notifications n
+   where n.type_key = 'documents.access_changed' and n.workspace_id = tests.id('dc')),
   array['restored', 'restricted'], '(e) each says which');
 
 -- (f) An exemption taken back ---------------------------------------------------------------------------
