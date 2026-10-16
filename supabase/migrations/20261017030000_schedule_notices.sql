@@ -4,7 +4,7 @@
 --     whose shifts changed (added, changed, given to someone else, opened, deleted), one notice each
 --     however much changed (S-95). "Changed" is the publish preview's own comparison, so the publish
 --     dialog's count ("N people will be told") and the notices agree: the preview now also counts the
---     person a shift was taken from;
+--     person a shift was taken from, and leaves out the publisher and anyone a notice cannot reach;
 --   * unpublish: who had shifts in the week, once; their shift change requests for those shifts close in
 --     the same notice;
 --   * a closed day (or short hours) that removes, opens or moves published shifts: each person once. The
@@ -166,11 +166,30 @@ as $$
     else to_char(target_week, 'FMMon FMDD') || '–' || to_char(target_week + 6, 'FMMon FMDD') end;
 $$;
 
+-- Who of these employees a schedule notice reaches: someone with an account who is a member (active or
+-- finishing onboarding), not the person publishing. notify_rows keeps the same people; the publish
+-- preview counts them with this, so "N people will be told" is the notices written.
+create function app_private.schedule_people_told(target_workspace uuid, target_actor uuid, target_employees uuid[])
+returns uuid[]
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(array_agg(e.id order by e.id), '{}'::uuid[])
+  from public.employee_profiles e
+  where e.workspace_id = target_workspace and e.id = any (target_employees)
+    and e.user_id is not null and e.user_id is distinct from target_actor
+    and exists (select 1 from auth.users u where u.id = e.user_id)
+    and exists (select 1 from public.workspace_memberships m
+                where m.workspace_id = target_workspace and m.user_id = e.user_id
+                  and m.status in ('active', 'pending_activation'));
+$$;
+
 -- A publish, location by location ({previous, current} publication ids): who had a shift added, changed,
 -- taken away (given to someone else, opened, deleted), compared the way the publish preview compares.
--- One notice per person; nobody whose shifts stayed the same.
+-- One notice per person, to the people the preview counted; nobody whose shifts stayed the same.
 create function app_private.schedule_tell_published(target_workspace uuid, target_actor uuid, target_event uuid,
-  target_week date, target_pairs jsonb)
+  target_week date, target_pairs jsonb, target_told uuid[])
 returns integer
 language plpgsql
 set search_path = ''
@@ -214,7 +233,8 @@ begin
       min(c.d) d, min(c.st) st, min(c.en) en
     from change c
     join public.employee_profiles e on e.id = c.emp and e.workspace_id = target_workspace
-    where c.emp is not null and e.user_id is not null
+    -- The people the publish preview counted (schedule_people_told): the dialog's number.
+    where c.emp = any (target_told)
     group by e.user_id
   ), worded as (
     select p.*, to_char(p.d, 'FMDy, FMMon FMDD') day_text, app_private.announcement_hours_text(p.st, p.en, fmt) hours,
@@ -328,7 +348,8 @@ end;
 $$;
 
 revoke all on function app_private.schedule_week_text(date) from public;
-revoke all on function app_private.schedule_tell_published(uuid, uuid, uuid, date, jsonb) from public;
+revoke all on function app_private.schedule_people_told(uuid, uuid, uuid[]) from public;
+revoke all on function app_private.schedule_tell_published(uuid, uuid, uuid, date, jsonb, uuid[]) from public;
 revoke all on function app_private.schedule_tell_unpublished(uuid, uuid, uuid, date, uuid[]) from public;
 revoke all on function app_private.schedule_tell_closed_day(uuid, uuid, public.announcements, jsonb) from public;
 
@@ -468,7 +489,8 @@ begin
           or current_row.time_timezone is distinct from next_row.time_timezone
           or current_row.note is distinct from next_row.note
         ))::integer as unchanged,
-      coalesce((
+      -- The people the publish tells (BILDIRIM-U3): not the publisher, only who a notice reaches.
+      app_private.schedule_people_told(target_workspace_id, actor_user_id, coalesce((
         select array_agg(distinct affected.employee_id order by affected.employee_id)
         from (
           select next_row.employee_id
@@ -522,7 +544,7 @@ begin
                 and next_row.id = current_row.source_shift_id
             )
         ) affected
-      ), '{}'::uuid[]) as affected_employee_ids
+      ), '{}'::uuid[])) as affected_employee_ids
     from selected_locations location
     left join active publication on publication.location_id = location.id
   )
@@ -775,7 +797,8 @@ begin
   ) returning id into publish_event_id;
   -- Whose shifts changed hears it once (S-95; schedule_tell_published).
   perform app_private.schedule_tell_published(target_workspace_id, actor_user_id, publish_event_id,
-    target_draft.week_start, pairs);
+    target_draft.week_start, pairs, array(select distinct x::uuid from jsonb_array_elements(preview -> 'locations') l,
+      jsonb_array_elements_text(l -> 'affected_employee_ids') x));
   result := jsonb_build_object(
     'status', 'published', 'workspace_id', target_workspace_id,
     'week_start', target_draft.week_start, 'draft_id', target_draft.id,

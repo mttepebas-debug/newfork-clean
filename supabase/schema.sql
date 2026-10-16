@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 494, last: 20261017030000_schedule_notices.sql
--- fingerprint: sha256:9351a2e2bd3c11234ff29a12038e3ab2e3c6d427a07e431659a15c2d50a13e88
+-- fingerprint: sha256:0b334b9678951cb3ce6304ca3cb18f0c4d7c1412cedf6d3f55f81093718d5622
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6035,6 +6035,24 @@ $$;
 ALTER FUNCTION "app_private"."schedule_edit_undo_barrier"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."schedule_people_told"("target_workspace" "uuid", "target_actor" "uuid", "target_employees" "uuid"[]) RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(array_agg(e.id order by e.id), '{}'::uuid[])
+  from public.employee_profiles e
+  where e.workspace_id = target_workspace and e.id = any (target_employees)
+    and e.user_id is not null and e.user_id is distinct from target_actor
+    and exists (select 1 from auth.users u where u.id = e.user_id)
+    and exists (select 1 from public.workspace_memberships m
+                where m.workspace_id = target_workspace and m.user_id = e.user_id
+                  and m.status in ('active', 'pending_activation'));
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_people_told"("target_workspace" "uuid", "target_actor" "uuid", "target_employees" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."schedule_publication_changes_since_start"("preview" "jsonb") RETURNS "jsonb"
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -6147,7 +6165,7 @@ $$;
 ALTER FUNCTION "app_private"."schedule_tell_closed_day"("target_workspace" "uuid", "target_actor" "uuid", "item" "public"."announcements", "target_rows" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") RETURNS integer
+CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb", "target_told" "uuid"[]) RETURNS integer
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
     AS $$
@@ -6190,7 +6208,8 @@ begin
       min(c.d) d, min(c.st) st, min(c.en) en
     from change c
     join public.employee_profiles e on e.id = c.emp and e.workspace_id = target_workspace
-    where c.emp is not null and e.user_id is not null
+    -- The people the publish preview counted (schedule_people_told): the dialog's number.
+    where c.emp = any (target_told)
     group by e.user_id
   ), worded as (
     select p.*, to_char(p.d, 'FMDy, FMMon FMDD') day_text, app_private.announcement_hours_text(p.st, p.en, fmt) hours,
@@ -6225,7 +6244,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") OWNER TO "postgres";
+ALTER FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb", "target_told" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_unpublished"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_publications" "uuid"[]) RETURNS integer
@@ -17351,7 +17370,8 @@ begin
           or current_row.time_timezone is distinct from next_row.time_timezone
           or current_row.note is distinct from next_row.note
         ))::integer as unchanged,
-      coalesce((
+      -- The people the publish tells (BILDIRIM-U3): not the publisher, only who a notice reaches.
+      app_private.schedule_people_told(target_workspace_id, actor_user_id, coalesce((
         select array_agg(distinct affected.employee_id order by affected.employee_id)
         from (
           select next_row.employee_id
@@ -17405,7 +17425,7 @@ begin
                 and next_row.id = current_row.source_shift_id
             )
         ) affected
-      ), '{}'::uuid[]) as affected_employee_ids
+      ), '{}'::uuid[])) as affected_employee_ids
     from selected_locations location
     left join active publication on publication.location_id = location.id
   )
@@ -17850,7 +17870,8 @@ begin
   ) returning id into publish_event_id;
   -- Whose shifts changed hears it once (S-95; schedule_tell_published).
   perform app_private.schedule_tell_published(target_workspace_id, actor_user_id, publish_event_id,
-    target_draft.week_start, pairs);
+    target_draft.week_start, pairs, array(select distinct x::uuid from jsonb_array_elements(preview -> 'locations') l,
+      jsonb_array_elements_text(l -> 'affected_employee_ids') x));
   result := jsonb_build_object(
     'status', 'published', 'workspace_id', target_workspace_id,
     'week_start', target_draft.week_start, 'draft_id', target_draft.id,
@@ -32925,6 +32946,10 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_edit_undo_barrier"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."schedule_people_told"("target_workspace" "uuid", "target_actor" "uuid", "target_employees" "uuid"[]) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."schedule_publication_changes_since_start"("preview" "jsonb") FROM PUBLIC;
 
 
@@ -32937,7 +32962,7 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_tell_closed_day"("target_workspac
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb", "target_told" "uuid"[]) FROM PUBLIC;
 
 
 
