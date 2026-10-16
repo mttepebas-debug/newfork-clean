@@ -236,8 +236,10 @@ export function createAccountSecurityServiceWithClients(options: {
   }
 
   const communications = createCommunicationServiceWithClient(options.rpcClient);
+  // The audit trail has its own entry point; the account notification is the audit table's trigger,
+  // so tearing notifications down leaves this record in place (BILDIRIM-01, K4).
   async function recordSecurityEvent(userId: string, event: string) {
-    await rpc("record_account_security_notification_service", { actor_user_id: userId, target_event: event });
+    await rpc("record_account_security_event_service", { actor_user_id: userId, target_event: event });
   }
   return {
     async getNotificationPreferences(accessToken) {

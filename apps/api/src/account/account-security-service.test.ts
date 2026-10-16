@@ -93,7 +93,10 @@ describe("account security service", () => {
     await service.requestEmailChange(accessToken, "new@example.test");
     await service.changePassword(accessToken, "old-password", "new-password");
     await service.signOutOtherSessions(accessToken, "current-password");
-    const calls = rpc.mock.calls.filter(([name]) => name === "record_account_security_notification_service");
+    // BILDIRIM-01 (K4): the audit trail is written by its own entry point, not the notification wrapper
+    // the notification teardown removes; each event once.
+    expect(rpc).not.toHaveBeenCalledWith("record_account_security_notification_service", expect.anything());
+    const calls = rpc.mock.calls.filter(([name]) => name === "record_account_security_event_service");
     expect(calls.map(([, args]) => args)).toEqual([
       { actor_user_id: userId, target_event: "account.email_change_requested" },
       { actor_user_id: userId, target_event: "account.password_changed" },
@@ -104,7 +107,7 @@ describe("account security service", () => {
   it("does not emit password success when Auth rejects the operation", async () => {
     const { service, rpc } = serviceFixture({ authOverrides: { updatePassword: vi.fn(async () => { throw new Error("incorrect password"); }) } });
     await expect(service.changePassword(accessToken, "incorrect", "new-password")).rejects.toThrow();
-    expect(rpc).not.toHaveBeenCalledWith("record_account_security_notification_service", expect.anything());
+    expect(rpc).not.toHaveBeenCalledWith("record_account_security_event_service", expect.anything());
   });
   it("derives account-only inbox actor from Auth and rejects an invalid session before RPC", async () => {
     const { service, rpc } = serviceFixture();
