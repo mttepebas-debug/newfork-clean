@@ -12,7 +12,9 @@ select no_plan();
 --   (d) a document accepted without review tells nobody, not even its sender;
 --   (e) the daily check: due dates at 7, 1 and 0 days, expiry at 30, 7 and 1 days (the person and who may
 --       review them), access restricted and back; each once;
---   (f) an exemption taken back asks the person again.
+--   (f) an exemption taken back asks the person again;
+--   (g) a handover asks the former owner; (h) access restricted and back on every path, back only when
+--       nothing blocks the person; (i) a notice that fails leaves the documents' work standing.
 
 select tests.world('dc');
 select tests.world('dx');
@@ -243,6 +245,23 @@ select pg_temp.review('zeynep', 'lim', (select card from docs), 'approve');
 select is(pg_temp.access_told('lim'), array['restored', 'restricted'],
   '(h) Lim, restricted the moment he sent it late, hears both: restricted, then back on approval');
 
+-- Back only when nothing blocks the person any more: Dmo's card is suspended, his tip policy is past due
+-- but not yet suspended; the card is excused, the policy still blocks him.
+-- ponytail: this file is one transaction, so its keys (the instant, the transaction) are the same as for
+-- Dmo's first pair; that pair is cleared so the next is not taken for it.
+delete from public.person_notifications where type_key = 'documents.access_changed' and user_id = tests.user('dc:dmo');
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:dmo');
+select pg_temp.check();
+select is(pg_temp.access_told('dmo'), array['restricted'], '(h) Dmo''s card suspends him again: told');
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select policy from docs) and lifecycle_user_id = tests.user('dc:dmo');
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('dmo', (select card from docs))).id,
+  (pg_temp.req('dmo', (select card from docs))).lifecycle_revision, true, 'Brought it in person');
+select ok(app_private.document_actor_blocked(tests.user('dc:dmo'), tests.id('dc')), '(h) his past-due policy still blocks Dmo');
+select is(pg_temp.access_told('dmo'), array['restricted'],
+  '(h) so the card excused does not tell him his access is back');
+
 -- (g) The owner hands the workspace over -------------------------------------------------------------
 -- The documents the owner was excused from are asked of them now.
 
@@ -251,6 +270,27 @@ create temp table handover as select (public.initiate_workspace_ownership_transf
 select public.respond_workspace_ownership_transfer_service(tests.user('dc:zeynep'), tests.id('dc'), (select id from handover), 'accept');
 select is((select count(*)::integer from public.person_notifications where type_key = 'documents.requested' and user_id = tests.user('dc:owner')), 1,
   '(g) the former owner is asked for the documents they were excused from');
+
+-- (i) The documents' work outlives a notice that fails ---------------------------------------------------
+-- A notice that cannot be written leaves the document event and the restriction standing (the same rule
+-- as domain_work_outlives_notifications): logged, never rolled back.
+
+create temp table core_notify as select pg_get_functiondef('app_private.notify_rows(uuid, uuid, jsonb)'::regprocedure) def;
+create or replace function app_private.notify_rows(target_workspace uuid, target_actor uuid, target_rows jsonb)
+returns integer language plpgsql set search_path = '' as $$ begin raise exception 'notices are down'; end $$;
+select lives_ok($$ select pg_temp.document('Knife safety', false, false) $$,
+  '(i) a document published while notices fail is published');
+select is((select count(*)::integer from public.employee_onboarding_requirements r join public.workspaces w on w.id = r.workspace_id
+           where r.workspace_id = tests.id('dc') and r.title = 'Knife safety' and r.lifecycle_retired_at is null) > 0, true,
+  '(i) and asked of the team');
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where title = 'Knife safety' and workspace_id = tests.id('dc') and lifecycle_user_id = tests.user('dc:ali');
+select lives_ok($$ select pg_temp.check() $$, '(i) the daily check runs while notices fail');
+select ok((select document_suspended_at is not null from public.employee_onboarding_requirements
+           where title = 'Knife safety' and workspace_id = tests.id('dc') and lifecycle_user_id = tests.user('dc:ali')),
+  '(i) and Ali''s overdue knife safety sheet is suspended all the same');
+select is(pg_temp.access_told('ali'), '{}'::text[], '(i) his notice is lost, not the restriction');
+do $$ begin execute (select def from core_notify); end $$;
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('dx')), 0,
   'another workspace hears nothing of this one');
