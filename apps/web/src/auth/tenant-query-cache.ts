@@ -16,6 +16,7 @@ const tenantScopedQueryPrefixes = new Set([
   "my-onboarding-phone",
   "notification-preferences",
   "notification-settings",
+  "notifications",
   "organization-jobs",
   "organization-locations",
   "owner-setup-checklist",
