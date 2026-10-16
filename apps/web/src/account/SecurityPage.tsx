@@ -194,7 +194,7 @@ export default function SecurityPage() {
           {blockers.length > 0 ? (
             <div className="account-blocked-notice"><strong>Your account is still in use</strong><p>{deletionBlockerSummary(blockers)}</p></div>
           ) : (
-            <p className="field-help">Pending invitations will be cancelled and their workspace managers notified.</p>
+            <p className="field-help">Pending invitations will be cancelled.</p>
           )}
           <div className="account-form-actions">
             <Button className="danger-button" type="button" disabled={busy !== null || !security || blockers.length > 0} onClick={() => setConfirmDeletion(true)}><Trash2 size={15} aria-hidden /> Delete account</Button>
@@ -204,7 +204,7 @@ export default function SecurityPage() {
             else { setConfirmDeletion(false); setDeletionPassword(""); }
           }}>
             <h2 id="deletion-confirmation-title">Delete your account?</h2>
-            <p>You will be signed out of every session. Pending invitations will be cancelled and their workspace managers notified.</p>
+            <p>You will be signed out of every session. Pending invitations will be cancelled.</p>
             <p>Your profile and personal preferences are kept for 14 days. Use the recovery email link during that time to restore your account. After 14 days, your personal account data is permanently removed.</p>
           <form className="account-section-body" onSubmit={(event) => { event.preventDefault(); void run("delete", async () => {
             await requestSecureAccountDeletion(supabaseClient!, deletionPassword);

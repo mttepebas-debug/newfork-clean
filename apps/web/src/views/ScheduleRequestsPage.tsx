@@ -113,7 +113,7 @@ function ScheduleRequestsPageContent() {
   const page = pageOf(view.type === "all" ? allRows : allRows.filter((row) => tabOf(row.type) === view.type), view.page, view.pageSize);
   const swap = openSwap ? (data.exchanges.find((item) => item.id === openSwap.id) ?? openSwap) : null;
   // A cover or an open shift opens its drawer over the list (Mert,
-  // 2026-10-11); ?case= names it, so Back closes it and a notification link
+  // 2026-10-11); ?case= names it, so Back closes it and a link
   // lands on it. Like the swap window, it keeps the last copy it saw (P26).
   const caseId = params.get("case") ?? "";
   const [seenCase, setSeenCase] = useState<ExchangeCase | null>(null);
@@ -641,7 +641,6 @@ function ActDialog({
   onConfirm: () => void;
 }) {
   const { request, kind } = act;
-  const name = request.employee_name;
   const cancellation = request.request_type === "time_off_cancellation";
   const opens = request.progress ? timeOffOpenedShiftCount(request.progress) : 0;
   const opensLine = opens
@@ -652,14 +651,14 @@ function ActDialog({
     kind === "revoke"
       ? {
           title: "Revoke time off?",
-          description: `Hours not yet taken stop being time off. ${name} and the managers are notified.`,
+          description: "Hours not yet taken stop being time off.",
           confirm: "Revoke",
           field: "Reason",
         }
       : {
           title: cancellation ? "Approve cancellation?" : "Approve time off?",
           description: alone
-            ? `Takes effect now.${request.progress?.locations.length ? ` Managers at ${name}'s locations are notified.` : ""}${opensLine ? ` ${opensLine}` : ""}`
+            ? `Takes effect now.${opensLine ? ` ${opensLine}` : ""}`
             : opensLine,
           confirm: "Approve",
           field: null,

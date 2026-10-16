@@ -163,10 +163,6 @@ export function UnpublishScheduleDialog({
               icon={<AlertTriangle size={15} aria-hidden />}
               text="Active cover and swap requests for removed shifts will be closed."
             />
-            <UnpublishEffect
-              icon={<Info size={15} aria-hidden />}
-              text="No schedule-change notification is sent."
-            />
             {/* C-D15: the draft stays, so publishing again brings the shifts back. */}
             <UnpublishEffect
               icon={<Info size={15} aria-hidden />}

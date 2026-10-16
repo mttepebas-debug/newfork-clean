@@ -87,7 +87,7 @@ describe("UnpublishScheduleDialog", () => {
         "Active cover and swap requests for removed shifts will be closed.",
       ),
     ).toBeTruthy();
-    expect(screen.getByText("No schedule-change notification is sent.")).toBeTruthy();
+    expect(screen.queryByText(/notification/i)).toBeNull();
     expect(screen.getByText("Publish again to bring these shifts back.")).toBeTruthy();
     expect(screen.queryByText(/cannot be undone|unworked/)).toBeNull();
 

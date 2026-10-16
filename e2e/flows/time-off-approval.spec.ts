@@ -153,7 +153,8 @@ test("an admin decides alone, and the managers are told", async ({ browser }) =>
   const zeynep = await signedIn(browser, "zeynep");
   await (await review(zeynep, request)).getByRole("button", { name: "Approve", exact: true }).click();
   const approve = zeynep.getByRole("alertdialog", { name: "Approve time off?" });
-  await expect(approve).toContainText(`Takes effect now. Managers at ${asker.name}'s locations are notified.`);
+  await expect(approve).toContainText("Takes effect now.");
+  await expect(approve).not.toContainText("notified");
   await approve.getByRole("button", { name: "Approve", exact: true }).click();
   await expect(zeynep.getByText("Time off approved.")).toBeVisible();
   // Neither Kadikoy nor Besiktas voted: the admin's word closed it.

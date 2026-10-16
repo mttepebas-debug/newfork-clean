@@ -363,7 +363,7 @@ function PreferenceForm({
             <p>
               {wizard
                 ? "You can change this later from your own availability page."
-                : "Changes apply immediately and do not change assigned shifts. Your manager may miss the notification; tell them directly too. For temporary changes, request time off."}
+                : "Changes apply immediately and do not change assigned shifts. For temporary changes, request time off."}
             </p>
           )}
           {error && (

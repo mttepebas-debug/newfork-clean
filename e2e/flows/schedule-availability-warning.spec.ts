@@ -398,7 +398,7 @@ test("M4, M5, D4: the owner changes the entry mode; an employee with no saved we
     // The radio itself is visually hidden; the owner presses its label.
     await settings.locator("label", { hasText: "Shift type" }).click();
     await expect(settings.getByRole("radio", { name: "Shift type", exact: true })).toBeChecked();
-    await expect(settings).toContainText("Employees will be notified to check theirs.");
+    await expect(settings).toContainText("Saved weeks will be converted to the new entry mode.");
     await settings.getByRole("button", { name: "Save", exact: true }).click();
     await expect(settings.getByRole("status")).toHaveText("Saved");
     expect(

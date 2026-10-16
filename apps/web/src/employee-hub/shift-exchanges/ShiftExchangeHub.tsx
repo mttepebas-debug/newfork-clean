@@ -1585,8 +1585,8 @@ function CreateExchange({
                   )}
                   <p>
                     Both employees must agree to the swap. If its date, hours or
-                    location change, existing acceptance remains valid and you
-                    will be notified. Your manager approves the final exchange.
+                    location change, existing acceptance remains valid. Your
+                    manager approves the final exchange.
                   </p>
                 </div>
               )}

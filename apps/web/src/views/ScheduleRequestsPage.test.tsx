@@ -172,7 +172,6 @@ function renderPage(
             </PermissionRoute>
           } />
           <Route path="/app/workspace" element={<h1>Workspace</h1>} />
-          <Route path="/app/notifications" element={<h1>Notifications</h1>} />
           <Route path="/app/employee-hub" element={<h1>Employee Hub</h1>} />
         </Routes>
         <LocationProbe />
@@ -335,7 +334,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
       shift, requested_shift: null, applications: [], candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
-    renderPage(undefined, undefined, ["/app/notifications"]);
+    renderPage(undefined, undefined, ["/app/workspace"]);
     fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
     expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${caseId}`);
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
@@ -369,7 +368,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
   });
-  it("lands a manager notification link for a listed cover on its drawer, not on Shift Hub", async () => {
+  it("lands a manager link for a listed cover on its drawer, not on Shift Hub", async () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage(`/app/schedule/requests?case=${coverCase.id}`);
     expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
@@ -382,7 +381,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(await screen.findByRole("dialog", { name: "Review shift change" })).toBeTruthy();
     expect(getExchanges).toHaveBeenCalledWith(workspaceId, true, { caseId: coverCase.id });
   });
-  it("lands a manager notification link for a listed swap on its review window", async () => {
+  it("lands a manager link for a listed swap on its review window", async () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
       ...coverCase, kind: "swap", requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000007", employee_name: "Deniz Acar" },
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
@@ -440,7 +439,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(screen.queryByRole("heading", { name: "Shift changes" })).toBeNull();
     expect(screen.queryByRole("navigation", { name: "Shift change queues" })).toBeNull();
   });
-  // A notification link to a case the core no longer hands this manager (a
+  // A link to a case the core no longer hands this manager (a
   // closed location, a narrower scope): Requests says so in its own empty
   // state, where the table was, and one button brings the list back (BL-1024;
   // Mert, 2026-10-12: variant D and its sentence).
@@ -817,9 +816,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     const drawer = await openTimeOffRequest();
     fireEvent.click(within(drawer).getByRole("button", { name: "Approve" }));
     const box = await screen.findByRole("alertdialog", { name: "Approve time off?" });
-    expect(box.textContent).toContain("Takes effect now. Managers at Alex Kim's locations are notified. 1 published shift becomes an open shift.");
+    // BILDIRIM-02: no notification is promised while there is none (KARARLAR S-96).
+    expect(box.textContent).toContain("Takes effect now. 1 published shift becomes an open shift.");
+    expect(box.textContent).not.toContain("notified");
   });
-  it("names no managers to notify when the request has no location (P21)", async () => {
+  it("names no managers when the request has no location (P21)", async () => {
     withRequest({ progress: { ...progress, fallback: true, locations: [], can_vote: false, can_decide_alone: true,
       impact: { fingerprint, hidden_shift_count: 0, locations: {} } } });
     renderPage();
