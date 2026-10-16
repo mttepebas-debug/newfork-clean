@@ -1,0 +1,186 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+
+-- BILDIRIM-U5 (KARARLAR S-123, S-95, S-127; docs/plan/research/BILDIRIM-URETICILER.md §2.6): documents write their
+-- own notices into the new core.
+--   (a) documents asked of people: one notice per person for one go, however many documents;
+--   (b) a document sent for review reaches who may review that person now (the core), never by a record;
+--       the five-cell probe: an admin made a manager, a reviewer moved off the person's location, a role
+--       without review, a reviewer missing a required document, one whose access was removed;
+--   (c) the decision tells the person once, and closes every reviewer's card;
+--   (d) a document accepted without review tells nobody, not even its sender;
+--   (e) the daily check: due dates at 7, 1 and 0 days, expiry at 30, 7 and 1 days (the person and who may
+--       review them), access restricted and back; each once;
+--   (f) an exemption taken back asks the person again.
+
+select tests.world('dc');
+select tests.world('dx');
+select tests.person('dc', 'zeynep', 'admin', array['K'], array['server']);
+select tests.person('dc', 'ayse', 'manager', array['K'], array['cook']);
+select tests.person('dc', 'ali', 'employee', array['K'], array['cook']);
+select tests.person('dc', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('dc', 'dmo', 'admin', array['K'], array['server']);
+-- A manager's role that may review documents too; Rev works Kadikoy and Besiktas.
+select tests.role('dc', 'reviewing manager', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('dc') and r.system_key = 'manager'
+  union select 'employee_documents.review' union select 'employee_documents.read'));
+select tests.person('dc', 'rev', 'reviewing manager', array['K', 'B'], array['cook']);
+-- A manager's own role has no document review (custom roles are manager or employee class).
+select tests.person('dc', 'lim', 'manager', array['K'], array['cook']);
+select tests.person('dc', 'blk', 'admin', array['K'], array['server']);
+select tests.person('dc', 'gon', 'admin', array['K'], array['server']);
+
+create temp table who as select label, tests.user(label) uid
+from unnest(array['dc:owner', 'dc:zeynep', 'dc:ayse', 'dc:ali', 'dc:emre', 'dc:dmo', 'dc:rev', 'dc:lim', 'dc:blk', 'dc:gon', 'dx:owner']) label;
+create function pg_temp.told(type_key text, subject uuid default null) returns text[] language sql stable as $$
+  select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
+  from public.person_notifications n join who w on w.uid = n.user_id
+  where n.type_key = told.type_key and (subject is null or n.subject_id = subject)
+$$;
+
+-- A document everybody is asked for, published by the owner.
+create function pg_temp.document(title text, review boolean, expiry boolean) returns uuid language plpgsql as $$
+declare made uuid; preview jsonb;
+begin
+  made := public.save_document_type_lifecycle_service(tests.user('dc:owner'), tests.id('dc'), null, null, jsonb_build_object(
+    'title', title, 'description', title, 'requires_review', review, 'accepted_formats', array['pdf'],
+    'tracks_expiry', expiry, 'expiry_warning_days', 30,
+    'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+      'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+        'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+      'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+  preview := public.preview_document_publication_service(tests.user('dc:owner'), tests.id('dc'), made);
+  perform public.set_document_publication_service(tests.user('dc:owner'), tests.id('dc'), made,
+    (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published');
+  perform tests.settle();
+  return made;
+end $$;
+create function pg_temp.req(person text, doc uuid) returns public.employee_onboarding_requirements language sql stable as $$
+  select r from public.employee_onboarding_requirements r
+  where r.source_id = doc and r.employee_id = tests.id('dc:' || person) and r.lifecycle_retired_at is null
+$$;
+create function pg_temp.send(person text, doc uuid) returns integer language plpgsql as $$
+declare r public.employee_onboarding_requirements := pg_temp.req(person, doc);
+begin
+  perform public.save_employee_document_draft_file_service(tests.user('dc:' || person), r.id, r.lifecycle_revision,
+    r.workspace_id || '/' || r.employee_id || '/' || r.id || '/' || gen_random_uuid() || '.pdf', 'card.pdf', 'application/pdf', 100);
+  r := pg_temp.req(person, doc);
+  return public.submit_employee_document_lifecycle_service(tests.user('dc:' || person), r.id, r.lifecycle_revision,
+    (select s.id from public.employee_document_submissions s where s.requirement_id = r.id and s.state = 'draft'),
+    current_date + 365, '{}');
+end $$;
+create function pg_temp.review(reviewer text, person text, doc uuid, decision text) returns integer language plpgsql as $$
+declare r public.employee_onboarding_requirements := pg_temp.req(person, doc);
+begin
+  return public.review_employee_document_lifecycle_service(tests.user('dc:' || reviewer), r.workspace_id, r.id, r.lifecycle_revision,
+    r.submitted_document_id, decision, 'Checked', 'full',
+    (select jsonb_agg(jsonb_build_object('id', f.file_id, 'decision', 'keep')) from public.employee_document_submission_files f
+     where f.submission_id = r.submitted_document_id));
+end $$;
+
+-- (a) Asked ----------------------------------------------------------------------------------------------
+
+-- One go, two documents: the food handler card is reviewed and expires; the tip policy is not reviewed.
+create temp table docs as select pg_temp.document('Food handler card', true, true) card, pg_temp.document('Tip policy', false, false) policy;
+select is(pg_temp.told('documents.requested'),
+  array['dc:ali', 'dc:ayse', 'dc:blk', 'dc:dmo', 'dc:emre', 'dc:gon', 'dc:lim', 'dc:rev', 'dc:zeynep'],
+  '(a) everybody asked is told once for the two documents; not the owner who published them, not another workspace');
+select ok((select bool_and(n.url like '/account/documents?workspace=%') from public.person_notifications n
+           where n.type_key = 'documents.requested'), '(a) and it opens their documents');
+
+-- The five come to lose the right to review.
+select public.update_employee_membership_role_service(tests.user('dc:owner'), tests.id('dc'), tests.id('dc:dmo'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('dc') and r.system_key = 'manager'));
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('dc') and m.user_id = tests.user('dc:rev')), tests.id('dc:K'));
+-- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:blk');
+select public.remove_employee_access_service(tests.user('dc:owner'), tests.id('dc'), tests.id('dc:gon'));
+select is(
+  (select array_agg(p || ' ' || coalesce(app_private.authz_reason(tests.user('dc:' || p), tests.id('dc'), 'documents.review', null,
+     tests.id('dc:ali')), 'ok') order by p) from unnest(array['zeynep', 'dmo', 'rev', 'lim', 'blk', 'gon']) p),
+  array['blk document_blocked', 'dmo missing_permission', 'gon not_active', 'lim missing_permission', 'rev out_of_scope', 'zeynep ok'],
+  '(b) the core: Zeynep may review Ali; the five may not');
+
+-- (b) Sent for review -----------------------------------------------------------------------------------
+
+select pg_temp.send('ali', (select card from docs));
+select is(pg_temp.told('documents.review_needed'), array['dc:owner', 'dc:zeynep'],
+  '(b) Ali''s card reaches the owner and Zeynep, who may review him now; not the five, not Ali, not Ayse who may not');
+
+-- (c) Decided ------------------------------------------------------------------------------------------
+
+select pg_temp.review('owner', 'ali', (select card from docs), 'approve');
+select is(pg_temp.told('documents.decided'), array['dc:ali'], '(c) the approval tells Ali once');
+select ok((select title = 'Your Food handler card was approved' from public.person_notifications where type_key = 'documents.decided'),
+  '(c) saying which and how');
+select is((select resolution || ' by ' || coalesce((select w.label from who w where w.uid = n.resolved_by), '-')
+           from public.person_notifications n where n.type_key = 'documents.review_needed' and n.user_id = tests.user('dc:zeynep')),
+  'approved by dc:owner', '(c) Zeynep''s card closes: the owner approved it');
+select pg_temp.send('emre', (select card from docs));
+select pg_temp.review('zeynep', 'emre', (select card from docs), 'reject');
+select ok((select title = 'Your Food handler card needs a change' from public.person_notifications
+           where type_key = 'documents.decided' and user_id = tests.user('dc:emre')), '(c) a decline tells Emre what to change');
+select is(pg_temp.told('documents.decided'), array['dc:ali', 'dc:emre'], '(c) one each');
+
+-- (d) Accepted without review ---------------------------------------------------------------------------
+
+select pg_temp.send('ali', (select policy from docs));
+select is(pg_temp.told('documents.review_needed', (pg_temp.req('ali', (select policy from docs))).id), '{}'::text[],
+  '(d) the tip policy needs no review: nobody is asked');
+select is(pg_temp.told('documents.decided', (pg_temp.req('ali', (select policy from docs))).id), '{}'::text[],
+  '(d) and Ali is not told of what he did himself');
+
+-- (e) The daily check -----------------------------------------------------------------------------------
+
+-- ponytail: the check takes the oldest-checked cases first across workspaces; the rest of this database
+-- is moved to the back, so this workspace's cases are in the batch.
+update public.employee_onboarding_cases set document_notification_checked_at = now() + interval '1 year'
+where workspace_id <> tests.id('dc');
+create temp table check_time as select (((current_date + 1)::timestamp + time '10:00')
+  at time zone app_private.document_employee_timezone(tests.id('dc'), tests.id('dc:emre'))) at_time;
+create function pg_temp.check() returns jsonb language sql as $$
+  select public.documents_maintain_service(500, (select at_time from check_time))
+$$;
+-- Emre's tip policy is due in 7 days, then tomorrow; Ali's card expires in 14 days.
+update public.employee_onboarding_requirements set deadline_at = (select at_time from check_time) + interval '7 days'
+where id = (pg_temp.req('emre', (select policy from docs))).id;
+update public.employee_document_submissions set expiry_date = ((select at_time from check_time)
+  at time zone app_private.document_employee_timezone(tests.id('dc'), tests.id('dc:ali')))::date + 14
+where id = (pg_temp.req('ali', (select card from docs))).approved_document_id;
+select pg_temp.check();
+select pg_temp.check();
+select is(pg_temp.told('documents.due_soon'), array['dc:emre'], '(e) Emre''s policy, due in 7 days: told once over two checks');
+select is(pg_temp.told('documents.expiring'), array['dc:ali', 'dc:owner', 'dc:zeynep'],
+  '(e) Ali''s card expires in 14 days: Ali, and who may review him, once');
+select is(pg_temp.told('documents.access_changed'), array['dc:blk'], '(e) Blk''s access is restricted: told once');
+update public.employee_onboarding_requirements set deadline_at = (select at_time from check_time) + interval '1 day'
+where id = (pg_temp.req('emre', (select policy from docs))).id;
+select pg_temp.check();
+select is(pg_temp.told('documents.due_soon'), array['dc:emre', 'dc:emre'], '(e) due tomorrow: once more');
+-- Blk's deadline moves out again: the restriction lifts.
+update public.employee_onboarding_requirements set deadline_at = now() + interval '7 days', document_suspended_at = null
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:blk');
+select pg_temp.check();
+select is(pg_temp.told('documents.access_changed'), array['dc:blk', 'dc:blk'], '(e) and told once more that access is back');
+select is(
+  (select array_agg(n.data ->> 'state' order by n.data ->> 'state') from public.person_notifications n where n.type_key = 'documents.access_changed'),
+  array['restored', 'restricted'], '(e) each says which');
+
+-- (f) An exemption taken back ---------------------------------------------------------------------------
+
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('emre', (select card from docs))).id,
+  (pg_temp.req('emre', (select card from docs))).lifecycle_revision, true, 'Has one from last job');
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('emre', (select card from docs))).id,
+  (pg_temp.req('emre', (select card from docs))).lifecycle_revision, false, 'Needs a new one');
+select is((select count(*)::integer from public.person_notifications where type_key = 'documents.requested' and user_id = tests.user('dc:emre')), 2,
+  '(f) the exemption taken back asks Emre again');
+
+select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('dx')), 0,
+  'another workspace hears nothing of this one');
+
+select * from finish();
+rollback;
