@@ -24,13 +24,40 @@ function listDirs(dir) {
   }
 }
 
-function metaFiles() {
-  const out = []
-  for (const a of listDirs(sessionsRoot))
-    for (const b of listDirs(a))
-      for (const f of fs.readdirSync(b)) if (f.startsWith('local_') && f.endsWith('.json')) out.push(path.join(b, f))
-  return out
+const metaIn = dir => {
+  try {
+    return fs.readdirSync(dir).filter(f => f.startsWith('local_') && f.endsWith('.json')).map(f => path.join(dir, f))
+  } catch {
+    return []
+  }
 }
+const mtimeOf = f => {
+  try {
+    return fs.statSync(f).mtimeMs
+  } catch {
+    return 0
+  }
+}
+
+// The app keeps one folder per account and organization; the sidebar shows only
+// the signed-in account's. That account is the one holding this session's own
+// file, found by reading the most recently touched files first.
+function accountDir() {
+  const dirs = listDirs(sessionsRoot).flatMap(listDirs)
+  const files = dirs.flatMap(metaIn).map(f => ({ f, t: mtimeOf(f) }))
+  files.sort((a, b) => b.t - a.t)
+  if (SELF) {
+    for (const { f } of files.slice(0, 200)) {
+      try {
+        if (JSON.parse(fs.readFileSync(f, 'utf8')).cliSessionId === SELF) return path.dirname(f)
+      } catch {}
+    }
+  }
+  return files.length ? path.dirname(files[0].f) : ''
+}
+
+const ACCOUNT_DIR = process.argv[3] && fs.existsSync(process.argv[3]) ? process.argv[3] : accountDir()
+const metaFiles = () => (ACCOUNT_DIR ? metaIn(ACCOUNT_DIR) : [])
 
 let transcriptIndex
 function transcriptFor(cliId) {
@@ -188,4 +215,4 @@ for (const f of metaFiles()) {
   })
 }
 
-process.stdout.write(JSON.stringify({ now, sessions, staleCount }))
+process.stdout.write(JSON.stringify({ now, sessions, staleCount, accountDir: ACCOUNT_DIR }))

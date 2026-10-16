@@ -24,6 +24,12 @@ export type OturumPanosuRaw = {
 
 export type OturumPanosuStatus = 'izin' | 'soru' | 'karar' | 'plan' | 'hata' | 'bitti' | 'durdu' | 'calisiyor'
 
+/** The three status groups the board draws, in the order the person dragged them to. */
+export type OturumPanosuGroup = 'bekleyen' | 'biten' | 'calisan'
+
+/** A: two-line inbox rows · B: one-line compact rows · C: focus, waiting sessions large. */
+export type OturumPanosuLayout = 'A' | 'B' | 'C'
+
 export type OturumPanosuRow = {
   id: string
   title: string
@@ -49,6 +55,30 @@ export type OturumPanosuSummary = {
   error?: string
 }
 
+/** What the board's surface module draws from: plain data only. */
+export type OturumPanosuBoardRow = {
+  id: string
+  title: string
+  label: string
+  color: string
+  detail: string
+  options: string
+  age: string
+  isNew: boolean
+  next: string
+}
+
+export type OturumPanosuBoardProps = {
+  layout: OturumPanosuLayout
+  groups: { id: OturumPanosuGroup; title: string; color: string; isCollapsed: boolean; rows: OturumPanosuBoardRow[] }[]
+}
+
+/** What the board posts to the hooks module. */
+export type OturumPanosuBoardMessage =
+  | { type: 'open'; id: string }
+  | { type: 'toggle'; group: OturumPanosuGroup }
+  | { type: 'order'; order: OturumPanosuGroup[] }
+
 declare module 'claude-code' {
   interface PluginState {
     'oturum-panosu': {
@@ -58,6 +88,9 @@ declare module 'claude-code' {
       error: string
       summary: OturumPanosuSummary | null
       isSummarizing: boolean
+      layout: OturumPanosuLayout
+      order: OturumPanosuGroup[]
+      collapsed: OturumPanosuGroup[]
     }
   }
 }
