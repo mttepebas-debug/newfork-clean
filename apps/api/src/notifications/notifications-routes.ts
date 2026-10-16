@@ -2,6 +2,7 @@ import { notificationFeedQuerySchema, notificationReadInputSchema } from "@newfo
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
+import { decodeNotificationCursor } from "./notifications-cursor";
 import { notificationsServiceFromEnvironment, type NotificationsService } from "./notifications-service";
 
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
@@ -29,9 +30,11 @@ export function registerNotificationRoutes(
     if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
     const actor = await actorFor(request.headers.authorization, params.data.workspaceId);
     const query = notificationFeedQuerySchema.safeParse(request.query);
-    if (!query.success) return reply.status(400).send({ error: "Valid notification list request required" });
+    const before = query.success && query.data.before ? decodeNotificationCursor(query.data.before) : null;
+    if (!query.success || (query.data.before && !before))
+      return reply.status(400).send({ error: "Valid notification list request required" });
     if (!service) return reply.status(503).send(unavailable);
-    return reply.send(await service.feed({ ...actor, query: query.data }));
+    return reply.send(await service.feed({ ...actor, query: { filter: query.data.filter, before, limit: query.data.limit } }));
   });
 
   app.get(`${base}/count`, async (request, reply) => {

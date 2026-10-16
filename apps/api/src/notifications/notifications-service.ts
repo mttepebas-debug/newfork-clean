@@ -6,20 +6,28 @@ import {
   notificationSeenResultSchema,
   type NotificationCounts,
   type NotificationFeed,
-  type NotificationFeedQuery,
+  type NotificationFilter,
   type NotificationReadInput,
   type NotificationReadResult,
   type NotificationSeenResult,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
+import { encodeNotificationCursor, type NotificationCursor } from "./notifications-cursor";
 
 interface Actor {
   readonly actorUserId: string;
   readonly workspaceId: string;
 }
 
+/** A page request with its cursor already read (the route decodes it). */
+export interface NotificationPageRequest {
+  readonly filter: NotificationFilter;
+  readonly before: NotificationCursor | null;
+  readonly limit: number;
+}
+
 export interface NotificationsService {
-  feed(input: Actor & { readonly query: NotificationFeedQuery }): Promise<NotificationFeed>;
+  feed(input: Actor & { readonly query: NotificationPageRequest }): Promise<NotificationFeed>;
   counts(input: Actor): Promise<NotificationCounts>;
   markSeen(input: Actor): Promise<NotificationSeenResult>;
   markRead(input: Actor & { readonly read: NotificationReadInput }): Promise<NotificationReadResult>;
@@ -65,11 +73,12 @@ export function notificationsService(client: RpcClient): NotificationsService {
     async feed({ query, ...actor }) {
       const page = notificationFeedSchema
         .omit({ next_cursor: true })
-        .parse(await rpc("get_notification_feed_service", feedArgs(actor, query.filter, query.before ?? null, query.limit)));
-      // ponytail: the core pages by time alone; two notices written to one person in one transaction share
-      // a time, and the page after the first of them skips the second. An id beside the time fixes it (core).
+        .parse(await rpc("get_notification_feed_service", feedArgs(actor, query.filter, query.before?.at ?? null, query.limit)));
+      // ponytail: the core pages by time alone, so two notices written to one person in one transaction (one
+      // time) can lose the second at a page break. The cursor already carries the id; pass it as before_id
+      // once the core takes it (BILDIRIM-12).
       const last = page.items.at(-1);
-      return { ...page, next_cursor: page.has_more && last ? last.created_at : null };
+      return { ...page, next_cursor: page.has_more && last ? encodeNotificationCursor({ at: last.created_at, id: last.id }) : null };
     },
     async counts(actor) {
       // The badge reads the counts beside the newest row; one row is the smallest page the core gives.

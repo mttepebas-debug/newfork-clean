@@ -57,17 +57,20 @@ export const notificationCountsSchema = z.object({
 });
 export type NotificationCounts = z.infer<typeof notificationCountsSchema>;
 
+/** A page cursor: opaque to the web, which sends it back as it came; only the API reads it. */
+export const notificationCursorSchema = z.string().regex(/^[A-Za-z0-9_-]{1,300}$/);
+
 /** One page, newest first; `next_cursor` asks for the page after it. */
 export const notificationFeedSchema = notificationCountsSchema.extend({
   items: z.array(notificationItemSchema),
   has_more: z.boolean(),
-  next_cursor: instant.nullable(),
+  next_cursor: notificationCursorSchema.nullable(),
 });
 export type NotificationFeed = z.infer<typeof notificationFeedSchema>;
 
 export const notificationFeedQuerySchema = z.object({
   filter: notificationFilterSchema.default("all"),
-  before: instant.optional(),
+  before: notificationCursorSchema.optional(),
   limit: z.coerce.number().int().min(1).max(100).default(30),
 });
 export type NotificationFeedQuery = z.infer<typeof notificationFeedQuerySchema>;

@@ -60,9 +60,10 @@ describe("notificationFeedQuerySchema", () => {
     expect(notificationFeedQuerySchema.parse({})).toEqual({ filter: "all", limit: 30 });
   });
 
-  it("keeps a cursor with the core's fraction digits and refuses a bad one", () => {
-    expect(notificationFeedQuerySchema.parse({ before: fromCore.created_at, limit: "5" })).toMatchObject({ before: fromCore.created_at, limit: 5 });
-    expect(notificationFeedQuerySchema.safeParse({ before: "yesterday" }).success).toBe(false);
+  it("keeps an opaque cursor as it came and refuses anything else", () => {
+    expect(notificationFeedQuerySchema.parse({ before: "eyJ0IjoiMjAyNi0xMC0xNiJ9", limit: "5" })).toMatchObject({ before: "eyJ0IjoiMjAyNi0xMC0xNiJ9", limit: 5 });
+    expect(notificationFeedQuerySchema.safeParse({ before: "2026-10-16T16:38:10+00:00" }).success).toBe(false);
+    expect(notificationFeedQuerySchema.safeParse({ before: "" }).success).toBe(false);
     expect(notificationFeedQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
   });
 });

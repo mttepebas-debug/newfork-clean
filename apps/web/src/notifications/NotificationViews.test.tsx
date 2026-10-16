@@ -36,13 +36,19 @@ vi.mock("@newfork/ui", async (original) => ({ ...(await original<typeof import("
 
 const { NotificationBell, NotificationsPage, NotificationsPanel } = await import("./NotificationViews");
 
-/** Answers the API by path: the list per filter, counts, seen and read. */
-function answer(pages: Partial<Record<"all" | "unread" | "needs_action", unknown>>, counts = { unseen_count: 3, unread_count: 2, needs_action_count: 1 }) {
+/** Answers the API by path: the list per filter (an older page when a cursor is sent), counts, seen and read. */
+function answer(
+  pages: Partial<Record<"all" | "unread" | "needs_action", unknown>>,
+  counts = { unseen_count: 3, unread_count: 2, needs_action_count: 1 },
+  older: unknown = feedPage([]),
+) {
   apiRequest.mockImplementation(async (_client: unknown, path: string) => {
     if (path.endsWith("/count")) return counts;
     if (path.endsWith("/seen")) return { unseen_count: 0 };
     if (path.endsWith("/read")) return { updated: 1, unread_count: 0 };
-    const filter = new URLSearchParams(path.split("?")[1]).get("filter") as "all";
+    const query = new URLSearchParams(path.split("?")[1]);
+    if (query.has("before")) return older;
+    const filter = query.get("filter") as "all";
     const page = pages[filter];
     if (page instanceof Error) throw page;
     return page ?? feedPage([]);
@@ -233,13 +239,19 @@ describe("inline time off decision", () => {
 
 describe("NotificationsPage", () => {
   it("is the full list with its own heading and actions", async () => {
-    answer({ all: feedPage([notice()], { has_more: true, next_cursor: "2026-10-16T16:38:10.2327+00:00" }) });
+    answer(
+      { all: feedPage([notice()], { has_more: true, next_cursor: "eyJ0IjoiMjAyNi0xMC0xNiJ9" }) },
+      undefined,
+      feedPage([notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", title: "Walk-in cooler repair on Tuesday", needs_action: false })]),
+    );
     mount(<NotificationsPage />);
     expect(screen.getByRole("heading", { level: 1, name: "Notifications" })).toBeTruthy();
     expect(screen.getByText(/Everything sent to you in Harbor & Vine/)).toBeTruthy();
     expect(screen.getByRole("link", { name: /Settings/ }).getAttribute("href")).toBe("/account/preferences/notifications");
     fireEvent.click(await screen.findByRole("button", { name: "Show older" }));
-    await waitFor(() => expect(apiRequest.mock.calls.some(([, path]) => String(path).includes("before="))).toBe(true));
+    expect(await screen.findByRole("button", { name: /^(Unread: )?Walk-in cooler repair on Tuesday$/ })).toBeTruthy();
+    expect(apiRequest.mock.calls.some(([, path]) => String(path).includes("before=eyJ0IjoiMjAyNi0xMC0xNiJ9"))).toBe(true);
+    expect(screen.queryByRole("button", { name: "Show older" })).toBeNull();
   });
 });
 

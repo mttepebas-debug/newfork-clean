@@ -4,6 +4,7 @@ import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import { rpcFailure } from "../http-error";
 import { registerNotificationRoutes } from "./notifications-routes";
+import { encodeNotificationCursor } from "./notifications-cursor";
 import type { NotificationsService } from "./notifications-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -65,13 +66,14 @@ const actor = { actorUserId: userId, workspaceId };
 describe("notification routes", () => {
   it("reads a page with its filter, cursor and size", async () => {
     const service = serviceMock();
-    const before = "2026-10-16T16:38:10.2327+00:00";
+    const last = { at: "2026-10-16T16:38:10.2327+00:00", id: rowId };
+    const before = encodeNotificationCursor(last);
     const response = await appWith(service).inject({
       method: "GET", url: `${w}?filter=needs_action&before=${encodeURIComponent(before)}&limit=5`, headers: auth,
     });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual(page);
-    expect(service.feed).toHaveBeenCalledWith({ ...actor, query: { filter: "needs_action", before, limit: 5 } });
+    expect(service.feed).toHaveBeenCalledWith({ ...actor, query: { filter: "needs_action", before: last, limit: 5 } });
   });
 
   it("answers the badge count", async () => {
@@ -101,6 +103,7 @@ describe("notification routes", () => {
     ["GET", `${w}?filter=archived`, undefined],
     ["GET", `${w}?limit=0`, undefined],
     ["GET", `${w}?before=yesterday`, undefined],
+    ["GET", `${w}?before=${encodeURIComponent("2026-10-16T16:38:10+00:00")}`, undefined],
     ["POST", `${w}/read`, {}],
     ["POST", `${w}/read`, { ids: ["not-a-uuid"] }],
     ["GET", "/v1/workspaces/not-a-uuid/notifications", undefined],

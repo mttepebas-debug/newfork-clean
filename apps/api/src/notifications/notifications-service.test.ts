@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
+import { decodeNotificationCursor } from "./notifications-cursor";
 import { notificationsService } from "./notifications-service";
 
 const actor = { actorUserId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
@@ -19,18 +20,18 @@ describe("notifications service", () => {
     const rows = [row("13253395-6150-43b9-bb13-364014baae15", "2026-10-16T16:38:10.2327+00:00"),
       row("5beb3f8b-0b54-48ed-ac48-abc004de70de", "2026-10-16T15:00:00+00:00")];
     const rpc = client({ items: rows, has_more: true, ...counts });
-    const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "unread", before: "2026-10-17T00:00:00Z", limit: 2 } });
+    const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "unread", before: { at: "2026-10-17T00:00:00Z", id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" }, limit: 2 } });
     expect(rpc.rpc).toHaveBeenCalledWith("get_notification_feed_service", {
       actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId,
       target_filter: "unread", target_before: "2026-10-17T00:00:00Z", target_limit: 2,
     });
-    expect(page.next_cursor).toBe("2026-10-16T15:00:00+00:00");
+    expect(decodeNotificationCursor(page.next_cursor!)).toEqual({ at: "2026-10-16T15:00:00+00:00", id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" });
     expect(page.items).toHaveLength(2);
   });
 
   it("has no next page on the last one", async () => {
     const rpc = client({ items: [row("13253395-6150-43b9-bb13-364014baae15", "2026-10-16T16:38:10+00:00")], has_more: false, ...counts });
-    const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "all", limit: 30 } });
+    const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "all", before: null, limit: 30 } });
     expect(page.next_cursor).toBeNull();
     expect(rpc.rpc.mock.calls[0]?.[1]).toMatchObject({ target_before: null });
   });

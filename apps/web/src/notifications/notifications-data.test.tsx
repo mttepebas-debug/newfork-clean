@@ -36,9 +36,9 @@ function wrapper() {
 describe("notification calls", () => {
   it("asks for a page with its filter and cursor, and reads the answer through the shared schema", async () => {
     apiRequest.mockResolvedValueOnce(feedPage([notice()]));
-    const page = await getNotificationFeed(w, "needs_action", "2026-10-16T16:38:10.2327+00:00");
+    const page = await getNotificationFeed(w, "needs_action", "eyJ0IjoiMjAyNi0xMC0xNiJ9");
     expect(page.items[0]?.title).toBe("Time off request from Tom Becker");
-    expect(apiRequest.mock.calls[0]?.[1]).toBe(`${base}?filter=needs_action&limit=30&before=2026-10-16T16%3A38%3A10.2327%2B00%3A00`);
+    expect(apiRequest.mock.calls[0]?.[1]).toBe(`${base}?filter=needs_action&limit=30&before=eyJ0IjoiMjAyNi0xMC0xNiJ9`);
   });
 
   it("refuses an answer that is not the contract", async () => {
@@ -62,7 +62,7 @@ describe("notification hooks", () => {
   it("pages older rows with the cursor the API gave", async () => {
     const { Wrapper } = wrapper();
     apiRequest
-      .mockResolvedValueOnce(feedPage([notice()], { has_more: true, next_cursor: "2026-10-16T16:38:10.2327+00:00" }))
+      .mockResolvedValueOnce(feedPage([notice()], { has_more: true, next_cursor: "eyJ0IjoiMjAyNi0xMC0xNiJ9" }))
       .mockResolvedValueOnce(feedPage([notice({ id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" })]));
     const { result } = renderHook(() => useNotificationFeed(w, "all"), { wrapper: Wrapper });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
@@ -70,7 +70,7 @@ describe("notification hooks", () => {
     await act(async () => {
       await result.current.fetchNextPage();
     });
-    expect(apiRequest.mock.calls[1]?.[1]).toContain("before=2026-10-16T16%3A38%3A10.2327%2B00%3A00");
+    expect(apiRequest.mock.calls[1]?.[1]).toContain("before=eyJ0IjoiMjAyNi0xMC0xNiJ9");
     await waitFor(() => expect(result.current.data?.pages.flatMap((page) => page.items)).toHaveLength(2));
     expect(result.current.hasNextPage).toBe(false);
   });
