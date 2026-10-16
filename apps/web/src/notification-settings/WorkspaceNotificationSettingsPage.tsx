@@ -155,8 +155,8 @@ export default function WorkspaceNotificationSettingsPage() {
               }
             >
               {notificationDelivery.email
-                ? "People choose which ones they get."
-                : "People choose which ones they get. Emails start soon; this choice is kept."}
+                ? "People choose which ones they get. Required notices still go by email."
+                : "People choose which ones they get. Required notices still go by email. Emails start soon; this choice is kept."}
             </ChannelRow>
             <ChannelRow
               title={<>Phone alerts{notificationDelivery.push ? null : <StatusPill>Coming soon</StatusPill>}</>}

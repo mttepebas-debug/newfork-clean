@@ -66,6 +66,8 @@ describe("Settings > Notifications", () => {
     expect(within(channels).queryByRole("switch", { name: "Text messages" })).toBeNull();
     expect(within(channels).getByText("Not available")).toBeTruthy();
     expect(within(channels).getAllByText("Coming soon")).toHaveLength(2);
+    // Turning email off does not stop required notices (notification_route).
+    expect(within(channels).getByText(/Required notices still go by email/)).toBeTruthy();
 
     const optional = screen.getByRole("group", { name: "Optional notifications" });
     expect(within(optional).getAllByRole("switch")).toHaveLength(2);

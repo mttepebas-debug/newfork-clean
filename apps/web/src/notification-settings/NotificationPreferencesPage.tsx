@@ -284,12 +284,22 @@ function TopicTable({
                 <strong>
                   Account and security <StatusPill tone="accent" locked>Required</StatusPill>
                 </strong>
-                <span>Password and sign-in changes, your role and your access. Always by email.</span>
+                <span>
+                  {notificationDelivery.email
+                    ? "Password and sign-in changes, your role and your access. Always by email."
+                    : "Password and sign-in changes, your role and your access. Always in your Notifications list, and by email once emails start."}
+                </span>
               </th>
               <td>
-                <label className="ns-check">
-                  <input type="checkbox" aria-label="Account and security by email, always on" checked disabled readOnly />
-                </label>
+                {notificationDelivery.email ? (
+                  <label className="ns-check">
+                    <input type="checkbox" aria-label="Account and security by email, always on" checked disabled readOnly />
+                  </label>
+                ) : (
+                  <span className="ns-na" aria-label="Account and security by email, coming soon">
+                    —
+                  </span>
+                )}
               </td>
               <td>
                 <span className="ns-na" aria-label="Account and security by phone alerts, not sent">

@@ -70,10 +70,11 @@ describe("Account > Notifications", () => {
     expect(cell("My schedule by email").checked).toBe(true);
     expect(cell("Open shifts by email").checked).toBe(true);
     expect(cell("Open shifts by phone alerts").checked).toBe(true);
-    const locked = cell("Account and security by email, always on");
-    expect(locked.checked).toBe(true);
-    expect(locked.disabled).toBe(true);
+    // Required, and honest while email is not connected: no ticked email box.
     expect(screen.getByText("Required")).toBeTruthy();
+    expect(screen.queryByRole("checkbox", { name: /Account and security/ })).toBeNull();
+    expect(screen.getByLabelText("Account and security by email, coming soon")).toBeTruthy();
+    expect(screen.getByText(/by email once emails start/)).toBeTruthy();
     expect(screen.getAllByRole("row")).toHaveLength(4);
   });
 
