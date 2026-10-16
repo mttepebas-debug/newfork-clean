@@ -997,6 +997,24 @@
   color: var(--theme-text);
   font-size: 14px;
 }
+.announcement-drawer .ad-mini {
+  min-height: 28px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 7px;
+  padding: 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 12px;
+  font-weight: 600;
+}
+.announcement-drawer .ad-mini:disabled {
+  color: var(--theme-muted);
+  cursor: default;
+}
+.announcement-drawer .ad-mini:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
 .announcement-drawer .ad-bar {
   display: block;
   height: 6px;

@@ -570,12 +570,115 @@ describe("Announcement drawer (EKRAN-08)", () => {
     fireEvent.click(within(drawer).getByRole("tab", { name: /Audience/ }));
     const who = within(drawer).getByRole("region", { name: "Who gets it" });
     expect(who.textContent).toContain("1 of 2 acknowledged");
-    // BILDIRIM-05 (Mert, 2026-10-16): no reminder reaches anyone until the new notification system, so no Remind.
-    expect(within(drawer).queryByRole("button", { name: /Remind/ })).toBeNull();
-    expect(within(drawer).queryByText(/Remind|Everyone acknowledged/)).toBeNull();
     expect(within(who).getByText("Not yet · 1")).toBeTruthy();
     expect(within(who).getByText("Acknowledged · 1")).toBeTruthy();
     expect(drawer.querySelector(".ad-band")).toBeNull();
+  });
+
+  // BILDIRIM-U6 (KARARLAR S-124, S-126): Remind is back for those who haven't acknowledged, twice a day at most; at
+  // the limit the button rests and says so. The database keeps the count (reminders_left_today).
+  it("reminds who hasn't acknowledged, then rests at two a day and says so", async () => {
+    const id = "a8200000-0000-4000-8000-000000000084";
+    const asked = {
+      user_id: "d1000000-0000-4000-8000-000000000001",
+      employee_id: null,
+      name: "Ali Kaya",
+      job_name: "Server",
+      job_ids: [],
+      department_ids: [],
+      location_ids: [downtown],
+      location_name: "Downtown",
+    };
+    const posted = (left: number, acked: boolean, revision: number) =>
+      detail({
+        id,
+        title: "Uniform policy",
+        status: "published",
+        display_status: "published",
+        published_at: "2026-10-10T16:00:00.000Z",
+        ask_ack: true,
+        recipient_count: 2,
+        respondent_count: 2,
+        acknowledged_count: acked ? 2 : 1,
+        revision,
+        reminders_left_today: left,
+        locations: [
+          { location_id: downtown, name: "Downtown", short_name: "Downtown", timezone: "America/Los_Angeles", archived: false, day: "open", opens: null, closes: null },
+        ],
+        acknowledgements: [
+          { ...asked, acknowledged_at: "2026-10-11T17:30:00.000Z" },
+          { ...asked, user_id: "d1000000-0000-4000-8000-000000000002", name: "Bea Lane", acknowledged_at: acked ? "2026-10-12T17:30:00.000Z" : null },
+        ],
+      });
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview({ recipient_count: 2 }));
+    vi.mocked(getAnnouncement).mockResolvedValue(posted(1, false, 3));
+    vi.mocked(setAnnouncementState).mockImplementation(async () => {
+      vi.mocked(getAnnouncement).mockResolvedValue(posted(0, false, 4));
+      return {
+        status: "published",
+        display_status: "published",
+        announcement_id: id,
+        revision: 4,
+        archived_at: null,
+        told: 1,
+        reminders_left_today: 0,
+      };
+    });
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Uniform policy" });
+    fireEvent.click(await within(drawer).findByRole("tab", { name: /Audience/ }));
+    const remind = within(drawer).getByRole("button", { name: "Remind 1 person" });
+    expect(remind.textContent).toBe("Remind 1");
+    expect((remind as HTMLButtonElement).disabled).toBe(false);
+    fireEvent.click(remind);
+    await waitFor(() => expect(setAnnouncementState).toHaveBeenCalledWith(workspaceId, id, "remind", 3, []));
+    // The drawer stays open on Audience and says so.
+    const again = await screen.findByRole("dialog", { name: "Uniform policy" });
+    await waitFor(() => expect(within(again).getByText("Reminder sent to 1 person who hasn't acknowledged.")).toBeTruthy());
+    const rested = await within(again).findByRole("button", { name: "Reminded twice today" });
+    expect((rested as HTMLButtonElement).disabled).toBe(true);
+    expect(rested.getAttribute("title")).toBe("You can remind again tomorrow.");
+    expect(within(again).queryByRole("button", { name: /^Remind \d/ })).toBeNull();
+  });
+
+  it("has nothing to remind once everyone acknowledged", async () => {
+    const id = "a8200000-0000-4000-8000-000000000085";
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview({ recipient_count: 1 }));
+    vi.mocked(getAnnouncement).mockResolvedValue(
+      detail({
+        id,
+        title: "Knife rules",
+        status: "published",
+        display_status: "published",
+        published_at: "2026-10-10T16:00:00.000Z",
+        ask_ack: true,
+        recipient_count: 1,
+        respondent_count: 1,
+        acknowledged_count: 1,
+        reminders_left_today: 2,
+        acknowledgements: [
+          {
+            user_id: "d1000000-0000-4000-8000-000000000001",
+            employee_id: null,
+            name: "Ali Kaya",
+            job_name: "Server",
+            job_ids: [],
+            department_ids: [],
+            location_ids: [downtown],
+            location_name: "Downtown",
+            acknowledged_at: "2026-10-11T17:30:00.000Z",
+          },
+        ],
+      }),
+    );
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Knife rules" });
+    fireEvent.click(await within(drawer).findByRole("tab", { name: /Audience/ }));
+    const done = within(drawer).getByRole("button", { name: "Everyone acknowledged" });
+    expect((done as HTMLButtonElement).disabled).toBe(true);
+    expect(setAnnouncementState).not.toHaveBeenCalled();
   });
 
   // Audience C (Mert, 2026-10-12): one list; "+ Add people" opens a search in its place, nobody is picked until

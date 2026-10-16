@@ -169,6 +169,7 @@ function useDebounced<T>(value: T, delay: number): T {
 const refusals: Record<string, string> = {
   "announcement.changed": "This post changed since you opened it. Close it and open it again to see the current version.",
   "announcement.read_only": "This post can't change anymore.",
+  "announcement.remind_limit": "You can remind people about this post twice a day. Try again tomorrow.",
   "announcement.shifts_changed": "A shift on these days changed. Review the Shifts tab again.",
   "announcement.bring_back_changed": "A shift on the bring-back list changed. Review the list again.",
   "announcement.shift_tied": "A shift tied to an offboarding or a time off can't be removed.",
@@ -359,8 +360,7 @@ function AnnouncementEditor({
     },
   });
   const change = useMutation({
-    // No "remind" until the new notification system (BILDIRIM-05; KARARLAR S-123): nothing would reach anyone.
-    mutationFn: ({ action, bringBack = [] }: { action: Exclude<AnnouncementStateAction, "remind">; bringBack?: string[] }) =>
+    mutationFn: ({ action, bringBack = [] }: { action: AnnouncementStateAction; bringBack?: string[] }) =>
       setAnnouncementState(workspaceId, record!.id, action, record!.revision, bringBack),
     onSuccess: async (result, { action, bringBack = [] }) => {
       await refresh();
@@ -378,8 +378,10 @@ function AnnouncementEditor({
             back ? "No shift comes back on its own: pick them below." : ""
           }`.trim(),
         );
-      } else {
+      } else if (action === "bring_back") {
         onStay("shifts", `${plural(bringBack.length, "shift")} back on the Schedule.`);
+      } else {
+        onStay("aud", `Reminder sent to ${plural(result.told, "person", "people")} who ${result.told === 1 ? "hasn't" : "haven't"} acknowledged.`);
       }
     },
     onError: (error) => {
@@ -785,6 +787,9 @@ function AnnouncementEditor({
                       people: record.acknowledgements ?? [],
                       zone,
                       timeFormat,
+                      busy,
+                      remindersLeft: record.reminders_left_today ?? 0,
+                      onRemind: () => change.mutate({ action: "remind" }),
                     }
                   : undefined
               }

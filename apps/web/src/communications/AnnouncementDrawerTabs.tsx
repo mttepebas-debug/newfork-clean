@@ -713,6 +713,10 @@ export type Acknowledgements = {
   people: NonNullable<AnnouncementDetail["acknowledgements"]>;
   zone: string;
   timeFormat: TimeFormat;
+  busy: boolean;
+  /** Reminds left today: two a day for one post (KARARLAR S-126), counted by the database. */
+  remindersLeft: number;
+  onRemind: () => void;
 };
 
 /** Audience is one list (Mert, 2026-10-12, variant C): who gets it, and "+ Add people" opens a search in its place.
@@ -887,11 +891,29 @@ export function AudienceTab({
           <div className="ad-list">
             {acks && (
               <div className="ad-ack-box">
-                {/* No Remind until the new notification system brings it back (Mert, 2026-10-16; BILDIRIM-05). */}
                 <div className="ad-ack-line">
                   <span>
                     <b>{done.length}</b> of {asked.length} acknowledged
                   </span>
+                  {/* Remind: who hasn't acknowledged, twice a day at most (KARARLAR S-124, S-126). */}
+                  <button
+                    type="button"
+                    className="ad-mini"
+                    aria-label={
+                      notYet.length && acks.remindersLeft > 0
+                        ? `Remind ${plural(notYet.length, "person", "people")}`
+                        : undefined
+                    }
+                    title={notYet.length && acks.remindersLeft === 0 ? "You can remind again tomorrow." : undefined}
+                    disabled={!notYet.length || acks.remindersLeft === 0 || acks.busy}
+                    onClick={acks.onRemind}
+                  >
+                    {!notYet.length
+                      ? "Everyone acknowledged"
+                      : acks.remindersLeft === 0
+                        ? "Reminded twice today"
+                        : `Remind ${notYet.length}`}
+                  </button>
                 </div>
                 <span className="ad-bar" aria-hidden>
                   <span style={{ width: `${share}%` }} />

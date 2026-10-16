@@ -243,6 +243,8 @@ export const announcementDetailSchema = announcementRecordSchema.extend({
     .array(announcementPersonSchema.extend({ acknowledged_at: momentSchema.nullable() }))
     .optional(),
   history: z.array(announcementHistoryEntrySchema).optional(),
+  /** Reminds left today (two a day, in the post's time zone); only for whoever may change it. */
+  reminders_left_today: countSchema.optional(),
 });
 export type AnnouncementDetail = z.infer<typeof announcementDetailSchema>;
 
@@ -366,12 +368,13 @@ export const announcementSavedSchema = z.object({
 });
 export type AnnouncementSaved = z.infer<typeof announcementSavedSchema>;
 
-/** Unschedule, Unpublish, Archive, Bring back (on an unpublished one). Remind comes back with the new notification system (KARARLAR S-124). */
+/** Unschedule, Unpublish, Archive, Bring back (on an unpublished one), Remind (twice a day at most, KARARLAR S-126). */
 export const announcementStateActionSchema = z.enum([
   "unschedule",
   "unpublish",
   "archive",
   "bring_back",
+  "remind",
 ]);
 export type AnnouncementStateAction = z.infer<typeof announcementStateActionSchema>;
 
@@ -383,6 +386,8 @@ export const announcementStateResultSchema = z.object({
   archived_at: momentSchema.nullable(),
   /** People told now. */
   told: countSchema,
+  /** Reminds left today for this post (two a day, in its time zone). */
+  reminders_left_today: countSchema.optional(),
 });
 export type AnnouncementStateResult = z.infer<typeof announcementStateResultSchema>;
 

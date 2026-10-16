@@ -176,11 +176,11 @@ export async function saveAnnouncement(
     }),
   );
 }
-/** Unschedule, Unpublish, Archive, Bring back. No Remind until the new notification system (BILDIRIM-05). */
+/** Unschedule, Unpublish, Archive, Bring back, Remind. */
 export async function setAnnouncementState(
   workspaceId: string,
   announcementId: string,
-  action: Exclude<AnnouncementStateAction, "remind">,
+  action: AnnouncementStateAction,
   expectedRevision: number,
   bringBack: readonly string[] = [],
 ) {

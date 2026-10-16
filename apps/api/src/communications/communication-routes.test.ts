@@ -92,19 +92,14 @@ function communicationServiceMock(): CommunicationService {
 }
 
 describe("communication routes", () => {
-  // BILDIRIM-03: the old notification inbox is torn down; its endpoints are gone. BILDIRIM-06
-  // (KARARLAR S-124): Remind on an announcement goes too until the new notification system.
+  // BILDIRIM-03: the old notification inbox is torn down; its endpoints are gone. Remind on an announcement
+  // came back with the new notification system (BILDIRIM-U6, KARARLAR S-126).
   it.each([
     ["GET", `/v1/workspaces/${workspaceId}/communications/notifications`, undefined],
     [
       "POST",
       `/v1/workspaces/${workspaceId}/communications/notifications/action`,
       { notification_id: "a8300000-0000-4000-8000-000000000001", action: "read" },
-    ],
-    [
-      "POST",
-      `/v1/workspaces/${workspaceId}/communications/announcements/a8200000-0000-4000-8000-000000000001/remind`,
-      { expected_revision: 1 },
     ],
   ] as const)("no longer serves the retired notification paths: %s %s", async (method, url, payload) => {
     const app = buildApp({
@@ -428,6 +423,7 @@ describe("communication routes", () => {
       ["unpublish", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, { expected_revision: 1 }],
       ["archive", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`, { expected_revision: 1 }],
       ["bring back", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/bring-back`, { expected_revision: 1, bring_back: [announcementId] }],
+      ["remind", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/remind`, { expected_revision: 1 }],
       ["acknowledgement", "acknowledgeAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/acknowledge`, undefined],
     ] as const;
     const manager = {
@@ -451,7 +447,7 @@ describe("communication routes", () => {
 
     // BL-1047: a write over a newer revision says so with a key, so the editor
     // can tell "changed meanwhile" from "archived, cannot be edited".
-    it.each(routes.filter(([name]) => ["save", "unschedule", "unpublish", "archive", "bring back"].includes(name)))(
+    it.each(routes.filter(([name]) => ["save", "unschedule", "unpublish", "archive", "bring back", "remind"].includes(name)))(
       "passes the database's announcement.changed key on with the %s 409",
       async (_name, method, verb, url, payload) => {
         const service = communicationServiceMock();
@@ -473,6 +469,24 @@ describe("communication routes", () => {
       expect(response.statusCode).toBe(404);
       expect(response.json()).toMatchObject({ reason: "authz.not_member" });
       expect(service[method]).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    // S-126 (2): the third Remind in a day is the database's refusal, passed on with its key.
+    it("passes the database's twice-a-day Remind limit on as a 409 with its key", async () => {
+      const service = communicationServiceMock();
+      vi.mocked(service.setAnnouncementState).mockRejectedValue(
+        rpcFailure({ message: "twice a day", code: "PT409", hint: "announcement.remind_limit" }),
+      );
+      const app = buildApp({ contextResolver: { resolve: async () => manager }, communicationService: service });
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/remind`,
+        headers: { authorization: "Bearer manager-token" },
+        payload: { expected_revision: 1 },
+      });
+      expect(response.statusCode).toBe(409);
+      expect(response.json()).toMatchObject({ reason: "announcement.remind_limit" });
       await app.close();
     });
 
@@ -512,6 +526,11 @@ describe("communication routes", () => {
       expect(back.statusCode).toBe(200);
       expect(service.setAnnouncementState).toHaveBeenLastCalledWith(
         expect.objectContaining({ action: "bring_back", bringBack: [announcementId] }),
+      );
+      const remind = await app.inject({ method: "POST", url: `${base}/remind`, headers, payload: { expected_revision: 4 } });
+      expect(remind.statusCode).toBe(200);
+      expect(service.setAnnouncementState).toHaveBeenLastCalledWith(
+        expect.objectContaining({ action: "remind", expectedRevision: 4, bringBack: [] }),
       );
       // Restore and a bare Publish are gone: Publish is a save (EKRAN-08).
       for (const gone of ["cancel", "restore", "publish"]) {

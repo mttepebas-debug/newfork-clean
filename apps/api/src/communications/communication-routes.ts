@@ -166,9 +166,9 @@ export function registerCommunicationRoutes(
     },
   );
 
-  // Unschedule, Unpublish, Archive, Bring back; Publish and Save changes are
-  // the save above (EKRAN-08). Remind comes back with the new notification
-  // system (KARARLAR S-124).
+  // Unschedule, Unpublish, Archive, Bring back, Remind; Publish and Save
+  // changes are the save above (EKRAN-08). Remind's twice-a-day limit is the
+  // database's (KARARLAR S-126).
   for (const action of announcementStateActionSchema.options) {
     app.post(
       `/v1/workspaces/:workspaceId/communications/announcements/:announcementId/${action.replace("_", "-")}`,
