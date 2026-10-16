@@ -82,8 +82,9 @@ test("publishing a draft that undoes an approved swap is refused, not overwritte
   await expect(ayse.getByTestId("schedule-publish-preview")).toBeVisible();
 
   await expect(publishDialog).toContainText("Publishing would undo it.");
+  // BILDIRIM-02: the preview step publishes directly; its publish button is the one held back.
   await expect(
-    publishDialog.getByRole("button", { name: "Next", exact: true }),
+    publishDialog.getByRole("button", { name: /^Publish \d+ locations?$/ }),
   ).toBeDisabled();
 
   await publishDialog.getByRole("button", { name: "Cancel", exact: true }).click();
