@@ -52,23 +52,33 @@ select 'function', unnest(array[
 
 select is(array(select name from dropped where kind = 'table' and to_regclass(name) is not null order by 1),
   '{}'::text[], '(a) the 18 notification tables are gone');
+-- The new system (BILDIRIM-07) brings its own, under new names; nothing else is named for notifications.
 select is(array(select c.relname::text from pg_class c
                 where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and c.relkind in ('r', 'v', 'm', 'p') and c.relname ~ 'notif' order by 1),
-  '{}'::text[], '(a) no table, view or partition named for notifications is left');
+  array['notification_deliveries', 'notification_email_suppressions', 'notification_preferences',
+        'notification_push_subscriptions', 'notification_sms_consents', 'notification_topics', 'notification_types',
+        'notification_workspace_muted_types', 'notification_workspace_settings', 'person_notifications'],
+  '(a) no table, view or partition named for notifications is left but the new system''s');
 select is(array(select p.proname::text from pg_proc p join dropped d on d.kind = 'function' and d.name = p.proname
                 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace) order by 1),
   '{}'::text[], '(a) its functions are gone');
 select is(array(select p.proname::text from pg_proc p
                 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and p.proname ~ '(notif|notice)' order by 1),
-  '{}'::text[], '(a) no function named for notifications or notices is left');
+  array['get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
+        'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_resolve', 'notification_route',
+        'notify', 'purge_expired_notifications', 'save_notification_preferences_service',
+        'save_notification_workspace_settings_service'],
+  '(a) no function named for notifications or notices is left but the new system''s');
 select ok(to_regtype('public.notification_category') is null, '(a) the notification_category type is gone');
 select is((select count(*)::integer from pg_policies where schemaname = 'realtime' and tablename = 'messages'
            and policyname = 'people hear their own account notifications'), 0,
   '(a) nobody listens for account notifications on live updates');
-select is((select count(*)::integer from pg_policies where policyname ~ 'notif'), 0, '(a) no policy is named for notifications');
-select is((select count(*)::integer from cron.job where jobname ~ 'notif'), 0, '(a) no scheduled job sends notifications');
+select is(array(select policyname::text from pg_policies where policyname ~ 'notif' order by 1),
+  array['people hear their own notification signals'], '(a) no policy is named for notifications but the new system''s');
+select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
+  array['notification-retention'], '(a) no scheduled job sends notifications; the new system''s only deletes expired ones');
 -- The domain work they served is still here.
 select ok(to_regprocedure('public.record_account_security_event_service(uuid, text)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null
