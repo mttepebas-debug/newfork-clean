@@ -1,0 +1,68 @@
+import { describe, expect, it } from "vitest";
+import {
+  notificationFeedQuerySchema,
+  notificationItemSchema,
+  notificationReadInputSchema,
+} from "./notifications";
+
+// The core's own answer (get_notification_feed_service, rolled-back local run,
+// BILDIRIM-10): Postgres keeps as many fraction digits as it has.
+const fromCore = {
+  id: "13253395-6150-43b9-bb13-364014baae15",
+  url: "/app/schedule/requests?tab=time-off&request=98020000-0000-4000-8000-000000000001",
+  area: "time_off",
+  body: "Wed, Oct 21 · Jury duty summons.",
+  data: { request_id: "98020000-0000-4000-8000-000000000001", request_type: "time_off" },
+  type: "time_off.requested",
+  level: "important",
+  title: "Time off request from Tom Becker",
+  topic: "approvals",
+  read_at: null,
+  seen_at: null,
+  created_at: "2026-10-16T16:38:10.2327+00:00",
+  resolution: null,
+  subject_id: "98020000-0000-4000-8000-000000000001",
+  resolved_at: null,
+  resolved_by: null,
+  needs_action: true,
+  subject_type: "time_off_request",
+  workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+  actor_user_id: null,
+};
+
+describe("notificationItemSchema", () => {
+  it("reads a row as the core writes it", () => {
+    expect(notificationItemSchema.parse(fromCore)).toEqual(fromCore);
+  });
+
+  it("reads an account notice, which names no workspace", () => {
+    expect(notificationItemSchema.parse({ ...fromCore, workspace_id: null }).workspace_id).toBeNull();
+  });
+
+  it("refuses a link to another site", () => {
+    expect(notificationItemSchema.safeParse({ ...fromCore, url: "//evil.example" }).success).toBe(false);
+    expect(notificationItemSchema.safeParse({ ...fromCore, url: "https://evil.example" }).success).toBe(false);
+  });
+});
+
+describe("notificationReadInputSchema", () => {
+  it("takes ids or all, never an empty body", () => {
+    expect(notificationReadInputSchema.safeParse({ ids: [fromCore.id] }).success).toBe(true);
+    expect(notificationReadInputSchema.safeParse({ all: true }).success).toBe(true);
+    expect(notificationReadInputSchema.safeParse({}).success).toBe(false);
+    expect(notificationReadInputSchema.safeParse({ ids: [] }).success).toBe(false);
+    expect(notificationReadInputSchema.safeParse({ all: false }).success).toBe(false);
+  });
+});
+
+describe("notificationFeedQuerySchema", () => {
+  it("defaults to the first page of everything", () => {
+    expect(notificationFeedQuerySchema.parse({})).toEqual({ filter: "all", limit: 30 });
+  });
+
+  it("keeps a cursor with the core's fraction digits and refuses a bad one", () => {
+    expect(notificationFeedQuerySchema.parse({ before: fromCore.created_at, limit: "5" })).toMatchObject({ before: fromCore.created_at, limit: 5 });
+    expect(notificationFeedQuerySchema.safeParse({ before: "yesterday" }).success).toBe(false);
+    expect(notificationFeedQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
+  });
+});

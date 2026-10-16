@@ -34,6 +34,7 @@ export const healthResponseSchema = z.object({
 
 export * from "./employee-hub";
 export * from "./communications";
+export * from "./notifications";
 export * from "./storage-access";
 export * from "./notification-settings";
 
