@@ -98,6 +98,10 @@ select tests.stops_working_at((select m.id from public.workspace_memberships m
 -- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:blk');
+-- Every notice so far is in its recipient's choices, read before Gon's access goes (tests.unlisted_notices
+-- reads choices now; a person whose access is gone reads none).
+create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('dc');
+select is(tests.unlisted_notices(tests.id('dc')), '{}'::text[], 'so far every notice is in its recipient''s choices (BILDIRIM-12)');
 select public.remove_employee_access_service(tests.user('dc:owner'), tests.id('dc'), tests.id('dc:gon'));
 select is(
   (select array_agg(p || ' ' || coalesce(app_private.authz_reason(tests.user('dc:' || p), tests.id('dc'), 'documents.review', null,
@@ -221,6 +225,8 @@ select is((select count(*)::integer from public.person_notifications where type_
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('dx')), 0,
   'another workspace hears nothing of this one');
+select is(tests.unlisted_notices(tests.id('dc'), array(select id from checked)), '{}'::text[],
+  'every notice written since is in its recipient''s choices (BILDIRIM-12)');
 
 select * from finish();
 rollback;
