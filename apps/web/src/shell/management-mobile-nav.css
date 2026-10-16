@@ -76,6 +76,8 @@
     margin-right: -6px;
     place-items: center;
     border-radius: 12px;
+    color: inherit;
+    text-decoration: none;
   }
   .mm-top-account .current-user-avatar {
     width: 32px;
