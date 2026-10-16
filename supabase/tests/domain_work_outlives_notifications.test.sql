@@ -91,14 +91,25 @@ exception when others then
 end $$;
 
 -- The old notification system is gone (part C2): its functions were named for notifications,
--- outboxes and inboxes, its tables likewise.
+-- outboxes and inboxes, its tables likewise. The new system's own (BILDIRIM-07) are named one by one.
+create temp table new_system(name text);
+insert into new_system values
+  ('get_notification_feed_service'), ('get_notification_preferences_service'), ('get_notification_workspace_settings_service'),
+  ('mark_notifications_read_service'), ('mark_notifications_seen_service'), ('notification_resolve'), ('notification_route'),
+  ('notify'), ('purge_expired_notifications'), ('save_notification_preferences_service'),
+  ('save_notification_workspace_settings_service'),
+  ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
+  ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_topics'), ('notification_types'),
+  ('notification_workspace_muted_types'), ('notification_workspace_settings'), ('person_notifications');
 select is((select count(*)::integer from pg_proc p
            where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
              and (p.proname ~ '(notif|outbox|inbox)'
-                  or p.proname in ('announcement_deliver', 'announcement_tell_failed', 'communication_withdraw', 'time_off_notice')))
+                  or p.proname in ('announcement_deliver', 'announcement_tell_failed', 'communication_withdraw', 'time_off_notice'))
+             and p.proname::text not in (select name from new_system))
         + (select count(*)::integer from pg_class c
            where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace) and c.relkind in ('r', 'v', 'p')
-             and c.relname ~ '(notif|outbox|inbox)'), 0,
+             and c.relname ~ '(notif|outbox|inbox)'
+             and c.relname::text not in (select name from new_system)), 0,
   'the old notification system is gone');
 
 -- 1. Without it ------------------------------------------------------------------------------------
