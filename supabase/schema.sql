@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 490, last: 20261016220000_notification_core.sql
--- fingerprint: sha256:fe4a0c89ee0f593f838d4013e768dddf70bdc93f783d2ef0b18fa3b9bf950569
+-- migrations: 491, last: 20261017000000_account_and_closing_notices.sql
+-- fingerprint: sha256:f5dd29d0c53c106996e36eae08c0e2aaaa4a723291bf18dc7bd2f2d8e74b50c0
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5293,6 +5293,91 @@ $_$;
 ALTER FUNCTION "app_private"."notify"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."notify_account_security"("target_user" "uuid", "target_event" "text", "target_audit_id" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  kind text;
+  heading text;
+  said text;
+begin
+  case target_event
+    when 'account.password_changed' then
+      kind := 'account.password_changed';
+      heading := 'Your password was changed';
+      said := 'Your other devices were signed out. If this wasn''t you, reset your password now.';
+    when 'account.sessions_revoked' then
+      -- A password change signs the other sessions out right after it: its own notice says so.
+      if exists (
+        select 1 from app_private.security_audit_events e
+        where e.actor_user_id = target_user and e.event_type = 'account.password_changed'
+          and e.occurred_at >= now() - interval '2 minutes'
+      ) then
+        return 0;
+      end if;
+      kind := 'account.signed_out_elsewhere';
+      heading := 'You signed out everywhere else';
+      said := 'Your other devices were signed out. If this wasn''t you, change your password now.';
+    when 'account.email_change_requested' then
+      kind := 'account.sign_in_email_changed';
+      heading := 'A sign-in email change was asked for';
+      said := 'Confirm it from the link sent to the new address. If this wasn''t you, cancel it on the Security page.';
+    when 'account.email_change_cancelled' then
+      kind := 'account.sign_in_email_changed';
+      heading := 'Your sign-in email change was cancelled';
+      said := 'You still sign in with the same email.';
+    else
+      return 0;
+  end case;
+  return app_private.notify(
+    kind, null, array[target_user], 'security:' || target_audit_id::text, heading, said, '/account/security',
+    target_user, 'account', target_user
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."notify_account_security"("target_user" "uuid", "target_event" "text", "target_audit_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  place_name text;
+  zone text;
+begin
+  if target_request is null then
+    return 0;
+  end if;
+  select w.name into place_name from public.workspaces w where w.id = target_workspace;
+  select l.timezone into zone from public.locations l
+  where l.workspace_id = target_workspace order by l.archived_at nulls first, l.created_at, l.id limit 1;
+  return app_private.notify(
+    'workspace.closure_scheduled',
+    target_workspace,
+    array(select m.user_id from public.workspace_memberships m where m.workspace_id = target_workspace),
+    'closure:' || target_request::text || case when target_cancelled then ':cancelled' else ':scheduled' end,
+    place_name || case when target_cancelled then ' is no longer closing' else ' is closing' end,
+    case when target_cancelled then 'The owner cancelled the closing. Everything stays as it is.'
+         else format('It closes on %s. Save anything you need before then.',
+                     to_char(target_effective_at at time zone coalesce(zone, 'UTC'), 'FMMon FMDD, YYYY')) end,
+    '/account/workspaces',
+    target_actor,
+    'workspace_closure',
+    target_request,
+    jsonb_build_object('closure_request_id', target_request, 'effective_at', target_effective_at,
+                       'cancelled', target_cancelled)
+  );
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -8877,6 +8962,7 @@ CREATE OR REPLACE FUNCTION "public"."cancel_account_email_change_service"("actor
     AS $$
 declare
   pending_email text;
+  audit_id uuid;
 begin
   if actor_user_id is null then
     raise exception 'valid actor required' using errcode = '42501';
@@ -8907,10 +8993,11 @@ begin
       'email_change_token_new'::auth.one_time_token_type
     );
 
-  perform app_private.record_security_audit_event_service(
+  audit_id := app_private.record_security_audit_event_service(
     actor_user_id, null, 'account.email_change_cancelled', 'account.security',
     'auth_user', actor_user_id::text, '{}'::jsonb
   );
+  perform app_private.notify_account_security(actor_user_id, 'account.email_change_cancelled', audit_id);
 
   return jsonb_build_object('status', 'cancelled');
 end;
@@ -8928,6 +9015,7 @@ declare
   workspace_row public.workspaces%rowtype;
   actor_role public.workspace_role;
   request_id uuid;
+  effective_at timestamptz;
 begin
   if actor_user_id is null then
     raise exception 'valid actor required' using errcode = '42501', hint = 'actor.required';
@@ -8961,14 +9049,14 @@ begin
     raise exception 'workspace closure is not scheduled' using errcode = '23514', hint = 'workspace.closure.not_scheduled';
   end if;
 
-  update public.workspace_closure_requests
+  update public.workspace_closure_requests r
   set status = 'cancelled',
       cancelled_at = now(),
       cancelled_by = actor_user_id,
       updated_at = now()
-  where workspace_id = target_workspace_id
-    and status = 'scheduled'
-  returning id into request_id;
+  where r.workspace_id = target_workspace_id
+    and r.status = 'scheduled'
+  returning r.id, r.effective_at into request_id, effective_at;
 
   update public.workspaces
   set lifecycle_status = 'active',
@@ -8995,6 +9083,8 @@ begin
     target_workspace_id::text,
     jsonb_build_object('closure_request_id', request_id)
   );
+
+  perform app_private.notify_workspace_closing(target_workspace_id, actor_user_id, request_id, effective_at, true);
 
   return jsonb_build_object(
     'status', 'cancelled',
@@ -17654,6 +17744,8 @@ CREATE OR REPLACE FUNCTION "public"."record_account_security_event_service"("act
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  audit_id uuid;
 begin
  if target_event is null or target_event not in ('account.email_change_requested','account.password_changed','account.sessions_revoked') then
   raise exception 'unsupported account security event' using errcode='22023';
@@ -17661,7 +17753,9 @@ begin
  if actor_user_id is null or not exists(select 1 from auth.users u where u.id=actor_user_id and u.deleted_at is null) then
   raise exception 'account session required' using errcode='42501', hint='authz.not_active';
  end if;
- return app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,'{}');
+ audit_id := app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,'{}');
+ perform app_private.notify_account_security(actor_user_id, target_event, audit_id);
+ return audit_id;
 end; $$;
 
 
@@ -18857,6 +18951,8 @@ begin
     target_workspace_id::text,
     jsonb_build_object('closure_request_id', request_id, 'effective_at', effective_at)
   );
+
+  perform app_private.notify_workspace_closing(target_workspace_id, actor_user_id, request_id, effective_at, false);
 
   return jsonb_build_object(
     'status', 'scheduled',
@@ -32178,6 +32274,14 @@ REVOKE ALL ON FUNCTION "app_private"."notification_route"("target_type" "text", 
 
 
 REVOKE ALL ON FUNCTION "app_private"."notify"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."notify_account_security"("target_user" "uuid", "target_event" "text", "target_audit_id" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) FROM PUBLIC;
 
 
 

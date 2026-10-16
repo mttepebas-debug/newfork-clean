@@ -229,8 +229,8 @@ export function createAccountSecurityServiceWithClients(options: {
     });
   }
 
-  // The audit trail has its own entry point; the account notification is the audit table's trigger,
-  // so tearing notifications down leaves this record in place (BILDIRIM-01, K4).
+  // The audit trail has its own entry point; the same call writes the person's account notice
+  // (BILDIRIM-U1). A password change records the signed-out sessions too: that is still one notice.
   async function recordSecurityEvent(userId: string, event: string) {
     await rpc("record_account_security_event_service", { actor_user_id: userId, target_event: event });
   }

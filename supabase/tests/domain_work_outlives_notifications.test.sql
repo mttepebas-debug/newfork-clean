@@ -98,6 +98,8 @@ insert into new_system values
   ('mark_notifications_read_service'), ('mark_notifications_seen_service'), ('notification_resolve'), ('notification_route'),
   ('notify'), ('purge_expired_notifications'), ('save_notification_preferences_service'),
   ('save_notification_workspace_settings_service'),
+  -- The producers' own helpers (BILDIRIM-U1 on).
+  ('notify_account_security'), ('notify_workspace_closing'),
   ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
   ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_topics'), ('notification_types'),
   ('notification_workspace_muted_types'), ('notification_workspace_settings'), ('person_notifications');
