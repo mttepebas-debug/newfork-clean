@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 493, last: 20261017020000_account_notice_follows_sign_out.sql
--- fingerprint: sha256:d142801ecd965e7d1a6fe857ab52e9e5fdde63b9ce7822f08da9ee3d0b0363a5
+-- migrations: 494, last: 20261017030000_schedule_notices.sql
+-- fingerprint: sha256:9351a2e2bd3c11234ff29a12038e3ab2e3c6d427a07e431659a15c2d50a13e88
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -913,6 +913,7 @@ declare
   told integer := 0;
   touched uuid[] := '{}';
   other record;
+  changed_rows jsonb := '[]'::jsonb;
 begin
   places := array(
     select (x ->> 'location_id')::uuid from jsonb_array_elements(impact -> 'shifts') x where x ->> 'outcome' <> 'kept'
@@ -997,6 +998,8 @@ begin
       s ->> 'outcome', before,
       case when s ->> 'outcome' = 'edited' then (s ->> 'from')::time end,
       case when s ->> 'outcome' = 'edited' then (s ->> 'until')::time end, actor);
+    changed_rows := changed_rows || jsonb_build_array(jsonb_build_object('employee_id', shift.employee_id,
+      'outcome', s ->> 'outcome', 'day', shift.scheduled_date, 'kind', s ->> 'day', 'from', s ->> 'from', 'until', s ->> 'until'));
     touched := touched || shift.source_shift_id;
     told := told + 1;
   end loop;
@@ -1050,6 +1053,8 @@ begin
     perform realtime.send(jsonb_build_object('workspace_id', w, 'announcement_id', item.id),
       'changed', 'shift-exchanges:' || w::text, true);
   end if;
+  -- Each person whose published shifts it changed hears it once; the notice stays if the day is taken back.
+  perform app_private.schedule_tell_closed_day(w, actor, item, changed_rows);
   return told;
 end;
 $$;
@@ -5223,9 +5228,6 @@ CREATE OR REPLACE FUNCTION "app_private"."notify"("target_type" "text", "target_
     AS $_$
 declare
   kind public.notification_types;
-  recipient uuid;
-  written uuid;
-  total integer := 0;
 begin
   select * into kind from public.notification_types t where t.key = target_type;
   if kind.key is null then
@@ -5244,48 +5246,11 @@ begin
   if target_url is not null and target_url !~ '^/([^/\\].*)?$' then
     raise exception 'a link stays inside the app' using errcode = '22023', hint = 'notifications.url_outside_app';
   end if;
-  -- The owner turned this optional type off: nobody gets it, not even in the list.
-  if target_workspace is not null and exists (
-    select 1 from public.notification_workspace_muted_types m where m.workspace_id = target_workspace and m.type_key = kind.key
-  ) then
-    return 0;
-  end if;
-
-  for recipient in
-    select distinct r.id
-    from unnest(coalesce(target_recipients, '{}'::uuid[])) r(id)
-    where r.id is not null
-      and (kind.notify_actor or r.id is distinct from target_actor)
-      and exists (select 1 from auth.users u where u.id = r.id)
-      and (kind.scope = 'account' or exists (
-        select 1 from public.workspace_memberships m
-        where m.workspace_id = target_workspace and m.user_id = r.id
-          and (m.status in ('active', 'pending_activation')
-               or (kind.to_former_members and m.status in ('suspended', 'removed')))
-      ))
-  loop
-    written := null;
-    insert into public.person_notifications (
-      workspace_id, user_id, type_key, event_key, actor_user_id, subject_type, subject_id,
-      title, body, url, data, expires_at
-    ) values (
-      target_workspace, recipient, kind.key, target_event_key, target_actor, target_subject_type, target_subject_id,
-      btrim(target_title), nullif(btrim(coalesce(target_body, '')), ''), target_url, coalesce(target_data, '{}'::jsonb),
-      now() + make_interval(days => kind.retention_days)
-    )
-    on conflict (user_id, workspace_id, type_key, event_key) do nothing
-    returning id into written;
-    continue when written is null;
-    total := total + 1;
-
-    insert into public.notification_deliveries (notification_id, channel, reason)
-    select written, x.channel, x.reason
-    from app_private.notification_route(kind.key, target_workspace, recipient) x
-    where x.sends and x.channel <> 'in_app';
-
-    perform realtime.send(jsonb_build_object('workspace_id', target_workspace), 'changed', 'notifications:' || recipient::text, true);
-  end loop;
-  return total;
+  return app_private.notify_rows(target_workspace, target_actor, (
+    select coalesce(jsonb_agg(jsonb_build_object(
+      'type', target_type, 'user_id', r.id, 'event_key', target_event_key, 'title', target_title, 'body', target_body,
+      'url', target_url, 'subject_type', target_subject_type, 'subject_id', target_subject_id, 'data', target_data)), '[]'::jsonb)
+    from (select distinct x.id from unnest(coalesce(target_recipients, '{}'::uuid[])) x(id) where x.id is not null) r));
 end;
 $_$;
 
@@ -5382,6 +5347,92 @@ $$;
 
 
 ALTER FUNCTION "app_private"."notify_holders"("target_workspace" "uuid", "target_action" "text", "target_places" "uuid"[], "target_person" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."notify_rows"("target_workspace" "uuid", "target_actor" "uuid", "target_rows" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  total integer;
+  told uuid[];
+  person uuid;
+begin
+  if jsonb_typeof(coalesce(target_rows, '[]'::jsonb)) <> 'array' then
+    raise exception 'notice rows are an array' using errcode = '22023', hint = 'notifications.rows_required';
+  end if;
+  if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
+             where not exists (select 1 from public.notification_types t where t.key = x ->> 'type')) then
+    raise exception 'unknown notification type' using errcode = '22023', hint = 'notifications.unknown_type';
+  end if;
+  if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
+             join public.notification_types t on t.key = x ->> 'type'
+             where (t.scope = 'account') <> (target_workspace is null)) then
+    raise exception 'an account notice names no workspace; every other names one'
+      using errcode = '22023', hint = 'notifications.scope_mismatch';
+  end if;
+  if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
+             where nullif(btrim(coalesce(x ->> 'event_key', '')), '') is null) then
+    raise exception 'an event key is required' using errcode = '22023', hint = 'notifications.event_required';
+  end if;
+  if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
+             where nullif(btrim(coalesce(x ->> 'title', '')), '') is null) then
+    raise exception 'a title is required' using errcode = '22023', hint = 'notifications.title_required';
+  end if;
+  if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
+             where x ->> 'url' is not null and x ->> 'url' !~ '^/([^/\\].*)?$') then
+    raise exception 'a link stays inside the app' using errcode = '22023', hint = 'notifications.url_outside_app';
+  end if;
+
+  with given as (
+    select distinct on (x.user_id, x.type, btrim(x.event_key)) x.*
+    from jsonb_to_recordset(coalesce(target_rows, '[]'::jsonb)) x(type text, user_id uuid, event_key text, title text,
+      body text, url text, subject_type text, subject_id uuid, data jsonb)
+    where x.user_id is not null
+    order by x.user_id, x.type, btrim(x.event_key)
+  ), kept as (
+    select g.*, t.retention_days
+    from given g
+    join public.notification_types t on t.key = g.type
+    where (t.notify_actor or g.user_id is distinct from target_actor)
+      -- The owner turned this optional type off: nobody gets it, not even in the list.
+      and not exists (select 1 from public.notification_workspace_muted_types m
+                      where m.workspace_id = target_workspace and m.type_key = t.key)
+      and exists (select 1 from auth.users u where u.id = g.user_id)
+      and (t.scope = 'account' or exists (
+        select 1 from public.workspace_memberships m
+        where m.workspace_id = target_workspace and m.user_id = g.user_id
+          and (m.status in ('active', 'pending_activation')
+               or (t.to_former_members and m.status in ('suspended', 'removed')))))
+  ), written as (
+    insert into public.person_notifications (
+      workspace_id, user_id, type_key, event_key, actor_user_id, subject_type, subject_id, title, body, url, data, expires_at
+    )
+    select target_workspace, k.user_id, k.type, btrim(k.event_key), target_actor, k.subject_type, k.subject_id,
+      btrim(k.title), nullif(btrim(coalesce(k.body, '')), ''), k.url, coalesce(k.data, '{}'::jsonb),
+      now() + make_interval(days => k.retention_days)
+    from kept k
+    on conflict (user_id, workspace_id, type_key, event_key) do nothing
+    returning id, user_id, type_key
+  ), queued as (
+    insert into public.notification_deliveries (notification_id, channel, reason)
+    select w.id, r.channel, r.reason
+    from written w cross join lateral app_private.notification_route(w.type_key, target_workspace, w.user_id) r
+    where r.sends and r.channel <> 'in_app'
+    returning 1
+  )
+  select count(*)::integer, coalesce(array_agg(distinct w.user_id), '{}'::uuid[]) into total, told from written w;
+
+  -- A private signal per person that carries no content.
+  foreach person in array told loop
+    perform realtime.send(jsonb_build_object('workspace_id', target_workspace), 'changed', 'notifications:' || person::text, true);
+  end loop;
+  return total;
+end;
+$_$;
+
+
+ALTER FUNCTION "app_private"."notify_rows"("target_workspace" "uuid", "target_actor" "uuid", "target_rows" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) RETURNS integer
@@ -6053,6 +6104,167 @@ $$;
 ALTER FUNCTION "app_private"."schedule_referenced_catalog"("target_workspace_id" "uuid", "job_ids" "uuid"[], "shift_type_ids" "uuid"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_closed_day"("target_workspace" "uuid", "target_actor" "uuid", "item" "public"."announcements", "target_rows" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  fmt text := app_private.announcement_time_format(target_workspace);
+  notices jsonb;
+begin
+  with r as (
+    select (x ->> 'employee_id')::uuid emp, x ->> 'outcome' outcome, (x ->> 'day')::date d, x ->> 'kind' kind,
+      nullif(x ->> 'from', '')::time st, nullif(x ->> 'until', '')::time en
+    from jsonb_array_elements(target_rows) x where x ->> 'employee_id' is not null
+  ), person as (
+    select e.user_id, count(*) filter (where r.outcome <> 'edited')::integer taken, count(*)::integer shifts,
+      min(r.d) first_day, max(r.d) last_day, bool_and(r.kind = 'closed') closed, min(r.st) st, min(r.en) en
+    from r join public.employee_profiles e on e.id = r.emp and e.workspace_id = target_workspace
+    where e.user_id is not null
+    group by e.user_id
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'type', case when p.taken > 0 then 'schedule.closed_day_removed_shift' else 'schedule.shift_changed' end,
+    'user_id', p.user_id, 'event_key', 'closed_day:' || item.id::text || ':' || item.revision::text,
+    'title', case
+      when p.taken > 0 and p.first_day = p.last_day then to_char(p.first_day, 'FMDy, FMMon FMDD')
+        || case when p.closed then ' is closed.' else ' has short hours.' end
+        || case when p.shifts = 1 then ' Your shift was removed.' else ' Your shifts were removed.' end
+      when p.taken > 0 then item.title || ': your shifts were removed'
+      when p.shifts = 1 then 'Your ' || to_char(p.first_day, 'FMDy, FMMon FMDD') || ' shift now runs '
+        || app_private.announcement_hours_text(p.st, p.en, fmt)
+      else item.title || ': your shift hours changed' end,
+    'body', item.title,
+    'url', '/app/employee-hub/schedule?view=day&date=' || p.first_day::text,
+    'subject_type', 'announcement', 'subject_id', item.id,
+    'data', jsonb_build_object('announcement_id', item.id, 'removed', p.taken, 'shifts', p.shifts))), '[]'::jsonb)
+  into notices from person p;
+  return app_private.notify_rows(target_workspace, target_actor, notices);
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_tell_closed_day"("target_workspace" "uuid", "target_actor" "uuid", "item" "public"."announcements", "target_rows" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  fmt text := app_private.announcement_time_format(target_workspace);
+  week text := app_private.schedule_week_text(target_week);
+  link text := '/app/employee-hub/schedule?view=day&date=' || target_week::text;
+  notices jsonb;
+begin
+  with pair as (
+    select nullif(p ->> 'previous', '')::uuid prev, (p ->> 'current')::uuid cur from jsonb_array_elements(target_pairs) p
+  ), old_row as (
+    select s.*, pair.cur from public.schedule_published_shifts s join pair on s.publication_id = pair.prev
+  ), new_row as (
+    select s.*, pair.prev from public.schedule_published_shifts s join pair on s.publication_id = pair.cur
+  ), joined as (
+    select o.id old_id, n.id new_id, n.prev is null first_time,
+      o.employee_id old_emp, o.scheduled_date old_day, o.start_time old_start, o.end_time old_end,
+      n.employee_id new_emp, n.scheduled_date new_day, n.start_time new_start, n.end_time new_end,
+      (o.id is not null and n.id is not null and (
+        o.employee_id is distinct from n.employee_id or o.job_id is distinct from n.job_id
+        or o.shift_type_id is distinct from n.shift_type_id or o.scheduled_date is distinct from n.scheduled_date
+        or o.start_time is distinct from n.start_time or o.end_time is distinct from n.end_time
+        or o.time_basis is distinct from n.time_basis or o.time_snapshot is distinct from n.time_snapshot
+        or o.time_timezone is distinct from n.time_timezone or o.note is distinct from n.note)) changed
+    from old_row o full join new_row n on n.publication_id = o.cur and n.source_shift_id = o.source_shift_id
+  ), change as (
+    select new_emp emp, case when first_time then 'first' else 'added' end kind, new_day d, new_start st, new_end en
+    from joined where old_id is null
+    union all select old_emp, 'removed', old_day, old_start, old_end from joined where new_id is null
+    union all select new_emp, 'changed', new_day, new_start, new_end from joined where changed and old_emp is not distinct from new_emp
+    union all select old_emp, 'removed', old_day, old_start, old_end from joined where changed and old_emp is distinct from new_emp
+    union all select new_emp, 'added', new_day, new_start, new_end from joined where changed and old_emp is distinct from new_emp
+  ), person as (
+    select e.user_id,
+      count(*) filter (where c.kind = 'first')::integer firsts,
+      count(*) filter (where c.kind = 'added')::integer added,
+      count(*) filter (where c.kind = 'changed')::integer changed,
+      count(*) filter (where c.kind = 'removed')::integer removed,
+      min(c.d) d, min(c.st) st, min(c.en) en
+    from change c
+    join public.employee_profiles e on e.id = c.emp and e.workspace_id = target_workspace
+    where c.emp is not null and e.user_id is not null
+    group by e.user_id
+  ), worded as (
+    select p.*, to_char(p.d, 'FMDy, FMMon FMDD') day_text, app_private.announcement_hours_text(p.st, p.en, fmt) hours,
+      case when p.removed > 0 then 'schedule.shift_removed' when p.changed > 0 then 'schedule.shift_changed'
+           when p.added > 0 then 'schedule.shift_added' else 'schedule.published' end kind,
+      p.added + p.changed + p.removed = 1 and p.firsts = 0 single
+    from person p
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'type', w.kind, 'user_id', w.user_id, 'event_key', 'publish:' || target_event::text,
+    'title', case
+      when w.kind = 'schedule.published' then 'Your schedule for ' || week || ' is out'
+      when w.single and w.kind = 'schedule.shift_changed' then 'Your ' || w.day_text || ' shift changed'
+      when w.single and w.kind = 'schedule.shift_added' then 'New shift: ' || w.day_text || ' · ' || w.hours
+      when w.single then 'Your ' || w.day_text || ' shift was removed'
+      else 'Your schedule for ' || week || ' changed' end,
+    'body', case
+      when w.kind = 'schedule.published' then w.firsts || case when w.firsts = 1 then ' shift' else ' shifts' end || ' this week.'
+      when w.single and w.kind = 'schedule.shift_changed' then 'Now ' || w.hours || '.'
+      when w.single and w.kind = 'schedule.shift_added' then null
+      when w.single then 'It is no longer yours.'
+      else array_to_string(array_remove(array[
+        case when w.changed > 0 then w.changed || case when w.changed = 1 then ' shift changed' else ' shifts changed' end end,
+        case when w.added + w.firsts > 0 then (w.added + w.firsts) || ' new' end,
+        case when w.removed > 0 then w.removed || ' removed' end], null), ', ') || '.' end,
+    'url', link, 'subject_type', 'schedule_publication', 'subject_id', target_event,
+    'data', jsonb_build_object('week_start', target_week, 'added', w.added + w.firsts, 'changed', w.changed, 'removed', w.removed))),
+    '[]'::jsonb)
+  into notices from worded w;
+  return app_private.notify_rows(target_workspace, target_actor, notices);
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_unpublished"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_publications" "uuid"[]) RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  week text := app_private.schedule_week_text(target_week);
+  notices jsonb;
+begin
+  with held as (
+    select s.employee_id, s.source_shift_id from public.schedule_published_shifts s
+    where s.workspace_id = target_workspace and s.publication_id = any (target_publications) and s.employee_id is not null
+  ), person as (
+    select e.user_id, bool_or(exists (
+      select 1 from public.shift_exchange_cases c
+      where c.workspace_id = target_workspace and c.status = 'open'
+        and (c.offered_source_id = h.source_shift_id or c.requested_source_id = h.source_shift_id))) asked
+    from held h join public.employee_profiles e on e.id = h.employee_id and e.workspace_id = target_workspace
+    where e.user_id is not null
+    group by e.user_id
+  )
+  select coalesce(jsonb_agg(jsonb_build_object(
+    'type', 'schedule.unpublished', 'user_id', p.user_id, 'event_key', 'unpublish:' || target_event::text,
+    'title', 'Your schedule for ' || week || ' was taken back',
+    'body', 'It isn''t final until it is published again.'
+      || case when p.asked then ' Your shift change requests for those shifts were closed.' else '' end,
+    'url', '/app/employee-hub/schedule?view=day&date=' || target_week::text,
+    'subject_type', 'schedule_publication', 'subject_id', target_event,
+    'data', jsonb_build_object('week_start', target_week, 'requests_closed', p.asked))), '[]'::jsonb)
+  into notices from person p;
+  return app_private.notify_rows(target_workspace, target_actor, notices);
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_tell_unpublished"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_publications" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."schedule_template_department_ids"("w" "uuid", "department_keys" "text"[]) RETURNS "uuid"[]
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -6298,6 +6510,19 @@ $$;
 
 
 ALTER FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "places" "uuid"[], "instant" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."schedule_week_text"("target_week" "date") RETURNS "text"
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select case when date_trunc('month', target_week) = date_trunc('month', target_week + 6)
+    then to_char(target_week, 'FMMon FMDD') || '–' || to_char(target_week + 6, 'FMDD')
+    else to_char(target_week, 'FMMon FMDD') || '–' || to_char(target_week + 6, 'FMMon FMDD') end;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_week_text"("target_week" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."scope_set"("actor" "uuid", "w" "uuid", "action" "text") RETURNS "uuid"[]
@@ -17159,6 +17384,17 @@ begin
           or current_row.note is distinct from next_row.note
             )
           union
+          -- Whose shift went to someone else or was opened is affected too (BILDIRIM-U3): the
+          -- publish dialog counts the people the publish tells.
+          select current_row.employee_id
+          from next_shift next_row
+          join current_shift current_row
+            on current_row.location_id = next_row.location_id
+           and current_row.source_shift_id = next_row.id
+          where next_row.location_id = location.id
+            and current_row.employee_id is not null
+            and current_row.employee_id is distinct from next_row.employee_id
+          union
           select current_row.employee_id
           from current_shift current_row
           where current_row.location_id = location.id
@@ -17463,6 +17699,8 @@ declare
   effective_include_no_department boolean := coalesce(include_no_department, true);
   total_shift_count integer := 0;
   published_at timestamptz := now();
+  pairs jsonb := '[]'::jsonb;
+  publish_event_id uuid;
 begin
   if cardinality(coalesce(target_location_ids, '{}'::uuid[])) = 0 then
     perform app_private.authorize(actor_user_id, target_workspace_id, 'schedule.publish', target_locations => '{}'::uuid[]);
@@ -17590,6 +17828,7 @@ begin
         shift.job_id, normalized_departments, effective_include_no_department
       );
     publication_ids := array_append(publication_ids, new_publication_id);
+    pairs := pairs || jsonb_build_array(jsonb_build_object('previous', previous_publication_id, 'current', new_publication_id));
 
   end loop;
 
@@ -17608,7 +17847,10 @@ begin
       'department_ids', to_jsonb(normalized_departments),
       'include_no_department', effective_include_no_department
     )
-  );
+  ) returning id into publish_event_id;
+  -- Whose shifts changed hears it once (S-95; schedule_tell_published).
+  perform app_private.schedule_tell_published(target_workspace_id, actor_user_id, publish_event_id,
+    target_draft.week_start, pairs);
   result := jsonb_build_object(
     'status', 'published', 'workspace_id', target_workspace_id,
     'week_start', target_draft.week_start, 'draft_id', target_draft.id,
@@ -18083,13 +18325,14 @@ CREATE OR REPLACE FUNCTION "public"."record_schedule_export_schedule_failure_ser
 declare
   failures integer;
   updated public.scheduled_schedule_exports%rowtype;
+  was_enabled boolean;
 begin
   select case
            when s.consecutive_failures > 0 and s.last_failed_at > now() - interval '20 hours'
              then s.consecutive_failures
            else s.consecutive_failures + 1
-         end
-    into failures
+         end, s.enabled
+    into failures, was_enabled
     from public.scheduled_schedule_exports s
    where s.id = target_schedule_id
      and s.workspace_id = target_workspace_id
@@ -18115,6 +18358,17 @@ begin
    where id = target_schedule_id
      and workspace_id = target_workspace_id
    returning * into updated;
+
+  -- It stopped just now: the person who set it up hears it, once.
+  if was_enabled and not updated.enabled then
+    perform app_private.notify('schedule.export_email_stopped', target_workspace_id, array[updated.created_by],
+      'export_stop:' || updated.id::text || ':' || updated.auto_disabled_at::text,
+      'Your scheduled schedule email stopped',
+      format('"%s" failed %s times in a row, so it was turned off. Check its recipients and turn it back on.',
+        updated.name, failures),
+      '/app/schedule', null, 'scheduled_schedule_export', updated.id,
+      jsonb_build_object('schedule_id', updated.id, 'failures', failures));
+  end if;
 
   return public.schedule_export_schedule_json(
     updated,
@@ -24694,6 +24948,7 @@ declare
   normalized_locations uuid[];
   publication_ids uuid[];
   effective_unpublished_at timestamptz := now();
+  unpublish_event_id uuid;
 begin
   perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text,921));
   select array_agg(distinct location_id order by location_id) into normalized_locations
@@ -24728,7 +24983,9 @@ begin
     target_workspace_id, target_week_start, 'unpublished', actor_user_id,
     normalized_locations, publication_ids, expected_fingerprint,
     jsonb_build_object('locations', preview->'locations')
-  );
+  ) returning id into unpublish_event_id;
+  perform app_private.schedule_tell_unpublished(target_workspace_id, actor_user_id, unpublish_event_id,
+    target_week_start, publication_ids);
   return jsonb_build_object(
     'status', 'unpublished', 'workspace_id', target_workspace_id,
     'week_start', target_week_start, 'location_ids', to_jsonb(normalized_locations),
@@ -32570,6 +32827,10 @@ REVOKE ALL ON FUNCTION "app_private"."notify_holders"("target_workspace" "uuid",
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."notify_rows"("target_workspace" "uuid", "target_actor" "uuid", "target_rows" "jsonb") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) FROM PUBLIC;
 
 
@@ -32672,6 +32933,18 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_referenced_catalog"("target_works
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."schedule_tell_closed_day"("target_workspace" "uuid", "target_actor" "uuid", "item" "public"."announcements", "target_rows" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."schedule_tell_unpublished"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_publications" "uuid"[]) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."schedule_template_department_ids"("w" "uuid", "department_keys" "text"[]) FROM PUBLIC;
 
 
@@ -32685,6 +32958,10 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_week_availability"("target_worksp
 
 
 REVOKE ALL ON FUNCTION "app_private"."schedule_week_start_at"("w" "uuid", "places" "uuid"[], "instant" timestamp with time zone) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."schedule_week_text"("target_week" "date") FROM PUBLIC;
 
 
 

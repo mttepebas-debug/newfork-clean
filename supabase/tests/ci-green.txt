@@ -196,3 +196,4 @@ supabase/tests/old_notifications_are_dropped.test.sql
 supabase/tests/notification_core.test.sql
 supabase/tests/notify_account.test.sql
 supabase/tests/notify_time_off.test.sql
+supabase/tests/notify_schedule.test.sql
