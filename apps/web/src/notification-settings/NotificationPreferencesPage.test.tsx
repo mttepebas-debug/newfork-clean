@@ -30,6 +30,10 @@ function preferences(overrides: Partial<NotificationPreferences["channels"]> = {
         email: { choice: null, default: true }, push: { choice: null, default: true } },
       { key: "open_shifts", name: "Open shifts", level: "optional", description: "A teammate releases a shift you can pick up.",
         email: { choice: true, default: false }, push: { choice: null, default: true } },
+      { key: "shift_changes", name: "Shift changes", level: "important", description: "Someone asks you to cover or swap, and the answers to your own asks.",
+        email: { choice: false, default: true }, push: { choice: null, default: true } },
+      { key: "time_off", name: "Time off", level: "important", description: "Decisions on your time off, and approved time off that was shortened.",
+        email: { choice: null, default: true }, push: { choice: null, default: true } },
     ],
   };
 }
@@ -77,7 +81,56 @@ describe("Account > Notifications", () => {
     expect(screen.queryByRole("checkbox", { name: /Account and security/ })).toBeNull();
     expect(screen.getByLabelText("Account and security by email, coming soon")).toBeTruthy();
     expect(screen.getByText(/by email once emails start/)).toBeTruthy();
-    expect(screen.getAllByRole("row")).toHaveLength(4);
+    // Header, My schedule, Open shifts, My requests, Account and security.
+    expect(screen.getAllByRole("row")).toHaveLength(5);
+  });
+
+  it("labels optional topics and says what each row is about", async () => {
+    api.apiRequest.mockResolvedValue(preferences());
+    renderPage();
+    const table = await screen.findByRole("table", { name: "What reaches you" });
+    const openShifts = within(table).getByRole("rowheader", { name: /^Open shifts/ });
+    expect(within(openShifts).getByText("Optional")).toBeTruthy();
+    expect(within(openShifts).getByText("A teammate releases a shift you can pick up.")).toBeTruthy();
+    const schedule = within(table).getByRole("rowheader", { name: /^My schedule/ });
+    expect(within(schedule).queryByText("Optional")).toBeNull();
+    expect(within(schedule).getByText(/A new week is out/)).toBeTruthy();
+  });
+
+  it("shows shift changes and time off as one My requests row whose box writes both", async () => {
+    api.apiRequest.mockResolvedValue(preferences());
+    renderPage();
+    const table = await screen.findByRole("table", { name: "What reaches you" });
+    expect(within(table).queryByRole("rowheader", { name: /^Shift changes/ })).toBeNull();
+    expect(within(table).queryByRole("rowheader", { name: /^Time off/ })).toBeNull();
+    const requests = within(table).getByRole("rowheader", { name: /^My requests/ });
+    expect(within(requests).getByText("Cover and swap asks, and decisions on your time off and shift changes.")).toBeTruthy();
+    expect(within(requests).queryByText("Optional")).toBeNull();
+
+    // Shift changes by email is off and time off is on: the box is mixed.
+    const email = cell("My requests by email");
+    expect(email.checked).toBe(false);
+    expect(email.indeterminate).toBe(true);
+    expect(cell("My requests by phone alerts").checked).toBe(true);
+
+    fireEvent.click(email);
+    expect(email.checked).toBe(true);
+    expect(email.indeterminate).toBe(false);
+    fireEvent.click(cell("My requests by phone alerts"));
+    api.apiRequest.mockResolvedValueOnce(preferences());
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByText("Notification choices saved");
+    expect(api.apiRequest).toHaveBeenLastCalledWith({}, `/v1/workspaces/${workspaceId}/notification-preferences`, {
+      method: "PUT",
+      body: JSON.stringify({
+        choices: [
+          // Time off by email was already on, so only shift changes changes.
+          { topic: "shift_changes", channel: "email", enabled: true },
+          { topic: "shift_changes", channel: "push", enabled: false },
+          { topic: "time_off", channel: "push", enabled: false },
+        ],
+      }),
+    });
   });
 
   it("disables a channel's column the workspace turned off", async () => {

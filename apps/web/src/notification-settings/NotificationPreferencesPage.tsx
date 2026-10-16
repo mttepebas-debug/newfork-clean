@@ -19,6 +19,7 @@ import {
   saveNotificationPreferences,
 } from "./notification-settings-data";
 import { ChannelRow, StatusPill } from "./parts";
+import { rowState, topicRows, type TopicRow } from "./topic-rows";
 import "./notification-settings.css";
 
 type CellKey = `${string}:${NotificationChoiceChannel}`;
@@ -93,13 +94,16 @@ export default function NotificationPreferencesPage() {
       </section>
     );
 
-  const toggle = (topic: NotificationTopicPreference, channel: NotificationChoiceChannel, on: boolean) => {
-    const key: CellKey = `${topic.key}:${channel}`;
+  // A row's box sets every topic in it (My requests is two).
+  const toggle = (row: TopicRow, channel: NotificationChoiceChannel, on: boolean) => {
     setDraft((current) => {
       const next = new Map(current);
-      // Choosing what is stored again is no change, so Save closes again.
-      if (on === stored(topic, channel)) next.delete(key);
-      else next.set(key, on);
+      for (const topic of row.topics) {
+        const key: CellKey = `${topic.key}:${channel}`;
+        // Choosing what is stored again is no change, so Save closes again.
+        if (on === stored(topic, channel)) next.delete(key);
+        else next.set(key, on);
+      }
       return next;
     });
     setSaved(false);
@@ -236,9 +240,10 @@ function TopicTable({
 }: {
   readonly preferences: NotificationPreferences;
   readonly value: (topic: NotificationTopicPreference, channel: NotificationChoiceChannel) => boolean;
-  readonly onToggle: (topic: NotificationTopicPreference, channel: NotificationChoiceChannel, on: boolean) => void;
+  readonly onToggle: (row: TopicRow, channel: NotificationChoiceChannel, on: boolean) => void;
   readonly disabled: boolean;
 }) {
+  const rows = topicRows(preferences.topics);
   const open = {
     email: preferences.channels.email.workspace_enabled,
     push: preferences.channels.push.workspace_enabled,
@@ -258,25 +263,37 @@ function TopicTable({
             </tr>
           </thead>
           <tbody>
-            {preferences.topics.map((topic) => (
-              <tr key={topic.key}>
+            {rows.map((row) => (
+              <tr key={row.key}>
                 <th scope="row">
-                  <strong>{topic.name}</strong>
+                  <strong>
+                    {row.name}
+                    {row.level === "optional" ? <StatusPill>Optional</StatusPill> : null}
+                  </strong>
+                  <span>{row.description}</span>
                 </th>
-                {channels.map((channel) => (
-                  <td key={channel}>
-                    <label className="ns-check">
-                      <input
-                        type="checkbox"
-                        aria-label={`${topic.name} by ${channelName[channel]}`}
-                        title={open[channel] ? undefined : "Turned off for this workspace"}
-                        checked={open[channel] && value(topic, channel)}
-                        disabled={disabled || !open[channel]}
-                        onChange={(event) => onToggle(topic, channel, event.target.checked)}
-                      />
-                    </label>
-                  </td>
-                ))}
+                {channels.map((channel) => {
+                  const state = rowState(row.topics.map((topic) => value(topic, channel)));
+                  const mixed = open[channel] && state.mixed;
+                  return (
+                    <td key={channel}>
+                      <label className="ns-check">
+                        <input
+                          type="checkbox"
+                          ref={(box) => {
+                            if (box) box.indeterminate = mixed;
+                          }}
+                          aria-label={`${row.name} by ${channelName[channel]}`}
+                          aria-checked={mixed ? "mixed" : undefined}
+                          title={open[channel] ? undefined : "Turned off for this workspace"}
+                          checked={open[channel] && state.checked}
+                          disabled={disabled || !open[channel]}
+                          onChange={(event) => onToggle(row, channel, event.target.checked)}
+                        />
+                      </label>
+                    </td>
+                  );
+                })}
               </tr>
             ))}
             <tr className="is-locked">
