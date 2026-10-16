@@ -305,3 +305,48 @@
     grid-column: auto;
   }
 }
+
+/* Phone alerts card: each state framed at phone width. */
+.fg-phone-grid {
+  grid-template-columns: repeat(auto-fill, 392px);
+}
+
+.fg-phone-frame {
+  display: block;
+  width: 390px;
+  height: 640px;
+  border: 0;
+  background: var(--theme-page);
+}
+
+.fg-alerts-page {
+  box-sizing: border-box;
+  display: flex;
+  min-height: 100vh;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px;
+  background: var(--theme-page);
+}
+
+.fg-alerts-label {
+  display: grid;
+  gap: 2px;
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.fg-alerts-label span {
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.fg-alerts-outcome {
+  margin: 0;
+  color: var(--theme-text-body);
+  font-size: 13px;
+}

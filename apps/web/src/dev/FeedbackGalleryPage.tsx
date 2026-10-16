@@ -12,6 +12,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { LinesOutline, ListOutline, LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
+import { PhoneAlertsPreview, isPhoneAlertState, phoneAlertStates } from "./PhoneAlertsPreview";
 import ScheduleShiftDesignPage from "./ScheduleShiftDesignPage";
 import { toastCatalog, type ToastEntry } from "./feedback-catalog";
 import "../employee-hub/employee-dashboard.css";
@@ -39,8 +40,10 @@ function fire(entry: ToastEntry, dedupeKey?: string) {
 }
 
 export default function FeedbackGalleryPage() {
-  const frame = new URLSearchParams(window.location.search).has("frame");
-  return frame ? <FeedbackStage /> : <FeedbackControls />;
+  const params = new URLSearchParams(window.location.search);
+  const alerts = params.get("alerts");
+  if (isPhoneAlertState(alerts)) return <PhoneAlertsPreview state={alerts} />;
+  return params.has("frame") ? <FeedbackStage /> : <FeedbackControls />;
 }
 
 /* ---------- Stage: the real Schedule preview that receives commands ---------- */
@@ -409,6 +412,21 @@ function StatesBoard() {
               <span>No requests match these filters.</span>
             </div>
           </Card>
+        </div>
+      </section>
+
+      <section>
+        <h2>Phone alerts card (not on any screen yet)</h2>
+        <div className="fg-grid fg-phone-grid">
+          {Object.entries(phoneAlertStates).map(([state, { label }]) => (
+            <figure key={state} className="fg-card">
+              <iframe className="fg-phone-frame" src={`/dev/feedback?alerts=${state}`} title={`Phone alerts card: ${label}`} />
+              <figcaption>
+                <strong>{label}</strong>
+                <span>Phone 390 · src/phone-alerts/PhoneAlertsCard.tsx</span>
+              </figcaption>
+            </figure>
+          ))}
         </div>
       </section>
 
