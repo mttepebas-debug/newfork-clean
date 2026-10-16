@@ -713,8 +713,6 @@ export type Acknowledgements = {
   people: NonNullable<AnnouncementDetail["acknowledgements"]>;
   zone: string;
   timeFormat: TimeFormat;
-  busy: boolean;
-  onRemind: () => void;
 };
 
 /** Audience is one list (Mert, 2026-10-12, variant C): who gets it, and "+ Add people" opens a search in its place.
@@ -889,19 +887,11 @@ export function AudienceTab({
           <div className="ad-list">
             {acks && (
               <div className="ad-ack-box">
+                {/* No Remind until the new notification system brings it back (Mert, 2026-10-16; BILDIRIM-05). */}
                 <div className="ad-ack-line">
                   <span>
                     <b>{done.length}</b> of {asked.length} acknowledged
                   </span>
-                  <button
-                    type="button"
-                    className="ad-mini"
-                    aria-label={notYet.length ? `Remind ${plural(notYet.length, "person", "people")}` : undefined}
-                    disabled={!notYet.length || acks.busy}
-                    onClick={acks.onRemind}
-                  >
-                    {notYet.length ? `Remind ${notYet.length}` : "Everyone acknowledged"}
-                  </button>
                 </div>
                 <span className="ad-bar" aria-hidden>
                   <span style={{ width: `${share}%` }} />

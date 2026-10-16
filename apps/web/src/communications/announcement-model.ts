@@ -734,7 +734,7 @@ export function historyStep(
         more.push(`scheduled by ${who}`);
       } else head = `Published by ${who}`;
       if (shiftChanges) more.push(plural(shiftChanges, "shift change"));
-      more.push(`${plural(told, "person", "people")} told`);
+      more.push(plural(told, "person", "people"));
       break;
     case "updated":
       head = `Changed by ${who}`;
@@ -743,7 +743,7 @@ export function historyStep(
       break;
     case "unpublished":
       head = `Unpublished by ${who}`;
-      if (told) more.push(`${plural(told, "person", "people")} told it's cancelled`);
+      if (told) more.push(plural(told, "person", "people"));
       break;
     case "brought_back":
       head = `Brought back by ${who}`;

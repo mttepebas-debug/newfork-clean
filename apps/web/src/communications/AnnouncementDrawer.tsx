@@ -199,10 +199,10 @@ function savedMessage(
   if (intent === "schedule")
     return `Scheduled for ${publishAt ? momentText(publishAt, zone, timeFormat) : "later"}. Until then nobody sees it; shift choices apply when it publishes.`;
   if (intent === "publish")
-    return `Published. ${plural(result.recipient_count, "person", "people")} told${
+    return `Published to ${plural(result.recipient_count, "person", "people")}${
       result.shift_changes ? `; ${plural(result.shift_changes, "shift")} changed.` : "."
     }`;
-  return `Saved. ${plural(result.recipient_count, "person", "people")} get the updated notice.`;
+  return `Saved. ${plural(result.recipient_count, "person", "people")} see the update.`;
 }
 
 function AnnouncementEditor({
@@ -359,7 +359,8 @@ function AnnouncementEditor({
     },
   });
   const change = useMutation({
-    mutationFn: ({ action, bringBack = [] }: { action: AnnouncementStateAction; bringBack?: string[] }) =>
+    // No "remind" until the new notification system (BILDIRIM-05; KARARLAR S-123): nothing would reach anyone.
+    mutationFn: ({ action, bringBack = [] }: { action: Exclude<AnnouncementStateAction, "remind">; bringBack?: string[] }) =>
       setAnnouncementState(workspaceId, record!.id, action, record!.revision, bringBack),
     onSuccess: async (result, { action, bringBack = [] }) => {
       await refresh();
@@ -373,14 +374,12 @@ function AnnouncementEditor({
         const back = (record?.shift_change_count ?? 0) > 0;
         onStay(
           back ? "shifts" : "details",
-          `Unpublished. ${result.told ? `${plural(result.told, "person", "people")} told it's cancelled. ` : ""}${
+          `Unpublished${result.told ? ` for ${plural(result.told, "person", "people")}` : ""}. ${
             back ? "No shift comes back on its own: pick them below." : ""
           }`.trim(),
         );
-      } else if (action === "bring_back") {
-        onStay("shifts", `${plural(bringBack.length, "shift")} back on the Schedule. Each person got one notice.`);
       } else {
-        onStay("aud", `Reminder sent to ${plural(result.told, "person", "people")} who haven't acknowledged.`);
+        onStay("shifts", `${plural(bringBack.length, "shift")} back on the Schedule.`);
       }
     },
     onError: (error) => {
@@ -609,7 +608,7 @@ function AnnouncementEditor({
           key="unpublish"
           className="danger-button"
           disabled={busy}
-          confirmLabel={`Unpublish and tell ${plural(record.recipient_count ?? 0, "person", "people")}?`}
+          confirmLabel={`Unpublish for ${plural(record.recipient_count ?? 0, "person", "people")}?`}
           onConfirm={() => change.mutate({ action: "unpublish" })}
         >
           Unpublish
@@ -786,8 +785,6 @@ function AnnouncementEditor({
                       people: record.acknowledgements ?? [],
                       zone,
                       timeFormat,
-                      busy,
-                      onRemind: () => change.mutate({ action: "remind" }),
                     }
                   : undefined
               }

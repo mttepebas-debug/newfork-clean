@@ -399,7 +399,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
         }),
       }),
     );
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Published. 4 people told; 2 shifts changed."));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Published to 4 people; 2 shifts changed."));
   });
 
   it("lays Details out like the Important Date drawer: line, three boxes, When with All day, locations, publish time, Message last", async () => {
@@ -570,7 +570,9 @@ describe("Announcement drawer (EKRAN-08)", () => {
     fireEvent.click(within(drawer).getByRole("tab", { name: /Audience/ }));
     const who = within(drawer).getByRole("region", { name: "Who gets it" });
     expect(who.textContent).toContain("1 of 2 acknowledged");
-    expect(within(who).getByRole("button", { name: "Remind 1 person" })).toBeTruthy();
+    // BILDIRIM-05 (Mert, 2026-10-16): no reminder reaches anyone until the new notification system, so no Remind.
+    expect(within(drawer).queryByRole("button", { name: /Remind/ })).toBeNull();
+    expect(within(drawer).queryByText(/Remind|Everyone acknowledged/)).toBeNull();
     expect(within(who).getByText("Not yet · 1")).toBeTruthy();
     expect(within(who).getByText("Acknowledged · 1")).toBeTruthy();
     expect(drawer.querySelector(".ad-band")).toBeNull();
@@ -699,7 +701,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Archived. Nobody sees it; it stays under Archived."));
   });
 
-  it("unpublishes with a second red click and stays open to say who was told", async () => {
+  it("unpublishes with a second red click and stays open to say for how many", async () => {
     const id = "a8200000-0000-4000-8000-000000000041";
     const published = detail({
       id,
@@ -734,11 +736,45 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(within(drawer).queryByText(/unpublish first/)).toBeNull();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish" }));
     expect(setAnnouncementState).not.toHaveBeenCalled();
-    fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish and tell 12 people?" }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish for 12 people?" }));
     await waitFor(() => expect(setAnnouncementState).toHaveBeenCalledWith(workspaceId, id, "unpublish", 2, []));
     const again = await screen.findByRole("dialog", { name: "Fire drill" });
-    await waitFor(() => expect(within(again).getByText("Unpublished. 12 people told it's cancelled.")).toBeTruthy());
+    await waitFor(() => expect(within(again).getByText("Unpublished for 12 people.")).toBeTruthy());
     expect(within(again).getByRole("button", { name: "Archive" })).toBeTruthy();
+  });
+
+  // BILDIRIM-05 (KARARLAR S-123, S-96): nobody is notified, so saving says who sees it, not who "gets a notice".
+  it("saves a published post and says how many people see the update", async () => {
+    const id = "a8200000-0000-4000-8000-000000000042";
+    const published = detail({
+      id,
+      title: "Fire drill",
+      status: "published",
+      display_status: "published",
+      published_at: "2026-10-05T16:00:00.000Z",
+      can_unpublish: true,
+      can_archive: false,
+      recipient_count: 12,
+      shift_change_count: 0,
+      revision: 2,
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(getAnnouncement).mockResolvedValue(published);
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview({ recipient_count: 12 }));
+    vi.mocked(saveAnnouncement).mockResolvedValue({
+      status: "published",
+      display_status: "published",
+      announcement_id: id,
+      revision: 3,
+      recipient_count: 12,
+      shift_changes: 0,
+      brought_back: 0,
+    });
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Fire drill" });
+    fireEvent.change(within(drawer).getByLabelText("Title"), { target: { value: "Fire drill moved" } });
+    fireEvent.click(within(drawer).getByRole("button", { name: "Save changes" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Saved. 12 people see the update."));
   });
 
   it("says what a refusal means instead of the database's words", async () => {

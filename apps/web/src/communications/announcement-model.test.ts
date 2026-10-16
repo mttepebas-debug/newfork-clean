@@ -303,8 +303,14 @@ describe("the drawer", () => {
     });
     expect(historyStep(entry("published", { told: 12, shift_changes: 3 }), "America/Los_Angeles", "12h")).toEqual({
       head: "Published by Mia Chen",
-      more: "3 shift changes · 12 people told",
+      more: "3 shift changes · 12 people",
       bad: false,
+    });
+    // BILDIRIM-05 (KARARLAR S-123, S-96): nobody is notified any more, so the count says how many, not "told".
+    expect(historyStep(entry("unpublished", { told: 12 }), "UTC", "12h")).toEqual({
+      head: "Unpublished by Mia Chen",
+      more: "12 people",
+      bad: true,
     });
     expect(historyStep(entry("published", { auto: true, told: 1 }), "UTC", "12h").head).toBe("Published at the scheduled time");
     expect(
