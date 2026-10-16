@@ -32,6 +32,8 @@ select tests.role('tb', 'no decisions', 'manager', array(
 select tests.person('tb', 'lim', 'no decisions', array['K'], array['cook']);
 select tests.person('tb', 'blk', 'manager', array['K'], array['cook']);
 select tests.person('tb', 'gon', 'manager', array['K'], array['cook']);
+-- Onur is still onboarding.
+select tests.person('tb', 'onu', 'employee', array['K'], array['cook'], 'onboarding');
 
 create function pg_temp.topics(person text) returns text[] language sql as $$
   select array(select t ->> 'key' from jsonb_array_elements(
@@ -91,7 +93,10 @@ where source_id = (select id from required_document) and lifecycle_user_id = tes
 select is((app_private.actor(tests.user('tb:blk'), tests.id('tb'))).document_blocked, true, '(b) Blk misses a required document');
 select ok(not ('approvals' = any (pg_temp.topics('blk'))) and not ('needs_attention' = any (pg_temp.topics('blk'))),
   '(b) a manager missing a required document decides nothing now: no approvals, no needs attention');
-select ok('documents' = any (pg_temp.topics('blk')), '(b) but still hears about documents');
+select ok(array['my_schedule', 'shift_changes', 'time_off', 'profile', 'documents', 'announcements'] <@ pg_temp.topics('blk'),
+  '(b) but still hears about their own shifts, requests, profile, documents and announcements, and may choose how');
+select ok(array['my_schedule', 'shift_changes', 'time_off', 'profile', 'documents', 'announcements'] <@ pg_temp.topics('onu'),
+  '(b) a person still onboarding the same');
 
 select public.remove_employee_access_service(tests.user('tb:owner'), tests.id('tb'), tests.id('tb:gon'));
 select matches(pg_temp.refusal($$select pg_temp.topics('gon')$$), '^42501 authz\.',
@@ -121,8 +126,13 @@ select ok((select bool_and(char_length(t ->> 'description') between 10 and 160) 
 select is((select count(*)::integer from public.notification_types t where t.level <> 'required' and cardinality(t.heard_by) = 0), 0,
   '(e) every type a person may choose names who hears it');
 select is((select count(*)::integer from public.notification_types t, unnest(t.heard_by) a
-           where not exists (select 1 from app_private.authz_actions x where x.key = a)), 0,
-  '(e) and every action it names is the core''s');
+           where a <> 'self' and not exists (select 1 from app_private.authz_actions x where x.key = a)), 0,
+  '(e) and every action it names is the core''s, or self: a notice about the person themselves');
+
+-- (f) No open location left: the owner still may choose about what still reaches them, a stopped email too.
+update public.locations set archived_at = now() where workspace_id = tests.id('tb');
+select ok(array['my_schedule', 'documents', 'announcements', 'needs_attention'] <@ pg_temp.topics('owner'),
+  '(f) every location archived: the owner still has their own topics and needs attention');
 
 select * from finish();
 rollback;
