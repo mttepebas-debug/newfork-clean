@@ -161,7 +161,6 @@ const publishBodySchema = publicationPreviewBodySchema.extend({
   week_start: z.string().date().optional(),
   expected_draft_revision: z.number().int().positive(),
   fingerprint: z.string().length(64),
-  notify_employee_ids: z.array(z.string().uuid()).max(500).optional(),
   overrides: z
     .array(schedulePublicationOverrideInputSchema)
     .max(200)
@@ -630,7 +629,6 @@ export function registerScheduleRoutes(
           includeNoDepartment: body.data.include_no_department,
           expectedDraftRevision: body.data.expected_draft_revision,
           fingerprint: body.data.fingerprint,
-          notifyEmployeeIds: body.data.notify_employee_ids,
           overrides: body.data.overrides,
           preflightAck: body.data.preflight_ack,
         }),

@@ -274,7 +274,6 @@ export interface ScheduleReadService {
     includeNoDepartment?: boolean;
     expectedDraftRevision: number;
     fingerprint: string;
-    notifyEmployeeIds?: string[];
     overrides: SchedulePublicationOverrideInput[];
     preflightAck?: SchedulePublicationPreflightAck;
   }): Promise<SchedulePublishResult>;
@@ -853,9 +852,8 @@ export function createScheduleReadService(options: {
           expected_draft_revision: input.expectedDraftRevision,
           expected_fingerprint: input.fingerprint,
           override_decisions: input.preflightAck?.decisions ?? input.overrides,
-          target_notify_employee_ids: input.notifyEmployeeIds?.length
-            ? input.notifyEmployeeIds
-            : null,
+          // target_notify_employee_ids is left out on purpose: it defaults to nobody, and leaving it
+          // out keeps publish working once the notification teardown drops it (BILDIRIM-03, C1).
         },
       );
       if (error) {

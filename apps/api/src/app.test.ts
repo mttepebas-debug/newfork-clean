@@ -2323,7 +2323,9 @@ describe("api app", () => {
     expect(response.statusCode).toBe(403);
   });
 
-  it("forwards canonical Schedule publish notification recipients", async () => {
+  // BILDIRIM-03: notification recipients are retired; an older screen that still sends them is
+  // answered as before and the list goes nowhere.
+  it("publishes the Schedule and drops retired notification recipients", async () => {
     const calls: unknown[] = [];
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
@@ -2340,7 +2342,6 @@ describe("api app", () => {
             publication_ids: ["86000000-0000-4000-8000-000000000001"],
             published_shift_count: 1,
             published_at: "2026-08-17T12:00:00.000Z",
-            notification_count: input.notifyEmployeeIds?.length ?? 0,
           };
         },
       }),
@@ -2364,7 +2365,7 @@ describe("api app", () => {
       },
     });
     expect(response.statusCode).toBe(200);
-    expect(response.json().notification_count).toBe(1);
+    expect(response.json().status).toBe("published");
     expect(calls).toEqual([
       expect.objectContaining({
         actorUserId: resolvedContext.userId,
@@ -2372,13 +2373,13 @@ describe("api app", () => {
         draftId: "85000000-0000-4000-8000-000000000001",
         weekStart: "2026-08-17",
         locationIds: ["11000000-0000-4000-8000-000000000001"],
-        notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
         preflightAck: {
           fingerprint: "a".repeat(64),
           decisions: [{ finding_id: "availability-1234567890abcdef" }],
         },
       }),
     ]);
+    expect(calls[0]).not.toHaveProperty("notifyEmployeeIds");
   });
 
   // Availability asks nothing at publish (M9); a conflict still waiting for a decision does.
@@ -2403,53 +2404,6 @@ describe("api app", () => {
     });
     expect(response.statusCode).toBe(400);
     expect(response.json().error).toBe("Review the current schedule conflicts before publishing");
-  });
-
-  it("returns a successful publish response with a notification warning", async () => {
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      scheduleService: scheduleServiceMock({
-        publish: async (input) => ({
-          status: "published",
-          workspace_id: resolvedContext.workspace.id,
-          week_start: "2026-08-17",
-          draft_id: input.draftId,
-          draft_revision: input.expectedDraftRevision,
-          location_ids: input.locationIds,
-          publication_ids: ["86000000-0000-4000-8000-000000000001"],
-          published_shift_count: 1,
-          notification_count: 0,
-          notification_warning: {
-            code: "notification_enqueue_unavailable",
-            message:
-              "Schedule published, but employee notifications could not be created.",
-          },
-          published_at: "2026-08-17T12:00:00.000Z",
-        }),
-      }),
-    });
-    const response = await app.inject({
-      method: "POST",
-      url: "/schedule/publish",
-      headers: { authorization: "Bearer owner-token" },
-      payload: {
-        draft_id: "85000000-0000-4000-8000-000000000001",
-        location_ids: ["11000000-0000-4000-8000-000000000001"],
-        expected_draft_revision: 1,
-        fingerprint: "a".repeat(64),
-        notify_employee_ids: ["15000000-0000-4000-8000-000000000001"],
-        overrides: [],
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toMatchObject({
-      status: "published",
-      notification_count: 0,
-      notification_warning: {
-        code: "notification_enqueue_unavailable",
-      },
-    });
   });
 
   it("maps hard publication blockers and stale previews distinctly", async () => {

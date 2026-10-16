@@ -377,56 +377,10 @@ describe("createScheduleReadService realtime invalidation", () => {
     expect(mocks.removeChannel).toHaveBeenCalledWith(mocks.channel);
   });
 
-  it("passes notification recipients into the atomic publish RPC", async () => {
-    mocks.rpc.mockResolvedValueOnce({
-      data: {
-        status: "published",
-        workspace_id: workspaceId,
-        week_start: "2026-08-17",
-        draft_id: draftId,
-        draft_revision: 2,
-        location_ids: [locationId],
-        publication_ids: ["86000000-0000-4000-8000-000000000001"],
-        published_shift_count: 4,
-        published_at: "2026-08-17T12:00:00.000Z",
-        notification_event_id: "e1510000-0000-4000-8000-000000000001",
-        notification_enqueued_count: 1,
-      },
-      error: null,
-    });
-
-    const service = createScheduleReadService({
-      url: "https://example.supabase.co",
-      serviceRoleKey: "service-role",
-    });
-    const result = await service.publish({
-      actorUserId,
-      workspaceId,
-      draftId,
-      locationIds: [locationId],
-      expectedDraftRevision: 2,
-      fingerprint: "a".repeat(64),
-      notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
-      overrides: [],
-    });
-
-    expect(result).toMatchObject({
-      status: "published",
-      notification_enqueued_count: 1,
-    });
-    expect(mocks.rpc).toHaveBeenCalledTimes(1);
-    expect(mocks.rpc).toHaveBeenNthCalledWith(
-      1,
-      "publish_schedule_draft_service",
-      expect.objectContaining({
-        actor_user_id: actorUserId,
-        target_workspace_id: workspaceId,
-        target_notify_employee_ids: ["15000000-0000-4000-8000-000000000001"],
-      }),
-    );
-  });
-
-  it("does not turn an empty recipient selection into a notify-all request", async () => {
+  // BILDIRIM-03: the old notification system is gone, so publish names nobody to notify. The
+  // database's retired recipient parameter is left out (it defaults to none) so publish keeps
+  // working once teardown part C1 drops it.
+  it("publishes without naming anyone to notify", async () => {
     mocks.rpc.mockResolvedValueOnce({
       data: {
         status: "published",
@@ -453,7 +407,6 @@ describe("createScheduleReadService realtime invalidation", () => {
       locationIds: [locationId],
       expectedDraftRevision: 2,
       fingerprint: "a".repeat(64),
-      notifyEmployeeIds: [],
       overrides: [],
     });
 
@@ -461,8 +414,9 @@ describe("createScheduleReadService realtime invalidation", () => {
     expect(mocks.rpc).toHaveBeenCalledTimes(1);
     expect(mocks.rpc).toHaveBeenCalledWith(
       "publish_schedule_draft_service",
-      expect.objectContaining({ target_notify_employee_ids: null }),
+      expect.objectContaining({ actor_user_id: actorUserId, target_workspace_id: workspaceId }),
     );
+    expect(mocks.rpc.mock.calls[0]?.[1]).not.toHaveProperty("target_notify_employee_ids");
   });
 
   it("recovers hard document blockers as scoped publish conflicts", async () => {
@@ -704,7 +658,6 @@ describe("createScheduleReadService realtime invalidation", () => {
         locationIds: [locationId],
         expectedDraftRevision: 2,
         fingerprint: "a".repeat(64),
-        notifyEmployeeIds: ["15000000-0000-4000-8000-000000000001"],
         overrides: [],
       }),
     // An error nobody raises on purpose is a bug: 500, the database sentence kept for the log only.
