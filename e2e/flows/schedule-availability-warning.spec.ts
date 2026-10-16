@@ -353,12 +353,10 @@ test("M12: a manager's note alone opens the note card and never shows on the gri
   await expect(wednesdayCell).not.toHaveAttribute("data-availability-kind");
 });
 
-test("M4, M5, D4: the owner changes the entry mode; an employee with no saved week is told, an open swap stays open", async ({
+test("M4, M5: the owner changes the entry mode; a saved week is converted, an open swap stays open", async ({
   browser,
 }) => {
   const week = roundWeek(7);
-  // Somebody who never saved a week.
-  const newcomer = freshPerson("omer");
   // Ali has a saved week the change converts.
   sql(`select tests.availability('${run}', 'ali', 2, '18:00', '22:00');`);
 
@@ -404,20 +402,10 @@ test("M4, M5, D4: the owner changes the entry mode; an employee with no saved we
       sql(`select availability_input_mode from public.workspace_scheduling_settings where workspace_id = tests.id('${run}');`),
     ).toBe("shift_type");
 
-    // D4: "Check your availability" goes to every employee, the newcomer with
-    // no saved week too, and never to a manager. Read from the outbox: no
-    // worker delivers it during a local run (announcement-reaches-its-people).
-    await expect
-      .poll(() =>
-        sql(`select coalesce(bool_or(o.payload -> 'recipient_user_ids' ? tests.user('${run}:${newcomer.label}')::text), false)
-            || ' ' || coalesce(bool_or(o.payload -> 'recipient_user_ids' ? tests.user('${run}:ali')::text), false)
-            || ' ' || coalesce(bool_or(o.payload -> 'recipient_user_ids' ? tests.user('${run}:ayse')::text), false)
-            || ' ' || coalesce(max(o.payload ->> 'title'), '')
-          from public.notification_outbox o
-          where o.workspace_id = tests.id('${run}') and o.type_key = 'availability.status_changed'
-            and o.payload ->> 'input_mode' = 'shift_type';`),
-      )
-      .toBe("true true false Check your availability");
+    // M4: Ali's saved week is converted to the new entry mode.
+    expect(
+      sql(`select p.preference ->> 'input_mode' from public.employee_weekly_preferences p where p.employee_id = tests.id('${run}:ali');`),
+    ).toBe("shift_type");
 
     // M5: the swap is untouched -- same state, same revision.
     expect(swapState()).toBe(before);

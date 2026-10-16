@@ -88,6 +88,7 @@ test("approved time off keeps a shift from the employee until they get those hou
     .poll(() => sql(`select p.first_name from public.schedule_published_shifts s join public.employee_profiles p on p.id = s.employee_id
       where s.id = tests.id('${run}:shift:emre-wed6');`), { timeout: 30_000 })
     .toBe("Ali");
-  expect(sql(`select count(*) from public.notification_outbox o where o.type_key = 'requests.time_off.shortened'
-    and o.payload ->> 'request_id' = tests.id('${run}:ali:time_off')::text;`)).toBe("0");
+  // Taking it shortens nothing: Ali's own cancellation is the only hours his time off gave back.
+  expect(sql(`select count(*) from public.time_off_cancellation_links l
+    where l.parent_request_id = tests.id('${run}:ali:time_off');`)).toBe("1");
 });

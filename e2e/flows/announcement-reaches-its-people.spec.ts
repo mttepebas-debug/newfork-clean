@@ -101,15 +101,15 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   await expect(mehmet.getByRole("table", { name: "Active announcements" })).toBeVisible();
   await expect(activeRow(mehmet, title)).toHaveCount(0);
 
-  // Who it told: Ali, the other Kadikoy manager and the admin; not Ayse, who
+  // Who it reaches: Ali, the other Kadikoy manager and the admin; not Ayse, who
   // wrote it (KK-89), and not Mehmet.
-  const told = sql(`
+  const reached = sql(`
     select string_agg(distinct coalesce(p.first_name, ''), ',' order by coalesce(p.first_name, ''))
-    from public.notification_outbox o
-    join public.announcements a on a.id::text = o.subject_id and a.title = '${title}'
-    cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r(user_id)
-    left join public.employee_profiles p on p.user_id = r.user_id::uuid and p.workspace_id = a.workspace_id;`);
-  const names = told.split(",");
+    from public.announcements a
+    cross join lateral unnest(a.delivered_to) r(user_id)
+    left join public.employee_profiles p on p.user_id = r.user_id and p.workspace_id = a.workspace_id
+    where a.title = '${title}';`);
+  const names = reached.split(",");
   expect(names).toEqual(expect.arrayContaining(["Ali", "Zeynep", label[0]!.toUpperCase() + label.slice(1)]));
   expect(names).not.toContain("Ayse");
   expect(names).not.toContain("Mehmet");
