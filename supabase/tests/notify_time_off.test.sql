@@ -183,6 +183,34 @@ select is(
   array(select title from public.person_notifications where type_key = 'time_off.shortened' and subject_id = tests.id('nt:emre:5') order by title),
   array['Emre Person''s time off was shortened', 'Your time off was shortened'], '(e) each in their own words');
 
+-- Who approved it is told only while they may still decide it: Can approves Emre's week 7 and is then
+-- made an employee; Baris, who works Kadikoy and Besiktas, approves week 8 and then leaves Kadikoy.
+select tests.person('nt', 'can', 'manager', array['K'], array['cook']);
+select tests.person('nt', 'baris', 'manager', array['K', 'B'], array['cook']);
+insert into who values ('nt:can', tests.user('nt:can')), ('nt:baris', tests.user('nt:baris'));
+create function pg_temp.shorten(rid uuid) returns jsonb language sql as $$
+  select public.shorten_time_off_service(tests.user('nt:zeynep'), tests.id('nt'), rid,
+    (select r.revision from public.schedule_time_off_requests r where r.id = rid),
+    (select jsonb_agg(jsonb_build_object('segment_id', s.id, 'starts_at', s.starts_at, 'ends_at', s.starts_at + interval '2 hours'))
+     from public.schedule_time_off_segments s where s.request_id = rid),
+    'Needed for the morning', gen_random_uuid())
+$$;
+select tests.remember('nt:emre:7', tests.leave('nt', 'emre', 7));
+select pg_temp.decide('can', tests.id('nt:emre:7'), 'approve');
+select public.update_employee_membership_role_service(tests.user('nt:owner'), tests.id('nt'), tests.id('nt:can'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('nt') and r.system_key = 'employee'));
+select pg_temp.shorten(tests.id('nt:emre:7'));
+select is(pg_temp.told('time_off.shortened', tests.id('nt:emre:7')), array['nt:emre'],
+  '(e) Can approved it but is an employee now: only Emre is told');
+
+select tests.remember('nt:emre:8', tests.leave('nt', 'emre', 8));
+select pg_temp.decide('baris', tests.id('nt:emre:8'), 'approve');
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('nt') and m.user_id = tests.user('nt:baris')), tests.id('nt:K'));
+select pg_temp.shorten(tests.id('nt:emre:8'));
+select is(pg_temp.told('time_off.shortened', tests.id('nt:emre:8')), array['nt:emre'],
+  '(e) Baris approved it but no longer works Kadikoy: only Emre is told');
+
 select public.revoke_time_off_service(tests.user('nt:ayse'), tests.id('nt'), tests.id('nt:emre:2'),
   (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('nt:emre:2')), 'We need you that week');
 select is(pg_temp.told('time_off.decided', tests.id('nt:emre:2')), array['nt:emre', 'nt:emre'],
