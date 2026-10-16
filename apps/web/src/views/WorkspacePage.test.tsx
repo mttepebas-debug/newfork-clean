@@ -230,8 +230,7 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 
-  // BL-810 (E5-09): the box shows five at most; like Notifications, it links
-  // to the whole list.
+  // BL-810 (E5-09): the box shows five at most and links to the whole list.
   it("links the announcements box to all announcements", async () => {
     vi.mocked(getWorkspaceDashboard).mockResolvedValue({
       ...dashboard,
@@ -246,6 +245,55 @@ describe("WorkspacePage setup checklist", () => {
     const row = screen.getByRole("link", { name: /Patio opens/ });
     expect(row.textContent).toContain("General");
     expect(row.textContent).not.toContain("general");
+  });
+
+  // BILDIRIM-02: the notification screens are gone (KARARLAR S-123, S-96);
+  // the tile stays until part C2, but none of its links may lead to a
+  // retired address, which would only land back on Workspace.
+  it("keeps no link in the notifications box that leads to a retired address", async () => {
+    const row = (id: string, title: string, action_url: string | null) => ({
+      id,
+      workspace_id: workspaceId,
+      category: "schedule",
+      type_key: "schedule.published",
+      severity: "info",
+      safe_preview: title,
+      title,
+      body: title,
+      action_url,
+      group_key: id,
+      source_type: "notification_event",
+      source_id: id,
+      created_at: "2026-10-16T12:00:00.000Z",
+      seen_at: null,
+      read_at: null,
+      visibility_state: "visible",
+    });
+    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
+      ...dashboard,
+      notifications: [
+        row("a8300000-0000-4000-8000-000000000031", "Patio notice", "/app/announcements/a8300000-0000-4000-8000-000000000099"),
+        row("a8300000-0000-4000-8000-000000000032", "Document due", "/app/account/documents?workspace=x&kind=document"),
+        row("a8300000-0000-4000-8000-000000000033", "Old inbox", "/app/notifications?filter=unread"),
+        row("a8300000-0000-4000-8000-000000000034", "Old preferences", "/account/preferences/notifications"),
+        row("a8300000-0000-4000-8000-000000000035", "Old settings", "/app/settings/notifications"),
+        row("a8300000-0000-4000-8000-000000000036", "Old account inbox", "/account/inbox"),
+      ] as never,
+    });
+    renderPage();
+    const box = (await screen.findByText("Patio notice")).closest("article")!;
+    expect(within(box).queryByRole("link", { name: /View all notifications/ })).toBeNull();
+    const retired = /^\/(app\/notifications|app\/settings\/notifications|account\/inbox|account\/preferences\/notifications|app\/account\/documents)(\/|\?|#|$)/;
+    for (const link of within(box).queryAllByRole("link")) {
+      expect(link.getAttribute("href")).not.toMatch(retired);
+    }
+    // A row for a live page stays a link; the others read as plain text.
+    expect(within(box).getByRole("link", { name: /Patio notice/ }).getAttribute("href")).toBe(
+      "/app/announcements/a8300000-0000-4000-8000-000000000099",
+    );
+    for (const title of ["Document due", "Old inbox", "Old preferences", "Old settings", "Old account inbox"]) {
+      expect(within(box).getByText(title).closest("a")).toBeNull();
+    }
   });
 
   // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; seven

@@ -477,7 +477,7 @@ function Widget({
             <ArrowRight size={15} aria-hidden />
           </Link>
         ))}
-        {/* BL-810: the box holds five at most, like Notifications. */}
+        {/* BL-810: the box holds five at most. */}
         <WidgetLink to="/app/announcements">View all announcements</WidgetLink>
       </div>
     ) : (
@@ -490,7 +490,6 @@ function Widget({
         {model.notifications.map((item) => (
           <NotificationPreview item={item} key={item.id} />
         ))}
-        <WidgetLink to="/app/notifications">View all notifications</WidgetLink>
       </div>
     ) : (
       <EmptyWidget text="You're all caught up" />
@@ -642,6 +641,12 @@ function TodoPreview({
   return <div>{content}</div>;
 }
 
+// BILDIRIM-02 (KARARLAR S-123, S-96): these screens are gone until the new
+// notification system lands; a row that points at one reads as plain text
+// instead of a link back to this page. The tile itself goes in part C2.
+const retiredNotificationAddress =
+  /^\/(app\/notifications|app\/settings\/notifications|account\/inbox|account\/preferences\/notifications|app\/account\/documents)(\/|\?|#|$)/;
+
 function NotificationPreview({ item }: { item: NotificationRecord }) {
   const content = (
     <>
@@ -652,7 +657,8 @@ function NotificationPreview({ item }: { item: NotificationRecord }) {
       </span>
     </>
   );
-  const actionUrl = safeAppActionUrl(item.action_url);
+  const safeUrl = safeAppActionUrl(item.action_url);
+  const actionUrl = safeUrl && !retiredNotificationAddress.test(safeUrl) ? safeUrl : null;
   return actionUrl ? (
     <Link to={actionUrl}>
       {content}
