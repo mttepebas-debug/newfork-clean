@@ -211,6 +211,17 @@ describe("inline time off decision", () => {
     expect(vote).not.toHaveBeenCalled();
   });
 
+  it("declines here for a decision alone, as Requests does (the reason is optional)", async () => {
+    answer({ all: feedPage([notice()]) });
+    getTimeOffQueue.mockResolvedValue(pending({ can_vote: false, can_decide_alone: true }));
+    vote.mockResolvedValue({ status: "denied", final: true, alone: true, remaining: 0, revision: 2, request_id: requestId });
+    mount(<NotificationsPanel workspaceId={w} onClose={() => undefined} />);
+    fireEvent.click(await screen.findByRole("button", { name: "Decline" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm decline" }));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Time off declined."));
+    expect(screen.getByTestId("where").textContent).toBe("/app/workspace");
+  });
+
   it("says when the request was decided meanwhile", async () => {
     answer({ all: feedPage([notice()]) });
     getTimeOffQueue.mockResolvedValue({ requests: [], locations: [], timeFormat: "12h" });

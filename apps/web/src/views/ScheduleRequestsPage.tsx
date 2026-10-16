@@ -4,7 +4,7 @@ import { ListPagination } from "./ListPagination";
 import { RequestCards, RequestsTable } from "./RequestsTable";
 import { SwapReview } from "./SwapReview";
 import "./requests-catalog.css";
-import { timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
+import { timeOffApprovalAsksFirst, timeOffOpenedShiftCount, type ExchangeCase, type TimeOffRequest } from "@newfork/shared";
 import { useToast } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeftRight, Check, Search } from "lucide-react";
@@ -259,14 +259,7 @@ function ScheduleRequestsPageContent() {
     // A manager's plain vote needs no box; one that opens shifts, a revoke
     // (its reason) and an admin's or owner's decision do (rules 6, 7, 14). A
     // deny asks its reason in the drawer itself.
-    const ask =
-      kind === "revoke" ||
-      Boolean(
-        progress &&
-          (progress.can_decide_alone ||
-            (progress.my_approval_finalizes &&
-              timeOffOpenedShiftCount(progress) > 0)),
-      );
+    const ask = kind === "revoke" || Boolean(progress && timeOffApprovalAsksFirst(progress));
     if (ask) setAct({ request, kind });
     else void runAct({ request, kind }, "");
   }

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  timeOffApprovalAsksFirst,
   employeeHubRequestSchema,
   schedulePublishFindingSchema,
   schedulingSettingsSchema,
@@ -120,5 +121,18 @@ describe("the workspace setting and the publish note (FB-6.3.5)", () => {
       message: "Ali has time off waiting for a decision on Jan 15", location_id: id, employee_id: id, scheduled_date: "2035-01-15",
       shift_ids: [other], time_off_request_id: other };
     expect(schedulePublishFindingSchema.parse(finding).time_off_request_id).toBe(other);
+  });
+});
+
+describe("timeOffApprovalAsksFirst", () => {
+  const impact = (hidden: number) => ({ fingerprint: "0123456789abcdef0123456789abcdef", locations: {}, hidden_shift_count: hidden });
+  it("asks when the last approval opens shifts, or when an admin or owner decides alone", () => {
+    expect(timeOffApprovalAsksFirst({ can_decide_alone: false, my_approval_finalizes: true, impact: impact(1) })).toBe(true);
+    expect(timeOffApprovalAsksFirst({ can_decide_alone: true, my_approval_finalizes: false, impact: impact(0) })).toBe(true);
+  });
+  it("acts on the click otherwise", () => {
+    expect(timeOffApprovalAsksFirst({ can_decide_alone: false, my_approval_finalizes: true, impact: impact(0) })).toBe(false);
+    expect(timeOffApprovalAsksFirst({ can_decide_alone: false, my_approval_finalizes: false, impact: impact(3) })).toBe(false);
+    expect(timeOffApprovalAsksFirst({ can_decide_alone: false, my_approval_finalizes: true, impact: null })).toBe(false);
   });
 });

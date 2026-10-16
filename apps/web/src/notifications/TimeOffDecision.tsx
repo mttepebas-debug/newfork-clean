@@ -1,4 +1,4 @@
-import { timeOffOpenedShiftCount } from "@newfork/shared";
+import { timeOffApprovalAsksFirst } from "@newfork/shared";
 import { Button, ConfirmButton, toast } from "@newfork/ui";
 import { useQueryClient } from "@tanstack/react-query";
 import { useState } from "react";
@@ -40,10 +40,8 @@ export function TimeOffDecision({
         return;
       }
       const mayVote = Boolean(progress && (progress.can_vote || progress.can_decide_alone));
-      const asks =
-        !progress?.impact ||
-        progress.can_decide_alone ||
-        (verdict === "approve" && progress.my_approval_finalizes && timeOffOpenedShiftCount(progress) > 0);
+      // A deny asks nothing more here than in Requests (its reason is optional); an approval asks where Requests does.
+      const asks = !progress?.impact || (verdict === "approve" && timeOffApprovalAsksFirst(progress));
       if (!mayVote || asks) {
         onOpen();
         return;

@@ -131,6 +131,16 @@ export function timeOffOpenedShiftCount(progress: Pick<TimeOffProgress, "impact"
   return Object.values(progress.impact.locations).reduce((total, place) => total + place.shifts.length, progress.impact.hidden_shift_count);
 }
 
+/**
+ * Whether an approval asks first instead of acting on the click (rules 6, 7, 14): it is the last one and
+ * opens shifts, or an admin or owner decides alone. Requests opens its box; a notice row opens Requests.
+ */
+export function timeOffApprovalAsksFirst(
+  progress: Pick<TimeOffProgress, "can_decide_alone" | "my_approval_finalizes" | "impact">,
+): boolean {
+  return progress.can_decide_alone || (progress.my_approval_finalizes && timeOffOpenedShiftCount(progress) > 0);
+}
+
 export const timeOffReleasedAssignmentSchema = z.object({
   id: z.string().uuid(), location_name: z.string(), job_name: z.string(), scheduled_date: z.string().date(), timezone: z.string(),
   starts_at: z.string().datetime({ offset: true }).nullable(), ends_at: z.string().datetime({ offset: true }).nullable(),
