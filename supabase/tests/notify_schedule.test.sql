@@ -177,9 +177,12 @@ select public.unpublish_schedule_service(tests.user('nu:owner'), tests.id('nu'),
   public.preview_schedule_unpublication_service(tests.user('nu:owner'), tests.id('nu'), tests.week(1), array[tests.id('nu:K')]) ->> 'fingerprint');
 select is(pg_temp.told('schedule.unpublished'), array['nu:ali'],
   '(e) taking week one back tells Ali, who had shifts in it, once; not Emre, whose shift was opened');
-select ok((pg_temp.latest('ali', 'schedule.unpublished')).title like 'Your schedule for % was taken back'
-          and (pg_temp.latest('ali', 'schedule.unpublished')).body like '%requests for those shifts were closed%',
-  '(e) and that his request for that week closed, in the same notice');
+select ok((pg_temp.latest('ali', 'schedule.unpublished')).title like 'Your schedule for % was taken back',
+  '(e) saying the week was taken back');
+-- The request is closed later, by the exchange maintenance: the notice says it will be.
+select is((pg_temp.latest('ali', 'schedule.unpublished')).body,
+  'It isn''t final until it is published again. Your open shift change requests for those shifts will be closed.',
+  '(e) and that his open request for that week will close, in the same notice');
 
 -- (f) A closed day ----------------------------------------------------------------------------------
 
@@ -205,25 +208,91 @@ select public.set_announcement_state_service(tests.user('nu:owner'), tests.id('n
 select is(pg_temp.told('schedule.closed_day_removed_shift'), array['nu:ali', 'nu:emre'], '(f) taking the closed day back keeps the notices');
 
 -- (g) A scheduled email stops -----------------------------------------------------------------------
+-- The rule's owner is told while the core says they still may export there; otherwise who may export
+-- there now is told, so a stopped email is never silent. Five people the core says no to, each with a
+-- rule of their own: Dmo is made an employee, Mov leaves Kadikoy, Lim's role has no export, Blk misses a
+-- required document, Gon's access is removed. Ayse still holds the right.
 
-select public.create_schedule_export_preset_service(tests.user('nu:ayse'), tests.id('nu'), 'Weekly', '{}'::jsonb);
+select tests.person('nu', 'dmo', 'manager', array['K'], array['cook']);
+select tests.person('nu', 'mov', 'manager', array['K', 'B'], array['cook']);
+select tests.role('nu', 'no export', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('nu') and r.system_key = 'manager' and rp.permission_key <> 'schedule.export'));
+select tests.person('nu', 'lim', 'no export', array['K'], array['cook']);
+select tests.person('nu', 'blk', 'manager', array['K'], array['cook']);
+select tests.person('nu', 'gon', 'manager', array['K'], array['cook']);
+insert into who select label, tests.user(label) from unnest(array['nu:dmo', 'nu:mov', 'nu:lim', 'nu:blk', 'nu:gon']) label;
+
+select public.create_schedule_export_preset_service(tests.user('nu:owner'), tests.id('nu'), 'Weekly', '{}'::jsonb);
 -- ponytail: stored as it is; there is no builder helper for scheduled exports.
-insert into public.scheduled_schedule_exports
-  (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
-values (tests.id('nu'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('nu')),
-  'Kitchen week', '["books@example.test"]'::jsonb, array[tests.id('nu:K')], 1, 9, tests.user('nu:ayse'), tests.user('nu:owner'));
-create function pg_temp.fail_a_week() returns void language sql as $$
-  update public.scheduled_schedule_exports set last_failed_at = last_failed_at - interval '7 days' where workspace_id = tests.id('nu');
-  select public.record_schedule_export_schedule_failure_service(tests.id('nu'),
-    (select s.id from public.scheduled_schedule_exports s where s.workspace_id = tests.id('nu')), 'Not delivered');
+create function pg_temp.rule(person text) returns uuid language sql as $$
+  insert into public.scheduled_schedule_exports
+    (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
+  values (tests.id('nu'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('nu')),
+    'Kitchen week of ' || person, '["books@example.test"]'::jsonb, array[tests.id('nu:K')], 1, 9,
+    tests.user('nu:' || person), tests.user('nu:owner'))
+  returning id
 $$;
-select pg_temp.fail_a_week();
-select pg_temp.fail_a_week();
-select is(pg_temp.told('schedule.export_email_stopped'), '{}'::text[], '(g) two failed weeks: nothing yet');
-select pg_temp.fail_a_week();
-select is(pg_temp.told('schedule.export_email_stopped'), array['nu:ayse'], '(g) the third stops it and tells Ayse, who set it up');
-select pg_temp.fail_a_week();
-select is(pg_temp.told('schedule.export_email_stopped'), array['nu:ayse'], '(g) once');
+-- ponytail: now() is fixed inside the transaction; a week passes by moving the last failure back.
+create function pg_temp.fail_a_week(rule uuid) returns void language sql as $$
+  update public.scheduled_schedule_exports set last_failed_at = last_failed_at - interval '7 days' where id = rule;
+  select public.record_schedule_export_schedule_failure_service(tests.id('nu'), rule, 'Not delivered');
+$$;
+create function pg_temp.told_about(rule uuid) returns text[] language sql stable as $$
+  select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
+  from public.person_notifications n join who w on w.uid = n.user_id
+  where n.type_key = 'schedule.export_email_stopped' and n.subject_id = rule
+$$;
+create temp table rules as select person, pg_temp.rule(person) id
+from unnest(array['ayse', 'dmo', 'mov', 'lim', 'blk', 'gon']) person;
+
+-- The five come to lose the right.
+select public.update_employee_membership_role_service(tests.user('nu:owner'), tests.id('nu'), tests.id('nu:dmo'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('nu') and r.system_key = 'employee'));
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('nu') and m.user_id = tests.user('nu:mov')), tests.id('nu:K'));
+create temp table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('nu:owner'), tests.id('nu'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('nu:owner'), tests.id('nu'), id);
+select public.set_document_publication_service(tests.user('nu:owner'), tests.id('nu'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+-- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nu:blk');
+select public.remove_employee_access_service(tests.user('nu:owner'), tests.id('nu'), tests.id('nu:gon'));
+select is(
+  (select array_agg(person || ' ' || coalesce(app_private.authz_reason(tests.user('nu:' || person), tests.id('nu'), 'schedule.export',
+     array[tests.id('nu:K')]), 'ok') order by person) from rules),
+  array['ayse ok', 'blk document_blocked', 'dmo missing_permission', 'gon not_active', 'lim missing_permission', 'mov out_of_scope'],
+  '(g) the core: Ayse may export at Kadikoy; the five may not');
+
+select pg_temp.fail_a_week(id) from rules;
+select pg_temp.fail_a_week(id) from rules;
+select is((select count(*)::integer from public.person_notifications where type_key = 'schedule.export_email_stopped'), 0,
+  '(g) two failed weeks: nothing yet');
+select pg_temp.fail_a_week(id) from rules;
+select is(pg_temp.told_about((select id from rules where person = 'ayse')), array['nu:ayse'],
+  '(g) the third stops Ayse''s and tells Ayse, who set it up and still may export there');
+select is(
+  (select array_agg(person || ': ' || array_to_string(pg_temp.told_about(id), ',') order by person) from rules where person <> 'ayse'),
+  array['blk: nu:ayse,nu:owner', 'dmo: nu:ayse,nu:owner', 'gon: nu:ayse,nu:owner', 'lim: nu:ayse,nu:owner', 'mov: nu:ayse,nu:owner'],
+  '(g) a rule whose owner may no longer export there tells who may, never the owner');
+select ok((select bool_and(n.title = 'A scheduled schedule email stopped') from public.person_notifications n
+           where n.type_key = 'schedule.export_email_stopped' and n.subject_id <> (select id from rules where person = 'ayse')),
+  '(g) and says it is not theirs');
+select pg_temp.fail_a_week(id) from rules;
+select is((select count(*)::integer from public.person_notifications where type_key = 'schedule.export_email_stopped'), 11,
+  '(g) once');
 
 -- (h) One statement for many ------------------------------------------------------------------------
 
