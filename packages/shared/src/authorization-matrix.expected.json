@@ -1,5 +1,5 @@
 {
- "sourceSha256": "e58246d44f79d489d2e9d710be640db88ca98306b5cc6bf03f150f55db2ddd93",
+ "sourceSha256": "c6a538d6825f3d0d27df501eb692d949fcf4d30850b93431388733e5cfe24ac0",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -39,6 +39,7 @@
   "important_date.write_wide",
   "membership.read",
   "notifications.read_own",
+  "notifications.write_own",
   "onboarding.legal_name",
   "onboarding.review",
   "onboarding.self",
@@ -1035,6 +1036,13 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.organization.write",
+   "blank": "null"
+  },
+  {
+   "key": "notifications.write_own",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "notifications.write_own",
    "blank": "null"
   },
   {
@@ -23115,6 +23123,108 @@
   ],
   [
    "notifications.workspace_settings",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "ali",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "aydan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "derya",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "emre",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "nur",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.write_own",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.write_own",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.write_own",
+   "veli",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.write_own",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.write_own",
    "zeynep",
    "workspace",
    "allow"

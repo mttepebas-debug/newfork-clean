@@ -196,7 +196,7 @@ insert into service_class values
   ('save_employee_document_draft_file_service', 'documents.self'),
   ('save_employee_onboarding_profile_service', 'onboarding.self'),
   ('save_employee_service', 'employee.save'),
-  ('save_notification_preferences_service', 'notifications.read_own'),
+  ('save_notification_preferences_service', 'notifications.write_own'),
   ('save_notification_workspace_settings_service', 'settings.organization.write'),
   ('save_own_employment_contact_service', 'employee.save_own_contact'),
   ('save_owner_legal_name_service', 'workspace.setup'),

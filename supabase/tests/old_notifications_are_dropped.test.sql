@@ -132,8 +132,9 @@ select is((select count(*)::integer from public.workspace_role_permissions
 select is((select count(*)::integer from app_private.role_permission_dependencies
            where permission_key like 'notifications.%' or required_key like 'notifications.%'), 0,
   '(d) nor a dependency between them');
+-- notifications.write_own is the new system's (BILDIRIM-07).
 select is(array(select key from app_private.authz_actions where key like '%notifications%' order by 1),
-  array['notifications.read_own'], '(d) the core answers notifications.read_own only');
+  array['notifications.read_own', 'notifications.write_own'], '(d) the core answers notifications.read_own and the new system''s write_own only');
 select ok((select count(*) from public.workspace_role_permissions g join public.workspace_roles r on r.id = g.role_id
            where r.workspace_id = tests.id('nd') and g.permission_key = 'notifications.read') > 0,
   '(d) roles still hold the permissions that stay');

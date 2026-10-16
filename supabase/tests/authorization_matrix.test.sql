@@ -535,6 +535,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   -- One's own notification list (BILDIRIM-07), also while onboarding is not finished.
   ('notifications.read_own', 'workspace', null, false, false,
    $$select public.get_notification_feed_service($1, $2) is not null$$, true, true),
+  -- and one's own choices, written (a choice put back to the default changes nothing).
+  ('notifications.write_own', 'workspace', null, false, false,
+   $$select public.save_notification_preferences_service($1, $2,
+       '[{"topic": "my_schedule", "channel": "email", "enabled": null}]') is not null$$, true, true),
   ('exchange.offer_own', 'shift', null, false, false,
    $$select public.shift_exchanges_command_service($1, $2,
        jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', $3), gen_random_uuid()) is not null$$, true, false),
@@ -615,6 +619,7 @@ insert into core_action (key, core_key, blank) values
   ('read.membership', 'membership.read', 'null'),
   ('read.audit', 'audit.read', 'null'),
   ('notifications.read_own', 'notifications.read_own', 'null'),
+  ('notifications.write_own', 'notifications.write_own', 'null'),
   ('documents.read', 'documents.read', 'null'),
   ('documents.review', 'documents.review', 'null'),
   ('documents.self', 'documents.self', 'null'),
