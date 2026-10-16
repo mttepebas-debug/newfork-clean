@@ -141,7 +141,7 @@ select is(pg_temp.said(format($$select public.preview_schedule_publication_servi
   '42501 authz.out_of_scope schedule.publish', 'Ayşe cannot preview T at Kadıköy and Beşiktaş');
 select is(pg_temp.said(format($$select public.preview_schedule_publication_service(%L, %L, %L, %L::uuid[], null, true)$$,
   tests.user('fj:ayse'), tests.id('fj'), tests.id('fj:T'), array[tests.id('fj:K')])), 'allowed', 'she previews it at Kadıköy');
-select is(pg_temp.said(format($$select public.publish_schedule_draft_service(%L, %L, %L, %L::uuid[], null, true, %s, %L, '[]', null)$$,
+select is(pg_temp.said(format($$select public.publish_schedule_draft_service(%L, %L, %L, %L::uuid[], null, true, %s, %L, '[]')$$,
   tests.user('fj:ayse'), tests.id('fj'), tests.id('fj:T'), array[tests.id('fj:K'), tests.id('fj:B')],
   (select revision from public.schedule_drafts where id = tests.id('fj:T')), (select preview ->> 'fingerprint' from previewed))),
   '42501 authz.out_of_scope schedule.publish', 'nor publish it at both');
@@ -278,7 +278,7 @@ select is(
   ),
   array['acquire_schedule_edit_session_service/7', 'apply_schedule_template_service/7', 'create_schedule_template_service/5',
         'get_schedule_edit_session_service/3', 'get_schedule_read_model_service/3', 'mutate_schedule_edit_shift_service/9',
-        'preview_schedule_publication_service/6', 'preview_schedule_unpublication_service/4', 'publish_schedule_draft_service/10',
+        'preview_schedule_publication_service/6', 'preview_schedule_unpublication_service/4', 'publish_schedule_draft_service/9',
         'save_schedule_edit_session_service/8', 'unpublish_schedule_service/5'],
   'each Schedule job is one function: read, edit, save, publish and the rest'
 );

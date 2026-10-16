@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(22);
 
 -- BL-199: a manager's note on a shift ("Bring the catering order list") goes
 -- wherever the shift goes. Saving the week, making a template of it and
@@ -58,10 +58,10 @@ create function pg_temp.preview(draft uuid) returns jsonb language sql as $$
   select public.preview_schedule_publication_service(tests.user('np:owner'), tests.id('np'), draft,
     array[tests.id('np:K')], null, true)
 $$;
-create function pg_temp.publish(draft uuid, notify uuid[] default null) returns jsonb language sql as $$
+create function pg_temp.publish(draft uuid) returns jsonb language sql as $$
   select public.publish_schedule_draft_service(tests.user('np:owner'), tests.id('np'), draft, array[tests.id('np:K')],
     null, true, (select d.revision from public.schedule_drafts d where d.id = draft),
-    pg_temp.preview(draft) ->> 'fingerprint', '[]'::jsonb, notify)
+    pg_temp.preview(draft) ->> 'fingerprint', '[]'::jsonb)
 $$;
 -- The note on the current published shift of this person on this day.
 create function pg_temp.published_note(person text, n integer, day integer) returns text language sql as $$
@@ -194,17 +194,9 @@ select is(pg_temp.preview(tests.id('np:draft:w1b')) -> 'locations' -> 0 -> 'affe
   jsonb_build_array(tests.id('np:ali')),
   'only the note changed: its owner, and nobody else, is the affected employee');
 
--- The publish dialog ticks the affected employees; they are the ones told.
-select pg_temp.publish(tests.id('np:draft:w1b'), array(
-  select jsonb_array_elements_text(pg_temp.preview(tests.id('np:draft:w1b')) -> 'locations' -> 0 -> 'affected_employee_ids')::uuid));
-
-select is(
-  (select jsonb_agg(o.payload -> 'recipient_employee_ids') from public.notification_outbox o
-   where o.workspace_id = tests.id('np') and o.type_key = 'schedule.published'),
-  jsonb_build_array(jsonb_build_array(tests.id('np:ali'))),
-  'publishing it queues one schedule.published notice, for Ali');
+select pg_temp.publish(tests.id('np:draft:w1b'));
 select is(pg_temp.published_note('ali', 1, 1), 'Bring the catering order list and the new menu',
-  'and Ali''s published shift carries the new note');
+  'publishing it, Ali''s published shift carries the new note');
 
 -- 6. S5 (a): after an approved swap or pickup the note stays with the shift -----------
 

@@ -193,7 +193,6 @@ select 'function', name, 'FB-6.1.4' from unnest(array[
 ]) name;
 insert into retired (kind, name, step) values
   ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], integer, text, jsonb)', 'FB-6.1.4'),
-  ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb)', 'FB-6.1.4'),
   ('function_signature', 'public.preview_schedule_publication_service(uuid, uuid, uuid, uuid[])', 'FB-6.1.4'),
   ('function_signature', 'public.apply_schedule_template_service(uuid, uuid, uuid, integer, uuid, text)', 'FB-6.1.4');
 -- BL-969: the account keeps its phone once, in E.164; the column kept for a
@@ -435,6 +434,15 @@ insert into retired (kind, name, step) values
 -- wrote it takes the row's id instead (BILDIRIM-01, K3).
 insert into retired (kind, name, step) values
   ('function_signature', 'public.shift_exchange_emit_notification_base(uuid, uuid, uuid, uuid, text, text, text)', 'BILDIRIM-01');
+-- The domain work stops calling the old notifications (BILDIRIM-04, teardown part C1): publish
+-- names nobody to notify, so its form with target_notify_employee_ids goes and the nine-argument
+-- form (retired in FB-6.1.4 for that one) is the only one again; the three triggers that turned a
+-- domain row into a notification go.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.publish_schedule_draft_service(uuid, uuid, uuid, uuid[], uuid[], boolean, integer, text, jsonb, uuid[])', 'BILDIRIM-04'),
+  ('trigger', 'schedule_time_off_events.notify_time_off_event', 'BILDIRIM-04'),
+  ('trigger', 'onboarding_events.document_notification_audit', 'BILDIRIM-04'),
+  ('trigger', 'security_audit_events.project_account_security_notification', 'BILDIRIM-04');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 487, last: 20261016120000_domain_work_leaves_notifications.sql
--- fingerprint: sha256:3537c7158c3131a4e70acb9de67be226e1a038619b4e2dbeda68c44636e976d1
+-- migrations: 488, last: 20261016160000_domain_work_stops_calling_notifications.sql
+-- fingerprint: sha256:7c298cf477976f553d29a80b5205b69c785b3a403d44c1b3671ae7a70f6f46af
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2340,9 +2340,6 @@ begin
         where id = item.id returning * into item;
         told := app_private.announcement_apply(publisher, item, impact);
         reached := app_private.announcement_recipients(item);
-        perform app_private.communication_withdraw(place, 'communications.announcement.available', 'announcement',
-          item.id::text, 'superseded');
-        perform app_private.announcement_deliver(publisher, item, reached, 'publish');
         update public.announcements set delivered_to = reached where id = item.id;
         insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
         values (place, item.id, publisher, 'published', jsonb_strip_nulls(jsonb_build_object('auto', true,
@@ -2357,13 +2354,6 @@ begin
           insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
           values (place, item.id, null, 'publish_failed',
             jsonb_build_object('code', case when failure = '42501' then 'not_allowed' else 'too_late' end));
-          begin
-            perform app_private.announcement_tell_failed(item, case when failure = '42501'
-              then 'Whoever scheduled it can''t publish it there anymore. Open it to publish it yourself or change it.'
-              else 'It started before it could go out. Open it to change its day or archive it.' end);
-          exception when others then
-            raise warning 'announcement % failure notice did not go out: %', item.id, sqlerrm;
-          end;
         else
           -- One broken row must not hold up every workspace's, nor the read
           -- that called this (O2). It tries again the next minute (KK-98).
@@ -2383,8 +2373,6 @@ begin
     loop
       begin
         if cardinality(item.delivered_to) > 0 then
-          perform app_private.communication_withdraw(place, 'communications.announcement.available', 'announcement',
-            item.id::text, 'cancelled');
           update public.announcements set delivered_to = '{}' where id = item.id;
         end if;
         if item.recurrence <> 'none' then
@@ -4819,7 +4807,6 @@ CREATE OR REPLACE FUNCTION "app_private"."finish_workspace_closure"("target_work
     AS $$
 declare
   edit_sessions_expired integer := 0;
-  notification_jobs_suppressed integer := 0;
   revocation jsonb;
 begin
   update public.workspaces
@@ -4854,24 +4841,11 @@ begin
     and status = 'active';
   get diagnostics edit_sessions_expired = row_count;
 
-  update public.notification_outbox
-  set status = 'processed',
-      lease_owner = null,
-      lease_expires_at = null,
-      last_error = case closure_mode
-        when 'immediate' then 'suppressed because workspace was closed immediately'
-        else 'suppressed because workspace was closed on its date'
-      end
-  where workspace_id = target_workspace_id
-    and status in ('pending', 'retry', 'leased');
-  get diagnostics notification_jobs_suppressed = row_count;
-
   delete from public.user_workspace_preferences
   where active_workspace_id = target_workspace_id;
 
   revocation := jsonb_build_object(
-    'schedule_edit_sessions_expired', edit_sessions_expired,
-    'notification_jobs_suppressed', notification_jobs_suppressed
+    'schedule_edit_sessions_expired', edit_sessions_expired
   );
 
   insert into public.audit_events (
@@ -6683,7 +6657,6 @@ begin
   insert into public.schedule_time_off_events(workspace_id,request_id,action,actor_user_id,note,metadata)
    values(w,parent.id,next_status::text,actor,said,jsonb_build_object('revision',parent.revision,'cancellation_request_id',rid,
     'cancelled_intervals',public.availability_ranges_json(given),'shortened',true,'source',source));
-  perform public.notify_time_off_shortened(actor,w,parent.id,given,zone_name,source);
   result:=result||jsonb_build_array(jsonb_build_object('request_id',parent.id,'revision',parent.revision,'status',parent.status,
    'cancellation_request_id',rid,'intervals',public.availability_ranges_json(given)));
  end loop;
@@ -7341,7 +7314,6 @@ begin
       perform public.shift_exchange_emit(who, w, other.id, null, 'invalidated', 'An involved assignment was released with approved time off. Review the current schedule.');
     end loop;
     perform realtime.send(jsonb_build_object('workspace_id', w, 'request_id', rid), 'changed', 'shift-exchanges:' || w::text, true);
-    perform app_private.time_off_notify_shifts_opened(actor, w, rid, decision);
   end if;
   return changes;
 end;
@@ -7466,10 +7438,6 @@ declare
   r record;
   st jsonb;
   v jsonb;
-  waiting uuid[];
-  alone uuid[];
-  fallback_due boolean;
-  reminder_due boolean;
   done integer := 0;
 begin
   -- ponytail: every workspace lock is held to the end of the pass (BL-506), and
@@ -7513,8 +7481,6 @@ begin
     -- A vote on shifts that changed is let go; its manager looks again.
     for v in select x from jsonb_array_elements(st -> 'votes') x where (x ->> 'stale')::boolean loop
       delete from public.time_off_votes where request_id = r.id and voter_user_id = (v ->> 'voter')::uuid;
-      perform app_private.time_off_notice(r.workspace_id, r.id, 'requests.time_off.review_again', array[(v ->> 'voter')::uuid], 'time_off_voter',
-        'Look at this time off again', 'The shifts it affects changed, so your approval no longer counts.');
       done := done + 1;
     end loop;
 
@@ -7524,48 +7490,6 @@ begin
       perform app_private.time_off_finalize(r.workspace_id, r.id, 'approve', null, 'All deciding locations approved', false);
       done := done + 1;
       continue;
-    end if;
-
-    fallback_due := ((st ->> 'fallback')::boolean or (st ->> 'unattended')::integer > 0) and r.fallback_notified_at is null
-      and exists (select 1 from public.time_off_required_locations x where x.request_id = r.id);
-    -- Twelve hours before the deadline, once; not for one sent inside them.
-    reminder_due := r.reminded_at is null and r.decide_by - interval '12 hours' <= now()
-      and r.created_at < r.decide_by - interval '12 hours';
-    alone := app_private.time_off_alone_deciders(r.workspace_id, r.employee_id);
-
-    -- Only an admin or the owner can decide it now: tell them once. When the
-    -- reminder is due in the same pass, this one line carries it for them.
-    if fallback_due then
-      perform app_private.time_off_notice(r.workspace_id, r.id, 'requests.time_off.reminder',
-        alone, 'time_off_fallback_deciders', 'Time off waits for an admin',
-        case when reminder_due then 'No manager can decide this now. Decide before the deadline or it is declined.'
-             else 'No manager can decide this now.' end);
-      update public.schedule_time_off_requests set fallback_notified_at = now() where id = r.id;
-      done := done + 1;
-    end if;
-
-    if reminder_due then
-      st := app_private.time_off_state(r.workspace_id, r.id);
-      if (st ->> 'fallback')::boolean then
-        waiting := alone;
-      else
-        select coalesce(array_agg(distinct u order by u), '{}') into waiting
-        from jsonb_array_elements(st -> 'locations') x,
-             unnest(app_private.time_off_location_voters(r.workspace_id, r.employee_id, (x ->> 'id')::uuid)) u
-        where x -> 'approved_by' = 'null'::jsonb;
-        -- A location nobody can vote at now: an admin and the owner, who can decide it.
-        if (st ->> 'unattended')::integer > 0 then
-          waiting := array(select distinct u from unnest(waiting || alone) u order by u);
-        end if;
-      end if;
-      -- An admin and the owner already have it in the line above.
-      if fallback_due then
-        waiting := array(select u from unnest(waiting) u where u <> all (alone) order by u);
-      end if;
-      perform app_private.time_off_notice(r.workspace_id, r.id, 'requests.time_off.reminder', waiting, 'time_off_deciders',
-        'Time off waits for your decision', 'Decide before the deadline or it is declined.');
-      update public.schedule_time_off_requests set reminded_at = now() where id = r.id;
-      done := done + 1;
     end if;
     exception when others then
       insert into app_private.time_off_sweep_failures (request_id, workspace_id, sqlstate, message)
@@ -10445,7 +10369,6 @@ CREATE OR REPLACE FUNCTION "public"."decide_employee_preferred_name_service"("ac
 declare
   request_row public.employee_preferred_name_requests%rowtype;
   asker uuid;
-  person uuid;
 begin
   select request.employee_id into asker
   from public.employee_preferred_name_requests request
@@ -10475,33 +10398,7 @@ begin
     update public.employee_profiles
     set preferred_name = request_row.requested_name, updated_at = now()
     where id = request_row.employee_id
-      and workspace_id = target_workspace_id
-    returning user_id into person;
-
-    if person is not null and person <> actor_user_id then
-      perform public.enqueue_notification_outbox_service(
-        target_workspace_id,
-        gen_random_uuid(),
-        'people.preferred_name.approved',
-        1,
-        actor_user_id,
-        'employee',
-        request_row.employee_id::text,
-        jsonb_build_object(
-          'employee_id', request_row.employee_id,
-          'request_id', request_row.id,
-          'recipient_user_ids', jsonb_build_array(person),
-          'audience_contract', 'preferred_name_requester',
-          'category', 'people',
-          'title', 'Preferred name approved',
-          'body', 'You now go by "' || request_row.requested_name || '".',
-          'safe_preview', 'Your preferred name was approved.',
-          'action_url', '/app',
-          'group_key', 'employee:' || request_row.employee_id::text
-        ),
-        now()
-      );
-    end if;
+      and workspace_id = target_workspace_id;
   end if;
 end;
 $$;
@@ -11003,13 +10900,12 @@ CREATE OR REPLACE FUNCTION "public"."documents_maintain_service"("target_batch_s
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare c public.employee_onboarding_cases%rowtype; r public.employee_onboarding_requirements%rowtype; u uuid; tz text; local_now timestamp;
- checked integer:=0; enqueued integer:=0; failed integer:=0; suspended integer; missing_count integer; days_left integer; expiry date; approved_on date; milestone integer;
+declare c public.employee_onboarding_cases%rowtype; checked integer:=0; suspended integer;
 begin
  if target_batch_size not between 1 and 500 or at_time is null then raise exception 'valid maintenance batch required' using errcode='22023'; end if;
- -- The restriction first, for every case and on its own: no reminder below can undo it.
+ -- The restriction first, for every case and on its own.
  suspended:=app_private.document_suspend_overdue();
- -- Reminders: a batch of cases at a time, oldest checked first.
+ -- A batch of cases at a time, oldest checked first.
  for c in select oc.* from public.employee_onboarding_cases oc
   join public.employee_profiles p on p.id=oc.employee_id and p.workspace_id=oc.workspace_id and p.archived_at is null
   join public.workspace_memberships m on m.id=oc.membership_id and m.user_id=p.user_id and m.status in ('active','pending_activation')
@@ -11017,38 +10913,9 @@ begin
    and exists(select 1 from public.employee_onboarding_requirements q where q.case_id=oc.id and q.kind in ('document','acknowledgement') and q.lifecycle_retired_at is null)
   order by oc.document_notification_checked_at nulls first,oc.id limit target_batch_size for update of oc skip locked loop
   checked:=checked+1;
-  -- Outside the case's block: a case that fails still moves to the back of the queue.
   update public.employee_onboarding_cases set document_notification_checked_at=at_time where id=c.id;
-  begin
-   select user_id into u from public.employee_profiles where id=c.employee_id;
-   perform app_private.document_notify_access(c.workspace_id,c.employee_id,u);
-   tz:=app_private.document_employee_timezone(c.workspace_id,c.employee_id);
-   if tz is null then continue; end if;
-   local_now:=at_time at time zone tz;
-   if local_now::time<'09:00'::time then continue; end if;
-   select count(*) into missing_count from public.employee_onboarding_requirements q
-    where q.case_id=c.id and q.lifecycle_user_id=u and q.kind in ('document','acknowledgement') and q.lifecycle_retired_at is null
-     and q.lifecycle_settings->>'mode'<>'optional' and not q.lifecycle_exempt and q.lifecycle_closed_at is null and q.status<>'superseded'
-     and app_private.document_obligation_state(q,at_time) in ('missing','grace','rejected','expired')
-     and not exists(select 1 from public.employee_document_submissions s where s.id=q.submitted_document_id and s.state='pending_review');
-   if missing_count>0 and app_private.enqueue_document_notification(c.workspace_id,c.employee_id,u,'missing:'||local_now::date::text,'missing','Documents need attention',format('%s outstanding document request(s). Open Documents for details.',missing_count)) then enqueued:=enqueued+1; end if;
-   for r in select q.* from public.employee_onboarding_requirements q where q.case_id=c.id and q.lifecycle_user_id=u and q.lifecycle_retired_at is null
-    and q.publication_paused_at is null and q.kind='document' and q.lifecycle_settings->>'mode'<>'optional' and not q.lifecycle_exempt and q.lifecycle_closed_at is null and q.status<>'superseded' and q.approved_document_id is not null
-    and not exists(select 1 from public.employee_document_submissions s where s.id=q.submitted_document_id and s.state='pending_review') loop
-    select s.expiry_date,(s.reviewed_at at time zone tz)::date into expiry,approved_on from public.employee_document_submissions s where s.id=r.approved_document_id and s.state='accepted';
-    days_left:=expiry-local_now::date;
-    milestone:=case when days_left between 1 and 1 then 1 when days_left between 2 and 7 then 7 when days_left between 8 and 30 then 30 end;
-    -- Parenthesised: PL/pgSQL reads an IF condition up to the first THEN outside parentheses.
-    if (case when milestone is null or approved_on>expiry-milestone then false
-     else app_private.enqueue_document_notification(r.workspace_id,r.employee_id,u,'expiry:'||r.approved_document_id::text||':'||milestone::text,'expiry','Document expires soon',format('A document expires in %s day(s). Open Documents to renew it.',days_left),r.id) end)
-    then enqueued:=enqueued+1; end if;
-   end loop;
-  exception when others then
-   failed:=failed+1;
-   raise warning 'documents_maintain_service: case % skipped: % (%)',c.id,sqlerrm,sqlstate;
-  end;
  end loop;
- return jsonb_build_object('checked',checked,'enqueued',enqueued,'failed_cases',failed,'suspended',suspended);
+ return jsonb_build_object('checked',checked,'failed_cases',0,'suspended',suspended);
 end;
 $$;
 
@@ -14080,7 +13947,7 @@ begin
       ),
       'pending_time_off_count', (select count(*) from public.schedule_time_off_requests request where request.workspace_id = target_workspace_id and request.status = 'pending'
         and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', request.employee_id) is null),
-      'unread_notification_count', (select count(*) from public.notifications notification where notification.workspace_id = target_workspace_id and notification.recipient_user_id = actor_user_id and notification.dismissed_at is null and notification.read_at is null and notification.created_at <= now())
+      'unread_notification_count', 0
     ),
     'today_ends_at', (
       select min(((now() at time zone location.timezone)::date + 1)::timestamp at time zone location.timezone)
@@ -14091,7 +13958,7 @@ begin
     'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value
       -- K28: what is live; scheduled, past, unpublished and archived stay in the list only.
       where value->>'display_status' = 'published' limit 5) item), '[]'::jsonb),
-    'notifications', coalesce(public.get_notifications_service(actor_user_id, target_workspace_id, null, false, null, 5)->'notifications', '[]'::jsonb),
+    'notifications', '[]'::jsonb,
     'todos', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', todo.id,
@@ -14116,7 +13983,7 @@ begin
           and todo.status = 'open'::public.workspace_todo_status
           and (
             todo.employee_id is null
-            -- KK-179 (5): a document to-do is read like its notification.
+            -- KK-179 (5): a document to-do is read like the documents it is about.
             or app_private.authz_check(me,
                  case when todo.source_type = 'employee_document_expiry' then documents_rule else read_rule end,
                  null, todo.employee_id, null) is null
@@ -19110,16 +18977,13 @@ $$;
 ALTER FUNCTION "public"."protect_published_signature_version"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb" DEFAULT '[]'::"jsonb", "target_notify_employee_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
   requested uuid;
   result jsonb;
-  notification_event_id uuid;
-  normalized_recipient_ids uuid[];
-  result_publication_ids uuid[];
   target_draft public.schedule_drafts%rowtype;
   preview jsonb;
   location_item jsonb;
@@ -19300,66 +19164,13 @@ begin
     raise exception 'schedule has hard document blockers' using errcode = '23514';
   end if;
 
-  -- The people named hear that their week is out.
-  if coalesce(cardinality(target_notify_employee_ids), 0) = 0 then
-    return result;
-  end if;
-
-  select array(
-    select jsonb_array_elements_text(result->'publication_ids')::uuid
-  ) into result_publication_ids;
-
-  select coalesce(array_agg(distinct employee.id order by employee.id), '{}'::uuid[])
-  into normalized_recipient_ids
-  from public.employee_profiles employee
-  join public.workspace_memberships membership
-    on membership.workspace_id = employee.workspace_id
-   and membership.user_id = employee.user_id
-   and membership.status = 'active'
-  where employee.workspace_id = target_workspace_id
-    and employee.id = any(target_notify_employee_ids)
-    and employee.archived_at is null
-    and exists (
-      select 1
-      from public.schedule_published_shifts shift
-      where shift.workspace_id = target_workspace_id
-        and shift.publication_id = any(result_publication_ids)
-        and shift.employee_id = employee.id
-    );
-
-  if cardinality(normalized_recipient_ids) = 0 then
-    return result;
-  end if;
-
-  notification_event_id := gen_random_uuid();
-  perform public.enqueue_notification_outbox_service(
-    target_workspace_id,
-    notification_event_id,
-    'schedule.published',
-    1,
-    actor_user_id,
-    'schedule_week',
-    result->>'week_start',
-    jsonb_build_object(
-      'correlation_id', notification_event_id,
-      'week_start', result->>'week_start',
-      'publication_ids', result->'publication_ids',
-      'location_ids', result->'location_ids',
-      'recipient_employee_ids', to_jsonb(normalized_recipient_ids)
-    ),
-    (result->>'published_at')::timestamptz
-  );
-
-  return result || jsonb_build_object(
-    'notification_event_id', notification_event_id,
-    'notification_enqueued_count', cardinality(normalized_recipient_ids)
-  );
+  return result;
 exception when serialization_failure then raise exception '%',SQLERRM using errcode='PT409', hint='schedule.publication_changed';
 end;
 $$;
 
 
-ALTER FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "target_notify_employee_ids" "uuid"[]) OWNER TO "postgres";
+ALTER FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."publish_signature_template_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_template_id" "uuid") RETURNS "void"
@@ -20131,7 +19942,8 @@ begin
  perform public.shift_exchange_emit(null,w,cid,null,event_action,message);
  -- emit is synchronous under the workspace lock; its newest event is ours.
  update public.shift_exchange_events set details=prior_details where id=(select id from public.shift_exchange_events
-  where workspace_id=w and case_id=cid and action=event_action order by notification_sequence desc limit 1);
+  where workspace_id=w and case_id=cid and action=event_action and application_id is null and details='{}'::jsonb
+  order by created_at desc, id desc limit 1);
  foreach ended in array dropped loop
   perform public.shift_exchange_emit(null,w,cid,ended,'invalidated',
    'The new shift hours overlap another shift of the teammate who accepted. That acceptance ended; no assignment changed.');
@@ -20299,7 +20111,6 @@ declare
   employee public.employee_profiles%rowtype;
   released uuid[];
   locations_left integer;
-  told uuid[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.remove_from_location',
     array[target_location_id], target_employee_id);
@@ -20376,39 +20187,6 @@ begin
 
   -- No location left: whoever may end their employment or give them another
   -- location decides (the owner and admins; S1). The record stays.
-  if locations_left = 0 then
-    select coalesce(array_agg(member.user_id order by member.user_id), '{}') into told
-    from public.workspace_memberships member
-    where member.workspace_id = target_workspace_id
-      and member.status = 'active'
-      and member.user_id is distinct from actor_user_id
-      and app_private.authz_reason(member.user_id, target_workspace_id, 'employee.terminate', null, target_employee_id) is null;
-    if cardinality(told) > 0 then
-      perform public.enqueue_notification_outbox_service(
-        target_workspace_id,
-        gen_random_uuid(),
-        'people.employee.no_location',
-        1,
-        actor_user_id,
-        'employee',
-        target_employee_id::text,
-        jsonb_build_object(
-          'employee_id', target_employee_id,
-          'recipient_user_ids', to_jsonb(told),
-          'audience_contract', 'workspace_employee_access_managers',
-          'category', 'people',
-          'title', 'No location left',
-          'body', left(concat_ws(' ', employee.first_name, employee.last_name)
-            || ' has no location left. End their employment or give them a new location.', 2000),
-          'safe_preview', 'Somebody on your team has no location left.',
-          'action_url', '/app/employees?employeeId=' || target_employee_id::text,
-          'group_key', 'employee:' || target_employee_id::text
-        ),
-        now()
-      );
-    end if;
-  end if;
-
   return jsonb_build_object(
     'employee_id', target_employee_id,
     'location_id', target_location_id,
@@ -20701,9 +20479,6 @@ declare
   blockers jsonb;
   existing_request public.account_deletion_requests%rowtype;
   created_request public.account_deletion_requests%rowtype;
-  cancelled_workspace_id uuid;
-  manager_user_ids uuid[];
-  notification_event_id uuid;
 begin
   if actor_user_id is null then
     raise exception 'valid actor required' using errcode = '42501';
@@ -20750,57 +20525,14 @@ begin
     );
   end if;
 
-  for cancelled_workspace_id in
-    with cancelled as (
-      update public.employee_invitations invitation
-      set status = 'revoked'::public.employee_invitation_status,
-          revoked_at = now(),
-          updated_at = now()
-      where invitation.email = actor_email
-        and invitation.status = 'pending'::public.employee_invitation_status
-      returning invitation.workspace_id
-    )
-    select distinct workspace_id from cancelled
-  loop
-    select coalesce(array_agg(distinct membership.user_id), '{}'::uuid[])
-    into manager_user_ids
-    from public.workspace_memberships membership
-    where membership.workspace_id = cancelled_workspace_id
-      and membership.status = 'active'
-      -- Whoever could have sent the invitation: not every manager (BL-532).
-      and exists (
-        select 1 from public.employee_invitations invitation
-        where invitation.workspace_id = cancelled_workspace_id
-          and invitation.email = actor_email
-          and invitation.status = 'revoked'::public.employee_invitation_status
-          and invitation.revoked_at = now()
-          and app_private.authz_reason(membership.user_id, cancelled_workspace_id, 'employee.invite',
-                null, invitation.employee_id) is null);
+  update public.employee_invitations invitation
+  set status = 'revoked'::public.employee_invitation_status,
+      revoked_at = now(),
+      updated_at = now()
+  where invitation.email = actor_email
+    and invitation.status = 'pending'::public.employee_invitation_status;
 
-    if cardinality(manager_user_ids) > 0 then
-      notification_event_id := gen_random_uuid();
-      perform public.enqueue_notification_outbox_service(
-        cancelled_workspace_id,
-        notification_event_id,
-        'security.account_invitation_cancelled',
-        1,
-        null,
-        'account_deletion_request',
-        actor_user_id::text,
-        jsonb_build_object(
-          'recipient_user_ids', to_jsonb(manager_user_ids),
-          'title', 'Pending invitation cancelled',
-          'body', 'A pending employee invitation was cancelled because the recipient requested account deletion.',
-          'safe_preview', 'A pending employee invitation was cancelled.',
-          'action_url', '/app/employees',
-          'audience_contract', 'producer_recipient_snapshot'
-        ),
-        now()
-      );
-    end if;
-  end loop;
-
-insert into public.account_deletion_requests (
+  insert into public.account_deletion_requests (
     user_id, typed_email, acknowledged, recovery_token_digest,
     recovery_token_rotated_at
   ) values (
@@ -20835,9 +20567,7 @@ declare
   employee_row public.employee_profiles%rowtype;
   approval text;
   cleaned text := btrim(coalesce(preferred_name, ''));
-  request_id uuid;
   deciders uuid[];
-  full_name text;
 begin
   -- Only on one's own record; somebody else's and an unknown one get the same
   -- answer (authz.out_of_scope).
@@ -20875,7 +20605,7 @@ begin
     'auto'
   );
 
-  -- Asked and told: whoever the core lets decide this person's preferred name.
+  -- Whoever the core lets decide this person's preferred name.
   -- ponytail: one core call per active member; a workspace is tens of people.
   select coalesce(array_agg(member.user_id order by member.user_id), '{}')
   into deciders
@@ -20906,46 +20636,12 @@ begin
     actor_user_id,
     case when approval = 'auto' then actor_user_id end,
     case when approval = 'auto' then now() end
-  )
-  returning id into request_id;
+  );
 
   if approval = 'auto' then
     update public.employee_profiles
     set preferred_name = cleaned, updated_at = now()
     where id = target_employee_id;
-  end if;
-
-  if cardinality(deciders) > 0 then
-    full_name := concat_ws(' ', employee_row.first_name, employee_row.last_name);
-    perform public.enqueue_notification_outbox_service(
-      target_workspace_id,
-      gen_random_uuid(),
-      case
-        when approval = 'auto' then 'people.preferred_name.published'
-        else 'people.preferred_name.review_required'
-      end,
-      1,
-      actor_user_id,
-      'employee',
-      target_employee_id::text,
-      jsonb_build_object(
-        'employee_id', target_employee_id,
-        'requested_name', cleaned,
-        'request_id', request_id,
-        'recipient_user_ids', to_jsonb(deciders),
-        'audience_contract', 'workspace_employee_access_managers',
-        'category', 'people',
-        'title', case when approval = 'auto' then 'Preferred name changed' else 'Preferred name to review' end,
-        'body', left(full_name || case when approval = 'auto'
-          then ' now goes by "' || cleaned || '".'
-          else ' asked to go by "' || cleaned || '".' end, 2000),
-        'safe_preview', case when approval = 'auto'
-          then 'A preferred name changed.' else 'A preferred name is waiting for review.' end,
-        'action_url', '/app/employees?employeeId=' || target_employee_id::text,
-        'group_key', 'employee:' || target_employee_id::text
-      ),
-      now()
-    );
   end if;
 
   return case when approval = 'auto' then 'published' else 'waiting' end;
@@ -22602,34 +22298,17 @@ begin
   end if;
 
   if target_intent = 'publish' then
-    -- K4 (3), K27: brought out again with its acknowledgements kept, it is told
-    -- to whoever hasn't acknowledged; the first time, to everyone.
+    -- K4 (3), K27: brought out again with its acknowledgements kept, it is for
+    -- whoever hasn't acknowledged; the first time, for everyone.
     notified := array(select who from unnest(reached) who where not who = any (acked) or who = any (touched));
-    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'superseded');
-    perform app_private.announcement_deliver(actor_user_id, item, notified, 'publish');
   elsif target_intent = 'save' then
-    -- Those it no longer reaches lose it (BL-534).
-    if exists (select 1 from unnest(item.delivered_to) who where not who = any (reached)) then
-      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
-        'cancelled', array(select who from unnest(item.delivered_to) who where not who = any (reached)));
-    end if;
-    -- K4: new people are told; a change in what it says is told to whoever
-    -- hasn't acknowledged it (everyone, once asked again, K27); a changed or
-    -- returned shift to its person. B3: the new notice takes the old one's place.
+    -- K4: new people; a change in what it says for whoever hasn't acknowledged
+    -- it (everyone, once asked again, K27); a changed or returned shift for its person.
     notified := array(select who from unnest(reached) who
                       where not who = any (item.delivered_to) or who = any (touched)
                          or ((content_changed or reset) and not who = any (acked))
                          or who = any (array(select (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
                                              where not coalesce((x ->> 'silent')::boolean, false))));
-    if cardinality(notified) > 0 then
-      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
-        'superseded', notified);
-      perform app_private.announcement_deliver(actor_user_id, item, notified, 'publish', back);
-    end if;
-    perform app_private.announcement_deliver(actor_user_id, item, array(
-      select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
-      where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false)
-        and not (x ->> 'employee_user_id')::uuid = any (reached)), 'cancel', back);
   end if;
   if target_intent in ('publish', 'save') then
     update public.announcements set delivered_to = reached where id = item.id returning * into item;
@@ -24931,13 +24610,9 @@ begin
     set status = 'draft', scheduled_by = null, choices_saved_at = null, release_failed_at = null, release_error = null
     where id = item.id;
   elsif target_action = 'unpublish' then
-    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'cancelled');
-    told := app_private.announcement_deliver(actor_user_id, item, item.delivered_to, 'cancel');
+    told := case when item.starts_on is null then 0 else coalesce(cardinality(item.delivered_to), 0) end;
     update public.announcements set status = 'unpublished', unpublished_at = now(), delivered_to = '{}' where id = item.id;
   elsif target_action = 'archive' then
-    if cardinality(item.delivered_to) > 0 then
-      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text, 'cancelled');
-    end if;
     update public.announcements set archived_at = now(), delivered_to = '{}' where id = item.id;
   elsif target_action = 'bring_back' then
     back := app_private.announcement_bring_back(actor_user_id, item, target_bring_back,
@@ -24947,11 +24622,7 @@ begin
     end if;
     people := array(select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
                     where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false));
-    if cardinality(people) > 0 then
-      perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
-        'superseded', people);
-      told := app_private.announcement_deliver(actor_user_id, item, people, 'cancel', back);
-    end if;
+    told := case when item.starts_on is null then 0 else coalesce(cardinality(people), 0) end;
   else
     people := array(select who from unnest(app_private.announcement_respondents(item)) who
                     where not exists (select 1 from public.announcement_acknowledgements ack
@@ -24959,9 +24630,7 @@ begin
     if cardinality(people) = 0 then
       raise exception 'Everyone acknowledged.' using errcode = 'PT409', hint = 'announcement.changed';
     end if;
-    perform app_private.communication_withdraw(w, 'communications.announcement.available', 'announcement', item.id::text,
-      'superseded', people);
-    told := app_private.announcement_deliver(actor_user_id, item, people, 'publish');
+    told := cardinality(people);
   end if;
 
   update public.announcements set revision = revision + 1, updated_by = actor_user_id, updated_at = now()
@@ -25020,7 +24689,6 @@ begin
    where workspace_id=target_workspace_id and source_id=d.id and kind='document' and lifecycle_retired_at is null and lifecycle_closed_at is null and not lifecycle_exempt and not lifecycle_assignment_disabled returning * loop
    perform app_private.document_audit(r,actor_user_id,'document.publication_paused',jsonb_build_object('reason',btrim(publish_reason),'publication_revision',d.publication_revision+1));
   end loop;
-  update public.notification_outbox set payload=jsonb_set(payload,'{body}',to_jsonb('You have outstanding document requests. Open Documents for details.'::text)) where workspace_id=target_workspace_id and type_key='people.documents.missing' and status in ('pending','retry');
   result:=jsonb_build_object('paused',jsonb_array_length(preview->'employees'));
  end if;
  insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata)
@@ -25458,13 +25126,10 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "u
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
     AS $$
-declare eid uuid;
 begin
- -- The case's history (Shift Hub, Requests): one row per step, whatever is told about it.
+ -- The case's history (Shift Hub, Requests): one row per step.
  insert into public.shift_exchange_events(workspace_id,case_id,application_id,actor_user_id,action,message,private_note)
- values(w,cid,aid,actor,act,msg,private_msg) returning id into eid;
- perform public.shift_exchange_emit_notification_base(eid,actor,w,cid,aid,act,msg);
- perform public.shift_exchange_sync_notifications(w,cid);
+ values(w,cid,aid,actor,act,msg,private_msg);
 end; $$;
 
 
@@ -26578,7 +26243,6 @@ CREATE OR REPLACE FUNCTION "public"."sync_expiring_document_todos_service"("targ
 declare
   inserted_count integer := 0;
   resolved_count integer := 0;
-  notification_count integer := 0;
 begin
   with latest_documents as (
     select distinct on (document.workspace_id, document.requirement_id)
@@ -26686,113 +26350,6 @@ begin
     order by document.workspace_id, document.requirement_id, document.version_number desc
   ),
   eligible as (
-    select
-      document.workspace_id,
-      document.id as document_id,
-      document.employee_id,
-      document.requirement_id,
-      document.expiry_date,
-      requirement.title as document_title,
-      employee.first_name,
-      employee.last_name,
-      array(
-        select distinct membership.user_id
-        from public.workspace_memberships membership
-        where membership.workspace_id = document.workspace_id
-          and membership.status = 'active'
-          and app_private.authz_reason(membership.user_id, document.workspace_id, 'documents.read', null, document.employee_id) is null
-        order by membership.user_id
-      ) as recipient_user_ids
-    from latest_documents document
-    join public.workspaces workspace
-      on workspace.id = document.workspace_id
-     and app_private.workspace_allows_interactive_access(workspace.id)
-    join public.employee_onboarding_requirements requirement
-      on requirement.id = document.requirement_id
-     and requirement.workspace_id = document.workspace_id
-     and requirement.kind = 'document'::public.employee_onboarding_requirement_kind
-     and requirement.status <> 'superseded'::public.employee_onboarding_requirement_status
-    join public.document_types type
-      on type.id = requirement.source_id
-     and type.workspace_id = document.workspace_id
-     and type.archived_at is null
-     and type.tracks_expiry
-    join public.employee_profiles employee
-      on employee.id = document.employee_id
-     and employee.workspace_id = document.workspace_id
-     and employee.archived_at is null
-    where document.review_status = 'accepted'::public.employee_document_review_status
-      and document.expiry_date is not null
-      and document.expiry_date <= current_date + type.expiry_warning_days
-  ),
-  event_rows as (
-    select
-      eligible.*,
-      md5(
-        eligible.workspace_id::text || ':employee-document-expiry:' ||
-        eligible.document_id::text || ':' || eligible.requirement_id::text
-      ) as event_digest
-    from eligible
-    where cardinality(eligible.recipient_user_ids) > 0
-  ),
-  enqueued as (
-    select public.enqueue_notification_outbox_service(
-      event_rows.workspace_id,
-      (
-        substr(event_rows.event_digest, 1, 8) || '-' ||
-        substr(event_rows.event_digest, 9, 4) || '-' ||
-        substr(event_rows.event_digest, 13, 4) || '-' ||
-        substr(event_rows.event_digest, 17, 4) || '-' ||
-        substr(event_rows.event_digest, 21, 12)
-      )::uuid,
-      'people.employee_document.expiring',
-      1,
-      null,
-      'employee_document',
-      event_rows.document_id::text,
-      jsonb_build_object(
-        'correlation_id',
-        (
-          substr(event_rows.event_digest, 1, 8) || '-' ||
-          substr(event_rows.event_digest, 9, 4) || '-' ||
-          substr(event_rows.event_digest, 13, 4) || '-' ||
-          substr(event_rows.event_digest, 17, 4) || '-' ||
-          substr(event_rows.event_digest, 21, 12)
-        )::uuid,
-        'audience_contract', 'employee_document_expiry_reviewers',
-        'recipient_user_ids', to_jsonb(event_rows.recipient_user_ids),
-        'employee_id', event_rows.employee_id,
-        'employee_name', btrim(event_rows.first_name || ' ' || event_rows.last_name),
-        'document_id', event_rows.document_id,
-        'requirement_id', event_rows.requirement_id,
-        'document_title', event_rows.document_title,
-        'expiry_date', event_rows.expiry_date,
-        'title', case
-          when event_rows.expiry_date < current_date then 'Employee document expired'
-          else 'Employee document expiring'
-        end,
-        'body', btrim(event_rows.first_name || ' ' || event_rows.last_name) || ' - ' ||
-          event_rows.document_title || ' expires on ' || event_rows.expiry_date::text || '.',
-        'safe_preview', 'An employee document needs attention.',
-        'action_url', '/app/employees',
-        'group_key', 'employee-document-expiry:' || event_rows.document_id::text
-      ),
-      now()
-    ) as outbox_id
-    from event_rows
-  )
-  select count(*)::integer into notification_count
-  from enqueued;
-
-  with latest_documents as (
-    select distinct on (document.workspace_id, document.requirement_id)
-      document.*
-    from public.employee_documents document
-    where document.review_status <> 'superseded'::public.employee_document_review_status
-      and (target_workspace_id is null or document.workspace_id = target_workspace_id)
-    order by document.workspace_id, document.requirement_id, document.version_number desc
-  ),
-  eligible as (
     select document.workspace_id, document.id as document_id, document.requirement_id
     from latest_documents document
     join public.workspaces workspace
@@ -26837,8 +26394,7 @@ begin
     'status', 'synced',
     'affected', inserted_count + resolved_count,
     'opened_or_refreshed', inserted_count,
-    'resolved', resolved_count,
-    'notifications_enqueued', notification_count
+    'resolved', resolved_count
   );
 end;
 $$;
@@ -27109,9 +26665,6 @@ begin
   where action.termination_id = v_termination_id
     and action.shift_id = shift.id
     and action.workspace_id = shift.workspace_id;
-
-  -- The managers of each location where a shift opened hear which (KK-174).
-  perform app_private.termination_notify_shifts_unassigned(actor_user_id, target_workspace_id, v_termination_id);
 
   update public.employee_profiles
   set archived_at = resolved_effective_at, archived_by = actor_user_id,
@@ -28602,7 +28155,7 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preference_settings_save_service"("a
     SET "search_path" TO ''
     AS $_$
 declare model jsonb; prior jsonb; stored public.weekly_preference_commands%rowtype;
- envelope jsonb:=jsonb_build_object('kind','settings','value',command); event uuid:=gen_random_uuid(); recipients uuid[];
+ envelope jsonb:=jsonb_build_object('kind','settings','value',command);
 begin
  perform public.availability_lock_workspace(w);
  perform app_private.authorize(actor,w,'settings.availability.write');
@@ -28630,11 +28183,7 @@ begin
   insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata)
    values(w,actor,'availability.settings_updated','scheduling_settings',w::text,jsonb_build_object('before',prior,'after',model->'settings'));
   if prior->>'input_mode' is distinct from command->>'input_mode' then
-   -- Every employee is told, active or still onboarding, whether or not they
-   -- had saved a week (M4, D4); a manager whose note was converted is not.
-   select coalesce(array_agg(distinct e.user_id),'{}') into recipients from public.employee_profiles e
-    join public.workspace_memberships m on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status in ('active','pending_activation')
-    where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id);
+   -- Every saved week and manager note is converted to the new way of entering it (M4, D4).
    with history as (
     insert into public.weekly_preference_events(workspace_id,employee_id,source,actor_user_id,before_record,after_record)
     select w,p.employee_id,'employee',actor,jsonb_build_object('revision',p.revision,'preference',p.preference),
@@ -28651,11 +28200,6 @@ begin
     returning employee_id,after_record)
    update public.manager_weekly_reminders p set preference=h.after_record->'preference',revision=p.revision+1,updated_by=actor,updated_at=now()
     from history h where p.workspace_id=w and p.employee_id=h.employee_id;
-   perform public.enqueue_notification_outbox_service(w,event,'availability.status_changed',1,actor,'availability_settings',w::text,
-    jsonb_build_object('recipient_user_ids',to_jsonb(recipients),'audience_contract','availability_scoped_recipients','category','request',
-     'title','Check your availability','body','Your organization changed how availability is entered. Your saved week was converted; check that it is still right.',
-     'safe_preview','Availability entry settings changed.','action_url','/app/employee-hub/my-availability',
-     'input_mode',command->>'input_mode','group_key','availability-settings:'||w::text),now());
   end if;
  end if;
  insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,envelope,'{}');
@@ -28780,7 +28324,7 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preferences_save_service"("actor" "u
     AS $$
 declare emp uuid:=(command->>'employee_id')::uuid; source text:=command->>'source'; model jsonb; prior jsonb; preference jsonb;
  old_command public.weekly_preference_commands%rowtype; event uuid:=gen_random_uuid(); result jsonb:='{}';
- recipients uuid[]; summary text; changed_days text;
+ summary text; changed_days text;
 begin
  if request_key is null then raise exception 'Idempotency key required' using errcode='22023'; end if;
  perform public.availability_lock_workspace(w);
@@ -28816,15 +28360,6 @@ begin
  where d is distinct from (select value from jsonb_array_elements(prior->'preference'->'days') where value->'day'=d->'day');
  summary:=case when source='manager' then 'Manager reminders updated.' else 'Weekly availability updated. '||case when changed_days is null then 'Week confirmed.' else 'Changed days: '||changed_days||'.' end end;
  insert into public.employee_events(workspace_id,employee_id,actor_user_id,action,summary) values(w,emp,actor,case when source='manager' then 'manager_reminders_updated' else 'weekly_availability_updated' end,summary);
- -- A save that changes no day is news only the first time (S-32, KK-178).
- if source='employee' and (changed_days is not null or not coalesce((prior->>'submitted')::boolean,false)) then
-  select coalesce(array_agg(m.user_id),'{}') into recipients from public.workspace_memberships m where m.workspace_id=w and m.status='active' and m.user_id<>actor
-   and public.weekly_preference_manager_scope(m.user_id,w,emp,'availability.read');
-  perform public.enqueue_notification_outbox_service(w,event,'availability.weekly_updated',1,actor,'weekly_availability',emp::text,
-   jsonb_build_object('recipient_user_ids',to_jsonb(recipients),'audience_contract','availability_scoped_recipients','category','request',
-    'title','Availability updated','body',(model->>'employee_name')||': '||summary,'safe_preview','An employee updated weekly availability.',
-    'action_url','/app/employees?employeeId='||emp::text||'&section=availability','employee_id',emp,'changed_days',changed_days,'group_key','weekly-availability:'||emp::text),now());
- end if;
  insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,command,result);
  return result||jsonb_build_object('model',model);
 end; $$;
@@ -32876,10 +32411,6 @@ CREATE INDEX "workspace_todos_open_idx" ON "public"."workspace_todos" USING "btr
 
 
 
-CREATE OR REPLACE TRIGGER "project_account_security_notification" AFTER INSERT ON "app_private"."security_audit_events" FOR EACH ROW EXECUTE FUNCTION "app_private"."project_account_security_notification"();
-
-
-
 CREATE OR REPLACE TRIGGER "a_availability_input_write" BEFORE UPDATE OF "timezone" ON "public"."locations" FOR EACH ROW EXECUTE FUNCTION "public"."guard_schedule_availability_input_write"();
 
 
@@ -33084,10 +32615,6 @@ CREATE OR REPLACE TRIGGER "document_assignment_lock" BEFORE INSERT OR DELETE OR 
 
 
 
-CREATE OR REPLACE TRIGGER "document_notification_audit" AFTER INSERT ON "public"."onboarding_events" FOR EACH ROW EXECUTE FUNCTION "app_private"."notify_document_audit"();
-
-
-
 CREATE OR REPLACE TRIGGER "employee_assignment_deleted_job_guard" BEFORE INSERT OR UPDATE ON "public"."employee_job_assignments" FOR EACH ROW EXECUTE FUNCTION "app_private"."guard_assignment_deleted_job"();
 
 
@@ -33173,10 +32700,6 @@ CREATE OR REPLACE TRIGGER "locations_reach_the_owner_on_restore" AFTER UPDATE OF
 
 
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
-
-
-
-CREATE OR REPLACE TRIGGER "notify_time_off_event" AFTER INSERT ON "public"."schedule_time_off_events" FOR EACH ROW EXECUTE FUNCTION "public"."notify_schedule_request_event_service"();
 
 
 
@@ -37353,8 +36876,8 @@ REVOKE ALL ON FUNCTION "public"."protect_published_signature_version"() FROM PUB
 
 
 
-REVOKE ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "target_notify_employee_ids" "uuid"[]) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb", "target_notify_employee_ids" "uuid"[]) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."publish_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid", "target_location_ids" "uuid"[], "target_department_ids" "uuid"[], "include_no_department" boolean, "expected_draft_revision" integer, "expected_fingerprint" "text", "override_decisions" "jsonb") TO "service_role";
 
 
 
