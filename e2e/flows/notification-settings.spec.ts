@@ -107,7 +107,7 @@ test("a person's channel choice holds after a reload", async ({ browser }) => {
   await expect(employee.getByText("Notification choices saved")).toBeVisible();
   expect(
     sql(`select string_agg(topic_key || '=' || enabled, ',' order by topic_key) from public.notification_preferences
-         where workspace_id = tests.id('${w}') and channel = 'email';`),
+         where workspace_id = tests.id('${w}') and user_id = tests.user('${w}:ada') and channel = 'email';`),
   ).toBe("shift_changes=false,time_off=false");
 
   await employee.reload();
