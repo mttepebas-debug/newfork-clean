@@ -1,8 +1,12 @@
 import "./employees/employee-history-guard";
+import { reactErrorHandler } from "@sentry/react";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { App } from "./App";
 import { installEscapeFocus } from "./lib/escape-focus";
+import { initSentry } from "./lib/sentry";
+
+initSentry();
 
 const disposeEscapeFocus = installEscapeFocus(window, document);
 import.meta.hot?.dispose(disposeEscapeFocus);
@@ -13,7 +17,11 @@ if (!rootElement) {
   throw new Error("Root element not found");
 }
 
-createRoot(rootElement).render(
+createRoot(rootElement, {
+  onUncaughtError: reactErrorHandler(),
+  onCaughtError: reactErrorHandler(),
+  onRecoverableError: reactErrorHandler(),
+}).render(
   <StrictMode>
     <App />
   </StrictMode>,

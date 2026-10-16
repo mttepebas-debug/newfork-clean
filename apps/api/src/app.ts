@@ -8,6 +8,7 @@ import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
 import { HttpError, replyWithError } from "./http-error.js";
+import { initSentry } from "./sentry.js";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
   createAccountDeletionWorker,
@@ -298,6 +299,7 @@ function apiLoggerOptions() {
 }
 
 export function buildApp(options: BuildAppOptions = {}) {
+  initSentry();
   const app = Fastify({
     logger: apiLoggerOptions(),
   });

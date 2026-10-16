@@ -12,6 +12,7 @@
   "dependencies": {
     "@newfork/shared": "workspace:*",
     "@newfork/ui": "workspace:*",
+    "@sentry/react": "^11.8.0",
     "@supabase/supabase-js": "^2.112.3",
     "@tanstack/react-query": "^5.85.5",
     "@vitejs/plugin-react": "^5.0.0",

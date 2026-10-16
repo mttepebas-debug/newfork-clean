@@ -1,5 +1,6 @@
 import { managementAndOwnerSentence } from "@newfork/shared";
 import type { FastifyError, FastifyReply, FastifyRequest } from "fastify";
+import { reportServerError } from "./sentry.js";
 
 /**
  * HTTP status carried by the error instead of guessed from its English message.
@@ -154,7 +155,7 @@ export function rpcFailure(
  * error carries, its machine key and detail beside the sentence, and the
  * request id. Nothing above 499 says what went wrong; the log does.
  */
-export function replyWithError(
+export async function replyWithError(
   error: FastifyError | Error,
   request: FastifyRequest,
   reply: FastifyReply,
@@ -162,8 +163,10 @@ export function replyWithError(
   const statusCode = "statusCode" in error && typeof error.statusCode === "number" ? error.statusCode : 500;
   if (statusCode >= 500) request.log.error({ err: error }, "request failed");
   else request.log.warn({ err: error, statusCode }, "request rejected");
-  if (statusCode >= 500)
+  if (statusCode >= 500) {
+    await reportServerError(error, request.id);
     return reply.status(statusCode).send({ error: "Internal server error", requestId: request.id });
+  }
   const typed = error instanceof HttpError ? error : undefined;
   return reply.status(statusCode).send({
     error: error.message,
