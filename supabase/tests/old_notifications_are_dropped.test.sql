@@ -8,7 +8,8 @@ select no_plan();
 --   (c) the columns that only recorded a notice;
 --   (d) the notification settings permissions and actions; the three for the new system stay;
 --   (e) the Workspace home: no notification list or unread count, six cards;
---   (f) Remind on an announcement; (g) document maintenance's always-zero failed_cases.
+--   (f) Remind on an announcement went with it, and came back on the new system (BILDIRIM-U6,
+--       notify_announcements); (g) document maintenance's always-zero failed_cases.
 
 select tests.world('nd');
 
@@ -171,8 +172,9 @@ select throws_ok($$select public.save_workspace_layout_service(tests.user('nd:ow
 
 -- (f) ----------------------------------------------------------------------------------------------
 
+-- Remind is an action again: an unknown post is refused as out of scope, not as an unknown action.
 select throws_ok($$select public.set_announcement_state_service(tests.user('nd:owner'), tests.id('nd'), gen_random_uuid(), 1, 'remind')$$,
-  '22023', 'valid announcement action required', '(f) Remind is not an announcement action any more');
+  '42501', 'Not allowed', '(f) Remind is back on the new system (BILDIRIM-U6)');
 
 -- (g) ----------------------------------------------------------------------------------------------
 
