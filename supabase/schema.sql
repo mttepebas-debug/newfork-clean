@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 494, last: 20261017030000_schedule_notices.sql
--- fingerprint: sha256:c9541f24355c46874f052cb823633a8f90123613cb88a0d01215ced6219b597c
+-- fingerprint: sha256:f6839c4ee2a2607a7723d0eaaf727e24e0a1125ed45b8f1b0569e5c3830159a0
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -18349,6 +18349,7 @@ declare
   updated public.scheduled_schedule_exports%rowtype;
   was_enabled boolean;
   owner_may boolean;
+  places uuid[];
 begin
   select case
            when s.consecutive_failures > 0 and s.last_failed_at > now() - interval '20 hours'
@@ -18385,11 +18386,13 @@ begin
   -- It stopped just now: the person who set it up hears it, once, while the core says they still may
   -- export there; otherwise whoever may export there now, so a stopped email is never silent.
   if was_enabled and not updated.enabled then
-    owner_may := app_private.authz_reason(updated.created_by, target_workspace_id, 'schedule.export',
-      updated.location_ids) is null;
+    -- Its live locations, as the cron and the list read them; none left is '{}', the core's
+    -- "no place": who may export in the workspace.
+    places := public.live_location_ids(target_workspace_id, updated.location_ids);
+    owner_may := app_private.authz_reason(updated.created_by, target_workspace_id, 'schedule.export', places) is null;
     perform app_private.notify('schedule.export_email_stopped', target_workspace_id,
       case when owner_may then array[updated.created_by]
-           else app_private.notify_holders(target_workspace_id, 'schedule.export', updated.location_ids) end,
+           else app_private.notify_holders(target_workspace_id, 'schedule.export', places) end,
       'export_stop:' || updated.id::text || ':' || updated.auto_disabled_at::text,
       case when owner_may then 'Your scheduled schedule email stopped' else 'A scheduled schedule email stopped' end,
       format('"%s" failed %s times in a row, so it was turned off. Check its recipients and turn it back on.',
