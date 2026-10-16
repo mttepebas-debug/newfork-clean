@@ -194,3 +194,4 @@ supabase/tests/domain_work_outlives_notifications.test.sql
 supabase/tests/domain_work_stops_calling_notifications.test.sql
 supabase/tests/old_notifications_are_dropped.test.sql
 supabase/tests/notification_core.test.sql
+supabase/tests/notify_account.test.sql
