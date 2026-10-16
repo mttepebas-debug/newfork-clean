@@ -212,6 +212,10 @@ select public.set_document_publication_service(tests.user('na:owner'), tests.id(
   (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
 from required_document;
 select tests.settle();
+-- The card asks everybody for it, Gon too, while he is still a member: read before his access goes.
+select is(tests.unlisted_notices(tests.id('na'), array(select id from checked)), '{}'::text[],
+  '(f) the card''s notices are in their recipients'' choices, read before Gon''s access goes (BILDIRIM-12)');
+insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('na');
 -- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('na:blk');
