@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // WORKFLOW-V2 (spec §7.4): two locks. db -- the shared local database (migration tries, pgTAP, a local
-// e2e, the train's apply-local). train -- one train at a time on this PC, from build to push (TREN-KILIDI):
+// e2e, the train's apply-local). train -- one train at a time on this PC, from build to the end of apply-local (TREN-KILIDI):
 // a second train waits its turn and builds on the main the first one moved. Only a command holds either:
 //   node scripts/lock.mjs run db [--e2e] [--as <name>] [--max-wait <min>] -- <command…>
 // waits its turn in arrival order (a ticket in queue-db/), runs the command (cmd.exe on Windows) and
@@ -23,7 +23,7 @@ import { ciState, pcPath, NOT_ON_PC, NOT_ON_PC_EXIT } from "./ops.mjs";
 // null off Mert's PC: there is no shared local database to lock (main() refuses, lockPath() throws).
 const LOCK_DIR = pcPath(process.env.NEWFORK_LOCK_DIR, ".newfork-locks");
 // spec §2: no db hold is longer than this; a train holds train.lock through a whole CI run. status flags it
-const LONG_MIN = { db: 30, train: 120 };
+const LONG_MIN = { db: 30, train: 150 };
 const STALE_MS = 2 * 60 * 60 * 1000; // flagged in status, never deleted by age alone
 const LOCKS = ["db", "train"];
 

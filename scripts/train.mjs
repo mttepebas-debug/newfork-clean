@@ -8,7 +8,7 @@
 //   push                   origin main fast-forwarded to the train, only when ci was green for that very sha
 //   apply-local            the train's new migrations into the shared local database, holding db for this step only
 //   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit2 rides along when main lacks its commits
-// One train at a time on this PC: run holds train.lock from build to apply-local, and build, ci, push and
+// One train at a time on this PC: run holds train.lock from build to the end of apply-local, and build, ci, push and
 // apply-local run alone hold it for their own step. A second train waits in the lock's queue and then builds
 // on the main the first one moved, so no green CI is lost to "main ilerledi" (TREN-KILIDI).
 // The push runs inside this script, so scripts/guard.mjs never sees it; the same rules (fast-forward only, a green
@@ -264,7 +264,7 @@ const letGo = (s, name) => {
 // From build to push the train folder, its state.json and main's tip belong to the running train, so this PC
 // runs one train at a time. train.lock is held by this process under its own identity (one per process: a
 // train's steps inside run reuse it). A live holder is waited for in arrival order up to ctx.trainWaitMin
-// (default 120: a CI run and then some); a dead one (its process gone) is cleared first. Past the wait it is a
+// (default 150: longer than a healthy train can hold it -- build, 5 min for the run to show, 90 of CI, 30 for db); a dead one (its process gone) is cleared first. Past the wait it is a
 // check NF_OVERRIDE can pass; with NF_OVERRIDE the train tries once and then runs without the lock, logged.
 const TRAIN_LOCK = "train";
 let trainHeld = null;
@@ -278,7 +278,7 @@ function withTrain(ctx, step, purpose, fn) {
   if (!holder.free) console.log(`train.lock başka trende: ${holder.identity}${holder.purpose ? ` (${holder.purpose})` : ""}; sırada bekleniyor`);
   const identity = trainIdentity();
   const say = (l) => console.log(l);
-  const got = acquire(TRAIN_LOCK, `${identity}, ${purpose}`, { maxWaitMin: ctx.override ? 0 : (ctx.trainWaitMin ?? 120), sleep: ctx.sleep, say });
+  const got = acquire(TRAIN_LOCK, `${identity}, ${purpose}`, { maxWaitMin: ctx.override ? 0 : (ctx.trainWaitMin ?? 150), sleep: ctx.sleep, say });
   if (!got.ok) {
     const l = lockOf(TRAIN_LOCK);
     const ahead = l.queue?.[0];
@@ -701,7 +701,7 @@ const USAGE = [
   "usage: node scripts/train.mjs run <dal[@sha]…>   (build → ci → push → apply-local; coord/kayit2 kendiliğinden)",
   "       node scripts/train.mjs plan|build <dal[@sha]…>",
   "       node scripts/train.mjs ci|push|apply-local",
-  "       bir PC'de tek tren: train kilidi tutulur; başka tren koşuyorsa sırada beklenir (en çok 120 dk), sonra güncel main üzerine kurulur",
+  "       bir PC'de tek tren: train kilidi tutulur; başka tren koşuyorsa sırada beklenir (en çok 150 dk), sonra güncel main üzerine kurulur",
   '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',
   "       NF_OVERRIDE ile kilit sırası beklenmez: db kilidi bir kez denenir; alınamazsa apply-local kilitsiz koşar (audit.log'a yazılır)",
 ];

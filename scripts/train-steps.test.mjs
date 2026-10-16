@@ -311,6 +311,26 @@ test("run: train.lock is let go after a green train and after a red one", () => 
   assert.equal(lock("train").free, true);
 });
 
+test("run: a train.lock whose holder died (an earlier train process, gone) is cleared, not waited for", () => {
+  w.branch("task/a", code("a"));
+  fs.mkdirSync(process.env.NEWFORK_LOCK_DIR, { recursive: true });
+  fs.writeFileSync(
+    path.join(process.env.NEWFORK_LOCK_DIR, "train.lock"),
+    JSON.stringify({ identity: "tren/eski-4242", purpose: "run task/old", startedAt: "2000-01-01T00:00:00Z", pid: 4242 }),
+  );
+  const r = run({ ...w.ctx, trainWaitMin: 0.002 }, ["task/a"]);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /ölü sahibinden temizlendi: tren\/eski-4242/);
+  assert.equal(lock("train").free, true);
+});
+
+test("run: train.lock is let go when a step throws", () => {
+  w.branch("task/a", code("a"));
+  const exec = { ...w.ctx.exec, ciWait: () => { throw new Error("gh vanished"); } };
+  assert.throws(() => run({ ...w.ctx, exec }, ["task/a"]), /gh vanished/);
+  assert.equal(lock("train").free, true);
+});
+
 test("build alone waits for train.lock too; NF_OVERRIDE passes it and is logged", () => {
   w.branch("task/a", code("a"));
   take("train", "tren/other-1, run task/other");

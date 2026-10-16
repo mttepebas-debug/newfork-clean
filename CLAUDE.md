@@ -81,7 +81,7 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 - **Skill'ler** (sonucu değiştirecekse, sormadan): `superpowers:brainstorming` (kural ya da model karara bağlanacakken), `superpowers:test-driven-development`, `superpowers:systematic-debugging`, `supabase:supabase-postgres-best-practices`, `superpowers:receiving-code-review`, `superpowers:verification-before-completion`.
 ### Test ve kilit
 - İşçi tam kapı koşmaz: dokunduğu paketin `pnpm.cmd --filter <paket> lint` / `typecheck` (bulutta `pnpm`), ilgili vitest; DB işinde (yalnız Mert'in bilgisayarında) `node scripts/lock.mjs run db -- <komut>`; akış değiştiyse `node scripts/lock.mjs run db --e2e -- <komut>` (CI koşarken bekler). Komut cmd.exe'de koşar; tırnak isteyen komut tek argüman.
-- İki kilit: `db` (ortak yerel DB) ve `train` (bir PC'de tek tren: `train.mjs` kuruluştan main'e girişe kadar tutar; başka tren sırada bekler, sonra güncel main üzerine kurulur; Mert, 2026-10-16). Yalnız komut tutar, komut bitince açılır. `node scripts/lock.mjs status` sırayı gösterir. Kilit elle silinmez; ölü sahibini sıradaki temizler.
+- İki kilit: `db` (ortak yerel DB) ve `train` (bir PC'de tek tren: `train.mjs run` kuruluştan apply-local bitene kadar tutar, en çok 150 dk bekler; başka tren sırada bekler, sonra güncel main üzerine kurulur; adım adım koşuda her adım yalnız kendi süresince tutar, tek tren güvencesi `run` içindir; Mert, 2026-10-16). Yalnız komut tutar, komut bitince açılır. `node scripts/lock.mjs status` sırayı gösterir. Kilit elle silinmez; ölü sahibini sıradaki temizler.
 - `pnpm.cmd test` yeşili CI yeşili değildir; tam kapı trenin CI'ıdır.
 
 ## 6. Kayıtlar (koordinatörün bu iş için açtığı thread yazar; alt ajan yazamaz, guard reddeder)
