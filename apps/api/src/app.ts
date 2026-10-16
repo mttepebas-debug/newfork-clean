@@ -120,6 +120,8 @@ import {
   type RolesService,
 } from "./settings/roles-service";
 import { registerSignatureSettingsRoutes } from "./settings/signature-settings-routes";
+import { registerNotificationSettingsRoutes } from "./notification-settings/notification-settings-routes";
+import { createNotificationSettingsServiceFromEnvironment, type NotificationSettingsService } from "./notification-settings/notification-settings-service";
 import {
   createSignatureSettingsService,
   type SignatureSettingsService,
@@ -185,6 +187,7 @@ export interface BuildAppOptions {
   readonly timeOffVotingService?: TimeOffVotingService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
+  readonly notificationSettingsService?: NotificationSettingsService | null;
   readonly maintenanceWorker?: MaintenanceWorker | null;
   readonly maintenanceCron?: {
     readonly cronSecret?: string;
@@ -858,6 +861,10 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   registerSignatureSettingsRoutes(app, {
     service: signatureSettingsService,
+    contextResolver,
+  });
+  registerNotificationSettingsRoutes(app, {
+    service: options.notificationSettingsService === undefined ? createNotificationSettingsServiceFromEnvironment() : options.notificationSettingsService,
     contextResolver,
   });
 

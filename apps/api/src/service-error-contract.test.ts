@@ -10,6 +10,7 @@ import { createDocumentTypesService } from "./settings/document-types-service";
 import { createJobsManagementService } from "./settings/jobs-management-service";
 import { createOrganizationSettingsService } from "./settings/organization-settings-service";
 import { createSignatureSettingsService } from "./settings/signature-settings-service";
+import { createNotificationSettingsService } from "./notification-settings/notification-settings-service";
 import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-service";
 import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
 
@@ -66,6 +67,8 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["jobs management", () => createJobsManagementService(jobsClient).deleteJob(input, id)],
   ["organization settings", () => createOrganizationSettingsService(options).readSchedulingSettings(input)],
   ["signature settings", () => createSignatureSettingsService(options).approveRetentionPolicy({ actorUserId: actor, workspaceId: workspace, policyId: id })],
+  ["notification preferences", () => createNotificationSettingsService(options).readPreferences(input)],
+  ["notification settings", () => createNotificationSettingsService(options).saveWorkspaceSettings({ actorUserId: actor, workspaceId: workspace, settings: { email_enabled: true, push_enabled: true, muted_types: [] } })],
   ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
 ];

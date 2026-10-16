@@ -58,6 +58,7 @@ function appFailingWith(error: unknown) {
     organizationSettingsService: service,
     rolesService: service,
     signatureSettingsService: service,
+    notificationSettingsService: service,
     workspaceAccountService: service,
     onboardingService: service,
   };
@@ -75,6 +76,8 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["organization settings", "GET", `${w}/scheduling-settings`],
   ["roles", "DELETE", `${w}/roles/${id}`],
   ["signature settings", "GET", `${w}/signature-templates/target-options`],
+  ["notification preferences", "GET", `${w}/notification-preferences`],
+  ["notification settings", "GET", `${w}/notification-settings`],
   ["workspace account", "GET", "/v1/account/workspaces"],
   ["employee onboarding", "GET", "/v1/me/onboarding"],
   ["employee onboarding phone", "GET", "/v1/me/onboarding/phone-in-use?phone=4155550100"],
