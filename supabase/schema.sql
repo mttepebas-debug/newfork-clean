@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 496, last: 20261017050000_document_notices.sql
--- fingerprint: sha256:17569d185bb37a5bd0bef80bf6d351a27ca2ce63a5eec722f741192c497c0cb2
+-- migrations: 496, last: 20261017060000_text_messages_one_gate_and_stop_list.sql
+-- fingerprint: sha256:26631c88a676d9299ed239b61c525973dcedff6742c329677c95a7f9fca19da3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5363,12 +5363,11 @@ declare
   email_on boolean := true;
   push_on boolean := true;
   sms_on boolean := false;
-  -- The text message channel stays closed until a provider is paid for (S-123).
-  sms_open constant boolean := false;
   address text;
   suppressed boolean;
   devices integer;
   sms_consent boolean;
+  sms_stopped boolean;
   email_choice boolean;
   push_choice boolean;
   sms_choice boolean;
@@ -5402,8 +5401,10 @@ begin
       into email_choice, push_choice, sms_choice
     from public.notification_preferences p
     where p.workspace_id = target_workspace and p.user_id = target_user and p.topic_key = kind.topic_key;
-    sms_consent := exists (select 1 from public.notification_sms_consents c
-                           where c.workspace_id = target_workspace and c.user_id = target_user and c.revoked_at is null);
+    select count(*) > 0, coalesce(bool_or(o.phone_e164 is not null), false) into sms_consent, sms_stopped
+    from public.notification_sms_consents c
+    left join public.notification_sms_opt_outs o on o.phone_e164 = c.phone_e164
+    where c.workspace_id = target_workspace and c.user_id = target_user and c.revoked_at is null;
   end if;
 
   select lower(u.email) into address from auth.users u where u.id = target_user;
@@ -5442,13 +5443,15 @@ begin
     end if;
   end if;
 
-  -- Text message.
-  if not sms_open then
+  -- Text message: closed at the gate, then as the other channels, a stopped number closing it last.
+  if not app_private.sms_channel_open() then
     sms_sends := false; sms_why := 'not_available';
   elsif kind.level <> 'required' and not sms_on then
     sms_sends := false; sms_why := 'owner_off';
   elsif not coalesce(sms_consent, false) then
     sms_sends := false; sms_why := 'no_consent';
+  elsif sms_stopped then
+    sms_sends := false; sms_why := 'stopped';
   elsif kind.level = 'required' then
     sms_sends := true; sms_why := 'required';
   elsif sms_choice is not null then
@@ -7045,6 +7048,64 @@ $$;
 
 
 ALTER FUNCTION "app_private"."shorten_time_off"("actor" "uuid", "w" "uuid", "emp" "uuid", "cut" "tstzmultirange", "note" "text", "source" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."sms_channel_open"() RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  -- Closed until a provider is paid for (S-123).
+  select false
+$$;
+
+
+ALTER FUNCTION "app_private"."sms_channel_open"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."sms_delivery_gate"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not app_private.sms_channel_open() then
+    raise exception 'text messages are not available' using errcode = '22023', hint = 'notifications.sms_unavailable';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."sms_delivery_gate"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."sms_inbound_keyword"("target_phone" "text", "target_body" "text") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  word text := upper(btrim(coalesce(target_body, '')));
+begin
+  if target_phone is null or target_phone !~ '^\+[1-9][0-9]{7,14}$' then
+    raise exception 'a phone number in E.164 required' using errcode = '22023', hint = 'notifications.invalid_phone';
+  end if;
+  if word in ('STOP', 'STOPALL', 'UNSUBSCRIBE', 'CANCEL', 'END', 'QUIT', 'REVOKE', 'OPTOUT') then
+    insert into public.notification_sms_opt_outs (phone_e164, keyword) values (target_phone, word)
+    on conflict (phone_e164) do nothing;
+    update public.notification_sms_consents c set revoked_at = now(), revoked_via = 'stop'
+    where c.phone_e164 = target_phone and c.revoked_at is null;
+    return 'stopped';
+  elsif word in ('START', 'UNSTOP') then
+    delete from public.notification_sms_opt_outs o where o.phone_e164 = target_phone;
+    return 'started';
+  elsif word in ('HELP', 'INFO') then
+    return 'help';
+  end if;
+  return 'ignored';
+end;
+$_$;
+
+
+ALTER FUNCTION "app_private"."sms_inbound_keyword"("target_phone" "text", "target_body" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."snapshot_document_lifecycle_requirement"() RETURNS "trigger"
@@ -12806,7 +12867,7 @@ begin
       'push', jsonb_build_object(
         'workspace_enabled', coalesce(s.push_enabled, true),
         'devices', (select count(*) from public.notification_push_subscriptions d where d.user_id = actor_user_id and d.revoked_at is null)),
-      'sms', jsonb_build_object('available', false, 'workspace_enabled', coalesce(s.sms_enabled, false))),
+      'sms', jsonb_build_object('available', app_private.sms_channel_open(), 'workspace_enabled', coalesce(s.sms_enabled, false))),
     'topics', coalesce((
       select jsonb_agg(jsonb_build_object(
         'key', o.key, 'name', o.name, 'level', o.level, 'description', o.description,
@@ -12853,7 +12914,7 @@ begin
     'email_enabled', coalesce(s.email_enabled, true),
     'push_enabled', coalesce(s.push_enabled, true),
     'sms_enabled', coalesce(s.sms_enabled, false),
-    'sms_available', false,
+    'sms_available', app_private.sms_channel_open(),
     'optional', coalesce((
       select jsonb_agg(jsonb_build_object('key', t.key, 'area', t.area, 'description', t.description,
         'enabled', not exists (select 1 from public.notification_workspace_muted_types m
@@ -21472,11 +21533,11 @@ begin
        or jsonb_typeof(choice -> 'topic') is distinct from 'string' or jsonb_typeof(choice -> 'channel') is distinct from 'string' then
       raise exception 'valid choices required' using errcode = '22023', hint = 'notifications.invalid_choice';
     end if;
-    if choice ->> 'channel' = 'sms' then
+    if choice ->> 'channel' = 'sms' and not app_private.sms_channel_open() then
       raise exception 'text messages are not available' using errcode = '22023', hint = 'notifications.sms_unavailable';
     end if;
-    if choice ->> 'channel' not in ('email', 'push') then
-      raise exception 'only email and push are a choice' using errcode = '22023', hint = 'notifications.invalid_channel';
+    if choice ->> 'channel' not in ('email', 'push', 'sms') then
+      raise exception 'only email, push and text messages are a choice' using errcode = '22023', hint = 'notifications.invalid_channel';
     end if;
     if not exists (select 1 from public.notification_types t where t.topic_key = choice ->> 'topic' and t.level <> 'required') then
       raise exception 'this topic is not a choice' using errcode = '22023', hint = 'notifications.topic_locked';
@@ -21516,7 +21577,7 @@ begin
      or exists (select 1 from jsonb_array_elements(target_settings -> 'muted_types') e where jsonb_typeof(e) <> 'string') then
     raise exception 'valid notification settings required' using errcode = '22023', hint = 'notifications.invalid_settings';
   end if;
-  if (target_settings ->> 'sms_enabled')::boolean then
+  if (target_settings ->> 'sms_enabled')::boolean and not app_private.sms_channel_open() then
     raise exception 'text messages are not available' using errcode = '22023', hint = 'notifications.sms_unavailable';
   end if;
   muted := array(select distinct e from jsonb_array_elements_text(target_settings -> 'muted_types') e);
@@ -21527,9 +21588,9 @@ begin
 
   insert into public.notification_workspace_settings (workspace_id, email_enabled, push_enabled, sms_enabled, updated_by, updated_at)
   values (target_workspace_id, (target_settings ->> 'email_enabled')::boolean, (target_settings ->> 'push_enabled')::boolean,
-          false, actor_user_id, now())
+          (target_settings ->> 'sms_enabled')::boolean, actor_user_id, now())
   on conflict (workspace_id) do update set
-    email_enabled = excluded.email_enabled, push_enabled = excluded.push_enabled, sms_enabled = false,
+    email_enabled = excluded.email_enabled, push_enabled = excluded.push_enabled, sms_enabled = excluded.sms_enabled,
     updated_by = excluded.updated_by, updated_at = now();
   delete from public.notification_workspace_muted_types m
   where m.workspace_id = target_workspace_id and not m.type_key = any(muted);
@@ -27715,6 +27776,18 @@ CREATE TABLE IF NOT EXISTS "public"."notification_sms_consents" (
 ALTER TABLE "public"."notification_sms_consents" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."notification_sms_opt_outs" (
+    "phone_e164" "text" NOT NULL,
+    "keyword" "text" NOT NULL,
+    "opted_out_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "notification_sms_opt_outs_keyword_check" CHECK (("keyword" ~ '^[A-Z]{1,20}$'::"text")),
+    CONSTRAINT "notification_sms_opt_outs_phone_e164_check" CHECK (("phone_e164" ~ '^\+[1-9][0-9]{7,14}$'::"text"))
+);
+
+
+ALTER TABLE "public"."notification_sms_opt_outs" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."notification_topics" (
     "key" "text" NOT NULL,
     "name" "text" NOT NULL,
@@ -29228,6 +29301,11 @@ ALTER TABLE ONLY "public"."notification_sms_consents"
 
 
 
+ALTER TABLE ONLY "public"."notification_sms_opt_outs"
+    ADD CONSTRAINT "notification_sms_opt_outs_pkey" PRIMARY KEY ("phone_e164");
+
+
+
 ALTER TABLE ONLY "public"."notification_topics"
     ADD CONSTRAINT "notification_topics_pkey" PRIMARY KEY ("key");
 
@@ -30469,6 +30547,10 @@ CREATE OR REPLACE TRIGGER "locations_reach_the_owner_on_restore" AFTER UPDATE OF
 
 
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
+
+
+
+CREATE OR REPLACE TRIGGER "notification_deliveries_sms_gate" BEFORE INSERT OR UPDATE OF "channel" ON "public"."notification_deliveries" FOR EACH ROW WHEN (("new"."channel" = 'sms'::"text")) EXECUTE FUNCTION "app_private"."sms_delivery_gate"();
 
 
 
@@ -32240,6 +32322,9 @@ ALTER TABLE "public"."notification_push_subscriptions" ENABLE ROW LEVEL SECURITY
 ALTER TABLE "public"."notification_sms_consents" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."notification_sms_opt_outs" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."notification_topics" ENABLE ROW LEVEL SECURITY;
 
 
@@ -33316,6 +33401,18 @@ REVOKE ALL ON FUNCTION "app_private"."shift_time_range"("d" "date", "s" time wit
 
 
 REVOKE ALL ON FUNCTION "app_private"."shorten_time_off"("actor" "uuid", "w" "uuid", "emp" "uuid", "cut" "tstzmultirange", "note" "text", "source" "jsonb") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."sms_channel_open"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."sms_delivery_gate"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."sms_inbound_keyword"("target_phone" "text", "target_body" "text") FROM PUBLIC;
 
 
 
@@ -35349,6 +35446,10 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_push_
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_sms_consents" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_sms_opt_outs" TO "service_role";
 
 
 

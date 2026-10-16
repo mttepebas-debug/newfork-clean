@@ -57,7 +57,8 @@ select is(array(select c.relname::text from pg_class c
                 where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and c.relkind in ('r', 'v', 'm', 'p') and c.relname ~ 'notif' order by 1),
   array['notification_deliveries', 'notification_email_suppressions', 'notification_preferences',
-        'notification_push_subscriptions', 'notification_sms_consents', 'notification_topics', 'notification_types',
+        'notification_push_subscriptions', 'notification_sms_consents', 'notification_sms_opt_outs', 'notification_topics',
+        'notification_types',
         'notification_workspace_muted_types', 'notification_workspace_settings', 'person_notifications'],
   '(a) no table, view or partition named for notifications is left but the new system''s');
 select is(array(select p.proname::text from pg_proc p join dropped d on d.kind = 'function' and d.name = p.proname

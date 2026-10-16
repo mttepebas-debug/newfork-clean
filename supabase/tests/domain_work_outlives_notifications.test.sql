@@ -101,7 +101,8 @@ insert into new_system values
   -- The producers' own helpers (BILDIRIM-U1 on).
   ('notify_account_security'), ('notify_deciders'), ('notify_holders'), ('notify_rows'), ('notify_workspace_closing'),
   ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
-  ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_topics'), ('notification_types'),
+  ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_sms_opt_outs'), ('notification_topics'),
+  ('notification_types'),
   ('notification_workspace_muted_types'), ('notification_workspace_settings'), ('person_notifications');
 select is((select count(*)::integer from pg_proc p
            where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
