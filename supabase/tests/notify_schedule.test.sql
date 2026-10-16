@@ -294,6 +294,34 @@ select pg_temp.fail_a_week(id) from rules;
 select is((select count(*)::integer from public.person_notifications where type_key = 'schedule.export_email_stopped'), 11,
   '(g) once');
 
+-- An archived location does not silence it (the cron and the list read live locations too): the owner's
+-- rule for Kadikoy and Besiktas, Besiktas archived, tells the owner; a rule whose every location is
+-- archived tells who may export in the workspace with no place named.
+create function pg_temp.rule_at(person text, places uuid[]) returns uuid language sql as $$
+  insert into public.scheduled_schedule_exports
+    (workspace_id, preset_id, name, recipients, location_ids, day_of_week, send_hour, created_by, updated_by)
+  values (tests.id('nu'), (select p.id from public.schedule_export_presets p where p.workspace_id = tests.id('nu')),
+    'Rule ' || substr(gen_random_uuid()::text, 1, 8) || ' of ' || person, '["books@example.test"]'::jsonb, places, 1, 9,
+    tests.user('nu:' || person), tests.user('nu:owner'))
+  returning id
+$$;
+create temp table archived_rules as select 'both' what, pg_temp.rule_at('owner', array[tests.id('nu:K'), tests.id('nu:B')]) id
+union all select 'besiktas', pg_temp.rule_at('owner', array[tests.id('nu:B')]);
+update public.locations set archived_at = now() where id = tests.id('nu:B');
+select pg_temp.fail_a_week(id) from archived_rules;
+select pg_temp.fail_a_week(id) from archived_rules;
+select pg_temp.fail_a_week(id) from archived_rules;
+select is(pg_temp.told_about((select id from archived_rules where what = 'both')), array['nu:owner'],
+  '(g) one of its locations archived: the owner, who may export at the one left, is told');
+select is(pg_temp.told_about((select id from archived_rules where what = 'besiktas')),
+  (select coalesce(array_agg(w.label order by w.label collate "C"), '{}') from who w
+   where app_private.authz_reason(w.uid, tests.id('nu'), 'schedule.export', '{}') is null
+     and exists (select 1 from public.workspace_memberships m
+                 where m.workspace_id = tests.id('nu') and m.user_id = w.uid and m.status = 'active')),
+  '(g) every location archived: who may export in the workspace, with no place named, is told (the core''s ''{}'')');
+select ok(cardinality(pg_temp.told_about((select id from archived_rules where what = 'besiktas'))) > 0,
+  '(g) never nobody');
+
 -- (h) One statement for many ------------------------------------------------------------------------
 
 select is(app_private.notify_rows(tests.id('nu'), tests.user('nu:owner'), jsonb_build_array(
