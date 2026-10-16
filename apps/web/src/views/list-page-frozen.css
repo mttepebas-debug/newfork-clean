@@ -127,4 +127,46 @@
   .list-page.list-page .weekly-team-table thead tr > :first-child {
     z-index: 3;
   }
+
+  /* Every screen keeps its top in place (Mert 2026-10-16, "header ve
+     tableri freeze yap bütün ekranlarda"). Lineup and Settings →
+     Acknowledgements are lists: the same frame. Acknowledgements is not a
+     .list-page (it keeps the Settings look), so its selectors carry its own
+     three classes. */
+  .lineup-page.list-page.list-page,
+  .settings-page.jobs-settings-page.acknowledgement-page {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .lineup-page.list-page.list-page {
+    padding-bottom: 0;
+  }
+  .lineup-page.list-page.list-page > *,
+  .settings-page.jobs-settings-page.acknowledgement-page > * {
+    flex: 0 0 auto;
+  }
+  .lineup-page.list-page.list-page > .lineup-locations,
+  .lineup-page.list-page.list-page > .lineup-phone,
+  .settings-page.jobs-settings-page.acknowledgement-page > .job-catalog {
+    position: relative;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow-y: auto;
+  }
+  .lineup-page.list-page.list-page > .lineup-locations {
+    padding-bottom: 24px;
+  }
+  /* A phone shows one location: its shift tabs stay at the top of the frame. */
+  .lineup-page.list-page.list-page > .lineup-phone > .lineup-phone-tabs,
+  .acknowledgement-page.acknowledgement-page .job-catalog > .job-column-headings {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: var(--theme-surface);
+  }
+  .lineup-page.list-page.list-page > .lineup-phone > .lineup-phone-tabs {
+    background: var(--theme-page);
+  }
 }

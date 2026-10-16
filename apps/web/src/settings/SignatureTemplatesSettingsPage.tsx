@@ -51,6 +51,7 @@ import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
+import "../views/list-page-frozen.css";
 type View = "templates" | "retention";
 
 const defaultPolicyDraft: SignatureRetentionPolicyInput = {

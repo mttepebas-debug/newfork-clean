@@ -84,6 +84,37 @@ describe("frozen list pages", () => {
     );
   });
 
+  // Every screen keeps its top in place (Mert 2026-10-16, "bütün ekranlarda"):
+  // Lineup and Settings → Acknowledgements are lists, so they join the frame.
+  it("fills the scrolling area on Lineup and Acknowledgements", () => {
+    for (const page of ["lineup-page", "acknowledgement-page"]) {
+      const body = bodyOf((head) => head.includes(`.${page}`) && !head.includes(">"));
+      expect(body).toMatch(/display\s*:\s*flex/);
+      expect(body).toMatch(/flex-direction\s*:\s*column/);
+      expect(body).toMatch(/height\s*:\s*100%/);
+    }
+  });
+
+  it.each([
+    ["lineup-page", "lineup-locations"],
+    ["lineup-page", "lineup-phone"],
+    ["acknowledgement-page", "job-catalog"],
+  ])("scrolls the list inside its frame (%s > .%s)", (page, frame) => {
+    const body = bodyOf((head) => head.includes(`.${page}`) && head.includes(`> .${frame}`) && !head.includes(":focus"));
+    expect(body).toMatch(/min-height\s*:\s*0/);
+    expect(body).toMatch(/flex\s*:\s*0 1 auto/);
+    expect(body).toMatch(/overflow-y\s*:\s*auto/);
+    expect(body).toMatch(/position\s*:\s*relative/);
+  });
+
+  it("keeps Lineup's shift tabs and Acknowledgements' column headings at the top of the frame", () => {
+    for (const heading of [".lineup-phone > .lineup-phone-tabs", ".job-catalog > .job-column-headings"]) {
+      const body = bodyOf((head) => head.includes(heading));
+      expect(body).toMatch(/position\s*:\s*sticky/);
+      expect(body).toMatch(/top\s*:\s*0/);
+    }
+  });
+
   it("draws a focus ring inside the frame so its edge is not cut", () => {
     expect(bodyOf((head) => head.includes("> .job-catalog") && head.includes(":focus-visible"))).toMatch(
       /outline-offset\s*:\s*-2px/,
