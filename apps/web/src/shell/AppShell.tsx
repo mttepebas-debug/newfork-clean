@@ -17,7 +17,7 @@ import {
 import { useQuery } from "@tanstack/react-query";
 import { useState, type ComponentType } from "react";
 import { useFrozenTop } from "./useFrozenTop";
-import { usePhoneWidth } from "../lib/usePhoneWidth";
+import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
@@ -35,7 +35,8 @@ import {
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 import { requestAppNavigation } from "./leave-guard";
-import { NotificationsNavEntry, notificationsMobileLink } from "../notifications/NotificationsNavEntry";
+import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
+import { ManagerPhoneBar } from "./ManagerPhoneBar";
 
 interface NavItem {
   readonly to: string;
@@ -188,6 +189,8 @@ export function AppShell() {
   );
   const location = useLocation();
   const phone = usePhoneWidth();
+  // The bottom bar's width (720 px and below): the management top bar comes with it.
+  const phoneBars = useListPhoneWidth();
   const permissions = new Set(context?.permissions ?? []);
   // What the account area is waiting for, totalled. The same query the account
   // nav runs, so opening the account costs no second fetch.
@@ -436,6 +439,7 @@ export function AppShell() {
           </button>
         </div>
       </aside>
+      {!employeeShell && phoneBars ? <ManagerPhoneBar /> : null}
       <main className="app-main" ref={setMain}>
         <Outlet />
       </main>
@@ -444,7 +448,6 @@ export function AppShell() {
         <ManagementMobileNav
           links={[
             ...visibleNavItems.filter((item) => item.section !== "employee"),
-            ...(can(context, "notifications.read_own") ? [notificationsMobileLink] : []),
             ...(canViewSettings ? [settingsNavItem] : []),
             ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}

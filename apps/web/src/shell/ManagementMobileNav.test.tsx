@@ -162,3 +162,42 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(signOut).toHaveBeenCalledOnce();
   });
 });
+
+// BILDIRIM-13 (Mert 2026-10-16, variant A): on a phone the management pages
+// have a top bar: the workspace (to switch), the notification bell and Account.
+describe("the management phone's top bar", () => {
+  const phoneWidth = (matches: boolean) =>
+    vi.stubGlobal("matchMedia", (query: string) => ({ matches: matches && query.includes("max-width"), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
+  afterEach(() => vi.unstubAllGlobals());
+  const topBar = () => screen.queryByRole("banner", { name: "Workspace bar" });
+
+  it("shows the workspace, the bell and Account; Notifications leaves More", () => {
+    phoneWidth(true);
+    context = { ...owner, actions: ["notifications.read_own"] };
+    mount();
+    const bar = topBar()!;
+    expect(within(bar).getByRole("link", { name: "Meyhouse. Switch workspace" }).getAttribute("href")).toBe("/account/workspaces");
+    expect(within(bar).getByRole("button", { name: /^Notifications/ }).getAttribute("aria-haspopup")).toBe("dialog");
+    expect(within(bar).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account/profile");
+    expect(names(morePages())).not.toContain("Notifications");
+  });
+
+  it("has no bell for someone the core does not let read their own list", () => {
+    phoneWidth(true);
+    context = owner;
+    mount();
+    expect(within(topBar()!).queryByRole("button", { name: /^Notifications/ })).toBeNull();
+  });
+
+  it("is not drawn on a computer, nor in the employee's own frame", () => {
+    phoneWidth(false);
+    context = { ...owner, actions: ["notifications.read_own"] };
+    mount();
+    expect(topBar()).toBeNull();
+    cleanup();
+    phoneWidth(true);
+    context = { ...owner, membership: { role: "employee" }, permissions: ["workspace.read"], actions: ["notifications.read_own"] };
+    mount("/app/employee-hub");
+    expect(topBar()).toBeNull();
+  });
+});

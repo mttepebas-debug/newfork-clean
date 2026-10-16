@@ -7,9 +7,6 @@ import { useNotificationCounts } from "./notifications-data";
 import { NotificationsPanel, notificationsPath } from "./NotificationViews";
 import { useNotificationsRealtime } from "./useNotificationsRealtime";
 
-/** The phone bar's More sheet opens the full page (owner, admin, manager). */
-export const notificationsMobileLink = { to: notificationsPath, label: "Notifications", icon: Bell } as const;
-
 /**
  * The left menu's Notifications (variant A): it opens the panel beside the
  * menu instead of a page; the count is what arrived since the list was last
