@@ -201,3 +201,4 @@ supabase/tests/employees_list_every_location.test.sql
 supabase/tests/workspace_home_reads_by_the_right_rule.test.sql
 supabase/tests/a_manager_sees_the_invitation_they_can_act_on.test.sql
 supabase/tests/draft_list_counts_shifts_and_hours.test.sql
+supabase/tests/domain_work_outlives_notifications.test.sql
