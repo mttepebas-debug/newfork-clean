@@ -16,11 +16,6 @@ import {
 const ownerAndAdminOnly: readonly Permission[] = [
   "documents.manage",
   "employee_access.manage",
-  "notifications.broadcast.approve",
-  "notifications.delivery_audit.read",
-  "notifications.dlq.replay",
-  "notifications.settings.write",
-  "notifications.test_send",
   "roles.manage",
   "roles.read",
   "schedule.conflict_rules.manage",
@@ -58,7 +53,6 @@ describe("what Settings > Roles offers each kind of role (GUVENLIK-A GA-2)", () 
         "settings.shift_catalog.read",
         "settings.schedule_rules.read",
         "documents.read",
-        "notifications.settings.read",
         "employee_access.read",
       ]),
     );
@@ -91,7 +85,6 @@ describe("what Settings > Roles offers each kind of role (GUVENLIK-A GA-2)", () 
           "settings.general.manage",
           "settings.locations.manage",
           "schedule.conflict_rules.manage",
-          "notifications.settings.write",
           "roles.manage",
           "employee_access.manage",
         ]),

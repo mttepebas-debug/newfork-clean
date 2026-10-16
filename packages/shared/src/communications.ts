@@ -366,13 +366,12 @@ export const announcementSavedSchema = z.object({
 });
 export type AnnouncementSaved = z.infer<typeof announcementSavedSchema>;
 
-/** Unschedule, Unpublish, Archive, Bring back (on an unpublished one), Remind. */
+/** Unschedule, Unpublish, Archive, Bring back (on an unpublished one). Remind comes back with the new notification system (KARARLAR S-124). */
 export const announcementStateActionSchema = z.enum([
   "unschedule",
   "unpublish",
   "archive",
   "bring_back",
-  "remind",
 ]);
 export type AnnouncementStateAction = z.infer<typeof announcementStateActionSchema>;
 
@@ -386,61 +385,6 @@ export const announcementStateResultSchema = z.object({
   told: countSchema,
 });
 export type AnnouncementStateResult = z.infer<typeof announcementStateResultSchema>;
-
-export const notificationCategorySchema = z.enum([
-  "announcement",
-  "request",
-  "schedule",
-  "security",
-  "requests",
-  "payroll",
-  "people",
-  "communications",
-  "system",
-]);
-export type NotificationCategory = z.infer<typeof notificationCategorySchema>;
-export const notificationRecordSchema = z.object({
-  id: z.string().uuid(),
-  workspace_id: z.string().uuid().nullable(),
-  scope: z.enum(["account", "workspace"]).optional(),
-  category: notificationCategorySchema,
-  type_key: z.string().min(1).optional(),
-  severity: z
-    .enum(["info", "success", "warning", "action_required"])
-    .optional(),
-  safe_preview: z.string().default(""),
-  title: z.string(),
-  body: z.string(),
-  action_url: appActionUrlSchema.nullable(),
-  group_key: z.string().nullable().optional(),
-  source_type: z.string(),
-  source_id: z.string().uuid().nullable(),
-  created_at: z.string().datetime({ offset: true }),
-  seen_at: z.string().datetime({ offset: true }).nullable().optional(),
-  read_at: z.string().datetime({ offset: true }).nullable(),
-  visibility_state: z
-    .enum(["visible", "superseded", "cancelled"])
-    .default("visible"),
-}).superRefine((item, context) => {
-  if ((item.workspace_id === null) !== (item.scope === "account")) {
-    context.addIssue({ code: "custom", path: ["scope"], message: "Account notifications must have account scope and no workspace" });
-  }
-});
-export type NotificationRecord = z.infer<typeof notificationRecordSchema>;
-
-export const notificationInboxSchema = z.object({
-  workspace_id: z.string().uuid().nullable(),
-  unread_count: z.coerce.number().int().nonnegative(),
-  next_cursor: z.string().min(1).nullable(),
-  notifications: z.array(notificationRecordSchema),
-});
-export type NotificationInbox = z.infer<typeof notificationInboxSchema>;
-
-export const notificationActionSchema = z.object({
-  notification_id: z.string().uuid().nullable(),
-  action: z.enum(["seen", "read", "unread", "dismiss", "read_all"]),
-});
-export type NotificationAction = z.infer<typeof notificationActionSchema>;
 
 export const communicationSavedResultSchema = z.object({
   status: z.literal("saved"),
@@ -456,7 +400,6 @@ export const workspaceWidgetIdSchema = z.enum([
   "open_shifts",
   "announcements",
   "todos",
-  "notifications",
   "quick_actions",
 ]);
 export type WorkspaceWidgetId = z.infer<typeof workspaceWidgetIdSchema>;
@@ -538,13 +481,11 @@ export const workspaceDashboardSchema = z.object({
     today_shift_count: z.coerce.number().int().nonnegative(),
     today_open_shift_count: z.coerce.number().int().nonnegative(),
     pending_time_off_count: z.coerce.number().int().nonnegative(),
-    unread_notification_count: z.coerce.number().int().nonnegative(),
   }),
   // When the first location in view reaches midnight and "today" turns
   // (BL-804); null with no location in view.
   today_ends_at: z.string().datetime({ offset: true }).nullable(),
   announcements: z.array(announcementRecordSchema).max(5),
-  notifications: z.array(notificationRecordSchema).max(5),
   todos: z.array(workspaceTodoSchema).max(5),
   layout: workspaceLayoutInputSchema,
 });

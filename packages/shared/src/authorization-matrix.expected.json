@@ -1,5 +1,5 @@
 {
- "sourceSha256": "93f604681b9271be55b8faa37b069e4bdd1e98c4d1d201a39dc037c378cef8d5",
+ "sourceSha256": "ba30466816ada082ec4b96f6b1357554adc167a868edd101bccbd7fa449bd94b",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -60,9 +60,6 @@
   "settings.jobs.write",
   "settings.locations.read",
   "settings.locations.write",
-  "settings.notifications.read",
-  "settings.notifications.test",
-  "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
   "settings.people.read",
@@ -1027,13 +1024,6 @@
    "blank": "null"
   },
   {
-   "key": "notifications.read_own",
-   "targetKind": "workspace",
-   "permission": null,
-   "coreKey": "notifications.read_own",
-   "blank": "null"
-  },
-  {
    "key": "onboarding.legal_name",
    "targetKind": "person",
    "permission": "employee_onboarding.review",
@@ -1185,13 +1175,6 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.locations.write",
-   "blank": "null"
-  },
-  {
-   "key": "settings.notifications.test",
-   "targetKind": "workspace",
-   "permission": "notifications.test_send",
-   "coreKey": "settings.notifications.test",
    "blank": "null"
   },
   {
@@ -22919,108 +22902,6 @@
    "allow"
   ],
   [
-   "notifications.read_own",
-   "ali",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "aydan",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "ayse",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "can",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "derya",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "emre",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "kaan",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "mehmet",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "nil",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "nur",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "olcay",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "pelin",
-   "workspace",
-   "deny"
-  ],
-  [
-   "notifications.read_own",
-   "remzi",
-   "workspace",
-   "deny"
-  ],
-  [
-   "notifications.read_own",
-   "sami",
-   "workspace",
-   "deny"
-  ],
-  [
-   "notifications.read_own",
-   "veli",
-   "workspace",
-   "allow"
-  ],
-  [
-   "notifications.read_own",
-   "xavier",
-   "workspace",
-   "deny"
-  ],
-  [
-   "notifications.read_own",
-   "zeynep",
-   "workspace",
-   "allow"
-  ],
-  [
    "onboarding.legal_name",
    "ali",
    "ali",
@@ -30156,108 +30037,6 @@
   ],
   [
    "settings.locations.write",
-   "zeynep",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.notifications.test",
-   "ali",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "aydan",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "ayse",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "can",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "derya",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "emre",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "kaan",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.notifications.test",
-   "mehmet",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "nil",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "nur",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "olcay",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.notifications.test",
-   "pelin",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "remzi",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "sami",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "veli",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
-   "xavier",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.notifications.test",
    "zeynep",
    "workspace",
    "allow"

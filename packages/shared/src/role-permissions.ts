@@ -171,14 +171,6 @@ export const rolePermissionGroups: readonly {
         edit: ["documents.manage"],
       },
       {
-        id: "notifications",
-        label: "Notification settings",
-        description:
-          "Organization-wide delivery settings. Personal inbox and preferences stay available.",
-        read: ["notifications.settings.read"],
-        edit: ["notifications.settings.write"],
-      },
-      {
         id: "roles",
         label: "Roles & permissions",
         description:
@@ -241,7 +233,6 @@ export const rolePermissionDependencies: Readonly<
   "important_dates.manage": ["important_dates.read"],
   "documents.manage": ["documents.read"],
   "roles.manage": ["roles.read"],
-  "notifications.settings.write": ["notifications.settings.read"],
   ...Object.fromEntries(
     ["general", "locations", "jobs", "shift_catalog", "schedule_rules"].map(
       (id) => [`settings.${id}.manage`, [`settings.${id}.read`]],

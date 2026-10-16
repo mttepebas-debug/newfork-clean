@@ -34,9 +34,6 @@ export const healthResponseSchema = z.object({
 
 export * from "./employee-hub";
 export * from "./communications";
-export * from "./notification-catalog";
-export * from "./notification-display";
-export * from "./notification-settings";
 export * from "./storage-access";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
@@ -135,12 +132,6 @@ export const permissionSchema = z.enum([
   "notifications.read",
   "notifications.read_own",
   "notifications.preferences.write_own",
-  "notifications.settings.read",
-  "notifications.settings.write",
-  "notifications.test_send",
-  "notifications.delivery_audit.read",
-  "notifications.dlq.replay",
-  "notifications.broadcast.approve",
 ]);
 export type Permission = z.infer<typeof permissionSchema>;
 
@@ -1903,15 +1894,6 @@ export const schedulePublishPublishedResultSchema = z.object({
   location_ids: z.array(z.string().uuid()).min(1),
   publication_ids: z.array(z.string().uuid()).min(1),
   published_shift_count: z.coerce.number().int().nonnegative(),
-  notification_count: z.coerce.number().int().nonnegative().optional(),
-  notification_event_id: z.string().uuid().optional(),
-  notification_enqueued_count: z.coerce.number().int().nonnegative().optional(),
-  notification_warning: z
-    .object({
-      code: z.literal("notification_enqueue_unavailable"),
-      message: z.string().trim().min(1).max(240),
-    })
-    .optional(),
   published_at: z.string().datetime({ offset: true }),
 });
 export type SchedulePublishPublishedResult = z.infer<

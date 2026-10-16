@@ -44,6 +44,7 @@ export const authzActionKeys = [
   "important_date.write",
   "important_date.write_wide",
   "membership.read",
+  // Kept for the new notification system; no entry point and no matrix cell until it comes (BILDIRIM-06).
   "notifications.read_own",
   "onboarding.legal_name",
   "onboarding.review",
@@ -66,9 +67,6 @@ export const authzActionKeys = [
   "settings.jobs.write",
   "settings.locations.read",
   "settings.locations.write",
-  "settings.notifications.read",
-  "settings.notifications.test",
-  "settings.notifications.write",
   "settings.organization.write",
   "settings.people",
   "settings.people.read",
@@ -140,7 +138,6 @@ export const targetedAuthzActions = {
   "important_date.write": { permission: "important_dates.manage" },
   "important_date.write_wide": { permission: "important_dates.manage" },
   "membership.read": { person: true, permission: null },
-  "notifications.read_own": { permission: null, own: true, restrictedOk: true },
   "onboarding.legal_name": { person: true, permission: "employee_onboarding.review" },
   "onboarding.review": { person: true, permission: "employee_onboarding.review" },
   "onboarding.self": { permission: null, own: true, restrictedOk: true },
@@ -159,7 +156,6 @@ export const targetedAuthzActions = {
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
   "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
-  "settings.notifications.test": { permission: "notifications.test_send" },
   "settings.locations.read": { permission: "settings.locations.read" },
   "settings.jobs.read": { permission: "settings.jobs.read" },
   "settings.shift_catalog.read": { permission: "settings.shift_catalog.read" },
@@ -359,7 +355,6 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.roles.write":
     case "settings.scheduling.write":
     case "settings.conflict_rules.write":
-    case "settings.notifications.test":
     case "settings.people":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
@@ -430,7 +425,6 @@ export function expected<A extends TargetedAuthzAction>(
     case "onboarding.self":
     case "availability.own":
     case "exchange.offer_own":
-    case "notifications.read_own":
     case "time_off.request_own":
       return true; // own actions, answered above
   }

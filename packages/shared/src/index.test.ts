@@ -34,7 +34,6 @@ import {
   managementAndOwnerSentence,
   managerLocationRefusal,
   managementJobIds,
-  notificationInboxSchema,
   normalizeAccountPhone,
   permissionsForRole,
   scheduleReadModelSchema,
@@ -61,6 +60,8 @@ import {
   shiftTypeInputSchema,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
+  announcementStateActionSchema,
+  workspaceLayoutInputSchema,
 } from "./index";
 
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
@@ -154,25 +155,6 @@ describe("workspace communication schemas", () => {
     my_changes: [],
   } as const;
 
-  const notification = {
-    id: "a8300000-0000-4000-8000-000000000001",
-    workspace_id: workspaceId,
-    category: "announcement",
-    type_key: "communications.announcement.available",
-    severity: "info",
-    safe_preview: "Service briefing",
-    title: "Service briefing",
-    body: "Doors open at four.",
-    action_url: "/app/announcements/a8200000-0000-4000-8000-000000000001",
-    group_key: null,
-    source_type: "announcement",
-    source_id: "a8200000-0000-4000-8000-000000000001",
-    created_at: "2026-09-05T12:00:00.000Z",
-    seen_at: null,
-    read_at: null,
-    visibility_state: "visible",
-  } as const;
-
   const todo = {
     id: "a9700000-0000-4000-8000-000000000011",
     workspace_id: workspaceId,
@@ -210,7 +192,7 @@ describe("workspace communication schemas", () => {
     }
   });
 
-  it("reads an announcement as the list sends it, and rejects unsafe notification links", () => {
+  it("reads an announcement as the list sends it", () => {
     const list = announcementListSchema.parse({
       workspace_id: workspaceId,
       can_manage: false,
@@ -227,28 +209,6 @@ describe("workspace communication schemas", () => {
     expect(() =>
       announcementListSchema.parse({ ...list, announcements: [{ ...announcement, category: "operations" }] }),
     ).toThrow();
-    expect(
-      notificationInboxSchema.parse({
-        workspace_id: workspaceId,
-        unread_count: 1,
-        next_cursor: null,
-        notifications: [notification],
-      }).notifications[0]!.action_url,
-    ).toBe(notification.action_url);
-
-    expect(() =>
-      notificationInboxSchema.parse({
-        workspace_id: workspaceId,
-        unread_count: 1,
-        next_cursor: null,
-        notifications: [
-          {
-            ...notification,
-            action_url: "https://outside.example/notification",
-          },
-        ],
-      }),
-    ).toThrow("Action URL must stay inside the app");
   });
 
   it("validates Workspace Todo projections and keeps action links app-local", () => {
@@ -285,11 +245,9 @@ describe("workspace communication schemas", () => {
           today_open_shift_count: 0,
           pending_time_off_count: 0,
           pending_shift_change_count: 0,
-          unread_notification_count: 0,
         },
         today_ends_at: null,
         announcements: [],
-        notifications: [],
         todos: [todo],
         layout: {
           widget_order: [
@@ -298,13 +256,28 @@ describe("workspace communication schemas", () => {
             "open_shifts",
             "announcements",
             "todos",
-            "notifications",
             "quick_actions",
           ],
           hidden_widget_ids: [],
         },
       }).todos,
     ).toHaveLength(1);
+  });
+  // BILDIRIM-06 (KARARLAR S-123, S-124): the old notification system is gone, and with it the
+  // Workspace home's Notifications card and Remind on an announcement.
+  it("has six Workspace cards, none of them Notifications", () => {
+    const six = ["operations", "pending_requests", "open_shifts", "announcements", "todos", "quick_actions"];
+    expect(workspaceLayoutInputSchema.parse({ widget_order: six, hidden_widget_ids: [] }).widget_order).toEqual(six);
+    expect(() =>
+      workspaceLayoutInputSchema.parse({ widget_order: [...six, "notifications"], hidden_widget_ids: [] }),
+    ).toThrow();
+    expect(() =>
+      workspaceLayoutInputSchema.parse({ widget_order: six, hidden_widget_ids: ["notifications"] }),
+    ).toThrow();
+  });
+
+  it("has no Remind among an announcement's actions", () => {
+    expect(announcementStateActionSchema.options).toEqual(["unschedule", "unpublish", "archive", "bring_back"]);
   });
 });
 
@@ -537,19 +510,9 @@ describe("shared contracts", () => {
       location_ids: ["11000000-0000-4000-8000-000000000001"],
       publication_ids: ["86000000-0000-4000-8000-000000000001"],
       published_shift_count: 4,
-      notification_count: 0,
-      notification_warning: {
-        code: "notification_enqueue_unavailable",
-        message:
-          "Schedule published, but employee notifications could not be created.",
-      },
       published_at: "2026-08-17T12:00:00.000Z",
     });
     expect(published.status).toBe("published");
-    if (published.status !== "published") throw new Error("Expected published");
-    expect(published.notification_warning?.code).toBe(
-      "notification_enqueue_unavailable",
-    );
     const conflictResult = schedulePublishResultSchema.parse({
       status: "schedule_conflicts",
       schedule_conflicts: [
