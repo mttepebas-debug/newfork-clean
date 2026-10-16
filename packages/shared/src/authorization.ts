@@ -44,7 +44,7 @@ export const authzActionKeys = [
   "important_date.write",
   "important_date.write_wide",
   "membership.read",
-  // Kept for the new notification system; no entry point and no matrix cell until it comes (BILDIRIM-06).
+  // One's own notification list and choices (BILDIRIM-07).
   "notifications.read_own",
   "onboarding.legal_name",
   "onboarding.review",
@@ -138,6 +138,7 @@ export const targetedAuthzActions = {
   "important_date.write": { permission: "important_dates.manage" },
   "important_date.write_wide": { permission: "important_dates.manage" },
   "membership.read": { person: true, permission: null },
+  "notifications.read_own": { permission: null, own: true, restrictedOk: true },
   "onboarding.legal_name": { person: true, permission: "employee_onboarding.review" },
   "onboarding.review": { person: true, permission: "employee_onboarding.review" },
   "onboarding.self": { permission: null, own: true, restrictedOk: true },
@@ -425,6 +426,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "onboarding.self":
     case "availability.own":
     case "exchange.offer_own":
+    case "notifications.read_own":
     case "time_off.request_own":
       return true; // own actions, answered above
   }

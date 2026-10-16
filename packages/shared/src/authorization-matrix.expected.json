@@ -1,5 +1,5 @@
 {
- "sourceSha256": "ba30466816ada082ec4b96f6b1357554adc167a868edd101bccbd7fa449bd94b",
+ "sourceSha256": "e58246d44f79d489d2e9d710be640db88ca98306b5cc6bf03f150f55db2ddd93",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -1021,6 +1021,20 @@
    "targetKind": "workspace",
    "permission": "important_dates.manage",
    "coreKey": "important_date.write_wide",
+   "blank": "null"
+  },
+  {
+   "key": "notifications.read_own",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "notifications.read_own",
+   "blank": "null"
+  },
+  {
+   "key": "notifications.workspace_settings",
+   "targetKind": "workspace",
+   "permission": null,
+   "coreKey": "settings.organization.write",
    "blank": "null"
   },
   {
@@ -22897,6 +22911,210 @@
   ],
   [
    "important_date.write_wide",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "ali",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "aydan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "ayse",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "can",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "derya",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "emre",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "mehmet",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "nil",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "nur",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.read_own",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.read_own",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.read_own",
+   "veli",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.read_own",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.read_own",
+   "zeynep",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.workspace_settings",
+   "ali",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "aydan",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "ayse",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "can",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "derya",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "emre",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "kaan",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.workspace_settings",
+   "mehmet",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "nil",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "nur",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "olcay",
+   "workspace",
+   "allow"
+  ],
+  [
+   "notifications.workspace_settings",
+   "pelin",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "remzi",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "sami",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "veli",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
+   "xavier",
+   "workspace",
+   "deny"
+  ],
+  [
+   "notifications.workspace_settings",
    "zeynep",
    "workspace",
    "allow"
