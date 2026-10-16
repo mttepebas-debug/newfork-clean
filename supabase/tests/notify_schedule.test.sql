@@ -271,6 +271,10 @@ select tests.settle();
 -- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nu:blk');
+-- Every notice so far is in its recipient's choices, read before Gon's access goes (tests.unlisted_notices
+-- reads choices now; a person whose access is gone reads none).
+create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('nu');
+select is(tests.unlisted_notices(tests.id('nu')), '{}'::text[], '(g) so far every notice is in its recipient''s choices');
 select public.remove_employee_access_service(tests.user('nu:owner'), tests.id('nu'), tests.id('nu:gon'));
 select is(
   (select array_agg(person || ' ' || coalesce(app_private.authz_reason(tests.user('nu:' || person), tests.id('nu'), 'schedule.export',
@@ -354,8 +358,10 @@ select tests.publish_week('nu', 6, '[
 ]');
 -- Every notice so far is in its recipient's choices, read before Bora's right goes (tests.unlisted_notices
 -- reads choices now): Bora, a manager at Kadikoy, was told of stopped emails.
-create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('nu');
-select is(tests.unlisted_notices(tests.id('nu')), '{}'::text[], '(i) so far every notice is in its recipient''s choices');
+select is(tests.unlisted_notices(tests.id('nu'), array(select id from checked)), '{}'::text[],
+  '(i) so far every notice is in its recipient''s choices');
+insert into checked select n.id from public.person_notifications n
+where n.workspace_id = tests.id('nu') and not n.id in (select id from checked);
 -- ponytail: Bora's deadline is moved into the past by hand; nothing in the product moves the clock.
 update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nu:bora');
