@@ -91,4 +91,20 @@ describe("maintenance worker", () => {
       failed: 0,
     });
   });
+
+  // BILDIRIM-03 review: an optional `enqueued` must not let a malformed answer pass as success.
+  it.each([
+    ["checked missing", { failed_cases: 0, suspended: 1 }],
+    ["checked not a number", { checked: "5", enqueued: 0 }],
+    ["no answer at all", null],
+  ])("reports a malformed document maintenance answer as a failed step (%s)", async (_label, documents) => {
+    const rpc = vi.fn(async (name: string) => ({
+      error: null,
+      data: name === "shift_exchanges_maintain_service" ? { expired: 0, invalidated: 0, skipped_busy: 0 } : documents,
+    }));
+    const result = await createMaintenanceWorkerWithClient({ rpc }).runBatch();
+    expect(result.shiftExchanges).toEqual({ expired: 0, invalidated: 0, skipped_busy: 0 });
+    expect(result.documents).toEqual({ failed: true, error: expect.any(String) });
+    expect(result.failed).toBe(1);
+  });
 });
