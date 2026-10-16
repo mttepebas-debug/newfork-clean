@@ -264,7 +264,8 @@ describe("workspace communication schemas", () => {
     ).toHaveLength(1);
   });
   // BILDIRIM-06 (KARARLAR S-123, S-124): the old notification system is gone, and with it the
-  // Workspace home's Notifications card and Remind on an announcement.
+  // Workspace home's Notifications card. Remind on an announcement came back on the new system
+  // (BILDIRIM-U6, KARARLAR S-126 (2)).
   it("has six Workspace cards, none of them Notifications", () => {
     const six = ["operations", "pending_requests", "open_shifts", "announcements", "todos", "quick_actions"];
     expect(workspaceLayoutInputSchema.parse({ widget_order: six, hidden_widget_ids: [] }).widget_order).toEqual(six);
@@ -276,8 +277,8 @@ describe("workspace communication schemas", () => {
     ).toThrow();
   });
 
-  it("has no Remind among an announcement's actions", () => {
-    expect(announcementStateActionSchema.options).toEqual(["unschedule", "unpublish", "archive", "bring_back"]);
+  it("has Remind among an announcement's actions again", () => {
+    expect(announcementStateActionSchema.options).toEqual(["unschedule", "unpublish", "archive", "bring_back", "remind"]);
   });
 });
 
