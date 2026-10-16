@@ -110,7 +110,7 @@ select is((pg_temp.state('owner', (select id from rules), 'remind') ->> 'told'):
 select is(pg_temp.told('announcements.reminder', (select id from rules)), array['na:ali', 'na:deniz'],
   '(c) Ali and Deniz, who have not acknowledged it; not Emre who has, not Zeynep or Veli whom it does not ask');
 select ok((select bool_and(n.title = 'Reminder: Knife rules, new text') from public.person_notifications n
-           where n.type_key = 'announcements.reminder'), '(c) saying it is a reminder');
+           where n.type_key = 'announcements.reminder' and n.workspace_id = tests.id('na')), '(c) saying it is a reminder');
 select public.acknowledge_announcement_service(pg_temp.u('ali'), tests.id('na'), (select id from rules));
 select is(pg_temp.reminders_left('owner', (select id from rules)), 1, '(c) one left today');
 select pg_temp.state('owner', (select id from rules), 'remind');
@@ -119,7 +119,8 @@ select is(pg_temp.told('announcements.reminder', (select id from rules)), array[
 select is(pg_temp.reminders_left('owner', (select id from rules)), 0, '(c) none left today');
 select is(pg_temp.try(format($$select pg_temp.state('owner', %L, 'remind')$$, (select id from rules))),
   'PT409 announcement.remind_limit', '(c) a third Remind the same day is refused, here in the database');
-select is((select count(*)::integer from public.person_notifications where type_key = 'announcements.reminder'), 3,
+select is((select count(*)::integer from public.person_notifications where type_key = 'announcements.reminder'
+           and workspace_id = tests.id('na')), 3,
   '(c) and tells nobody');
 -- ponytail: a day passes by moving today's reminders back one; now() is fixed inside the transaction.
 update public.announcement_changes set changed_at = changed_at - interval '1 day'
@@ -143,7 +144,7 @@ select pg_temp.state('owner', (select id from party), 'unpublish');
 select is(pg_temp.told('announcements.cancelled', (select id from party)), array['na:ali', 'na:emre', 'na:zeynep'],
   '(d) the staff party taken back tells those it reached; not Ayse who wrote it, not the owner who took it back');
 select ok((select bool_and(n.title like 'Staff party on % is cancelled') from public.person_notifications n
-           where n.type_key = 'announcements.cancelled'), '(d) saying it is cancelled');
+           where n.type_key = 'announcements.cancelled' and n.workspace_id = tests.id('na')), '(d) saying it is cancelled');
 select pg_temp.state('owner', (select id from plain), 'unpublish');
 select is(pg_temp.told('announcements.cancelled', (select id from plain)), '{}'::text[],
   '(d) a post without a day taken back tells nobody: its History says nobody was told');
@@ -241,7 +242,8 @@ select ok((select bool_and(n.title = 'Couldn''t publish "Deep clean by ayse"' an
            from public.person_notifications n where n.type_key = 'announcements.publish_failed'
              and n.subject_id = (select id from late where person = 'ayse')), '(f) saying which post, and why');
 select app_private.announcement_release(tests.id('na'));
-select is((select count(*)::integer from public.person_notifications where type_key = 'announcements.publish_failed'), 16,
+select is((select count(*)::integer from public.person_notifications where type_key = 'announcements.publish_failed'
+           and workspace_id = tests.id('na')), 16,
   '(f) once: the next minute does not tell again');
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'announcements.published'
            and n.subject_id in (select id from late)), 0, '(f) its audience hears nothing of it');

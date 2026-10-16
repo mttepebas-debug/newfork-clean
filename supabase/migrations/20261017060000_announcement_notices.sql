@@ -81,7 +81,7 @@ revoke all on function app_private.announcement_tell(uuid, public.announcements,
 -- A scheduled post that could not go out: whoever scheduled it (or wrote it) while the core says they may
 -- still write there; otherwise who may write there now, so it is never silent (S-127). Its live locations;
 -- none left is '{}', the core's "no place": who may write in the workspace.
-create function app_private.announcement_tell_failed(item public.announcements, why text)
+create function app_private.announcement_tell_release_failed(item public.announcements, why text)
 returns integer
 language plpgsql
 set search_path = ''
@@ -97,12 +97,12 @@ begin
     null, why);
 exception when others then
   -- Called from the release's own failure branch: nothing here may stop the next post going out.
-  raise warning 'announcement_tell_failed: notice for % skipped: % (%)', item.id, sqlerrm, sqlstate;
+  raise warning 'announcement_tell_release_failed: notice for % skipped: % (%)', item.id, sqlerrm, sqlstate;
   return 0;
 end;
 $$;
 
-revoke all on function app_private.announcement_tell_failed(public.announcements, text) from public;
+revoke all on function app_private.announcement_tell_release_failed(public.announcements, text) from public;
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_release"("w" "uuid" DEFAULT NULL::"uuid") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -176,7 +176,7 @@ begin
           insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
           values (place, item.id, null, 'publish_failed',
             jsonb_build_object('code', case when failure = '42501' then 'not_allowed' else 'too_late' end));
-          perform app_private.announcement_tell_failed(item, case when failure = '42501'
+          perform app_private.announcement_tell_release_failed(item, case when failure = '42501'
             then 'Whoever scheduled it may no longer publish it.' else 'Its day started before it could go out.' end);
         else
           -- One broken row must not hold up every workspace's, nor the read

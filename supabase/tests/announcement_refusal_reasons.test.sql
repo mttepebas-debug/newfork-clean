@@ -31,12 +31,13 @@ from refusal_functions, regexp_matches(pg_get_functiondef(oid), $re$(raise\s+exc
 where m[1] ~* 'PT409';
 select is((select count(distinct fn)::int from refusal_functions),5,'every listed announcement function exists');
 -- Fifteen since Remind's "Everyone acknowledged." went with the old notifications (BILDIRIM-06).
-select is((select count(*)::int from refusal_raises),15,'the fifteen announcement PT409 refusals are found in the function bodies');
+-- Seventeen since Remind came back (BILDIRIM-U6): twice a day at most, and nobody left to remind.
+select is((select count(*)::int from refusal_raises),17,'the seventeen announcement PT409 refusals are found in the function bodies');
 select is((select coalesce(array_agg(distinct fn order by fn),'{}') from refusal_raises where statement !~* 'hint'),'{}'::text[],
  'no announcement PT409 is raised without a reason key');
 select is((select coalesce(array_agg(distinct key order by key),'{}') from (select (regexp_match(statement,$re$hint\s*=\s*'([^']*)'$re$,'i'))[1] key from refusal_raises) k
  where key is null or key not in ('announcement.changed','announcement.read_only','announcement.shifts_changed','announcement.shift_tied',
-   'announcement.shift_conflict','announcement.bring_back_changed','announcement.bring_back_conflict')),'{}'::text[],'every key is one the drawer knows');
+   'announcement.shift_conflict','announcement.bring_back_changed','announcement.bring_back_conflict','announcement.remind_limit')),'{}'::text[],'every key is one the drawer knows');
 
 -- The seed workspace's owner writes one draft and the drawer's revision goes stale.
 create temp table announcement_state as
