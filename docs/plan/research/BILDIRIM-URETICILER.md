@@ -34,6 +34,7 @@ Yazıldı: 16 Ekim 2026 (California). Yazan: BILDIRIM-08 hazırlık oturumu. **K
 | Aynı işlem | Üretici, domain fonksiyonunun içinde, işle aynı işlemde çekirdeğin yazma fonksiyonunu çağırır. Tetikleyici (trigger) kullanılmaz. | S-91; elenen: olay tablosuna tetikleyici (eski `notify_time_off_event` gibi) — kim yaptı, ne değişti bilgisi tetikleyicide eksik, test zor |
 | Alıcı yetkiden | Rol adı yazılmaz; alıcı `authorize`/`scope_set` eylem anahtarıyla bulunur (aşağıdaki "Alıcı" sütunu eylemi verir). Karar isteyen türde: o lokasyonda eylemi olan **müdür**; müdür yoksa eylemi olan admin ve owner. | S-123, P07 |
 | Mert'in istisnaları | Müsaitlik → kişinin müsaitliğini okuyabilen herkes (`availability.team_read`, rütbe şartı yok). Tercih edilen ad → owner + bütün admin'ler + kişinin lokasyonunda karar veren müdür. | Müsaitlik kararı 2026-09-26; S-123 |
+| Kayıttan gelen alıcı | Alıcı bir kayıt sütunundan geliyorsa (kuran, onaylayan, oy veren, kural sahibi, davet eden), çekirdek bugün hâlâ o yetkiyi verdiği sürece alır (`authz_reason`); yoksa bildirim bugün yetkisi olanlara gider ya da hiç gitmez. Her üreticinin teslimi beş hücreli denemeyle (rolü düşürülmüş, lokasyondan ayrılmış, rolü kısıtlı, belgesi eksik, erişimi kaldırılmış) sınanır. Bildirimin konusu olan kişi (kendi vardiyası, kendi izni) bundan muaftır; onu yalnız üyelik süzgeci düşürür. | İnceleme bulguları U2, U3 (2026-10-16) |
 | Yazan hariç | İşi yapan kişi kendi işi için bildirim almaz. Çekirdek bunu tek yerde yapar (alıcı listesinden `actor` çıkar); üretici ayrıca süzmez. | S-123 |
 | Tek olay, kişi başına tek bildirim | Her çağrının bir tekilleştirme anahtarı vardır; aynı (tür, anahtar, alıcı) ikinci kez yazılmaz. Bir olay birden çok türe dokunuyorsa kişiye **tek** satır gider (en önemli tür seçilir, gövde ötekileri sayar). | S-95 |
 | Kapanma | Karar isteyen satır karar verilince kapanır: öbür karar verenlerin satırı "Approved by …" / "Declined by …", çalışan geri çekince "Withdrawn" olur. Yeni bildirim yazılmaz, var olan satır güncellenir. | S-123 gürültü kuralları |
@@ -56,7 +57,7 @@ Kısaltmalar. **Seviye:** Z = zorunlu, Ö = önemli, İ = isteğe bağlı. **Kan
 | 5 | `schedule.unpublished` | Hafta yayından kaldırıldı (bekleyen talepler kapanır) | `public.unpublish_schedule_service` schema:27120 | O haftada yayınlanmış vardiyası olanlar | Ö | UTE | Yok |
 | 6 | `schedule.shifts_unassigned` | İşten çıkarma / lokasyondan çıkarma vardiyaları sahipsiz bıraktı | `public.terminate_employee_service` schema:26537; `public.remove_employee_from_location_service` schema:20105 (U4b) | O lokasyonda `schedule.publish` eylemi olan müdür; yoksa admin + owner | Ö | UET | Değişiyor |
 | 7 | `schedule.closed_day_removed_shift` | Kapalı gün yayınlanmış vardiyamı düşürdü | `app_private.announcement_apply` schema:911 (`delete from public.schedule_published_shifts`) | Vardiyası düşen çalışan | Ö | UTE | Var |
-| 8 | `schedule.export_stopped` | Zamanlanmış program e-postası 3 hatadan sonra durdu | `public.record_schedule_export_schedule_failure_service` schema:19738 | Kuralı kuran kişi (kural satırının sahibi) | Ö | UE | Yok |
+| 8 | `schedule.export_stopped` | Zamanlanmış program e-postası 3 hatadan sonra durdu | `public.record_schedule_export_schedule_failure_service` schema:19738 | Kuralı kuran kişi, çekirdek hâlâ o lokasyonda `schedule.export` yetkisi olduğunu söylediği sürece; yoksa o lokasyonda şu an bu yetkisi olanlar (`notify_holders`) | Ö | UE | Yok |
 
 | # | Tekilleştirme anahtarı | Birleşme / kapanma | Test (dosya · ad) | 3 kontrol |
 |---|---|---|---|---|
@@ -64,7 +65,7 @@ Kısaltmalar. **Seviye:** Z = zorunlu, Ö = önemli, İ = isteğe bağlı. **Kan
 | 5 | `unpublish:<olay id>` + alıcı | Bekleyen izin/takas o yayından kalkınca ayrı bildirim yazılmaz; gövde "pending requests were closed" der. | · "unpublish tells the week's people once" | (1) o haftada vardiyası olanlar alır; (2) bekleyen talebi olan kişiye yine 1 satır; (3) kaldıran almaz |
 | 6 | `unassigned:<işten çıkarma ya da çıkarma olayı id>:<lokasyon id>` | Lokasyon başına tek satır, gövde sayı verir ("3 shifts are left without anyone"). Karar isteyen: biri vardiyayı atayınca satır kapanır. | · "terminating leaves one note per location's manager" | (1) o lokasyonun müdürü alır, müdürsüz lokasyonda admin+owner; (2) 3 vardiya → 1 satır; (3) işten çıkaran almaz, başka lokasyonun müdürü almaz |
 | 7 | `closed_day:<duyuru id>:<sürüm>` + alıcı | Kişiye tek satır (birden çok vardiyası düşse de). Kapalı gün yayından kalkınca **bu satır silinmez** (BL-883, P09). Bekleyen takas da geçersizleşirse ikinci bildirim yok. | · "a closed day tells each removed person once" | (1) vardiyası düşen alır; (2) 2 vardiya + geçersiz takas → 1 satır; (3) kapalı günü yayınlayan almaz |
-| 8 | `export_stop:<kural id>:<durdurulma zamanı>` | Kural yeniden açılıp yine durursa yeni satır. | · "a stopped export rule tells its owner" | (1) kural sahibi alır; (2) 3. hatada 1 satır, 4. çağrıda yeni satır yok; (3) başka export kuralının sahibi almaz |
+| 8 | `export_stop:<kural id>:<durdurulma zamanı>` | Kural yeniden açılıp yine durursa yeni satır. | · "a stopped export rule tells its owner" | (1) yetkisi süren kural sahibi alır; yetkisini kaybetmişse (rolü düşürülmüş, lokasyondan ayrılmış, rolünde export yok, belgesi eksik, erişimi kaldırılmış) o almaz, lokasyonda şu an yetkisi olanlar alır; (2) 3. hatada 1 satır, 4. çağrıda yeni satır yok; (3) başka export kuralının sahibi almaz |
 
 ### 2.2 Takas (bu dilimde 5; öbür 8'i vardiya değişimi işinde) — alt dilim U7
 
@@ -110,7 +111,7 @@ Test: `notify_shift_exchange.test.sql` · "cover ask tells only the chosen", "ap
 
 | # | Tür kodu | Olay | Kod noktası | Alıcı (eylem) | Sv | Kanal | Bugün | Alt dilim |
 |---|---|---|---|---|---|---|---|---|
-| 20 | `people.invite_accepted` | Davet kabul edildi, kişi katıldı | `app_private.accept_employee_invitation_for_user` schema:442 (iki kabul yolu da buradan geçer) | Davet eden (`employee_invitations.created_by`), hâlâ aktif üyeyse | İ | U | Yok | U4a |
+| 20 | `people.invite_accepted` | Davet kabul edildi, kişi katıldı | `app_private.accept_employee_invitation_for_user` schema:442 (iki kabul yolu da buradan geçer) | Davet eden (`employee_invitations.created_by`), çekirdek hâlâ `employee.invite` yetkisi olduğunu söylediği sürece | İ | U | Yok | U4a |
 | 21 | `people.invite_declined` | Davet reddedildi | `public.decline_employee_invitation_service` schema:10486 | Davet eden | İ | U | Yok | U4a |
 | 22 | `people.invite_cancelled` | Davetli hesabını sildi, davet düştü | `public.request_account_deletion_v2_service` schema:20473 | Davet eden; metin hesap silmeyi söylemez (gizlilik) | İ | U | Var | U4a |
 | 23 | `people.onboarding_submitted` | Onboarding incelemeye geldi | `public.submit_employee_onboarding_service` schema:26072 | Kişinin lokasyonunda `onboarding.review` eylemi olan müdür; yoksa admin + owner | Ö | UET | Yok | U4a |
