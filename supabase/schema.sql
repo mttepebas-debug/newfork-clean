@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 494, last: 20261017030000_schedule_notices.sql
--- fingerprint: sha256:0b334b9678951cb3ce6304ca3cb18f0c4d7c1412cedf6d3f55f81093718d5622
+-- fingerprint: sha256:c9541f24355c46874f052cb823633a8f90123613cb88a0d01215ced6219b597c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6271,7 +6271,8 @@ begin
     'type', 'schedule.unpublished', 'user_id', p.user_id, 'event_key', 'unpublish:' || target_event::text,
     'title', 'Your schedule for ' || week || ' was taken back',
     'body', 'It isn''t final until it is published again.'
-      || case when p.asked then ' Your shift change requests for those shifts were closed.' else '' end,
+      -- The exchange maintenance closes them right after; the notice says it will.
+      || case when p.asked then ' Your open shift change requests for those shifts will be closed.' else '' end,
     'url', '/app/employee-hub/schedule?view=day&date=' || target_week::text,
     'subject_type', 'schedule_publication', 'subject_id', target_event,
     'data', jsonb_build_object('week_start', target_week, 'requests_closed', p.asked))), '[]'::jsonb)
@@ -18347,6 +18348,7 @@ declare
   failures integer;
   updated public.scheduled_schedule_exports%rowtype;
   was_enabled boolean;
+  owner_may boolean;
 begin
   select case
            when s.consecutive_failures > 0 and s.last_failed_at > now() - interval '20 hours'
@@ -18380,11 +18382,16 @@ begin
      and workspace_id = target_workspace_id
    returning * into updated;
 
-  -- It stopped just now: the person who set it up hears it, once.
+  -- It stopped just now: the person who set it up hears it, once, while the core says they still may
+  -- export there; otherwise whoever may export there now, so a stopped email is never silent.
   if was_enabled and not updated.enabled then
-    perform app_private.notify('schedule.export_email_stopped', target_workspace_id, array[updated.created_by],
+    owner_may := app_private.authz_reason(updated.created_by, target_workspace_id, 'schedule.export',
+      updated.location_ids) is null;
+    perform app_private.notify('schedule.export_email_stopped', target_workspace_id,
+      case when owner_may then array[updated.created_by]
+           else app_private.notify_holders(target_workspace_id, 'schedule.export', updated.location_ids) end,
       'export_stop:' || updated.id::text || ':' || updated.auto_disabled_at::text,
-      'Your scheduled schedule email stopped',
+      case when owner_may then 'Your scheduled schedule email stopped' else 'A scheduled schedule email stopped' end,
       format('"%s" failed %s times in a row, so it was turned off. Check its recipients and turn it back on.',
         updated.name, failures),
       '/app/schedule', null, 'scheduled_schedule_export', updated.id,
