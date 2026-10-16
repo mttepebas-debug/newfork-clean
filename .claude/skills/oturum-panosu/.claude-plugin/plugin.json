@@ -1,0 +1,6 @@
+{
+  "name": "oturum-panosu",
+  "version": "0.1.0",
+  "description": "Açık Claude oturumlarının hepsini tek panelde gösterir: Task bitti, Soruyu cevapla, İzin ver etiketleri ve Summarize.",
+  "types": "./types/index.d.ts"
+}
