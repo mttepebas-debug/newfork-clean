@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 499, last: 20261017110000_document_access_back_on_any_lift.sql
--- fingerprint: sha256:5d9498cac5c17153ac3c0434499e20502b634dd8d77dd93d4a528096b2a56ac5
+-- migrations: 500, last: 20261017120000_people_notices.sql
+-- fingerprint: sha256:f6f235b3f5dbb1aa9d547b8b5440a671bc9379ca18214e0f87f433c3dfdd5622
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -562,6 +562,8 @@ begin
   );
 
   perform app_private.initialize_employee_onboarding(target_user_id, invitation.workspace_id);
+  -- Whoever sent it hears the person joined (people_tell_invitation, S-127).
+  perform app_private.people_tell_invitation(invitation, 'joined', target_user_id);
   return invitation.workspace_id;
 end;
 $$;
@@ -686,6 +688,8 @@ begin
     'Employee onboarding approved and workspace access activated'
   );
 
+  -- Every card on it closes; the person hears they are in (not when they let themselves in).
+  perform app_private.onboarding_tell(target_case, 'completed', actor_user_id);
   return next_revision;
 end;
 $$;
@@ -5829,6 +5833,60 @@ $$;
 ALTER FUNCTION "app_private"."notify_workspace_closing"("target_workspace" "uuid", "target_actor" "uuid", "target_request" "uuid", "target_effective_at" timestamp with time zone, "target_cancelled" boolean) OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_cases" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "membership_id" "uuid" NOT NULL,
+    "status" "public"."employee_onboarding_case_status" DEFAULT 'in_progress'::"public"."employee_onboarding_case_status" NOT NULL,
+    "revision" integer DEFAULT 1 NOT NULL,
+    "submitted_at" timestamp with time zone,
+    "approved_at" timestamp with time zone,
+    "approved_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "final_approval_required" boolean NOT NULL,
+    "document_notification_checked_at" timestamp with time zone,
+    "document_restriction_told_at" timestamp with time zone,
+    CONSTRAINT "employee_onboarding_cases_check" CHECK ((("status" = 'approved'::"public"."employee_onboarding_case_status") = (("approved_at" IS NOT NULL) AND ("approved_by" IS NOT NULL)))),
+    CONSTRAINT "employee_onboarding_cases_revision_check" CHECK (("revision" > 0))
+);
+
+
+ALTER TABLE "public"."employee_onboarding_cases" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."onboarding_person"("target_case" "public"."employee_onboarding_cases") RETURNS "uuid"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select e.user_id from public.employee_profiles e
+  where e.id = target_case.employee_id and e.workspace_id = target_case.workspace_id
+$$;
+
+
+ALTER FUNCTION "app_private"."onboarding_person"("target_case" "public"."employee_onboarding_cases") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."onboarding_reviewers"("target_case" "public"."employee_onboarding_cases") RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(array_agg(distinct who order by who), '{}') from (
+    select unnest(app_private.notify_holders(target_case.workspace_id, 'onboarding.legal_name', null, target_case.employee_id)) who
+    where exists (select 1 from public.employee_onboarding_requirements r
+                  where r.case_id = target_case.id and r.kind = 'profile' and r.requires_review
+                    and r.status <> 'completed'::public.employee_onboarding_requirement_status)
+    union
+    select unnest(app_private.notify_holders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
+    where target_case.final_approval_required
+  ) reviewers
+$$;
+
+
+ALTER FUNCTION "app_private"."onboarding_reviewers"("target_case" "public"."employee_onboarding_cases") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -5852,6 +5910,51 @@ $$;
 
 
 ALTER FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."onboarding_tell"("target_case" "public"."employee_onboarding_cases", "event" "text", "actor" "uuid", "reason" "text" DEFAULT NULL::"text") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if event = 'submitted' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'resubmitted', actor);
+    return app_private.people_tell('people.onboarding_review_needed', target_case.workspace_id,
+      app_private.onboarding_reviewers(target_case),
+      'onboarding:' || target_case.id::text || ':submitted:' || target_case.revision::text,
+      app_private.people_name(target_case.employee_id) || '''s onboarding is ready for review', null,
+      '/app/employees?employeeId=' || target_case.employee_id::text, actor, 'onboarding_case', target_case.id,
+      jsonb_build_object('employee_id', target_case.employee_id));
+  elsif event = 'changes' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'changes_requested', actor);
+    return app_private.people_tell('people.onboarding_change_requested', target_case.workspace_id,
+      array[app_private.onboarding_person(target_case)],
+      'onboarding:' || target_case.id::text || ':changes:' || target_case.revision::text,
+      'Your onboarding needs a change', btrim(reason),
+      '/onboarding?workspace=' || target_case.workspace_id::text, actor, 'onboarding_case', target_case.id, '{}'::jsonb);
+  elsif event = 'reviewed' then
+    if cardinality(app_private.onboarding_reviewers(target_case)) = 0 then
+      return app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
+    end if;
+    return 0;
+  elsif event = 'completed' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
+    return app_private.people_tell('people.onboarding_completed', target_case.workspace_id,
+      array[app_private.onboarding_person(target_case)],
+      'onboarding:' || target_case.id::text || ':completed',
+      'Your onboarding is complete',
+      'You can use ' || (select w.name from public.workspaces w where w.id = target_case.workspace_id) || ' now.',
+      '/app', actor, 'onboarding_case', target_case.id, '{}'::jsonb);
+  end if;
+  return 0;
+exception when others then
+  raise warning 'onboarding_tell: % notices for % skipped: % (%)', event, target_case.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."onboarding_tell"("target_case" "public"."employee_onboarding_cases", "event" "text", "actor" "uuid", "reason" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."open_account_row"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "void"
@@ -6028,6 +6131,103 @@ $$;
 ALTER FUNCTION "app_private"."owner_setup_checklist_item_ids"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."people_name"("target_employee" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select btrim(coalesce(nullif(e.preferred_name, ''), e.first_name) || ' ' || e.last_name)
+  from public.employee_profiles e where e.id = target_employee
+$$;
+
+
+ALTER FUNCTION "app_private"."people_name"("target_employee" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."people_tell"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb" DEFAULT '{}'::"jsonb") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  return app_private.notify(target_type, target_workspace, target_recipients, target_event_key, target_title, target_body,
+    target_url, target_actor, target_subject_type, target_subject_id, target_data);
+exception when others then
+  raise warning 'people_tell: % notice % skipped: % (%)', target_type, target_event_key, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."people_tell"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb") OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."employee_invitations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "email" "text" NOT NULL,
+    "role_id" "uuid" NOT NULL,
+    "all_locations" boolean DEFAULT true NOT NULL,
+    "location_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
+    "token_hash" "text" NOT NULL,
+    "status" "public"."employee_invitation_status" DEFAULT 'pending'::"public"."employee_invitation_status" NOT NULL,
+    "expires_at" timestamp with time zone NOT NULL,
+    "sent_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "resend_count" integer DEFAULT 0 NOT NULL,
+    "accepted_at" timestamp with time zone,
+    "revoked_at" timestamp with time zone,
+    "created_by" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "declined_at" timestamp with time zone,
+    "delivery_status" "text" DEFAULT 'sent'::"text" NOT NULL,
+    "delivery_attempted_at" timestamp with time zone,
+    "delivery_failed_at" timestamp with time zone,
+    "delivery_error" "text",
+    CONSTRAINT "employee_invitations_delivery_error_check" CHECK ((("delivery_error" IS NULL) OR ("char_length"("delivery_error") <= 500))),
+    CONSTRAINT "employee_invitations_delivery_status_check" CHECK (("delivery_status" = ANY (ARRAY['pending'::"text", 'sent'::"text", 'failed'::"text"]))),
+    CONSTRAINT "employee_invitations_email_check" CHECK (("email" = "lower"("btrim"("email")))),
+    CONSTRAINT "employee_invitations_resend_count_check" CHECK (("resend_count" >= 0)),
+    CONSTRAINT "employee_invitations_token_hash_check" CHECK (("token_hash" ~ '^[0-9a-f]{64}$'::"text"))
+);
+
+
+ALTER TABLE "public"."employee_invitations" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."people_tell_invitation"("invitation" "public"."employee_invitations", "kind" "text", "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  name text;
+  theirs boolean;
+begin
+  name := app_private.people_name(invitation.employee_id);
+  theirs := app_private.authz_reason(invitation.created_by, invitation.workspace_id, 'employee.invite', null,
+    invitation.employee_id) is null;
+  return app_private.people_tell('people.' || kind, invitation.workspace_id,
+    case when theirs then array[invitation.created_by]
+         else app_private.notify_holders(invitation.workspace_id, 'employee.invite', null, invitation.employee_id) end,
+    'invite:' || invitation.id::text || ':' || kind,
+    case kind
+      when 'joined' then name || ' accepted ' || case when theirs then 'your' else 'an' end || ' invitation'
+      when 'invitation_declined' then name || ' declined ' || case when theirs then 'your' else 'an' end || ' invitation'
+      else case when theirs then 'Your' else 'An' end || ' invitation to ' || name || ' was cancelled' end,
+    case kind
+      when 'joined' then 'They are finishing their onboarding.'
+      when 'invitation_cancelled' then 'They can no longer accept it.' end,
+    '/app/employees?employeeId=' || invitation.employee_id::text, actor, 'employee', invitation.employee_id,
+    jsonb_build_object('invitation_id', invitation.id, 'employee_id', invitation.employee_id));
+exception when others then
+  raise warning 'people_tell_invitation: % notice for % skipped: % (%)', kind, invitation.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."people_tell_invitation"("invitation" "public"."employee_invitations", "kind" "text", "actor" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -6098,6 +6298,78 @@ $$;
 
 
 ALTER FUNCTION "app_private"."policy_lifecycle_settings"("v" "public"."signature_template_versions") OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."employee_preferred_name_requests" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "requested_name" "text" NOT NULL,
+    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
+    "requested_by" "uuid" NOT NULL,
+    "requested_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "decided_by" "uuid",
+    "decided_at" timestamp with time zone,
+    CONSTRAINT "employee_preferred_name_requests_requested_name_check" CHECK ((("char_length"("btrim"("requested_name")) >= 1) AND ("char_length"("btrim"("requested_name")) <= 80))),
+    CONSTRAINT "employee_preferred_name_requests_requested_name_us_letters" CHECK ((NORMALIZE("requested_name", NFC) !~ '[şŞğĞıİ]'::"text")),
+    CONSTRAINT "employee_preferred_name_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'rejected'::"text"])))
+);
+
+
+ALTER TABLE "public"."employee_preferred_name_requests" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."employee_preferred_name_requests" IS 'A preferred name waiting for an answer. A refused one is kept here and nowhere else: the person is not told, and the name never appears.';
+
+
+
+CREATE OR REPLACE FUNCTION "app_private"."preferred_name_tell_answered"("request" "public"."employee_preferred_name_requests", "approve" boolean, "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.notification_resolve(request.workspace_id, 'preferred_name_request', request.id,
+    case when approve then 'approved' else 'declined' end, actor);
+  return app_private.people_tell('people.preferred_name_decided', request.workspace_id,
+    array(select e.user_id from public.employee_profiles e where e.id = request.employee_id and e.workspace_id = request.workspace_id),
+    'preferred_name:' || request.id::text || ':decided',
+    case when approve then 'You''ll be called ' || request.requested_name
+         else 'Your preferred name "' || request.requested_name || '" wasn''t approved' end, null,
+    '/account/profile', actor, 'preferred_name_request', request.id,
+    jsonb_build_object('outcome', case when approve then 'approved' else 'declined' end));
+exception when others then
+  raise warning 'preferred_name_tell_answered: notices for % skipped: % (%)', request.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."preferred_name_tell_answered"("request" "public"."employee_preferred_name_requests", "approve" boolean, "actor" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."preferred_name_tell_asked"("target_workspace" "uuid", "target_employee" "uuid", "replaced" "uuid"[], "asked" "uuid", "wanted" "text", "deciders" "uuid"[], "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.notification_resolve(target_workspace, 'preferred_name_request', r, 'closed', actor)
+  from unnest(coalesce(replaced, '{}')) r;
+  if asked is null then
+    return 0;
+  end if;
+  return app_private.people_tell('people.preferred_name_requested', target_workspace, deciders,
+    'preferred_name:' || asked::text,
+    app_private.people_name(target_employee) || ' asked to be called ' || wanted, null,
+    '/app/employees?employeeId=' || target_employee::text, actor, 'preferred_name_request', asked,
+    jsonb_build_object('employee_id', target_employee, 'requested_name', wanted));
+exception when others then
+  raise warning 'preferred_name_tell_asked: notices for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."preferred_name_tell_asked"("target_workspace" "uuid", "target_employee" "uuid", "replaced" "uuid"[], "asked" "uuid", "wanted" "text", "deciders" "uuid"[], "actor" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."preview_lifecycle_definition"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "target_kind" "text") RETURNS "jsonb"
@@ -10868,6 +11140,9 @@ begin
     where id = request_row.employee_id
       and workspace_id = target_workspace_id;
   end if;
+
+  -- The first answer closes every decider's card and tells the person (preferred_name_tell_answered).
+  perform app_private.preferred_name_tell_answered(request_row, approve, actor_user_id);
 end;
 $$;
 
@@ -10987,6 +11262,7 @@ begin
 
   insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
   values (invitation.workspace_id, invitation.employee_id, target_user_id, 'employee.invitation_declined', 'Employee invitation declined by invitee');
+  perform app_private.people_tell_invitation(invitation, 'invitation_declined', target_user_id);
 end;
 $$;
 
@@ -19544,6 +19820,7 @@ declare
   blockers jsonb;
   existing_request public.account_deletion_requests%rowtype;
   created_request public.account_deletion_requests%rowtype;
+  dropped public.employee_invitations%rowtype;
 begin
   if actor_user_id is null then
     raise exception 'valid actor required' using errcode = '42501';
@@ -19590,12 +19867,18 @@ begin
     );
   end if;
 
-  update public.employee_invitations invitation
-  set status = 'revoked'::public.employee_invitation_status,
-      revoked_at = now(),
-      updated_at = now()
-  where invitation.email = actor_email
-    and invitation.status = 'pending'::public.employee_invitation_status;
+  -- Each invitation it drops tells whoever sent it, never why (the account is the invitee's own).
+  for dropped in
+    update public.employee_invitations invitation
+    set status = 'revoked'::public.employee_invitation_status,
+        revoked_at = now(),
+        updated_at = now()
+    where invitation.email = actor_email
+      and invitation.status = 'pending'::public.employee_invitation_status
+    returning invitation.*
+  loop
+    perform app_private.people_tell_invitation(dropped, 'invitation_cancelled', actor_user_id);
+  end loop;
 
   insert into public.account_deletion_requests (
     user_id, typed_email, acknowledged, recovery_token_digest,
@@ -19633,6 +19916,8 @@ declare
   approval text;
   cleaned text := btrim(coalesce(preferred_name, ''));
   deciders uuid[];
+  replaced uuid[];
+  asked uuid;
 begin
   -- Only on one's own record; somebody else's and an unknown one get the same
   -- answer (authz.out_of_scope).
@@ -19656,9 +19941,15 @@ begin
   -- Clearing it is always the person's own business; there is nothing for a
   -- manager to answer about a name that will not be shown.
   if cleaned = '' then
-    update public.employee_preferred_name_requests
-    set status = 'rejected', decided_by = actor_user_id, decided_at = now()
-    where employee_id = target_employee_id and status = 'pending';
+    with gone as (
+      update public.employee_preferred_name_requests
+      set status = 'rejected', decided_by = actor_user_id, decided_at = now()
+      where employee_id = target_employee_id and status = 'pending'
+      returning id
+    )
+    select coalesce(array_agg(gone.id), '{}') into replaced from gone;
+    -- The earlier ask's cards close (preferred_name_tell_asked).
+    perform app_private.preferred_name_tell_asked(target_workspace_id, target_employee_id, replaced, null, null, '{}', actor_user_id);
     update public.employee_profiles set preferred_name = '', updated_at = now()
     where id = target_employee_id;
     return 'cleared';
@@ -19687,9 +19978,13 @@ begin
   end if;
 
   -- Whatever was waiting is replaced: the latest answer is the one asked for.
-  update public.employee_preferred_name_requests
-  set status = 'rejected', decided_by = actor_user_id, decided_at = now()
-  where employee_id = target_employee_id and status = 'pending';
+  with gone as (
+    update public.employee_preferred_name_requests
+    set status = 'rejected', decided_by = actor_user_id, decided_at = now()
+    where employee_id = target_employee_id and status = 'pending'
+    returning id
+  )
+  select coalesce(array_agg(gone.id), '{}') into replaced from gone;
 
   insert into public.employee_preferred_name_requests (
     workspace_id, employee_id, requested_name, status, requested_by,
@@ -19701,7 +19996,12 @@ begin
     actor_user_id,
     case when approval = 'auto' then actor_user_id end,
     case when approval = 'auto' then now() end
-  );
+  )
+  returning id into asked;
+
+  -- The earlier ask's cards close; waiting, the deciders the domain found above are told.
+  perform app_private.preferred_name_tell_asked(target_workspace_id, target_employee_id, replaced,
+    case when approval <> 'auto' then asked end, cleaned, deciders, actor_user_id);
 
   if approval = 'auto' then
     update public.employee_profiles
@@ -20645,6 +20945,9 @@ begin
     if review_action = 'reject_requirement' then
       update public.employee_onboarding_cases set status = 'changes_requested'::public.employee_onboarding_case_status, revision = revision + 1,
         updated_at = now() where id = target_case.id returning revision into expected_revision;
+      -- Back with the person: the reviewers' cards close, and the person hears what to change.
+      select * into target_case from public.employee_onboarding_cases where id = target_case.id;
+      perform app_private.onboarding_tell(target_case, 'changes', actor_user_id, review_reason);
     else
       update public.employee_onboarding_cases set revision = revision + 1, updated_at = now()
       where id = target_case.id returning revision into expected_revision;
@@ -20663,6 +20966,11 @@ begin
           actor_user_id,
           'employee.auto_activated_after_review'
         );
+      end if;
+      -- Not let in yet: the cards close once nothing in it is left for their holders (onboarding_tell).
+      select * into target_case from public.employee_onboarding_cases where id = target_case.id;
+      if target_case.status <> 'approved'::public.employee_onboarding_case_status then
+        perform app_private.onboarding_tell(target_case, 'reviewed', actor_user_id);
       end if;
     end if;
   elsif review_action = 'activate' then
@@ -24470,6 +24778,8 @@ begin
     );
   end if;
 
+  -- It waits: the person's "needs a change" card closes and who may act on it now is told (onboarding_tell).
+  perform app_private.onboarding_tell(target_case, 'submitted', target_user_id);
   return target_case.revision;
 end;
 $$;
@@ -27457,40 +27767,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_invitation_delivery_secrets" (
 ALTER TABLE "public"."employee_invitation_delivery_secrets" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."employee_invitations" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "employee_id" "uuid" NOT NULL,
-    "email" "text" NOT NULL,
-    "role_id" "uuid" NOT NULL,
-    "all_locations" boolean DEFAULT true NOT NULL,
-    "location_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
-    "token_hash" "text" NOT NULL,
-    "status" "public"."employee_invitation_status" DEFAULT 'pending'::"public"."employee_invitation_status" NOT NULL,
-    "expires_at" timestamp with time zone NOT NULL,
-    "sent_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "resend_count" integer DEFAULT 0 NOT NULL,
-    "accepted_at" timestamp with time zone,
-    "revoked_at" timestamp with time zone,
-    "created_by" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "declined_at" timestamp with time zone,
-    "delivery_status" "text" DEFAULT 'sent'::"text" NOT NULL,
-    "delivery_attempted_at" timestamp with time zone,
-    "delivery_failed_at" timestamp with time zone,
-    "delivery_error" "text",
-    CONSTRAINT "employee_invitations_delivery_error_check" CHECK ((("delivery_error" IS NULL) OR ("char_length"("delivery_error") <= 500))),
-    CONSTRAINT "employee_invitations_delivery_status_check" CHECK (("delivery_status" = ANY (ARRAY['pending'::"text", 'sent'::"text", 'failed'::"text"]))),
-    CONSTRAINT "employee_invitations_email_check" CHECK (("email" = "lower"("btrim"("email")))),
-    CONSTRAINT "employee_invitations_resend_count_check" CHECK (("resend_count" >= 0)),
-    CONSTRAINT "employee_invitations_token_hash_check" CHECK (("token_hash" ~ '^[0-9a-f]{64}$'::"text"))
-);
-
-
-ALTER TABLE "public"."employee_invitations" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."employee_job_assignments" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -27552,29 +27828,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_offboarding_shift_actions" (
 ALTER TABLE "public"."employee_offboarding_shift_actions" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_cases" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "employee_id" "uuid" NOT NULL,
-    "membership_id" "uuid" NOT NULL,
-    "status" "public"."employee_onboarding_case_status" DEFAULT 'in_progress'::"public"."employee_onboarding_case_status" NOT NULL,
-    "revision" integer DEFAULT 1 NOT NULL,
-    "submitted_at" timestamp with time zone,
-    "approved_at" timestamp with time zone,
-    "approved_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "final_approval_required" boolean NOT NULL,
-    "document_notification_checked_at" timestamp with time zone,
-    "document_restriction_told_at" timestamp with time zone,
-    CONSTRAINT "employee_onboarding_cases_check" CHECK ((("status" = 'approved'::"public"."employee_onboarding_case_status") = (("approved_at" IS NOT NULL) AND ("approved_by" IS NOT NULL)))),
-    CONSTRAINT "employee_onboarding_cases_revision_check" CHECK (("revision" > 0))
-);
-
-
-ALTER TABLE "public"."employee_onboarding_cases" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_settings" (
     "workspace_id" "uuid" NOT NULL,
     "final_approval_required" boolean DEFAULT false NOT NULL,
@@ -27598,29 +27851,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_personal_tasks" (
 
 
 ALTER TABLE "public"."employee_personal_tasks" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."employee_preferred_name_requests" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "employee_id" "uuid" NOT NULL,
-    "requested_name" "text" NOT NULL,
-    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
-    "requested_by" "uuid" NOT NULL,
-    "requested_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "decided_by" "uuid",
-    "decided_at" timestamp with time zone,
-    CONSTRAINT "employee_preferred_name_requests_requested_name_check" CHECK ((("char_length"("btrim"("requested_name")) >= 1) AND ("char_length"("btrim"("requested_name")) <= 80))),
-    CONSTRAINT "employee_preferred_name_requests_requested_name_us_letters" CHECK ((NORMALIZE("requested_name", NFC) !~ '[şŞğĞıİ]'::"text")),
-    CONSTRAINT "employee_preferred_name_requests_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'approved'::"text", 'rejected'::"text"])))
-);
-
-
-ALTER TABLE "public"."employee_preferred_name_requests" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."employee_preferred_name_requests" IS 'A preferred name waiting for an answer. A refused one is kept here and nowhere else: the person is not told, and the name never appears.';
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
@@ -33403,7 +33633,23 @@ REVOKE ALL ON FUNCTION "app_private"."notify_workspace_closing"("target_workspac
 
 
 
+GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_onboarding_cases" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."onboarding_person"("target_case" "public"."employee_onboarding_cases") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."onboarding_reviewers"("target_case" "public"."employee_onboarding_cases") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."onboarding_tell"("target_case" "public"."employee_onboarding_cases", "event" "text", "actor" "uuid", "reason" "text") FROM PUBLIC;
 
 
 
@@ -33431,6 +33677,22 @@ REVOKE ALL ON FUNCTION "app_private"."owner_setup_checklist_item_ids"() FROM PUB
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."people_name"("target_employee" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."people_tell"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb") FROM PUBLIC;
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_invitations" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."people_tell_invitation"("invitation" "public"."employee_invitations", "kind" "text", "actor" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") FROM PUBLIC;
 
 
@@ -33440,6 +33702,18 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."signature_template
 
 
 REVOKE ALL ON FUNCTION "app_private"."policy_lifecycle_settings"("v" "public"."signature_template_versions") FROM PUBLIC;
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_preferred_name_requests" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."preferred_name_tell_answered"("request" "public"."employee_preferred_name_requests", "approve" boolean, "actor" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."preferred_name_tell_asked"("target_workspace" "uuid", "target_employee" "uuid", "replaced" "uuid"[], "asked" "uuid", "wanted" "text", "deciders" "uuid"[], "actor" "uuid") FROM PUBLIC;
 
 
 
@@ -35515,10 +35789,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_events" T
 
 
 
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_invitations" TO "service_role";
-
-
-
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_job_assignments" TO "service_role";
 
 
@@ -35535,20 +35805,12 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_offboardi
 
 
 
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_onboarding_cases" TO "service_role";
-
-
-
 GRANT SELECT ON TABLE "public"."employee_onboarding_settings" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_onboarding_settings" TO "service_role";
 
 
 
 GRANT ALL ON TABLE "public"."employee_personal_tasks" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_preferred_name_requests" TO "service_role";
 
 
 
