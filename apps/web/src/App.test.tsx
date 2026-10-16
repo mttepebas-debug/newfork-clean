@@ -7289,11 +7289,10 @@ describe("App", () => {
 
   // BILDIRIM-02 (KARARLAR S-123, S-96): the old notification screens are gone
   // until the new system lands; their addresses fall through to the landing page.
+  // Account > Notifications and Settings > Notifications are back (BILDIRIM-11).
   it.each([
     ["owner", "/app/notifications", "/app/workspace"],
-    ["owner", "/app/settings/notifications", "/app/workspace"],
     ["owner", "/account/inbox", "/app/workspace"],
-    ["owner", "/account/preferences/notifications", "/app/workspace"],
     ["employee", "/app/notifications", "/app/employee-hub"],
     ["employee", "/account/inbox", "/app/employee-hub"],
     ["employee", "/app/account/documents?kind=document", "/app/employee-hub"],

@@ -20,6 +20,7 @@ const pageNames: readonly (readonly [RegExp, string])[] = [
   [/^\/app\/settings\/general\/?$/, "General"],
   [/^\/app\/settings\/locations\/?$/, "Locations"],
   [/^\/app\/settings\/jobs\/?$/, "Jobs"],
+  [/^\/app\/settings\/notifications\/?$/, "Notifications"],
   [/^\/app\/settings\/scheduling\/conflicts\/?$/, "Conflict handling"],
   [/^\/app\/settings\/scheduling\/shift-types\/?$/, "Shift types"],
   [/^\/app\/settings\/scheduling\/shift-labels\/?$/, "Shift labels"],
@@ -27,6 +28,7 @@ const pageNames: readonly (readonly [RegExp, string])[] = [
   [/^\/app\/settings\/roles(\/.*)?$/, "Roles & permissions"],
   [/^\/app\/settings\/documents\/?$/, "Documents"],
   [/^\/app\/settings\/acknowledgements\/?$/, "Acknowledgements"],
+  [/^\/account\/preferences\/notifications\/?$/, "Notifications"],
 ];
 
 /** "Schedule" for /app/schedule; "this page" for an address not in the list. */

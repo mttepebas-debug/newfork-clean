@@ -1,4 +1,5 @@
 import {
+  Bell,
   BriefcaseBusiness,
   CalendarClock,
   FileText,
@@ -41,6 +42,12 @@ const groups = [
         label: "Jobs",
         icon: BriefcaseBusiness,
         page: "jobs",
+      },
+      {
+        to: "/app/settings/notifications",
+        label: "Notifications",
+        icon: Bell,
+        page: "notifications",
       },
     ],
   },

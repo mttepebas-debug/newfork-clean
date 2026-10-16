@@ -53,6 +53,12 @@ const PrivacyChoicesPage = lazy(() =>
   })),
 );
 const PreferencesPage = lazy(() => import("./account/PreferencesPage"));
+const NotificationPreferencesPage = lazy(
+  () => import("./notification-settings/NotificationPreferencesPage"),
+);
+const WorkspaceNotificationSettingsPage = lazy(
+  () => import("./notification-settings/WorkspaceNotificationSettingsPage"),
+);
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
 const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
@@ -262,6 +268,10 @@ export function App() {
                 <Route path="profile" element={<ProfilePage />} />
                 <Route path="security" element={<SecurityPage />} />
                 <Route path="preferences" element={<PreferencesPage />} />
+                <Route
+                  path="preferences/notifications"
+                  element={<NotificationPreferencesPage />}
+                />
                 <Route path="workspaces" element={<WorkspacesPage />} />
                 <Route path="documents" element={<AccountDocumentsPage />} />
               </Route>
@@ -478,6 +488,14 @@ export function App() {
                     element={
                       <SettingsPageRoute page="jobs">
                         <JobsSettingsPage />
+                      </SettingsPageRoute>
+                    }
+                  />
+                  <Route
+                    path="notifications"
+                    element={
+                      <SettingsPageRoute page="notifications">
+                        <WorkspaceNotificationSettingsPage />
                       </SettingsPageRoute>
                     }
                   />

@@ -184,6 +184,12 @@ function contextOf(persona: Persona): ActiveWorkspaceContext {
  * holding only the notification keys opens no Settings page any more.
  */
 
+/**
+ * The pages that moved. Notifications came back later as a new page on the
+ * notification core's owner/admin rule (BILDIRIM-11); it has its own test below.
+ */
+type MovedPage = Exclude<SettingsPage, "notifications">;
+
 /** App.tsx: each Settings route's guard. */
 const before = {
   general: { anyOf: ["settings.general.read"] },
@@ -197,11 +203,11 @@ const before = {
   documents: { action: "settings.documents.read" },
   acknowledgements: { action: "settings.signature_templates.read" },
 } as const satisfies Record<
-  SettingsPage,
+  MovedPage,
   { readonly anyOf: readonly Permission[] } | { readonly action: AuthzAction }
 >;
 
-function routeOpenedBefore(context: ActiveWorkspaceContext, page: SettingsPage) {
+function routeOpenedBefore(context: ActiveWorkspaceContext, page: MovedPage) {
   const gate = before[page];
   return "anyOf" in gate
     ? gate.anyOf.some((permission) => context.permissions.includes(permission))
@@ -209,7 +215,7 @@ function routeOpenedBefore(context: ActiveWorkspaceContext, page: SettingsPage) 
 }
 
 /** SettingsLayout: each rail link's permissions. */
-const railBefore: Record<SettingsPage, readonly Permission[]> = {
+const railBefore: Record<MovedPage, readonly Permission[]> = {
   general: ["settings.general.read"],
   locations: ["settings.locations.read"],
   jobs: ["settings.jobs.read"],
@@ -261,7 +267,7 @@ function homeBefore(context: ActiveWorkspaceContext) {
                   : "/app/schedule";
 }
 
-const pages = Object.keys(before) as SettingsPage[];
+const pages = Object.keys(before) as MovedPage[];
 const everybody = personas();
 
 function describePersona(persona: Persona) {
@@ -346,6 +352,19 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     ]);
   });
 
+  it("opens Notifications to whoever the core lets change organization settings, and only them (BILDIRIM-11)", () => {
+    // settings.organization.write: owner and admin (GA-2), the same rule the
+    // database asks in its notification settings services.
+    for (const persona of everybody) {
+      const context = contextOf(persona);
+      expect(canOpenSettingsPage(context, "notifications")).toBe(false);
+      const allowed = { ...context, actions: [...context.actions, "settings.organization.write" as const] };
+      expect(canOpenSettingsPage(allowed, "notifications")).toBe(true);
+      expect(canEnterSettings(allowed)).toBe(true);
+    }
+    expect(canOpenSettingsPage(null, "notifications")).toBe(false);
+  });
+
   it("opens Locations to owners and admins only: no manager role may hold its key (Mert 2026-10-12, BL-176)", () => {
     const managerWithEveryRead = contextOf({
       role: "manager",
@@ -375,6 +394,7 @@ describe("App.tsx Settings routes", () => {
       ["general", "general"],
       ["locations", "locations"],
       ["jobs", "jobs"],
+      ["notifications", "notifications"],
       ["scheduling", "scheduling"],
       ["scheduling/conflicts", "conflicts"],
       ["scheduling/shift-types", "shiftCatalog"],
