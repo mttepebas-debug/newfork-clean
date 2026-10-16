@@ -18,6 +18,13 @@ select tests.world('dw');
 select tests.person('dw', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('dw', 'deniz', 'employee', array['K'], array['cook']);
 select tests.person('dw', 'ece', 'employee', array['K'], array['cook']);
+-- K1's "not restricted" side: each has a passed deadline and is left alone for one reason only.
+select tests.person('dw', 'fatma', 'employee', array['K'], array['cook']);
+select tests.person('dw', 'gul', 'employee', array['K'], array['cook']);
+select tests.person('dw', 'ilker', 'employee', array['K'], array['cook']);
+select tests.person('dw', 'jale', 'employee', array['K'], array['cook']);
+select tests.world('dz');
+select tests.person('dz', 'hale', 'employee', array['K'], array['cook']);
 select tests.publish_week('dw', 1, '[
   {"label": "ali-tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "ali-wed", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
@@ -32,17 +39,17 @@ create function pg_temp.audit(person text, event text) returns integer language 
   where a.actor_user_id = tests.user('dw:' || person) and a.event_type = event
 $$;
 -- An overdue document request that restricts the person when it is missed (Settings > Documents,
--- "suspend on overdue"). Label: dw:requirement:<person>.
+-- "suspend on overdue"). person is a name in world dw, or a full label (dz:hale). Label: dw:requirement:<person>.
 create function pg_temp.overdue_requirement(person text) returns uuid language plpgsql as $$
-declare r uuid := gen_random_uuid();
+declare r uuid := gen_random_uuid(); who text := case when person like '%:%' then person else 'dw:' || person end;
 begin
   insert into public.employee_onboarding_requirements(id, workspace_id, employee_id, case_id, kind, title, required,
     blocks_activation, requires_review, sort_order, source_snapshot, lifecycle_user_id, lifecycle_settings, deadline_at)
   select r, c.workspace_id, c.employee_id, c.id, 'document', 'Background check', true, false, true, 50,
-    '{"accepted_formats":["pdf"],"tracks_expiry":false,"timezone":"Europe/Istanbul"}', tests.user('dw:' || person),
+    '{"accepted_formats":["pdf"],"tracks_expiry":false,"timezone":"Europe/Istanbul"}', tests.user(who),
     '{"mode":"conditional","target":{"location_ids":[],"department_ids":[],"job_ids":[],"employee_ids":[]},"assignment_scope":"all_active","period_days":7,"suspend_on_overdue":true,"extra_fields":[]}',
     now() + interval '7 days'
-  from public.employee_onboarding_cases c where c.employee_id = tests.id('dw:' || person);
+  from public.employee_onboarding_cases c where c.employee_id = tests.id(who);
   -- ponytail: an active membership's insert sets deadline_at to now()+period_days, and now() is fixed
   -- in this transaction, so the deadline is moved into the past by hand.
   update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day' where id = r;
@@ -127,6 +134,35 @@ select lives_ok($$select public.documents_maintain_service(500)$$, 'K1: document
 select ok(pg_temp.suspended('ece'), 'K1: a failing notification does not undo the restriction');
 select is((public.documents_maintain_service(500) ->> 'suspended')::integer, 0, 'K1: a restriction is written once');
 reset client_min_messages;
+
+-- K1 does not restrict. The restriction runs over every workspace each minute, so who it leaves alone
+-- matters as much as who it takes. Each requirement below is past its deadline with "suspend on
+-- overdue" set, unless said otherwise; one condition keeps it unrestricted.
+select pg_temp.overdue_requirement(p) from unnest(array['fatma', 'gul', 'ilker', 'jale', 'dz:hale']) p;
+-- Fatma left the team's list: her profile is archived, her membership is untouched.
+update public.employee_profiles set archived_at = now() where id = tests.id('dw:fatma');
+-- Gul's access was taken away: her membership is neither active nor waiting for activation.
+update public.workspace_memberships set status = 'suspended' where workspace_id = tests.id('dw') and user_id = tests.user('dw:gul');
+-- Hale's workspace is paused: nobody works in it.
+update public.workspaces set lifecycle_status = 'suspended' where id = tests.id('dz');
+-- Ilker's document type does not restrict on overdue; Jale's says nothing about it.
+update public.employee_onboarding_requirements set lifecycle_settings = jsonb_set(lifecycle_settings, '{suspend_on_overdue}', 'false')
+where id = tests.id('dw:requirement:ilker');
+update public.employee_onboarding_requirements set lifecycle_settings = lifecycle_settings - 'suspend_on_overdue'
+where id = tests.id('dw:requirement:jale');
+select ok((select p.archived_at is not null and m.status = 'active' from public.employee_profiles p
+  join public.workspace_memberships m on m.workspace_id = p.workspace_id and m.user_id = p.user_id where p.id = tests.id('dw:fatma')),
+  'K1 setup: Fatma is archived and nothing else');
+select ok((select r.deadline_at < now() from public.employee_onboarding_requirements r
+  where r.id = tests.id('dw:requirement:fatma')) and (select bool_and(r.deadline_at < now()) from public.employee_onboarding_requirements r
+  where r.id in (select tests.id('dw:requirement:' || p) from unnest(array['gul', 'ilker', 'jale', 'dz:hale']) p)),
+  'K1 setup: every one of their deadlines has passed');
+select app_private.document_suspend_overdue();
+select ok(not pg_temp.suspended('fatma'), 'K1: an archived person is not restricted');
+select ok(not pg_temp.suspended('gul'), 'K1: a person whose access was taken away is not restricted');
+select ok(not pg_temp.suspended('dz:hale'), 'K1: a person in a paused workspace is not restricted');
+select ok(not pg_temp.suspended('ilker'), 'K1: a requirement that does not restrict on overdue does not');
+select ok(not pg_temp.suspended('jale'), 'K1: nor one whose settings say nothing about it');
 
 -- K5: Ali's food handler card expires in three days; Workspace gets a to-do.
 create temp table k5(document uuid, other uuid);
