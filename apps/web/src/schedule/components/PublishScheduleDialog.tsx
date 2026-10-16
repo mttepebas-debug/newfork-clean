@@ -515,7 +515,7 @@ export function PublishScheduleDialog({
             </span>
             <span>
               <strong>{affectedEmployeeIds.length}</strong>{" "}
-              {affectedEmployeeIds.length === 1 ? "person affected" : "people affected"}
+              {affectedEmployeeIds.length === 1 ? "person will be told" : "people will be told"}
             </span>
           </p>
         ) : null}

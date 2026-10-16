@@ -160,7 +160,8 @@ describe("PublishScheduleDialog", () => {
     expect(summary).toContain("Service week");
     expect(summary).toContain("1 location");
     expect(summary).toContain("2 shifts");
-    expect(summary).toContain("1 person affected");
+    // BILDIRIM-U3 (S-126): the people the publish tells, the preview's affected people.
+    expect(summary).toContain("1 person will be told");
 
     await clickReadyNext();
     const review = await screen.findByTestId("schedule-publish-preview");
