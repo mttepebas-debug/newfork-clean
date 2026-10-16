@@ -89,3 +89,23 @@ test("a manager approves time off from the notification panel, and the employee 
   const mine = await openPanel(employee);
   await expect(mine.getByRole("button", { name: /^(Unread: )?Your time off .* is approved$/ })).toBeVisible();
 });
+
+// BILDIRIM-13 (Mert 2026-10-16, variant A): on a phone the manager's top bar
+// carries the bell; tapping it opens the list full screen, Back closes it.
+test("a manager on a phone opens the notification list from the top bar's bell", async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true })).newPage();
+  await signIn(page, "ayse");
+  await expect(page).not.toHaveURL(/\/sign-in/);
+  await page.goto("/app/schedule/requests");
+  const bar = page.getByRole("banner", { name: "Workspace bar" });
+  await expect(bar).toBeVisible();
+  await bar.getByRole("button", { name: /^Notifications/ }).tap();
+  const list = page.getByRole("dialog", { name: "Notifications" });
+  await expect(list).toBeVisible();
+  await expect(list.getByRole("tab", { name: /^All/ })).toBeVisible();
+  await list.getByRole("button", { name: "Back" }).tap();
+  await expect(list).toBeHidden();
+  // More no longer carries Notifications; the bell is the way in.
+  await page.getByRole("navigation", { name: "Main navigation" }).getByRole("button", { name: "More" }).tap();
+  await expect(page.getByRole("dialog", { name: "More" }).getByRole("link", { name: "Notifications" })).toHaveCount(0);
+});
