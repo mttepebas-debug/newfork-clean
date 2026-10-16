@@ -15,3 +15,31 @@
   border-top: 1px solid #e1e7e3;
   border-radius: 0 0 8px 8px;
 }
+
+/* Every screen keeps its top in place (Mert 2026-10-16, "header ve tableri
+   freeze yap bütün ekranlarda"): as on the manager's Schedule, only the grid
+   scrolls; the heading, the week bar and the grid's day headings stay. The
+   page fills the scrolling area and the grid takes what is left. A window
+   shorter than 560 px scrolls the whole page as before. */
+@media (min-height: 560px) {
+  .employee-hub-page:has(> .employee-schedule-board) {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+  }
+  .employee-hub-page:has(> .employee-schedule-board) > * {
+    flex: 0 0 auto;
+  }
+  .employee-hub-page > .employee-schedule-board {
+    display: flex;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+  }
+  .employee-schedule-board > .schedule-grid-scroll {
+    min-height: 0;
+    max-height: none;
+    flex: 0 1 auto;
+  }
+}
