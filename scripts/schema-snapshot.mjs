@@ -14,8 +14,8 @@
 //
 // `write` never touches the shared local stack (project newfork-clean, ports
 // 553xx): it copies supabase/ to a temp folder, renames the project and moves
-// its ports to 595xx (the idea of scripts/ci-supabase-apart.sh; CI uses
-// 590xx-592xx), and starts or stops nothing unless both changes took. The name
+// its ports to 595xx (the idea of scripts/ci-supabase-apart.sh; CI's blocks
+// run 590xx-654xx and never end in 5), and starts or stops nothing unless both changes took. The name
 // is new on every run: `db start` answers "already running" with success, so a
 // shared name let a second run dump the first one's half-built database and
 // stop it (measured 2026-10-07). Two runs at once now collide on the ports and

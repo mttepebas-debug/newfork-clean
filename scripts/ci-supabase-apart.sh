@@ -27,34 +27,60 @@ else
   echo "::error::unrecognised runner name '$runner_name' -- teach ci-supabase-apart.sh its index" >&2
   exit 1
 fi
+# Each runner owns one lane of port blocks, so two runners never share one:
+# block prefix = 589 + index + 10*step (runner pc: 590xx, 600xx, ... 650xx;
+# pc-2: 591xx, 601xx, ...). Index 1-5 only: lane 6 would reach 595xx, where
+# scripts/schema-snapshot.mjs starts its throwaway stack.
+if (( index < 1 || index > 5 )); then
+  echo "::error::runner index $index has no port lane (1-5) -- teach ci-supabase-apart.sh a new one" >&2
+  exit 1
+fi
 project_id="newfork-ci-pc${index}"
-# Windows carves temporary TCP port-exclusion ranges out of the dynamic pool
-# for Hyper-V/WSL's own NAT, and they drift over time (`netsh interface ipv4
-# show excludedportrange protocol=tcp` from PowerShell lists today's). 566xx
-# landed inside one (56530-56629) and every start on that block failed with
-# "forwards/expose returned unexpected status: 500" -- not a Docker flake, a
-# host-level block. 589+index sits in today's open gap (58442-63288); if a
-# future exclusion lands here too, move this number, not the design.
-prefix=$((589 + index))
-
-# Fail fast, with a clear message, instead of `supabase start` retrying for
-# minutes against a port Windows has carved out for Hyper-V/WSL's own NAT
-# (see the prefix comment above). Only meaningful under WSL; a real Linux
-# runner (this workflow's `ubuntu-latest` fallback) has no such thing, so a
-# missing netsh.exe skips the check rather than failing the build.
-netsh=/mnt/c/Windows/System32/netsh.exe
-if [[ -x "$netsh" ]]; then
-  for port in "${prefix}21" "${prefix}22" "${prefix}20" "${prefix}29" "${prefix}23" "${prefix}24" "${prefix}27"; do
-    excluded=$("$netsh" int ipv4 show excludedportrange protocol=tcp 2>/dev/null | tr -d '\r' \
-      | awk -v p="$port" 'NF==2 && $1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ && p>=$1 && p<=$2 {print $1"-"$2; exit}')
-    if [[ -n "$excluded" ]]; then
-      echo "::error::port $port (runner index $index) falls inside Windows's excluded range $excluded -- change the prefix in scripts/ci-supabase-apart.sh" >&2
-      exit 1
-    fi
-  done
+config=supabase/config.toml
+# The two-digit tails of every port the shared stack listens on (553xx).
+suffixes=$(sed -nE 's/^(shadow_)?port = 553([0-9]{2})$/\2/p' "$config")
+if [[ -z "$suffixes" ]]; then
+  echo "::error::$config has no 553xx port to move" >&2
+  exit 1
 fi
 
-config=supabase/config.toml
+# Windows carves temporary TCP port-exclusion ranges out of the dynamic pool
+# for Hyper-V/WSL's own NAT, and they move after a reboot (`netsh interface
+# ipv4 show excludedportrange protocol=tcp` from PowerShell lists today's). A
+# Docker port inside one fails `supabase start` with "forwards/expose returned
+# unexpected status: 500" -- not a Docker flake, a host-level block. 566xx
+# once sat in one (56530-56629); on 2026-10-16 590xx did (58930-59029, run
+# 38971735410). So the runner takes the first block in its lane that no
+# range covers (administered ones, marked *, included), and fails only when
+# every block is taken. Only meaningful under WSL; a real Linux runner has no
+# netsh.exe and takes its first block. APART_NETSH: a fake netsh for tests.
+netsh="${APART_NETSH:-/mnt/c/Windows/System32/netsh.exe}"
+ranges=""
+if [[ -x "$netsh" ]]; then
+  ranges=$("$netsh" int ipv4 show excludedportrange protocol=tcp 2>/dev/null | tr -d '\r' \
+    | awk '$1 ~ /^[0-9]+$/ && $2 ~ /^[0-9]+$/ {print $1, $2}') || true
+fi
+prefix=""
+skipped=""
+for step in 0 1 2 3 4 5 6; do
+  candidate=$((589 + index + 10 * step))
+  hit=""
+  for suffix in $suffixes; do
+    hit=$(awk -v p="$candidate$suffix" 'NF==2 && p>=$1 && p<=$2 {print p" in "$1"-"$2; exit}' <<<"$ranges")
+    [[ -n "$hit" ]] && break
+  done
+  if [[ -z "$hit" ]]; then
+    prefix=$candidate
+    break
+  fi
+  skipped+=" ${candidate}xx (port $hit)"
+done
+if [[ -z "$prefix" ]]; then
+  echo "::error::no free port block for runner index $index: every block in its lane falls inside Windows's excluded ranges:$skipped" >&2
+  exit 1
+fi
+echo "::notice::runner index $index uses Supabase ports ${prefix}xx (project $project_id)${skipped:+; skipped excluded:$skipped}"
+
 sed -i -E \
   -e "s/^project_id = .*/project_id = \"$project_id\"/" \
   -e "s/^((shadow_)?port) = 553([0-9]{2})\$/\1 = ${prefix}\3/" \

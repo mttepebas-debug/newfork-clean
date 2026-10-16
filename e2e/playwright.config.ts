@@ -12,8 +12,12 @@ import { grepInvertFrom, parseKarantina } from "./karantina.mjs";
 // BL-112: three self-hosted runners can each run an e2e job at once. Every
 // runner needs its own web/api ports, or two concurrent e2e jobs would try to
 // bind the same port; scripts/ci-supabase-apart.sh already worked out which
-// runner this is (its Supabase project and ports are keyed the same way) and
-// left it in CI_RUNNER_INDEX. Locally (no CI_RUNNER_INDEX) nothing changes.
+// runner this is (its Supabase project is keyed the same way) and left it in
+// CI_RUNNER_INDEX. The Supabase port block can move to the next free one in
+// the runner's lane (CI-PORT-FALLBACK); this file reads it from `supabase
+// status`, never by number. These web/api ports stay: they are not Docker
+// ports, so Windows's excluded ranges never reach them (WSL NAT). Locally
+// (no CI_RUNNER_INDEX) nothing changes.
 const runnerIndex = process.env.CI ? Number(process.env.CI_RUNNER_INDEX) : 0;
 if (process.env.CI && !Number.isInteger(runnerIndex)) {
   throw new Error("CI_RUNNER_INDEX is not set; run scripts/ci-supabase-apart.sh first");
