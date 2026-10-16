@@ -246,8 +246,10 @@ function AlwaysSent({ types }: { readonly types: readonly NotificationAlwaysSent
               {list.map((type) => (
                 <li key={type.key}>
                   <Lock size={13} aria-hidden />
-                  {type.description}
-                  {type.level === "required" ? <StatusPill>Also by email</StatusPill> : null}
+                  <span>
+                    {type.description}
+                    {type.level === "required" ? <StatusPill>Also by email</StatusPill> : null}
+                  </span>
                 </li>
               ))}
             </ul>

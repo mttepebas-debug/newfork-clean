@@ -156,8 +156,14 @@
   vertical-align: middle;
 }
 
+/* The 44px check is the row's height; the cell adds no more. */
 .ns-table tbody td {
+  padding-block: 2px;
   text-align: center;
+}
+
+.ns-table tbody th {
+  padding-block: 10px;
 }
 
 .ns-table tbody tr:last-child th,
@@ -341,19 +347,27 @@
   list-style: none;
 }
 
+/* The lock keeps its own column, so a long line wraps under its text. */
 .ns-always-groups li {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 4px 8px;
+  display: grid;
+  grid-template-columns: 13px minmax(0, 1fr);
+  align-items: start;
+  gap: 8px;
   color: var(--theme-text-body);
   font-size: 13.5px;
   line-height: 1.4;
 }
 
 .ns-always-groups li > svg {
-  flex: 0 0 auto;
+  margin-top: 3px;
   color: var(--theme-accent);
+}
+
+.ns-always-groups li > span:not(.ns-pill) {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
 }
 
 .ns-actions {
