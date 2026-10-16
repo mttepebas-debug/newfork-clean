@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Check,
   Loader2,
-  Search,
   X,
 } from "lucide-react";
 import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from "react";
@@ -49,21 +48,18 @@ export interface SchedulePublicationChoices {
   readonly draftId: string;
   readonly locationIds: readonly string[];
   readonly departmentKeys: readonly string[];
-  readonly notifyEmployeeIds: readonly string[];
 }
 
 const EMPTY_DEPARTMENTS: ScheduleReadModel["departments"] = [];
-const STEP_TITLES: Record<1 | 2 | 3, string> = {
+const STEP_TITLES: Record<1 | 2, string> = {
   1: "Select locations to publish",
   2: "Pre-flight check",
-  3: "Notify employees",
 };
 // One line under the title saying what the step does; nothing goes live
 // before the last button.
-const STEP_DESCRIPTIONS: Record<1 | 2 | 3, string> = {
+const STEP_DESCRIPTIONS: Record<1 | 2, string> = {
   1: "Choose the draft and the locations that go live. Nothing is published until the last step.",
   2: "Review what needs attention first, then what changes at each location.",
-  3: "Choose who gets a notification, then publish.",
 };
 
 type LocationPreviewSummary = SchedulePublicationPreview["locations"][number];
@@ -85,13 +81,6 @@ function changedSinceStartText(
 
 function locationColor(location: ScheduleLocation): string {
   return (location as ScheduleLocation & { readonly color?: string | null }).color ?? "var(--theme-swatch-fallback)";
-}
-
-function employeeColor(employee: ScheduleEmployee): string {
-  return (
-    (employee as ScheduleEmployee & { readonly color?: string | null }).color ??
-    "var(--theme-swatch-fallback-soft)"
-  );
 }
 
 export function PublishScheduleDialog({
@@ -129,7 +118,6 @@ export function PublishScheduleDialog({
   readonly onPublish: (
     preview: SchedulePublicationPreview,
     overrides: SchedulePublicationOverrideInput[],
-    notifyEmployeeIds: string[],
     preflightAck?: SchedulePublicationPreflightAck,
     departmentScope?: SchedulePublicationDepartmentScope,
   ) => Promise<unknown>;
@@ -145,7 +133,7 @@ export function PublishScheduleDialog({
       : drafts[0]?.id) ?? "";
   const restoredChoices = initialChoices?.draftId === initialDraftId ? initialChoices : null;
   const [draftId, setDraftId] = useState(initialDraftId);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [step, setStep] = useState<1 | 2>(1);
   const allDepartmentKeys = useMemo(
     () =>
       departments.length
@@ -167,17 +155,12 @@ export function PublishScheduleDialog({
   const [preview, setPreview] = useState<SchedulePublicationPreview | null>(
     null,
   );
-  // A confirm-level conflict is accepted for the preview the publisher read;
-  // a refreshed preview asks again.
-  const [availabilityConfirmedFingerprint, setAvailabilityConfirmedFingerprint] = useState<string | null>(null);
   const [preflightBlockReason, setPreflightBlockReason] =
     useState<PublishPreflightBlockReason | null>(null);
   const [staleNotice, setStaleNotice] = useState<string | null>(null);
   const [scheduleConflicts, setScheduleConflicts] = useState<
     readonly PublishScheduleConflict[]
   >([]);
-  const [notifyEmployeeIds, setNotifyEmployeeIds] = useState<string[]>([]);
-  const [employeeSearch, setEmployeeSearch] = useState("");
   const [pending, setPending] = useState(false);
   const [reviewingShift, setReviewingShift] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -188,7 +171,6 @@ export function PublishScheduleDialog({
   const [sending, setSending] = useState(false);
   useEffect(() => () => { previewRequestIdRef.current += 1; }, []);
   const lastDocumentReviewVersionRef = useRef(documentReviewVersion);
-  const previousAffectedIdsRef = useRef<readonly string[] | null>(null);
   const resumePreviewRef = useRef(Boolean(restoredChoices));
   const hasDrafts = drafts.length > 0;
   const hasDepartmentSelection =
@@ -218,9 +200,6 @@ export function PublishScheduleDialog({
     };
   }, [allDepartmentKeys, departments.length, selectedDepartmentKeys]);
   const hardFindings = preview ? publishHardBlockers(preview) : [];
-  const newAvailability = preview ? publishNewAvailabilityFindings(preview) : [];
-  const needsAvailabilityConfirmation = newAvailability.some((finding) => finding.warning_policy === "confirm");
-  const availabilityConfirmed = !needsAvailabilityConfirmation || availabilityConfirmedFingerprint === preview?.fingerprint;
   const hasHardBlocker = hardFindings.length > 0;
   const publishBlocked =
     hasHardBlocker ||
@@ -253,32 +232,6 @@ export function PublishScheduleDialog({
   const summaryPreview = preview?.draft_id === draftId ? preview : null;
   const nextShiftCount =
     summaryPreview?.locations.reduce((total, location) => total + location.next_shift_count, 0) ?? 0;
-  const notifyEmployees = useMemo(() => {
-    const needle = employeeSearch.trim().toLocaleLowerCase();
-    return affectedEmployeeIds
-      .map((employeeId) =>
-        employees.find((employee) => employee.id === employeeId),
-      )
-      .filter((employee): employee is ScheduleEmployee => Boolean(employee))
-      .filter(
-        (employee) =>
-          !needle || employee.display_name.toLocaleLowerCase().includes(needle),
-      )
-      .sort((first, second) =>
-        first.display_name.localeCompare(second.display_name),
-      );
-  }, [affectedEmployeeIds, employeeSearch, employees]);
-
-  useEffect(() => {
-    if (!preview) return;
-    const previous = previousAffectedIdsRef.current;
-    setNotifyEmployeeIds((current) => previous === null
-      ? restoredChoices ? affectedEmployeeIds.filter((id) => restoredChoices.notifyEmployeeIds.includes(id)) : affectedEmployeeIds
-      : [...current.filter((id) => affectedEmployeeIds.includes(id)), ...affectedEmployeeIds.filter((id) => !previous.includes(id))]);
-    previousAffectedIdsRef.current = affectedEmployeeIds;
-    setEmployeeSearch("");
-  }, [affectedEmployeeIds, preview]);
-
   useEffect(() => {
     const requestedDraftId =
       activeDraftId && drafts.some((draft) => draft.id === activeDraftId)
@@ -351,7 +304,6 @@ export function PublishScheduleDialog({
   };
   const applyPreview = (nextPreview: SchedulePublicationPreview) => {
     setPreview(nextPreview);
-    setEmployeeSearch("");
     setPreflightBlockReason(null);
   };
 
@@ -437,7 +389,7 @@ export function PublishScheduleDialog({
     scheduleConflicts.length,
   ]);
   const publish = async () => {
-    if (!preview || publishBlocked || !availabilityConfirmed || publishingRef.current) return;
+    if (!preview || publishBlocked || publishingRef.current) return;
     publishingRef.current = true;
     setSending(true);
     const requestId = ++previewRequestIdRef.current;
@@ -452,7 +404,7 @@ export function PublishScheduleDialog({
         const overrideDecisions = [...publishOverrideableBlockers(currentPreview), ...publishGatingRisks(currentPreview),
           ...publishNewAvailabilityFindings(currentPreview)].map((finding) => ({ finding_id: finding.id }));
         try {
-          await onPublish(currentPreview, overrideDecisions, notifyEmployeeIds,
+          await onPublish(currentPreview, overrideDecisions,
             { fingerprint: currentPreview.fingerprint, decisions: overrideDecisions }, departmentScope);
           break;
         } catch (caught) {
@@ -483,7 +435,6 @@ export function PublishScheduleDialog({
         setPreview(preflightError.preview);
         setStep(2);
         setPreflightBlockReason(preflightError.blockReason);
-        setAvailabilityConfirmedFingerprint(null);
         setError(null);
       } else {
         const recoveryError = parsePublishRecoveryError(caught);
@@ -537,7 +488,6 @@ export function PublishScheduleDialog({
           {[
             { index: 1, label: "Locations" },
             { index: 2, label: "Pre-flight" },
-            { index: 3, label: "Notify" },
           ].map(({ index, label }) => (
             <span
               key={index}
@@ -775,7 +725,7 @@ export function PublishScheduleDialog({
                 setReviewingShift(true);
                 setError(null);
                 void onReviewShift(finding, {
-                  draftId, locationIds, departmentKeys: selectedDepartmentKeys, notifyEmployeeIds,
+                  draftId, locationIds, departmentKeys: selectedDepartmentKeys,
                 }).catch((caught: unknown) => {
                   setError(requestErrorText(caught, "The shift could not be opened. Try again."));
                 }).finally(() => setReviewingShift(false));
@@ -808,72 +758,7 @@ export function PublishScheduleDialog({
               ))}
             </div>
           </div>
-        ) : (
-          <section className="schedule-publish-notify">
-            <div className="schedule-publish-notify-heading">
-              <div>
-                <span>
-                  {notifyEmployeeIds.length} of {affectedEmployeeIds.length}{" "}
-                  selected
-                </span>
-                <small>Only employees with schedule changes are listed.</small>
-              </div>
-              {affectedEmployeeIds.length ? (
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setNotifyEmployeeIds(affectedEmployeeIds)}
-                  >
-                    Select all
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setNotifyEmployeeIds([])}
-                  >
-                    Clear all
-                  </button>
-                </div>
-              ) : null}
-            </div>
-            {affectedEmployeeIds.length >= 15 ? (
-              <label className="schedule-publish-notify-search">
-                <Search size={15} aria-hidden />
-                <input
-                  aria-label="Search employees"
-                  placeholder="Search employees"
-                  value={employeeSearch}
-                  onChange={(event) => setEmployeeSearch(event.target.value)}
-                />
-              </label>
-            ) : null}
-            <div className="schedule-publish-notify-list">
-              {notifyEmployees.length ? (
-                notifyEmployees.map((employee) => (
-                  <label key={employee.id}>
-                    <input
-                      type="checkbox"
-                      checked={notifyEmployeeIds.includes(employee.id)}
-                      onChange={() =>
-                        setNotifyEmployeeIds((current) =>
-                          current.includes(employee.id)
-                            ? current.filter((id) => id !== employee.id)
-                            : [...current, employee.id],
-                        )
-                      }
-                    />
-                    <span
-                      aria-hidden
-                      style={{ backgroundColor: employeeColor(employee) }}
-                    />
-                    <strong>{employee.display_name}</strong>
-                  </label>
-                ))
-              ) : (
-                <p>No affected employees.</p>
-              )}
-            </div>
-          </section>
-        )}
+        ) : null}
         {error && !stepOnePreviewError ? (
           <p className="schedule-overwrite-warning" role="alert">
             {error}
@@ -885,20 +770,14 @@ export function PublishScheduleDialog({
               ? scheduleConflicts.length
                 ? `${countLabel(scheduleConflicts.length, "conflict", "conflicts")} must be fixed`
                 : selectedLocationSummary
-              : wizardStep === 2
-                ? // BL-441: Pre-flight says its count once, at the top.
-                  null
-                : `${notifyEmployeeIds.length} of ${countLabel(affectedEmployeeIds.length, "employee", "employees")} will be notified`}
+              : // BL-441: Pre-flight says its count once, at the top.
+                null}
           </span>
           {wizardStep > 1 ? (
             <button
               type="button"
               disabled={pending || reviewingShift || isPublishing}
               onClick={() => {
-                if (wizardStep === 3) {
-                  setStep(2);
-                  return;
-                }
                 setStep(1);
                 setPreflightBlockReason(null);
                 setStaleNotice(null);
@@ -916,19 +795,7 @@ export function PublishScheduleDialog({
             <button
               type="button"
               className="primary"
-              disabled={pending || reviewingShift || isPublishing || publishBlocked}
-              onClick={() => {
-                setAvailabilityConfirmedFingerprint(preview?.fingerprint ?? null);
-                setStep(3);
-              }}
-            >
-              Next
-            </button>
-          ) : wizardStep === 3 ? (
-            <button
-              type="button"
-              className="primary"
-              disabled={pending || reviewingShift || isPublishing || !preview || publishBlocked || !availabilityConfirmed}
+              disabled={pending || reviewingShift || isPublishing || !preview || publishBlocked}
               onClick={() => void publish()}
             >
               <Check size={15} />{" "}

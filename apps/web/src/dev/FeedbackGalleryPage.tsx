@@ -1,6 +1,5 @@
 import { Button, toast } from "@newfork/ui";
 import {
-  BellRing,
   BriefcaseBusiness,
   Check,
   MapPin,
@@ -104,7 +103,7 @@ function FeedbackStage() {
         description={
           dialog?.destructive
             ? "Week of Aug 17 — v2 will be removed. Published shifts stay."
-            : "14 employees will be notified about 48 changes."
+            : "2 locations and 48 changes."
         }
         confirmLabel={dialog?.destructive ? "Confirm delete" : "Publish"}
         destructive={dialog?.destructive}
@@ -408,13 +407,6 @@ function StatesBoard() {
               <Check size={22} />
               <strong>Queue clear</strong>
               <span>No requests match these filters.</span>
-            </div>
-          </Card>
-          <Card title="No notifications" where="Notifications">
-            <div className="notification-empty">
-              <BellRing size={28} aria-hidden />
-              <h2>No notifications</h2>
-              <p>Updates matching these filters will appear here.</p>
             </div>
           </Card>
         </div>

@@ -3363,7 +3363,6 @@ export function SchedulePage({
           onPublish={(
             preview,
             overrides,
-            notifyEmployeeIds,
             preflightAck,
             departmentScope,
           ) =>
@@ -3371,7 +3370,6 @@ export function SchedulePage({
               context.workspace.id,
               preview,
               overrides,
-              notifyEmployeeIds,
               preflightAck,
               departmentScope,
             ).then((result) => {
@@ -3387,23 +3385,10 @@ export function SchedulePage({
               const changeCount = preview.locations
                 .filter((location) => result.location_ids.includes(location.location_id))
                 .reduce((sum, location) => sum + location.added + location.updated + location.removed, 0);
-              toast.success(
-                "Schedule published",
-                result.notification_warning
-                  ? {
-                      dedupeKey: "schedule-publish-notification-warning",
-                      description: result.notification_warning.message,
-                    }
-                  : result.notification_count
-                    ? {
-                        dedupeKey: "schedule-published",
-                        description: `${countLabel(result.location_ids.length, "location", "locations")}, ${countLabel(changeCount, "change", "changes")}, ${countLabel(result.notification_count, "employee", "employees")} notified.`,
-                      }
-                    : {
-                        dedupeKey: "schedule-published",
-                        description: `${countLabel(result.location_ids.length, "location", "locations")} and ${countLabel(changeCount, "change", "changes")} published.`,
-                      },
-              );
+              toast.success("Schedule published", {
+                dedupeKey: "schedule-published",
+                description: `${countLabel(result.location_ids.length, "location", "locations")} and ${countLabel(changeCount, "change", "changes")} published.`,
+              });
               setPublishOpen(false);
               setPublishChoices(null);
               setScheduleMode("preview", null);

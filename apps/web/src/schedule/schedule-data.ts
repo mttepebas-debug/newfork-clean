@@ -492,7 +492,6 @@ export async function publishScheduleDraft(
   workspaceId: string,
   preview: SchedulePublicationPreview,
   overrides: SchedulePublicationOverrideInput[],
-  notifyEmployeeIds?: readonly string[],
   preflightAck?: SchedulePublicationPreflightAck,
   departmentScope: {
     readonly departmentIds?: readonly string[];
@@ -517,9 +516,6 @@ export async function publishScheduleDraft(
           : {}),
         ...(departmentScope.includeNoDepartment !== undefined
           ? { include_no_department: departmentScope.includeNoDepartment }
-          : {}),
-        ...(notifyEmployeeIds
-          ? { notify_employee_ids: notifyEmployeeIds }
           : {}),
         overrides,
         preflight_ack: ack,
