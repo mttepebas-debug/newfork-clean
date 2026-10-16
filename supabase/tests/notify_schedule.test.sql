@@ -292,9 +292,15 @@ select is(
 select ok((select bool_and(n.title = 'A scheduled schedule email stopped') from public.person_notifications n
            where n.type_key = 'schedule.export_email_stopped' and n.subject_id <> (select id from rules where person = 'ayse')),
   '(g) and says it is not theirs');
+-- Every stopped-email notice so far, whoever it went to (Bora among them, who is not in who).
+create temp table stopped_before as select count(*)::integer n from public.person_notifications
+where type_key = 'schedule.export_email_stopped' and workspace_id = tests.id('nu');
 select pg_temp.fail_a_week(id) from rules;
 select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
            where n.type_key = 'schedule.export_email_stopped'), 11, '(g) once');
+select is((select count(*)::integer from public.person_notifications
+           where type_key = 'schedule.export_email_stopped' and workspace_id = tests.id('nu')),
+  (select n from stopped_before), '(g) a fourth failure tells nobody again, counted over everyone');
 
 -- An archived location does not silence it (the cron and the list read live locations too): the owner's
 -- rule for Kadikoy and Besiktas, Besiktas archived, tells the owner; a rule whose every location is
