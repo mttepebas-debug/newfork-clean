@@ -74,13 +74,13 @@ $$;
 
 create temp table rules as select pg_temp.draft('ayse', pg_temp.payload(array['K'], 'Knife rules', '{"ask_ack": true}')) id;
 select pg_temp.save('ayse', (select id from rules), pg_temp.payload(array['K'], 'Knife rules', '{"ask_ack": true}'), 'publish');
-select is(pg_temp.told('announcements.published', (select id from rules)), array['na:ali', 'na:emre', 'na:zeynep'],
-  '(a) the post reaches Kadikoy: Ali, Emre and Zeynep; not Ayse who wrote and published it, not Besiktas');
+select is(pg_temp.told('announcements.published', (select id from rules)), array['na:ali', 'na:emre', 'na:owner', 'na:zeynep'],
+  '(a) the post reaches Kadikoy: Ali, Emre, the owner and Zeynep; not Ayse who wrote and published it, not Besiktas');
 select ok((select bool_and(n.title = 'Knife rules' and n.url = '/app/announcements/' || (select id from rules)::text)
            from public.person_notifications n where n.type_key = 'announcements.published' and n.subject_id = (select id from rules)),
   '(a) by its title, opening the post');
 select pg_temp.save('ayse', (select id from rules), pg_temp.payload(array['K'], 'Knife rules', '{"ask_ack": true}'), 'save');
-select is(pg_temp.told('announcements.published', (select id from rules)), array['na:ali', 'na:emre', 'na:zeynep'],
+select is(pg_temp.told('announcements.published', (select id from rules)), array['na:ali', 'na:emre', 'na:owner', 'na:zeynep'],
   '(a) saved again with nothing new: nobody is told again');
 
 -- (b) Updated ---------------------------------------------------------------------------------------------
@@ -88,15 +88,15 @@ select is(pg_temp.told('announcements.published', (select id from rules)), array
 select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('na'), (select id from rules));
 -- Zeynep, an admin there, changes it.
 select pg_temp.save('zeynep', (select id from rules), pg_temp.payload(array['K', 'B'], 'Knife rules, new text', '{"ask_ack": true}'), 'save');
-select is(pg_temp.told('announcements.updated', (select id from rules)), array['na:ali'],
-  '(b) the new text tells Ali, who has not acknowledged it; not Emre who has, not Zeynep who changed it, not Ayse who wrote it');
+select is(pg_temp.told('announcements.updated', (select id from rules)), array['na:ali', 'na:owner'],
+  '(b) the new text tells Ali and the owner, who have not acknowledged it; not Emre who has, not Zeynep who changed it, not Ayse who wrote it');
 select is(pg_temp.told('announcements.published', (select id from rules)),
-  array['na:ali', 'na:deniz', 'na:emre', 'na:veli', 'na:zeynep'],
+  array['na:ali', 'na:deniz', 'na:emre', 'na:owner', 'na:veli', 'na:zeynep'],
   '(b) adding Besiktas tells Deniz and Veli it is published, the people it newly reaches');
 select ok((select bool_and(n.title = 'Updated: Knife rules, new text') from public.person_notifications n
            where n.type_key = 'announcements.updated' and n.subject_id = (select id from rules)), '(b) saying it changed');
 select pg_temp.save('zeynep', (select id from rules), pg_temp.payload(array['K', 'B'], 'Knife rules, new text', '{"ask_ack": true}'), 'save');
-select is(pg_temp.told('announcements.updated', (select id from rules)), array['na:ali'], '(b) saved again unchanged: once');
+select is(pg_temp.told('announcements.updated', (select id from rules)), array['na:ali', 'na:owner'], '(b) saved again unchanged: once');
 
 -- (c) Remind ----------------------------------------------------------------------------------------------
 -- It asks those it reaches who rank below Ayse, who published it (announcement_respondents): Ali, Emre,
@@ -150,21 +150,21 @@ select is(pg_temp.told('announcements.cancelled', (select id from plain)), '{}':
 
 -- (e) A scheduled post goes out ---------------------------------------------------------------------------
 
-create function pg_temp.schedule(person text, title text, extra jsonb default '{}') returns uuid language plpgsql as $$
+create function pg_temp.schedule(person text, title text, due boolean default true) returns uuid language plpgsql as $$
 declare
   p jsonb := pg_temp.payload(array['K'], title, jsonb_build_object('starts_on', current_date + 10,
-    'publish_at', now() + interval '1 hour') || extra);
+    'publish_at', now() + interval '1 hour'));
   made uuid := pg_temp.draft(person, p);
 begin
   perform pg_temp.save(person, made, p, 'schedule');
   -- ponytail: its hour comes by moving it back; now() is fixed inside the transaction.
-  update public.announcements set publish_at = now() - interval '1 minute' where id = made;
+  update public.announcements set publish_at = now() - interval '1 minute' where id = made and due;
   return made;
 end;
 $$;
 create temp table soon as select pg_temp.schedule('ayse', 'Inventory day') id;
 select app_private.announcement_release(tests.id('na'));
-select is(pg_temp.told('announcements.published', (select id from soon)), array['na:ali', 'na:emre', 'na:zeynep'],
+select is(pg_temp.told('announcements.published', (select id from soon)), array['na:ali', 'na:emre', 'na:owner', 'na:zeynep'],
   '(e) out on time: Kadikoy is told, not Ayse who scheduled it');
 
 -- Every notice so far is in its recipient's choices, read before anyone loses a right (BILDIRIM-12).
@@ -182,10 +182,8 @@ select tests.person('na', 'lim', 'manager', array['K'], array['cook']);
 select tests.person('na', 'blk', 'manager', array['K'], array['cook']);
 select tests.person('na', 'gon', 'manager', array['K'], array['cook']);
 insert into who select label, tests.user(label) from unnest(array['na:dmo', 'na:mov', 'na:lim', 'na:blk', 'na:gon']) label;
-create temp table late as select person, pg_temp.schedule(person, 'Deep clean by ' || person) id
+create temp table late as select person, pg_temp.schedule(person, 'Deep clean by ' || person, false) id
 from unnest(array['ayse', 'dmo', 'mov', 'lim', 'blk', 'gon']) person;
--- Not due until the five have lost the right.
-update public.announcements set publish_at = now() + interval '1 hour' where id in (select id from late);
 insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('na')
 on conflict do nothing;
 
