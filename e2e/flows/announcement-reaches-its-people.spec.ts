@@ -10,7 +10,9 @@ import { signIn, tokenOf, type Person } from "../fixtures/world";
 // manager, writes a Kadikoy announcement in the drawer, asks people to
 // acknowledge it and publishes it. Ali works at Kadikoy and Besiktas: he sees
 // it and acknowledges it. A second Kadikoy manager sees it too (K5). Ayse
-// cannot write one for Besiktas, which she does not manage (K1).
+// cannot write one for Besiktas, which she does not manage (K1). Before Ali
+// answers, Ayse reminds those who haven't acknowledged twice; then Remind rests
+// for the day and says so (BILDIRIM-U6, KARARLAR S-126).
 
 const world: { readonly run: string; readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
@@ -81,6 +83,23 @@ test("a Kadikoy announcement reaches Kadikoy, its managers and nobody it should 
   await expect(
     ayse.getByRole("table", { name: "Active announcements" }).getByRole("row").filter({ hasText: title }),
   ).toContainText("Published");
+
+  // Remind, twice: then the button rests and says why (two a day, kept by the database).
+  await activeRow(ayse, title).click();
+  const posted = ayse.getByRole("dialog", { name: title });
+  await posted.getByRole("tab", { name: /^Audience/ }).click();
+  const remind = posted.getByRole("button", { name: /^Remind \d+ (person|people)$/ });
+  await remind.click();
+  await expect(posted.getByText(/^Reminder sent to \d+ (person|people) who/)).toBeVisible();
+  await remind.click();
+  const rested = posted.getByRole("button", { name: "Reminded twice today", exact: true });
+  await expect(rested).toBeDisabled();
+  await expect(posted.getByRole("button", { name: /^Remind \d/ })).toHaveCount(0);
+  expect(
+    sql(`
+      select count(*) from public.person_notifications n join public.announcements a on a.id = n.subject_id
+      where a.title = '${title}' and n.type_key = 'announcements.reminder' and n.user_id = tests.user('${run}:ali');`),
+  ).toBe("2");
 
   // Ali, at Kadikoy and Besiktas, reads it from his list, where it asks him
   // to acknowledge, and acknowledges it.
