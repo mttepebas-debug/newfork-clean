@@ -16,7 +16,8 @@ const preferences = {
     sms: { available: false, workspace_enabled: false },
   },
   topics: [
-    { key: "my_schedule", name: "My schedule", email: { choice: null, default: true }, push: { choice: false, default: true } },
+    { key: "my_schedule", name: "My schedule", level: "important", description: "A new week is out, or one of your shifts is added, moved or removed.",
+      email: { choice: null, default: true }, push: { choice: false, default: true } },
   ],
 };
 
@@ -33,6 +34,15 @@ describe("notification settings shapes", () => {
   it("reads what the database answers", () => {
     expect(notificationPreferencesSchema.parse(preferences)).toEqual(preferences);
     expect(notificationWorkspaceSettingsSchema.parse(settings)).toEqual(settings);
+  });
+
+  it("says each topic's level and what is in it (BILDIRIM-12)", () => {
+    const topic = preferences.topics[0]!;
+    for (const level of ["required", "mandatory", null]) {
+      expect(notificationPreferencesSchema.safeParse({ ...preferences, topics: [{ ...topic, level }] }).success).toBe(false);
+    }
+    expect(notificationPreferencesSchema.safeParse({ ...preferences, topics: [{ ...topic, level: "optional" }] }).success).toBe(true);
+    expect(notificationPreferencesSchema.safeParse({ ...preferences, topics: [{ ...topic, description: "" }] }).success).toBe(false);
   });
 
   it("takes only email and push choices, a boolean or back to the default", () => {

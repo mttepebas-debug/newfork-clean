@@ -21,14 +21,19 @@ const topicChannelSchema = z.object({
 export const notificationTopicPreferenceSchema = z.object({
   key: topicKey,
   name: z.string().min(1),
+  /** BILDIRIM-12: optional when every type the person could receive in it is optional. */
+  level: z.enum(["important", "optional"]),
+  /** One line that says what is in it. */
+  description: z.string().min(1).max(160),
   email: topicChannelSchema,
   push: topicChannelSchema,
 });
 export type NotificationTopicPreference = z.infer<typeof notificationTopicPreferenceSchema>;
 
 /**
- * One person's choices in one workspace. Topics the owner turned off and the
- * required ones are not here: they are no choice.
+ * One person's choices in one workspace. Topics the owner turned off, the
+ * required ones and those the person could receive nothing in (the core says;
+ * BILDIRIM-12) are not here: they are no choice.
  */
 export const notificationPreferencesSchema = z.object({
   channels: z.object({

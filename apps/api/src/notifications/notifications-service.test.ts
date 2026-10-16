@@ -23,7 +23,9 @@ describe("notifications service", () => {
     const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "unread", before: { at: "2026-10-17T00:00:00Z", id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" }, limit: 2 } });
     expect(rpc.rpc).toHaveBeenCalledWith("get_notification_feed_service", {
       actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId,
-      target_filter: "unread", target_before: "2026-10-17T00:00:00Z", target_limit: 2,
+      target_filter: "unread", target_before: "2026-10-17T00:00:00Z",
+      // BILDIRIM-12: the core pages by time and id; two notices of one time never lose one at a page break.
+      target_before_id: "5beb3f8b-0b54-48ed-ac48-abc004de70de", target_limit: 2,
     });
     expect(decodeNotificationCursor(page.next_cursor!)).toEqual({ at: "2026-10-16T15:00:00+00:00", id: "5beb3f8b-0b54-48ed-ac48-abc004de70de" });
     expect(page.items).toHaveLength(2);
@@ -33,7 +35,7 @@ describe("notifications service", () => {
     const rpc = client({ items: [row("13253395-6150-43b9-bb13-364014baae15", "2026-10-16T16:38:10+00:00")], has_more: false, ...counts });
     const page = await notificationsService(rpc).feed({ ...actor, query: { filter: "all", before: null, limit: 30 } });
     expect(page.next_cursor).toBeNull();
-    expect(rpc.rpc.mock.calls[0]?.[1]).toMatchObject({ target_before: null });
+    expect(rpc.rpc.mock.calls[0]?.[1]).toMatchObject({ target_before: null, target_before_id: null });
   });
 
   it("counts from the smallest page", async () => {

@@ -42,7 +42,8 @@ const preferences: NotificationPreferences = {
     push: { workspace_enabled: true, devices: 0 },
     sms: { available: false, workspace_enabled: false },
   },
-  topics: [{ key: "time_off", name: "Time off", email: { choice: null, default: true }, push: { choice: null, default: true } }],
+  topics: [{ key: "time_off", name: "Time off", level: "important", description: "Decisions on your time off.",
+    email: { choice: null, default: true }, push: { choice: null, default: true } }],
 };
 
 const settings: NotificationWorkspaceSettings = {

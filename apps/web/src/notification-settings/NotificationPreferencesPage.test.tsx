@@ -26,8 +26,10 @@ function preferences(overrides: Partial<NotificationPreferences["channels"]> = {
       ...overrides,
     },
     topics: [
-      { key: "my_schedule", name: "My schedule", email: { choice: null, default: true }, push: { choice: null, default: true } },
-      { key: "open_shifts", name: "Open shifts", email: { choice: true, default: false }, push: { choice: null, default: true } },
+      { key: "my_schedule", name: "My schedule", level: "important", description: "A new week is out, or one of your shifts is added, moved or removed.",
+        email: { choice: null, default: true }, push: { choice: null, default: true } },
+      { key: "open_shifts", name: "Open shifts", level: "optional", description: "A teammate releases a shift you can pick up.",
+        email: { choice: true, default: false }, push: { choice: null, default: true } },
     ],
   };
 }

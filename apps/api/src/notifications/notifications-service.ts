@@ -62,21 +62,20 @@ export function notificationsService(client: RpcClient): NotificationsService {
     if (error) throw rpcFailure(error);
     return data;
   }
-  const feedArgs = (actor: Actor, filter: string, before: string | null, limit: number) => ({
+  // The core pages by time and id (BILDIRIM-12): the cursor's two halves, both or neither.
+  const feedArgs = (actor: Actor, filter: string, before: NotificationCursor | null, limit: number) => ({
     actor_user_id: actor.actorUserId,
     target_workspace_id: actor.workspaceId,
     target_filter: filter,
-    target_before: before,
+    target_before: before?.at ?? null,
+    target_before_id: before?.id ?? null,
     target_limit: limit,
   });
   return {
     async feed({ query, ...actor }) {
       const page = notificationFeedSchema
         .omit({ next_cursor: true })
-        .parse(await rpc("get_notification_feed_service", feedArgs(actor, query.filter, query.before?.at ?? null, query.limit)));
-      // ponytail: the core pages by time alone, so two notices written to one person in one transaction (one
-      // time) can lose the second at a page break. The cursor already carries the id; pass it as before_id
-      // once the core takes it (BILDIRIM-12).
+        .parse(await rpc("get_notification_feed_service", feedArgs(actor, query.filter, query.before, query.limit)));
       const last = page.items.at(-1);
       return { ...page, next_cursor: page.has_more && last ? encodeNotificationCursor({ at: last.created_at, id: last.id }) : null };
     },
