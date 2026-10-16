@@ -148,7 +148,7 @@ describe("notification outbox worker", () => {
   // BILDIRIM-01 (K1, K2): expired shift exchanges and document deadlines run on the maintenance
   // cron; the outbox worker only delivers, so tearing it down leaves that work running.
   it("leaves shift exchange and document maintenance to the maintenance cron", async () => {
-    const rpc = vi.fn(async () => ({ data: [], error: null }));
+    const rpc = vi.fn(async (_name: string, _args: Record<string, unknown>) => ({ data: [], error: null }));
     createClient.mockReturnValue({ rpc });
     const worker = createNotificationOutboxWorker({ url: "http://db.test", serviceRoleKey: "service" });
 
