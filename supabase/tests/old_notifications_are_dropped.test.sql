@@ -68,7 +68,8 @@ select is(array(select p.proname::text from pg_proc p
                   and p.proname ~ '(notif|notice)' order by 1),
   array['get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
         'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_resolve', 'notification_route',
-        'notify', 'notify_account_security', 'notify_workspace_closing', 'purge_expired_notifications',
+        'notify', 'notify_account_security', 'notify_deciders', 'notify_holders', 'notify_workspace_closing',
+        'purge_expired_notifications',
         'save_notification_preferences_service', 'save_notification_workspace_settings_service'],
   '(a) no function named for notifications or notices is left but the new system''s (its producers'' helpers too)');
 select ok(to_regtype('public.notification_category') is null, '(a) the notification_category type is gone');
