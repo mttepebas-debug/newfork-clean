@@ -232,8 +232,14 @@ select ok((select title like 'Your time off % was revoked' and body = 'We need y
            where type_key = 'time_off.decided' and subject_id = tests.id('nt:emre:2') and event_key like '%:revoked'),
   '(e) saying it was revoked and why');
 
+-- Each world's owner invited its people, and hears each one joined: in that world only (BILDIRIM-U4a).
+select is((select count(*)::integer from public.person_notifications n
+           where n.type_key = 'people.joined' and n.workspace_id in (tests.id('nt'), tests.id('nx'))
+             and not ((n.workspace_id = tests.id('nt') and n.user_id = tests.user('nt:owner'))
+                   or (n.workspace_id = tests.id('nx') and n.user_id = tests.user('nx:owner')))), 0,
+  '"joined" goes only to each world''s owner, in that world');
 select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
-           where w.label like 'nx:%' and n.workspace_id = tests.id('nt')), 0,
+           where w.label like 'nx:%' and n.type_key <> 'people.joined'), 0,
   'another workspace hears nothing of this one');
 
 -- Who hears a notice may choose about it: Blkd asks for time off, then misses a required document; the

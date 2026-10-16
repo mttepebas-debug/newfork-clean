@@ -247,7 +247,8 @@ select is(
 -- Hers holds only her own workspace's: Xena, whom she invited, joined (BILDIRIM-U4a).
 select is(
   (select jsonb_agg(i ->> 'title') from jsonb_array_elements(public.get_notification_feed_service(pg_temp.u('other:owner'), tests.id('other')) -> 'items') i),
-  '["Xena Person accepted your invitation"]'::jsonb, '(d) another workspace''s owner sees none of them in hers');
+  '["Xena Person accepted your invitation"]'::jsonb,
+  '(d) another workspace''s owner sees none of this one''s, only her own: Xena, whom she invited, joined');
 select throws_ok($$select public.get_notification_feed_service(pg_temp.u('other:xena'), tests.id('nc'))$$,
   '42501', null, '(d) another workspace''s member is refused');
 create function pg_temp.refusal(sql text) returns text language plpgsql as $$

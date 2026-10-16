@@ -125,8 +125,14 @@ select ok((pg_temp.latest('emre', 'schedule.shift_added')).title like 'New shift
 select is(pg_temp.schedule_notices('ali') + pg_temp.schedule_notices('deniz') + pg_temp.schedule_notices('emre'), 5,
   '(b) one notice per person for this publish');
 select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
-           where w.label in ('nu:owner', 'nu:ayse', 'nx:owner', 'nx:xena') and n.type_key like 'schedule.%'), 0,
+           where w.label in ('nu:owner', 'nu:ayse', 'nx:owner', 'nx:xena') and n.type_key <> 'people.joined'), 0,
   '(b) the managers and another workspace: nothing');
+-- Each world's owner invited its people, and hears each one joined: in that world only (BILDIRIM-U4a).
+select is((select count(*)::integer from public.person_notifications n
+           where n.type_key = 'people.joined' and n.workspace_id in (tests.id('nu'), tests.id('nx'))
+             and not ((n.workspace_id = tests.id('nu') and n.user_id = tests.user('nu:owner'))
+                   or (n.workspace_id = tests.id('nx') and n.user_id = tests.user('nx:owner')))), 0,
+  '(b) "joined" goes only to each world''s owner, in that world');
 
 -- (c) Nothing changed -------------------------------------------------------------------------------
 

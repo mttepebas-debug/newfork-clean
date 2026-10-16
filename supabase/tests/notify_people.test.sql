@@ -183,6 +183,96 @@ select is(pg_temp.asks('owner', 'Boss'), 'published', '(d) the owner''s own pref
 select is((select count(*)::integer from public.person_notifications n join public.employee_preferred_name_requests r on r.id = n.subject_id
            where n.type_key = 'people.preferred_name_requested' and r.employee_id = tests.id('np:owner')), 0, '(d) and tells nobody');
 
+-- (e) The people work outlives its notices ----------------------------------------------------------------
+-- With the core's write (notify_rows), its card close (notification_resolve) or its holder list (notify_holders)
+-- broken in turn, every one of the eight paths still completes; the failure is logged, never the work undone.
+
+create function pg_temp.eight(tag text) returns void language plpgsql as $$
+begin
+  perform pg_temp.invite('ayse', 'acc' || tag);
+  perform public.accept_employee_invitation_by_id_service(pg_temp.u('acc' || tag), tests.id('np:acc' || tag || ':invitation'));
+  perform pg_temp.invite('ayse', 'dec' || tag);
+  perform public.decline_employee_invitation_service(pg_temp.u('dec' || tag), tests.id('np:dec' || tag || ':invitation'));
+  perform pg_temp.invite('ayse', 'del' || tag);
+  perform public.request_account_deletion_v2_service(pg_temp.u('del' || tag), encode(sha256(convert_to(tag, 'UTF8')), 'hex'));
+  perform tests.person('np', 'ob' || tag, 'employee', array['K'], array['cook'], 'onboarding');
+  insert into who values ('np:ob' || tag, tests.user('np:ob' || tag));
+end $$;
+create function pg_temp.case_of(person text) returns public.employee_onboarding_cases language sql stable as $$
+  select c from public.employee_onboarding_cases c where c.employee_id = tests.id('np:' || person)
+$$;
+create function pg_temp.sends(person text, legal_first text) returns integer language plpgsql as $$
+begin
+  perform public.save_employee_onboarding_profile_service(pg_temp.u(person), jsonb_build_object(
+      'legal_first_name', legal_first, 'legal_last_name', 'Person', 'phone', tests.phone('np:' || person),
+      'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
+    (pg_temp.case_of(person)).revision, tests.id('np'));
+  return public.submit_employee_onboarding_service(pg_temp.u(person), (pg_temp.case_of(person)).revision, tests.id('np'));
+end $$;
+create function pg_temp.profile_of(person text) returns uuid language sql stable as $$
+  select r.id from public.employee_onboarding_requirements r where r.case_id = (pg_temp.case_of(person)).id and r.kind = 'profile'
+$$;
+-- The eight paths: three invitation outcomes (eight, its own statement: the people it makes are read by the
+-- next), an onboarding sent, sent back, sent again and let in, a preferred name asked and answered. What each
+-- left behind, or how it died.
+create function pg_temp.paths(broken text, tag text) returns void language plpgsql as $$
+declare done text[] := '{}';
+begin
+  done := done || (select string_agg(i.status::text, ',' order by i.email) from public.employee_invitations i
+                   where i.id in (select x.id from tests.ids x where x.label in ('np:acc' || tag || ':invitation',
+                                    'np:dec' || tag || ':invitation', 'np:del' || tag || ':invitation')));
+  perform pg_temp.sends('ob' || tag, 'Changed');
+  perform public.review_employee_onboarding_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:ob' || tag), 'reject_requirement',
+    pg_temp.profile_of('ob' || tag), 'Use the name on your ID', (pg_temp.case_of('ob' || tag)).revision, true);
+  done := done || (pg_temp.case_of('ob' || tag)).status::text;
+  perform pg_temp.sends('ob' || tag, 'Again');
+  done := done || (pg_temp.case_of('ob' || tag)).status::text;
+  perform public.review_employee_onboarding_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:ob' || tag), 'accept_requirement',
+    pg_temp.profile_of('ob' || tag), '', (pg_temp.case_of('ob' || tag)).revision, true);
+  done := done || (pg_temp.case_of('ob' || tag)).status::text;
+  perform public.request_employee_preferred_name_service(pg_temp.u('ob' || tag), tests.id('np'), tests.id('np:ob' || tag), 'Obi');
+  perform public.decide_employee_preferred_name_service(pg_temp.u('ayse'), tests.id('np'),
+    (select r.id from public.employee_preferred_name_requests r where r.employee_id = tests.id('np:ob' || tag) and r.status = 'pending'), true);
+  done := done || (select e.preferred_name from public.employee_profiles e where e.id = tests.id('np:ob' || tag));
+  insert into outlived values (broken, done);
+exception when others then
+  insert into outlived values (broken, array['died: ' || sqlerrm]);
+end $$;
+create temp table core_saved as select p.proname, pg_get_functiondef(p.oid) def from pg_proc p
+where p.pronamespace = 'app_private'::regnamespace and p.proname in ('notify_rows', 'notification_resolve', 'notify_holders');
+create function pg_temp.restore_core() returns void language plpgsql as $$
+declare d text;
+begin
+  for d in select def from core_saved loop execute d; end loop;
+end $$;
+create temp table outlived (broken text, done text[]);
+
+create or replace function app_private.notify_rows(target_workspace uuid, target_actor uuid, target_rows jsonb)
+returns integer language plpgsql set search_path = '' as $$ begin raise exception 'notices are down'; end $$;
+select lives_ok($$select pg_temp.eight('r')$$, '(e) the invitations answered while notify_rows is down');
+select pg_temp.paths('notify_rows', 'r');
+select pg_temp.restore_core();
+create or replace function app_private.notification_resolve(target_workspace uuid, target_subject_type text, target_subject_id uuid,
+  target_resolution text, target_resolved_by uuid)
+returns integer language plpgsql set search_path = '' as $$ begin raise exception 'closing is down'; end $$;
+select lives_ok($$select pg_temp.eight('c')$$, '(e) the invitations answered while notification_resolve is down');
+select pg_temp.paths('notification_resolve', 'c');
+select pg_temp.restore_core();
+-- With the holder list down, a final approval is asked for this round, so its reviewers are needed.
+update public.employee_onboarding_settings set final_approval_required = true where workspace_id = tests.id('np');
+create or replace function app_private.notify_holders(target_workspace uuid, target_action text, target_places uuid[] default null,
+  target_person uuid default null)
+returns uuid[] language plpgsql set search_path = '' as $$ begin raise exception 'holders are down'; end $$;
+select lives_ok($$select pg_temp.eight('h')$$, '(e) the invitations answered while notify_holders is down');
+select pg_temp.paths('notify_holders', 'h');
+select pg_temp.restore_core();
+update public.employee_onboarding_settings set final_approval_required = false where workspace_id = tests.id('np');
+select is((select array_agg(broken || ': ' || array_to_string(done, ' | ') order by broken) from outlived),
+  array['notification_resolve: accepted,declined,revoked | changes_requested | submitted | approved | Obi',
+        'notify_holders: accepted,declined,revoked | changes_requested | submitted | submitted | Obi',
+        'notify_rows: accepted,declined,revoked | changes_requested | submitted | approved | Obi'],
+  '(e) with notices, card closes or holder lists down, all eight paths complete (a final approval still waits in the third)');
+
 -- Every notice so far is in its recipient's choices, read before anyone loses a right (BILDIRIM-12).
 create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('np');
 select is(tests.unlisted_notices(tests.id('np')), '{}'::text[], 'so far every notice is in its recipient''s choices (BILDIRIM-12)');
@@ -245,6 +335,48 @@ select is(
   '(b) one whose inviter may no longer invite tells who may, never the inviter');
 select ok((select bool_and(n.title = 'Newdmo Person accepted an invitation') from public.person_notifications n
            where n.type_key = 'people.joined' and n.subject_id = tests.id('np:newdmo')), '(b) and says it is not theirs');
+
+-- A changed legal name approved while a required document still waits for review: nothing is left for the
+-- owner and Zeynep in it, so their "ready for review" cards close (the documents are the Documents notice's).
+create temp table uniform_document (id uuid, preview jsonb);
+insert into uniform_document (id)
+select public.save_document_type_lifecycle_service(pg_temp.u('owner'), tests.id('np'), null, null, jsonb_build_object(
+  'title', 'Uniform form', 'description', 'Form', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'required', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', false, 'extra_fields', '[]'::jsonb)));
+update uniform_document set preview = public.preview_document_publication_service(pg_temp.u('owner'), tests.id('np'), id);
+select public.set_document_publication_service(pg_temp.u('owner'), tests.id('np'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from uniform_document;
+select tests.settle();
+select tests.person('np', 'lex', 'employee', array['K'], array['cook'], 'onboarding');
+insert into who values ('np:lex', tests.user('np:lex'));
+create function pg_temp.lex_sends(doc uuid) returns integer language plpgsql as $$
+declare r public.employee_onboarding_requirements;
+begin
+  select q.* into r from public.employee_onboarding_requirements q
+  where q.case_id = (pg_temp.case_of('lex')).id and q.source_id = doc and q.lifecycle_retired_at is null;
+  perform public.save_employee_document_draft_file_service(pg_temp.u('lex'), r.id, r.lifecycle_revision,
+    tests.id('np') || '/' || tests.id('np:lex') || '/' || r.id || '/' || gen_random_uuid() || '.pdf', 'card.pdf', 'application/pdf', 100);
+  select q.* into r from public.employee_onboarding_requirements q where q.id = r.id;
+  return public.submit_employee_document_lifecycle_service(pg_temp.u('lex'), r.id, r.lifecycle_revision,
+    (select x.id from public.employee_document_submissions x where x.requirement_id = r.id and x.state = 'draft'),
+    current_date + 365, '{}');
+end $$;
+select pg_temp.lex_sends((select id from required_document));
+select pg_temp.lex_sends((select id from uniform_document));
+select pg_temp.sends('lex', 'Alexander');
+select is(pg_temp.told('people.onboarding_review_needed', (pg_temp.case_of('lex')).id), array['np:owner', 'np:zeynep'],
+  '(c) Lex''s new legal name waits for the owner and Zeynep');
+select public.review_employee_onboarding_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:lex'), 'accept_requirement',
+  pg_temp.profile_of('lex'), '', (pg_temp.case_of('lex')).revision, true);
+select is((pg_temp.case_of('lex')).status::text, 'submitted', '(c) the name approved, Lex still waits for his document''s review');
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.onboarding_review_needed'
+           and n.subject_id = (pg_temp.case_of('lex')).id and n.resolved_at is null), 0,
+  '(c) and the owner''s and Zeynep''s cards close: nothing in it is theirs any more');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('nz')), 0,
   'another workspace hears nothing of this one');
