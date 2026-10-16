@@ -284,7 +284,6 @@ function TopicTable({
                             if (box) box.indeterminate = mixed;
                           }}
                           aria-label={`${row.name} by ${channelName[channel]}`}
-                          aria-checked={mixed ? "mixed" : undefined}
                           title={open[channel] ? undefined : "Turned off for this workspace"}
                           checked={open[channel] && state.checked}
                           disabled={disabled || !open[channel]}

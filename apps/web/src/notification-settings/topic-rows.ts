@@ -18,7 +18,6 @@ const myRequests = {
   key: "my_requests",
   name: "My requests",
   parts: ["shift_changes", "time_off"],
-  description: "Cover and swap asks, and decisions on your time off and shift changes.",
 } as const;
 
 /** The rows for the topics the person can receive, in the database's order. */
@@ -33,7 +32,8 @@ export function topicRows(topics: readonly NotificationTopicPreference[]): Topic
         key: myRequests.key,
         name: myRequests.name,
         level: parts.some((part) => part.level === "important") ? "important" : "optional",
-        description: myRequests.description,
+        // The database's own lines, so the row cannot drift from them.
+        description: parts.map((part) => part.description).join(" "),
         topics: parts,
       });
     }

@@ -104,7 +104,11 @@ describe("Account > Notifications", () => {
     expect(within(table).queryByRole("rowheader", { name: /^Shift changes/ })).toBeNull();
     expect(within(table).queryByRole("rowheader", { name: /^Time off/ })).toBeNull();
     const requests = within(table).getByRole("rowheader", { name: /^My requests/ });
-    expect(within(requests).getByText("Cover and swap asks, and decisions on your time off and shift changes.")).toBeTruthy();
+    expect(
+      within(requests).getByText(
+        "Someone asks you to cover or swap, and the answers to your own asks. Decisions on your time off, and approved time off that was shortened.",
+      ),
+    ).toBeTruthy();
     expect(within(requests).queryByText("Optional")).toBeNull();
 
     // Shift changes by email is off and time off is on: the box is mixed.

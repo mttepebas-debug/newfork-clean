@@ -20,7 +20,7 @@ describe("Account > Notifications rows", () => {
     const requests = rows[2]!;
     expect(requests.name).toBe("My requests");
     expect(requests.topics.map((part) => part.key)).toEqual(["shift_changes", "time_off"]);
-    expect(requests.description).toBe("Cover and swap asks, and decisions on your time off and shift changes.");
+    expect(requests.description).toBe("About shift_changes About time_off");
   });
 
   it("keeps every other topic its own row, with its level and description", () => {
