@@ -7,8 +7,10 @@
 --   * decided: the person once; every reviewer's card closes ("Approved by ...");
 --   * the daily check: due at 7, 1 and 0 days, expiring at 30, 7 and 1 days (the person and who may review
 --     them now; not while the new one waits for review); each once;
---   * access: restricted when the daily check suspends a person (document_suspend_overdue), back when an
---     event lifts their suspension; from the documents' state, never from earlier notices;
+--   * access: restricted when a person's first document is suspended, back when their last suspension
+--     lifts, on whatever path (the daily check, a late send, an exemption, a type taken down, a definition
+--     applied): a trigger on the suspension itself, so the two always come as a pair; never read from
+--     earlier notices;
 --   * "documents to complete" belongs to the person and closes when nothing is asked of them any more; a
 --     review card closes on the decision, and on an exemption, an unassignment or the type taken down.
 -- Every document event already goes through app_private.document_audit; the producer sits there, in the
@@ -98,16 +100,6 @@ begin
       and app_private.document_obligation_state(x, now()) in ('grace', 'missing', 'rejected', 'expired')
   ) then
     perform app_private.notification_resolve(r.workspace_id, 'employee_documents', r.employee_id, 'completed', actor);
-  end if;
-
-  -- The event lifted the person's suspension: their access is back.
-  if r.document_suspended_at is not null and now_row.document_suspended_at is null
-     and not app_private.document_actor_blocked(person.user_id, r.workspace_id) then
-    sent := sent + app_private.notify('documents.access_changed', r.workspace_id, array[person.user_id],
-      'doc_access:' || r.employee_id::text || ':restored:' || r.document_suspended_at::text,
-      'Your access is back', 'Your documents are in order.',
-      '/account/documents?workspace=' || r.workspace_id::text, actor, 'employee_documents', r.employee_id,
-      jsonb_build_object('state', 'restored'));
   end if;
   return sent;
 end;
@@ -223,44 +215,60 @@ $$;
 
 revoke all on function app_private.document_check_case(uuid, timestamptz) from public;
 
--- The restriction itself tells the person, once per suspension: the documents' state, never an earlier
--- notice (one gone after 90 days is not a reason to tell again).
-create or replace function app_private.document_suspend_overdue()
-returns integer
+-- Access follows the suspension itself (document_suspended_at), on every path that sets or clears it:
+-- restricted when a person's first document is suspended, back when their last one is cleared. A trigger,
+-- because those paths are many (the daily check, a late send, a review, an exemption, a type taken down,
+-- a definition applied) and some hand on only the row after their change.
+create function app_private.document_access_told()
+returns trigger
 language plpgsql
 security definer
-set search_path to ''
+set search_path = ''
 as $$
-declare suspended integer; told jsonb; person jsonb;
+declare
+  person uuid;
+  place text;
 begin
-  with s as (
-    update public.employee_onboarding_requirements q set document_suspended_at = now()
-    from public.employee_onboarding_cases oc
-    join public.employee_profiles p on p.id = oc.employee_id and p.workspace_id = oc.workspace_id and p.archived_at is null
-    join public.workspace_memberships m on m.id = oc.membership_id and m.user_id = p.user_id
-      and m.status in ('active', 'pending_activation')
-    where q.case_id = oc.id
-      and q.document_suspended_at is null and q.lifecycle_retired_at is null
-      -- What document_obligation_blocked needs before it can say yes, read first so the check runs on few rows.
-      and q.deadline_at <= now()
-      and coalesce((q.lifecycle_settings ->> 'suspend_on_overdue')::boolean, false)
-      and app_private.workspace_allows_interactive_access(oc.workspace_id)
-      and app_private.document_obligation_blocked(q, now())
-    returning q.workspace_id, q.employee_id, p.user_id
-  )
-  select count(*)::integer, coalesce(jsonb_agg(distinct jsonb_build_object('w', s.workspace_id, 'e', s.employee_id, 'u', s.user_id)), '[]')
-  into suspended, told from s;
-  for person in select value from jsonb_array_elements(told) loop
-    perform app_private.notify('documents.access_changed', (person ->> 'w')::uuid, array[(person ->> 'u')::uuid],
-      'doc_access:' || (person ->> 'e') || ':restricted:' || now()::text,
-      'Upload your documents to use ' || (select x.name from public.workspaces x where x.id = (person ->> 'w')::uuid) || ' again',
-      'A required document is past its due date.',
-      '/account/documents?workspace=' || (person ->> 'w'), null, 'employee_documents', (person ->> 'e')::uuid,
+  select e.user_id into person from public.employee_profiles e where e.id = new.employee_id and e.workspace_id = new.workspace_id;
+  if person is null then
+    return null;
+  end if;
+  if old.document_suspended_at is null and new.document_suspended_at is not null then
+    -- Already restricted by an earlier suspension: nothing new to tell.
+    if exists (select 1 from public.employee_onboarding_requirements x
+               where x.workspace_id = new.workspace_id and x.employee_id = new.employee_id and x.id <> new.id
+                 and x.document_suspended_at < new.document_suspended_at) then
+      return null;
+    end if;
+    select w.name into place from public.workspaces w where w.id = new.workspace_id;
+    perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
+      'doc_access:' || new.employee_id::text || ':restricted:' || new.document_suspended_at::text,
+      'Upload your documents to use ' || place || ' again', 'A required document is past its due date.',
+      '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
       jsonb_build_object('state', 'restricted'));
-  end loop;
-  return suspended;
+  elsif old.document_suspended_at is not null and new.document_suspended_at is null then
+    -- Another document is still suspended: still restricted.
+    if exists (select 1 from public.employee_onboarding_requirements x
+               where x.workspace_id = new.workspace_id and x.employee_id = new.employee_id
+                 and x.document_suspended_at is not null) then
+      return null;
+    end if;
+    perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
+      'doc_access:' || new.employee_id::text || ':restored:' || txid_current()::text,
+      'Your access is back', 'Your documents are in order.',
+      '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
+      jsonb_build_object('state', 'restored'));
+  end if;
+  return null;
 end;
 $$;
+
+revoke all on function app_private.document_access_told() from public;
+
+create trigger document_access_told
+after update of document_suspended_at on public.employee_onboarding_requirements
+for each row when (old.document_suspended_at is distinct from new.document_suspended_at)
+execute function app_private.document_access_told();
 
 create or replace function public.documents_maintain_service(target_batch_size integer default 100, at_time timestamptz default now())
 returns jsonb
