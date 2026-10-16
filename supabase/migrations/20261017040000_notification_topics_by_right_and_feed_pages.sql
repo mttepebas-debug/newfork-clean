@@ -1,8 +1,9 @@
 -- BILDIRIM-12 (KARARLAR S-123; settings variant A):
 --   * a person's notification choices list only the topics they could receive at least one type of, as the
---     core says, never by a role's name. Each type now names the actions it is heard by (heard_by); a topic
---     is listed when the person holds one of its types' actions somewhere (scope_set is not empty), the
---     owner has not turned that type off, and the type is not required. Each listed topic carries its
+--     core says, never by a role's name. Each type now names who hears it (heard_by): 'self' for a notice
+--     about the person themselves, which every member hears, or the core actions of who decides; a topic
+--     is listed when the person hears one of its types (self, or an action they hold somewhere), the owner
+--     has not turned that type off, and the type is not required. Each listed topic carries its
 --     level (optional when every type the person could receive in it is optional, else important) and a
 --     line that says what is in it;
 --   * the list pages by (created_at, id), newest first: the next page starts after the last row's time and
@@ -10,61 +11,65 @@
 --     page break between them lost one.
 
 -- Who hears each type -------------------------------------------------------------------------------------
+-- 'self': a notice about the person themselves (their own shifts, requests and their outcome, profile and
+-- onboarding, documents, announcements to them). Every member hears those, whatever the core holds back
+-- (a missing document, onboarding not finished); the producers send them by who the notice is about. Any
+-- other entry is a core action: approvals, needs attention and team updates go to who holds it.
 
 alter table public.notification_types add column heard_by text[] not null default '{}';
 
 update public.notification_types t set heard_by = h.actions
 from (values
-  ('schedule.published', array['employee_hub.read']),
-  ('schedule.shift_changed', array['employee_hub.read']),
-  ('schedule.shift_added', array['employee_hub.read']),
-  ('schedule.shift_removed', array['employee_hub.read']),
-  ('schedule.unpublished', array['employee_hub.read']),
+  ('schedule.published', array['self']),
+  ('schedule.shift_changed', array['self']),
+  ('schedule.shift_added', array['self']),
+  ('schedule.shift_removed', array['self']),
+  ('schedule.unpublished', array['self']),
   ('schedule.shifts_unassigned', array['schedule.publish']),
-  ('schedule.closed_day_removed_shift', array['employee_hub.read']),
+  ('schedule.closed_day_removed_shift', array['self']),
   ('schedule.export_email_stopped', array['schedule.export']),
   ('schedule.week_not_published', array['schedule.publish']),
-  ('schedule.shift_reminder', array['employee_hub.read']),
+  ('schedule.shift_reminder', array['self']),
   ('shift_changes.open_shift_available', array['exchange.apply_own']),
   ('shift_changes.open_shift_taken', array['exchange.apply_own']),
   ('shift_changes.open_shift_kept', array['exchange.apply_own']),
-  ('shift_changes.cover_asked', array['exchange.apply_own']),
-  ('shift_changes.cover_taken', array['exchange.apply_own']),
-  ('shift_changes.cover_unfilled', array['exchange.offer_own']),
-  ('shift_changes.swap_offered', array['exchange.apply_own']),
-  ('shift_changes.swap_answered', array['exchange.offer_own']),
+  ('shift_changes.cover_asked', array['self']),
+  ('shift_changes.cover_taken', array['self']),
+  ('shift_changes.cover_unfilled', array['self']),
+  ('shift_changes.swap_offered', array['self']),
+  ('shift_changes.swap_answered', array['self']),
   ('shift_changes.approval_needed', array['exchange.approve']),
   ('shift_changes.approval_reminder', array['exchange.approve']),
-  ('shift_changes.decided', array['exchange.offer_own', 'exchange.apply_own']),
-  ('shift_changes.closed', array['exchange.offer_own', 'exchange.apply_own']),
+  ('shift_changes.decided', array['self']),
+  ('shift_changes.closed', array['self']),
   ('shift_changes.post_to_open_shifts', array['schedule.edit']),
   ('time_off.requested', array['time_off.decide']),
   ('time_off.decision_reminder', array['time_off.decide']),
-  ('time_off.decided', array['time_off.request_own']),
-  ('time_off.shortened', array['time_off.request_own', 'time_off.decide']),
+  ('time_off.decided', array['self']),
+  ('time_off.shortened', array['self', 'time_off.decide']),
   ('availability.updated', array['availability.team_read']),
-  ('availability.mode_changed', array['availability.own']),
-  ('lineup.shared', array['employee_hub.read']),
-  ('lineup.borrowed', array['employee_hub.read']),
+  ('availability.mode_changed', array['self']),
+  ('lineup.shared', array['self']),
+  ('lineup.borrowed', array['self']),
   ('people.joined', array['employee.invite']),
   ('people.invitation_declined', array['employee.invite']),
   ('people.invitation_cancelled', array['employee.invite']),
   ('people.onboarding_review_needed', array['onboarding.review']),
-  ('people.onboarding_change_requested', array['onboarding.self']),
-  ('people.onboarding_completed', array['onboarding.self']),
+  ('people.onboarding_change_requested', array['self']),
+  ('people.onboarding_completed', array['self']),
   ('people.preferred_name_requested', array['employee.decide_preferred_name']),
-  ('people.preferred_name_decided', array['employee.request_preferred_name']),
+  ('people.preferred_name_decided', array['self']),
   ('people.no_location', array['employee.terminate']),
-  ('documents.requested', array['documents.self']),
+  ('documents.requested', array['self']),
   ('documents.review_needed', array['documents.review']),
-  ('documents.decided', array['documents.self']),
-  ('documents.due_soon', array['documents.self']),
-  ('documents.expiring', array['documents.self', 'documents.review']),
-  ('documents.access_changed', array['documents.self']),
-  ('announcements.published', array['announcement.read']),
-  ('announcements.reminder', array['announcement.read']),
-  ('announcements.cancelled', array['announcement.read']),
-  ('announcements.updated', array['announcement.read']),
+  ('documents.decided', array['self']),
+  ('documents.due_soon', array['self']),
+  ('documents.expiring', array['self', 'documents.review']),
+  ('documents.access_changed', array['self']),
+  ('announcements.published', array['self']),
+  ('announcements.reminder', array['self']),
+  ('announcements.cancelled', array['self']),
+  ('announcements.updated', array['self']),
   ('announcements.publish_failed', array['announcement.write'])
 ) h(key, actions)
 where t.key = h.key;
@@ -110,10 +115,14 @@ declare
   held text[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
-  -- The actions the person holds somewhere in the workspace, as the core says.
-  select coalesce(array_agg(x.a), '{}') into held
+  -- What the person hears: 'self', always, being a member; and the actions they hold somewhere in the
+  -- workspace, as the core says: at a live location, or across it (the core's '{}', an owner's or an
+  -- admin's even with no open location left).
+  select array['self'] || coalesce(array_agg(x.a), '{}') into held
   from (select distinct unnest(t.heard_by) a from public.notification_types t) x
-  where cardinality(app_private.scope_set(actor_user_id, target_workspace_id, x.a)) > 0;
+  where x.a <> 'self'
+    and (cardinality(app_private.scope_set(actor_user_id, target_workspace_id, x.a)) > 0
+         or app_private.authz_reason(actor_user_id, target_workspace_id, x.a, '{}') is null);
 
   select jsonb_build_object(
     'channels', jsonb_build_object(

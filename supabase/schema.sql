@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 495, last: 20261017040000_notification_topics_by_right_and_feed_pages.sql
--- fingerprint: sha256:0263584f11b0f25dca7f3c8219d0f3c0074e42c1be64a18d15bbd2a47125394f
+-- fingerprint: sha256:5e1a7e89c9fa09a6810f79531d5f25545c4f744fda78f0a74bd94797ee335fbc
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12535,10 +12535,14 @@ declare
   held text[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
-  -- The actions the person holds somewhere in the workspace, as the core says.
-  select coalesce(array_agg(x.a), '{}') into held
+  -- What the person hears: 'self', always, being a member; and the actions they hold somewhere in the
+  -- workspace, as the core says: at a live location, or across it (the core's '{}', an owner's or an
+  -- admin's even with no open location left).
+  select array['self'] || coalesce(array_agg(x.a), '{}') into held
   from (select distinct unnest(t.heard_by) a from public.notification_types t) x
-  where cardinality(app_private.scope_set(actor_user_id, target_workspace_id, x.a)) > 0;
+  where x.a <> 'self'
+    and (cardinality(app_private.scope_set(actor_user_id, target_workspace_id, x.a)) > 0
+         or app_private.authz_reason(actor_user_id, target_workspace_id, x.a, '{}') is null);
 
   select jsonb_build_object(
     'channels', jsonb_build_object(
