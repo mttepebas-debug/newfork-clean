@@ -539,18 +539,6 @@ employee:=public.employee_hub_actor_service(actor_user_id,target_workspace_id);
   raise exception 'unsupported employee request action' using errcode='22023';
 end; $$;
 
-
-ALTER FUNCTION "public"."employee_request_action_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "target_kind" "text", "target_action" "text", "target_expected_revision" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."empty_weekly_preference"("mode" "text") RETURNS "jsonb"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
- select jsonb_build_object('input_mode',mode,'days',jsonb_agg(jsonb_build_object('day',day,'all_day',false,'shift_type_ids','[]'::jsonb,'ranges','[]'::jsonb) order by day))
- from generate_series(0,6) day;
-$$;
-
 CREATE OR REPLACE FUNCTION "public"."revoke_time_off_service"("actor" "uuid", "w" "uuid", "rid" "uuid", "expected_revision" integer, "reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
