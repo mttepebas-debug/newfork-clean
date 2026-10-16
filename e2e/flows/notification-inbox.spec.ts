@@ -87,5 +87,5 @@ test("a manager approves time off from the notification panel, and the employee 
 
   // The employee's own list has the decision, live.
   const mine = await openPanel(employee);
-  await expect(mine.getByRole("button", { name: /Your time off .* is approved/ })).toBeVisible();
+  await expect(mine.getByRole("button", { name: /^(Unread: )?Your time off .* is approved$/ })).toBeVisible();
 });
