@@ -5,7 +5,6 @@ import { createCommunicationService } from "./communications/communication-servi
 import { createEmployeeHubService } from "./employee-hub/employee-hub-service";
 import { createEmployeeCreateService } from "./employees/employee-create-service";
 import { createEmployeeDirectoryService } from "./employees/employee-directory-service";
-import { createNotificationSettingsService } from "./notifications/notification-settings-service";
 import { createScheduleRequestsService } from "./schedule/schedule-requests-service";
 import { createDocumentTypesService } from "./settings/document-types-service";
 import { createJobsManagementService } from "./settings/jobs-management-service";
@@ -62,7 +61,6 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["employee hub", () => createEmployeeHubService(options).getPersonalTasks(input)],
   ["employee create", () => createEmployeeCreateService(createOptions).create(actor, workspace, newEmployee as never)],
   ["employee directory", () => createEmployeeDirectoryService(options).list(input)],
-  ["notification settings", () => createNotificationSettingsService(options).get(input)],
   ["schedule requests", () => createScheduleRequestsService(options).get(input)],
   ["document types", () => createDocumentTypesService(options).targetOptions(input)],
   ["jobs management", () => createJobsManagementService(jobsClient).deleteJob(input, id)],

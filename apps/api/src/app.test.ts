@@ -7,7 +7,6 @@ import type { ScheduleReadService } from "./schedule/schedule-service";
 import type { ScheduleRequestsService } from "./schedule/schedule-requests-service";
 import type { EmployeeHubService } from "./employee-hub/employee-hub-service";
 import type { CommunicationService } from "./communications/communication-service";
-import type { NotificationSettingsService } from "./notifications/notification-settings-service";
 
 const resolvedContext: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
@@ -189,42 +188,30 @@ describe("api app", () => {
     }
   });
 
-  it("runs the notification outbox worker only with the cron secret", async () => {
-    const runBatch = vi.fn(async () => ({
-      leased: 2,
-      processed: 1,
-      skipped: 0,
-      retried: 1,
-      dead_lettered: 0,
-      failed: 0,
-    }));
+  // BILDIRIM-03: the old notification system is torn down. Until teardown part C1 removes the
+  // live cron, it keeps calling the outbox path and gets the plain 404 every unknown path gets.
+  it.each([
+    ["GET", "/internal/cron/notification-outbox"],
+    ["POST", "/internal/cron/notification-outbox"],
+    ["GET", `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings`],
+    ["PATCH", `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings`],
+    ["POST", `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings/reset`],
+    ["POST", `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings/test`],
+    ["GET", `/v1/workspaces/${resolvedContext.workspace.id}/me/notification-preferences`],
+    ["PATCH", `/v1/workspaces/${resolvedContext.workspace.id}/me/notification-preferences`],
+  ] as const)("no longer serves the notification path %s %s", async (method, url) => {
     const app = buildApp({
-      notificationOutboxWorker: { runBatch },
-      notificationOutboxCron: { cronSecret: "notification-cron-secret" },
+      contextResolver: { resolve: async () => resolvedContext },
+      maintenanceCron: { cronSecret: "cron-secret" },
     });
-
-    const denied = await app.inject({
-      method: "POST",
-      url: "/internal/cron/notification-outbox",
-      headers: { authorization: "Bearer wrong" },
-    });
-    expect(denied.statusCode).toBe(401);
-
     const response = await app.inject({
-      method: "POST",
-      url: "/internal/cron/notification-outbox",
-      headers: { authorization: "Bearer notification-cron-secret" },
+      method,
+      url,
+      headers: { authorization: url.startsWith("/internal") ? "Bearer cron-secret" : "Bearer valid-token" },
+      payload: method === "GET" ? undefined : {},
     });
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      leased: 2,
-      processed: 1,
-      skipped: 0,
-      retried: 1,
-      dead_lettered: 0,
-      failed: 0,
-    });
-    expect(runBatch).toHaveBeenCalledTimes(1);
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Not found" });
   });
 
   // BILDIRIM-01 (K1, K2): the maintenance cron the database calls every minute.
@@ -710,35 +697,6 @@ describe("api app", () => {
       actorUserId: resolvedContext.userId,
       workspaceId: resolvedContext.workspace.id,
       itemId: "schedule",
-    });
-  });
-
-  it("registers the organization notification settings surface", async () => {
-    const get = vi.fn().mockResolvedValue({
-      workspace_id: resolvedContext.workspace.id,
-      can_write: true,
-      catalog: [],
-      roles: [],
-      locations: [],
-      audit: [],
-    });
-    const app = buildApp({
-      contextResolver: { resolve: async () => resolvedContext },
-      notificationSettingsService: {
-        get,
-      } as unknown as NotificationSettingsService,
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: `/v1/workspaces/${resolvedContext.workspace.id}/notification-settings`,
-      headers: { authorization: "Bearer valid-token" },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(get).toHaveBeenCalledWith({
-      actorUserId: resolvedContext.userId,
-      workspaceId: resolvedContext.workspace.id,
     });
   });
 

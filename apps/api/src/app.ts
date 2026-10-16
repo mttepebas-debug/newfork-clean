@@ -89,16 +89,6 @@ import {
 } from "./communications/communication-service";
 import { registerMaintenanceRoutes } from "./maintenance/maintenance-routes";
 import { createMaintenanceWorker, type MaintenanceWorker } from "./maintenance/maintenance-worker";
-import { registerNotificationOutboxRoutes } from "./notifications/notification-outbox-routes";
-import {
-  createNotificationOutboxWorker,
-  type NotificationOutboxWorker,
-} from "./notifications/notification-outbox-worker";
-import { registerNotificationSettingsRoutes } from "./notifications/notification-settings-routes";
-import {
-  createNotificationSettingsService,
-  type NotificationSettingsService,
-} from "./notifications/notification-settings-service";
 import { registerDocumentTypesRoutes } from "./settings/document-types-routes";
 import {
   createDocumentTypesService,
@@ -188,8 +178,6 @@ export interface BuildAppOptions {
   readonly scheduleRequestsService?: ScheduleRequestsService | null;
   readonly employeeHubService?: EmployeeHubService | null;
   readonly communicationService?: CommunicationService | null;
-  readonly notificationOutboxWorker?: NotificationOutboxWorker | null;
-  readonly notificationSettingsService?: NotificationSettingsService | null;
   readonly documentTypesService?: DocumentTypesService | null;
   readonly organizationSettingsService?: OrganizationSettingsService | null;
   readonly settingsReadsService?: SettingsReadsService | null;
@@ -197,9 +185,6 @@ export interface BuildAppOptions {
   readonly timeOffVotingService?: TimeOffVotingService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
-  readonly notificationOutboxCron?: {
-    readonly cronSecret?: string;
-  };
   readonly maintenanceWorker?: MaintenanceWorker | null;
   readonly maintenanceCron?: {
     readonly cronSecret?: string;
@@ -345,17 +330,10 @@ export function buildApp(options: BuildAppOptions = {}) {
     options.employeeHubService ?? createEmployeeHubServiceFromEnvironment();
   const communicationService =
     options.communicationService ?? createCommunicationServiceFromEnvironment();
-  const notificationOutboxWorker =
-    options.notificationOutboxWorker === undefined
-      ? createNotificationOutboxWorkerFromEnvironment()
-      : options.notificationOutboxWorker;
   const maintenanceWorker =
     options.maintenanceWorker === undefined
       ? createMaintenanceWorkerFromEnvironment()
       : options.maintenanceWorker;
-  const notificationSettingsService =
-    options.notificationSettingsService ??
-    createNotificationSettingsServiceFromEnvironment();
   const documentTypesService =
     options.documentTypesService ?? createDocumentTypesServiceFromEnvironment();
   const organizationSettingsService =
@@ -389,8 +367,6 @@ export function buildApp(options: BuildAppOptions = {}) {
         request.url.includes("/employee-hub") ||
         request.url.includes("/schedule/") ||
         request.url.includes("/communications/") ||
-        request.url.includes("/notification-settings") ||
-        request.url.includes("/notification-preferences") ||
         request.url.includes("/account/workspaces") ||
         request.url.includes("/employees") ||
         request.url.includes("/document-types") ||
@@ -417,8 +393,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       request.url.includes("/employee-hub") ||
       request.url.includes("/schedule") ||
       request.url.includes("/communications/") ||
-      request.url.includes("/notification-settings") ||
-      request.url.includes("/notification-preferences") ||
       request.url.includes("/account/workspaces") ||
       request.url.includes("/employees") ||
       request.url.includes("/document-types") ||
@@ -822,11 +796,6 @@ export function buildApp(options: BuildAppOptions = {}) {
       process.env.EMPLOYEE_INVITE_FROM,
     now: options.scheduleExportCron?.now,
   });
-  registerNotificationOutboxRoutes(app, {
-    worker: notificationOutboxWorker,
-    cronSecret:
-      options.notificationOutboxCron?.cronSecret ?? process.env.CRON_SECRET,
-  });
   registerMaintenanceRoutes(app, {
     worker: maintenanceWorker,
     cronSecret: options.maintenanceCron?.cronSecret ?? process.env.CRON_SECRET,
@@ -861,10 +830,6 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   registerCommunicationRoutes(app, {
     service: communicationService,
-    contextResolver,
-  });
-  registerNotificationSettingsRoutes(app, {
-    service: notificationSettingsService,
     contextResolver,
   });
   registerDocumentTypesRoutes(app, {
@@ -1094,14 +1059,6 @@ function createCommunicationServiceFromEnvironment(): CommunicationService | nul
     : null;
 }
 
-function createNotificationSettingsServiceFromEnvironment(): NotificationSettingsService | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  return url && serviceRoleKey
-    ? createNotificationSettingsService({ url, serviceRoleKey })
-    : null;
-}
-
 function createDocumentTypesServiceFromEnvironment(): DocumentTypesService | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1162,29 +1119,6 @@ function createMaintenanceWorkerFromEnvironment(): MaintenanceWorker | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
   return url && serviceRoleKey ? createMaintenanceWorker({ url, serviceRoleKey }) : null;
-}
-
-function createNotificationOutboxWorkerFromEnvironment(): NotificationOutboxWorker | null {
-  const url = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !serviceRoleKey) return null;
-  return createNotificationOutboxWorker({
-    url,
-    serviceRoleKey,
-    workerId: process.env.NOTIFICATION_WORKER_ID,
-    batchSize: integerEnvironmentValue(
-      process.env.NOTIFICATION_OUTBOX_BATCH_SIZE,
-    ),
-    leaseSeconds: integerEnvironmentValue(
-      process.env.NOTIFICATION_OUTBOX_LEASE_SECONDS,
-    ),
-    maxAttempts: integerEnvironmentValue(
-      process.env.NOTIFICATION_OUTBOX_MAX_ATTEMPTS,
-    ),
-    retryBaseDelaySeconds: integerEnvironmentValue(
-      process.env.NOTIFICATION_OUTBOX_RETRY_BASE_SECONDS,
-    ),
-  });
 }
 
 function integerEnvironmentValue(
