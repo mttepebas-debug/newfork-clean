@@ -13,6 +13,7 @@ import { createSignatureSettingsService } from "./settings/signature-settings-se
 import { createNotificationSettingsService } from "./notification-settings/notification-settings-service";
 import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-service";
 import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
+import { createNotificationsService } from "./notifications/notifications-service";
 
 // BL-134: whatever the database says goes through rpcFailure, so a refusal
 // keeps its status and machine key and Postgres's own sentence never reaches
@@ -70,6 +71,7 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["notification preferences", () => createNotificationSettingsService(options).readPreferences(input)],
   ["notification settings", () => createNotificationSettingsService(options).saveWorkspaceSettings({ actorUserId: actor, workspaceId: workspace, settings: { email_enabled: true, push_enabled: true, muted_types: [] } })],
   ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
+  ["notifications", () => createNotificationsService(options).counts(input)],
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
 ];
 

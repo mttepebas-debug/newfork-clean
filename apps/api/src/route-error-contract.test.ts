@@ -61,6 +61,7 @@ function appFailingWith(error: unknown) {
     notificationSettingsService: service,
     workspaceAccountService: service,
     onboardingService: service,
+    notificationsService: service,
   };
   return buildApp(options);
 }
@@ -78,6 +79,7 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["signature settings", "GET", `${w}/signature-templates/target-options`],
   ["notification preferences", "GET", `${w}/notification-preferences`],
   ["notification settings", "GET", `${w}/settings/notifications`],
+  ["notifications", "GET", `${w}/notifications`],
   ["workspace account", "GET", "/v1/account/workspaces"],
   ["employee onboarding", "GET", "/v1/me/onboarding"],
   ["employee onboarding phone", "GET", "/v1/me/onboarding/phone-in-use?phone=4155550100"],

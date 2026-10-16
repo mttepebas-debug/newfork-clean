@@ -102,6 +102,8 @@ import {
   type TimeOffShortenService,
 } from "./time-off/time-off-shorten-service";
 import { registerTimeOffVotingRoutes } from "./time-off/time-off-voting-routes";
+import { registerNotificationRoutes } from "./notifications/notifications-routes";
+import type { NotificationsService } from "./notifications/notifications-service";
 import {
   createTimeOffVotingService,
   type TimeOffVotingService,
@@ -185,6 +187,7 @@ export interface BuildAppOptions {
   readonly settingsReadsService?: SettingsReadsService | null;
   readonly timeOffShortenService?: TimeOffShortenService | null;
   readonly timeOffVotingService?: TimeOffVotingService | null;
+  readonly notificationsService?: NotificationsService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
@@ -851,6 +854,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     service: timeOffVotingService,
     contextResolver,
   });
+  registerNotificationRoutes(app, { service: options.notificationsService, contextResolver });
   registerSettingsReadsRoutes(app, {
     service: settingsReadsService,
     contextResolver,
