@@ -258,6 +258,73 @@ test("run: build, ci, push and apply-local in one command; main ends at the trai
   assert.doesNotMatch(text(r), /tren main'e girene kadar/); // pushed first: main has it
 });
 
+// ---- train.lock: one train at a time on this PC ----
+
+// Another session's train: it holds train.lock, and when it lets go its push has moved origin's main.
+function otherTrainLands() {
+  git(w.repo, "checkout", "-q", "-b", "other-train", "origin/main");
+  write(w.repo, "docs/other.md", "landed by another session's train\n");
+  commit(w.repo, "docs: the other train");
+  git(w.repo, "push", "-q", "origin", "HEAD:main");
+  git(w.repo, "checkout", "-q", "main");
+  release("train", "tren/other-1");
+}
+
+test("run: a second train waits for train.lock, then builds on the main the first one moved, and lands", () => {
+  w.branch("task/a", code("a"));
+  take("train", "tren/other-1, run task/other");
+  let waited = 0;
+  const sleep = () => {
+    if (waited++ === 0) otherTrainLands();
+  };
+  const r = run({ ...w.ctx, sleep, trainWaitMin: 1 }, ["task/a"]);
+  assert.equal(r.code, 0, text(r));
+  assert.ok(waited > 0, "the train never waited");
+  assert.doesNotMatch(text(r), /main ilerledi/);
+  const main = git(w.origin, "rev-parse", "refs/heads/main");
+  assert.equal(main, state().head);
+  assert.equal(git(w.origin, "log", "--format=%s", "-3", "refs/heads/main").includes("docs: the other train"), true);
+  assert.equal(lock("train").free, true);
+});
+
+test("run: a train.lock that stays held past the wait stops the train before build; main and the train folder untouched", () => {
+  w.branch("task/a", code("a"));
+  take("train", "tren/other-1, run task/other");
+  const before = git(w.origin, "rev-parse", "refs/heads/main");
+  const r = run({ ...w.ctx, trainWaitMin: 0.002 }, ["task/a"]);
+  assert.equal(r.code, 1);
+  assert.equal(r.failedStep, "train-lock");
+  assert.match(text(r), /train\.lock başka trende: tren\/other-1 \(run task\/other\)/);
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), before);
+  assert.equal(fs.existsSync(path.join(w.ctx.trainDir, "artifacts/train/state.json")), false);
+  assert.equal(lock("train").identity, "tren/other-1");
+  assert.equal(auditLines().at(-1).event, "train-blocked");
+});
+
+test("run: train.lock is let go after a green train and after a red one", () => {
+  w.branch("task/a", code("a"));
+  assert.equal(run(w.ctx, ["task/a"]).code, 0);
+  assert.equal(lock("train").free, true);
+  w.branch("task/b", code("b"));
+  w.ciResult = { conclusion: "failure", run: 404, failedJobs: ["e2e"] };
+  assert.equal(run(w.ctx, ["task/b"]).code, 1);
+  assert.equal(lock("train").free, true);
+});
+
+test("build alone waits for train.lock too; NF_OVERRIDE passes it and is logged", () => {
+  w.branch("task/a", code("a"));
+  take("train", "tren/other-1, run task/other");
+  const r = build({ ...w.ctx, trainWaitMin: 0.002 }, ["task/a"]);
+  assert.equal(r.code, 1);
+  assert.match(text(r), /train\.lock başka trende: tren\/other-1/);
+  const o = build({ ...w.ctx, trainWaitMin: 0.002, override: "the other train hung, Mert said go" }, ["task/a"]);
+  assert.notEqual(o.code, 1, text(o));
+  const e = auditLines().find((l) => l.event === "train-override");
+  assert.equal(e.step, "build");
+  assert.equal(e.reason, "the other train hung, Mert said go");
+  assert.equal(lock("train").identity, "tren/other-1");
+});
+
 test("run: a red CI stops before push; main does not move", () => {
   w.branch("task/a", code("a"));
   w.ciResult = { conclusion: "failure", run: 303, failedJobs: ["check"] };

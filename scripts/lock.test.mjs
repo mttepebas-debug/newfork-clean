@@ -144,9 +144,9 @@ test("a lock records the Claude session and folder that took it, so the guard ca
   assert.equal(held.cwd, process.cwd());
 });
 
-test("only db is a lock now: main and heavy are refused by name", () => {
-  assert.throws(() => take("main", "koordinator/x, push"), /unknown lock "main" \(expected db\)/);
-  assert.throws(() => take("heavy", "oturum/x, gate"), /unknown lock "heavy" \(expected db\)/);
+test("db and train are the locks: main and heavy are refused by name", () => {
+  assert.throws(() => take("main", "koordinator/x, push"), /unknown lock "main" \(expected db\|train\)/);
+  assert.throws(() => take("heavy", "oturum/x, gate"), /unknown lock "heavy" \(expected db\|train\)/);
 });
 
 test("a plain-text lock's age comes from the file mtime and turns stale after 2h (BL-196)", () => {

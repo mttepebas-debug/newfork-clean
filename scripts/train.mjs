@@ -8,6 +8,9 @@
 //   push                   origin main fast-forwarded to the train, only when ci was green for that very sha
 //   apply-local            the train's new migrations into the shared local database, holding db for this step only
 //   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit2 rides along when main lacks its commits
+// One train at a time on this PC: run holds train.lock from build to apply-local, and build, ci, push and
+// apply-local run alone hold it for their own step. A second train waits in the lock's queue and then builds
+// on the main the first one moved, so no green CI is lost to "main ilerledi" (TREN-KILIDI).
 // The push runs inside this script, so scripts/guard.mjs never sees it; the same rules (fast-forward only, a green
 // CI) hold here and land in the guard's audit.log. NF_OVERRIDE="<reason>" in front of a step passes a lock or CI
 // check (origin/main saved first; never a non-fast-forward push) and is logged.
@@ -258,6 +261,47 @@ const letGo = (s, name) => {
   if (mine(s, name)) release(name, s.identity);
 };
 
+// From build to push the train folder, its state.json and main's tip belong to the running train, so this PC
+// runs one train at a time. train.lock is held by this process under its own identity (one per process: a
+// train's steps inside run reuse it). A live holder is waited for in arrival order up to ctx.trainWaitMin
+// (default 120: a CI run and then some); a dead one (its process gone) is cleared first. Past the wait it is a
+// check NF_OVERRIDE can pass; with NF_OVERRIDE the train tries once and then runs without the lock, logged.
+const TRAIN_LOCK = "train";
+let trainHeld = null;
+const trainIdentity = () => `tren/${(process.env.CLAUDE_CODE_SESSION_ID || "elle").slice(0, 8)}-${process.pid}`;
+function withTrain(ctx, step, purpose, fn) {
+  if (trainHeld) return fn();
+  const lines = [];
+  const cleared = clearDead(TRAIN_LOCK);
+  if (cleared) lines.push(cleared);
+  const holder = lockOf(TRAIN_LOCK);
+  if (!holder.free) console.log(`train.lock başka trende: ${holder.identity}${holder.purpose ? ` (${holder.purpose})` : ""}; sırada bekleniyor`);
+  const identity = trainIdentity();
+  const say = (l) => console.log(l);
+  const got = acquire(TRAIN_LOCK, `${identity}, ${purpose}`, { maxWaitMin: ctx.override ? 0 : (ctx.trainWaitMin ?? 120), sleep: ctx.sleep, say });
+  if (!got.ok) {
+    const l = lockOf(TRAIN_LOCK);
+    const ahead = l.queue?.[0];
+    const why = !l.free
+      ? `train.lock başka trende: ${l.identity ?? "?"}${l.purpose ? ` (${l.purpose})` : ""}`
+      : ahead
+        ? `train.lock sırasında önde: ${ahead.identity ?? "?"}${ahead.command ? ` (${ahead.command})` : ""}`
+        : null;
+    const blocker = why ? `${why}; ${got.message}` : got.message;
+    if (!pass(ctx, { branch: null }, step, blocker, lines)) return { code: 1, lines, failedStep: "train-lock" };
+    const r = fn();
+    return { ...r, lines: [...lines, ...r.lines] };
+  }
+  trainHeld = identity;
+  try {
+    const r = fn();
+    return { ...r, lines: [...lines, ...r.lines] };
+  } finally {
+    release(TRAIN_LOCK, identity);
+    trainHeld = null;
+  }
+}
+
 // ---- steps ----
 
 export function plan(ctx, args) {
@@ -337,7 +381,8 @@ function stray(repo, base, previous) {
   return [...new Set(left)].filter((f) => !onMain.has(named(f))).sort();
 }
 
-export function build(ctx, args) {
+export const build = (ctx, args) => withTrain(ctx, "build", `build ${args.join(" ")}`, () => buildStep(ctx, args));
+function buildStep(ctx, args) {
   const { repo, trainDir } = ctx;
   const p = plan(ctx, args);
   const lines = [...p.lines];
@@ -411,7 +456,8 @@ const applySql = (file, sql) => {
   );
 };
 
-export function applyLocal(ctx) {
+export const applyLocal = (ctx) => withTrain(ctx, "apply-local", "apply-local", () => applyLocalStep(ctx));
+function applyLocalStep(ctx) {
   const s = readState(ctx);
   if (!s) return NO_STATE;
   const lines = [];
@@ -478,7 +524,8 @@ export function applyLocal(ctx) {
 
 const DOCS_ONLY = /^docs\/|\.md$/; // ci.yml's paths-ignore: such a train starts no run
 
-export function ci(ctx, { timeoutMin = 90 } = {}) {
+export const ci = (ctx, opts) => withTrain(ctx, "ci", "ci", () => ciStep(ctx, opts));
+function ciStep(ctx, { timeoutMin = 90 } = {}) {
   const s = readState(ctx);
   if (!s) return NO_STATE;
   const lines = [];
@@ -517,7 +564,8 @@ export function ci(ctx, { timeoutMin = 90 } = {}) {
   return { code: 1, lines };
 }
 
-export function push(ctx) {
+export const push = (ctx) => withTrain(ctx, "push", "push", () => pushStep(ctx));
+function pushStep(ctx) {
   const s = readState(ctx);
   if (!s) return NO_STATE;
   const { repo } = ctx;
@@ -557,16 +605,17 @@ function coordBranch(repo) {
   return b && ahead(repo, b.ref).length ? COORD_BRANCH : null;
 }
 
-export function run(ctx, args) {
+export const run = (ctx, args) => withTrain(ctx, "run", `run ${args.join(" ") || COORD_BRANCH}`, () => runSteps(ctx, args));
+function runSteps(ctx, args) {
   const names = [...args];
   tryGit(ctx.repo, ["fetch", "-q", "origin"]); // coord/kayit2 as origin has it now
   const coord = coordBranch(ctx.repo);
   if (coord && !names.some((n) => n.split("@")[0] === COORD_BRANCH)) names.push(coord);
   if (!names.length) return { code: 1, lines: ["trene girecek dal yok"] };
-  const b = build(ctx, names);
+  const b = buildStep(ctx, names);
   const lines = [...b.lines];
   if (b.code === 1) return { code: 1, lines, failedStep: "build" };
-  for (const [step, fn] of [["ci", ci], ["push", push], ["apply-local", applyLocal]]) {
+  for (const [step, fn] of [["ci", ciStep], ["push", pushStep], ["apply-local", applyLocalStep]]) {
     const r = fn(ctx);
     lines.push(`— ${step}`, ...r.lines);
     if (r.code !== 0) return { code: 1, lines, failedStep: step };
@@ -652,6 +701,7 @@ const USAGE = [
   "usage: node scripts/train.mjs run <dal[@sha]…>   (build → ci → push → apply-local; coord/kayit2 kendiliğinden)",
   "       node scripts/train.mjs plan|build <dal[@sha]…>",
   "       node scripts/train.mjs ci|push|apply-local",
+  "       bir PC'de tek tren: train kilidi tutulur; başka tren koşuyorsa sırada beklenir (en çok 120 dk), sonra güncel main üzerine kurulur",
   '       NF_OVERRIDE="<gerekçe>" önüne: kilit ya da CI kontrolünü aşar (origin/main önce yedeklenir, audit.log); fast-forward olmayan push asla',
   "       NF_OVERRIDE ile kilit sırası beklenmez: db kilidi bir kez denenir; alınamazsa apply-local kilitsiz koşar (audit.log'a yazılır)",
 ];

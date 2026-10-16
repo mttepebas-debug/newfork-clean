@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-// WORKFLOW-V2 (spec §7.4): one lock, db -- the shared local database (migration tries, pgTAP, a local
-// e2e, the train's apply-local). Only a command holds it:
+// WORKFLOW-V2 (spec §7.4): two locks. db -- the shared local database (migration tries, pgTAP, a local
+// e2e, the train's apply-local). train -- one train at a time on this PC, from build to push (TREN-KILIDI):
+// a second train waits its turn and builds on the main the first one moved. Only a command holds either:
 //   node scripts/lock.mjs run db [--e2e] [--as <name>] [--max-wait <min>] -- <command…>
 // waits its turn in arrival order (a ticket in queue-db/), runs the command (cmd.exe on Windows) and
 // lets go when it ends, success or not. --e2e also waits while a GitHub Actions run is going: two e2e
@@ -21,9 +22,10 @@ import { ciState, pcPath, NOT_ON_PC, NOT_ON_PC_EXIT } from "./ops.mjs";
 
 // null off Mert's PC: there is no shared local database to lock (main() refuses, lockPath() throws).
 const LOCK_DIR = pcPath(process.env.NEWFORK_LOCK_DIR, ".newfork-locks");
-const LONG_MIN = 30; // spec §2: no lock is held longer than this; status flags it
+// spec §2: no db hold is longer than this; a train holds train.lock through a whole CI run. status flags it
+const LONG_MIN = { db: 30, train: 120 };
 const STALE_MS = 2 * 60 * 60 * 1000; // flagged in status, never deleted by age alone
-const LOCKS = ["db"];
+const LOCKS = ["db", "train"];
 
 function lockPath(name) {
   if (!LOCK_DIR) throw new Error(NOT_ON_PC);
@@ -219,7 +221,7 @@ export function status(opts) {
       session: held.session,
       cwd: held.cwd,
       ageMinutes: age,
-      long: age != null && age > LONG_MIN,
+      long: age != null && age > LONG_MIN[name],
       stale: age != null && age * 60000 > STALE_MS,
       dead: isDead(held, opts),
       queue,
@@ -359,7 +361,7 @@ function printStatus() {
     else
       console.log(
         `${l.name}.lock: ${l.identity}, ${l.ageMinutes ?? "?"} dk${l.pid ? `, pid ${l.pid}` : ""}` +
-          `${l.long ? " — UZUN (30 dk'yı geçti)" : ""}${l.dead ? " — ÖLÜ: sıradaki bekleyen temizler" : ""}` +
+          `${l.long ? ` — UZUN (${LONG_MIN[l.name]} dk'yı geçti)` : ""}${l.dead ? " — ÖLÜ: sıradaki bekleyen temizler" : ""}` +
           `${l.stale && !l.pid ? " — elle yazılmış, 2 saatten eski; koordinatöre sor" : ""}`,
       );
     if (l.queue.length) console.log(`  sıra (${l.queue.length}): ${l.queue.map((t) => `${t.identity}${t.dead ? " (ölü)" : ""}: ${t.command}`).join(" · ")}`);
