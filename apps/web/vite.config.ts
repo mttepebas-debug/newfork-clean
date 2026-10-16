@@ -6,6 +6,10 @@ export default defineConfig(({ mode }) => ({
   envDir: mode === "test" ? false : undefined,
   plugins: [react()],
   build: {
+    // Maps only for the hosted build, which uploads them to Sentry and then
+    // deletes them (scripts/sentry-sourcemaps.mjs); "hidden" leaves no
+    // sourceMappingURL comment pointing at a file that will not be there.
+    sourcemap: process.env.SENTRY_AUTH_TOKEN ? "hidden" : false,
     rollupOptions: {
       output: {
         manualChunks: {

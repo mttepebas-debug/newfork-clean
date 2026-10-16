@@ -36,3 +36,9 @@ test("vercel: no other branch deploys, flat or nested", () => {
     assert.equal(deploys(branch), false, branch);
   }
 });
+
+test("vercel: the build ends with the Sentry source map step, after both bundles exist", () => {
+  const steps = config.buildCommand.split("&&").map((step) => step.trim());
+  assert.equal(steps.at(-1), "node scripts/sentry-sourcemaps.mjs");
+  assert.ok(steps.findIndex((step) => step.includes("build:vercel")) < steps.length - 1);
+});
