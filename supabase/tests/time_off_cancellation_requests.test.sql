@@ -62,7 +62,6 @@ select is((select count(*)::int from public.time_off_cancellation_links where wo
 update tc set result=pg_temp.tc_cancel(periods,op);
 update tc set cancellation=(result->>'request_id')::uuid;
 select is(result->>'status','pending','cancellation waits for manager review') from tc;
-select is((select payload->>'title' from public.notification_outbox where subject_id=(select cancellation::text from tc) and type_key='requests.time_off.submitted'),'Leave cancellation requested','reviewer notification distinguishes cancellation from new leave');
 select is(public.time_off_effective_ranges(segment),'{["2035-01-15 14:00Z","2035-01-15 22:00Z")}'::tstzmultirange,'pending cancellation leaves all approved leave effective') from tc;
 select is((select revision from public.schedule_time_off_requests where id=(select parent from tc)),2,'requesting cancellation does not revise the approved decision');
 select is(pg_temp.tc_cancel(periods,op),result,'identical submit retry returns original cancellation') from tc;
@@ -93,7 +92,6 @@ update public.locations set timezone='UTC' where id=(select loc from tc);
 -- FB-6.3.7: a cancellation is decided whole (no partial decision).
 update tc set result=pg_temp.tc_decide('approve');
 select is(result->>'status','approved','the manager approves the cancellation') from tc;
-select is((select payload->>'action_url' from public.notification_outbox where subject_id=(select cancellation::text from tc) and type_key='requests.time_off.status_changed'),'/app/employee-hub/my-availability#request-'||cancellation::text,'employee notification targets the reviewed cancellation') from tc;
 select is(public.time_off_effective_ranges(segment),'{["2035-01-15 14:00Z","2035-01-15 15:00Z"),["2035-01-15 19:00Z","2035-01-15 22:00Z")}'::tstzmultirange,'only the cancelled hours are removed from leave') from tc;
 select is((select to_jsonb(s) from public.schedule_time_off_segments s where id=(select segment from tc)),original,'original requested period and status remain immutable') from tc;
 select is((select revision from public.schedule_time_off_requests where id=(select parent from tc)),3,'accepted cancellation revises parent to reject stale decisions');

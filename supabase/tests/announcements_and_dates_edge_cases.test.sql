@@ -87,44 +87,14 @@ create function pg_temp.sees(person text, id uuid) returns jsonb language sql as
   where (a ->> 'id')::uuid = id
 $$;
 
--- The people a notification told: every outbox row for the subject made
--- after the last pg_temp.mark().
-create temporary table marked (id uuid primary key);
-create function pg_temp.mark() returns void language sql as $$
-  insert into marked select o.id from public.notification_outbox o on conflict do nothing
-$$;
-create function pg_temp.told(subject uuid) returns text[] language sql as $$
+-- Who a post reaches (announcements.delivered_to), by name.
+create function pg_temp.reached(subject uuid) returns text[] language sql as $$
   select coalesce(array_agg(distinct p.label order by p.label), '{}')
-  from public.notification_outbox o
-  cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r(user_id)
-  join (select i.label, i.id from tests.ids i where i.label ~ '^r:[a-z]+:user$') u on u.id = r.user_id::uuid
+  from public.announcements a
+  cross join lateral unnest(a.delivered_to) r(user_id)
+  join (select i.label, i.id from tests.ids i where i.label ~ '^r:[a-z]+:user$') u on u.id = r.user_id
   cross join lateral (select split_part(u.label, ':', 2) label) p
-  where o.subject_id = subject::text and not exists (select 1 from marked m where m.id = o.id)
-$$;
-
--- The notification worker: every queued notice of world r lands in inboxes.
-create function pg_temp.deliver() returns void language plpgsql as $$
-declare queued uuid;
-begin
-  for queued in select o.id from public.notification_outbox o
-                where o.workspace_id = tests.id('r') and o.status in ('pending', 'retry') loop
-    update public.notification_outbox
-    set status = 'leased', lease_owner = 'edge-cases', lease_expires_at = now() + interval '1 minute'
-    where notification_outbox.id = queued;
-    perform public.process_notification_outbox_service('edge-cases', queued);
-  end loop;
-end;
-$$;
-
--- Does this person have the notice about this record in their inbox?
-create function pg_temp.has_notice(person text, subject uuid) returns boolean language sql as $$
-  select exists (
-    select 1 from public.notification_inbox_items item
-    join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-    join public.notification_outbox outbox
-      on outbox.event_id = recipient.event_id and outbox.workspace_id = recipient.workspace_id
-    where outbox.subject_id = subject::text and recipient.recipient_user_id = pg_temp.u(person)
-      and item.visibility_state = 'visible')
+  where a.id = subject
 $$;
 
 -- 3. The API reads the Schedule's closed days (BL-530) ---------------------------------
@@ -226,10 +196,9 @@ select tests.remember('r:ann:untimed', pg_temp.schedule_in('r', pg_temp.u('owner
 select is(pg_temp.status(tests.id('r:ann:untimed')), 'scheduled', 'a post for later is scheduled');
 select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload(array['K'], 'Untimed'), 'schedule')$$,
   tests.id('r:ann:untimed'))), '22023 announcement.publish_time_required', 'K25: it cannot stay scheduled without its time');
-select pg_temp.mark();
 select pg_temp.set_state('owner', tests.id('r:ann:untimed'), 'unschedule');
 select is(pg_temp.status(tests.id('r:ann:untimed')), 'draft', 'K25: unscheduled, it waits as a draft');
-select is(pg_temp.told(tests.id('r:ann:untimed')), '{}'::text[], 'K25: and nobody is told');
+select is(pg_temp.reached(tests.id('r:ann:untimed')), '{}'::text[], 'K25: and it reaches nobody');
 select ok(pg_temp.sees('zeynep', tests.id('r:ann:untimed')) is null, 'K19: back to a draft, it is the owner''s own again');
 
 -- 7. Archived locations (KK-86) ----------------------------------------------------------
@@ -241,9 +210,8 @@ select is((select jsonb_agg(jsonb_build_object('name', l ->> 'name', 'archived',
            from jsonb_array_elements(pg_temp.sees('owner', tests.id('r:ann:km')) -> 'locations') l),
   '[{"name": "Kadikoy", "archived": false}, {"name": "Moda", "archived": true}]'::jsonb,
   'KK-86: the post still lists archived Moda, marked, so an edit keeps it');
-select pg_temp.mark();
 select pg_temp.save('owner', tests.id('r:ann:km'), pg_temp.payload(array['K'], 'Kadikoy and Moda, new text'), 'save');
-select ok('emre' = any (pg_temp.told(tests.id('r:ann:km'))), 'KK-86: a change reaches Kadikoy''s people');
+select ok('emre' = any (pg_temp.reached(tests.id('r:ann:km'))), 'KK-86: a change reaches Kadikoy''s people');
 select is((select count(*)::integer from public.announcement_locations t where t.announcement_id = tests.id('r:ann:km')), 2,
   'KK-86: and Moda''s row stays as it was');
 select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('{}', 'Moda only'), 'draft')$$, tests.id('r:ann:m'))), 'ok',
@@ -294,41 +262,29 @@ select is(array(
 -- 9. Publishing again (K27) ---------------------------------------------------------------
 
 select tests.remember('r:ann:open', pg_temp.publish('owner', array['K'], 'Menu day', '{"on_important_dates": true}'));
-select pg_temp.deliver();
-select public.act_on_notification_inbox_item_v2_service(pg_temp.u('emre'), tests.id('r'), (
-  select item.id from public.notification_inbox_items item
-  join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-  join public.notification_outbox outbox on outbox.event_id = recipient.event_id
-  where outbox.subject_id = tests.id('r:ann:open')::text and recipient.recipient_user_id = pg_temp.u('emre')), 'read');
 select pg_temp.set_state('owner', tests.id('r:ann:open'), 'unpublish');
-select pg_temp.mark();
 select pg_temp.save('owner', tests.id('r:ann:open'), pg_temp.payload(array['K'], 'Menu day', '{"on_important_dates": true}'), 'publish');
-select ok('emre' = any (pg_temp.told(tests.id('r:ann:open'))) and 'ali' = any (pg_temp.told(tests.id('r:ann:open'))),
-  'K27: a post that asks no acknowledgement, published again, tells everybody it reaches, Emre too');
+select ok('emre' = any (pg_temp.reached(tests.id('r:ann:open'))) and 'ali' = any (pg_temp.reached(tests.id('r:ann:open'))),
+  'K27: a post that asks no acknowledgement, published again, reaches everybody again, Emre too');
 
--- 10. A narrower audience takes back its notices (BL-534) ------------------------------------
+-- 10. A narrower audience no longer reaches those it left (BL-534) ------------------------------------
 
 select tests.remember('r:ann:narrow', pg_temp.publish('owner', array['K', 'B'], 'Both places'));
-select pg_temp.deliver();
-select ok(pg_temp.has_notice('deniz', tests.id('r:ann:narrow')) and pg_temp.has_notice('emre', tests.id('r:ann:narrow')),
-  'BL-534: a Kadikoy and Besiktas post is in Deniz''s and Emre''s inboxes');
-select pg_temp.mark();
+select ok(array['deniz', 'emre'] <@ pg_temp.reached(tests.id('r:ann:narrow')),
+  'BL-534: a Kadikoy and Besiktas post reaches Deniz and Emre');
 select pg_temp.save('owner', tests.id('r:ann:narrow'), pg_temp.payload(array['K'], 'Both places'), 'save');
-select ok(not pg_temp.has_notice('deniz', tests.id('r:ann:narrow')),
-  'BL-534: Besiktas taken off, Deniz (Besiktas only) no longer has it');
-select ok(pg_temp.has_notice('emre', tests.id('r:ann:narrow')) and pg_temp.has_notice('ali', tests.id('r:ann:narrow')),
-  'BL-534: Emre and Ali (Kadikoy too) keep theirs');
-select is(pg_temp.told(tests.id('r:ann:narrow')), '{}'::text[], 'BL-534: nobody is told anything new');
-select pg_temp.mark();
+select ok(not 'deniz' = any (pg_temp.reached(tests.id('r:ann:narrow'))),
+  'BL-534: Besiktas taken off, it no longer reaches Deniz (Besiktas only)');
+select ok(array['ali', 'emre'] <@ pg_temp.reached(tests.id('r:ann:narrow')),
+  'BL-534: it still reaches Emre and Ali (Kadikoy too)');
 select pg_temp.save('owner', tests.id('r:ann:narrow'), pg_temp.payload(array['K', 'B'], 'Both places'), 'save');
-select is(pg_temp.told(tests.id('r:ann:narrow')), array['deniz', 'veli'], 'BL-534: Besiktas back, its people are told again');
+select ok(array['deniz', 'veli'] <@ pg_temp.reached(tests.id('r:ann:narrow')), 'BL-534: Besiktas back, it reaches its people again');
 
--- Before the worker has delivered it: narrowed, it never reaches Deniz.
+-- Narrowed right after it went out: it no longer reaches Deniz.
 select tests.remember('r:ann:narrow2', pg_temp.publish('owner', array['K', 'B'], 'Both places date', '{"on_important_dates": true}'));
 select pg_temp.save('owner', tests.id('r:ann:narrow2'), pg_temp.payload(array['K'], 'Both places date', '{"on_important_dates": true}'), 'save');
-select pg_temp.deliver();
-select ok(not pg_temp.has_notice('deniz', tests.id('r:ann:narrow2')), 'BL-534: a post narrowed before delivery never reaches Deniz');
-select ok(pg_temp.has_notice('emre', tests.id('r:ann:narrow2')), 'BL-534: it reaches Emre');
+select ok(not 'deniz' = any (pg_temp.reached(tests.id('r:ann:narrow2'))), 'BL-534: a post narrowed at once does not reach Deniz');
+select ok('emre' = any (pg_temp.reached(tests.id('r:ann:narrow2'))), 'BL-534: it reaches Emre');
 
 -- 11. Unpublish keeps the days already gone on the Schedule (K11) ------------------------------
 

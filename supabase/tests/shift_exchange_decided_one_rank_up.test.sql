@@ -84,23 +84,11 @@ create function pg_temp.decide(person text, label text, verb text, private_note 
     'fingerprint', public.shift_exchange_preview(tests.user('ru:' || person), tests.id('ru'), tests.id('ru:case:' || label),
       tests.id('ru:application:' || label)) ->> 'fingerprint'))
 $$;
-create function pg_temp.reviewers(label text) returns uuid[] language sql as $$
-  select array(select value::uuid from public.notification_outbox o, jsonb_array_elements_text(o.payload -> 'recipient_user_ids')
-    where o.subject_id = tests.id('ru:case:' || label)::text and o.payload ->> 'audience_contract' = 'schedule_request_reviewers'
-      and o.payload ->> 'request_action' = 'application_submitted' order by 1)
-$$;
 create function pg_temp.users(variadic people text[]) returns uuid[] language sql as $$
   select array(select tests.user(case p when 'owner' then 'ru:owner' else 'ru:' || p end) from unnest(people) p order by 1)
 $$;
 
--- 1. K-S4: the review notice goes to the people who decide, the location's
--- managers first. Aydan, restricted, decides nothing and hears nothing.
-select is(pg_temp.reviewers('emre-k'), pg_temp.users('ayse', 'can'), 'Emre''s cover: Kadikoy''s managers hear, not the admin or the owner');
-select is(pg_temp.reviewers('ayse-k'), pg_temp.users('zeynep', 'owner'), 'Ayse''s own cover: her peer does not hear; the admin and the owner do');
-select is(pg_temp.reviewers('veli-b'), pg_temp.users('zeynep', 'owner'), 'Besiktas has no manager: the admin and the owner hear');
-select is(pg_temp.reviewers('olcay-k'), pg_temp.users('ayse', 'can'), 'the owner''s own cover: Kadikoy''s managers hear (K-S1)');
-select is(pg_temp.reviewers('zeynep-k'), pg_temp.users('owner'), 'the admin''s own cover: only the owner hears');
-
+-- 1. Covers asked for.
 -- Emre looks for cover: Deniz is listed as unavailable, never with her hours.
 select is((select e -> 'eligibility' -> 'acknowledgements' from jsonb_array_elements(public.shift_exchanges_candidates_service(
   tests.user('ru:emre'), tests.id('ru'), tests.id('ru:shift:emre-k')) -> 'employees') e where e ->> 'id' = tests.id('ru:deniz')::text),

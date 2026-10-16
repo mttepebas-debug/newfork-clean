@@ -1,5 +1,4 @@
 supabase/tests/account_avatar_phone_contract.test.sql
-supabase/tests/account_notification_scope.test.sql
 supabase/tests/account_organization_history.test.sql
 supabase/tests/account_profile_storage_rls.test.sql
 supabase/tests/account_security_deletion_lifecycle.test.sql
@@ -11,13 +10,11 @@ supabase/tests/authorization_matrix.test.sql
 supabase/tests/authz_catalog.test.sql
 supabase/tests/availability_always_warns.test.sql
 supabase/tests/availability_follows_role.test.sql
-supabase/tests/bl052_document_account_inbox.test.sql
 supabase/tests/bl052_document_conflicts.test.sql
 supabase/tests/bl052_document_correction_drafts.test.sql
 supabase/tests/bl052_document_deadline_extension.test.sql
 supabase/tests/bl052_document_dynamic_targeting.test.sql
 supabase/tests/bl052_document_lifecycle.test.sql
-supabase/tests/bl052_document_notifications.test.sql
 supabase/tests/bl052_document_onboarding.test.sql
 supabase/tests/bl052_document_rehire.test.sql
 supabase/tests/bl052_document_remaining_review.test.sql
@@ -49,7 +46,6 @@ supabase/tests/live_updates_are_private.test.sql
 supabase/tests/location_short_names.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/notification_outbox_relay.test.sql
-supabase/tests/notification_schedule_publish_atomic.test.sql
 supabase/tests/notification_user_preferences.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
@@ -89,7 +85,6 @@ supabase/tests/schedule_time_source.test.sql
 supabase/tests/schedule_week_availability.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/settings_reads_ask_the_core.test.sql
-supabase/tests/shift_exchange_immediate_inbox.test.sql
 supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql
 supabase/tests/shift_exchange_swap_gives_up_its_own_shift.test.sql
@@ -192,7 +187,6 @@ supabase/tests/announcement_refusal_reasons.test.sql
 supabase/tests/time_off_refusal_reasons.test.sql
 supabase/tests/employee_and_catalog_refusal_reasons.test.sql
 supabase/tests/onboarding_refusal_reasons.test.sql
-supabase/tests/termination_tells_location_managers.test.sql
 supabase/tests/schedule_week_follows_the_location_clock.test.sql
 supabase/tests/invitation_reminder_and_newer_link.test.sql
 supabase/tests/role_and_notification_settings_ask_the_core.test.sql
@@ -202,3 +196,4 @@ supabase/tests/workspace_home_reads_by_the_right_rule.test.sql
 supabase/tests/a_manager_sees_the_invitation_they_can_act_on.test.sql
 supabase/tests/draft_list_counts_shifts_and_hours.test.sql
 supabase/tests/domain_work_outlives_notifications.test.sql
+supabase/tests/domain_work_stops_calling_notifications.test.sql

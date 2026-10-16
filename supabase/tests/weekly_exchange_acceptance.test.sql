@@ -93,7 +93,6 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'no acceptance evidence is needed for the employee''s own mark');
 select is((select availability_snapshot->'assessment'->>'has_availability_conflict' from public.schedule_published_shifts where id=pg_temp.shift_id(1)),'true','the published shift records the warning it was taken with');
 select is((select preference from public.employee_weekly_preferences where employee_id=(select second_emp from ws)),pg_temp.unavailable(),'voluntary assignment never rewrites the employee week');
-select ok(exists(select 1 from public.notification_outbox where workspace_id=(select w from ws) and payload->>'request_action'='transfer_completed'),'existing transfer notification outbox remains connected');
 
 -- A swap has two receiving employees, each makes their own explicit choice.
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)

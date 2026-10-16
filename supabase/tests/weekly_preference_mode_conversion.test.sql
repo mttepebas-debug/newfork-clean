@@ -107,14 +107,6 @@ select is((select after_record->'preference' from public.weekly_preference_event
 select is((select count(*) from public.weekly_preference_events where employee_id=(select a from cv) and source='manager' and actor_user_id=(select owner_id from cv)),
  1::bigint,'the reminder week has its own history entry');
 select is((select count(*) from public.employee_weekly_preferences where employee_id=(select c from cv)),0::bigint,'a mode change does not invent a week for somebody who never saved one');
-select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),
- (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv union all select c_user from cv union all select d_user from cv) x),
- 'the notice goes to every employee, a saved week or not (M4, D4); the owner who changed it gets none');
-select is((select payload->>'title'||' / '||(payload->>'body') from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),
- 'Check your availability / Your organization changed how availability is entered. Your saved week was converted; check that it is still right.',
- 'the notice says the week was converted');
-select ok((select position('Private manager note' in payload::text)=0 from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),
- 'the notice carries no private reminder notes');
 
 -- Burak saved his week in shift types. Deniz's week names a type nobody can
 -- resolve hours for; it must stop the switch rather than lose the day.
@@ -126,7 +118,6 @@ insert into public.employee_weekly_preferences(workspace_id,employee_id,preferen
   pg_temp.free(3),pg_temp.free(4),pg_temp.free(5),pg_temp.free(6)),1,d_user from cv;
 select throws_ok($$select pg_temp.switch_mode('time_range',1,2)$$,'22023',null,'a week that cannot be converted stops the mode change');
 select is((select availability_input_mode from public.workspace_scheduling_settings where workspace_id=(select w from cv)),'shift_type','the refused change leaves the mode as it was');
-select is((select count(*) from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings'),1::bigint,'no notice goes out for a conversion that did not happen');
 select is((select preference->'days'->3 from public.employee_weekly_preferences where employee_id=(select b from cv)),pg_temp.types(3,lunch,dinner),'no week is half-converted by the refused change') from cv;
 delete from public.employee_weekly_preferences where employee_id=(select d from cv);
 
@@ -144,8 +135,6 @@ select is(pg_temp.minutes((select preference from public.employee_weekly_prefere
  'type to time: not one unavailable minute gained or lost');
 select is(pg_temp.day(a,5),pg_temp.spans(5,'11:30','15:30','16:15','23:30'),'a round trip widens hours by the rules: Friday 15:00-17:00 comes back as Lunch and Dinner') from cv;
 select is(pg_temp.day(a,2),pg_temp.free(2),'a round trip does not bring back hours the first conversion cleared') from cv;
-select is((select payload->'recipient_user_ids' from public.notification_outbox where workspace_id=(select w from cv) and subject_type='availability_settings' and payload->>'input_mode'='time_range'),
- (select jsonb_agg(u order by u) from (select a_user u from cv union all select b_user from cv union all select c_user from cv union all select d_user from cv) x),'switching back tells every employee again');
 select ok((select bool_and(public.weekly_preference_valid(preference)) from public.employee_weekly_preferences where workspace_id=(select w from cv)),'every converted week is a valid week');
 select * from finish();
 rollback;

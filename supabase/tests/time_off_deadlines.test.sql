@@ -5,12 +5,10 @@ select * from no_plan();
 -- FB-6.3 (user decisions 2026-09-30, KARARLAR "İzin", "Süre"): a request must
 -- be decided by its start minus the workspace's lead time (24 hours unless an
 -- owner or admin changes it on Settings > Scheduling; a change only touches
--- new requests). Twelve hours before that, the managers of the locations that
--- have not approved yet are reminded once. If nobody decides in time the
--- system turns it down; a cancellation not decided in time is turned down and
--- the time off stands. Every five minutes a job does this, makes votes on
--- changed shifts count as not given, and tells an admin or the owner once
--- when only they can decide.
+-- new requests). If nobody decides in time the system turns it down; a
+-- cancellation not decided in time is turned down and the time off stands.
+-- Every five minutes a job does this, makes votes on changed shifts count as
+-- not given, and settles a request every deciding location approved.
 -- ponytail: one transaction has one now(); deadlines are moved by hand.
 
 select tests.world('td');
@@ -38,13 +36,6 @@ create function pg_temp.status(rid uuid) returns text language sql as $$
 $$;
 create function pg_temp.due(rid uuid, at timestamptz, sent timestamptz default null) returns void language sql as $$
   update public.schedule_time_off_requests set decide_by = at, created_at = coalesce(sent, created_at) where id = rid
-$$;
-create function pg_temp.told(rid uuid, type_key text) returns uuid[] language sql as $$
-  select coalesce(array_agg(r.u order by r.u), '{}')
-  from public.notification_outbox o
-  cross join lateral (select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid u) r
-  where o.workspace_id = tests.id('td') and o.type_key = $2
-    and (o.subject_id = $1::text or o.payload ->> 'request_id' = $1::text)
 $$;
 create function pg_temp.users(variadic who text[]) returns uuid[] language sql as $$
   select array(select tests.user('td:' || x) from unnest(who) x order by 1)
@@ -91,10 +82,6 @@ select is(
   (select jsonb_build_object('actor', e.actor_user_id, 'note', e.note) from public.schedule_time_off_events e
    where e.request_id = tests.id('td:emre:1') and e.action = 'expired'),
   jsonb_build_object('actor', null, 'note', 'Not decided in time'), 'as the system, saying it was not decided in time');
-select is(pg_temp.told(tests.id('td:emre:1'), 'requests.time_off.status_changed'), pg_temp.users('emre'),
-  'Emre hears it');
-select is(pg_temp.told(tests.id('td:emre:1'), 'requests.time_off.decided'), pg_temp.users('ayse'),
-  'and so do the managers who did not decide');
 
 -- A cancellation not decided in time is turned down; the time off stands.
 select tests.remember('td:ali:4', tests.leave('td', 'ali', 4));
@@ -109,29 +96,14 @@ select app_private.time_off_sweep();
 select is(pg_temp.status(tests.id('td:ali:4:cancel')), 'denied', 'a cancellation not decided in time is turned down');
 select is(pg_temp.status(tests.id('td:ali:4')), 'approved', 'and the time off stands');
 
--- 3. One reminder, twelve hours before ---------------------------------------
+-- 3. Twelve hours before the deadline the job decides nothing ----------------
 
 select tests.remember('td:emre:5', tests.leave('td', 'emre', 5));
 select pg_temp.due(tests.id('td:emre:5'), now() + interval '6 hours', now() - interval '2 days');
 select app_private.time_off_sweep();
-select app_private.time_off_sweep();
-select is(pg_temp.told(tests.id('td:emre:5'), 'requests.time_off.reminder'), pg_temp.users('ayse'),
-  'twelve hours before the deadline the managers are reminded, once');
+select is(pg_temp.status(tests.id('td:emre:5')), 'pending', 'a request near its deadline waits for its managers');
 
-select tests.remember('td:ali:6', tests.leave('td', 'ali', 6));
-select pg_temp.decide('ayse', tests.id('td:ali:6'), 'approve');
-select pg_temp.due(tests.id('td:ali:6'), now() + interval '6 hours', now() - interval '2 days');
-select app_private.time_off_sweep();
-select is(pg_temp.told(tests.id('td:ali:6'), 'requests.time_off.reminder'), pg_temp.users('mehmet'),
-  'only where nobody has approved yet');
-
-select tests.remember('td:emre:7', tests.leave('td', 'emre', 7));
-select pg_temp.due(tests.id('td:emre:7'), now() + interval '6 hours');
-select app_private.time_off_sweep();
-select is(pg_temp.told(tests.id('td:emre:7'), 'requests.time_off.reminder'), '{}'::uuid[],
-  'a request sent inside those twelve hours gets no reminder');
-
--- 4. A vote on shifts that changed is let go, and its manager told once --------
+-- 4. A vote on shifts that changed is let go -----------------------------------
 
 select tests.publish_week('td', 8, '[
   {"label": "ali-k", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}
@@ -146,8 +118,7 @@ select app_private.time_off_sweep();
 select app_private.time_off_sweep();
 select is((select count(*)::integer from public.time_off_votes v where v.request_id = tests.id('td:ali:8')), 0,
   'the job lets the vote go');
-select is(pg_temp.told(tests.id('td:ali:8'), 'requests.time_off.review_again'), pg_temp.users('ayse'),
-  'and asks Ayse, once, to look again');
+select is(pg_temp.status(tests.id('td:ali:8')), 'pending', 'and the request waits for a new decision');
 
 -- 4b. Every location still deciding has approved: the job settles it ----------
 
@@ -162,9 +133,8 @@ select is(
    from public.schedule_time_off_events e where e.request_id = tests.id('td:ali:11') and e.action = 'approved'),
   jsonb_build_object('status', 'approved', 'actor', null, 'note', 'All deciding locations approved'),
   'Besiktas lost its manager after Kadikoy approved: the system settles it approved');
-select is(pg_temp.told(tests.id('td:ali:11'), 'requests.time_off.status_changed'), pg_temp.users('ali'), 'and Ali hears it');
-select is(pg_temp.told(tests.id('td:ali:11'), 'schedule.time_off.shifts_opened'), pg_temp.users('ayse'),
-  'the shift it opened at Kadikoy is told to Ayse: the system leaves nobody out');
+select is((select employee_id from public.schedule_published_shifts where id = tests.id('td:shift:ali-k11')), null::uuid,
+  'and the shift it covers at Kadikoy is open');
 
 -- 4c. A request closes once; the core's answer is never a yes by default -----
 
@@ -175,85 +145,15 @@ select is(pg_temp.refusal(format($$select app_private.time_off_reason(%L, %L, 't
     tests.user('td:owner'), tests.id('td'))),
   '22023', 'an action the core does not know is refused, not allowed');
 
--- 5. When only an admin or the owner can decide -------------------------------
+-- 5. When only an admin or the owner can decide, the job waits for them --------
 
 select tests.remember('td:emre:9', tests.leave('td', 'emre', 9));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('td') and m.user_id = tests.user('td:ayse')), tests.id('td:K'));
 select app_private.time_off_sweep();
-select app_private.time_off_sweep();
-select is(
-  (select count(*)::integer from public.notification_outbox o
-   where o.workspace_id = tests.id('td') and o.payload ->> 'request_id' = tests.id('td:emre:9')::text
-     and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
-  1, 'Kadikoy lost its manager: the admins and the owner are told once');
-select is(
-  (select array(select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid order by 1)
-   from public.notification_outbox o
-   where o.workspace_id = tests.id('td') and o.payload ->> 'request_id' = tests.id('td:emre:9')::text
-     and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
-  pg_temp.users('owner', 'zeynep'), 'it goes to them');
-
--- 5a. Both in one pass: an admin and the owner get one line (user decision
--- 2026-10-01, KARARLAR "İzin"). Hande, Kadikoy's only manager, is held back;
--- Ali's time off is twelve hours from its deadline the first time the job sees it.
-
-select tests.world('tb');
-select tests.person('tb', 'zeynep', 'admin', array['K'], array['cook']);
-select tests.person('tb', 'hande', 'manager', array['K'], array['cook']);
-select tests.person('tb', 'mehmet', 'manager', array['B'], array['cook']);
-select tests.person('tb', 'ali', 'employee', array['K', 'B'], array['cook']);
-create function pg_temp.tb_rows(rid uuid) returns table(audience text, recipients uuid[], title text, body text) language sql as $$
-  select o.payload ->> 'audience_contract',
-    array(select x::uuid from jsonb_array_elements_text(o.payload -> 'recipient_user_ids') x order by 1),
-    o.payload ->> 'title', o.payload ->> 'body'
-  from public.notification_outbox o
-  where o.workspace_id = tests.id('tb') and o.type_key = 'requests.time_off.reminder' and o.payload ->> 'request_id' = rid::text
-$$;
-create function pg_temp.tb_users(variadic who text[]) returns uuid[] language sql as $$
-  select array(select tests.user('tb:' || x) from unnest(who) x order by 1)
-$$;
-
-select tests.remember('tb:ali:3', tests.leave('tb', 'ali', 3));
--- Hande misses a document everybody must hand in (as in time_off_voting.test.sql, 8).
-create temporary table tb_document (id uuid, preview jsonb);
-insert into tb_document (id)
-select public.save_document_type_lifecycle_service(tests.user('tb:owner'), tests.id('tb'), null, null, jsonb_build_object(
-  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
-  'tracks_expiry', false, 'expiry_warning_days', 30,
-  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
-    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
-      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
-    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
-update tb_document set preview = public.preview_document_publication_service(tests.user('tb:owner'), tests.id('tb'), id);
-select public.set_document_publication_service(tests.user('tb:owner'), tests.id('tb'), id,
-  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
-from tb_document;
-select tests.settle();
-update public.employee_onboarding_requirements
-set lifecycle_exempt = false, deadline_at = now() - interval '1 day'
-where source_id = (select id from tb_document) and lifecycle_user_id = tests.user('tb:hande');
-update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
-where id = tests.id('tb:ali:3');
-select app_private.time_off_sweep();
-select app_private.time_off_sweep();
-select is(
-  (select array_agg(u order by u) from pg_temp.tb_rows(tests.id('tb:ali:3')) t, unnest(t.recipients) u),
-  pg_temp.tb_users('mehmet', 'owner', 'zeynep'),
-  'the admin and the owner are told once, Mehmet at Bakirkoy is reminded as before');
-select is(
-  (select jsonb_agg(jsonb_build_object('audience', t.audience, 'to', t.recipients, 'title', t.title, 'body', t.body) order by t.audience)
-   from pg_temp.tb_rows(tests.id('tb:ali:3')) t),
-  jsonb_build_array(
-    jsonb_build_object('audience', 'time_off_deciders', 'to', pg_temp.tb_users('mehmet'),
-      'title', 'Time off waits for your decision', 'body', 'Decide before the deadline or it is declined.'),
-    jsonb_build_object('audience', 'time_off_fallback_deciders', 'to', pg_temp.tb_users('owner', 'zeynep'),
-      'title', 'Time off waits for an admin', 'body', 'No manager can decide this now. Decide before the deadline or it is declined.')),
-  'their one line says both: no manager can decide it, and the deadline is near');
-select is(
-  (select r.fallback_notified_at is not null and r.reminded_at is not null from public.schedule_time_off_requests r
-   where r.id = tests.id('tb:ali:3')),
-  true, 'both are marked sent, so neither comes again');
+select is(pg_temp.status(tests.id('td:emre:9')), 'pending', 'Kadikoy lost its manager: the request waits for an admin or the owner');
+select is(pg_temp.refusal(format($$select pg_temp.decide('zeynep', %L, 'approve')$$, tests.id('td:emre:9'))), 'allowed',
+  'and the admin decides it');
 
 -- 5b. Shortening and one request that cannot be settled -----------------------
 

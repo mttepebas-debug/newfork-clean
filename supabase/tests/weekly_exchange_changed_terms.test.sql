@@ -84,31 +84,26 @@ select is((select count(*) from public.shift_exchange_events where case_id=cid a
 select is((select details->'before'->'offered'->>'start_time' from public.shift_exchange_events where case_id=cid and action='terms_changed'),'18:00:00','original accepted descriptor remains in private history') from state where n=1;
 select is((select details->'after'->'offered'->>'start_time' from public.shift_exchange_events where case_id=cid and action='terms_changed'),'19:00:00','history records the new descriptor') from state where n=1;
 select ok(not (pg_temp.read_model(second_user)::text like '%"details"%'),'employee history does not expose private audit payload') from ws;
-select is((select count(*) from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='terms_changed'
- and o.payload->>'audience_contract'='shift_change_participants'),2::bigint,'both request participants receive a change notification') from ws,state where n=1;
-select ok(exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='terms_changed'
- and o.payload->>'audience_contract'='schedule_request_reviewers' and o.payload->'recipient_user_ids' ? manager_b::text
- and not o.payload->'recipient_user_ids' ? manager_a::text),'review notification uses current manager location scopes') from ws,state where n=1;
 select throws_ok($$select public.shift_exchange_preview(manager_a,w,cid,aid) from ws,state where n=1$$,'42501',null,'old location manager cannot approve after the move');
 select throws_ok($$select pg_temp.command(owner_id,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',revision,'fingerprint',preview->>'fingerprint')) from ws,state where n=1$$,'PT409',null,'stale manager decision cannot reuse the old review');
 select public.refresh_weekly_exchange_terms(w,cid) from ws,state where n=1;
 update public.schedule_published_shifts set note='Only a note changed' where id=pg_temp.shift_id(1);
 select pg_temp.flush();
-select is((select count(*) from public.shift_exchange_events where case_id=cid and action='terms_changed'),1::bigint,'unchanged terms and shift notes do not notify again') from state where n=1;
+select is((select count(*) from public.shift_exchange_events where case_id=cid and action='terms_changed'),1::bigint,'unchanged terms and shift notes write no second change') from state where n=1;
 
--- A failed outbox write rolls back the changed shift, request and history.
-create function pg_temp.fail_terms_notification() returns trigger language plpgsql as $$ begin
- if new.payload->>'request_action'='terms_changed' then raise exception 'Simulated outbox failure'; end if; return new;
+-- A failed history write rolls back the changed shift and request.
+create function pg_temp.fail_terms_history() returns trigger language plpgsql as $$ begin
+ if new.action='terms_changed' then raise exception 'Simulated history failure'; end if; return new;
 end; $$;
-create trigger test_terms_notification_failure before insert on public.notification_outbox for each row execute function pg_temp.fail_terms_notification();
+create trigger test_terms_history_failure before insert on public.shift_exchange_events for each row execute function pg_temp.fail_terms_history();
 create function pg_temp.change_and_flush() returns void language plpgsql as $$ begin
  update public.schedule_published_shifts set start_time='20:00' where id=pg_temp.shift_id(1);
  perform pg_temp.flush();
 end; $$;
-select throws_ok($$select pg_temp.change_and_flush()$$,'P0001','Simulated outbox failure','notification failure cannot commit a silent term change');
-drop trigger test_terms_notification_failure on public.notification_outbox;
-select is((select start_time::text from public.schedule_published_shifts where id=pg_temp.shift_id(1)),'19:00:00','notification failure restores the published hours');
-select is((select revision from public.shift_exchange_cases where id=cid),revision+1,'notification failure restores request revision') from state where n=1;
+select throws_ok($$select pg_temp.change_and_flush()$$,'P0001','Simulated history failure','a history failure cannot commit a silent term change');
+drop trigger test_terms_history_failure on public.shift_exchange_events;
+select is((select start_time::text from public.schedule_published_shifts where id=pg_temp.shift_id(1)),'19:00:00','a history failure restores the published hours');
+select is((select revision from public.shift_exchange_cases where id=cid),revision+1,'a history failure restores request revision') from state where n=1;
 select tests.approved_leave(w,second_emp,second_user,other_loc,start_day+1,'19:00','20:00','ad428000-0000-4000-8000-000000000050') from ws;
 select is(public.shift_exchange_preview(manager_b,w,cid,aid)->>'allowed','false','retained acceptance still cannot bypass approved leave at the new time') from ws,state where n=1;
 update public.schedule_time_off_requests set status='pending' where id='ad428000-0000-4000-8000-000000000050';
@@ -132,21 +127,14 @@ update public.schedule_published_shifts set scheduled_date=current_date-1 where 
 select pg_temp.flush();
 select is((select status from public.shift_exchange_cases where id=cid),'expired','moving a future request into the past closes it atomically') from state where n=8;
 select is((select status from public.shift_exchange_applications where id=aid),'expired','past shift closes active applications without transferring') from state where n=8;
-select ok(exists(select 1 from public.notification_outbox where workspace_id=w and subject_id=cid::text and payload->>'request_action'='expired'),'past-time closure uses the existing participant notification') from ws,state where n=8;
+select is((select count(*) from public.shift_exchange_events where case_id=cid and action='expired'),1::bigint,'past-time closure leaves one history row') from state where n=8;
 
 update public.schedule_published_shifts set start_time='19:00' where id=pg_temp.shift_id(4);
 select pg_temp.flush();
 select pg_temp.command(second_user,jsonb_build_object('action','withdraw','case_id',cid,'application_id',aid,
  'expected_revision',(select revision from public.shift_exchange_cases where id=cid))) from ws,state where n=4;
-select ok(not exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text
- and o.payload->>'request_action'='terms_changed' and o.payload->>'audience_contract'='shift_change_participants'
- and o.payload->'recipient_user_ids' ? second_user::text and public.shift_exchange_notification_allowed(o.id,second_user)),
- 'withdrawn participant no longer qualifies for queued term notifications') from ws,state where n=4;
 update public.schedule_published_shifts set start_time='20:00' where id=pg_temp.shift_id(4);
 select pg_temp.flush();
-select is((select count(*) from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text
- and o.payload->>'request_action'='terms_changed' and o.payload->'recipient_user_ids' ? second_user::text),1::bigint,
- 'further changes do not notify a withdrawn participant again') from ws,state where n=4;
 update public.schedule_published_shifts set employee_id=(select second_emp from ws) where id=pg_temp.shift_id(3);
 select pg_temp.flush();
 select is(public.shift_exchange_live_status(w,cid),'invalidated','changed owner does not inherit consent') from ws,state where n=3;
@@ -216,10 +204,8 @@ update public.schedule_published_shifts set start_time='13:30',end_time='15:30' 
 select pg_temp.flush();
 select is((select status from public.shift_exchange_applications where id=aid),'invalidated','new hours overlapping her own shift end her acceptance') from state where n=80;
 select is(public.shift_exchange_live_status(w,cid),'open','the open search keeps looking for somebody else') from ws,state where n=80;
-select ok(exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='invalidated'
- and o.payload->'recipient_user_ids' ? second_user::text),'she is told her acceptance ended') from ws,state where n=80;
-select ok(not exists(select 1 from public.notification_outbox o where o.workspace_id=w and o.subject_id=cid::text and o.payload->>'request_action'='terms_changed'
- and o.payload->'recipient_user_ids' ? second_user::text),'and is not told it remains valid') from ws,state where n=80;
+select is((select count(*) from public.shift_exchange_events where case_id=cid and action='invalidated' and application_id=aid),1::bigint,
+ 'her acceptance ending is in the history') from state where n=80;
 select is((select details->'acceptances_ended' from public.shift_exchange_events where case_id=cid and action='terms_changed'),
  jsonb_build_array(aid),'the private history names the acceptance that ended') from state where n=80;
 update public.schedule_published_shifts set start_time='14:00',end_time='16:00' where id=pg_temp.shift_id(82);

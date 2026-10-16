@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(88);
+select plan(87);
 
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
@@ -213,33 +213,23 @@ select is(pg_temp.may_write_note('owner', 'owner'), 'no', 'the owner has no Mana
 select is(pg_temp.may_write_note('zeynep', 'emre'), 'yes', 'Zeynep (admin) writes a note about Emre, an employee');
 select is(pg_temp.may_write_note('zeynep', 'ayse'), 'no', 'Zeynep (admin) does not write a note about Ayşe, a manager');
 
--- Who hears when somebody updates their own weekly availability: every
--- manager of a location they work at, whatever their rank, and the owner and
--- admins (user decision 2026-09-26). Read from the notification the save queues.
-create function pg_temp.hears(person text, whose text) returns boolean
+-- Only an employee saves a week of their own (M13, AVAIL-002).
+create function pg_temp.save_own(whose text) returns void
 language plpgsql
 as $$
-declare heard jsonb;
 begin
   perform public.weekly_preferences_save_service(tests.user('sc:' || whose), tests.id('sc'), jsonb_build_object(
     'employee_id', tests.id('sc:' || whose), 'source', 'employee',
     'expected_revision', coalesce((select p.revision from public.employee_weekly_preferences p where p.employee_id = tests.id('sc:' || whose)), 0),
     'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
     'preference', public.empty_weekly_preference('time_range')), gen_random_uuid());
-  select o.payload -> 'recipient_user_ids' into heard from public.notification_outbox o
-  where o.workspace_id = tests.id('sc') and o.subject_type = 'weekly_availability' and o.subject_id = tests.id('sc:' || whose)::text
-  order by o.created_at desc, o.id desc limit 1;
-  return heard @> jsonb_build_array(tests.user('sc:' || person));
 end;
 $$;
--- Only an employee enters availability (M13, AVAIL-002): Can, a manager, has no own week to save.
-select throws_ok($$select pg_temp.hears('ayse', 'can')$$, '42501', null, 'Can, a manager at Kadıköy, does not save a week of his own');
-select is(pg_temp.hears('zeynep', 'emre'), true, 'the admin hears when Emre updates his availability');
-select is(pg_temp.hears('ayse', 'emre'), true, 'Ayşe hears when Emre, who works at Kadıköy, updates his availability');
-select is(pg_temp.hears('mehmet', 'emre'), false, 'Mehmet (Beşiktaş) does not hear about Emre (Kadıköy)');
+select throws_ok($$select pg_temp.save_own('can')$$, '42501', null, 'Can, a manager at Kadıköy, does not save a week of his own');
+select lives_ok($$select pg_temp.save_own('emre')$$, 'Emre, an employee, saves his own week');
 
--- Whoever hears of the update reads the person's weekly availability (user
--- decision 2026-09-26, REUSE "Müsaitlik okuma = bildirim alıcıları", BL-139);
+-- Who reads a person's weekly availability: every manager of a location they work at,
+-- whatever their rank, and the owner and admins (user decision 2026-09-26, BL-139);
 -- the Manager note comes with it only when the person is an employee.
 create function pg_temp.reads(reader uuid, whose uuid) returns boolean
 language plpgsql
@@ -264,6 +254,8 @@ exception when sqlstate '42501' then
   return false;
 end;
 $$;
+select is(pg_temp.reads('zeynep', 'emre'), true, 'the admin reads Emre''s availability');
+select is(pg_temp.reads('ayse', 'emre'), true, 'Ayşe reads Emre''s, who works at Kadıköy');
 select is(pg_temp.reads('ayse', 'can'), true, 'Ayşe reads the availability of Can, a manager at Kadıköy');
 -- The owner works at every location (BL-218), Kadıköy included.
 select is(pg_temp.reads('ayse', 'owner'), true, 'Ayşe reads the owner, who works at Kadıköy');
@@ -296,42 +288,6 @@ end;
 $$;
 select is(pg_temp.save_note('zeynep', 'ayse'), '42501', 'Zeynep (admin) cannot save a Manager note about Ayşe, a manager');
 select is(pg_temp.save_note('owner', 'owner'), '42501', 'the owner cannot save a Manager note about herself');
-
--- The two sets are one: for every person, who hears of their update is who
--- reads it.
-create function pg_temp.hearers_and_readers_differ() returns text[]
-language plpgsql
-as $$
-declare whose record; heard uuid[]; readers uuid[]; differ text[] := '{}';
-begin
-  for whose in
-    select e.id, e.user_id from public.employee_profiles e
-    join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id and m.status = 'active'
-    where e.workspace_id = tests.id('sc') and e.archived_at is null
-      -- only an employee saves a week of their own (M13, AVAIL-002)
-      and app_private.ranks_as_employee(e.workspace_id, e.user_id)
-  loop
-    perform public.weekly_preferences_save_service(whose.user_id, tests.id('sc'), jsonb_build_object(
-      'employee_id', whose.id, 'source', 'employee',
-      'expected_revision', coalesce((select p.revision from public.employee_weekly_preferences p where p.employee_id = whose.id), 0),
-      'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
-      'preference', public.empty_weekly_preference('time_range')), gen_random_uuid());
-    select array(select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid order by 1) into heard
-    from public.notification_outbox o
-    where o.workspace_id = tests.id('sc') and o.subject_type = 'weekly_availability' and o.subject_id = whose.id::text
-    order by o.created_at desc, o.id desc limit 1;
-    select array(select m.user_id from public.workspace_memberships m
-      where m.workspace_id = tests.id('sc') and m.status = 'active' and m.user_id <> whose.user_id
-        and pg_temp.reads(m.user_id, whose.id) order by 1) into readers;
-    if heard is distinct from readers then
-      differ := differ || format('%s: heard %s, read %s', whose.id, heard, readers);
-    end if;
-  end loop;
-  return differ;
-end;
-$$;
-select is(pg_temp.hearers_and_readers_differ(), '{}'::text[],
-  'for every person, whoever hears of an availability update reads it, and nobody else');
 
 -- With no live location in the workspace, the owner reads an empty Shift Hub
 -- manager view and team availability instead of a refusal.

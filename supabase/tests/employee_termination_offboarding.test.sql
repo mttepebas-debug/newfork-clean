@@ -159,7 +159,7 @@ select lives_ok(
 );
 set local role postgres;
 select is((select count(*)::integer from public.employee_terminations where workspace_id = '2a000000-0000-4000-8000-000000000001'), 1, 'idempotent replay does not duplicate the termination');
--- The managers' notice for the released shift is termination_tells_location_managers (BL-768).
+-- No notice goes out for the released shift since the old notifications went (BILDIRIM-04).
 
 set local role service_role;
 select throws_ok(

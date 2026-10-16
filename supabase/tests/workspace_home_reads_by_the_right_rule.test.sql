@@ -72,14 +72,6 @@ select is(pg_temp.todo_titles('sena'), array['Call Emre back', 'Expired employee
 select is(pg_temp.todo_titles('ayse'), array['Call Emre back'],
   'Ayse, without document access, sees only the to-do that is not about a document');
 
--- The document to-do and its notification go to the same people: the owner
--- and Sena, not Ayse.
-select is(
-  (select array_agg(r.value::uuid order by r.value)
-   from public.notification_outbox o, jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r
-   where o.type_key = 'people.employee_document.expiring' and o.subject_id = tests.id('h:doc')::text),
-  (select array_agg(x order by x) from unnest(array[pg_temp.u('owner'), pg_temp.u('sena')]) x),
-  'the document notification goes to the owner and Sena, who see its to-do');
 
 -- KK-179 (2): every member has an account row.
 select is(

@@ -173,7 +173,6 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 select ok((select actor_user_id is null from public.shift_exchange_events where case_id=cid and action='expired'),'AT26 system expiry does not impersonate an employee') from sx_state;
 select public.shift_exchanges_maintain_service(100);
 select is((select count(*)::integer from public.shift_exchange_events where case_id=cid and action='expired'),1,'AT33 repeated maintenance emits expiry only once') from sx_state;
-select ok(exists(select 1 from public.notification_outbox where subject_id=cid::text and payload->>'request_action'='expired' and payload->'recipient_user_ids' @> jsonb_build_array(pg_temp.actor(4))),'AT33 background expiry notifies the affected applicant') from sx_state;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(3)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
 update public.schedule_published_shifts set end_time='18:00' where id=pg_temp.shift(3);
@@ -183,7 +182,7 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 set local role authenticated;
 select throws_ok($$select public.shift_exchanges_maintain_service(100)$$,'42501',null,'browser cannot invoke cross-workspace maintenance');
 reset role;
--- Drive the real outbox projection only for events created by this transaction.
+-- A swap approved by the manager.
 insert into public.schedule_published_shifts(id,workspace_id,location_id,publication_id,employee_id,job_id,shift_type_id,scheduled_date,start_time,end_time,source_shift_id)
 select pg_temp.shift(n),pg_temp.w(),'11000000-0000-4000-8000-000000000001','98010000-0000-4000-8000-000000000001',pg_temp.emp(n-7),'13000000-0000-4000-8000-000000000001','14000000-0000-4000-8000-000000000001','2030-01-13',case n when 8 then '09:00'::time else '13:00'::time end,case n when 8 then '12:00'::time else '17:00'::time end,gen_random_uuid() from generate_series(8,9)n;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(8),'requested_shift_id',pg_temp.shift(9)),gen_random_uuid());
@@ -192,18 +191,6 @@ update sx_state set aid=(select id from public.shift_exchange_applications where
 select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','accept','case_id',cid,'application_id',aid,'expected_revision',1),gen_random_uuid()) from sx_state;
 update sx_state set preview=public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid);
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
-select ok(exists(select 1 from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' and payload->>'request_action'='transfer_completed' and payload->>'body' like '%no longer responsible%'),'AT33 giver receives the release confirmation');
-select ok(not exists(select 1 from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' and payload->>'request_action'='other_selected' and payload->'recipient_user_ids' @> to_jsonb(array[pg_temp.actor(1)])),'AT33 losing-candidate message is not sent to original owner');
-update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1
- where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases';
-do $$ declare row record; begin for row in select id from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' loop
- perform public.process_notification_outbox_service('exchange-pgtap',row.id); end loop; end; $$;
-select ok(exists(select 1 from public.notifications where workspace_id=pg_temp.w() and recipient_user_id=pg_temp.actor(3) and title='Shift change approved' and body like '%now assigned to you%' and action_url like '%?case=%'),'AT33 approved receiver has an actionable inbox notification');
-select ok(exists(select 1 from public.notifications where workspace_id=pg_temp.w() and recipient_user_id=pg_temp.actor(4) and title='Another teammate was selected'),'AT33 other candidate gets neutral inbox result');
-create temp table sx_inbox_count as select count(*) n from public.notifications where workspace_id=pg_temp.w();
-do $$ declare row record; begin for row in select id from public.notification_outbox where workspace_id=pg_temp.w() and subject_type='shift_exchange_cases' loop
- perform public.project_notification_recipients_service(row.id); perform public.project_notification_inbox_service(row.id); end loop; end; $$;
-select is((select count(*) from public.notifications where workspace_id=pg_temp.w()),(select n from sx_inbox_count),'AT33 retrying projection does not duplicate inbox items');
 -- Additional decision matrix: use a separate week to avoid accidental conflicts.
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
 select ('98010000-0000-4000-8000-'||lpad((n+2)::text,12,'0'))::uuid,pg_temp.w(),('11000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid,'2030-01-14',1,pg_temp.manager() from generate_series(1,2)n;
@@ -222,7 +209,6 @@ select public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(10)),pg_temp.emp(1),'AT06 owner closes search without releasing responsibility');
 select is((select count(*)::int from public.shift_exchange_applications where case_id=cid and status='closed_case_cancelled'),2,'AT06 owner close closes all remaining applications') from sx_state;
 select is((select status from public.shift_exchange_applications where id=aid),'withdrawn','AT06 owner close preserves an earlier withdrawal') from sx_state;
-select ok((select count(*)=2 from public.notification_outbox where subject_id=cid::text and payload->>'request_action'='case_closed' and (payload->'recipient_user_ids' @> jsonb_build_array(pg_temp.actor(3)) or payload->'recipient_user_ids' @> jsonb_build_array(pg_temp.actor(4)))),'AT06 both remaining candidates receive a closure event') from sx_state;
 
 -- A genuine open shift also supports multiple candidates and a final winner.
 select public.shift_exchanges_command_service(pg_temp.actor(n),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(11)),gen_random_uuid()) from generate_series(2,4)n;
@@ -337,52 +323,18 @@ select is(public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid)->
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',2,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
 select is((select employee_id from public.schedule_published_shifts where publication_id='98010000-0000-4000-8000-000000000005' and scheduled_date='2030-01-20'),pg_temp.emp(2),'AT25 approval changes the current publication owner');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(16)),pg_temp.emp(1),'AT25 previous publication retains its historical owner');
--- Case notifications coalesce in delivery order and revalidate current scope.
+-- Three candidates apply, withdraw one by one, and the owner closes the case.
 update sx_state set cid=(select id from public.shift_exchange_cases where status='open' and offered_source_id=(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(14)));
 select public.shift_exchanges_command_service(pg_temp.actor(n),pg_temp.w(),jsonb_build_object('action','apply','shift_id',(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(14)),'case_id',cid),gen_random_uuid()) from sx_state cross join generate_series(3,4)n;
-create temp table sx_notice_state as
-select o.id latest_oid, o.event_id, c.cid from sx_state c join public.notification_outbox o on o.subject_id=c.cid::text
-join public.shift_exchange_events e on e.id::text=o.payload->>'request_event_id'
-where o.payload->>'audience_contract'='schedule_request_reviewers' order by e.notification_sequence desc limit 1;
-select public.project_notification_event_service(latest_oid) from sx_notice_state;
-select public.project_notification_recipients_service(latest_oid) from sx_notice_state;
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=pg_temp.w() and user_id=pg_temp.actor(5)));
-update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1 where workspace_id=pg_temp.w() and subject_id=(select cid::text from sx_state);
-do $$ declare row record; begin for row in
- select o.id from public.notification_outbox o join public.shift_exchange_events e on e.id::text=o.payload->>'request_event_id'
- where o.workspace_id=pg_temp.w() and o.subject_id=(select cid::text from sx_state) order by e.notification_sequence desc
-loop perform public.process_notification_outbox_service('exchange-pgtap',row.id); end loop; end; $$;
-select is((select count(*)::int from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id where i.group_key='shift_exchange_review:'||(select cid from sx_state)::text and r.recipient_user_id=pg_temp.manager() and i.visibility_state='visible'),1,'AT33 three applications produce one visible manager case notification');
-select ok(exists(select 1 from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id where i.group_key='shift_exchange_review:'||(select cid from sx_state)::text and r.recipient_user_id=pg_temp.manager() and i.visibility_state='visible' and i.title='3 candidates ready for review' and i.body like '3 candidates are%'),'AT33 case notification displays the current candidate count');
-select is((select count(*)::int from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id where i.group_key='shift_exchange:'||(select cid from sx_state)::text and r.recipient_user_id=pg_temp.actor(1) and i.visibility_state='visible'),1,'AT33 owner receives one case update rather than three separate candidate rows');
-select is((select count(*)::int from public.notifications n join public.notification_inbox_items i on i.legacy_notification_id=n.id where i.group_key='shift_exchange_review:'||(select cid from sx_state)::text and n.recipient_user_id=pg_temp.manager() and n.dismissed_at is null),1,'AT33 legacy badge reader also counts one manager notification');
-select is((select count(*)::int from public.notification_outbox o where o.subject_id=(select cid::text from sx_state) and o.payload->>'audience_contract'='schedule_request_reviewers'),3,'AT33 immutable reviewer event evidence is retained');
-select is((select count(*)::int from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id where i.group_key='shift_exchange_review:'||(select cid from sx_state)::text and r.recipient_user_id=pg_temp.actor(5)),0,'AT34 revoked scope prevents inbox insertion even after recipient projection');
-select ok(exists(select 1 from public.notification_recipient_decisions d join public.notification_outbox o on o.event_id=d.event_id where o.subject_id=(select cid::text from sx_state) and d.candidate_user_id=pg_temp.actor(5) and d.decision='deny' and d.reason_chain @> '["shift_exchange_audience_changed"]'::jsonb),'AT34 relay records the changed-audience reason for revoked reviewers');
-update public.notification_inbox_items set seen_at=now(),read_at=now() where group_key='shift_exchange_review:'||(select cid from sx_state)::text and visibility_state='visible';
-do $$ declare row record; begin for row in select id from public.notification_outbox where subject_id=(select cid::text from sx_state) loop perform public.project_notification_inbox_service(row.id); end loop; end; $$;
-select is((select count(*)::int from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id where i.group_key='shift_exchange_review:'||(select cid from sx_state)::text and r.recipient_user_id=pg_temp.manager() and i.visibility_state='visible' and i.read_at is not null),1,'AT33 delivery retry does not revive old rows or reset the latest read state');
 select public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','withdraw','case_id',cid,'application_id',(select id from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(4) and status='pending_manager'),'expected_revision',4),gen_random_uuid()) from sx_state;
-select ok(exists(select 1 from public.notification_inbox_items where group_key='shift_exchange_review:'||(select cid from sx_state)::text and visibility_state='visible' and title='2 candidates ready for review'),'AT33 withdrawal immediately refreshes the existing manager count without a new review event');
 select public.shift_exchanges_command_service(pg_temp.actor(3),pg_temp.w(),jsonb_build_object('action','withdraw','case_id',cid,'application_id',(select id from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(3) and status='pending_manager'),'expected_revision',5),gen_random_uuid()) from sx_state;
 select public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','withdraw','case_id',cid,'application_id',(select id from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(2) and status='pending_manager'),'expected_revision',6),gen_random_uuid()) from sx_state;
-select is((select count(*)::int from public.notification_inbox_items where group_key='shift_exchange_review:'||(select cid from sx_state)::text and visibility_state='visible'),0,'AT33 last candidate withdrawal removes the obsolete manager task immediately');
 select public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','close','case_id',cid,'expected_revision',7,'reason','Keeping my shift'),gen_random_uuid()) from sx_state;
-update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1 where workspace_id=pg_temp.w() and subject_id=(select cid::text from sx_state) and status='pending';
-do $$ declare row record; begin for row in select id from public.notification_outbox where subject_id=(select cid::text from sx_state) and status='leased' loop perform public.process_notification_outbox_service('exchange-pgtap',row.id); end loop; end; $$;
-select is((select count(*)::int from public.notification_inbox_items where group_key='shift_exchange_review:'||(select cid from sx_state)::text and visibility_state='visible'),0,'AT33 closing a case removes its obsolete review task from every manager inbox');
-select is((select count(*)::int from public.notification_inbox_items where group_key='shift_exchange_available:'||(select cid from sx_state)::text and visibility_state='visible'),0,'AT34 a closed cover no longer advertises a pickup opportunity');
--- A pool with no applications emits no closure recipient event. Its existing
--- opportunity still disappears synchronously, including the legacy badge.
+-- A pool with no applications closes.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(14))),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
-update public.notification_outbox set status='leased',lease_owner='exchange-pgtap',lease_expires_at=now()+interval '1 minute',attempt_count=attempt_count+1 where workspace_id=pg_temp.w() and subject_id=(select cid::text from sx_state) and status='pending';
-do $$ declare row record; begin for row in select id from public.notification_outbox where subject_id=(select cid::text from sx_state) and status='leased' loop perform public.process_notification_outbox_service('exchange-pgtap',row.id); end loop; end; $$;
-select ok(exists(select 1 from public.notification_inbox_items where group_key='shift_exchange_available:'||(select cid from sx_state)::text and visibility_state='visible'),'AT34 zero-application pool has delivered opportunities before closure');
 select public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','close','case_id',cid,'expected_revision',1,'reason','Keeping my shift'),gen_random_uuid()) from sx_state;
-select is((select count(*)::int from public.notification_outbox where subject_id=(select cid::text from sx_state) and payload->>'request_action'='case_closed'),0,'AT34 zero-application closure needs no artificial notification recipient');
-select is((select count(*)::int from public.notification_inbox_items where group_key='shift_exchange_available:'||(select cid from sx_state)::text and visibility_state='visible'),0,'AT34 zero-application closure removes opportunities without a relay event');
-select is((select count(*)::int from public.notifications n join public.notification_inbox_items i on i.legacy_notification_id=n.id where i.group_key='shift_exchange_available:'||(select cid from sx_state)::text and n.dismissed_at is null),0,'AT34 zero-application closure clears legacy unread badges too');
 -- Unpublish previews bind current assignment terms, not only publication count.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(14))),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;

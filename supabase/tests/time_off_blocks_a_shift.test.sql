@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(32);
+select plan(28);
 
 -- KARARLAR §1.1 (Mert, 2026-10-09; BL-995) + BL-127: approved time off blocks
 -- every shift it overlaps, even by a minute, whoever writes it and however it
@@ -45,15 +45,6 @@ create function pg_temp.opportunity(label text) returns jsonb language sql as $$
 $$;
 create function pg_temp.command(person text, command jsonb) returns jsonb language sql as $$
   select public.shift_exchanges_command_service(tests.user('sto:' || person), tests.id('sto'), command, gen_random_uuid())
-$$;
-create function pg_temp.outbox(request uuid, type_key text) returns setof public.notification_outbox language sql as $$
-  select * from public.notification_outbox o
-  where o.workspace_id = tests.id('sto') and o.type_key = $2
-    and (o.subject_id = $1::text or o.payload ->> 'request_id' = $1::text)
-$$;
-create function pg_temp.recipients(request uuid) returns uuid[] language sql as $$
-  select array(select distinct r::uuid from pg_temp.outbox($1, 'requests.time_off.shortened') o
-    cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r order by 1)
 $$;
 
 -- The core's "no": its code and its authz.* reason (hint).
@@ -133,12 +124,6 @@ select ok(app_private.eligibility(tests.id('sto'), tests.id('sto:ali'),
     public.shift_exchange_shift(tests.id('sto'), tests.id('sto:shift:emre-wed-late')), '{"operation": "release_pickup"}') ->> 'status' = 'ineligible',
   'his remaining time off still blocks the later shift');
 
--- 5. The approval shortens nothing, so nobody hears of a shortening.
-select is((select count(*)::integer from public.notification_outbox o
-  where o.workspace_id = tests.id('sto') and o.type_key = 'requests.time_off.shortened'), 0,
-  'nobody hears of a shortening, because none happened');
-select is((select count(*)::integer from jsonb_array_elements(public.reconcile_notification_platform_service() -> 'deterministic_domain_events_without_outbox') m
-   where m ->> 'workspace_id' = tests.id('sto')::text), 0, 'the notification check counts nothing missing');
 
 -- 7. The manager's way (BL-127): whoever could decide the leave shortens it.
 select tests.leave('sto', 'ali', 2);
@@ -186,16 +171,6 @@ select tests.settle();
 select ok(not (pg_temp.leave(tests.id('sto:ali:time_off:2')) && (select span from cut)), 'Ayse gives back 10:00-14:00 of Ali''s leave');
 select is(pg_temp.shorten('ayse', (select periods from cut), (select key from cut)) ->> 'request_id', tests.id('sto:ali:time_off:2')::text,
   'a retry of the same command answers the same');
-select is(pg_temp.recipients(tests.id('sto:ali:time_off:2')), array(select x from unnest(array[tests.user('sto:ali'), tests.user('sto:mert')]) x order by 1),
-  'Ali and Mert, who approved the leave, hear about it; Ayse does not');
--- Ali's notice reaches his notification list.
-update public.notification_outbox set status = 'leased', lease_owner = 'g9b-test', lease_expires_at = now() + interval '1 minute'
-where id in (select o.id from pg_temp.outbox(tests.id('sto:ali:time_off:2'), 'requests.time_off.shortened') o);
-select public.process_notification_outbox_service('g9b-test', o.id)
-from pg_temp.outbox(tests.id('sto:ali:time_off:2'), 'requests.time_off.shortened') o;
-select is((select count(*)::integer from public.notifications n where n.workspace_id = tests.id('sto')
-    and n.recipient_user_id = tests.user('sto:ali') and n.title = 'Your time off was shortened'),
-  1, 'Ali finds "Your time off was shortened" in his notifications');
 
 select * from finish();
 rollback;

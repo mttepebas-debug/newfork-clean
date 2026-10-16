@@ -47,13 +47,6 @@ select is(
   0,
   'the owner still lists the record, with no location'
 );
-select ok(
-  exists (select 1 from public.notification_outbox o
-    where o.workspace_id = tests.id('m') and o.type_key = 'people.employee.no_location'
-      and o.payload -> 'recipient_user_ids' @> to_jsonb(array[tests.user('m:owner'), tests.user('m:zeynep')])
-      and not o.payload -> 'recipient_user_ids' @> to_jsonb(array[tests.user('m:ayse')])),
-  'the owner and the admin are told the record has no location left; the manager is not'
-);
 select throws_ok(
   format($$select public.save_employee_service(%L, %L, e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
       e.invitation_email, e.start_date, e.internal_note, '{}', null,
@@ -216,6 +209,21 @@ select lives_ok(
   format($$select public.terminate_employee_service(%L, %L, %L, localtimestamp, 'Europe/Istanbul', 'no location left', gen_random_uuid())$$,
     tests.user('m:owner'), tests.id('m'), tests.id('m:emre')),
   'the owner ends the employment of somebody with no location left');
+
+-- Ending employment opens the published shifts the person has not started yet (BL-768; moved here
+-- from the termination notice test when the notice went, BILDIRIM-04): Oya's shifts at both locations.
+select tests.person('m', 'oya', 'employee', array['K', 'B'], array['cook']);
+select tests.publish_week('m', 2, '[
+  {"label": "oya-k", "person": "oya", "loc": "K", "job": "cook", "day": 0, "start": "10:00", "end": "16:00"},
+  {"label": "oya-b", "person": "oya", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}
+]');
+select lives_ok(
+  format($$select public.terminate_employee_service(%L, %L, %L, localtimestamp, 'Europe/Istanbul', 'Employment ended', gen_random_uuid())$$,
+    tests.user('m:owner'), tests.id('m'), tests.id('m:oya')),
+  'the owner ends Oya''s employment');
+select is((select array_agg(s.employee_id is null) from public.schedule_published_shifts s
+  where s.id in (tests.id('m:shift:oya-k'), tests.id('m:shift:oya-b'))), array[true, true],
+  'her Kadikoy shift and her Besiktas shift are open');
 
 -- A role change is written to the audit log with the two roles, and nothing
 -- about locations: a role holds none of its own (EMP-001).

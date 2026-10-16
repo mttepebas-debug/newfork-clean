@@ -153,55 +153,27 @@ select is((select c ->> 'title' from jsonb_array_elements(
 select is(pg_temp.try(format($$select pg_temp.set_state('owner', %L, 'unpublish')$$, tests.id('p:ann:closed-past'))),
   'PT409 announcement.read_only', 'KK-97: it is Past, so it cannot be unpublished');
 
--- 5. K12: a post past its end leaves the inboxes and stays in the lists as Past ---------
+-- 5. K12: a post past its end reaches nobody and stays in the lists as Past ---------
 
-create function pg_temp.deliver() returns void language plpgsql as $$
-declare queued uuid;
-begin
-  for queued in select o.id from public.notification_outbox o
-                where o.workspace_id = tests.id('p') and o.status in ('pending', 'retry') loop
-    update public.notification_outbox
-    set status = 'leased', lease_owner = 'past-dates', lease_expires_at = now() + interval '1 minute'
-    where notification_outbox.id = queued;
-    perform public.process_notification_outbox_service('past-dates', queued);
-  end loop;
-end;
-$$;
-
-create function pg_temp.has_notice(person text, subject uuid) returns boolean language sql as $$
-  select exists (
-    select 1 from public.notification_inbox_items item
-    join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-    join public.notification_outbox outbox
-      on outbox.event_id = recipient.event_id and outbox.workspace_id = recipient.workspace_id
-    where outbox.subject_id = subject::text and recipient.recipient_user_id = pg_temp.u(person)
-      and item.visibility_state = 'visible')
-$$;
-
-create function pg_temp.notices_to(person text, subject uuid) returns integer language sql as $$
-  select count(*)::integer from public.notification_outbox o
-  where o.subject_id = subject::text and o.payload -> 'recipient_user_ids' ? pg_temp.u(person)::text
+create function pg_temp.reaches(person text, subject uuid) returns boolean language sql as $$
+  select pg_temp.u(person) = any (a.delivered_to) from public.announcements a where a.id = subject
 $$;
 
 select tests.remember('p:ann:tasting', pg_temp.publish('ayse', pg_temp.payload('New menu tasting', current_date + 1, current_date + 2)));
-select pg_temp.deliver();
-select ok(pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: while it runs, Emre has the notice');
+select ok(pg_temp.reaches('emre', tests.id('p:ann:tasting')), 'K12: while it runs, it reaches Emre');
 select is(pg_temp.listed('emre', tests.id('p:ann:tasting')) ->> 'recipient_count', null, 'D3: Emre is not told how many it reached');
 select is((pg_temp.listed('ayse', tests.id('p:ann:tasting')) ->> 'recipient_count')::integer, 3,
   'K24: Ayse sees how many it is out to: Mina, Emre and the owner, who work at Kadikoy; not herself (KK-89)');
 select pg_temp.move_back(tests.id('p:ann:tasting'), current_date - 3, current_date - 2);
 select app_private.announcement_release(tests.id('p'));
-select ok(not pg_temp.has_notice('emre', tests.id('p:ann:tasting')), 'K12: past its end, it leaves Emre''s inbox');
+select ok(not pg_temp.reaches('emre', tests.id('p:ann:tasting')), 'K12: past its end, it no longer reaches Emre');
 select is((select cardinality(a.delivered_to) from public.announcements a where a.id = tests.id('p:ann:tasting')), 0,
   'K12: nobody holds it any more');
 select is(pg_temp.listed('ayse', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: Ayse, who wrote it, sees it as Past');
 select is(pg_temp.listed('owner', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: so does the owner');
 select is(pg_temp.listed('emre', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: Emre finds it under Past');
-select is((select count(*)::integer from public.notification_outbox o where o.subject_id = tests.id('p:ann:tasting')::text
-           and o.status in ('pending', 'retry')), 0, 'K12: the release tells nobody again');
 select app_private.announcement_release(tests.id('p'));
-select is((select count(*)::integer from public.notification_outbox o where o.subject_id = tests.id('p:ann:tasting')::text
-           and o.status in ('pending', 'retry')), 0, 'K12: nor does the next minute');
+select is(pg_temp.listed('emre', tests.id('p:ann:tasting')) ->> 'display_status', 'past', 'K12: the next minute changes nothing');
 
 -- D4: the owner's post at Kadikoy ran out; Ayse, Kadikoy's manager, may not
 -- change it (K2) and still sees it as Past.
@@ -230,11 +202,11 @@ $$;
 select tests.remember('p:ann:due', pg_temp.schedule('ayse', 'Due at nine', current_date + 10));
 select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'scheduled', 'KK-98: it waits for nine');
 update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:due');
--- ponytail: the outbox refuses this one notice inside the test only; the rule
+-- ponytail: the post's History refuses this one post inside the test only; the rule
 -- under test is what the release does when publishing breaks.
 do $$ begin
-  execute format('alter table public.notification_outbox add constraint past_dates_refuses check (subject_id <> %L) not valid',
-    tests.id('p:ann:due')::text);
+  execute format('alter table public.announcement_changes add constraint past_dates_refuses check (announcement_id <> %L) not valid',
+    tests.id('p:ann:due'));
 end $$;
 select app_private.announcement_release(tests.id('p'));
 select is((select a.status::text from public.announcements a where a.id = tests.id('p:ann:due')), 'scheduled',
@@ -243,11 +215,11 @@ select ok((select a.release_error from public.announcements a where a.id = tests
   'KK-98: the error is kept with it');
 select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'scheduled',
   'KK-98: a break that is not about the post is tried again at each read, so it still reads Scheduled');
-alter table public.notification_outbox drop constraint past_dates_refuses;
+alter table public.announcement_changes drop constraint past_dates_refuses;
 select is(pg_temp.listed('ayse', tests.id('p:ann:due')) ->> 'display_status', 'published', 'KK-98: and it goes out at the next try');
 select is((select a.release_error from public.announcements a where a.id = tests.id('p:ann:due')), null, 'KK-98: with the error gone');
 
--- Its day came first: Couldn't publish, too late; Ayse, who scheduled it, hears it.
+-- Its day came first: Couldn't publish, too late.
 select tests.remember('p:ann:late', pg_temp.schedule('ayse', 'Too late', current_date + 10));
 select pg_temp.move_back(tests.id('p:ann:late'), current_date - 1, current_date + 1);
 update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('p:ann:late');
@@ -257,15 +229,15 @@ select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'display_status', '
 select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'publish_error_code', 'too_late', 'K21: and why, as a code the screen words');
 select is(pg_temp.listed('owner', tests.id('p:ann:late')) ->> 'display_status', 'publish_failed', 'K21: the owner sees the same');
 select is(pg_temp.listed('emre', tests.id('p:ann:late')), null, 'K21: Emre sees nothing of it');
-select is(pg_temp.notices_to('ayse', tests.id('p:ann:late')), 1, 'K21: Ayse, who scheduled it, is told once');
 select app_private.announcement_release(tests.id('p'));
-select is(pg_temp.notices_to('ayse', tests.id('p:ann:late')), 1, 'K21: and not again the next minute');
+select is((select count(*)::integer from public.announcement_changes c where c.announcement_id = tests.id('p:ann:late')
+  and c.action = 'publish_failed'), 1, 'K21: the failure is in its History once, not again the next minute');
 select is(pg_temp.try(format($$select pg_temp.save('ayse', %L, pg_temp.payload('Too late', current_date + 3)
   || jsonb_build_object('publish_at', now() + interval '1 hour'), 'schedule')$$, tests.id('p:ann:late'))), 'ok',
   'KK-98: Ayse picks a new day and schedules it again');
 select is(pg_temp.listed('ayse', tests.id('p:ann:late')) ->> 'display_status', 'scheduled', 'KK-98: which clears the failure');
 
--- Whoever scheduled it lost access: Couldn't publish, not allowed; the owner hears it.
+-- Whoever scheduled it lost access: Couldn't publish, not allowed.
 select tests.remember('p:ann:refused', pg_temp.schedule('mina', 'Refused', current_date + 10));
 select public.remove_employee_access_service(pg_temp.u('owner'), tests.id('p'), tests.id('p:mina'));
 select tests.settle();
@@ -273,8 +245,6 @@ update public.announcements set publish_at = now() - interval '1 minute' where i
 select app_private.announcement_release(tests.id('p'));
 select is(pg_temp.listed('owner', tests.id('p:ann:refused')) ->> 'publish_error_code', 'not_allowed',
   'K21: a release the core refused reads "not_allowed"');
-select is(pg_temp.notices_to('owner', tests.id('p:ann:refused')), 1, 'K21: Mina is gone, so the owner is told');
-select is(pg_temp.notices_to('mina', tests.id('p:ann:refused')), 0, 'K21: and not Mina');
 
 -- 7. K27: acknowledgements stay unless the writer asks again ----------------------------
 

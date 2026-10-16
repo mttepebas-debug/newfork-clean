@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(119);
+select plan(118);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -935,21 +935,6 @@ insert into public.schedule_edit_sessions (
   '10000000-0000-4000-8000-000000000003',
   array['40000000-0000-4000-8000-000000000002']::uuid[]
 );
-insert into public.notification_outbox (
-  id, workspace_id, event_id, type_key, schema_version, actor_user_id,
-  subject_type, subject_id, payload, occurred_at
-) values (
-  '46000000-0000-4000-8000-000000000002',
-  '20000000-0000-4000-8000-000000000002',
-  '46000000-0000-4000-8000-000000000003',
-  'schedule.published',
-  1,
-  '10000000-0000-4000-8000-000000000003',
-  'schedule_week',
-  'closure-week',
-  jsonb_build_object('correlation_id', '46000000-0000-4000-8000-000000000003'),
-  now()
-);
 insert into public.workspace_entitlements (
   workspace_id,
   trial_started_at,
@@ -1102,11 +1087,6 @@ select is(
   (select status::text from public.schedule_edit_sessions where id = '44000000-0000-4000-8000-000000000002'),
   'expired',
   'immediate closure expires open schedule edit sessions'
-);
-select is(
-  (select status from public.notification_outbox where id = '46000000-0000-4000-8000-000000000002'),
-  'processed',
-  'immediate closure suppresses pending notification jobs'
 );
 select is(
   (

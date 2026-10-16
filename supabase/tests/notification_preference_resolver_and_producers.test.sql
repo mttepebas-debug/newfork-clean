@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(17);
 
 select has_table('public', 'notification_recipient_decisions', 'recipient allow and deny decisions are durable');
 -- Rules, not a count: the catalog grows with every producer (BL-373).
@@ -144,27 +144,7 @@ select is(
 update public.employee_profiles set archived_at = null, archived_by = null
 where id = 'e1740000-0000-4000-8000-000000000001';
 
-insert into public.schedule_time_off_requests (
-  id, workspace_id, employee_id, reason, created_by
-)
-values (
-  'e1750000-0000-4000-8000-000000000001', 'e1710000-0000-4000-8000-000000000001',
-  'e1740000-0000-4000-8000-000000000001',
-  'Vacation', 'e1700000-0000-4000-8000-000000000002'
-);
-insert into public.schedule_time_off_events (
-  id, workspace_id, request_id, action, actor_user_id
-)
-values (
-  'e1760000-0000-4000-8000-000000000001', 'e1710000-0000-4000-8000-000000000001',
-  'e1750000-0000-4000-8000-000000000001', 'submitted', 'e1700000-0000-4000-8000-000000000002'
-);
-select is((select count(*)::integer from public.notification_outbox where event_id = 'e1760000-0000-4000-8000-000000000001'), 1, 'the request trigger writes exactly one deterministic outbox event');
-select is((select count(*)::integer from public.notifications where source_type = 'schedule_time_off_events' and source_id = 'e1760000-0000-4000-8000-000000000001'), 0, 'the migrated request producer no longer writes the legacy inbox directly');
-select ok(
-  (select payload->'recipient_user_ids' ? 'e1700000-0000-4000-8000-000000000001' from public.notification_outbox where event_id = 'e1760000-0000-4000-8000-000000000001'),
-  'the request audience adapter snapshots an authorized location reviewer'
-);
+-- The time-off request trigger that fed this platform is gone (BILDIRIM-04); its producer is checked no more.
 
 insert into public.notification_outbox (
   id, workspace_id, event_id, type_key, schema_version, actor_user_id,
@@ -193,7 +173,6 @@ select public.enqueue_notification_outbox_service(
 );
 select is((select count(*)::integer from public.notification_outbox where event_id = 'e1780000-0000-4000-8000-000000000002'), 1, 'outbox enqueue replay keeps one logical event');
 
-select is(public.reconcile_notification_platform_service()->>'status', 'healthy', 'reconciliation is healthy when catalog, templates, producers, and domain events agree');
 delete from public.notification_producer_registry where type_key = 'requests.time_off.submitted';
 select is(public.reconcile_notification_platform_service()->>'status', 'drift_detected', 'reconciliation detects an active catalog type without a producer');
 

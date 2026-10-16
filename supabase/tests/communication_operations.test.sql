@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(56);
+select plan(45);
 
 -- A refusal's code and the reason the core gives, '42501 authz.out_of_scope'
 -- (FOUNDATION-B "hayır" contract).
@@ -67,7 +67,7 @@ select is(pg_temp.refusal($$select public.save_announcement_service('a8000000-00
 select is((public.save_announcement_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,pg_temp.post('Owner draft','Private owner draft','{}'),'draft')->>'status'),'draft','owner can start a draft for no location yet');
 select is((select count(*)::integer from jsonb_array_elements(public.get_announcements_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements') item where item->>'title'='Owner draft'),0,'a draft is its writer''s own: the scoped manager does not see the owner''s');
 
-create temp table communication_state(announcement_id uuid,revision integer,notification_id uuid,manual_todo_id uuid);
+create temp table communication_state(announcement_id uuid,revision integer,manual_todo_id uuid);
 grant select on communication_state to service_role;
 with saved as (
  select public.save_announcement_service(
@@ -77,48 +77,8 @@ with saved as (
 select is((select status::text from public.announcements announcement join communication_state state on state.announcement_id=announcement.id),'draft','announcement starts as a draft');
 select is((select public.save_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision,
   pg_temp.post('Service briefing','Doors open at 4 PM.',array['11000000-0000-4000-8000-000000000001'],'{}',true),'publish')->>'recipient_count' from communication_state),'2','publication reaches the employee and the owner, who both work at the checked location (K24)');
-select is((select o.payload->'recipient_user_ids' from public.notification_outbox o join communication_state state on o.subject_id=state.announcement_id::text),'["a8000000-0000-4000-8000-000000000002", "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"]'::jsonb,'not the employee at the other location, not the manager who wrote it (KK-89)');
-update public.notification_outbox set status='leased',lease_owner='communication-test',lease_expires_at=now()+interval '1 minute'
-where type_key='communications.announcement.available' and subject_id=(select announcement_id::text from communication_state);
-do $$ declare outbox_id uuid; begin
- select id into outbox_id from public.notification_outbox where type_key='communications.announcement.available' and subject_id=(select announcement_id::text from communication_state);
- perform public.process_notification_outbox_service('communication-test',outbox_id);
-end $$;
-update communication_state set revision=2,notification_id=(
-  select item.id
-  from public.notification_inbox_items item
-  join public.notification_recipients recipient on recipient.id=item.recipient_projection_id
-  join public.notification_outbox outbox on outbox.event_id=recipient.event_id
-  where outbox.subject_id=communication_state.announcement_id::text
-    and recipient.recipient_user_id='a8000000-0000-4000-8000-000000000002'
-);
-insert into public.workspaces(id,name,created_by)
-values('a8f00000-0000-4000-8000-000000000001','Second Comms Workspace','a8000000-0000-4000-8000-000000000004');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations)
-values
- ('a8f10000-0000-4000-8000-000000000001','a8f00000-0000-4000-8000-000000000001','a8000000-0000-4000-8000-000000000004','owner','active',true),
- ('a8f10000-0000-4000-8000-000000000002','a8f00000-0000-4000-8000-000000000001','a8000000-0000-4000-8000-000000000002','employee','active',true);
-insert into public.notification_events(
-  id,workspace_id,type_key,schema_version,actor_user_id,subject_type,subject_id,payload_digest,sensitivity,occurred_at
-) values (
-  'a8f20000-0000-4000-8000-000000000001','a8f00000-0000-4000-8000-000000000001',
-  'communications.announcement.available',1,'a8000000-0000-4000-8000-000000000004',
-  'announcement','a8f-announcement',repeat('f',64),'internal',now()
-);
-insert into public.notification_recipients(
-  id,workspace_id,event_id,recipient_user_id,audience_reason,policy_snapshot
-) values (
-  'a8f30000-0000-4000-8000-000000000001','a8f00000-0000-4000-8000-000000000001',
-  'a8f20000-0000-4000-8000-000000000001','a8000000-0000-4000-8000-000000000002',
-  '{"contract":"same_account_second_workspace"}','{"in_app":{"eligible":true}}'
-);
-insert into public.notification_inbox_items(
-  id,workspace_id,recipient_projection_id,title,body,safe_preview,action_url,created_at
-) values (
-  'a8f40000-0000-4000-8000-000000000001','a8f00000-0000-4000-8000-000000000001',
-  'a8f30000-0000-4000-8000-000000000001','Second workspace notice','Body','Second workspace notice',
-  '/app/employee-hub','2035-01-01 13:00:00+00'
-);
+select is((select to_jsonb(array(select u from unnest(announcement.delivered_to) u order by u)) from public.announcements announcement join communication_state state on state.announcement_id=announcement.id),'["a8000000-0000-4000-8000-000000000002", "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5"]'::jsonb,'not the employee at the other location, not the manager who wrote it (KK-89)');
+update communication_state set revision=2;
 create function pg_temp.listed(who uuid) returns jsonb language sql as $f$
   select item from jsonb_array_elements(public.get_announcements_service(who,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'announcements') item
   where (item->>'id')::uuid=(select announcement_id from communication_state)
@@ -133,17 +93,8 @@ select isnt((public.acknowledge_announcement_service('a8000000-0000-4000-8000-00
 select isnt(pg_temp.listed('a8000000-0000-4000-8000-000000000002')->>'acknowledged_at',null,'acknowledged announcement stays listed with its acknowledgement');
 select is(pg_temp.refusal($$select public.save_announcement_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state),1,pg_temp.post('Service briefing','Doors open at 4 PM.',array['11000000-0000-4000-8000-000000000001']),'save')$$),'PT409 announcement.changed','a change is revision guarded (BL-958: PT409, not the 40001 PostgREST retries forever)');
 
-select is((public.get_notification_inbox_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,null,null,null,30)->>'unread_count')::integer,1,'target employee receives one unread notification');
-select is((public.get_notification_inbox_v2_service('a8000000-0000-4000-8000-000000000002','a8f00000-0000-4000-8000-000000000001',null,null,null,null,null,30)->>'unread_count')::integer,1,'same account reads the second workspace notification only in that workspace');
-select throws_ok($$select public.act_on_notification_inbox_item_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8f40000-0000-4000-8000-000000000001','read')$$,'P0002','notification inbox item not found','same account cannot mutate a second workspace notification through the first workspace');
-select is((public.get_notification_inbox_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,null,null,null,30)->>'unread_count')::integer,1,'same account second workspace notification does not inflate first workspace unread count');
-select is((public.act_on_notification_inbox_item_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select notification_id from communication_state),'read')->>'affected')::integer,1,'employee can mark a personal notification read');
-select is((public.get_notification_inbox_v2_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',null,null,null,null,null,30)->>'unread_count')::integer,0,'read state is reflected in the inbox');
-select throws_ok($$select public.act_on_notification_inbox_item_v2_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select notification_id from communication_state),'dismiss')$$,'P0002','notification inbox item not found','another employee cannot mutate the notification');
 select is((select public.set_announcement_state_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision,'unpublish')->>'status' from communication_state),'unpublished','publisher can unpublish the projected announcement');
 select isnt((select public.set_announcement_state_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision+1,'archive')->>'archived_at' from communication_state),null,'and then archive it (K8)');
-select is((select count(*)::integer from public.notifications notification join communication_state state on notification.id=state.notification_id),0,'archiving does not depend on legacy notification rows');
-select ok((select bool_and(item.visibility_state='cancelled') from public.notification_inbox_items item join public.notification_recipients recipient on recipient.id=item.recipient_projection_id join public.notification_outbox outbox on outbox.event_id=recipient.event_id join communication_state state on outbox.subject_id=state.announcement_id::text),'unpublishing keeps the v2 projections, cancelled');
 
 select lives_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['notifications','operations','pending_requests','open_shifts','announcements','todos','quick_actions'],array['quick_actions'])$$,'valid fixed-catalog Workspace layout is saved');
 select throws_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['operations','operations','pending_requests','open_shifts','announcements','notifications'],array[]::text[])$$,'22023','valid workspace layout required','duplicate widgets are rejected');
@@ -177,12 +128,10 @@ values('a9700000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de0
 insert into public.employee_documents(id,workspace_id,employee_id,requirement_id,version_number,object_path,original_filename,media_type,size_bytes,review_status,expiry_date,uploaded_by)
 values('a9700000-0000-4000-8000-000000000004','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','15000000-0000-4000-8000-000000000001','a9700000-0000-4000-8000-000000000003',1,'6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/15000000-0000-4000-8000-000000000001/a9700000-0000-4000-8000-000000000003/b9700000-0000-4000-8000-000000000004.pdf','food-handler.pdf','application/pdf',1024,'accepted',current_date + 3,'a8000000-0000-4000-8000-000000000002');
 select is((public.sync_expiring_document_todos_service('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->>'opened_or_refreshed')::integer,1,'expiring accepted document creates one source-linked todo');
-select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'expiring accepted document enqueues one source-linked notification');
 select is((public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos'->0->>'body'),'Alex Kim - Food handler card','Workspace dashboard lists the document-expiry todo to whoever reads the document');
--- KK-179 (5), BL-807: the Scoped Manager (built-in Manager, no document access) gets no notification, so no to-do either.
+-- KK-179 (5), BL-807: the Scoped Manager (built-in Manager, no document access) gets no document-expiry to-do.
 select is((select count(*)::integer from jsonb_array_elements(public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'todos') t where t->>'source_type'='employee_document_expiry'),0,'Workspace dashboard keeps the document-expiry todo from a manager without document access');
 select is((select count(*)::integer from public.workspace_todos where source_type='employee_document_expiry' and source_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry todo sync is deduped by source');
-select is((select count(*)::integer from public.notification_outbox where type_key='people.employee_document.expiring' and subject_id='a9700000-0000-4000-8000-000000000004'),1,'document-expiry notification sync is deduped by source');
 select is(pg_temp.refusal($$select public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Employee task','',null,null)$$),'42501 authz.missing_permission','employee-only users cannot create Workspace todos: no permission');
 select is(pg_temp.refusal($$select public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')$$),'42501 authz.missing_permission','employee-only users cannot open manager Workspace: no permission');
 select is((public.create_workspace_todo_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','Scoped follow-up','Review employee file','15000000-0000-4000-8000-000000000001',now()+interval '1 day')->>'employee_id'),'15000000-0000-4000-8000-000000000001','manager can create a manual todo for an employee in scope');

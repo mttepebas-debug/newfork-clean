@@ -7,8 +7,8 @@ select * from no_plan();
 -- tab lists the published shifts it lands on (V1): removed by default on a
 -- closed day and after closing, kept when it is prep or runs over; each is
 -- removed, made open, kept or (short hours) given new hours as the manager
--- chooses (V2-V5). Whoever lost a shift hears it once, with the closing (B1,
--- K14). A draft week's own shifts drop quietly (V6, K16). What it changed can
+-- chooses (V2-V5). The post reaches whoever works there (K24). A draft week's
+-- own shifts drop quietly (V6, K16). What it changed can
 -- be brought back (V7). Writing onto a closed day or outside short hours later
 -- is blocked, confirmed each time, or confirmed once per editing session
 -- (K17). A published shift whose person marked themselves unavailable after
@@ -131,11 +131,9 @@ create function pg_temp.row_of(preview jsonb, shift_label text) returns jsonb la
   select s from jsonb_array_elements(preview -> 'shifts') s where s ->> 'source_id' = pg_temp.source(shift_label)
 $$;
 
--- The notices about this post each person was sent, title and body.
-create function pg_temp.notices(person text, subject uuid) returns text[] language sql as $$
-  select coalesce(array_agg((o.payload ->> 'title') || ' | ' || (o.payload ->> 'body') order by o.created_at), '{}')
-  from public.notification_outbox o
-  where o.subject_id = subject::text and o.payload -> 'recipient_user_ids' ? pg_temp.u(person)::text
+-- Does this post reach the person (announcements.delivered_to)?
+create function pg_temp.reaches(person text, subject uuid) returns boolean language sql as $$
+  select pg_temp.u(person) = any (a.delivered_to) from public.announcements a where a.id = subject
 $$;
 create function pg_temp.day_text(day date) returns text language sql as $$ select to_char(day, 'Dy, Mon FMDD') $$;
 
@@ -231,44 +229,12 @@ select is((select jsonb_build_object('changes', jsonb_array_length(r -> 'changes
 select is(pg_temp.listed(pg_temp.preview('ayse', tests.week(0), '{"K": {"day": "closed"}}', id => tests.id('c:post:monday'))),
   '{}'::text[], 'V1: opened again, the post does not list what it already changed, nor Can''s kept shift');
 
--- 4. B1, K14: one notice for each person it reaches ----------------------------------------------
+-- 4. K24, KK-89: who it reaches ----------------------------------------------------------------
 
-select is(pg_temp.notices('ali', tests.id('c:post:monday')),
-  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | You''re off the 9:00 AM–5:00 PM shift; it''s now open for others'],
-  'B1: Ali hears once: Kadikoy is closed, and he is off his shift');
-select is(pg_temp.notices('emre', tests.id('c:post:monday')),
-  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | Your 1:00 PM–5:00 PM shift was removed'],
-  'B1: Emre hears once that his shift was removed');
-select is(pg_temp.notices('can', tests.id('c:post:monday')),
-  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0)) || ' | Inventory closed'],
-  'B1: Can, whose shift stays, hears only that Kadikoy is closed');
-select is(pg_temp.notices('ayse', tests.id('c:post:monday')), '{}'::text[], 'KK-89: Ayse, who published it, hears nothing');
-select is(pg_temp.notices('deniz', tests.id('c:post:monday')), '{}'::text[], 'K24: Deniz, at Besiktas, hears nothing');
-
-create function pg_temp.deliver() returns void language plpgsql as $$
-declare queued uuid;
-begin
-  for queued in select o.id from public.notification_outbox o
-                where o.workspace_id = tests.id('c') and o.status in ('pending', 'retry') loop
-    update public.notification_outbox
-    set status = 'leased', lease_owner = 'closed-days', lease_expires_at = now() + interval '1 minute'
-    where notification_outbox.id = queued;
-    perform public.process_notification_outbox_service('closed-days', queued);
-  end loop;
-end;
-$$;
-create function pg_temp.inbox(person text, subject uuid) returns text[] language sql as $$
-  select coalesce(array_agg(item.title order by item.title), '{}')
-  from public.notification_inbox_items item
-  join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-  join public.notification_outbox outbox on outbox.event_id = recipient.event_id and outbox.workspace_id = recipient.workspace_id
-  where outbox.subject_id = subject::text and recipient.recipient_user_id = pg_temp.u(person) and item.visibility_state = 'visible'
-$$;
-select pg_temp.deliver();
-select is(pg_temp.inbox('ali', tests.id('c:post:monday')), array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0))],
-  'B1: one notice lands in Ali''s inbox');
-select is(pg_temp.inbox('emre', tests.id('c:post:monday')), array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(0))],
-  'B1: and one in Emre''s');
+select ok(pg_temp.reaches('ali', tests.id('c:post:monday')) and pg_temp.reaches('emre', tests.id('c:post:monday'))
+  and pg_temp.reaches('can', tests.id('c:post:monday')), 'K24: it reaches Ali, Emre and Can, who work at Kadikoy');
+select ok(not pg_temp.reaches('ayse', tests.id('c:post:monday')), 'KK-89: not Ayse, who published it');
+select ok(not pg_temp.reaches('deniz', tests.id('c:post:monday')), 'K24: not Deniz, at Besiktas');
 
 -- 5. V7: unpublishing hands nothing back by itself; Bring back does --------------------------------
 
@@ -277,9 +243,6 @@ create temporary table monday_off as select public.set_announcement_state_servic
 select is((select result ->> 'display_status' from monday_off), 'unpublished', 'K11: Ayse unpublishes it');
 select is(pg_temp.holder('ali_mon'), null, 'V7: Ali''s Monday shift does not come back by itself');
 select ok(not pg_temp.published('emre_mon'), 'V7: nor does Emre''s');
-select is((pg_temp.notices('ali', tests.id('c:post:monday')))[2],
-  'Kadikoy will be open on ' || pg_temp.day_text(tests.week(0)) || ' after all | Inventory closed',
-  'B1: Ali hears Kadikoy will be open after all');
 create temporary table offered as select public.preview_announcement_service(pg_temp.u('ayse'), tests.id('c'),
   tests.id('c:post:monday'), pg_temp.payload('Inventory closed', tests.week(0), '{"K": {"day": "closed"}}')) -> 'bring_back' result;
 select is((select jsonb_agg(x ->> 'outcome' || ':' || coalesce(x ->> 'employee_name', '-') || ':' || coalesce(x ->> 'lock', '-')
@@ -297,9 +260,6 @@ select is((select (result ->> 'told')::integer from brought), 2, 'V7: Ali and Em
 select is(pg_temp.holder('ali_mon'), tests.id('c:ali'), 'V7: Ali has his Monday shift back');
 select is(pg_temp.holder('emre_mon'), tests.id('c:emre'), 'V7: Emre''s is back on the Schedule, his');
 select ok(not pg_temp.published('open_mon'), 'V7: the open shift, not chosen, stays gone');
-select is(array(select n from unnest(pg_temp.notices('ali', tests.id('c:post:monday'))) n where n like 'Kadikoy will be open%'),
-  array['Kadikoy will be open on ' || pg_temp.day_text(tests.week(0)) || ' after all | Your 9:00 AM–5:00 PM shift is back'],
-  'B1, B3: Ali hears his shift is back, in one notice that takes the place of the one before');
 select is((select count(*)::integer from public.announcement_shift_changes c
            where c.announcement_id = tests.id('c:post:monday') and c.brought_back_at is null), 1,
   'V7: one change stays: the open shift that was not brought back');
@@ -335,9 +295,6 @@ select is((select count(*)::integer from public.schedule_draft_shifts d where d.
            and d.scheduled_date = tests.week(1) + 1 and d.employee_id = tests.id('c:can')), 1, 'V6: its Tuesday is not');
 select is((select c.silent from public.announcement_shift_changes c where c.announcement_id = tests.id('c:post:draft')), true,
   'V6: the post keeps it as a quiet change');
-select is(pg_temp.notices('can', tests.id('c:post:draft')),
-  array['Kadikoy is closed on ' || pg_temp.day_text(tests.week(1)) || ' | Plumbing'],
-  'V6: Can hears that Kadikoy is closed, nothing about a draft shift');
 
 -- BL-545 (V6 for unsaved work): Can's Wednesday is in the owner's open edit of
 -- week 2, not saved yet. Closing Wednesday takes it out of the edit too;
@@ -475,9 +432,6 @@ select is((select to_char(p.start_time, 'HH24:MI') || '-' || to_char(p.end_time,
   '12:00-15:00', 'V5: Ali''s shift now ends at closing');
 select ok(not pg_temp.published('dina_w3'), 'V3: Dina''s shift after closing is removed by default');
 select is(pg_temp.holder('can_w3'), tests.id('c:can'), 'V3: Can''s was never in question');
-select is(pg_temp.notices('ali', tests.id('c:post:short')),
-  array['Kadikoy has short hours on ' || pg_temp.day_text(tests.week(3)) || ' (10:00 AM–3:00 PM) | Your shift is now 12:00 PM–3:00 PM'],
-  'B1: Ali hears that Kadikoy has short hours and his shift''s new hours');
 select is((select jsonb_build_object('kind', c.kind, 'all_day', c.is_all_day, 'opens', c.opens, 'closes', c.closes)
            from public.schedule_closures c where c.announcement_id = tests.id('c:post:short')),
   '{"kind": "short", "all_day": false, "opens": "10:00:00", "closes": "15:00:00"}'::jsonb,

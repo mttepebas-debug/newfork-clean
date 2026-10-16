@@ -58,13 +58,6 @@ create function pg_temp.waiting(rid uuid) returns text[] language sql as $$
   join public.locations l on l.id = (x ->> 'id')::uuid
   where x -> 'approved_by' = 'null'::jsonb or not x ? 'approved_by'
 $$;
-create function pg_temp.told(rid uuid, type_key text) returns uuid[] language sql as $$
-  select coalesce(array_agg(distinct r.u order by r.u), '{}')
-  from public.notification_outbox o
-  cross join lateral (select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid u) r
-  where o.workspace_id = tests.id('tv') and o.type_key = $2
-    and (o.subject_id = $1::text or o.payload ->> 'request_id' = $1::text)
-$$;
 create function pg_temp.users(variadic who text[]) returns uuid[] language sql as $$
   select array(select tests.user('tv:' || x) from unnest(who) x order by 1)
 $$;
@@ -81,10 +74,6 @@ select is(
   (select r.decide_by from public.schedule_time_off_requests r where r.id = tests.id('tv:ali:1')),
   ((tests.week(1) + 2)::timestamp at time zone 'Europe/Istanbul') - interval '24 hours',
   'it must be decided 24 hours before it starts');
-select is(
-  pg_temp.told(tests.id('tv:ali:1'), 'requests.time_off.submitted'),
-  pg_temp.users('ayse', 'derya', 'mehmet', 'can'),
-  'the managers of both locations hear of it; admins and the owner do not');
 
 select is(pg_temp.refusal(format($$select public.submit_time_off_service(%L, %L,
     jsonb_build_array(jsonb_build_object('segment_date', %L::date), jsonb_build_object('segment_date', %L::date)),
@@ -109,8 +98,6 @@ select is(pg_temp.refusal(format($$select public.submit_time_off_service(%L, %L,
 select tests.remember('tv:lale:1', tests.leave('tv', 'lale', 1));
 select is((pg_temp.state(tests.id('tv:lale:1')) ->> 'fallback')::boolean, true,
   'a request with no location is for an admin or the owner');
-select is(pg_temp.told(tests.id('tv:lale:1'), 'requests.time_off.submitted'),
-  pg_temp.users('owner', 'zeynep', 'kaan'), 'so they are the ones who hear of it');
 select is(pg_temp.refusal(format($$select pg_temp.decide('ayse', %L, 'approve')$$, tests.id('tv:lale:1'))),
   '42501 authz.out_of_scope', 'a manager cannot decide it');
 select is((pg_temp.decide('zeynep', tests.id('tv:lale:1'), 'approve') ->> 'status'), 'approved',
@@ -129,10 +116,6 @@ select tests.remember('tv:emre:1', tests.leave('tv', 'emre', 1));
 select is(pg_temp.decide('ayse', tests.id('tv:emre:1'), 'approve') - 'revision' - 'request_id',
   jsonb_build_object('status', 'approved', 'final', true, 'alone', false, 'remaining', 0),
   'at one location one manager''s approval is final');
-select is(pg_temp.told(tests.id('tv:emre:1'), 'requests.time_off.status_changed'), pg_temp.users('emre'),
-  'Emre hears the outcome');
-select is(pg_temp.told(tests.id('tv:emre:1'), 'requests.time_off.decided'), pg_temp.users('can', 'derya'),
-  'and so do Kadikoy''s other managers');
 
 select tests.remember('tv:emre:2', tests.leave('tv', 'emre', 2));
 select is((pg_temp.decide('derya', tests.id('tv:emre:2'), 'deny', 'Only 11-12 works') ->> 'status'), 'denied',
@@ -144,8 +127,6 @@ select is(pg_temp.decide('ayse', tests.id('tv:ali:1'), 'approve') - 'revision' -
   jsonb_build_object('status', 'pending', 'final', false, 'alone', false, 'remaining', 1),
   'at two locations Kadikoy''s approval is not enough');
 select is(pg_temp.waiting(tests.id('tv:ali:1')), array['BJK'], 'Besiktas is still to answer');
-select is(pg_temp.told(tests.id('tv:ali:1'), 'requests.time_off.status_changed'), '{}'::uuid[],
-  'Ali hears nothing while it is open');
 select is((pg_temp.decide('mehmet', tests.id('tv:ali:1'), 'approve') ->> 'status'), 'approved',
   'Besiktas''s approval settles it');
 
@@ -176,8 +157,6 @@ select is((pg_temp.decide('owner', tests.id('tv:ali:6'), 'deny', 'Inventory week
 -- Rank: a manager's request goes to an admin or the owner, an admin's to the
 -- owner; nobody decides their own.
 select tests.remember('tv:ayse:1', tests.leave('tv', 'ayse', 1));
-select is(pg_temp.told(tests.id('tv:ayse:1'), 'requests.time_off.submitted'), pg_temp.users('owner', 'zeynep', 'kaan'),
-  'a manager''s request goes to the admins and the owner');
 select is(pg_temp.refusal(format($$select pg_temp.decide('can', %L, 'approve')$$, tests.id('tv:ayse:1'))),
   '42501 authz.rank', 'not to another manager');
 select is(pg_temp.refusal(format($$select pg_temp.decide('ayse', %L, 'approve')$$, tests.id('tv:ayse:1'))),
@@ -200,8 +179,6 @@ select is(pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L,
 
 select tests.remember('tv:owner:1', tests.leave('tv', 'owner', 1));
 select is(pg_temp.status(tests.id('tv:owner:1')), 'approved', 'the owner''s own time off is recorded approved');
-select is(pg_temp.told(tests.id('tv:owner:1'), 'requests.time_off.submitted'), '{}'::uuid[],
-  'and nobody is asked to review it');
 
 -- 3. What an approval does to the schedule ------------------------------------
 
@@ -255,8 +232,6 @@ select is(
   array[true, true, true], 'every published shift of the day is open now, at both locations');
 select is((select s.employee_id from public.schedule_edit_session_shifts s where s.id = tests.id('tv:draft:ali')), tests.id('tv:ali'),
   'a shift still being drafted is left alone');
-select is(pg_temp.told(tests.id('tv:ali:10'), 'schedule.time_off.shifts_opened'), pg_temp.users('ayse', 'can', 'derya'),
-  'the managers of the locations whose shifts opened hear of it, but not the one who settled it');
 
 -- A shift that has already started stays with its person. Ali asks for the
 -- next hours of today while a Kadikoy shift of his is running.
@@ -308,10 +283,6 @@ select is((public.revoke_time_off_service(tests.user('tv:derya'), tests.id('tv')
 select is((select e.note from public.schedule_time_off_events e where e.request_id = tests.id('tv:emre:1') and e.action = 'revoked'),
   'Short staffed', 'the reason is kept');
 select is(pg_temp.status(tests.id('tv:emre:1:cancel')), 'revoked', 'the cancellation waiting on it closes');
-select ok(pg_temp.users('emre') <@ pg_temp.told(tests.id('tv:emre:1'), 'requests.time_off.status_changed'),
-  'Emre hears it was revoked');
-select ok(pg_temp.users('ayse', 'can') <@ pg_temp.told(tests.id('tv:emre:1'), 'requests.time_off.decided'),
-  'and so do the other Kadikoy managers');
 
 -- Revoking time off already under way keeps what was taken.
 select tests.remember('tv:emre:4', tests.leave('tv', 'emre', 4));
@@ -354,8 +325,6 @@ select is(pg_temp.status(tests.id('tv:ali:7')), 'revoked', 'all of it is cancell
 select tests.remember('tv:emre:5', tests.leave('tv', 'emre', 5));
 select public.employee_request_action_service(tests.user('tv:emre'), tests.id('tv'), tests.id('tv:emre:5'), 'time_off', 'cancel',
   (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('tv:emre:5')));
-select is(pg_temp.told(tests.id('tv:emre:5'), 'requests.time_off.decided'), pg_temp.users('ayse', 'can', 'derya'),
-  'withdrawing it tells the people who would have decided');
 select is(pg_temp.status(tests.id('tv:emre:5')), 'revoked', 'a withdrawn request is closed');
 select is((select x ->> 'display_status' from jsonb_array_elements(public.get_employee_hub_service(tests.user('tv:emre'), tests.id('tv'),
     tests.week(5), tests.week(5) + 6) -> 'requests') x where (x ->> 'id')::uuid = tests.id('tv:emre:5')),
@@ -456,57 +425,12 @@ select app_private.time_off_sweep();
 select app_private.time_off_sweep();
 select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('tr:cem:2')), 'pending',
   'so nothing settles it on its own');
-select is(
-  (select count(*)::integer from public.notification_outbox o
-   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:cem:2')::text
-     and o.payload -> 'recipient_user_ids' ? tests.user('tr:owner')::text),
-  1, 'the owner hears of it once');
 select is((app_private.time_off_state(tests.id('tr'), tests.id('tr:cem:2')) ->> 'fallback')::boolean, false, 'Kadikoy still counts');
 update public.employee_onboarding_requirements set deadline_at = now() + interval '7 days'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('tr:hande');
 select is((public.decide_time_off_service(tests.user('tr:hande'), tests.id('tr'), tests.id('tr:cem:2'), 'approve', '',
     app_private.time_off_impact(tests.id('tr'), tests.id('tr:cem:2')) ->> 'fingerprint') ->> 'status'), 'approved',
   'once her document is in, Hande votes and settles it');
-
--- Her document runs late again after Cem asks: twelve hours before the deadline
--- the reminder for Kadikoy goes to an admin and the owner, who can decide now,
--- and their notice does not say nobody is left (FB-6.3 D1, D2). Both fall in
--- one pass, so they get one line saying both (FB-6.3.8b, user decision
--- 2026-10-01, KARARLAR "İzin").
-select tests.remember('tr:cem:3', tests.leave('tr', 'cem', 3));
-update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
-where source_id = (select id from required_document) and lifecycle_user_id = tests.user('tr:hande');
-update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
-where id = tests.id('tr:cem:3');
-select app_private.time_off_sweep();
-select is(
-  (select jsonb_agg(jsonb_build_object('audience', o.payload ->> 'audience_contract',
-     'to', (select jsonb_agg(x order by x) from jsonb_array_elements_text(o.payload -> 'recipient_user_ids') x)))
-   from public.notification_outbox o
-   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:cem:3')::text
-     and o.type_key = 'requests.time_off.reminder'),
-  jsonb_build_array(jsonb_build_object('audience', 'time_off_fallback_deciders',
-    'to', (select jsonb_agg(u order by u) from unnest(app_private.time_off_alone_deciders(tests.id('tr'), tests.id('tr:cem'))) u))),
-  'the reminder for Kadikoy goes to those who can decide it now, in one line');
-select is(
-  (select o.payload ->> 'body' from public.notification_outbox o
-   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:cem:3')::text
-     and o.payload ->> 'audience_contract' = 'time_off_fallback_deciders'),
-  'No manager can decide this now. Decide before the deadline or it is declined.',
-  'and it says nobody can decide it now and the deadline is near');
--- Both at once: Dila works at Kadikoy, where Hande is still held back, and at
--- Besiktas, where Nur can vote. The reminder reaches Nur and those who can
--- decide Kadikoy now, each once.
-select tests.remember('tr:dila:1', tests.leave('tr', 'dila', 4));
-update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
-where id = tests.id('tr:dila:1');
-select app_private.time_off_sweep();
-select is(
-  (select array(select jsonb_array_elements_text(o.payload -> 'recipient_user_ids')::uuid order by 1) from public.notification_outbox o
-   where o.workspace_id = tests.id('tr') and o.payload ->> 'request_id' = tests.id('tr:dila:1')::text
-     and o.payload ->> 'audience_contract' = 'time_off_deciders' and o.type_key = 'requests.time_off.reminder'),
-  array(select distinct u from unnest(app_private.time_off_alone_deciders(tests.id('tr'), tests.id('tr:dila')) || tests.user('tr:nur')) u order by 1),
-  'with one location held back and one not, the reminder reaches its manager and those who can decide the other, each once');
 
 -- 9. A closed workspace --------------------------------------------------------
 

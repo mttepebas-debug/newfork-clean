@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(37);
+select plan(36);
 
 insert into auth.users (
   id, instance_id, aud, role, email, encrypted_password,
@@ -168,13 +168,6 @@ select is(
    where id = '72000000-0000-4000-8000-000000000401'),
   'revoked',
   'requesting deletion cancels an unaccepted invitation'
-);
-select is(
-  (select count(*)::integer from public.notification_outbox
-   where type_key = 'security.account_invitation_cancelled'
-     and workspace_id = '72000000-0000-4000-8000-000000000101'),
-  1,
-  'cancelling the invitation queues one manager notification'
 );
 
 create temporary table retry_request as

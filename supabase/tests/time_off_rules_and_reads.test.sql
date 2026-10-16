@@ -3,11 +3,6 @@ create extension if not exists pgtap with schema extensions;
 select * from no_plan();
 
 -- EKRAN-02 A3: the time-off rules of Requests and what its list reads.
---   R2-13  one decision tells each person once.
---   R2-45  the employee hears how it was decided.
---   R2-23  a shortening tells everybody who approved; after the system's
---          approval, the managers who could decide.
---   R2-53  ...and does not say the person is back on the schedule.
 --   R2-42  a request the employee withdrew reads as withdrawn.
 --   R2-52  hours the system gave back read apart from the employee's own cancellation.
 --   K-S2   a manager missing a document reads Requests but decides nothing.
@@ -58,99 +53,49 @@ create function pg_temp.shorten(who text, rid uuid, periods jsonb default null) 
       'ends_at', s.starts_at + interval '12 hours')) from public.schedule_time_off_segments s where s.request_id = rid)),
     '', gen_random_uuid())
 $$;
--- Notices queued since the last mark, as (recipient, type, title, body).
-create temporary table heard_before (id uuid primary key);
-create function pg_temp.mark() returns void language sql as $$
-  delete from heard_before;
-  insert into heard_before select o.id from public.notification_outbox o where o.workspace_id = tests.id('ra');
-$$;
-create function pg_temp.heard() returns table (recipient uuid, type_key text, title text, body text) language sql as $$
-  select r::uuid, o.type_key, o.payload ->> 'title', o.payload ->> 'body'
-  from public.notification_outbox o, jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r
-  where o.workspace_id = tests.id('ra') and o.id not in (select id from heard_before)
-$$;
-create function pg_temp.times(who text) returns integer language sql as $$
-  select count(*)::integer from pg_temp.heard() h where h.recipient = tests.user('ra:' || who)
-$$;
 create function pg_temp.row_of(who text, which text, rid uuid) returns jsonb language sql as $$
   select t from jsonb_array_elements(public.get_schedule_requests_service(
     tests.user('ra:' || who), tests.id('ra'), which, null, '', null, 100) -> 'time_off_requests') t
   where (t ->> 'id')::uuid = rid
 $$;
 
--- 1. An approval that opens a shift (R2-13 a, R2-45) -----------------------------
+-- 1. An approval that opens a shift -----------------------------
 
 select tests.remember('ra:ali:1', tests.leave('ra', 'ali', 1));
-select pg_temp.mark();
 select is(pg_temp.decide('ayse', tests.id('ra:ali:1'), 'approve') ->> 'status', 'approved',
-  'Ayse approves Ali''s Wednesday; his Kadikoy shift opens');
-select is(pg_temp.times('hande'), 1,
-  'Hande, the other Kadikoy manager, hears once: not "approved" and "a shift is open" both');
-select is((select array_agg(h.type_key) from pg_temp.heard() h where h.recipient = tests.user('ra:hande')), array['schedule.time_off.shifts_opened'],
-  'and it is the notice that says which shift is open');
-select is(pg_temp.times('ali'), 1, 'Ali hears once');
-select is((select jsonb_agg(jsonb_build_object('title', h.title, 'body', h.body)) from pg_temp.heard() h where h.recipient = tests.user('ra:ali')),
-  '[{"title": "Time off approved", "body": "Your time-off request was approved."}]'::jsonb,
-  'and the notice says it was approved');
+  'Ayse approves Ali''s Wednesday');
+select is((select employee_id from public.schedule_published_shifts where id = tests.id('ra:shift:ali-k')), null::uuid,
+  'his Kadikoy shift opens');
 
 select tests.remember('ra:ali:5', tests.leave('ra', 'ali', 5));
-select pg_temp.mark();
 select is(pg_temp.decide('ayse', tests.id('ra:ali:5'), 'deny') ->> 'status', 'denied', 'Ayse declines another');
-select is((select jsonb_agg(jsonb_build_object('title', h.title, 'body', h.body)) from pg_temp.heard() h where h.recipient = tests.user('ra:ali')),
-  '[{"title": "Time off declined", "body": "Your time-off request was declined."}]'::jsonb,
-  'Ali hears it was declined');
 
--- 2. An approved cancellation (R2-13 b) -------------------------------------------
+-- 2. An approved cancellation -------------------------------------------
 
 select tests.remember('ra:ali:1:cancel', pg_temp.cancel('ali', tests.id('ra:ali:1')));
-select pg_temp.mark();
 select is(pg_temp.decide('ayse', tests.id('ra:ali:1:cancel'), 'approve') ->> 'status', 'approved',
   'Ayse approves Ali''s request to give back two hours');
-select is(pg_temp.times('ali'), 1, 'Ali hears once, about his cancellation');
-select is((select array_agg(h.title) from pg_temp.heard() h where h.recipient = tests.user('ra:ali')), array['Leave cancellation approved'],
-  'which says it was approved');
-select is(pg_temp.times('hande'), 1, 'Hande hears once');
-select is((select array_agg(h.title) from pg_temp.heard() h where h.recipient = tests.user('ra:hande')), array['Leave cancellation approved'],
-  'and is not told a second time that time off was approved');
 
--- 3. Revoking leave with a cancellation waiting (R2-13 c) --------------------------
+-- 3. Revoking leave with a cancellation waiting --------------------------
 
 select tests.remember('ra:ali:2', tests.leave('ra', 'ali', 2));
 select pg_temp.decide('ayse', tests.id('ra:ali:2'), 'approve');
 select tests.remember('ra:ali:2:cancel', pg_temp.cancel('ali', tests.id('ra:ali:2')));
-select pg_temp.mark();
 select is(public.revoke_time_off_service(tests.user('ra:ayse'), tests.id('ra'), tests.id('ra:ali:2'),
     (select r.revision from public.schedule_time_off_requests r where r.id = tests.id('ra:ali:2')), 'Short staffed') ->> 'status',
   'revoked', 'Ayse revokes Ali''s week-2 leave while his cancellation waits');
-select is(pg_temp.times('ali'), 1, 'Ali hears once');
-select is((select array_agg(h.title) from pg_temp.heard() h where h.recipient = tests.user('ra:ali')), array['Time off revoked'],
-  'that his time off was revoked');
-select is(pg_temp.times('hande'), 1, 'Hande hears once');
 
--- 4. Shortening after two approvals (R2-23, R2-53) ---------------------------------
+-- 4. Shortening after two approvals ---------------------------------
 
 select tests.remember('ra:veli:1', tests.leave('ra', 'veli', 1));
 select is(pg_temp.decide('ayse', tests.id('ra:veli:1'), 'approve') ->> 'final', 'false', 'Ayse approves for Kadikoy');
 select is(pg_temp.decide('mehmet', tests.id('ra:veli:1'), 'approve') ->> 'status', 'approved', 'Mehmet''s approval for Besiktas settles it');
-select pg_temp.mark();
 select is(pg_temp.shorten('hande', tests.id('ra:veli:1')) ->> 'status', 'approved', 'Hande gives back two hours of it');
-select is(
-  (select array_agg(h.recipient order by h.recipient) from pg_temp.heard() h where h.type_key = 'requests.time_off.shortened' and h.recipient <> tests.user('ra:veli')),
-  (select array_agg(x order by x) from unnest(array[tests.user('ra:ayse'), tests.user('ra:mehmet')]) x),
-  'both managers who approved it hear, not only the last one');
-select ok((select bool_and(h.body like '% is no longer time off.') from pg_temp.heard() h
-    where h.type_key = 'requests.time_off.shortened' and h.recipient = tests.user('ra:ayse')),
-  'and are told the hours are no longer time off, not that Veli is back on the schedule');
 
--- Approved by the system: the managers who could decide hear.
+-- Approved by the system, then shortened.
 select tests.remember('ra:ali:3', tests.leave('ra', 'ali', 3));
 select app_private.time_off_finalize(tests.id('ra'), tests.id('ra:ali:3'), 'approve', null, 'All deciding locations approved', false);
-select pg_temp.mark();
 select pg_temp.shorten('hande', tests.id('ra:ali:3'));
-select is(
-  (select array_agg(h.recipient order by h.recipient) from pg_temp.heard() h where h.type_key = 'requests.time_off.shortened' and h.recipient <> tests.user('ra:ali')),
-  (select array_agg(x order by x) from unnest(array[tests.user('ra:ayse'), tests.user('ra:nur')]) x),
-  'when the system approved it, the Kadikoy managers who could decide it hear (Hande shortened it herself)');
 
 -- 5. What the list reads (R2-42, R2-52) ---------------------------------------------
 

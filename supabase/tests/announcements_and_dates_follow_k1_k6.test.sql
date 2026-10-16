@@ -4,8 +4,7 @@ select * from no_plan();
 
 -- Announcements follow Mert's rules (KARARLAR "Duyurular ve önemli tarihler",
 -- K1-K6, K24, K27; EKRAN-08 one record: an important date is a post with "Add
--- to Important Dates"), and a cancelled invitation is told only to whoever
--- could have sent it (BL-532).
+-- to Important Dates"), and an account deletion cancels its invitations.
 
 -- 1. The world ------------------------------------------------------------------------
 -- Kadikoy (K), Besiktas (B) and Moda (M, archived below). Olcay is the owner.
@@ -77,19 +76,26 @@ create function pg_temp.set_state(person text, id uuid, action text) returns jso
   select public.set_announcement_state_service(pg_temp.u(person), tests.id('m'), id, pg_temp.rev(id), action)
 $$;
 
--- The people one notification told: every outbox row for the subject made
--- after the last pg_temp.mark().
+-- Who a post reaches (announcements.delivered_to), by name.
+create function pg_temp.reached(subject uuid) returns text[] language sql as $$
+  select coalesce(array_agg(distinct p.label order by p.label), '{}')
+  from public.announcements a
+  cross join lateral unnest(a.delivered_to) r(user_id)
+  join (select i.label, i.id from tests.ids i where i.label ~ '^m:[a-z]+:user$') u on u.id = r.user_id
+  cross join lateral (select split_part(u.label, ':', 2) label) p
+  where a.id = subject
+$$;
+-- How many people the post's steps since the last pg_temp.mark() are for, as its History keeps it ("told").
 create temporary table marked (id uuid primary key);
 create function pg_temp.mark() returns void language sql as $$
-  insert into marked select o.id from public.notification_outbox o on conflict do nothing
+  insert into marked select c.id from public.announcement_changes c on conflict do nothing
 $$;
-create function pg_temp.told(subject uuid) returns text[] language sql as $$
-  select coalesce(array_agg(distinct p.label order by p.label), '{}')
-  from public.notification_outbox o
-  cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r(user_id)
-  join (select i.label, i.id from tests.ids i where i.label ~ '^m:[a-z]+:user$') u on u.id = r.user_id::uuid
-  cross join lateral (select split_part(u.label, ':', 2) label) p
-  where o.subject_id = subject::text and not exists (select 1 from marked m where m.id = o.id)
+create function pg_temp.told(subject uuid) returns integer language sql as $$
+  select coalesce(sum((c.detail ->> 'told')::integer), 0)::integer from public.announcement_changes c
+  where c.announcement_id = subject and not exists (select 1 from marked m where m.id = c.id)
+$$;
+create function pg_temp.reach_count(subject uuid) returns integer language sql as $$
+  select cardinality(a.delivered_to) from public.announcements a where a.id = subject
 $$;
 
 create function pg_temp.sees(person text, id uuid) returns boolean language sql as $$
@@ -191,28 +197,28 @@ select public.acknowledge_announcement_service(pg_temp.u('emre'), tests.id('m'),
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:ann:k4'), pg_temp.payload(array['K', 'B'], 'Shift swap rules', '{"ask_ack": true}'), 'save');
 select is(pg_temp.acks(tests.id('m:ann:k4')), 1, 'K4: adding Besiktas keeps Emre''s acknowledgement');
-select is(pg_temp.told(tests.id('m:ann:k4')), array['deniz', 'veli'],
-  'K4: adding Besiktas tells only the people it newly reaches (Can and Ali work at Kadikoy too and were told)');
+select is(pg_temp.told(tests.id('m:ann:k4')), 2,
+  'K4: adding Besiktas is for the two people it newly reaches, Deniz and Veli (Can and Ali work at Kadikoy too)');
 select pg_temp.set_state('owner', tests.id('m:ann:k4'), 'unpublish');
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:ann:k4'), pg_temp.payload(array['K', 'B'], 'Shift swap rules', '{"ask_ack": true}'), 'publish');
 select is(pg_temp.acks(tests.id('m:ann:k4')), 1, 'K27: published again with its acknowledgements kept, Emre''s stays');
-select ok(not 'emre' = any (pg_temp.told(tests.id('m:ann:k4'))) and 'ali' = any (pg_temp.told(tests.id('m:ann:k4'))),
-  'K27: it tells those who have not acknowledged, not Emre');
+select ok('emre' = any (pg_temp.reached(tests.id('m:ann:k4'))) and pg_temp.told(tests.id('m:ann:k4')) = pg_temp.reach_count(tests.id('m:ann:k4')) - 1,
+  'K27: it is for those who have not acknowledged: everybody it reaches but Emre');
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:ann:k4'), pg_temp.payload(array['K', 'B'], 'Shift swap rules, new text', '{"ask_ack": true}'), 'save');
 select is(pg_temp.acks(tests.id('m:ann:k4')), 1, 'K27: a new text keeps the acknowledgements unless the writer asks again');
-select ok(not 'emre' = any (pg_temp.told(tests.id('m:ann:k4'))) and 'deniz' = any (pg_temp.told(tests.id('m:ann:k4'))),
-  'K27: and tells only those who have not acknowledged');
+select is(pg_temp.told(tests.id('m:ann:k4')), pg_temp.reach_count(tests.id('m:ann:k4')) - 1,
+  'K27: and is only for those who have not acknowledged');
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:ann:k4'), pg_temp.payload(array['K', 'B'], 'Shift swap rules, again',
   '{"ask_ack": true, "reset_acknowledgements": true}'), 'save');
 select is(pg_temp.acks(tests.id('m:ann:k4')), 0, 'K27: asked again, every acknowledgement is cleared');
-select ok('emre' = any (pg_temp.told(tests.id('m:ann:k4'))), 'K27: and everybody is told again, Emre too');
+select is(pg_temp.told(tests.id('m:ann:k4')), pg_temp.reach_count(tests.id('m:ann:k4')), 'K27: and is for everybody again, Emre too');
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:ann:k4'), pg_temp.payload(array['K'], 'Shift swap rules, again',
   '{"ask_ack": true}'), 'save');
-select is(pg_temp.told(tests.id('m:ann:k4')), '{}'::text[], 'K4: taking Besiktas off tells nobody');
+select is(pg_temp.told(tests.id('m:ann:k4')), 0, 'K4: taking Besiktas off is for nobody');
 select ok(not pg_temp.sees('deniz', tests.id('m:ann:k4')), 'BL-534: and Deniz no longer has it');
 
 select tests.remember('m:date:k4', pg_temp.publish('owner', array['K'], 'Staff party',
@@ -220,23 +226,23 @@ select tests.remember('m:date:k4', pg_temp.publish('owner', array['K'], 'Staff p
 select pg_temp.mark();
 select pg_temp.save('owner', tests.id('m:date:k4'), pg_temp.payload(array['K'], 'Staff party',
   jsonb_build_object('on_important_dates', true, 'starts_on', current_date + 62)), 'save');
-select ok('emre' = any (pg_temp.told(tests.id('m:date:k4'))), 'K4: moving its day tells everybody again');
+select is(pg_temp.told(tests.id('m:date:k4')), pg_temp.reach_count(tests.id('m:date:k4')), 'K4: moving its day is for everybody again');
 
 -- 7. K24: who a post reaches -------------------------------------------------------------------
 
 select pg_temp.mark();
 select tests.remember('m:ann:k5', pg_temp.publish('owner', array['K'], 'Kadikoy team'));
-select is(pg_temp.told(tests.id('m:ann:k5')), array['ali', 'ayse', 'can', 'emre', 'hande', 'kaan', 'zeynep'],
+select is(pg_temp.reached(tests.id('m:ann:k5')), array['ali', 'ayse', 'can', 'emre', 'hande', 'kaan', 'zeynep'],
   'K24: whoever works at Kadikoy; not the Besiktas people, not Pia who has not joined, not the owner who wrote it (KK-89)');
 select pg_temp.mark();
 select tests.remember('m:ann:k5b', pg_temp.publish('ayse', array['K'], 'From Ayse'));
-select ok('owner' = any (pg_temp.told(tests.id('m:ann:k5b'))) and not 'ayse' = any (pg_temp.told(tests.id('m:ann:k5b'))),
+select ok('owner' = any (pg_temp.reached(tests.id('m:ann:k5b'))) and not 'ayse' = any (pg_temp.reached(tests.id('m:ann:k5b'))),
   'K24: the owner works at Kadikoy too and gets a manager''s post there; its author never does');
 select ok(pg_temp.sees('hande', tests.id('m:ann:k5')), 'K24: a manager who works there sees it');
 select pg_temp.mark();
 select tests.remember('m:ann:k5c', pg_temp.publish('owner', array['B'], 'Besiktas and Emre',
   jsonb_build_object('people', jsonb_build_array(pg_temp.u('emre')))));
-select is(pg_temp.told(tests.id('m:ann:k5c')), array['ali', 'can', 'deniz', 'emre', 'veli'],
+select is(pg_temp.reached(tests.id('m:ann:k5c')), array['ali', 'can', 'deniz', 'emre', 'veli'],
   'K24: the Besiktas people and Emre, added by hand');
 select ok(pg_temp.sees('emre', tests.id('m:ann:k5c')) and not pg_temp.sees('ayse', tests.id('m:ann:k5c')),
   'K24: Emre sees it; Ayse, who manages Kadikoy only, does not');
@@ -273,7 +279,7 @@ select pg_temp.mark();
 select ok(pg_temp.sees('emre', tests.id('m:ann:later')), 'at its time Emre sees it');
 select is((select status::text from public.announcements where id = tests.id('m:ann:later')), 'published',
   'at its time it is published, no longer scheduled');
-select ok('emre' = any (pg_temp.told(tests.id('m:ann:later'))), 'and its people are told');
+select ok('emre' = any (pg_temp.reached(tests.id('m:ann:later'))), 'and it reaches its people');
 
 -- 10. A post's History (done-when 8, K26) ----------------------------------------------------
 
@@ -305,19 +311,14 @@ select pg_temp.set_state('owner', tests.id('m:ann:closed'), 'unpublish');
 select ok(not exists (select 1 from public.schedule_closures c where c.location_id = tests.id('m:K') and c.closed_date = current_date + 60),
   'BL-530: an unpublished closed day closes nothing ahead');
 
--- 12. BL-532: a cancelled invitation reaches whoever could have sent it ----------------------------
+-- 12. Pia asks to delete her account: her invitation is cancelled --------------------------------
 
-select pg_temp.mark();
 select public.request_account_deletion_v2_service(pg_temp.u('pia'), repeat('a', 64));
 select is(
-  (select coalesce(array_agg(distinct p.label order by p.label), '{}')
-   from public.notification_outbox o
-   cross join lateral jsonb_array_elements_text(o.payload -> 'recipient_user_ids') r(user_id)
-   join tests.ids u on u.id = r.user_id::uuid and u.label ~ '^m:[a-z]+:user$'
-   cross join lateral (select split_part(u.label, ':', 2) label) p
-   where o.type_key = 'security.account_invitation_cancelled' and not exists (select 1 from marked m where m.id = o.id)),
-  array['ayse', 'can', 'hande', 'kaan', 'owner', 'zeynep'],
-  'BL-532: Pia''s Kadikoy invitation cancelled tells the Kadikoy managers, the admins and the owner; not the Besiktas manager');
+  (select array_agg(distinct i.status::text) from public.employee_invitations i
+   where i.workspace_id = tests.id('m') and i.employee_id = tests.id('m:pia')),
+  array['revoked'],
+  'Pia''s Kadikoy invitation is cancelled');
 
 -- 13. K1, K3: a post only for people with no location is its author's and the wide writers' -----
 -- Rita is a Remote manager: no location. A post Veli (Besiktas) sends only to
