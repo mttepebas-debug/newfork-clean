@@ -145,7 +145,7 @@ test("one denial closes the request, and the employee reads the note", async ({ 
   await expect(row).toContainText("Manager note: I can approve the first day only");
 });
 
-test("an admin decides alone, and the managers are told", async ({ browser }) => {
+test("an admin decides alone, and nobody is promised a notice", async ({ browser }) => {
   const asker = personAtBoth("admin");
   const note = `Course ${round()}`;
   const request = await askForTimeOff(asker, await signedIn(browser, asker), note);

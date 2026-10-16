@@ -1,6 +1,5 @@
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import type {
-  NotificationRecord,
   OwnerSetupChecklistItemId,
   WorkspaceDashboard,
   WorkspaceLayoutInput,
@@ -12,7 +11,6 @@ import {
   ArrowDown,
   ArrowRight,
   ArrowUp,
-  Bell,
   CalendarDays,
   Check,
   CheckCircle2,
@@ -51,7 +49,6 @@ const widgetLabels: Record<WorkspaceWidgetId, string> = {
   open_shifts: "Open shifts",
   announcements: "Announcements",
   todos: "Todos",
-  notifications: "Notifications",
   quick_actions: "Quick actions",
 };
 
@@ -484,17 +481,6 @@ function Widget({
       <EmptyWidget text="No active announcements" />
     );
   }
-  if (id === "notifications") {
-    return model.notifications.length ? (
-      <div className="workspace-feed">
-        {model.notifications.map((item) => (
-          <NotificationPreview item={item} key={item.id} />
-        ))}
-      </div>
-    ) : (
-      <EmptyWidget text="You're all caught up" />
-    );
-  }
   if (id === "todos") {
     return <TodoWidget todos={model.todos} workspaceId={workspaceId} />;
   }
@@ -641,33 +627,6 @@ function TodoPreview({
   return <div>{content}</div>;
 }
 
-// BILDIRIM-02 (KARARLAR S-123, S-96): these screens are gone until the new
-// notification system lands; a row that points at one reads as plain text
-// instead of a link back to this page. The tile itself goes in part C2.
-const retiredNotificationAddress =
-  /^\/(app\/notifications|app\/settings\/notifications|account\/inbox|account\/preferences\/notifications|app\/account\/documents)(\/|\?|#|$)/;
-
-function NotificationPreview({ item }: { item: NotificationRecord }) {
-  const content = (
-    <>
-      <Bell size={16} aria-hidden />
-      <span>
-        <strong>{item.title}</strong>
-        <small>{relativeTime(item.created_at)}</small>
-      </span>
-    </>
-  );
-  const safeUrl = safeAppActionUrl(item.action_url);
-  const actionUrl = safeUrl && !retiredNotificationAddress.test(safeUrl) ? safeUrl : null;
-  return actionUrl ? (
-    <Link to={actionUrl}>
-      {content}
-      <ArrowRight size={15} aria-hidden />
-    </Link>
-  ) : (
-    <div>{content}</div>
-  );
-}
 function Metric({ value, label }: { value: number | null; label: string }) {
   return (
     <div>
@@ -724,9 +683,6 @@ function formatNow(date: Date) {
     hour: "numeric",
     minute: "2-digit",
   }).format(date);
-}
-function relativeTime(iso: string) {
-  return `${elapsed(Math.max(0, Date.now() - Date.parse(iso)))} ago`;
 }
 /** BL-1013: a due time still ahead reads "Due in 2h"; one gone by, "Due 2h ago". */
 export function dueLabel(iso: string, now = Date.now()) {

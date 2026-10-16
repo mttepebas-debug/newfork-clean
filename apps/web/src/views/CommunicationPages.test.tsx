@@ -69,11 +69,9 @@ describe("Phase 8 communication pages", () => {
         today_shift_count: 12,
         today_open_shift_count: 2,
         pending_time_off_count: 3,
-        unread_notification_count: 4,
       },
       today_ends_at: null,
       announcements: [],
-      notifications: [],
       todos: [],
       layout: {
         widget_order: [
@@ -82,7 +80,6 @@ describe("Phase 8 communication pages", () => {
           "open_shifts",
           "announcements",
           "todos",
-          "notifications",
           "quick_actions",
         ],
         hidden_widget_ids: [],

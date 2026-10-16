@@ -20,7 +20,7 @@ import {
 // FOUNDATION-B flow 3 (FB-6.6 A3): somebody invited to a Kadikoy job accepts,
 // fills their profile, skips availability, sends the required document and
 // the whole onboarding for review. Until it is approved they see only what is
-// still missing and their own notifications (KARARLAR "Kisitli kisi", D4).
+// still missing (KARARLAR "Kisitli kisi").
 // A Kadikoy manager who reviews documents approves the card (the built-in
 // Manager role does not review documents); access opens and they land in the
 // employee interface. Employee onboarding has no "Start over".

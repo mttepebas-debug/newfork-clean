@@ -806,11 +806,9 @@ vi.mock("./communications/communications-data", () => ({
       today_shift_count: 1,
       today_open_shift_count: 0,
       pending_time_off_count: 0,
-      unread_notification_count: 0,
     },
     today_ends_at: null,
     announcements: [],
-    notifications: [],
     todos: [],
     layout: {
       widget_order: [
@@ -819,7 +817,6 @@ vi.mock("./communications/communications-data", () => ({
         "open_shifts",
         "announcements",
         "todos",
-        "notifications",
         "quick_actions",
       ],
       hidden_widget_ids: [],

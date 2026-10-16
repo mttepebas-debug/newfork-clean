@@ -85,11 +85,6 @@ const admin = {
 const ownerAndAdminOnly: readonly Permission[] = [
   "documents.manage",
   "employee_access.manage",
-  "notifications.broadcast.approve",
-  "notifications.delivery_audit.read",
-  "notifications.dlq.replay",
-  "notifications.settings.write",
-  "notifications.test_send",
   "roles.manage",
   "roles.read",
   "schedule.conflict_rules.manage",

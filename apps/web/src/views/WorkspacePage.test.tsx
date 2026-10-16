@@ -61,11 +61,9 @@ const dashboard = {
     today_shift_count: 0,
     today_open_shift_count: 0,
     pending_time_off_count: 0,
-    unread_notification_count: 0,
   },
   today_ends_at: null,
   announcements: [],
-  notifications: [],
   todos: [],
   layout: {
     widget_order: [
@@ -74,7 +72,6 @@ const dashboard = {
       "open_shifts",
       "announcements",
       "todos",
-      "notifications",
       "quick_actions",
     ],
     hidden_widget_ids: [],
@@ -247,56 +244,25 @@ describe("WorkspacePage setup checklist", () => {
     expect(row.textContent).not.toContain("general");
   });
 
-  // BILDIRIM-02: the notification screens are gone (KARARLAR S-123, S-96);
-  // the tile stays until part C2, but none of its links may lead to a
-  // retired address, which would only land back on Workspace.
-  it("keeps no link in the notifications box that leads to a retired address", async () => {
-    const row = (id: string, title: string, action_url: string | null) => ({
-      id,
-      workspace_id: workspaceId,
-      category: "schedule",
-      type_key: "schedule.published",
-      severity: "info",
-      safe_preview: title,
-      title,
-      body: title,
-      action_url,
-      group_key: id,
-      source_type: "notification_event",
-      source_id: id,
-      created_at: "2026-10-16T12:00:00.000Z",
-      seen_at: null,
-      read_at: null,
-      visibility_state: "visible",
-    });
-    vi.mocked(getWorkspaceDashboard).mockResolvedValue({
-      ...dashboard,
-      notifications: [
-        row("a8300000-0000-4000-8000-000000000031", "Patio notice", "/app/announcements/a8300000-0000-4000-8000-000000000099"),
-        row("a8300000-0000-4000-8000-000000000032", "Document due", "/app/account/documents?workspace=x&kind=document"),
-        row("a8300000-0000-4000-8000-000000000033", "Old inbox", "/app/notifications?filter=unread"),
-        row("a8300000-0000-4000-8000-000000000034", "Old preferences", "/account/preferences/notifications"),
-        row("a8300000-0000-4000-8000-000000000035", "Old settings", "/app/settings/notifications"),
-        row("a8300000-0000-4000-8000-000000000036", "Old account inbox", "/account/inbox"),
-      ] as never,
-    });
+  // BILDIRIM-06 (KARARLAR S-123, S-96): the old notification system is gone,
+  // and with it the Notifications card: six cards, on the page and in Customize.
+  it("has six cards and no Notifications card, also in Customize", async () => {
     renderPage();
-    const box = (await screen.findByText("Patio notice")).closest("article")!;
-    expect(within(box).queryByRole("link", { name: /View all notifications/ })).toBeNull();
-    const retired = /^\/(app\/notifications|app\/settings\/notifications|account\/inbox|account\/preferences\/notifications|app\/account\/documents)(\/|\?|#|$)/;
-    for (const link of within(box).queryAllByRole("link")) {
-      expect(link.getAttribute("href")).not.toMatch(retired);
-    }
-    // A row for a live page stays a link; the others read as plain text.
-    expect(within(box).getByRole("link", { name: /Patio notice/ }).getAttribute("href")).toBe(
-      "/app/announcements/a8300000-0000-4000-8000-000000000099",
-    );
-    for (const title of ["Document due", "Old inbox", "Old preferences", "Old settings", "Old account inbox"]) {
-      expect(within(box).getByText(title).closest("a")).toBeNull();
-    }
+    await screen.findByRole("heading", { name: "Todos" });
+    expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /Customize/ }));
+    expect(screen.getAllByRole("button", { name: /^Hide / }).map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Hide Today",
+      "Hide Pending requests",
+      "Hide Open shifts",
+      "Hide Announcements",
+      "Hide Todos",
+      "Hide Quick actions",
+    ]);
+    expect(screen.queryByRole("button", { name: "Hide Notifications" })).toBeNull();
   });
 
-  // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; seven
+  // BL-813 (E5-13): a hidden card in Customize is a preview, not a form; six
   // hidden cards leave a line saying so; the eye icons are decoration.
   it("keeps a hidden card's content out of reach and its eye icons decorative", async () => {
     vi.mocked(getWorkspaceDashboard).mockResolvedValue({

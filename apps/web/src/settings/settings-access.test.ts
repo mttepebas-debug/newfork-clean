@@ -32,8 +32,6 @@ const settingsPermissions = [
   "settings.schedule_rules.read",
   "schedule.conflict_rules.manage",
   "roles.read",
-  "notifications.settings.read",
-  "notifications.settings.write",
   "documents.read",
   "employee_documents.read",
 ] as const satisfies readonly Permission[];
@@ -48,7 +46,6 @@ type SettingsPermission = (typeof settingsPermissions)[number];
 const ownerAndAdminOnly: readonly SettingsPermission[] = [
   "schedule.conflict_rules.manage",
   "roles.read",
-  "notifications.settings.write",
   "settings.locations.read",
 ];
 
@@ -70,22 +67,17 @@ function subsets<T>(items: readonly T[]): T[][] {
  * Everybody the database lets exist, as far as these gates can tell apart:
  * - the owner holds every permission (role_default_permissions; the owner role
  *   cannot be edited, app_private.can_edit_role);
- * - an admin role holds any of them, notifications.settings.write only with
- *   its read (app_private.role_permission_dependencies);
+ * - an admin role holds any of them;
  * - a manager role holds the grantable ones, with or without a location;
  * - an employee role holds none of them (none is employee_eligible).
  */
 function personas(): Persona[] {
-  const withDependency = (set: readonly SettingsPermission[]) =>
-    !set.includes("notifications.settings.write") ||
-    set.includes("notifications.settings.read");
   const managerGrantable = settingsPermissions.filter(
     (permission) => !ownerAndAdminOnly.includes(permission),
   );
   return [
     { role: "owner", permissions: settingsPermissions, locationIds: [homeLocation] },
     ...subsets(settingsPermissions)
-      .filter(withDependency)
       .map((permissions): Persona => ({ role: "admin", permissions, locationIds: [] })),
     ...subsets(managerGrantable).flatMap((permissions): Persona[] => [
       { role: "manager", permissions, locationIds: [homeLocation] },
@@ -278,8 +270,9 @@ function describePersona(persona: Persona) {
 
 describe("Settings gates ask the core and open what the keys opened (BL-176)", () => {
   it("builds every kind of person the database allows", () => {
-    // 1 owner + 1536 admin roles + 2 × 128 manager roles + 1 employee.
-    expect(everybody).toHaveLength(1 + 1536 + 256 + 1);
+    // 1 owner + 512 admin roles + 2 × 64 manager roles + 1 employee (the notification
+    // settings permissions went with the old notification system, BILDIRIM-06).
+    expect(everybody).toHaveLength(1 + 512 + 128 + 1);
   });
 
   it.each(pages)("opens the %s route for exactly the same people", (page) => {
