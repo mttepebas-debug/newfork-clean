@@ -85,10 +85,6 @@
     flex-basis: 32px;
     font-size: 12px;
   }
-  .mm-top :focus-visible {
-    outline: 3px solid var(--theme-focus);
-    outline-offset: 2px;
-  }
 
   .mm-bar {
     display: grid;
