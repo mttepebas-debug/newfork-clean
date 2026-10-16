@@ -140,7 +140,8 @@ function HomeScreenSteps({ onClose, onNotNow }: { onClose: () => void; onNotNow:
           <li>
             <span aria-hidden>3</span>
             <p>
-              Open <strong>Newfork</strong> from your Home Screen and tap <strong>Turn on</strong> again.
+              {/* The Home Screen app keeps its own storage, apart from Safari's sign-in. */}
+              Open <strong>Newfork</strong> from your Home Screen, sign in, and tap <strong>Turn on</strong> again.
             </p>
           </li>
         </ol>

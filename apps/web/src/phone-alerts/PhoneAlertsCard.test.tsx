@@ -1,4 +1,4 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -91,7 +91,7 @@ describe("PhoneAlertsCard on iPhone Safari", () => {
     expect(items).toEqual([
       "1Tap Share at the bottom of Safari.",
       "2Tap Add to Home Screen, then Add.",
-      "3Open Newfork from your Home Screen and tap Turn on again.",
+      "3Open Newfork from your Home Screen, sign in, and tap Turn on again.",
     ]);
     expect(steps.textContent).toContain("iPhone shows alerts only for apps on the Home Screen.");
   });
@@ -141,6 +141,17 @@ describe("PhoneAlertsCard on iPhone Safari", () => {
     expect(onNotNow).toHaveBeenCalledOnce();
     expect(onTurnOn).not.toHaveBeenCalled();
   });
+});
+
+// Nothing sends phone alerts yet, so no screen may promise them (KARARLAR S-124):
+// only the DEV gallery may show the card until sending exists.
+it("is imported only by the DEV gallery", () => {
+  const importers = (readdirSync("src", { recursive: true }) as string[])
+    .map((file) => file.replaceAll("\\", "/"))
+    .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.tsx?$/.test(file))
+    .filter((file) => /from\s+["'][^"']*PhoneAlertsCard["']/.test(readFileSync(`src/${file}`, "utf8")));
+  expect(importers.length).toBeGreaterThan(0);
+  expect(importers.filter((file) => !file.startsWith("dev/"))).toEqual([]);
 });
 
 it("draws nothing where phone alerts cannot work", () => {
