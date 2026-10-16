@@ -230,9 +230,10 @@ export function createAccountSecurityServiceWithClients(options: {
   }
 
   // The audit trail has its own entry point; the same call writes the person's account notice
-  // (BILDIRIM-U1). A password change records the signed-out sessions too: that is still one notice.
-  async function recordSecurityEvent(userId: string, event: string) {
-    await rpc("record_account_security_event_service", { actor_user_id: userId, target_event: event });
+  // (BILDIRIM-U1). What happened rides along: the password's notice says the other devices were signed
+  // out only when they were, and the sign-out that comes with it is not a second notice.
+  async function recordSecurityEvent(userId: string, event: string, metadata: Record<string, boolean> = {}) {
+    await rpc("record_account_security_event_service", { actor_user_id: userId, target_event: event, target_metadata: metadata });
   }
   return {
     async getSecurityState(accessToken) {
@@ -273,15 +274,20 @@ export function createAccountSecurityServiceWithClients(options: {
       // when the project's "require current password" setting is on.
       await options.authGateway.verifyPassword(user.id, currentPassword);
       await options.authGateway.updatePassword(accessToken, currentPassword, newPassword);
-      try { await options.authGateway.signOut(accessToken, "others"); }
-      finally { await recordSecurityEvent(user.id, "account.password_changed"); }
-      await recordSecurityEvent(user.id, "account.sessions_revoked");
+      let othersSignedOut = false;
+      try {
+        await options.authGateway.signOut(accessToken, "others");
+        othersSignedOut = true;
+      } finally {
+        await recordSecurityEvent(user.id, "account.password_changed", { others_signed_out: othersSignedOut });
+      }
+      await recordSecurityEvent(user.id, "account.sessions_revoked", { with_password_change: true });
     },
     async signOutOtherSessions(accessToken, currentPassword) {
       const { user } = await requireUser(accessToken);
       await options.authGateway.verifyPassword(user.id, currentPassword);
       await options.authGateway.signOut(accessToken, "others");
-      await recordSecurityEvent(user.id, "account.sessions_revoked");
+      await recordSecurityEvent(user.id, "account.sessions_revoked", { with_password_change: false });
     },
     async getAccountDeletionBlockers(accessToken) {
       const { user } = await requireUser(accessToken);

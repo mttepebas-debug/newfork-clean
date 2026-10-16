@@ -97,11 +97,20 @@ describe("account security service", () => {
     // the notification teardown removes; each event once.
     expect(rpc).not.toHaveBeenCalledWith("record_account_security_notification_service", expect.anything());
     const calls = rpc.mock.calls.filter(([name]) => name === "record_account_security_event_service");
+    // BILDIRIM-U1: what happened rides along, so the person gets one notice that says it truly.
     expect(calls.map(([, args]) => args)).toEqual([
-      { actor_user_id: userId, target_event: "account.email_change_requested" },
-      { actor_user_id: userId, target_event: "account.password_changed" },
-      { actor_user_id: userId, target_event: "account.sessions_revoked" },
-      { actor_user_id: userId, target_event: "account.sessions_revoked" },
+      { actor_user_id: userId, target_event: "account.email_change_requested", target_metadata: {} },
+      { actor_user_id: userId, target_event: "account.password_changed", target_metadata: { others_signed_out: true } },
+      { actor_user_id: userId, target_event: "account.sessions_revoked", target_metadata: { with_password_change: true } },
+      { actor_user_id: userId, target_event: "account.sessions_revoked", target_metadata: { with_password_change: false } },
+    ]);
+  });
+  it("records a password change whose other sessions could not be signed out as just that", async () => {
+    const { service, rpc } = serviceFixture({ authOverrides: { signOut: vi.fn(async () => { throw new Error("auth is down"); }) } });
+    await expect(service.changePassword(accessToken, "old-password", "new-password")).rejects.toThrow("auth is down");
+    const calls = rpc.mock.calls.filter(([name]) => name === "record_account_security_event_service");
+    expect(calls.map(([, args]) => args)).toEqual([
+      { actor_user_id: userId, target_event: "account.password_changed", target_metadata: { others_signed_out: false } },
     ]);
   });
   it("does not emit password success when Auth rejects the operation", async () => {

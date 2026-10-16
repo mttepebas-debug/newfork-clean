@@ -5,6 +5,7 @@ select no_plan();
 -- BILDIRIM-U1 (KARARLAR S-123, S-95; docs/plan/research/BILDIRIM-URETICILER.md §2.8): the account and the
 -- workspace write their own notices into the new core.
 --   (a) a password change tells the person once, even with the other sessions signed out in the same go;
+--       it says they were signed out only when they were (the API says which, in the audit row);
 --   (b) signing out everywhere else, on its own, tells the person;
 --   (c) a sign-in email change tells the person when it is asked for and when it is cancelled; a cancel
 --       with nothing pending tells nobody;
@@ -34,8 +35,8 @@ $$;
 
 -- (a) ---------------------------------------------------------------------------------------------
 
-select public.record_account_security_event_service(tests.user('na:ali'), 'account.password_changed');
-select public.record_account_security_event_service(tests.user('na:ali'), 'account.sessions_revoked');
+select public.record_account_security_event_service(tests.user('na:ali'), 'account.password_changed', '{"others_signed_out": true}');
+select public.record_account_security_event_service(tests.user('na:ali'), 'account.sessions_revoked', '{"with_password_change": true}');
 select is(pg_temp.notices('account.password_changed'), array['na:ali'],
   '(a) a password change tells the person whose password it is, nobody else');
 select is(pg_temp.notices('account.signed_out_elsewhere'), '{}'::text[],
@@ -43,8 +44,9 @@ select is(pg_temp.notices('account.signed_out_elsewhere'), '{}'::text[],
 select is((select count(*)::integer from public.person_notifications where user_id = tests.user('na:ali')), 1,
   '(a) one notice in all');
 select ok((select workspace_id is null and title = 'Your password was changed' and url = '/account/security'
+                  and body = 'Your other devices were signed out. If this wasn''t you, reset your password now.'
            from public.person_notifications where type_key = 'account.password_changed'),
-  '(a) it belongs to the account, not a workspace, and opens Security');
+  '(a) it belongs to the account, not a workspace, opens Security and says the other devices were signed out');
 select is((select count(*)::integer from public.notification_deliveries d
            join public.person_notifications n on n.id = d.notification_id
            where n.type_key = 'account.password_changed' and d.channel = 'email'), 1,
@@ -52,10 +54,15 @@ select is((select count(*)::integer from public.notification_deliveries d
 
 -- (b) ---------------------------------------------------------------------------------------------
 
--- ponytail: now() is fixed inside the test's transaction; the password change moves ten minutes back.
-update app_private.security_audit_events set occurred_at = occurred_at - interval '10 minutes'
-where actor_user_id = tests.user('na:ali');
-select public.record_account_security_event_service(tests.user('na:ali'), 'account.sessions_revoked');
+-- Signing the others out failed: the notice does not say they were.
+select public.record_account_security_event_service(tests.user('na:zeynep'), 'account.password_changed', '{"others_signed_out": false}');
+select is((select body from public.person_notifications
+           where type_key = 'account.password_changed' and user_id = tests.user('na:zeynep')),
+  'If this wasn''t you, reset your password now.', '(a) a password change whose sign-out failed does not claim it');
+select throws_ok($$select public.record_account_security_event_service(tests.user('na:zeynep'), 'account.password_changed', '{"with_password_change": true}')$$,
+  '22023', 'unsupported account security event details', '(a) each event says only its own detail');
+
+select public.record_account_security_event_service(tests.user('na:ali'), 'account.sessions_revoked', '{"with_password_change": false}');
 select is(pg_temp.notices('account.signed_out_elsewhere'), array['na:ali'],
   '(b) signing out everywhere else on its own tells the person');
 select is((select count(*)::integer from public.person_notifications where type_key = 'account.signed_out_elsewhere'), 1,

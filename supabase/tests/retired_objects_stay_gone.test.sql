@@ -443,6 +443,9 @@ insert into retired (kind, name, step) values
   ('trigger', 'schedule_time_off_events.notify_time_off_event', 'BILDIRIM-04'),
   ('trigger', 'onboarding_events.document_notification_audit', 'BILDIRIM-04'),
   ('trigger', 'security_audit_events.project_account_security_notification', 'BILDIRIM-04');
+-- The account's security events say what happened (BILDIRIM-U1 review): the two-argument form goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.record_account_security_event_service(uuid, text)', 'BILDIRIM-U1');
 -- The old notification system is dropped (BILDIRIM-06, teardown part C2; KARARLAR S-123): its
 -- tables, type, functions, policies, scheduled job, the columns that only recorded a notice, Remind
 -- on an announcement and the notification settings permissions and actions. notifications.read,

@@ -81,7 +81,7 @@ select is(array(select policyname::text from pg_policies where policyname ~ 'not
 select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
   array['notification-retention'], '(a) no scheduled job sends notifications; the new system''s only deletes expired ones');
 -- The domain work they served is still here.
-select ok(to_regprocedure('public.record_account_security_event_service(uuid, text)') is not null
+select ok(to_regprocedure('public.record_account_security_event_service(uuid, text, jsonb)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null
   and to_regprocedure('app_private.announcement_release(uuid)') is not null
   and to_regprocedure('app_private.time_off_sweep(integer)') is not null,

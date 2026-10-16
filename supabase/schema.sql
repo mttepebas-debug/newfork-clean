@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 492, last: 20261017010000_time_off_notices.sql
--- fingerprint: sha256:7a3558043d51d7e43c9b53a8e2263781dee686b26973cd295fcfb92fb4130771
+-- migrations: 493, last: 20261017020000_account_notice_follows_sign_out.sql
+-- fingerprint: sha256:7f6a60e0c1b74d03e170dcaf6d68bbfaaf44c26e5e85b1747a0e1916a97213b9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5298,40 +5298,39 @@ CREATE OR REPLACE FUNCTION "app_private"."notify_account_security"("target_user"
     SET "search_path" TO ''
     AS $$
 declare
+  said jsonb := coalesce((select e.metadata from app_private.security_audit_events e where e.id = target_audit_id), '{}'::jsonb);
   kind text;
   heading text;
-  said text;
+  body text;
 begin
   case target_event
     when 'account.password_changed' then
       kind := 'account.password_changed';
       heading := 'Your password was changed';
-      said := 'Your other devices were signed out. If this wasn''t you, reset your password now.';
+      body := case when (said ->> 'others_signed_out')::boolean
+        then 'Your other devices were signed out. If this wasn''t you, reset your password now.'
+        else 'If this wasn''t you, reset your password now.' end;
     when 'account.sessions_revoked' then
-      -- A password change signs the other sessions out right after it: its own notice says so.
-      if exists (
-        select 1 from app_private.security_audit_events e
-        where e.actor_user_id = target_user and e.event_type = 'account.password_changed'
-          and e.occurred_at >= now() - interval '2 minutes'
-      ) then
+      -- Signed out as part of a password change: that notice says so.
+      if coalesce((said ->> 'with_password_change')::boolean, false) then
         return 0;
       end if;
       kind := 'account.signed_out_elsewhere';
       heading := 'You signed out everywhere else';
-      said := 'Your other devices were signed out. If this wasn''t you, change your password now.';
+      body := 'Your other devices were signed out. If this wasn''t you, change your password now.';
     when 'account.email_change_requested' then
       kind := 'account.sign_in_email_changed';
       heading := 'A sign-in email change was asked for';
-      said := 'Confirm it from the link sent to the new address. If this wasn''t you, cancel it on the Security page.';
+      body := 'Confirm it from the link sent to the new address. If this wasn''t you, cancel it on the Security page.';
     when 'account.email_change_cancelled' then
       kind := 'account.sign_in_email_changed';
       heading := 'Your sign-in email change was cancelled';
-      said := 'You still sign in with the same email.';
+      body := 'You still sign in with the same email.';
     else
       return 0;
   end case;
   return app_private.notify(
-    kind, null, array[target_user], 'security:' || target_audit_id::text, heading, said, '/account/security',
+    kind, null, array[target_user], 'security:' || target_audit_id::text, heading, body, '/account/security',
     target_user, 'account', target_user
   );
 end;
@@ -18003,12 +18002,13 @@ $$;
 ALTER FUNCTION "public"."read_signature_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text", "target_metadata" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
   audit_id uuid;
+  said jsonb := coalesce(target_metadata, '{}'::jsonb);
 begin
  if target_event is null or target_event not in ('account.email_change_requested','account.password_changed','account.sessions_revoked') then
   raise exception 'unsupported account security event' using errcode='22023';
@@ -18016,13 +18016,22 @@ begin
  if actor_user_id is null or not exists(select 1 from auth.users u where u.id=actor_user_id and u.deleted_at is null) then
   raise exception 'account session required' using errcode='42501', hint='authz.not_active';
  end if;
- audit_id := app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,'{}');
+ -- Only what each event can say, as true or false.
+ if jsonb_typeof(said) <> 'object' or exists (
+   select 1 from jsonb_each(said) x
+   where x.key <> case target_event when 'account.password_changed' then 'others_signed_out'
+                                    when 'account.sessions_revoked' then 'with_password_change' else '' end
+      or jsonb_typeof(x.value) <> 'boolean'
+ ) then
+  raise exception 'unsupported account security event details' using errcode='22023';
+ end if;
+ audit_id := app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,said);
  perform app_private.notify_account_security(actor_user_id, target_event, audit_id);
  return audit_id;
 end; $$;
 
 
-ALTER FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text", "target_metadata" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_schedule_export_event_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_surface" "text", "target_format" "text", "target_params" "jsonb") RETURNS "jsonb"
@@ -33802,8 +33811,8 @@ GRANT ALL ON FUNCTION "public"."read_signature_settings_service"("actor_user_id"
 
 
 
-REVOKE ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text", "target_metadata" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text", "target_metadata" "jsonb") TO "service_role";
 
 
 
