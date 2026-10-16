@@ -218,7 +218,8 @@ end;
 $$;
 
 -- Approved hours given back: the person, and whoever approved the time off (its last approval and every
--- vote for it; approved by the system, who could decide it). Never the one who shortened it.
+-- vote for it; approved by the system, who could decide it), while they may still decide it. Never the one who
+-- shortened it.
 create function app_private.time_off_tell_shortened(target_workspace uuid, target_parent uuid, target_cut uuid,
   target_actor uuid, given tstzmultirange, zone_name text)
 returns integer
@@ -256,7 +257,12 @@ begin
         where exists (select 1 from public.schedule_time_off_events ev where ev.workspace_id = target_workspace
                       and ev.request_id = target_parent and ev.action = 'approved' and ev.metadata ? 'segments'
                       and ev.actor_user_id is null)) x
-  where x.u is not null and x.u is distinct from person.user_id;
+  where x.u is not null and x.u is distinct from person.user_id
+    -- Who approved it then is told only while they may still decide it now (the core, not the record): a
+    -- demoted, moved or restricted approver hears nothing of it.
+    and (app_private.authz_reason(x.u, target_workspace, 'time_off.decide_alone', null, r.employee_id) is null
+         or exists (select 1 from unnest(app_private.time_off_live_locations(target_workspace, target_parent)) place
+                    where app_private.authz_reason(x.u, target_workspace, 'time_off.decide', array[place], r.employee_id) is null));
 
   sent := app_private.notify('time_off.shortened', target_workspace, array[person.user_id], key,
     'Your time off was shortened', left(lines || ' is no longer time off.', 1000), '/app/employee-hub/my-availability',

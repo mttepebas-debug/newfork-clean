@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 493, last: 20261017020000_account_notice_follows_sign_out.sql
--- fingerprint: sha256:7f6a60e0c1b74d03e170dcaf6d68bbfaaf44c26e5e85b1747a0e1916a97213b9
+-- fingerprint: sha256:d142801ecd965e7d1a6fe857ab52e9e5fdde63b9ce7822f08da9ee3d0b0363a5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7402,7 +7402,12 @@ begin
         where exists (select 1 from public.schedule_time_off_events ev where ev.workspace_id = target_workspace
                       and ev.request_id = target_parent and ev.action = 'approved' and ev.metadata ? 'segments'
                       and ev.actor_user_id is null)) x
-  where x.u is not null and x.u is distinct from person.user_id;
+  where x.u is not null and x.u is distinct from person.user_id
+    -- Who approved it then is told only while they may still decide it now (the core, not the record): a
+    -- demoted, moved or restricted approver hears nothing of it.
+    and (app_private.authz_reason(x.u, target_workspace, 'time_off.decide_alone', null, r.employee_id) is null
+         or exists (select 1 from unnest(app_private.time_off_live_locations(target_workspace, target_parent)) place
+                    where app_private.authz_reason(x.u, target_workspace, 'time_off.decide', array[place], r.employee_id) is null));
 
   sent := app_private.notify('time_off.shortened', target_workspace, array[person.user_id], key,
     'Your time off was shortened', left(lines || ' is no longer time off.', 1000), '/app/employee-hub/my-availability',
