@@ -6,7 +6,7 @@
 //   build <branch[@sha]…>  train/<stamp> from origin/main in the train folder; exit 2 = a branch was left out
 //   ci                     pushes train/<stamp> and waits for its GitHub Actions run: the full check, once (WORKFLOW-V2)
 //   push                   origin main fast-forwarded to the train, only when ci was green for that very sha
-//   apply-local            the train's new migrations into the shared local database, holding db for this step only
+//   apply-local            the train's new migrations into the shared local database, holding db for this step only (none: no lock)
 //   run <branch[@sha]…>    build → ci → push → apply-local; coord/kayit2 rides along when main lacks its commits
 // One train at a time on this PC: run holds train.lock from build to the end of apply-local, and build, ci, push and
 // apply-local run alone hold it for their own step. A second train waits in the lock's queue and then builds
@@ -461,6 +461,12 @@ function applyLocalStep(ctx) {
   const s = readState(ctx);
   if (!s) return NO_STATE;
   const lines = [];
+  // The train's migrations come from git (build's state), not from the shared DB: with none, the step has
+  // nothing to write and nothing to check against, so it neither waits behind another session's db nor reads it.
+  if (!s.newMigrations.length) {
+    lines.push("uygulanacak göç yok; db.lock istenmedi");
+    return { code: 0, lines };
+  }
   if (!hold(ctx, s, "db", "apply-local", lines)) return { code: 1, lines };
   const stop = (line) => {
     lines.push(line);

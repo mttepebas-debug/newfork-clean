@@ -130,6 +130,36 @@ test("apply-local: a db.lock whose holder died (taken before this boot) is clear
   assert.match(text(r), /ölü sahibinden temizlendi: oturum\/eski/);
 });
 
+test("apply-local: a train without new migrations neither asks for db.lock nor reads the shared database", () => {
+  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+  built("task/a");
+  take("db", "oturum/ekran-01, e2e");
+  const sleep = () => {
+    throw new Error("waited in the db queue");
+  };
+  const r = applyLocal({ ...w.ctx, lockWaitMin: 30, sleep });
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /uygulanacak göç yok; db\.lock istenmedi/);
+  assert.equal(w.calls.psql.length, 0);
+  assert.equal(lock("db").identity, "oturum/ekran-01"); // the holder's lock stays, no ticket of ours in its queue
+  const queue = path.join(process.env.NEWFORK_LOCK_DIR, "queue-db");
+  assert.equal(fs.existsSync(queue) ? fs.readdirSync(queue).length : 0, 0);
+  assert.equal(auditLines().some((l) => l.event === "train-blocked"), false);
+  // a train with a migration still waits for the same holder
+  w.branch("task/m1", ["m1", { "supabase/migrations/20261008020000_m1.sql": "create table m1(id int);\n" }]);
+  built("task/m1");
+  assert.throws(() => applyLocal({ ...w.ctx, lockWaitMin: 30, sleep }), /waited in the db queue/);
+});
+
+test("run: a docs-only train ends while another session's e2e holds db", () => {
+  w.branch("task/a", ["a", { "docs/a.md": "a\n" }]);
+  take("db", "oturum/ekran-01, e2e");
+  const r = run({ ...w.ctx, sleep: () => assert.fail("waited in the db queue") }, ["task/a"]);
+  assert.equal(r.code, 0, text(r));
+  assert.equal(git(w.origin, "rev-parse", "refs/heads/main"), state().head);
+  assert.match(text(r), /uygulanacak göç yok/);
+});
+
 // ---- ci ----
 
 const code = (name) => ["code", { [`apps/web/src/${name}.ts`]: `export const ${name} = 1;\n` }];
