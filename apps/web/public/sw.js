@@ -1,3 +1,8 @@
+// Never delete this file. To turn the worker off, publish a sw.js that calls
+// `self.registration.unregister()`. A missing sw.js is answered with index.html
+// (vercel.json's catch-all rewrite), the browser rejects that update, and every
+// installed copy keeps running the old worker.
+//
 // Newfork service worker. It exists so phone alerts (web push) have somewhere
 // to arrive; registered by src/lib/service-worker.ts in production builds only.
 //

@@ -74,7 +74,15 @@ describe("registerServiceWorker", () => {
 });
 
 describe("the service worker file", () => {
-  const source = readFileSync("public/sw.js", "utf8").replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+  const raw = readFileSync("public/sw.js", "utf8");
+  const source = raw.replace(/\/\/.*$/gm, "").replace(/\/\*[\s\S]*?\*\//g, "");
+
+  // A deleted sw.js is answered with index.html by vercel.json's catch-all
+  // rewrite; the browser rejects that update and keeps the old worker forever.
+  it("stays in public/, where the build copies it to /sw.js, and says it must never be deleted", () => {
+    expect(raw.startsWith("// Never delete this file. To turn the worker off, publish a sw.js that calls\n// `self.registration.unregister()`.")).toBe(true);
+    expect(readFileSync("vite.config.ts", "utf8")).not.toMatch(/publicDir/);
+  });
 
   it("takes over at once on install and activate", () => {
     expect(source).toMatch(/addEventListener\(\s*["']install["']/);
