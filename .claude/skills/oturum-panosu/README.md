@@ -11,7 +11,7 @@ A Claude Code mod (function hooks plugin) for Mert's desktop app. Type `/pano` i
 - **DURDURULDU** you interrupted it
 - **ÇALIŞIYOR** still running
 
-The list is one board: drag a group header onto another to reorder the groups, click a header to open or close its group, click a session to open it in the app (`claude://` link). Three layouts sit at the top while Mert picks one: A inbox (two lines a session), B compact (one line), C focus (waiting sessions large). Layout, order and closed groups are kept across sessions. Only the signed-in account's sessions are listed (the app keeps the other account's in a folder of its own).
+The list is one board: drag a group header onto another to reorder the groups, click a header to open or close its group, click a session to open it in the app (`claude://` link). Two layouts, switched at the top whenever wanted: Ayrıntılı (detail, options and the next step under each session) and Kompakt (one line a session). Layout, order and closed groups are kept across sessions. Only the signed-in account's sessions are listed (the app keeps the other account's in a folder of its own).
 
 The pane refreshes every 20 s while open (it stops when closed), raises a toast when a session starts waiting on you or finishes, and keeps "Pano: n oturum seni bekliyor" in the status line. **Summarize** refreshes, then asks the model (sonnet) for each session's done / open / next step and the single most important thing to do now.
 

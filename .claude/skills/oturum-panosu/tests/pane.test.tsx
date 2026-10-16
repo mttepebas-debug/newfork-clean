@@ -77,7 +77,7 @@ const click = async (ui: { pointer: (e: never) => Promise<void> }, y: number) =>
   await ui.pointer({ type: 'up', x: 4, y, button: 'left', in: 'board' } as never)
 }
 
-// Layout A lines: 0 Seni bekleyen · 1 ask row · 2 its detail · 3 gap · 4 Biten · 5 done row · 6 detail · 7 gap · 8 Çalışan · 9 empty
+// Layout A lines (the ask row has no options and, before Summarize, no next step): 0 Seni bekleyen · 1 ask row · 2 its detail · 3 gap · 4 Biten · 5 done row · 6 detail · 7 gap · 8 Çalışan · 9 empty
 test('the board groups the sessions with their keywords', async ($, on) => {
   world(on)
   for (const surface of ['desktop', 'terminal'] as const) {

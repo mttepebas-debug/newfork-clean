@@ -26,12 +26,12 @@ function linesOf(p: OturumPanosuBoardProps): Line[] {
     out.push({ kind: 'header', gi })
     if (g.isCollapsed) return
     if (g.rows.length === 0) out.push({ kind: 'empty', gi })
-    const isLarge = p.layout === 'A' || (p.layout === 'C' && g.id === 'bekleyen')
+    const isLarge = p.layout === 'A'
     for (const r of g.rows) {
       out.push({ kind: 'row', gi, id: r.id, part: 'main' })
       if (!isLarge) continue
       if (r.detail) out.push({ kind: 'row', gi, id: r.id, part: 'detail' })
-      if (r.next || (p.layout === 'C' && r.options)) out.push({ kind: 'row', gi, id: r.id, part: 'extra' })
+      if (r.next || r.options) out.push({ kind: 'row', gi, id: r.id, part: 'extra' })
     }
   })
   return out
@@ -149,8 +149,7 @@ const Board: ClientModule<OturumPanosuBoardProps, BoardState> = (props, surface)
         </Box>
       )
     const r = rowById.get(line.id)!
-    const g = props.groups[line.gi]!
-    const compact = props.layout === 'B' || (props.layout === 'C' && g.id !== 'bekleyen')
+    const compact = props.layout === 'B'
     if (line.part === 'main') return main(r, compact)
     if (line.part === 'detail')
       return (

@@ -47,9 +47,8 @@ const GROUP_INFO: Record<OturumPanosuGroup, { title: string; color: string; has:
 }
 
 const LAYOUTS: { id: OturumPanosuLayout; label: string }[] = [
-  { id: 'A', label: 'A · Gelen kutusu' },
-  { id: 'B', label: 'B · Kompakt' },
-  { id: 'C', label: 'C · Odak' },
+  { id: 'A', label: 'Ayrıntılı' },
+  { id: 'B', label: 'Kompakt' },
 ]
 
 function clockTime(ms: number): string {

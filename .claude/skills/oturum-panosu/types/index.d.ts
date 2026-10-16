@@ -27,8 +27,8 @@ export type OturumPanosuStatus = 'izin' | 'soru' | 'karar' | 'plan' | 'hata' | '
 /** The three status groups the board draws, in the order the person dragged them to. */
 export type OturumPanosuGroup = 'bekleyen' | 'biten' | 'calisan'
 
-/** A: two-line inbox rows · B: one-line compact rows · C: focus, waiting sessions large. */
-export type OturumPanosuLayout = 'A' | 'B' | 'C'
+/** A: two-line inbox rows · B: one-line compact rows; the person switches between them at will. */
+export type OturumPanosuLayout = 'A' | 'B'
 
 export type OturumPanosuRow = {
   id: string
