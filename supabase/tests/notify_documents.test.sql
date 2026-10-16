@@ -33,6 +33,8 @@ select tests.person('dc', 'rev', 'reviewing manager', array['K', 'B'], array['co
 select tests.person('dc', 'lim', 'manager', array['K'], array['cook']);
 select tests.person('dc', 'blk', 'admin', array['K'], array['server']);
 select tests.person('dc', 'gon', 'admin', array['K'], array['server']);
+-- Ext's access comes back when his last block's date is moved out, in (h).
+select tests.person('dc', 'ext', 'employee', array['K'], array['cook']);
 
 create temp table who as select label, tests.user(label) uid
 from unnest(array['dc:owner', 'dc:zeynep', 'dc:ayse', 'dc:ali', 'dc:emre', 'dc:dmo', 'dc:rev', 'dc:lim', 'dc:blk', 'dc:gon', 'dx:owner']) label;
@@ -261,6 +263,29 @@ select public.set_employee_document_exemption_service(tests.user('dc:owner'), te
 select ok(app_private.document_actor_blocked(tests.user('dc:dmo'), tests.id('dc')), '(h) his past-due policy still blocks Dmo');
 select is(pg_temp.access_told('dmo'), array['restricted'],
   '(h) so the card excused does not tell him his access is back');
+-- The policy, never suspended, is excused too: nothing blocks Dmo now, and he hears it.
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('dmo', (select policy from docs))).id,
+  (pg_temp.req('dmo', (select policy from docs))).lifecycle_revision, true, 'Signed on paper');
+select ok(not app_private.document_actor_blocked(tests.user('dc:dmo'), tests.id('dc')), '(h) nothing blocks Dmo now');
+select is(pg_temp.access_told('dmo'), array['restored', 'restricted'],
+  '(h) the last block lifted without a suspension of its own still tells him his access is back');
+-- The same when the last block's type is taken down: Ext's card is suspended, his policy past due; the
+-- card is excused, then the tip policy is unpublished. (A deadline cannot be extended once it has passed
+-- or while the person is blocked, so an extension never lifts a block.)
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:ext');
+select pg_temp.check();
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select policy from docs) and lifecycle_user_id = tests.user('dc:ext');
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('ext', (select card from docs))).id,
+  (pg_temp.req('ext', (select card from docs))).lifecycle_revision, true, 'Brought it in person');
+select is(pg_temp.access_told('ext'), array['restricted'], '(h) Ext is restricted, and still blocked by his policy');
+create temp table policy_down as select public.preview_document_publication_service(tests.user('dc:owner'), tests.id('dc'), policy) preview
+from docs;
+select public.set_document_publication_service(tests.user('dc:owner'), tests.id('dc'), (select policy from docs),
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Unpublish', 'draft')
+from policy_down;
+select is(pg_temp.access_told('ext'), array['restored', 'restricted'], '(h) the tip policy taken down: Ext hears his access is back');
 
 -- (g) The owner hands the workspace over -------------------------------------------------------------
 -- The documents the owner was excused from are asked of them now.
