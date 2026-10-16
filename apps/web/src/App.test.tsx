@@ -7305,6 +7305,30 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: /Notifications|Inbox/ })).toBeNull();
   });
 
+  // BILDIRIM-10: /app/notifications is the list's own page, behind notifications.read_own.
+  it.each(["owner", "employee"] as const)("opens the notification page for a %s who may read their own list", async (role) => {
+    window.history.pushState({}, "", "/app/notifications");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs(role);
+
+    expect(await screen.findByRole("heading", { level: 1, name: "Notifications" })).toBeTruthy();
+    expect(window.location.pathname).toBe("/app/notifications");
+  });
+
+  it("shows the no-access card at the notification page to someone the core does not let read their list", async () => {
+    testAuth.withoutActions = ["notifications.read_own"];
+    window.history.pushState({}, "", "/app/notifications");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs("employee");
+
+    expect(await screen.findByRole("heading", { name: "You don't have access to Notifications" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { level: 1, name: "Notifications" })).toBeNull();
+    // Nor does the menu offer it.
+    expect(screen.queryByRole("button", { name: /^Notifications/ })).toBeNull();
+  });
+
   it("shows employee-only users the no-access card at the manager Workspace route", async () => {
     window.history.pushState({}, "", "/app/workspace");
     render(<App />);
