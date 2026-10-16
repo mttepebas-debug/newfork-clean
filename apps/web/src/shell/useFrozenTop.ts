@@ -102,6 +102,18 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
 
     const measure = () => {
       frame = 0;
+      // A short window, or a screen with no page heading yet (a loading
+      // outline, a no-access card): nothing to measure, so nothing is laid
+      // out again.
+      if (!tall.matches || !root.querySelector(HEADINGS)) {
+        if (!pieces.length && !fold) return;
+        for (const piece of pieces) release(piece);
+        pieces = [];
+        fold = null;
+        delete root.dataset.frozenScrolled;
+        place();
+        return;
+      }
       // Find and measure the pieces where they rest, open and then folded, and
       // put the screen back as it was, all without the page's scroll anchoring
       // answering the changes in between.
