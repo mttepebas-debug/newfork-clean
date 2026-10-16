@@ -91,7 +91,7 @@ export function createShiftExchangesService(options: {
       command: ExchangeCommand,
       key: string,
     ) {
-      const result = exchangeMutationSchema.parse(
+      return exchangeMutationSchema.parse(
         await rpc("shift_exchanges_command_service", {
           actor,
           w: workspace,
@@ -99,42 +99,6 @@ export function createShiftExchangesService(options: {
           idempotency_key: key,
         }),
       );
-      // This RPC starts only after the assignment/consent transaction committed.
-      // Delivery failure (including an uncertain timeout) cannot undo that result;
-      // the durable outbox and cron retain ownership of retrying it.
-      try {
-        const signal = AbortSignal.timeout(2_000);
-        let remaining = true;
-        while (remaining && !signal.aborted) {
-          const delivery = await client
-            .rpc("flush_shift_exchange_notifications_service", {
-              target_workspace_id: workspace,
-              target_case_id: result.case_id,
-            })
-            .abortSignal(signal);
-          if (
-            delivery.error ||
-            delivery.data?.retried ||
-            delivery.data?.dead_lettered ||
-            delivery.data?.invalidation_deferred ||
-            delivery.data?.busy ||
-            (delivery.data?.remaining && !delivery.data?.leased)
-          ) {
-            console.warn("Shift exchange notification delivery deferred", {
-              workspaceId: workspace,
-              caseId: result.case_id,
-            });
-            break;
-          }
-          remaining = Boolean(delivery.data?.remaining);
-        }
-      } catch {
-        console.warn("Shift exchange notification delivery deferred", {
-          workspaceId: workspace,
-          caseId: result.case_id,
-        });
-      }
-      return result;
     },
   };
 }
