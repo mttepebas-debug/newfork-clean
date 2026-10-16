@@ -7316,6 +7316,19 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/app/notifications");
   });
 
+  it("takes the notification page's Settings to the person's own notification choices", async () => {
+    window.history.pushState({}, "", "/app/notifications");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs("employee");
+
+    fireEvent.click(await screen.findByRole("link", { name: /Settings/ }));
+    await waitFor(() => expect(window.location.pathname).toBe("/account/preferences/notifications"));
+    // The choices page is lazy: its own heading, not the list page's, once it has loaded.
+    await waitFor(() => expect(document.getElementById("notification-preferences-title")?.textContent).toContain("Notifications"), { timeout: 5000 });
+    expect(document.getElementById("notifications-title")).toBeNull();
+  });
+
   it("shows the no-access card at the notification page to someone the core does not let read their list", async () => {
     testAuth.withoutActions = ["notifications.read_own"];
     window.history.pushState({}, "", "/app/notifications");
