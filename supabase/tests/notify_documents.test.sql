@@ -35,6 +35,8 @@ select tests.person('dc', 'blk', 'admin', array['K'], array['server']);
 select tests.person('dc', 'gon', 'admin', array['K'], array['server']);
 -- Ext's access comes back when his last block's date is moved out, in (h).
 select tests.person('dc', 'ext', 'employee', array['K'], array['cook']);
+-- One's card falls past due and is excused before the daily check: never told restricted, so never back, in (h).
+select tests.person('dc', 'one', 'employee', array['K'], array['cook']);
 
 create temp table who as select label, tests.user(label) uid
 from unnest(array['dc:owner', 'dc:zeynep', 'dc:ayse', 'dc:ali', 'dc:emre', 'dc:dmo', 'dc:rev', 'dc:lim', 'dc:blk', 'dc:gon', 'dx:owner']) label;
@@ -286,6 +288,12 @@ select public.set_document_publication_service(tests.user('dc:owner'), tests.id(
   (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Unpublish', 'draft')
 from policy_down;
 select is(pg_temp.access_told('ext'), array['restored', 'restricted'], '(h) the tip policy taken down: Ext hears his access is back');
+-- "Back" only after "restricted": One's card is past due, never suspended, and excused before anyone told him.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:one');
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('one', (select card from docs))).id,
+  (pg_temp.req('one', (select card from docs))).lifecycle_revision, true, 'Brought it in person');
+select is(pg_temp.access_told('one'), '{}'::text[], '(h) One was never told restricted, so he is not told his access is back');
 
 -- (g) The owner hands the workspace over -------------------------------------------------------------
 -- The documents the owner was excused from are asked of them now.

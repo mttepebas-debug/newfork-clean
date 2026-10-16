@@ -256,7 +256,11 @@ select is(pg_temp.try(format($$select public.set_announcement_state_service(%L, 
 create temporary table brought as select public.set_announcement_state_service(pg_temp.u('ayse'), tests.id('c'),
   tests.id('c:post:monday'), (select revision from public.announcements where id = tests.id('c:post:monday')), 'bring_back',
   array(select (x ->> 'id')::uuid from offered, jsonb_array_elements(result) x where x ->> 'employee_name' is not null)) result;
-select is((select (result ->> 'told')::integer from brought), 2, 'V7: Ali and Emre are told');
+-- BILDIRIM-U6: bringing shifts back has no notice yet, so nobody is told and its History says no number.
+select is((select (result ->> 'told')::integer from brought), 0, 'V7: nobody is told yet');
+select is((select c.detail ? 'told' from public.announcement_changes c
+           where c.announcement_id = tests.id('c:post:monday') and c.action = 'brought_back'), false,
+  'V7: and its History line counts nobody');
 select is(pg_temp.holder('ali_mon'), tests.id('c:ali'), 'V7: Ali has his Monday shift back');
 select is(pg_temp.holder('emre_mon'), tests.id('c:emre'), 'V7: Emre''s is back on the Schedule, his');
 select ok(not pg_temp.published('open_mon'), 'V7: the open shift, not chosen, stays gone');

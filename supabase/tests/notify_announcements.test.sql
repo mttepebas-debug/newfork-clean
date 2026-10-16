@@ -97,6 +97,12 @@ select ok((select bool_and(n.title = 'Updated: Knife rules, new text') from publ
            where n.type_key = 'announcements.updated' and n.subject_id = (select id from rules)), '(b) saying it changed');
 select pg_temp.save('zeynep', (select id from rules), pg_temp.payload(array['K', 'B'], 'Knife rules, new text', '{"ask_ack": true}'), 'save');
 select is(pg_temp.told('announcements.updated', (select id from rules)), array['na:ali', 'na:owner'], '(b) saved again unchanged: once');
+-- Kadikoy is taken off and put back: Emre, who acknowledged it, is not told it is out again.
+select pg_temp.save('zeynep', (select id from rules), pg_temp.payload(array['B'], 'Knife rules, new text', '{"ask_ack": true}'), 'save');
+select pg_temp.save('zeynep', (select id from rules), pg_temp.payload(array['K', 'B'], 'Knife rules, new text', '{"ask_ack": true}'), 'save');
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'announcements.published'
+           and n.subject_id = (select id from rules) and n.user_id = tests.user('na:emre')), 1,
+  '(b) Emre, who acknowledged it, is not told again when it reaches him again');
 
 -- (c) Remind ----------------------------------------------------------------------------------------------
 -- It asks those it reaches who rank below Ayse, who published it (announcement_respondents): Ali, Emre,
@@ -151,9 +157,10 @@ select is(pg_temp.told('announcements.cancelled', (select id from plain)), '{}':
 
 -- (e) A scheduled post goes out ---------------------------------------------------------------------------
 
-create function pg_temp.schedule(person text, title text, due boolean default true) returns uuid language plpgsql as $$
+create function pg_temp.schedule(person text, title text, due boolean default true, places text[] default array['K'])
+returns uuid language plpgsql as $$
 declare
-  p jsonb := pg_temp.payload(array['K'], title, jsonb_build_object('starts_on', current_date + 10,
+  p jsonb := pg_temp.payload(places, title, jsonb_build_object('starts_on', current_date + 10,
     'publish_at', now() + interval '1 hour'));
   made uuid := pg_temp.draft(person, p);
 begin
@@ -175,16 +182,23 @@ select is(tests.unlisted_notices(tests.id('na')), '{}'::text[], 'so far every no
 -- (f) A scheduled post that could not go out ------------------------------------------------------------
 -- Six managers at Kadikoy schedule a post each. Ayse keeps the right; Dmo is made an employee, Mov
 -- leaves Kadikoy, Lim's role loses announcements, Blk misses a required document, Gon's access is removed.
--- Each post's day comes before it can go out (too late), so it fails whoever scheduled it.
+-- Each post's day comes before it can go out (too late), so it fails whoever scheduled it. Three more cells
+-- where the right is a place's: the owner's post for Kadikoy and Besiktas, an admin's two-location post after
+-- the admin is made a Kadikoy manager, and Veli's Besiktas post after Besiktas is archived.
 
 select tests.person('na', 'dmo', 'manager', array['K'], array['cook']);
 select tests.person('na', 'mov', 'manager', array['K', 'B'], array['cook']);
 select tests.person('na', 'lim', 'manager', array['K'], array['cook']);
 select tests.person('na', 'blk', 'manager', array['K'], array['cook']);
 select tests.person('na', 'gon', 'manager', array['K'], array['cook']);
-insert into who select label, tests.user(label) from unnest(array['na:dmo', 'na:mov', 'na:lim', 'na:blk', 'na:gon']) label;
+select tests.person('na', 'adm', 'admin', array['K'], array['server']);
+insert into who select label, tests.user(label) from unnest(array['na:dmo', 'na:mov', 'na:lim', 'na:blk', 'na:gon', 'na:adm']) label;
 create temp table late as select person, pg_temp.schedule(person, 'Deep clean by ' || person, false) id
 from unnest(array['ayse', 'dmo', 'mov', 'lim', 'blk', 'gon']) person;
+insert into late values
+  ('owner', pg_temp.schedule('owner', 'Both kitchens by owner', false, array['K', 'B'])),
+  ('adm', pg_temp.schedule('adm', 'Both kitchens by adm', false, array['K', 'B'])),
+  ('veli', pg_temp.schedule('veli', 'Besiktas by veli', false, array['B']));
 insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('na')
 on conflict do nothing;
 
@@ -198,6 +212,8 @@ select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('na') and m.user_id = tests.user('na:mov')), tests.id('na:K'));
 select public.update_employee_membership_role_service(tests.user('na:owner'), tests.id('na'), tests.id('na:lim'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('na') and r.name = 'no announcements'));
+select public.update_employee_membership_role_service(tests.user('na:owner'), tests.id('na'), tests.id('na:adm'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('na') and r.system_key = 'manager'));
 create temp table required_document (id uuid, preview jsonb);
 insert into required_document (id)
 select public.save_document_type_lifecycle_service(tests.user('na:owner'), tests.id('na'), null, null, jsonb_build_object(
@@ -222,32 +238,43 @@ where source_id = (select id from required_document) and lifecycle_user_id = tes
 select public.remove_employee_access_service(tests.user('na:owner'), tests.id('na'), tests.id('na:gon'));
 select is(
   (select array_agg(person || ' ' || coalesce(app_private.authz_reason(tests.user('na:' || person), tests.id('na'), 'announcement.write',
-     array[tests.id('na:K')]), 'ok') order by person) from late),
+     array[tests.id('na:K')]), 'ok') order by person) from late where person not in ('owner', 'adm', 'veli')),
   array['ayse ok', 'blk document_blocked', 'dmo missing_permission', 'gon not_active', 'lim missing_permission', 'mov out_of_scope'],
   '(f) the core: Ayse may write at Kadikoy; the five may not');
 
 create function pg_temp.failed(id uuid) returns text[] language sql stable as $$
   select pg_temp.told('announcements.publish_failed', id)
 $$;
--- ponytail: each post is due now and its day moved to yesterday, so it starts before it can go out.
+-- ponytail: each post is due now and its day moved to yesterday, so it starts before it can go out. Veli's
+-- waits until Besiktas is archived.
 update public.announcements set publish_at = now() - interval '1 minute', starts_on = current_date - 1
-where id in (select id from late);
+where id in (select id from late where person <> 'veli');
+select app_private.announcement_release(tests.id('na'));
+update public.locations set archived_at = now(), updated_at = now() where id = tests.id('na:B');
+update public.announcements set publish_at = now() - interval '1 minute', starts_on = current_date - 1
+where id = (select id from late where person = 'veli');
 select app_private.announcement_release(tests.id('na'));
 select is((select array_agg(a.status::text || ' ' || (a.release_failed_at is not null)::text) from public.announcements a
-           where a.id in (select id from late)), array_fill('scheduled true'::text, array[6]), '(f) none of the six went out');
+           where a.id in (select id from late)), array_fill('scheduled true'::text, array[9]), '(f) none of the nine went out');
 select is(pg_temp.failed((select id from late where person = 'ayse')), array['na:ayse'],
   '(f) Ayse''s tells Ayse, who scheduled it and still may write there');
 select is(
-  (select array_agg(person || ': ' || array_to_string(pg_temp.failed(id), ',') order by person) from late where person <> 'ayse'),
-  array['blk: na:ayse,na:owner,na:zeynep', 'dmo: na:ayse,na:owner,na:zeynep', 'gon: na:ayse,na:owner,na:zeynep',
-        'lim: na:ayse,na:owner,na:zeynep', 'mov: na:ayse,na:owner,na:zeynep'],
-  '(f) one whose scheduler may no longer write there tells who may, never the scheduler');
+  (select array_agg(person || ': ' || array_to_string(pg_temp.failed(id), ',') order by person) from late
+   where person not in ('ayse', 'owner', 'adm', 'veli')),
+  array['blk: na:adm,na:ayse,na:owner,na:zeynep', 'dmo: na:adm,na:ayse,na:owner,na:zeynep', 'gon: na:adm,na:ayse,na:owner,na:zeynep',
+        'lim: na:adm,na:ayse,na:owner,na:zeynep', 'mov: na:adm,na:ayse,na:owner,na:zeynep'],
+  '(f) one whose scheduler may no longer write there tells who may (Adm is a Kadikoy manager now), never the scheduler');
+select is(
+  (select array_agg(person || ': ' || array_to_string(pg_temp.failed(id), ',') order by person) from late
+   where person in ('owner', 'adm', 'veli')),
+  array['adm: na:owner,na:zeynep', 'owner: na:owner', 'veli: na:owner,na:zeynep'],
+  '(f) two places: the owner''s own tells the owner; the demoted admin''s tells who may write at both; Besiktas archived: the owner and Zeynep, never nobody');
 select ok((select bool_and(n.title = 'Couldn''t publish "Deep clean by ayse"' and n.body = 'Its day started before it could go out.')
            from public.person_notifications n where n.type_key = 'announcements.publish_failed'
              and n.subject_id = (select id from late where person = 'ayse')), '(f) saying which post, and why');
 select app_private.announcement_release(tests.id('na'));
 select is((select count(*)::integer from public.person_notifications where type_key = 'announcements.publish_failed'
-           and workspace_id = tests.id('na')), 16,
+           and workspace_id = tests.id('na')), 26,
   '(f) once: the next minute does not tell again');
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'announcements.published'
            and n.subject_id in (select id from late)), 0, '(f) its audience hears nothing of it');
