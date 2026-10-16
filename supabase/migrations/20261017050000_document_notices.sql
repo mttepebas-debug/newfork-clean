@@ -7,14 +7,14 @@
 --   * decided: the person once; every reviewer's card closes ("Approved by ...");
 --   * the daily check: due at 7, 1 and 0 days, expiring at 30, 7 and 1 days (the person and who may review
 --     them now; not while the new one waits for review); each once;
---   * access: restricted when a person's first document is suspended, back when their last suspension
---     lifts, on whatever path (the daily check, a late send, an exemption, a type taken down, a definition
+--   * access: restricted when a person's first document is suspended, back when nothing blocks them any
+--     more, on whatever path (the daily check, a late send, an exemption, a type taken down, a definition
 --     applied): a trigger on the suspension itself, so the two always come as a pair; never read from
 --     earlier notices;
 --   * "documents to complete" belongs to the person and closes when nothing is asked of them any more; a
 --     review card closes on the decision, and on an exemption, an unassignment or the type taken down.
 -- Every document event already goes through app_private.document_audit; the producer sits there, in the
--- event's own transaction (S-91). The daily part sits in documents_maintain_service's case loop, after
+-- event's own transaction (S-91). A notice that fails is logged and the document's work stands. The daily part sits in documents_maintain_service's case loop, after
 -- 09:00 in the person's time zone, as the old reminders did.
 
 -- Asked, sent for review, decided -------------------------------------------------------------------------
@@ -118,8 +118,15 @@ begin
   insert into public.onboarding_events(workspace_id, employee_id, case_id, actor_user_id, action, target_type, target_id, metadata)
   values (r.workspace_id, r.employee_id, r.case_id, actor, event_action, 'onboarding_requirement', r.id::text,
     event_metadata || case when actor is null then '{"actor_kind":"system"}'::jsonb else '{}'::jsonb end);
-  -- The event's notice, in the same transaction (document_tell).
-  perform app_private.document_tell(r, actor, event_action, event_metadata);
+  -- The event's notice, in the same transaction (document_tell). The document's work outlives it: a notice
+  -- that fails is logged, never the event's undoing.
+  -- ponytail: one subtransaction per event; a definition applied to many people is many, past 64 a little
+  -- slower for other sessions' snapshots, never wrong.
+  begin
+    perform app_private.document_tell(r, actor, event_action, event_metadata);
+  exception when others then
+    raise warning 'document_audit: % notice for % skipped: % (%)', event_action, r.id, sqlerrm, sqlstate;
+  end;
 end;
 $$;
 
@@ -234,30 +241,40 @@ begin
     return null;
   end if;
   if old.document_suspended_at is null and new.document_suspended_at is not null then
-    -- Already restricted by an earlier suspension: nothing new to tell.
+    -- Already restricted by an earlier suspension: nothing new to tell. (One case per person: its index.)
     if exists (select 1 from public.employee_onboarding_requirements x
-               where x.workspace_id = new.workspace_id and x.employee_id = new.employee_id and x.id <> new.id
+               where x.case_id = new.case_id and x.id <> new.id
                  and x.document_suspended_at < new.document_suspended_at) then
       return null;
     end if;
     select w.name into place from public.workspaces w where w.id = new.workspace_id;
-    perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
-      'doc_access:' || new.employee_id::text || ':restricted:' || new.document_suspended_at::text,
-      'Upload your documents to use ' || place || ' again', 'A required document is past its due date.',
-      '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
-      jsonb_build_object('state', 'restricted'));
+    -- The suspension stands whatever its notice does: a failure is logged (domain_work_outlives_notifications).
+    begin
+      perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
+        'doc_access:' || new.employee_id::text || ':restricted:' || new.document_suspended_at::text,
+        'Upload your documents to use ' || place || ' again', 'A required document is past its due date.',
+        '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
+        jsonb_build_object('state', 'restricted'));
+    exception when others then
+      raise warning 'document_access_told: restricted notice for % skipped: % (%)', new.employee_id, sqlerrm, sqlstate;
+    end;
   elsif old.document_suspended_at is not null and new.document_suspended_at is null then
-    -- Another document is still suspended: still restricted.
+    -- Back only when nothing blocks the person any more, by the rule that blocks them
+    -- (document_obligation_blocked): another suspension, or a document past due the daily check has not
+    -- reached yet.
     if exists (select 1 from public.employee_onboarding_requirements x
-               where x.workspace_id = new.workspace_id and x.employee_id = new.employee_id
-                 and x.document_suspended_at is not null) then
+               where x.case_id = new.case_id and app_private.document_obligation_blocked(x, now())) then
       return null;
     end if;
-    perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
-      'doc_access:' || new.employee_id::text || ':restored:' || txid_current()::text,
-      'Your access is back', 'Your documents are in order.',
-      '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
-      jsonb_build_object('state', 'restored'));
+    begin
+      perform app_private.notify('documents.access_changed', new.workspace_id, array[person],
+        'doc_access:' || new.employee_id::text || ':restored:' || txid_current()::text,
+        'Your access is back', 'Your documents are in order.',
+        '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
+        jsonb_build_object('state', 'restored'));
+    exception when others then
+      raise warning 'document_access_told: restored notice for % skipped: % (%)', new.employee_id, sqlerrm, sqlstate;
+    end;
   end if;
   return null;
 end;
