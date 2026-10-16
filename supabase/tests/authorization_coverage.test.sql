@@ -177,6 +177,7 @@ insert into service_class values
   ('read_settings_jobs_service', 'settings.jobs.read'),
   ('read_signature_settings_service', 'settings.signature_templates.read'),
   ('reconcile_notification_platform_service', 'exempt:worker'),
+  ('record_account_security_event_service', 'account.self'),
   ('record_account_security_notification_service', 'account.self'),
   ('record_schedule_export_event_service', 'schedule.export'),
   ('record_schedule_export_schedule_failure_service', 'exempt:worker'),

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 486, last: 20261014060000_department_archive_takes_its_jobs.sql
--- fingerprint: sha256:4ee0299c7a724b4475c496943c6594a2e6b01df538be1f8e18966c3ab4c12cb4
+-- migrations: 487, last: 20261016120000_domain_work_leaves_notifications.sql
+-- fingerprint: sha256:3537c7158c3131a4e70acb9de67be226e1a038619b4e2dbeda68c44636e976d1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4270,6 +4270,33 @@ $$;
 
 
 ALTER FUNCTION "app_private"."document_submission_visible"("actor" "uuid", "r" "public"."employee_onboarding_requirements", "submission_state" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."document_suspend_overdue"() RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare suspended integer;
+begin
+  update public.employee_onboarding_requirements q set document_suspended_at = now()
+  from public.employee_onboarding_cases oc
+  join public.employee_profiles p on p.id = oc.employee_id and p.workspace_id = oc.workspace_id and p.archived_at is null
+  join public.workspace_memberships m on m.id = oc.membership_id and m.user_id = p.user_id
+    and m.status in ('active', 'pending_activation')
+  where q.case_id = oc.id
+    and q.document_suspended_at is null and q.lifecycle_retired_at is null
+    -- What document_obligation_blocked needs before it can say yes, read first so the check runs on few rows.
+    and q.deadline_at <= now()
+    and coalesce((q.lifecycle_settings ->> 'suspend_on_overdue')::boolean, false)
+    and app_private.workspace_allows_interactive_access(oc.workspace_id)
+    and app_private.document_obligation_blocked(q, now());
+  get diagnostics suspended = row_count;
+  return suspended;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."document_suspend_overdue"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."document_sync_onboarding"("target_requirement_id" "uuid", "actor" "uuid") RETURNS "void"
@@ -10977,9 +11004,12 @@ CREATE OR REPLACE FUNCTION "public"."documents_maintain_service"("target_batch_s
     SET "search_path" TO ''
     AS $$
 declare c public.employee_onboarding_cases%rowtype; r public.employee_onboarding_requirements%rowtype; u uuid; tz text; local_now timestamp;
- checked integer:=0; enqueued integer:=0; failed integer:=0; missing_count integer; days_left integer; expiry date; approved_on date; milestone integer;
+ checked integer:=0; enqueued integer:=0; failed integer:=0; suspended integer; missing_count integer; days_left integer; expiry date; approved_on date; milestone integer;
 begin
  if target_batch_size not between 1 and 500 or at_time is null then raise exception 'valid maintenance batch required' using errcode='22023'; end if;
+ -- The restriction first, for every case and on its own: no reminder below can undo it.
+ suspended:=app_private.document_suspend_overdue();
+ -- Reminders: a batch of cases at a time, oldest checked first.
  for c in select oc.* from public.employee_onboarding_cases oc
   join public.employee_profiles p on p.id=oc.employee_id and p.workspace_id=oc.workspace_id and p.archived_at is null
   join public.workspace_memberships m on m.id=oc.membership_id and m.user_id=p.user_id and m.status in ('active','pending_activation')
@@ -10991,9 +11021,6 @@ begin
   update public.employee_onboarding_cases set document_notification_checked_at=at_time where id=c.id;
   begin
    select user_id into u from public.employee_profiles where id=c.employee_id;
-   -- Current access is always evaluated with server time, independent of reminder test time.
-   update public.employee_onboarding_requirements q set document_suspended_at=now()
-    where q.case_id=c.id and q.document_suspended_at is null and q.lifecycle_retired_at is null and app_private.document_obligation_blocked(q,now());
    perform app_private.document_notify_access(c.workspace_id,c.employee_id,u);
    tz:=app_private.document_employee_timezone(c.workspace_id,c.employee_id);
    if tz is null then continue; end if;
@@ -11021,7 +11048,7 @@ begin
    raise warning 'documents_maintain_service: case % skipped: % (%)',c.id,sqlerrm,sqlstate;
   end;
  end loop;
- return jsonb_build_object('checked',checked,'enqueued',enqueued,'failed_cases',failed);
+ return jsonb_build_object('checked',checked,'enqueued',enqueued,'failed_cases',failed,'suspended',suspended);
 end;
 $$;
 
@@ -19824,6 +19851,24 @@ $$;
 ALTER FUNCTION "public"."reconcile_notification_platform_service"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+ if target_event is null or target_event not in ('account.email_change_requested','account.password_changed','account.sessions_revoked') then
+  raise exception 'unsupported account security event' using errcode='22023';
+ end if;
+ if actor_user_id is null or not exists(select 1 from auth.users u where u.id=actor_user_id and u.deleted_at is null) then
+  raise exception 'account session required' using errcode='42501', hint='authz.not_active';
+ end if;
+ return app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,'{}');
+end; $$;
+
+
+ALTER FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -25413,8 +25458,12 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "u
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
     AS $$
+declare eid uuid;
 begin
- perform public.shift_exchange_emit_notification_base(actor,w,cid,aid,act,msg,private_msg);
+ -- The case's history (Shift Hub, Requests): one row per step, whatever is told about it.
+ insert into public.shift_exchange_events(workspace_id,case_id,application_id,actor_user_id,action,message,private_note)
+ values(w,cid,aid,actor,act,msg,private_msg) returning id into eid;
+ perform public.shift_exchange_emit_notification_base(eid,actor,w,cid,aid,act,msg);
  perform public.shift_exchange_sync_notifications(w,cid);
 end; $$;
 
@@ -25422,16 +25471,14 @@ end; $$;
 ALTER FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text", "private_msg" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit_notification_base"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text", "private_msg" "text" DEFAULT ''::"text") RETURNS "void"
+CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") RETURNS "void"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
     AS $$
-declare eid uuid; loc uuid; recipients uuid[]; reviewers uuid[]; c public.shift_exchange_cases%rowtype; recipient uuid; body text; destination text; offered jsonb;
+declare loc uuid; recipients uuid[]; reviewers uuid[]; c public.shift_exchange_cases%rowtype; recipient uuid; body text; offered jsonb;
 begin
  select * into c from public.shift_exchange_cases where id=cid and workspace_id=w;
  loc:=(c.offered_snapshot->>'location_id')::uuid;
- insert into public.shift_exchange_events(workspace_id,case_id,application_id,actor_user_id,action,message,private_note)
- values(w,cid,aid,actor,act,msg,private_msg) returning id into eid;
  select coalesce(array_agg(distinct e.user_id),'{}'::uuid[]) into recipients from public.employee_profiles e join public.workspace_memberships m on m.workspace_id=w and m.user_id=e.user_id and m.status='active'
  where e.workspace_id=w and e.archived_at is null and ((e.id=c.owner_id and act<>'other_selected') or exists(select 1 from public.shift_exchange_applications a where a.case_id=cid and a.employee_id=e.id and (aid is null or a.id=aid) and (act<>'terms_changed' or a.status in ('invited','pending_manager')))) and e.user_id is distinct from actor;
  foreach recipient in array recipients loop
@@ -25487,7 +25534,7 @@ begin
 end; $$;
 
 
-ALTER FUNCTION "public"."shift_exchange_emit_notification_base"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text", "private_msg" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."shift_exchange_fingerprint"("w" "uuid", "s" "jsonb", "t" "jsonb") RETURNS "text"
@@ -35769,6 +35816,10 @@ REVOKE ALL ON FUNCTION "app_private"."document_submission_visible"("actor" "uuid
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."document_suspend_overdue"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."document_sync_onboarding"("target_requirement_id" "uuid", "actor" "uuid") FROM PUBLIC;
 
 
@@ -37352,6 +37403,11 @@ GRANT ALL ON FUNCTION "public"."reconcile_notification_platform_service"() TO "s
 
 
 
+REVOKE ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") TO "service_role";
 
@@ -37773,7 +37829,7 @@ REVOKE ALL ON FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "uuid"
 
 
 
-REVOKE ALL ON FUNCTION "public"."shift_exchange_emit_notification_base"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text", "private_msg" "text") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") FROM PUBLIC;
 
 
 

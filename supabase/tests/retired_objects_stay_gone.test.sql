@@ -431,6 +431,10 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('function', 'prevent_department_archive_with_active_jobs', 'JOBS-DEVIR'),
   ('trigger', 'departments.departments_archive_guard_trigger', 'JOBS-DEVIR');
+-- The shift exchange history row is written by shift_exchange_emit; the notification half that
+-- wrote it takes the row's id instead (BILDIRIM-01, K3).
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.shift_exchange_emit_notification_base(uuid, uuid, uuid, uuid, text, text, text)', 'BILDIRIM-01');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

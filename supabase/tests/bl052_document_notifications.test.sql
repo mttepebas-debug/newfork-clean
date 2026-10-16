@@ -194,6 +194,8 @@ select lives_ok($$insert into poisoned_run select pg_temp.maintain(pg_temp.at(40
 select is((select (result->>'failed_cases')::integer from poisoned_run),1,'the batch counts the case it skipped');
 select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000003'),'the next case in the batch is still handled');
 select is((select document_notification_checked_at from public.employee_onboarding_cases where id='55200000-0000-4000-8000-000000000002'),pg_temp.at(40),'the failing case moves to the back of the queue');
-select is((select document_suspended_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000004'),null,'the failing case''s own work is undone: its suspension');
-select is((select document_notified_restricted from public.employee_onboarding_cases where id='55200000-0000-4000-8000-000000000002'),false,'and its access notice mark');
+-- BILDIRIM-01 (K1): the restriction is written on its own before the reminders, so a failing reminder
+-- no longer undoes it; the case's reminder work is still undone.
+select ok((select document_suspended_at is not null from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000004'),'the failing case''s restriction stays: it is not reminder work');
+select is((select document_notified_restricted from public.employee_onboarding_cases where id='55200000-0000-4000-8000-000000000002'),false,'the failing case''s own reminder work is undone: its access notice mark');
 select * from finish();rollback;
