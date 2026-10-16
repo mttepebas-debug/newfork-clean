@@ -147,6 +147,26 @@ select tests.publish_week_as(tests.user('nu:ayse'), 'nu', 2, '[
 select is(pg_temp.told('schedule.published'), array['nu:ali', 'nu:ali', 'nu:deniz'],
   '(d) Ayse publishes a week she works in: Ali is told, Ayse is not');
 
+-- The dialog's count is the notices written: the owner publishes a week with a shift of their own.
+-- The owner works the Owner job only until somebody assigns another (BL-218).
+insert into public.employee_job_assignments (workspace_id, employee_id, job_id, created_by)
+values (tests.id('nu'), tests.id('nu:owner'), tests.id('nu:job:cook'), tests.user('nu:owner'));
+create temp table week_four as select (public.acquire_schedule_edit_session_service(tests.user('nu:owner'), tests.id('nu'),
+  tests.week(4), 'blank', null) -> 'session' ->> 'id')::uuid session;
+select tests.add_shift(tests.user('nu:owner'), 'nu', (select session from week_four), 4,
+  '{"person": "owner", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}');
+select tests.add_shift(tests.user('nu:owner'), 'nu', (select session from week_four), 4,
+  '{"person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "15:00", "end": "21:00"}');
+create temp table draft_four as select pg_temp.save((select session from week_four)) draft;
+create temp table counted as select jsonb_array_length(pg_temp.preview(draft) -> 'locations' -> 0 -> 'affected_employee_ids') n
+from draft_four;
+select pg_temp.publish(draft) from draft_four;
+select is((select n from counted), (select count(*)::integer from public.person_notifications n
+  where n.subject_id = (select e.id from public.schedule_publication_events e
+                        where e.workspace_id = tests.id('nu') and e.week_start = tests.week(4) and e.action = 'published')),
+  '(d) the publish dialog''s count is the notices written: the owner''s own shift is not counted');
+select is((select n from counted), 1, '(d) Emre alone');
+
 -- (e) Taken back ------------------------------------------------------------------------------------
 
 select tests.remember('nu:shift:ali-tue-now', (select p.id from public.schedule_published_shifts p
