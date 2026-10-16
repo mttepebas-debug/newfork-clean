@@ -57,9 +57,10 @@ select ok(pg_temp.receives('lu:ayse', 'shift-exchanges:' || tests.id('lu')), 'so
 select ok(not pg_temp.receives('other:owner', 'shift-exchanges:' || tests.id('lu')), 'another workspace''s owner does not');
 select ok(not pg_temp.sends('lu:ali', 'shift-exchanges:' || tests.id('lu')), 'nobody sends a Shift Hub ping from the browser');
 
--- Account notifications: one's own topic only.
-select ok(pg_temp.receives('lu:ali', 'account-notifications:' || tests.user('lu:ali')), 'a person joins her own account notification channel');
-select ok(not pg_temp.receives('lu:ali', 'account-notifications:' || tests.user('lu:ayse')), 'not someone else''s');
+-- Account notifications went with the old notification system (BILDIRIM-06): nobody joins that
+-- channel any more, not even for her own account, until the new system opens its own.
+select ok(not pg_temp.receives('lu:ali', 'account-notifications:' || tests.user('lu:ali')), 'nobody joins the old account notification channel, not even her own');
+select ok(not pg_temp.receives('lu:ali', 'account-notifications:' || tests.user('lu:ayse')), 'nor someone else''s');
 select ok(not pg_temp.sends('lu:ali', 'account-notifications:' || tests.user('lu:ali')), 'and sends nothing on it');
 
 -- The core behind the second rule: an account action is about one's own account.

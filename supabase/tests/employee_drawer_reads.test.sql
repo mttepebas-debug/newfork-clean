@@ -137,7 +137,7 @@ declare
   hint text;
 begin
   perform public.save_workspace_layout_service(tests.user(person), tests.id('d'),
-    array['operations', 'pending_requests', 'open_shifts', 'announcements', 'todos', 'notifications', 'quick_actions'],
+    array['operations', 'pending_requests', 'open_shifts', 'announcements', 'todos', 'quick_actions'],
     array['announcements']);
   return 'allowed';
 exception when others then

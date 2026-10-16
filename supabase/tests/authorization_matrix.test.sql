@@ -393,9 +393,6 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.update_scheduling_settings_service($1, $2, (
        select jsonb_build_object('minimum_rest_minutes', s.minimum_rest_minutes, 'conflict_rules_revision', s.conflict_rules_revision)
        from public.workspace_scheduling_settings s where s.workspace_id = $2)) is not null$$),
-  -- Settings > Notifications' test send preview (BL-276): its own permission.
-  ('settings.notifications.test', 'workspace', 'notifications.test_send', false, false,
-   $$select public.preview_notification_policy_service($1, $2, 'schedule.published', 'in_app', null) is not null$$),
   ('workspace.close', 'workspace', null, true, false,
    $$select public.request_workspace_closure_service($1, $2, 'immediate', (select w.name from public.workspaces w where w.id = $2), true, null) is not null$$),
   ('workspace.transfer_ownership', 'workspace', null, true, false,
@@ -531,8 +528,6 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.get_employee_document_lifecycle_service($1, $2, pg_temp.badge($3), true) is not null$$, true, true),
   ('onboarding.self', 'workspace', null, false, true,
    $$select public.get_employee_onboarding_service($1, $2) is not null$$, true, true),
-  ('notifications.read_own', 'workspace', null, false, false,
-   $$select public.get_notification_inbox_v2_service($1, $2) is not null$$, true, true),
   ('exchange.offer_own', 'shift', null, false, false,
    $$select public.shift_exchanges_command_service($1, $2,
        jsonb_build_object('action', 'create', 'kind', 'cover', 'shift_id', $3), gen_random_uuid()) is not null$$, true, false),
@@ -588,7 +583,6 @@ insert into core_action (key, core_key, blank) values
   ('settings.roles.write', 'settings.roles.write', 'null'),
   ('settings.scheduling.write', 'settings.scheduling.write', 'null'),
   ('settings.conflict_rules.write', 'settings.conflict_rules.write', 'null'),
-  ('settings.notifications.test', 'settings.notifications.test', 'null'),
   ('settings.locations.read', 'settings.locations.read', 'null'),
   ('settings.jobs.read', 'settings.jobs.read', 'null'),
   ('settings.shift_catalog.read', 'settings.shift_catalog.read', 'null'),
@@ -612,7 +606,6 @@ insert into core_action (key, core_key, blank) values
   ('important_date.write_wide', 'important_date.write_wide', 'null'),
   ('read.membership', 'membership.read', 'null'),
   ('read.audit', 'audit.read', 'null'),
-  ('notifications.read_own', 'notifications.read_own', 'null'),
   ('documents.read', 'documents.read', 'null'),
   ('documents.review', 'documents.review', 'null'),
   ('documents.self', 'documents.self', 'null'),
@@ -822,7 +815,7 @@ begin
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
        'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write',
-       'settings.notifications.test', 'settings.people' then
+       'settings.people' then
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
 

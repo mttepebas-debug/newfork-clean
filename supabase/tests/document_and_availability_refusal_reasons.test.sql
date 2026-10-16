@@ -45,15 +45,6 @@ select is((select coalesce(array_agg(distinct key order by key),'{}') from (sele
 -- Documents: the fixture of document_publication.test.sql.
 -- Schema-only replay supplies its own minimal synthetic permission catalog.
 insert into public.permissions(key,label,category,description) select p,p,'People',p from unnest(array['documents.read','documents.manage','employee_documents.read','employee_documents.review','employees.read','employees.update']) p on conflict do nothing;
-insert into public.notification_catalog(type_key,schema_version,category,severity,sensitivity,supported_channels,default_cadence,audience_contract,action_route_contract,dedupe_policy,retention_class,template_key,lifecycle)
-select 'people.documents.'||kind,1,'people',case when kind in ('review','missing','rejected','restricted') then 'action_required' else 'info' end,'confidential',array['in_app'],'immediate',
- case when kind='review' then 'document_reviewers' else 'document_employee' end,
- jsonb_build_object('route',case when kind='review' then '/app/settings/documents' else '/app/account/documents' end,'allowed_query_keys',jsonb_build_array('workspace','requirement','kind')),
- '{"strategy":"keep_first","scope":"event_recipient","key_fields":["event_id","recipient_user_id"]}'::jsonb,'sensitive_30d','people.documents.'||kind||'.v1','active'
-from unnest(array['review','missing','expiry','approved','rejected','restricted','restored','assigned','activated']) kind
--- The migrations already put these rows in on a full reset; the insert is only
--- for a replay of the schema alone. Either way the catalog ends up the same.
-on conflict do nothing;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select ('15200000-0000-4000-8000-00000000000'||n)::uuid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','bl052-'||n||'@example.test','','{}','{}',now(),now() from generate_series(1,5) n;
 insert into public.workspaces(id,name,created_by) values('25200000-0000-4000-8000-000000000001','BL052 test','15200000-0000-4000-8000-000000000001');

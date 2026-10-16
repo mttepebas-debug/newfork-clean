@@ -76,7 +76,5 @@ select is(pg_temp.settings_save('{"input_mode":"time_range","onboarding_required
 select is((select count(*) from public.employee_weekly_preferences where workspace_id=(select w from wp_fixture)),1::bigint,'mode saves do not invent employee records');
 select ok(not has_function_privilege('authenticated','public.weekly_preference_settings_save_service(uuid,uuid,jsonb,uuid)','execute'),'clients cannot impersonate settings actor');
 select ok(not has_function_privilege('authenticated','public.weekly_preference_settings_read_service(uuid,uuid)','execute'),'read actor must come from API');
-select is((select action_route_contract->'allowed_query_keys' from public.notification_catalog where type_key='availability.weekly_updated' and schema_version=1),
- '["employeeId","section"]'::jsonb,'manager update event supports exact drawer destination');
 select * from finish();
 rollback;

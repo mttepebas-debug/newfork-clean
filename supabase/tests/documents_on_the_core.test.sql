@@ -11,7 +11,7 @@ select * from no_plan();
 --   D2 one decision on a person who works at two locations is the decision.
 --   D3 a restricted manager (a document overdue, onboarding not finished)
 --      neither reads nor decides on somebody else's document.
---   D4 somebody still finishing onboarding opens their own notifications.
+--   D4 (somebody still finishing onboarding opens their own notifications) went with them, BILDIRIM-06.
 --   D5 the owner's own upload is on file at once, in nobody's queue.
 --   D6 a draft definition asks nothing of anybody, the policy path included;
 --      starting onboarding filters a draft out before any gate.
@@ -256,11 +256,7 @@ select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_
 select is(pg_temp.attempt(format('select public.get_employee_document_lifecycle_service(%L, %L, %L, true)',
   pg_temp.usr('hande'), tests.id('m'), (pg_temp.req('hande')).id)), 'ok', 'she still opens her own to fix it');
 
--- D4 ---------------------------------------------------------------------------------
-select is(pg_temp.attempt(format('select public.get_notification_inbox_v2_service(%L, %L)', pg_temp.usr('aydan'), tests.id('m'))),
-  'ok', 'Aydan, still finishing onboarding, opens her notifications');
-select is(pg_temp.attempt(format('select public.get_notification_inbox_v2_service(%L, %L)', tests.user('m:owner'), tests.id('x'))),
-  '42501 authz.not_member', 'nobody opens another workspace''s');
+-- D4 went with the old notifications (BILDIRIM-06): there is no inbox to open until the new system.
 
 -- D5 ---------------------------------------------------------------------------------
 select ok((pg_temp.req('owner')).owner_excused and (pg_temp.req('owner')).lifecycle_exempt, 'the owner is not asked for Food Handler');
@@ -269,9 +265,6 @@ select is((select s.state from public.employee_document_submissions s where s.id
   'accepted', 'it is on file at once');
 select ok((pg_temp.req('owner')).approved_document_id is not null and (pg_temp.req('owner')).deadline_at is null,
   'with no review and no clock');
-select is((select count(*)::integer from public.notification_outbox o
-  where o.type_key = 'people.documents.review' and o.payload ->> 'employee_id' = pg_temp.emp('owner')::text), 0,
-  'and in nobody''s queue');
 select is(app_private.document_obligation_state(pg_temp.req('owner'), now()), 'exempt', 'the owner stays excused');
 select is(pg_temp.attempt(format('select public.set_employee_document_exemption_service(%L, %L, %L, %s, false, ''Back'')',
   tests.user('m:owner'), tests.id('m'), (pg_temp.req('owner')).id, (pg_temp.req('owner')).lifecycle_revision)),

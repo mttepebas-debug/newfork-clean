@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 488, last: 20261016160000_domain_work_stops_calling_notifications.sql
--- fingerprint: sha256:7c298cf477976f553d29a80b5205b69c785b3a403d44c1b3671ae7a70f6f46af
+-- migrations: 489, last: 20261016200000_old_notifications_are_dropped.sql
+-- fingerprint: sha256:637bd3910e7f7c8c59024cd7d4442d8889006ff5553f424d3bc63a96b0192d79
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -171,16 +171,6 @@ CREATE TYPE "public"."employee_onboarding_requirement_status" AS ENUM (
 
 
 ALTER TYPE "public"."employee_onboarding_requirement_status" OWNER TO "postgres";
-
-
-CREATE TYPE "public"."notification_category" AS ENUM (
-    'announcement',
-    'request',
-    'schedule'
-);
-
-
-ALTER TYPE "public"."notification_category" OWNER TO "postgres";
 
 
 CREATE TYPE "public"."onboarding_status" AS ENUM (
@@ -1435,50 +1425,6 @@ $$;
 ALTER FUNCTION "app_private"."announcement_days"("day_rows" "jsonb", "first_day" "date", "last_day" "date") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb" DEFAULT '[]'::"jsonb") RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  notice record;
-  event_id uuid;
-  told integer := 0;
-begin
-  for notice in
-    select line.title, line.body, array_agg(who order by who) recipients
-    from unnest(coalesce(people, '{}')) who
-    cross join lateral app_private.announcement_notice(item, who, mode, back) line
-    group by line.title, line.body
-  loop
-    event_id := gen_random_uuid();
-    perform public.enqueue_notification_outbox_service(
-      item.workspace_id, event_id, 'communications.announcement.available', 1, actor, 'announcement', item.id::text,
-      jsonb_build_object(
-        'correlation_id', event_id,
-        'announcement_id', item.id,
-        'announcement_revision', item.revision,
-        'content_revision', item.content_revision,
-        'location_ids', to_jsonb(app_private.announcement_places(item.id)),
-        'recipient_user_ids', to_jsonb(notice.recipients),
-        'audience_contract', 'announcement_targeted_members',
-        'category', 'announcement',
-        'title', notice.title,
-        'body', notice.body,
-        'safe_preview', case when mode = 'cancel' then 'An announcement was cancelled.' else 'A new announcement is available.' end,
-        'action_url', '/app/announcements/' || item.id::text,
-        'group_key', 'announcement:' || item.id::text,
-        'visible_at', now()),
-      now());
-    told := told + cardinality(notice.recipients);
-  end loop;
-  return told;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."announcement_display_status"("item" "public"."announcements") RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -1752,108 +1698,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."announcement_next_year"("d" "date", "mode" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") RETURNS TABLE("title" "text", "body" "text")
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  fmt text := app_private.announcement_time_format(item.workspace_id);
-  person_id uuid := (select person.id from public.employee_profiles person
-                     where person.workspace_id = item.workspace_id and person.user_id = who);
-  multi boolean := coalesce(item.ends_on, item.starts_on) > item.starts_on;
-  on_text text := app_private.announcement_on_text(item.starts_on, item.ends_on);
-  mine jsonb;
-  changes jsonb := '[]'::jsonb;
-  home uuid;
-  place_name text;
-  place_day text;
-  place_opens time;
-  place_closes time;
-  head text;
-  tail text;
-begin
-  mine := coalesce((select jsonb_agg(x order by x ->> 'scheduled_date', x ->> 'start_time')
-                    from jsonb_array_elements(coalesce(back, '[]'::jsonb)) x
-                    where (x ->> 'employee_id')::uuid = person_id and not coalesce((x ->> 'silent')::boolean, false)), '[]'::jsonb);
-  if item.starts_on is null then
-    if mode <> 'cancel' then
-      title := item.title;
-      body := coalesce(nullif(btrim(left(item.body, 2000)), ''), item.title);
-      return next;
-    end if;
-    return;
-  end if;
-  if mode <> 'cancel' then
-    changes := coalesce((
-      select jsonb_agg(app_private.announcement_change_item(change) order by change.scheduled_date, change.changed_at, change.id)
-      from public.announcement_shift_changes change
-      where change.announcement_id = item.id and change.employee_id = person_id
-        and not change.silent and change.brought_back_at is null), '[]'::jsonb);
-  end if;
-  home := coalesce(case when mode = 'cancel' then mine else changes end -> 0 ->> 'location_id',
-    (select target.location_id::text from public.announcement_locations target
-     join public.locations location on location.id = target.location_id and location.archived_at is null
-     join public.employee_location_assignments assignment
-       on assignment.location_id = target.location_id and assignment.employee_id = person_id and assignment.ended_at is null
-     where target.announcement_id = item.id
-     order by assignment.is_primary desc, location.sort_order, location.name limit 1))::uuid;
-  select location.name, target.day, target.opens, target.closes into place_name, place_day, place_opens, place_closes
-  from public.locations location
-  left join public.announcement_locations target on target.location_id = location.id and target.announcement_id = item.id
-  where location.id = home;
-
-  if mode = 'cancel' then
-    head := case place_day
-      when 'closed' then place_name || ' will be open ' || on_text || ' after all'
-      when 'short' then place_name || ' keeps its usual hours ' || on_text || ' after all'
-      else item.title || ' ' || on_text || ' is cancelled' end;
-    tail := (select string_agg(app_private.announcement_shift_sentence(x, true, multi, fmt), ' · ' order by n)
-             from jsonb_array_elements(mine) with ordinality line(x, n));
-  else
-    head := case
-      when home is null then item.title || ' ' || on_text
-        || case when item.event_from is not null
-             then ', ' || app_private.announcement_hours_text(item.event_from, item.event_until, fmt) else '' end
-      when place_day = 'closed' then place_name || ' is closed ' || on_text
-      when place_day = 'short' then place_name || ' has short hours ' || on_text || ' ('
-        || app_private.announcement_hours_text(place_opens, place_closes, fmt)
-        || case when place_closes <= place_opens then ' next day' else '' end || ')'
-      else item.title || ' ' || on_text end;
-    tail := case
-      when jsonb_array_length(changes) > 0 then (
-        select string_agg(app_private.announcement_shift_sentence(x, false, multi, fmt), ' · ' order by n)
-        from jsonb_array_elements(changes) with ordinality line(x, n))
-      when home is null then null
-      when place_day = 'open' then place_name || ' keeps its usual hours'
-      else item.title end;
-    if jsonb_array_length(mine) > 0 then
-      tail := concat_ws(' · ', tail, (
-        select string_agg(app_private.announcement_shift_sentence(x, true, multi, fmt), ' · ' order by n)
-        from jsonb_array_elements(mine) with ordinality line(x, n)));
-    end if;
-  end if;
-  title := head;
-  body := coalesce(nullif(tail, ''), nullif(btrim(left(item.body, 2000)), ''), item.title);
-  return next;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") RETURNS "text"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
-  select case when ends is null or ends = starts then 'on ' || app_private.announcement_day_text(starts)
-    else 'from ' || app_private.announcement_day_text(starts) || ' to ' || app_private.announcement_day_text(ends) end
-$$;
-
-
-ALTER FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_person"("w" "uuid", "who" "uuid") RETURNS "jsonb"
@@ -2471,28 +2315,6 @@ $$;
 ALTER FUNCTION "app_private"."announcement_rows"("announcement" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") RETURNS "text"
-    LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
-    AS $$
-  select case
-    when back and change ->> 'outcome' = 'edited' then 'Your ' || part.prefix || 'shift is back to ' || part.was
-    when back then 'Your ' || part.was || ' shift' || part.suffix || ' is back'
-    when change ->> 'outcome' = 'removed' then 'Your ' || part.was || ' shift' || part.suffix || ' was removed'
-    when change ->> 'outcome' = 'opened'
-      then 'You''re off the ' || part.was || ' shift' || part.suffix || '; it''s now open for others'
-    else 'Your ' || part.prefix || 'shift is now ' || part.now end
-  from (select
-    app_private.announcement_hours_text((change ->> 'start_time')::time, (change ->> 'end_time')::time, fmt) was,
-    app_private.announcement_hours_text((change ->> 'after_start')::time, (change ->> 'after_end')::time, fmt) now,
-    case when multi then app_private.announcement_day_text((change ->> 'scheduled_date')::date) || ' ' else '' end prefix,
-    case when multi then ' on ' || app_private.announcement_day_text((change ->> 'scheduled_date')::date) else '' end suffix) part
-$$;
-
-
-ALTER FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day" "date", "last_day" "date", "event_from" time without time zone, "event_until" time without time zone, "own_zone" "text", "day_rows" "jsonb") RETURNS TABLE("starts_at" timestamp with time zone, "ends_at" timestamp with time zone)
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -2535,43 +2357,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."announcement_started"("item" "public"."announcements") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  event_id uuid := gen_random_uuid();
-  who uuid := coalesce(
-    (select membership.user_id from public.workspace_memberships membership
-     where membership.workspace_id = item.workspace_id and membership.user_id = coalesce(item.scheduled_by, item.created_by)
-       and membership.status = 'active'),
-    (select membership.user_id from public.workspace_memberships membership
-     join public.workspace_roles role on role.id = membership.role_id
-     where membership.workspace_id = item.workspace_id and membership.status = 'active'
-       and app_private.authz_rank(role.access_class) = app_private.authz_rank('owner')
-     order by membership.created_at limit 1));
-begin
-  if who is null then
-    return;
-  end if;
-  perform public.enqueue_notification_outbox_service(
-    item.workspace_id, event_id, 'communications.announcement.available', 1, null, 'announcement', item.id::text,
-    jsonb_build_object(
-      'correlation_id', event_id, 'announcement_id', item.id, 'announcement_revision', item.revision,
-      'content_revision', item.content_revision, 'location_ids', to_jsonb(app_private.announcement_places(item.id)),
-      'recipient_user_ids', jsonb_build_array(who), 'audience_contract', 'announcement_targeted_members',
-      'category', 'announcement', 'title', 'Couldn''t publish "' || item.title || '"', 'body', why,
-      'safe_preview', 'An announcement couldn''t be published.',
-      'action_url', '/app/announcements/' || item.id::text, 'group_key', 'announcement:' || item.id::text,
-      'visible_at', now()),
-    now());
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_time_format"("w" "uuid") RETURNS "text"
@@ -3561,80 +3346,6 @@ $$;
 ALTER FUNCTION "app_private"."communication_reason"("state" "app_private"."actor_state", "w" "uuid", "kind" "text", "stored" "uuid"[], "author" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."communication_withdraw"("w" "uuid", "type_key" "text", "subject_type" "text", "subject_id" "text", "visibility" "text", "people" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox_row public.notification_outbox%rowtype;
-  legacy_ids uuid[];
-begin
-  for outbox_row in
-    select * from public.notification_outbox outbox
-    where outbox.workspace_id = w and outbox.type_key = communication_withdraw.type_key
-      and outbox.subject_type = communication_withdraw.subject_type
-      and outbox.subject_id = communication_withdraw.subject_id
-    for update
-  loop
-    if people is not null then
-      update public.notification_outbox outbox
-      set payload = jsonb_set(outbox.payload, '{recipient_user_ids}', coalesce((
-            select jsonb_agg(who) from jsonb_array_elements_text(outbox.payload -> 'recipient_user_ids') who
-            where not who::uuid = any (people)), '[]'::jsonb))
-      where outbox.id = outbox_row.id and outbox.status in ('pending', 'retry');
-
-      select coalesce(array_agg(item.legacy_notification_id), '{}') into legacy_ids
-      from public.notification_inbox_items item
-      join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-      where recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
-        and recipient.recipient_user_id = any (people) and item.legacy_notification_id is not null;
-
-      update public.notification_inbox_items item
-      set visibility_state = visibility, legacy_notification_id = null
-      from public.notification_recipients recipient
-      where recipient.id = item.recipient_projection_id
-        and recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
-        and recipient.recipient_user_id = any (people) and item.visibility_state = 'visible';
-
-      delete from public.notifications notification
-      where notification.id = any (legacy_ids) and notification.workspace_id = w;
-      continue;
-    end if;
-
-    perform public.project_notification_event_service(outbox_row.id);
-    update public.notification_events event
-    set cancelled_at = coalesce(event.cancelled_at, now())
-    where event.id = outbox_row.event_id and event.workspace_id = w;
-
-    select coalesce(array_agg(item.legacy_notification_id), '{}') into legacy_ids
-    from public.notification_inbox_items item
-    join public.notification_recipients recipient on recipient.id = item.recipient_projection_id
-    where recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
-      and item.legacy_notification_id is not null;
-
-    update public.notification_inbox_items item
-    set visibility_state = visibility, legacy_notification_id = null
-    from public.notification_recipients recipient
-    where recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = w and recipient.event_id = outbox_row.event_id
-      and item.visibility_state = 'visible';
-
-    delete from public.notifications notification
-    where notification.id = any (legacy_ids) and notification.workspace_id = w;
-
-    update public.notification_outbox outbox
-    set status = 'processed', lease_owner = null, lease_expires_at = null,
-        last_error = 'withdrawn: ' || visibility,
-        payload = outbox.payload || jsonb_build_object('cancelled_at', now(), 'visibility_state', visibility)
-    where outbox.id = outbox_row.id and outbox.status in ('pending', 'retry', 'leased');
-  end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."communication_withdraw"("w" "uuid", "type_key" "text", "subject_type" "text", "subject_id" "text", "visibility" "text", "people" "uuid"[]) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."complete_due_workspace_closures"() RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3751,65 +3462,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."document_account_inbox_action_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare affected integer; workspace_result jsonb;
-begin
- if target_workspace_id is not null then
-  perform app_private.authorize(actor_user_id,target_workspace_id,'notifications.read_own'); end if;
- if target_action not in ('read_all','seen','read','unread','dismiss') then raise exception 'unsupported notification action' using errcode='22023'; end if;
- if target_action='read_all' or exists(select 1 from public.account_notification_items where id=target_item_id and user_id=actor_user_id) then
-  update public.account_notification_items set
-   seen_at=coalesce(seen_at,now()),
-   read_at=case when target_action in ('read','read_all') then coalesce(read_at,now()) when target_action='unread' then null else read_at end,
-   dismissed_at=case when target_action='dismiss' then now() else dismissed_at end
-  where user_id=actor_user_id and dismissed_at is null and (target_action='read_all' or id=target_item_id);
-  get diagnostics affected=row_count;
-  if target_action='read_all' and target_workspace_id is not null then
-   workspace_result:=public.act_on_notification_inbox_workspace_base(actor_user_id,target_workspace_id,null,target_action);
-   affected:=affected+(workspace_result->>'affected')::integer;
-  end if;
-  return jsonb_build_object('status','saved','affected',affected);
- end if;
- if target_workspace_id is null then raise exception 'notification inbox item not found' using errcode='P0002'; end if;
- return public.act_on_notification_inbox_workspace_base(actor_user_id,target_workspace_id,target_item_id,target_action);
-end; $$;
-
-
-ALTER FUNCTION "app_private"."document_account_inbox_action_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."document_account_inbox_allowed"("item_id" "uuid", "actor" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
- select exists(
-  select 1 from public.notification_inbox_items i
-  join public.notification_recipients r on r.id=i.recipient_projection_id and r.workspace_id=i.workspace_id
-  join public.notification_events ev on ev.id=r.event_id and ev.workspace_id=r.workspace_id
-  join public.notification_outbox o on o.event_id=ev.id and o.workspace_id=ev.workspace_id
-  join public.employee_profiles p on p.id=(o.payload->>'employee_id')::uuid and p.workspace_id=i.workspace_id
-  join public.workspace_memberships m on m.workspace_id=p.workspace_id and m.user_id=p.user_id
-  join auth.users u on u.id=actor and u.deleted_at is null
-  where i.id=item_id and r.recipient_user_id=actor and p.user_id=actor and p.archived_at is null
-   and m.status in ('active','pending_activation') and app_private.workspace_allows_interactive_access(i.workspace_id)
-   and i.dismissed_at is null and i.visibility_state='visible' and ev.cancelled_at is null
-   and o.subject_type='employee_documents'
-   and ev.type_key in ('people.documents.missing','people.documents.expiry','people.documents.approved','people.documents.rejected',
-    'people.documents.restricted','people.documents.restored','people.documents.assigned','people.documents.activated')
-   and (o.payload->>'requirement_id' is null or exists(select 1 from public.employee_onboarding_requirements q
-    where q.id=(o.payload->>'requirement_id')::uuid and q.workspace_id=i.workspace_id and q.employee_id=p.id
-     and q.lifecycle_user_id=actor and q.lifecycle_retired_at is null and q.status<>'superseded'))
-   and app_private.document_notification_policy(o.id,actor,'{"decision":"allow"}') ->> 'decision'='allow'
- );
-$$;
-
-
-ALTER FUNCTION "app_private"."document_account_inbox_allowed"("item_id" "uuid", "actor" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."document_activation_blocked"("r" "public"."employee_onboarding_requirements") RETURNS boolean
@@ -3998,54 +3650,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."document_initial_action_missing"("r" "public"."employee_onboarding_requirements") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."document_notification_policy"("outbox_id" "uuid", "u" "uuid", "snapshot" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare o public.notification_outbox%rowtype; valid boolean; e uuid;
-begin
- select * into o from public.notification_outbox where id=outbox_id;
- if o.type_key not like 'people.documents.%' then return snapshot; end if;
- e:=(o.payload->>'employee_id')::uuid;
- if o.type_key='people.documents.review' then valid:=app_private.authz_reason(u,o.workspace_id,'documents.review',null,e) is null;
- else valid:=exists(select 1 from public.employee_profiles where id=e and workspace_id=o.workspace_id and user_id=u and archived_at is null); end if;
- if o.payload->>'requirement_id' is not null then valid:=valid and exists(select 1 from public.employee_onboarding_requirements r where r.id=(o.payload->>'requirement_id')::uuid and r.workspace_id=o.workspace_id and r.employee_id=e and r.lifecycle_retired_at is null and r.lifecycle_closed_at is null and not r.lifecycle_exempt); end if;
- if o.type_key='people.documents.missing' then valid:=valid and exists(select 1 from public.employee_onboarding_requirements r where r.workspace_id=o.workspace_id and r.employee_id=e and r.lifecycle_user_id=u and r.lifecycle_retired_at is null and r.lifecycle_closed_at is null and not r.lifecycle_exempt and r.lifecycle_settings->>'mode'<>'optional' and app_private.document_obligation_state(r,now()) in ('missing','grace','rejected','expired') and not exists(select 1 from public.employee_document_submissions s where s.id=r.submitted_document_id and s.state='pending_review')); end if;
- if o.type_key in ('people.documents.review','people.documents.expiry') then valid:=valid and exists(select 1 from public.employee_onboarding_requirements r join public.employee_document_submissions s on s.id=(o.payload->>'submission_id')::uuid where r.id=(o.payload->>'requirement_id')::uuid and r.workspace_id=o.workspace_id and s.requirement_id=r.id and (case when o.type_key='people.documents.review' then r.submitted_document_id=s.id and s.state='pending_review' else r.approved_document_id=s.id and s.state='accepted' end)); end if;
- if o.type_key in ('people.documents.review','people.documents.expiry','people.documents.assigned') then valid:=valid and not exists(select 1 from public.employee_onboarding_requirements r left join public.document_types d on d.id=r.source_id and d.workspace_id=r.workspace_id and r.kind='document' where r.id=(o.payload->>'requirement_id')::uuid and (r.publication_paused_at is not null or d.publication_status='draft' or o.created_at<d.published_at or (o.payload ? 'document_publication_revision' and r.kind='document' and (o.payload->>'document_publication_revision')::integer is distinct from d.publication_revision))); end if;
- if o.type_key in ('people.documents.restricted','people.documents.restored') then valid:=valid and (app_private.document_actor_blocked(u,o.workspace_id)=(o.type_key='people.documents.restricted')); end if;
-
- if not coalesce(valid,false) then return snapshot||jsonb_build_object('decision','deny','eligible',false,'reason_chain',coalesce(snapshot->'reason_chain','[]'::jsonb)||'"document_audience_changed"'::jsonb); end if;
- return snapshot;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."document_notification_policy"("outbox_id" "uuid", "u" "uuid", "snapshot" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."document_notify_access"("w" "uuid", "e" "uuid", "u" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare c public.employee_onboarding_cases%rowtype; blocked boolean;
-begin
- select * into c from public.employee_onboarding_cases where workspace_id=w and employee_id=e for update;
- if c.id is null then return; end if;
- blocked:=app_private.document_actor_blocked(u,w);
- if blocked is distinct from c.document_notified_restricted then
-  update public.employee_onboarding_cases set document_notified_restricted=blocked where id=c.id;
-  perform app_private.enqueue_document_notification(w,e,u,'access:'||gen_random_uuid()::text,case when blocked then 'restricted' else 'restored' end,
-   case when blocked then 'Documents need attention' else 'Workspace access restored' end,
-   case when blocked then 'Complete the outstanding document requests to restore workspace access.' else 'Your document access requirements are resolved.' end);
- end if;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."document_notify_access"("w" "uuid", "e" "uuid", "u" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."document_obligation_blocked"("r" "public"."employee_onboarding_requirements", "at_time" timestamp with time zone) RETURNS boolean
@@ -4560,36 +4164,6 @@ end; $$;
 
 
 ALTER FUNCTION "app_private"."enforce_role_location_scope"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."enqueue_document_notification"("w" "uuid", "e" "uuid", "u" "uuid", "k" "text", "kind" "text", "title" "text", "body" "text", "requirement" "uuid" DEFAULT NULL::"uuid", "actor" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare event uuid; recipients uuid[]; route text; requirement_kind text; submission uuid;
-begin
- if kind='missing' then body:='You have outstanding document requests. Open Documents for details.'; end if; if u is null or not app_private.workspace_allows_interactive_access(w)
-  or not exists(select 1 from public.employee_profiles p join public.workspace_memberships m on m.workspace_id=p.workspace_id and m.user_id=p.user_id where p.id=e and p.workspace_id=w and p.user_id=u and p.archived_at is null and m.status in ('active','pending_activation')) then return false; end if;
- if requirement is not null and kind in ('expiry','review','assigned') and exists(select 1 from public.employee_onboarding_requirements r where r.id=requirement and r.publication_paused_at is not null) then return false; end if; if requirement is not null then
-  select r.kind::text,case when enqueue_document_notification.kind='expiry' then r.approved_document_id else r.submitted_document_id end into requirement_kind,submission from public.employee_onboarding_requirements r where r.id=requirement and r.workspace_id=w and r.employee_id=e and r.lifecycle_user_id=u and r.lifecycle_retired_at is null and r.lifecycle_closed_at is null and not r.lifecycle_exempt;
-  if requirement_kind is null then return false; end if;
- end if;
- if kind='review' then
-  select coalesce(array_agg(m.user_id),'{}'::uuid[]) into recipients from public.workspace_memberships m where m.workspace_id=w and m.status='active'
-   and app_private.authz_reason(m.user_id,w,'documents.review',null,e) is null;
-  route:='/app/employees/documents?requirement='||requirement::text;
- else recipients:=array[u]; route:='/app/account/documents?workspace='||w::text||case when requirement is null then '' else '&requirement='||requirement::text||'&kind='||requirement_kind end; end if;
- insert into app_private.document_notification_dedup(workspace_id,employee_id,user_id,notification_key) values(w,e,u,k) on conflict do nothing returning event_id into event;
- if event is null then return false; end if;
- perform public.enqueue_notification_outbox_service(w,event,'people.documents.'||kind,1,actor,'employee_documents',e::text,
-  jsonb_build_object('correlation_id',event,'employee_id',e,'requirement_id',requirement,'submission_id',submission,'document_publication_revision',(select d.publication_revision from public.employee_onboarding_requirements r join public.document_types d on d.id=r.source_id and d.workspace_id=r.workspace_id where r.id=requirement and r.kind='document'),'recipient_user_ids',to_jsonb(recipients),'audience_contract',case when kind='review' then 'document_reviewers' else 'document_employee' end,
-   'title',title,'body',body,'safe_preview','A document update is available.','action_url',route,'group_key','documents:'||e::text),now());
- return true;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."enqueue_document_notification"("w" "uuid", "e" "uuid", "u" "uuid", "k" "text", "kind" "text", "title" "text", "body" "text", "requirement" "uuid", "actor" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."enqueue_workspace_retention_purge_job"() RETURNS "trigger"
@@ -5502,36 +5076,6 @@ end; $$;
 ALTER FUNCTION "app_private"."mark_account_organization_history"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."notify_document_audit"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare r public.employee_onboarding_requirements%rowtype; u uuid; kind text; title text;
-begin
- if new.action not like 'document.%' and new.action<>'employee.activated' then return new; end if;
- select user_id into u from public.employee_profiles where id=new.employee_id and workspace_id=new.workspace_id;
- if new.action='employee.activated' then
-  perform app_private.enqueue_document_notification(new.workspace_id,new.employee_id,u,'audit:'||new.id::text,'activated','Onboarding complete','Your onboarding has been approved.',null,new.actor_user_id); return new;
- end if;
- select * into r from public.employee_onboarding_requirements where id=new.target_id::uuid and workspace_id=new.workspace_id;
- if r.id is null or r.lifecycle_retired_at is not null then return new; end if;
- case
- when new.action='document.submitted' and new.metadata->>'state'='pending_review' then kind:='review'; title:='Document ready for review';
- when new.action='document.approve' or (new.action='document.submitted' and new.metadata->>'state'='accepted') then kind:='approved'; title:='Document approved';
- when new.action='document.reject' then kind:='rejected'; title:='Document needs correction';
- when new.action in ('document.assignment_reopened','document.exemption_removed') then kind:='assigned'; title:='Document request reopened';
- else kind:=null;
- end case;
- if kind is not null then perform app_private.enqueue_document_notification(r.workspace_id,r.employee_id,r.lifecycle_user_id,'audit:'||new.id::text,kind,title,
-  case when kind='review' then 'A document is ready for your review.' else 'Open Documents to review this request and its current status.' end,r.id,new.actor_user_id); end if;
- return new;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."notify_document_audit"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -5842,24 +5386,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."preview_lifecycle_definition"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "target_kind" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."project_account_security_notification"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
- if new.workspace_id is null and new.actor_user_id is not null and new.event_type in
- ('account.email_change_requested','account.email_change_cancelled','account.password_changed',
- 'account.sessions_revoked','account.deletion_requested','account.deletion_restored') then
-  insert into public.account_notification_items(user_id,type_key,event_id)
-   values(new.actor_user_id,'security.'||new.event_type,new.id) on conflict(event_id) do nothing;
- end if;
- return new;
-end; $$;
-
-
-ALTER FUNCTION "app_private"."project_account_security_notification"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") RETURNS boolean
@@ -6769,81 +6295,6 @@ $$;
 ALTER FUNCTION "app_private"."sync_workspace_lifecycle_with_onboarding"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare fmt text; person_name text; g record;
-begin
- fmt := case when (select s.time_format from public.workspace_scheduling_settings s where s.workspace_id = w) = '24h'
-  then 'HH24:MI' else 'FMHH12:MI AM' end;
- select coalesce(nullif(e.preferred_name, ''), e.first_name) into person_name
-  from public.employee_terminations t join public.employee_profiles e on e.id = t.employee_id and e.workspace_id = t.workspace_id
-  where t.id = tid and t.workspace_id = w;
- -- One notice per set of people who manage the same open shifts.
- for g in
-  with opened as (
-   select a.location_id, l.name location_name, p.scheduled_date, p.start_time, p.end_time
-   from public.employee_offboarding_shift_actions a
-   join public.schedule_published_shifts p on p.id = a.shift_id and p.workspace_id = w
-   join public.locations l on l.id = a.location_id and l.workspace_id = w
-   where a.workspace_id = w and a.termination_id = tid
-  ), managers as (
-   -- Suspended by now, the person who left is not among them.
-   select m.user_id from public.workspace_memberships m
-   where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
-    and (app_private.actor(m.user_id, w)).class = 'manager'
-  ), told as (
-   select mg.user_id, o.* from managers mg join opened o
-    on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null
-  ), per_person as (
-   select t.user_id, count(*)::integer n, min(t.scheduled_date) first_day,
-    to_jsonb(array_agg(distinct t.location_id)) location_ids,
-    -- "Sat, Oct 18, 10:00 AM–4:00 PM (Kadikoy)": the start day only, also past midnight.
-    array_agg(to_char(t.scheduled_date, 'Dy, Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
-     || ' (' || t.location_name || ')' order by t.scheduled_date, t.start_time, t.location_name) shift_lines
-   from told t group by t.user_id
-  ), worded as (
-   -- At most three shifts, then "+N more".
-   select p.*, array_to_string(p.shift_lines[1:3], '; ')
-     || case when cardinality(p.shift_lines) > 3 then '; +' || (cardinality(p.shift_lines) - 3) || ' more' else '' end lines
-   from per_person p
-  )
-  select n, first_day, location_ids, lines, array_agg(user_id order by user_id) recipients
-  from worded group by n, first_day, location_ids, lines
- loop
-  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'schedule.termination.shifts_unassigned', 1, actor,
-   'employee_terminations', tid::text,
-   jsonb_build_object('termination_id', tid, 'location_ids', g.location_ids, 'recipient_user_ids', to_jsonb(g.recipients),
-    'audience_contract', 'termination_location_managers', 'category', 'schedule',
-    'title', left(coalesce(person_name, 'A teammate') || '''s ' || case when g.n = 1 then 'shift is unassigned' else g.n || ' shifts are unassigned' end, 160),
-    'body', g.lines,
-    'safe_preview', 'A termination left shifts open.',
-    'action_url', '/app/schedule?date=' || g.first_day::text,
-    'group_key', 'employee_terminations:' || tid::text),
-   now());
- end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."time_off_alone_deciders"("w" "uuid", "person" "uuid") RETURNS "uuid"[]
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select coalesce(array_agg(m.user_id order by m.user_id), '{}')
-  from public.workspace_memberships m
-  where m.workspace_id = w and m.status = 'active'
-    and app_private.time_off_reason(m.user_id, w, 'time_off.decide_alone', person) is null;
-$$;
-
-
-ALTER FUNCTION "app_private"."time_off_alone_deciders"("w" "uuid", "person" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."time_off_authorize"("actor" "uuid", "w" "uuid", "action" "text", "person" "uuid" DEFAULT NULL::"uuid") RETURNS "void"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -6870,31 +6321,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."time_off_decide_by"("w" "uuid", "starts" timestamp with time zone) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."time_off_deciders"("w" "uuid", "rid" "uuid", "fallback_ok" boolean DEFAULT true) RETURNS "uuid"[]
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  person uuid := (select r.employee_id from public.schedule_time_off_requests r where r.id = rid and r.workspace_id = w);
-  voters uuid[];
-begin
-  select coalesce(array_agg(distinct v order by v), '{}') into voters
-  from unnest(app_private.time_off_live_locations(w, rid)) place,
-       unnest(app_private.time_off_location_voters(w, person, place)) v;
-  -- No live location, or one where nobody can vote now: an admin and the owner hear of it too.
-  if fallback_ok and (cardinality(app_private.time_off_live_locations(w, rid)) = 0 or exists (
-      select 1 from unnest(app_private.time_off_live_locations(w, rid)) place
-      where cardinality(app_private.time_off_location_voters(w, person, place)) = 0)) then
-    return array(select distinct u from unnest(voters || app_private.time_off_alone_deciders(w, person)) u order by u);
-  end if;
-  return voters;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."time_off_deciders"("w" "uuid", "rid" "uuid", "fallback_ok" boolean) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_deciding_locations"("w" "uuid", "person" "uuid") RETURNS "uuid"[]
@@ -6953,8 +6379,6 @@ CREATE TABLE IF NOT EXISTS "public"."schedule_time_off_requests" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "decide_by" timestamp with time zone,
-    "reminded_at" timestamp with time zone,
-    "fallback_notified_at" timestamp with time zone,
     CONSTRAINT "schedule_time_off_requests_reason_check" CHECK (("char_length"("reason") <= 1000)),
     CONSTRAINT "schedule_time_off_requests_request_type_check" CHECK (("request_type" = ANY (ARRAY['time_off'::"text", 'time_off_cancellation'::"text"]))),
     CONSTRAINT "schedule_time_off_requests_revision_check" CHECK (("revision" > 0))
@@ -7124,98 +6548,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."time_off_location_voters"("w" "uuid", "person" "uuid", "place" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."time_off_notice"("w" "uuid", "rid" "uuid", "type_key" "text", "recipients" "uuid"[], "audience" "text", "title" "text", "body" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  if cardinality(recipients) = 0 then
-    return;
-  end if;
-  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), type_key, 1, null,
-    'schedule_time_off_requests', rid::text,
-    jsonb_build_object('request_id', rid, 'recipient_user_ids', to_jsonb(recipients), 'audience_contract', audience,
-      'category', 'request', 'title', title, 'body', body, 'safe_preview', 'A time-off request needs a decision.',
-      'action_url', '/app/schedule/requests?tab=time-off&request=' || rid::text,
-      'group_key', 'schedule_time_off_requests:' || rid::text),
-    now());
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."time_off_notice"("w" "uuid", "rid" "uuid", "type_key" "text", "recipients" "uuid"[], "audience" "text", "title" "text", "body" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."time_off_notify_shifts_opened"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare fmt text; person_name text; g record;
-begin
- fmt := case when (select s.time_format from public.workspace_scheduling_settings s where s.workspace_id = w) = '24h'
-  then 'HH24:MI' else 'FMHH12:MI AM' end;
- select coalesce(nullif(e.preferred_name, ''), e.first_name) into person_name
-  from public.schedule_time_off_requests r join public.employee_profiles e on e.id = r.employee_id and e.workspace_id = r.workspace_id
-  where r.id = rid and r.workspace_id = w;
- for g in
-  with told as (
-   select * from app_private.time_off_opened_shifts_told(actor, w, rid, decision)
-  ), per_person as (
-   select t.user_id, count(*)::integer n, min(t.scheduled_date) first_day,
-    array_agg(to_char(t.scheduled_date, 'Dy, Mon FMDD') || ', ' || to_char(t.start_time, fmt) || '–' || to_char(t.end_time, fmt)
-     || ' (' || t.location_name || ')' order by t.scheduled_date, t.start_time, t.location_name) shift_lines
-   from told t group by t.user_id
-  ), worded as (
-   select p.*, array_to_string(p.shift_lines[1:3], '; ')
-     || case when cardinality(p.shift_lines) > 3 then '; +' || (cardinality(p.shift_lines) - 3) || ' more' else '' end lines
-   from per_person p
-  )
-  select n, first_day, lines, array_agg(user_id order by user_id) recipients
-  from worded group by n, first_day, lines
- loop
-  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'schedule.time_off.shifts_opened', 1, actor,
-   'schedule_time_off_requests', rid::text,
-   jsonb_build_object('request_id', rid, 'recipient_user_ids', to_jsonb(g.recipients),
-    'audience_contract', 'time_off_location_managers', 'category', 'schedule',
-    'title', left(coalesce(person_name, 'A teammate') || ' is off — ' || g.n || case when g.n = 1 then ' shift is open' else ' shifts are open' end, 160),
-    'body', g.lines,
-    'safe_preview', 'Approved time off left shifts open.',
-    'action_url', '/app/schedule?date=' || g.first_day::text,
-    'group_key', 'schedule_time_off_requests:' || rid::text),
-   now());
- end loop;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."time_off_notify_shifts_opened"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) RETURNS TABLE("user_id" "uuid", "location_name" "text", "scheduled_date" "date", "start_time" time without time zone, "end_time" time without time zone)
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  with opened as (
-   select p.location_id, l.name location_name, p.scheduled_date, p.start_time, p.end_time
-   from public.time_off_assignment_releases rel
-   join public.schedule_published_shifts p on p.id = rel.published_shift_id and p.workspace_id = w
-   join public.locations l on l.id = p.location_id and l.workspace_id = w
-   where rel.workspace_id = w and rel.request_id = rid and rel.decision_revision = decision
-  ), managers as (
-   select m.user_id from public.workspace_memberships m
-   where m.workspace_id = w and m.status = 'active' and m.user_id is distinct from actor
-    -- A manager: deciding alone is not theirs anywhere (the core, no role reading).
-    and app_private.authz_reason(m.user_id, w, 'time_off.decide_alone') is not null
-  )
-  select mg.user_id, o.location_name, o.scheduled_date, o.start_time, o.end_time
-  from managers mg join opened o
-   on app_private.authz_reason(mg.user_id, w, 'schedule.edit', array[o.location_id]) is null;
-$$;
-
-
-ALTER FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."time_off_progress"("actor" "uuid", "w" "uuid", "rid" "uuid") RETURNS "jsonb"
@@ -8098,119 +7430,6 @@ $$;
 
 
 ALTER FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare result jsonb; affected integer;
-begin
- if target_workspace_id is not null then
-  return app_private.document_account_inbox_action_base(actor_user_id,target_workspace_id,target_item_id,target_action);
- end if;
- if target_action not in ('read_all','seen','read','unread','dismiss') then raise exception 'unsupported notification action' using errcode='22023'; end if;
- if target_action='read_all' or app_private.document_account_inbox_allowed(target_item_id,actor_user_id) then
-  update public.notification_inbox_items i set
-   seen_at=coalesce(i.seen_at,now()),
-   read_at=case when target_action in ('read','read_all') then coalesce(i.read_at,now()) when target_action='unread' then null else i.read_at end,
-   dismissed_at=case when target_action='dismiss' then now() else i.dismissed_at end
-  where (target_action='read_all' or i.id=target_item_id) and app_private.document_account_inbox_allowed(i.id,actor_user_id);
-  get diagnostics affected=row_count;
-  if target_action='read_all' then
-   result:=app_private.document_account_inbox_action_base(actor_user_id,null,null,target_action);
-   affected:=affected+(result->>'affected')::integer;
-  elsif affected=0 then raise exception 'notification inbox item not found' using errcode='P0002';
-  end if;
-  return jsonb_build_object('status','saved','affected',affected);
- end if;
- return app_private.document_account_inbox_action_base(actor_user_id,null,target_item_id,target_action);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."act_on_notification_inbox_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  affected integer;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
-
-  if target_action = 'read_all' then
-    update public.notification_inbox_items item
-    set seen_at = coalesce(item.seen_at, now()),
-        read_at = coalesce(item.read_at, now())
-    from public.notification_recipients recipient
-    where item.workspace_id = target_workspace_id
-      and recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = item.workspace_id
-      and recipient.recipient_user_id = actor_user_id
-      and item.dismissed_at is null
-      and item.visibility_state = 'visible';
-  elsif target_item_id is null then
-    raise exception 'notification inbox item required' using errcode = '22023';
-  elsif target_action = 'seen' then
-    update public.notification_inbox_items item
-    set seen_at = coalesce(item.seen_at, now())
-    from public.notification_recipients recipient
-    where item.id = target_item_id
-      and item.workspace_id = target_workspace_id
-      and recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = item.workspace_id
-      and recipient.recipient_user_id = actor_user_id
-      and item.dismissed_at is null;
-  elsif target_action = 'read' then
-    update public.notification_inbox_items item
-    set seen_at = coalesce(item.seen_at, now()),
-        read_at = coalesce(item.read_at, now())
-    from public.notification_recipients recipient
-    where item.id = target_item_id
-      and item.workspace_id = target_workspace_id
-      and recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = item.workspace_id
-      and recipient.recipient_user_id = actor_user_id
-      and item.dismissed_at is null;
-  elsif target_action = 'unread' then
-    update public.notification_inbox_items item
-    set seen_at = coalesce(item.seen_at, now()),
-        read_at = null
-    from public.notification_recipients recipient
-    where item.id = target_item_id
-      and item.workspace_id = target_workspace_id
-      and recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = item.workspace_id
-      and recipient.recipient_user_id = actor_user_id
-      and item.dismissed_at is null;
-  elsif target_action = 'dismiss' then
-    update public.notification_inbox_items item
-    set seen_at = coalesce(item.seen_at, now()),
-        dismissed_at = now()
-    from public.notification_recipients recipient
-    where item.id = target_item_id
-      and item.workspace_id = target_workspace_id
-      and recipient.id = item.recipient_projection_id
-      and recipient.workspace_id = item.workspace_id
-      and recipient.recipient_user_id = actor_user_id
-      and item.dismissed_at is null;
-  else
-    raise exception 'unsupported notification action' using errcode = '22023';
-  end if;
-
-  get diagnostics affected = row_count;
-  if target_action <> 'read_all' and affected = 0 then
-    raise exception 'notification inbox item not found' using errcode = 'P0002';
-  end if;
-  return jsonb_build_object('status', 'saved', 'affected', affected);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."act_on_notification_inbox_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."add_schedule_pending_op_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid", "target_op_type" "text", "target_shift_id" "uuid" DEFAULT NULL::"uuid", "target_payload" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
@@ -10915,7 +10134,7 @@ begin
   checked:=checked+1;
   update public.employee_onboarding_cases set document_notification_checked_at=at_time where id=c.id;
  end loop;
- return jsonb_build_object('checked',checked,'failed_cases',0,'suspended',suspended);
+ return jsonb_build_object('checked',checked,'suspended',suspended);
 end;
 $$;
 
@@ -11267,37 +10486,6 @@ end; $$;
 ALTER FUNCTION "public"."enforce_role_permission_dependencies"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."enqueue_notification_outbox_service"("target_workspace_id" "uuid", "target_event_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_actor_user_id" "uuid", "target_subject_type" "text", "target_subject_id" "text", "target_payload" "jsonb", "target_occurred_at" timestamp with time zone) RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox_id uuid;
-begin
-  if jsonb_typeof(target_payload) <> 'object' then
-    raise exception 'notification payload must be an object' using errcode = '22023';
-  end if;
-
-  insert into public.notification_outbox (
-    workspace_id, event_id, type_key, schema_version, actor_user_id,
-    subject_type, subject_id, payload, occurred_at
-  ) values (
-    target_workspace_id, target_event_id, target_type_key, target_schema_version,
-    target_actor_user_id, target_subject_type, target_subject_id, target_payload,
-    target_occurred_at
-  )
-  on conflict (workspace_id, event_id) do update
-    set event_id = excluded.event_id
-  returning id into outbox_id;
-
-  return outbox_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."enqueue_notification_outbox_service"("target_workspace_id" "uuid", "target_event_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_actor_user_id" "uuid", "target_subject_type" "text", "target_subject_id" "text", "target_payload" "jsonb", "target_occurred_at" timestamp with time zone) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."extend_employee_document_deadline_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "additional_days" integer, "extension_reason" "text") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -11325,63 +10513,6 @@ $$;
 
 
 ALTER FUNCTION "public"."extend_employee_document_deadline_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "additional_days" integer, "extension_reason" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."fail_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid", "target_error" "text", "target_max_attempts" integer DEFAULT 5, "target_base_delay_seconds" integer DEFAULT 15) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox public.notification_outbox%rowtype;
-  next_status text;
-  retry_delay_seconds integer;
-begin
-  if target_max_attempts not between 1 and 20 then
-    raise exception 'notification max attempts must be between 1 and 20' using errcode = '22023';
-  end if;
-  if target_base_delay_seconds not between 1 and 3600 then
-    raise exception 'notification retry delay must be between 1 and 3600' using errcode = '22023';
-  end if;
-
-  select * into outbox
-  from public.notification_outbox item
-  where item.id = target_outbox_id
-  for update;
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-  if outbox.status <> 'leased' or outbox.lease_owner <> btrim(target_worker_id) then
-    raise exception 'owned notification lease required' using errcode = '42501';
-  end if;
-
-  next_status := case when outbox.attempt_count >= target_max_attempts then 'dead_letter' else 'retry' end;
-  retry_delay_seconds := least(
-    86400,
-    target_base_delay_seconds * power(2, greatest(outbox.attempt_count - 1, 0))::integer
-  );
-
-  update public.notification_outbox
-  set status = next_status,
-      available_at = case
-        when next_status = 'retry' then clock_timestamp() + make_interval(secs => retry_delay_seconds)
-        else available_at
-      end,
-      lease_owner = null,
-      lease_expires_at = null,
-      last_error = left(coalesce(nullif(btrim(target_error), ''), 'notification processing failed'), 2000)
-  where id = outbox.id;
-
-  return jsonb_build_object(
-    'status', next_status,
-    'outbox_id', outbox.id,
-    'attempt_count', outbox.attempt_count,
-    'retry_delay_seconds', case when next_status = 'retry' then retry_delay_seconds else null end
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."fail_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid", "target_error" "text", "target_max_attempts" integer, "target_base_delay_seconds" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."finalize_account_deletion_service"("target_request_id" "uuid", "target_now" timestamp with time zone) RETURNS "jsonb"
@@ -11447,59 +10578,6 @@ $$;
 
 
 ALTER FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."flush_shift_exchange_notifications_service"("target_workspace_id" "uuid", "target_case_id" "uuid", "target_batch_size" integer DEFAULT 50) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    SET "lock_timeout" TO '100ms'
-    AS $$
-declare
- item public.notification_outbox%rowtype;
- worker text:='exchange-immediate-'||gen_random_uuid()::text;
- result jsonb; failure jsonb;
- processed integer:=0; skipped integer:=0; retried integer:=0; dead integer:=0; leased integer:=0; deferred integer:=0;
- started timestamptz:=clock_timestamp();
-begin
- if target_workspace_id is null or target_case_id is null or target_batch_size is null or target_batch_size not between 1 and 100 then
-  raise exception 'A workspace, case and bounded batch are required' using errcode='22023';
- end if;
- if not exists(select 1 from public.shift_exchange_cases where id=target_case_id and workspace_id=target_workspace_id) then
-  raise exception 'Shift exchange not found' using errcode='P0002';
- end if;
- -- Same case lock as projection/commands. Never delay a manager command waiting
- -- for this opportunistic path: a busy case remains available to the cron worker.
- if not pg_try_advisory_xact_lock(hashtextextended(target_workspace_id::text||':'||target_case_id::text,925)) then
-  return jsonb_build_object('busy',true,'leased',0,'processed',0,'skipped',0,'retried',0,'dead_lettered',0,'invalidation_deferred',0);
- end if;
- for item in
-  select o.* from public.notification_outbox o
-  where o.workspace_id=target_workspace_id and o.subject_type='shift_exchange_cases' and o.subject_id=target_case_id::text
-   and ((o.status in('pending','retry') and o.available_at<=clock_timestamp())
-     or (o.status='leased' and o.lease_expires_at<=clock_timestamp()))
-  order by o.available_at,o.created_at,o.id
-  for update skip locked limit target_batch_size
- loop
-  exit when clock_timestamp()-started>=interval '1 second';
-  update public.notification_outbox set status='leased',lease_owner=worker,lease_expires_at=clock_timestamp()+interval '60 seconds',
-   attempt_count=attempt_count+1,last_error=null where id=item.id;
-  leased:=leased+1;
-  begin
-   result:=public.process_notification_outbox_service(worker,item.id);
-   if result->>'status'='skipped' then skipped:=skipped+1; else processed:=processed+1; end if;
-   if coalesce((result->>'invalidation_deferred')::boolean,false) then deferred:=deferred+1; end if;
-  exception when others then
-   failure:=public.fail_notification_outbox_service(worker,item.id,left(SQLERRM,500),5,15);
-   if failure->>'status'='dead_letter' then dead:=dead+1; else retried:=retried+1; end if;
-  end;
- end loop;
- return jsonb_build_object('busy',false,'leased',leased,'processed',processed,'skipped',skipped,'retried',retried,'dead_lettered',dead,'invalidation_deferred',deferred,
-  'remaining',exists(select 1 from public.notification_outbox o where o.workspace_id=target_workspace_id and o.subject_type='shift_exchange_cases' and o.subject_id=target_case_id::text
-    and ((o.status in('pending','retry') and o.available_at<=clock_timestamp()) or (o.status='leased' and o.lease_expires_at<=clock_timestamp()))));
-end; $$;
-
-
-ALTER FUNCTION "public"."flush_shift_exchange_notifications_service"("target_workspace_id" "uuid", "target_case_id" "uuid", "target_batch_size" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_account_deletion_blockers_service"("actor_user_id" "uuid") RETURNS "jsonb"
@@ -12558,513 +11636,6 @@ $$;
 ALTER FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_cursor_created_at" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_cursor_id" "uuid" DEFAULT NULL::"uuid", "target_limit" integer DEFAULT 30) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  result jsonb;
-  effective_limit integer := greatest(1, least(coalesce(target_limit, 30), 50));
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
-  if (target_cursor_created_at is null) <> (target_cursor_id is null) then
-    raise exception 'complete notification cursor required' using errcode = '22023';
-  end if;
-
-  with candidate as (
-    select
-      item.id,
-      item.workspace_id,
-      recipient.event_id,
-      event.type_key,
-      event.schema_version,
-      item.title,
-      item.body,
-      item.safe_preview,
-      item.action_url,
-      item.group_key,
-      item.created_at,
-      item.seen_at,
-      item.read_at,
-      item.dismissed_at,
-      item.visibility_state
-    from public.notification_inbox_items item
-    join public.notification_recipients recipient
-      on recipient.id = item.recipient_projection_id
-     and recipient.workspace_id = item.workspace_id
-    join public.notification_events event
-      on event.id = recipient.event_id
-     and event.workspace_id = recipient.workspace_id
-    where item.workspace_id = target_workspace_id
-      and recipient.recipient_user_id = get_notification_inbox_v2_service.actor_user_id
-      and item.dismissed_at is null
-      and item.visibility_state = 'visible'
-      and (
-        target_cursor_created_at is null
-        or (item.created_at, item.id) < (target_cursor_created_at, target_cursor_id)
-      )
-    order by item.created_at desc, item.id desc
-    limit effective_limit + 1
-  ), page as (
-    select * from candidate
-    order by created_at desc, id desc
-    limit effective_limit
-  )
-  select jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'unread_count', (
-      select count(*)
-      from public.notification_inbox_items unread_item
-      join public.notification_recipients unread_recipient
-        on unread_recipient.id = unread_item.recipient_projection_id
-       and unread_recipient.workspace_id = unread_item.workspace_id
-      where unread_item.workspace_id = target_workspace_id
-        and unread_recipient.recipient_user_id = get_notification_inbox_v2_service.actor_user_id
-        and unread_item.read_at is null
-        and unread_item.dismissed_at is null
-        and unread_item.visibility_state = 'visible'
-    ),
-    'next_cursor', case
-      when (select count(*) from candidate) > effective_limit then (
-        select jsonb_build_object('created_at', created_at, 'id', id)
-        from page
-        order by created_at asc, id asc
-        limit 1
-      )
-      else null
-    end,
-    'items', coalesce((
-      select jsonb_agg(to_jsonb(page_row) order by page_row.created_at desc, page_row.id desc)
-      from page page_row
-    ), '[]'::jsonb)
-  ) into result;
-
-  return result;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_severity" "text", "target_read_state" "text", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  result jsonb;
-  effective_limit integer := greatest(1, least(coalesce(target_limit, 30), 50));
-begin
-  if target_workspace_id is not null then
-    perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
-  end if;
-  if (target_cursor_created_at is null) <> (target_cursor_id is null) then
-    raise exception 'complete notification cursor required' using errcode = '22023';
-  end if;
-  if target_category is not null and target_category not in (
-    'security', 'schedule', 'requests',
-    'payroll', 'people', 'communications', 'system',
-    'announcement', 'request'
-  ) then
-    raise exception 'valid notification category required' using errcode = '22023';
-  end if;
-  if target_severity is not null and target_severity not in ('info', 'success', 'warning', 'action_required') then
-    raise exception 'valid notification severity required' using errcode = '22023';
-  end if;
-  if target_read_state is not null and target_read_state not in ('all', 'seen', 'unseen', 'read', 'unread') then
-    raise exception 'valid notification read state required' using errcode = '22023';
-  end if;
-
-  with all_items as (
-    select
-      item.id,
-      item.workspace_id,
-      catalog.category,
-      event.type_key,
-      event.schema_version,
-      catalog.severity,
-      item.title,
-      item.body,
-      case when target_workspace_id is null then (select w.name from public.workspaces w where w.id=item.workspace_id)||' · A document update is available.' else item.safe_preview end as safe_preview,
-      item.action_url,
-      item.group_key,
-      'notification_event'::text as source_type,
-      event.id as source_id,
-      item.created_at,
-      item.seen_at,
-      item.read_at,
-      item.dismissed_at,
-      item.visibility_state
-    from public.notification_inbox_items item
-    join public.notification_recipients recipient
-      on recipient.id = item.recipient_projection_id
-     and recipient.workspace_id = item.workspace_id
-    join public.notification_events event
-      on event.id = recipient.event_id
-     and event.workspace_id = recipient.workspace_id
-    join public.notification_catalog catalog
-      on catalog.type_key = event.type_key
-     and catalog.schema_version = event.schema_version
-    where (item.workspace_id = target_workspace_id or (target_workspace_id is null and app_private.document_account_inbox_allowed(item.id,get_notification_inbox_v2_service.actor_user_id)))
-      and recipient.recipient_user_id = get_notification_inbox_v2_service.actor_user_id
-      and item.dismissed_at is null
-      and item.visibility_state = 'visible'
-
-    union all
-    select a.id,null::uuid,'security',a.type_key,a.schema_version,c.severity,t.content->>'title',t.content->>'body',
-     t.content->>'safe_preview','/app/account/security',null::text,'account_security',a.event_id,a.created_at,a.seen_at,a.read_at,a.dismissed_at,'visible'
-    from public.account_notification_items a join public.notification_catalog c using(type_key,schema_version)
-    join public.notification_template_versions t using(type_key,schema_version)
-    where a.user_id=actor_user_id and a.dismissed_at is null and t.channel='in_app' and t.locale='en' and t.status='published'
-  ), candidate as (
-    select * from all_items item where true
-      and (
-        target_category is null
-        or item.category = target_category
-        or (target_category = 'announcement' and item.category = 'communications')
-        or (target_category = 'request' and item.category = 'requests')
-      )
-      and (target_severity is null or item.severity = target_severity)
-      and (
-        target_read_state is null
-        or target_read_state = 'all'
-        or (target_read_state = 'seen' and item.seen_at is not null)
-        or (target_read_state = 'unseen' and item.seen_at is null)
-        or (target_read_state = 'read' and item.read_at is not null)
-        or (target_read_state = 'unread' and item.read_at is null)
-      )
-      and (
-        target_cursor_created_at is null
-        or (item.created_at, item.id) < (target_cursor_created_at, target_cursor_id)
-      )
-    order by item.created_at desc, item.id desc
-    limit effective_limit + 1
-  ), page as (
-    select * from candidate
-    order by created_at desc, id desc
-    limit effective_limit
-  )
-  select jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'unread_count', (select count(*) from public.account_notification_items where user_id=actor_user_id and read_at is null and dismissed_at is null) + (
-      select count(*)
-      from public.notification_inbox_items unread_item
-      join public.notification_recipients unread_recipient
-        on unread_recipient.id = unread_item.recipient_projection_id
-       and unread_recipient.workspace_id = unread_item.workspace_id
-      where (unread_item.workspace_id = target_workspace_id or (target_workspace_id is null and app_private.document_account_inbox_allowed(unread_item.id,get_notification_inbox_v2_service.actor_user_id)))
-        and unread_recipient.recipient_user_id = get_notification_inbox_v2_service.actor_user_id
-        and unread_item.read_at is null
-        and unread_item.dismissed_at is null
-        and unread_item.visibility_state = 'visible'
-    ),
-    'next_cursor', case
-      when (select count(*) from candidate) > effective_limit then (
-        select jsonb_build_object('created_at', created_at, 'id', id)
-        from page
-        order by created_at asc, id asc
-        limit 1
-      )
-      else null
-    end,
-    'notifications', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', page_row.id,
-        'workspace_id', page_row.workspace_id,
-        'scope', case when page_row.workspace_id is null then 'account' else 'workspace' end,
-        'category', page_row.category,
-        'type_key', page_row.type_key,
-        'severity', page_row.severity,
-        'safe_preview', page_row.safe_preview,
-        'title', page_row.title,
-        'body', page_row.body,
-        'action_url', page_row.action_url,
-        'group_key', page_row.group_key,
-        'source_type', page_row.source_type,
-        'source_id', page_row.source_id,
-        'created_at', page_row.created_at,
-        'seen_at', page_row.seen_at,
-        'read_at', page_row.read_at,
-        'visibility_state', page_row.visibility_state
-      ) order by page_row.created_at desc, page_row.id desc)
-      from page page_row
-    ), '[]'::jsonb)
-  ) into result;
-
-  return result;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_severity" "text", "target_read_state" "text", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_notification_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  can_write boolean;
-  catalog_rows jsonb;
-  policy_rows jsonb;
-  role_rows jsonb;
-  location_rows jsonb;
-  audit_rows jsonb;
-begin
-  -- The write needs the read (role_permission_dependencies), so the read is the door.
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.read');
-
-  can_write := app_private.authz_reason(actor_user_id, target_workspace_id, 'settings.notifications.write') is null;
-
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'type_key', entry.type_key,
-    'schema_version', entry.schema_version,
-    'category', entry.category,
-    'severity', entry.severity,
-    'sensitivity', entry.sensitivity,
-    'supported_channels', to_jsonb(entry.supported_channels),
-    'default_cadence', entry.default_cadence,
-    'action_route', entry.action_route_contract->>'route',
-    'mandatory_in_app', entry.mandatory_in_app,
-    'policy', jsonb_build_object(
-      'id', policy.id,
-      'scope', jsonb_build_object('kind', 'global', 'id', null, 'name', 'Organization'),
-      'enabled', coalesce(policy.enabled, true),
-      'allowed_channels', coalesce(to_jsonb(policy.allowed_channels), to_jsonb(entry.supported_channels)),
-      'cadence', coalesce(policy.cadence, entry.default_cadence),
-      'version', policy.version,
-      'updated_by', policy.updated_by,
-      'updated_at', policy.updated_at,
-      'source', case when policy.id is null then 'catalog_default' else 'organization_policy' end
-    )
-  ) order by entry.category, entry.type_key), '[]'::jsonb)
-  into catalog_rows
-  from public.notification_catalog entry
-  left join public.notification_org_policies policy
-    on policy.workspace_id = target_workspace_id
-   and policy.type_key = entry.type_key
-   and policy.schema_version = entry.schema_version
-   and policy.role_id is null
-   and policy.location_id is null
-  where entry.notification_scope = 'workspace' and entry.lifecycle = 'active';
-
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'type_key', policy.type_key,
-    'schema_version', policy.schema_version,
-    'id', policy.id,
-    'scope', jsonb_build_object(
-      'kind', case
-        when policy.role_id is not null then 'role'
-        when policy.location_id is not null then 'location'
-        else 'global'
-      end,
-      'id', coalesce(policy.role_id, policy.location_id),
-      'name', coalesce(role_row.name, location.name, 'Organization')
-    ),
-    'enabled', policy.enabled,
-    'allowed_channels', to_jsonb(policy.allowed_channels),
-    'cadence', policy.cadence,
-    'version', policy.version,
-    'updated_by', policy.updated_by,
-    'updated_at', policy.updated_at,
-    'source', 'organization_policy'
-  ) order by policy.type_key, coalesce(role_row.name, location.name, 'Organization')), '[]'::jsonb)
-  into policy_rows
-  from public.notification_org_policies policy
-  left join public.workspace_roles role_row
-    on role_row.id = policy.role_id and role_row.workspace_id = policy.workspace_id
-  left join public.locations location
-    on location.id = policy.location_id and location.workspace_id = policy.workspace_id
-  where policy.workspace_id = target_workspace_id;
-
-  select coalesce(jsonb_agg(jsonb_build_object('id', role_row.id, 'name', role_row.name)
-    order by role_row.sort_order, role_row.name), '[]'::jsonb)
-  into role_rows
-  from public.workspace_roles role_row
-  where role_row.workspace_id = target_workspace_id;
-
-  select coalesce(jsonb_agg(jsonb_build_object('id', location.id, 'name', location.name)
-    order by location.sort_order, location.name), '[]'::jsonb)
-  into location_rows
-  from public.locations location
-  where location.workspace_id = target_workspace_id
-    and location.archived_at is null;
-
-  select coalesce(jsonb_agg(to_jsonb(audit_item) order by audit_item.occurred_at desc, audit_item.id desc), '[]'::jsonb)
-  into audit_rows
-  from (
-    select
-      log.id,
-      log.action,
-      log.target_type,
-      log.target_id,
-      log.actor_user_id,
-      log.reason,
-      case when jsonb_typeof(log.metadata->'before_version') = 'number'
-        then (log.metadata->>'before_version')::integer else null end as before_version,
-      case when jsonb_typeof(log.metadata->'after_version') = 'number'
-        then (log.metadata->>'after_version')::integer else null end as after_version,
-      log.occurred_at
-    from public.notification_audit_log log
-    where log.workspace_id = target_workspace_id
-      and log.action in ('notification.policy.saved', 'notification.policy.reset')
-    order by log.occurred_at desc, log.id desc
-    limit 50
-  ) audit_item;
-
-  return jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'can_write', can_write,
-    'catalog', catalog_rows,
-    'policies', policy_rows,
-    'roles', role_rows,
-    'locations', location_rows,
-    'audit', audit_rows
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_notification_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare result jsonb; account_catalog jsonb;
-begin
- if not exists(select 1 from auth.users where id=actor_user_id and deleted_at is null) then raise exception 'account session required' using errcode='42501'; end if;
- if target_workspace_id is not null and not exists(select 1 from public.workspaces where id=target_workspace_id and lifecycle_status in ('active','closure_scheduled')) then raise exception 'notification preference access required' using errcode='42501'; end if;
- if target_workspace_id is null then
-  result:=jsonb_build_object('workspace_id',null,'can_write',false,'workspaces','[]'::jsonb,'catalog','[]'::jsonb,'preferences','[]'::jsonb);
- else
-  result:=public.get_notification_user_preferences_workspace_base(actor_user_id,target_workspace_id);
-  result:=jsonb_set(result,'{workspaces}',coalesce((select jsonb_agg(w) from jsonb_array_elements(result->'workspaces') w where exists(select 1 from public.workspaces where id=(w->>'id')::uuid and lifecycle_status in ('active','closure_scheduled'))),'[]'::jsonb));
-  result:=jsonb_set(result,'{catalog}',coalesce((select jsonb_agg(e||jsonb_build_object('default_channels',public.notification_default_channels_service(actor_user_id,e->>'type_key')))
-   from jsonb_array_elements(result->'catalog') e where not exists(select 1 from public.notification_catalog c where c.type_key=e->>'type_key' and c.notification_scope='account')),'[]'::jsonb));
- end if;
- select coalesce(jsonb_agg(jsonb_build_object('type_key',c.type_key,'scope','account','title',t.content->>'title','description',t.content->>'body','mandatory_in_app',true,'delivery','transactional_in_app') order by c.type_key),'[]'::jsonb)
- into account_catalog from public.notification_catalog c join public.notification_template_versions t using(type_key,schema_version)
- where c.notification_scope='account' and c.lifecycle='active' and t.channel='in_app' and t.locale='en' and t.status='published';
- return result||jsonb_build_object('account_catalog',account_catalog,'email_channel_reason',case when exists(select 1 from auth.users where id=actor_user_id and email_confirmed_at is not null) then 'delivery_unavailable' else 'email_unverified' end);
-end; $$;
-
-
-ALTER FUNCTION "public"."get_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_notification_user_preferences_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  result jsonb;
-  actor_role_id uuid;
-begin
-  select membership.role_id into actor_role_id
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-
-  if actor_role_id is null then
-    raise exception 'notification preference access required' using errcode = '42501';
-  end if;
-
-  select jsonb_build_object(
-    'workspace_id', target_workspace_id,
-    'can_write', true,
-    'workspaces', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'id', workspace.id,
-        'name', workspace.name,
-        'role', member.role,
-        'isActive', workspace.id = target_workspace_id,
-        'onboarding', jsonb_build_object(
-          'status', coalesce(onboarding.status, 'complete'::public.onboarding_status),
-          'currentStep', coalesce(onboarding.current_step, 2)
-        )
-      ) order by workspace.name, workspace.id)
-      from public.workspace_memberships member
-      join public.workspaces workspace
-        on workspace.id = member.workspace_id
-      left join public.workspace_onboarding onboarding
-        on onboarding.workspace_id = workspace.id
-      where member.user_id = actor_user_id
-        and member.status = 'active'
-    ), '[]'::jsonb),
-    'catalog', coalesce((
-      select jsonb_agg(jsonb_build_object(
-        'type_key', catalog.type_key,
-        'schema_version', catalog.schema_version,
-        'category', catalog.category,
-        'severity', catalog.severity,
-        'sensitivity', catalog.sensitivity,
-        'supported_channels', to_jsonb(catalog.supported_channels),
-        'default_cadence', catalog.default_cadence,
-        'mandatory_in_app', catalog.mandatory_in_app,
-        'channel_controls', (
-          select jsonb_agg(jsonb_build_object(
-            'channel', channel.value,
-            'locked', public.notification_user_channel_lock_reason_service(
-              actor_user_id,
-              target_workspace_id,
-              catalog.type_key,
-              channel.value
-            ) <> 'available',
-            'reason_code', public.notification_user_channel_lock_reason_service(
-              actor_user_id,
-              target_workspace_id,
-              catalog.type_key,
-              channel.value
-            )
-          ) order by channel.ordinality)
-          from unnest(array['in_app', 'email', 'push']::text[])
-            with ordinality as channel(value, ordinality)
-        )
-      ) order by catalog.category, catalog.type_key)
-      from public.notification_catalog catalog
-      where catalog.lifecycle = 'active'
-    ), '[]'::jsonb),
-    'preferences', coalesce((
-      select jsonb_agg(public.notification_user_preference_to_json(preference)
-        order by preference.preference_scope, preference.scope_key)
-      from public.notification_user_preferences preference
-      where preference.workspace_id = target_workspace_id
-        and preference.user_id = actor_user_id
-    ), '[]'::jsonb)
-  ) into result;
-
-  return result;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_notification_user_preferences_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_notifications_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text" DEFAULT NULL::"text", "target_unread_only" boolean DEFAULT false, "target_cursor" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_limit" integer DEFAULT 30) RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare result jsonb;
-begin
- perform app_private.authorize(actor_user_id,target_workspace_id,'notifications.read_own');
- if target_category is not null and target_category not in('announcement','request','schedule') then raise exception 'valid notification category required' using errcode='22023'; end if;
- select jsonb_build_object(
-  'workspace_id',target_workspace_id,
-  'unread_count',(select count(*) from public.notifications where workspace_id=target_workspace_id and recipient_user_id=actor_user_id and dismissed_at is null and read_at is null and created_at<=now()),
-  'next_cursor',(select min(page.created_at) from (select notification.created_at from public.notifications notification where notification.workspace_id=target_workspace_id and notification.recipient_user_id=actor_user_id and notification.dismissed_at is null and notification.created_at<=now() and (target_category is null or notification.category::text=target_category) and (not target_unread_only or notification.read_at is null) and (target_cursor is null or notification.created_at<target_cursor) order by notification.created_at desc,notification.id limit greatest(1,least(target_limit,50))+1) page having count(*)>greatest(1,least(target_limit,50))),
-  'notifications',coalesce((select jsonb_agg(jsonb_build_object('id',page.id,'workspace_id',page.workspace_id,'category',page.category,'title',page.title,'body',page.body,'action_url',page.action_url,'source_type',page.source_type,'source_id',page.source_id,'created_at',page.created_at,'read_at',page.read_at) order by page.created_at desc,page.id) from (select notification.* from public.notifications notification where notification.workspace_id=target_workspace_id and notification.recipient_user_id=actor_user_id and notification.dismissed_at is null and notification.created_at<=now() and (target_category is null or notification.category::text=target_category) and (not target_unread_only or notification.read_at is null) and (target_cursor is null or notification.created_at<target_cursor) order by notification.created_at desc,notification.id limit greatest(1,least(target_limit,50))) page),'[]'::jsonb)
- ) into result;
- return result;
-end; $$;
-
-
-ALTER FUNCTION "public"."get_notifications_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_unread_only" boolean, "target_cursor" timestamp with time zone, "target_limit" integer) OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."get_own_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "text"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -13946,8 +12517,7 @@ begin
           and shift.scheduled_date = (now() at time zone location.timezone)::date
       ),
       'pending_time_off_count', (select count(*) from public.schedule_time_off_requests request where request.workspace_id = target_workspace_id and request.status = 'pending'
-        and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', request.employee_id) is null),
-      'unread_notification_count', 0
+        and app_private.time_off_reason(actor_user_id, target_workspace_id, 'requests.read', request.employee_id) is null)
     ),
     'today_ends_at', (
       select min(((now() at time zone location.timezone)::date + 1)::timestamp at time zone location.timezone)
@@ -13958,7 +12528,6 @@ begin
     'announcements', coalesce((select jsonb_agg(item.value) from (select value from jsonb_array_elements((public.get_announcements_service(actor_user_id, target_workspace_id)->'announcements')) value
       -- K28: what is live; scheduled, past, unpublished and archived stay in the list only.
       where value->>'display_status' = 'published' limit 5) item), '[]'::jsonb),
-    'notifications', '[]'::jsonb,
     'todos', coalesce((
       select jsonb_agg(jsonb_build_object(
         'id', todo.id,
@@ -14003,7 +12572,6 @@ begin
           'open_shifts',
           'announcements',
           'todos',
-          'notifications',
           'quick_actions'
         ])
       )
@@ -14567,83 +13135,6 @@ $$;
 
 
 ALTER FUNCTION "public"."is_workspace_member"("target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_outbox" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "event_id" "uuid" NOT NULL,
-    "type_key" "text" NOT NULL,
-    "schema_version" integer NOT NULL,
-    "actor_user_id" "uuid",
-    "subject_type" "text" NOT NULL,
-    "subject_id" "text" NOT NULL,
-    "payload" "jsonb" NOT NULL,
-    "occurred_at" timestamp with time zone NOT NULL,
-    "available_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "status" "text" DEFAULT 'pending'::"text" NOT NULL,
-    "attempt_count" integer DEFAULT 0 NOT NULL,
-    "lease_owner" "text",
-    "lease_expires_at" timestamp with time zone,
-    "last_error" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_outbox_attempt_count_check" CHECK (("attempt_count" >= 0)),
-    CONSTRAINT "notification_outbox_check" CHECK (((("status" = 'leased'::"text") AND ("lease_owner" IS NOT NULL) AND ("lease_expires_at" IS NOT NULL)) OR ("status" <> 'leased'::"text"))),
-    CONSTRAINT "notification_outbox_last_error_check" CHECK ((("last_error" IS NULL) OR ("char_length"("last_error") <= 2000))),
-    CONSTRAINT "notification_outbox_payload_check" CHECK (("jsonb_typeof"("payload") = 'object'::"text")),
-    CONSTRAINT "notification_outbox_status_check" CHECK (("status" = ANY (ARRAY['pending'::"text", 'leased'::"text", 'processed'::"text", 'retry'::"text", 'dead_letter'::"text"]))),
-    CONSTRAINT "notification_outbox_subject_id_check" CHECK ((("char_length"("btrim"("subject_id")) >= 1) AND ("char_length"("btrim"("subject_id")) <= 160))),
-    CONSTRAINT "notification_outbox_subject_type_check" CHECK ((("char_length"("btrim"("subject_type")) >= 1) AND ("char_length"("btrim"("subject_type")) <= 80)))
-);
-
-
-ALTER TABLE "public"."notification_outbox" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."lease_notification_outbox_service"("target_worker_id" "text", "target_batch_size" integer DEFAULT 25, "target_lease_seconds" integer DEFAULT 60) RETURNS SETOF "public"."notification_outbox"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  if char_length(btrim(coalesce(target_worker_id, ''))) not between 1 and 120 then
-    raise exception 'valid notification worker id required' using errcode = '22023';
-  end if;
-  if target_batch_size not between 1 and 100 then
-    raise exception 'notification batch size must be between 1 and 100' using errcode = '22023';
-  end if;
-  if target_lease_seconds not between 5 and 300 then
-    raise exception 'notification lease seconds must be between 5 and 300' using errcode = '22023';
-  end if;
-
-  return query
-  with candidates as (
-    select outbox.id
-    from public.notification_outbox outbox
-    where (
-        outbox.status in ('pending', 'retry')
-        and outbox.available_at <= now()
-      ) or (
-        outbox.status = 'leased'
-        and outbox.lease_expires_at <= now()
-      )
-    order by outbox.available_at, outbox.created_at, outbox.id
-    for update skip locked
-    limit target_batch_size
-  )
-  update public.notification_outbox outbox
-  set status = 'leased',
-      attempt_count = outbox.attempt_count + 1,
-      lease_owner = btrim(target_worker_id),
-      lease_expires_at = now() + make_interval(secs => target_lease_seconds),
-      last_error = null
-  from candidates
-  where outbox.id = candidates.id
-  returning outbox.*;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."lease_notification_outbox_service"("target_worker_id" "text", "target_batch_size" integer, "target_lease_seconds" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."leave_employee_onboarding_service"("target_user_id" "uuid", "expected_revision" integer, "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS "jsonb"
@@ -16879,8 +15370,7 @@ CREATE OR REPLACE FUNCTION "public"."normalize_workspace_widget_order"("target_w
       ('open_shifts', 3),
       ('announcements', 4),
       ('todos', 5),
-      ('notifications', 6),
-      ('quick_actions', 7)
+      ('quick_actions', 6)
   ),
   input_order as (
     select input.value, min(input.ordinality) as ordinality
@@ -16895,351 +15385,6 @@ $$;
 
 
 ALTER FUNCTION "public"."normalize_workspace_widget_order"("target_widget_order" "text"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notification_actor_is_active_member_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select actor_user_id is not null and exists (
-    select 1
-    from public.workspace_memberships membership
-    where membership.workspace_id = target_workspace_id
-      and membership.user_id = actor_user_id
-      and membership.status = 'active'
-  );
-$$;
-
-
-ALTER FUNCTION "public"."notification_actor_is_active_member_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notification_default_channels_service"("actor_user_id" "uuid", "target_type_key" "text") RETURNS "jsonb"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
- select jsonb_build_object('in_app','enabled','email',case when c.severity='action_required'
-  or exists(select 1 from app_private.notification_legacy_default_accounts a where a.user_id=actor_user_id)
-  then 'enabled' else 'disabled' end)
- from public.notification_catalog c where c.type_key=target_type_key order by c.schema_version desc limit 1;
-$$;
-
-
-ALTER FUNCTION "public"."notification_default_channels_service"("actor_user_id" "uuid", "target_type_key" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notification_user_channel_lock_reason_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") RETURNS "text"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
- if exists(select 1 from public.notification_catalog where type_key=target_type_key and notification_scope='account') then return 'mandatory_account_security'; end if;
- if target_channel='email' then
-  if not exists(select 1 from auth.users where id=actor_user_id and email_confirmed_at is not null) then return 'email_unverified'; end if;
-  -- There is currently no workspace email sender. Catalog support is not delivery capability.
-  return 'delivery_unavailable';
- end if;
- return public.notification_user_channel_lock_reason_workspace_base(actor_user_id,target_workspace_id,target_type_key,target_channel);
-end; $$;
-
-
-ALTER FUNCTION "public"."notification_user_channel_lock_reason_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notification_user_channel_lock_reason_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") RETURNS "text"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  catalog public.notification_catalog%rowtype;
-  actor_role_id uuid;
-  global_policy public.notification_org_policies%rowtype;
-  role_policy public.notification_org_policies%rowtype;
-begin
-  if target_channel not in ('in_app', 'email', 'push') then
-    return 'channel_unknown';
-  end if;
-
-  select * into catalog
-  from public.notification_catalog entry
-  where entry.type_key = target_type_key
-    and entry.lifecycle = 'active'
-  order by entry.schema_version desc
-  limit 1;
-  if catalog.type_key is null then
-    return 'catalog_type_inactive';
-  end if;
-  if not (target_channel = any(catalog.supported_channels)) then
-    return 'catalog_channel_unsupported';
-  end if;
-
-  select membership.role_id into actor_role_id
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active';
-  if actor_role_id is null then
-    return 'workspace_membership_required';
-  end if;
-
-  select * into global_policy
-  from public.notification_org_policies policy
-  where policy.workspace_id = target_workspace_id
-    and policy.type_key = target_type_key
-    and policy.role_id is null
-    and policy.location_id is null
-  order by policy.version desc
-  limit 1;
-  if global_policy.id is not null and
-    (not global_policy.enabled or not (target_channel = any(global_policy.allowed_channels))) then
-    return 'organization_policy_denied';
-  end if;
-
-  select * into role_policy
-  from public.notification_org_policies policy
-  where policy.workspace_id = target_workspace_id
-    and policy.type_key = target_type_key
-    and policy.role_id = actor_role_id
-    and policy.location_id is null
-  order by policy.version desc
-  limit 1;
-  if role_policy.id is not null and
-    (not role_policy.enabled or not (target_channel = any(role_policy.allowed_channels))) then
-    return 'role_policy_denied';
-  end if;
-
-  return 'available';
-end;
-$$;
-
-
-ALTER FUNCTION "public"."notification_user_channel_lock_reason_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_user_preferences" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "preference_scope" "text" NOT NULL,
-    "scope_key" "text" NOT NULL,
-    "channel_preferences" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    "cadence" "text",
-    "timezone" "text",
-    "quiet_hours" "jsonb",
-    "safe_preview_enabled" boolean DEFAULT true NOT NULL,
-    "version" integer DEFAULT 1 NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_user_preferences_cadence_check" CHECK ((("cadence" IS NULL) OR ("cadence" = ANY (ARRAY['immediate'::"text", 'daily_digest'::"text", 'weekly_digest'::"text"])))),
-    CONSTRAINT "notification_user_preferences_channel_preferences_check" CHECK (("jsonb_typeof"("channel_preferences") = 'object'::"text")),
-    CONSTRAINT "notification_user_preferences_preference_scope_check" CHECK (("preference_scope" = ANY (ARRAY['category'::"text", 'type'::"text"]))),
-    CONSTRAINT "notification_user_preferences_quiet_hours_check" CHECK ((("quiet_hours" IS NULL) OR ("jsonb_typeof"("quiet_hours") = 'object'::"text"))),
-    CONSTRAINT "notification_user_preferences_scope_key_check" CHECK ((("char_length"("btrim"("scope_key")) >= 1) AND ("char_length"("btrim"("scope_key")) <= 160))),
-    CONSTRAINT "notification_user_preferences_timezone_check" CHECK ((("timezone" IS NULL) OR (("char_length"("timezone") >= 1) AND ("char_length"("timezone") <= 80)))),
-    CONSTRAINT "notification_user_preferences_version_check" CHECK (("version" > 0))
-);
-
-
-ALTER TABLE "public"."notification_user_preferences" OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notification_user_preference_to_json"("preference" "public"."notification_user_preferences") RETURNS "jsonb"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select jsonb_build_object(
-    'id', preference.id,
-    'preference_scope', preference.preference_scope,
-    'scope_key', preference.scope_key,
-    'channel_preferences', preference.channel_preferences,
-    'cadence', preference.cadence,
-    'timezone', preference.timezone,
-    'quiet_hours', preference.quiet_hours,
-    'safe_preview_enabled', preference.safe_preview_enabled,
-    'version', preference.version,
-    'updated_at', preference.updated_at
-  );
-$$;
-
-
-ALTER FUNCTION "public"."notification_user_preference_to_json"("preference" "public"."notification_user_preferences") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notify_schedule_request_event_service"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  r public.schedule_time_off_requests%rowtype;
-  requester uuid;
-  recipients uuid[];
-  is_cancel boolean;
-  title text;
-  body text;
-  preview text;
-  url text;
-begin
-  select * into r from public.schedule_time_off_requests where id = new.request_id and workspace_id = new.workspace_id;
-  if r.id is null then
-    return new;
-  end if;
-  -- BL-182/BL-127: a shortening tells its own people (requests.time_off.shortened).
-  if public.time_off_event_is_shortening(new.workspace_id, new.request_id, new.metadata) then
-    return new;
-  end if;
-  -- One decision tells each person once (R2-13): approving a cancellation
-  -- also writes on the leave it shortens, and revoking or giving back the leave
-  -- closes a cancellation waiting on it; the decision's own notice says it.
-  if new.metadata ? 'cancelled_intervals' or (new.action = 'revoked' and new.metadata ? 'parent_request_id') then
-    return new;
-  end if;
-  is_cancel := r.request_type = 'time_off_cancellation';
-  select e.user_id into requester from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
-
-  if new.action = 'submitted' then
-    -- The owner's own time off is recorded without review (BL-183).
-    if public.time_off_is_the_owners_own(new.actor_user_id, new.workspace_id, new.request_id) then
-      return new;
-    end if;
-    select coalesce(array_agg(u order by u), '{}') into recipients
-    from unnest(app_private.time_off_deciders(new.workspace_id, r.id)) u where u is distinct from new.actor_user_id;
-    perform public.enqueue_notification_outbox_service(new.workspace_id, new.id, 'requests.time_off.submitted', 1, new.actor_user_id,
-      tg_table_name, new.request_id::text,
-      jsonb_build_object('correlation_id', new.id, 'request_id', new.request_id, 'request_event_id', new.id, 'request_action', new.action,
-        'recipient_user_ids', to_jsonb(recipients), 'audience_contract', 'schedule_request_reviewers', 'category', 'request',
-        'title', case when is_cancel then 'Leave cancellation requested' else 'New time-off request' end,
-        'body', case when is_cancel then 'Review the proposed cancellation. Approved leave stays in effect until accepted.'
-          else 'A time-off request needs your decision.' end,
-        'safe_preview', case when is_cancel then 'A leave cancellation needs review.' else 'A schedule request needs review.' end,
-        'action_url', '/app/schedule/requests?tab=time-off&request=' || new.request_id::text,
-        'group_key', tg_table_name || ':' || new.request_id::text),
-      new.created_at);
-    return new;
-  end if;
-
-  -- The person who asked, unless they did it themselves.
-  -- The notice says how it was decided (R2-45).
-  title := case
-    when is_cancel then case new.action when 'approved' then 'Leave cancellation approved' when 'denied' then 'Leave cancellation declined'
-      when 'expired' then 'Leave cancellation not decided in time' else 'Leave cancellation closed' end
-    else case new.action when 'approved' then 'Time off approved' when 'denied' then 'Time off declined'
-      when 'expired' then 'Time off not decided in time'
-      when 'revoked' then case when new.actor_user_id is not distinct from requester then 'Time off withdrawn' else 'Time off revoked' end
-      else 'Time-off request updated' end end;
-  body := case
-    when new.action = 'expired' then 'Your request was not decided in time and was declined.'
-    when is_cancel and new.action = 'approved' then 'Your leave cancellation was approved. Shifts opened earlier stay open.'
-    when is_cancel and new.action = 'denied' then 'Your cancellation was declined. The approved leave remains in effect.'
-    when is_cancel and new.action = 'revoked' then 'Your cancellation request was closed. Review the original leave for its current status.'
-    when is_cancel then 'Your leave cancellation was reviewed. Shifts opened earlier stay open.'
-    when new.action = 'approved' then 'Your time-off request was approved.'
-    when new.action = 'denied' then 'Your time-off request was declined.'
-    when new.action = 'revoked' then 'Your approved time off was revoked.'
-    else 'Your time-off request status changed.' end;
-  preview := case when is_cancel then 'A leave cancellation was updated.' else 'A schedule request was updated.' end;
-  url := case when is_cancel then '/app/employee-hub/my-availability#request-' || new.request_id::text else '/app/employee-hub/my-availability' end;
-  perform public.enqueue_notification_outbox_service(new.workspace_id, new.id, 'requests.time_off.status_changed', 1, new.actor_user_id,
-    tg_table_name, new.request_id::text,
-    jsonb_build_object('correlation_id', new.id, 'request_id', new.request_id, 'request_event_id', new.id, 'request_action', new.action,
-      'recipient_user_ids', to_jsonb(case when requester is not null and requester is distinct from new.actor_user_id then array[requester] else '{}'::uuid[] end),
-      'audience_contract', 'time_off_requester', 'category', 'request',
-      'title', title, 'body', body, 'safe_preview', preview, 'action_url', url,
-      'group_key', tg_table_name || ':' || new.request_id::text),
-    new.created_at);
-
-  -- The managers who could have decided it, but not who closed it; never for
-  -- the owner's own time off.
-  -- No actor (the system's own decline) is never the owner's own.
-  if new.action in ('approved', 'denied', 'revoked', 'expired')
-     and not coalesce(public.time_off_is_the_owners_own(new.actor_user_id, new.workspace_id, new.request_id), false) then
-    select coalesce(array_agg(u order by u), '{}') into recipients
-    from unnest(app_private.time_off_deciders(new.workspace_id, r.id, false)) u where u is distinct from new.actor_user_id;
-    -- Who heard which shifts the approval opened has heard of it (R2-13).
-    if new.action = 'approved' and not is_cancel then
-      recipients := array(select u from unnest(recipients) u where u not in (
-        select t.user_id from app_private.time_off_opened_shifts_told(new.actor_user_id, new.workspace_id, r.id, (new.metadata ->> 'revision')::integer) t));
-    end if;
-    if cardinality(recipients) > 0 then
-      perform public.enqueue_notification_outbox_service(new.workspace_id, gen_random_uuid(), 'requests.time_off.decided', 1, new.actor_user_id,
-        tg_table_name, new.request_id::text,
-        jsonb_build_object('correlation_id', new.id, 'request_id', new.request_id, 'request_event_id', new.id, 'request_action', new.action,
-          'recipient_user_ids', to_jsonb(recipients), 'audience_contract', 'time_off_deciders', 'category', 'request',
-          'title', title,
-          'body', case when is_cancel then 'A leave cancellation you could decide was closed.' else 'A time-off request you could decide was closed.' end,
-          'safe_preview', 'A time-off request was closed.',
-          'action_url', '/app/schedule/requests?tab=time-off&request=' || new.request_id::text,
-          'group_key', tg_table_name || ':' || new.request_id::text),
-        new.created_at);
-    end if;
-  end if;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."notify_schedule_request_event_service"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."notify_time_off_shortened"("actor" "uuid", "w" "uuid", "parent_id" "uuid", "cut" "tstzmultirange", "zone_name" "text", "source" "jsonb") RETURNS "void"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-declare fmt text; employee_user uuid; employee_name text; lines text; deciders uuid[];
-begin
- fmt := case when (select s.time_format from public.workspace_scheduling_settings s where s.workspace_id = w) = '24h'
-  then 'HH24:MI' else 'FMHH12:MI AM' end;
- select e.user_id, coalesce(nullif(e.preferred_name, ''), e.first_name) into employee_user, employee_name
-  from public.schedule_time_off_requests r join public.employee_profiles e on e.id = r.employee_id and e.workspace_id = r.workspace_id
-  where r.id = parent_id and r.workspace_id = w;
- -- "Wed, Oct 1, 10:00 AM–2:00 PM", in the leave's own time zone.
- select string_agg(to_char(lower(p) at time zone zone_name, 'Dy, Mon FMDD') || ', ' || to_char(lower(p) at time zone zone_name, fmt)
-   || '–' || to_char(upper(p) at time zone zone_name, fmt), '; ' order by lower(p))
-  into lines from unnest(cut) p;
- -- Whoever approved the leave: its last approval and every vote for it (R2-23);
- -- approved by the system, the managers who could decide it. Not the one
- -- shortening it and not the employee: the owner's own leave is approved by themselves.
- select coalesce(array_agg(distinct x.u order by x.u), '{}') into deciders
-  from (select ev.actor_user_id u from public.schedule_time_off_events ev
-        where ev.workspace_id = w and ev.request_id = parent_id and ev.action = 'approved' and ev.metadata ? 'segments'
-        union all
-        select v.voter_user_id from public.time_off_votes v
-        where v.workspace_id = w and v.request_id = parent_id and v.verdict = 'approve'
-        union all
-        select d from unnest(app_private.time_off_deciders(w, parent_id, false)) d
-        where exists (select 1 from public.schedule_time_off_events ev where ev.workspace_id = w and ev.request_id = parent_id
-                      and ev.action = 'approved' and ev.metadata ? 'segments' and ev.actor_user_id is null)) x
-  join public.workspace_memberships m on m.workspace_id = w and m.user_id = x.u and m.status = 'active'
-  where x.u <> actor and x.u is distinct from employee_user;
- if cardinality(deciders) > 0 then
-  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'requests.time_off.shortened', 1, actor,
-   'schedule_time_off_requests', parent_id::text,
-   jsonb_build_object('request_id', parent_id, 'recipient_user_ids', to_jsonb(deciders),
-    'audience_contract', 'time_off_deciders', 'category', 'requests',
-    'title', left(coalesce(employee_name, 'An employee') || '''s time off was shortened', 160),
-    'body', left(lines || ' is no longer time off.', 500),
-    'safe_preview', 'Approved time off was shortened.',
-    'action_url', '/app/schedule/requests?tab=time-off&request=' || parent_id::text,
-    'group_key', 'schedule_time_off_requests:' || parent_id::text),
-   now());
- end if;
- -- A manager's shortening is news to the employee.
- if employee_user is not null and employee_user <> actor
-  and exists (select 1 from public.workspace_memberships m where m.workspace_id = w and m.user_id = employee_user and m.status = 'active') then
-  perform public.enqueue_notification_outbox_service(w, gen_random_uuid(), 'requests.time_off.shortened', 1, actor,
-   'schedule_time_off_requests', parent_id::text,
-   jsonb_build_object('request_id', parent_id, 'recipient_user_ids', jsonb_build_array(employee_user),
-    'audience_contract', 'time_off_requester', 'category', 'requests',
-    'title', 'Your time off was shortened',
-    'body', left(lines || ' is no longer time off. Your manager can put you on the schedule then.', 500),
-    'safe_preview', 'Approved time off was shortened.',
-    'action_url', '/app/employee-hub/my-availability#request-' || parent_id::text,
-    'group_key', 'schedule_time_off_requests:' || parent_id::text),
-   now());
- end if;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."notify_time_off_shortened"("actor" "uuid", "w" "uuid", "parent_id" "uuid", "cut" "tstzmultirange", "zone_name" "text", "source" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
@@ -17831,78 +15976,6 @@ $$;
 
 
 ALTER FUNCTION "public"."preview_employee_invitation_service"("invitation_token_hash" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."preview_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_recipient_user_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  catalog_row public.notification_catalog%rowtype;
-  decision jsonb;
-  requested_actor_user_id uuid := actor_user_id;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.test');
-  if target_recipient_user_id is not null and target_recipient_user_id <> actor_user_id then
-    raise exception 'notification preview recipient must be current actor' using errcode = '42501', hint = 'authz.out_of_scope';
-  end if;
-  select * into catalog_row
-  from public.notification_catalog entry
-  where entry.type_key = target_type_key
-    and entry.schema_version = 1
-    and entry.lifecycle = 'active';
-  if catalog_row.type_key is null then
-    raise exception 'active notification type not found' using errcode = 'P0002';
-  end if;
-  if not (target_channel = any(catalog_row.supported_channels)) then
-    raise exception 'notification channel is not supported' using errcode = '22023';
-  end if;
-  if (
-    select count(*)
-    from public.notification_audit_log log
-    where log.workspace_id = target_workspace_id
-      and log.actor_user_id = requested_actor_user_id
-      and log.action = 'notification.policy.previewed'
-      and log.occurred_at >= now() - interval '1 minute'
-  ) >= 5 then
-    raise exception 'notification preview rate limit exceeded' using errcode = '54000';
-  end if;
-
-  decision := public.resolve_notification_policy_v1_service(
-    target_workspace_id,
-    actor_user_id,
-    target_type_key,
-    target_channel,
-    null,
-    null,
-    '{}'::jsonb
-  );
-
-  insert into public.notification_audit_log (
-    workspace_id, actor_user_id, action, target_type, target_id, reason, metadata
-  ) values (
-    target_workspace_id, actor_user_id, 'notification.policy.previewed',
-    'notification_catalog', target_type_key, 'Safe preview only',
-    jsonb_build_object(
-      'channel', target_channel,
-      'redirected_to_user_id', actor_user_id,
-      'decision', decision->>'decision',
-      'delivery_mode', 'preview_only'
-    )
-  );
-
-  return jsonb_build_object(
-    'status', 'previewed',
-    'delivery_mode', 'preview_only',
-    'redirected_to_user_id', actor_user_id,
-    'decision', decision->>'decision',
-    'reason_code', coalesce(decision->'reason_chain'->>-1, 'policy_evaluated')
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."preview_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_recipient_user_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."preview_policy_definition_apply_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid") RETURNS "jsonb"
@@ -18526,381 +16599,6 @@ $$;
 
 
 ALTER FUNCTION "public"."preview_schedule_unpublication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "target_location_ids" "uuid"[]) OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."process_notification_outbox_before_signal"("target_worker_id" "text", "target_outbox_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox public.notification_outbox%rowtype;
-  recipient_count integer;
-  inbox_count integer;
-begin
-  select * into outbox
-  from public.notification_outbox item
-  where item.id = target_outbox_id
-  for update;
-
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-
-  if outbox.status <> 'leased'
-    or outbox.lease_owner <> btrim(target_worker_id)
-    or outbox.lease_expires_at <= now()
-  then
-    raise exception 'active notification lease required' using errcode = '42501';
-  end if;
-
-  if not app_private.workspace_allows_interactive_access(outbox.workspace_id) then
-    update public.notification_outbox
-    set status = 'processed',
-        lease_owner = null,
-        lease_expires_at = null,
-        last_error = 'workspace no longer allows notification processing'
-    where id = outbox.id;
-
-    insert into public.notification_audit_log (
-      workspace_id, actor_user_id, action, target_type, target_id, metadata
-    ) values (
-      outbox.workspace_id,
-      null,
-      'notification.outbox.cancelled_workspace',
-      'notification_event',
-      outbox.event_id::text,
-      jsonb_build_object(
-        'correlation_id', outbox.payload->>'correlation_id',
-        'worker_id', left(btrim(target_worker_id), 120)
-      )
-    );
-
-    return jsonb_build_object(
-      'status', 'skipped',
-      'reason', 'workspace_not_interactive',
-      'outbox_id', outbox.id,
-      'event_id', outbox.event_id,
-      'recipient_projections_created', 0,
-      'inbox_items_created', 0
-    );
-  end if;
-
-  perform public.project_notification_event_service(outbox.id);
-  if outbox.type_key = 'schedule.published' and outbox.schema_version = 1 then
-    recipient_count := public.project_schedule_notification_recipients_service(outbox.id);
-  else
-    recipient_count := public.project_notification_recipients_service(outbox.id);
-  end if;
-  inbox_count := public.project_notification_inbox_service(outbox.id);
-
-  update public.notification_outbox
-  set status = 'processed', lease_owner = null, lease_expires_at = null, last_error = null
-  where id = outbox.id;
-
-  insert into public.notification_audit_log (
-    workspace_id, actor_user_id, action, target_type, target_id, metadata
-  ) values (
-    outbox.workspace_id, null, 'notification.outbox.processed', 'notification_event',
-    outbox.event_id::text,
-    jsonb_build_object(
-      'correlation_id', outbox.payload->>'correlation_id',
-      'recipient_projections_created', recipient_count,
-      'inbox_items_created', inbox_count,
-      'worker_id', left(btrim(target_worker_id), 120)
-    )
-  );
-
-  return jsonb_build_object(
-    'status', 'processed', 'outbox_id', outbox.id, 'event_id', outbox.event_id,
-    'recipient_projections_created', recipient_count, 'inbox_items_created', inbox_count
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."process_notification_outbox_before_signal"("target_worker_id" "text", "target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."process_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare result jsonb; item public.notification_outbox%rowtype; signalled jsonb;
-begin
- result:=public.process_notification_outbox_before_signal(target_worker_id,target_outbox_id);
- select * into item from public.notification_outbox where id=target_outbox_id;
- if result->>'status'='processed' and item.subject_type='shift_exchange_cases' then
-  -- One workspace signal per transaction, even for a large multi-candidate case.
-  -- The content-free bus invalidates authenticated reads; it carries no inbox data.
-  begin
-   signalled:=coalesce(nullif(current_setting('app.exchange_inbox_signalled',true),''),'[]')::jsonb;
-   if not signalled @> jsonb_build_array(item.workspace_id::text) then
-    perform realtime.send(jsonb_build_object('workspace_id',item.workspace_id),'changed','shift-exchanges:'||item.workspace_id::text,true);
-    perform set_config('app.exchange_inbox_signalled',(signalled||jsonb_build_array(item.workspace_id::text))::text,true);
-   end if;
-  exception when others then
-   -- The existing poll/reconnect path remains available. A broadcast outage
-   -- must not roll back a successfully projected inbox item.
-   result:=result||jsonb_build_object('invalidation_deferred',true);
-  end;
- end if;
- return result;
-end; $$;
-
-
-ALTER FUNCTION "public"."process_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."project_notification_event_service"("target_outbox_id" "uuid") RETURNS "uuid"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox public.notification_outbox%rowtype;
-begin
-  select * into outbox
-  from public.notification_outbox item
-  where item.id = target_outbox_id;
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-
-  insert into public.notification_events (
-    id, workspace_id, type_key, schema_version, actor_user_id,
-    subject_type, subject_id, payload_digest, sensitivity, occurred_at
-  )
-  select
-    outbox.event_id, outbox.workspace_id, outbox.type_key, outbox.schema_version,
-    outbox.actor_user_id, outbox.subject_type, outbox.subject_id,
-    encode(extensions.digest(convert_to(outbox.payload::text, 'UTF8'), 'sha256'), 'hex'),
-    catalog.sensitivity, outbox.occurred_at
-  from public.notification_catalog catalog
-  where catalog.type_key = outbox.type_key
-    and catalog.schema_version = outbox.schema_version
-    and catalog.lifecycle = 'active'
-  on conflict (id) do nothing;
-
-  if not found and not exists (
-    select 1 from public.notification_events event where event.id = outbox.event_id
-  ) then
-    raise exception 'notification catalog type is not active' using errcode = '23514';
-  end if;
-  return outbox.event_id;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."project_notification_event_service"("target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."project_notification_inbox_exchange_base"("target_outbox_id" "uuid") RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $_$
-declare
-  outbox public.notification_outbox%rowtype;
-  catalog public.notification_catalog%rowtype;
-  affected_count integer;
-  inbox_title text;
-  inbox_body text;
-  inbox_preview text;
-  inbox_action_url text;
-  inbox_group_key text;
-  visible_at timestamptz;
-  legacy_category public.notification_category;
-begin
-  select * into outbox from public.notification_outbox item where item.id = target_outbox_id;
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-  select * into catalog from public.notification_catalog entry
-  where entry.type_key = outbox.type_key and entry.schema_version = outbox.schema_version;
-
-  inbox_title := coalesce(nullif(outbox.payload->>'title', ''),
-    case outbox.type_key when 'schedule.published' then 'New schedule published' else 'New notification' end);
-  inbox_body := coalesce(outbox.payload->>'body',
-    case outbox.type_key when 'schedule.published' then format('Your schedule for the week of %s is available.', outbox.payload->>'week_start') else '' end);
-  inbox_preview := coalesce(outbox.payload->>'safe_preview', left(inbox_body, 240));
-  inbox_action_url := coalesce(nullif(outbox.payload->>'action_url', ''), catalog.action_route_contract->>'route');
-  if inbox_action_url !~ '^/app(/|$)' then
-    inbox_action_url := catalog.action_route_contract->>'route';
-  end if;
-  inbox_group_key := coalesce(nullif(outbox.payload->>'group_key', ''), catalog.category || ':' || outbox.subject_id);
-  visible_at := coalesce(nullif(outbox.payload->>'visible_at', '')::timestamptz, outbox.occurred_at);
-  legacy_category := case catalog.category when 'communications' then 'announcement'::public.notification_category when 'schedule' then 'schedule'::public.notification_category else 'request'::public.notification_category end;
-
-  with legacy_items as (
-    insert into public.notifications (
-      workspace_id, recipient_user_id, category, title, body, action_url,
-      source_type, source_id, event_key, created_at
-    )
-    select recipient.workspace_id, recipient.recipient_user_id, legacy_category,
-      inbox_title, inbox_body, inbox_action_url, 'notification_event', outbox.event_id,
-      'in_app', visible_at
-    from public.notification_recipients recipient
-    where recipient.workspace_id = outbox.workspace_id and recipient.event_id = outbox.event_id and public.shift_exchange_notification_allowed(outbox.id, recipient.recipient_user_id)
-    on conflict (recipient_user_id, source_type, source_id, event_key) do update
-      set title = excluded.title, body = excluded.body, action_url = excluded.action_url
-    returning id, recipient_user_id
-  )
-  insert into public.notification_inbox_items (
-    workspace_id, recipient_projection_id, legacy_notification_id,
-    title, body, safe_preview, action_url, group_key, created_at
-  )
-  select recipient.workspace_id, recipient.id, legacy.id, inbox_title, inbox_body,
-    inbox_preview, inbox_action_url, inbox_group_key, visible_at
-  from public.notification_recipients recipient
-  join legacy_items legacy on legacy.recipient_user_id = recipient.recipient_user_id
-  where recipient.workspace_id = outbox.workspace_id and recipient.event_id = outbox.event_id and public.shift_exchange_notification_allowed(outbox.id, recipient.recipient_user_id)
-  on conflict (recipient_projection_id) do update
-    set legacy_notification_id = excluded.legacy_notification_id
-  where public.notification_inbox_items.legacy_notification_id is null;
-
-  get diagnostics affected_count = row_count;
-  return affected_count;
-end;
-$_$;
-
-
-ALTER FUNCTION "public"."project_notification_inbox_exchange_base"("target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."project_notification_inbox_service"("target_outbox_id" "uuid") RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare o public.notification_outbox%rowtype; affected integer;
-begin
- select * into o from public.notification_outbox where id=target_outbox_id;
- if o.subject_type='shift_exchange_cases' then
-  -- Relay workers for the same case serialize so two deliveries cannot both win.
-  perform pg_advisory_xact_lock(hashtextextended(o.workspace_id::text||':'||o.subject_id,925));
- end if;
- affected:=public.project_notification_inbox_exchange_base(target_outbox_id);
- if o.subject_type<>'shift_exchange_cases' then return affected; end if;
-
- perform public.shift_exchange_sync_notifications(o.workspace_id,o.subject_id::uuid);
- return affected;
-end; $$;
-
-
-ALTER FUNCTION "public"."project_notification_inbox_service"("target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."project_notification_recipients_service"("target_outbox_id" "uuid") RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  outbox public.notification_outbox%rowtype;
-  inserted_count integer;
-  single_location_id uuid;
-begin
-  select * into outbox from public.notification_outbox item where item.id = target_outbox_id;
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-  if jsonb_typeof(outbox.payload->'recipient_employee_ids') is distinct from 'array'
-    and jsonb_typeof(outbox.payload->'recipient_user_ids') is distinct from 'array' then
-    raise exception 'notification recipients are required' using errcode = '22023';
-  end if;
-  if nullif(outbox.payload->>'location_id', '') is not null then
-    single_location_id := (outbox.payload->>'location_id')::uuid;
-  elsif jsonb_typeof(outbox.payload->'location_ids') = 'array'
-    and jsonb_array_length(outbox.payload->'location_ids') = 1 then
-    single_location_id := (outbox.payload->'location_ids'->>0)::uuid;
-  end if;
-
-  with requested_employees as (
-    select distinct value::uuid employee_id
-    from jsonb_array_elements_text(coalesce(outbox.payload->'recipient_employee_ids', '[]'::jsonb)) item(value)
-  ), requested_users as (
-    select distinct value::uuid user_id
-    from jsonb_array_elements_text(coalesce(outbox.payload->'recipient_user_ids', '[]'::jsonb)) item(value)
-  ), candidates as (
-    select employee.user_id, employee.id employee_id
-    from requested_employees requested
-    join public.employee_profiles employee
-      on employee.id = requested.employee_id
-     and employee.workspace_id = outbox.workspace_id
-     and employee.user_id is not null
-    union
-    select requested.user_id, employee.id
-    from requested_users requested
-    left join public.employee_profiles employee
-      on employee.workspace_id = outbox.workspace_id
-     and employee.user_id = requested.user_id
-  ), resolved as (
-    select candidate.user_id, candidate.employee_id,
-      app_private.document_notification_policy(outbox.id, candidate.user_id, public.shift_exchange_notification_policy_service(outbox.id, candidate.user_id, public.resolve_notification_policy_v1_service(
-        outbox.workspace_id, candidate.user_id, outbox.type_key, 'in_app', null,
-        single_location_id,
-        jsonb_build_object(
-          'location_ids', coalesce(outbox.payload->'location_ids',
-            case when single_location_id is null then '[]'::jsonb else jsonb_build_array(single_location_id) end),
-          'audience_contract', outbox.payload->>'audience_contract'
-        )
-      ))) snapshot
-    from candidates candidate
-  )
-  insert into public.notification_recipient_decisions (
-    workspace_id, event_id, candidate_user_id, candidate_employee_id,
-    location_id, channel, decision, cadence, reason_chain, policy_snapshot
-  )
-  select outbox.workspace_id, outbox.event_id, resolved.user_id, resolved.employee_id,
-    single_location_id, 'in_app', resolved.snapshot->>'decision',
-    resolved.snapshot->>'cadence', resolved.snapshot->'reason_chain', resolved.snapshot
-  from resolved
-  on conflict (workspace_id, event_id, candidate_user_id, channel) do nothing;
-
-  insert into public.notification_recipients (
-    workspace_id, event_id, recipient_user_id, recipient_employee_id,
-    location_id, audience_reason, policy_snapshot
-  )
-  select decision.workspace_id, decision.event_id, decision.candidate_user_id,
-    decision.candidate_employee_id, decision.location_id,
-    jsonb_build_object(
-      'contract', coalesce(outbox.payload->>'audience_contract', 'producer_recipient_snapshot'),
-      'source', 'producer_recipient_snapshot'
-    ), decision.policy_snapshot
-  from public.notification_recipient_decisions decision
-  where decision.workspace_id = outbox.workspace_id
-    and decision.event_id = outbox.event_id
-    and decision.channel = 'in_app'
-    and decision.decision = 'allow'
-  on conflict (workspace_id, event_id, recipient_user_id) do nothing;
-
-  get diagnostics inserted_count = row_count;
-  return inserted_count;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."project_notification_recipients_service"("target_outbox_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."project_schedule_notification_recipients_service"("target_outbox_id" "uuid") RETURNS integer
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare outbox public.notification_outbox%rowtype;
-begin
-  select * into outbox from public.notification_outbox item where item.id = target_outbox_id;
-  if outbox.id is null then
-    raise exception 'notification outbox item not found' using errcode = 'P0002';
-  end if;
-  if outbox.type_key <> 'schedule.published' or outbox.schema_version <> 1 then
-    raise exception 'unsupported notification audience contract' using errcode = '0A000';
-  end if;
-  if jsonb_typeof(outbox.payload->'recipient_employee_ids') is distinct from 'array' then
-    raise exception 'schedule notification recipients are required' using errcode = '22023';
-  end if;
-  return public.project_notification_recipients_service(target_outbox_id);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."project_schedule_notification_recipients_service"("target_outbox_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."protect_approved_signature_retention_policy"() RETURNS "trigger"
@@ -19541,127 +17239,6 @@ $$;
 ALTER FUNCTION "public"."read_signature_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."reconcile_notification_platform_service"() RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  active_without_producer jsonb;
-  active_without_template jsonb;
-  missing_domain_events jsonb;
-begin
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'type_key', catalog.type_key,
-    'schema_version', catalog.schema_version,
-    'reason', 'active_catalog_without_outbox_producer'
-  ) order by catalog.type_key), '[]'::jsonb)
-  into active_without_producer
-  from public.notification_catalog catalog
-  where catalog.lifecycle = 'active'
-    and not exists (
-      select 1 from public.notification_producer_registry registry
-      where registry.type_key = catalog.type_key
-        and registry.schema_version = catalog.schema_version
-        and registry.integration_contract = case when catalog.notification_scope='account' then 'account_audit_v1' else 'outbox_v1' end
-    );
-
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'type_key', catalog.type_key,
-    'schema_version', catalog.schema_version,
-    'reason', 'active_catalog_without_published_in_app_template'
-  ) order by catalog.type_key), '[]'::jsonb)
-  into active_without_template
-  from public.notification_catalog catalog
-  where catalog.lifecycle = 'active'
-    and 'in_app' = any(catalog.supported_channels)
-    and not exists (
-      select 1 from public.notification_template_versions template
-      where template.type_key = catalog.type_key
-        and template.schema_version = catalog.schema_version
-        and template.channel = 'in_app'
-        and template.status = 'published'
-    );
-
-  with request_events as (
-    select event.workspace_id, event.id event_id,
-      case when event.action = 'submitted' then 'requests.time_off.submitted'
-        else 'requests.time_off.status_changed' end type_key,
-      event.created_at occurred_at
-    from public.schedule_time_off_events event
-    -- The owner's own request was recorded approved by its requester in the
-    -- same moment (submit_time_off_service); that fact is kept on the events,
-    -- so the check does not depend on who owns the workspace today (BL-220).
-    where not (event.action = 'submitted' and exists (
-        select 1 from public.schedule_time_off_events decided
-        where decided.workspace_id = event.workspace_id and decided.request_id = event.request_id
-          and decided.action = 'approved'
-          and decided.actor_user_id = event.actor_user_id and decided.created_at = event.created_at))
-      -- A shortening tells its own people (requests.time_off.shortened, BL-182).
-      and not public.time_off_event_is_shortening(event.workspace_id, event.request_id, event.metadata)
-      -- One decision tells each person once (R2-13), as the notice trigger does.
-      and not (event.metadata ? 'cancelled_intervals' or (event.action = 'revoked' and event.metadata ? 'parent_request_id'))
-  ), missing_requests as (
-    select request.workspace_id, request.event_id, request.type_key, request.occurred_at,
-      'deterministic_request_event_without_outbox' reason
-    from request_events request
-    join public.notification_producer_registry registry
-      on registry.type_key = request.type_key and registry.schema_version = 1
-    where request.occurred_at >= registry.activated_at
-      and not exists (
-        select 1 from public.notification_outbox outbox
-        where outbox.workspace_id = request.workspace_id and outbox.event_id = request.event_id
-      )
-  ), missing_announcements as (
-    select announcement.workspace_id, null::uuid event_id,
-      'communications.announcement.available' type_key,
-      announcement.updated_at occurred_at,
-      'published_announcement_without_outbox' reason
-    from public.announcements announcement
-    join public.notification_producer_registry registry
-      on registry.type_key = 'communications.announcement.available' and registry.schema_version = 1
-    where announcement.status = 'published' and announcement.archived_at is null
-      and cardinality(announcement.delivered_to) > 0
-      and announcement.updated_at >= registry.activated_at
-      and not exists (
-        select 1 from public.notification_outbox outbox
-        where outbox.workspace_id = announcement.workspace_id
-          and outbox.type_key = 'communications.announcement.available'
-          and outbox.subject_id = announcement.id::text
-          and outbox.payload->>'content_revision' = announcement.content_revision::text
-      )
-  ), all_missing as (
-    select * from missing_requests
-    union all select * from missing_announcements
-  )
-  select coalesce(jsonb_agg(jsonb_build_object(
-    'workspace_id', missing.workspace_id,
-    'event_id', missing.event_id,
-    'type_key', missing.type_key,
-    'occurred_at', missing.occurred_at,
-    'reason', missing.reason
-  ) order by missing.occurred_at, missing.type_key), '[]'::jsonb)
-  into missing_domain_events
-  from all_missing missing;
-
-  return jsonb_build_object(
-    'status', case
-      when jsonb_array_length(active_without_producer) = 0
-        and jsonb_array_length(active_without_template) = 0
-        and jsonb_array_length(missing_domain_events) = 0
-      then 'healthy' else 'drift_detected' end,
-    'active_catalog_without_producer', active_without_producer,
-    'active_catalog_without_template', active_without_template,
-    'deterministic_domain_events_without_outbox', missing_domain_events,
-    'dead_letter_count', (select count(*) from public.notification_outbox where status = 'dead_letter'),
-    'checked_at', now()
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."reconcile_notification_platform_service"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -19678,24 +17255,6 @@ end; $$;
 
 
 ALTER FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
- if target_event not in ('account.email_change_requested','account.password_changed','account.sessions_revoked') then
-  raise exception 'unsupported account security event' using errcode='22023';
- end if;
- if not exists(select 1 from auth.users where id=actor_user_id and deleted_at is null) then
-  raise exception 'account session required' using errcode='42501';
- end if;
- perform app_private.record_security_audit_event_service(actor_user_id,null,target_event,'account.security','auth_user',actor_user_id::text,'{}');
-end; $$;
-
-
-ALTER FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."record_schedule_export_event_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_surface" "text", "target_format" "text", "target_params" "jsonb") RETURNS "jsonb"
@@ -20725,10 +18284,6 @@ begin
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, note, metadata)
   values (w, rid, 'submitted', actor, btrim(coalesce(reason, '')),
     jsonb_build_object('parent_request_id', parent.id, 'parent_revision', parent.revision, 'operation_id', request_time_off_cancellation_service.operation_id));
-  -- Sent straight to an admin and the owner (nobody can vote somewhere): that was their one notice.
-  update public.schedule_time_off_requests set fallback_notified_at = now()
-  where id = rid and exists (select 1 from (select app_private.time_off_state(w, rid) s) x
-    where (x.s ->> 'fallback')::boolean or (x.s ->> 'unattended')::integer > 0);
   if public.time_off_is_the_owners_own(actor, w, rid) then
     perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
   end if;
@@ -20924,66 +18479,6 @@ end; $$;
 ALTER FUNCTION "public"."require_weekly_exchange_employee_warning"("actor" "uuid", "w" "uuid", "emp" "uuid", "target" "jsonb", "command" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."reset_notification_policies_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kind" "text", "target_value" "text", "target_reason" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  policy_row public.notification_org_policies%rowtype;
-  affected_count integer := 0;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
-  if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
-    raise exception 'notification policy reason required' using errcode = '22023';
-  end if;
-  if target_kind not in ('type', 'category', 'all')
-    or (target_kind in ('type', 'category') and nullif(btrim(coalesce(target_value, '')), '') is null)
-    or (target_kind = 'all' and target_value is not null) then
-    raise exception 'notification reset target is invalid' using errcode = '22023';
-  end if;
-
-  for policy_row in
-    select policy.*
-    from public.notification_org_policies policy
-    join public.notification_catalog entry
-      on entry.type_key = policy.type_key and entry.schema_version = policy.schema_version
-    where policy.workspace_id = target_workspace_id
-      and (
-        target_kind = 'all'
-        or (target_kind = 'type' and policy.type_key = target_value)
-        or (target_kind = 'category' and entry.category = target_value)
-      )
-    for update of policy
-  loop
-    delete from public.notification_org_policies where id = policy_row.id;
-    affected_count := affected_count + 1;
-    insert into public.notification_audit_log (
-      workspace_id, actor_user_id, action, target_type, target_id, reason, metadata
-    ) values (
-      target_workspace_id, actor_user_id, 'notification.policy.reset',
-      'notification_org_policy', policy_row.id::text, btrim(target_reason),
-      jsonb_build_object(
-        'type_key', policy_row.type_key,
-        'scope_kind', case
-          when policy_row.role_id is not null then 'role'
-          when policy_row.location_id is not null then 'location'
-          else 'global'
-        end,
-        'before_version', policy_row.version,
-        'after_version', null,
-        'before', to_jsonb(policy_row)
-      )
-    );
-  end loop;
-
-  return jsonb_build_object('status', 'reset', 'affected', affected_count);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."reset_notification_policies_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kind" "text", "target_value" "text", "target_reason" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -21041,282 +18536,6 @@ $$;
 
 
 ALTER FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."resolve_notification_policy_v1_service"("target_workspace_id" "uuid", "target_user_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_role_id" "uuid" DEFAULT NULL::"uuid", "target_location_id" "uuid" DEFAULT NULL::"uuid", "target_event_context" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  catalog public.notification_catalog%rowtype;
-  membership public.workspace_memberships%rowtype;
-  global_policy public.notification_org_policies%rowtype;
-  role_policy public.notification_org_policies%rowtype;
-  type_preference public.notification_user_preferences%rowtype;
-  category_preference public.notification_user_preferences%rowtype;
-  context_location_ids uuid[] := '{}'::uuid[];
-  location_policy_versions jsonb := '[]'::jsonb;
-  location_policy_denied boolean := false;
-  location_policy_cadence text;
-  preference_value text;
-  consent_state text;
-  eligible boolean := true;
-  cadence text := 'immediate';
-  reasons jsonb := '[]'::jsonb;
-begin
-  if target_channel not in ('in_app', 'email', 'push') then
-    raise exception 'unsupported notification channel' using errcode = '22023';
-  end if;
-  if jsonb_typeof(coalesce(target_event_context, '{}'::jsonb)) <> 'object' then
-    raise exception 'notification event context must be an object' using errcode = '22023';
-  end if;
-
-  select * into catalog
-  from public.notification_catalog entry
-  where entry.type_key = target_type_key
-    and entry.schema_version = 1
-    and entry.lifecycle = 'active';
-
-  if catalog.type_key is null then
-    return jsonb_build_object(
-      'decision', 'deny', 'eligible', false, 'cadence', 'immediate',
-      'reason_chain', jsonb_build_array('catalog_inactive'),
-      'versions', jsonb_build_object('schema_version', 1),
-      'channels', jsonb_build_object(target_channel, jsonb_build_object(
-        'eligible', false, 'cadence', 'immediate',
-        'reason_chain', jsonb_build_array('catalog_inactive')
-      ))
-    );
-  end if;
-  reasons := reasons || jsonb_build_array('catalog_active');
-  cadence := catalog.default_cadence;
-
-  select * into membership
-  from public.workspace_memberships member
-  where member.workspace_id = target_workspace_id
-    and member.user_id = target_user_id;
-  if membership.id is null or (membership.status <> 'active' and not (target_type_key like 'people.documents.%' and target_type_key<>'people.documents.review' and membership.status='pending_activation')) then
-    eligible := false;
-    reasons := reasons || jsonb_build_array('membership_inactive');
-  else
-    reasons := reasons || jsonb_build_array('membership_active');
-  end if;
-
-  if membership.id is not null
-    and target_role_id is not null
-    and membership.role_id <> target_role_id then
-    eligible := false;
-    reasons := reasons || jsonb_build_array('role_context_mismatch');
-  end if;
-
-  if exists (
-    select 1 from public.employee_profiles employee
-    where employee.workspace_id = target_workspace_id
-      and employee.user_id = target_user_id
-      and employee.archived_at is not null
-  ) then
-    eligible := false;
-    reasons := reasons || jsonb_build_array('employee_archived');
-  end if;
-
-  if target_location_id is not null then
-    context_location_ids := array[target_location_id];
-  elsif jsonb_typeof(target_event_context->'location_ids') = 'array' then
-    select coalesce(array_agg(distinct value::uuid), '{}'::uuid[])
-    into context_location_ids
-    from jsonb_array_elements_text(target_event_context->'location_ids') item(value);
-  elsif nullif(target_event_context->>'location_id', '') is not null then
-    context_location_ids := array[(target_event_context->>'location_id')::uuid];
-  end if;
-
-  if cardinality(context_location_ids) > 0 then
-    if exists (
-      select 1 from unnest(context_location_ids) context_location(location_id)
-      where not exists (
-        select 1 from public.locations location
-        where location.id = context_location.location_id
-          and location.workspace_id = target_workspace_id
-      )
-    ) then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('location_context_mismatch');
-    elsif membership.id is null or (
-      not membership.all_locations
-      and not exists (
-        select 1 from public.membership_location_scopes scope
-        where scope.workspace_id = target_workspace_id
-          and scope.membership_id = membership.id
-          and scope.location_id = any(context_location_ids)
-      )
-    ) then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('location_scope_denied');
-    else
-      reasons := reasons || jsonb_build_array('location_scope_allowed');
-    end if;
-  end if;
-
-  select * into global_policy
-  from public.notification_org_policies policy
-  where policy.workspace_id = target_workspace_id
-    and policy.type_key = target_type_key
-    and policy.role_id is null
-    and policy.location_id is null;
-
-  if membership.role_id is not null then
-    select * into role_policy
-    from public.notification_org_policies policy
-    where policy.workspace_id = target_workspace_id
-      and policy.type_key = target_type_key
-      and policy.role_id = membership.role_id
-      and policy.location_id is null;
-  end if;
-
-  if cardinality(context_location_ids) > 0 then
-    select
-      coalesce(bool_or(not policy.enabled or not (target_channel = any(policy.allowed_channels))), false),
-      coalesce(jsonb_agg(jsonb_build_object('location_id', policy.location_id, 'version', policy.version) order by policy.location_id), '[]'::jsonb),
-      case
-        when bool_or(policy.cadence = 'weekly_digest') then 'weekly_digest'
-        when bool_or(policy.cadence = 'daily_digest') then 'daily_digest'
-        else null
-      end
-    into location_policy_denied, location_policy_versions, location_policy_cadence
-    from public.notification_org_policies policy
-    where policy.workspace_id = target_workspace_id
-      and policy.type_key = target_type_key
-      and policy.location_id = any(context_location_ids)
-      and policy.role_id is null;
-  end if;
-
-  if not (target_channel = any(catalog.supported_channels)) then
-    eligible := false;
-    reasons := reasons || jsonb_build_array('catalog_channel_unsupported');
-  else
-    reasons := reasons || jsonb_build_array('catalog_channel_supported');
-  end if;
-
-  if global_policy.id is not null then
-    reasons := reasons || jsonb_build_array('organization_policy_v' || global_policy.version::text);
-    cadence := global_policy.cadence;
-    if not global_policy.enabled or not (target_channel = any(global_policy.allowed_channels)) then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('organization_policy_denied');
-    end if;
-  else
-    reasons := reasons || jsonb_build_array('organization_default');
-  end if;
-
-  if role_policy.id is not null then
-    reasons := reasons || jsonb_build_array('role_policy_v' || role_policy.version::text);
-    cadence := role_policy.cadence;
-    if not role_policy.enabled or not (target_channel = any(role_policy.allowed_channels)) then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('role_policy_denied');
-    end if;
-  end if;
-
-  if jsonb_array_length(location_policy_versions) > 0 then
-    reasons := reasons || jsonb_build_array('location_policy');
-    cadence := coalesce(location_policy_cadence, cadence);
-    if location_policy_denied then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('location_policy_denied');
-    end if;
-  end if;
-
-  select * into type_preference
-  from public.notification_user_preferences preference
-  where preference.workspace_id = target_workspace_id
-    and preference.user_id = target_user_id
-    and preference.preference_scope = 'type'
-    and preference.scope_key = target_type_key;
-  select * into category_preference
-  from public.notification_user_preferences preference
-  where preference.workspace_id = target_workspace_id
-    and preference.user_id = target_user_id
-    and preference.preference_scope = 'category'
-    and preference.scope_key = catalog.category;
-
-  preference_value := coalesce(
-    nullif(type_preference.channel_preferences->>target_channel,'inherit'),
-    nullif(category_preference.channel_preferences->>target_channel,'inherit'),
-    role_policy.channel_defaults->>target_channel,
-    global_policy.channel_defaults->>target_channel,
-    public.notification_default_channels_service(target_user_id,target_type_key)->>target_channel,
-    'enabled'
-  );
-  cadence := coalesce(type_preference.cadence, category_preference.cadence, cadence);
-
-  if target_channel = 'in_app' and catalog.mandatory_in_app then
-    reasons := reasons || jsonb_build_array('mandatory_in_app');
-  elsif preference_value = 'disabled' then
-    eligible := false;
-    reasons := reasons || jsonb_build_array(
-      case
-        when type_preference.id is not null then 'user_type_preference_disabled'
-        when category_preference.id is not null then 'user_category_preference_disabled'
-        else 'organization_channel_default_disabled'
-      end
-    );
-  elsif type_preference.id is not null then
-    reasons := reasons || jsonb_build_array('user_type_preference');
-  elsif category_preference.id is not null then
-    reasons := reasons || jsonb_build_array('user_category_preference');
-  else
-    reasons := reasons || jsonb_build_array('user_default');
-  end if;
-
-  if target_channel in ('email', 'push') and eligible then
-    select consent.consent_state into consent_state
-    from public.notification_consents consent
-    where consent.workspace_id = target_workspace_id
-      and consent.user_id = target_user_id
-      and consent.channel = target_channel
-    order by consent.recorded_at desc, consent.id desc
-    limit 1;
-    if consent_state not in ('granted', 'not_required') or consent_state is null then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('consent_missing_or_withdrawn');
-    elsif not exists (
-      select 1 from public.notification_endpoints endpoint
-      where endpoint.workspace_id = target_workspace_id
-        and endpoint.user_id = target_user_id
-        and endpoint.channel = target_channel
-        and endpoint.status = 'active'
-    ) then
-      eligible := false;
-      reasons := reasons || jsonb_build_array('endpoint_unavailable_or_suppressed');
-    else
-      reasons := reasons || jsonb_build_array('consent_and_endpoint_active');
-    end if;
-  end if;
-
-  reasons := reasons || jsonb_build_array(case when eligible then 'allow' else 'deny' end);
-  return jsonb_build_object(
-    'decision', case when eligible then 'allow' else 'deny' end,
-    'eligible', eligible,
-    'cadence', cadence,
-    'reason_chain', reasons,
-    'versions', jsonb_build_object(
-      'catalog_schema_version', catalog.schema_version,
-      'organization_policy_version', global_policy.version,
-      'role_policy_version', role_policy.version,
-      'location_policy_versions', location_policy_versions,
-      'user_type_preference_version', type_preference.version,
-      'user_category_preference_version', category_preference.version
-    ),
-    'channels', jsonb_build_object(target_channel, jsonb_build_object(
-      'eligible', eligible,
-      'cadence', cadence,
-      'reason_chain', reasons
-    ))
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."resolve_notification_policy_v1_service"("target_workspace_id" "uuid", "target_user_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_role_id" "uuid", "target_location_id" "uuid", "target_event_context" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."resolve_workspace_context_service"("actor_user_id" "uuid", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "workspace_id" "uuid", "workspace_name" "text", "workspace_logo_storage_path" "text", "workspace_logo_file_name" "text", "workspace_logo_updated_at" timestamp with time zone, "schedule_logo_scale" numeric, "schedule_logo_offset_x" numeric, "schedule_logo_offset_y" numeric, "membership_id" "uuid", "workspace_role" "public"."workspace_role", "membership_role_id" "uuid", "membership_role_name" "text", "permission_keys" "text"[], "all_locations" boolean, "onboarding_status" "public"."onboarding_status", "onboarding_current_step" smallint, "onboarding_revision" integer, "actions" "text"[], "location_ids" "uuid"[], "document_restricted" boolean)
@@ -22897,345 +20116,6 @@ $_$;
 ALTER FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."save_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_scope_kind" "text", "target_scope_id" "uuid", "target_expected_version" integer, "target_enabled" boolean, "target_allowed_channels" "text"[], "target_cadence" "text", "target_reason" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  catalog_row public.notification_catalog%rowtype;
-  existing public.notification_org_policies%rowtype;
-  saved public.notification_org_policies%rowtype;
-  scoped_role_id uuid;
-  scoped_location_id uuid;
-  scope_name text;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.notifications.write');
-  if char_length(btrim(coalesce(target_reason, ''))) not between 3 and 500 then
-    raise exception 'notification policy reason required' using errcode = '22023';
-  end if;
-
-  select * into catalog_row
-  from public.notification_catalog entry
-  where entry.type_key = target_type_key
-    and entry.schema_version = target_schema_version
-    and entry.lifecycle = 'active';
-  if catalog_row.type_key is null then
-    raise exception 'active notification type not found' using errcode = 'P0002';
-  end if;
-  if cardinality(coalesce(target_allowed_channels, '{}'::text[])) = 0
-    or not target_allowed_channels <@ catalog_row.supported_channels then
-    raise exception 'notification channel is not supported' using errcode = '22023';
-  end if;
-  if target_cadence not in ('immediate', 'daily_digest', 'weekly_digest') then
-    raise exception 'notification cadence is invalid' using errcode = '22023';
-  end if;
-  if catalog_row.mandatory_in_app and (
-    not target_enabled or not ('in_app' = any(target_allowed_channels))
-  ) then
-    raise exception 'mandatory in-app notification cannot be disabled' using errcode = '22023';
-  end if;
-
-  if target_scope_kind = 'global' then
-    if target_scope_id is not null then
-      raise exception 'notification policy scope is invalid' using errcode = '22023';
-    end if;
-    scope_name := 'Organization';
-  elsif target_scope_kind = 'role' then
-    if target_scope_id is null then
-      raise exception 'notification policy scope is invalid' using errcode = '22023';
-    end if;
-    select role_row.id, role_row.name into scoped_role_id, scope_name
-    from public.workspace_roles role_row
-    where role_row.workspace_id = target_workspace_id and role_row.id = target_scope_id;
-    if scoped_role_id is null then
-      raise exception 'notification role scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
-    end if;
-  elsif target_scope_kind = 'location' then
-    if target_scope_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
-    end if;
-    select location.id, location.name into scoped_location_id, scope_name
-    from public.locations location
-    where location.workspace_id = target_workspace_id
-      and location.id = target_scope_id
-      and location.archived_at is null;
-    if scoped_location_id is null then
-      raise exception 'notification location scope not found' using errcode = '42501', hint = 'authz.out_of_scope';
-    end if;
-  else
-    raise exception 'notification policy scope is invalid' using errcode = '22023';
-  end if;
-
-  select * into existing
-  from public.notification_org_policies policy
-  where policy.workspace_id = target_workspace_id
-    and policy.type_key = target_type_key
-    and policy.role_id is not distinct from scoped_role_id
-    and policy.location_id is not distinct from scoped_location_id
-  for update;
-
-  if (existing.id is null and target_expected_version is not null)
-    or (existing.id is not null and target_expected_version is null)
-    or (existing.id is not null and existing.version <> target_expected_version) then
-    raise exception 'notification policy stale version' using errcode = 'PT409', hint = 'notification.policy_changed';
-  end if;
-
-  if existing.id is null then
-    insert into public.notification_org_policies (
-      workspace_id, type_key, schema_version, role_id, location_id,
-      enabled, allowed_channels, cadence, mandatory_in_app, updated_by
-    ) values (
-      target_workspace_id, target_type_key, target_schema_version,
-      scoped_role_id, scoped_location_id, target_enabled,
-      target_allowed_channels, target_cadence, catalog_row.mandatory_in_app,
-      actor_user_id
-    ) returning * into saved;
-  else
-    update public.notification_org_policies policy
-    set enabled = target_enabled,
-        allowed_channels = target_allowed_channels,
-        cadence = target_cadence,
-        mandatory_in_app = catalog_row.mandatory_in_app,
-        version = policy.version + 1,
-        updated_by = actor_user_id,
-        updated_at = now()
-    where policy.id = existing.id
-    returning * into saved;
-  end if;
-
-  insert into public.notification_audit_log (
-    workspace_id, actor_user_id, action, target_type, target_id, reason, metadata
-  ) values (
-    target_workspace_id, actor_user_id, 'notification.policy.saved',
-    'notification_org_policy', saved.id::text, btrim(target_reason),
-    jsonb_build_object(
-      'type_key', target_type_key,
-      'scope_kind', target_scope_kind,
-      'scope_id', target_scope_id,
-      'before_version', existing.version,
-      'after_version', saved.version,
-      'before', case when existing.id is null then null else to_jsonb(existing) end,
-      'after', to_jsonb(saved)
-    )
-  );
-
-  return jsonb_build_object(
-    'status', 'saved',
-    'policy', jsonb_build_object(
-      'id', saved.id,
-      'scope', jsonb_build_object(
-        'kind', target_scope_kind,
-        'id', target_scope_id,
-        'name', scope_name
-      ),
-      'enabled', saved.enabled,
-      'allowed_channels', to_jsonb(saved.allowed_channels),
-      'cadence', saved.cadence,
-      'version', saved.version,
-      'updated_by', saved.updated_by,
-      'updated_at', saved.updated_at,
-      'source', 'organization_policy'
-    )
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."save_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_scope_kind" "text", "target_scope_id" "uuid", "target_expected_version" integer, "target_enabled" boolean, "target_allowed_channels" "text"[], "target_cadence" "text", "target_reason" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."save_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_updates" "jsonb") RETURNS "jsonb"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  update_row jsonb;
-  requested_preference_scope text;
-  requested_scope_key text;
-  requested_channel_preferences jsonb;
-  requested_cadence text;
-  requested_timezone text;
-  requested_quiet_hours jsonb;
-  requested_safe_preview boolean;
-  expected_version integer;
-  existing public.notification_user_preferences%rowtype;
-  saved public.notification_user_preferences%rowtype;
-  saved_rows jsonb := '[]'::jsonb;
-  seen_keys text[] := array[]::text[];
-  changed_channel text;
-  changed_value text;
-  lock_reason text;
-  audit_before jsonb;
-begin
-  if not public.notification_actor_is_active_member_service(actor_user_id, target_workspace_id) then
-    raise exception 'notification preference access required' using errcode = '42501';
-  end if;
-  if jsonb_typeof(target_updates) <> 'array'
-    or jsonb_array_length(target_updates) = 0
-    or jsonb_array_length(target_updates) > 50 then
-    raise exception 'valid notification preference patch required' using errcode = '22023';
-  end if;
-
-  for update_row in select * from jsonb_array_elements(target_updates)
-  loop
-    requested_preference_scope := update_row->>'preference_scope';
-    requested_scope_key := btrim(coalesce(update_row->>'scope_key', ''));
-    requested_channel_preferences := coalesce(update_row->'channel_preferences', '{}'::jsonb);
-    requested_cadence := nullif(update_row->>'cadence', '');
-    requested_timezone := nullif(update_row->>'timezone', '');
-    requested_quiet_hours := case
-      when update_row ? 'quiet_hours' and update_row->'quiet_hours' <> 'null'::jsonb
-      then update_row->'quiet_hours'
-      else null
-    end;
-    requested_safe_preview := coalesce((update_row->>'safe_preview_enabled')::boolean, true);
-    expected_version := case
-      when update_row ? 'expected_version' and update_row->'expected_version' <> 'null'::jsonb
-      then (update_row->>'expected_version')::integer
-      else null
-    end;
-
-    if array[requested_preference_scope || ':' || requested_scope_key] && seen_keys then
-      raise exception 'duplicate notification preference scope' using errcode = '22023';
-    end if;
-    seen_keys := seen_keys || (requested_preference_scope || ':' || requested_scope_key);
-
-    if requested_preference_scope not in ('category', 'type')
-      or requested_scope_key = ''
-      or jsonb_typeof(requested_channel_preferences) <> 'object'
-      or requested_channel_preferences - array['in_app', 'email', 'push']::text[] <> '{}'::jsonb
-      or exists (
-        select 1
-        from jsonb_each_text(requested_channel_preferences) entry
-        where entry.value not in ('enabled', 'disabled', 'inherit')
-      )
-      or (requested_cadence is not null and requested_cadence not in ('immediate', 'daily_digest', 'weekly_digest'))
-      or (requested_timezone is not null and char_length(requested_timezone) > 80)
-      or (requested_quiet_hours is not null and (
-        jsonb_typeof(requested_quiet_hours) <> 'object'
-        or not (requested_quiet_hours ? 'enabled')
-        or not (requested_quiet_hours ? 'start')
-        or not (requested_quiet_hours ? 'end')
-      )) then
-      raise exception 'valid notification preference required' using errcode = '22023';
-    end if;
-
-    if requested_preference_scope = 'category' and not exists (
-      select 1 from public.notification_catalog catalog
-      where catalog.lifecycle = 'active'
-        and catalog.notification_scope = 'workspace' and catalog.category = requested_scope_key
-    ) then
-      raise exception 'notification preference scope not found' using errcode = 'P0002';
-    end if;
-    if requested_preference_scope = 'type' and not exists (
-      select 1 from public.notification_catalog catalog
-      where catalog.lifecycle = 'active'
-        and catalog.type_key = requested_scope_key
-    ) then
-      raise exception 'notification preference scope not found' using errcode = 'P0002';
-    end if;
-
-    select * into existing
-    from public.notification_user_preferences preference
-    where preference.workspace_id = target_workspace_id
-      and preference.user_id = actor_user_id
-      and preference.preference_scope = requested_preference_scope
-      and preference.scope_key = requested_scope_key
-    for update;
-    if requested_preference_scope='type' and exists(select 1 from public.notification_catalog where type_key=requested_scope_key and notification_scope='account') then
-      raise exception 'account security notifications are mandatory' using errcode='42501';
-    end if;
-    for changed_channel, changed_value in
-      select entry.key, entry.value from jsonb_each_text(requested_channel_preferences) entry
-    loop
-      if changed_value = 'enabled' and changed_value is distinct from existing.channel_preferences->>changed_channel then
-        if requested_preference_scope = 'type' then
-          lock_reason := public.notification_user_channel_lock_reason_service(
-            actor_user_id,
-            target_workspace_id,
-            requested_scope_key,
-            changed_channel
-          );
-          if lock_reason <> 'available' then
-            raise exception 'notification channel managed by organization' using errcode = '42501';
-          end if;
-        elsif exists (
-          select 1
-          from public.notification_catalog catalog
-          where catalog.lifecycle = 'active'
-            and catalog.notification_scope = 'workspace' and catalog.category = requested_scope_key
-            and public.notification_user_channel_lock_reason_service(
-              actor_user_id,
-              target_workspace_id,
-              catalog.type_key,
-              changed_channel
-            ) <> 'available'
-        ) then
-          raise exception 'notification channel managed by organization' using errcode = '42501';
-        end if;
-      end if;
-    end loop;
-
-    audit_before := case
-      when existing.id is null then null
-      else public.notification_user_preference_to_json(existing)
-    end;
-
-    if existing.id is not null then
-      if expected_version is null or existing.version <> expected_version then
-        raise exception 'stale notification preference version' using errcode = 'PT409', hint = 'notification.preference_changed';
-      end if;
-      update public.notification_user_preferences
-      set channel_preferences = existing.channel_preferences || requested_channel_preferences,
-          cadence = requested_cadence,
-          timezone = requested_timezone,
-          quiet_hours = requested_quiet_hours,
-          safe_preview_enabled = requested_safe_preview,
-          version = public.notification_user_preferences.version + 1,
-          updated_at = now()
-      where id = existing.id
-      returning * into saved;
-    else
-      if expected_version is not null then
-        raise exception 'notification preference not found' using errcode = 'P0002';
-      end if;
-      insert into public.notification_user_preferences (
-        workspace_id, user_id, preference_scope, scope_key,
-        channel_preferences, cadence, timezone, quiet_hours, safe_preview_enabled
-      ) values (
-        target_workspace_id, actor_user_id, requested_preference_scope, requested_scope_key,
-        requested_channel_preferences, requested_cadence, requested_timezone,
-        requested_quiet_hours, requested_safe_preview
-      )
-      returning * into saved;
-    end if;
-
-    insert into public.notification_audit_log (
-      workspace_id, actor_user_id, action, target_type, target_id, reason, metadata
-    ) values (
-      target_workspace_id,
-      actor_user_id,
-      'notification.preference.saved',
-      'notification_user_preference',
-      saved.id::text,
-      null,
-      jsonb_build_object(
-        'before', audit_before,
-        'after', public.notification_user_preference_to_json(saved)
-      )
-    );
-
-    saved_rows := saved_rows || jsonb_build_array(public.notification_user_preference_to_json(saved));
-  end loop;
-
-  return jsonb_build_object('status', 'saved', 'preferences', saved_rows);
-end;
-$$;
-
-
-ALTER FUNCTION "public"."save_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_updates" "jsonb") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."save_own_employment_contact_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "contact_name" "text", "contact_relationship" "text", "contact_phone" "text", "contact_email" "text" DEFAULT ''::"text", "personal_phone" "text" DEFAULT NULL::"text") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -23948,7 +20828,6 @@ declare
     'open_shifts',
     'announcements',
     'todos',
-    'notifications',
     'quick_actions'
   ];
 begin
@@ -24573,7 +21452,7 @@ declare
   people uuid[];
 begin
   perform app_private.authorize(actor_user_id, w, 'announcement.read');
-  if target_action is null or target_action not in ('unschedule', 'unpublish', 'archive', 'bring_back', 'remind') then
+  if target_action is null or target_action not in ('unschedule', 'unpublish', 'archive', 'bring_back') then
     raise exception 'valid announcement action required' using errcode = '22023', hint = 'announcement.invalid';
   end if;
   perform pg_advisory_xact_lock(hashtextextended(w::text, 931));
@@ -24600,8 +21479,7 @@ begin
      or (target_action = 'unschedule' and shown not in ('scheduled', 'publish_failed'))
      or (target_action = 'unpublish' and shown <> 'published')
      or (target_action = 'archive' and shown not in ('draft', 'unpublished', 'past'))
-     or (target_action = 'bring_back' and shown <> 'unpublished')
-     or (target_action = 'remind' and (shown <> 'published' or not item.ask_ack)) then
+     or (target_action = 'bring_back' and shown <> 'unpublished') then
     raise exception 'This post changed since you opened it.' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
@@ -24614,7 +21492,7 @@ begin
     update public.announcements set status = 'unpublished', unpublished_at = now(), delivered_to = '{}' where id = item.id;
   elsif target_action = 'archive' then
     update public.announcements set archived_at = now(), delivered_to = '{}' where id = item.id;
-  elsif target_action = 'bring_back' then
+  else
     back := app_private.announcement_bring_back(actor_user_id, item, target_bring_back,
       app_private.announcement_back_rows(item, null, null, '[]'::jsonb));
     if jsonb_array_length(back) = 0 then
@@ -24623,14 +21501,6 @@ begin
     people := array(select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
                     where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false));
     told := case when item.starts_on is null then 0 else coalesce(cardinality(people), 0) end;
-  else
-    people := array(select who from unnest(app_private.announcement_respondents(item)) who
-                    where not exists (select 1 from public.announcement_acknowledgements ack
-                                      where ack.announcement_id = item.id and ack.user_id = who));
-    if cardinality(people) = 0 then
-      raise exception 'Everyone acknowledged.' using errcode = 'PT409', hint = 'announcement.changed';
-    end if;
-    told := cardinality(people);
   end if;
 
   update public.announcements set revision = revision + 1, updated_by = actor_user_id, updated_at = now()
@@ -24638,12 +21508,12 @@ begin
   insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
   values (w, item.id, actor_user_id,
     case target_action when 'unschedule' then 'unscheduled' when 'unpublish' then 'unpublished' when 'archive' then 'archived'
-                       when 'bring_back' then 'brought_back' else 'reminded' end,
-    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'bring_back', 'remind') then told end,
+                       else 'brought_back' end,
+    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'bring_back') then told end,
       'brought_back', nullif(jsonb_array_length(back), 0))));
   insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
   values (w, actor_user_id, 'announcement.' || case target_action when 'unschedule' then 'unscheduled'
-      when 'unpublish' then 'unpublished' when 'archive' then 'archived' when 'bring_back' then 'brought_back' else 'reminded' end,
+      when 'unpublish' then 'unpublished' when 'archive' then 'archived' else 'brought_back' end,
     'announcement', item.id::text, jsonb_build_object('told', told, 'brought_back', jsonb_array_length(back)));
   return jsonb_build_object('status', item.status, 'display_status', app_private.announcement_display_status(item),
     'announcement_id', item.id, 'revision', item.revision, 'archived_at', item.archived_at, 'told', told);
@@ -25136,72 +22006,6 @@ end; $$;
 ALTER FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text", "private_msg" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") RETURNS "void"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-declare loc uuid; recipients uuid[]; reviewers uuid[]; c public.shift_exchange_cases%rowtype; recipient uuid; body text; offered jsonb;
-begin
- select * into c from public.shift_exchange_cases where id=cid and workspace_id=w;
- loc:=(c.offered_snapshot->>'location_id')::uuid;
- select coalesce(array_agg(distinct e.user_id),'{}'::uuid[]) into recipients from public.employee_profiles e join public.workspace_memberships m on m.workspace_id=w and m.user_id=e.user_id and m.status='active'
- where e.workspace_id=w and e.archived_at is null and ((e.id=c.owner_id and act<>'other_selected') or exists(select 1 from public.shift_exchange_applications a where a.case_id=cid and a.employee_id=e.id and (aid is null or a.id=aid) and (act<>'terms_changed' or a.status in ('invited','pending_manager')))) and e.user_id is distinct from actor;
- foreach recipient in array recipients loop
-  body:=case when act='transfer_completed' then
-   case when c.kind='swap' then 'Your swap is approved. Your updated shifts are now your responsibility. Open your schedule to review both changes.'
-    when exists(select 1 from public.employee_profiles e where e.id=c.owner_id and e.user_id=recipient) then 'Your cover is approved. You are no longer responsible for this shift.'
-    else 'Your pickup is approved. This shift is now assigned to you and is your responsibility.' end
-   -- BL-910: a declined application's reason is written for the applicant alone.
-   when act='application_rejected' and not exists(select 1 from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id
-    where a.id=aid and e.user_id=recipient) then 'A request for your shift was declined. You are still responsible for this shift.'
-   else msg end;
-  perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.status_changed',1,actor,'shift_exchange_cases',cid::text,
-   jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_id',loc,'location_ids',jsonb_build_array(loc),'recipient_user_ids',jsonb_build_array(recipient),
-   'audience_contract','shift_change_participants','category','request','title',case when act='transfer_completed' then 'Shift change approved' when act='other_selected' then 'Another teammate was selected' when act='peer_invited' then 'A teammate needs your response' else 'Shift request updated' end,
-   'body',body,'safe_preview','A shift request was updated.','action_url','/app/employee-hub/shift-hub?case='||cid::text||'&hub_view=requests','group_key','shift_exchange:'||cid::text),now());
- end loop;
- if act='cover_opened' then
-  offered:=public.shift_exchange_shift(w,c.offered_source_id);
-  select coalesce(array_agg(e.user_id),'{}'::uuid[]) into recipients from public.employee_profiles e
-   join public.workspace_memberships m on m.workspace_id=w and m.user_id=e.user_id and m.status='active'
-   where e.workspace_id=w and e.archived_at is null and e.id<>c.owner_id and app_private.eligibility(w,e.id,offered,'{"operation":"release_pickup"}')->>'status'='eligible';
-  if cardinality(recipients)>0 then
-   perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.status_changed',1,actor,'shift_exchange_cases',cid::text,
-    jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_id',loc,'location_ids',jsonb_build_array(loc),'recipient_user_ids',to_jsonb(recipients),
-    'audience_contract','eligible_shift_cover_candidates','category','request','title','A shift is available for cover','body',(offered->>'location_name')||' · '||(offered->>'date')||' · '||(offered->>'start_time')||'–'||(offered->>'end_time')||'. Apply in Shift Hub; final assignment requires manager approval.',
-    'safe_preview','A teammate is looking for cover.','action_url','/app/employee-hub/shift-hub?hub_view=available&q='||(offered->>'date'),'group_key','shift_exchange_available:'||cid::text),now());
-  end if;
- end if;
- if act in('application_submitted','peer_accepted','scope_approved') or
-  (act='terms_changed' and exists(select 1 from public.shift_exchange_applications where case_id=cid and status='pending_manager')) then
- -- K-S4: the people who decide the case at each location, its managers when
- -- it has any who may; else the admins and the owner who may (D3, K-S1).
- with place as (
-  select distinct x loc from unnest(array_remove(array[loc,(c.requested_snapshot->>'location_id')::uuid],null)) x
- ), decider as (
-  select m.user_id,place.loc,(app_private.actor(m.user_id,w)).class cls
-  from public.workspace_memberships m cross join place
-  where m.workspace_id=w and m.status='active' and m.user_id is distinct from actor
-   and not exists(select 1 from public.shift_exchange_applications a where a.case_id=cid
-    and (a.id=aid or (act='terms_changed' and a.status='pending_manager'))
-    and app_private.exchange_decision_reason(m.user_id,w,c.owner_id,a.employee_id,place.loc) is not null)
-   and app_private.exchange_decision_reason(m.user_id,w,c.owner_id,null,place.loc) is null
- )
- select coalesce(array_agg(distinct d.user_id),'{}'::uuid[]) into reviewers from decider d
- where d.cls='manager' or not exists(select 1 from decider x where x.loc=d.loc and x.cls='manager');
- if cardinality(reviewers)>0 then
- perform public.enqueue_notification_outbox_service(w,gen_random_uuid(),'requests.shift_change.submitted',1,actor,'shift_exchange_cases',cid::text,
- jsonb_build_object('correlation_id',eid,'request_id',cid,'request_event_id',eid,'request_action',act,'location_ids',to_jsonb(array_remove(array[loc,(c.requested_snapshot->>'location_id')::uuid],null)),'recipient_user_ids',to_jsonb(reviewers),
- 'audience_contract','schedule_request_reviewers','category','request','title','Shift change ready for review','body','A teammate is ready. Review the candidates before approving.',
- 'safe_preview','A shift request needs review.','action_url','/app/schedule/requests?tab=shift-changes&case='||cid::text,'group_key','shift_exchange_review:'||cid::text),now());
- end if;
- end if;
-end; $$;
-
-
-ALTER FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."shift_exchange_fingerprint"("w" "uuid", "s" "jsonb", "t" "jsonb") RETURNS "text"
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -25268,70 +22072,6 @@ end; $$;
 
 
 ALTER FUNCTION "public"."shift_exchange_live_status"("w" "uuid", "cid" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."shift_exchange_notification_allowed"("oid" "uuid", "recipient" "uuid") RETURNS boolean
-    LANGUAGE "plpgsql" STABLE
-    SET "search_path" TO ''
-    AS $$
-declare o public.notification_outbox%rowtype; c public.shift_exchange_cases%rowtype;
- e public.shift_exchange_events%rowtype; person uuid; offered jsonb; audience text;
-begin
- select * into o from public.notification_outbox where id=oid;
- if o.id is null then return false; end if;
- if o.subject_type<>'shift_exchange_cases' then return true; end if;
- select * into c from public.shift_exchange_cases where workspace_id=o.workspace_id and id::text=o.subject_id;
- if c.id is null or not app_private.workspace_allows_interactive_access(o.workspace_id)
-  or not exists(select 1 from public.workspace_memberships m where m.workspace_id=o.workspace_id and m.user_id=recipient and m.status='active') then return false; end if;
- select * into e from public.shift_exchange_events where workspace_id=o.workspace_id and case_id=c.id and id::text=o.payload->>'request_event_id';
- if e.id is null then return false; end if;
- select id into person from public.employee_profiles where workspace_id=o.workspace_id and user_id=recipient and archived_at is null;
- audience:=o.payload->>'audience_contract';
- if audience='schedule_request_reviewers' then
-  return public.shift_exchange_live_status(o.workspace_id,c.id)='open'
-   and exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.status='pending_manager')
-   -- Still somebody who decides it (D3, K-S1).
-   and exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
-    where app_private.exchange_decision_reason(recipient,o.workspace_id,c.owner_id,
-     (select a.employee_id from public.shift_exchange_applications a where a.id=e.application_id),x) is null)
-   and (person is null or (person is distinct from c.owner_id and not exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.employee_id=person)));
- elsif audience='eligible_shift_cover_candidates' then
-  if public.shift_exchange_live_status(o.workspace_id,c.id)<>'open' or person is null or person=c.owner_id then return false; end if;
-  offered:=public.shift_exchange_shift(o.workspace_id,c.offered_source_id);
-  return coalesce(app_private.eligibility(o.workspace_id,person,offered,'{"operation":"release_pickup"}')->>'status'='eligible',false);
- elsif audience='shift_change_participants' then
-  if person is null or not (person is not distinct from c.owner_id or exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=person and (e.application_id is null or a.id=e.application_id))) then return false; end if;
-
-  if e.action='terms_changed' then
-   return public.shift_exchange_live_status(o.workspace_id,c.id)='open' and
-    (person=c.owner_id or exists(select 1 from public.shift_exchange_applications a
-     where a.case_id=c.id and a.employee_id=person and a.status in ('invited','pending_manager')));
-  end if;
-  if e.action in('application_submitted','peer_accepted','scope_approved','peer_invited') then
-   return public.shift_exchange_live_status(o.workspace_id,c.id)='open'
-    and exists(select 1 from public.shift_exchange_applications a where a.id=e.application_id and a.status=case when e.action='peer_invited' then 'invited' else 'pending_manager' end);
-  end if;
-  return true;
- end if;
- return false;
-end; $$;
-
-
-ALTER FUNCTION "public"."shift_exchange_notification_allowed"("oid" "uuid", "recipient" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."shift_exchange_notification_policy_service"("oid" "uuid", "recipient" "uuid", "policy" "jsonb") RETURNS "jsonb"
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO ''
-    AS $$
- select case when public.shift_exchange_notification_allowed(oid,recipient) then policy
-  else policy || jsonb_build_object('decision','deny','eligible',false,
-   'reason_chain',coalesce(policy->'reason_chain','[]'::jsonb)||jsonb_build_array('shift_exchange_audience_changed'),
-   'channels',jsonb_build_object('in_app',jsonb_build_object('eligible',false,'cadence','immediate','reason_chain',jsonb_build_array('shift_exchange_audience_changed')))) end;
-$$;
-
-
-ALTER FUNCTION "public"."shift_exchange_notification_policy_service"("oid" "uuid", "recipient" "uuid", "policy" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."shift_exchange_preview"("actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid") RETURNS "jsonb"
@@ -25522,51 +22262,6 @@ $$;
 
 
 ALTER FUNCTION "public"."shift_exchange_shift"("w" "uuid", "source" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."shift_exchange_sync_notifications"("w" "uuid", "cid" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-declare pending integer;
-begin
- perform pg_advisory_xact_lock(hashtextextended(w::text||':'||cid::text,925));
- select count(*) into pending from public.shift_exchange_applications where workspace_id=w and case_id=cid and status='pending_manager';
- -- Keep actionable counts current even when the last candidate withdraws and
- -- no new reviewer outbox event is produced. Already-read rows remain read.
- update public.notification_inbox_items i set
-  title=case when i.group_key='shift_exchange_review:'||cid::text then format('%s %s ready for review',pending,case when pending=1 then 'candidate' else 'candidates' end) else i.title end,
-  body=format('%s %s awaiting manager approval. Review this request in Shift Hub.',pending,case when pending=1 then 'candidate is' else 'candidates are' end)
- from public.notification_recipients r join public.notification_outbox o on o.event_id=r.event_id and o.workspace_id=r.workspace_id
- where i.recipient_projection_id=r.id and i.workspace_id=w and o.subject_type='shift_exchange_cases' and o.subject_id=cid::text
-  and i.visibility_state='visible' and o.payload->>'request_action' in('application_submitted','peer_accepted','scope_approved');
-
- with ranked as (
-  select i.id,row_number() over(partition by r.recipient_user_id,i.group_key order by e.notification_sequence desc,i.id desc) position
-  from public.notification_inbox_items i
-  join public.notification_recipients r on r.id=i.recipient_projection_id and r.workspace_id=i.workspace_id
-  join public.notification_outbox o on o.event_id=r.event_id and o.workspace_id=r.workspace_id
-  join public.shift_exchange_events e on e.workspace_id=r.workspace_id and e.case_id=cid and e.id::text=o.payload->>'request_event_id'
-  where i.workspace_id=w and o.subject_type='shift_exchange_cases' and o.subject_id=cid::text and i.group_key like 'shift_exchange%'
- )
- update public.notification_inbox_items i set visibility_state='superseded' from ranked where i.id=ranked.id and ranked.position>1 and i.visibility_state='visible';
-
- -- Run on domain changes as well as relay delivery. A zero-candidate closure
- -- may produce no recipient event, but must still remove the old opportunity.
- update public.notification_inbox_items i set visibility_state='cancelled'
- from public.notification_recipients r join public.notification_outbox o on o.event_id=r.event_id and o.workspace_id=r.workspace_id
- where i.recipient_projection_id=r.id and i.workspace_id=w and o.subject_type='shift_exchange_cases' and o.subject_id=cid::text
-  and i.visibility_state='visible' and not public.shift_exchange_notification_allowed(o.id,r.recipient_user_id);
-
- update public.notifications n set title=i.title,body=i.body,
-  dismissed_at=case when i.visibility_state<>'visible' then coalesce(n.dismissed_at,now()) else n.dismissed_at end
- from public.notification_inbox_items i join public.notification_recipients r on r.id=i.recipient_projection_id
- join public.notification_outbox o on o.event_id=r.event_id and o.workspace_id=r.workspace_id
- where n.id=i.legacy_notification_id and i.workspace_id=w and o.subject_type='shift_exchange_cases' and o.subject_id=cid::text;
-end; $$;
-
-
-ALTER FUNCTION "public"."shift_exchange_sync_notifications"("w" "uuid", "cid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."shift_exchange_terms"("s" "jsonb") RETURNS "jsonb"
@@ -26216,10 +22911,6 @@ begin
   select rid, w, place from unnest(app_private.time_off_deciding_locations(w, employee.id)) place;
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, metadata)
   values (w, rid, 'submitted', actor, jsonb_build_object('periods', asked, 'operation_id', submit_time_off_service.operation_id));
-  -- Sent straight to an admin and the owner (nobody can vote somewhere): that was their one notice.
-  update public.schedule_time_off_requests set fallback_notified_at = now()
-  where id = rid and exists (select 1 from (select app_private.time_off_state(w, rid) s) x
-    where (x.s ->> 'fallback')::boolean or (x.s ->> 'unattended')::integer > 0);
   -- The owner's own time off is recorded approved (K12, BL-221).
   if public.time_off_is_the_owners_own(actor, w, rid) then
     perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
@@ -28670,19 +25361,6 @@ COMMENT ON TABLE "app_private"."authz_settings" IS 'The scope model in force. Ch
 
 
 
-CREATE TABLE IF NOT EXISTS "app_private"."document_notification_dedup" (
-    "workspace_id" "uuid" NOT NULL,
-    "employee_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "notification_key" "text" NOT NULL,
-    "event_id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
-);
-
-
-ALTER TABLE "app_private"."document_notification_dedup" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."signature_templates" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -28733,14 +25411,6 @@ UNION ALL
 
 
 ALTER VIEW "app_private"."lifecycle_definition" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "app_private"."notification_legacy_default_accounts" (
-    "user_id" "uuid" NOT NULL
-);
-
-
-ALTER TABLE "app_private"."notification_legacy_default_accounts" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "app_private"."role_permission_dependencies" (
@@ -28872,23 +25542,6 @@ CREATE TABLE IF NOT EXISTS "public"."account_deletion_requests" (
 
 
 ALTER TABLE "public"."account_deletion_requests" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."account_notification_items" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "type_key" "text" NOT NULL,
-    "schema_version" integer DEFAULT 1 NOT NULL,
-    "event_id" "uuid" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "seen_at" timestamp with time zone,
-    "read_at" timestamp with time zone,
-    "dismissed_at" timestamp with time zone,
-    CONSTRAINT "account_notification_items_type_key_check" CHECK (("type_key" ~~ 'security.account.%'::"text"))
-);
-
-
-ALTER TABLE "public"."account_notification_items" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."account_organization_history" (
@@ -29268,7 +25921,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_cases" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "final_approval_required" boolean NOT NULL,
     "document_notification_checked_at" timestamp with time zone,
-    "document_notified_restricted" boolean DEFAULT false NOT NULL,
     CONSTRAINT "employee_onboarding_cases_check" CHECK ((("status" = 'approved'::"public"."employee_onboarding_case_status") = (("approved_at" IS NOT NULL) AND ("approved_by" IS NOT NULL)))),
     CONSTRAINT "employee_onboarding_cases_revision_check" CHECK (("revision" > 0))
 );
@@ -29529,332 +26181,6 @@ ALTER VIEW "public"."membership_location_scopes" OWNER TO "postgres";
 
 COMMENT ON VIEW "public"."membership_location_scopes" IS 'Where each member works: their active location assignments. Derived, never written; readers move to app_private.scope_set() in stage 6.';
 
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_audit_log" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "actor_user_id" "uuid",
-    "action" "text" NOT NULL,
-    "target_type" "text" NOT NULL,
-    "target_id" "text" NOT NULL,
-    "reason" "text",
-    "metadata" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    "occurred_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_audit_log_action_check" CHECK ((("char_length"("btrim"("action")) >= 1) AND ("char_length"("btrim"("action")) <= 120))),
-    CONSTRAINT "notification_audit_log_metadata_check" CHECK (("jsonb_typeof"("metadata") = 'object'::"text")),
-    CONSTRAINT "notification_audit_log_reason_check" CHECK ((("reason" IS NULL) OR ("char_length"("reason") <= 500))),
-    CONSTRAINT "notification_audit_log_target_id_check" CHECK ((("char_length"("btrim"("target_id")) >= 1) AND ("char_length"("btrim"("target_id")) <= 160))),
-    CONSTRAINT "notification_audit_log_target_type_check" CHECK ((("char_length"("btrim"("target_type")) >= 1) AND ("char_length"("btrim"("target_type")) <= 80)))
-);
-
-
-ALTER TABLE "public"."notification_audit_log" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_catalog" (
-    "type_key" "text" NOT NULL,
-    "schema_version" integer NOT NULL,
-    "category" "text" NOT NULL,
-    "severity" "text" NOT NULL,
-    "sensitivity" "text" NOT NULL,
-    "supported_channels" "text"[] NOT NULL,
-    "default_cadence" "text" NOT NULL,
-    "audience_contract" "text" NOT NULL,
-    "action_route_contract" "jsonb" NOT NULL,
-    "dedupe_policy" "jsonb" NOT NULL,
-    "retention_class" "text" NOT NULL,
-    "template_key" "text" NOT NULL,
-    "lifecycle" "text" NOT NULL,
-    "mandatory_in_app" boolean DEFAULT false NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "notification_scope" "text" DEFAULT 'workspace'::"text" NOT NULL,
-    CONSTRAINT "notification_catalog_action_route_contract_check" CHECK ((("jsonb_typeof"("action_route_contract") = 'object'::"text") AND (("action_route_contract" ->> 'route'::"text") ~ '^/app(/|$)'::"text") AND ("jsonb_typeof"(("action_route_contract" -> 'allowed_query_keys'::"text")) = 'array'::"text"))),
-    CONSTRAINT "notification_catalog_category_check" CHECK (("category" = ANY (ARRAY['security'::"text", 'schedule'::"text", 'requests'::"text", 'payroll'::"text", 'people'::"text", 'communications'::"text", 'system'::"text"]))),
-    CONSTRAINT "notification_catalog_check" CHECK (((NOT "mandatory_in_app") OR ("category" = ANY (ARRAY['security'::"text", 'system'::"text"])))),
-    CONSTRAINT "notification_catalog_dedupe_policy_check" CHECK (("jsonb_typeof"("dedupe_policy") = 'object'::"text")),
-    CONSTRAINT "notification_catalog_default_cadence_check" CHECK (("default_cadence" = ANY (ARRAY['immediate'::"text", 'daily_digest'::"text", 'weekly_digest'::"text"]))),
-    CONSTRAINT "notification_catalog_lifecycle_check" CHECK (("lifecycle" = ANY (ARRAY['defined'::"text", 'active'::"text", 'retired'::"text"]))),
-    CONSTRAINT "notification_catalog_notification_scope_check" CHECK (("notification_scope" = ANY (ARRAY['workspace'::"text", 'account'::"text"]))),
-    CONSTRAINT "notification_catalog_retention_class_check" CHECK (("retention_class" = ANY (ARRAY['standard_90d'::"text", 'sensitive_30d'::"text", 'regulated_1y'::"text"]))),
-    CONSTRAINT "notification_catalog_schema_version_check" CHECK (("schema_version" > 0)),
-    CONSTRAINT "notification_catalog_sensitivity_check" CHECK (("sensitivity" = ANY (ARRAY['internal'::"text", 'confidential'::"text", 'restricted'::"text"]))),
-    CONSTRAINT "notification_catalog_severity_check" CHECK (("severity" = ANY (ARRAY['info'::"text", 'success'::"text", 'warning'::"text", 'action_required'::"text"]))),
-    CONSTRAINT "notification_catalog_supported_channels_check" CHECK ((("cardinality"("supported_channels") > 0) AND ("supported_channels" <@ ARRAY['in_app'::"text", 'email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_catalog_type_key_check" CHECK (("type_key" ~ '^[a-z][a-z0-9_]*(\.[a-z][a-z0-9_]*)+$'::"text"))
-);
-
-
-ALTER TABLE "public"."notification_catalog" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_consents" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "channel" "text" NOT NULL,
-    "consent_state" "text" NOT NULL,
-    "source" "text" NOT NULL,
-    "proof" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    "recorded_by" "uuid",
-    "recorded_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_consents_channel_check" CHECK (("channel" = ANY (ARRAY['email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_consents_consent_state_check" CHECK (("consent_state" = ANY (ARRAY['granted'::"text", 'withdrawn'::"text", 'not_required'::"text"]))),
-    CONSTRAINT "notification_consents_proof_check" CHECK (("jsonb_typeof"("proof") = 'object'::"text")),
-    CONSTRAINT "notification_consents_source_check" CHECK ((("char_length"("btrim"("source")) >= 1) AND ("char_length"("btrim"("source")) <= 80)))
-);
-
-
-ALTER TABLE "public"."notification_consents" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_delivery_attempts" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "recipient_projection_id" "uuid" NOT NULL,
-    "channel" "text" NOT NULL,
-    "logical_send_version" integer DEFAULT 1 NOT NULL,
-    "provider" "text" NOT NULL,
-    "provider_message_id" "text",
-    "template_version_id" "uuid" NOT NULL,
-    "status" "text" DEFAULT 'queued'::"text" NOT NULL,
-    "attempt_number" integer DEFAULT 0 NOT NULL,
-    "next_attempt_at" timestamp with time zone,
-    "error_class" "text",
-    "error_code" "text",
-    "accepted_at" timestamp with time zone,
-    "delivered_at" timestamp with time zone,
-    "engaged_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_delivery_attempts_attempt_number_check" CHECK (("attempt_number" >= 0)),
-    CONSTRAINT "notification_delivery_attempts_channel_check" CHECK (("channel" = ANY (ARRAY['email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_delivery_attempts_check" CHECK ((("delivered_at" IS NULL) OR ("accepted_at" IS NOT NULL))),
-    CONSTRAINT "notification_delivery_attempts_check1" CHECK ((("engaged_at" IS NULL) OR ("delivered_at" IS NOT NULL))),
-    CONSTRAINT "notification_delivery_attempts_logical_send_version_check" CHECK (("logical_send_version" > 0)),
-    CONSTRAINT "notification_delivery_attempts_provider_check" CHECK ((("char_length"("btrim"("provider")) >= 1) AND ("char_length"("btrim"("provider")) <= 80))),
-    CONSTRAINT "notification_delivery_attempts_status_check" CHECK (("status" = ANY (ARRAY['queued'::"text", 'attempting'::"text", 'provider_accepted'::"text", 'delivered'::"text", 'engaged'::"text", 'retry'::"text", 'permanent_failure'::"text", 'suppressed'::"text", 'dead_letter'::"text"])))
-);
-
-
-ALTER TABLE "public"."notification_delivery_attempts" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_endpoints" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "channel" "text" NOT NULL,
-    "provider" "text" NOT NULL,
-    "endpoint_hash" "text" NOT NULL,
-    "endpoint_ciphertext" "bytea" NOT NULL,
-    "status" "text" DEFAULT 'active'::"text" NOT NULL,
-    "suppression_reason" "text",
-    "last_confirmed_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_endpoints_channel_check" CHECK (("channel" = ANY (ARRAY['email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_endpoints_endpoint_hash_check" CHECK (("endpoint_hash" ~ '^[a-f0-9]{64}$'::"text")),
-    CONSTRAINT "notification_endpoints_provider_check" CHECK ((("char_length"("btrim"("provider")) >= 1) AND ("char_length"("btrim"("provider")) <= 80))),
-    CONSTRAINT "notification_endpoints_status_check" CHECK (("status" = ANY (ARRAY['active'::"text", 'invalid'::"text", 'suppressed'::"text", 'revoked'::"text"])))
-);
-
-
-ALTER TABLE "public"."notification_endpoints" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_events" (
-    "id" "uuid" NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "type_key" "text" NOT NULL,
-    "schema_version" integer NOT NULL,
-    "actor_user_id" "uuid",
-    "subject_type" "text" NOT NULL,
-    "subject_id" "text" NOT NULL,
-    "payload_digest" "text" NOT NULL,
-    "sensitivity" "text" NOT NULL,
-    "occurred_at" timestamp with time zone NOT NULL,
-    "supersedes_event_id" "uuid",
-    "cancelled_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_events_check" CHECK ((("supersedes_event_id" IS NULL) OR ("supersedes_event_id" <> "id"))),
-    CONSTRAINT "notification_events_check1" CHECK ((("cancelled_at" IS NULL) OR ("cancelled_at" >= "occurred_at"))),
-    CONSTRAINT "notification_events_payload_digest_check" CHECK (("payload_digest" ~ '^[a-f0-9]{64}$'::"text")),
-    CONSTRAINT "notification_events_sensitivity_check" CHECK (("sensitivity" = ANY (ARRAY['internal'::"text", 'confidential'::"text", 'restricted'::"text"]))),
-    CONSTRAINT "notification_events_subject_id_check" CHECK ((("char_length"("btrim"("subject_id")) >= 1) AND ("char_length"("btrim"("subject_id")) <= 160))),
-    CONSTRAINT "notification_events_subject_type_check" CHECK ((("char_length"("btrim"("subject_type")) >= 1) AND ("char_length"("btrim"("subject_type")) <= 80)))
-);
-
-
-ALTER TABLE "public"."notification_events" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_inbox_items" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "recipient_projection_id" "uuid" NOT NULL,
-    "legacy_notification_id" "uuid",
-    "title" "text" NOT NULL,
-    "body" "text" DEFAULT ''::"text" NOT NULL,
-    "safe_preview" "text" DEFAULT ''::"text" NOT NULL,
-    "action_url" "text",
-    "group_key" "text",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "seen_at" timestamp with time zone,
-    "read_at" timestamp with time zone,
-    "dismissed_at" timestamp with time zone,
-    "visibility_state" "text" DEFAULT 'visible'::"text" NOT NULL,
-    CONSTRAINT "notification_inbox_items_action_url_check" CHECK ((("action_url" IS NULL) OR (("char_length"("action_url") <= 500) AND ("action_url" ~ '^/app(/|$)'::"text")))),
-    CONSTRAINT "notification_inbox_items_body_check" CHECK (("char_length"("body") <= 5000)),
-    CONSTRAINT "notification_inbox_items_check" CHECK ((("read_at" IS NULL) OR ("seen_at" IS NOT NULL))),
-    CONSTRAINT "notification_inbox_items_check1" CHECK ((("dismissed_at" IS NULL) OR ("seen_at" IS NOT NULL))),
-    CONSTRAINT "notification_inbox_items_group_key_check" CHECK ((("group_key" IS NULL) OR ("char_length"("group_key") <= 160))),
-    CONSTRAINT "notification_inbox_items_safe_preview_check" CHECK (("char_length"("safe_preview") <= 240)),
-    CONSTRAINT "notification_inbox_items_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 160))),
-    CONSTRAINT "notification_inbox_items_visibility_state_check" CHECK (("visibility_state" = ANY (ARRAY['visible'::"text", 'superseded'::"text", 'cancelled'::"text"])))
-);
-
-
-ALTER TABLE "public"."notification_inbox_items" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_org_policies" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "type_key" "text" NOT NULL,
-    "schema_version" integer DEFAULT 1 NOT NULL,
-    "role_id" "uuid",
-    "location_id" "uuid",
-    "enabled" boolean DEFAULT true NOT NULL,
-    "allowed_channels" "text"[] DEFAULT ARRAY['in_app'::"text"] NOT NULL,
-    "channel_defaults" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL,
-    "cadence" "text" DEFAULT 'immediate'::"text" NOT NULL,
-    "quiet_hours_policy" "jsonb",
-    "mandatory_in_app" boolean DEFAULT false NOT NULL,
-    "version" integer DEFAULT 1 NOT NULL,
-    "updated_by" "uuid" NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_org_policies_allowed_channels_check" CHECK (("allowed_channels" <@ ARRAY['in_app'::"text", 'email'::"text", 'push'::"text"])),
-    CONSTRAINT "notification_org_policies_cadence_check" CHECK (("cadence" = ANY (ARRAY['immediate'::"text", 'daily_digest'::"text", 'weekly_digest'::"text"]))),
-    CONSTRAINT "notification_org_policies_channel_defaults_check" CHECK (("jsonb_typeof"("channel_defaults") = 'object'::"text")),
-    CONSTRAINT "notification_org_policies_check" CHECK ((("role_id" IS NULL) OR ("location_id" IS NULL))),
-    CONSTRAINT "notification_org_policies_check1" CHECK (((NOT "mandatory_in_app") OR ('in_app'::"text" = ANY ("allowed_channels")))),
-    CONSTRAINT "notification_org_policies_quiet_hours_policy_check" CHECK ((("quiet_hours_policy" IS NULL) OR ("jsonb_typeof"("quiet_hours_policy") = 'object'::"text"))),
-    CONSTRAINT "notification_org_policies_version_check" CHECK (("version" > 0))
-);
-
-
-ALTER TABLE "public"."notification_org_policies" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_producer_registry" (
-    "type_key" "text" NOT NULL,
-    "schema_version" integer NOT NULL,
-    "producer_id" "text" NOT NULL,
-    "source_migration" "text" NOT NULL,
-    "source_function" "text" NOT NULL,
-    "integration_contract" "text" DEFAULT 'outbox_v1'::"text" NOT NULL,
-    "activated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_producer_registry_integration_contract_check" CHECK (("integration_contract" = ANY (ARRAY['outbox_v1'::"text", 'account_audit_v1'::"text"]))),
-    CONSTRAINT "notification_producer_registry_producer_id_check" CHECK ((("char_length"("btrim"("producer_id")) >= 1) AND ("char_length"("btrim"("producer_id")) <= 120))),
-    CONSTRAINT "notification_producer_registry_source_function_check" CHECK ((("char_length"("btrim"("source_function")) >= 1) AND ("char_length"("btrim"("source_function")) <= 160))),
-    CONSTRAINT "notification_producer_registry_source_migration_check" CHECK ((("char_length"("btrim"("source_migration")) >= 1) AND ("char_length"("btrim"("source_migration")) <= 160)))
-);
-
-
-ALTER TABLE "public"."notification_producer_registry" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_recipient_decisions" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "event_id" "uuid" NOT NULL,
-    "candidate_user_id" "uuid" NOT NULL,
-    "candidate_employee_id" "uuid",
-    "location_id" "uuid",
-    "channel" "text" NOT NULL,
-    "decision" "text" NOT NULL,
-    "cadence" "text" NOT NULL,
-    "reason_chain" "jsonb" NOT NULL,
-    "policy_snapshot" "jsonb" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_recipient_decisions_cadence_check" CHECK (("cadence" = ANY (ARRAY['immediate'::"text", 'daily_digest'::"text", 'weekly_digest'::"text"]))),
-    CONSTRAINT "notification_recipient_decisions_channel_check" CHECK (("channel" = ANY (ARRAY['in_app'::"text", 'email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_recipient_decisions_decision_check" CHECK (("decision" = ANY (ARRAY['allow'::"text", 'deny'::"text"]))),
-    CONSTRAINT "notification_recipient_decisions_policy_snapshot_check" CHECK (("jsonb_typeof"("policy_snapshot") = 'object'::"text")),
-    CONSTRAINT "notification_recipient_decisions_reason_chain_check" CHECK (("jsonb_typeof"("reason_chain") = 'array'::"text"))
-);
-
-
-ALTER TABLE "public"."notification_recipient_decisions" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_recipients" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "event_id" "uuid" NOT NULL,
-    "recipient_user_id" "uuid" NOT NULL,
-    "recipient_employee_id" "uuid",
-    "location_id" "uuid",
-    "audience_reason" "jsonb" NOT NULL,
-    "policy_snapshot" "jsonb" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "notification_recipients_audience_reason_check" CHECK (("jsonb_typeof"("audience_reason") = 'object'::"text")),
-    CONSTRAINT "notification_recipients_policy_snapshot_check" CHECK (("jsonb_typeof"("policy_snapshot") = 'object'::"text"))
-);
-
-
-ALTER TABLE "public"."notification_recipients" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notification_template_versions" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "type_key" "text" NOT NULL,
-    "schema_version" integer NOT NULL,
-    "channel" "text" NOT NULL,
-    "locale" "text" DEFAULT 'en'::"text" NOT NULL,
-    "template_version" integer NOT NULL,
-    "template_key" "text" NOT NULL,
-    "content" "jsonb" NOT NULL,
-    "status" "text" DEFAULT 'draft'::"text" NOT NULL,
-    "created_by" "uuid",
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "published_at" timestamp with time zone,
-    CONSTRAINT "notification_template_versions_channel_check" CHECK (("channel" = ANY (ARRAY['in_app'::"text", 'email'::"text", 'push'::"text"]))),
-    CONSTRAINT "notification_template_versions_check" CHECK ((("status" = 'published'::"text") = ("published_at" IS NOT NULL))),
-    CONSTRAINT "notification_template_versions_content_check" CHECK (("jsonb_typeof"("content") = 'object'::"text")),
-    CONSTRAINT "notification_template_versions_locale_check" CHECK (("locale" ~ '^[a-z]{2}(-[A-Z]{2})?$'::"text")),
-    CONSTRAINT "notification_template_versions_status_check" CHECK (("status" = ANY (ARRAY['draft'::"text", 'published'::"text", 'retired'::"text"]))),
-    CONSTRAINT "notification_template_versions_template_version_check" CHECK (("template_version" > 0))
-);
-
-
-ALTER TABLE "public"."notification_template_versions" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."notifications" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "recipient_user_id" "uuid" NOT NULL,
-    "category" "public"."notification_category" NOT NULL,
-    "title" "text" NOT NULL,
-    "body" "text" DEFAULT ''::"text" NOT NULL,
-    "action_url" "text",
-    "source_type" "text" NOT NULL,
-    "source_id" "uuid",
-    "event_key" "text" DEFAULT 'default'::"text" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "read_at" timestamp with time zone,
-    "dismissed_at" timestamp with time zone,
-    CONSTRAINT "notifications_action_url_check" CHECK ((("action_url" IS NULL) OR (("char_length"("action_url") <= 500) AND ("action_url" ~ '^/app(/|$)'::"text")))),
-    CONSTRAINT "notifications_body_check" CHECK (("char_length"("body") <= 2000)),
-    CONSTRAINT "notifications_event_key_check" CHECK ((("char_length"("btrim"("event_key")) >= 1) AND ("char_length"("btrim"("event_key")) <= 80))),
-    CONSTRAINT "notifications_source_type_check" CHECK ((("char_length"("btrim"("source_type")) >= 1) AND ("char_length"("btrim"("source_type")) <= 80))),
-    CONSTRAINT "notifications_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 160)))
-);
-
-
-ALTER TABLE "public"."notifications" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."onboarding_events" (
@@ -30336,23 +26662,11 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_events" (
     "message" "text" DEFAULT ''::"text" NOT NULL,
     "private_note" "text" DEFAULT ''::"text" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "notification_sequence" bigint NOT NULL,
     "details" "jsonb" DEFAULT '{}'::"jsonb" NOT NULL
 );
 
 
 ALTER TABLE "public"."shift_exchange_events" OWNER TO "postgres";
-
-
-ALTER TABLE "public"."shift_exchange_events" ALTER COLUMN "notification_sequence" ADD GENERATED ALWAYS AS IDENTITY (
-    SEQUENCE NAME "public"."shift_exchange_events_notification_sequence_seq"
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1
-);
-
 
 
 CREATE TABLE IF NOT EXISTS "public"."shift_exchange_votes" (
@@ -30887,16 +27201,6 @@ ALTER TABLE ONLY "app_private"."authz_settings"
 
 
 
-ALTER TABLE ONLY "app_private"."document_notification_dedup"
-    ADD CONSTRAINT "document_notification_dedup_pkey" PRIMARY KEY ("workspace_id", "employee_id", "user_id", "notification_key");
-
-
-
-ALTER TABLE ONLY "app_private"."notification_legacy_default_accounts"
-    ADD CONSTRAINT "notification_legacy_default_accounts_pkey" PRIMARY KEY ("user_id");
-
-
-
 ALTER TABLE ONLY "app_private"."role_permission_dependencies"
     ADD CONSTRAINT "role_permission_dependencies_pkey" PRIMARY KEY ("permission_key", "required_key");
 
@@ -30929,16 +27233,6 @@ ALTER TABLE ONLY "public"."account_deletion_deliveries"
 
 ALTER TABLE ONLY "public"."account_deletion_requests"
     ADD CONSTRAINT "account_deletion_requests_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."account_notification_items"
-    ADD CONSTRAINT "account_notification_items_event_id_key" UNIQUE ("event_id");
-
-
-
-ALTER TABLE ONLY "public"."account_notification_items"
-    ADD CONSTRAINT "account_notification_items_pkey" PRIMARY KEY ("id");
 
 
 
@@ -31259,196 +27553,6 @@ ALTER TABLE ONLY "public"."locations"
 
 ALTER TABLE ONLY "public"."manager_weekly_reminders"
     ADD CONSTRAINT "manager_weekly_reminders_pkey" PRIMARY KEY ("workspace_id", "employee_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_audit_log"
-    ADD CONSTRAINT "notification_audit_log_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_audit_log"
-    ADD CONSTRAINT "notification_audit_log_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_catalog"
-    ADD CONSTRAINT "notification_catalog_pkey" PRIMARY KEY ("type_key", "schema_version");
-
-
-
-ALTER TABLE ONLY "public"."notification_consents"
-    ADD CONSTRAINT "notification_consents_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_consents"
-    ADD CONSTRAINT "notification_consents_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempt_recipient_projection_id_chann_key" UNIQUE ("recipient_projection_id", "channel", "logical_send_version");
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempts_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempts_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_endpoints"
-    ADD CONSTRAINT "notification_endpoints_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_endpoints"
-    ADD CONSTRAINT "notification_endpoints_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_endpoints"
-    ADD CONSTRAINT "notification_endpoints_workspace_id_user_id_channel_endpoin_key" UNIQUE ("workspace_id", "user_id", "channel", "endpoint_hash");
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_legacy_notification_id_key" UNIQUE ("legacy_notification_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_recipient_projection_id_key" UNIQUE ("recipient_projection_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_workspace_id_type_key_role_id_loc_key" UNIQUE NULLS NOT DISTINCT ("workspace_id", "type_key", "role_id", "location_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_workspace_id_event_id_key" UNIQUE ("workspace_id", "event_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_producer_registry"
-    ADD CONSTRAINT "notification_producer_registry_pkey" PRIMARY KEY ("type_key", "schema_version", "producer_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisi_workspace_id_event_id_candida_key" UNIQUE ("workspace_id", "event_id", "candidate_user_id", "channel");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_workspace_id_event_id_recipient_use_key" UNIQUE ("workspace_id", "event_id", "recipient_user_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_template_versions"
-    ADD CONSTRAINT "notification_template_version_type_key_schema_version_chann_key" UNIQUE ("type_key", "schema_version", "channel", "locale", "template_version");
-
-
-
-ALTER TABLE ONLY "public"."notification_template_versions"
-    ADD CONSTRAINT "notification_template_versions_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_user_preferences"
-    ADD CONSTRAINT "notification_user_preferences_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notification_user_preferences"
-    ADD CONSTRAINT "notification_user_preferences_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notification_user_preferences"
-    ADD CONSTRAINT "notification_user_preferences_workspace_id_user_id_preferen_key" UNIQUE ("workspace_id", "user_id", "preference_scope", "scope_key");
-
-
-
-ALTER TABLE ONLY "public"."notifications"
-    ADD CONSTRAINT "notifications_id_workspace_id_key" UNIQUE ("id", "workspace_id");
-
-
-
-ALTER TABLE ONLY "public"."notifications"
-    ADD CONSTRAINT "notifications_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."notifications"
-    ADD CONSTRAINT "notifications_recipient_user_id_source_type_source_id_event_key" UNIQUE ("recipient_user_id", "source_type", "source_id", "event_key");
 
 
 
@@ -31967,10 +28071,6 @@ CREATE INDEX "account_deletion_requests_recovery_token_idx" ON "public"."account
 
 
 
-CREATE INDEX "account_notification_items_user_time" ON "public"."account_notification_items" USING "btree" ("user_id", "created_at" DESC, "id" DESC);
-
-
-
 CREATE UNIQUE INDEX "acknowledgement_current_requirement" ON "public"."employee_acknowledgement_envelopes" USING "btree" ("requirement_id") WHERE ("withdrawn_at" IS NULL);
 
 
@@ -32111,98 +28211,6 @@ CREATE UNIQUE INDEX "locations_workspace_short_name" ON "public"."locations" USI
 
 
 
-CREATE INDEX "notification_audit_log_workspace_idx" ON "public"."notification_audit_log" USING "btree" ("workspace_id", "occurred_at" DESC, "id" DESC);
-
-
-
-CREATE INDEX "notification_consents_latest_idx" ON "public"."notification_consents" USING "btree" ("workspace_id", "user_id", "channel", "recorded_at" DESC, "id" DESC);
-
-
-
-CREATE INDEX "notification_delivery_attempts_audit_idx" ON "public"."notification_delivery_attempts" USING "btree" ("workspace_id", "created_at" DESC, "id" DESC);
-
-
-
-CREATE INDEX "notification_delivery_attempts_queue_idx" ON "public"."notification_delivery_attempts" USING "btree" ("next_attempt_at", "created_at", "id") WHERE ("status" = ANY (ARRAY['queued'::"text", 'retry'::"text"]));
-
-
-
-CREATE INDEX "notification_endpoints_active_idx" ON "public"."notification_endpoints" USING "btree" ("workspace_id", "user_id", "channel") WHERE ("status" = 'active'::"text");
-
-
-
-CREATE INDEX "notification_events_subject_idx" ON "public"."notification_events" USING "btree" ("workspace_id", "subject_type", "subject_id", "occurred_at" DESC);
-
-
-
-CREATE INDEX "notification_events_workspace_occurred_idx" ON "public"."notification_events" USING "btree" ("workspace_id", "occurred_at" DESC, "id" DESC);
-
-
-
-CREATE INDEX "notification_inbox_items_page_idx" ON "public"."notification_inbox_items" USING "btree" ("workspace_id", "created_at" DESC, "id" DESC) WHERE (("dismissed_at" IS NULL) AND ("visibility_state" = 'visible'::"text"));
-
-
-
-CREATE INDEX "notification_inbox_items_unread_idx" ON "public"."notification_inbox_items" USING "btree" ("workspace_id", "created_at" DESC, "id" DESC) WHERE (("read_at" IS NULL) AND ("dismissed_at" IS NULL) AND ("visibility_state" = 'visible'::"text"));
-
-
-
-CREATE INDEX "notification_org_policies_workspace_idx" ON "public"."notification_org_policies" USING "btree" ("workspace_id", "type_key");
-
-
-
-CREATE INDEX "notification_outbox_available_idx" ON "public"."notification_outbox" USING "btree" ("available_at", "created_at", "id") WHERE ("status" = ANY (ARRAY['pending'::"text", 'retry'::"text"]));
-
-
-
-CREATE INDEX "notification_outbox_exchange_case" ON "public"."notification_outbox" USING "btree" ("workspace_id", "subject_id", "event_id") WHERE ("subject_type" = 'shift_exchange_cases'::"text");
-
-
-
-CREATE INDEX "notification_outbox_exchange_delivery" ON "public"."notification_outbox" USING "btree" ("workspace_id", "subject_id", "available_at", "created_at", "id") WHERE (("subject_type" = 'shift_exchange_cases'::"text") AND ("status" = ANY (ARRAY['pending'::"text", 'retry'::"text", 'leased'::"text"])));
-
-
-
-CREATE INDEX "notification_outbox_lease_expiry_idx" ON "public"."notification_outbox" USING "btree" ("lease_expires_at") WHERE ("status" = 'leased'::"text");
-
-
-
-CREATE INDEX "notification_outbox_staffing_delivery" ON "public"."notification_outbox" USING "btree" ("workspace_id", "subject_id", "available_at", "created_at", "id") WHERE (("subject_type" = 'lineup_staffing_notifications'::"text") AND ("status" = ANY (ARRAY['pending'::"text", 'retry'::"text", 'leased'::"text"])));
-
-
-
-CREATE INDEX "notification_recipient_decisions_event_idx" ON "public"."notification_recipient_decisions" USING "btree" ("workspace_id", "event_id", "decision");
-
-
-
-CREATE INDEX "notification_recipient_decisions_user_idx" ON "public"."notification_recipient_decisions" USING "btree" ("workspace_id", "candidate_user_id", "created_at" DESC);
-
-
-
-CREATE INDEX "notification_recipients_event_idx" ON "public"."notification_recipients" USING "btree" ("workspace_id", "event_id");
-
-
-
-CREATE INDEX "notification_recipients_user_idx" ON "public"."notification_recipients" USING "btree" ("workspace_id", "recipient_user_id", "created_at" DESC);
-
-
-
-CREATE INDEX "notification_template_versions_lookup_idx" ON "public"."notification_template_versions" USING "btree" ("type_key", "schema_version", "channel", "locale", "template_version" DESC);
-
-
-
-CREATE INDEX "notification_user_preferences_user_idx" ON "public"."notification_user_preferences" USING "btree" ("user_id", "workspace_id");
-
-
-
-CREATE INDEX "notifications_recipient_inbox_idx" ON "public"."notifications" USING "btree" ("workspace_id", "recipient_user_id", "created_at" DESC) WHERE ("dismissed_at" IS NULL);
-
-
-
-CREATE INDEX "notifications_staffing_subject" ON "public"."notifications" USING "btree" ("workspace_id", "source_type", "source_id") WHERE ("source_type" = ANY (ARRAY['lineup_proposal'::"text", 'lineup_operation'::"text"]));
-
-
-
 CREATE INDEX "onboarding_events_case_idx" ON "public"."onboarding_events" USING "btree" ("case_id", "occurred_at" DESC);
 
 
@@ -32296,10 +28304,6 @@ CREATE INDEX "scheduled_schedule_exports_workspace_idx" ON "public"."scheduled_s
 
 
 CREATE INDEX "shift_exchange_employee" ON "public"."shift_exchange_applications" USING "btree" ("workspace_id", "employee_id", "case_id");
-
-
-
-CREATE INDEX "shift_exchange_event_notification_order" ON "public"."shift_exchange_events" USING "btree" ("workspace_id", "case_id", "notification_sequence" DESC);
 
 
 
@@ -32840,26 +28844,6 @@ ALTER TABLE ONLY "app_private"."authz_actions"
 
 
 
-ALTER TABLE ONLY "app_private"."document_notification_dedup"
-    ADD CONSTRAINT "document_notification_dedup_employee_id_workspace_id_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "app_private"."document_notification_dedup"
-    ADD CONSTRAINT "document_notification_dedup_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "app_private"."document_notification_dedup"
-    ADD CONSTRAINT "document_notification_dedup_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "app_private"."notification_legacy_default_accounts"
-    ADD CONSTRAINT "notification_legacy_default_accounts_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "app_private"."role_permission_dependencies"
     ADD CONSTRAINT "role_permission_dependencies_permission_key_fkey" FOREIGN KEY ("permission_key") REFERENCES "public"."permissions"("key");
 
@@ -32897,16 +28881,6 @@ ALTER TABLE ONLY "public"."account_deletion_deliveries"
 
 ALTER TABLE ONLY "public"."account_deletion_requests"
     ADD CONSTRAINT "account_deletion_requests_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."account_notification_items"
-    ADD CONSTRAINT "account_notification_items_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version");
-
-
-
-ALTER TABLE ONLY "public"."account_notification_items"
-    ADD CONSTRAINT "account_notification_items_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -33392,216 +29366,6 @@ ALTER TABLE ONLY "public"."manager_weekly_reminders"
 
 ALTER TABLE ONLY "public"."manager_weekly_reminders"
     ADD CONSTRAINT "manager_weekly_reminders_workspace_id_employee_id_fkey" FOREIGN KEY ("workspace_id", "employee_id") REFERENCES "public"."employee_profiles"("workspace_id", "id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_audit_log"
-    ADD CONSTRAINT "notification_audit_log_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."notification_audit_log"
-    ADD CONSTRAINT "notification_audit_log_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_consents"
-    ADD CONSTRAINT "notification_consents_recorded_by_fkey" FOREIGN KEY ("recorded_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."notification_consents"
-    ADD CONSTRAINT "notification_consents_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_consents"
-    ADD CONSTRAINT "notification_consents_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempt_recipient_projection_id_work_fkey" FOREIGN KEY ("recipient_projection_id", "workspace_id") REFERENCES "public"."notification_recipients"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempts_template_version_id_fkey" FOREIGN KEY ("template_version_id") REFERENCES "public"."notification_template_versions"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_delivery_attempts"
-    ADD CONSTRAINT "notification_delivery_attempts_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_endpoints"
-    ADD CONSTRAINT "notification_endpoints_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_endpoints"
-    ADD CONSTRAINT "notification_endpoints_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_supersedes_event_id_workspace_id_fkey" FOREIGN KEY ("supersedes_event_id", "workspace_id") REFERENCES "public"."notification_events"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_events"
-    ADD CONSTRAINT "notification_events_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_legacy_notification_id_workspace_id_fk" FOREIGN KEY ("legacy_notification_id", "workspace_id") REFERENCES "public"."notifications"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_recipient_projection_id_workspace_fkey" FOREIGN KEY ("recipient_projection_id", "workspace_id") REFERENCES "public"."notification_recipients"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_inbox_items"
-    ADD CONSTRAINT "notification_inbox_items_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_role_id_workspace_id_fkey" FOREIGN KEY ("role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_org_policies"
-    ADD CONSTRAINT "notification_org_policies_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_actor_user_id_fkey" FOREIGN KEY ("actor_user_id") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_outbox"
-    ADD CONSTRAINT "notification_outbox_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_producer_registry"
-    ADD CONSTRAINT "notification_producer_registry_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisi_candidate_employee_id_worksp_fkey" FOREIGN KEY ("candidate_employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_candidate_user_id_fkey" FOREIGN KEY ("candidate_user_id") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_event_id_workspace_id_fkey" FOREIGN KEY ("event_id", "workspace_id") REFERENCES "public"."notification_events"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipient_decisions"
-    ADD CONSTRAINT "notification_recipient_decisions_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_event_id_workspace_id_fkey" FOREIGN KEY ("event_id", "workspace_id") REFERENCES "public"."notification_events"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_recipient_employee_id_workspace_id_fkey" FOREIGN KEY ("recipient_employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_recipient_user_id_fkey" FOREIGN KEY ("recipient_user_id") REFERENCES "auth"."users"("id") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_recipients"
-    ADD CONSTRAINT "notification_recipients_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_template_versions"
-    ADD CONSTRAINT "notification_template_versions_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
-
-
-
-ALTER TABLE ONLY "public"."notification_template_versions"
-    ADD CONSTRAINT "notification_template_versions_type_key_schema_version_fkey" FOREIGN KEY ("type_key", "schema_version") REFERENCES "public"."notification_catalog"("type_key", "schema_version") ON DELETE RESTRICT;
-
-
-
-ALTER TABLE ONLY "public"."notification_user_preferences"
-    ADD CONSTRAINT "notification_user_preferences_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notification_user_preferences"
-    ADD CONSTRAINT "notification_user_preferences_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notifications"
-    ADD CONSTRAINT "notifications_recipient_user_id_fkey" FOREIGN KEY ("recipient_user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."notifications"
-    ADD CONSTRAINT "notifications_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
 
 
 
@@ -34420,12 +30184,6 @@ ALTER TABLE ONLY "public"."workspaces"
 
 
 
-ALTER TABLE "app_private"."document_notification_dedup" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "app_private"."notification_legacy_default_accounts" ENABLE ROW LEVEL SECURITY;
-
-
 ALTER TABLE "app_private"."role_permission_dependencies" ENABLE ROW LEVEL SECURITY;
 
 
@@ -34445,13 +30203,6 @@ ALTER TABLE "public"."account_deletion_requests" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "account_deletion_requests_no_direct_access" ON "public"."account_deletion_requests" AS RESTRICTIVE TO "authenticated", "anon" USING (false) WITH CHECK (false);
-
-
-
-ALTER TABLE "public"."account_notification_items" ENABLE ROW LEVEL SECURITY;
-
-
-CREATE POLICY "account_notification_self_read" ON "public"."account_notification_items" FOR SELECT TO "authenticated" USING (("user_id" = ( SELECT "auth"."uid"() AS "uid")));
 
 
 
@@ -34617,51 +30368,6 @@ ALTER TABLE "public"."manager_weekly_reminders" ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "memberships_select_reached" ON "public"."workspace_memberships" FOR SELECT TO "authenticated" USING ("app_private"."rls_can"("workspace_id", 'membership.read'::"text", NULL::"uuid"[], NULL::"uuid", "user_id"));
 
-
-
-ALTER TABLE "public"."notification_audit_log" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_catalog" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_consents" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_delivery_attempts" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_endpoints" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_events" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_inbox_items" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_org_policies" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_outbox" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_producer_registry" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_recipient_decisions" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_recipients" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_template_versions" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notification_user_preferences" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."notifications" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."onboarding_events" ENABLE ROW LEVEL SECURITY;
@@ -35031,10 +30737,6 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_days"("day_rows" "jsonb", "fi
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."announcement_deliver"("actor" "uuid", "item" "public"."announcements", "people" "uuid"[], "mode" "text", "back" "jsonb") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."announcement_display_status"("item" "public"."announcements") FROM PUBLIC;
 
 
@@ -35056,14 +30758,6 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_moments"("item" "public"."ann
 
 
 REVOKE ALL ON FUNCTION "app_private"."announcement_next_year"("d" "date", "mode" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."announcement_notice"("item" "public"."announcements", "who" "uuid", "mode" "text", "back" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."announcement_on_text"("starts" "date", "ends" "date") FROM PUBLIC;
 
 
 
@@ -35115,19 +30809,11 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_rows"("announcement" "uuid") 
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."announcement_shift_sentence"("change" "jsonb", "back" boolean, "multi" boolean, "fmt" "text") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day" "date", "last_day" "date", "event_from" time without time zone, "event_until" time without time zone, "own_zone" "text", "day_rows" "jsonb") FROM PUBLIC;
 
 
 
 REVOKE ALL ON FUNCTION "app_private"."announcement_started"("item" "public"."announcements") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."announcement_tell_failed"("item" "public"."announcements", "why" "text") FROM PUBLIC;
 
 
 
@@ -35227,10 +30913,6 @@ REVOKE ALL ON FUNCTION "app_private"."communication_reason"("state" "app_private
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."communication_withdraw"("w" "uuid", "type_key" "text", "subject_type" "text", "subject_id" "text", "visibility" "text", "people" "uuid"[]) FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."complete_due_workspace_closures"() FROM PUBLIC;
 
 
@@ -35244,14 +30926,6 @@ REVOKE ALL ON FUNCTION "app_private"."department_archive_takes_its_jobs"() FROM 
 
 
 REVOKE ALL ON FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."document_account_inbox_action_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."document_account_inbox_allowed"("item_id" "uuid", "actor" "uuid") FROM PUBLIC;
 
 
 
@@ -35292,14 +30966,6 @@ REVOKE ALL ON FUNCTION "app_private"."document_employee_timezone"("w" "uuid", "e
 
 
 REVOKE ALL ON FUNCTION "app_private"."document_initial_action_missing"("r" "public"."employee_onboarding_requirements") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."document_notification_policy"("outbox_id" "uuid", "u" "uuid", "snapshot" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."document_notify_access"("w" "uuid", "e" "uuid", "u" "uuid") FROM PUBLIC;
 
 
 
@@ -35380,10 +31046,6 @@ REVOKE ALL ON FUNCTION "app_private"."employee_record_is_workspace_owner"("targe
 
 
 REVOKE ALL ON FUNCTION "app_private"."enforce_role_location_scope"() FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."enqueue_document_notification"("w" "uuid", "e" "uuid", "u" "uuid", "k" "text", "kind" "text", "title" "text", "body" "text", "requirement" "uuid", "actor" "uuid") FROM PUBLIC;
 
 
 
@@ -35562,10 +31224,6 @@ REVOKE ALL ON FUNCTION "app_private"."mark_account_organization_history"() FROM 
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."notify_document_audit"() FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."onboarding_self_workspace"("u" "uuid", "w" "uuid", "by_case" boolean) FROM PUBLIC;
 
 
@@ -35607,10 +31265,6 @@ REVOKE ALL ON FUNCTION "app_private"."policy_lifecycle_settings"("v" "public"."s
 
 
 REVOKE ALL ON FUNCTION "app_private"."preview_lifecycle_definition"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid", "target_kind" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."project_account_security_notification"() FROM PUBLIC;
 
 
 
@@ -35732,23 +31386,11 @@ REVOKE ALL ON FUNCTION "app_private"."sync_workspace_lifecycle_with_onboarding"(
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."termination_notify_shifts_unassigned"("actor" "uuid", "w" "uuid", "tid" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."time_off_alone_deciders"("w" "uuid", "person" "uuid") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."time_off_authorize"("actor" "uuid", "w" "uuid", "action" "text", "person" "uuid") FROM PUBLIC;
 
 
 
 REVOKE ALL ON FUNCTION "app_private"."time_off_decide_by"("w" "uuid", "starts" timestamp with time zone) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."time_off_deciders"("w" "uuid", "rid" "uuid", "fallback_ok" boolean) FROM PUBLIC;
 
 
 
@@ -35785,18 +31427,6 @@ REVOKE ALL ON FUNCTION "app_private"."time_off_location_staffed"("w" "uuid", "pe
 
 
 REVOKE ALL ON FUNCTION "app_private"."time_off_location_voters"("w" "uuid", "person" "uuid", "place" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."time_off_notice"("w" "uuid", "rid" "uuid", "type_key" "text", "recipients" "uuid"[], "audience" "text", "title" "text", "body" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."time_off_notify_shifts_opened"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."time_off_opened_shifts_told"("actor" "uuid", "w" "uuid", "rid" "uuid", "decision" integer) FROM PUBLIC;
 
 
 
@@ -35909,16 +31539,6 @@ GRANT ALL ON FUNCTION "public"."acknowledge_document_lifecycle_service"("actor_u
 
 REVOKE ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."acquire_schedule_edit_session_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "requested_source" "public"."schedule_edit_source", "requested_draft_id" "uuid", "target_location_ids" "uuid"[], "resume_open_edit" boolean) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."act_on_notification_inbox_item_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."act_on_notification_inbox_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."act_on_notification_inbox_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_item_id" "uuid", "target_action" "text") TO "service_role";
 
 
 
@@ -36262,17 +31882,8 @@ REVOKE ALL ON FUNCTION "public"."enforce_role_permission_dependencies"() FROM PU
 
 
 
-REVOKE ALL ON FUNCTION "public"."enqueue_notification_outbox_service"("target_workspace_id" "uuid", "target_event_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_actor_user_id" "uuid", "target_subject_type" "text", "target_subject_id" "text", "target_payload" "jsonb", "target_occurred_at" timestamp with time zone) FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."extend_employee_document_deadline_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "additional_days" integer, "extension_reason" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."extend_employee_document_deadline_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "additional_days" integer, "extension_reason" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."fail_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid", "target_error" "text", "target_max_attempts" integer, "target_base_delay_seconds" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."fail_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid", "target_error" "text", "target_max_attempts" integer, "target_base_delay_seconds" integer) TO "service_role";
 
 
 
@@ -36283,11 +31894,6 @@ GRANT ALL ON FUNCTION "public"."finalize_account_deletion_service"("target_reque
 
 REVOKE ALL ON FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."flush_shift_exchange_notifications_service"("target_workspace_id" "uuid", "target_case_id" "uuid", "target_batch_size" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."flush_shift_exchange_notifications_service"("target_workspace_id" "uuid", "target_case_id" "uuid", "target_batch_size" integer) TO "service_role";
 
 
 
@@ -36358,36 +31964,6 @@ GRANT ALL ON FUNCTION "public"."get_employee_schedule_board_service"("actor_user
 
 REVOKE ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_severity" "text", "target_read_state" "text", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_inbox_v2_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_severity" "text", "target_read_state" "text", "target_cursor_created_at" timestamp with time zone, "target_cursor_id" "uuid", "target_limit" integer) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notification_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notification_user_preferences_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_user_preferences_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."get_notifications_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_unread_only" boolean, "target_cursor" timestamp with time zone, "target_limit" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notifications_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_category" "text", "target_unread_only" boolean, "target_cursor" timestamp with time zone, "target_limit" integer) TO "service_role";
 
 
 
@@ -36525,15 +32101,6 @@ GRANT ALL ON FUNCTION "public"."initiate_workspace_ownership_transfer_service"("
 REVOKE ALL ON FUNCTION "public"."is_workspace_member"("target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."is_workspace_member"("target_workspace_id" "uuid") TO "authenticated";
 GRANT ALL ON FUNCTION "public"."is_workspace_member"("target_workspace_id" "uuid") TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."notification_outbox" TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."lease_notification_outbox_service"("target_worker_id" "text", "target_batch_size" integer, "target_lease_seconds" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."lease_notification_outbox_service"("target_worker_id" "text", "target_batch_size" integer, "target_lease_seconds" integer) TO "service_role";
 
 
 
@@ -36709,38 +32276,6 @@ GRANT ALL ON FUNCTION "public"."normalize_workspace_widget_order"("target_widget
 
 
 
-REVOKE ALL ON FUNCTION "public"."notification_actor_is_active_member_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."notification_default_channels_service"("actor_user_id" "uuid", "target_type_key" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."notification_user_channel_lock_reason_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."notification_user_channel_lock_reason_workspace_base"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text") FROM PUBLIC;
-
-
-
-GRANT ALL ON TABLE "public"."notification_user_preferences" TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."notification_user_preference_to_json"("preference" "public"."notification_user_preferences") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."notify_schedule_request_event_service"() FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."notify_time_off_shortened"("actor" "uuid", "w" "uuid", "parent_id" "uuid", "cut" "tstzmultirange", "zone_name" "text", "source" "jsonb") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid") TO "service_role";
 
@@ -36798,11 +32333,6 @@ GRANT ALL ON FUNCTION "public"."preview_employee_invitation_service"("invitation
 
 
 
-REVOKE ALL ON FUNCTION "public"."preview_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_recipient_user_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."preview_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_recipient_user_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."preview_policy_definition_apply_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."preview_policy_definition_apply_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid") TO "service_role";
 
@@ -36835,36 +32365,6 @@ GRANT ALL ON FUNCTION "public"."preview_schedule_template_apply_service"("actor_
 
 REVOKE ALL ON FUNCTION "public"."preview_schedule_unpublication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "target_location_ids" "uuid"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."preview_schedule_unpublication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_week_start" "date", "target_location_ids" "uuid"[]) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."process_notification_outbox_before_signal"("target_worker_id" "text", "target_outbox_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."process_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."process_notification_outbox_service"("target_worker_id" "text", "target_outbox_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."project_notification_event_service"("target_outbox_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."project_notification_inbox_exchange_base"("target_outbox_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."project_notification_inbox_service"("target_outbox_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."project_notification_inbox_service"("target_outbox_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."project_notification_recipients_service"("target_outbox_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."project_schedule_notification_recipients_service"("target_outbox_id" "uuid") FROM PUBLIC;
 
 
 
@@ -36921,18 +32421,8 @@ GRANT ALL ON FUNCTION "public"."read_signature_settings_service"("actor_user_id"
 
 
 
-REVOKE ALL ON FUNCTION "public"."reconcile_notification_platform_service"() FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."reconcile_notification_platform_service"() TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."record_account_security_event_service"("actor_user_id" "uuid", "target_event" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."record_account_security_notification_service"("actor_user_id" "uuid", "target_event" "text") TO "service_role";
 
 
 
@@ -37049,17 +32539,8 @@ REVOKE ALL ON FUNCTION "public"."require_weekly_exchange_employee_warning"("acto
 
 
 
-REVOKE ALL ON FUNCTION "public"."reset_notification_policies_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kind" "text", "target_value" "text", "target_reason" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."reset_notification_policies_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_kind" "text", "target_value" "text", "target_reason" "text") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."resolve_notification_policy_v1_service"("target_workspace_id" "uuid", "target_user_id" "uuid", "target_type_key" "text", "target_channel" "text", "target_role_id" "uuid", "target_location_id" "uuid", "target_event_context" "jsonb") FROM PUBLIC;
 
 
 
@@ -37148,16 +32629,6 @@ GRANT ALL ON FUNCTION "public"."save_employee_onboarding_profile_service"("targe
 
 REVOKE ALL ON FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_first_name" "text", "employee_middle_name" "text", "employee_last_name" "text", "employee_preferred_name" "text", "employee_invitation_email" "text", "employee_start_date" "date", "employee_internal_note" "text", "location_ids" "uuid"[], "primary_location_id" "uuid", "job_ids" "uuid"[], "primary_job_id" "uuid", "employee_is_remote" boolean, "employee_is_excluded_from_schedule" boolean, "expected_revision" integer) TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."save_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_scope_kind" "text", "target_scope_id" "uuid", "target_expected_version" integer, "target_enabled" boolean, "target_allowed_channels" "text"[], "target_cadence" "text", "target_reason" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."save_notification_policy_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_type_key" "text", "target_schema_version" integer, "target_scope_kind" "text", "target_scope_id" "uuid", "target_expected_version" integer, "target_enabled" boolean, "target_allowed_channels" "text"[], "target_cadence" "text", "target_reason" "text") TO "service_role";
-
-
-
-REVOKE ALL ON FUNCTION "public"."save_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_updates" "jsonb") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."save_notification_user_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_updates" "jsonb") TO "service_role";
 
 
 
@@ -37352,10 +32823,6 @@ REVOKE ALL ON FUNCTION "public"."shift_exchange_emit"("actor" "uuid", "w" "uuid"
 
 
 
-REVOKE ALL ON FUNCTION "public"."shift_exchange_emit_notification_base"("eid" "uuid", "actor" "uuid", "w" "uuid", "cid" "uuid", "aid" "uuid", "act" "text", "msg" "text") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."shift_exchange_fingerprint"("w" "uuid", "s" "jsonb", "t" "jsonb") FROM PUBLIC;
 
 
@@ -37369,14 +32836,6 @@ REVOKE ALL ON FUNCTION "public"."shift_exchange_guard_eligibility_write"() FROM 
 
 
 REVOKE ALL ON FUNCTION "public"."shift_exchange_live_status"("w" "uuid", "cid" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."shift_exchange_notification_allowed"("oid" "uuid", "recipient" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."shift_exchange_notification_policy_service"("oid" "uuid", "recipient" "uuid", "policy" "jsonb") FROM PUBLIC;
 
 
 
@@ -37399,10 +32858,6 @@ GRANT ALL ON FUNCTION "public"."shift_exchange_schedule_recovery_service"("actor
 
 
 REVOKE ALL ON FUNCTION "public"."shift_exchange_shift"("w" "uuid", "source" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."shift_exchange_sync_notifications"("w" "uuid", "cid" "uuid") FROM PUBLIC;
 
 
 
@@ -37723,11 +33178,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."account_deletion_r
 
 
 
-GRANT ALL ON TABLE "public"."account_notification_items" TO "service_role";
-GRANT SELECT ON TABLE "public"."account_notification_items" TO "authenticated";
-
-
-
 GRANT ALL ON TABLE "public"."account_organization_history" TO "service_role";
 GRANT SELECT ON TABLE "public"."account_organization_history" TO "authenticated";
 
@@ -37878,58 +33328,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."workspace_membersh
 
 
 
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_audit_log" TO "service_role";
-
-
-
-GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_catalog" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_consents" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."notification_delivery_attempts" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notification_endpoints" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."notification_events" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."notification_inbox_items" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notification_org_policies" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notification_producer_registry" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notification_recipient_decisions" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_recipients" TO "service_role";
-
-
-
-GRANT SELECT,INSERT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN,UPDATE ON TABLE "public"."notification_template_versions" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."notifications" TO "service_role";
-
-
-
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."onboarding_events" TO "service_role";
 
 
@@ -38011,10 +33409,6 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_exchange_events" TO "service_role";
-
-
-
-GRANT UPDATE ON SEQUENCE "public"."shift_exchange_events_notification_sequence_seq" TO "service_role";
 
 
 

@@ -117,7 +117,7 @@ select set_eq(
     where table_schema = 'public' and grantee in ('anon', 'authenticated', 'PUBLIC') and privilege_type = 'SELECT'
   $$,
   array[
-    'account_notification_items', 'account_organization_history', 'audit_events', 'departments',
+    'account_organization_history', 'audit_events', 'departments',
     'employee_onboarding_settings', 'jobs', 'locations',
     'shift_labels', 'shift_types', 'user_preferences', 'user_profiles', 'user_workspace_preferences',
     'workspace_closure_requests', 'workspace_entitlements', 'workspace_memberships', 'workspace_onboarding',

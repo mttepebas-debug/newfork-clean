@@ -96,21 +96,21 @@ select is(pg_temp.refusal($$select public.save_announcement_service('a8000000-00
 select is((select public.set_announcement_state_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision,'unpublish')->>'status' from communication_state),'unpublished','publisher can unpublish the projected announcement');
 select isnt((select public.set_announcement_state_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',announcement_id,revision+1,'archive')->>'archived_at' from communication_state),null,'and then archive it (K8)');
 
-select lives_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['notifications','operations','pending_requests','open_shifts','announcements','todos','quick_actions'],array['quick_actions'])$$,'valid fixed-catalog Workspace layout is saved');
-select throws_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['operations','operations','pending_requests','open_shifts','announcements','notifications'],array[]::text[])$$,'22023','valid workspace layout required','duplicate widgets are rejected');
-select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'layout'->'widget_order'->>0),'notifications','Workspace dashboard returns the synced personal order');
+select lives_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['quick_actions','operations','pending_requests','open_shifts','announcements','todos'],array['quick_actions'])$$,'valid fixed-catalog Workspace layout is saved (six cards since BILDIRIM-06)');
+select throws_ok($$select public.save_workspace_layout_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',array['operations','operations','pending_requests','open_shifts','announcements','todos'],array[]::text[])$$,'22023','valid workspace layout required','duplicate widgets are rejected');
+select is((public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'layout'->'widget_order'->>0),'quick_actions','Workspace dashboard returns the synced personal order');
 select is(
   (public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'layout'->'widget_order' ? 'todos'),
   true,
   'Workspace dashboard includes the todos widget catalog entry'
 );
 insert into public.workspace_layout_preferences(workspace_id,user_id,widget_order,hidden_widget_ids)
-values('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000001',array['operations','pending_requests','open_shifts','announcements','notifications','quick_actions'],array[]::text[])
+values('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000001',array['operations','pending_requests','open_shifts','announcements','quick_actions'],array[]::text[])
 on conflict(workspace_id,user_id) do update set widget_order=excluded.widget_order,hidden_widget_ids=excluded.hidden_widget_ids;
 select is(
-  (public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'layout'->'widget_order'->>6),
+  (public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'layout'->'widget_order'->>5),
   'todos',
-  'legacy six-widget layouts append todos without dropping saved order'
+  'a saved layout without a card gets it appended without dropping saved order'
 );
 insert into public.document_types(
  id,workspace_id,title,description,required_at_onboarding,requires_review,accepted_formats,tracks_expiry,expiry_warning_days,expiry_schedule_impact,sort_order,created_by

@@ -45,8 +45,6 @@ supabase/tests/lifecycle_refusals_carry_keys.test.sql
 supabase/tests/live_updates_are_private.test.sql
 supabase/tests/location_short_names.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
-supabase/tests/notification_outbox_relay.test.sql
-supabase/tests/notification_user_preferences.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
 supabase/tests/organization_basics_rls.test.sql
@@ -153,9 +151,6 @@ supabase/tests/time_off_deadlines.test.sql
 supabase/tests/time_off_pending_publish_note.test.sql
 supabase/tests/employee_hub_time_off_form.test.sql
 supabase/tests/time_off_seen_by_who_decides.test.sql
-supabase/tests/notification_platform_core.test.sql
-supabase/tests/notification_preference_resolver_and_producers.test.sql
-supabase/tests/notification_settings_admin.test.sql
 supabase/tests/announcements_and_dates_follow_k1_k6.test.sql
 supabase/tests/announcements_and_dates_edge_cases.test.sql
 supabase/tests/closed_days_reach_the_shifts.test.sql
@@ -197,3 +192,4 @@ supabase/tests/a_manager_sees_the_invitation_they_can_act_on.test.sql
 supabase/tests/draft_list_counts_shifts_and_hours.test.sql
 supabase/tests/domain_work_outlives_notifications.test.sql
 supabase/tests/domain_work_stops_calling_notifications.test.sql
+supabase/tests/old_notifications_are_dropped.test.sql

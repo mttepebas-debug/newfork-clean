@@ -9,8 +9,8 @@ select no_plan();
 --   K4  an account security event leaves one audit row (app_private.security_audit_events)
 --   K5  an expiring employee document opens a Workspace to-do
 -- BILDIRIM-04 (teardown part C1) took every "send a notification" call out of the domain work.
--- Part 1 makes every notification function fail and checks the work again: none of it calls one.
--- Part 2 reads every function body: no domain function names a notification object any more.
+-- BILDIRIM-06 (part C2) dropped the old system: part 1 checks the work runs without it, part 2 that
+-- it still lives where it moved. That nothing names a dropped object: old_notifications_are_dropped.
 
 select tests.world('dw');
 select tests.person('dw', 'ali', 'employee', array['K'], array['cook']);
@@ -90,43 +90,18 @@ exception when others then
   return sqlstate || ' ' || coalesce(nullif(hint, ''), '(no hint)');
 end $$;
 
--- The old notification system, as part C2 will find it: its functions are named for notifications,
--- outboxes and inboxes, plus four whose names do not say so. Its tables and its type likewise.
-create temp table notification_objects as
-select p.proname::text as name, 'function' as kind from pg_proc p
-where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
-  and (p.proname ~ '(notif|outbox|inbox)'
-       or p.proname in ('announcement_deliver', 'announcement_tell_failed', 'communication_withdraw', 'time_off_notice'))
-union
-select c.relname::text, 'table' from pg_class c
-where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace) and c.relkind in ('r', 'v', 'p')
-  and c.relname ~ '(notif|outbox|inbox)'
-union
-select t.typname::text, 'type' from pg_type t
-where t.typnamespace in ('public'::regnamespace, 'app_private'::regnamespace) and t.typname = 'notification_category';
-select ok((select count(*) from notification_objects where kind = 'function' and name = 'enqueue_notification_outbox_service') = 1
-  and (select count(*) from notification_objects where kind = 'table' and name = 'notification_outbox') = 1,
-  'the old notification system is still here to be called (part C2 drops it)');
+-- The old notification system is gone (part C2): its functions were named for notifications,
+-- outboxes and inboxes, its tables likewise.
+select is((select count(*)::integer from pg_proc p
+           where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
+             and (p.proname ~ '(notif|outbox|inbox)'
+                  or p.proname in ('announcement_deliver', 'announcement_tell_failed', 'communication_withdraw', 'time_off_notice')))
+        + (select count(*)::integer from pg_class c
+           where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace) and c.relkind in ('r', 'v', 'p')
+             and c.relname ~ '(notif|outbox|inbox)'), 0,
+  'the old notification system is gone');
 
--- 1. With every notification function failing --------------------------------------------------------
-
--- Each notification function raises for the rest of this transaction: a domain path that still
--- calls one fails below.
-create function pg_temp.break(target regprocedure) returns void language plpgsql as $$
-begin
-  execute format('create or replace function %s.%I(%s) returns %s language plpgsql as %L',
-    (select quote_ident(n.nspname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace where p.oid = target),
-    (select p.proname from pg_proc p where p.oid = target),
-    pg_get_function_arguments(target), pg_get_function_result(target),
-    'begin raise exception ''stand-in: the old notification system was called''; end');
-end $$;
-select pg_temp.break(p.oid::regprocedure) from pg_proc p
-join notification_objects o on o.kind = 'function' and o.name = p.proname
-where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace) and p.prokind = 'f';
-select is((select count(*)::integer from pg_proc p join notification_objects o on o.kind = 'function' and o.name = p.proname
-  where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace) and p.prokind = 'f'
-    and p.prosrc not like '%stand-in: the old notification system was called%'), 0,
-  'every notification function now fails');
+-- 1. Without it ------------------------------------------------------------------------------------
 
 -- K3: Ali asks for cover on Tuesday, Deniz applies: one history row per step.
 select tests.cover_case('dw', 'ali-tue', 'ali', 'deniz');
@@ -146,12 +121,9 @@ select public.shift_exchanges_maintain_service(100);
 select is((select status from public.shift_exchange_cases where id = tests.id('dw:case:ali-thu')), 'invalidated', 'K2: a changed shift closes its request');
 select is(pg_temp.events(tests.id('dw:case:ali-thu'), 'invalidated'), 1, 'K2: with one history row');
 
--- K4: Ali changes his password; the API records it through the audit entry point, once, and no
--- account notification follows from the audit row any more.
+-- K4: Ali changes his password; the API records it through the audit entry point, once.
 select public.record_account_security_event_service(tests.user('dw:ali'), 'account.password_changed');
 select is(pg_temp.audit('ali', 'account.password_changed'), 1, 'K4: a password change leaves one audit row');
-select is((select count(*)::integer from public.account_notification_items where user_id = tests.user('dw:ali')), 0,
-  'K4: and no account notification');
 select throws_ok($$select public.record_account_security_event_service(tests.user('dw:ali'), 'account.external_login')$$,
   '22023', 'unsupported account security event', 'K4: an event the API cannot observe is not recorded');
 select is(pg_temp.refusal($$select public.record_account_security_event_service(gen_random_uuid(), 'account.password_changed')$$),
@@ -165,8 +137,8 @@ reset role;
 -- pass takes them, so the count below is Ece's alone.)
 select public.documents_maintain_service(500);
 select pg_temp.overdue_requirement('ece');
-select is(public.documents_maintain_service(500) - 'checked', '{"failed_cases": 0, "suspended": 1}'::jsonb,
-  'K1: document maintenance restricts one requirement, and fails no case');
+select is(public.documents_maintain_service(500) - 'checked', '{"suspended": 1}'::jsonb,
+  'K1: document maintenance restricts one requirement');
 select ok(pg_temp.suspended('ece'), 'K1: Ece is restricted');
 select is((public.documents_maintain_service(500) ->> 'suspended')::integer, 0, 'K1: a restriction is written once');
 
@@ -206,29 +178,8 @@ select is(public.sync_expiring_document_todos_service(tests.id('dw')) ->> 'opene
   'K5: the to-do sync runs');
 select is(pg_temp.todo(document), 1, 'K5: an expiring document opens one Workspace to-do') from k5;
 
--- 2. The bodies -------------------------------------------------------------------------------------
+-- 2. Where the work lives ---------------------------------------------------------------------------
 
--- Every name of a notification object a function body holds, as a whole word, outside a quoted string:
--- the Workspace home answer still has a "notifications" key until part C2, and the widget and
--- permission lists name the notifications widget and permission.
-create function pg_temp.notification_names(target regprocedure) returns text[] language sql as $$
-  select coalesce(array_agg(distinct o.name order by o.name), '{}')
-  from pg_proc p, notification_objects o
-  where p.oid = target and p.prosrc ~* ('(?<!'')\m' || o.name || '\M(?!'')')
-$$;
--- Today's set of domain functions: everything in public and app_private that is not a notification function.
-select is(
-  array(select p.oid::regprocedure::text || ': ' || array_to_string(pg_temp.notification_names(p.oid::regprocedure), ', ')
-        from pg_proc p
-        where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace) and p.prokind = 'f'
-          and not exists (select 1 from notification_objects o where o.kind = 'function' and o.name = p.proname)
-          and cardinality(pg_temp.notification_names(p.oid::regprocedure)) > 0
-        order by 1),
-  '{}'::text[],
-  'no domain function names a notification function, table or type');
-select ok(cardinality(pg_temp.notification_names('public.get_workspace_dashboard_service'::regproc)) = 0
-  and (select prosrc ~ '''notifications''' from pg_proc where oid = 'public.get_workspace_dashboard_service'::regproc),
-  'the scan reads past a quoted key: the Workspace home answer still names its notifications box');
 select ok((select prosrc ~ 'app_private\.document_suspend_overdue\(' from pg_proc where oid = 'public.documents_maintain_service'::regproc),
   'K1: document maintenance restricts');
 select ok((select prosrc ~ 'insert into public\.shift_exchange_events' from pg_proc where oid = 'public.shift_exchange_emit'::regproc),

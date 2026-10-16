@@ -43,28 +43,31 @@ select cmp_ok(
 -- the to-do list's own role reading (42 -> 41), FB-6.3.3 the time-off notice
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
 -- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26),
--- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21).
+-- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21),
+-- BILDIRIM-06 the old notification system (21 -> 20).
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 21, 'functions with their own scope or rank logic only go down'
+  '<=', 20, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
 -- folded Schedule's 24 into one function per job (37 -> 13), and with them
 -- the grid's own scope reading (60 -> 59 above). FB-6.7 the _legacy announcement publish (13 -> 12).
 -- FB-6.4 A1 folded weekly_assignment_candidate_base into app_private.eligibility (12 -> 11).
+-- BILDIRIM-06 dropped the old notification system's ten (11 -> 1: request_account_deletion_v2_service).
 select cmp_ok(
   (select count(*)::integer from core_function where name ~ '(_base|_v[0-9]+|_legacy)(_|$)'),
-  '<=', 11, '_base, _vN and _legacy functions only go down'
+  '<=', 1, '_base, _vN and _legacy functions only go down'
 );
 
 -- Policies that read the JWT themselves rather than through the core.
--- FB-6.2.3: memberships are read through rls_can (11 -> 10).
+-- FB-6.2.3: memberships are read through rls_can (11 -> 10). BILDIRIM-06 the account
+-- notification table's (10 -> 9).
 select cmp_ok(
   (select count(*)::integer from pg_policies
    where schemaname = 'public' and (qual ~ 'auth\.uid' or with_check ~ 'auth\.uid')),
-  '<=', 10, 'policies that call auth.uid() only go down'
+  '<=', 9, 'policies that call auth.uid() only go down'
 );
 
 -- Work the product defers to commit. Stage 4b removed the three triggers that
@@ -100,11 +103,12 @@ select is(
 -- core (FB-6.7), 111 after documents and onboarding moved (FB-6.6), 100 after the Schedule
 -- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it), 83 after Shift Hub's
 -- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2), 67 after
--- Settings > Roles and Notifications asked the core (BL-276). Target 0.
+-- Settings > Roles and Notifications asked the core (BL-276), 57 after the old notification system
+-- went (BILDIRIM-06). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 67, 'refusals without an authz hint only go down'
+  '<=', 57, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
@@ -126,7 +130,7 @@ select is(
     'schedule.templates', 'schedule.templates.read', 'settings.availability.read', 'settings.availability.write',
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',
     'settings.important_dates.read', 'settings.jobs.read', 'settings.jobs.write', 'settings.locations.read',
-    'settings.locations.write', 'settings.notifications.read', 'settings.notifications.test', 'settings.notifications.write',
+    'settings.locations.write',
     'settings.organization.write', 'settings.people', 'settings.people.read', 'settings.roles.read',
     'settings.roles.write',
     'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',

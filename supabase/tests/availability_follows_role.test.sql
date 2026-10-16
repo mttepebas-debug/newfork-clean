@@ -117,11 +117,10 @@ select is(pg_temp.orange('emre'), 1, 'and the grid shows his Monday orange');
 select pg_temp.role_to('veli', 'barista');
 select is(pg_temp.kept('veli'), '{"week": true, "history": true, "commands": true}'::jsonb, 'a change between employee roles keeps the week');
 
--- Emre is made a manager: his week and its history go, without a word.
-create temp table ao_heard as select count(*)::integer n from public.notifications;
+-- Emre is made a manager: his week and its history go, without a word (nothing sends one since
+-- the old notifications went, BILDIRIM-06).
 select pg_temp.role_to('emre', 'manager');
 select is(pg_temp.kept('emre'), '{"week": false, "history": false, "commands": false}'::jsonb, 'a promotion deletes his week and its history');
-select is((select count(*)::integer from public.notifications), (select n from ao_heard), 'and tells nobody');
 select is(public.assess_schedule_shift_service(tests.user('ao:owner'), tests.id('ao'), pg_temp.monday_evening('emre'), null, tests.id('ao:session'))
   -> 'has_availability_conflict', 'false'::jsonb, 'Schedule warns of nothing on his Monday evening');
 select is(pg_temp.orange('emre'), 0, 'and the grid shows no orange for him');

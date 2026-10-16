@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(20);
+select plan(22);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -443,6 +443,64 @@ insert into retired (kind, name, step) values
   ('trigger', 'schedule_time_off_events.notify_time_off_event', 'BILDIRIM-04'),
   ('trigger', 'onboarding_events.document_notification_audit', 'BILDIRIM-04'),
   ('trigger', 'security_audit_events.project_account_security_notification', 'BILDIRIM-04');
+-- The old notification system is dropped (BILDIRIM-06, teardown part C2; KARARLAR S-123): its
+-- tables, type, functions, policies, scheduled job, the columns that only recorded a notice, Remind
+-- on an announcement and the notification settings permissions and actions. notifications.read,
+-- notifications.read_own, notifications.preferences.write_own and the notifications.read_own action
+-- stay for the new system.
+insert into retired (kind, name, step)
+select 'table', name, 'BILDIRIM-06' from unnest(array[
+  'notification_outbox', 'notification_catalog', 'notification_inbox_items', 'notification_recipients',
+  'notification_audit_log', 'notification_events', 'notification_org_policies', 'notifications',
+  'account_notification_items', 'notification_template_versions', 'notification_user_preferences',
+  'notification_recipient_decisions', 'notification_producer_registry', 'notification_consents',
+  'notification_endpoints', 'notification_delivery_attempts']) name
+union all
+select 'private_table', name, 'BILDIRIM-06' from unnest(array['document_notification_dedup', 'notification_legacy_default_accounts']) name
+union all
+select 'type', 'notification_category', 'BILDIRIM-06'
+union all
+select 'policy', 'account_notification_items.account_notification_self_read', 'BILDIRIM-06'
+union all
+select 'realtime_policy', 'people hear their own account notifications', 'BILDIRIM-06'
+union all
+select 'cron', 'notification-outbox', 'BILDIRIM-06'
+union all
+select 'function', name, 'BILDIRIM-06' from unnest(array[
+  'announcement_deliver', 'announcement_notice', 'announcement_on_text', 'announcement_shift_sentence',
+  'announcement_tell_failed', 'communication_withdraw', 'document_account_inbox_action_base',
+  'document_account_inbox_allowed', 'document_notification_policy', 'document_notify_access',
+  'enqueue_document_notification', 'notify_document_audit', 'project_account_security_notification',
+  'termination_notify_shifts_unassigned', 'time_off_alone_deciders', 'time_off_deciders', 'time_off_notice',
+  'time_off_notify_shifts_opened', 'time_off_opened_shifts_told', 'act_on_notification_inbox_item_v2_service',
+  'act_on_notification_inbox_workspace_base', 'enqueue_notification_outbox_service',
+  'fail_notification_outbox_service', 'flush_shift_exchange_notifications_service',
+  'get_notification_inbox_v2_service', 'get_notification_settings_service',
+  'get_notification_user_preferences_service', 'get_notification_user_preferences_workspace_base',
+  'get_notifications_service', 'lease_notification_outbox_service', 'notification_actor_is_active_member_service',
+  'notification_default_channels_service', 'notification_user_channel_lock_reason_service',
+  'notification_user_channel_lock_reason_workspace_base', 'notification_user_preference_to_json',
+  'notify_schedule_request_event_service', 'notify_time_off_shortened', 'preview_notification_policy_service',
+  'process_notification_outbox_before_signal', 'process_notification_outbox_service',
+  'project_notification_event_service', 'project_notification_inbox_exchange_base',
+  'project_notification_inbox_service', 'project_notification_recipients_service',
+  'project_schedule_notification_recipients_service', 'reconcile_notification_platform_service',
+  'record_account_security_notification_service', 'reset_notification_policies_service',
+  'resolve_notification_policy_v1_service', 'save_notification_policy_service',
+  'save_notification_user_preferences_service', 'shift_exchange_emit_notification_base',
+  'shift_exchange_notification_allowed', 'shift_exchange_notification_policy_service',
+  'shift_exchange_sync_notifications']) name
+union all
+select 'column', name, 'BILDIRIM-06' from unnest(array[
+  'employee_onboarding_cases.document_notified_restricted', 'schedule_time_off_requests.fallback_notified_at',
+  'schedule_time_off_requests.reminded_at', 'shift_exchange_events.notification_sequence']) name
+union all
+select 'permission', name, 'BILDIRIM-06' from unnest(array[
+  'notifications.settings.read', 'notifications.settings.write', 'notifications.test_send',
+  'notifications.delivery_audit.read', 'notifications.dlq.replay', 'notifications.broadcast.approve']) name
+union all
+select 'action', name, 'BILDIRIM-06' from unnest(array[
+  'settings.notifications.read', 'settings.notifications.write', 'settings.notifications.test']) name;
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -506,13 +564,16 @@ select is(
   ),
   '{}'::text[], 'retired permission keys stay gone'
 );
+-- The retired notification types went with the catalog that listed them (BILDIRIM-06).
+select ok(to_regclass('public.notification_catalog') is null, 'retired notification types stay gone: the catalog itself is gone');
 select is(
-  array(
-    select c.type_key from public.notification_catalog c
-    where exists (select 1 from retired r where r.kind = 'notification' and c.type_key like r.name)
-    order by 1
-  ),
-  '{}'::text[], 'retired notification types stay gone'
+  array(select r.name from retired r join pg_policies p on p.schemaname = 'realtime' and p.tablename = 'messages' and p.policyname = r.name
+        where r.kind = 'realtime_policy' order by 1),
+  '{}'::text[], 'retired live-updates policies stay gone'
+);
+select is(
+  array(select r.name from retired r join cron.job j on j.jobname = r.name where r.kind = 'cron' order by 1),
+  '{}'::text[], 'retired scheduled jobs stay gone'
 );
 select ok(
   not exists (

@@ -14,8 +14,9 @@ select tests.world('os');
 select tests.person('os', 'zeynep', 'admin', array['K', 'B'], array['cook']);
 select tests.person('os', 'ayse', 'manager', array['K'], array['cook']);
 
--- The eleven permissions with the reads each one needs (Invitations & access Edit
--- needs roles.read, so it stays with owner and admin too).
+-- The ten permissions with the reads each one needs (Invitations & access Edit
+-- needs roles.read, so it stays with owner and admin too). Notification settings
+-- went with the old notification system (BILDIRIM-06).
 create temporary table os_org (key text primary key, needs text[]);
 insert into os_org values
   ('settings.general.manage', array['settings.general.read']),
@@ -25,7 +26,6 @@ insert into os_org values
   ('settings.shift_catalog.manage', array['settings.shift_catalog.read']),
   ('settings.schedule_rules.manage', array['settings.schedule_rules.read']),
   ('documents.manage', array['documents.read']),
-  ('notifications.settings.write', array['notifications.settings.read']),
   ('schedule.conflict_rules.manage', array['settings.schedule_rules.read']),
   ('roles.read', array[]::text[]),
   ('employee_access.manage', array['employees.read', 'employee_access.read', 'roles.read']);
@@ -47,8 +47,7 @@ end $$;
 
 select set_eq(
   $$select key from public.permissions where not custom_grantable$$,
-  $$select key from os_org union values ('roles.manage'), ('workspace.manage'), ('notifications.broadcast.approve'),
-    ('notifications.delivery_audit.read'), ('notifications.dlq.replay'), ('notifications.test_send')$$,
+  $$select key from os_org union values ('roles.manage'), ('workspace.manage')$$,
   'the organization Edit permissions and roles.read are not grantable to a custom role');
 
 select is(
@@ -64,7 +63,7 @@ select is(
 select is(
   pg_temp.save(tests.user('os:owner'), 'manager',
     array['settings.general.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-          'settings.schedule_rules.read', 'documents.read', 'notifications.settings.read']),
+          'settings.schedule_rules.read', 'documents.read']),
   'ok',
   'the other organization reads stay grantable to a manager role (K14 S1)');
 
@@ -94,8 +93,8 @@ select is(
   (select count(distinct p.permission_key)::integer from public.workspace_role_permissions p
    join public.workspace_roles r on r.id = p.role_id
    where r.workspace_id = tests.id('os') and r.system_key = 'admin' and p.permission_key in (select key from os_org)),
-  11,
-  'the admin role holds all eleven');
+  10,
+  'the admin role holds all ten');
 
 select is(
   (select count(*)::integer from public.workspace_role_permissions p

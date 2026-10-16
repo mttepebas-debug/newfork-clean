@@ -30,7 +30,8 @@ select fn, m[1] statement
 from refusal_functions, regexp_matches(pg_get_functiondef(oid), $re$(raise\s+exception\s+'(?:[^']|'')*'[^;]*;)$re$, 'gi') m
 where m[1] ~* 'PT409';
 select is((select count(distinct fn)::int from refusal_functions),5,'every listed announcement function exists');
-select is((select count(*)::int from refusal_raises),16,'the sixteen announcement PT409 refusals are found in the function bodies');
+-- Fifteen since Remind's "Everyone acknowledged." went with the old notifications (BILDIRIM-06).
+select is((select count(*)::int from refusal_raises),15,'the fifteen announcement PT409 refusals are found in the function bodies');
 select is((select coalesce(array_agg(distinct fn order by fn),'{}') from refusal_raises where statement !~* 'hint'),'{}'::text[],
  'no announcement PT409 is raised without a reason key');
 select is((select coalesce(array_agg(distinct key order by key),'{}') from (select (regexp_match(statement,$re$hint\s*=\s*'([^']*)'$re$,'i'))[1] key from refusal_raises) k

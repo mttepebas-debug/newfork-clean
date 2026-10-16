@@ -48,10 +48,10 @@ select is(
   'filed and approved by the owner'
 );
 select is(
-  (select count(*)::integer from public.notification_outbox o
-   where o.workspace_id = tests.id('od') and o.type_key = 'requests.time_off.submitted'),
+  (select count(*)::integer from public.schedule_time_off_requests r
+   where r.workspace_id = tests.id('od') and r.status = 'pending'),
   0,
-  'no manager is asked to review it'
+  'no manager is asked to review it: nothing waits'
 );
 
 select * from finish();

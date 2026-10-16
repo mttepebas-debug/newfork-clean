@@ -4,15 +4,6 @@ set local search_path=public,extensions;
 select no_plan();
 -- Schema-only replay supplies its own minimal synthetic permission catalog.
 insert into public.permissions(key,label,category,description) select p,p,'People',p from unnest(array['documents.read','documents.manage','employee_documents.read','employee_documents.review','employees.read','employees.update']) p on conflict do nothing;
-insert into public.notification_catalog(type_key,schema_version,category,severity,sensitivity,supported_channels,default_cadence,audience_contract,action_route_contract,dedupe_policy,retention_class,template_key,lifecycle)
-select 'people.documents.'||kind,1,'people',case when kind in ('review','missing','rejected','restricted') then 'action_required' else 'info' end,'confidential',array['in_app'],'immediate',
- case when kind='review' then 'document_reviewers' else 'document_employee' end,
- jsonb_build_object('route',case when kind='review' then '/app/settings/documents' else '/app/account/documents' end,'allowed_query_keys',jsonb_build_array('workspace','requirement','kind')),
- '{"strategy":"keep_first","scope":"event_recipient","key_fields":["event_id","recipient_user_id"]}'::jsonb,'sensitive_30d','people.documents.'||kind||'.v1','active'
-from unnest(array['review','missing','expiry','approved','rejected','restricted','restored','assigned','activated']) kind
--- The migrations already put these rows in on a full reset; the insert is only
--- for a replay of the schema alone. Either way the catalog ends up the same.
-on conflict do nothing;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select ('15200000-0000-4000-8000-00000000000'||n)::uuid,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','bl052-'||n||'@example.test','','{}','{}',now(),now() from generate_series(1,5) n;
 insert into public.workspaces(id,name,created_by) values('25200000-0000-4000-8000-000000000001','BL052 test','15200000-0000-4000-8000-000000000001');
@@ -155,15 +146,8 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 select is((select count(*)::int from public.employee_onboarding_requirements where employee_id='45200000-0000-4000-8000-000000000005' and source_id=(select id from publication_test)),1,'future onboarding receives published matching document');
 select pg_temp.transition('draft');
 select ok(not app_private.document_activation_blocked((select r from public.employee_onboarding_requirements r where employee_id='45200000-0000-4000-8000-000000000005' and source_id=(select id from publication_test))),'publication pause removes the onboarding activation gate');
-select ok(not app_private.enqueue_document_notification('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','test-paused-expiry','expiry','Expires','Soon',(select id from public.employee_onboarding_requirements where employee_id='45200000-0000-4000-8000-000000000001' and source_id=(select id from publication_test)),null),'paused expiry reminder producer is suppressed');
+-- The reminder checks here went with the old notification system (BILDIRIM-06).
 select pg_temp.transition('published');
-select app_private.enqueue_document_notification('25200000-0000-4000-8000-000000000001','45200000-0000-4000-8000-000000000001','15200000-0000-4000-8000-000000000002','test-before-pause','expiry','Expires','Soon',(select id from public.employee_onboarding_requirements where employee_id='45200000-0000-4000-8000-000000000001' and source_id=(select id from publication_test)),null);
-create temp table queued_expiry as select id from public.notification_outbox where type_key='people.documents.expiry' order by created_at desc limit 1;
-select is(app_private.document_notification_policy((select id from queued_expiry),'15200000-0000-4000-8000-000000000002','{"decision":"allow"}')->>'decision','allow','current published reminder is eligible');
-select pg_temp.transition('draft');
-select is(app_private.document_notification_policy((select id from queued_expiry),'15200000-0000-4000-8000-000000000002','{"decision":"allow"}')->>'decision','deny','delayed requirement reminder is suppressed while unpublished');
-select pg_temp.transition('published');
-select is(app_private.document_notification_policy((select id from queued_expiry),'15200000-0000-4000-8000-000000000002','{"decision":"allow"}')->>'decision','deny','republish does not replay the old reminder backlog');
 -- Optional documents never receive an artificial countdown or block.
 select pg_temp.transition('draft');
 update public.document_types set lifecycle_settings=jsonb_set(jsonb_set(jsonb_set(lifecycle_settings,'{mode}','"optional"'),'{period_days}','null'),'{suspend_on_overdue}','false'),lifecycle_revision=lifecycle_revision+1 where id=(select id from publication_test);

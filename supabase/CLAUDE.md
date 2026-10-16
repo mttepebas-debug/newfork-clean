@@ -18,7 +18,6 @@
 - Bir alanın kuralı değişince onu döndüren her fonksiyon `schema.sql`'de aranır.
 - `newfork.*_scope` GUC'u havuzlu bağlantıda `''` döner: `nullif(current_setting(x, true), '')::jsonb` ile bir kez oku.
 - `jobs` UPDATE'inden sonra aynı migration'da `ALTER TABLE jobs` "pending trigger events" verir; arada `set constraints public.document_assignment_changed immediate`.
-- Yeni bildirim tipi: `notification_catalog` + `notification_producer_registry` + yayınlanmış `notification_template_versions`; eksiği `reconcile_notification_platform_service()` gösterir.
 - Yeni soft yayın bulgusu `schedule_publication_overrides`'a yazılır; CHECK'i yalnız üç kod alır: ya `overrideable=false` + `tier='note'` ya CHECK genişler.
 - `language sql` fonksiyonda argümanla aynı adlı sütun varsa sütun kazanır, koşul sessizce bütün satırlara eşleşir (BL-234: yayın önizlemesi 500): argümanı `fn.arg` diye nitele ya da çakışmayan ad ver (`target_…`); `pg_temp` yardımcıları da.
 - JSON'a giden `time` değeri `to_char(x, 'HH24:MI')` ile: `jsonb_build_object` `09:00:00` yazar, shared `timeOfDaySchema` yalnız HH:MM alır, API 500 döner.
@@ -28,7 +27,7 @@
 - Yayınlanmış kabulü koruma, `schedule_availability_prior_publication`'ı çağıran dört fonksiyonda; değişiklik dördüne birden.
 - "Yayın onaylı takası geri almaz" tek kural: `shift_exchange_draft_undoes`.
 - Aynı kişide çakışan vardiya (`time_overlap`) hep engel; ayarı ve onayı yok. Çekirdek bir vardiyayı ötekilerin bugünkü saatiyle kıyaslar: birden çok vardiyanın saatini değiştiren yol yeni-yeni çakışmaya kendisi bakar (`preview_schedule_default_hours_service` eş döngüsü, "Overlaps …").
-- İzin talebinin durumu tek değerlendirme: `app_private.time_off_state`; oy, okuma (`time_off_progress`), süpürme ve bildirim onu okur.
+- İzin talebinin durumu tek değerlendirme: `app_private.time_off_state`; oy, okuma (`time_off_progress`) ve süpürme onu okur.
 - Belge muafiyeti yalnız `app_private.set_document_exemption`'dan verilir ya da geri alınır (inceleme servisi, sahiplik devri, yeniden yayın).
 
 ## Test (pgTAP) ve test dünyası
