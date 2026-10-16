@@ -10,8 +10,12 @@ export type OturumPanosuEvent = {
   actions?: string[]
 }
 
+/** A job the session sent to the background (a test, a train, a worker agent) with no notification yet. */
+export type OturumPanosuJob = { id: string; label: string; startedAt: number }
+
 export type OturumPanosuRaw = {
   id: string
+  cliId: string
   title: string
   cwd: string
   permissionMode: string
@@ -20,6 +24,7 @@ export type OturumPanosuRaw = {
   mtimeMs: number
   lastPrompt: string
   events: OturumPanosuEvent[]
+  background: OturumPanosuJob[]
 }
 
 export type OturumPanosuStatus = 'izin' | 'soru' | 'karar' | 'plan' | 'hata' | 'bitti' | 'durdu' | 'calisiyor'
@@ -44,6 +49,8 @@ export type OturumPanosuRow = {
   isNew: boolean
   lastPrompt: string
   finalText: string
+  /** Labels of the background jobs still running. */
+  background: string[]
 }
 
 export type OturumPanosuSummaryItem = { id: string; title: string; bitti: string; acik: string; sonraki: string }
@@ -65,6 +72,7 @@ export type OturumPanosuBoardRow = {
   options: string
   age: string
   isNew: boolean
+  isSelf: boolean
   next: string
 }
 
@@ -91,6 +99,9 @@ declare module 'claude-code' {
       layout: OturumPanosuLayout
       order: OturumPanosuGroup[]
       collapsed: OturumPanosuGroup[]
+      project: string
+      selfId: string
+      isMinimized: boolean
     }
   }
 }

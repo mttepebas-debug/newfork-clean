@@ -58,6 +58,18 @@ function sinceLastPrompt(events: OturumPanosuEvent[]): OturumPanosuEvent[] {
 }
 
 export function classify(raw: OturumPanosuRaw, now: number): OturumPanosuRow {
+  const row = classifyTurn(raw, now)
+  const jobs = (raw.background ?? []).map(j => j.label)
+  if (jobs.length === 0) return { ...row, background: [] }
+  const running = `Arka planda ${jobs.length} iş: ${jobs.join(' · ')}`
+  // A finished turn whose tests, train or worker still run is still at work.
+  if (row.status === 'bitti' || row.status === 'durdu')
+    return { ...row, status: 'calisiyor', detail: oneLine(running, 220), isNew: false, background: jobs }
+  if (row.status === 'calisiyor') return { ...row, detail: oneLine(running, 220), background: jobs }
+  return { ...row, detail: oneLine(`${row.detail} · arka planda ${jobs.length} iş`, 240), background: jobs }
+}
+
+function classifyTurn(raw: OturumPanosuRaw, now: number): OturumPanosuRow {
   const events = raw.events
   const turn = sinceLastPrompt(events)
   const last = events[events.length - 1]
@@ -71,6 +83,7 @@ export function classify(raw: OturumPanosuRaw, now: number): OturumPanosuRow {
     options: [] as string[],
     lastPrompt: raw.lastPrompt || oneLine(events.filter(e => e.k === 'prompt').pop()?.text, 600),
     finalText,
+    background: [] as string[],
   }
   const row = (status: OturumPanosuStatus, detail: string, since: number, options: string[] = []): OturumPanosuRow => ({
     ...base,

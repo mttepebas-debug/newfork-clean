@@ -125,6 +125,7 @@ const Board: ClientModule<OturumPanosuBoardProps, BoardState> = (props, surface)
             YENİ
           </Text>
         )}
+        {r.isSelf && <Text dimColor>· bu oturum</Text>}
         <Box flexGrow={1} />
         {compact && (
           <Text color={r.color} bold>
