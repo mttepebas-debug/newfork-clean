@@ -109,15 +109,6 @@ describe("account security service", () => {
     await expect(service.changePassword(accessToken, "incorrect", "new-password")).rejects.toThrow();
     expect(rpc).not.toHaveBeenCalledWith("record_account_security_event_service", expect.anything());
   });
-  it("derives account-only inbox actor from Auth and rejects an invalid session before RPC", async () => {
-    const { service, rpc } = serviceFixture();
-    // Fixture returns no inbox; schema rejection occurs only after the correctly bound RPC.
-    await expect(service.getNotifications(accessToken, { category: null, severity: null, readState: null, cursor: null, limit: 30 })).rejects.toThrow();
-    expect(rpc).toHaveBeenCalledWith("get_notification_inbox_v2_service", expect.objectContaining({ actor_user_id: userId, target_workspace_id: null }));
-    const denied = serviceFixture({ authOverrides: { getUser: vi.fn(async () => { throw new Error("session required"); }) } });
-    await expect(denied.service.getNotificationPreferences(accessToken)).rejects.toThrow("session required");
-    expect(denied.rpc).not.toHaveBeenCalled();
-  });
   it("never marks an unconfigured local recovery sender as successful", async () => {
     await expect(createRecoveryEmailDelivery({ production: false })({ email: "fixture@example.test", recoveryUrl: "https://app.example.test/account-recovery", restoreUntil: "2026-10-01", kind: "initial", idempotencyKey: "fixture" })).rejects.toThrow("delivery is not configured");
   });

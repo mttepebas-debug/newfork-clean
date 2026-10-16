@@ -2,7 +2,6 @@ import {
   announcementDraftSchema,
   announcementIntentSchema,
   announcementStateActionSchema,
-  notificationActionSchema,
   ownerSetupChecklistItemIdSchema,
   workspaceLayoutInputSchema,
   workspaceManualTodoInputSchema,
@@ -14,7 +13,6 @@ import { z } from "zod";
 import {
   resolveActor,
   resolveWorkspaceAuthorization,
-  resolveWorkspaceMembership,
   type WorkspaceContextResolver,
 } from "../auth/workspace-context";
 import type { CommunicationService } from "./communication-service";
@@ -51,37 +49,6 @@ const setupChecklistPatchBody = z.object({
   itemId: ownerSetupChecklistItemIdSchema.optional(),
   closed: z.boolean().optional(),
 });
-export const inboxQuery = z.object({
-  category: z
-    .enum([
-      "announcement",
-      "request",
-      "schedule",
-      "security",
-      "requests",
-      "payroll",
-      "people",
-      "communications",
-      "system",
-    ])
-    .nullable()
-    .default(null),
-  severity: z
-    .enum(["info", "success", "warning", "action_required"])
-    .nullable()
-    .default(null),
-  read_state: z
-    .enum(["all", "seen", "unseen", "read", "unread"])
-    .nullable()
-    .default(null),
-  unread_only: z
-    .enum(["true", "false"])
-    .default("false")
-    .transform((value) => value === "true"),
-  cursor: z.string().min(1).nullable().default(null),
-  limit: z.coerce.number().int().min(1).max(50).default(30),
-});
-
 export function registerCommunicationRoutes(
   app: FastifyInstance,
   options: {
@@ -246,64 +213,6 @@ export function registerCommunicationRoutes(
         await options.service.acknowledgeAnnouncement({
           ...actor(context),
           announcementId: params.data.announcementId,
-        }),
-      );
-    },
-  );
-
-  app.get(
-    "/v1/workspaces/:workspaceId/communications/notifications",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const query = inboxQuery.safeParse(request.query);
-      if (!params.success || !query.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid notification filters required" });
-      const ownContext = await authorizeActiveMember(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!ownContext) return;
-      if (!options.service) return unavailable(reply);
-      return reply.send(
-        await options.service.getNotifications({
-          ...actor(ownContext),
-          category: query.data.category,
-          severity: query.data.severity,
-          readState:
-            query.data.read_state ??
-            (query.data.unread_only ? "unread" : null),
-          cursor: query.data.cursor,
-          limit: query.data.limit,
-        }),
-      );
-    },
-  );
-
-  app.post(
-    "/v1/workspaces/:workspaceId/communications/notifications/action",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = notificationActionSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid notification action required" });
-      const ownContext = await authorizeActiveMember(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-        reply,
-      );
-      if (!ownContext) return;
-      if (!options.service) return unavailable(reply);
-      return reply.send(
-        await options.service.actOnNotification({
-          ...actor(ownContext),
-          action: body.data,
         }),
       );
     },
@@ -488,21 +397,6 @@ async function authorize(
   return null;
 }
 
-async function authorizeActiveMember(
-  authorization: string | undefined,
-  workspaceId: string,
-  resolver: WorkspaceContextResolver | null,
-  reply: FastifyReply,
-): Promise<ActiveWorkspaceContext | null> {
-  const result = await resolveWorkspaceMembership({
-    authorization,
-    workspaceId,
-    resolver,
-  });
-  if (result.context) return result.context;
-  reply.status(404).send({ error: "Workspace not found" });
-  return null;
-}
 function actor(context: ActiveWorkspaceContext) {
   return { actorUserId: context.userId, workspaceId: context.workspace.id };
 }

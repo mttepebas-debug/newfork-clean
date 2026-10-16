@@ -9,9 +9,6 @@ const accessToken = "route-access-token";
 
 function service(overrides: Partial<AccountSecurityService> = {}): AccountSecurityService {
   return {
-    getNotificationPreferences: vi.fn(async () => ({ workspace_id: null, can_write: false, workspaces: [], catalog: [], preferences: [] })),
-    getNotifications: vi.fn(async () => ({ workspace_id: null, unread_count: 0, next_cursor: null, notifications: [] })),
-    actOnNotification: vi.fn(async () => ({ status: "saved" as const, affected: 1 })),
     getSecurityState: vi.fn(async () => ({
       email: "owner@example.test",
       pendingEmail: null,
@@ -60,13 +57,16 @@ async function appWith(
 }
 
 describe("account security routes", () => {
-  it("keeps account inbox independent of workspace or supplied actor IDs", async () => {
-    const svc = service(); const app = await appWith(svc);
-    const response = await app.inject({ method: "GET", url: "/v1/account/notifications?workspaceId=spoof&actorUserId=spoof", headers: { authorization: `Bearer ${accessToken}` } });
-    expect(response.statusCode).toBe(200);
-    expect(svc.getNotifications).toHaveBeenCalledWith(accessToken, { category: null, severity: null, readState: null, cursor: null, limit: 30 });
-    expect((await app.inject({ method: "GET", url: "/v1/account/notifications" })).statusCode).toBe(401);
-    expect((await app.inject({ method: "GET", url: "/v1/account/notifications?limit=1000", headers: { authorization: `Bearer ${accessToken}` } })).statusCode).toBe(400);
+  // BILDIRIM-03: the old notification system is torn down; the account inbox and the
+  // notification preferences are gone.
+  it.each([
+    ["GET", "/v1/account/notifications", undefined],
+    ["POST", "/v1/account/notifications/action", { notification_id: "a8300000-0000-4000-8000-000000000001", action: "read" }],
+    ["GET", "/v1/account/notification-preferences", undefined],
+  ] as const)("no longer serves %s %s", async (method, url, payload) => {
+    const app = await appWith(service());
+    const response = await app.inject({ method, url, headers: { authorization: `Bearer ${accessToken}` }, payload });
+    expect(response.statusCode).toBe(404);
     await app.close();
   });
 

@@ -5,7 +5,6 @@ import {
   announcementSavedSchema,
   announcementStateResultSchema,
   importantDateListSchema,
-  notificationInboxSchema,
   ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
   workspaceManualTodoInputSchema,
@@ -19,8 +18,6 @@ import {
   type AnnouncementStateAction,
   type AnnouncementStateResult,
   type ImportantDateList,
-  type NotificationAction,
-  type NotificationInbox,
   type OwnerSetupChecklistItemId,
   type OwnerSetupChecklistProgress,
   type WorkspaceDashboard,
@@ -30,7 +27,7 @@ import {
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
-import { HttpError, rpcFailure } from "../http-error";
+import { rpcFailure } from "../http-error";
 
 const savedResultSchema = z.object({
   status: z.literal("saved"),
@@ -41,17 +38,6 @@ const acknowledgedResultSchema = z.object({
   status: z.literal("saved"),
   acknowledged_at: z.string().datetime({ offset: true }),
 });
-
-const notificationCursorSchema = z.object({
-  created_at: z.string().datetime({ offset: true }),
-  id: z.string().uuid(),
-});
-
-const notificationInboxRpcSchema = notificationInboxSchema
-  .omit({ next_cursor: true })
-  .extend({
-    next_cursor: notificationCursorSchema.nullable(),
-  });
 
 export interface CommunicationService {
   getAnnouncements(input: ActorInput): Promise<AnnouncementList>;
@@ -84,19 +70,6 @@ export interface CommunicationService {
   acknowledgeAnnouncement(
     input: ActorInput & { announcementId: string },
   ): Promise<z.infer<typeof acknowledgedResultSchema>>;
-  getNotifications(
-    input: Omit<ActorInput, "workspaceId"> & {
-      workspaceId: string | null;
-      category: string | null;
-      severity: string | null;
-      readState: "all" | "seen" | "unseen" | "read" | "unread" | null;
-      cursor: string | null;
-      limit: number;
-    },
-  ): Promise<NotificationInbox>;
-  actOnNotification(
-    input: Omit<ActorInput, "workspaceId"> & { workspaceId: string | null; action: NotificationAction },
-  ): Promise<z.infer<typeof savedResultSchema>>;
   getWorkspace(input: ActorInput): Promise<WorkspaceDashboard>;
   saveWorkspaceLayout(
     input: ActorInput & { layout: WorkspaceLayoutInput },
@@ -148,7 +121,7 @@ export function createCommunicationServiceWithClient(
     if (error) throw rpcFailure(error);
     return data;
   }
-  const actorArgs = (input: { actorUserId: string; workspaceId: string | null }) => ({
+  const actorArgs = (input: ActorInput) => ({
     actor_user_id: input.actorUserId,
     target_workspace_id: input.workspaceId,
   });
@@ -207,38 +180,6 @@ export function createCommunicationServiceWithClient(
         await rpc("acknowledge_announcement_service", {
           ...actorArgs(input),
           target_announcement_id: input.announcementId,
-        }),
-      );
-    },
-    async getNotifications(input) {
-      const cursor = decodeNotificationCursor(input.cursor);
-      const response = notificationInboxRpcSchema.parse(
-        await rpc("get_notification_inbox_v2_service", {
-          ...actorArgs(input),
-          target_category: input.category,
-          target_severity: input.severity,
-          target_read_state:
-            input.readState && input.readState !== "all"
-              ? input.readState
-              : null,
-          target_cursor_created_at: cursor?.created_at ?? null,
-          target_cursor_id: cursor?.id ?? null,
-          target_limit: input.limit,
-        }),
-      );
-      return notificationInboxSchema.parse({
-        ...response,
-        next_cursor: response.next_cursor
-          ? encodeNotificationCursor(response.next_cursor)
-          : null,
-      });
-    },
-    async actOnNotification(input) {
-      return savedResultSchema.parse(
-        await rpc("act_on_notification_inbox_item_v2_service", {
-          ...actorArgs(input),
-          target_item_id: input.action.notification_id,
-          target_action: input.action.action,
         }),
       );
     },
@@ -301,21 +242,4 @@ export function createCommunicationServiceWithClient(
       );
     },
   };
-}
-
-function encodeNotificationCursor(
-  cursor: z.infer<typeof notificationCursorSchema>,
-): string {
-  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
-}
-
-function decodeNotificationCursor(cursor: string | null) {
-  if (!cursor) return null;
-  try {
-    return notificationCursorSchema.parse(
-      JSON.parse(Buffer.from(cursor, "base64url").toString("utf8")),
-    );
-  } catch {
-    throw new HttpError("invalid notification cursor", 400);
-  }
 }

@@ -1,6 +1,4 @@
 import { createHash } from "node:crypto";
-import { notificationActionSchema } from "@newfork/shared";
-import { inboxQuery } from "../communications/communication-routes";
 import type { FastifyInstance, FastifyReply } from "fastify";
 import { z } from "zod";
 import { bearerToken } from "../auth/workspace-context";
@@ -50,32 +48,6 @@ export function registerAccountSecurityRoutes(
 ) {
   const resendFloorMs = options.recoveryResendFloorMs ?? 1_500;
   const resendBudgetMs = options.recoveryResendBudgetMs ?? 1_200;
-  app.get("/v1/account/notification-preferences", async (request, reply) => {
-    const token = bearerToken(request.headers.authorization);
-    if (!token) return reply.status(401).send({ error: "Bearer token required" });
-    if (!options.service) return unavailable(reply);
-    return reply.send(await options.service.getNotificationPreferences(token));
-  });
-  app.get("/v1/account/notifications", async (request, reply) => {
-    const token = bearerToken(request.headers.authorization);
-    if (!token) return reply.status(401).send({ error: "Bearer token required" });
-    const query = inboxQuery.safeParse(request.query);
-    if (!query.success) return reply.status(400).send({ error: "Valid notification filters required" });
-    if (!options.service) return unavailable(reply);
-    return reply.send(await options.service.getNotifications(token, {
-      category: query.data.category, severity: query.data.severity,
-      readState: query.data.read_state ?? (query.data.unread_only ? "unread" : null),
-      cursor: query.data.cursor, limit: query.data.limit,
-    }));
-  });
-  app.post("/v1/account/notifications/action", async (request, reply) => {
-    const token = bearerToken(request.headers.authorization);
-    if (!token) return reply.status(401).send({ error: "Bearer token required" });
-    const body = notificationActionSchema.safeParse(request.body);
-    if (!body.success) return reply.status(400).send({ error: "Valid notification action required" });
-    if (!options.service) return unavailable(reply);
-    return reply.send(await options.service.actOnNotification(token, body.data));
-  });
   app.get("/v1/account/security", async (request, reply) => {
     const accessToken = bearerToken(request.headers.authorization);
     if (!accessToken)

@@ -81,8 +81,6 @@ function communicationServiceMock(): CommunicationService {
     saveAnnouncement: vi.fn(),
     setAnnouncementState: vi.fn(),
     acknowledgeAnnouncement: vi.fn(),
-    getNotifications: vi.fn(),
-    actOnNotification: vi.fn(),
     getWorkspace: vi.fn(),
     saveWorkspaceLayout: vi.fn(),
     createWorkspaceTodo: vi.fn(),
@@ -94,6 +92,29 @@ function communicationServiceMock(): CommunicationService {
 }
 
 describe("communication routes", () => {
+  // BILDIRIM-03: the old notification inbox is torn down; its endpoints are gone.
+  it.each([
+    ["GET", `/v1/workspaces/${workspaceId}/communications/notifications`, undefined],
+    [
+      "POST",
+      `/v1/workspaces/${workspaceId}/communications/notifications/action`,
+      { notification_id: "a8300000-0000-4000-8000-000000000001", action: "read" },
+    ],
+  ] as const)("no longer serves the retired notification inbox: %s %s", async (method, url, payload) => {
+    const app = buildApp({
+      contextResolver: { resolve: async () => activeContext },
+      communicationService: communicationServiceMock(),
+    });
+    const response = await app.inject({
+      method,
+      url,
+      headers: { authorization: "Bearer owner-token" },
+      payload,
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Not found" });
+  });
+
   it("returns generic not found without calling services when active workspace context mismatches the path", async () => {
     const service = communicationServiceMock();
     const app = buildApp({
@@ -101,7 +122,6 @@ describe("communication routes", () => {
       communicationService: service,
     });
     const announcementId = "a8200000-0000-4000-8000-000000000001";
-    const notificationId = "a8300000-0000-4000-8000-000000000001";
     const todoId = "a9700000-0000-4000-8000-000000000011";
     const routes = [
       {
@@ -141,17 +161,6 @@ describe("communication routes", () => {
         url: `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`,
         payload: { expected_revision: 1 },
         serviceMethod: "setAnnouncementState",
-      },
-      {
-        method: "GET",
-        url: `/v1/workspaces/${workspaceId}/communications/notifications`,
-        serviceMethod: "getNotifications",
-      },
-      {
-        method: "POST",
-        url: `/v1/workspaces/${workspaceId}/communications/notifications/action`,
-        payload: { notification_id: notificationId, action: "read" },
-        serviceMethod: "actOnNotification",
       },
       {
         method: "GET",

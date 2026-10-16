@@ -1,5 +1,3 @@
-import { notificationUserPreferencesResponseSchema, type NotificationUserPreferencesResponse } from "@newfork/shared";
-import { createCommunicationServiceWithClient, type CommunicationService } from "../communications/communication-service";
 import { createHash, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
 
@@ -69,10 +67,6 @@ interface RecoveryEmailInput {
 export type RecoveryEmailDelivery = (input: RecoveryEmailInput) => Promise<void>;
 
 export interface AccountSecurityService {
-  getNotificationPreferences(accessToken: string): Promise<NotificationUserPreferencesResponse>;
-  getNotifications(accessToken: string, filters: Omit<Parameters<CommunicationService["getNotifications"]>[0], "actorUserId" | "workspaceId">): ReturnType<CommunicationService["getNotifications"]>;
-  actOnNotification(accessToken: string, action: Parameters<CommunicationService["actOnNotification"]>[0]["action"]): ReturnType<CommunicationService["actOnNotification"]>;
-
   getSecurityState(accessToken: string): Promise<AccountSecurityState>;
   requestEmailChange(accessToken: string, newEmail: string): Promise<AccountSecurityState>;
   resendEmailChange(accessToken: string): Promise<void>;
@@ -235,25 +229,12 @@ export function createAccountSecurityServiceWithClients(options: {
     });
   }
 
-  const communications = createCommunicationServiceWithClient(options.rpcClient);
   // The audit trail has its own entry point; the account notification is the audit table's trigger,
   // so tearing notifications down leaves this record in place (BILDIRIM-01, K4).
   async function recordSecurityEvent(userId: string, event: string) {
     await rpc("record_account_security_event_service", { actor_user_id: userId, target_event: event });
   }
   return {
-    async getNotificationPreferences(accessToken) {
-      const { user } = await requireUser(accessToken);
-      return notificationUserPreferencesResponseSchema.parse(await rpc("get_notification_user_preferences_service", { actor_user_id: user.id, target_workspace_id: null }));
-    },
-    async getNotifications(accessToken, filters) {
-      const { user } = await requireUser(accessToken);
-      return communications.getNotifications({ ...filters, actorUserId: user.id, workspaceId: null });
-    },
-    async actOnNotification(accessToken, action) {
-      const { user } = await requireUser(accessToken);
-      return communications.actOnNotification({ actorUserId: user.id, workspaceId: null, action });
-    },
     async getSecurityState(accessToken) {
       const { user, email } = await requireUser(accessToken);
       return {
