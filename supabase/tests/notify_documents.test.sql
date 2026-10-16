@@ -120,6 +120,21 @@ select ok((select title = 'Your Food handler card was approved' from public.pers
 select is((select resolution || ' by ' || coalesce((select w.label from who w where w.uid = n.resolved_by), '-')
            from public.person_notifications n where n.type_key = 'documents.review_needed' and n.user_id = tests.user('dc:zeynep')),
   'approved by dc:owner', '(c) Zeynep''s card closes: the owner approved it');
+create function pg_temp.asked_card(person text) returns text language sql stable as $$
+  select coalesce(n.resolution, 'open') from public.person_notifications n
+  where n.type_key = 'documents.requested' and n.user_id = tests.user('dc:' || person)
+  order by n.created_at, n.id limit 1
+$$;
+select is(pg_temp.asked_card('ali'), 'open', '(c) Ali''s "documents to complete" stays open: the tip policy is still asked of him');
+-- An exemption while a review waits closes the reviewers' cards (the owner and Zeynep had Ayse's).
+select pg_temp.send('ayse', (select card from docs));
+select is(pg_temp.told('documents.review_needed', (pg_temp.req('ayse', (select card from docs))).id), array['dc:owner', 'dc:zeynep'],
+  '(c) Ayse''s card waits for the owner and Zeynep');
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('ayse', (select card from docs))).id,
+  (pg_temp.req('ayse', (select card from docs))).lifecycle_revision, true, 'Brought it in person');
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'documents.review_needed'
+           and n.subject_id = (pg_temp.req('ayse', (select card from docs))).id and n.resolved_at is null), 0,
+  '(c) exempted while it waited: no reviewer''s card stays open');
 select pg_temp.send('emre', (select card from docs));
 select pg_temp.review('zeynep', 'emre', (select card from docs), 'reject');
 select ok((select title = 'Your Food handler card needs a change' from public.person_notifications
@@ -133,6 +148,8 @@ select is(pg_temp.told('documents.review_needed', (pg_temp.req('ali', (select po
   '(d) the tip policy needs no review: nobody is asked');
 select is(pg_temp.told('documents.decided', (pg_temp.req('ali', (select policy from docs))).id), '{}'::text[],
   '(d) and Ali is not told of what he did himself');
+select is(pg_temp.asked_card('ali'), 'completed', '(d) nothing is asked of Ali now: his "documents to complete" closes');
+select is(pg_temp.asked_card('emre'), 'open', '(d) Emre''s stays open: his card needs a change');
 
 -- (e) The daily check -----------------------------------------------------------------------------------
 
@@ -165,15 +182,24 @@ where id = (pg_temp.req('emre', (select policy from docs))).id;
 select pg_temp.check();
 select is(pg_temp.told('documents.due_soon', (pg_temp.req('emre', (select policy from docs))).id), array['dc:emre', 'dc:emre'],
   '(e) due tomorrow: once more');
--- Blk's deadline moves out again: the restriction lifts.
-update public.employee_onboarding_requirements set deadline_at = now() + interval '7 days', document_suspended_at = null
-where source_id = (select card from docs) and lifecycle_user_id = tests.user('dc:blk');
+-- A new card waiting for review: no "upload the new one" for the old one's expiry.
+select pg_temp.send('ali', (select card from docs));
+update public.employee_document_submissions set expiry_date = ((select at_time from check_time)
+  at time zone app_private.document_employee_timezone(tests.id('dc'), tests.id('dc:ali')))::date + 5
+where id = (pg_temp.req('ali', (select card from docs))).approved_document_id;
 select pg_temp.check();
-select is(pg_temp.told('documents.access_changed'), array['dc:blk', 'dc:blk'], '(e) and told once more that access is back');
-select is(
-  (select array_agg(n.data ->> 'state' order by n.data ->> 'state') from public.person_notifications n
-   where n.type_key = 'documents.access_changed' and n.workspace_id = tests.id('dc')),
-  array['restored', 'restricted'], '(e) each says which');
+select is(pg_temp.told('documents.expiring'), array['dc:ali', 'dc:owner', 'dc:zeynep'],
+  '(e) Ali''s card expires in 5 days but the new one waits for review: no new warning');
+-- The restriction is the suspension itself, not the last notice: gone after the 90 days, it is not told again.
+delete from public.person_notifications where type_key = 'documents.access_changed' and workspace_id = tests.id('dc');
+select pg_temp.check();
+select is(pg_temp.told('documents.access_changed'), '{}'::text[], '(e) still restricted, its notice purged: not told again');
+-- Blk is excused from the card: the restriction lifts, and Blk hears it.
+select public.set_employee_document_exemption_service(tests.user('dc:owner'), tests.id('dc'), (pg_temp.req('blk', (select card from docs))).id,
+  (pg_temp.req('blk', (select card from docs))).lifecycle_revision, true, 'Brought it in person');
+select is(pg_temp.told('documents.access_changed'), array['dc:blk'], '(e) and told that access is back');
+select is((select n.data ->> 'state' from public.person_notifications n
+           where n.type_key = 'documents.access_changed' and n.workspace_id = tests.id('dc')), 'restored', '(e) saying so');
 
 -- (f) An exemption taken back ---------------------------------------------------------------------------
 
@@ -183,6 +209,15 @@ select public.set_employee_document_exemption_service(tests.user('dc:owner'), te
   (pg_temp.req('emre', (select card from docs))).lifecycle_revision, false, 'Needs a new one');
 select is((select count(*)::integer from public.person_notifications where type_key = 'documents.requested' and user_id = tests.user('dc:emre')), 2,
   '(f) the exemption taken back asks Emre again');
+
+-- (g) The owner hands the workspace over -------------------------------------------------------------
+-- The documents the owner was excused from are asked of them now.
+
+create temp table handover as select (public.initiate_workspace_ownership_transfer_service(tests.user('dc:owner'), tests.id('dc'),
+  tests.user('dc:zeynep')) ->> 'transfer_id')::uuid id;
+select public.respond_workspace_ownership_transfer_service(tests.user('dc:zeynep'), tests.id('dc'), (select id from handover), 'accept');
+select is((select count(*)::integer from public.person_notifications where type_key = 'documents.requested' and user_id = tests.user('dc:owner')), 1,
+  '(g) the former owner is asked for the documents they were excused from');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('dx')), 0,
   'another workspace hears nothing of this one');
