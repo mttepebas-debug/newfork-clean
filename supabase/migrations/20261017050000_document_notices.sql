@@ -6,7 +6,11 @@
 --     record; a document accepted without review tells nobody, not its sender;
 --   * decided: the person once; every reviewer's card closes ("Approved by ...");
 --   * the daily check: due at 7, 1 and 0 days, expiring at 30, 7 and 1 days (the person and who may review
---     them now), access restricted and back; each once.
+--     them now; not while the new one waits for review); each once;
+--   * access: restricted when the daily check suspends a person (document_suspend_overdue), back when an
+--     event lifts their suspension; from the documents' state, never from earlier notices;
+--   * "documents to complete" belongs to the person and closes when nothing is asked of them any more; a
+--     review card closes on the decision, and on an exemption, an unassignment or the type taken down.
 -- Every document event already goes through app_private.document_audit; the producer sits there, in the
 -- event's own transaction (S-91). The daily part sits in documents_maintain_service's case loop, after
 -- 09:00 in the person's time zone, as the old reminders did.
@@ -23,10 +27,14 @@ declare
   person public.employee_profiles%rowtype;
   name text;
   decided text;
+  now_row public.employee_onboarding_requirements%rowtype;
   sent integer := 0;
 begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = r.workspace_id;
-  if person.user_id is null or r.owner_excused then
+  -- The row as it is now: an event may be handed the row from before its own change (an owner no longer
+  -- excused after a handover is asked again).
+  select * into now_row from public.employee_onboarding_requirements x where x.id = r.id;
+  if person.user_id is null then
     return 0;
   end if;
   name := btrim(coalesce(nullif(person.preferred_name, ''), person.first_name) || ' ' || person.last_name);
@@ -38,26 +46,32 @@ begin
      or event_action = 'document.exemption_removed' then
     -- Nothing to do when what was approved before still counts, or the person no longer matches it. An
     -- exemption's row is the one before it was taken back: its event says.
-    if (event_action = 'document.exemption_removed'
-        and (coalesce((event_metadata ->> 'valid_approved')::boolean, false) or not coalesce((event_metadata ->> 'matching')::boolean, true)))
+    if now_row.owner_excused
+       or (event_action = 'document.exemption_removed'
+           and (coalesce((event_metadata ->> 'valid_approved')::boolean, false) or not coalesce((event_metadata ->> 'matching')::boolean, true)))
        or (event_action <> 'document.exemption_removed' and app_private.document_obligation_state(r, now()) not in ('grace', 'missing', 'rejected', 'expired')) then
       return 0;
     end if;
+    -- The person's card: it closes when nothing is asked of them (document_tell_settle).
     return app_private.notify('documents.requested', r.workspace_id, array[person.user_id],
       -- One go, one notice: every document asked of the person in one transaction is one event.
-      case when event_action = 'document.exemption_removed' then 'doc_request:' || r.id::text || ':' || coalesce(event_metadata ->> 'revision', '')
-           else 'doc_request:' || r.employee_id::text || ':' || txid_current()::text end,
+      -- Asked again (an exemption taken back, a handover) is its own go, also one notice.
+      case when event_action = 'document.exemption_removed' then 'doc_request_again:' else 'doc_request:' end
+        || r.employee_id::text || ':' || txid_current()::text,
       'You have documents to complete', 'Open your documents to see what is asked and by when.',
-      '/account/documents?workspace=' || r.workspace_id::text, actor, 'document_requirement', r.id,
+      '/account/documents?workspace=' || r.workspace_id::text, actor, 'employee_documents', r.employee_id,
       jsonb_build_object('requirement_id', r.id, 'title', r.title));
   end if;
 
-  if event_action = 'document.submitted' then
+  -- Gone from under a waiting review: an exemption, an unassignment, the type taken down. Its cards close.
+  if event_action in ('document.exempted', 'document.assignment_removed', 'document.publication_paused')
+     or (event_action = 'document.definition_applied' and event_metadata ->> 'action' = 'remove') then
+    perform app_private.notification_resolve(r.workspace_id, 'document_requirement', r.id, 'closed', actor);
+  end if;
+
+  if event_action = 'document.submitted' and event_metadata ->> 'state' = 'pending_review' then
     -- Accepted without review: nobody to ask, and the sender knows.
-    if event_metadata ->> 'state' is distinct from 'pending_review' then
-      return 0;
-    end if;
-    return app_private.notify('documents.review_needed', r.workspace_id,
+    sent := app_private.notify('documents.review_needed', r.workspace_id,
       app_private.notify_holders(r.workspace_id, 'documents.review', null, r.employee_id),
       'doc_review:' || r.id::text || ':' || coalesce(event_metadata ->> 'submission_id', ''),
       name || ' sent ' || r.title || ' for review', null,
@@ -74,9 +88,28 @@ begin
       '/account/documents?workspace=' || r.workspace_id::text, actor, 'document_requirement', r.id,
       jsonb_build_object('requirement_id', r.id, 'outcome', decided));
     perform app_private.notification_resolve(r.workspace_id, 'document_requirement', r.id, decided, actor);
-    return sent;
   end if;
-  return 0;
+
+  -- Nothing asked of the person any more: their "documents to complete" closes.
+  if not exists (
+    select 1 from public.employee_onboarding_requirements x
+    where x.workspace_id = r.workspace_id and x.employee_id = r.employee_id and x.kind in ('document', 'acknowledgement')
+      and x.lifecycle_retired_at is null and not x.owner_excused
+      and app_private.document_obligation_state(x, now()) in ('grace', 'missing', 'rejected', 'expired')
+  ) then
+    perform app_private.notification_resolve(r.workspace_id, 'employee_documents', r.employee_id, 'completed', actor);
+  end if;
+
+  -- The event lifted the person's suspension: their access is back.
+  if r.document_suspended_at is not null and now_row.document_suspended_at is null
+     and not app_private.document_actor_blocked(person.user_id, r.workspace_id) then
+    sent := sent + app_private.notify('documents.access_changed', r.workspace_id, array[person.user_id],
+      'doc_access:' || r.employee_id::text || ':restored:' || r.document_suspended_at::text,
+      'Your access is back', 'Your documents are in order.',
+      '/account/documents?workspace=' || r.workspace_id::text, actor, 'employee_documents', r.employee_id,
+      jsonb_build_object('state', 'restored'));
+  end if;
+  return sent;
 end;
 $$;
 
@@ -100,8 +133,8 @@ $$;
 
 -- The daily check ---------------------------------------------------------------------------------------
 
--- One case: access restricted or back (any time), then after 09:00 in the person's zone the due dates
--- (7, 1, 0 days) and the expiry dates (30, 7, 1 days). Each milestone once (its key).
+-- One case, after 09:00 in the person's zone: the due dates (7, 1, 0 days) and the expiry dates (30, 7, 1
+-- days). Each milestone once (its key).
 create function app_private.document_check_case(target_case uuid, at_time timestamptz)
 returns integer
 language plpgsql
@@ -115,8 +148,6 @@ declare
   w uuid;
   tz text;
   local_now timestamp;
-  blocked boolean;
-  last_state text;
   q public.employee_onboarding_requirements%rowtype;
   days_left integer;
   milestone integer;
@@ -132,21 +163,6 @@ begin
     return 0;
   end if;
   name := btrim(coalesce(nullif(person.preferred_name, ''), person.first_name) || ' ' || person.last_name);
-
-  -- Access: told when it changes, against the last such notice.
-  blocked := app_private.document_actor_blocked(u, w);
-  select n.data ->> 'state' into last_state from public.person_notifications n
-  where n.workspace_id = w and n.user_id = u and n.type_key = 'documents.access_changed'
-  order by n.created_at desc, n.id desc limit 1;
-  if blocked and last_state is distinct from 'restricted' or not blocked and last_state = 'restricted' then
-    sent := sent + app_private.notify('documents.access_changed', w, array[u],
-      'doc_access:' || c.employee_id::text || ':' || case when blocked then 'restricted' else 'restored' end || ':' || at_time::text,
-      case when blocked then 'Upload your documents to use ' || (select x.name from public.workspaces x where x.id = w) || ' again'
-           else 'Your access is back' end,
-      case when blocked then 'A required document is past its due date.' else 'Your documents are in order.' end,
-      '/account/documents?workspace=' || w::text, null, 'employee_documents', c.employee_id,
-      jsonb_build_object('state', case when blocked then 'restricted' else 'restored' end));
-  end if;
 
   tz := app_private.document_employee_timezone(w, c.employee_id);
   if tz is null then
@@ -177,7 +193,10 @@ begin
       end if;
     end if;
     -- Expiring: an approved document at 30, 7 and 1 days, not one approved inside the window.
-    if q.kind = 'document' and q.approved_document_id is not null then
+    -- A new one waiting for review is the renewal: no "upload the new one".
+    if q.kind = 'document' and q.approved_document_id is not null
+       and not exists (select 1 from public.employee_document_submissions s
+                       where s.id = q.submitted_document_id and s.state = 'pending_review') then
       select s.expiry_date, (s.reviewed_at at time zone tz)::date into expiry, approved_on
       from public.employee_document_submissions s where s.id = q.approved_document_id and s.state = 'accepted';
       days_left := expiry - local_now::date;
@@ -204,6 +223,45 @@ $$;
 
 revoke all on function app_private.document_check_case(uuid, timestamptz) from public;
 
+-- The restriction itself tells the person, once per suspension: the documents' state, never an earlier
+-- notice (one gone after 90 days is not a reason to tell again).
+create or replace function app_private.document_suspend_overdue()
+returns integer
+language plpgsql
+security definer
+set search_path to ''
+as $$
+declare suspended integer; told jsonb; person jsonb;
+begin
+  with s as (
+    update public.employee_onboarding_requirements q set document_suspended_at = now()
+    from public.employee_onboarding_cases oc
+    join public.employee_profiles p on p.id = oc.employee_id and p.workspace_id = oc.workspace_id and p.archived_at is null
+    join public.workspace_memberships m on m.id = oc.membership_id and m.user_id = p.user_id
+      and m.status in ('active', 'pending_activation')
+    where q.case_id = oc.id
+      and q.document_suspended_at is null and q.lifecycle_retired_at is null
+      -- What document_obligation_blocked needs before it can say yes, read first so the check runs on few rows.
+      and q.deadline_at <= now()
+      and coalesce((q.lifecycle_settings ->> 'suspend_on_overdue')::boolean, false)
+      and app_private.workspace_allows_interactive_access(oc.workspace_id)
+      and app_private.document_obligation_blocked(q, now())
+    returning q.workspace_id, q.employee_id, p.user_id
+  )
+  select count(*)::integer, coalesce(jsonb_agg(distinct jsonb_build_object('w', s.workspace_id, 'e', s.employee_id, 'u', s.user_id)), '[]')
+  into suspended, told from s;
+  for person in select value from jsonb_array_elements(told) loop
+    perform app_private.notify('documents.access_changed', (person ->> 'w')::uuid, array[(person ->> 'u')::uuid],
+      'doc_access:' || (person ->> 'e') || ':restricted:' || now()::text,
+      'Upload your documents to use ' || (select x.name from public.workspaces x where x.id = (person ->> 'w')::uuid) || ' again',
+      'A required document is past its due date.',
+      '/account/documents?workspace=' || (person ->> 'w'), null, 'employee_documents', (person ->> 'e')::uuid,
+      jsonb_build_object('state', 'restricted'));
+  end loop;
+  return suspended;
+end;
+$$;
+
 create or replace function public.documents_maintain_service(target_batch_size integer default 100, at_time timestamptz default now())
 returns jsonb
 language plpgsql
@@ -225,6 +283,8 @@ begin
   checked:=checked+1;
   update public.employee_onboarding_cases set document_notification_checked_at=at_time where id=c.id;
   -- Its notices (document_check_case); a case that fails is named and the batch goes on.
+  -- ponytail: one subtransaction per case; past 64 in one transaction Postgres keeps their ids beside the
+  -- cache, a little slower, never wrong. The cron sends 100; drop it below 64 if a check ever shows it.
   begin
    perform app_private.document_check_case(c.id, at_time);
   exception when others then
