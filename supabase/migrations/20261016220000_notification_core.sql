@@ -16,7 +16,8 @@
 --   * app_private.notify: what a producer calls in its own transaction. Members only, never the person
 --     who did it, one notice per event and person (S-95), a private live signal that carries no content;
 --   * the services the screens will call, gated by the core (notifications.read_own for one's own list
---     and choices, settings.organization.write for the workspace's settings).
+--     and choices, notifications.write_own to change one's choices, settings.organization.write for the
+--     workspace's settings).
 -- Every table: row level security on, nothing granted to the browser; access is through the services.
 
 -- Topics: what a person chooses by. A type belongs to one. --------------------------------------------------
@@ -160,7 +161,7 @@ create table public.person_notifications (
   workspace_id uuid references public.workspaces(id) on delete cascade,
   user_id uuid not null references auth.users(id) on delete cascade,
   type_key text not null references public.notification_types(key),
-  -- What happened, as the producer names it: one notice per event, type and person (S-95).
+  -- What happened, as the producer names it: one notice per event, type, person and workspace (S-95).
   event_key text not null check (char_length(event_key) between 1 and 200),
   actor_user_id uuid references auth.users(id) on delete set null,
   subject_type text check (subject_type ~ '^[a-z_]+$'),
@@ -177,10 +178,14 @@ create table public.person_notifications (
   resolution text check (resolution ~ '^[a-z_]+$'),
   resolved_by uuid references auth.users(id) on delete set null,
   expires_at timestamptz not null,
-  unique (user_id, type_key, event_key),
+  -- The workspace is part of the key: the same event key in two workspaces is two events (an account
+  -- notice, in no workspace, counts as one place).
+  unique nulls not distinct (user_id, workspace_id, type_key, event_key),
   check ((resolved_at is null) = (resolution is null))
 );
 create index person_notifications_list on public.person_notifications (user_id, workspace_id, created_at desc, id desc);
+-- A workspace that goes takes its notices without reading the whole table.
+create index person_notifications_workspace on public.person_notifications (workspace_id);
 create index person_notifications_open_subject on public.person_notifications (workspace_id, subject_type, subject_id)
   where resolved_at is null and subject_id is not null;
 create index person_notifications_expiry on public.person_notifications (expires_at);
@@ -501,7 +506,7 @@ begin
       btrim(target_title), nullif(btrim(coalesce(target_body, '')), ''), target_url, coalesce(target_data, '{}'::jsonb),
       now() + make_interval(days => kind.retention_days)
     )
-    on conflict (user_id, type_key, event_key) do nothing
+    on conflict (user_id, workspace_id, type_key, event_key) do nothing
     returning id into written;
     continue when written is null;
     total := total + 1;
@@ -567,6 +572,12 @@ end;
 $$;
 
 select cron.schedule('notification-retention', '40 4 * * *', 'select app_private.purge_expired_notifications()');
+
+-- Writing one's own choices is its own action (one's own, also while onboarding is not finished).
+-- Like every 'own' action the core reads no permission for it; notifications.preferences.write_own,
+-- which every system role holds, names it in the role catalog.
+insert into app_private.authz_actions (key, scope_class, effect, restricted_ok)
+values ('notifications.write_own', 'own', 'write', true);
 
 -- The person's list -----------------------------------------------------------------------------------------
 
@@ -735,12 +746,13 @@ as $$
 declare
   choice jsonb;
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.write_own');
   if jsonb_typeof(target_choices) is distinct from 'array' or jsonb_array_length(target_choices) not between 1 and 50 then
     raise exception 'valid choices required' using errcode = '22023', hint = 'notifications.invalid_choice';
   end if;
   for choice in select value from jsonb_array_elements(target_choices) loop
-    if jsonb_typeof(choice) is distinct from 'object' or jsonb_typeof(choice -> 'enabled') not in ('boolean', 'null')
+    if jsonb_typeof(choice) is distinct from 'object'
+       or jsonb_typeof(choice -> 'enabled') is null or jsonb_typeof(choice -> 'enabled') not in ('boolean', 'null')
        or jsonb_typeof(choice -> 'topic') is distinct from 'string' or jsonb_typeof(choice -> 'channel') is distinct from 'string' then
       raise exception 'valid choices required' using errcode = '22023', hint = 'notifications.invalid_choice';
     end if;

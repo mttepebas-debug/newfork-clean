@@ -310,6 +310,26 @@ select throws_ok($$select public.save_notification_preferences_service(pg_temp.u
   '[{"topic": "account", "channel": "email", "enabled": false}]')$$, '22023', null, '(e) nor a required topic');
 select throws_ok($$select public.save_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc'),
   '[{"topic": "my_schedule", "channel": "sms", "enabled": true}]')$$, '22023', null, '(e) text messages are not available');
+select throws_ok($$select public.save_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc'),
+  '[{"topic": "my_schedule", "channel": "email"}]')$$, '22023', null, '(e) a choice says on, off or back to the default');
+create function pg_temp.answer(sql text) returns text language plpgsql as $$
+declare state text; h text;
+begin
+  execute sql;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics state = returned_sqlstate, h = pg_exception_hint;
+  return state || ' ' || coalesce(h, '');
+end;
+$$;
+select is(pg_temp.answer(format($$select public.save_notification_preferences_service(%L, %L,
+  '[{"topic": "my_schedule", "channel": "email"}]')$$, pg_temp.u('nc:ali'), tests.id('nc'))),
+  '22023 notifications.invalid_choice', '(e) as an invalid choice (22023), never a missing value (23502)');
+select is(app_private.authz_reason(pg_temp.u('nc:ali'), tests.id('nc'), 'notifications.write_own', null, null, pg_temp.u('nc:emre')),
+  'out_of_scope', '(e) one''s choices are one''s own: the core refuses someone else''s');
+select is(pg_temp.refusal(format($$select public.save_notification_preferences_service(%L, %L,
+  '[{"topic": "my_schedule", "channel": "email", "enabled": false}]')$$, pg_temp.u('nc:sami'), tests.id('nc'))),
+  'authz.not_active', '(e) a suspended member changes nothing');
 select public.save_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc'),
   '[{"topic": "my_schedule", "channel": "email", "enabled": null}]');
 select is(pg_temp.why('schedule.published', tests.id('nc'), 'nc:ali', 'email'), 'default_on', '(e) a cleared choice falls back to the default');
@@ -342,6 +362,30 @@ select throws_ok($$select public.save_notification_workspace_settings_service(pg
   '22023', null, '(e) and cannot turn text messages on');
 select is((select count(*)::integer from public.notification_workspace_settings where workspace_id = tests.id('other')), 0,
   '(e) the settings are one workspace''s');
+
+-- One person in two workspaces: the same event key is one notice in each, and a choice in one is not
+-- a choice in the other.
+select public.accept_employee_invitation_by_id_service(pg_temp.u('nc:ali'), (public.create_employee_command_service(
+  pg_temp.u('other:owner'), tests.id('other'), gen_random_uuid(),
+  jsonb_build_object('first_name', 'Ali', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
+    'invitation_email', (select u.email from auth.users u where u.id = pg_temp.u('nc:ali')),
+    'start_date', '', 'internal_note', '', 'location_ids', jsonb_build_array(tests.id('other:K')),
+    'primary_location_id', tests.id('other:K'), 'job_ids', jsonb_build_array(tests.id('other:job:cook')),
+    'primary_job_id', tests.id('other:job:cook'), 'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('other') and r.system_key = 'employee')) ->> 'invitation_id')::uuid);
+select tests.settle();
+select is(app_private.notify('schedule.published', tests.id('nc'), array[pg_temp.u('nc:ali')], 'schedule.published:week-9', 'Out in nc'),
+  1, '(e) a person in two workspaces gets the event in the first');
+select is(app_private.notify('schedule.published', tests.id('other'), array[pg_temp.u('nc:ali')], 'schedule.published:week-9', 'Out in other'),
+  1, '(e) and the same event key in the second: two workspaces, two events');
+select is(
+  (select array_agg(i ->> 'title') from jsonb_array_elements(public.get_notification_feed_service(pg_temp.u('nc:ali'), tests.id('other')) -> 'items') i
+   where i ->> 'type' = 'schedule.published'),
+  array['Out in other'], '(e) each list shows its own workspace''s');
+select public.save_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc'),
+  '[{"topic": "my_schedule", "channel": "email", "enabled": false}]');
+select is(pg_temp.why('schedule.published', tests.id('nc'), 'nc:ali', 'email'), 'person_off', '(e) email off in the first workspace');
+select is(pg_temp.why('schedule.published', tests.id('other'), 'nc:ali', 'email'), 'default_on', '(e) still on in the second');
 
 -- (f) The browser and the live channel ---------------------------------------------------------------------
 

@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 490, last: 20261016220000_notification_core.sql
--- fingerprint: sha256:b1d7b38bf443c424c6bb6530b14ce68626460cb315cae8498c54298697f53f38
+-- fingerprint: sha256:fe4a0c89ee0f593f838d4013e768dddf70bdc93f783d2ef0b18fa3b9bf950569
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5273,7 +5273,7 @@ begin
       btrim(target_title), nullif(btrim(coalesce(target_body, '')), ''), target_url, coalesce(target_data, '{}'::jsonb),
       now() + make_interval(days => kind.retention_days)
     )
-    on conflict (user_id, type_key, event_key) do nothing
+    on conflict (user_id, workspace_id, type_key, event_key) do nothing
     returning id into written;
     continue when written is null;
     total := total + 1;
@@ -20534,12 +20534,13 @@ CREATE OR REPLACE FUNCTION "public"."save_notification_preferences_service"("act
 declare
   choice jsonb;
 begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.write_own');
   if jsonb_typeof(target_choices) is distinct from 'array' or jsonb_array_length(target_choices) not between 1 and 50 then
     raise exception 'valid choices required' using errcode = '22023', hint = 'notifications.invalid_choice';
   end if;
   for choice in select value from jsonb_array_elements(target_choices) loop
-    if jsonb_typeof(choice) is distinct from 'object' or jsonb_typeof(choice -> 'enabled') not in ('boolean', 'null')
+    if jsonb_typeof(choice) is distinct from 'object'
+       or jsonb_typeof(choice -> 'enabled') is null or jsonb_typeof(choice -> 'enabled') not in ('boolean', 'null')
        or jsonb_typeof(choice -> 'topic') is distinct from 'string' or jsonb_typeof(choice -> 'channel') is distinct from 'string' then
       raise exception 'valid choices required' using errcode = '22023', hint = 'notifications.invalid_choice';
     end if;
@@ -28352,7 +28353,7 @@ ALTER TABLE ONLY "public"."person_notifications"
 
 
 ALTER TABLE ONLY "public"."person_notifications"
-    ADD CONSTRAINT "person_notifications_user_id_type_key_event_key_key" UNIQUE ("user_id", "type_key", "event_key");
+    ADD CONSTRAINT "person_notifications_user_id_workspace_id_type_key_event_ke_key" UNIQUE NULLS NOT DISTINCT ("user_id", "workspace_id", "type_key", "event_key");
 
 
 
@@ -29032,6 +29033,10 @@ CREATE INDEX "person_notifications_open_subject" ON "public"."person_notificatio
 
 
 CREATE INDEX "person_notifications_resolver" ON "public"."person_notifications" USING "btree" ("resolved_by") WHERE ("resolved_by" IS NOT NULL);
+
+
+
+CREATE INDEX "person_notifications_workspace" ON "public"."person_notifications" USING "btree" ("workspace_id");
 
 
 
