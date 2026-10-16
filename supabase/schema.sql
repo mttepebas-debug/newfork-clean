@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 494, last: 20261017030000_schedule_notices.sql
--- fingerprint: sha256:f6839c4ee2a2607a7723d0eaaf727e24e0a1125ed45b8f1b0569e5c3830159a0
+-- migrations: 495, last: 20261017040000_notification_topics_by_right_and_feed_pages.sql
+-- fingerprint: sha256:0263584f11b0f25dca7f3c8219d0f3c0074e42c1be64a18d15bbd2a47125394f
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -12471,7 +12471,7 @@ $$;
 ALTER FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text" DEFAULT 'all'::"text", "target_before" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_limit" integer DEFAULT 30) RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text" DEFAULT 'all'::"text", "target_before" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_before_id" "uuid" DEFAULT NULL::"uuid", "target_limit" integer DEFAULT 30) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -12481,7 +12481,9 @@ declare
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
   if target_filter is null or target_filter not in ('all', 'unread', 'needs_action')
-     or target_limit is null or target_limit not between 1 and 100 then
+     or target_limit is null or target_limit not between 1 and 100
+     -- The next page starts after the last row: its time and its id, both or neither.
+     or (target_before is null) <> (target_before_id is null) then
     raise exception 'valid list request required' using errcode = '22023', hint = 'notifications.invalid_list';
   end if;
 
@@ -12493,7 +12495,7 @@ begin
   ),
   page as (
     select m.* from mine m
-    where (target_before is null or m.created_at < target_before)
+    where (target_before is null or (m.created_at, m.id) < (target_before, target_before_id))
       and (target_filter = 'all'
            or (target_filter = 'unread' and m.read_at is null)
            or (target_filter = 'needs_action' and m.needs_action and m.resolved_at is null))
@@ -12521,7 +12523,7 @@ end;
 $$;
 
 
-ALTER FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_limit" integer) OWNER TO "postgres";
+ALTER FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_before_id" "uuid", "target_limit" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_notification_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
@@ -12530,8 +12532,14 @@ CREATE OR REPLACE FUNCTION "public"."get_notification_preferences_service"("acto
     AS $$
 declare
   result jsonb;
+  held text[];
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'notifications.read_own');
+  -- The actions the person holds somewhere in the workspace, as the core says.
+  select coalesce(array_agg(x.a), '{}') into held
+  from (select distinct unnest(t.heard_by) a from public.notification_types t) x
+  where cardinality(app_private.scope_set(actor_user_id, target_workspace_id, x.a)) > 0;
+
   select jsonb_build_object(
     'channels', jsonb_build_object(
       'in_app', jsonb_build_object('locked', true),
@@ -12545,7 +12553,7 @@ begin
       'sms', jsonb_build_object('available', false, 'workspace_enabled', coalesce(s.sms_enabled, false))),
     'topics', coalesce((
       select jsonb_agg(jsonb_build_object(
-        'key', o.key, 'name', o.name,
+        'key', o.key, 'name', o.name, 'level', o.level, 'description', o.description,
         'email', jsonb_build_object('choice', (select p.enabled from public.notification_preferences p
                    where p.workspace_id = target_workspace_id and p.user_id = actor_user_id and p.topic_key = o.key and p.channel = 'email'),
                  'default', o.email_default),
@@ -12554,12 +12562,15 @@ begin
                  'default', o.push_default)
       ) order by o.position)
       from (
-        select tp.key, tp.name, tp.position, bool_or(t.default_email) email_default, bool_or(t.default_push) push_default
+        select tp.key, tp.name, tp.position, tp.description,
+          case when bool_and(t.level = 'optional') then 'optional' else 'important' end level,
+          bool_or(t.default_email) email_default, bool_or(t.default_push) push_default
         from public.notification_topics tp
         join public.notification_types t on t.topic_key = tp.key and t.level <> 'required'
-        where not exists (select 1 from public.notification_workspace_muted_types m
+        where t.heard_by && held
+          and not exists (select 1 from public.notification_workspace_muted_types m
                           where m.workspace_id = target_workspace_id and m.type_key = t.key)
-        group by tp.key, tp.name, tp.position
+        group by tp.key, tp.name, tp.position, tp.description
       ) o
     ), '[]'::jsonb)
   ) into result
@@ -27452,6 +27463,8 @@ CREATE TABLE IF NOT EXISTS "public"."notification_topics" (
     "key" "text" NOT NULL,
     "name" "text" NOT NULL,
     "position" smallint NOT NULL,
+    "description" "text" NOT NULL,
+    CONSTRAINT "notification_topics_description_check" CHECK ((("char_length"("description") >= 1) AND ("char_length"("description") <= 160))),
     CONSTRAINT "notification_topics_key_check" CHECK (("key" ~ '^[a-z_]+$'::"text")),
     CONSTRAINT "notification_topics_name_check" CHECK ((("char_length"("name") >= 1) AND ("char_length"("name") <= 60)))
 );
@@ -27475,10 +27488,12 @@ CREATE TABLE IF NOT EXISTS "public"."notification_types" (
     "to_former_members" boolean DEFAULT false NOT NULL,
     "description" "text" NOT NULL,
     "position" smallint NOT NULL,
+    "heard_by" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
     CONSTRAINT "notification_types_area_check" CHECK (("area" = ANY (ARRAY['schedule'::"text", 'shift_changes'::"text", 'time_off'::"text", 'availability'::"text", 'lineup'::"text", 'people'::"text", 'documents'::"text", 'announcements'::"text", 'account'::"text", 'workspace'::"text"]))),
     CONSTRAINT "notification_types_check" CHECK ((("level" <> 'required'::"text") OR "default_email")),
     CONSTRAINT "notification_types_check1" CHECK ((("scope" = 'workspace'::"text") OR ("level" = 'required'::"text"))),
     CONSTRAINT "notification_types_description_check" CHECK ((("char_length"("description") >= 1) AND ("char_length"("description") <= 160))),
+    CONSTRAINT "notification_types_heard_by_check" CHECK ((("level" = 'required'::"text") OR ("cardinality"("heard_by") > 0))),
     CONSTRAINT "notification_types_key_check" CHECK (("key" ~ '^[a-z_]+\.[a-z_]+$'::"text")),
     CONSTRAINT "notification_types_level_check" CHECK (("level" = ANY (ARRAY['required'::"text", 'important'::"text", 'optional'::"text"]))),
     CONSTRAINT "notification_types_retention_days_check" CHECK ((("retention_days" >= 1) AND ("retention_days" <= 366))),
@@ -33649,8 +33664,8 @@ GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uu
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_limit" integer) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_limit" integer) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_before_id" "uuid", "target_limit" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_before_id" "uuid", "target_limit" integer) TO "service_role";
 
 
 

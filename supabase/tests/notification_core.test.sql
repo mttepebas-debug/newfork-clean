@@ -294,8 +294,8 @@ select throws_ok($$select public.get_notification_feed_service(pg_temp.u('nc:ali
 select is(
   (select array(select t ->> 'key' from jsonb_array_elements(public.get_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc')) -> 'topics') t
                 order by t ->> 'key')),
-  array['announcements', 'approvals', 'documents', 'my_schedule', 'needs_attention', 'open_shifts', 'profile', 'shift_changes', 'team', 'time_off'],
-  '(e) a person chooses by topic; account and workspace notices are not a choice');
+  array['announcements', 'documents', 'my_schedule', 'open_shifts', 'profile', 'shift_changes', 'time_off'],
+  '(e) a person chooses by topic, only those they could receive (BILDIRIM-12: Ali decides nothing); account and workspace notices are not a choice');
 select is(
   (select t -> 'email' from jsonb_array_elements(public.get_notification_preferences_service(pg_temp.u('nc:ali'), tests.id('nc')) -> 'topics') t
    where t ->> 'key' = 'my_schedule'),

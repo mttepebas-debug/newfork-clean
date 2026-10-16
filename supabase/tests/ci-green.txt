@@ -197,3 +197,5 @@ supabase/tests/notification_core.test.sql
 supabase/tests/notify_account.test.sql
 supabase/tests/notify_time_off.test.sql
 supabase/tests/notify_schedule.test.sql
+supabase/tests/notification_topics_by_right.test.sql
+supabase/tests/notification_feed_pages.test.sql

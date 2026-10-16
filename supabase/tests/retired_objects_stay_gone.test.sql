@@ -446,6 +446,9 @@ insert into retired (kind, name, step) values
 -- The account's security events say what happened (BILDIRIM-U1 review): the two-argument form goes.
 insert into retired (kind, name, step) values
   ('function_signature', 'public.record_account_security_event_service(uuid, text)', 'BILDIRIM-U1');
+-- The list pages by time and id (BILDIRIM-12): its form with time alone goes.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.get_notification_feed_service(uuid, uuid, text, timestamptz, integer)', 'BILDIRIM-12');
 -- The old notification system is dropped (BILDIRIM-06, teardown part C2; KARARLAR S-123): its
 -- tables, type, functions, policies, scheduled job, the columns that only recorded a notice, Remind
 -- on an announcement and the notification settings permissions and actions. notifications.read,
