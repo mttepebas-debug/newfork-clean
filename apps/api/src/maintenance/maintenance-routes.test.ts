@@ -16,7 +16,7 @@ async function runCron(result: MaintenanceBatchResult, headers = { authorization
 }
 const healthy: MaintenanceBatchResult = {
   shiftExchanges: { expired: 1, invalidated: 0, skipped_busy: 0 },
-  documents: { checked: 100, enqueued: 3, failed_cases: 0, suspended: 1 },
+  documents: { checked: 100, suspended: 1 },
   failed: 0,
 };
 
@@ -50,22 +50,13 @@ describe("maintenance cron route", () => {
   it("logs a step that failed, with its message, and still answers 200 without internals", async () => {
     const { response, logged } = await runCron({
       shiftExchanges: { failed: true, error: "shift maintenance unavailable" },
-      documents: { failed: true, error: 'null value in column "notification_key"' },
+      documents: { failed: true, error: 'document maintenance unavailable' },
       failed: 2,
     });
     expect(response.statusCode).toBe(200);
     expect(logged).toHaveLength(2);
     expect(logged[0]).toMatchObject({ level: 50, step: "shift exchange maintenance", error: "shift maintenance unavailable" });
-    expect(logged[1]).toMatchObject({ level: 50, step: "document maintenance", error: 'null value in column "notification_key"' });
+    expect(logged[1]).toMatchObject({ level: 50, step: "document maintenance", error: "document maintenance unavailable" });
     expect(response.json()).toEqual({ shiftExchanges: { failed: true }, documents: { failed: true }, failed: 2 });
-  });
-
-  it("warns when document maintenance skipped cases after errors", async () => {
-    const { logged } = await runCron({
-      ...healthy,
-      documents: { checked: 100, enqueued: 3, failed_cases: 2, suspended: 0 },
-    });
-    expect(logged).toHaveLength(1);
-    expect(logged[0]).toMatchObject({ level: 40, failedCases: 2 });
   });
 });

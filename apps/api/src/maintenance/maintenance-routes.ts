@@ -27,8 +27,6 @@ export function registerMaintenanceRoutes(app: FastifyInstance, options: Mainten
       if ("failed" in outcome) request.log.error({ step, error: outcome.error }, "maintenance step failed");
     }
     const documents = result.documents;
-    if (!("failed" in documents) && documents.failed_cases > 0)
-      request.log.warn({ failedCases: documents.failed_cases }, "document maintenance skipped cases after errors");
     return reply.send({
       ...result,
       ...("failed" in result.shiftExchanges ? { shiftExchanges: { failed: true } } : {}),

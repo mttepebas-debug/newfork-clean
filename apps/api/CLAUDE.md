@@ -34,4 +34,3 @@ Fastify API'nin yerel kuralları; `packages/shared`'i de kapsar (ayrı dosyası 
 - FastifyReply thenable: reply döndüren async yardımcı `await`'te undefined olur, handler sürer. Boolean döndür (`refusedPassword`).
 - Cron `/internal/cron/<ad>` + `CRON_SECRET`; Vercel'de `/api/internal/cron/<ad>`. Yeni yol öneki `vercel.json` rewrite'ı ister, yoksa SPA'ya düşer.
 - E-posta Resend'le; `RESEND_API_KEY` yoksa production dışında sessizce atlanır, mailpit görmez.
-- Yeni bildirim türü: `notificationCatalog` + `notificationCatalogSeed` + `notificationProducerInventory` ve DB seed birlikte (`notification-catalog.test.ts`).

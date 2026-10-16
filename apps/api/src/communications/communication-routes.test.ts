@@ -92,7 +92,8 @@ function communicationServiceMock(): CommunicationService {
 }
 
 describe("communication routes", () => {
-  // BILDIRIM-03: the old notification inbox is torn down; its endpoints are gone.
+  // BILDIRIM-03: the old notification inbox is torn down; its endpoints are gone. BILDIRIM-06
+  // (KARARLAR S-124): Remind on an announcement goes too until the new notification system.
   it.each([
     ["GET", `/v1/workspaces/${workspaceId}/communications/notifications`, undefined],
     [
@@ -100,7 +101,12 @@ describe("communication routes", () => {
       `/v1/workspaces/${workspaceId}/communications/notifications/action`,
       { notification_id: "a8300000-0000-4000-8000-000000000001", action: "read" },
     ],
-  ] as const)("no longer serves the retired notification inbox: %s %s", async (method, url, payload) => {
+    [
+      "POST",
+      `/v1/workspaces/${workspaceId}/communications/announcements/a8200000-0000-4000-8000-000000000001/remind`,
+      { expected_revision: 1 },
+    ],
+  ] as const)("no longer serves the retired notification paths: %s %s", async (method, url, payload) => {
     const app = buildApp({
       contextResolver: { resolve: async () => activeContext },
       communicationService: communicationServiceMock(),
@@ -177,7 +183,6 @@ describe("communication routes", () => {
             "open_shifts",
             "announcements",
             "todos",
-            "notifications",
             "quick_actions",
           ],
           hidden_widget_ids: [],
@@ -312,7 +317,6 @@ describe("communication routes", () => {
           "open_shifts",
           "announcements",
           "todos",
-          "notifications",
           "quick_actions",
         ],
         hidden_widget_ids: [],
@@ -381,7 +385,7 @@ describe("communication routes", () => {
     const todoId = "a9700000-0000-4000-8000-000000000011";
     const routes = [
       ["home", "getWorkspace", "GET", `/v1/workspaces/${workspaceId}/workspace`, undefined],
-      ["layout", "saveWorkspaceLayout", "PUT", `/v1/workspaces/${workspaceId}/workspace/layout`, { widget_order: ["operations", "pending_requests", "open_shifts", "announcements", "todos", "notifications", "quick_actions"], hidden_widget_ids: [] }],
+      ["layout", "saveWorkspaceLayout", "PUT", `/v1/workspaces/${workspaceId}/workspace/layout`, { widget_order: ["operations", "pending_requests", "open_shifts", "announcements", "todos", "quick_actions"], hidden_widget_ids: [] }],
       ["new to-do", "createWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos`, { title: "Follow up", body: "", employee_id: null, due_at: null }],
       ["to-do resolution", "resolveWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos/${todoId}/resolve`, undefined],
     ] as const;
@@ -424,7 +428,6 @@ describe("communication routes", () => {
       ["unpublish", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/unpublish`, { expected_revision: 1 }],
       ["archive", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/archive`, { expected_revision: 1 }],
       ["bring back", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/bring-back`, { expected_revision: 1, bring_back: [announcementId] }],
-      ["remind", "setAnnouncementState", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/remind`, { expected_revision: 1 }],
       ["acknowledgement", "acknowledgeAnnouncement", "POST", `/v1/workspaces/${workspaceId}/communications/announcements/${announcementId}/acknowledge`, undefined],
     ] as const;
     const manager = {
@@ -448,7 +451,7 @@ describe("communication routes", () => {
 
     // BL-1047: a write over a newer revision says so with a key, so the editor
     // can tell "changed meanwhile" from "archived, cannot be edited".
-    it.each(routes.filter(([name]) => ["save", "unschedule", "unpublish", "archive", "bring back", "remind"].includes(name)))(
+    it.each(routes.filter(([name]) => ["save", "unschedule", "unpublish", "archive", "bring back"].includes(name)))(
       "passes the database's announcement.changed key on with the %s 409",
       async (_name, method, verb, url, payload) => {
         const service = communicationServiceMock();

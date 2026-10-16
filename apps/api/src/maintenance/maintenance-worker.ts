@@ -4,8 +4,8 @@ import { z } from "zod";
 /**
  * Background domain work with no signed-in person (BILDIRIM-01, K1 and K2): close shift exchanges
  * whose deadline passed or whose shift changed, and restrict people whose document deadline passed
- * (KARARLAR K:87 "Kısıtlı kişi"). It used to run inside the notification worker; it has its own
- * cron now so the notification system can go without taking this work with it.
+ * (KARARLAR K:87 "Kısıtlı kişi"). It used to run inside the old notification worker; it has its
+ * own cron since BILDIRIM-01, and the old notification system is gone (BILDIRIM-06).
  */
 interface MaintenanceRpcClient {
   rpc(
@@ -24,14 +24,10 @@ const shiftExchangeMaintenanceSchema = z.object({
 });
 type ShiftExchangeMaintenance = z.infer<typeof shiftExchangeMaintenanceSchema>;
 
+// Cases checked this batch, and requirements newly restricted for a passed deadline.
 const documentMaintenanceSchema = z.object({
   checked: z.number().int().nonnegative(),
-  // Notifications queued; the notification teardown (BILDIRIM C1) stops the database reporting it
-  enqueued: z.number().int().nonnegative().optional(),
-  // BL-965: cases the database skipped after an error; a database without the field skipped none
-  failed_cases: z.number().int().nonnegative().default(0),
-  // Requirements newly restricted for a passed deadline; a database without the field said nothing
-  suspended: z.number().int().nonnegative().default(0),
+  suspended: z.number().int().nonnegative(),
 });
 type DocumentMaintenance = z.infer<typeof documentMaintenanceSchema>;
 export const readDocumentMaintenance = (data: unknown): DocumentMaintenance => documentMaintenanceSchema.parse(data);

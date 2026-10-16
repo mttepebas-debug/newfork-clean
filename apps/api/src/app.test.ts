@@ -57,9 +57,6 @@ const resolvedContext: ActiveWorkspaceContext = {
     "announcements.read",
     "announcements.manage",
     "notifications.read",
-    "notifications.settings.read",
-    "notifications.settings.write",
-    "notifications.test_send",
   ],
   onboarding: { status: "complete", currentStep: 2 },
   documentAccess: { restricted: false },
@@ -188,8 +185,8 @@ describe("api app", () => {
     }
   });
 
-  // BILDIRIM-03: the old notification system is torn down. Until teardown part C1 removes the
-  // live cron, it keeps calling the outbox path and gets the plain 404 every unknown path gets.
+  // BILDIRIM-03: the old notification system is torn down; its paths get the plain 404 every
+  // unknown path gets (the outbox cron went in teardown part C1).
   it.each([
     ["GET", "/internal/cron/notification-outbox"],
     ["POST", "/internal/cron/notification-outbox"],
@@ -218,7 +215,7 @@ describe("api app", () => {
   it("runs the maintenance worker only with the cron secret", async () => {
     const result = {
       shiftExchanges: { expired: 1, invalidated: 0, skipped_busy: 0 },
-      documents: { checked: 3, enqueued: 0, failed_cases: 0, suspended: 1 },
+      documents: { checked: 3, suspended: 1 },
       failed: 0,
     };
     const runBatch = vi.fn(async () => result);
@@ -510,11 +507,9 @@ describe("api app", () => {
               today_shift_count: 0,
               today_open_shift_count: 0,
               pending_time_off_count: 0,
-              unread_notification_count: 0,
             },
             today_ends_at: null,
             announcements: [],
-            notifications: [],
             todos: [],
             layout: {
               widget_order: [
@@ -523,7 +518,6 @@ describe("api app", () => {
                 "open_shifts",
                 "announcements",
                 "todos",
-                "notifications",
                 "quick_actions",
               ],
               hidden_widget_ids: [],
