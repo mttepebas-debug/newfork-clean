@@ -64,7 +64,7 @@ function serviceMock(): NotificationSettingsService {
 }
 
 const prefsUrl = `/v1/workspaces/${workspaceId}/notification-preferences`;
-const settingsUrl = `/v1/workspaces/${workspaceId}/notification-settings`;
+const settingsUrl = `/v1/workspaces/${workspaceId}/settings/notifications`;
 const auth = { authorization: "Bearer valid-token" };
 const choices = { choices: [{ topic: "time_off", channel: "email", enabled: false }] };
 const workspaceBody = { email_enabled: false, push_enabled: true, muted_types: ["people.joined"] };

@@ -48,13 +48,13 @@ export function registerNotificationSettingsRoutes(
     return reply.send(await options.service.savePreferences({ ...actor, choices: body.data.choices }));
   });
 
-  app.get("/v1/workspaces/:workspaceId/notification-settings", async (request, reply) => {
+  app.get("/v1/workspaces/:workspaceId/settings/notifications", async (request, reply) => {
     const actor = await gate(request, "settings.organization.write");
     if (!options.service) return unavailable(reply);
     return reply.send(await options.service.readWorkspaceSettings(actor));
   });
 
-  app.put("/v1/workspaces/:workspaceId/notification-settings", async (request, reply) => {
+  app.put("/v1/workspaces/:workspaceId/settings/notifications", async (request, reply) => {
     const actor = await gate(request, "settings.organization.write");
     const body = notificationWorkspaceSettingsInputSchema.safeParse(request.body);
     if (!body.success) return reply.status(400).send({ error: "Valid notification settings required" });
