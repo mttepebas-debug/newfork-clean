@@ -35,6 +35,7 @@ import {
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 import { requestAppNavigation } from "./leave-guard";
+import { NotificationsNavEntry, notificationsMobileLink } from "../notifications/NotificationsNavEntry";
 
 interface NavItem {
   readonly to: string;
@@ -343,6 +344,7 @@ export function AppShell() {
               </div>
             );
           })}
+          <NotificationsNavEntry collapsed={collapsed} />
         </nav>
 
         <div className="sidebar-footer">
@@ -442,6 +444,7 @@ export function AppShell() {
         <ManagementMobileNav
           links={[
             ...visibleNavItems.filter((item) => item.section !== "employee"),
+            ...(can(context, "notifications.read_own") ? [notificationsMobileLink] : []),
             ...(canViewSettings ? [settingsNavItem] : []),
             ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}

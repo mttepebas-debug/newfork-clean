@@ -43,6 +43,7 @@ import "./employee-dashboard.css";
 import { getExchanges } from "./shift-exchanges/exchange-data";
 import { useHubOnline } from "./useHubClock";
 import { RefreshError } from "../shell/LoadState";
+import { NotificationBell } from "../notifications/NotificationViews";
 const base = "/app/employee-hub";
 export function EmployeeDashboard({
   model,
@@ -115,6 +116,9 @@ export function EmployeeDashboard({
           <span className="eh-private">
             <ShieldCheck size={14} /> Your personal space
           </span>
+          {can(context, "notifications.read_own") ? (
+            <NotificationBell workspaceId={model.workspace_id} className="eh-icon-button" />
+          ) : null}
           <Link
             className="eh-icon-button"
             to="/account/profile"

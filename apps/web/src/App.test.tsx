@@ -7287,13 +7287,12 @@ describe("App", () => {
     expect(window.location.pathname).toBe("/app/employee-hub");
   });
 
-  // BILDIRIM-02 (KARARLAR S-123, S-96): the old notification screens are gone
-  // until the new system lands; their addresses fall through to the landing page.
-  // Account > Notifications and Settings > Notifications are back (BILDIRIM-11).
+  // BILDIRIM-02 (KARARLAR S-123, S-96): the old notification screens are gone;
+  // their addresses fall through to the landing page. Account > Notifications and
+  // Settings > Notifications are back (BILDIRIM-11); /app/notifications is the
+  // new list's page (BILDIRIM-10).
   it.each([
-    ["owner", "/app/notifications", "/app/workspace"],
     ["owner", "/account/inbox", "/app/workspace"],
-    ["employee", "/app/notifications", "/app/employee-hub"],
     ["employee", "/account/inbox", "/app/employee-hub"],
     ["employee", "/app/account/documents?kind=document", "/app/employee-hub"],
   ] as const)("sends a %s from the retired notification address %s to %s", async (role, address, landing) => {

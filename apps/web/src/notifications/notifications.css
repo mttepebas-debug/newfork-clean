@@ -1,0 +1,433 @@
+/* BILDIRIM-10: the notification list (KARARLAR S-123, variant A of the
+   notification plan): the panel beside the left menu, the full page, the
+   phone's full-screen list and its bell. Colors are --theme-* only. */
+
+.ni-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 2px;
+  border: 0;
+  background: none;
+  color: var(--theme-accent-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  text-decoration: none;
+  cursor: pointer;
+}
+.ni-link:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.ni-link:disabled {
+  color: var(--theme-muted);
+  cursor: default;
+}
+.ni-icon {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  cursor: pointer;
+}
+.ni-icon:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
+}
+.ni-link:focus-visible,
+.ni-icon:focus-visible,
+.ni-tabs button:focus-visible,
+.ni-row-title:focus-visible,
+.ni-bell:focus-visible,
+.ni-panel:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* The panel beside the left menu */
+.ni-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: transparent;
+}
+.ni-panel {
+  position: fixed;
+  top: 0;
+  bottom: 0;
+  left: 288px;
+  z-index: 50;
+  display: flex;
+  width: 420px;
+  flex-direction: column;
+  border-right: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+  box-shadow: 12px 0 32px rgba(23, 34, 30, 0.12);
+  outline: none;
+  animation: ni-in 160ms ease-out;
+}
+.app-shell[data-sidebar-collapsed="true"] .ni-panel {
+  left: 64px;
+}
+@keyframes ni-in {
+  from { transform: translateX(-12px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.ni-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 14px 12px 6px 18px;
+}
+.ni-panel-head h2,
+.ni-sheet-head h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 17px;
+  font-weight: 750;
+}
+.ni-panel-tools {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.ni-panel-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.ni-panel-foot {
+  padding: 10px 18px;
+  border-top: 1px solid var(--theme-border);
+}
+
+/* Tabs */
+.ni-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 14px 10px;
+  border-bottom: 1px solid var(--theme-border);
+}
+.ni-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--theme-muted-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  cursor: pointer;
+}
+.ni-tabs button[aria-selected="true"] {
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+}
+.ni-count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--theme-danger);
+  color: var(--theme-surface);
+  font-size: 10.5px;
+  font-weight: 800;
+}
+.ni-count.is-muted {
+  background: var(--theme-border);
+  color: var(--theme-text);
+}
+
+/* Rows */
+.ni-list {
+  margin: 0;
+  padding: 0 0 8px;
+  list-style: none;
+}
+.ni-group {
+  padding: 12px 18px 6px;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.ni-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 10px 32px minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 12px 12px 8px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.ni-row:hover {
+  background: var(--theme-surface-soft);
+}
+.ni-row.is-wide {
+  padding-left: 14px;
+}
+.ni-dot {
+  width: 8px;
+  height: 8px;
+  margin-top: 12px;
+  border-radius: 50%;
+}
+.ni-row.is-unread .ni-dot {
+  background: var(--theme-accent);
+}
+.ni-tile {
+  display: grid;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  border-radius: 8px;
+}
+.ni-green { background: var(--theme-success-soft); color: var(--theme-success); }
+.ni-amber { background: var(--theme-warning-soft); color: var(--theme-warning); }
+.ni-red { background: var(--theme-time-off-soft); color: var(--theme-danger-strong); }
+.ni-blue { background: var(--theme-info-soft); color: var(--theme-info-text); }
+.ni-orange { background: var(--theme-availability-soft); color: var(--theme-warning); }
+.ni-slate { background: var(--theme-surface-muted); color: var(--theme-muted-strong); }
+.ni-row-text {
+  display: grid;
+  min-width: 0;
+  gap: 2px;
+}
+.ni-row-title {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 550;
+  text-align: left;
+  cursor: pointer;
+}
+.ni-row-title:disabled {
+  cursor: default;
+}
+.ni-row.is-unread .ni-row-title {
+  font-weight: 750;
+}
+.ni-row-title:hover:not(:disabled) {
+  text-decoration: underline;
+}
+.ni-row-body {
+  margin: 0;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+.ni-row-meta {
+  margin: 2px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+}
+.ni-need {
+  color: var(--theme-warning);
+  font-weight: 700;
+}
+.ni-row-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ni-row-tools {
+  display: flex;
+  opacity: 0;
+  transition: opacity 120ms;
+}
+.ni-row:hover .ni-row-tools,
+.ni-row:focus-within .ni-row-tools,
+.ni-sheet .ni-row-tools {
+  opacity: 1;
+}
+.ni-row.is-resolved .ni-row-title,
+.ni-row.is-resolved .ni-row-body {
+  color: var(--theme-muted-strong);
+}
+.ni-chip {
+  display: inline-flex;
+  justify-self: start;
+  align-items: center;
+  gap: 5px;
+  margin-top: 6px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  font-weight: 650;
+}
+.ni-empty {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  padding: 48px 20px;
+  color: var(--theme-muted-strong);
+  text-align: center;
+}
+.ni-empty strong {
+  color: var(--theme-text);
+}
+.ni-state {
+  padding: 16px 18px;
+}
+.ni-more {
+  display: flex;
+  justify-content: center;
+  padding: 12px 18px 16px;
+}
+
+/* The full page */
+.ni-page {
+  max-width: 1040px;
+}
+.ni-page .catalog-page-actions {
+  display: flex;
+  gap: 8px;
+}
+.ni-settings-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  text-decoration: none;
+}
+.ni-page-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--theme-border);
+}
+.ni-page-bar .ni-tabs {
+  padding-left: 0;
+  border: 0;
+}
+.ni-page-list {
+  margin-top: 4px;
+  border: 1px solid var(--theme-border);
+  border-top: 0;
+  border-radius: 0 0 10px 10px;
+  background: var(--theme-surface);
+}
+
+/* The phone: bell and full-screen list */
+.ni-bell {
+  position: relative;
+  display: inline-grid;
+  min-width: 44px;
+  min-height: 44px;
+  place-items: center;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.ni-bell:hover {
+  background: var(--theme-surface-muted);
+}
+.ni-bell-count {
+  position: absolute;
+  top: 4px;
+  right: 3px;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  padding: 0 4px;
+  border: 2px solid var(--theme-surface);
+  border-radius: 9px;
+  background: var(--theme-danger);
+  color: var(--theme-surface);
+  font-size: 10px;
+  font-weight: 800;
+  line-height: 1;
+}
+.ni-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  width: 100%;
+  max-width: none;
+  height: 100%;
+  max-height: none;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: var(--theme-surface);
+  outline: none;
+  animation: ni-up 180ms ease-out;
+}
+.ni-sheet[open] {
+  display: flex;
+  flex-direction: column;
+}
+.ni-sheet::backdrop {
+  background: transparent;
+}
+@keyframes ni-up {
+  from { transform: translateY(16px); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.ni-sheet-head {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  padding: 10px 8px 4px;
+}
+.ni-sheet-head h2 {
+  text-align: center;
+}
+.ni-sheet-head .ni-icon {
+  width: 44px;
+  height: 44px;
+}
+.ni-sheet-body {
+  flex: 1 1 auto;
+  overflow: auto;
+}
+.ni-sheet-readall {
+  margin: 12px 16px 24px;
+}
+.ni-sheet .ni-row-actions .nf-button {
+  min-height: 40px;
+}
+
+/* The left menu's Notifications row opens the panel; collapsed, a dot says something is new. */
+.ni-nav-dot {
+  position: absolute;
+  top: -2px;
+  right: -3px;
+  width: 9px;
+  height: 9px;
+  border: 2px solid var(--theme-surface);
+  border-radius: 50%;
+  background: var(--theme-danger);
+}
+.ni-nav-item .nav-icon-frame {
+  position: relative;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ni-panel,
+  .ni-sheet {
+    animation: none;
+  }
+}

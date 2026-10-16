@@ -17,6 +17,7 @@ const pageNames: readonly (readonly [RegExp, string])[] = [
   [/^\/app\/employee-hub(\/.*)?$/, "Employee Hub"],
   [/^\/app\/(announcements\/)?important-dates(\/.*)?$/, "Important Dates"],
   [/^\/app\/announcements(\/.*)?$/, "Announcements"],
+  [/^\/app\/notifications\/?$/, "Notifications"],
   [/^\/app\/settings\/general\/?$/, "General"],
   [/^\/app\/settings\/locations\/?$/, "Locations"],
   [/^\/app\/settings\/jobs\/?$/, "Jobs"],

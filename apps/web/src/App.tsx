@@ -17,6 +17,7 @@ import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 
+import { NotificationsPage } from "./notifications/NotificationViews";
 const AccountLayout = lazy(() => import("./account/AccountLayout"));
 const AccountRecoveryPage = lazy(() => import("./account/AccountRecoveryPage"));
 const ForgotPasswordPage = lazy(() => import("./views/ForgotPasswordPage"));
@@ -428,6 +429,7 @@ export function App() {
                     </ActionRoute>
                   }
                 />
+                <Route path="notifications" element={<ActionRoute action="notifications.read_own"><NotificationsPage /></ActionRoute>} />
                 <Route
                   path="announcements"
                   element={
