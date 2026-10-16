@@ -158,6 +158,12 @@
   .lineup-page.list-page.list-page > .lineup-locations {
     padding-bottom: 24px;
   }
+  /* A row reached by Tab or a link lands below the pinned tabs or headings
+     (40 px row and its gap, 34-48 px headings), not under them. */
+  .lineup-page.list-page.list-page > .lineup-phone,
+  .settings-page.jobs-settings-page.acknowledgement-page > .job-catalog {
+    scroll-padding-top: 48px;
+  }
   /* A phone shows one location: its shift tabs stay at the top of the frame. */
   .lineup-page.list-page.list-page > .lineup-phone > .lineup-phone-tabs,
   .acknowledgement-page.acknowledgement-page .job-catalog > .job-column-headings {
