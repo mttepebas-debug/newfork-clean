@@ -158,7 +158,7 @@ export function NotificationsPage() {
   useSeenOnOpen(workspaceId, Boolean(workspaceId));
   if (!context) return null;
   return (
-    <section className="ni-page list-page" aria-labelledby="notifications-title">
+    <section className="settings-page ni-page list-page" aria-labelledby="notifications-title">
       <CatalogPageHeader
         eyebrow="UPDATES. ALERTS. ACTIONS."
         title="Notifications"

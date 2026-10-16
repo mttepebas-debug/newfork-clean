@@ -247,6 +247,19 @@
   gap: 8px;
   margin-top: 8px;
 }
+/* Row buttons are the small size of the design (32 px), green and white roles as everywhere. */
+.ni-row-actions .nf-button {
+  min-height: 32px;
+  padding: 0 12px;
+  font-size: 13px;
+  font-weight: 650;
+}
+/* Decline is white like Requests' Deny; armed for its second click it turns red. */
+.ni-row-actions .nf-button.ni-decline.is-armed {
+  border-color: var(--theme-danger-strong);
+  background: var(--theme-danger-strong);
+  color: var(--theme-surface);
+}
 .ni-row-tools {
   display: flex;
   opacity: 0;
@@ -256,6 +269,12 @@
 .ni-row:focus-within .ni-row-tools,
 .ni-sheet .ni-row-tools {
   opacity: 1;
+}
+/* A touch screen has no hover: the row's tools stay in sight. */
+@media (hover: none) {
+  .ni-row-tools {
+    opacity: 1;
+  }
 }
 .ni-row.is-resolved .ni-row-title,
 .ni-row.is-resolved .ni-row-body {
@@ -407,7 +426,8 @@
   margin: 12px 16px 24px;
 }
 .ni-sheet .ni-row-actions .nf-button {
-  min-height: 40px;
+  min-height: 44px;
+  padding: 0 16px;
 }
 
 /* The left menu's Notifications row opens the panel; collapsed, a dot says something is new. */

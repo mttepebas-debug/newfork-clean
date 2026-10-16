@@ -76,7 +76,7 @@ export function TimeOffDecision({
         {busy === "approve" ? "Approving..." : "Approve"}
       </Button>
       <ConfirmButton
-        className="danger-button"
+        className="secondary-button ni-decline"
         confirmLabel="Confirm decline"
         disabled={busy !== null}
         onConfirm={() => void decide("deny")}
