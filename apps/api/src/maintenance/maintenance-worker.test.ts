@@ -69,4 +69,26 @@ describe("maintenance worker", () => {
       suspended: 0,
     });
   });
+
+  // BILDIRIM-03: once the database stops queueing notifications (teardown part C1) it no longer
+  // reports `enqueued`; document restriction must keep running every minute without it.
+  it("keeps document maintenance running when the database no longer reports enqueued", async () => {
+    expect(readDocumentMaintenance({ checked: 3, failed_cases: 0, suspended: 2 })).toEqual({
+      checked: 3,
+      failed_cases: 0,
+      suspended: 2,
+    });
+    const rpc = vi.fn(async (name: string) => ({
+      error: null,
+      data:
+        name === "shift_exchanges_maintain_service"
+          ? { expired: 0, invalidated: 0, skipped_busy: 0 }
+          : { checked: 5, failed_cases: 0, suspended: 1 },
+    }));
+    await expect(createMaintenanceWorkerWithClient({ rpc }).runBatch()).resolves.toEqual({
+      shiftExchanges: { expired: 0, invalidated: 0, skipped_busy: 0 },
+      documents: { checked: 5, failed_cases: 0, suspended: 1 },
+      failed: 0,
+    });
+  });
 });

@@ -26,7 +26,8 @@ type ShiftExchangeMaintenance = z.infer<typeof shiftExchangeMaintenanceSchema>;
 
 const documentMaintenanceSchema = z.object({
   checked: z.number().int().nonnegative(),
-  enqueued: z.number().int().nonnegative(),
+  // Notifications queued; the notification teardown (BILDIRIM C1) stops the database reporting it
+  enqueued: z.number().int().nonnegative().optional(),
   // BL-965: cases the database skipped after an error; a database without the field skipped none
   failed_cases: z.number().int().nonnegative().default(0),
   // Requirements newly restricted for a passed deadline; a database without the field said nothing
