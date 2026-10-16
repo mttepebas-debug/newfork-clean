@@ -27,7 +27,7 @@ $$;
 revoke all on function app_private.people_name(uuid) from public;
 
 -- app_private.notify, guarded: the people work outlives a notice that fails (domain_work_outlives_notifications).
-create function app_private.people_notify(target_type text, target_workspace uuid, target_recipients uuid[],
+create function app_private.people_tell(target_type text, target_workspace uuid, target_recipients uuid[],
   target_event_key text, target_title text, target_body text, target_url text, target_actor uuid,
   target_subject_type text, target_subject_id uuid, target_data jsonb default '{}')
 returns integer
@@ -38,12 +38,12 @@ begin
   return app_private.notify(target_type, target_workspace, target_recipients, target_event_key, target_title, target_body,
     target_url, target_actor, target_subject_type, target_subject_id, target_data);
 exception when others then
-  raise warning 'people_notify: % notice % skipped: % (%)', target_type, target_event_key, sqlerrm, sqlstate;
+  raise warning 'people_tell: % notice % skipped: % (%)', target_type, target_event_key, sqlerrm, sqlstate;
   return 0;
 end;
 $$;
 
-revoke all on function app_private.people_notify(text, uuid, uuid[], text, text, text, text, uuid, text, uuid, jsonb) from public;
+revoke all on function app_private.people_tell(text, uuid, uuid[], text, text, text, text, uuid, text, uuid, jsonb) from public;
 
 -- An invitation's outcome (joined, invitation_declined, invitation_cancelled) to whoever sent it while the
 -- core says they still may invite that person; otherwise to who may now, so it is never silent (S-127).
@@ -59,7 +59,7 @@ begin
   name := app_private.people_name(invitation.employee_id);
   theirs := app_private.authz_reason(invitation.created_by, invitation.workspace_id, 'employee.invite', null,
     invitation.employee_id) is null;
-  return app_private.people_notify('people.' || kind, invitation.workspace_id,
+  return app_private.people_tell('people.' || kind, invitation.workspace_id,
     case when theirs then array[invitation.created_by]
          else app_private.notify_holders(invitation.workspace_id, 'employee.invite', null, invitation.employee_id) end,
     'invite:' || invitation.id::text || ':' || kind,
@@ -454,7 +454,7 @@ begin
   end if;
 
   -- It waits: who may act on it now is told (onboarding_reviewers).
-  perform app_private.people_notify('people.onboarding_review_needed', target_case.workspace_id,
+  perform app_private.people_tell('people.onboarding_review_needed', target_case.workspace_id,
     app_private.onboarding_reviewers(target_case),
     'onboarding:' || target_case.id::text || ':submitted:' || target_case.revision::text,
     app_private.people_name(target_case.employee_id) || '''s onboarding is ready for review', null,
@@ -544,7 +544,7 @@ begin
       -- Back with the person: the reviewers' cards close, and the person hears what to change.
       perform app_private.notification_resolve(target_workspace_id, 'onboarding_case', target_case.id, 'changes_requested',
         actor_user_id);
-      perform app_private.people_notify('people.onboarding_change_requested', target_workspace_id,
+      perform app_private.people_tell('people.onboarding_change_requested', target_workspace_id,
         array[target_employee_user_id],
         'onboarding:' || target_case.id::text || ':changes:' || expected_revision::text,
         'Your onboarding needs a change', btrim(review_reason),
@@ -650,7 +650,7 @@ begin
   -- Every card on it closes; the person hears they are in (not when they let themselves in).
   perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved',
     actor_user_id);
-  perform app_private.people_notify('people.onboarding_completed', target_case.workspace_id,
+  perform app_private.people_tell('people.onboarding_completed', target_case.workspace_id,
     array[app_private.onboarding_person(target_case)],
     'onboarding:' || target_case.id::text || ':completed',
     'Your onboarding is complete', 'You can use ' || (select w.name from public.workspaces w where w.id = target_case.workspace_id) || ' now.',
@@ -756,7 +756,7 @@ begin
 
   -- Waiting: the deciders the domain found above are told.
   if approval <> 'auto' then
-    perform app_private.people_notify('people.preferred_name_requested', target_workspace_id, deciders,
+    perform app_private.people_tell('people.preferred_name_requested', target_workspace_id, deciders,
       'preferred_name:' || asked::text,
       app_private.people_name(target_employee_id) || ' asked to be called ' || cleaned, null,
       '/app/employees?employeeId=' || target_employee_id::text, actor_user_id, 'preferred_name_request', asked,
@@ -815,7 +815,7 @@ begin
   -- The first answer closes every decider's card and tells the person.
   perform app_private.notification_resolve(target_workspace_id, 'preferred_name_request', request_row.id,
     case when approve then 'approved' else 'declined' end, actor_user_id);
-  perform app_private.people_notify('people.preferred_name_decided', target_workspace_id,
+  perform app_private.people_tell('people.preferred_name_decided', target_workspace_id,
     array(select e.user_id from public.employee_profiles e where e.id = request_row.employee_id and e.workspace_id = target_workspace_id),
     'preferred_name:' || request_row.id::text || ':decided',
     case when approve then 'You''ll be called ' || request_row.requested_name
