@@ -22,6 +22,8 @@ select tests.person('nu', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('nu', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('nu', 'deniz', 'employee', array['K'], array['cook']);
 select tests.person('nu', 'emre', 'employee', array['K'], array['cook']);
+-- Bora is used in (i).
+select tests.person('nu', 'bora', 'manager', array['K'], array['cook']);
 select tests.person('nx', 'xena', 'employee', array['K'], array['cook']);
 
 create temp table who as
@@ -291,8 +293,8 @@ select ok((select bool_and(n.title = 'A scheduled schedule email stopped') from 
            where n.type_key = 'schedule.export_email_stopped' and n.subject_id <> (select id from rules where person = 'ayse')),
   '(g) and says it is not theirs');
 select pg_temp.fail_a_week(id) from rules;
-select is((select count(*)::integer from public.person_notifications where type_key = 'schedule.export_email_stopped'), 11,
-  '(g) once');
+select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id
+           where n.type_key = 'schedule.export_email_stopped'), 11, '(g) once');
 
 -- An archived location does not silence it (the cron and the list read live locations too): the owner's
 -- rule for Kadikoy and Besiktas, Besiktas archived, tells the owner; a rule whose every location is
@@ -334,6 +336,31 @@ select is(app_private.notify_rows(tests.id('nu'), tests.user('nu:owner'), jsonb_
 select throws_ok($$select app_private.notify_rows(tests.id('nu'), null,
     jsonb_build_array(jsonb_build_object('type', 'schedule.published', 'user_id', tests.user('nu:ayse'), 'event_key', 'h:2', 'title', ' ')))$$,
   '22023', 'a title is required', '(h) the same refusals as one notice');
+
+-- (i) Who hears a notice may choose about it --------------------------------------------------------
+-- Olga is still onboarding; Bora, a manager, comes to miss a required document after the week is out.
+-- Their own shifts are theirs to hear of, and to choose how.
+
+select tests.person('nu', 'olga', 'employee', array['K'], array['cook'], 'onboarding');
+select tests.publish_week('nu', 6, '[
+  {"label": "olga-mon6", "person": "olga", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "13:00"},
+  {"label": "bora-mon6", "person": "bora", "loc": "K", "job": "cook", "day": 0, "start": "13:00", "end": "17:00"}
+]');
+-- Every notice so far is in its recipient's choices, read before Bora's right goes (tests.unlisted_notices
+-- reads choices now): Bora, a manager at Kadikoy, was told of stopped emails.
+create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('nu');
+select is(tests.unlisted_notices(tests.id('nu')), '{}'::text[], '(i) so far every notice is in its recipient''s choices');
+-- ponytail: Bora's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nu:bora');
+select is((app_private.actor(tests.user('nu:bora'), tests.id('nu'))).document_blocked, true, '(i) Bora misses a required document');
+select public.unpublish_schedule_service(tests.user('nu:owner'), tests.id('nu'), tests.week(6), array[tests.id('nu:K')],
+  public.preview_schedule_unpublication_service(tests.user('nu:owner'), tests.id('nu'), tests.week(6), array[tests.id('nu:K')]) ->> 'fingerprint');
+select is((select count(*)::integer from public.person_notifications
+           where type_key in ('schedule.published', 'schedule.unpublished') and user_id in (tests.user('nu:olga'), tests.user('nu:bora'))), 4,
+  '(i) Olga and Bora hear of their week going out and being taken back');
+select is(tests.unlisted_notices(tests.id('nu'), array(select id from checked)), '{}'::text[],
+  '(i) every notice written since is in its recipient''s choices (BILDIRIM-12)');
 
 select * from finish();
 rollback;

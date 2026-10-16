@@ -739,6 +739,44 @@ begin
 end;
 $$;
 
+-- BILDIRIM-12: a notice a person may choose about must be in their choices. Every non-required notice
+-- written in this workspace whose topic is missing from its recipient's notification choices
+-- (get_notification_preferences_service), as "<type> to <email>"; empty when the two agree. A producer's
+-- test ends with it, so who hears a type and who may choose about it never drift apart. Choices are read
+-- now: a test that later takes a recipient's right away checks before that, and passes the notices it
+-- checked as already.
+create or replace function tests.unlisted_notices(w uuid, already uuid[] default '{}')
+returns text[]
+language plpgsql
+set search_path = ''
+as $$
+declare
+  missing text[] := '{}';
+  n record;
+  listed text[];
+begin
+  for n in
+    select distinct x.user_id, x.type_key, t.topic_key, u.email
+    from public.person_notifications x
+    join public.notification_types t on t.key = x.type_key and t.level <> 'required'
+    join auth.users u on u.id = x.user_id
+    where x.workspace_id = w and not x.id = any (coalesce(already, '{}'))
+    order by u.email, x.type_key
+  loop
+    begin
+      listed := array(select c ->> 'key' from jsonb_array_elements(
+        public.get_notification_preferences_service(n.user_id, w) -> 'topics') c);
+    exception when others then
+      listed := '{}';
+    end;
+    if not n.topic_key = any (listed) then
+      missing := missing || (n.type_key || ' to ' || n.email);
+    end if;
+  end loop;
+  return missing;
+end;
+$$;
+
 revoke all on all functions in schema tests from public;
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

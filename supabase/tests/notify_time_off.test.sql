@@ -47,6 +47,15 @@ $$;
 create function pg_temp.status(rid uuid) returns text language sql stable as $$
   select r.status::text from public.schedule_time_off_requests r where r.id = rid
 $$;
+-- BILDIRIM-12: every notice written so far is in its recipient's choices; checked before a right is taken
+-- away (tests.unlisted_notices reads choices now), and remembered.
+create temp table checked (id uuid);
+create function pg_temp.all_listed(said text) returns text language plpgsql as $$
+declare missing text[] := tests.unlisted_notices(tests.id('nt'), array(select id from checked));
+begin
+  insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('nt');
+  return said || ': ' || coalesce(nullif(array_to_string(missing, ', '), ''), 'all listed');
+end $$;
 
 -- (f) The helpers -------------------------------------------------------------------------------------
 
@@ -149,6 +158,8 @@ select tests.remember('nt:emre:5', tests.leave('nt', 'emre', 5));
 -- Deniz asks while Besiktas has its manager; then Mehmet's access ends and nobody there can decide it.
 select tests.remember('nt:deniz:5', tests.leave('nt', 'deniz', 5));
 select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:5')), array['nt:mehmet'], '(d) Mehmet is asked');
+select is(pg_temp.all_listed('before Mehmet''s access goes'), 'before Mehmet''s access goes: all listed',
+  'every notice so far is in its recipient''s choices (BILDIRIM-12)');
 select public.remove_employee_access_service(tests.user('nt:owner'), tests.id('nt'), tests.id('nt:mehmet'));
 select tests.remember('nt:emre:6', tests.leave('nt', 'emre', 6));
 update public.schedule_time_off_requests set decide_by = now() + interval '6 hours', created_at = now() - interval '2 days'
@@ -197,6 +208,8 @@ create function pg_temp.shorten(rid uuid) returns jsonb language sql as $$
 $$;
 select tests.remember('nt:emre:7', tests.leave('nt', 'emre', 7));
 select pg_temp.decide('can', tests.id('nt:emre:7'), 'approve');
+select is(pg_temp.all_listed('before Can is made an employee'), 'before Can is made an employee: all listed',
+  'every notice so far is in its recipient''s choices (BILDIRIM-12)');
 select public.update_employee_membership_role_service(tests.user('nt:owner'), tests.id('nt'), tests.id('nt:can'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('nt') and r.system_key = 'employee'));
 select pg_temp.shorten(tests.id('nt:emre:7'));
@@ -221,6 +234,34 @@ select ok((select title like 'Your time off % was revoked' and body = 'We need y
 
 select is((select count(*)::integer from public.person_notifications n join who w on w.uid = n.user_id where w.label like 'nx:%'), 0,
   'another workspace hears nothing of this one');
+
+-- Who hears a notice may choose about it: Blkd asks for time off, then misses a required document; the
+-- decision is still his to hear, and to choose how (BILDIRIM-12).
+select tests.person('nt', 'blkd', 'employee', array['K'], array['cook']);
+select tests.remember('nt:blkd:9', tests.leave('nt', 'blkd', 9));
+create temp table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('nt:owner'), tests.id('nt'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('nt:owner'), tests.id('nt'), id);
+select public.set_document_publication_service(tests.user('nt:owner'), tests.id('nt'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+-- ponytail: Blkd's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('nt:blkd');
+select is((app_private.actor(tests.user('nt:blkd'), tests.id('nt'))).document_blocked, true, 'Blkd misses a required document');
+select pg_temp.decide('ayse', tests.id('nt:blkd:9'), 'approve');
+select is((select count(*)::integer from public.person_notifications
+           where type_key = 'time_off.decided' and user_id = tests.user('nt:blkd')), 1, 'Blkd hears the decision');
+select is(pg_temp.all_listed('at the end'), 'at the end: all listed',
+  'every notice written here is in its recipient''s choices (BILDIRIM-12)');
 
 select * from finish();
 rollback;
