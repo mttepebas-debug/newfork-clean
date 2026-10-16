@@ -12,9 +12,11 @@
 --     not reading, so only a post that asks for an acknowledgement has Remind. At most twice a day for one
 --     post, in the post's time zone, here in the database (S-126 (2)); get_announcement_service says how
 --     many are left today so the drawer's button can rest and say why;
---   * publish failed: a scheduled post that could not go out tells whoever scheduled it while the core says
---     they still may write there, otherwise who may write there now (S-127); its card closes when the post
---     is scheduled, published, put back to draft or archived.
+--   * publish failed: a scheduled post that could not go out tells whoever scheduled it while the domain's
+--     own rule (announcement_reason) still lets them write it, otherwise every member it lets write it now,
+--     and the owner when nobody is left (S-127); its card closes when the post is scheduled, published, put
+--     back to draft or archived;
+--   * shifts brought back from an unpublished post have no notice yet, so its History counts nobody told.
 -- Recipients are always the audience as the domain computes it at that moment, never a stored list
 -- (delivered_to only says who is new to it). A notice that fails is logged and the announcement's work
 -- stands. A shift a post changed or brought back is the Schedule's notice (schedule_tell_closed_day).
@@ -78,9 +80,11 @@ $$;
 
 revoke all on function app_private.announcement_tell(uuid, public.announcements, text, uuid[], text, text) from public;
 
--- A scheduled post that could not go out: whoever scheduled it (or wrote it) while the core says they may
--- still write there; otherwise who may write there now, so it is never silent (S-127). Its live locations;
--- none left is '{}', the core's "no place": who may write in the workspace.
+-- A scheduled post that could not go out: whoever scheduled it (or wrote it) while the domain's own rule
+-- still lets them write this post (announcement_reason: every place it names, its dates, its writer);
+-- otherwise every member that rule lets write it now (S-127). Never silent: with nobody left, the owner.
+-- The core's place-scoped check would not do: a post for two places, or for none left, is out of scope for
+-- everybody there.
 create function app_private.announcement_tell_release_failed(item public.announcements, why text)
 returns integer
 language plpgsql
@@ -88,13 +92,26 @@ set search_path = ''
 as $$
 declare
   scheduler uuid := coalesce(item.scheduled_by, item.created_by);
-  places uuid[] := public.live_location_ids(item.workspace_id, app_private.announcement_places(item.id));
+  places uuid[] := app_private.announcement_places(item.id);
+  dates boolean := app_private.announcement_dates(item);
+  people uuid[];
 begin
-  return app_private.announcement_tell(null, item, 'publish_failed',
-    case when app_private.authz_reason(scheduler, item.workspace_id, 'announcement.write', places) is null
-         then array[scheduler]
-         else app_private.notify_holders(item.workspace_id, 'announcement.write', places) end,
-    null, why);
+  if app_private.announcement_reason(app_private.actor(scheduler, item.workspace_id), places, item.created_by, dates) is null then
+    people := array[scheduler];
+  else
+    -- ponytail: one rule check per active member; a workspace is tens of people.
+    people := array(select m.user_id from public.workspace_memberships m
+                    where m.workspace_id = item.workspace_id and m.status = 'active'
+                      and app_private.announcement_reason(app_private.actor(m.user_id, item.workspace_id), places,
+                        item.created_by, dates) is null);
+  end if;
+  if cardinality(people) = 0 then
+    people := array(select m.user_id from public.workspace_memberships m
+                    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+                    where m.workspace_id = item.workspace_id and m.status = 'active'
+                      and app_private.authz_rank(r.access_class) = app_private.authz_rank('owner'));
+  end if;
+  return app_private.announcement_tell(null, item, 'publish_failed', people, null, why);
 exception when others then
   -- Called from the release's own failure branch: nothing here may stop the next post going out.
   raise warning 'announcement_tell_release_failed: notice for % skipped: % (%)', item.id, sqlerrm, sqlstate;
@@ -399,10 +416,10 @@ begin
   if target_intent = 'publish' then
     perform app_private.announcement_tell(actor_user_id, item, 'published', notified);
   elsif target_intent = 'save' then
-    -- People it newly reaches hear it is out; a change in what it says, whoever it reached before and has not
-    -- acknowledged it. A changed or returned shift is the Schedule's notice (schedule_tell_closed_day).
+    -- People it newly reaches hear it is out, unless they acknowledged it already (taken off, put back); a
+    -- change in what it says, whoever it reached before and has not acknowledged it. A changed or returned shift is the Schedule's notice (schedule_tell_closed_day).
     perform app_private.announcement_tell(actor_user_id, item, 'published',
-      array(select who from unnest(reached) who where not who = any (item.delivered_to)));
+      array(select who from unnest(reached) who where not who = any (item.delivered_to) and not who = any (acked)));
     if content_changed or reset then
       perform app_private.announcement_tell(actor_user_id, item, 'updated',
         array(select who from unnest(reached) who where who = any (item.delivered_to) and not who = any (acked)));
@@ -518,9 +535,7 @@ begin
     if jsonb_array_length(back) = 0 then
       raise exception 'Pick the shifts to bring back.' using errcode = '22023', hint = 'announcement.invalid';
     end if;
-    people := array(select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
-                    where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false));
-    told := case when item.starts_on is null then 0 else coalesce(cardinality(people), 0) end;
+    -- Bringing shifts back has no notice yet: nobody is told, and its History counts nobody.
   end if;
 
   update public.announcements set revision = revision + 1, updated_by = actor_user_id, updated_at = now()
@@ -529,7 +544,7 @@ begin
   values (w, item.id, actor_user_id,
     case target_action when 'unschedule' then 'unscheduled' when 'unpublish' then 'unpublished' when 'archive' then 'archived'
                        when 'remind' then 'reminded' else 'brought_back' end,
-    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'bring_back', 'remind') then told end,
+    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'remind') then told end,
       'brought_back', nullif(jsonb_array_length(back), 0))));
   insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
   values (w, actor_user_id, 'announcement.' || case target_action when 'unschedule' then 'unscheduled'
