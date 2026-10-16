@@ -174,6 +174,9 @@ describe("ExchangeReview", () => {
     const reason = screen.getByLabelText("Reason for Noah and the people who asked");
     const send = within(footer()).getByRole("button", { name: "Close request" }) as HTMLButtonElement;
     expect(send.disabled).toBe(true);
+    // BILDIRIM-05 (KARARLAR S-96): no notification goes out, so none is promised.
+    expect(screen.getByText("Noah keeps the shift.")).toBeTruthy();
+    expect(screen.queryByText(/told/)).toBeNull();
     fireEvent.change(reason, { target: { value: "We are closed Sunday" } });
     // Red, two clicks (CLAUDE.md §3.A.7).
     fireEvent.click(send);

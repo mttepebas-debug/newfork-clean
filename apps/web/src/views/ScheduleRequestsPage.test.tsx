@@ -973,13 +973,16 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     await openTimeOffRequest();
     fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
+    // BILDIRIM-05 (KARARLAR S-96): no notification goes out, so none is promised.
+    expect(screen.getByText(/This takes effect now\.$/)).toBeTruthy();
+    expect(screen.queryByText(/told/)).toBeNull();
     fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
     await waitFor(() => expect(apiRequest).toHaveBeenCalledOnce());
     expect(calls()[0]![0]).toBe(`/v1/workspaces/${workspaceId}/time-off/${requestId}/shorten`);
     expect(calls()[0]![1]).toMatchObject({ expected_revision: 2,
       periods: [{ segment_id: pending.segments[0]!.id, starts_at: future.start_at, ends_at: future.end_at }] });
-    await waitFor(() => expect(toast.success).toHaveBeenCalledWith(expect.stringMatching(/Alex Kim's time off is shorter/)));
+    await waitFor(() => expect(toast.success).toHaveBeenCalledWith("Alex Kim's time off is shorter."));
   });
   // BL-1043: the database's key, not the server's "stale approved leave".
   it("says a shortened leave changed meanwhile in the page's words and reloads it", async () => {

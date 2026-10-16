@@ -153,7 +153,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
         <p className="rd-foot-note">
           {declined
             ? asked.length > 1 ? "The others can still take the shift." : `${owner ?? "The shift"} ${owner ? "keeps the shift" : "stays open"} until someone else asks.`
-            : `${owner ? `${owner} keeps the shift.` : "The shift stays open."} People who asked are told.`}
+            : `${owner ? `${owner} keeps the shift.` : "The shift stays open."}`}
         </p>
         {decide.error ? <p className="form-error" role="alert">{decide.error.message}</p> : null}
         <div className="rd-foot-row">

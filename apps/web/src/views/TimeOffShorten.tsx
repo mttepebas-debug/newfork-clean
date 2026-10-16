@@ -14,8 +14,8 @@ import "../employee-hub/time-off.css";
 /**
  * BL-127: Requests → Time off → an approved request → Shorten time off. The
  * manager gives back hours of the leave (e.g. to put Ali on Saturday's
- * 10:00–2:00 shift); it takes effect at once, and Ali and whoever approved the
- * leave are told. Same hour picker as the employee's cancellation.
+ * 10:00–2:00 shift); it takes effect at once. Same hour picker as the
+ * employee's cancellation.
  */
 export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
   request: TimeOffRequest; workspaceId: string; timeFormat: "12h" | "24h"; onDone: (message: string) => void;
@@ -40,7 +40,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
     },
     onSuccess: () => {
       setPeriods(null);
-      onDone(`${request.employee_name}'s time off is shorter. They and whoever approved it were told.`);
+      onDone(`${request.employee_name}'s time off is shorter.`);
     },
     // BL-1043: the leave changed meanwhile (the database's key): reload it.
     onError: (error) => {
@@ -58,7 +58,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
   return <form className="time-off-cancellation" onSubmit={event => { event.preventDefault(); mutation.mutate(); }}>
     <fieldset disabled={mutation.isPending}>
       <legend>Shorten {request.employee_name}'s time off</legend>
-      <p>Choose the approved hours to give back, then add {request.employee_name} to the schedule for them. This takes effect now; {request.employee_name} and whoever approved the time off are told.</p>
+      <p>Choose the approved hours to give back, then add {request.employee_name} to the schedule for them. This takes effect now.</p>
       {!periods.length ? <p>No future approved hours remain.</p> : null}
       {periods.map((period, i) => <div className="time-off-cancellation-period" key={period.key}>
         <label>
