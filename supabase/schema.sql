@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 497, last: 20261017090000_text_messages_one_gate_and_stop_list.sql
--- fingerprint: sha256:19e6b45d94e1077eec198af6ec119811acc9aca44047b6b6f8e21a12c87dec7f
+-- migrations: 499, last: 20261017110000_document_access_back_on_any_lift.sql
+-- fingerprint: sha256:5d9498cac5c17153ac3c0434499e20502b634dd8d77dd93d4a528096b2a56ac5
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2190,6 +2190,10 @@ begin
         told := app_private.announcement_apply(publisher, item, impact);
         reached := app_private.announcement_recipients(item);
         update public.announcements set delivered_to = reached where id = item.id;
+        -- Out on time: whoever it reaches who has not acknowledged it (brought out again), not its publisher.
+        perform app_private.announcement_tell(publisher, item, 'published', array(
+          select who from unnest(reached) who where not exists (select 1 from public.announcement_acknowledgements ack
+            where ack.announcement_id = item.id and ack.user_id = who)));
         insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
         values (place, item.id, publisher, 'published', jsonb_strip_nulls(jsonb_build_object('auto', true,
           'shift_changes', nullif(told, 0), 'told', cardinality(reached))));
@@ -2203,6 +2207,8 @@ begin
           insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
           values (place, item.id, null, 'publish_failed',
             jsonb_build_object('code', case when failure = '42501' then 'not_allowed' else 'too_late' end));
+          perform app_private.announcement_tell_release_failed(item, case when failure = '42501'
+            then 'Whoever scheduled it may no longer publish it.' else 'Its day started before it could go out.' end);
         else
           -- One broken row must not hold up every workspace's, nor the read
           -- that called this (O2). It tries again the next minute (KK-98).
@@ -2239,6 +2245,19 @@ $$;
 
 
 ALTER FUNCTION "app_private"."announcement_release"("w" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_reminders_left"("item" "public"."announcements") RETURNS integer
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select greatest(0, 2 - count(*)::integer) from public.announcement_changes change
+  where change.announcement_id = item.id and change.action = 'reminded'
+    and (change.changed_at at time zone item.time_zone)::date = (now() at time zone item.time_zone)::date
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_reminders_left"("item" "public"."announcements") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_repeat"("item" "public"."announcements") RETURNS "uuid"
@@ -2362,6 +2381,86 @@ $$;
 
 
 ALTER FUNCTION "app_private"."announcement_started"("item" "public"."announcements") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_tell"("actor" "uuid", "item" "public"."announcements", "kind" "text", "people" "uuid"[], "key_part" "text" DEFAULT NULL::"text", "why" "text" DEFAULT NULL::"text") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  on_text text := case
+    when item.starts_on is null then null
+    when coalesce(item.ends_on, item.starts_on) > item.starts_on
+      then to_char(item.starts_on, 'FMMon FMDD') || '–' || to_char(item.ends_on, 'FMMon FMDD')
+    else to_char(item.starts_on, 'FMDy, FMMon FMDD') end;
+  preview text := nullif(btrim(left(item.body, 200)), '');
+begin
+  if cardinality(coalesce(people, '{}')) = 0 then
+    return 0;
+  end if;
+  -- The post's work stands whatever its notice does: a failure is logged.
+  begin
+    return app_private.notify('announcements.' || kind, item.workspace_id, people,
+      'announcement:' || item.id::text || ':' || kind || ':' || coalesce(key_part, item.revision::text),
+      case kind
+        when 'published' then item.title
+        when 'updated' then 'Updated: ' || item.title
+        when 'reminder' then 'Reminder: ' || item.title
+        when 'cancelled' then item.title || coalesce(' on ' || on_text, '') || ' is cancelled'
+        else 'Couldn''t publish "' || item.title || '"' end,
+      case kind
+        when 'reminder' then 'Open it to acknowledge it.'
+        when 'publish_failed' then why
+        when 'cancelled' then null
+        else concat_ws(' · ', on_text, preview) end,
+      '/app/announcements/' || case when item.on_important_dates then 'important-dates/' else '' end || item.id::text,
+      actor, 'announcement', item.id, jsonb_build_object('announcement_id', item.id));
+  exception when others then
+    raise warning 'announcement_tell: % notice for % skipped: % (%)', kind, item.id, sqlerrm, sqlstate;
+    return 0;
+  end;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_tell"("actor" "uuid", "item" "public"."announcements", "kind" "text", "people" "uuid"[], "key_part" "text", "why" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."announcement_tell_release_failed"("item" "public"."announcements", "why" "text") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  scheduler uuid := coalesce(item.scheduled_by, item.created_by);
+  places uuid[] := app_private.announcement_places(item.id);
+  dates boolean := app_private.announcement_dates(item);
+  people uuid[];
+begin
+  if app_private.announcement_reason(app_private.actor(scheduler, item.workspace_id), places, item.created_by, dates) is null then
+    people := array[scheduler];
+  else
+    -- ponytail: one rule check per active member; a workspace is tens of people.
+    people := array(select m.user_id from public.workspace_memberships m
+                    where m.workspace_id = item.workspace_id and m.status = 'active'
+                      and app_private.announcement_reason(app_private.actor(m.user_id, item.workspace_id), places,
+                        item.created_by, dates) is null);
+  end if;
+  if cardinality(people) = 0 then
+    people := array(select m.user_id from public.workspace_memberships m
+                    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+                    where m.workspace_id = item.workspace_id and m.status = 'active'
+                      and app_private.authz_rank(r.access_class) = app_private.authz_rank('owner'));
+  end if;
+  return app_private.announcement_tell(null, item, 'publish_failed', people, null, why);
+exception when others then
+  -- Called from the release's own failure branch: nothing here may stop the next post going out.
+  raise warning 'announcement_tell_release_failed: notice for % skipped: % (%)', item.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."announcement_tell_release_failed"("item" "public"."announcements", "why" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."announcement_time_format"("w" "uuid") RETURNS "text"
@@ -3476,16 +3575,25 @@ CREATE OR REPLACE FUNCTION "app_private"."document_access_told"() RETURNS "trigg
 declare
   person uuid;
   place text;
+  told timestamptz;
+  restricted boolean := old.document_suspended_at is null and new.document_suspended_at is not null;
+  lifted boolean := false;
 begin
+  if not restricted then
+    -- This row blocked the person and no longer does: a suspension cleared, an exemption, a type taken down.
+    lifted := app_private.document_obligation_blocked(old, now()) and not app_private.document_obligation_blocked(new, now());
+    if not lifted then
+      return null;
+    end if;
+  end if;
   select e.user_id into person from public.employee_profiles e where e.id = new.employee_id and e.workspace_id = new.workspace_id;
   if person is null then
     return null;
   end if;
-  if old.document_suspended_at is null and new.document_suspended_at is not null then
-    -- Already restricted by an earlier suspension: nothing new to tell. (One case per person: its index.)
-    if exists (select 1 from public.employee_onboarding_requirements x
-               where x.case_id = new.case_id and x.id <> new.id
-                 and x.document_suspended_at < new.document_suspended_at) then
+  select c.document_restriction_told_at into told from public.employee_onboarding_cases c where c.id = new.case_id;
+  if restricted then
+    -- Already told restricted, by an earlier suspension: nothing new to tell.
+    if told is not null then
       return null;
     end if;
     select w.name into place from public.workspaces w where w.id = new.workspace_id;
@@ -3496,14 +3604,15 @@ begin
         'Upload your documents to use ' || place || ' again', 'A required document is past its due date.',
         '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
         jsonb_build_object('state', 'restricted'));
+      update public.employee_onboarding_cases set document_restriction_told_at = now() where id = new.case_id;
     exception when others then
       raise warning 'document_access_told: restricted notice for % skipped: % (%)', new.employee_id, sqlerrm, sqlstate;
     end;
-  elsif old.document_suspended_at is not null and new.document_suspended_at is null then
-    -- Back only when nothing blocks the person any more, by the rule that blocks them
-    -- (document_obligation_blocked): another suspension, or a document past due the daily check has not
-    -- reached yet.
-    if exists (select 1 from public.employee_onboarding_requirements x
+  else
+    -- Back only after restricted was told, and only when nothing blocks the person any more, by the rule
+    -- that blocks them (document_obligation_blocked): another suspension, or a document past due the daily
+    -- check has not reached yet.
+    if told is null or exists (select 1 from public.employee_onboarding_requirements x
                where x.case_id = new.case_id and app_private.document_obligation_blocked(x, now())) then
       return null;
     end if;
@@ -3513,6 +3622,7 @@ begin
         'Your access is back', 'Your documents are in order.',
         '/account/documents?workspace=' || new.workspace_id::text, null, 'employee_documents', new.employee_id,
         jsonb_build_object('state', 'restored'));
+      update public.employee_onboarding_cases set document_restriction_told_at = null where id = new.case_id;
     exception when others then
       raise warning 'document_access_told: restored notice for % skipped: % (%)', new.employee_id, sqlerrm, sqlstate;
     end;
@@ -11826,6 +11936,7 @@ begin
       select jsonb_agg(app_private.announcement_person(w, person.user_id) order by person.user_id)
       from public.announcement_people person where person.announcement_id = item.id), '[]'::jsonb),
     'shift_choices', item.shift_choices,
+    'reminders_left_today', app_private.announcement_reminders_left(item),
     'choices_saved_at', item.choices_saved_at,
     -- Whose shifts it changed, where the reader may read the Schedule (D1).
     'changes', coalesce((
@@ -20929,8 +21040,24 @@ begin
                          or who = any (array(select (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
                                              where not coalesce((x ->> 'silent')::boolean, false))));
   end if;
+  if target_intent = 'publish' then
+    perform app_private.announcement_tell(actor_user_id, item, 'published', notified);
+  elsif target_intent = 'save' then
+    -- People it newly reaches hear it is out, unless they acknowledged it already (taken off, put back); a
+    -- change in what it says, whoever it reached before and has not acknowledged it. A changed or returned shift is the Schedule's notice (schedule_tell_closed_day).
+    perform app_private.announcement_tell(actor_user_id, item, 'published',
+      array(select who from unnest(reached) who where not who = any (item.delivered_to) and not who = any (acked)));
+    if content_changed or reset then
+      perform app_private.announcement_tell(actor_user_id, item, 'updated',
+        array(select who from unnest(reached) who where who = any (item.delivered_to) and not who = any (acked)));
+    end if;
+  end if;
   if target_intent in ('publish', 'save') then
     update public.announcements set delivered_to = reached where id = item.id returning * into item;
+  end if;
+  -- Scheduled, published or put back to draft: a failed schedule's card is done.
+  if stored.release_failed_at is not null then
+    perform app_private.notification_resolve(w, 'announcement', item.id, 'closed', actor_user_id);
   end if;
 
   history_action := case
@@ -22941,7 +23068,7 @@ declare
   people uuid[];
 begin
   perform app_private.authorize(actor_user_id, w, 'announcement.read');
-  if target_action is null or target_action not in ('unschedule', 'unpublish', 'archive', 'bring_back') then
+  if target_action is null or target_action not in ('unschedule', 'unpublish', 'archive', 'bring_back', 'remind') then
     raise exception 'valid announcement action required' using errcode = '22023', hint = 'announcement.invalid';
   end if;
   perform pg_advisory_xact_lock(hashtextextended(w::text, 931));
@@ -22968,7 +23095,9 @@ begin
      or (target_action = 'unschedule' and shown not in ('scheduled', 'publish_failed'))
      or (target_action = 'unpublish' and shown <> 'published')
      or (target_action = 'archive' and shown not in ('draft', 'unpublished', 'past'))
-     or (target_action = 'bring_back' and shown <> 'unpublished') then
+     or (target_action = 'bring_back' and shown <> 'unpublished')
+     -- Remind asks for an acknowledgement: only a post that asks for one has it.
+     or (target_action = 'remind' and (shown <> 'published' or not item.ask_ack)) then
     raise exception 'This post changed since you opened it.' using errcode = 'PT409', hint = 'announcement.changed';
   end if;
 
@@ -22977,19 +23106,32 @@ begin
     set status = 'draft', scheduled_by = null, choices_saved_at = null, release_failed_at = null, release_error = null
     where id = item.id;
   elsif target_action = 'unpublish' then
-    told := case when item.starts_on is null then 0 else coalesce(cardinality(item.delivered_to), 0) end;
+    -- A dated post taken back tells whoever it reaches now; one without a day, nobody.
+    people := case when item.starts_on is null then '{}'::uuid[] else app_private.announcement_recipients(item) end;
+    told := cardinality(people);
     update public.announcements set status = 'unpublished', unpublished_at = now(), delivered_to = '{}' where id = item.id;
   elsif target_action = 'archive' then
     update public.announcements set archived_at = now(), delivered_to = '{}' where id = item.id;
+  elsif target_action = 'remind' then
+    -- S-126 (2): twice a day for one post at most, in the post's time zone; then the drawer's button rests.
+    if app_private.announcement_reminders_left(item) = 0 then
+      raise exception 'You can remind people about this post twice a day.' using errcode = 'PT409',
+        hint = 'announcement.remind_limit';
+    end if;
+    people := array(select who from unnest(app_private.announcement_respondents(item)) who
+                    where not exists (select 1 from public.announcement_acknowledgements ack
+                                      where ack.announcement_id = item.id and ack.user_id = who));
+    if cardinality(people) = 0 then
+      raise exception 'Everyone acknowledged.' using errcode = 'PT409', hint = 'announcement.changed';
+    end if;
+    told := cardinality(people);
   else
     back := app_private.announcement_bring_back(actor_user_id, item, target_bring_back,
       app_private.announcement_back_rows(item, null, null, '[]'::jsonb));
     if jsonb_array_length(back) = 0 then
       raise exception 'Pick the shifts to bring back.' using errcode = '22023', hint = 'announcement.invalid';
     end if;
-    people := array(select distinct (x ->> 'employee_user_id')::uuid from jsonb_array_elements(back) x
-                    where x ->> 'employee_user_id' is not null and not coalesce((x ->> 'silent')::boolean, false));
-    told := case when item.starts_on is null then 0 else coalesce(cardinality(people), 0) end;
+    -- Bringing shifts back has no notice yet: nobody is told, and its History counts nobody.
   end if;
 
   update public.announcements set revision = revision + 1, updated_by = actor_user_id, updated_at = now()
@@ -22997,15 +23139,25 @@ begin
   insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
   values (w, item.id, actor_user_id,
     case target_action when 'unschedule' then 'unscheduled' when 'unpublish' then 'unpublished' when 'archive' then 'archived'
-                       else 'brought_back' end,
-    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'bring_back') then told end,
+                       when 'remind' then 'reminded' else 'brought_back' end,
+    jsonb_strip_nulls(jsonb_build_object('told', case when target_action in ('unpublish', 'remind') then told end,
       'brought_back', nullif(jsonb_array_length(back), 0))));
   insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
   values (w, actor_user_id, 'announcement.' || case target_action when 'unschedule' then 'unscheduled'
-      when 'unpublish' then 'unpublished' when 'archive' then 'archived' else 'brought_back' end,
+      when 'unpublish' then 'unpublished' when 'archive' then 'archived' when 'remind' then 'reminded' else 'brought_back' end,
     'announcement', item.id::text, jsonb_build_object('told', told, 'brought_back', jsonb_array_length(back)));
+  if target_action = 'unpublish' then
+    perform app_private.announcement_tell(actor_user_id, item, 'cancelled', people);
+  elsif target_action = 'remind' then
+    -- One key per press: the day and which press it is (this one is already in the History).
+    perform app_private.announcement_tell(actor_user_id, item, 'reminder', people,
+      'remind:' || (now() at time zone item.time_zone)::date::text || ':' || (2 - app_private.announcement_reminders_left(item))::text);
+  elsif target_action in ('unschedule', 'archive') then
+    perform app_private.notification_resolve(w, 'announcement', item.id, 'closed', actor_user_id);
+  end if;
   return jsonb_build_object('status', item.status, 'display_status', app_private.announcement_display_status(item),
-    'announcement_id', item.id, 'revision', item.revision, 'archived_at', item.archived_at, 'told', told);
+    'announcement_id', item.id, 'revision', item.revision, 'archived_at', item.archived_at, 'told', told,
+    'reminders_left_today', app_private.announcement_reminders_left(item));
 end;
 $$;
 
@@ -27414,6 +27566,7 @@ CREATE TABLE IF NOT EXISTS "public"."employee_onboarding_cases" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "final_approval_required" boolean NOT NULL,
     "document_notification_checked_at" timestamp with time zone,
+    "document_restriction_told_at" timestamp with time zone,
     CONSTRAINT "employee_onboarding_cases_check" CHECK ((("status" = 'approved'::"public"."employee_onboarding_case_status") = (("approved_at" IS NOT NULL) AND ("approved_by" IS NOT NULL)))),
     CONSTRAINT "employee_onboarding_cases_revision_check" CHECK (("revision" > 0))
 );
@@ -30410,7 +30563,7 @@ CREATE OR REPLACE TRIGGER "departments_audit_trigger" AFTER INSERT OR UPDATE ON 
 
 
 
-CREATE OR REPLACE TRIGGER "document_access_told" AFTER UPDATE OF "document_suspended_at" ON "public"."employee_onboarding_requirements" FOR EACH ROW WHEN (("old"."document_suspended_at" IS DISTINCT FROM "new"."document_suspended_at")) EXECUTE FUNCTION "app_private"."document_access_told"();
+CREATE OR REPLACE TRIGGER "document_access_told" AFTER UPDATE ON "public"."employee_onboarding_requirements" FOR EACH ROW WHEN ((("old"."document_suspended_at" IS DISTINCT FROM "new"."document_suspended_at") OR ("old"."document_suspended_at" IS NOT NULL) OR ("old"."deadline_at" <= "now"()))) EXECUTE FUNCTION "app_private"."document_access_told"();
 
 
 
@@ -32767,6 +32920,10 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_release"("w" "uuid") FROM PUB
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."announcement_reminders_left"("item" "public"."announcements") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."announcement_repeat"("item" "public"."announcements") FROM PUBLIC;
 
 
@@ -32784,6 +32941,14 @@ REVOKE ALL ON FUNCTION "app_private"."announcement_span"("w" "uuid", "first_day"
 
 
 REVOKE ALL ON FUNCTION "app_private"."announcement_started"("item" "public"."announcements") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_tell"("actor" "uuid", "item" "public"."announcements", "kind" "text", "people" "uuid"[], "key_part" "text", "why" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."announcement_tell_release_failed"("item" "public"."announcements", "why" "text") FROM PUBLIC;
 
 
 
