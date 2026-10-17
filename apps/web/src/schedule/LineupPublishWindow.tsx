@@ -88,6 +88,18 @@ export function LineupPublishWindow({
   const [askAck, setAskAck] = useState(true);
   const [note, setNote] = useState<{ readonly kind: "ok" | "error"; readonly text: string } | null>(null);
 
+  // Focus goes into the window when it opens and back to what opened it (or the Publish button) when it closes.
+  useEffect(() => {
+    const opener = document.activeElement instanceof HTMLElement && document.activeElement !== document.body
+      ? document.activeElement
+      : null;
+    ref.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
+    return () => {
+      const back = opener?.isConnected ? opener : document.querySelector<HTMLElement>(".lineup-publish-trigger");
+      back?.focus();
+    };
+  }, []);
+
   useEffect(() => {
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape") return;

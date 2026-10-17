@@ -167,13 +167,25 @@ function LineupView({
         </div>
       </div>
 
-      <div className="employee-lineup-tabs" role="tablist" aria-label={`${name} lineup`}>
+      {/* Tabs: ← → move between them, one tab stop (WAI-ARIA tabs). */}
+      <div
+        className="employee-lineup-tabs"
+        role="tablist"
+        aria-label={`${name} lineup`}
+        onKeyDown={(event) => {
+          if (event.key !== "ArrowRight" && event.key !== "ArrowLeft") return;
+          event.preventDefault();
+          const next = tab === "team" ? "notes" : "team";
+          setTab(next);
+          document.getElementById(`employee-lineup-${next}-tab`)?.focus();
+        }}
+      >
         <button type="button" role="tab" id="employee-lineup-team-tab" aria-selected={tab === "team"}
-          aria-controls="employee-lineup-panel" onClick={() => setTab("team")}>
+          tabIndex={tab === "team" ? 0 : -1} aria-controls="employee-lineup-panel" onClick={() => setTab("team")}>
           Team<span>{live.length}</span>
         </button>
         <button type="button" role="tab" id="employee-lineup-notes-tab" aria-selected={tab === "notes"}
-          aria-controls="employee-lineup-panel" onClick={() => setTab("notes")}>
+          tabIndex={tab === "notes" ? 0 : -1} aria-controls="employee-lineup-panel" onClick={() => setTab("notes")}>
           Notes{notes.length ? <span>{notes.length}</span> : null}
         </button>
       </div>

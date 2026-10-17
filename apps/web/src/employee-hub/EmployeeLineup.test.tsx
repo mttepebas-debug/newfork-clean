@@ -118,6 +118,22 @@ describe("EmployeeLineup", () => {
     expect(within(group).getByRole("button", { name: "Brunch" }).getAttribute("aria-pressed")).toBe("true");
   });
 
+  it("moves between Team and Notes with the arrow keys, one tab stop", async () => {
+    renderLineup();
+    const team = await screen.findByRole("tab", { name: /^Team/ });
+    const notes = screen.getByRole("tab", { name: /^Notes/ });
+    expect([team.tabIndex, notes.tabIndex]).toEqual([0, -1]);
+    team.focus();
+    fireEvent.keyDown(team, { key: "ArrowRight" });
+    expect(notes.getAttribute("aria-selected")).toBe("true");
+    expect(document.activeElement).toBe(notes);
+    expect([team.tabIndex, notes.tabIndex]).toEqual([-1, 0]);
+    fireEvent.keyDown(notes, { key: "ArrowRight" });
+    expect(document.activeElement).toBe(team);
+    fireEvent.keyDown(team, { key: "ArrowLeft" });
+    expect(document.activeElement).toBe(notes);
+  });
+
   it("reads the notes", async () => {
     renderLineup();
     fireEvent.click(await screen.findByRole("tab", { name: /^Notes/ }));
