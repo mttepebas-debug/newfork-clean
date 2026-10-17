@@ -323,6 +323,36 @@ describe("WorkspacePage setup checklist", () => {
     expect(screen.queryByRole("heading", { name: "We couldn't load Workspace" })).toBeNull();
   });
 
+  // The checklist sits above the cards: if it painted after them, every card
+  // would jump down under the owner's thumb (CI run 39023052297, 405 px on a
+  // phone). The outline stays until both have answered; they paint together.
+  it("keeps the outline until the setup checklist has answered, so the cards never jump", async () => {
+    let answer!: (progress: Awaited<ReturnType<typeof getOwnerSetupChecklistProgress>>) => void;
+    vi.mocked(getOwnerSetupChecklistProgress).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    renderPage();
+    await waitFor(() => expect(getWorkspaceDashboard).toHaveBeenCalled());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    // Both reads start at once, not one after the other.
+    expect(getOwnerSetupChecklistProgress).toHaveBeenCalledWith(workspaceId);
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Workspace")).toBe(true);
+    const widgets = [...document.querySelectorAll(".workspace-widget")];
+    expect(widgets.length).toBeGreaterThan(0);
+    expect(widgets.every((widget) => widget.querySelector(".nf-skeleton"))).toBe(true);
+    expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
+
+    await act(async () => {
+      answer({ workspace_id: workspaceId, user_id: userId, completed_item_ids: [], closed_at: null });
+    });
+    expect(await screen.findByRole("region", { name: "Setup checklist" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
+  });
+
   it("keeps the last cards and says so when a refresh fails", async () => {
     const { client } = renderPage();
     expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();

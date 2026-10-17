@@ -64,6 +64,16 @@ export function WorkspacePage() {
     queryFn: () => getWorkspaceDashboard(workspaceId),
     enabled: Boolean(workspaceId),
   });
+  // The setup checklist sits above the cards: it is read beside the
+  // dashboard and the outline stays until both have answered, so the cards
+  // never jump down when it paints (CI run 39023052297: 405 px on a phone).
+  const ownerRole =
+    context?.membership.role === "owner" || context?.membership.role === "admin";
+  const checklist = useQuery({
+    queryKey: ownerSetupChecklistKey(workspaceId),
+    queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
+    enabled: Boolean(workspaceId && ownerRole),
+  });
   const exchanges = useQuery({
     queryKey: ["shift-exchanges", workspaceId, context?.userId, true],
     queryFn: () => getExchanges(workspaceId, true),
@@ -110,7 +120,10 @@ export function WorkspacePage() {
       />
     );
   // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
-  if (query.isLoading) return <WorkspaceOutline />;
+  // Only the first answer holds the outline: a later read of the checklist
+  // (its own Try again) does not take the whole page back to the outline.
+  if (query.isLoading || (checklist.isPending && checklist.isFetching && !checklist.isFetchedAfterMount))
+    return <WorkspaceOutline />;
   if (!query.data) {
     return (
       <section className="workspace-page">
@@ -201,8 +214,7 @@ export function WorkspacePage() {
           {requestErrorText(saveMutation.error)}
         </p>
       ) : null}
-      {context?.membership.role === "owner" ||
-      context?.membership.role === "admin" ? (
+      {ownerRole && context ? (
         <OwnerSetupChecklist workspaceId={context.workspace.id} />
       ) : null}
       {!customizing && layout.widget_order.every((id) => hidden.has(id)) ? (
@@ -309,6 +321,8 @@ const ownerSetupChecklistItems: readonly ChecklistItem[] = [
   },
 ];
 
+const ownerSetupChecklistKey = (workspaceId: string) => ["owner-setup-checklist", workspaceId];
+
 function OwnerSetupChecklist({
   workspaceId,
 }: {
@@ -316,7 +330,7 @@ function OwnerSetupChecklist({
 }) {
   const phone = usePhoneWidth();
   const queryClient = useQueryClient();
-  const queryKey = ["owner-setup-checklist", workspaceId];
+  const queryKey = ownerSetupChecklistKey(workspaceId);
   const progressQuery = useQuery({
     queryKey,
     queryFn: () => getOwnerSetupChecklistProgress(workspaceId),
