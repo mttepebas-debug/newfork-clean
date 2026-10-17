@@ -358,6 +358,10 @@ begin
     perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.share',
       target_locations => array[(item ->> 'location_id')::uuid]);
   end loop;
+  -- One command is one day: its notice names that day.
+  if (select count(distinct x ->> 'service_date') from jsonb_array_elements(payload -> 'lineups') x) > 1 then
+    raise exception 'Choose lineups of one day' using errcode = '22023', hint = 'lineup.one_day';
+  end if;
 
   perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text, 1017));
   select * into prior from public.lineup_commands c
@@ -377,9 +381,11 @@ begin
     day := (item ->> 'service_date')::date;
     type_id := (item ->> 'shift_type_id')::uuid;
     if type_id is not null and not exists (
-      select 1 from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id and t.deleted_at is null
+      select 1 from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id
+        and (t.deleted_at is null or lineup_command_service.kind = 'unpublish')
     ) then
-      -- An unknown shift type is an unknown lineup: the same answer as one out of reach.
+      -- An unknown shift type is an unknown lineup: the same answer as one out of reach. A deleted one is not
+      -- published again, but a lineup published before it went can still be taken back.
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
     end if;
     if day < (now() at time zone place.timezone)::date then

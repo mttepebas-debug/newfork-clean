@@ -204,6 +204,37 @@ select is(pg_temp.refusal(format('select pg_temp.share(%L, gen_random_uuid(), pg
 select is(pg_temp.refusal(format('select pg_temp.share(%L, gen_random_uuid(), pg_temp.dinner(%L), %L)', 'p:mia', tests.week(0) + 2, 'unpublish')),
   '22023:lineup.not_shared', 'a lineup never published cannot be unpublished');
 
+-- One command is one day: its notice names that day (nf-guvenlik, LINEUP-PUBLISH).
+select is(pg_temp.refusal(format($$select pg_temp.share(%L, gen_random_uuid(), jsonb_build_object('lineups', jsonb_build_array(
+      jsonb_build_object('location_id', %L, 'service_date', %L, 'shift_type_id', %L),
+      jsonb_build_object('location_id', %L, 'service_date', %L, 'shift_type_id', %L)), 'ask_ack', true))$$,
+    'p:mia', tests.id('p:K'), tests.week(0), tests.id('p:type:dinner'), tests.id('p:K'), tests.week(0) + 1, tests.id('p:type:dinner'))),
+  '22023:lineup.one_day', 'lineups of two days in one command are refused, not as a matter of reach');
+select is(pg_temp.refusal(format($$select pg_temp.share(%L, gen_random_uuid(), jsonb_build_object('lineups', jsonb_build_array(
+      jsonb_build_object('location_id', %L, 'service_date', %L, 'shift_type_id', %L),
+      jsonb_build_object('location_id', %L, 'service_date', %L, 'shift_type_id', %L))), %L)$$,
+    'p:mia', tests.id('p:K'), tests.week(0), tests.id('p:type:dinner'), tests.id('p:K'), tests.week(0) + 1, tests.id('p:type:dinner'),
+    'unpublish')),
+  '22023:lineup.one_day', 'an unpublish of two days too');
+
+-- The employee's read and acknowledgement in another workspace: not a member there.
+select is(pg_temp.refusal(format('select public.get_my_lineups_service(%L, %L, %L)', tests.user('px:xan'), tests.id('p'), tests.week(0))),
+  '42501:authz.not_member', 'another workspace''s person does not read its lineups');
+
+-- A published lineup whose shift type is deleted since: its manager still takes it back; it is not published again.
+insert into public.shift_types (id, workspace_id, name, color, default_start_time, default_end_time)
+values (tests.remember('p:type:late', gen_random_uuid()), tests.id('p'), 'Late', '#9D1F74', '22:00', '23:30');
+create function pg_temp.late(kind text default 'share') returns jsonb language sql as $$
+  select pg_temp.share('p:mia', gen_random_uuid(), jsonb_build_object('lineups', jsonb_build_array(jsonb_build_object(
+    'location_id', tests.id('p:K'), 'service_date', tests.week(0), 'shift_type_id', tests.id('p:type:late'))), 'ask_ack', true), kind)
+$$;
+select is(pg_temp.late() -> 'lineups' -> 0 ->> 'status', 'shared', 'the Late lineup is published');
+update public.shift_types set archived_at = now(), deleted_at = now() where id = tests.id('p:type:late');
+select is(pg_temp.late('unpublish') -> 'lineups' -> 0 ->> 'status', 'unpublished',
+  'its shift type deleted, the manager still takes the published lineup back');
+select is(pg_temp.refusal('select pg_temp.late()'), '42501:authz.out_of_scope',
+  'a deleted shift type is not published again');
+
 -- 10. Unpublish: employees no longer see it, nor acknowledge it; again is harmless.
 select is(pg_temp.share('p:mia', pg_temp.cmd('down'), pg_temp.dinner(), 'unpublish') -> 'lineups' -> 0 ->> 'status', 'unpublished',
   'Mia takes the lineup back');
