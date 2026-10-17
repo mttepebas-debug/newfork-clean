@@ -5,12 +5,13 @@
 --     (to_former_members), once per go; by email, the one way that still reaches them (S-126 (5)); a
 --     "no location left" card on them closes, as the decision was made;
 --   * access restored: the person, and at each of their locations its managers who may publish there; a
---     location with none, its admins and owner (notify_managers_first);
+--     location with none, its admins and owner (notify_place_deciders);
 --   * no location left: who may end their employment (employee.terminate over the person); the card closes
 --     when they work somewhere again (a trigger on the assignment);
 --   * shifts left without anyone, by an employment ended or a location taken away: per location, its managers
 --     who may publish there, else its admins and owner; the count and the place; the card lists that
---     location's shifts only;
+--     location's shifts only and closes once every one of them has somebody, or is no longer in the location's
+--     current schedule (published again, or removed by a closed day);
 --   * ownership transfer: the asked admin, then the other side at each answer (declined, accepted,
 --     cancelled); the asked card closes on the answer or the cancel. The recipients are the transfer's own
 --     two people, the parties to it, not holders of a right (S-127 does not apply).
@@ -19,37 +20,34 @@
 -- Every notice's work (who to tell, the cards it closes, the notice) runs guarded: a failure is logged and the
 -- people work stands.
 
--- Managers first (plan §1, §6.2), place by place: of who may do this at a place (or over the person, with no
--- place), the manager-class ones; where there are none, all of them (its admins and owner). No action of the
--- workspace's stands in for "admins and owner" here: the place's own holders, split by class, are the rule.
-create function app_private.notify_managers_first(target_workspace uuid, target_action text, target_places uuid[],
+-- Managers first (plan §1, §6.2) at one place: of who may do this there (or over the person, with no place),
+-- the manager-class ones; where there are none (none at all, or each one blocked, suspended or without the
+-- right), all of them: its admins and owner. No action of the workspace's stands in for "admins and owner":
+-- the place's own holders, split by class, are the rule.
+create function app_private.notify_place_deciders(target_workspace uuid, target_action text, target_place uuid,
   target_person uuid default null)
 returns uuid[]
-language plpgsql
+language sql
 stable
 set search_path = ''
 as $$
-declare
-  found uuid[] := '{}';
-  holders uuid[];
-  managers uuid[];
-  place uuid;
-begin
-  foreach place in array case when coalesce(cardinality(target_places), 0) = 0 then array[null::uuid] else target_places end loop
-    holders := app_private.notify_holders(target_workspace, target_action,
-      case when place is null then null else array[place] end, target_person);
-    managers := array(
-      select h from unnest(holders) h
-      join public.workspace_memberships m on m.workspace_id = target_workspace and m.user_id = h
-      join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-      where r.access_class = 'manager');
-    found := found || case when cardinality(managers) > 0 then managers else holders end;
-  end loop;
-  return array(select distinct u from unnest(found) u order by u);
-end;
+  with holders as (
+    select unnest(app_private.notify_holders(target_workspace, target_action,
+      case when target_place is null then null else array[target_place] end, target_person)) who
+  ), managers as (
+    select h.who from holders h
+    join public.workspace_memberships m on m.workspace_id = target_workspace and m.user_id = h.who
+    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+    where r.access_class = 'manager'
+  )
+  select coalesce(array_agg(x.who order by x.who), '{}') from (
+    select who from managers
+    union all
+    select who from holders where not exists (select 1 from managers)
+  ) x
 $$;
 
-revoke all on function app_private.notify_managers_first(uuid, text, uuid[], uuid) from public;
+revoke all on function app_private.notify_place_deciders(uuid, text, uuid, uuid) from public;
 
 -- Who may act on an onboarding sent in, now (20261017120000, final approval narrowed): a changed legal name
 -- waiting, its owner and admins (onboarding.legal_name); a final approval when its case asks for one, the
@@ -66,7 +64,7 @@ as $$
                   where r.case_id = target_case.id and r.kind = 'profile' and r.requires_review
                     and r.status <> 'completed'::public.employee_onboarding_requirement_status)
     union
-    select unnest(app_private.notify_managers_first(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
+    select unnest(app_private.notify_place_deciders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
     where target_case.final_approval_required
   ) reviewers
 $$;
@@ -135,12 +133,14 @@ begin
   told := app_private.people_tell('people.restored', target_workspace, array[target_person], key,
     'Your access is back', 'You can use ' || app_private.workspace_name(target_workspace) || ' again.',
     '/app', actor, 'employee', target_employee, '{}'::jsonb);
+  -- Per live location of theirs, its deciders (notify_place_deciders).
   managers := array(
-    select holder from unnest(app_private.notify_managers_first(target_workspace, 'schedule.publish', array(
-      select a.location_id from public.employee_location_assignments a
-      join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
-      where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null))) holder
-    where holder is distinct from target_person);
+    select distinct holder
+    from public.employee_location_assignments a
+    join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
+    cross join lateral unnest(app_private.notify_place_deciders(target_workspace, 'schedule.publish', a.location_id)) holder
+    where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null
+      and holder is distinct from target_person);
   return told + app_private.people_tell('people.restored', target_workspace, managers, key,
     app_private.people_name(target_employee) || '''s access is back', null,
     '/app/employees?employeeId=' || target_employee::text, actor, 'employee', target_employee, '{}'::jsonb);
@@ -218,7 +218,7 @@ begin
     -- Each card is its own subject, so closing it touches no other card about the same place.
     card := gen_random_uuid();
     told := told + app_private.people_tell('schedule.shifts_unassigned', target_workspace,
-      app_private.notify_managers_first(target_workspace, 'schedule.publish', array[place.location_id]),
+      app_private.notify_place_deciders(target_workspace, 'schedule.publish', place.location_id),
       'unassigned:' || card::text,
       place.shifts || case when place.shifts = 1 then ' shift at ' else ' shifts at ' end || place.name
         || case when place.shifts = 1 then ' has nobody' else ' have nobody' end,
@@ -268,6 +268,90 @@ end;
 $$;
 
 revoke all on function app_private.ownership_tell(public.workspace_ownership_transfers, text, uuid) from public;
+
+-- An unassigned card closes once every shift it lists has somebody, or is no longer in its location's current
+-- schedule (published again, superseded, or removed by a closed day). Only open cards of the workspace are
+-- read, by the open-subject index (person_notifications_open_subject); shift_ids is tested on those few.
+create function app_private.unassigned_cards_settle(target_workspace uuid, target_shift uuid default null)
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+declare
+  card record;
+  closed integer := 0;
+begin
+  for card in
+    select distinct n.subject_id, n.data -> 'shift_ids' shift_ids
+    from public.person_notifications n
+    where n.workspace_id = target_workspace and n.subject_type = 'unassigned_shifts' and n.resolved_at is null
+      and n.subject_id is not null and n.type_key = 'schedule.shifts_unassigned'
+      and (target_shift is null or n.data -> 'shift_ids' ? target_shift::text)
+  loop
+    if not exists (
+      select 1 from jsonb_array_elements_text(card.shift_ids) x
+      join public.schedule_published_shifts s on s.id = x::uuid
+      join public.schedule_location_publications p on p.id = s.publication_id and p.status = 'current'
+      where s.employee_id is null) then
+      closed := closed + app_private.notification_resolve(target_workspace, 'unassigned_shifts', card.subject_id, 'closed', null);
+    end if;
+  end loop;
+  return closed;
+exception when others then
+  raise warning 'unassigned_cards_settle: cards in % not settled: % (%)', target_workspace, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+revoke all on function app_private.unassigned_cards_settle(uuid, uuid) from public;
+
+-- The three writes that can settle a card: a published shift given to somebody, one removed outright (a
+-- closed day), a location's schedule published again. Close-only and guarded; reads are untouched.
+create function app_private.unassigned_shift_changed()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if tg_op = 'DELETE' then
+    perform app_private.unassigned_cards_settle(old.workspace_id, old.id);
+  else
+    perform app_private.unassigned_cards_settle(new.workspace_id, new.id);
+  end if;
+  return null;
+end;
+$$;
+
+revoke all on function app_private.unassigned_shift_changed() from public;
+
+create trigger unassigned_shift_given
+after update of employee_id on public.schedule_published_shifts
+for each row when (new.employee_id is not null and old.employee_id is distinct from new.employee_id)
+execute function app_private.unassigned_shift_changed();
+
+create trigger unassigned_shift_removed
+after delete on public.schedule_published_shifts
+for each row execute function app_private.unassigned_shift_changed();
+
+create function app_private.unassigned_publication_replaced()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform app_private.unassigned_cards_settle(new.workspace_id, null);
+  return null;
+end;
+$$;
+
+revoke all on function app_private.unassigned_publication_replaced() from public;
+
+create trigger unassigned_publication_replaced
+after update of status on public.schedule_location_publications
+for each row when (old.status = 'current' and new.status <> 'current')
+execute function app_private.unassigned_publication_replaced();
 
 CREATE OR REPLACE FUNCTION "public"."update_employee_membership_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_role_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER

@@ -339,6 +339,9 @@ select is(pg_temp.told_titled('schedule.shifts_unassigned', '1 shift at Pendik h
   '(f) Pia''s Pendik shift: its only manager''s access removed, the owner and the admins are told, not Pam');
 -- Another location's card is untouched by Kadikoy's republish and by these.
 select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 2, '(f) Moda''s card stays open');
+-- ponytail: removed outright, as a closed day does to a shift it lands on (announcement_apply): the card closes.
+delete from public.schedule_published_shifts where id = tests.id('pa:shift:mio_fri');
+select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 0, '(f) Mio''s shift removed by a closed day: Moda''s card closes');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('px')), 0,
   'another workspace hears nothing of this one');
