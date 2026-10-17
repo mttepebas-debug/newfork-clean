@@ -21,6 +21,8 @@ function build(options: { worker?: boolean; cronSecret?: string; pushAvailable?:
     worker: options.worker === false ? null : { runBatch },
     cronSecret: "cronSecret" in options ? options.cronSecret : "s",
     service,
+    // A session the auth server knows; any other token is signed out.
+    verifySession: async (token: string) => token === "t",
     config: () => ({
       email: { available: true },
       push: options.pushAvailable === false ? { available: false, public_key: null } : { available: true, public_key: publicKey },
@@ -64,6 +66,7 @@ describe("a person's devices", () => {
   it("says which channels the server can send on, to a signed-in person", async () => {
     const { app } = build();
     expect((await app.inject({ method: "GET", url: "/v1/account/notification-channels" })).statusCode).toBe(401);
+    expect((await app.inject({ method: "GET", url: "/v1/account/notification-channels", headers: { authorization: "Bearer expired" } })).statusCode).toBe(401);
     const response = await app.inject({ method: "GET", url: "/v1/account/notification-channels", headers: { authorization: "Bearer t" } });
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual({ email: { available: true }, push: { available: true, public_key: publicKey } });

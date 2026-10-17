@@ -1,5 +1,13 @@
 import { describe, expect, it, vi } from "vitest";
-import { applicationServerKey, deviceLabel, readPhoneAlertsState, syncPhoneAlerts, turnOffPhoneAlerts, turnOnPhoneAlerts } from "./push-client";
+import {
+  applicationServerKey,
+  deviceLabel,
+  dropPhoneAlertsHere,
+  readPhoneAlertsState,
+  syncPhoneAlerts,
+  turnOffPhoneAlerts,
+  turnOnPhoneAlerts,
+} from "./push-client";
 import type { InstallEnv } from "./install-state";
 
 // BILDIRIM-15: this browser's side of phone alerts, against a fake browser.
@@ -9,23 +17,28 @@ const iphoneSafari =
 const publicKey = "BMrl6GP3sbnxj3ja-qHzuk2nqqdq1hInECTnvMVnrvA6ACgNuMRuq1-RAiNfhYgHuf-8o6kDQhWmqOXKt7c4eLw";
 const endpoint = "https://fcm.googleapis.com/fcm/send/abc";
 
-function fakeWindow(options: { ua?: string; permission?: NotificationPermission; answer?: NotificationPermission; subscribed?: boolean; registered?: boolean } = {}) {
+const oldKey = "B" + "o".repeat(86);
+
+function fakeWindow(
+  options: { ua?: string; permission?: NotificationPermission; answer?: NotificationPermission; subscribed?: boolean; registered?: boolean; key?: string } = {},
+) {
   let subscription: PushSubscription | null = null;
   const unsubscribe = vi.fn(async () => {
     subscription = null;
     return true;
   });
-  const make = () =>
+  const make = (key: ArrayBuffer) =>
     ({
       endpoint,
+      options: { userVisibleOnly: true, applicationServerKey: key },
       getKey: (name: string) => new Uint8Array(name === "p256dh" ? 65 : 16).fill(name === "p256dh" ? 4 : 7).buffer,
       unsubscribe,
     }) as unknown as PushSubscription;
-  if (options.subscribed) subscription = make();
+  if (options.subscribed) subscription = make(applicationServerKey(options.key ?? publicKey).buffer);
   const pushManager = {
     getSubscription: vi.fn(async () => subscription),
-    subscribe: vi.fn(async () => {
-      subscription = make();
+    subscribe: vi.fn(async (init: PushSubscriptionOptionsInit) => {
+      subscription = make((init.applicationServerKey as Uint8Array<ArrayBuffer>).buffer);
       return subscription;
     }),
   };
@@ -94,17 +107,51 @@ describe("phone alerts in this browser", () => {
     expect(browser.unsubscribe).toHaveBeenCalledTimes(1);
   });
 
+  it("turning off forgets this device in the browser even when the server cannot be reached", async () => {
+    const browser = fakeWindow({ permission: "granted", subscribed: true });
+    const api = server();
+    api.remove.mockRejectedValueOnce(new Error("offline"));
+    await expect(turnOffPhoneAlerts(api, browser.win)).rejects.toThrow("offline");
+    expect(browser.unsubscribe).toHaveBeenCalledTimes(1);
+  });
+
+  it("a session that ends forgets this device in the browser, asking nobody", async () => {
+    const browser = fakeWindow({ permission: "granted", subscribed: true });
+    await dropPhoneAlertsHere(browser.win);
+    expect(browser.unsubscribe).toHaveBeenCalledTimes(1);
+    await expect(dropPhoneAlertsHere(fakeWindow().win)).resolves.toBeUndefined();
+  });
+
+  it("a subscription made with an old server key is replaced, on Turn on and at start", async () => {
+    const atStart = fakeWindow({ permission: "granted", subscribed: true, key: oldKey });
+    const api = server();
+    await syncPhoneAlerts(api, publicKey, atStart.win);
+    expect(atStart.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(atStart.pushManager.subscribe).toHaveBeenCalledTimes(1);
+    expect(api.save).toHaveBeenCalledTimes(1);
+
+    const same = fakeWindow({ permission: "granted", subscribed: true });
+    await syncPhoneAlerts(api, publicKey, same.win);
+    expect(same.unsubscribe).not.toHaveBeenCalled();
+    expect(same.pushManager.subscribe).not.toHaveBeenCalled();
+
+    const tapped = fakeWindow({ subscribed: true, key: oldKey, answer: "granted" });
+    expect(await turnOnPhoneAlerts(publicKey, api, tapped.win)).toBe("on");
+    expect(tapped.unsubscribe).toHaveBeenCalledTimes(1);
+    expect(tapped.pushManager.subscribe).toHaveBeenCalledTimes(1);
+  });
+
   it("at every start while allowed, tells the server this device again, and never asks", async () => {
     const browser = fakeWindow({ permission: "granted", subscribed: true });
     const api = server();
-    await syncPhoneAlerts(api, browser.win);
+    await syncPhoneAlerts(api, publicKey, browser.win);
     expect(api.save).toHaveBeenCalledTimes(1);
     expect(browser.notification.requestPermission).not.toHaveBeenCalled();
     const asked = fakeWindow();
-    await syncPhoneAlerts(api, asked.win);
+    await syncPhoneAlerts(api, publicKey, asked.win);
     expect(api.save).toHaveBeenCalledTimes(1);
     api.save.mockRejectedValueOnce(new Error("offline"));
-    await expect(syncPhoneAlerts(api, browser.win)).resolves.toBeUndefined();
+    await expect(syncPhoneAlerts(api, publicKey, browser.win)).resolves.toBeUndefined();
   });
 
   it("names the device plainly", () => {

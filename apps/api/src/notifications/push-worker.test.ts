@@ -172,6 +172,21 @@ describe("notification push worker", () => {
     expect(text()).toContain("bad_item");
   });
 
+  it("never sends to an address that is not a push service's, even from the database", async () => {
+    const send = vi.fn(accepted);
+    const fake = { ...target(2), endpoint: "https://evil.example/collect" };
+    const lookalike = { ...target(3), endpoint: "https://fcm.googleapis.com.evil.com/x" };
+    const { push, finished } = worker([item(1, [target(1), fake, lookalike])], send);
+    await push.runBatch(capturingLog().log);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(send.mock.calls[0]![0].endpoint).toBe(target(1).endpoint);
+    expect(finished()[0]![1]).toEqual([
+      { subscription_id: target(1).subscription_id, outcome: "accepted", code: null, retry_after: null },
+      { subscription_id: target(2).subscription_id, outcome: "refused", code: "bad_endpoint", retry_after: null },
+      { subscription_id: target(3).subscription_id, outcome: "refused", code: "bad_endpoint", retry_after: null },
+    ]);
+  });
+
   it("refuses a link that leaves the app", async () => {
     const send = vi.fn(accepted);
     const outside = { ...item(1), payload: { ...item(1).payload, url: "//evil.example/x" } };

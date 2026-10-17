@@ -60,10 +60,12 @@ create function pg_temp.save(endpoint text) returns text language sql as $$
     pg_temp.u('eve'), endpoint, 'B' || repeat('p', 86), repeat('a', 22)))
 $$;
 -- A notice of this type to the person, and its push delivery.
-create function pg_temp.notice(kind text, person text, key text, body text default null, w uuid default tests.id('np'))
+create function pg_temp.notice(kind text, person text, key text, body text default null, w uuid default tests.id('np'),
+  subject text default null)
 returns uuid language plpgsql as $$
 begin
-  perform app_private.notify(kind, w, array[pg_temp.u(person)], key, 'Title ' || key, coalesce(body, 'Body ' || key), '/app/requests', null);
+  perform app_private.notify(kind, w, array[pg_temp.u(person)], key, 'Title ' || key, coalesce(body, 'Body ' || key), '/app/requests', null,
+    subject, case when subject is null then null else gen_random_uuid() end, '{}'::jsonb);
   return pg_temp.delivery(key);
 end $$;
 create function pg_temp.delivery(key text, which text default 'push') returns uuid language sql stable as $$
@@ -98,7 +100,10 @@ $$;
 
 -- The queue is the whole database's: push waiting from other work on a shared database is set aside.
 update public.notification_deliveries set status = 'skipped', last_error = 'test_isolation', lease_expires_at = null
-where channel = 'push' and status in ('queued', 'sending', 'failed');
+where channel in ('push', 'email') and status in ('queued', 'sending', 'failed');
+update public.notification_deliveries set sent_at = sent_at - interval '2 days'
+where channel = 'email' and sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+update app_private.notification_email_channel set opened_at = now() - interval '1 hour', daily_cap = null;
 
 -- (a) Devices -----------------------------------------------------------------------------------------------
 
@@ -341,6 +346,11 @@ select is(pg_temp.finish('p:eve:refused', jsonb_build_array(pg_temp.answer('eve-
     pg_temp.answer('eve-3', 'refused', 'http_403'))), 'dead', '(f) no device took it');
 select is((select d.status || ' ' || d.reason from public.notification_deliveries d where d.id = pg_temp.delivery('p:eve:refused', 'email')),
   'queued push_fallback', '(f) so it goes by email');
+-- Eve still has a device (it refused): the email is sent all the same, not skipped as "email is off by default".
+select ok(pg_temp.delivery('p:eve:refused', 'email')::text in (
+    select x ->> 'delivery_id' from jsonb_array_elements(public.claim_notification_emails_service(100)) x),
+  '(f) and the email worker sends it, though a device is still there');
+select is(pg_temp.state('p:eve:refused', 'email'), 'sending', '(f) it is being sent');
 -- The person turned that email off: no fallback.
 insert into public.notification_preferences (workspace_id, user_id, topic_key, channel, enabled)
 select tests.id('np'), pg_temp.u('eve'), t.topic_key, 'email', false from public.notification_types t where t.key = 'announcements.published';
@@ -360,24 +370,46 @@ select is(pg_temp.delivery('p:eve:optional', 'email'), null, '(f) an optional no
 
 select pg_temp.device('bea', 'bea-3');
 select pg_temp.notice('time_off.requested', 'bea', 'p:bea:reason', 'Nov 23 · Dentist appointment');
-select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:shift', 'Now 9:00 AM–3:00 PM.');
+select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:shift', 'Now 9:00 AM–3:00 PM.', subject => 'schedule_publication');
+-- A closed day changes a shift too; its body is the announcement's own words.
+select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:closed', 'Thanksgiving: we close at noon', subject => 'announcement');
 select pg_temp.claim(17);
 select is(pg_temp.item(17, 'p:bea:reason') #>> '{payload,body}', (select w.name from public.workspaces w where w.id = tests.id('np')),
   '(g) a request''s reason never reaches the lock screen: only the workspace''s name');
 select is(pg_temp.item(17, 'p:bea:shift') #>> '{payload,body}',
   (select w.name from public.workspaces w where w.id = tests.id('np')) || ' · Now 9:00 AM–3:00 PM.',
   '(g) a body the product writes itself is shown');
-select is(array(select t.key from public.notification_types t where t.push_shows_body order by 1),
-  array['people.onboarding_completed', 'schedule.published', 'schedule.shift_added', 'schedule.shift_changed', 'schedule.shift_removed',
-        'time_off.decision_reminder'],
-  '(g) the types whose body may show: each one''s body is written by the product from dates, hours and counts');
-select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:long', repeat('x', 300));
+select is(pg_temp.item(17, 'p:bea:closed') #>> '{payload,body}', (select w.name from public.workspaces w where w.id = tests.id('np')),
+  '(g) the same type from a closed day''s announcement: its words stay off the lock screen');
+select is(
+  array(select t.key || ' ' || x.subject from public.notification_types t
+        cross join unnest(array['announcement', 'onboarding_case', 'schedule_publication', 'shift_exchange', 'time_off_request',
+                                'document', 'employee', 'lineup', 'invitation', 'workspace']) x(subject)
+        where app_private.push_shows_body(t.key, x.subject) order by 1),
+  array['people.onboarding_completed onboarding_case', 'schedule.published schedule_publication',
+        'schedule.shift_added schedule_publication', 'schedule.shift_changed schedule_publication',
+        'schedule.shift_removed schedule_publication', 'time_off.decision_reminder time_off_request'],
+  '(g) whose body may show: each of these producers writes it from dates, hours and counts');
+select pg_temp.notice('schedule.shift_changed', 'bea', 'p:bea:long', repeat('x', 300), subject => 'schedule_publication');
 update public.person_notifications set title = repeat('T', 200) where event_key = 'p:bea:long';
 select pg_temp.claim(18);
 select is(array[char_length(pg_temp.item(18, 'p:bea:long') #>> '{payload,title}'),
                 char_length(pg_temp.item(18, 'p:bea:long') #>> '{payload,body}')
                   - char_length((select w.name from public.workspaces w where w.id = tests.id('np')) || ' · ')],
   array[120, 140], '(g) a title is cut at 120 characters and a body at 140');
+
+-- Ten devices at most get an alert, even if two browsers saved at once and left eleven.
+select pg_temp.device('dee', 'dee-' || n) from generate_series(2, 10) n;
+update public.workspace_memberships set status = 'active' where workspace_id = tests.id('np') and user_id = pg_temp.u('dee');
+insert into public.notification_push_subscriptions (user_id, endpoint, p256dh, auth_secret)
+values (pg_temp.u('dee'), pg_temp.endpoint('dee-11'), 'B' || repeat('p', 86), repeat('a', 22));
+select is(pg_temp.devices('dee'), 11, '(e) two saves at once left Dee eleven devices');
+select pg_temp.notice('time_off.decided', 'dee', 'p:dee:eleven');
+select pg_temp.claim(19);
+select is(jsonb_array_length(pg_temp.item(19, 'p:dee:eleven') -> 'targets'), 10, '(e) the alert goes to ten of them, and finishing takes it');
+select is(pg_temp.finish('p:dee:eleven', (select jsonb_agg(jsonb_build_object('subscription_id', t ->> 'subscription_id', 'outcome', 'accepted'))
+                                          from jsonb_array_elements(pg_temp.item(19, 'p:dee:eleven') -> 'targets') t)), 'sent',
+  '(e) sent');
 
 -- (h) Only the worker ---------------------------------------------------------------------------------------
 
