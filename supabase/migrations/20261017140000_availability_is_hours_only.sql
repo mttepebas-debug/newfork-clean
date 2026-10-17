@@ -22,6 +22,13 @@
 -- Hosted, 2026-10-16 (measured by the main session): all three workspaces use time ranges and
 -- neither weekly table has a row. A week that cannot take the new form (a shift-type week, or a
 -- day with several ranges) is deleted, not converted (CLAUDE.md 3.A.5).
+--
+-- The job a person is listed under is one rule (CLAUDE.md 3.A.4): app_private.listed_job_name,
+-- asked by the Employees list and by the team read.
+
+-- A held lock fails the migration rather than queueing every read behind it (MCP sends this file
+-- as one query, so the setting lasts for its transaction).
+set lock_timeout = '5s';
 
 -- The two checks name the validator; they come back at the end, once every row fits.
 alter table public.employee_weekly_preferences drop constraint employee_weekly_preferences_preference_check;
@@ -477,6 +484,28 @@ begin
  insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,command,result);
  return result||jsonb_build_object('model',model);
 end; $$;
+-- The job a person is listed under: the stored primary; failing that the Owner job (the owner's,
+-- never stored as primary), then the first job in the catalog's order (A to Z, BL-475). An archived
+-- job still names its person while it is their primary. Asked by list_employees_service and
+-- weekly_team_read_service, inside their own authorization; it decides nothing about who may read.
+create function app_private.listed_job_name(target_employee uuid)
+returns text
+language sql
+stable
+set search_path = ''
+as $$
+  select job.name
+  from public.employee_job_assignments assignment
+  join public.jobs job on job.id = assignment.job_id
+  where assignment.employee_id = target_employee and assignment.ended_at is null
+    and (assignment.is_primary or job.archived_at is null)
+  order by assignment.is_primary desc, coalesce(job.system_key = 'owner', false) desc,
+    lower(job.name), job.id
+  limit 1
+$$;
+
+revoke all on function app_private.listed_job_name(uuid) from public, anon, authenticated;
+
 CREATE OR REPLACE FUNCTION "public"."weekly_team_read_service"("actor" "uuid", "w" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -498,14 +527,8 @@ begin
   select e.id,e.employee_code,coalesce(nullif(e.preferred_name,''),e.first_name)||' '||e.last_name display_name,
    coalesce((select jsonb_agg(a.location_id order by a.location_id) from public.employee_location_assignments a
     join scope s on s.id=a.location_id where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null),'[]') location_ids,
-   -- The job the Employees list names (list_employees_service): the stored
-   -- primary; failing that the Owner job, then the first job A to Z.
-   (select job.name from public.employee_job_assignments assignment
-     join public.jobs job on job.id=assignment.job_id
-     where assignment.employee_id=e.id and assignment.ended_at is null
-      and (assignment.is_primary or job.archived_at is null)
-     order by assignment.is_primary desc,coalesce(job.system_key='owner',false) desc,lower(job.name),job.id
-     limit 1) job_name,
+   -- The job the Employees list names.
+   app_private.listed_job_name(e.id) job_name,
    p.employee_id is not null submitted,coalesce(p.preference,public.empty_weekly_preference()) preference,
    p.updated_at,
    (public.weekly_preference_manager_scope(actor,w,e.id,'availability.read')
@@ -532,6 +555,88 @@ begin
  ) into result;
  return result;
 end; $$;
+
+-- The Employees list names the job through the one rule.
+CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "locations" "jsonb", "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  me app_private.actor_state := app_private.actor(actor_user_id, target_workspace_id);
+  rule_row app_private.authz_actions;
+  reason text;
+begin
+  select * into rule_row from app_private.authz_actions action where action.key = 'employee.list';
+  if not found then
+    raise exception 'core action employee.list is missing' using errcode = '22023';
+  end if;
+  -- May they list anybody at all; who, is answered row by row.
+  reason := app_private.authz_check(me, rule_row, null, null, null);
+  if reason is not null and reason <> 'out_of_scope' then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || reason, detail = 'employee.list';
+  end if;
+
+  return query
+  with directory as (
+    select employee.id, employee.workspace_id, employee.employee_code,
+      employee.first_name, employee.last_name, employee.preferred_name,
+      concat_ws(' ', coalesce(nullif(employee.preferred_name, ''), employee.first_name), employee.last_name) as display_name,
+      employee.invitation_email, employee.start_date,
+      -- Every location they work at, the primary first, then A to Z (BL-436).
+      coalesce((
+        select jsonb_agg(jsonb_build_object('id', place.id, 'name', place.name, 'primary', assignment.is_primary)
+          order by assignment.is_primary desc, lower(place.name), place.id)
+        from public.employee_location_assignments assignment
+        join public.locations place on place.id = assignment.location_id
+        where assignment.employee_id = employee.id and assignment.ended_at is null
+      ), '[]'::jsonb) as locations,
+      primary_job.job_id as primary_job_id, app_private.listed_job_name(employee.id) as primary_job_name,
+      (select count(*) from public.employee_job_assignments a where a.employee_id = employee.id and a.ended_at is null) as job_count,
+      role.name as role_name,
+      case
+        when employee.archived_at is not null then 'archived'
+        when membership.status = 'active' then 'active'
+        when onboarding.status in ('submitted', 'changes_requested') then 'needs_attention'
+        when membership.status = 'pending_activation' then 'onboarding'
+        when invitation.status = 'pending' and invitation.expires_at > now() then 'invited'
+        else 'not_invited'
+      end as display_status,
+      employee.archived_at, employee.revision
+    from public.employee_profiles employee
+    left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
+    left join public.workspace_memberships membership on membership.workspace_id = employee.workspace_id and membership.user_id = employee.user_id
+    left join public.workspace_roles role on role.id = membership.role_id
+    left join public.employee_onboarding_cases onboarding on onboarding.employee_id = employee.id
+    left join lateral (
+      select candidate.status, candidate.expires_at
+      from public.employee_invitations candidate
+      where candidate.employee_id = employee.id
+      order by candidate.created_at desc limit 1
+    ) invitation on true
+    where employee.workspace_id = target_workspace_id
+      and (include_archived = (employee.archived_at is not null))
+      and app_private.authz_check(me, rule_row, null, employee.id, null) is null
+  )
+  select * from directory
+  where (
+      btrim(search_text) = ''
+      or concat_ws(
+        ' ',
+        directory.first_name,
+        directory.last_name,
+        directory.preferred_name,
+        directory.employee_code,
+        directory.invitation_email,
+        (select string_agg(place ->> 'name', ' ') from jsonb_array_elements(directory.locations) place),
+        directory.primary_job_name
+      ) ilike '%' || btrim(search_text) || '%'
+    )
+    and (status_filter = 'all' or directory.display_status = status_filter)
+  order by lower(directory.display_name), directory.id
+  limit least(greatest(page_limit, 1), 200)
+  offset greatest(page_offset, 0);
+end;
+$$;
 
 -- What only the entry mode needed goes.
 drop function public.weekly_preference_convert(uuid, jsonb, text);
