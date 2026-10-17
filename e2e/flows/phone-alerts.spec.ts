@@ -13,6 +13,11 @@ const world: { readonly password: string } = JSON.parse(readFileSync(new URL("..
 const shots = fileURLToPath(new URL("../../artifacts/bildirim-15/", import.meta.url));
 const pushHosts = /^https:\/\/([^/]+\.)?(fcm\.googleapis\.com|push\.services\.mozilla\.com|push\.apple\.com|notify\.windows\.com)\//;
 
+// CI's default Chromium is the headless shell, which says "denied" for notifications even when they are
+// granted; the app then rightly reads the browser as blocked. Full Chromium in its new headless mode
+// answers as a person's browser does, so this file runs there (locally, the installed Chrome).
+test.use({ channel: process.env.CI ? "chromium" : "chrome" });
+
 function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
@@ -69,6 +74,8 @@ test("an employee turns phone alerts on from Home and Account says this computer
   await page.getByLabel("Password").fill(world.password);
   await page.getByRole("button", { name: "Sign in", exact: true }).click();
   await expect(page).not.toHaveURL(/\/sign-in/);
+  // The browser itself must say alerts are allowed, or no card is right.
+  expect(await page.evaluate(() => Notification.permission), "this browser reads granted notifications as").toBe("granted");
 
   // The card waits until the person opened their schedule here.
   await page.goto("/app/employee-hub");
