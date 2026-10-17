@@ -9,7 +9,7 @@ Mobil stüdyo oturumu (ek oturum) yazdı. Ana oturum treni ve canlı adımı yü
 - **Canlı:** migration **riskli** sınıfta (nf-guvenlik, 16 Ekim; ilk sınıflandırmam "yalnız ekleyen" idi, yanlıştı). RLS açıp revoke ediyor, `app_private.authz_actions`'a satır ekliyor ve yeni bir SECURITY DEFINER `*_service` getiriyor (CLAUDE.md §5 madde 5). Hiçbir var olan fonksiyonun gövdesi değişmez, hiçbir şey silinmez. Yol: `nf-guvenlik` ONAY → **Mert'in ana oturumda yazdığı "evet"** → ana oturum kontrol listesiyle MCP `apply_migration` → dosya adı canlı ledger sürümüne.
 
 ## Değişen dosyalar
-- `supabase/migrations/20261017140000_lineup_foundation.sql` (geçici sürüm; canlıya uygulanınca ana oturum ledger sürümüne çevirir):
+- `supabase/migrations/20261017045214_lineup_foundation.sql` (canlı ledger sürümü; 2026-10-16 9:52 PM PDT canlıya uygulandı):
   - tablolar: `location_sections`, `daily_lineups`, `daily_lineup_rows`, `daily_lineup_versions`, `daily_lineup_acknowledgements`. Hepsinde RLS açık, anon/authenticated'dan revoke. Her bağ `(id, workspace_id)`; satır kendi lineup'ının lokasyonunda kalır ve yalnız o lokasyonun section'larını alır.
   - çekirdek eylemi `lineup.read`: place, read, izin `schedule.read` (yeni izin anahtarı yok, KARARLAR "Lineup yetkisi").
   - `public.get_lineup_day_service(actor, workspace, date, location_ids?, shift_type_ids?)`: günün lineup'ları, lokasyon ve vardiya türüne göre. Canlı Schedule vardiyaları + lineup'ın değişiklikleri (section, sıra, call off, saat, iş, etiket, notlar) + yalnız lineup'taki kişiler; kapalı ve kısa gün `schedule_closures`'tan; durum (draft, shared, editing, past), paylaşılan sürüm ve onay sayısı. Yalnız `service_role`.
