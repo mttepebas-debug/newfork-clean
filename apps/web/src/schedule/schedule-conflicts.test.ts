@@ -4,7 +4,6 @@ import type {
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
 import {
-  assessmentAvailabilityWarnings,
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessage,
   formatScheduleConflictMessages,
@@ -420,32 +419,7 @@ describe("schedule conflict port", () => {
   });
 });
 
-// M8, M12: the server keeps availability and the note out of operation; the
-// editor still warns for them on every write.
-describe("availability warnings from the server's assessment", () => {
-  const interval = { start_at: "2026-08-18T01:00:00Z", end_at: "2026-08-18T03:00:00Z" };
-  it("returns the employee's mark and the note as warnings, whatever the operation", () => {
-    const warnings = assessmentAvailabilityWarnings({
-      operation: "allowed",
-      reasons: [
-        { code: "availability", message: "The assignment overlaps unavailable hours.", definite: true, severity: "warn", intervals: [interval] },
-        { code: "note", message: "The assignment overlaps hours a manager noted for this person.", definite: true, severity: "warn", intervals: [interval] },
-        { code: "minimum_rest", message: "There is not enough rest time between shifts.", definite: true, severity: "confirm" },
-      ],
-    });
-    expect(warnings).toEqual([
-      expect.objectContaining({ type: "availability", severity: "warn" }),
-      expect.objectContaining({ type: "note", severity: "warn" }),
-    ]);
-    expect(formatScheduleConflictMessages(warnings)).toEqual([
-      "The assignment overlaps unavailable hours.",
-      "The assignment overlaps hours a manager noted for this person.",
-    ]);
-  });
-  it("is empty without an assessment or without either reason", () => {
-    expect(assessmentAvailabilityWarnings(null)).toEqual([]);
-    expect(assessmentAvailabilityWarnings({ operation: "allowed", reasons: [] })).toEqual([]);
-  });
+describe("how a conflict reads", () => {
   it("words approved time off with a readable day and hours (BL-611)", () => {
     expect(formatScheduleConflictMessage({ type: "time_off", date: "2026-10-06", full_day: true }))
       .toBe("Approved time off on Tue, Oct 6.");

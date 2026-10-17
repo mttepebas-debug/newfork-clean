@@ -3,7 +3,7 @@ import type {
   ScheduleShift,
   ScheduleShiftMutationInput,
 } from "@newfork/shared/schedule";
-import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules, type ShiftAvailabilityAssessment } from "@newfork/shared";
+import { closedLocationSeverity, getShiftTimeBasis, SAME_START_END_TIME_MESSAGE, scheduleClosureCoversShift, type ScheduleConflictSeverity, type ScheduleConflictRules } from "@newfork/shared";
 import { weeklyTargetAvailability, weeklyTargetInterval, weeklyTargetNote } from "./lib/scheduleWeeklyAvailability";
 import { scheduleShiftTypeOf } from "./lib/scheduleCatalogNames";
 import { isPendingRemovalShift } from "./lib/scheduleShiftMetadata";
@@ -293,22 +293,13 @@ export function formatScheduleConflictMessages(
     .filter((message) => message.length > 0);
 }
 
-/** The employee's own mark or a manager's note: asks on every write, never a conflict (M8, M12). */
+/**
+ * The employee's own mark or a manager's note: never a conflict and never a
+ * question; the write goes through and a short notice follows (KARARLAR
+ * "Müsaitlik tercih" 3, M12 as of 2026-10-16).
+ */
 export function isAvailabilityReminder(reason: ScheduleConflictReason): boolean {
   return typeof reason !== "string" && (reason.type === "availability" || reason.type === "note");
-}
-
-/**
- * The employee's own mark and a manager's note from the server's assessment.
- * Neither is in its operation (M8, M12), so they are read from the reasons:
- * every write warns for them, none is a conflict.
- */
-export function assessmentAvailabilityWarnings(
-  assessment: Pick<ShiftAvailabilityAssessment, "reasons"> & Partial<Pick<ShiftAvailabilityAssessment, "operation">> | null,
-): ScheduleConflictReason[] {
-  return (assessment?.reasons ?? [])
-    .filter(reason => reason.code === "availability" || reason.code === "note")
-    .map(reason => ({ type: reason.code, severity: "warn", message: reason.message, intervals: reason.intervals ?? [] }));
 }
 
 export function evaluateScheduleShiftConflicts(

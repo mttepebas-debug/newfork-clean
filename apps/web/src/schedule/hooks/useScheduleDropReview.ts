@@ -4,7 +4,7 @@ import type { SchedulePendingOp, ScheduleShiftMutationInput } from "@newfork/sha
 import { useToast } from "@newfork/ui";
 import { loadShiftAvailability } from "../../availability/availability-data";
 import { ScheduleRequestError } from "../schedule-data";
-import { assessmentAvailabilityWarnings, formatScheduleConflictMessage } from "../schedule-conflicts";
+import { formatScheduleConflictMessage } from "../schedule-conflicts";
 import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../lib/closedDayAnswer";
 import { requestErrorText } from "../../lib/request-error";
 
@@ -104,12 +104,8 @@ export function useScheduleDropReview(
         if (blocked) setOptimisticOps([]);
         return;
       }
-      // The employee's own mark and a manager's note ask on every write (M8, M12).
-      const reminded = assessments.find(value => assessmentAvailabilityWarnings(value).length);
-      if (reminded && !confirmation) {
-        setReview({ drop, assessment: reminded, assessments, blocked: false, warningCount });
-        return;
-      }
+      // The employee's own mark and a manager's note never ask: the page shows
+      // a short notice once the save lands (KARARLAR "Müsaitlik tercih" 3, M12).
       // K17: an answered closed day holds for the rest of this editing session.
       if (confirmation) assessments.forEach((value, index) => { if (states[index]!.needsConfirmation) rememberClosedDayAnswer(value, sessionId); });
       const saved = await drop.save(drop.items.map((item, index) => ({ ...item.input,
@@ -124,7 +120,7 @@ export function useScheduleDropReview(
           {
             dedupeKey: "schedule-drop-availability-warning",
             description:
-              // The mark and the note were answered in the rule box; the toast names the rest.
+              // The mark and the note have their own notice; this toast names the rest.
               [...new Set(assessments.flatMap(value => value?.reasons.filter(reason => reason.code !== "availability" && reason.code !== "note").map(reason => reason.message) ?? []))].join(" "),
           },
         );

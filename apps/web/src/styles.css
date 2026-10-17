@@ -6342,6 +6342,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   color: #56645f;
   font-size: 13px;
   line-height: 1.45;
+  white-space: pre-line;
 }
 .toast-close {
   inset-inline-end: 12px !important;
@@ -9572,52 +9573,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   line-height: 1.4;
   overflow-wrap: anywhere;
   white-space: pre-line;
-}
-/* A manager's note met while placing a shift (S2 B): the note card under the
-   cell, asking once with the rule box's buttons. */
-.schedule-note-confirm {
-  display: grid;
-  gap: 4px;
-  width: 300px;
-  max-width: calc(100vw - 24px);
-  animation: none;
-}
-.schedule-note-confirm-by {
-  color: var(--theme-muted);
-  font-size: 11px;
-}
-.schedule-note-confirm footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 6px;
-  border-top: 1px solid var(--theme-border-subtle);
-  padding-top: 8px;
-}
-.schedule-note-confirm footer button {
-  min-height: 31px;
-  border: 1px solid #bac7c1;
-  border-radius: 5px;
-  padding: 0 11px;
-  background: var(--theme-surface);
-  color: #26312d;
-  cursor: pointer;
-  font: inherit;
-  font-size: 12px;
-  font-weight: 750;
-}
-.schedule-note-confirm footer button.primary {
-  border-color: var(--theme-accent);
-  background: var(--theme-accent);
-  color: var(--theme-on-accent);
-}
-.schedule-note-confirm footer button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-}
-.schedule-note-confirm footer button:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: 2px;
 }
 @keyframes schedule-shift-note-card-in {
   from {

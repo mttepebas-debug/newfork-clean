@@ -77,7 +77,7 @@ export function formatShiftNoteRemaining(note: string): string {
 }
 
 export function useShiftEditor(props: ShiftEditorProps) {
-  const { model, sessionId, state, timeFormat, onSubmit, onDelete, onClose, onBlockedSubmit, onDirtyChange } = props;
+  const { model, sessionId, state, onSubmit, onDelete, onClose, onBlockedSubmit, onDirtyChange } = props;
   const toast = useToast();
   const editorRef = useRef<HTMLDivElement>(null);
   const title = state.mode === "edit" ? "Edit shift" : state.copy ? "Paste shift" : "Add shift";

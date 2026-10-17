@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { ScheduleConflictSheet } from "./ScheduleConflictSheet";
-import { ScheduleNoteConfirm } from "./ScheduleNoteConfirm";
 
 // BL-757: the editor opens these questions from a later update (the availability check answering).
 // React draws such an update and runs its effects in a separate, later task, so the box is on screen
@@ -42,23 +41,8 @@ describe("a Schedule question hears Escape from the moment it is on screen (BL-7
   it("the rule box", async () => {
     const onDismiss = vi.fn();
     await pressEscapeOnFirstSight(
-      <ScheduleConflictSheet open messages={["Overlaps unavailable hours."]} submitLabel="Place shift" onSubmit={vi.fn()} onDismiss={onDismiss} />,
+      <ScheduleConflictSheet open messages={["Location is closed all day."]} submitLabel="Place shift" onSubmit={vi.fn()} onDismiss={onDismiss} />,
     );
     expect(onDismiss).toHaveBeenCalledOnce();
-  });
-
-  it("the manager note card", async () => {
-    const onCancel = vi.fn();
-    await pressEscapeOnFirstSight(
-      <ScheduleNoteConfirm
-        cell={{ locationId: "kadikoy", employeeId: "ayse", date: "2026-10-21" }}
-        when="Wed after 6:00 PM"
-        employeeName="Ayşe Kaya"
-        text="School mornings"
-        onPlace={vi.fn()}
-        onCancel={onCancel}
-      />,
-    );
-    expect(onCancel).toHaveBeenCalledOnce();
   });
 });

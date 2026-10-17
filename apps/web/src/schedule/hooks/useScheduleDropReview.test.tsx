@@ -43,33 +43,32 @@ describe("Schedule drop assessment", () => {
       }),
     );
   });
-  it("asks before a drop onto unavailable hours and saves only after Place shift (M8)", async () => {
+  // Müsaitlik tercih 3 (2026-10-13), M12 as of 2026-10-16: the mark and the note
+  // never ask; the page shows the short notice once the save landed.
+  it("saves a drop onto unavailable hours at once, with no review", async () => {
     const unavailable = { code: "availability", message: "Unavailable hours", definite: true, severity: "warn" as const };
     vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ operation: "allowed", has_availability_conflict: true, reasons: [unavailable] }));
     const h = setup(); h.start("shift");
-    await waitFor(() => expect(h.result.current.review).not.toBeNull());
-    expect(h.result.current.review?.blocked).toBe(false); expect(h.save).not.toHaveBeenCalled();
-    await act(async () => h.result.current.confirm());
     await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
-    expect(h.save).toHaveBeenCalledWith(input); expect(toast.warning).not.toHaveBeenCalled();
+    expect(h.save).toHaveBeenCalledWith(input);
+    expect(h.result.current.review).toBeNull();
+    expect(toast.warning).not.toHaveBeenCalled();
   });
-  it("asks before a pasted shift runs into a manager's note (M12)", async () => {
+  it("saves a pasted shift that runs into a manager's note at once, with no review", async () => {
     const note = { code: "note", message: "The assignment overlaps hours a manager noted for this person.", definite: true, severity: "warn" as const };
     vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ operation: "allowed", reasons: [note] }));
     const h = setup();
     act(() => h.result.current.startBatch({ inputs: [input], save: h.save }));
-    await waitFor(() => expect(h.result.current.review).not.toBeNull());
-    expect(h.save).not.toHaveBeenCalled();
-    act(() => h.result.current.dismiss());
-    expect(h.save).not.toHaveBeenCalled();
+    await waitFor(() => expect(h.save).toHaveBeenCalledOnce());
+    expect(h.result.current.review).toBeNull();
+    expect(toast.warning).not.toHaveBeenCalled();
   });
-  it("after the box, names only the rule that warned, not availability", async () => {
+  it("names only the rule that warned, never availability", async () => {
     const unavailable = { code: "availability", message: "Unavailable hours", definite: true, severity: "warn" as const };
     vi.mocked(loadShiftAvailability).mockResolvedValue(assessment({ reasons: [...assessment().reasons, unavailable] }));
     const h = setup(); h.start("shift");
-    await waitFor(() => expect(h.result.current.review).not.toBeNull());
-    await act(async () => h.result.current.confirm());
     await waitFor(() => expect(toast.warning).toHaveBeenCalledOnce());
+    expect(h.result.current.review).toBeNull();
     expect(toast.warning.mock.calls[0]![1]).toMatchObject({ description: "Not enough rest" });
   });
   it("does not save an earlier allowed item when a later item is blocked", async () => {

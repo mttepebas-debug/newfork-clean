@@ -99,8 +99,6 @@ import {
   SCHEDULE_CONFLICT_QUESTION,
   ScheduleConflictSheet,
 } from "../schedule/components/ScheduleConflictSheet";
-import { ScheduleNoteConfirm } from "../schedule/components/ScheduleNoteConfirm";
-import { scheduleDropReviewAsk } from "../schedule/lib/scheduleDropReviewAsk";
 import { ScheduleEditLockedDialog as ScheduleEditLockedDialogComponent } from "../schedule/components/ScheduleEditLockedDialog";
 import { ScheduleEditTimeoutDialog as ScheduleEditTimeoutDialogComponent } from "../schedule/components/ScheduleEditTimeoutDialog";
 import { ExportController } from "../schedule/export-v2/ExportController";
@@ -113,6 +111,7 @@ import { PublishScheduleDialog, type SchedulePublicationChoices } from "../sched
 import { preflightReturnSearch, preflightReturnShift } from "../schedule/lib/schedulePreflightReturn";
 import { usePreflightShiftFocus } from "../schedule/hooks/usePreflightShiftFocus";
 import { useScheduleDropReview } from "../schedule/hooks/useScheduleDropReview";
+import { useScheduleAssignNotice } from "../schedule/hooks/useScheduleAssignNotice";
 import { SaveDraftMenu } from "../schedule/components/SaveDraftMenu";
 import { SaveDraftDialog } from "../schedule/components/SaveDraftDialog";
 import { UnpublishScheduleDialog } from "../schedule/components/UnpublishScheduleDialog";
@@ -140,7 +139,6 @@ import { saveScheduleLogo } from "../settings/organization-data";
 import {
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessage,
-  isAvailabilityReminder,
   scheduleConflictSeverity,
   type ScheduleConflictReason,
 } from "../schedule/schedule-conflicts";
@@ -1701,6 +1699,9 @@ export function SchedulePage({
     }
   };
 
+  // A shift on a preference or under a manager's note: one short notice with Undo.
+  const announceAssignment = useScheduleAssignNotice(query.data, session?.revision, () => undoLastEdit());
+
   const deleteShiftById = async (id: string) => {
     if (!context || !session) return;
     const shift = findEditableShift(id);
@@ -2000,13 +2001,13 @@ export function SchedulePage({
   const model = { ...query.data, shifts: effectiveShifts };
   const draftUnread = Boolean(activeDraftId && !gridEditSession && previewSource.error);
   const draftLoading = Boolean(activeDraftId && !gridEditSession && !previewSource.error && previewSource.shifts === null);
-  const dropReviewAsk = dropReview.review
-    ? scheduleDropReviewAsk(model, dropReview.review.drop.items.map((item) => item.input), dropReview.review.assessments)
-    : null;
-  // A drop the week on screen already flags waits for the server's check, so
-  // its rule box opens before anything is written (M8, M12).
-  const asksBeforeWrite = (input: ScheduleShiftMutationInput, shiftId: string | null) =>
-    evaluateScheduleShiftConflicts(model, model.shifts, input, shiftId).some(isAvailabilityReminder);
+  // The rule box after a drop names the rules that ask; the employee's own mark
+  // and a manager's note never do (KARARLAR "Müsaitlik tercih" 3, M12).
+  const dropReviewMessages = dropReview.review
+    ? [...new Set(dropReview.review.assessments.flatMap((assessment) => (assessment?.reasons ?? [])
+      .filter((reason) => reason.code !== "availability" && reason.code !== "note")
+      .map((reason) => formatScheduleConflictMessage(reason.message))))]
+    : [];
   const sortedModel = createSortedScheduleModel(model, employeeSortMode);
   const publishDrafts = publishDraftOverride
     ? [
@@ -2079,7 +2080,7 @@ export function SchedulePage({
       inputs: pasteInputs,
       save: async inputs => {
         const next = await mutate(() => createScheduleShifts(context.workspace.id, session, inputs, idempotencyKey));
-        if (next) {
+        if (next && !announceAssignment(inputs, "add", next)) {
           toast.success(inputs.length === 1 ? "Shift pasted" : "Shifts pasted", {
             dedupeKey: "schedule-shifts-pasted",
             description:
@@ -2366,7 +2367,11 @@ export function SchedulePage({
           label_names: [],
           note: "",
         },
-        save: async input => Boolean(await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input))),
+        save: async input => {
+          const next = await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input));
+          announceAssignment([input], "add", next);
+          return Boolean(next);
+        },
       });
       return;
     }
@@ -2980,9 +2985,13 @@ export function SchedulePage({
           dropReview.start({
             shiftId: shift.id,
             input,
-            optimisticOp: asksBeforeWrite(input, shift.id) ? undefined : createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "update", targetShiftId: shift.id,
+            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "update", targetShiftId: shift.id,
               draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
-            save: async input => Boolean(await mutate(() => updateScheduleShift(context.workspace.id, gridEditSession, shift.id, shift.revision, input), undefined, true)),
+            save: async input => {
+              const next = await mutate(() => updateScheduleShift(context.workspace.id, gridEditSession, shift.id, shift.revision, input), undefined, true);
+              announceAssignment([input], "move", next);
+              return Boolean(next);
+            },
           });
         }}
         onCopyMove={(shift, locationId, employeeId, date) => {
@@ -2990,9 +2999,13 @@ export function SchedulePage({
           const input = toScheduleShiftMutation(shift, { location_id: locationId, employee_id: employeeId, scheduled_date: date });
           dropReview.start({
             input,
-            optimisticOp: asksBeforeWrite(input, null) ? undefined : createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
+            optimisticOp: createOptimisticPendingOp({ locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
               draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
-            save: async input => Boolean(await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input), undefined, true)),
+            save: async input => {
+              const next = await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input), undefined, true);
+              announceAssignment([input], "add", next);
+              return Boolean(next);
+            },
           });
         }}
         onDayHeaderClick={(date, locationIds) => {
@@ -3203,6 +3216,7 @@ export function SchedulePage({
             });
             if (stale) return "stale";
             if (next) {
+              announceAssignment(Array.from({ length: count }, () => shift), editor.mode === "edit" ? "save" : "add", next);
               if (editor.mode === "create" && editor.copy) {
                 setPasteBlockedReason(null);
               }
@@ -3229,20 +3243,9 @@ export function SchedulePage({
           setPasteConflictContext(null);
         }}
       />
-      {dropReviewAsk?.kind === "note" ? (
-        <ScheduleNoteConfirm
-          cell={dropReviewAsk.cell}
-          when={dropReviewAsk.when}
-          by={dropReviewAsk.by}
-          employeeName={dropReviewAsk.employeeName}
-          text={dropReviewAsk.text}
-          disabled={dropReview.pending}
-          onPlace={dropReview.confirm}
-          onCancel={dropReview.dismiss}
-        />
-      ) : dropReview.review ? <ScheduleConflictSheet
+      {dropReview.review ? <ScheduleConflictSheet
         open
-        messages={dropReviewAsk?.messages ?? []}
+        messages={dropReviewMessages}
         description={dropReview.review.blocked ? "Resolve this conflict before changing the shift." : SCHEDULE_CONFLICT_QUESTION}
         tone={dropReview.review.blocked ? "blocker" : "warning"}
         submitLabel={dropReview.review.blocked ? undefined : "Place shift"}
