@@ -1,7 +1,6 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@newfork/ui";
-import { Check, ChevronRight, Pencil, X } from "lucide-react";
+import { Check, ChevronRight, Pencil } from "lucide-react";
 import {
   emptyWeeklyPreference,
   weeklyPreferenceSaveSchema,
@@ -10,6 +9,7 @@ import {
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
 import { DayEditor } from "./DayEditor";
+import { DaySheet } from "./DaySheet";
 import {
   DISPLAY_DAYS,
   WEEKDAY_NAMES,
@@ -261,7 +261,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
           {sheet && (
             <DaySheet
               title={WEEKDAY_NAMES[sheet.weekday]!}
-              trigger={sheet.weekday}
+              returnTo={`.dav-list [data-weekday="${sheet.weekday}"]`}
               onCancel={() => void closeSheet(false)}
               footer={
                 <>
@@ -358,64 +358,5 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
         </>
       )}
     </section>
-  );
-}
-
-/** A day of the week in a sheet from the bottom: a modal <dialog>, so the page behind is inert, Esc closes, focus goes in and comes back. */
-function DaySheet({
-  title,
-  trigger,
-  onCancel,
-  footer,
-  children,
-}: {
-  title: string;
-  trigger: number;
-  onCancel: () => void;
-  footer: ReactNode;
-  children: ReactNode;
-}) {
-  const ref = useRef<HTMLDialogElement>(null);
-  const titleId = useId();
-  useEffect(() => {
-    const dialog = ref.current;
-    dialog?.showModal?.();
-    dialog?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
-    return () => {
-      dialog?.close?.();
-      // Back to the day's row, which stays on the page.
-      queueMicrotask(() =>
-        document.querySelector<HTMLElement>(`.dav-list [data-weekday="${trigger}"]`)?.focus({ preventScroll: true }),
-      );
-    };
-  }, [trigger]);
-  return createPortal(
-    <dialog
-      ref={ref}
-      className="dav-sheet"
-      aria-labelledby={titleId}
-      onCancel={(event) => {
-        event.preventDefault();
-        onCancel();
-      }}
-      onClick={(event) => {
-        // A tap on the dimmed page above the sheet closes it, like Cancel.
-        if (event.target === event.currentTarget) onCancel();
-      }}
-    >
-      <div className="dav-sheet-inner">
-        <div className="dav-sheet-head">
-          <h2 id={titleId} tabIndex={-1}>
-            {title}
-          </h2>
-          <button type="button" className="dav-sheet-close" aria-label="Close" onClick={onCancel}>
-            <X size={18} aria-hidden />
-          </button>
-        </div>
-        {children}
-        {footer}
-      </div>
-    </dialog>,
-    document.body,
   );
 }
