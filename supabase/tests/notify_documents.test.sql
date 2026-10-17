@@ -94,7 +94,7 @@ select is(pg_temp.told('documents.requested'),
   array['dc:ali', 'dc:ayse', 'dc:blk', 'dc:dmo', 'dc:emre', 'dc:gon', 'dc:lim', 'dc:rev', 'dc:zeynep'],
   '(a) everybody asked is told once for the two documents; not the owner who published them, not another workspace');
 select ok((select bool_and(n.url like '/account/documents?workspace=%') from public.person_notifications n
-           where n.type_key = 'documents.requested'), '(a) and it opens their documents');
+           where n.type_key = 'documents.requested' and n.workspace_id = tests.id('dc')), '(a) and it opens their documents');
 
 -- The five come to lose the right to review.
 select public.update_employee_membership_role_service(tests.user('dc:owner'), tests.id('dc'), tests.id('dc:dmo'),
@@ -125,7 +125,8 @@ select is(pg_temp.told('documents.review_needed'), array['dc:owner', 'dc:zeynep'
 
 select pg_temp.review('owner', 'ali', (select card from docs), 'approve');
 select is(pg_temp.told('documents.decided'), array['dc:ali'], '(c) the approval tells Ali once');
-select ok((select title = 'Your Food handler card was approved' from public.person_notifications where type_key = 'documents.decided'),
+select ok((select title = 'Your Food handler card was approved' from public.person_notifications
+           where type_key = 'documents.decided' and workspace_id = tests.id('dc')),
   '(c) saying which and how');
 select is((select resolution || ' by ' || coalesce((select w.label from who w where w.uid = n.resolved_by), '-')
            from public.person_notifications n where n.type_key = 'documents.review_needed' and n.user_id = tests.user('dc:zeynep')),
