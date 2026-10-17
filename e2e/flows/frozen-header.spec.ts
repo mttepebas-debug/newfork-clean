@@ -116,10 +116,10 @@ test.describe("phone: the heading folds to one line and stays on top", () => {
 // Lineup and Settings → Acknowledgements scroll only their list. The world
 // has too little to fill them, so a tall block goes into the list (and
 // Acknowledgements, which has no templates yet, gets an empty list first).
+// The phone Lineup holds its own folding top (E, 2026-10-17): lineup-publish.spec.ts.
 test.describe("lists scroll inside their frame while the heading stays", () => {
   for (const [path, size, frame] of [
     ["/app/schedule/lineup", DESKTOP, ".lineup-locations"],
-    ["/app/schedule/lineup", PHONE, ".lineup-phone"],
     ["/app/settings/acknowledgements", DESKTOP, ".acknowledgement-page > .job-catalog"],
     // Availability's people list scrolls in its own frame beside the week (AVAIL-GUN-3).
     ["/app/availability", DESKTOP, ".avt-split > .avt-list"],

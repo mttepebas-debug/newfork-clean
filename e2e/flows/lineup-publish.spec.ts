@@ -70,3 +70,70 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   await expect(emre.getByText(/lineup isn't published yet$/)).toBeVisible();
   await expect(emre.getByText("You'll get a notification when it is.", { exact: true })).toBeVisible();
 });
+
+// LINEUP-PUBLISH-PHONE (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih): on a phone Ayse turns the day wheel
+// to the day, reads the team (nothing to edit), publishes from the dock over the bottom bar through the
+// sheet, and the Read tab counts. The top stays while the list scrolls; folded, the wheel sits 4 px under
+// the header's line.
+test("a manager publishes a lineup from a phone", async ({ browser }) => {
+  const week = roundWeek(641);
+  sql(`select tests.publish_week('${run}', ${week}, '[
+    {"label": "${roundLabel("emre-k-lineup-phone")}", "person": "emre", "loc": "K", "job": "cook", "day": 3, "start": "16:00", "end": "22:00"},
+    {"label": "${roundLabel("ali-k-lineup-phone")}", "person": "ali", "loc": "K", "job": "cook", "day": 3, "start": "17:00", "end": "23:00"}
+  ]');`);
+  const day = sql(`select tests.week(${week}) + 3;`);
+  const before = sql(`select tests.week(${week}) + 2;`);
+
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
+  const ayse = await context.newPage();
+  await signIn(ayse, "ayse");
+  await expect(ayse).not.toHaveURL(/\/sign-in/);
+  await ayse.goto(`/app/schedule/lineup?date=${before}`);
+
+  // The wheel: › turns it a day, and the page loads that day.
+  const wheel = ayse.getByRole("group", { name: "Day. Swipe or use the arrow keys." });
+  await expect(wheel.locator('[aria-pressed="true"]')).toHaveCount(1);
+  await ayse.getByRole("button", { name: "Next day" }).tap();
+  await expect(ayse).toHaveURL(new RegExp(`date=${day}`));
+  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+
+  // Read-only: the rows open nothing.
+  const team = ayse.getByRole("list", { name: "Cook" });
+  await expect(team).toContainText("Emre Person");
+  await expect(team.getByRole("button")).toHaveCount(0);
+  await expect(ayse.getByText("Draft · staff can't see it", { exact: true })).toBeVisible();
+
+  // The top stays put while the page scrolls under it, and the date row folds away.
+  await ayse.evaluate(() => {
+    const tall = document.createElement("div");
+    tall.style.height = "1600px";
+    document.querySelector(".lineup-phone-pane")!.append(tall);
+    document.querySelector(".app-main")!.scrollTop = 2000;
+  });
+  await expect(ayse.locator("#lineup-title")).toBeInViewport();
+  await expect
+    .poll(() =>
+      ayse.evaluate(() => {
+        const line = document.querySelector(".lineup-phone-top .catalog-page-header")!.getBoundingClientRect().bottom;
+        return Math.round(document.querySelector(".lineup-wheel")!.getBoundingClientRect().top - line);
+      }),
+    )
+    .toBe(4);
+  await ayse.evaluate(() => {
+    document.querySelector(".app-main")!.scrollTop = 0;
+  });
+
+  // Publish sits over the bottom bar and opens the window as a sheet.
+  await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
+  const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
+  await expect(sheet).toHaveClass(/is-sheet/);
+  await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
+  await expect(sheet.getByText(/^Published \d+ lineups? · \d+ (person|people) notified$/)).toBeVisible();
+  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  await expect(sheet).toHaveCount(0);
+
+  await expect(ayse.getByText(/^Published \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
+  await ayse.getByRole("tab", { name: /^Read \d+\/\d+$/ }).tap();
+  await expect(ayse.getByRole("tabpanel")).toContainText(/of \d+ read/);
+  await context.close();
+});
