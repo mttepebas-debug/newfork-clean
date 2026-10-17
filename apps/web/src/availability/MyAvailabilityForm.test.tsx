@@ -165,6 +165,8 @@ describe("desktop: the days on the left, the day on the right", () => {
     expect(screen.queryByRole("group", { name: "Save your week" })).toBeNull();
     expect(screen.getByRole("button", { name: "Save and continue" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "Skip for now" })).toBeTruthy();
+    // The computer's step is not framed: the page keeps its own scroll.
+    expect(document.querySelector(".is-framed, .is-scroller")).toBeNull();
   });
 
   // M5: a save decides nothing about pending requests; nothing is asked first.
@@ -403,5 +405,29 @@ describe("phone: the week as a list, a day in a sheet", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].preference.days[0]!.all_day).toBe(true);
     expect(screen.getByRole("button", { name: "Skip for now" })).toBeTruthy();
+  });
+  // Mert 2026-10-17: in onboarding only the days scroll; the buttons stay put.
+  it("in onboarding, scrolls the days alone and keeps the buttons under them", () => {
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} wizard extraAction={<button type="button">Skip for now</button>} />);
+    const panel = screen.getByRole("region", { name: "Weekly availability" });
+    expect(panel.classList.contains("is-framed")).toBe(true);
+    const list = document.querySelector<HTMLElement>(".dav-list")!;
+    expect(list.classList.contains("is-scroller")).toBe(true);
+    expect(list.contains(screen.getByRole("button", { name: "Save and continue" }))).toBe(false);
+    expect(list.contains(screen.getByRole("button", { name: "Skip for now" }))).toBe(false);
+    // A hairline on the top edge only while a day passes under it.
+    expect(list.classList.contains("is-under-top")).toBe(false);
+    list.scrollTop = 40;
+    fireEvent.scroll(list);
+    expect(list.classList.contains("is-under-top")).toBe(true);
+    list.scrollTop = 0;
+    fireEvent.scroll(list);
+    expect(list.classList.contains("is-under-top")).toBe(false);
+  });
+
+  it("keeps My Availability's list as it is: no frame, no scroller", () => {
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} />);
+    expect(document.querySelector(".is-framed")).toBeNull();
+    expect(document.querySelector(".is-scroller")).toBeNull();
   });
 });

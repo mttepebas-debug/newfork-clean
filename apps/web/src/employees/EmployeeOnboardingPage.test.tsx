@@ -11,6 +11,7 @@ import {
 } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import {
   emergencyIsOwnPhoneMessage,
   phoneInUseMessage,
@@ -281,6 +282,58 @@ describe("EmployeeOnboardingPage", () => {
       ),
     );
     expect(loadWeeklyPreferences).not.toHaveBeenCalled();
+  });
+
+  // Mert 2026-10-17: on a phone the availability step is a fixed frame: the bar
+  // and the heading stay on top, the buttons at the bottom, only the days scroll.
+  it("frames the availability step on a phone, and only that step", async () => {
+    stubPhoneWidth();
+    try {
+      vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
+      render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+            <OnboardingRoute />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      const save = await screen.findByRole("button", { name: "Save and continue" });
+      const frame = document.querySelector(".pb")!;
+      expect(frame.classList.contains("pb-frame-fixed")).toBe(true);
+      const list = document.querySelector(".dav-list")!;
+      expect(list.classList.contains("is-scroller")).toBe(true);
+      // The heading and the buttons sit outside the scrolling list.
+      const heading = screen.getByRole("heading", { name: "When do you prefer not to work?" });
+      expect(list.contains(heading)).toBe(false);
+      expect(list.contains(save)).toBe(false);
+      expect(list.querySelectorAll(".dav-row")).toHaveLength(7);
+      cleanup();
+      render(
+        <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+          <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile"]}>
+            <OnboardingRoute />
+          </MemoryRouter>
+        </QueryClientProvider>,
+      );
+      await waitFor(() => expect(document.querySelector(".pb")).not.toBeNull());
+      expect(document.querySelector(".pb")!.classList.contains("pb-frame-fixed")).toBe(false);
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it("keeps the computer's availability step as it is: no frame, no scrolling list", async () => {
+    vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/availability"]}>
+          <OnboardingRoute />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+    await screen.findByRole("button", { name: "Save and continue" });
+    expect(document.querySelector(".pb-frame-fixed")).toBeNull();
+    expect(document.querySelector(".is-scroller")).toBeNull();
   });
 
   // One action bar: Skip for now sits with Save and continue (Tur 2).
