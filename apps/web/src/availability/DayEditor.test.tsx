@@ -199,3 +199,67 @@ describe("Copy <day> to", () => {
     expect(latest.days[2]).toMatchObject({ all_day: true, ranges: [] });
   });
 });
+
+// AVAIL-GUN-2 finding: on a phone the 6 PM – 12 AM band is about 82 px wide and
+// "After 6 PM" with its roomy padding needs 86, so the words vanished. The band
+// first tightens (smaller padding and type), and hides its words only when
+// even that does not fit.
+describe("the band's words on a narrow strip", () => {
+  const sizes = { band: 0, roomy: 0, tight: 0 };
+  const restore: (() => void)[] = [];
+  function measure() {
+    const width = (name: "clientWidth" | "scrollWidth", get: (element: HTMLElement) => number) => {
+      const before = Object.getOwnPropertyDescriptor(HTMLElement.prototype, name);
+      Object.defineProperty(HTMLElement.prototype, name, {
+        configurable: true,
+        get(this: HTMLElement) {
+          return get(this);
+        },
+      });
+      // jsdom keeps both on Element.prototype: the stub on HTMLElement goes away again.
+      restore.push(() =>
+        before
+          ? Object.defineProperty(HTMLElement.prototype, name, before)
+          : Reflect.deleteProperty(HTMLElement.prototype, name),
+      );
+    };
+    width("clientWidth", (element) => (element.classList.contains("dav-band") ? sizes.band : 0));
+    width("scrollWidth", (element) =>
+      element.parentElement?.classList.contains("dav-band")
+        ? element.parentElement.classList.contains("is-tight")
+          ? sizes.tight
+          : sizes.roomy
+        : 0,
+    );
+  }
+  afterEach(() => restore.splice(0).forEach((undo) => undo()));
+  const evening = () => {
+    const week = emptyWeeklyPreference();
+    week.days[5]!.ranges = [{ start: "18:00", end: "24:00" }];
+    return week;
+  };
+  const band = () => document.querySelector(".dav-band")!;
+
+  it("keeps the words in a tighter band when the roomy one does not fit", () => {
+    Object.assign(sizes, { band: 82, roomy: 86, tight: 60 });
+    measure();
+    render(<Harness start={evening()} phone />);
+    expect(band().classList.contains("is-tight")).toBe(true);
+    expect(band().classList.contains("is-cramped")).toBe(false);
+    expect(screen.getByText("After 6 PM", { selector: ".dav-band span" })).toBeTruthy();
+  });
+
+  it("hides the words only when even the tight band cannot hold them", () => {
+    Object.assign(sizes, { band: 40, roomy: 86, tight: 60 });
+    measure();
+    render(<Harness start={evening()} phone />);
+    expect(band().classList.contains("is-cramped")).toBe(true);
+  });
+
+  it("leaves a wide band roomy", () => {
+    Object.assign(sizes, { band: 200, roomy: 86, tight: 60 });
+    measure();
+    render(<Harness start={evening()} />);
+    expect(band().className).toBe("dav-band");
+  });
+});

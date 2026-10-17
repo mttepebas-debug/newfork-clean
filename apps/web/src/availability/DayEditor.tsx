@@ -174,13 +174,17 @@ function TimeStrip({
   const track = useRef<HTMLDivElement>(null);
   const band = useRef<HTMLDivElement>(null);
   const drag = useRef<Drag | null>(null);
-  // The band says its hours only where they fit; a narrow band on a phone stays plain, never cut off.
+  // The band says its hours wherever they fit: roomy first, then tighter
+  // (less padding, smaller type), and plain only when even that is cut off
+  // (AVAIL-GUN-3: "After 6 PM" vanished in the phone's 6 PM – 12 AM band).
   useLayoutEffect(() => {
     const element = band.current;
     if (!element) return;
-    element.classList.remove("is-cramped");
+    element.classList.remove("is-tight", "is-cramped");
     const label = element.firstElementChild as HTMLElement | null;
-    if (label && label.scrollWidth > element.clientWidth) element.classList.add("is-cramped");
+    if (!label || label.scrollWidth <= element.clientWidth) return;
+    element.classList.add("is-tight");
+    if (label.scrollWidth > element.clientWidth) element.classList.add("is-cramped");
   });
   const [live, setLive] = useState<Drag | null>(null);
   const shown = live ? live.range : range;

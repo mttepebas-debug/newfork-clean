@@ -432,15 +432,25 @@
   background: var(--dav-block);
   pointer-events: none;
 }
-.dav-band.is-cramped span {
-  visibility: hidden;
-}
 .dav-band span {
   padding: 0 12px;
   font-size: 12px;
   font-weight: 700;
   color: var(--theme-availability-text);
   white-space: nowrap;
+}
+/* A narrow band (the phone's 6 PM – 12 AM): the words keep clear of the two
+   handles (16 px wide here, 20 on a phone) in smaller type. */
+.dav-band.is-tight span {
+  padding: 0 9px;
+  font-size: 11px;
+  letter-spacing: -0.01em;
+}
+.dav-day.is-phone .dav-band.is-tight span {
+  padding: 0 11px;
+}
+.dav-band.is-cramped span {
+  visibility: hidden;
 }
 .dav-knob {
   position: absolute;
