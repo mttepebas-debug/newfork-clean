@@ -93,22 +93,23 @@ test.describe("desktop: the heading and tabs stay where they are", () => {
 test.describe("phone: the heading folds to one line and stays on top", () => {
   for (const [person, path, more] of [
     ["zeynep", "/app/workspace", []],
-    ["zeynep", "/app/settings/scheduling", [".settings-rail"]],
+    // The Settings menu sits under the heading's line on a phone (MOBIL-BASLIK).
+    ["zeynep", "/app/settings/scheduling", ['nav[aria-label="Workspace settings"]']],
     ["zeynep", "/account/security", [".account-sidebar"]],
     ["emre", "/app/employee-hub", []],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, PHONE);
       await visit(page, path);
-      const rail = more[0] === ".settings-rail" ? await topOf(page, ".settings-rail") : null;
+      const rail = path.includes("/settings/") ? await topOf(page, ".settings-content") : null;
       const { worst, folded } = await sweep(page);
       expect(folded).toBe(true);
       // the content never jumps, not even when the heading folds
       expect(worst).toBeLessThanOrEqual(2);
       await expect(page.locator("h1").filter({ visible: true }).first()).toBeInViewport();
       for (const selector of more) await expect(page.locator(selector).filter({ visible: true }).first()).toBeInViewport();
-      // The Settings menu row no longer scrolls a second time with the page.
-      if (rail !== null) expect(await topOf(page, ".settings-rail")).toBe(rail);
+      // Settings' scrolling area no longer scrolls a second time with the page.
+      if (rail !== null) expect(await topOf(page, ".settings-content")).toBe(rail);
     });
   }
 });
