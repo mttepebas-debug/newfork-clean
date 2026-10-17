@@ -1,5 +1,6 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
+import { Fragment } from "react";
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -38,6 +39,9 @@ import {
 } from "./DashboardCommunications";
 import { PersonalTasks } from "./PersonalReminders";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
+import { loadWeeklyPreferences } from "../availability/availability-data";
+import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
+import { ownAvailabilityClash } from "./own-availability";
 import { CatalogPageHeader } from "../views/CatalogPageHeader";
 import "./employee-dashboard.css";
 import { getExchanges } from "./shift-exchanges/exchange-data";
@@ -92,6 +96,16 @@ export function EmployeeDashboard({
     )
     .sort((a, b) => shiftInstant(a, model) - shiftInstant(b, model));
   const selected = model.shifts.find((item) => item.id === search.get("shift"));
+  // The employee's own week, read where My Availability reads it: a shift on
+  // hours they marked carries a small note (spec "Kurallar" 5). No week, no note.
+  const ownWeek = useQuery({
+    queryKey: ["weekly-preferences", model.workspace_id, "workspace", "self"],
+    queryFn: () => loadWeeklyPreferences(model.workspace_id),
+    retry: false,
+  });
+  const ownWeekPattern = ownWeek.data?.employee.submitted ? ownWeek.data.employee.preference : undefined;
+  const clashOf = (item: { scheduled_date: string; start_time: string; end_time: string }) =>
+    ownAvailabilityClash(ownWeekPattern, item, model.settings.time_format);
   const firstName = model.employee.display_name.trim().split(/\s+/)[0];
   const scheduledToday = model.shifts.filter(
     (item) => item.scheduled_date === dateInZone(now, shiftZone(model, item)),
@@ -384,11 +398,13 @@ export function EmployeeDashboard({
               );
             })}
           </div>
-          {upcoming.slice(0, 3).map((item) => (
+          {upcoming.slice(0, 3).map((item) => {
+            const clash = clashOf(item);
+            return (
+            <Fragment key={item.id}>
             <Link
-              className="eh-upcoming-row"
+              className={`eh-upcoming-row${clash ? " has-flag" : ""}`}
               to={`?shift=${item.id}`}
-              key={item.id}
             >
               <span className="eh-date-tile">
                 <small>
@@ -416,7 +432,10 @@ export function EmployeeDashboard({
               </span>
               <ChevronRight size={17} />
             </Link>
-          ))}
+            {clash ? <OwnAvailabilityFlag when={clash} shiftId={item.id} /> : null}
+            </Fragment>
+            );
+          })}
           {!upcoming.length && (
             <p className="eh-empty">
               Your next published shifts will appear here.
@@ -472,7 +491,7 @@ export function EmployeeDashboard({
         </span>
       </footer>
       {selected && (
-        <ShiftSheet shift={selected} model={model} onClose={closeDetail} />
+        <ShiftSheet shift={selected} model={model} clash={clashOf(selected)} onClose={closeDetail} />
       )}
       {search.has("shift") && !selected && (
         <ShiftUnavailable onClose={closeDetail} />

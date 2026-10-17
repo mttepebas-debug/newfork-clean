@@ -825,6 +825,66 @@
   font-size: 13px;
   margin-top: 8px;
 }
+/* A shift on hours the employee marked unavailable (AVAIL-GUN-1; spec
+   "Kurallar" 5): a small orange note under the shift, never a notification. */
+.eh-avail-flag {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  margin-top: 14px;
+  border: 1px solid color-mix(in srgb, var(--theme-availability) 35%, transparent);
+  border-radius: 8px;
+  padding: 9px 10px;
+  background: var(--theme-availability-soft);
+  color: var(--theme-availability-text);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.eh-avail-flag p {
+  margin: 0;
+}
+.eh-avail-flag strong {
+  font-weight: 650;
+}
+.eh-avail-flag-icon {
+  flex: none;
+  margin-top: 1px;
+  color: var(--theme-availability);
+}
+.eh-avail-flag-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+.eh-avail-flag-actions a {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  border: 1px solid color-mix(in srgb, var(--theme-availability) 45%, transparent);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-availability-text);
+  font-size: 12px;
+  font-weight: 600;
+  text-decoration: none;
+}
+.eh-avail-flag-actions a:hover {
+  background: var(--theme-availability-soft);
+}
+.eh-avail-flag-actions a:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.eh-upcoming-row.has-flag {
+  border-bottom: 0;
+  padding-bottom: 4px;
+}
+.eh-upcoming .eh-avail-flag {
+  margin: 0 0 12px;
+}
 .eh-shift-note {
   padding: 16px;
   background: var(--eh-wash);

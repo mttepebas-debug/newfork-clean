@@ -688,6 +688,26 @@ describe("EmployeeHubPage", () => {
     }
   });
 
+  // Spec "Kurallar" 5 (AVAIL-GUN-1): a shift on hours the employee marked carries a small note.
+  it("marks a coming shift on hours the employee said they prefer not to work, and only that one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      const week = weeklyModel();
+      week.employee = { ...week.employee, submitted: true, preference: { days: week.employee.preference.days.map((day) =>
+        day.day === 1 ? { ...day, all_day: false, ranges: [{ start: "15:00", end: "24:00" }] } : day) } };
+      vi.mocked(loadWeeklyPreferences).mockResolvedValue(week);
+      renderPage();
+      const flag = await screen.findByRole("note");
+      expect(flag.textContent).toContain("You marked Mon after 3:00 PM unavailable.");
+      expect(screen.getAllByRole("note")).toHaveLength(1);
+      expect(within(flag).getByRole("link", { name: "Swap or give up" }).getAttribute("href"))
+        .toBe(`/app/employee-hub/shift-hub?offer=${ownShift.id}`);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("submits open shift pickup from Shift Hub", async () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [{ case_id: null, eligibility: { status: "eligible", reasons: [] }, shift: {
       ...ownShift, id: "22000000-0000-4000-8000-000000000005", source_id: "22000000-0000-4000-8000-000000000005", employee_id: null, employee_name: null,

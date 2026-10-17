@@ -5,6 +5,7 @@ import { Link } from "react-router";
 import { X, MapPin, ArrowUpRight } from "lucide-react";
 import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import { shiftDate, shiftZone } from "./dashboard-model";
+import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
 const base = "/app/employee-hub";
 function Sheet({
   title,
@@ -72,10 +73,13 @@ function Sheet({
 export function ShiftSheet({
   shift,
   model,
+  clash = null,
   onClose,
 }: {
   shift: EmployeeHubShift;
   model: EmployeeHubReadModel;
+  /** "Mon after 6:00 PM" when the shift runs into hours the employee marked unavailable. */
+  clash?: string | null;
   onClose: () => void;
 }) {
   return (
@@ -97,6 +101,7 @@ export function ShiftSheet({
         {shiftZone(model, shift).replaceAll("_", " ")}
         {shift.end_time <= shift.start_time ? " · Ends the following day" : ""}
       </p>
+      {clash ? <OwnAvailabilityFlag when={clash} shiftId={shift.id} /> : null}
       {shift.note && (
         <div className="eh-shift-note">
           <h3>Shift notes</h3>
