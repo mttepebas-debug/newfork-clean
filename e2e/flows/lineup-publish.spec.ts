@@ -56,6 +56,13 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
 
   await ayse.reload();
   await expect(ayse.getByRole("article", { name: "Kadikoy" }).getByText(/^Read 1\/\d+$/)).toBeVisible();
+  // Who read it (Mert 2026-10-17): the count opens the Read list; Emre is under Read, Ali not yet.
+  await ayse.getByRole("article", { name: "Kadikoy" }).getByRole("button", { name: /^Read by 1 of \d+ with the app$/ }).click();
+  const readers = ayse.getByRole("dialog", { name: /^Who read / });
+  await expect(readers.getByRole("region", { name: "Read", exact: true })).toContainText("Emre Person");
+  await expect(readers.getByRole("region", { name: "Not read yet" })).toContainText("Ali Person");
+  await ayse.keyboard.press("Escape");
+  await expect(readers).toHaveCount(0);
 
   // Take it back: two clicks on the red Unpublish.
   await ayse.getByRole("button", { name: /^Publish/ }).click();

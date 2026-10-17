@@ -5,6 +5,7 @@ import {
   lineupDay,
   lineupNoteCount,
   lineupPhoneState,
+  lineupReadLists,
   lineupShiftSpan,
   lineupWeek,
   phoneLineupShift,
@@ -246,6 +247,31 @@ describe("the phone's lineup parts", () => {
     expect(lineupPhoneState(shifts({ [lunch]: { status: "past" } })[0]!, null)).toBe("started");
     expect(lineupPhoneState(shifts({ [lunch]: { status: "shared", published: true } })[0]!, "12:00")).toBe("published");
     expect(lineupPhoneState(lineupDay(dayRead(model([]), day), m)[0]!.shifts[0]!, null)).toBe("none");
+  });
+
+  it("sorts the people on it into not read yet, read (earliest first) and no app, once each", () => {
+    const people = model([
+      shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" }),
+      shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "22:00" }),
+      shift({ employee: chloe, job: host, type: dinner, start: "17:00", end: "22:00" }),
+      shift({ employee: aisha, job: cook, type: dinner, start: "15:00", end: "18:00" }),
+      // Aisha works twice: she is one person on the list.
+      shift({ employee: aisha, job: cook, type: dinner, start: "19:00", end: "22:00" }),
+    ]);
+    const read = dayRead(people, day);
+    const rows = read.locations[0]!.lineups.find((l) => l.shift_type_id === dinner)!.rows;
+    const by = (id: string) => rows.filter((row) => row.employee_id === id);
+    for (const row of by(hannah)) Object.assign(row, { acknowledged_at: "2026-10-13T22:05:00Z" });
+    for (const row of by(aisha)) Object.assign(row, { acknowledged_at: "2026-10-13T21:40:00Z" });
+    for (const row of by(chloe)) Object.assign(row, { has_app: false });
+    const dinnerShift = lineupDay(read, people)[0]!.shifts.find((s) => s.key === dinner)!;
+    const lists = lineupReadLists(dinnerShift);
+    expect(lists.unread.map((p) => [p.name, p.jobName])).toEqual([["Maria Lopez", "Server"]]);
+    expect(lists.read.map((p) => [p.name, p.acknowledgedAt])).toEqual([
+      ["Aisha Johnson", "2026-10-13T21:40:00Z"],
+      ["Hannah Lee", "2026-10-13T22:05:00Z"],
+    ]);
+    expect(lists.noApp.map((p) => p.name)).toEqual(["Chloe Davis"]);
   });
 
   it("counts the notes staff will see", () => {

@@ -14,6 +14,7 @@ select tests.person('p', 'mia', 'manager', array['K'], array['cook']);
 select tests.person('p', 'eli', 'employee', array['K'], array['cook']);
 select tests.person('p', 'ida', 'employee', array['K'], array['cook']);
 select tests.person('p', 'bo', 'employee', array['B'], array['server']);
+select tests.person('p', 'noa', 'employee', array['K'], array['cook']);
 select tests.person('px', 'xan', 'manager', array['K'], array['cook']);
 
 insert into public.shift_types (id, workspace_id, name, color, default_start_time, default_end_time)
@@ -175,6 +176,25 @@ select is(pg_temp.refusal(format('select public.acknowledge_lineup_service(%L, %
     tests.user('px:xan'), tests.id('p'), pg_temp.dinner_day() ->> 'version_id')),
   '42501:authz.not_member', 'another workspace''s manager is not a member here');
 
+-- 7b. The manager's day says who read it and when, and who has no app (Mert 2026-10-17: the Read list).
+create function pg_temp.dinner_row(who text) returns jsonb language sql as $$
+  select r from jsonb_array_elements(pg_temp.dinner_day() -> 'rows') r where r ->> 'employee_id' = tests.id(who)::text
+$$;
+select is((select row(r -> 'has_app', r ->> 'acknowledged_at')::text from pg_temp.dinner_row('p:eli') r),
+  row('true'::jsonb, (select body ->> 'acknowledged_at' from eli_ack))::text,
+  'each row says the person has the app and when she acknowledged the version staff see');
+select is((select row(r -> 'has_app', r -> 'acknowledged_at')::text from jsonb_array_elements(pg_temp.dinner_day() -> 'rows') r
+           where r ->> 'employee_id' is null),
+  row('false'::jsonb, 'null'::jsonb)::text, 'an open shift is nobody: no app, no acknowledgement');
+-- Noa takes the open shift; she can no longer sign in here.
+update public.schedule_published_shifts set employee_id = tests.id('p:noa') where id = tests.id('p:shift:open-mon');
+update public.workspace_memberships set status = 'suspended' where workspace_id = tests.id('p') and user_id = tests.user('p:noa');
+select is((select row(r -> 'has_app', r -> 'acknowledged_at')::text from pg_temp.dinner_row('p:noa') r),
+  row('false'::jsonb, 'null'::jsonb)::text, 'someone without the app: no app, nothing acknowledged');
+select is(row(pg_temp.dinner_day() -> 'people', pg_temp.dinner_day() -> 'with_app')::text, row('2'::jsonb, '1'::jsonb)::text,
+  'the same reading as the count: two on it, one with the app');
+update public.schedule_published_shifts set employee_id = null where id = tests.id('p:shift:open-mon');
+
 -- 8. Who may publish: Mia only where she manages; no one else.
 select is(pg_temp.refusal(format('select pg_temp.share(%L, gen_random_uuid(), pg_temp.dinner(null, %L))', 'p:mia', tests.id('p:B'))),
   '42501:authz.out_of_scope', 'Mia cannot publish at Besiktas, which she does not manage');
@@ -256,6 +276,8 @@ select is((pg_temp.share('p:mia', pg_temp.cmd('up'), pg_temp.dinner()) -> 'lineu
 select is((select row(x ->> 'version', x -> 'acknowledged_at')::text from jsonb_array_elements(pg_temp.mine('p:eli')) x),
   row('2', 'null'::jsonb)::text, 'Eli sees it again, not yet acknowledged');
 select is(pg_temp.dinner_day() -> 'acknowledged', '0'::jsonb, 'the new version''s count starts at none');
+select is(pg_temp.dinner_row('p:eli') -> 'acknowledged_at', 'null'::jsonb,
+  'and Eli''s row no longer shows the old version''s acknowledgement');
 
 -- 12. Live: the Schedule gives Eli's shift to Ida after publishing; the published lineup shows Ida at once.
 update public.schedule_published_shifts set employee_id = tests.id('p:ida') where id = tests.id('p:shift:eli-mon');
@@ -265,6 +287,7 @@ select is((select x -> 'mine' -> 0 ->> 'start_time' from jsonb_array_elements(pg
   'with the shift as it is now');
 select is(public.acknowledge_lineup_service(tests.user('p:ida'), tests.id('p'), (pg_temp.dinner_day() ->> 'version_id')::uuid) ->> 'status',
   'saved', 'and acknowledges it');
+select ok((pg_temp.dinner_row('p:ida') ->> 'acknowledged_at') is not null, 'her row says when');
 
 select * from finish();
 rollback;

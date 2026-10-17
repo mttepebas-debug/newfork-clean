@@ -10,7 +10,8 @@
 --   * lineup_command_service: share and unpublish. Share records a version (the lineup as it was, for the
 --     record) and tells the people on it once; unpublish takes it back (the lineup's editing flag) silently;
 --   * get_my_lineups_service and acknowledge_lineup_service: the employee's side;
---   * get_lineup_day_service: as before, plus who published and when, and how many are on it and have the app.
+--   * get_lineup_day_service: as before, plus who published and when, and how many are on it and have the app;
+--     each row says whether its person has the app and when she acknowledged the version staff see.
 -- Changes an existing function (get_lineup_day_service, same answer with fields added): live class risky.
 
 -- Actions -------------------------------------------------------------------------------------------------
@@ -204,6 +205,15 @@ begin
                   'sort_order', r.sort_order,
                   'called_off_at', r.called_off_at, 'called_off_by', r.called_off_by,
                   'lineup_only', r.lineup_only,
+                  -- The Read list (Mert 2026-10-17): whether the person has the app (what with_app counts) and
+                  -- when she acknowledged the version staff see; null for anyone else, and for nobody.
+                  'has_app', r.employee_id is not null and exists (
+                    select 1 from public.workspace_memberships m
+                    where m.workspace_id = target_workspace_id and m.user_id = e.user_id
+                      and m.status in ('active', 'pending_activation')),
+                  'acknowledged_at', case when v.id is not null and r.employee_id is not null then
+                    (select a.acknowledged_at from public.daily_lineup_acknowledgements a
+                     where a.version_id = v.id and a.employee_id = r.employee_id) end,
                   'changed', to_jsonb(array_remove(array[
                     case when not r.lineup_only and r.starts is distinct from r.schedule_starts then 'start_time' end,
                     case when not r.lineup_only and r.ends is distinct from r.schedule_ends then 'end_time' end,

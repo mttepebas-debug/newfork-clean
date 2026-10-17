@@ -8,7 +8,7 @@ import { RequestError } from "../lib/request-error";
 import { getScheduleReadModel } from "../schedule/schedule-data";
 import type { LineupDayLineup } from "@newfork/shared";
 import { apiRequest } from "../lib/supabase";
-import { day, dayRead, dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
+import { chloe, day, dayRead, dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { LineupPage } from "./LineupPage";
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live Schedule
@@ -44,6 +44,18 @@ const api = vi.mocked(apiRequest);
 let world = model([]);
 let published: Record<string, Partial<LineupDayLineup>> = {};
 const commands: unknown[] = [];
+// Who read a lineup: per employee, when she acknowledged, or "no app".
+let reads: Record<string, string | "no app"> = {};
+function readers(read: ReturnType<typeof dayRead>) {
+  for (const location of read.locations)
+    for (const lineup of location.lineups)
+      for (const row of lineup.rows) {
+        const said = row.employee_id ? reads[row.employee_id] : undefined;
+        if (said === "no app") Object.assign(row, { has_app: false });
+        else if (said) Object.assign(row, { acknowledged_at: said });
+      }
+  return read;
+}
 
 function Where() {
   const location = useLocation();
@@ -74,6 +86,7 @@ function renderPage(url = "/app/schedule/lineup") {
 beforeEach(() => {
   phone = false;
   published = {};
+  reads = {};
   commands.length = 0;
   world = model([
     shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] }),
@@ -84,7 +97,7 @@ beforeEach(() => {
   api.mockReset();
   api.mockImplementation(async (_client, path, init) => {
     const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
-    if (dayPath) return dayRead(world, dayPath[1]!, published);
+    if (dayPath) return readers(dayRead(world, dayPath[1]!, published));
     if (path.endsWith("/lineups/commands")) {
       const body = JSON.parse(String(init?.body)) as { command_id: string; kind: string; lineups: { shift_type_id: string }[] };
       commands.push(body);
@@ -230,6 +243,29 @@ describe("LineupPage publishing", () => {
     expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, shift_type_id: lunch }] });
   });
 
+  it("opens who read a lineup from its Read count, and closes with a click outside or Escape", async () => {
+    reads = { [maria]: "2026-10-13T21:40:00Z" };
+    published = {
+      [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    renderPage();
+    const downtownCard = await screen.findByRole("article", { name: "Downtown" });
+    const count = within(downtownCard).getByRole("button", { name: "Read by 1 of 1 with the app" });
+    fireEvent.click(count);
+    const panel = screen.getByRole("dialog", { name: "Who read Lunch" });
+    expect(document.activeElement).toBe(panel);
+    expect(within(within(panel).getByRole("region", { name: "Read" })).getByText("Maria Lopez")).toBeTruthy();
+    expect(within(panel).queryByRole("region", { name: "Not read yet" })).toBeNull();
+    // Reading it does not fold the shift.
+    expect(within(downtownCard).getByRole("button", { name: "Lunch, 1 person" }).getAttribute("aria-expanded")).toBe("true");
+    fireEvent.pointerDown(document.body);
+    expect(screen.queryByRole("dialog", { name: "Who read Lunch" })).toBeNull();
+    fireEvent.click(count);
+    fireEvent.keyDown(screen.getByRole("dialog", { name: "Who read Lunch" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Who read Lunch" })).toBeNull();
+    expect(document.activeElement).toBe(count);
+  });
+
   it("says what a refused publish means, never the server's sentence", async () => {
     api.mockImplementation(async (_client, path) => {
       if (path.endsWith("/lineups/commands")) throw new RequestError("raw sentence", "lineup.one_day", undefined, 400);
@@ -248,6 +284,16 @@ describe("LineupPage publishing", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
     fireEvent.keyDown(screen.getByRole("dialog", { name: "Publish lineups" }), { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
+  });
+
+  it("takes focus into the window when it opens and gives it back to Publish when it closes", async () => {
+    renderPage();
+    const button = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    fireEvent.click(button);
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    expect(window.contains(document.activeElement)).toBe(true);
+    fireEvent.keyDown(window, { key: "Escape" });
+    expect(document.activeElement).toBe(button);
   });
 
   it("has no Publish for someone who can't publish", async () => {
@@ -410,18 +456,27 @@ describe("LineupPage on a phone, E", () => {
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
-  it("counts who read it once published, and says who the app doesn't count", async () => {
+  it("lists who read it once published, who hasn't, and who has no app", async () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Read" }));
     expect(screen.getByText("No one has seen it yet")).toBeTruthy();
     cleanup();
-    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 7, with_app: 11, people: 12 } };
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: chloe, job: server, type: lunch, start: "12:00", end: "16:00" }),
+    ]);
+    reads = { [hannah]: "2026-10-13T21:40:00Z", [chloe]: "no app" };
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 2, people: 3 } };
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Read 7/11" }));
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 1/2" }));
     const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText("7")).toBeTruthy();
-    expect(within(panel).getByText("of 11 read")).toBeTruthy();
-    expect(within(panel).getByText("No app · 1 person isn't counted.")).toBeTruthy();
+    expect(within(panel).getByText("of 2 read")).toBeTruthy();
+    const group = (name: string) => within(within(panel).getByRole("region", { name })).getAllByRole("listitem");
+    expect(group("Not read yet").map((row) => row.textContent)).toEqual(["MLMaria LopezServer—"]);
+    const [read] = group("Read");
+    expect(read!.textContent).toMatch(/^HLHannah LeeServer\d{1,2}:\d{2} [AP]M$/);
+    expect(group("No app").map((row) => row.textContent)).toEqual(["CDChloe DavisServerNot counted"]);
   });
 
   it("keeps Publish at the bottom with the waiting count, and opens the window as a sheet", async () => {

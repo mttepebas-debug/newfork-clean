@@ -21,6 +21,10 @@ export interface LineupRow {
   readonly lineupOnly: boolean;
   /** What the lineup changed against the Schedule. */
   readonly changed: readonly string[];
+  /** The person can sign in (counted in "Read"). */
+  readonly hasApp: boolean;
+  /** When she acknowledged the version staff see, if she did. */
+  readonly acknowledgedAt: string | null;
 }
 
 export interface LineupJob {
@@ -147,6 +151,8 @@ export function lineupDay(
               sectionName: row.section_name,
               lineupOnly: row.lineup_only,
               changed: row.changed,
+              hasApp: row.has_app,
+              acknowledgedAt: row.acknowledged_at,
             });
           }
           const departments: LineupDepartment[] = [...byDepartment.entries()]
@@ -284,4 +290,36 @@ export function lineupPhoneState(shift: LineupShift, now: string | null): "publi
 /** How many of a lineup's notes staff see (an empty note doesn't show). */
 export function lineupNoteCount(notes: LineupPublish["notes"]): number {
   return [notes.specials, notes.n86, notes.shift_notes].filter((note) => note.trim()).length;
+}
+
+/** One person on a lineup's Read list. */
+export interface LineupReader {
+  readonly employeeId: string;
+  readonly name: string;
+  readonly jobName: string;
+  readonly acknowledgedAt: string | null;
+}
+
+/**
+ * The Read list (Mert 2026-10-17): the people on a lineup, once each, as not read yet, read (earliest first)
+ * and no app (not counted in "Read N/M").
+ */
+export function lineupReadLists(shift: LineupShift): {
+  readonly unread: LineupReader[];
+  readonly read: LineupReader[];
+  readonly noApp: LineupReader[];
+} {
+  const seen = new Map<string, LineupRow>();
+  for (const row of shiftRows(shift)) if (!seen.has(row.employeeId)) seen.set(row.employeeId, row);
+  const people = [...seen.values()]
+    .map((row) => ({ row, reader: { employeeId: row.employeeId, name: row.name, jobName: row.jobName, acknowledgedAt: row.acknowledgedAt } }))
+    .sort((a, b) => byName(a.reader, b.reader));
+  return {
+    unread: people.filter(({ row }) => row.hasApp && !row.acknowledgedAt).map(({ reader }) => reader),
+    read: people
+      .filter(({ row }) => row.hasApp && row.acknowledgedAt)
+      .map(({ reader }) => reader)
+      .sort((a, b) => Date.parse(a.acknowledgedAt!) - Date.parse(b.acknowledgedAt!) || byName(a, b)),
+    noApp: people.filter(({ row }) => !row.hasApp).map(({ reader }) => reader),
+  };
 }

@@ -21,6 +21,7 @@ import {
   type LineupShift,
 } from "../schedule/lineup";
 import { LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
+import { LineupReadLists } from "../schedule/LineupReadList";
 import {
   WHEEL,
   dockPlace,
@@ -545,13 +546,13 @@ function NotesPane({ shift }: { readonly shift: LineupShift }) {
   );
 }
 
-/** How many read the lineup staff see (C's Read tab). Who read it comes with a per-person read. */
+/** Who read the lineup staff see (C's Read tab): the same lists as the desktop's Read panel. */
 function ReadPane({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
   const { publish } = shift;
   if (!publish.published)
     return (
       <Calm icon={<Eye size={26} aria-hidden />} title="No one has seen it yet">
-        After you publish, you'll see here how many read the lineup.
+        After you publish, you'll see here who read the lineup and who hasn't.
       </Calm>
     );
   if (!publish.askAck)
@@ -560,21 +561,7 @@ function ReadPane({ shift, timeFormat }: { readonly shift: LineupShift; readonly
         Staff were notified without being asked to acknowledge.
       </Calm>
     );
-  const percent = publish.withApp ? Math.round((publish.acknowledged / publish.withApp) * 100) : 0;
-  const noApp = Math.max(0, publish.people - publish.withApp);
-  return (
-    <div className="lineup-phone-read">
-      <div>
-        <b>{publish.acknowledged}</b>
-        <span>of {publish.withApp} read</span>
-      </div>
-      <i className="lineup-phone-progress" role="img" aria-label={`${percent}% read`}>
-        <i style={{ width: `${percent}%` }} />
-      </i>
-      <p>Published {publishedAt(publish.sharedAt, timeFormat)}. People who open the app later see it too.</p>
-      {noApp ? <p>No app · {noApp === 1 ? "1 person isn't" : `${noApp} people aren't`} counted.</p> : null}
-    </div>
-  );
+  return <LineupReadLists shift={shift} timeFormat={timeFormat} />;
 }
 
 function Calm({ icon, title, children }: { readonly icon: ReactNode; readonly title: string; readonly children: ReactNode }) {
@@ -619,18 +606,11 @@ function PhoneLineupOutline() {
 
 /**
  * Publish, as wide as its words, over the bottom bar where More begins (D1, D3). Its window opens as a sheet
- * from the bottom; focus goes into it and comes back to the button when it closes.
+ * from the bottom (the window takes focus in and gives it back).
  */
 function PublishDock({ publish }: { readonly publish: PhonePublish }) {
   const dock = useRef<HTMLDivElement | null>(null);
-  const sheet = useRef<HTMLDivElement | null>(null);
-  const wasOpen = useRef(publish.open);
   useDockPlace(dock);
-  useEffect(() => {
-    if (publish.open && !wasOpen.current) sheet.current?.querySelector<HTMLElement>("button:not(:disabled)")?.focus();
-    if (!publish.open && wasOpen.current) dock.current?.querySelector<HTMLElement>("button")?.focus();
-    wasOpen.current = publish.open;
-  }, [publish.open]);
   return (
     <>
       <div className="lineup-phone-dock" ref={dock}>
@@ -643,7 +623,7 @@ function PublishDock({ publish }: { readonly publish: PhonePublish }) {
         />
       </div>
       {publish.open ? (
-        <div className="lineup-phone-sheet" ref={sheet}>
+        <div className="lineup-phone-sheet">
           <div className="lineup-phone-scrim" aria-hidden />
           {publish.window}
         </div>

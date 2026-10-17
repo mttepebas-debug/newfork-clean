@@ -264,7 +264,19 @@
   text-align: left;
 }
 
-button.lineup-shift-head {
+/* A shift with people folds from its head: one button stretched over it (the Read count sits above it). */
+.lineup-shift-head.is-toggle {
+  position: relative;
+  cursor: pointer;
+}
+
+.lineup-shift-toggle {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  border-radius: inherit;
+  padding: 0;
+  background: transparent;
   cursor: pointer;
 }
 
@@ -298,8 +310,28 @@ button.lineup-shift-head {
   color: var(--theme-published);
 }
 
+.lineup-shift-read-anchor {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+}
+
 .lineup-shift-read {
+  border: 0;
+  border-radius: 4px;
+  padding: 0 2px;
+  background: transparent;
   color: var(--theme-text-secondary);
+  font: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--theme-border-strong);
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+
+.lineup-shift-read:hover,
+.lineup-shift-read[aria-expanded="true"] {
+  color: var(--theme-text);
 }
 
 .lineup-shift-chevron {
@@ -308,7 +340,7 @@ button.lineup-shift-head {
   transition: transform 0.15s;
 }
 
-.lineup-shift-head[aria-expanded="false"] .lineup-shift-chevron {
+.lineup-shift-head[data-open="false"] .lineup-shift-chevron {
   transform: rotate(-90deg);
 }
 
@@ -429,7 +461,8 @@ button.lineup-shift-head {
 .lineup-step:focus-visible,
 .lineup-date-label:focus-visible,
 .lineup-days button:focus-visible,
-.lineup-shift-head:focus-visible {
+.lineup-shift-toggle:focus-visible,
+.lineup-shift-read:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }

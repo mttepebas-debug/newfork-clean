@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router";
 
 import { useAuth } from "../auth/AuthContext";
@@ -19,6 +19,7 @@ import {
 } from "../schedule/lineup";
 import { useLineupDay } from "../schedule/lineup-data";
 import { LineupPublishButton, LineupPublishWindow, publishedAt } from "../schedule/LineupPublishWindow";
+import { LineupReadPanel } from "../schedule/LineupReadList";
 import { addDays, formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
@@ -432,7 +433,16 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
   }
   return (
     <section className="lineup-shift" style={style} aria-label={shift.name}>
-      <button type="button" className="lineup-shift-head" aria-expanded={open} onClick={() => setOpen(!open)}>
+      {/* The whole head folds the shift (one button stretched over it); the Read count opens its own panel
+          above that button, so neither sits inside the other. */}
+      <div className="lineup-shift-head is-toggle" data-open={open}>
+        <button
+          type="button"
+          className="lineup-shift-toggle"
+          aria-expanded={open}
+          aria-label={`${shift.name}, ${shift.count} ${shift.count === 1 ? "person" : "people"}`}
+          onClick={() => setOpen(!open)}
+        />
         <span className="lineup-shift-title">
           <h3>{shift.name}</h3>
           <ShiftStatus shift={shift} timeFormat={timeFormat} />
@@ -441,7 +451,7 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
           {shift.count} {shift.count === 1 ? "person" : "people"}
         </span>
         <ChevronDown size={16} aria-hidden className="lineup-shift-chevron" />
-      </button>
+      </div>
       {open ? (
         <div className="lineup-departments">
           {shift.departments.map((department) => (
@@ -490,13 +500,29 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
 /** Under the shift's name (Mert 2026-10-13): green "Published 2:10 PM" and, when staff were asked, "Read 7/11". */
 function ShiftStatus({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
   const { publish } = shift;
+  const [reading, setReading] = useState(false);
+  const close = useCallback(() => setReading(false), []);
+  const count = useRef<HTMLButtonElement | null>(null);
+  const backToCount = useCallback(() => count.current?.focus(), []);
   if (!publish.published) return null;
   return (
     <span className="lineup-shift-status">
       <span className="lineup-shift-published">Published {publishedAt(publish.sharedAt, timeFormat)}</span>
       {publish.askAck ? (
-        <span className="lineup-shift-read" aria-label={`Read by ${publish.acknowledged} of ${publish.withApp} with the app`}>
-          Read {publish.acknowledged}/{publish.withApp}
+        // Mert 2026-10-17: the count opens who read it and who hasn't.
+        <span className="lineup-shift-read-anchor">
+          <button
+            type="button"
+            ref={count}
+            className="lineup-shift-read"
+            aria-label={`Read by ${publish.acknowledged} of ${publish.withApp} with the app`}
+            aria-haspopup="dialog"
+            aria-expanded={reading}
+            onClick={() => setReading(!reading)}
+          >
+            Read {publish.acknowledged}/{publish.withApp}
+          </button>
+          {reading ? <LineupReadPanel shift={shift} timeFormat={timeFormat} onClose={close} returnFocus={backToCount} /> : null}
         </span>
       ) : null}
     </span>

@@ -135,6 +135,9 @@ const lineupDayRowSchema = z.object({
   called_off_by: id.nullable(),
   lineup_only: z.boolean(),
   changed: z.array(z.string()),
+  /** The Read list (Mert 2026-10-17): the person has the app, and when she acknowledged the version staff see. */
+  has_app: z.boolean(),
+  acknowledged_at: instant.nullable(),
 });
 export type LineupDayRow = z.infer<typeof lineupDayRowSchema>;
 
