@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 500, last: 20261017120000_people_notices.sql
--- fingerprint: sha256:f6f235b3f5dbb1aa9d547b8b5440a671bc9379ca18214e0f87f433c3dfdd5622
+-- migrations: 501, last: 20261017130000_people_notices_follow_up.sql
+-- fingerprint: sha256:1fae499277c2d5e3dbda2ce7a75a91e7ce1c10590472b310629038551b6f02af
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5918,6 +5918,7 @@ CREATE OR REPLACE FUNCTION "app_private"."onboarding_tell"("target_case" "public
     AS $$
 begin
   if event = 'submitted' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_changes', target_case.id, 'resubmitted', actor);
     perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'resubmitted', actor);
     return app_private.people_tell('people.onboarding_review_needed', target_case.workspace_id,
       app_private.onboarding_reviewers(target_case),
@@ -5931,13 +5932,14 @@ begin
       array[app_private.onboarding_person(target_case)],
       'onboarding:' || target_case.id::text || ':changes:' || target_case.revision::text,
       'Your onboarding needs a change', btrim(reason),
-      '/onboarding?workspace=' || target_case.workspace_id::text, actor, 'onboarding_case', target_case.id, '{}'::jsonb);
+      '/onboarding?workspace=' || target_case.workspace_id::text, actor, 'onboarding_changes', target_case.id, '{}'::jsonb);
   elsif event = 'reviewed' then
     if cardinality(app_private.onboarding_reviewers(target_case)) = 0 then
       return app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
     end if;
     return 0;
   elsif event = 'completed' then
+    perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_changes', target_case.id, 'approved', actor);
     perform app_private.notification_resolve(target_case.workspace_id, 'onboarding_case', target_case.id, 'approved', actor);
     return app_private.people_tell('people.onboarding_completed', target_case.workspace_id,
       array[app_private.onboarding_person(target_case)],
@@ -6330,13 +6332,16 @@ CREATE OR REPLACE FUNCTION "app_private"."preferred_name_tell_answered"("request
 begin
   perform app_private.notification_resolve(request.workspace_id, 'preferred_name_request', request.id,
     case when approve then 'approved' else 'declined' end, actor);
+  -- S-131: a refusal is silent; only an approval is told.
+  if not approve then
+    return 0;
+  end if;
   return app_private.people_tell('people.preferred_name_decided', request.workspace_id,
     array(select e.user_id from public.employee_profiles e where e.id = request.employee_id and e.workspace_id = request.workspace_id),
     'preferred_name:' || request.id::text || ':decided',
-    case when approve then 'You''ll be called ' || request.requested_name
-         else 'Your preferred name "' || request.requested_name || '" wasn''t approved' end, null,
+    'You''ll be called ' || request.requested_name, null,
     '/account/profile', actor, 'preferred_name_request', request.id,
-    jsonb_build_object('outcome', case when approve then 'approved' else 'declined' end));
+    jsonb_build_object('outcome', 'approved'));
 exception when others then
   raise warning 'preferred_name_tell_answered: notices for % skipped: % (%)', request.id, sqlerrm, sqlstate;
   return 0;
@@ -12747,24 +12752,6 @@ end; $$;
 
 
 ALTER FUNCTION "public"."get_employee_hub_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_from" "date", "target_to" "date") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "text"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.people.read');
-  return coalesce(
-    (select preferred_name_approval from public.employee_name_settings
-     where workspace_id = target_workspace_id),
-    'auto'
-  );
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_employee_onboarding_review_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "jsonb"
@@ -19955,11 +19942,8 @@ begin
     return 'cleared';
   end if;
 
-  approval := coalesce(
-    (select preferred_name_approval from public.employee_name_settings
-     where workspace_id = target_workspace_id),
-    'auto'
-  );
+  -- S-131: it waits for an answer; no setting lets it through.
+  approval := 'manager';
 
   -- Whoever the core lets decide this person's preferred name.
   -- ponytail: one core call per active member; a workspace is tens of people.
@@ -20952,7 +20936,7 @@ begin
       update public.employee_onboarding_cases set revision = revision + 1, updated_at = now()
       where id = target_case.id returning revision into expected_revision;
       if target_case.status = 'submitted'::public.employee_onboarding_case_status
-        and not public.employee_onboarding_final_approval_required(target_workspace_id)
+        and not target_case.final_approval_required
         and not exists (
           select 1
           from public.employee_onboarding_requirements
@@ -23702,31 +23686,6 @@ $_$;
 
 
 ALTER FUNCTION "public"."set_employee_document_timezone_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_employee_revision" integer, "reference_timezone" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.people');
-  if approval not in ('auto', 'manager') then
-    raise exception 'a preferred name is either answered here or let through'
-      using errcode = '22023', hint = 'settings.preferred_name.invalid';
-  end if;
-  insert into public.employee_name_settings (
-    workspace_id, preferred_name_approval, updated_by, updated_at
-  )
-  values (target_workspace_id, approval, actor_user_id, now())
-  on conflict (workspace_id) do update set
-    preferred_name_approval = excluded.preferred_name_approval,
-    updated_by = excluded.updated_by,
-    updated_at = now();
-end;
-$$;
-
-
-ALTER FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) RETURNS "jsonb"
@@ -27797,22 +27756,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_location_assignments" (
 ALTER TABLE "public"."employee_location_assignments" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."employee_name_settings" (
-    "workspace_id" "uuid" NOT NULL,
-    "preferred_name_approval" "text" DEFAULT 'auto'::"text" NOT NULL,
-    "updated_by" "uuid",
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "employee_name_settings_preferred_name_approval_check" CHECK (("preferred_name_approval" = ANY (ARRAY['auto'::"text", 'manager'::"text"])))
-);
-
-
-ALTER TABLE "public"."employee_name_settings" OWNER TO "postgres";
-
-
-COMMENT ON TABLE "public"."employee_name_settings" IS 'How a workspace answers a preferred name. Not the onboarding approval setting, which lives in employee_onboarding_settings.';
-
-
-
 CREATE TABLE IF NOT EXISTS "public"."employee_offboarding_shift_actions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -29516,11 +29459,6 @@ ALTER TABLE ONLY "public"."employee_location_assignments"
 
 ALTER TABLE ONLY "public"."employee_location_assignments"
     ADD CONSTRAINT "employee_location_assignments_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."employee_name_settings"
-    ADD CONSTRAINT "employee_name_settings_pkey" PRIMARY KEY ("workspace_id");
 
 
 
@@ -31409,16 +31347,6 @@ ALTER TABLE ONLY "public"."employee_location_assignments"
 
 
 
-ALTER TABLE ONLY "public"."employee_name_settings"
-    ADD CONSTRAINT "employee_name_settings_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id");
-
-
-
-ALTER TABLE ONLY "public"."employee_name_settings"
-    ADD CONSTRAINT "employee_name_settings_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."employee_offboarding_shift_actions"
     ADD CONSTRAINT "employee_offboarding_shift_ac_previous_employee_id_workspa_fkey" FOREIGN KEY ("previous_employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE RESTRICT;
 
@@ -32611,9 +32539,6 @@ ALTER TABLE "public"."employee_job_assignments" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."employee_location_assignments" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."employee_name_settings" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."employee_offboarding_shift_actions" ENABLE ROW LEVEL SECURITY;
@@ -34447,11 +34372,6 @@ GRANT ALL ON FUNCTION "public"."get_employee_hub_service"("actor_user_id" "uuid"
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."get_employee_onboarding_review_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_employee_onboarding_review_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
 
@@ -35327,11 +35247,6 @@ GRANT ALL ON FUNCTION "public"."set_employee_document_timezone_service"("actor_u
 
 
 
-REVOKE ALL ON FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."set_employee_name_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "approval" "text") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."set_owner_setup_checklist_closed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "should_close" boolean) TO "service_role";
 
@@ -35794,10 +35709,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_job_assig
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_location_assignments" TO "service_role";
-
-
-
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."employee_name_settings" TO "service_role";
 
 
 
