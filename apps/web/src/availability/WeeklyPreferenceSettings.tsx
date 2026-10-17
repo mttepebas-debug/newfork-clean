@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { CalendarClock, Clock3, RotateCcw, Save } from "lucide-react";
-import { Link } from "react-router";
+import { CalendarClock, RotateCcw, Save } from "lucide-react";
 import type {
   WeeklyPreferenceSettingsRead,
   WeeklyPreferenceSettingsSave,
@@ -125,13 +124,10 @@ export function WeeklyPreferenceSettings({
   const [busy, setBusy] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const dirty =
-    draft.input_mode !== base.input_mode ||
-
-    draft.onboarding_required !== base.onboarding_required;
+  // Availability is asked in hours only (Mert 2026-10-16): the one setting is
+  // whether onboarding asks for it.
+  const dirty = draft.onboarding_required !== base.onboarding_required;
   const stale = model.settings.revision > base.revision;
-  const missing =
-    draft.input_mode === "shift_type" && model.missing_shift_types.length > 0;
   const disabled = !model.can_edit || busy;
   const inFlight = useRef(false);
   useEffect(() => {
@@ -145,15 +141,13 @@ export function WeeklyPreferenceSettings({
     setSaved(false);
   }
   async function save() {
-    if (disabled || !dirty || missing || stale || inFlight.current) return;
+    if (disabled || !dirty || stale || inFlight.current) return;
     inFlight.current = true;
     setBusy(true);
     setError(null);
     setSaved(false);
     try {
       const result = await onSave({
-        input_mode: draft.input_mode,
-
         onboarding_required: draft.onboarding_required,
         expected_revision: base.revision,
       });
@@ -178,50 +172,6 @@ export function WeeklyPreferenceSettings({
         <CalendarClock size={18} aria-hidden />
         <h3>Availability</h3>
       </header>
-      <div className="weekly-settings-row">
-        <strong>Entry mode</strong>
-        <fieldset className="weekly-settings-options" disabled={disabled}>
-          <legend className="sr-only">Availability entry mode</legend>
-          {(
-            [
-              ["time_range", "Time range", Clock3],
-              ["shift_type", "Shift type", CalendarClock],
-            ] as const
-          ).map(([value, label, Icon]) => (
-            <label key={value} data-selected={draft.input_mode === value}>
-              <input
-                type="radio"
-                name="availability-entry-mode"
-                checked={draft.input_mode === value}
-                onChange={() => change({ input_mode: value })}
-              />
-              <Icon size={15} aria-hidden />
-              <span>{label}</span>
-            </label>
-          ))}
-        </fieldset>
-      </div>
-      {missing && (
-        <div className="weekly-settings-missing" role="alert">
-          <strong>Default hours needed</strong>
-          <ul>
-            {model.missing_shift_types.map((type) => (
-              <li key={type.id}>
-                <Link
-                  to={`/app/settings/scheduling/shift-types?edit=${type.id}`}
-                >
-                  {type.name}
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-      {draft.input_mode !== base.input_mode && (
-        <p className="weekly-settings-notice">
-          Saved weeks will be converted to the new entry mode.
-        </p>
-      )}
       <div className="weekly-settings-row">
         <strong>Required during onboarding</strong>
         <label className="weekly-reminders-switch">
@@ -301,7 +251,7 @@ export function WeeklyPreferenceSettings({
             <button
               type="button"
               className="weekly-primary"
-              disabled={disabled || !dirty || missing || stale}
+              disabled={disabled || !dirty || stale}
               onClick={() => void save()}
             >
               <Save size={14} aria-hidden />

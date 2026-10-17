@@ -25,138 +25,74 @@ afterEach(cleanup);
 function model(): WeeklyPreferenceSettingsRead {
   return {
     settings: {
-      input_mode: "time_range",
       onboarding_required: false,
       revision: 3,
     },
     can_edit: true,
-    missing_shift_types: [],
   };
 }
+const toggle = () => screen.getByRole("switch") as HTMLInputElement;
 describe("weekly preference settings", () => {
-  it("saves entry mode and onboarding with the loaded revision", async () => {
-    const value = model();
-    const onSave = vi
-      .fn()
-      .mockResolvedValue({
-        ...value,
-        settings: {
-          ...value.settings,
-          input_mode: "shift_type",
-          onboarding_required: true,
-          revision: 4,
-        },
-      });
+  // Mert 2026-10-16 ("yalnız saat"): availability is asked in hours only, so
+  // there is no entry mode to choose; the one setting is onboarding.
+  it("has no entry mode, only Required during onboarding", () => {
     render(
       <MemoryRouter>
-        <WeeklyPreferenceSettings
-          model={value}
-          onSave={onSave}
-          onReload={async () => value}
-        />
+        <WeeklyPreferenceSettings model={model()} onSave={vi.fn()} onReload={async () => model()} />
       </MemoryRouter>,
     );
-    fireEvent.click(screen.getByRole("radio", { name: "Shift type" }));
-    expect(
-      screen.getByText(/Saved weeks will be converted to the new entry mode/),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("switch"));
+    expect(screen.queryByText("Entry mode")).toBeNull();
+    expect(screen.queryByRole("radio")).toBeNull();
+    expect(screen.queryByText(/Shift type|Time range|converted/)).toBeNull();
+    expect(screen.getByText("Required during onboarding")).toBeTruthy();
+  });
+  it("saves the onboarding setting with the loaded revision", async () => {
+    const value = model();
+    const onSave = vi.fn().mockResolvedValue({
+      ...value,
+      settings: { onboarding_required: true, revision: 4 },
+    });
+    render(
+      <MemoryRouter>
+        <WeeklyPreferenceSettings model={value} onSave={onSave} onReload={async () => value} />
+      </MemoryRouter>,
+    );
+    fireEvent.click(toggle());
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Saved");
-    expect(onSave).toHaveBeenCalledWith({
-      input_mode: "shift_type",
-      onboarding_required: true,
-      expected_revision: 3,
-    });
-    expect(
-      (screen.getByRole("radio", { name: "Shift type" }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+    expect(onSave).toHaveBeenCalledWith({ onboarding_required: true, expected_revision: 3 });
+    expect(toggle().checked).toBe(true);
   });
-  it("blocks missing defaults only in shift mode and links the exact type", () => {
-    const value = {
-      ...model(),
-      missing_shift_types: [
-        { id: "ad420000-0000-4000-8000-000000000001", name: "Lunch" },
-      ],
-    };
-    const onSave = vi.fn();
-    render(
-      <MemoryRouter>
-        <WeeklyPreferenceSettings
-          model={value}
-          onSave={onSave}
-          onReload={async () => value}
-        />
-      </MemoryRouter>,
-    );
-    fireEvent.click(screen.getByRole("radio", { name: "Shift type" }));
-    expect(
-      screen.getByRole("link", { name: "Lunch" }).getAttribute("href"),
-    ).toContain(`?edit=${value.missing_shift_types[0]!.id}`);
-    expect(
-      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(true);
-    fireEvent.click(screen.getByRole("radio", { name: "Time range" }));
-    fireEvent.click(screen.getByRole("switch"));
-    expect(
-      (screen.getByRole("button", { name: "Save" }) as HTMLButtonElement)
-        .disabled,
-    ).toBe(false);
-  });
-  it("preserves dirty choices on a newer revision until explicit reload", async () => {
+  it("preserves a dirty choice on a newer revision until explicit reload", async () => {
     const value = model();
     const next = { ...value, settings: { ...value.settings, revision: 4 } };
     const onSave = vi.fn();
     const onReload = vi.fn().mockResolvedValue(next);
     const view = (m: WeeklyPreferenceSettingsRead) => (
       <MemoryRouter>
-        <WeeklyPreferenceSettings
-          model={m}
-          onSave={onSave}
-          onReload={onReload}
-        />
+        <WeeklyPreferenceSettings model={m} onSave={onSave} onReload={onReload} />
       </MemoryRouter>
     );
     const result = render(view(value));
-    fireEvent.click(screen.getByRole("radio", { name: "Shift type" }));
+    fireEvent.click(toggle());
     result.rerender(view(next));
     expect(screen.getByText(/Your draft is preserved/)).toBeTruthy();
-    expect(
-      (screen.getByRole("radio", { name: "Shift type" }) as HTMLInputElement)
-        .checked,
-    ).toBe(true);
+    expect(toggle().checked).toBe(true);
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).not.toHaveBeenCalled();
     fireEvent.click(screen.getByRole("button", { name: "Discard and reload" }));
-    await waitFor(() =>
-      expect(
-        (screen.getByRole("radio", { name: "Time range" }) as HTMLInputElement)
-          .checked,
-      ).toBe(true),
-    );
+    await waitFor(() => expect(toggle().checked).toBe(false));
   });
   it("does not offer editing to a manager without organization authority", () => {
     const value = { ...model(), can_edit: false };
     const onSave = vi.fn();
     render(
       <MemoryRouter>
-        <WeeklyPreferenceSettings
-          model={value}
-          onSave={onSave}
-          onReload={async () => value}
-        />
+        <WeeklyPreferenceSettings model={value} onSave={onSave} onReload={async () => value} />
       </MemoryRouter>,
     );
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
-    expect(
-      screen.getByRole("radio", { name: "Shift type" }).closest("fieldset")!
-        .disabled,
-    ).toBe(true);
-    expect((screen.getByRole("switch") as HTMLInputElement).disabled).toBe(
-      true,
-    );
+    expect(toggle().disabled).toBe(true);
   });
   // BL-798 (E4-15): the core's "Not allowed" reads as a sentence.
   it("says the person has no access instead of the core's refusal", async () => {

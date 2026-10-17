@@ -72,12 +72,10 @@ vi.mock("../availability/availability-data", () => ({
 }));
 const weeklySettings: WeeklyPreferenceSettingsRead = {
   settings: {
-    input_mode: "time_range",
     onboarding_required: false,
     revision: 3,
   },
   can_edit: true,
-  missing_shift_types: [],
 };
 describe("SchedulingSettingsPage checklist mode", () => {
   beforeEach(() => {
@@ -95,7 +93,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
       async (_workspace, command) => ({
         ...weeklySettings,
         settings: {
-          input_mode: command.input_mode,
           onboarding_required: command.onboarding_required,
           revision: 4,
         },
@@ -275,7 +272,11 @@ describe("SchedulingSettingsPage checklist mode", () => {
   it("saves weekly policy independently", async () => {
     renderPage("/app/settings/scheduling");
     fireEvent.click(await screen.findByRole("radio", { name: "Sunday" }));
-    fireEvent.click(await screen.findByRole("radio", { name: "Shift type" }));
+    // Availability is asked in hours only (Mert 2026-10-16): no Entry mode row.
+    await screen.findByRole("switch", { name: "Availability required during onboarding" });
+    expect(screen.queryByText("Entry mode")).toBeNull();
+    expect(screen.queryByRole("radio", { name: "Shift type" })).toBeNull();
+    expect(screen.queryByRole("radio", { name: "Time range" })).toBeNull();
     fireEvent.click(
       screen.getByRole("switch", {
         name: "Availability required during onboarding",
@@ -288,7 +289,6 @@ describe("SchedulingSettingsPage checklist mode", () => {
       expect(saveWeeklyPreferenceSettings).toHaveBeenCalledWith(
         workspaceId,
         {
-          input_mode: "shift_type",
           onboarding_required: true,
           expected_revision: 3,
         },
@@ -311,8 +311,8 @@ describe("SchedulingSettingsPage checklist mode", () => {
       can_edit: false,
     });
     renderPage("/app/settings/scheduling");
-    const mode = await screen.findByRole("radio", { name: "Shift type" });
-    expect(mode.closest("fieldset")).toHaveProperty("disabled", true);
+    const required = await screen.findByRole("switch", { name: "Availability required during onboarding" });
+    expect(required).toHaveProperty("disabled", true);
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     expect(screen.getByRole("button", { name: "Save rules" })).toBeTruthy();
   });
