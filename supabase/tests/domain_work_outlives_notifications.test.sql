@@ -103,6 +103,10 @@ insert into new_system values
   -- The email channel (BILDIRIM-14).
   ('claim_notification_emails_service'), ('finish_notification_email_service'), ('apply_notification_email_event_service'),
   ('release_notification_emails_service'), ('notification_email_channel'),
+  -- Phone alerts (BILDIRIM-15).
+  ('claim_notification_push_service'), ('finish_notification_push_service'), ('release_notification_push_service'),
+  ('save_notification_push_subscription_service'), ('delete_notification_push_subscription_service'),
+  ('notification_push_channel'), ('notification_push_sends'),
   ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
   ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_sms_opt_outs'), ('notification_topics'),
   ('notification_types'),

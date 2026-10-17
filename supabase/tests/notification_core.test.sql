@@ -44,7 +44,7 @@ $$;
 -- A phone that can take a push notification, as the phone step will register one.
 create function pg_temp.phone(person text) returns void language sql as $$
   insert into public.notification_push_subscriptions (user_id, endpoint, p256dh, auth_secret)
-  values (pg_temp.u(person), 'https://push.example.test/' || gen_random_uuid(), 'p256dh-key', 'auth-secret')
+  values (pg_temp.u(person), 'https://fcm.googleapis.com/fcm/send/' || gen_random_uuid(), 'B' || repeat('p', 86), repeat('a', 22))
 $$;
 
 -- (a) The catalog --------------------------------------------------------------------------------------

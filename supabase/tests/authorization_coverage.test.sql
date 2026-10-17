@@ -36,6 +36,7 @@ insert into service_class values
   ('cancel_account_email_change_service', 'account.self'),
   ('claim_account_recovery_resend_service', 'account.self'),
   ('claim_notification_emails_service', 'exempt:worker'),
+  ('claim_notification_push_service', 'exempt:worker'),
   ('claim_password_reset_send_service', 'account.self'),
   ('cancel_workspace_closure_service', 'workspace.close'),
   ('cancel_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
@@ -263,7 +264,12 @@ insert into service_class values
   -- Lineup publishing (LINEUP-PUBLISH): the manager publishes, the employee reads and acknowledges her own.
   ('lineup_command_service', 'lineup.share'),
   ('get_my_lineups_service', 'employee_hub.read'),
-  ('acknowledge_lineup_service', 'lineup.acknowledge');
+  ('acknowledge_lineup_service', 'lineup.acknowledge'),
+  -- Phone alerts (BILDIRIM-15): a person's own devices; the worker sends.
+  ('save_notification_push_subscription_service', 'account.self'),
+  ('delete_notification_push_subscription_service', 'account.self'),
+  ('finish_notification_push_service', 'exempt:worker'),
+  ('release_notification_push_service', 'exempt:worker');
 
 select is(
   array(
