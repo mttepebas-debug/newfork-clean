@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { emptyWeeklyPreference, type PreferenceShiftType } from "@newfork/shared";
+import { emptyWeeklyPreference, type PreferenceShiftType, type WeeklyPreferenceDay } from "@newfork/shared";
 import {
   applyDay,
   changedDays,
@@ -100,7 +100,7 @@ describe("a day's row: colour and words", () => {
     [{ ...day, ranges: [{ start: "15:00", end: "22:00" }] }, "blocked", "Unavailable 3:00 PM – 10:00 PM"],
     [{ ...day, ranges: [{ start: "00:00", end: "11:00" }] }, "blocked", "Unavailable before 11:00 AM"],
     [{ ...day, ranges: [{ start: "18:00", end: "24:00" }] }, "blocked", "Unavailable after 6:00 PM"],
-  ] as const)("%j", (rule, tone, label) => {
+  ] satisfies [WeeklyPreferenceDay, string, string][])("%j", (rule, tone, label) => {
     expect(dayTone(rule, types, "12h")).toEqual({ tone, label, className: `dav-tone is-${tone}` });
   });
   it("names the shift types in the workspace's order", () => {
