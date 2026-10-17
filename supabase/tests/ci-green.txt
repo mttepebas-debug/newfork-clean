@@ -203,6 +203,7 @@ supabase/tests/notify_documents.test.sql
 supabase/tests/sms_channel_gate.test.sql
 supabase/tests/notify_announcements.test.sql
 supabase/tests/notify_email_channel.test.sql
+supabase/tests/notify_availability.test.sql
 supabase/tests/notify_people.test.sql
 supabase/tests/notify_people_access.test.sql
 supabase/tests/listed_job_one_rule.test.sql

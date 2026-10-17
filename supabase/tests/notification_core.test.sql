@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 -- BILDIRIM-07 (KARARLAR S-91, S-92, S-95, S-123): the new notification system's core.
---   (a) the catalog: 65 types, three levels, default channels, retention;
+--   (a) the catalog: 64 types, three levels, default channels, retention;
 --   (b) "will it go": required > owner turned it off > channel closed > the person's choice > default;
 --       in-app is not in that order: every notice the owner did not turn off reaches the list;
 --   (c) who gets one: members only, never the person who did it, one notice per event and person;
@@ -49,11 +49,12 @@ $$;
 
 -- (a) The catalog --------------------------------------------------------------------------------------
 
-select is((select count(*)::integer from public.notification_types), 65, '(a) the catalog lists the 65 types of the plan');
+-- 64: availability.mode_changed went with the entry mode (BILDIRIM-U7).
+select is((select count(*)::integer from public.notification_types), 64, '(a) the catalog lists the 64 types of the plan');
 select is(
   (select jsonb_object_agg(level, n) from (select level, count(*)::integer n from public.notification_types group by level) x),
-  '{"required": 14, "important": 42, "optional": 9}'::jsonb,
-  '(a) 14 required, 42 important, 9 optional');
+  '{"required": 14, "important": 41, "optional": 9}'::jsonb,
+  '(a) 14 required, 41 important, 9 optional');
 select is(
   array(select key from public.notification_types where level = 'optional' order by key),
   array['availability.updated', 'people.invitation_cancelled', 'people.invitation_declined', 'people.joined',

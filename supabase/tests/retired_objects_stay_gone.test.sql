@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(23);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -527,6 +527,10 @@ insert into retired (kind, name, step) values
   ('function', 'weekly_preference_convert', 'AVAIL-GUN-DB'),
   ('function', 'weekly_preference_whole_days', 'AVAIL-GUN-DB'),
   ('function_signature', 'public.empty_weekly_preference(text)', 'AVAIL-GUN-DB');
+-- With the entry mode gone, nothing changes how availability is entered, so its notice goes from the new
+-- catalog (BILDIRIM-U7).
+insert into retired (kind, name, step) values
+  ('notification', 'availability.mode_changed', 'BILDIRIM-U7');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -592,6 +596,11 @@ select is(
 );
 -- The retired notification types went with the catalog that listed them (BILDIRIM-06).
 select ok(to_regclass('public.notification_catalog') is null, 'retired notification types stay gone: the catalog itself is gone');
+select is(
+  array(select t.key from public.notification_types t
+        where exists (select 1 from retired r where r.kind = 'notification' and t.key like r.name) order by 1),
+  '{}'::text[], 'retired notification types stay out of the new catalog'
+);
 select is(
   array(select r.name from retired r join pg_policies p on p.schemaname = 'realtime' and p.tablename = 'messages' and p.policyname = r.name
         where r.kind = 'realtime_policy' order by 1),
