@@ -37,16 +37,22 @@ test("Archive on an announcement takes two clicks and moves it to Archived", asy
   expect(archivedAt()).toBe("active");
 
   // First click: the drawer's Archive arms "Archive it?"; nothing is
-  // archived yet, and there is no Delete.
+  // archived yet, and there is no Delete. Left alone it disarms after its
+  // pause (3.2 s), still archiving nothing.
   await active.getByText(title, { exact: true }).click();
   const drawer = zeynep.getByRole("dialog", { name: title });
   await expect(drawer.getByRole("button", { name: "Delete", exact: true })).toHaveCount(0);
-  await drawer.getByRole("button", { name: "Archive", exact: true }).click();
+  const archive = drawer.getByRole("button", { name: "Archive", exact: true });
+  await archive.click();
   const confirm = drawer.getByRole("button", { name: "Archive it?", exact: true });
   await expect(confirm).toBeVisible();
+  await expect(archive).toBeVisible({ timeout: 10_000 });
+  // ponytail: the database is read only while nothing is armed. A slow read between the two clicks
+  // outlasted the 3.2 s pause and disarmed it under load (CI 38984890125, attempt 3).
   expect(archivedAt()).toBe("active");
 
-  // Second click archives it: it leaves the list and waits under Archived.
+  // Armed again, the second click archives it: it leaves the list and waits under Archived.
+  await archive.click();
   await confirm.click();
   await expect.poll(archivedAt).not.toBe("active");
   await expect(drawer).toHaveCount(0);
