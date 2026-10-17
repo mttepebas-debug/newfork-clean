@@ -491,6 +491,27 @@ describe("LineupPage on a phone, E", () => {
     expect(commands[0]).toMatchObject({ kind: "share", ask_ack: true });
   });
 
+  it("places Publish over the app's bottom bar, centred where More begins", async () => {
+    const bar = document.createElement("nav");
+    bar.className = "phone-bar";
+    const more = document.createElement("button");
+    bar.append(document.createElement("a"), more);
+    document.body.append(bar);
+    bar.getBoundingClientRect = () => ({ top: 782, height: 62 }) as DOMRect;
+    more.getBoundingClientRect = () => ({ left: 306 }) as DOMRect;
+    try {
+      renderPage();
+      const dock = (await screen.findByRole("button", { name: "Publish, 2 lineups waiting" })).closest<HTMLElement>(".lineup-phone-dock")!;
+      expect([dock.style.left, dock.style.bottom, dock.dataset.place]).toEqual([
+        "306px",
+        `${Math.round(window.innerHeight - 782 + 10)}px`,
+        "bar",
+      ]);
+    } finally {
+      bar.remove();
+    }
+  });
+
   it("rests grey and off when there is nothing to publish or take back", async () => {
     world = model([]);
     renderPage();

@@ -636,7 +636,7 @@ function useDockPlace(ref: RefObject<HTMLDivElement | null>) {
   useLayoutEffect(() => {
     const element = ref.current;
     if (!element) return;
-    const bar = document.querySelector<HTMLElement>(".mm-bar");
+    const bar = document.querySelector<HTMLElement>(".phone-bar");
     const place = () => {
       const box = bar?.getBoundingClientRect();
       const shown = bar && box && box.height > 0 ? box : null;

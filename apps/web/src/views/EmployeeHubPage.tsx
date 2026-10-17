@@ -82,7 +82,7 @@ export function EmployeeHubPage() {
   // More is a sheet over the page (CALISAN-MORE): the old More page's address,
   // and any other the hub does not know, opens Home.
   const knownPage =
-    path === "" || path === "schedule" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
+    path === "" || path === "schedule" || path === "schedule/lineup" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
   const now = useHubClock();
   // The hub's date range is asked before its locations load: the device's calendar.
   const today = todayIn(undefined, now);

@@ -315,6 +315,12 @@ describe("EmployeeHubPage", () => {
       cleanup();
     }
   });
+  // LINEUP-PUBLISH: Schedule → Lineup is a page of the hub, not an unknown address.
+  it("keeps Schedule → Lineup on its own page", async () => {
+    renderPage("/app/employee-hub/schedule/lineup");
+    expect(await screen.findByRole("heading", { level: 1, name: "Lineup" })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /My schedule/ })).toBeNull();
+  });
   // BL-278 (7): a failed request check must not read as "nothing waiting".
   it("does not say all caught up when the requests could not be checked", async () => {
     vi.mocked(getExchanges).mockRejectedValue(new Error("Offline"));
