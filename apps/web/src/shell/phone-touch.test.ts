@@ -11,9 +11,11 @@ const rulesFor = (selector: RegExp) =>
 describe("a phone page holds still", () => {
   // #2: pulled past its end the whole page stretched, taking the top bar and
   // the bottom bar with it and opening white space under them.
+  // Only on a phone: a desktop keeps the touchpad's swipe back and forward.
   it("lets no pull stretch the page past its ends", () => {
-    const bodies = rulesFor(/^html,\s*body$/);
-    expect(bodies.some((body) => /overscroll-behavior\s*:\s*none/.test(body))).toBe(true);
+    const phone = css.match(/@media \(max-width: 720px\)\s*\{\s*html,\s*body\s*\{([^}]*)\}/);
+    expect(phone?.[1]).toMatch(/overscroll-behavior-y\s*:\s*none/);
+    expect(rulesFor(/^html,\s*body$/).some((body) => /overscroll-behavior/.test(body))).toBe(false);
   });
 });
 

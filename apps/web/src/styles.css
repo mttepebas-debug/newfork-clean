@@ -2819,11 +2819,15 @@
 * {
   box-sizing: border-box;
 }
-/* Pulled past its ends the page holds still: no stretch that takes the top
-   bar and the phone's bottom bar with it (Mert's phone notes 2026-10-17 #2). */
-html,
-body {
-  overscroll-behavior: none;
+/* On a phone, pulled past its ends the page holds still: no stretch that
+   takes the top bar and the bottom bar with it (Mert's phone notes
+   2026-10-17 #2; pull-to-refresh goes with it). A desktop keeps the
+   touchpad's swipe back and forward. */
+@media (max-width: 720px) {
+  html,
+  body {
+    overscroll-behavior-y: none;
+  }
 }
 body {
   margin: 0;
