@@ -385,7 +385,7 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preferences_read_service"("actor" "u
     SET "search_path" TO ''
     AS $$
 declare employee public.employee_profiles%rowtype; settings public.workspace_scheduling_settings%rowtype;
- own_record boolean; can_manage boolean; can_read boolean; can_view_manager boolean; employee_record jsonb; manager_record jsonb;
+ own_record boolean; can_manage boolean; can_read boolean; can_view_manager boolean; employee_record jsonb; manager_record jsonb; types jsonb;
 begin
  select * into employee from public.employee_profiles e where e.workspace_id=w and (e.id=emp or (emp is null and e.user_id=actor)) and e.archived_at is null;
  if employee.id is null then
@@ -414,11 +414,17 @@ begin
    from public.manager_weekly_reminders p where p.workspace_id=w and p.employee_id=employee.id;
   manager_record:=coalesce(manager_record,jsonb_build_object('revision',0,'submitted',false,'updated_at',null,'preference',public.empty_weekly_preference(),'enabled',true,'notes',jsonb_build_array('','','','','','','')));
  end if;
+ -- The workspace's live shift types, for Time off's "Replace hours with a shift
+ -- type" (Employee Hub); availability itself never reads them.
+ select coalesce(jsonb_agg(jsonb_build_object('id',t.id,'name',t.name,'start_time',to_char(t.default_start_time,'HH24:MI'),'end_time',to_char(t.default_end_time,'HH24:MI'),
+  'archived',false,'selectable',(t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time))
+  order by t.sort_order,t.name,t.id),'[]') into types
+ from public.shift_types t where t.workspace_id=w and t.archived_at is null and t.deleted_at is null;
  return jsonb_build_object('employee_id',employee.id,'employee_name',concat_ws(' ',coalesce(nullif(employee.preferred_name,''),employee.first_name),employee.last_name),
   'can_edit_employee',own_record,'can_manage',can_manage,
   'settings',jsonb_build_object(
    'onboarding_required',settings.availability_onboarding_required,'revision',settings.availability_preferences_revision),
-  'employee',employee_record,'time_format',settings.time_format)
+  'employee',employee_record,'shift_types',types,'time_format',settings.time_format)
   -- The manager part: the note when it is this reader's to see; null for an
   -- employee's note they may not see; left out when there is no note at all
   -- (the person is not an employee).

@@ -68,6 +68,17 @@ export type WeeklyPreferenceSettingsRead = z.infer<
 export type WeeklyPreferenceSettingsSave = z.infer<
   typeof weeklyPreferenceSettingsSaveSchema
 >;
+// The workspace's live shift types. Time off's "Replace hours with a shift
+// type" (Employee Hub) reads them from the weekly read; availability itself is
+// hours only and never does.
+export const preferenceShiftTypeSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  start_time: startClock.nullable(),
+  end_time: endClock.nullable(),
+  archived: z.boolean(),
+  selectable: z.boolean(),
+});
 export const weeklyPreferenceRecordSchema = z.object({
   revision: z.number().int().nonnegative(),
   submitted: z.boolean(),
@@ -89,6 +100,7 @@ export const weeklyPreferenceReadSchema = z.object({
   // Object: the reader sees the note. null: an employee target whose note this
   // reader may not see. Absent: the target is a manager, admin or owner (no note).
   manager: managerPreferenceRecordSchema.nullable().optional(),
+  shift_types: z.array(preferenceShiftTypeSchema),
   time_format: z.enum(["12h", "24h"]),
 });
 export const weeklyTeamReadSchema = z.object({
@@ -148,6 +160,7 @@ export const weeklyPreferenceMutationSchema = z.object({
 });
 export type WeeklyPreference = z.infer<typeof weeklyPreferenceSchema>;
 export type WeeklyPreferenceDay = z.infer<typeof weeklyPreferenceDaySchema>;
+export type PreferenceShiftType = z.infer<typeof preferenceShiftTypeSchema>;
 export type WeeklyPreferenceRead = z.infer<typeof weeklyPreferenceReadSchema>;
 export type WeeklyPreferenceSave = z.infer<typeof weeklyPreferenceSaveSchema>;
 export type WeeklyPreferenceMutation = z.infer<

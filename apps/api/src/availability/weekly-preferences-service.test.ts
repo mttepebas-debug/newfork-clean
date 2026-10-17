@@ -40,7 +40,7 @@ const savedModel = {
   employee_id: employee, employee_name: "Alex Kim", can_edit_employee: true, can_manage: false,
   settings: { onboarding_required: true, revision: 0 },
   employee: { revision: 1, submitted: true, updated_at: null, preference: emptyWeeklyPreference() },
-  time_format: "24h",
+  shift_types: [], time_format: "24h",
 };
 describe("weekly preferences onboarding identity", () => {
   it("rejects another employee before save", async () => {

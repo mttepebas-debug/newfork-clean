@@ -52,6 +52,14 @@ select ok(not public.weekly_preference_valid(jsonb_set(jsonb_set(p,'{days,1,rang
 select ok(not public.weekly_preference_valid(jsonb_set(p,'{days,1,range}','{"start":"09:00","end":"10:00"}')),'the old single range is gone') from wp_fixture;
 
 select is(public.weekly_preferences_read_service(actor,w)->'employee'->>'submitted','false','never submitted remains distinct') from wp_fixture;
+-- The live shift types stay in the read for Time off's "Replace hours with a shift type".
+select is(public.weekly_preferences_read_service(actor,w)->'shift_types'->0,
+ jsonb_build_object('id',dinner,'name','Dinner','start_time','17:00','end_time','23:00','archived',false,'selectable',true),
+ 'the read lists the live shift types with their hours') from wp_fixture;
+update public.shift_types set archived_at=now() where id=(select hidden_type from wp_fixture);
+select is(jsonb_array_length(public.weekly_preferences_read_service(actor,w)->'shift_types'),1,'an archived shift type is not offered') from wp_fixture;
+update public.shift_types set archived_at=null where id=(select hidden_type from wp_fixture);
+select ok(not (public.weekly_preferences_read_service(actor,w)->'settings' ? 'input_mode'),'the read has no entry mode') from wp_fixture;
 select is(public.weekly_preferences_read_service(actor,w)->'manager','null'::jsonb,'employee cannot read private reminders') from wp_fixture;
 select is(public.weekly_preferences_read_service(manager,w,emp)->>'can_manage','true','one managed location is enough even for a multi-location employee') from wp_fixture;
 select throws_ok($$select public.weekly_preferences_read_service(gen_random_uuid(),w,emp) from wp_fixture$$,'42501',null,'unrelated actor cannot read');

@@ -170,7 +170,7 @@ describe("weekly preference read: the manager note in three shapes (BL-139)", ()
   const read = {
     employee_id: employee, employee_name: "Ada Lovelace", can_edit_employee: true, can_manage: true,
     settings: { onboarding_required: false, revision: 1 },
-    employee: record, time_format: "12h",
+    employee: record, shift_types: [], time_format: "12h",
   };
   it("keeps a note the reader may see, a null for an employee target, and no field for a manager+ target", () => {
     const note = { ...record, enabled: true, notes: Array<string>(7).fill("") };
@@ -223,7 +223,7 @@ describe("weekly preference save answer (M5)", () => {
       employee_id: employee, employee_name: "Ada Lovelace", can_edit_employee: true, can_manage: false,
       settings: { onboarding_required: false, revision: 1 },
       employee: { revision: 2, submitted: true, updated_at: null, preference: emptyWeeklyPreference() },
-      time_format: "12h",
+      shift_types: [], time_format: "12h",
     };
     const parsed = weeklyPreferenceMutationSchema.parse({ model, kept_count: 0 });
     expect(Object.keys(parsed)).toEqual(["model"]);
