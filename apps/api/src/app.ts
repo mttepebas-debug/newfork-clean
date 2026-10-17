@@ -1,6 +1,7 @@
 import {
   activeWorkspaceContextSchema,
   healthResponseSchema,
+  type NotificationChannelsConfig,
 } from "@newfork/shared";
 import Fastify from "fastify";
 import { createDocumentLifecycleService } from "./employees/document-lifecycle-service";
@@ -98,6 +99,10 @@ import {
   registerNotificationEmailRoutes,
   type NotificationEmailEvents,
 } from "./notifications/notification-email-routes";
+import { notificationChannelsConfigFromEnvironment, vapidFromEnvironment } from "./notifications/channel-config";
+import { createNotificationPushWorker, type NotificationPushWorker, type PushSend } from "./notifications/push-worker";
+import { registerNotificationPushRoutes, type PushSubscriptionService } from "./notifications/push-routes";
+import { createPushSubscriptionService } from "./notifications/push-subscription-service";
 import { registerDocumentTypesRoutes } from "./settings/document-types-routes";
 import {
   createDocumentTypesService,
@@ -213,6 +218,13 @@ export interface BuildAppOptions {
     readonly cronSecret?: string;
     readonly webhookSecret?: string;
     readonly events?: NotificationEmailEvents | null;
+  };
+  /** BILDIRIM-15: phone alerts' cron worker, a person's devices and which channels can send. */
+  readonly notificationPush?: {
+    readonly worker?: NotificationPushWorker | null;
+    readonly cronSecret?: string;
+    readonly service?: PushSubscriptionService | null;
+    readonly config?: () => NotificationChannelsConfig;
   };
 }
 
@@ -837,6 +849,18 @@ export function buildApp(options: BuildAppOptions = {}) {
         ? createNotificationEmailEventsFromEnvironment()
         : options.notificationEmail.events,
   });
+  registerNotificationPushRoutes(app, {
+    worker:
+      options.notificationPush?.worker === undefined
+        ? createNotificationPushWorkerFromEnvironment()
+        : options.notificationPush.worker,
+    cronSecret: options.notificationPush?.cronSecret ?? process.env.CRON_SECRET,
+    service:
+      options.notificationPush?.service === undefined
+        ? createPushSubscriptionServiceFromEnvironment()
+        : options.notificationPush.service,
+    config: options.notificationPush?.config ?? (() => notificationChannelsConfigFromEnvironment(process.env)),
+  });
   registerScheduleRequestsRoutes(app, {
     service: scheduleRequestsService,
     contextResolver,
@@ -1173,6 +1197,28 @@ function createNotificationEmailWorkerFromEnvironment(): NotificationEmailWorker
     from,
     appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
   });
+}
+
+// Phone alerts open once the three VAPID values are set (Mert sets them in Vercel; nobody else sees them).
+// web-push is loaded on the first send only, so nothing else in the API depends on it.
+function createNotificationPushWorkerFromEnvironment(): NotificationPushWorker | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const vapid = vapidFromEnvironment(process.env);
+  if (!url || !serviceRoleKey || !vapid) return null;
+  let loaded: Promise<PushSend> | null = null;
+  const send: PushSend = async (target, payload, sendOptions) => {
+    loaded ??= import("./notifications/web-push-send").then((module) => module.createWebPushSend(vapid));
+    return (await loaded)(target, payload, sendOptions);
+  };
+  return createNotificationPushWorker({ url, serviceRoleKey, send, appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555" });
+}
+
+function createPushSubscriptionServiceFromEnvironment(): PushSubscriptionService | null {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && anonKey && serviceRoleKey ? createPushSubscriptionService({ url, anonKey, serviceRoleKey }) : null;
 }
 
 function createNotificationEmailEventsFromEnvironment(): NotificationEmailEvents | null {
