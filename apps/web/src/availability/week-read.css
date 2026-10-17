@@ -1,0 +1,171 @@
+/* A person's week as a manager reads it (WeekRead.tsx): the Employees drawer
+   and the Availability page. The tone colours come from .dav-tone in
+   day-availability.css (green open, orange not; Mert 2026-10-16). */
+.avr-week {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.avr-ro-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0;
+  padding: 8px 11px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 7px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.avr-ro-bar > svg {
+  flex: none;
+  color: var(--theme-muted);
+}
+.avr-ro-date {
+  margin-left: auto;
+  white-space: nowrap;
+}
+.avr-sum {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin: 0;
+  color: var(--theme-text-body);
+  font-size: 13.5px;
+  line-height: 1.5;
+}
+.avr-sum > svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--theme-availability);
+}
+.avr-sum b {
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.avr-tiles {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.avr-tile {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 6px;
+  padding: 9px 9px 10px;
+  border: 1px solid var(--dav-tone-line);
+  border-radius: 8px;
+}
+.avr-tile-day {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.avr-tile-day b {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+}
+.avr-tile small {
+  min-height: 31px;
+  color: var(--dav-tone-text);
+  font-size: 11.5px;
+  font-weight: 600;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.avr-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--dav-tone-dot);
+}
+.avr-tile.is-some .avr-dot {
+  background: linear-gradient(90deg, var(--theme-surface) 0 50%, var(--theme-availability) 50%);
+  box-shadow: inset 0 0 0 1.5px var(--theme-availability);
+}
+.avr-rail {
+  position: relative;
+  display: block;
+  height: 10px;
+  margin-top: auto;
+  overflow: hidden;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--dav-tone-line) 55%, var(--theme-surface));
+}
+.avr-rail > i {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--theme-availability) 45%, var(--theme-surface));
+  box-shadow: inset 0 0 0 1px var(--theme-availability);
+}
+.avr-mgr-note {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.avr-mgr-note > svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--theme-muted);
+}
+.avr-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 40px 20px;
+  border: 1px dashed var(--theme-border-strong);
+  border-radius: 10px;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  text-align: center;
+}
+.avr-empty > svg {
+  margin-bottom: 4px;
+  color: var(--theme-text-faint);
+}
+.avr-empty b {
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+/* A narrow column (the phone, a narrow drawer): the boxes stand one under the
+   other, the day and its words on one line, the strip below. */
+@container avr (max-width: 520px) {
+  .avr-tiles {
+    grid-template-columns: 1fr;
+  }
+  .avr-tile {
+    display: grid;
+    grid-template-columns: 58px minmax(0, 1fr);
+    align-items: center;
+    gap: 6px 10px;
+    padding: 10px 12px;
+    border-radius: 10px;
+  }
+  .avr-tile small {
+    min-height: 0;
+  }
+  .avr-rail {
+    grid-column: 1 / -1;
+  }
+}
+.avr-week {
+  container: avr / inline-size;
+}
