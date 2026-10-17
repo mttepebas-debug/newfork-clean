@@ -40,6 +40,7 @@
 .employee-lineup-ticket-body .employee-lineup-place svg { flex: none; color: var(--theme-text-secondary); }
 .employee-lineup-ticket-body .employee-lineup-date { color: var(--theme-text-secondary); font-size: 13.5px; }
 .employee-lineup-ticket-body .employee-lineup-detail { color: var(--theme-text-body); font-size: 14px; }
+.employee-lineup-ticket-body .employee-lineup-called-off { color: var(--theme-danger-text); font-size: 13px; font-weight: 700; }
 
 /* A changed time, every 5 s: the old value is struck through left to right, fades, and the new one is written
    over it in amber, holds, and fades (mockup v-e.css .e-swap). Less motion: the new value alone. */

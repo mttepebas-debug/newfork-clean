@@ -168,6 +168,28 @@ describe("EmployeeLineup", () => {
     expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
   });
 
+  // Called off, she is still on her lineup: its tab opens and the ticket says so (as before).
+  it("keeps a lineup she is called off on pressable, and says she's called off", async () => {
+    const [dinnerLineup] = mine().lineups;
+    answer = {
+      ...mine(),
+      lineups: [
+        {
+          ...dinnerLineup!,
+          mine: [{ ...row, called_off: true }],
+          team: dinnerLineup!.team.map((member) => (member.is_me ? { ...member, called_off: true } : member)),
+        },
+      ],
+    };
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    const tab = within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 1 person" }) as HTMLButtonElement;
+    expect(tab.disabled).toBe(false);
+    expect(tab.getAttribute("aria-pressed")).toBe("true");
+    expect(within(view).getByText("You're called off.")).toBeTruthy();
+    expect(screen.queryByText(/^You're not on a lineup/)).toBeNull();
+  });
+
   it("greys every shift tab over the calm card when she is on no published lineup", async () => {
     answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));

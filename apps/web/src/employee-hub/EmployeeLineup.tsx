@@ -96,7 +96,7 @@ export function EmployeeLineup({
   const location = locations.find((item) => item.id === chosenLocation) ?? locations[0] ?? null;
   const loading = query.isLoading || board.isLoading;
   // Mert 2026-10-17 (~8:35 AM): every shift type shows as a tab; only one whose published lineup has her on it
-  // (not called off) can be pressed. The types are her schedule read's; the lineups are her own (she reads no other).
+  // (called off too: it is still hers) can be pressed. The types are her schedule read's; the lineups are her own (she reads no other).
   const shifts = shiftTabs(board.data?.shift_types ?? [], lineups.filter((item) => item.location.id === location?.id));
   const open = shifts.filter((item) => item.lineup);
   const current = open.find((item) => item.key === chosen) ?? open[0] ?? null;
@@ -184,7 +184,7 @@ type ShiftTabWithLineup = LineupShiftTab & { readonly lineup: MyLineup | null };
 
 /**
  * The shift tabs at a location: every shift type (and a lineup's type the catalog no longer has), by its start,
- * the same start by name. A tab opens only on a lineup she is on and not called off; the others stay grey.
+ * the same start by name. A tab opens on a published lineup she is on (called off too); the others stay grey.
  */
 function shiftTabs(
   types: readonly { id: string; name: string; color: string; default_start_time: string | null }[],
@@ -207,7 +207,7 @@ function shiftTabs(
   return [...tabs.values()]
     .sort((a, b) => a.start.slice(0, 5).localeCompare(b.start.slice(0, 5)) || a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }))
     .map(({ start: _start, lineup, ...tab }) => {
-      const on = Boolean(lineup?.mine.some((row) => !row.called_off));
+      const on = Boolean(lineup);
       return on
         ? { ...tab, count: lineup!.team.filter((row) => !row.called_off).length, lineup }
         : { ...tab, count: 0, disabled: true, title: `You're not on a published ${tab.name} lineup`, lineup: null };
@@ -261,6 +261,7 @@ function LineupView({
           <b>{name}</b>
         </div>
         <div className="employee-lineup-ticket-body">
+          {me.called_off ? <p className="employee-lineup-called-off">You're called off.</p> : null}
           <p className="employee-lineup-place">
             <MapPin size={15} aria-hidden />
             {lineup.location.name}
