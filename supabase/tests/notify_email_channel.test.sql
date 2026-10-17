@@ -71,6 +71,12 @@ select is((select daily_cap from app_private.notification_email_channel), 70,
   '(h) the free plan''s cap for notices is 70 a day: 30 of Resend''s 100 stay for invitations, resets and exports');
 -- The channel opened an hour ago (in the product, when this migration was applied).
 update app_private.notification_email_channel set opened_at = now() - interval '1 hour';
+-- The queue is the whole database's: email waiting from other work on a shared database is set aside, and
+-- what it sent today leaves today's count, so the claims and the cap below see only this test's rows.
+update public.notification_deliveries set status = 'skipped', last_error = 'test_isolation', lease_expires_at = null
+where channel = 'email' and status in ('queued', 'sending', 'failed');
+update public.notification_deliveries set sent_at = sent_at - interval '2 days'
+where channel = 'email' and sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
 
 select pg_temp.notice('time_off.decided', 'ali', 'e:ali:1');
 select pg_temp.notice('time_off.decided', 'bea', 'e:bea:1');
