@@ -63,9 +63,9 @@ select is(
   (select row(n.url, n.actor_user_id, n.subject_type, n.data ->> 'ask_ack', n.data -> 'lineup_ids' ->> 0)::text
    from public.person_notifications n
    where n.workspace_id = tests.id('nl') and n.user_id = tests.user('nl:eli') and n.type_key = 'lineup.shared'),
-  row('/app/employee-hub/schedule?view=day&date=' || to_char(tests.week(0), 'YYYY-MM-DD'), tests.user('nl:mia'), 'lineup_share',
+  row('/app/employee-hub/schedule/lineup?date=' || to_char(tests.week(0), 'YYYY-MM-DD'), tests.user('nl:mia'), 'lineup_share',
       'true', (select d.id from public.daily_lineups d where d.workspace_id = tests.id('nl') and d.shift_type_id = tests.id('nl:type:dinner'))::text)::text,
-  '(a) the notice opens her schedule on that day and names who published it and the lineup'
+  '(a) the notice opens her lineup on that day and names who published it and the lineup'
 );
 
 -- (b) The same command again tells nobody again; (c) unpublish tells nobody.

@@ -472,7 +472,7 @@ begin
         else 'Your lineups for ' || to_char(shared_day, 'Dy, Mon FMDD') || ' are ready' end
         || case when ask then ' · please acknowledge' else '' end,
       null,
-      '/app/employee-hub/schedule?view=day&date=' || to_char(shared_day, 'YYYY-MM-DD'),
+      '/app/employee-hub/schedule/lineup?date=' || to_char(shared_day, 'YYYY-MM-DD'),
       actor_user_id, 'lineup_share', command_id,
       jsonb_build_object('date', shared_day, 'ask_ack', ask,
         'lineup_ids', (select jsonb_agg(d -> 'lineup_id') from jsonb_array_elements(done) d where d ->> 'status' = 'shared')));
