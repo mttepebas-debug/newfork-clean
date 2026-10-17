@@ -80,7 +80,6 @@ function weeklyModel(): WeeklyPreferenceRead {
     can_manage: true,
     can_edit_employee: false,
     settings: {
-      input_mode: "time_range",
       onboarding_required: false,
       revision: 1,
     },
@@ -88,13 +87,13 @@ function weeklyModel(): WeeklyPreferenceRead {
       revision: 1,
       submitted: true,
       updated_at: null,
-      preference: emptyWeeklyPreference("time_range"),
+      preference: emptyWeeklyPreference(),
     },
     manager: {
       revision: 0,
       submitted: false,
       updated_at: null,
-      preference: emptyWeeklyPreference("time_range"),
+      preference: emptyWeeklyPreference(),
       enabled: true,
       notes: Array<string>(7).fill(""),
     },

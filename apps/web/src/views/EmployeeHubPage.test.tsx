@@ -260,8 +260,8 @@ function weeklyModel(): WeeklyPreferenceRead {
   return {
     employee_id: fixture.employee.id, employee_name: fixture.employee.display_name,
     can_edit_employee: true, can_manage: false, manager: null, shift_types: [], time_format: "12h",
-    settings: { input_mode: "time_range", onboarding_required: false, revision: 0 },
-    employee: { revision: 0, submitted: false, updated_at: null, preference: emptyWeeklyPreference("time_range") },
+    settings: { onboarding_required: false, revision: 0 },
+    employee: { revision: 0, submitted: false, updated_at: null, preference: emptyWeeklyPreference() },
   };
 }
 

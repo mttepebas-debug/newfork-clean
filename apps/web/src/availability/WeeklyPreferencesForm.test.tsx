@@ -28,9 +28,8 @@ beforeEach(() => {
   };
 });
 const typeId = "ab920000-0000-4000-8000-000000000001";
-function model(
-  mode: "shift_type" | "time_range" = "shift_type",
-): WeeklyPreferenceRead {
+const evening = [{ start: "17:00", end: "23:00" }];
+function model(): WeeklyPreferenceRead {
   return {
     employee_id: "ab910000-0000-4000-8000-000000000001",
     employee_name: "Ada Lovelace",
@@ -38,7 +37,6 @@ function model(
     can_manage: true,
     time_format: "24h",
     settings: {
-      input_mode: mode,
       onboarding_required: false,
       revision: 3,
     },
@@ -46,13 +44,13 @@ function model(
       revision: 2,
       submitted: true,
       updated_at: null,
-      preference: emptyWeeklyPreference(mode),
+      preference: emptyWeeklyPreference(),
     },
     manager: {
       revision: 4,
       submitted: true,
       updated_at: null,
-      preference: emptyWeeklyPreference(mode),
+      preference: emptyWeeklyPreference(),
       enabled: true,
       notes: ["", "Keep this note", "", "", "", "", ""],
     },
@@ -65,7 +63,6 @@ function model(
         archived: false,
         selectable: true,
       },
-      // A second type keeps one mark short of all day (M3).
       {
         id: "ab920000-0000-4000-8000-000000000002",
         name: "Lunch",
@@ -102,9 +99,7 @@ describe("weekly preference form", () => {
     const data = model();
     const { rerender, onSave } = setup(data);
     expect(screen.getByText("Keep this note")).toBeTruthy();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     rerender(
       <WeeklyPreferencesForm
         model={{ ...data, can_manage: false, manager: null }}
@@ -159,16 +154,13 @@ describe("weekly preference form", () => {
   it("copies the employee week exactly, replacing selections but keeping notes", async () => {
     const data = model();
     data.employee.preference.days[2]!.all_day = true;
-    data.manager!.preference.days[1]!.shift_type_ids = [typeId];
+    data.manager!.preference.days[1]!.ranges = evening;
     const { onSave } = setup(data);
+    expect(screen.getByRole("textbox", { name: "Monday unavailable start" })).toBeTruthy();
     fireEvent.click(
       screen.getByRole("button", { name: "Use employee preferences" }),
     );
-    expect(
-      screen
-        .getByRole("button", { name: "Monday Dinner unavailable" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
+    expect(screen.queryByRole("textbox", { name: "Monday unavailable start" })).toBeNull();
     expect(
       (
         screen.getByRole("switch", {
@@ -197,7 +189,7 @@ describe("weekly preference form", () => {
 
   it("keeps reminders while off and saves the toggle with the draft", async () => {
     const data = model();
-    data.manager!.preference.days[1]!.shift_type_ids = [typeId];
+    data.manager!.preference.days[1]!.ranges = evening;
     const { onSave } = setup(data);
     fireEvent.click(
       screen.getByRole("switch", { name: "Enable manager reminders" }),
@@ -211,9 +203,9 @@ describe("weekly preference form", () => {
     ).toBe(true);
     expect(
       (
-        screen.getByRole("button", {
-          name: "Monday Dinner unavailable",
-        }) as HTMLButtonElement
+        screen.getByRole("textbox", {
+          name: "Monday unavailable start",
+        }) as HTMLInputElement
       ).disabled,
     ).toBe(true);
     expect(
@@ -260,55 +252,37 @@ describe("weekly preference form", () => {
     ).toBe(false);
   });
 
-  it("all day disables detail and switching off leaves the day available", () => {
+  it("all day replaces the hours and switching off leaves the day available", () => {
     setup();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.click(
       screen.getByRole("switch", { name: "Monday all day unavailable" }),
     );
-    expect(
-      (
-        screen.getByRole("button", {
-          name: "Monday Dinner unavailable",
-        }) as HTMLButtonElement
-      ).disabled,
-    ).toBe(true);
+    expect(screen.queryByRole("textbox", { name: "Monday unavailable start" })).toBeNull();
+    expect(screen.getByText("All day unavailable")).toBeTruthy();
     fireEvent.click(
       screen.getByRole("switch", { name: "Monday all day unavailable" }),
     );
-    expect(
-      screen
-        .getByRole("button", { name: "Monday Dinner unavailable" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
+    expect(screen.queryByRole("textbox", { name: "Monday unavailable start" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add hours on Monday" })).toBeTruthy();
   });
 
   it("discards a reminder draft when moving between the two tabs", () => {
     setup();
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.click(screen.getByRole("tab", { name: "Employee availability" }));
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     fireEvent.keyDown(
       screen.getByRole("tab", { name: "Employee availability" }),
       { key: "ArrowRight" },
     );
-    expect(
-      screen
-        .getByRole("button", { name: "Monday Dinner unavailable" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
+    expect(screen.queryByRole("textbox", { name: "Monday unavailable start" })).toBeNull();
   });
 
   it("never carries a draft into another employee drawer", () => {
     const data = model();
     const { rerender, onSave } = setup(data);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     rerender(
       <WeeklyPreferencesForm
         model={{ ...data, employee_id: "ab910000-0000-4000-8000-000000000002" }}
@@ -322,19 +296,13 @@ describe("weekly preference form", () => {
         .getAttribute("aria-selected"),
     ).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
-    expect(
-      screen
-        .getByRole("button", { name: "Monday Dinner unavailable" })
-        .getAttribute("aria-pressed"),
-    ).toBe("false");
+    expect(screen.queryByRole("textbox", { name: "Monday unavailable start" })).toBeNull();
   });
 
   it("retains a dirty draft and its original revision on a live model refresh", async () => {
     const data = model();
     const { rerender, onSave } = setup(data);
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     const refreshed = structuredClone(data);
     refreshed.manager!.revision = 5;
     rerender(
@@ -365,9 +333,7 @@ describe("weekly preference form", () => {
       />,
     );
     fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(onSave).toHaveBeenCalledOnce();
@@ -377,11 +343,7 @@ describe("weekly preference form", () => {
     expect(screen.getByRole("alert").textContent).toContain(
       "Reload before saving",
     );
-    expect(
-      screen
-        .getByRole("button", { name: "Monday Dinner unavailable" })
-        .getAttribute("aria-pressed"),
-    ).toBe("true");
+    expect(screen.getByRole("textbox", { name: "Monday unavailable start" })).toBeTruthy();
   });
 
   // BL-1028: the database names the kind of 409. Only "the week or its
@@ -402,9 +364,7 @@ describe("weekly preference form", () => {
       />,
     );
     fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
-    fireEvent.click(
-      screen.getByRole("button", { name: "Monday Dinner unavailable" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect((await screen.findByRole("alert")).textContent).toContain(
       "Not saved.",
@@ -415,7 +375,7 @@ describe("weekly preference form", () => {
   });
 
   it("rejects unfinished time input and saves 24:00 as a valid end", async () => {
-    const { onSave } = setup(model("time_range"));
+    const { onSave } = setup(model());
     fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "Monday unavailable start" }),
@@ -437,20 +397,12 @@ describe("weekly preference form", () => {
     }]);
   });
 
-  it("shows current default times and lets a previously selected archived type be removed", () => {
-    const data = model();
-    data.shift_types[0]!.archived = true;
-    data.shift_types[0]!.selectable = false;
-    data.manager!.preference.days[1]!.shift_type_ids = [typeId];
-    setup(data);
-    const option = screen.getByRole("button", {
-      name: "Monday Dinner unavailable",
-    });
-    expect(option.getAttribute("title")).toBe("17:00 – 23:00 (archived)");
-    fireEvent.click(option);
-    expect(
-      screen.queryByRole("button", { name: "Monday Dinner unavailable" }),
-    ).toBeNull();
+  // Mert 2026-10-16 ("yalnız saat"): no shift type buttons, whatever the workspace's types.
+  it("asks for hours only, never shift types", () => {
+    setup(model());
+    expect(screen.queryByRole("button", { name: /Dinner unavailable/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Shift default hours" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Add hours on Monday" })).toBeTruthy();
   });
 });
 
@@ -460,7 +412,7 @@ describe("unsaved changes", () => {
   it("never asks in the manager's drawer", () => {
     render(<WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />);
     fireEvent.click(screen.getByRole("tab", { name: /reminder|note/i }));
-    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
+    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     const navigate = vi.fn();
     act(() => requestAppNavigation(navigate));
     expect(navigate).toHaveBeenCalledOnce();

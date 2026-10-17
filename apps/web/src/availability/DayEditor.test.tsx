@@ -2,11 +2,7 @@
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, describe, expect, it } from "vitest";
-import {
-  emptyWeeklyPreference,
-  type PreferenceShiftType,
-  type WeeklyPreference,
-} from "@newfork/shared";
+import { emptyWeeklyPreference, type WeeklyPreference } from "@newfork/shared";
 import { DayEditor } from "./DayEditor";
 import { noCopies, type Copies } from "./day-availability";
 
@@ -23,20 +19,6 @@ if (!("PointerEvent" in window))
     },
   });
 
-const types: PreferenceShiftType[] = [
-  ["Breakfast", "07:00", "11:00"],
-  ["Lunch", "11:00", "16:00"],
-  ["Dinner", "16:00", "22:00"],
-  ["Close", "18:00", "23:30"],
-].map(([name, start, end], index) => ({
-  id: `ad440000-0000-4000-8000-00000000000${index + 1}`,
-  name: name!,
-  start_time: start!,
-  end_time: end!,
-  archived: false,
-  selectable: true,
-}));
-
 let latest: WeeklyPreference;
 function Harness({ start, weekday = 5, phone = false }: { start: WeeklyPreference; weekday?: number; phone?: boolean }) {
   const [week, setWeek] = useState(start);
@@ -51,7 +33,6 @@ function Harness({ start, weekday = 5, phone = false }: { start: WeeklyPreferenc
         setWeek(next);
         setCopies(nextCopies);
       }}
-      shiftTypes={types}
       timeFormat="12h"
       phone={phone}
     />
@@ -62,7 +43,7 @@ const card = (name: RegExp) => screen.getByRole("radio", { name });
 
 describe("the three cards", () => {
   it("are in the order Available, Unavailable, Some hours and show the day as it is", () => {
-    render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    render(<Harness start={emptyWeeklyPreference()} />);
     const radios = within(screen.getByRole("radiogroup", { name: "Friday" })).getAllByRole("radio");
     expect(radios.map((radio) => radio.textContent)).toEqual([
       "AvailableAll day",
@@ -76,7 +57,7 @@ describe("the three cards", () => {
   });
 
   it("turns the whole day orange for Unavailable, and Some hours starts in the evening", () => {
-    render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    render(<Harness start={emptyWeeklyPreference()} />);
     fireEvent.click(card(/^Unavailable/));
     expect(friday().all_day).toBe(true);
     expect(card(/^Unavailable/).getAttribute("aria-checked")).toBe("true");
@@ -86,11 +67,11 @@ describe("the three cards", () => {
     expect(friday()).toMatchObject({ all_day: false, ranges: [{ start: "18:00", end: "24:00" }] });
     expect(screen.getByText("After 6 PM", { selector: ".dav-band span" })).toBeTruthy();
     fireEvent.click(card(/^Available/));
-    expect(friday()).toMatchObject({ all_day: false, ranges: [], shift_type_ids: [] });
+    expect(friday()).toEqual({ day: 5, all_day: false, ranges: [] });
   });
 
   it("move with the arrow keys like one radio group", () => {
-    render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    render(<Harness start={emptyWeeklyPreference()} />);
     const available = card(/^Available/);
     expect(available.tabIndex).toBe(0);
     expect(card(/^Unavailable/).tabIndex).toBe(-1);
@@ -102,7 +83,7 @@ describe("the three cards", () => {
 
 describe("the strip of hours", () => {
   const evening = () => {
-    const week = emptyWeeklyPreference("time_range");
+    const week = emptyWeeklyPreference();
     week.days[5]!.ranges = [{ start: "18:00", end: "24:00" }];
     return week;
   };
@@ -130,7 +111,7 @@ describe("the strip of hours", () => {
   });
 
   it("draws one range across an empty strip; a short tap blocks two hours", () => {
-    render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    render(<Harness start={emptyWeeklyPreference()} />);
     const track = screen.getByRole("group", { name: "Friday hours, 12 AM to 12 AM" });
     track.getBoundingClientRect = () => ({ left: 0, width: 1440, top: 0, height: 40, right: 1440, bottom: 40, x: 0, y: 0, toJSON: () => ({}) });
     fireEvent.pointerDown(track, { button: 0, clientX: 540, pointerId: 1 });
@@ -160,7 +141,7 @@ describe("the strip of hours", () => {
 
 describe("From and Until", () => {
   it("show a dash on an available day; picking a time starts the range", () => {
-    render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    render(<Harness start={emptyWeeklyPreference()} />);
     const from = screen.getByRole("combobox", { name: "From" }) as HTMLSelectElement;
     const until = screen.getByRole("combobox", { name: "Until" }) as HTMLSelectElement;
     expect(from.selectedOptions[0]!.textContent).toBe("—");
@@ -175,38 +156,33 @@ describe("From and Until", () => {
   });
 
   it("name the two ends of the day plainly, short on the phone", () => {
-    const { unmount } = render(<Harness start={emptyWeeklyPreference("time_range")} />);
+    const { unmount } = render(<Harness start={emptyWeeklyPreference()} />);
     const options = (name: string) =>
       [...(screen.getByRole("combobox", { name }) as HTMLSelectElement).options].map((option) => option.textContent);
     expect(options("From")[1]).toBe("Midnight (12 AM)");
     expect(options("Until").at(-1)).toBe("End of day (12 AM)");
     expect(options("From")).not.toContain("End of day (12 AM)");
     unmount();
-    render(<Harness start={emptyWeeklyPreference("time_range")} phone />);
+    render(<Harness start={emptyWeeklyPreference()} phone />);
     expect(options("From")[1]).toBe("Midnight");
     expect(options("Until").at(-1)).toBe("End of day");
   });
 });
 
-describe("shift types", () => {
-  it("are four live cards; Unavailable marks them all and one tap takes one off", () => {
-    render(<Harness start={emptyWeeklyPreference("shift_type")} />);
-    expect(screen.queryByRole("slider")).toBeNull();
-    expect(card(/^Some shifts/).textContent).toBe("Some shiftsNot certain shifts");
-    const typeButton = (name: string) => screen.getByRole("button", { name: new RegExp(`^${name}`) });
-    expect(types.map((type) => typeButton(type.name).getAttribute("aria-pressed"))).toEqual(["false", "false", "false", "false"]);
-    fireEvent.click(card(/^Unavailable/));
-    expect(types.map((type) => typeButton(type.name).getAttribute("aria-pressed"))).toEqual(["true", "true", "true", "true"]);
-    fireEvent.click(typeButton("Lunch"));
-    expect(friday()).toMatchObject({ all_day: false, shift_type_ids: [types[0]!.id, types[2]!.id, types[3]!.id] });
-    expect(card(/^Some shifts/).getAttribute("aria-checked")).toBe("true");
-    expect(typeButton("Breakfast").textContent).toContain("7 AM – 11 AM");
+// Mert 2026-10-16 ("yalnız saat"): availability is asked in hours only.
+describe("hours only", () => {
+  it("has no shift type cards; Some hours is always the strip", () => {
+    render(<Harness start={emptyWeeklyPreference()} />);
+    expect(screen.queryByRole("radio", { name: /^Some shifts/ })).toBeNull();
+    fireEvent.click(card(/^Some hours/));
+    expect(screen.getAllByRole("slider")).toHaveLength(2);
+    expect(document.querySelector(".dav-types")).toBeNull();
   });
 });
 
 describe("Copy <day> to", () => {
   it("leaves the edited day out, shows each day's state, and follows the edited day", () => {
-    const week = emptyWeeklyPreference("time_range");
+    const week = emptyWeeklyPreference();
     week.days[2]!.all_day = true;
     render(<Harness start={week} />);
     const row = screen.getByRole("group", { name: "Copy Friday to" });

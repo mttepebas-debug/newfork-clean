@@ -265,9 +265,7 @@ export function AvailabilityPage() {
                     )!;
                     const parts = dayLabels(rule, model);
                     const unavailable =
-                      rule.all_day ||
-                      rule.ranges.length > 0 ||
-                      rule.shift_type_ids.length > 0;
+                      rule.all_day || rule.ranges.length > 0;
                     return (
                       <td key={day} data-unavailable={unavailable}>
                         <button
@@ -375,21 +373,9 @@ function dayLabels(day: WeeklyPreferenceDay, model: WeeklyTeamRead) {
       model.time_format,
     );
   if (day.all_day) return [{ label: "All day", detail: "Unavailable all day" }];
-  if (day.ranges.length)
-    return day.ranges.map((hours) => ({
-      label: range(hours.start, hours.end),
-      detail: "Unavailable",
-    }));
-  return day.shift_type_ids.map((id) => {
-    const type = model.shift_types.find((item) => item.id === id);
-    return {
-      label: type?.name ?? "Unavailable shift type",
-      detail: type
-        ? (type.start_time && type.end_time
-            ? range(type.start_time, type.end_time)
-            : "Default hours unavailable") +
-          (type.archived ? " (archived)" : "")
-        : "Shift type details unavailable",
-    };
-  });
+  // Hours only (Mert 2026-10-16, "yalnız saat").
+  return day.ranges.map((hours) => ({
+    label: range(hours.start, hours.end),
+    detail: "Unavailable",
+  }));
 }

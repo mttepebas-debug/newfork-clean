@@ -26,26 +26,22 @@ beforeEach(() => {
   };
 });
 
-const dinner = "ab920000-0000-4000-8000-000000000001";
-function model(mode: "shift_type" | "time_range" = "time_range"): WeeklyPreferenceRead {
+function model(): WeeklyPreferenceRead {
   return {
     employee_id: "ab910000-0000-4000-8000-000000000001",
     employee_name: "Ada Lovelace",
     can_edit_employee: true,
     can_manage: false,
     time_format: "12h",
-    settings: { input_mode: mode, onboarding_required: false, revision: 3 },
+    settings: { onboarding_required: false, revision: 3 },
     employee: {
       revision: 2,
       submitted: true,
       updated_at: "2026-10-09T18:00:00.000Z",
-      preference: emptyWeeklyPreference(mode),
+      preference: emptyWeeklyPreference(),
     },
     manager: null,
-    shift_types: [
-      { id: dinner, name: "Dinner", start_time: "17:00", end_time: "23:00", archived: false, selectable: true },
-      { id: "ab920000-0000-4000-8000-000000000002", name: "Lunch", start_time: "11:00", end_time: "15:00", archived: false, selectable: true },
-    ],
+    shift_types: [],
   };
 }
 function saver(data: WeeklyPreferenceRead) {
@@ -120,8 +116,7 @@ describe("desktop: the days on the left, the day on the right", () => {
       expected_revision: 2,
       settings_revision: 3,
       preference: {
-        input_mode: "time_range",
-        days: emptyWeeklyPreference("time_range").days.map((day) =>
+        days: emptyWeeklyPreference().days.map((day) =>
           day.day === 1 ? { ...day, ranges: [{ start: "18:00", end: "24:00" }] } : day.day === 2 ? { ...day, all_day: true } : day,
         ),
       },
@@ -141,7 +136,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     expect(screen.getByText("Not shared yet")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0].preference).toEqual(emptyWeeklyPreference("time_range"));
+    expect(onSave.mock.calls[0]![0].preference).toEqual(emptyWeeklyPreference());
   });
 
   it("discards back to the saved week and drops the copies", () => {
@@ -152,28 +147,6 @@ describe("desktop: the days on the left, the day on the right", () => {
     fireEvent.click(screen.getByRole("button", { name: "Discard" }));
     expect(radio(/^Available/).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("button", { name: "Tuesday, now Available" }).getAttribute("aria-pressed")).toBe("false");
-  });
-
-  it("asks a saved day with several ranges to keep one before saving", async () => {
-    const data = model();
-    data.employee.preference.days[1]!.ranges = [
-      { start: "09:00", end: "12:00" },
-      { start: "17:00", end: "24:00" },
-    ];
-    const onSave = saver(data);
-    render(<MyAvailabilityForm model={data} onSave={onSave} />);
-    expect(dayRow(1).textContent).toBe("MondayUnavailable 9:00 AM – 12:00 PM, after 5:00 PM");
-    fireEvent.click(dayRow(3));
-    fireEvent.click(radio(/^Unavailable/));
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("Keep one time range on Monday.");
-    expect(onSave).not.toHaveBeenCalled();
-    // Touching Monday's strip brings it down to one range.
-    fireEvent.click(dayRow(1));
-    fireEvent.keyDown(screen.getByRole("slider", { name: "Start of unavailable hours" }), { key: "ArrowRight" });
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0].preference.days[1]!.ranges).toEqual([{ start: "09:30", end: "24:00" }]);
   });
 
   it("keeps a dirty draft and the revision it read through a live refresh", async () => {
@@ -218,17 +191,11 @@ describe("desktop: the days on the left, the day on the right", () => {
     expect(screen.queryByRole("button", { name: "Reload" }) !== null).toBe(offered);
   });
 
-  it("lets a type no longer offered be taken off a day that holds it", () => {
-    const data = model("shift_type");
-    data.shift_types[0]!.archived = true;
-    data.shift_types[0]!.selectable = false;
-    data.employee.preference.days[1]!.shift_type_ids = [dinner];
-    render(<MyAvailabilityForm model={data} onSave={vi.fn()} />);
-    const option = screen.getByRole("button", { name: /^Dinner/ });
-    expect(option.textContent).toContain("5 PM – 11 PM · Previous");
-    fireEvent.click(option);
-    expect(screen.queryByRole("button", { name: /^Dinner/ })).toBeNull();
-    expect(radio(/^Available/).getAttribute("aria-checked")).toBe("true");
+  // Mert 2026-10-16 ("yalnız saat"): the day is asked in hours, never shift types.
+  it("asks for hours only", () => {
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} />);
+    expect(screen.queryByRole("radio", { name: /^Some shifts/ })).toBeNull();
+    expect(radio(/^Some hours/)).toBeTruthy();
   });
 });
 

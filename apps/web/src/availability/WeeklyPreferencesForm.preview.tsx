@@ -16,7 +16,6 @@ import { PublishReturnPreview } from "../schedule/components/PublishReturn.previ
 
 const params = new URLSearchParams(location.search);
 if (["preflight", "publish-return"].includes(params.get("view") ?? "")) void import("../styles.css");
-const mode = params.get("mode") === "time" ? "time_range" : "shift_type";
 const audience = params.get("view") === "employee" ? "employee" : "manager";
 const preflight: SchedulePublicationPreview = {
   status: "override_required", workspace_id: "ad420000-0000-4000-8000-000000000091",
@@ -30,42 +29,20 @@ const preflight: SchedulePublicationPreview = {
     message: "This shift overlaps unavailable hours.",
   })),
 };
-const employee = emptyWeeklyPreference(mode);
-const reminder = emptyWeeklyPreference(mode);
+const employee = emptyWeeklyPreference();
+const reminder = emptyWeeklyPreference();
 employee.days[0]!.all_day = true;
 reminder.days[0]!.all_day = true;
-const shiftTypes = [
-  "Lunch",
-  "Dinner",
-  "Late dinner",
-  "Weekend extended service",
-].map((name, index) => ({
-  id: `ad420000-0000-4000-8000-00000000000${index + 1}`,
-  name,
-  start_time: ["11:00", "17:00", "21:00", "10:00"][index]!,
-  end_time: ["16:00", "22:00", "02:00", "23:00"][index]!,
-  archived: false,
-  selectable: true,
-}));
-if (mode === "shift_type") {
-  employee.days[5]!.shift_type_ids = [shiftTypes[1]!.id];
-  reminder.days[6]!.shift_type_ids = [shiftTypes[2]!.id];
-} else {
-  employee.days[5]!.ranges = [{ start: "17:00", end: "22:00" }];
-  reminder.days[6]!.ranges = [{ start: "09:00", end: "17:00" }];
-}
+employee.days[5]!.ranges = [{ start: "17:00", end: "22:00" }];
+reminder.days[6]!.ranges = [{ start: "09:00", end: "17:00" }];
 
 function Preview() {
   const [settingsModel, setSettingsModel] = useState<WeeklyPreferenceSettingsRead>({
     settings: {
-      input_mode: mode,
       onboarding_required: false,
       revision: 0,
     },
     can_edit: true,
-    missing_shift_types: params.has("missing")
-      ? [{ id: shiftTypes[0]!.id, name: "Lunch" }]
-      : [],
   });
   const [model, setModel] = useState<WeeklyPreferenceRead>({
     employee_id: "ad420000-0000-4000-8000-000000000099",
@@ -74,7 +51,6 @@ function Preview() {
     can_manage: true,
     time_format: "24h",
     settings: {
-      input_mode: mode,
       onboarding_required: false,
       revision: 1,
     },
@@ -100,7 +76,7 @@ function Preview() {
         "Confirm the closing shift before publishing.",
       ],
     },
-    shift_types: shiftTypes,
+    shift_types: [],
   });
   async function save(command: WeeklyPreferenceSave) {
     const next = structuredClone(model);
@@ -135,7 +111,6 @@ function Preview() {
               const next = {
                 ...settingsModel,
                 settings: {
-                  input_mode: command.input_mode,
                   onboarding_required: command.onboarding_required,
                   revision: settingsModel.settings.revision + 1,
                 },

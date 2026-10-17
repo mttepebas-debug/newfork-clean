@@ -33,7 +33,6 @@ function model(): WeeklyPreferenceRead {
     can_edit_employee: true,
     can_manage: false,
     settings: {
-      input_mode: "time_range",
       onboarding_required: false,
       revision: 0,
     },
@@ -41,7 +40,7 @@ function model(): WeeklyPreferenceRead {
       revision: 0,
       submitted: false,
       updated_at: null,
-      preference: emptyWeeklyPreference("time_range"),
+      preference: emptyWeeklyPreference(),
     },
     manager: null,
     shift_types: [],

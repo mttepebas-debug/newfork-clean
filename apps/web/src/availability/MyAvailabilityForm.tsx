@@ -46,7 +46,7 @@ type Props = {
 type Sheet = { weekday: number; base: WeeklyPreference; draft: WeeklyPreference; copies: Copies };
 
 const weekOf = (model: WeeklyPreferenceRead) =>
-  model.employee.preference ?? emptyWeeklyPreference(model.settings.input_mode);
+  model.employee.preference ?? emptyWeeklyPreference();
 const sharedOn = (value: string | null) =>
   value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
 
@@ -80,7 +80,6 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
     model.settings.revision < baseline.settings.revision
       ? baseline
       : model;
-  const shiftTypes = model.shift_types;
   const timeFormat = model.time_format;
 
   function reset(next: WeeklyPreferenceRead) {
@@ -213,7 +212,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
   const row = (weekday: number, onClick: () => void, current?: boolean) => {
     const day = week.days.find((item) => item.day === weekday)!;
     // Green when the day is open, orange when any of it is not (Mert 2026-10-16).
-    const tone = dayTone(day, shiftTypes, timeFormat);
+    const tone = dayTone(day, timeFormat);
     return (
       <button
         key={weekday}
@@ -283,7 +282,6 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
                 weekday={sheet.weekday}
                 copies={sheet.copies}
                 onChange={(draft, nextCopies) => setSheet({ ...sheet, draft, copies: nextCopies })}
-                shiftTypes={shiftTypes}
                 timeFormat={timeFormat}
                 disabled={saving}
                 phone
@@ -322,7 +320,6 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
                     setCopies(nextCopies);
                     setError("");
                   }}
-                  shiftTypes={shiftTypes}
                   timeFormat={timeFormat}
                   disabled={saving || !canEdit}
                 />

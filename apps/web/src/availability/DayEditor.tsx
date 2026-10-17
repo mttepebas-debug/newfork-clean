@@ -1,20 +1,6 @@
 import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
-import {
-  Ban,
-  Check,
-  ChevronDown,
-  CircleCheck,
-  Clock,
-  Moon,
-  Sun,
-  Sunrise,
-  Sunset,
-} from "lucide-react";
-import type {
-  PreferenceShiftType,
-  WeeklyPreference,
-  WeeklyPreferenceDay,
-} from "@newfork/shared";
+import { Ban, Check, ChevronDown, CircleCheck, Clock } from "lucide-react";
+import type { WeeklyPreference, WeeklyPreferenceDay } from "@newfork/shared";
 import {
   DAY_END,
   DAY_START,
@@ -23,7 +9,6 @@ import {
   WEEKDAY_NAMES,
   applyDay,
   clamp,
-  compactClock,
   dayState,
   dayStatusText,
   fullClock,
@@ -33,9 +18,7 @@ import {
   shortClock,
   shortDay,
   snap,
-  toMinutes,
   toggleCopy,
-  toggleShiftType,
   withRange,
   type Copies,
   type DayState,
@@ -46,8 +29,8 @@ import "./day-availability.css";
 
 // One day of the employee's week (Mert 2026-10-16, "A · Alt sayfa"; the same
 // body on the desktop panel and in the phone's sheet): three cards, a strip of
-// hours that always shows the day as it is (or the shift types), From / Until
-// and "Copy <day> to".
+// hours that always shows the day as it is, From / Until and "Copy <day> to".
+// Hours only (Mert 2026-10-16, "yalnız saat").
 
 type Props = {
   week: WeeklyPreference;
@@ -55,7 +38,6 @@ type Props = {
   weekday: number;
   copies: Copies;
   onChange: (week: WeeklyPreference, copies: Copies) => void;
-  shiftTypes: readonly PreferenceShiftType[];
   timeFormat: TimeFormat;
   /** The phone's sheet: shorter names in the time fields, tighter cards. */
   phone?: boolean;
@@ -67,37 +49,27 @@ export function DayEditor({
   weekday,
   copies,
   onChange,
-  shiftTypes,
   timeFormat,
   phone = false,
   disabled = false,
 }: Props) {
   const day = week.days.find((item) => item.day === weekday)!;
   const name = WEEKDAY_NAMES[weekday]!;
-  const mode = week.input_mode;
-  const types = mode === "shift_type";
   const state = dayState(day);
   const put = (rule: WeeklyPreferenceDay) => onChange(applyDay(week, weekday, rule, copies), copies);
-  const selectable = shiftTypes.filter((type) => type.selectable);
 
   const cards: { value: DayState; title: string; detail: string; Icon: typeof Ban }[] = [
     { value: "free", title: "Available", detail: "All day", Icon: CircleCheck },
     { value: "off", title: "Unavailable", detail: "All day", Icon: Ban },
-    {
-      value: "some",
-      title: types ? "Some shifts" : "Some hours",
-      detail: types ? "Not certain shifts" : "Not at certain hours",
-      Icon: Clock,
-    },
+    { value: "some", title: "Some hours", detail: "Not at certain hours", Icon: Clock },
   ];
   const cardsRef = useRef<HTMLDivElement>(null);
-  const choose = (value: DayState) => put(setDayState(day, value, mode, shiftTypes));
+  const choose = (value: DayState) => put(setDayState(day, value));
   const cardKey = (event: KeyboardEvent, index: number) => {
     const move = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[event.key];
     if (!move) return;
     event.preventDefault();
     const next = cards[(index + move + cards.length) % cards.length]!;
-    if (next.value === "some" && types && !selectable.length) return;
     choose(next.value);
     cardsRef.current?.querySelector<HTMLElement>(`[data-card="${next.value}"]`)?.focus();
   };
@@ -114,7 +86,7 @@ export function DayEditor({
             className={`dav-card-option is-${value}`}
             aria-checked={state === value}
             tabIndex={state === value ? 0 : -1}
-            disabled={disabled || (value === "some" && types && !selectable.length)}
+            disabled={disabled}
             onClick={() => choose(value)}
             onKeyDown={(event) => cardKey(event, index)}
           >
@@ -129,26 +101,20 @@ export function DayEditor({
         ))}
       </div>
       <div className="dav-tool">
-        {types ? (
-          <ShiftTypeCards day={day} shiftTypes={shiftTypes} timeFormat={timeFormat} disabled={disabled} onChange={put} />
-        ) : (
-          <>
-            <TimeStrip
-              dayName={name}
-              range={rangeOf(day)}
-              timeFormat={timeFormat}
-              disabled={disabled}
-              onCommit={(range) => put(withRange(day, range))}
-            />
-            <TimeFields
-              range={rangeOf(day)}
-              timeFormat={timeFormat}
-              phone={phone}
-              disabled={disabled}
-              onCommit={(range) => put(withRange(day, range))}
-            />
-          </>
-        )}
+        <TimeStrip
+          dayName={name}
+          range={rangeOf(day)}
+          timeFormat={timeFormat}
+          disabled={disabled}
+          onCommit={(range) => put(withRange(day, range))}
+        />
+        <TimeFields
+          range={rangeOf(day)}
+          timeFormat={timeFormat}
+          phone={phone}
+          disabled={disabled}
+          onCommit={(range) => put(withRange(day, range))}
+        />
       </div>
       <div className="dav-copy">
         <span className="dav-copy-heading" id={`dav-copy-${weekday}-${phone ? "p" : "d"}`}>
@@ -164,7 +130,7 @@ export function DayEditor({
                 type="button"
                 className="dav-chip"
                 aria-pressed={pressed}
-                aria-label={`${WEEKDAY_NAMES[item]}, ${pressed ? `same as ${name}` : `now ${dayStatusText(other, shiftTypes, timeFormat)}`}`}
+                aria-label={`${WEEKDAY_NAMES[item]}, ${pressed ? `same as ${name}` : `now ${dayStatusText(other, timeFormat)}`}`}
                 disabled={disabled}
                 onClick={() => {
                   const next = toggleCopy(week, weekday, item, copies);
@@ -397,55 +363,3 @@ function TimeFields({
   );
 }
 
-const typeIcon = (type: PreferenceShiftType) => {
-  const start = type.start_time ? toMinutes(type.start_time) : 720;
-  return start < 11 * 60 ? Sunrise : start < 16 * 60 ? Sun : start < 20 * 60 ? Sunset : Moon;
-};
-
-function ShiftTypeCards({
-  day,
-  shiftTypes,
-  timeFormat,
-  disabled,
-  onChange,
-}: {
-  day: WeeklyPreferenceDay;
-  shiftTypes: readonly PreferenceShiftType[];
-  timeFormat: TimeFormat;
-  disabled: boolean;
-  onChange: (day: WeeklyPreferenceDay) => void;
-}) {
-  // A type no longer offered still shows while the day holds it, so it can be taken off.
-  const shown = shiftTypes.filter((type) => type.selectable || day.shift_type_ids.includes(type.id));
-  if (!shown.length) return <p className="dav-empty">No shift types available</p>;
-  return (
-    <div className="dav-types">
-      {shown.map((type) => {
-        const pressed = (day.all_day && type.selectable) || day.shift_type_ids.includes(type.id);
-        const Icon = typeIcon(type);
-        return (
-          <button
-            key={type.id}
-            type="button"
-            className="dav-type"
-            aria-pressed={pressed}
-            disabled={disabled || (!type.selectable && !pressed)}
-            onClick={() => onChange(toggleShiftType(day, type.id, shiftTypes))}
-          >
-            <Icon size={18} aria-hidden className="dav-type-icon" />
-            <b>{type.name}</b>
-            <small>
-              {type.start_time && type.end_time
-                ? `${compactClock(toMinutes(type.start_time), timeFormat)} – ${compactClock(toMinutes(type.end_time), timeFormat)}`
-                : "Default hours need updating"}
-              {type.selectable ? "" : " · Previous"}
-            </small>
-            <span className="dav-type-mark" aria-hidden>
-              {pressed ? <Ban size={14} /> : null}
-            </span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}

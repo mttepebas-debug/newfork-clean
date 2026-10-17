@@ -20,7 +20,6 @@ const patio = "11000000-0000-4000-8000-000000000002";
 const alex = "15000000-0000-4000-8000-000000000001";
 const jordan = "15000000-0000-4000-8000-000000000002";
 const sam = "15000000-0000-4000-8000-000000000003";
-const dinner = "15000000-0000-4000-8000-000000000004";
 
 // What the core lets the reader do; a test that needs less sets it first.
 let actions: string[] = ["employee.read"];
@@ -47,7 +46,7 @@ vi.mock("../employees/EmployeeDrawer", () => ({
   ),
 }));
 function fixture(): WeeklyTeamRead {
-  const preference = emptyWeeklyPreference("time_range");
+  const preference = emptyWeeklyPreference();
   preference.days[1]!.ranges = [{ start: "09:00", end: "17:00" }];
   preference.days[2]!.all_day = true;
   return {
@@ -56,14 +55,15 @@ function fixture(): WeeklyTeamRead {
       { id: patio, name: "Patio" },
     ],
     time_format: "24h",
-    shift_types: [],
     employees: [
       {
         id: alex,
         display_name: "Alex Kim",
         employee_code: "E-001",
+        job_name: "Server",
         location_ids: [main],
         submitted: true,
+        updated_at: "2026-10-15T18:00:00.000Z",
         preference,
         can_open: true,
       },
@@ -71,18 +71,22 @@ function fixture(): WeeklyTeamRead {
         id: jordan,
         display_name: "Jordan Lee",
         employee_code: "E-002",
+        job_name: null,
         location_ids: [patio],
         submitted: false,
-        preference: emptyWeeklyPreference("time_range"),
+        updated_at: null,
+        preference: emptyWeeklyPreference(),
         can_open: true,
       },
       {
         id: sam,
         display_name: "Sam Chen",
         employee_code: "E-003",
+        job_name: "Host",
         location_ids: [main],
         submitted: true,
-        preference: emptyWeeklyPreference("time_range"),
+        updated_at: "2026-10-14T18:00:00.000Z",
+        preference: emptyWeeklyPreference(),
         can_open: false,
       },
     ],
@@ -231,33 +235,13 @@ describe("weekly team availability", () => {
     expect(screen.queryByText("Alex Kim")).toBeNull();
     expect(screen.queryByRole("dialog")).toBeNull();
   });
-  it("shows current type hours and keeps missing or archived types visibly unavailable", async () => {
-    const model = fixture();
-    model.employees[0]!.preference = emptyWeeklyPreference("shift_type");
-    model.employees[0]!.preference.days[1]!.shift_type_ids = [dinner, sam];
-    model.shift_types = [
-      {
-        id: dinner,
-        name: "Dinner",
-        start_time: "18:00",
-        end_time: "23:00",
-        archived: true,
-        selectable: false,
-      },
-    ];
-    vi.mocked(loadWeeklyTeam).mockResolvedValue(model);
+  // Mert 2026-10-16 ("yalnız saat"): a day reads in hours only.
+  it("names a day's hours, never shift types", async () => {
+    vi.mocked(loadWeeklyTeam).mockResolvedValue(fixture());
     renderPage();
-    expect((await screen.findByText("Dinner")).getAttribute("title")).toBe(
-      "18:00 – 23:00 (archived)",
-    );
-    expect(
-      screen
-        .getByRole("button", {
-          name: "Alex Kim Monday: Dinner, Unavailable shift type",
-        })
-        .closest("td")
-        ?.getAttribute("data-unavailable"),
-    ).toBe("true");
+    const monday = await screen.findByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" });
+    expect(monday.closest("td")?.getAttribute("data-unavailable")).toBe("true");
+    expect(screen.queryByText(/shift type/i)).toBeNull();
   });
   it("retries a failed initial read", async () => {
     vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(

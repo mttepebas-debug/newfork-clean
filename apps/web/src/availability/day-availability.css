@@ -580,63 +580,6 @@
   outline: 0;
 }
 
-/* shift types: one live card each */
-.dav-types {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 8px;
-}
-.dav-type {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 3px;
-  min-height: 84px;
-  margin: 0;
-  padding: 12px;
-  border: 1px solid var(--theme-border);
-  border-radius: 10px;
-  background: var(--theme-surface);
-  color: var(--theme-muted-strong);
-  text-align: left;
-}
-.dav-type:hover:not(:disabled) {
-  border-color: var(--theme-border-hover);
-}
-.dav-type:disabled {
-  opacity: 0.5;
-}
-.dav-type b {
-  margin-top: 4px;
-  font-size: 13px;
-  font-weight: 650;
-  color: var(--theme-text);
-}
-.dav-type small {
-  font-size: 11.5px;
-  color: var(--theme-muted);
-}
-.dav-type[aria-pressed="true"] {
-  border-color: var(--dav-line);
-  background: var(--dav-block);
-  box-shadow: 0 0 0 1px var(--dav-line);
-  color: var(--theme-availability-text);
-}
-.dav-type[aria-pressed="true"] :is(b, small) {
-  color: var(--theme-availability-text);
-}
-.dav-type-mark {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-}
-.dav-empty {
-  margin: 0;
-  font-size: 13px;
-  color: var(--theme-muted);
-}
-
 /* copy the day to other days: the edited day is not in the row */
 .dav-copy {
   display: flex;
@@ -847,29 +790,6 @@
 /* 16 px: iOS does not zoom into a field this size. */
 .dav-day.is-phone .dav-field select {
   font-size: 16px;
-}
-.dav-day.is-phone .dav-types {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 6px;
-}
-.dav-day.is-phone .dav-type {
-  display: grid;
-  grid-template-columns: 20px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 10px;
-  min-height: 0;
-  padding: 10px 12px;
-}
-.dav-day.is-phone .dav-type-icon {
-  grid-row: 1 / span 2;
-}
-.dav-day.is-phone .dav-type b {
-  margin-top: 0;
-}
-.dav-day.is-phone .dav-type-mark {
-  top: 50%;
-  right: 10px;
-  transform: translateY(-50%);
 }
 .dav-day.is-phone .dav-chips {
   display: grid;

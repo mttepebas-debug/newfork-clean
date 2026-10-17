@@ -147,7 +147,6 @@ function weeklyModel(): WeeklyPreferenceRead {
     time_format: "24h",
     shift_types: [],
     settings: {
-      input_mode: "time_range",
       onboarding_required: true,
       revision: 0,
     },
@@ -155,7 +154,7 @@ function weeklyModel(): WeeklyPreferenceRead {
       revision: 0,
       submitted: false,
       updated_at: null,
-      preference: emptyWeeklyPreference("time_range"),
+      preference: emptyWeeklyPreference(),
     },
   };
 }
@@ -358,7 +357,7 @@ describe("EmployeeOnboardingPage", () => {
       expect.objectContaining({
         employee_id: onboarding.employee_id,
         source: "employee",
-        preference: emptyWeeklyPreference("time_range"),
+        preference: emptyWeeklyPreference(),
       }),
       expect.any(String),
       true,

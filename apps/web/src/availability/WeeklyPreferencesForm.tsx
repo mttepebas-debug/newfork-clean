@@ -50,7 +50,7 @@ function PreferenceForm({ model, audience, onSave, onReload }: Props) {
   // A mode change converts every saved week (AVAIL-001): a saved week is
   // always in the current mode.
   const [preference, setPreference] = useState(
-    () => source?.preference ?? emptyWeeklyPreference(model.settings.input_mode),
+    () => source?.preference ?? emptyWeeklyPreference(),
   );
   const [enabled, setEnabled] = useState(model.manager?.enabled ?? true);
   const [notes, setNotes] = useState(
@@ -79,7 +79,7 @@ function PreferenceForm({ model, audience, onSave, onReload }: Props) {
     const record = manager ? next.manager : next.employee;
     setBaseline(next);
     setPreference(
-      record?.preference ?? emptyWeeklyPreference(next.settings.input_mode),
+      record?.preference ?? emptyWeeklyPreference(),
     );
     setNotes(next.manager?.notes ?? Array<string>(7).fill(""));
     setEnabled(next.manager?.enabled ?? true);
@@ -163,7 +163,6 @@ function PreferenceForm({ model, audience, onSave, onReload }: Props) {
   const employeeWeek = (
     <WeeklyUnavailableEditor
       value={model.employee.preference}
-      shiftTypes={model.shift_types}
       readOnly
       timeFormat={model.time_format}
     />
@@ -298,7 +297,7 @@ function PreferenceForm({ model, audience, onSave, onReload }: Props) {
                   title="Clear selections; keep notes"
                   onClick={() => {
                     setPreference(
-                      emptyWeeklyPreference(baseline.settings.input_mode),
+                      emptyWeeklyPreference(),
                     );
                     changed(true);
                   }}
@@ -318,7 +317,6 @@ function PreferenceForm({ model, audience, onSave, onReload }: Props) {
                 setPreference(next);
                 changed(true);
               }}
-              shiftTypes={model.shift_types}
               disabled={locked}
               timeFormat={model.time_format}
               {...(manager

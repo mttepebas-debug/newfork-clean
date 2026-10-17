@@ -1,10 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, Info, MessageSquare, Plus, X } from "lucide-react";
-import {
-  type PreferenceShiftType,
-  type WeeklyPreference,
-  type WeeklyPreferenceDay,
-} from "@newfork/shared";
+import { MessageSquare, Plus, X } from "lucide-react";
+import { type WeeklyPreference, type WeeklyPreferenceDay } from "@newfork/shared";
 import {
   AvailabilityClockInput,
   formatAvailabilityClock,
@@ -25,7 +21,6 @@ const displayDays = [1, 2, 3, 4, 5, 6, 0];
 export function WeeklyUnavailableEditor({
   value,
   onChange,
-  shiftTypes,
   disabled = false,
   readOnly = false,
   notes,
@@ -34,7 +29,6 @@ export function WeeklyUnavailableEditor({
 }: {
   value: WeeklyPreference;
   onChange?: (value: WeeklyPreference) => void;
-  shiftTypes: readonly PreferenceShiftType[];
   disabled?: boolean;
   readOnly?: boolean;
   notes?: readonly string[];
@@ -42,7 +36,6 @@ export function WeeklyUnavailableEditor({
   timeFormat?: "12h" | "24h";
 }) {
   const [openNote, setOpenNote] = useState<number | null>(null);
-  const [showHours, setShowHours] = useState(false);
   // WCAG 2.4.3: after a range comes or goes, focus lands on the control
   // named here once it has rendered, never on the page.
   const root = useRef<HTMLDivElement>(null);
@@ -59,7 +52,7 @@ export function WeeklyUnavailableEditor({
   const removeLabel = (day: number, index: number) =>
     `Remove ${weekdays[day]} hours${index ? ` ${index + 1}` : ""}`;
   const manager = notes !== undefined;
-  // A day holds several hours in time-range mode (M4); one is edited in place.
+  // Hours only, one range a day (Mert 2026-10-16); it is edited in place.
   const setRange = (
     row: WeeklyPreferenceDay,
     index: number,
@@ -77,32 +70,9 @@ export function WeeklyUnavailableEditor({
         row.day === day ? { ...row, ...patch } : row,
       ),
     });
-  const typeHours = (type: PreferenceShiftType) =>
-    type.start_time && type.end_time
-      ? `${formatAvailabilityClock(type.start_time, timeFormat)} – ${formatAvailabilityClock(type.end_time, timeFormat)}${type.archived ? " (archived)" : ""}`
-      : "Default hours need updating";
-  // M3, D6: the types a day can take now; marking all of them is all day.
-  const selectableTypes = shiftTypes.filter((type) => type.selectable);
-  const toggleType = (row: WeeklyPreferenceDay, id: string) => {
-    const next = row.shift_type_ids.includes(id)
-      ? row.shift_type_ids.filter((item) => item !== id)
-      : [...row.shift_type_ids, id];
-    update(
-      row.day,
-      selectableTypes.length > 0 &&
-        selectableTypes.every((type) => next.includes(type.id))
-        ? { all_day: true, shift_type_ids: [], ranges: [] }
-        : { shift_type_ids: next },
-    );
-  };
-  // One range a day (Mert 2026-10-16, "kural da 1'e insin"); a saved day with
-  // more (a mode change) can only lose ranges here.
+  // One range a day (Mert 2026-10-16, "kural da 1'e insin").
   const nextRange = (row: WeeklyPreferenceDay) =>
     row.ranges.length ? null : { start: "09:00", end: "17:00" };
-  const savedTypes = new Set(value.days.flatMap((day) => day.shift_type_ids));
-  const options = shiftTypes.filter(
-    (type) => type.selectable || savedTypes.has(type.id),
-  );
   return (
     <div
       ref={root}
@@ -117,28 +87,7 @@ export function WeeklyUnavailableEditor({
           <i className="red" />
           Unavailable
         </span>
-        {value.input_mode === "shift_type" && (
-          <button
-            type="button"
-            className="weekly-icon"
-            aria-label="Shift default hours"
-            aria-expanded={showHours}
-            onClick={() => setShowHours(!showHours)}
-          >
-            <Info size={16} />
-          </button>
-        )}
       </div>
-      {showHours && (
-        <dl className="weekly-hours">
-          {options.map((type) => (
-            <div key={type.id}>
-              <dt>{type.name}</dt>
-              <dd>{typeHours(type)}</dd>
-            </div>
-          ))}
-        </dl>
-      )}
       <div className="weekly-unavailable-table">
         <div className="weekly-unavailable-head">
           <span>Day</span>
@@ -148,8 +97,7 @@ export function WeeklyUnavailableEditor({
         </div>
         {displayDays.map((day) => {
           const row = value.days.find((item) => item.day === day)!;
-          const unavailable =
-            row.all_day || row.shift_type_ids.length > 0 || row.ranges.length > 0;
+          const unavailable = row.all_day || row.ranges.length > 0;
           const locked = disabled || readOnly;
           return (
             <div
@@ -166,23 +114,6 @@ export function WeeklyUnavailableEditor({
                 {readOnly ? (
                   row.all_day ? (
                     <span className="weekly-preference-tag">All day</span>
-                  ) : value.input_mode === "shift_type" ? (
-                    row.shift_type_ids.length ? (
-                      row.shift_type_ids.map((id) => {
-                        const type = shiftTypes.find((type) => type.id === id);
-                        return (
-                          <span
-                            key={id}
-                            className="weekly-preference-tag"
-                            title={type ? typeHours(type) : "Saved shift type"}
-                          >
-                            {type?.name ?? "Saved shift type"}
-                          </span>
-                        );
-                      })
-                    ) : (
-                      <span className="weekly-empty">&mdash;</span>
-                    )
                   ) : row.ranges.length ? (
                     row.ranges.map((range) => (
                       <span key={range.start} className="weekly-preference-tag">
@@ -192,36 +123,6 @@ export function WeeklyUnavailableEditor({
                     ))
                   ) : (
                     <span className="weekly-empty">&mdash;</span>
-                  )
-                ) : value.input_mode === "shift_type" ? (
-                  options.length ? (
-                    options.map((type) => {
-                      const selected = row.shift_type_ids.includes(type.id);
-                      return (
-                        <button
-                          key={type.id}
-                          type="button"
-                          title={typeHours(type)}
-                          className={`weekly-shift-option ${selected ? "selected" : ""}`}
-                          aria-label={`${weekdays[day]} ${type.name} unavailable`}
-                          aria-pressed={selected}
-                          disabled={
-                            locked ||
-                            row.all_day ||
-                            (!type.selectable && !selected)
-                          }
-                          onClick={() => toggleType(row, type.id)}
-                        >
-                          {selected ? <Check size={13} /> : <Plus size={13} />}
-                          <span>{type.name}</span>
-                          {!type.selectable && <small>Previous</small>}
-                        </button>
-                      );
-                    })
-                  ) : (
-                    <span className="weekly-empty">
-                      No shift types available
-                    </span>
                   )
                 ) : row.all_day ? (
                   <span className="weekly-empty">All day unavailable</span>
@@ -308,7 +209,6 @@ export function WeeklyUnavailableEditor({
                     onChange={(event) =>
                       update(day, {
                         all_day: event.target.checked,
-                        shift_type_ids: [],
                         ranges: [],
                       })
                     }

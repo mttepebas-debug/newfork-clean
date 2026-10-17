@@ -1,14 +1,10 @@
-import type {
-  PreferenceShiftType,
-  WeeklyPreference,
-  WeeklyPreferenceDay,
-} from "@newfork/shared";
+import type { WeeklyPreference, WeeklyPreferenceDay } from "@newfork/shared";
 
 // The employee's week, one day at a time (KARARLAR "Müsaitlik giriş ekranı =
 // 4 · Gün gün"; Mert 2026-10-16 "A · Alt sayfa"). A day is available, or
 // unavailable all day, or unavailable some hours: one range a day (Mert
-// 2026-10-16, "kural da 1'e insin") on a strip from 12 AM to 12 AM, or some
-// shift types. Everything here is pure; the screens draw it.
+// 2026-10-16, "kural da 1'e insin") on a strip from 12 AM to 12 AM. Hours only
+// (Mert 2026-10-16, "yalnız saat"). Everything here is pure; the screens draw it.
 
 export type TimeFormat = "12h" | "24h";
 export type DayState = "free" | "off" | "some";
@@ -74,40 +70,28 @@ export function rangeText([start, end]: MinuteRange, format: TimeFormat) {
 
 export function dayState(day: WeeklyPreferenceDay): DayState {
   if (day.all_day) return "off";
-  return day.ranges.length || day.shift_type_ids.length ? "some" : "free";
+  return day.ranges.length ? "some" : "free";
 }
 
-/** The day as one range: all day is the whole strip; several saved ranges are edited as one. */
+/** The day as one range: all day is the whole strip. */
 export function rangeOf(day: WeeklyPreferenceDay): MinuteRange | null {
   if (day.all_day) return [DAY_START, DAY_END];
-  const first = day.ranges[0];
-  const last = day.ranges.at(-1);
-  return first && last ? [toMinutes(first.start), toMinutes(last.end)] : null;
+  const range = day.ranges[0];
+  return range ? [toMinutes(range.start), toMinutes(range.end)] : null;
 }
 
 export function withRange(day: WeeklyPreferenceDay, [start, end]: MinuteRange): WeeklyPreferenceDay {
   if (start <= DAY_START && end >= DAY_END)
-    return { ...day, all_day: true, ranges: [], shift_type_ids: [] };
+    return { ...day, all_day: true, ranges: [] };
   return { ...day, all_day: false, ranges: [{ start: toClock(start), end: toClock(end) }] };
 }
 
-export function dayStatusText(
-  day: WeeklyPreferenceDay,
-  shiftTypes: readonly PreferenceShiftType[],
-  format: TimeFormat,
-) {
+export function dayStatusText(day: WeeklyPreferenceDay, format: TimeFormat) {
   const state = dayState(day);
   if (state === "off") return "Unavailable all day";
   if (state === "free") return "Available";
-  if (day.ranges.length)
-    return day.ranges
-      .map((range) => rangeText([toMinutes(range.start), toMinutes(range.end)], format))
-      .join(", ");
-  // In the order the workspace lists its shift types.
-  const order = shiftTypes.map((type) => type.id);
-  return [...day.shift_type_ids]
-    .sort((a, b) => (order.indexOf(a) + 1 || 999) - (order.indexOf(b) + 1 || 999))
-    .map((id) => shiftTypes.find((type) => type.id === id)?.name ?? "Saved shift type")
+  return day.ranges
+    .map((range) => rangeText([toMinutes(range.start), toMinutes(range.end)], format))
     .join(", ");
 }
 
@@ -121,7 +105,6 @@ export type DayTone = "free" | "blocked";
  */
 export function dayTone(
   day: WeeklyPreferenceDay,
-  shiftTypes: readonly PreferenceShiftType[],
   format: TimeFormat,
 ): { tone: DayTone; label: string; className: string } {
   const state = dayState(day);
@@ -129,8 +112,6 @@ export function dayTone(
   const className = `dav-tone is-${tone}`;
   if (state === "free") return { tone, label: "Available all day", className };
   if (state === "off") return { tone, label: "Unavailable all day", className };
-  if (!day.ranges.length)
-    return { tone, label: `Unavailable for ${dayStatusText(day, shiftTypes, format)}`, className };
   const pieces = day.ranges.map((range) => {
     const [start, end] = [toMinutes(range.start), toMinutes(range.end)];
     if (start <= DAY_START) return `before ${fullClock(end, format)}`;
@@ -142,46 +123,15 @@ export function dayTone(
 
 const evening: MinuteRange = [18 * 60, DAY_END];
 
-export function setDayState(
-  day: WeeklyPreferenceDay,
-  state: DayState,
-  mode: WeeklyPreference["input_mode"],
-  shiftTypes: readonly PreferenceShiftType[],
-): WeeklyPreferenceDay {
-  if (state === "free") return { ...day, all_day: false, ranges: [], shift_type_ids: [] };
-  if (state === "off") return { ...day, all_day: true, ranges: [], shift_type_ids: [] };
+export function setDayState(day: WeeklyPreferenceDay, state: DayState): WeeklyPreferenceDay {
+  if (state === "free") return { ...day, all_day: false, ranges: [] };
+  if (state === "off") return { ...day, all_day: true, ranges: [] };
   if (dayState(day) === "some") return day;
-  if (mode === "time_range") return withRange(day, evening);
-  // The last shift type of the day, the one most often turned down.
-  const selectable = shiftTypes.filter((type) => type.selectable);
-  const last = selectable.at(-1);
-  return last ? { ...day, all_day: false, ranges: [], shift_type_ids: [last.id] } : day;
-}
-
-/** M3: marking every shift type a day can take is all day. */
-export function toggleShiftType(
-  day: WeeklyPreferenceDay,
-  id: string,
-  shiftTypes: readonly PreferenceShiftType[],
-): WeeklyPreferenceDay {
-  const selectable = shiftTypes.filter((type) => type.selectable).map((type) => type.id);
-  const current = day.all_day ? selectable : day.shift_type_ids;
-  const next = current.includes(id) ? current.filter((item) => item !== id) : [...current, id];
-  if (selectable.length > 0 && selectable.every((item) => next.includes(item)))
-    return { ...day, all_day: true, ranges: [], shift_type_ids: [] };
-  const order = shiftTypes.map((type) => type.id);
-  return {
-    ...day,
-    all_day: false,
-    ranges: [],
-    shift_type_ids: [...next].sort((a, b) => order.indexOf(a) - order.indexOf(b)),
-  };
+  return withRange(day, evening);
 }
 
 export const sameDay = (a: WeeklyPreferenceDay, b: WeeklyPreferenceDay) =>
-  a.all_day === b.all_day &&
-  JSON.stringify(a.ranges) === JSON.stringify(b.ranges) &&
-  JSON.stringify([...a.shift_type_ids].sort()) === JSON.stringify([...b.shift_type_ids].sort());
+  a.all_day === b.all_day && JSON.stringify(a.ranges) === JSON.stringify(b.ranges);
 
 /** The weekdays (0 = Sunday) whose rule differs between two weeks. */
 export function changedDays(saved: WeeklyPreference, draft: WeeklyPreference) {
@@ -228,7 +178,7 @@ export function toggleCopy(
   if (copies.days.includes(target)) {
     const { [target]: previous, ...before } = copies.before;
     return {
-      week: replace(week, target, previous ?? { ...dayOf(week, target), all_day: false, ranges: [], shift_type_ids: [] }),
+      week: replace(week, target, previous ?? { ...dayOf(week, target), all_day: false, ranges: [] }),
       copies: { days: copies.days.filter((item) => item !== target), before },
     };
   }
