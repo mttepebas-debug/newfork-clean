@@ -1040,6 +1040,44 @@ describe("What an employee reads (EKRAN-08)", () => {
     fireEvent.click(within(reader).getByRole("button", { name: "Acknowledge" }));
     await waitFor(() => expect(acknowledgeAnnouncement).toHaveBeenCalledWith(workspaceId, id));
   });
+
+  // BILDIRIM-15: a phone alert's tap lands on a post that went out after the list on hand was read.
+  describe("a post newer than the list on hand", () => {
+    const id = "a8200000-0000-4000-8000-000000000081";
+    const fresh = record({
+      id,
+      title: "Walk-in closed",
+      body: "Use the reach-in on the line until Friday.",
+      status: "published",
+      display_status: "published",
+      can_edit: false,
+    });
+    // The list read a moment ago, still fresh for the app (App.tsx keeps lists 30 s).
+    function clientHolding(held: AnnouncementList) {
+      const client = new QueryClient({ defaultOptions: { queries: { retry: false, staleTime: 30_000 } } });
+      client.setQueryData(["announcements", workspaceId], held);
+      return client;
+    }
+    const open = (client: QueryClient) =>
+      renderAt(`/app/announcements/${id}`, <AnnouncementsPage />, ["/app/announcements", "/app/announcements/:announcementId"], client);
+
+    it("asks for the list again and opens the post", async () => {
+      vi.mocked(getAnnouncements).mockReset().mockResolvedValue(list({ can_manage: false, announcements: [fresh] }));
+      open(clientHolding(list({ can_manage: false, announcements: [] })));
+      expect(screen.queryByText("This announcement is no longer available.")).toBeNull();
+      const reader = await screen.findByRole("dialog", { name: "Walk-in closed" });
+      expect(within(reader).getByText("Use the reach-in on the line until Friday.")).toBeTruthy();
+      expect(getAnnouncements).toHaveBeenCalledTimes(1);
+    });
+
+    it("says it is gone only once a fresh list has no such post, asking once", async () => {
+      vi.mocked(getAnnouncements).mockReset().mockResolvedValue(list({ can_manage: false, announcements: [] }));
+      open(clientHolding(list({ can_manage: false, announcements: [] })));
+      expect(await screen.findByText("This announcement is no longer available.")).toBeTruthy();
+      await act(async () => undefined);
+      expect(getAnnouncements).toHaveBeenCalledTimes(1);
+    });
+  });
 });
 
 describe("Important Dates (EKRAN-08)", () => {
