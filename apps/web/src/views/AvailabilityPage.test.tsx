@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import {
   act,
   cleanup,
@@ -5,6 +6,7 @@ import {
   render,
   screen,
   waitFor,
+  within,
 } from "@testing-library/react";
 import { emptyWeeklyPreference, type WeeklyTeamRead } from "@newfork/shared";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -12,8 +14,9 @@ import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { AvailabilityPage } from "./AvailabilityPage";
 import { loadWeeklyTeam } from "../availability/availability-data";
-
+import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import { RequestError } from "../lib/request-error";
+
 const workspace = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const main = "11000000-0000-4000-8000-000000000001";
 const patio = "11000000-0000-4000-8000-000000000002";
@@ -28,6 +31,11 @@ vi.mock("../auth/AuthContext", () => ({
 }));
 vi.mock("../availability/availability-data", () => ({
   loadWeeklyTeam: vi.fn(),
+}));
+vi.mock("../availability/WeeklyPreferencesPanel", () => ({
+  WeeklyPreferencesPanel: (props: { employeeId: string; audience: string; short?: boolean }) => (
+    <div data-testid="panel">{`${props.employeeId}:${props.audience}:${props.short ? "short" : "long"}`}</div>
+  ),
 }));
 vi.mock("../employees/EmployeeDrawer", () => ({
   EmployeeDrawer: ({
@@ -109,67 +117,105 @@ function renderPage(path = "/app/availability") {
   );
   return client;
 }
+const people = () => within(screen.getByRole("navigation", { name: "Employees" })).getAllByRole("button");
+const detail = () => screen.getByRole("region", { name: /Availability of/ });
+
 beforeEach(() => {
   actions = ["employee.read"];
   vi.resetAllMocks();
   vi.mocked(loadWeeklyTeam).mockResolvedValue(fixture());
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.unstubAllGlobals();
+});
 
-describe("weekly team availability", () => {
-  it("shows a fixed Monday-first week with unavailable ranges and available defaults", async () => {
+describe("Availability: the people on the left, the chosen person's week on the right", () => {
+  it("lists each employee with their job and the week as seven dots", async () => {
     renderPage();
-    await screen.findByText("Alex Kim");
+    await screen.findByRole("navigation", { name: "Employees" });
     expect(loadWeeklyTeam).toHaveBeenCalledWith(workspace);
-    expect(
-      screen.getAllByRole("columnheader").map((el) => el.textContent),
-    ).toEqual(["Employee", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]);
-    expect(
-      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Alex Kim Tuesday: All day" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Jordan Lee Monday: Available" }),
-    ).toBeTruthy();
-    expect(
-      screen.getByRole("button", { name: "Sam Chen Monday: Available" }),
-    ).toHaveProperty("disabled", true);
-    expect(
-      screen.queryByText(/Schedule conflicts|Missing availability/),
-    ).toBeNull();
+    expect(people().map((person) => person.textContent)).toEqual([
+      "AKAlex KimServer",
+      "JLJordan LeeNot submitted yet",
+      "SCSam ChenHost",
+    ]);
+    const dots = people()[0]!.querySelectorAll(".avt-dots > i");
+    expect([...dots].map((dot) => dot.className)).toEqual([
+      "is-some", "is-off", "is-free", "is-free", "is-free", "is-free", "is-free",
+    ]);
+    // A week never shared draws no dots.
+    expect(people()[1]!.querySelector(".avt-dots")).toBeNull();
+    // No date picker: availability is one week that repeats (M1).
     expect(document.querySelector('input[type="date"]')).toBeNull();
   });
-  it("names a person by full name only and keeps a day cell to three lines", async () => {
-    const model = fixture();
-    model.employees[0]!.preference.days[1]!.ranges = [
-      { start: "07:00", end: "09:00" },
-      { start: "12:00", end: "14:00" },
-      { start: "18:00", end: "21:00" },
-      { start: "22:00", end: "23:00" },
-    ];
-    vi.mocked(loadWeeklyTeam).mockResolvedValue(model);
+
+  it("shows the first person's week until another is chosen", async () => {
     renderPage();
-    const person = await screen.findByRole("button", { name: "Alex Kim" });
-    expect(person.textContent).toBe("Alex Kim");
-    expect(screen.queryByText("E-001")).toBeNull();
-    const monday = screen.getByRole("button", {
-      name: "Alex Kim Monday: 07:00 – 09:00, 12:00 – 14:00, 18:00 – 21:00, 22:00 – 23:00",
-    });
-    expect(
-      Array.from(monday.querySelectorAll("span")).map((line) => line.textContent),
-    ).toEqual(["07:00 – 09:00", "12:00 – 14:00", "+2 more"]);
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(people()[0]!.getAttribute("aria-current")).toBe("true");
+    expect(within(detail()).getByRole("heading", { name: "Alex Kim" })).toBeTruthy();
+    expect(within(detail()).getByText("Server · Updated Oct 15")).toBeTruthy();
+    expect(detail().querySelector(".avr-sum")?.textContent).toBe(
+      "Alex prefers not to work Mon 09:00 – 17:00 and Tue all day.",
+    );
+    const boxes = within(detail()).getAllByRole("listitem");
+    expect(boxes).toHaveLength(7);
+    expect(boxes[0]!.textContent).toContain("Unavailable 09:00 – 17:00");
+    expect(boxes[2]!.textContent).toContain("Available all day");
+    fireEvent.click(people()[1]!);
+    expect(people()[1]!.getAttribute("aria-current")).toBe("true");
+    expect(within(detail()).getByText("Not submitted")).toBeTruthy();
+    expect(within(detail()).getByText("Jordan hasn't shared availability yet.")).toBeTruthy();
+    expect(screen.getByTestId("url").textContent).toBe(`?person=${jordan}`);
   });
-  it("keeps the heading row over an empty view with its two lines", async () => {
-    vi.mocked(loadWeeklyTeam).mockResolvedValue({ ...fixture(), employees: [] });
+
+  it("opens the person's profile in the Employees drawer and keeps the filters on close", async () => {
+    renderPage(`/app/availability?location=${main}&q=Alex&submission=submitted&date=2026-08-17`);
+    await screen.findByRole("navigation", { name: "Employees" });
+    fireEvent.click(within(detail()).getByRole("button", { name: "Open profile" }));
+    await screen.findByRole("dialog");
+    expect(screen.getByText(alex + ":availability")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Close employee" }));
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByTestId("url").textContent).toBe(`?location=${main}&q=Alex&submission=submitted`);
+  });
+
+  it("offers no profile the reader may not open", async () => {
+    renderPage(`/app/availability?person=${sam}`);
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(within(detail()).getByRole("heading", { name: "Sam Chen" })).toBeTruthy();
+    expect(within(detail()).queryByRole("button", { name: "Open profile" })).toBeNull();
+  });
+
+  it("counts each status in its tab, and filters by status, location and search", async () => {
     renderPage();
-    expect(await screen.findByText("No employees match this view")).toBeTruthy();
-    expect(
-      screen.getByText("Try another status or location, or clear your search."),
-    ).toBeTruthy();
-    expect(screen.getAllByRole("columnheader")).toHaveLength(8);
+    await screen.findByRole("navigation", { name: "Employees" });
+    const tabs = within(screen.getByRole("group", { name: "Submission status" })).getAllByRole("button");
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["All3", "Submitted2", "Not submitted1"]);
+    expect(screen.getByText("3 employees")).toBeTruthy();
+    fireEvent.click(tabs[2]!);
+    expect(screen.queryByText("Sam Chen")).toBeNull();
+    expect(people().map((person) => person.textContent)).toEqual(["JLJordan LeeNot submitted yet"]);
+    // The chosen person follows the list: Jordan's week shows.
+    expect(within(detail()).getByRole("heading", { name: "Jordan Lee" })).toBeTruthy();
+    fireEvent.click(tabs[1]!);
+    expect(screen.getAllByText("Sam Chen").length).toBeGreaterThan(0);
+    fireEvent.change(screen.getByLabelText("Search employees"), { target: { value: "e-003" } });
+    expect(people().map((person) => person.textContent)).toEqual(["SCSam ChenHost"]);
+    expect(tabs.map((tab) => tab.textContent)).toEqual(["All1", "Submitted1", "Not submitted0"]);
+    fireEvent.change(screen.getByLabelText("Location"), { target: { value: patio } });
+    expect(screen.getByText("No employees match this view")).toBeTruthy();
+    expect(screen.getByText("Try another status or location, or clear your search.")).toBeTruthy();
   });
+
+  it("says what green and orange mean", async () => {
+    renderPage();
+    await screen.findByRole("navigation", { name: "Employees" });
+    const legend = screen.getByRole("list", { name: "Legend" });
+    expect(legend.textContent).toBe("AvailablePrefers not to work");
+  });
+
   // BL-661: one person is "1 employee".
   it("counts one employee in the singular", async () => {
     const model = fixture();
@@ -177,105 +223,84 @@ describe("weekly team availability", () => {
     renderPage();
     expect(await screen.findByText("1 employee")).toBeTruthy();
   });
-  it("combines location, search and declaration filters without treating an empty declaration as missing", async () => {
-    renderPage();
-    await screen.findByText("Alex Kim");
-    fireEvent.click(screen.getByRole("button", { name: "Not submitted" }));
-    expect(screen.queryByText("Sam Chen")).toBeNull();
-    expect(screen.getByText("Jordan Lee")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Submitted" }));
-    expect(screen.getByText("Sam Chen")).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Search employees"), {
-      target: { value: "e-003" },
-    });
-    expect(screen.queryByText("Alex Kim")).toBeNull();
-    fireEvent.change(screen.getByLabelText("Location"), {
-      target: { value: patio },
-    });
-    expect(screen.getByText("No employees match this view")).toBeTruthy();
-  });
-  it("opens the selected employee availability and preserves filters on close", async () => {
-    renderPage(
-      "/app/availability?location=" +
-        main +
-        "&q=Alex&submission=submitted&date=2026-08-17",
-    );
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Alex Kim Tuesday: All day" }),
-    );
-    await screen.findByRole("dialog");
-    expect(screen.getByText(alex + ":availability")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Close employee" }));
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.getByTestId("url").textContent).toBe(
-      "?location=" + main + "&q=Alex&submission=submitted",
-    );
-  });
-  it("refreshes via the existing weekly save invalidation and hides cached data on access loss", async () => {
+
+  it("follows a refresh and hides cached people when access is lost", async () => {
     const client = renderPage();
-    await screen.findByText("Alex Kim");
+    await screen.findByRole("navigation", { name: "Employees" });
     const next = fixture();
     next.employees[0]!.preference.days[1]!.all_day = true;
     next.employees[0]!.preference.days[1]!.ranges = [];
     vi.mocked(loadWeeklyTeam).mockResolvedValue(next);
-    await client.invalidateQueries({
-      queryKey: ["weekly-preferences", workspace],
-    });
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Alex Kim Monday: All day" }),
-    );
-    await screen.findByRole("dialog");
-    vi.mocked(loadWeeklyTeam).mockRejectedValue(
-      Object.assign(new Error("Access denied"), { status: 403 }),
-    );
-    await client.invalidateQueries({
-      queryKey: ["weekly-preferences", workspace],
-    });
+    await client.invalidateQueries({ queryKey: ["weekly-preferences", workspace] });
+    await waitFor(() => expect(within(detail()).getAllByRole("listitem")[0]!.textContent).toContain("Unavailable all day"));
+    vi.mocked(loadWeeklyTeam).mockRejectedValue(Object.assign(new Error("Access denied"), { status: 403 }));
+    await client.invalidateQueries({ queryKey: ["weekly-preferences", workspace] });
     await screen.findByRole("alert");
     expect(screen.queryByText("Alex Kim")).toBeNull();
-    expect(screen.queryByRole("dialog")).toBeNull();
   });
-  // Mert 2026-10-16 ("yalnız saat"): a day reads in hours only.
-  it("names a day's hours, never shift types", async () => {
-    vi.mocked(loadWeeklyTeam).mockResolvedValue(fixture());
-    renderPage();
-    const monday = await screen.findByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" });
-    expect(monday.closest("td")?.getAttribute("data-unavailable")).toBe("true");
-    expect(screen.queryByText(/shift type/i)).toBeNull();
-  });
-  it("retries a failed initial read", async () => {
-    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(
-      new Error("Could not load"),
-    );
+
+  it("retries a failed first read", async () => {
+    vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new Error("Could not load"));
     renderPage();
     const card = await screen.findByRole("alert");
     expect(card.textContent).toContain("We couldn't load team availability");
     expect(card.textContent).toContain("Nothing was changed.");
     expect(screen.queryByText("Could not load")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await waitFor(() => expect(screen.getByText("Alex Kim")).toBeTruthy());
+    await waitFor(() => expect(screen.getAllByText("Alex Kim").length).toBeGreaterThan(0));
     expect(screen.queryByRole("alert")).toBeNull();
   });
-  it("keeps the table when a refresh fails, says so, and tries again", async () => {
+
+  it("keeps the list when a refresh fails, says so, and tries again", async () => {
     const client = renderPage();
-    await screen.findByText("Alex Kim");
+    await screen.findByRole("navigation", { name: "Employees" });
     vi.mocked(loadWeeklyTeam).mockRejectedValueOnce(new Error("Could not load"));
     await act(async () => {
       await client.invalidateQueries({ queryKey: ["weekly-preferences"] });
     });
-    expect((await screen.findByRole("alert")).textContent).toContain("Team availability didn't refresh. This is the last view that loaded.");
-    expect(screen.queryByText("Could not load")).toBeNull();
-    expect(screen.getByText("Alex Kim")).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toContain(
+      "Team availability didn't refresh. This is the last view that loaded.",
+    );
+    expect(screen.getAllByText("Alex Kim").length).toBeGreaterThan(0);
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
     await waitFor(() => expect(screen.queryByRole("alert")).toBeNull());
     expect(loadWeeklyTeam).toHaveBeenCalledTimes(3);
   });
-  it("draws the table's outline while team availability loads", async () => {
+
+  it("draws the list's outline while team availability loads", async () => {
     vi.mocked(loadWeeklyTeam).mockReturnValueOnce(new Promise(() => {}));
     renderPage();
     const status = (await screen.findByText("Loading availability")).closest("[role=status]")!;
     expect(status.className).toContain("nf-list-outline");
     expect(status.querySelectorAll(".nf-list-outline-row")).toHaveLength(8);
+  });
+});
+
+describe("Availability on a phone (720 px and below)", () => {
+  beforeEach(() => stubPhoneWidth());
+
+  it("lists the people; a tap opens the person's page with the two tabs, and back returns", async () => {
+    renderPage();
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(screen.queryByRole("region", { name: /Availability of/ })).toBeNull();
+    fireEvent.click(people()[0]!);
+    expect(screen.getByTestId("url").textContent).toBe(`?person=${alex}`);
+    expect(screen.queryByRole("navigation", { name: "Employees" })).toBeNull();
+    expect(screen.getByRole("heading", { name: "Alex Kim" })).toBeTruthy();
+    expect(screen.getByText("Server · E-001")).toBeTruthy();
+    // The drawer's two tabs, named shortly: the employee's week and the manager's notes.
+    expect(screen.getByTestId("panel").textContent).toBe(`${alex}:manager:short`);
+    fireEvent.click(screen.getByRole("button", { name: "Availability" }));
+    expect(screen.getByTestId("url").textContent).toBe("");
+    expect(people()).toHaveLength(3);
+  });
+
+  it("shows a person the reader may not open from the list's own week, read only", async () => {
+    renderPage(`/app/availability?person=${sam}`);
+    expect(await screen.findByRole("heading", { name: "Sam Chen" })).toBeTruthy();
+    expect(screen.queryByTestId("panel")).toBeNull();
+    expect(screen.getByText("Read only. Only Sam can change this.")).toBeTruthy();
+    expect(screen.getByText("Sam is open to work any time.")).toBeTruthy();
   });
 });
 
@@ -291,14 +316,12 @@ describe("no access (FB-6.1.9)", () => {
 
 // BL-243: the drawer reads the person's record, so it opens only for a reader
 // the core lets read employees.
-describe("weekly team availability without employee reading", () => {
-  it("does not open the employee drawer, by click or by link", async () => {
+describe("Availability without employee reading", () => {
+  it("does not open the employee drawer, by button or by link", async () => {
     actions = [];
     renderPage(`/app/availability?employeeId=${alex}&section=availability`);
-    await screen.findByText("Alex Kim");
-    expect(
-      screen.getByRole("button", { name: "Alex Kim Monday: 09:00 – 17:00" }),
-    ).toHaveProperty("disabled", true);
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(within(detail()).queryByRole("button", { name: "Open profile" })).toBeNull();
     expect(screen.queryByRole("dialog", { name: "Employee" })).toBeNull();
   });
 });

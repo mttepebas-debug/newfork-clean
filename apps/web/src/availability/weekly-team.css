@@ -1,61 +1,13 @@
+/* Sidebar → Availability (AvailabilityPage.tsx): the people on the left, the
+   chosen person's week on the right; on a phone the people as a list and a
+   person's own page. Source: PD\PAGES\gorsel-kararlar\gelen\availability-tur2
+   (v4.css .v4-team, .v4-tl, .v4-tp, .v4-dots, .v4-tdet, .v4-th). */
 .weekly-team-page {
   --wt-line: #dfe6e2;
-  --wt-surface: #fff;
-  --wt-soft: #f7f9f8;
   --wt-text: #263b32;
   --wt-muted: #63736a;
   --wt-accent: #256b56;
   --wt-red: #ad3042;
-  --wt-red-bg: #fff3f4;
-}
-.weekly-team-toolbar:not(.catalog-toolbar) {
-  display: grid;
-  align-items: start;
-  gap: 10px;
-  margin: 20px 0 16px;
-}
-.weekly-team-toolbar .search-field:not(.toolbar-search) {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex: 1 1 auto;
-  max-width: none;
-  min-width: 0;
-  min-height: 36px;
-  padding: 0 10px;
-  border: 1px solid var(--wt-line);
-  border-radius: 6px;
-  background: var(--wt-surface);
-  color: var(--wt-muted);
-}
-.weekly-team-toolbar .search-field:not(.toolbar-search):focus-within {
-  border-color: var(--wt-accent);
-}
-.weekly-team-toolbar .search-field svg {
-  flex-shrink: 0;
-}
-.weekly-team-toolbar .search-field:not(.toolbar-search) input {
-  width: 100%;
-  min-width: 0;
-  height: 34px;
-  padding: 0;
-  border: 0;
-  background: transparent;
-  color: var(--wt-text);
-  font: inherit;
-  font-size: 12px;
-  box-shadow: none;
-}
-.weekly-team-toolbar select {
-  min-height: 36px;
-  max-width: 220px;
-  border: 1px solid var(--wt-line);
-  background: var(--wt-surface);
-  color: var(--wt-text);
-  border-radius: 6px;
-  font: inherit;
-  font-size: 12px;
-  padding: 7px 10px;
 }
 .weekly-team-filters {
   flex: 0 1 auto;
@@ -65,140 +17,283 @@
   color: var(--wt-muted);
   font-size: 12px;
 }
-.weekly-team-scroll {
-  overflow-x: auto;
-  border: 1px solid var(--wt-line);
-  border-radius: 6px;
-  background: var(--wt-surface);
-}
-/* Grid rules (KARARLAR "Availability"): Employee 13%, seven equal days, every
-   body cell 76 high with a line right and below, content centred. */
-.weekly-team-table {
-  width: 100%;
-  min-width: 1030px;
-  table-layout: fixed;
-  border-collapse: separate;
-  border-spacing: 0;
-  color: var(--theme-text);
-}
-.weekly-team-table :is(th, td) {
-  padding: 0;
-  text-align: center;
-  border-right: 1px solid var(--theme-border-subtle);
-  border-bottom: 1px solid var(--theme-border-subtle);
-  vertical-align: middle;
-}
-.weekly-team-table tbody tr:last-child > * {
-  border-bottom: 0;
-}
-.weekly-team-table thead th {
-  border-right-color: var(--theme-list-col-line);
-}
-.weekly-team-table tr > :last-child {
-  border-right: 0;
-}
-.weekly-team-table thead .catalog-sort-button {
-  justify-content: center;
-}
-.weekly-team-table tr > :first-child {
-  position: sticky;
-  left: 0;
-  width: 13%;
-  z-index: 1;
-  background: var(--theme-surface);
-}
-.weekly-team-table thead tr > :first-child {
-  background: var(--theme-list-head);
-}
-.weekly-team-day-heading {
+.avt-count {
   display: inline-flex;
-  min-height: 40px;
+  min-width: 18px;
+  height: 18px;
   align-items: center;
+  justify-content: center;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 999px;
+  box-sizing: border-box;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
   line-height: 1;
 }
-.weekly-team-person,
-.weekly-team-day {
+.catalog-status-tabs button.active .avt-count {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.avt-legend {
   display: flex;
-  box-sizing: border-box;
-  flex-direction: column;
+  flex: none;
   align-items: center;
-  justify-content: center;
+  gap: 14px;
+  margin: 0 0 0 6px;
+  padding: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  list-style: none;
+}
+.avt-legend li {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+.avt-legend i {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+}
+.avt-legend i.is-free {
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 25%, var(--theme-surface));
+  background: var(--theme-success-soft);
+}
+.avt-legend i.is-blocked {
+  border: 1px solid color-mix(in srgb, var(--theme-availability) 45%, var(--theme-surface));
+  background: var(--theme-availability-soft);
+}
+
+/* ---------- the people and the chosen week ---------- */
+.avt-split {
+  display: grid;
+  grid-template-columns: 300px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  min-height: 0;
+}
+.avt-list {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden auto;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.avt-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
   width: 100%;
-  height: 76px;
+  min-height: 54px;
+  flex: none;
+  padding: 10px 14px;
   border: 0;
-  border-radius: 0;
-  padding: 0 10px;
-  background: transparent;
-  color: inherit;
+  border-top: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface);
+  color: var(--theme-text-faint);
   font: inherit;
-  text-align: center;
+  text-align: left;
   cursor: pointer;
 }
-/* BL-844: the name cell is the full name; it wraps to three lines before it
-   is cut ("Christopher Montgomery" no longer reads "Christopher Mon…"). */
-.weekly-team-person strong {
-  display: -webkit-box;
-  max-width: 100%;
-  overflow: hidden;
+.avt-row:first-child {
+  border-top: 0;
+}
+.avt-row:hover {
+  background: var(--theme-surface-soft);
+}
+.avt-row[aria-current="true"] {
+  background: var(--theme-selected);
+  box-shadow: inset 3px 0 0 var(--theme-accent);
+}
+.avt-avatar {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  flex: none;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 25%, var(--theme-surface));
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+  font-size: 11px;
+  font-weight: 800;
+}
+.avt-avatar.is-large {
+  width: 42px;
+  height: 42px;
+  font-size: 14px;
+}
+.avt-row-text {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.avt-row-text b {
+  display: block;
   color: var(--theme-text);
   font-size: 13px;
-  font-weight: 600;
-  line-height: 18px;
-  overflow-wrap: anywhere;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 3;
+  font-weight: 650;
 }
-.weekly-team-day {
-  font-size: 11.5px;
-  font-variant-numeric: tabular-nums;
-  line-height: 18px;
-}
-.weekly-team-day > span {
-  max-width: 100%;
+.avt-row-text small {
+  display: block;
+  margin-top: 1px;
   overflow: hidden;
+  color: var(--theme-muted);
+  font-size: 11.5px;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-.weekly-team-table td[data-unavailable="true"] {
-  background: var(--theme-availability-soft);
-  color: var(--theme-availability-text);
+.avt-dots {
+  display: flex;
+  flex: none;
+  gap: 3px;
 }
-.weekly-team-available {
-  color: var(--theme-text-faint);
+.avt-dots i {
+  display: block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--theme-accent);
 }
-.weekly-team-scroll > .catalog-table-empty {
-  border-top: 0;
+.avt-dots i.is-some {
+  background: linear-gradient(90deg, var(--theme-surface) 0 50%, var(--theme-availability) 50%);
+  box-shadow: inset 0 0 0 1.5px var(--theme-availability);
 }
-.weekly-team-person:hover:not(:disabled),
-.weekly-team-day:hover:not(:disabled) {
-  background: #00000004;
+.avt-dots i.is-off {
+  background: var(--theme-availability);
 }
-.weekly-team-person:disabled,
-.weekly-team-day:disabled {
-  cursor: default;
+.avt-detail {
+  display: flex;
+  min-width: 0;
+  max-height: 100%;
+  flex-direction: column;
+  gap: 14px;
+  overflow-y: auto;
+  padding: 18px 20px 20px;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 8px;
+  background: var(--theme-surface);
 }
-.weekly-team-page
-  :is(button, input, select, .weekly-team-scroll):focus-visible {
+.avt-detail-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.avt-detail-name {
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.avt-detail-name h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 15px;
+  font-weight: 650;
+}
+.avt-detail-name small {
+  display: block;
+  margin-top: 2px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.weekly-team-page .avt-open {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+/* ---------- a person's page (phone) ---------- */
+.avt-person-top {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.avt-back {
+  display: inline-flex;
+  align-self: flex-start;
+  align-items: center;
+  gap: 4px;
+  min-height: 44px;
+  margin-left: -6px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-body);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.avt-person {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 4px;
+}
+.avt-person h1 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 17px;
+  font-weight: 650;
+}
+.avt-person small {
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.avt-person-body {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  margin: 0 -16px;
+}
+.avt-person-read {
+  padding: 4px 16px 16px;
+}
+
+.weekly-team-page :is(button, input, select):focus-visible {
   outline: 2px solid var(--wt-accent);
   outline-offset: -2px;
 }
-.weekly-team-page
-  .catalog-toolbar
-  :is(.toolbar-search input, .toolbar-filter-select):focus-visible {
+.weekly-team-page .catalog-toolbar :is(.toolbar-search input, .toolbar-filter-select):focus-visible {
   outline: 0;
 }
 .weekly-team-error {
   display: flex;
   align-items: center;
   gap: 12px;
-  color: var(--wt-red);
   padding: 12px 0;
+  color: var(--wt-red);
 }
 .weekly-team-error button {
   display: inline-flex;
   align-items: center;
   gap: 6px;
 }
+
+/* Frozen top (KARARLAR, Mert 2026-10-13 / 2026-10-16): the heading, the tabs
+   and the filters stay; the list and the week scroll in their own frames. A
+   window shorter than 560 px scrolls the whole page (views/list-page-frozen.css). */
+@media (min-height: 560px) {
+  .availability-page.list-page.list-page.list-page > .avt-split {
+    flex: 0 1 auto;
+    grid-template-rows: minmax(0, 1fr);
+    overflow: hidden;
+  }
+  .avt-split > .avt-list {
+    max-height: 100%;
+  }
+  .availability-page.list-page.list-page.list-page > .avt-person-body {
+    flex: 1 1 auto;
+  }
+}
+
 @media (max-width: 720px) {
   .weekly-team-toolbar .search-field {
     flex-basis: 100%;
@@ -227,10 +322,23 @@
   .weekly-team-count {
     margin-left: 0;
   }
-  .weekly-team-table tr > :first-child {
-    width: 136px;
+  .avt-legend {
+    margin: 0;
   }
-  .weekly-team-table {
-    min-width: 976px;
+  .avt-split.is-phone {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  /* The people as cards (KARARLAR: list pages on a phone are card rows). */
+  .avt-split.is-phone > .avt-list {
+    gap: 8px;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+  }
+  .avt-split.is-phone .avt-row {
+    min-height: 62px;
+    padding: 12px 14px;
+    border: 1px solid var(--theme-border);
+    border-radius: 12px;
   }
 }

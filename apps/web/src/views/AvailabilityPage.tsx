@@ -1,17 +1,15 @@
-import {
-  employeeSectionSchema,
-  type WeeklyPreferenceDay,
-  type WeeklyTeamRead,
-} from "@newfork/shared";
+import { employeeSectionSchema, type WeeklyTeamRead } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarCheck, RotateCcw, Search } from "lucide-react";
-import { lazy, Suspense, useMemo, useState } from "react";
+import { ArrowRight, CalendarCheck, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
+import { lazy, Suspense, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { loadWeeklyTeam } from "../availability/availability-data";
-import { formatTime } from "../schedule/lib/scheduleDateTime";
-import { CatalogSortButton } from "./CatalogSortButton";
+import { WeekRead } from "../availability/WeekRead";
+import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
+import { DISPLAY_DAYS, dayState, updatedOn } from "../availability/day-availability";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import "../availability/weekly-team.css";
 
@@ -24,96 +22,161 @@ const EmployeeDrawer = lazy(() =>
     default: module.EmployeeDrawer,
   })),
 );
-const weekdays = [
-  [1, "Monday"],
-  [2, "Tuesday"],
-  [3, "Wednesday"],
-  [4, "Thursday"],
-  [5, "Friday"],
-  [6, "Saturday"],
-  [0, "Sunday"],
+
+// Sidebar → Availability (KARARLAR "Müsaitlik giriş ekranı = 4 · Gün gün":
+// "Availability sayfasında kişi listesi ve seçilen kişinin haftası"). The
+// heading, the status tabs, the filters and the legend stay; the people on
+// the left, the chosen person's week on the right. On a phone (720 px and
+// below) the people are a list and a tap opens the person's page with the
+// drawer's two tabs. Only employees are listed (S-32).
+
+type Person = WeeklyTeamRead["employees"][number];
+const STATUSES = [
+  ["all", "All"],
+  ["submitted", "Submitted"],
+  ["missing", "Not submitted"],
 ] as const;
-type AvailabilitySortKey = "employee";
+
+const initials = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]!.toLocaleUpperCase())
+    .join("");
+const byName = (left: Person, right: Person) =>
+  left.display_name.localeCompare(right.display_name, undefined, { numeric: true, sensitivity: "base" });
 
 export function AvailabilityPage() {
   const { context } = useAuth();
+  const phone = useListPhoneWidth();
   const [search, setSearch] = useSearchParams();
   const workspaceId = context?.workspace.id ?? "";
   const locationId = search.get("location") ?? "all";
   const queryText = search.get("q") ?? "";
   const submission = search.get("submission") ?? "all";
-  const [sort, setSort] = useState<{
-    key: AvailabilitySortKey;
-    descending: boolean;
-  }>({ key: "employee", descending: false });
   const query = useQuery({
     queryKey: ["weekly-preferences", workspaceId, "team"],
     queryFn: () => loadWeeklyTeam(workspaceId),
     enabled: Boolean(workspaceId),
     retry: false,
   });
-  const status =
-    query.error && "status" in query.error ? Number(query.error.status) : 0;
+  const status = query.error && "status" in query.error ? Number(query.error.status) : 0;
   const model = [401, 403, 404].includes(status) ? undefined : query.data;
   const term = queryText.trim().toLocaleLowerCase();
-  const employees = useMemo(
+  // Location and search narrow everyone; the tab then picks a status. The
+  // tabs count what the location and the search leave.
+  const found = useMemo(
     () =>
-      [
-        ...(model?.employees.filter(
+      (model?.employees ?? [])
+        .filter(
           (employee) =>
-            (locationId === "all" ||
-              employee.location_ids.includes(locationId)) &&
+            (locationId === "all" || employee.location_ids.includes(locationId)) &&
             (!term ||
               employee.display_name.toLocaleLowerCase().includes(term) ||
-              employee.employee_code.toLocaleLowerCase().includes(term)) &&
-            (submission !== "submitted" || employee.submitted) &&
-            (submission !== "missing" || !employee.submitted),
-        ) ?? []),
-      ].sort(
-        (left, right) =>
-          compareAvailabilityValues(
-            availabilitySortValue(left, sort.key),
-            availabilitySortValue(right, sort.key),
-          ) * (sort.descending ? -1 : 1),
-      ),
-    [locationId, model?.employees, sort, submission, term],
+              employee.employee_code.toLocaleLowerCase().includes(term)),
+        )
+        .sort(byName),
+    [locationId, model?.employees, term],
   );
+  const employees = found.filter(
+    (employee) =>
+      (submission !== "submitted" || employee.submitted) && (submission !== "missing" || !employee.submitted),
+  );
+  const counts = {
+    all: found.length,
+    submitted: found.filter((employee) => employee.submitted).length,
+    missing: found.filter((employee) => !employee.submitted).length,
+  };
+  const chosenId = search.get("person");
+  const chosen = employees.find((employee) => employee.id === chosenId) ?? employees[0];
+  // The phone opens a person's page only when one is asked for.
+  const phonePerson = phone ? model?.employees.find((employee) => employee.id === chosenId) : undefined;
   // The drawer reads the person's record: only for a reader the core lets
   // read employees (BL-243).
   const opensEmployees = can(context, "employee.read");
   const selectedEmployee = opensEmployees
-    ? model?.employees.find(
-        (employee) =>
-          employee.id === search.get("employeeId") && employee.can_open,
-      )
+    ? model?.employees.find((employee) => employee.id === search.get("employeeId") && employee.can_open)
     : undefined;
   const parsedSection = employeeSectionSchema.safeParse(search.get("section"));
-  const updateParams = (
-    values: Record<string, string | null>,
-    replace = true,
-  ) => {
+  const updateParams = (values: Record<string, string | null>, replace = true) => {
     const next = new URLSearchParams(search);
     next.delete("date");
-    Object.entries(values).forEach(([key, value]) =>
-      value ? next.set(key, value) : next.delete(key),
-    );
+    Object.entries(values).forEach(([key, value]) => (value ? next.set(key, value) : next.delete(key)));
     setSearch(next, { replace });
   };
-  const openEmployee = (id: string) =>
-    updateParams({ employeeId: id, section: "availability" }, false);
+  const openEmployee = (id: string) => updateParams({ employeeId: id, section: "availability" }, false);
 
   // The API's "no" gets the one no-access card, never its raw sentence.
   if (isNoAccess(query.error))
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/availability")} />;
+
+  if (phonePerson && model)
     return (
-      <NoAccessState
-        homeHref={noAccessHomePath(context, "/app/availability")}
-      />
+      <section className="availability-page weekly-team-page list-page avt-person-page" aria-labelledby="avt-person-name">
+        <div className="avt-person-top">
+          <button type="button" className="avt-back" onClick={() => updateParams({ person: null })}>
+            <ChevronLeft size={16} aria-hidden />
+            Availability
+          </button>
+          <div className="avt-person">
+            <span className="avt-avatar is-large" aria-hidden>
+              {initials(phonePerson.display_name)}
+            </span>
+            <div>
+              <h1 id="avt-person-name">{phonePerson.display_name}</h1>
+              <small>{[phonePerson.job_name, phonePerson.employee_code].filter(Boolean).join(" · ")}</small>
+            </div>
+          </div>
+        </div>
+        <div className="avt-person-body">
+          {phonePerson.can_open ? (
+            // The drawer's two tabs: the employee's week, read only, and the manager's notes.
+            <WeeklyPreferencesPanel workspaceId={workspaceId} employeeId={phonePerson.id} audience="manager" short />
+          ) : (
+            <div className="avt-person-read">
+              <WeekRead
+                name={phonePerson.display_name}
+                submitted={phonePerson.submitted}
+                updatedAt={phonePerson.updated_at}
+                preference={phonePerson.preference}
+                timeFormat={model.time_format}
+                readOnlyBar
+              />
+            </div>
+          )}
+        </div>
+      </section>
     );
-  return (
-    <section
-      className="availability-page weekly-team-page list-page"
-      aria-labelledby="availability-title"
+
+  const personRow = (employee: Person) => (
+    <button
+      key={employee.id}
+      type="button"
+      className="avt-row"
+      aria-current={phone ? undefined : employee.id === chosen?.id}
+      onClick={() => updateParams({ person: employee.id }, !phone)}
     >
+      <span className="avt-avatar" aria-hidden>
+        {initials(employee.display_name)}
+      </span>
+      <span className="avt-row-text">
+        <b>{employee.display_name}</b>
+        <small>{employee.submitted ? employee.job_name : "Not submitted yet"}</small>
+      </span>
+      {employee.submitted && (
+        <span className="avt-dots" aria-hidden>
+          {DISPLAY_DAYS.map((weekday) => (
+            <i key={weekday} className={`is-${dayState(employee.preference.days.find((day) => day.day === weekday)!)}`} />
+          ))}
+        </span>
+      )}
+      {phone && <ChevronRight size={16} aria-hidden />}
+    </button>
+  );
+
+  return (
+    <section className="availability-page weekly-team-page list-page" aria-labelledby="availability-title">
       <CatalogPageHeader
         eyebrow="AVAILABILITY CLEAR. COVERAGE READY."
         title="Availability"
@@ -122,28 +185,17 @@ export function AvailabilityPage() {
       />
       <div className="weekly-team-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div
-            className="catalog-status-tabs weekly-team-filters"
-            role="group"
-            aria-label="Submission status"
-          >
-            {(
-              [
-                ["all", "All"],
-                ["submitted", "Submitted"],
-                ["missing", "Not submitted"],
-              ] as const
-            ).map(([value, label]) => (
+          <div className="catalog-status-tabs weekly-team-filters" role="group" aria-label="Submission status">
+            {STATUSES.map(([value, label]) => (
               <button
                 key={value}
                 type="button"
                 className={submission === value ? "active" : ""}
                 aria-pressed={submission === value}
-                onClick={() =>
-                  updateParams({ submission: value === "all" ? null : value })
-                }
+                onClick={() => updateParams({ submission: value === "all" ? null : value })}
               >
                 {label}
+                {model && <span className="avt-count">{counts[value]}</span>}
               </button>
             ))}
           </div>
@@ -158,12 +210,7 @@ export function AvailabilityPage() {
             className="toolbar-filter-select list-filter-narrow"
             aria-label="Location"
             value={locationId}
-            onChange={(event) =>
-              updateParams({
-                location:
-                  event.target.value === "all" ? null : event.target.value,
-              })
-            }
+            onChange={(event) => updateParams({ location: event.target.value === "all" ? null : event.target.value })}
           >
             <option value="all">All locations</option>
             {model?.locations.map((location) => (
@@ -178,16 +225,22 @@ export function AvailabilityPage() {
               aria-label="Search employees"
               placeholder="Search employees"
               value={queryText}
-              onChange={(event) =>
-                updateParams({ q: event.target.value || null })
-              }
+              onChange={(event) => updateParams({ q: event.target.value || null })}
             />
           </label>
+          <ul className="avt-legend" aria-label="Legend">
+            <li>
+              <i className="is-free" aria-hidden />
+              Available
+            </li>
+            <li>
+              <i className="is-blocked" aria-hidden />
+              Prefers not to work
+            </li>
+          </ul>
         </div>
       </div>
-      {query.isPending && (
-        <ListOutline label="Loading availability" rows={8} columns={8} />
-      )}
+      {query.isPending && <ListOutline label="Loading availability" rows={8} columns={3} />}
       {query.error && !model && (
         <LoadError
           title="We couldn't load team availability"
@@ -205,113 +258,52 @@ export function AvailabilityPage() {
           </button>
         </div>
       )}
-      {model && (
-        <div
-          className="weekly-team-scroll"
-          role="region"
-          aria-label="Team availability"
-          tabIndex={0}
-        >
-          <table className="weekly-team-table">
-            <thead>
-              <tr>
-                <th
-                  scope="col"
-                  aria-sort={
-                    sort.key === "employee"
-                      ? sort.descending
-                        ? "descending"
-                        : "ascending"
-                      : "none"
-                  }
-                >
-                  <CatalogSortButton
-                    label="Employee"
-                    active={sort.key === "employee"}
-                    onClick={() =>
-                      setSort({
-                        key: "employee",
-                        descending:
-                          sort.key === "employee" ? !sort.descending : false,
-                      })
-                    }
-                  />
-                </th>
-                {weekdays.map(([day, name]) => (
-                  <th key={day} scope="col">
-                    <span className="weekly-team-day-heading">
-                      {name.slice(0, 3)}
-                    </span>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {employees.map((employee) => (
-                <tr key={employee.id}>
-                  <th scope="row">
-                    <button
-                      type="button"
-                      className="weekly-team-person"
-                      disabled={!opensEmployees || !employee.can_open}
-                      onClick={() => openEmployee(employee.id)}
-                    >
-                      <strong>{employee.display_name}</strong>
+      {model &&
+        (employees.length === 0 ? (
+          <div className="avt-empty catalog-table-empty">
+            <span className="catalog-table-empty-icon" aria-hidden>
+              <CalendarCheck size={22} />
+            </span>
+            <h2>No employees match this view</h2>
+            <p>Try another status or location, or clear your search.</p>
+          </div>
+        ) : (
+          <div className={`avt-split${phone ? " is-phone" : ""}`}>
+            <nav className="avt-list" aria-label="Employees">
+              {employees.map(personRow)}
+            </nav>
+            {!phone && chosen && (
+              <section className="avt-detail" aria-label={`Availability of ${chosen.display_name}`}>
+                <header className="avt-detail-head">
+                  <span className="avt-avatar is-large" aria-hidden>
+                    {initials(chosen.display_name)}
+                  </span>
+                  <div className="avt-detail-name">
+                    <h2>{chosen.display_name}</h2>
+                    <small>
+                      {[chosen.job_name, chosen.submitted ? `Updated ${updatedOn(chosen.updated_at)}` : "Not submitted"]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </small>
+                  </div>
+                  {opensEmployees && chosen.can_open && (
+                    <button type="button" className="secondary-button avt-open" onClick={() => openEmployee(chosen.id)}>
+                      Open profile
+                      <ArrowRight size={14} aria-hidden />
                     </button>
-                  </th>
-                  {weekdays.map(([day, name]) => {
-                    const rule = employee.preference.days.find(
-                      (item) => item.day === day,
-                    )!;
-                    const parts = dayLabels(rule, model);
-                    const unavailable =
-                      rule.all_day || rule.ranges.length > 0;
-                    return (
-                      <td key={day} data-unavailable={unavailable}>
-                        <button
-                          type="button"
-                          className="weekly-team-day"
-                          disabled={!opensEmployees || !employee.can_open}
-                          aria-label={
-                            employee.display_name +
-                            " " +
-                            name +
-                            ": " +
-                            (parts.map((part) => part.label).join(", ") ||
-                              "Available")
-                          }
-                          onClick={() => openEmployee(employee.id)}
-                        >
-                          {parts.length ? (
-                            visibleParts(parts).map((part, index) => (
-                              <span key={index} title={part.detail}>
-                                {part.label}
-                              </span>
-                            ))
-                          ) : (
-                            <span className="weekly-team-available" aria-hidden>
-                              &mdash;
-                            </span>
-                          )}
-                        </button>
-                      </td>
-                    );
-                  })}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          {employees.length === 0 && (
-            <div className="catalog-table-empty">
-              <span className="catalog-table-empty-icon" aria-hidden>
-                <CalendarCheck size={22} />
-              </span>
-              <h2>No employees match this view</h2>
-              <p>Try another status or location, or clear your search.</p>
-            </div>
-          )}
-        </div>
-      )}
+                  )}
+                </header>
+                <WeekRead
+                  name={chosen.display_name}
+                  submitted={chosen.submitted}
+                  updatedAt={chosen.updated_at}
+                  preference={chosen.preference}
+                  timeFormat={model.time_format}
+                />
+              </section>
+            )}
+          </div>
+        ))}
 
       {selectedEmployee && (
         <Suspense fallback={<p role="status">Loading employee...</p>}>
@@ -319,9 +311,7 @@ export function AvailabilityPage() {
             key={workspaceId + ":" + selectedEmployee.id}
             employeeId={selectedEmployee.id}
             creating={false}
-            section={
-              parsedSection.success ? parsedSection.data : "availability"
-            }
+            section={parsedSection.success ? parsedSection.data : "availability"}
             onSectionChange={(section) => updateParams({ section })}
             onClose={() => updateParams({ employeeId: null, section: null })}
             onCreated={() => {}}
@@ -330,52 +320,4 @@ export function AvailabilityPage() {
       )}
     </section>
   );
-}
-
-function availabilitySortValue(
-  employee: WeeklyTeamRead["employees"][number],
-  _key: AvailabilitySortKey,
-): string {
-  return employee.display_name;
-}
-
-function compareAvailabilityValues(left: string, right: string): number {
-  return left.localeCompare(right, undefined, {
-    numeric: true,
-    sensitivity: "base",
-  });
-}
-
-/** A day cell holds at most three lines (KARARLAR "Availability"): the
- * first two and a "+N more" line when there are more. */
-function visibleParts<T extends { label: string; detail: string }>(
-  parts: readonly T[],
-): readonly { label: string; detail: string }[] {
-  if (parts.length <= 3) return parts;
-  return [
-    ...parts.slice(0, 2),
-    {
-      label: `+${parts.length - 2} more`,
-      detail: parts
-        .slice(2)
-        .map((part) => part.label)
-        .join(", "),
-    },
-  ];
-}
-
-function dayLabels(day: WeeklyPreferenceDay, model: WeeklyTeamRead) {
-  const range = (start: string, end: string) =>
-    formatTime(start, model.time_format) +
-    " – " +
-    formatTime(
-      end === "24:00" && model.time_format === "12h" ? "00:00" : end,
-      model.time_format,
-    );
-  if (day.all_day) return [{ label: "All day", detail: "Unavailable all day" }];
-  // Hours only (Mert 2026-10-16, "yalnız saat").
-  return day.ranges.map((hours) => ({
-    label: range(hours.start, hours.end),
-    detail: "Unavailable",
-  }));
 }
