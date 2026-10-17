@@ -267,6 +267,21 @@
 .weekly-team-page .catalog-toolbar :is(.toolbar-search input, .toolbar-filter-select):focus-visible {
   outline: 0;
 }
+/* Under the list: who sets the weeks (spec "Kurallar" 6, AVAIL-GUN-1). */
+.avt-foot {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex: none;
+  margin: 12px 0 0;
+  color: var(--theme-muted-strong);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.avt-foot > svg {
+  flex: none;
+  color: var(--theme-muted);
+}
 .weekly-team-error {
   display: flex;
   align-items: center;

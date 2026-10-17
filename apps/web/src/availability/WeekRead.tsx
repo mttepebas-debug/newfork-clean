@@ -105,6 +105,9 @@ export function WeekTiles({ who, preference, timeFormat }: { who: string; prefer
         const day = preference.days.find((item) => item.day === weekday)!;
         const tone = dayTone(day, timeFormat);
         const range = rangeOf(day);
+        // "Unavailable after 6:00 PM" as two fixed lines in a box: the state
+        // word, then the hours (capitalised by CSS); one line in a row.
+        const [state, ...rest] = tone.label.split(" ");
         return (
           <li key={weekday} className={`avr-tile ${tone.className} is-${dayState(day)}`} data-weekday={weekday}>
             <span className="avr-tile-day">
@@ -112,7 +115,9 @@ export function WeekTiles({ who, preference, timeFormat }: { who: string; prefer
               <b aria-hidden>{shortDay(weekday)}</b>
               <span className="sr-only">{WEEKDAY_NAMES[weekday]}</span>
             </span>
-            <small>{tone.label}</small>
+            <small>
+              <span className="avr-tile-state">{state}</span> <span className="avr-tile-detail">{rest.join(" ")}</span>
+            </small>
             <span className="avr-rail" aria-hidden>
               {range && <i style={{ left: percent(range[0]), width: percent(range[1] - range[0] + DAY_START) }} />}
             </span>

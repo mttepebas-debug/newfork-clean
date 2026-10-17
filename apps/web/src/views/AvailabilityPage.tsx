@@ -1,7 +1,7 @@
 import { employeeSectionSchema, type WeeklyTeamRead } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@newfork/ui";
-import { ArrowRight, CalendarCheck, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
+import { ArrowRight, CalendarCheck, ChevronLeft, ChevronRight, Lock, RotateCcw, Search } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -179,10 +179,10 @@ export function AvailabilityPage() {
   return (
     <section className="availability-page weekly-team-page list-page" aria-labelledby="availability-title">
       <CatalogPageHeader
-        eyebrow="AVAILABILITY CLEAR. COVERAGE READY."
+        eyebrow="Team availability"
         title="Availability"
         titleId="availability-title"
-        description="Track weekly availability submissions and identify coverage gaps."
+        description="Your team's weekly preferences. They guide the schedule; you can still schedule anyone."
       />
       <div className="weekly-team-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
@@ -305,6 +305,12 @@ export function AvailabilityPage() {
             )}
           </div>
         ))}
+      {model && (
+        <p className="avt-foot">
+          <Lock size={13} aria-hidden />
+          <span>Employees set their own availability. Managers can read it and keep private notes in each person's profile.</span>
+        </p>
+      )}
 
       {selectedEmployee && (
         <Suspense fallback={<p role="status">Loading employee...</p>}>

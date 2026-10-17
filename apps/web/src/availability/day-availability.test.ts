@@ -15,7 +15,6 @@ import {
   firstName,
   updatedOn,
   weekPhrases,
-  weekSentence,
 } from "./day-availability";
 
 describe("one day of the week", () => {
@@ -112,11 +111,9 @@ describe("copying a day to other days", () => {
   });
 });
 
-describe("the week in one sentence (a manager reads it)", () => {
-  it("says an open week plainly", () => {
-    expect(weekSentence(emptyWeeklyPreference(), "Maria", "12h")).toBe(
-      "Maria is open to work any time.",
-    );
+// The sentence itself is WeekRead's (WeekRead.test.tsx); these are its pieces.
+describe("the week in phrases (a manager reads them)", () => {
+  it("has no phrase for an open week", () => {
     expect(weekPhrases(emptyWeeklyPreference(), "12h")).toEqual([]);
   });
 
@@ -130,9 +127,6 @@ describe("the week in one sentence (a manager reads it)", () => {
       { days: "Fri", text: "after 6 PM" },
       { days: "Sun", text: "before 11 AM" },
     ]);
-    expect(weekSentence(week, "Maria", "12h")).toBe(
-      "Maria prefers not to work Tue all day, Fri after 6 PM and Sun before 11 AM.",
-    );
   });
 
   it("joins days that read the same: a run, the weekdays, the weekend", () => {

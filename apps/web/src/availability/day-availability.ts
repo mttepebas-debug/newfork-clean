@@ -163,15 +163,6 @@ export function weekPhrases(week: WeeklyPreference, format: TimeFormat): WeekPhr
   return [...groups].map(([text, positions]) => ({ days: daysLabel(positions), text }));
 }
 
-const joined = (items: readonly string[]) =>
-  items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
-
-/** "Maria prefers not to work Tue all day and Fri after 6 PM." */
-export function weekSentence(week: WeeklyPreference, who: string, format: TimeFormat) {
-  const phrases = weekPhrases(week, format);
-  if (!phrases.length) return `${who} is open to work any time.`;
-  return `${who} prefers not to work ${joined(phrases.map((phrase) => `${phrase.days} ${phrase.text}`))}.`;
-}
 
 const evening: MinuteRange = [18 * 60, DAY_END];
 

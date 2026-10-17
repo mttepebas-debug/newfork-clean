@@ -131,6 +131,16 @@ afterEach(() => {
 });
 
 describe("Availability: the people on the left, the chosen person's week on the right", () => {
+  // Spec "Kurallar" 6: no promise of a coverage check the product does not make.
+  it("says what the page is for, and who sets the weeks", async () => {
+    renderPage();
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(screen.getByText("Team availability")).toBeTruthy();
+    expect(screen.getByText("Your team's weekly preferences. They guide the schedule; you can still schedule anyone.")).toBeTruthy();
+    expect(screen.queryByText(/coverage/i)).toBeNull();
+    expect(screen.getByText("Employees set their own availability. Managers can read it and keep private notes in each person's profile.")).toBeTruthy();
+  });
+
   it("lists each employee with their job and the week as seven dots", async () => {
     renderPage();
     await screen.findByRole("navigation", { name: "Employees" });

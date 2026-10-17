@@ -105,6 +105,10 @@ function Tabs({ model, onSave, onReload, short = false }: Props) {
             aria-controls={`${tabId}-panel`}
             aria-selected={tab === item}
             tabIndex={tab === item ? 0 : -1}
+            // The count is drawn as a badge; a screen reader hears it in the name.
+            aria-label={item === "manager" && noteCount > 0
+              ? `${label(item)}, ${noteCount} ${noteCount === 1 ? "note" : "notes"}`
+              : undefined}
             disabled={busy}
             onClick={() => switchTab(item)}
           >

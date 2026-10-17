@@ -63,7 +63,7 @@ function saver(data: WeeklyPreferenceRead) {
 }
 function setup(data = model(), onSave = saver(data)) {
   const result = render(<ManagerAvailability model={data} onSave={onSave} />);
-  fireEvent.click(screen.getByRole("tab", { name: "Manager notes" }));
+  fireEvent.click(screen.getByRole("tab", { name: /^Manager notes/ }));
   return { ...result, onSave };
 }
 const days = () => within(screen.getByRole("navigation", { name: "Days" })).getAllByRole("button");
@@ -76,6 +76,8 @@ describe("Employees drawer, Availability: the employee's week", () => {
     render(<ManagerAvailability model={data} onSave={vi.fn()} />);
     const tabs = screen.getAllByRole("tab");
     expect(tabs.map((tab) => tab.textContent)).toEqual(["Employee availability", "Manager notes1"]);
+    // The badge is drawn; the count is heard in the tab's name.
+    expect(screen.getByRole("tab", { name: "Manager notes, 1 note" })).toBe(tabs[1]);
     expect(tabs[0]!.getAttribute("aria-selected")).toBe("true");
     expect(screen.getByText("Read only. Only Ada can change this.")).toBeTruthy();
     expect(screen.getByText("Updated Oct 9")).toBeTruthy();
@@ -288,7 +290,7 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
       <ManagerAvailability model={{ ...data, employee_id: "ab910000-0000-4000-8000-000000000002" }} onSave={onSave} />,
     );
     expect(screen.getByRole("tab", { name: "Employee availability" }).getAttribute("aria-selected")).toBe("true");
-    fireEvent.click(screen.getByRole("tab", { name: "Manager notes" }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Manager notes/ }));
     expect(screen.getByText("Keep this note")).toBeTruthy();
   });
 
@@ -333,7 +335,7 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     });
     const onReload = vi.fn(async () => latest);
     render(<ManagerAvailability model={data} onSave={onSave} onReload={onReload} />);
-    fireEvent.click(screen.getByRole("tab", { name: "Manager notes" }));
+    fireEvent.click(screen.getByRole("tab", { name: /^Manager notes/ }));
     fireEvent.click(screen.getByRole("button", { name: "Add Tuesday note" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Tuesday note" }), { target: { value: "Mine" } });
     fireEvent.click(screen.getByRole("button", { name: "Done" }));

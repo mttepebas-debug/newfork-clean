@@ -55,6 +55,11 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(boxes[1]!.className).toContain("is-blocked");
     expect(boxes[4]!.textContent).toContain("Unavailable after 6:00 PM");
     expect(boxes[4]!.className).toContain("is-blocked");
+    // Two fixed lines in a box: the state word, then the hours, never one phrase broken mid-way.
+    const lines = (box: HTMLElement) => [box.querySelector(".avr-tile-state")?.textContent, box.querySelector(".avr-tile-detail")?.textContent];
+    expect(lines(boxes[0]!)).toEqual(["Available", "all day"]);
+    expect(lines(boxes[1]!)).toEqual(["Unavailable", "all day"]);
+    expect(lines(boxes[4]!)).toEqual(["Unavailable", "after 6:00 PM"]);
     // The mini strip marks the hours from 12 AM to 12 AM: Friday 6 PM on.
     const band = boxes[4]!.querySelector<HTMLElement>(".avr-rail > i")!;
     expect(band.style.left).toBe("75%");

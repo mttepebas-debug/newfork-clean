@@ -80,6 +80,22 @@
   font-weight: 600;
   line-height: 1.35;
 }
+/* A box holds two fixed lines, the state word and the hours ("Available" /
+   "All day", "Unavailable" / "After 6:00 PM"), so a phrase never breaks in
+   the middle (AVAIL-GUN-1). A row (below) reads them as one line. */
+.avr-tile-state,
+.avr-tile-detail {
+  display: block;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.avr-tile-detail {
+  font-weight: 500;
+}
+.avr-tile-detail::first-letter {
+  text-transform: uppercase;
+}
 .avr-dot {
   display: block;
   width: 9px;
@@ -162,6 +178,12 @@
   }
   .avr-tile small {
     min-height: 0;
+  }
+  .avr-tile-state,
+  .avr-tile-detail {
+    display: inline;
+    white-space: normal;
+    font-weight: inherit;
   }
   .avr-rail {
     margin-top: 0;
