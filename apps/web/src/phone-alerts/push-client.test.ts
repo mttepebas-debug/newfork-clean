@@ -69,7 +69,7 @@ describe("phone alerts in this browser", () => {
     expect(await turnOnPhoneAlerts(publicKey, api, browser.win)).toBe("on");
     expect(browser.notification.requestPermission).toHaveBeenCalledTimes(1);
     expect(browser.serviceWorker.register).toHaveBeenCalledWith("/sw.js", { scope: "/" });
-    const options = browser.pushManager.subscribe.mock.calls[0]![0] as PushSubscriptionOptionsInit;
+    const options = (browser.pushManager.subscribe.mock.calls[0] as unknown as [PushSubscriptionOptionsInit])[0];
     expect(options.userVisibleOnly).toBe(true);
     expect(Array.from(options.applicationServerKey as Uint8Array)).toEqual(Array.from(applicationServerKey(publicKey)));
     expect(api.save).toHaveBeenCalledWith({

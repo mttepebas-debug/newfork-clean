@@ -1,10 +1,10 @@
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { describe, expect, it, vi } from "vitest";
 
 // BILDIRIM-15: the service worker (public/sw.js) shows every alert it gets and opens its screen inside the
 // app. It is plain JavaScript with no build step, so it runs here against a fake worker scope.
-const source = readFileSync(fileURLToPath(new URL("../../public/sw.js", import.meta.url)), "utf8");
+// Read from the package folder, where vitest runs, as the other file-reading tests do.
+const source = readFileSync("public/sw.js", "utf8");
 const origin = "https://app.newfork.test";
 
 type Listener = (event: Record<string, unknown>) => void;

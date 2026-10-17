@@ -143,15 +143,18 @@ describe("PhoneAlertsCard on iPhone Safari", () => {
   });
 });
 
-// Nothing sends phone alerts yet, so no screen may promise them (KARARLAR S-124):
-// only the DEV gallery may show the card until sending exists.
-it("is imported only by the DEV gallery", () => {
+// No screen may promise phone alerts before they are set up (KARARLAR S-124): outside the DEV gallery
+// only Home's card and Account → Notifications show it, and both wait for the server's word (BILDIRIM-15).
+it("is shown only by Home's card, Account → Notifications and the DEV gallery", () => {
   const importers = (readdirSync("src", { recursive: true }) as string[])
     .map((file) => file.replaceAll("\\", "/"))
     .filter((file) => /\.(ts|tsx)$/.test(file) && !/\.test\.tsx?$/.test(file))
     .filter((file) => /from\s+["'][^"']*PhoneAlertsCard["']/.test(readFileSync(`src/${file}`, "utf8")));
   expect(importers.length).toBeGreaterThan(0);
-  expect(importers.filter((file) => !file.startsWith("dev/"))).toEqual([]);
+  expect(importers.filter((file) => !file.startsWith("dev/")).sort()).toEqual([
+    "notification-settings/NotificationPreferencesPage.tsx",
+    "phone-alerts/PhoneAlertsHome.tsx",
+  ]);
 });
 
 it("draws nothing where phone alerts cannot work", () => {
