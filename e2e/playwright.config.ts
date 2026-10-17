@@ -118,6 +118,11 @@ export default defineConfig({
         SUPABASE_URL: requireSupabaseEnv("API_URL"),
         SUPABASE_ANON_KEY: requireSupabaseEnv("ANON_KEY"),
         SUPABASE_SERVICE_ROLE_KEY: requireSupabaseEnv("SERVICE_ROLE_KEY"),
+        // Phone alerts (BILDIRIM-15): a key pair made for these tests only, so the screens offer them. No
+        // cron runs here, so the push worker never sends; flows/phone-alerts.spec.ts blocks every push host.
+        VAPID_PUBLIC_KEY: "BN30pzPPN03dgBofXoiMnPSqFxXAQBIJkBGtE5WbY78brAlrnDQK-zkECopZKvRJTTnhAUOhirshESTeB5Xoq0c",
+        VAPID_PRIVATE_KEY: "QzDGvBrt4Ps4FBQ_kYSJ7k0jUPzufb45pXjGHYcCFxQ",
+        VAPID_SUBJECT: "mailto:e2e@newfork.test",
       },
     },
     {
