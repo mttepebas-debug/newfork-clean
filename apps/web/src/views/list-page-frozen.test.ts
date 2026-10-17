@@ -44,11 +44,12 @@ describe("frozen list pages", () => {
     expect(body).toMatch(/height\s*:\s*100%/);
   });
 
-  it.each([...pages, "employee-documents-page"])("scrolls the list inside the table frame (%s)", (page) => {
+  // Availability has no table: its list and its week each scroll in their own frame (below).
+  it.each([...pages.filter((page) => page !== "availability-page"), "employee-documents-page"])("scrolls the list inside the table frame (%s)", (page) => {
     const body = bodyOf(
       (head) =>
         head.includes(`.${page}`) &&
-        /(weekly-team-scroll|employee-table-wrap|job-catalog)/.test(head) &&
+        /(employee-table-wrap|job-catalog)/.test(head) &&
         !head.includes("> *") &&
         !head.includes("column-headings") &&
         !head.includes("popover"),
@@ -122,10 +123,26 @@ describe("frozen list pages", () => {
   });
 
   it("pins the column headings to the top of the frame", () => {
-    for (const heading of [".weekly-team-table thead th", ".job-catalog > .catalog-column-headings"]) {
+    for (const heading of [".job-catalog > .catalog-column-headings"]) {
       const body = bodyOf((head) => head.includes(heading));
       expect(body).toMatch(/position\s*:\s*sticky/);
       expect(body).toMatch(/top\s*:\s*0/);
     }
+  });
+
+  // Availability's people list and the chosen week (AVAIL-GUN-3): the split
+  // keeps the page's height, the list scrolls inside its own frame.
+  it("keeps Availability's list in its own scrolling frame under a fixed top", () => {
+    const team = readFileSync("src/availability/weekly-team.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const tall = team.slice(team.indexOf(media) + media.length);
+    const teamRules = [...tall.matchAll(/([^{}]+)\{([^}]*)\}/g)].map(([, head, body]) => ({ head: head!.replace(/\s+/g, " ").trim(), body: body! }));
+    const teamBody = (match: (head: string) => boolean) => teamRules.filter(({ head }) => match(head)).map(({ body }) => body).join(";");
+    const split = teamBody((head) => head.endsWith(".availability-page.list-page.list-page.list-page > .avt-split"));
+    expect(split).toMatch(/flex\s*:\s*0 1 auto/);
+    expect(split).toMatch(/grid-template-rows\s*:\s*minmax\(0, 1fr\)/);
+    expect(split).toMatch(/overflow\s*:\s*hidden/);
+    expect(teamBody((head) => head === ".avt-split > .avt-list")).toMatch(/max-height\s*:\s*100%/);
+    const list = [...team.matchAll(/(^|})\s*\.avt-list\s*\{([^}]*)\}/g)].map((match) => match[2]).join(";");
+    expect(list).toMatch(/overflow\s*:\s*hidden auto/);
   });
 });

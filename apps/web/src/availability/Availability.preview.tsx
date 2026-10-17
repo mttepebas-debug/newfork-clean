@@ -30,11 +30,11 @@ const preflight: SchedulePublicationPreview = {
   })),
 };
 const employee = emptyWeeklyPreference();
-const reminder = emptyWeeklyPreference();
+const managerWeek = emptyWeeklyPreference();
 employee.days[0]!.all_day = true;
-reminder.days[0]!.all_day = true;
+managerWeek.days[0]!.all_day = true;
 employee.days[5]!.ranges = [{ start: "17:00", end: "22:00" }];
-reminder.days[6]!.ranges = [{ start: "09:00", end: "17:00" }];
+managerWeek.days[6]!.ranges = [{ start: "09:00", end: "17:00" }];
 
 function Preview() {
   const [settingsModel, setSettingsModel] = useState<WeeklyPreferenceSettingsRead>({
@@ -64,7 +64,7 @@ function Preview() {
       submitted: true,
       revision: 1,
       updated_at: null,
-      preference: reminder,
+      preference: managerWeek,
       enabled: true,
       notes: [
         "",

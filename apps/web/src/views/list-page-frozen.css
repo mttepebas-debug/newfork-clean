@@ -100,14 +100,6 @@
   .list-frozen-body > .announcement-list-heading:first-child {
     margin-top: 4px;
   }
-  /* Availability's week is wider than a phone: its frame scrolls both ways. */
-  .availability-page.list-page.list-page.list-page > .weekly-team-scroll {
-    position: relative;
-    min-height: 0;
-    flex: 0 1 auto;
-    overflow: auto;
-  }
-
   /* The frame cuts what is drawn outside it: a row's focus ring is drawn
      inside the control, so the last row's ring keeps its bottom edge. */
   .list-page.list-page
@@ -118,14 +110,10 @@
   /* Column headings stay at the top of the frame. Employees, Requests
      and Employees → Documents already pin theirs
      (.employee-table th). */
-  .list-page.list-page .weekly-team-table thead th,
   .list-page.list-page .job-catalog > .catalog-column-headings {
     position: sticky;
     top: 0;
     z-index: 2;
-  }
-  .list-page.list-page .weekly-team-table thead tr > :first-child {
-    z-index: 3;
   }
 
   /* Every screen keeps its top in place (Mert 2026-10-16, "header ve

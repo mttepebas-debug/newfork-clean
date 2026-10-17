@@ -175,13 +175,10 @@
 }
 
 /* Table frame: the soft ground shows under a short table. */
-.list-page.list-page :is(.job-catalog, .employee-table-wrap, .weekly-team-scroll) {
+.list-page.list-page :is(.job-catalog, .employee-table-wrap) {
   border: 1px solid var(--theme-list-frame);
   border-radius: 7px;
   background: var(--theme-surface-soft);
-}
-.list-page.list-page .weekly-team-scroll {
-  overflow: hidden;
 }
 /* A row's "⋯" menu opens past the table's edge, so the table frame does not
    clip; its first and last rows round with the frame instead. */
@@ -195,7 +192,7 @@
     border-bottom-right-radius: 6px;
   }
 }
-.list-page.list-page :is(.employee-table, .weekly-team-table) {
+.list-page.list-page .employee-table {
   background: var(--theme-surface);
 }
 .list-page.list-page .job-catalog-row {
@@ -203,7 +200,7 @@
 }
 
 /* Column-heading row. */
-.list-page.list-page :is(.catalog-column-headings, .employee-table th, .weekly-team-table thead th) {
+.list-page.list-page :is(.catalog-column-headings, .employee-table th) {
   height: 40px;
   min-height: 40px;
   padding: 0 14px;
