@@ -899,11 +899,6 @@
   }
 }
 
-/* The US letter rule's line under a field (BL-503) keeps the error colour. */
-.account-field small.form-error {
-  margin: 0;
-  color: var(--theme-danger-strong);
-}
 
 /* The +1 in the type of the number beside it, not of the label (BL-503). */
 .account-field .us-phone-prefix {

@@ -1178,11 +1178,6 @@
   color: var(--job-error);
   font-size: 12px;
 }
-.locations-catalog-settings-page .job-catalog-editor > .form-error {
-  margin: 0 16px 16px;
-  color: var(--job-error);
-  font-size: 12px;
-}
 /* Phone (UI-14): one card per location. */
 @media (max-width: 720px) {
   .job-catalog-editor .location-catalog-fields {

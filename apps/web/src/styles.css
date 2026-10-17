@@ -6974,10 +6974,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-weight: 600;
   line-height: 1.45;
 }
-/* An error line in the box stays red; the box's own p rule would grey it. */
-.app-confirm p.form-error {
-  color: #a23725;
-}
 .app-confirm-field {
   display: grid;
   gap: 6px;
@@ -10766,7 +10762,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 0 24px 16px;
 }
 /* Scheduling's messages sit in its fieldset, under rows that end in a rule. */
-.scheduling-form > fieldset > :is(.form-error, .form-success) {
+.scheduling-form > fieldset > :is(.field-note, .form-success) {
   margin: 0;
   padding: 16px 24px;
 }
