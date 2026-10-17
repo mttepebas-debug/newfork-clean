@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 508, last: 20261017170000_notification_email_channel.sql
--- fingerprint: sha256:f450d477def9b78ce94b632138c82136fd20a7a26fc042a0fc2fff691ab58d49
+-- migrations: 509, last: 20261017210000_notification_push_channel.sql
+-- fingerprint: sha256:9a8cd7a6b6d356b716ea60b83926d661e60bd2df12975dde5bd710c152218fb8
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6891,6 +6891,64 @@ $$;
 ALTER FUNCTION "app_private"."purge_expired_notifications"("at_time" timestamp with time zone) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."push_channel_open"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  insert into app_private.notification_push_channel (opened_at) values (now())
+  on conflict (only_row) do update set opened_at = excluded.opened_at;
+  update public.notification_deliveries set status = 'skipped', last_error = 'before_launch', lease_expires_at = null,
+    updated_at = now()
+  where channel = 'push' and status in ('queued', 'sending', 'failed');
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."push_channel_open"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."push_endpoint_ok"("target" "text") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $_$
+  select target is not null and char_length(target) <= 2000
+    and target ~ ('^https://(fcm\.googleapis\.com|updates\.push\.services\.mozilla\.com'
+                  || '|([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+push\.apple\.com'
+                  || '|([a-z0-9]([a-z0-9-]*[a-z0-9])?\.)+notify\.windows\.com)/[^[:space:][:cntrl:]\\#]+$')
+$_$;
+
+
+ALTER FUNCTION "app_private"."push_endpoint_ok"("target" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  notice record;
+  email record;
+begin
+  select n.id, n.workspace_id, n.user_id, n.type_key, t.level into notice
+  from public.person_notifications n join public.notification_types t on t.key = n.type_key where n.id = target_notice;
+  if notice.id is null or notice.level not in ('required', 'important') then
+    return;
+  end if;
+  select r.sends, r.reason into email from app_private.notification_route(notice.type_key, notice.workspace_id, notice.user_id) r
+  where r.channel = 'email';
+  if coalesce(email.sends, false) or email.reason = 'default_off' then
+    insert into public.notification_deliveries (notification_id, channel, reason)
+    values (notice.id, 'email', case when email.sends then email.reason else 'push_fallback' end)
+    on conflict (notification_id, channel) do nothing;
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -11161,6 +11219,113 @@ $$;
 ALTER FUNCTION "public"."claim_notification_emails_service"("target_batch_size" integer) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."claim_notification_push_service"("target_batch_size" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  channel app_private.notification_push_channel;
+  row record;
+  route record;
+  targets jsonb;
+  workspace_name text;
+  given jsonb := '[]'::jsonb;
+begin
+  if target_batch_size is null or target_batch_size < 1 or target_batch_size > 100 then
+    raise exception 'a batch is 1 to 100' using errcode = '22023', hint = 'notifications.batch_size';
+  end if;
+  select * into channel from app_private.notification_push_channel;
+  if not found then
+    return given;
+  end if;
+
+  for row in
+    select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body,
+      n.url, n.created_at noticed_at, t.level, t.push_shows_body
+    from public.notification_deliveries d
+    join public.person_notifications n on n.id = d.notification_id
+    join public.notification_types t on t.key = n.type_key
+    where d.channel = 'push'
+      and ((d.status in ('queued', 'failed') and d.next_attempt_at <= now())
+           or (d.status = 'sending' and d.lease_expires_at < now()))
+    order by (t.level = 'required') desc, d.created_at, d.id
+    limit target_batch_size
+    for update of d skip locked
+  loop
+    if row.queued_at < channel.opened_at then
+      update public.notification_deliveries set status = 'skipped', last_error = 'before_launch', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.status = 'sending' and row.attempts >= 5 then
+      if exists (select 1 from public.notification_push_sends s where s.delivery_id = row.id) then
+        update public.notification_deliveries set status = 'sent', sent_at = coalesce(sent_at, now()), last_error = null,
+          lease_expires_at = null, updated_at = now() where id = row.id;
+      else
+        update public.notification_deliveries set status = 'dead', last_error = 'lease_exhausted', lease_expires_at = null,
+          updated_at = now() where id = row.id;
+        perform app_private.push_fallback_email(row.notice);
+      end if;
+      continue;
+    end if;
+    if row.noticed_at < now() - interval '24 hours' then
+      update public.notification_deliveries set status = 'dead', last_error = 'stale', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    -- Push never goes to a former member, not even what goes to former members (S-126 (5)).
+    if not app_private.membership_receives(row.workspace_id, row.user_id, false) then
+      update public.notification_deliveries set status = 'skipped', last_error = 'not_member', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    select r.sends, r.reason into route from app_private.notification_route(row.type_key, row.workspace_id, row.user_id) r
+    where r.channel = 'push';
+    if not coalesce(route.sends, false) then
+      update public.notification_deliveries set status = 'skipped', last_error = coalesce(route.reason, 'no_route'),
+        lease_expires_at = null, updated_at = now() where id = row.id;
+      if route.reason = 'no_device' then
+        perform app_private.push_fallback_email(row.notice);
+      end if;
+      continue;
+    end if;
+    select coalesce(jsonb_agg(jsonb_build_object('subscription_id', s.id, 'endpoint', s.endpoint, 'p256dh', s.p256dh,
+             'auth', s.auth_secret) order by s.created_at, s.id), '[]'::jsonb)
+      into targets
+    from public.notification_push_subscriptions s
+    where s.user_id = row.user_id and s.revoked_at is null
+      and not exists (select 1 from public.notification_push_sends x where x.delivery_id = row.id and x.subscription_id = s.id);
+    if jsonb_array_length(targets) = 0 then
+      -- Every device left has taken it already.
+      update public.notification_deliveries set status = 'sent', sent_at = coalesce(sent_at, now()), last_error = null,
+        lease_expires_at = null, updated_at = now() where id = row.id;
+      continue;
+    end if;
+    update public.notification_deliveries set status = 'sending', attempts = attempts + 1,
+      lease_expires_at = now() + interval '2 minutes', updated_at = now() where id = row.id;
+    workspace_name := (select w.name from public.workspaces w where w.id = row.workspace_id);
+    given := given || jsonb_build_array(jsonb_build_object(
+      'delivery_id', row.id,
+      'ttl', greatest(60, 86400 - extract(epoch from now() - row.noticed_at)::integer),
+      'urgency', case when row.level = 'optional' then 'normal' else 'high' end,
+      'topic', left(replace(row.notice::text, '-', ''), 32),
+      'payload', jsonb_build_object(
+        'title', case when char_length(row.title) > 120 then left(row.title, 119) || '…' else row.title end,
+        'body', nullif(concat_ws(' · ', workspace_name,
+          case when row.push_shows_body and row.body is not null then
+            case when char_length(row.body) > 140 then left(row.body, 139) || '…' else row.body end end), ''),
+        'url', coalesce(row.url, '/app'),
+        'tag', row.notice::text),
+      'targets', targets));
+  end loop;
+  return given;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."claim_notification_push_service"("target_batch_size" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."claim_password_reset_send_service"("email_digest" "text", "address_digest" "text") RETURNS "text"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -12147,6 +12312,23 @@ end; $$;
 ALTER FUNCTION "public"."delete_job_with_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."delete_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.authorize(actor_user_id, null, 'account.self', null, null, actor_user_id);
+  update public.notification_push_subscriptions s set revoked_at = now(), revoked_reason = 'person'
+  where s.endpoint = target_endpoint and s.user_id = actor_user_id and s.revoked_at is null;
+  return jsonb_build_object('devices', (select count(*) from public.notification_push_subscriptions s
+                                        where s.user_id = actor_user_id and s.revoked_at is null));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."delete_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."delete_schedule_draft_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_draft_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -12863,6 +13045,104 @@ $_$;
 
 
 ALTER FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."finish_notification_push_service"("target_delivery" "uuid", "target_results" "jsonb") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  found_row public.notification_deliveries;
+  owner_user uuid;
+  answer jsonb;
+  waits boolean := false;
+  too_large boolean := false;
+  wait_for integer := 0;
+  retry_code text;
+  next_status text;
+begin
+  if jsonb_typeof(target_results) is distinct from 'array' or jsonb_array_length(target_results) > 10 then
+    raise exception 'answers are a list of up to ten' using errcode = '22023', hint = 'notifications.push_results';
+  end if;
+  for answer in select value from jsonb_array_elements(target_results) loop
+    if jsonb_typeof(answer) is distinct from 'object' or jsonb_typeof(answer -> 'subscription_id') is distinct from 'string'
+       or (answer ->> 'subscription_id') !~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$'
+       or (case coalesce(jsonb_typeof(answer -> 'retry_after'), 'null')
+             when 'null' then false
+             when 'number' then (answer ->> 'retry_after')::numeric not between 0 and 86400
+             else true end) then
+      raise exception 'answers are a list of up to ten' using errcode = '22023', hint = 'notifications.push_results';
+    end if;
+    if coalesce(answer ->> 'outcome', '') not in ('accepted', 'gone', 'refused', 'retry', 'too_large') then
+      raise exception 'an outcome is accepted, gone, refused, retry or too_large' using errcode = '22023', hint = 'notifications.outcome';
+    end if;
+    if answer ->> 'code' is not null and answer ->> 'code' !~ '^[a-z0-9_]{1,40}$' then
+      raise exception 'an error is a short code' using errcode = '22023', hint = 'notifications.error_code';
+    end if;
+  end loop;
+
+  select * into found_row from public.notification_deliveries d where d.id = target_delivery and d.channel = 'push' for update;
+  if not found then
+    return null;
+  end if;
+  -- Only a row being sent is finished: a late answer never undoes what came after it.
+  if found_row.status <> 'sending' then
+    return found_row.status;
+  end if;
+  select n.user_id into owner_user from public.person_notifications n where n.id = found_row.notification_id;
+
+  for answer in
+    select a.value from jsonb_array_elements(target_results) a
+    join public.notification_push_subscriptions s on s.id = (a.value ->> 'subscription_id')::uuid and s.user_id = owner_user
+  loop
+    case answer ->> 'outcome'
+      when 'accepted' then
+        insert into public.notification_push_sends (delivery_id, subscription_id) values (found_row.id, (answer ->> 'subscription_id')::uuid)
+        on conflict do nothing;
+        update public.notification_push_subscriptions set last_used_at = now() where id = (answer ->> 'subscription_id')::uuid;
+      when 'gone' then
+        update public.notification_push_subscriptions set revoked_at = now(), revoked_reason = 'gone'
+        where id = (answer ->> 'subscription_id')::uuid and revoked_at is null;
+      when 'retry' then
+        waits := true;
+        retry_code := coalesce(retry_code, answer ->> 'code');
+        wait_for := greatest(wait_for, coalesce((answer ->> 'retry_after')::numeric, 0)::integer);
+      when 'too_large' then
+        too_large := true;
+      else
+        null;
+    end case;
+  end loop;
+
+  if too_large then
+    next_status := 'dead';
+    update public.notification_deliveries set status = 'dead', last_error = 'payload_too_large', lease_expires_at = null,
+      updated_at = now() where id = found_row.id;
+  elsif waits and found_row.attempts < 5 then
+    next_status := 'failed';
+    update public.notification_deliveries set status = 'failed', last_error = coalesce(retry_code, 'retry'), lease_expires_at = null,
+      next_attempt_at = now() + greatest(make_interval(mins => (2 ^ (found_row.attempts - 1))::integer),
+                                         make_interval(secs => least(wait_for, 3600))),
+      updated_at = now() where id = found_row.id;
+  elsif exists (select 1 from public.notification_push_sends s where s.delivery_id = found_row.id) then
+    next_status := 'sent';
+    update public.notification_deliveries set status = 'sent', sent_at = now(), last_error = null, lease_expires_at = null,
+      updated_at = now() where id = found_row.id;
+  else
+    next_status := 'dead';
+    update public.notification_deliveries set status = 'dead',
+      last_error = case when waits then 'retries_exhausted' else 'no_device_reached' end, lease_expires_at = null,
+      updated_at = now() where id = found_row.id;
+  end if;
+  if next_status = 'dead' and not exists (select 1 from public.notification_push_sends s where s.delivery_id = found_row.id) then
+    perform app_private.push_fallback_email(found_row.notification_id);
+  end if;
+  return next_status;
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."finish_notification_push_service"("target_delivery" "uuid", "target_results" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_account_deletion_blockers_service"("actor_user_id" "uuid") RETURNS "jsonb"
@@ -20334,6 +20614,29 @@ $$;
 ALTER FUNCTION "public"."release_notification_emails_service"("target_deliveries" "uuid"[]) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."release_notification_push_service"("target_deliveries" "uuid"[]) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  given integer;
+begin
+  update public.notification_deliveries d set
+    status = case when d.attempts > 1 then 'failed' else 'queued' end,
+    attempts = greatest(d.attempts - 1, 0),
+    next_attempt_at = now(),
+    lease_expires_at = null,
+    updated_at = now()
+  where d.id = any (coalesce(target_deliveries, '{}'::uuid[])) and d.channel = 'push' and d.status = 'sending';
+  get diagnostics given = row_count;
+  return given;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."release_notification_push_service"("target_deliveries" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."remove_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -23011,6 +23314,48 @@ $$;
 
 
 ALTER FUNCTION "public"."save_notification_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_choices" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."save_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text", "target_p256dh" "text", "target_auth" "text", "target_label" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  label text := nullif(btrim(coalesce(target_label, '')), '');
+  saved uuid;
+begin
+  perform app_private.authorize(actor_user_id, null, 'account.self', null, null, actor_user_id);
+  if not app_private.push_endpoint_ok(target_endpoint) then
+    raise exception 'a push service''s address is required' using errcode = '22023', hint = 'notifications.push_endpoint';
+  end if;
+  if target_p256dh is null or target_p256dh !~ '^[A-Za-z0-9_-]{87}$' or target_auth is null or target_auth !~ '^[A-Za-z0-9_-]{22}$' then
+    raise exception 'the browser''s keys are required' using errcode = '22023', hint = 'notifications.push_keys';
+  end if;
+  if label is not null and (char_length(label) > 120 or label ~ '[[:cntrl:]]') then
+    raise exception 'a device name is up to 120 characters' using errcode = '22023', hint = 'notifications.push_label';
+  end if;
+
+  insert into public.notification_push_subscriptions (user_id, endpoint, p256dh, auth_secret, device_label, last_used_at)
+  values (actor_user_id, target_endpoint, target_p256dh, target_auth, label, now())
+  on conflict (endpoint) do update set user_id = excluded.user_id, p256dh = excluded.p256dh, auth_secret = excluded.auth_secret,
+    device_label = excluded.device_label, last_used_at = now(), revoked_at = null, revoked_reason = null
+  returning id into saved;
+
+  -- Ten at most: the one used longest ago goes.
+  update public.notification_push_subscriptions s set revoked_at = now(), revoked_reason = 'expired'
+  where s.id in (
+    select x.id from public.notification_push_subscriptions x
+    where x.user_id = actor_user_id and x.revoked_at is null and x.id <> saved
+    order by coalesce(x.last_used_at, x.created_at) desc, x.id
+    offset 9);
+
+  return jsonb_build_object('devices', (select count(*) from public.notification_push_subscriptions s
+                                        where s.user_id = actor_user_id and s.revoked_at is null));
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."save_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text", "target_p256dh" "text", "target_auth" "text", "target_label" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_settings" "jsonb") RETURNS "jsonb"
@@ -28248,6 +28593,16 @@ CREATE TABLE IF NOT EXISTS "app_private"."notification_email_channel" (
 ALTER TABLE "app_private"."notification_email_channel" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."notification_push_channel" (
+    "only_row" boolean DEFAULT true NOT NULL,
+    "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "notification_push_channel_only_row_check" CHECK ("only_row")
+);
+
+
+ALTER TABLE "app_private"."notification_push_channel" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "app_private"."role_permission_dependencies" (
     "permission_key" "text" NOT NULL,
     "required_key" "text" NOT NULL
@@ -29099,6 +29454,16 @@ CREATE TABLE IF NOT EXISTS "public"."notification_preferences" (
 ALTER TABLE "public"."notification_preferences" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."notification_push_sends" (
+    "delivery_id" "uuid" NOT NULL,
+    "subscription_id" "uuid" NOT NULL,
+    "accepted_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."notification_push_sends" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."notification_push_subscriptions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "user_id" "uuid" NOT NULL,
@@ -29110,11 +29475,11 @@ CREATE TABLE IF NOT EXISTS "public"."notification_push_subscriptions" (
     "last_used_at" timestamp with time zone,
     "revoked_at" timestamp with time zone,
     "revoked_reason" "text",
-    CONSTRAINT "notification_push_subscriptions_auth_secret_check" CHECK ((("char_length"("auth_secret") >= 1) AND ("char_length"("auth_secret") <= 100))),
+    CONSTRAINT "notification_push_subscriptions_auth_secret_check" CHECK (("auth_secret" ~ '^[A-Za-z0-9_-]{22}$'::"text")),
     CONSTRAINT "notification_push_subscriptions_check" CHECK ((("revoked_at" IS NULL) = ("revoked_reason" IS NULL))),
-    CONSTRAINT "notification_push_subscriptions_device_label_check" CHECK (("char_length"("device_label") <= 120)),
-    CONSTRAINT "notification_push_subscriptions_endpoint_check" CHECK ((("endpoint" ~ '^https://'::"text") AND ("char_length"("endpoint") <= 2000))),
-    CONSTRAINT "notification_push_subscriptions_p256dh_check" CHECK ((("char_length"("p256dh") >= 1) AND ("char_length"("p256dh") <= 200))),
+    CONSTRAINT "notification_push_subscriptions_endpoint_check" CHECK ("app_private"."push_endpoint_ok"("endpoint")),
+    CONSTRAINT "notification_push_subscriptions_label_check" CHECK ((("device_label" IS NULL) OR ((("char_length"("device_label") >= 1) AND ("char_length"("device_label") <= 120)) AND ("device_label" !~ '[[:cntrl:]]'::"text")))),
+    CONSTRAINT "notification_push_subscriptions_p256dh_check" CHECK (("p256dh" ~ '^[A-Za-z0-9_-]{87}$'::"text")),
     CONSTRAINT "notification_push_subscriptions_revoked_reason_check" CHECK (("revoked_reason" = ANY (ARRAY['person'::"text", 'gone'::"text", 'expired'::"text"])))
 );
 
@@ -29185,6 +29550,7 @@ CREATE TABLE IF NOT EXISTS "public"."notification_types" (
     "description" "text" NOT NULL,
     "position" smallint NOT NULL,
     "heard_by" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    "push_shows_body" boolean DEFAULT false NOT NULL,
     CONSTRAINT "notification_types_area_check" CHECK (("area" = ANY (ARRAY['schedule'::"text", 'shift_changes'::"text", 'time_off'::"text", 'lineup'::"text", 'people'::"text", 'documents'::"text", 'announcements'::"text", 'account'::"text", 'workspace'::"text"]))),
     CONSTRAINT "notification_types_check" CHECK ((("level" <> 'required'::"text") OR "default_email")),
     CONSTRAINT "notification_types_check1" CHECK ((("scope" = 'workspace'::"text") OR ("level" = 'required'::"text"))),
@@ -30245,6 +30611,11 @@ ALTER TABLE ONLY "app_private"."notification_email_channel"
 
 
 
+ALTER TABLE ONLY "app_private"."notification_push_channel"
+    ADD CONSTRAINT "notification_push_channel_pkey" PRIMARY KEY ("only_row");
+
+
+
 ALTER TABLE ONLY "app_private"."role_permission_dependencies"
     ADD CONSTRAINT "role_permission_dependencies_pkey" PRIMARY KEY ("permission_key", "required_key");
 
@@ -30672,6 +31043,11 @@ ALTER TABLE ONLY "public"."notification_email_suppressions"
 
 ALTER TABLE ONLY "public"."notification_preferences"
     ADD CONSTRAINT "notification_preferences_pkey" PRIMARY KEY ("workspace_id", "user_id", "topic_key", "channel");
+
+
+
+ALTER TABLE ONLY "public"."notification_push_sends"
+    ADD CONSTRAINT "notification_push_sends_pkey" PRIMARY KEY ("delivery_id", "subscription_id");
 
 
 
@@ -31435,6 +31811,10 @@ CREATE INDEX "notification_deliveries_provider_message" ON "public"."notificatio
 
 
 CREATE INDEX "notification_preferences_user" ON "public"."notification_preferences" USING "btree" ("user_id");
+
+
+
+CREATE INDEX "notification_push_sends_subscription" ON "public"."notification_push_sends" USING "btree" ("subscription_id");
 
 
 
@@ -32747,6 +33127,16 @@ ALTER TABLE ONLY "public"."notification_preferences"
 
 
 
+ALTER TABLE ONLY "public"."notification_push_sends"
+    ADD CONSTRAINT "notification_push_sends_delivery_id_fkey" FOREIGN KEY ("delivery_id") REFERENCES "public"."notification_deliveries"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."notification_push_sends"
+    ADD CONSTRAINT "notification_push_sends_subscription_id_fkey" FOREIGN KEY ("subscription_id") REFERENCES "public"."notification_push_subscriptions"("id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."notification_push_subscriptions"
     ADD CONSTRAINT "notification_push_subscriptions_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
@@ -33837,6 +34227,9 @@ ALTER TABLE "public"."notification_email_suppressions" ENABLE ROW LEVEL SECURITY
 ALTER TABLE "public"."notification_preferences" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."notification_push_sends" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."notification_push_subscriptions" ENABLE ROW LEVEL SECURITY;
 
 
@@ -34917,6 +35310,18 @@ REVOKE ALL ON FUNCTION "app_private"."purge_expired_notifications"("at_time" tim
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."push_channel_open"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."push_endpoint_ok"("target" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") FROM PUBLIC;
 
 
@@ -35419,6 +35824,11 @@ GRANT ALL ON FUNCTION "public"."claim_notification_emails_service"("target_batch
 
 
 
+REVOKE ALL ON FUNCTION "public"."claim_notification_push_service"("target_batch_size" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."claim_notification_push_service"("target_batch_size" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."claim_password_reset_send_service"("email_digest" "text", "address_digest" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."claim_password_reset_send_service"("email_digest" "text", "address_digest" "text") TO "service_role";
 
@@ -35519,6 +35929,11 @@ REVOKE ALL ON FUNCTION "public"."delete_employee_invitation_delivery_secret"() F
 
 REVOKE ALL ON FUNCTION "public"."delete_job_with_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."delete_job_with_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."delete_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."delete_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text") TO "service_role";
 
 
 
@@ -35623,6 +36038,11 @@ GRANT ALL ON FUNCTION "public"."finalize_claimed_account_deletion_service"("targ
 
 REVOKE ALL ON FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."finish_notification_push_service"("target_delivery" "uuid", "target_results" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."finish_notification_push_service"("target_delivery" "uuid", "target_results" "jsonb") TO "service_role";
 
 
 
@@ -36226,6 +36646,11 @@ GRANT ALL ON FUNCTION "public"."release_notification_emails_service"("target_del
 
 
 
+REVOKE ALL ON FUNCTION "public"."release_notification_push_service"("target_deliveries" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."release_notification_push_service"("target_deliveries" "uuid"[]) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."remove_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
 
@@ -36403,6 +36828,11 @@ GRANT ALL ON FUNCTION "public"."save_employee_service"("actor_user_id" "uuid", "
 
 REVOKE ALL ON FUNCTION "public"."save_notification_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_choices" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_notification_preferences_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_choices" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."save_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text", "target_p256dh" "text", "target_auth" "text", "target_label" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."save_notification_push_subscription_service"("actor_user_id" "uuid", "target_endpoint" "text", "target_p256dh" "text", "target_auth" "text", "target_label" "text") TO "service_role";
 
 
 
@@ -37115,6 +37545,10 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_email
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_preferences" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."notification_push_sends" TO "service_role";
 
 
 

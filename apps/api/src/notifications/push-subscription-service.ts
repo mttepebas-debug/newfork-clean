@@ -1,5 +1,5 @@
 import { createClient } from "@supabase/supabase-js";
-import { pushDevicesSchema, type PushSubscriptionInput } from "@newfork/shared";
+import { pushDevicesSchema } from "@newfork/shared";
 import { createUserVerifier } from "../auth/verify-user.js";
 import { HttpError, rpcFailure } from "../http-error.js";
 import type { PushSubscriptionService } from "./push-routes";

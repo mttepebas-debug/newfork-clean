@@ -21,15 +21,16 @@ declare module "web-push" {
     headers: Record<string, string | string[] | undefined>;
   }
 
-  class WebPushError extends Error {
+  interface WebPushError extends Error {
     readonly statusCode: number;
     readonly headers: Record<string, string | string[] | undefined>;
     readonly body: string;
     readonly endpoint: string;
   }
 
-  function sendNotification(subscription: PushSubscription, payload?: string | Buffer | null, options?: RequestOptions): Promise<SendResult>;
-
-  const webpush: { sendNotification: typeof sendNotification; WebPushError: typeof WebPushError };
+  const webpush: {
+    sendNotification(subscription: PushSubscription, payload?: string | Buffer | null, options?: RequestOptions): Promise<SendResult>;
+    WebPushError: { new (...args: never[]): WebPushError; readonly prototype: WebPushError };
+  };
   export default webpush;
 }
