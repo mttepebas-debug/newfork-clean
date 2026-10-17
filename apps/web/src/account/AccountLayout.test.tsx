@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import { MemoryRouter, Route, Routes } from "react-router";
+import { Link, MemoryRouter, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import AccountLayout from "./AccountLayout";
@@ -130,6 +130,48 @@ describe("AccountLayout mobile navigation", () => {
       expect(active.getAttribute("aria-current")).toBe("page");
       expect(document.activeElement).toBe(active);
     });
+  });
+
+  // Focus that left the menu (a tap on an empty spot drops it to the page
+  // body) is not pulled back to the menu by a later page change that moves no
+  // focus itself (a link tapped on iOS, a redirect after saving).
+  it("leaves focus alone once it has left the menu", async () => {
+    function ProfileHeading() {
+      return (
+        <header className="account-page-header">
+          <div>
+            <h1>Profile</h1>
+          </div>
+        </header>
+      );
+    }
+    function WorkspacesHeading() {
+      return (
+        <>
+          <header className="account-page-header">
+            <div>
+              <h1>Workspaces</h1>
+            </div>
+          </header>
+          <Link to="/account/profile">Your profile</Link>
+        </>
+      );
+    }
+    renderLayout(<ProfileHeading />, <WorkspacesHeading />);
+    const menu = () => screen.getByRole("banner").querySelector<HTMLElement>('nav[aria-label="Account"]');
+    await waitFor(() => expect(menu()).not.toBeNull());
+    const workspaces = within(menu()!).getByRole("link", { name: "Workspaces" });
+    workspaces.focus();
+    // A tap on an empty spot of the page.
+    fireEvent.pointerDown(document.body);
+    workspaces.blur();
+    expect(document.activeElement).toBe(document.body);
+    fireEvent.click(screen.getByRole("link", { name: "Your profile" }));
+    await screen.findByRole("heading", { name: "Profile" });
+    await waitFor(() => expect(within(menu()!).getByRole("link", { name: "Profile" }).getAttribute("aria-current")).toBe("page"));
+    // The menu would take focus within a few frames.
+    await new Promise((done) => setTimeout(done, 200));
+    expect(document.activeElement).toBe(document.body);
   });
 });
 

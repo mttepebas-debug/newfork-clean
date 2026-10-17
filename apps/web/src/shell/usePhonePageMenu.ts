@@ -25,11 +25,16 @@ export function usePhonePageMenu(area: HTMLElement | null): HTMLElement | null {
       focused = true;
     };
     const onFocusOut = (event: FocusEvent) => {
+      // Focus that goes nowhere is either a page change taking the link away
+      // (Chrome reports that too) or a tap elsewhere, which onPointerDown sees.
       if (event.relatedTarget instanceof Node && !box?.contains(event.relatedTarget)) focused = false;
     };
-    // Focus that went somewhere else meanwhile is the person's own choice.
-    const onDocumentFocusIn = (event: FocusEvent) => {
-      if (!(event.target instanceof Node) || !box?.contains(event.target)) restore = false;
+    // Focus that went somewhere else, or a tap outside the menu (on an empty
+    // spot, or on a link iOS does not focus), is the person's own choice.
+    const leave = (event: Event) => {
+      if (event.target instanceof Node && box?.contains(event.target)) return;
+      focused = false;
+      restore = false;
     };
     const focusActive = (into: HTMLElement, tries: number) => {
       // The menu renders into the new box on the next commit.
@@ -64,14 +69,16 @@ export function usePhonePageMenu(area: HTMLElement | null): HTMLElement | null {
         focusActive(box, 10);
       }
     };
-    document.addEventListener("focusin", onDocumentFocusIn);
+    document.addEventListener("focusin", leave);
+    document.addEventListener("pointerdown", leave, true);
     place();
     // A new page brings a new heading.
     const changes = new MutationObserver(place);
     changes.observe(area, { childList: true, subtree: true });
     return () => {
       changes.disconnect();
-      document.removeEventListener("focusin", onDocumentFocusIn);
+      document.removeEventListener("focusin", leave);
+      document.removeEventListener("pointerdown", leave, true);
       cancelAnimationFrame(frame);
       box?.remove();
       setSlot(null);
