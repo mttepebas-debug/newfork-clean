@@ -39,7 +39,7 @@ type Props = {
   copies: Copies;
   onChange: (week: WeeklyPreference, copies: Copies) => void;
   timeFormat: TimeFormat;
-  /** The phone's sheet: shorter names in the time fields, tighter cards. */
+  /** The phone's sheet: tighter cards and taller fields. */
   phone?: boolean;
   disabled?: boolean;
 };
@@ -111,7 +111,6 @@ export function DayEditor({
         <TimeFields
           range={rangeOf(day)}
           timeFormat={timeFormat}
-          phone={phone}
           disabled={disabled}
           onCommit={(range) => put(withRange(day, range))}
         />
@@ -312,23 +311,17 @@ const TIMES = Array.from({ length: DAY_END / STEP + 1 }, (_, index) => index * S
 function TimeFields({
   range,
   timeFormat,
-  phone,
   disabled,
   onCommit,
 }: {
   range: MinuteRange | null;
   timeFormat: TimeFormat;
-  phone: boolean;
   disabled: boolean;
   onCommit: (range: MinuteRange) => void;
 }) {
-  // The two ends of the day by name, never "12:00 AM" twice: short on the phone, where the field is half as wide.
-  const label = (minutes: number) => {
-    const clock = timeFormat === "24h" ? fullClock(minutes, timeFormat) : "12 AM";
-    if (minutes === DAY_START) return phone ? (timeFormat === "24h" ? clock : "Midnight") : `Midnight (${clock})`;
-    if (minutes === DAY_END) return phone ? (timeFormat === "24h" ? clock : "End of day") : `End of day (${clock})`;
-    return fullClock(minutes, timeFormat);
-  };
+  // Only clock times (Mert 2026-10-17): the day runs 12 AM to 12 AM, so the
+  // start of From and the end of Until both read "12:00 AM" (24:00 in a 24-hour workspace).
+  const label = (minutes: number) => fullClock(minutes, timeFormat);
   const change = (end: 0 | 1, value: string) => {
     if (value === "") return;
     const minutes = Number(value);

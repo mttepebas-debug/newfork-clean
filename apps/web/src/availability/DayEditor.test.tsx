@@ -155,17 +155,19 @@ describe("From and Until", () => {
     expect(friday().ranges).toEqual([{ start: "18:00", end: "19:00" }]);
   });
 
-  it("name the two ends of the day plainly, short on the phone", () => {
-    const { unmount } = render(<Harness start={emptyWeeklyPreference()} />);
+  // Mert 2026-10-17: only clock times in the lists, no "Midnight" or "End of
+  // day"; the day runs 12 AM to 12 AM, so both ends read "12:00 AM".
+  it.each([false, true])("lists plain clock times only (phone: %s)", (phone) => {
+    render(<Harness start={emptyWeeklyPreference()} phone={phone} />);
     const options = (name: string) =>
       [...(screen.getByRole("combobox", { name }) as HTMLSelectElement).options].map((option) => option.textContent);
-    expect(options("From")[1]).toBe("Midnight (12 AM)");
-    expect(options("Until").at(-1)).toBe("End of day (12 AM)");
-    expect(options("From")).not.toContain("End of day (12 AM)");
-    unmount();
-    render(<Harness start={emptyWeeklyPreference()} phone />);
-    expect(options("From")[1]).toBe("Midnight");
-    expect(options("Until").at(-1)).toBe("End of day");
+    expect(options("From")[1]).toBe("12:00 AM");
+    expect(options("From").at(-1)).toBe("11:30 PM");
+    expect(options("Until")[1]).toBe("12:30 AM");
+    expect(options("Until").at(-1)).toBe("12:00 AM");
+    const words = /Midnight|End of day|Open|Close/;
+    expect([...options("From"), ...options("Until")].filter((label) => words.test(label ?? ""))).toEqual([]);
+    expect([...options("From"), ...options("Until")].filter((label) => label !== "—").every((label) => /^\d{1,2}:\d{2} [AP]M$/.test(label ?? ""))).toBe(true);
   });
 });
 
