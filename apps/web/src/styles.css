@@ -6281,6 +6281,33 @@ button.workspace-switcher-item:hover:not(:disabled) {
   border-color: #b7d2f7;
   background: #eef6ff;
 }
+/* The short notice after a shift lands on a preference (AVAIL-GUN-1): a thin
+   orange line runs out with the toast's time. */
+[data-sonner-toaster] [data-sonner-toast].newfork-toast--timed {
+  overflow: hidden;
+}
+[data-sonner-toaster] [data-sonner-toast].newfork-toast--timed::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 3px;
+  background: var(--theme-availability);
+  transform-origin: left center;
+  animation: newfork-toast-timer var(--toast-duration, 5000ms) linear forwards;
+}
+[data-sonner-toaster]:hover [data-sonner-toast].newfork-toast--timed::after {
+  animation-play-state: paused;
+}
+@keyframes newfork-toast-timer {
+  from { transform: scaleX(1); }
+  to { transform: scaleX(0); }
+}
+@media (prefers-reduced-motion: reduce) {
+  [data-sonner-toaster] [data-sonner-toast].newfork-toast--timed::after {
+    animation: none;
+  }
+}
 .toast-type-icon {
   display: inline-flex;
   width: 30px;

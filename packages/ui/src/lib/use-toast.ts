@@ -5,6 +5,10 @@ interface ActionToastOpts {
   readonly onAction: () => void;
   readonly dedupeKey?: string;
   readonly durationMs?: number;
+  /** A second line under the message. */
+  readonly description?: string;
+  /** "warning" draws the warning toast; the default is a plain one. */
+  readonly tone?: "warning";
 }
 
 type ToastResult = string | number;
@@ -132,15 +136,22 @@ export const toast: ToastFacade = {
     return rememberToastId("info", message, opts, id);
   },
   action: (message, opts) => {
-    const id = sonnerToast(message, {
+    const duration = opts.durationMs ?? ACTION_TOAST_DURATION_MS;
+    const options: ExternalToast = {
       action: {
         label: opts.actionLabel,
         onClick: opts.onAction,
       },
       dismissible: true,
-      duration: opts.durationMs ?? ACTION_TOAST_DURATION_MS,
+      duration,
       id: resolveToastId("action", message, opts),
-    });
+      ...(opts.description ? { description: opts.description } : {}),
+      // A thin line under a warning runs out with its time (AVAIL-GUN-1).
+      ...(opts.tone === "warning"
+        ? { className: "newfork-toast--timed", style: { "--toast-duration": `${duration}ms` } as ExternalToast["style"] }
+        : {}),
+    };
+    const id = opts.tone === "warning" ? sonnerToast.warning(message, options) : sonnerToast(message, options);
     return rememberToastId("action", message, opts, id);
   },
 };

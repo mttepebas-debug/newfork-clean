@@ -53,6 +53,29 @@ describe("toast facade", () => {
     );
   });
 
+  it("an action toast can warn, carry a second line and a short timer line", () => {
+    const onAction = vi.fn();
+    toast.action("Shift added to Maria Lopez.", {
+      actionLabel: "Undo",
+      onAction,
+      tone: "warning",
+      description: "Maria prefers not to work Mon after 6:00 PM.",
+      durationMs: 5_000,
+      dedupeKey: "assign-notice",
+    });
+    expect(sonnerToast.warning).toHaveBeenCalledWith(
+      "Shift added to Maria Lopez.",
+      expect.objectContaining({
+        description: "Maria prefers not to work Mon after 6:00 PM.",
+        duration: 5_000,
+        className: "newfork-toast--timed",
+        style: { "--toast-duration": "5000ms" },
+        action: expect.objectContaining({ label: "Undo", onClick: onAction }),
+      }),
+    );
+    expect(sonnerToast).not.toHaveBeenCalled();
+  });
+
   it("updates the same toast when a dedupe key repeats", () => {
     toast.error("Could not save", {
       dedupeKey: "save-failed",
