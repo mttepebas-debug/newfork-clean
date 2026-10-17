@@ -13,8 +13,6 @@ import {
   setOwnerSetupChecklistClosed,
 } from "../communications/communications-data";
 import {
-} from "../employees/employee-data";
-import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
 } from "../schedule/components/ScheduleLogoUploadDialog";

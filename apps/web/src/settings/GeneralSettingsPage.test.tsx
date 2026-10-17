@@ -53,9 +53,6 @@ vi.mock("../communications/communications-data", () => ({
   setOwnerSetupChecklistClosed: vi.fn(),
 }));
 
-vi.mock("../employees/employee-data", () => ({
-}));
-
 vi.mock("./organization-data", () => ({
   saveScheduleLogo: vi.fn(),
   updateOrganizationName: vi.fn(),
