@@ -1,20 +1,30 @@
 import { describe, expect, it } from "vitest";
 
-import { lineupDay, lineupShiftSpan, lineupWeek, phoneLineupShift } from "./lineup";
-import { aisha, chloe, day, dinner, downtown, hannah, host, lunch, maria, model, oldJob, server, cook, shift, uptown } from "./lineup.testing";
+import {
+  canPublish,
+  lineupDay,
+  lineupShiftSpan,
+  lineupWeek,
+  phoneLineupShift,
+  unpublishedCount,
+  type LineupFilters,
+} from "./lineup";
+import { aisha, chloe, day, dayRead, dinner, downtown, hannah, host, lunch, maria, model, oldJob, server, cook, shift, uptown } from "./lineup.testing";
+
+const view = (m: ReturnType<typeof model>, date: string, filters?: LineupFilters) => lineupDay(dayRead(m, date), m, filters);
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live shifts per
 // location and shift type, grouped by department and job.
 
 describe("lineupDay", () => {
   it("puts locations and shift types in their catalog order", () => {
-    const result = lineupDay(model([]), day);
+    const result = view(model([]), day);
     expect(result.map((location) => location.name)).toEqual(["Downtown", "Uptown"]);
     expect(result[0]!.shifts.map((s) => [s.name, s.count])).toEqual([["Lunch", 0], ["Dinner", 0]]);
   });
 
   it("groups the day's people by department, then job, earliest first", () => {
-    const result = lineupDay(
+    const result = view(
       model([
         shift({ employee: hannah, job: server, type: lunch, start: "11:30", end: "16:00", labels: ["Training"] }),
         shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
@@ -34,7 +44,7 @@ describe("lineupDay", () => {
   });
 
   it("leaves out open shifts, other days and other locations", () => {
-    const result = lineupDay(
+    const result = view(
       model([
         shift({ employee: null, job: server, type: lunch, start: "11:00", end: "16:00" }),
         shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", date: "2026-10-14" }),
@@ -47,7 +57,7 @@ describe("lineupDay", () => {
   });
 
   it("keeps shifts without a shift type, and archived jobs by name", () => {
-    const result = lineupDay(
+    const result = view(
       model([shift({ employee: maria, job: oldJob, type: null, start: "09:00", end: "12:00" })]),
       day,
     );
@@ -58,7 +68,7 @@ describe("lineupDay", () => {
   });
 
   it("filters by location and shift type", () => {
-    const result = lineupDay(model([]), day, { locationId: uptown, shiftTypeId: dinner });
+    const result = view(model([]), day, { locationId: uptown, shiftTypeId: dinner });
     expect(result.map((l) => l.name)).toEqual(["Uptown"]);
     expect(result[0]!.shifts.map((s) => s.name)).toEqual(["Dinner"]);
   });
@@ -75,9 +85,47 @@ describe("lineupDay", () => {
       closes: kind === "short" ? "20:00" : null,
       status,
     });
-    const result = lineupDay(model([], [closure("closed", downtown), closure("short", uptown, "scheduled")]), day);
+    const result = view(model([], [closure("closed", downtown), closure("short", uptown, "scheduled")]), day);
     expect(result[0]!.closed?.title).toBe("Private event");
     expect(result[1]!.shortHours).toBeNull();
+  });
+});
+
+// LINEUP-PUBLISH-WEB: the publish state comes from the day read, per lineup.
+describe("publish state", () => {
+  const m = model([
+    shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+    shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" }),
+  ]);
+
+  it("names each lineup for a command and carries who published it and who read it", () => {
+    const read = dayRead(m, day, {
+      [dinner]: {
+        status: "shared", published: true, shared_at: "2026-10-13T21:10:00+00:00", shared_by_name: "Mia Person",
+        ask_ack: true, acknowledged: 7, with_app: 11,
+      },
+    });
+    const [lunchShift, dinnerShift] = lineupDay(read, m)[0]!.shifts;
+    expect(lunchShift!.publish).toMatchObject({ published: false, status: "draft", acknowledged: 0 });
+    expect(dinnerShift!.publish).toMatchObject({
+      target: { location_id: downtown, service_date: day, shift_type_id: dinner },
+      published: true, sharedByName: "Mia Person", askAck: true, acknowledged: 7, withApp: 11,
+    });
+  });
+
+  it("counts the lineups waiting to be published: people on them, not published, not past", () => {
+    const read = dayRead(m, day, { [dinner]: { status: "shared", published: true } });
+    const locations = lineupDay(read, m);
+    expect(locations[0]!.shifts.map(canPublish)).toEqual([true, false]);
+    // Uptown's empty Lunch and Dinner wait for nobody.
+    expect(unpublishedCount(locations)).toBe(1);
+    const past = lineupDay(dayRead(m, day, { [lunch]: { status: "past" } }), m);
+    expect(unpublishedCount(past)).toBe(1);
+  });
+
+  it("an empty shift type of the catalog stays as a card nobody can publish", () => {
+    const shifts = lineupDay(dayRead(model([]), day), m)[1]!.shifts;
+    expect(shifts.map((s) => [s.name, s.count, canPublish(s)])).toEqual([["Lunch", 0, false], ["Dinner", 0, false]]);
   });
 });
 
@@ -91,7 +139,7 @@ describe("lineupWeek", () => {
 
 // Phone Lineup (Mert 2026-10-14): one shift at a time, under tabs.
 describe("phoneLineupShift", () => {
-  const shifts = lineupDay(
+  const shifts = view(
     model([
       shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
       shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" }),
@@ -112,9 +160,9 @@ describe("phoneLineupShift", () => {
 
   it("another day, opens on the first shift with people", () => {
     expect(phoneLineupShift(shifts, "", null)?.name).toBe("Lunch");
-    const empty = lineupDay(model([shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" })]), day)[0]!.shifts;
+    const empty = view(model([shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" })]), day)[0]!.shifts;
     expect(phoneLineupShift(empty, "", null)?.name).toBe("Dinner");
-    expect(phoneLineupShift(lineupDay(model([]), day)[0]!.shifts, "", null)?.name).toBe("Lunch");
+    expect(phoneLineupShift(view(model([]), day)[0]!.shifts, "", null)?.name).toBe("Lunch");
     expect(phoneLineupShift([], "", null)).toBeNull();
   });
 
@@ -125,7 +173,7 @@ describe("phoneLineupShift", () => {
 
 describe("lineupShiftSpan", () => {
   it("gives the first start and the last end, past midnight too", () => {
-    const [lunchShift] = lineupDay(
+    const [lunchShift] = view(
       model([
         shift({ employee: maria, job: server, type: lunch, start: "11:30", end: "16:00" }),
         shift({ employee: hannah, job: server, type: lunch, start: "10:00", end: "15:00" }),
@@ -137,6 +185,6 @@ describe("lineupShiftSpan", () => {
   });
 
   it("is empty for a shift no one works", () => {
-    expect(lineupShiftSpan(lineupDay(model([]), day)[0]!.shifts[0]!)).toBeNull();
+    expect(lineupShiftSpan(view(model([]), day)[0]!.shifts[0]!)).toBeNull();
   });
 });

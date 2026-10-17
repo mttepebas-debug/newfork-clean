@@ -1,3 +1,4 @@
+import type { LineupDay, LineupDayLineup } from "@newfork/shared";
 import { scheduleReadModelSchema } from "@newfork/shared/schedule";
 
 // Test world for the Lineup: two locations, two shift types, two departments.
@@ -81,4 +82,69 @@ export function model(shifts: ReturnType<typeof shift>[], closures: unknown[] = 
     referenced_jobs: [{ id: oldJob, name: "Barback" }],
     referenced_shift_types: [],
   });
+}
+
+type Model = ReturnType<typeof model>;
+
+/**
+ * The lineup day read (get_lineup_day_service) for a test model, as the server answers it: each location in
+ * its order, a lineup per shift type that has shifts there (or that `extra` names, with its fields), rows as
+ * the Schedule has them.
+ */
+export function dayRead(m: Model, date: string, extra: Record<string, Partial<LineupDayLineup>> = {}): LineupDay {
+  const jobs = new Map(
+    [...m.referenced_jobs.map((job) => ({ ...job, color: null, department_id: null as string | null })), ...m.jobs]
+      .map((job) => [job.id, job]),
+  );
+  const departments = new Map(m.departments.map((department) => [department.id, department]));
+  const types = new Map(m.shift_types.map((type) => [type.id, type]));
+  const names = new Map(m.employees.map((employee) => [employee.id, employee.display_name]));
+  const closure = (location: string, kind: string) => {
+    const c = m.closures.find((item) => item.location_id === location && item.closed_date === date && item.kind === kind);
+    return c ? { title: c.title, status: c.status ?? null, opens: c.opens ?? null, closes: c.closes ?? null } : null;
+  };
+  return {
+    workspace_id: m.workspace_id,
+    date,
+    sections: [],
+    locations: [...m.locations].sort((a, b) => a.sort_order - b.sort_order).map((location) => {
+      const closed = closure(location.id, "closed");
+      const here = m.shifts.filter((s) => s.location_id === location.id && s.scheduled_date === date);
+      const keys = [...new Set([
+        ...here.map((s) => s.shift_type_id),
+        ...Object.keys(extra).map((key) => (key === "none" ? null : key)),
+      ])];
+      return {
+        id: location.id,
+        name: location.name,
+        timezone: location.timezone,
+        closed,
+        short_hours: closure(location.id, "short"),
+        lineups: closed ? [] : keys.map((key) => {
+          const rows = here.filter((s) => s.shift_type_id === key);
+          const people = new Set(rows.flatMap((s) => (s.employee_id ? [s.employee_id] : []))).size;
+          return {
+            id: null, shift_type_id: key, shift_type_name: key ? types.get(key)?.name ?? null : null,
+            color: key ? types.get(key)?.color ?? null : null, status: "draft" as const, version: null, shared_at: null,
+            ask_ack: null, acknowledged: null, revision: null, published: false, version_id: null, shared_by: null,
+            shared_by_name: null, people, with_app: people, notes: { specials: "", n86: "", shift_notes: "" },
+            rows: rows.map((s) => {
+              const job = jobs.get(s.job_id);
+              const department = job?.department_id ? departments.get(job.department_id) : undefined;
+              return {
+                id: null, shift_id: s.id, source_shift_id: s.id, employee_id: s.employee_id,
+                name: s.employee_id ? names.get(s.employee_id) ?? null : null, job_id: s.job_id, job_name: job?.name ?? null,
+                job_color: job?.color ?? null, department_id: department?.id ?? null, department_name: department?.name ?? null,
+                start_time: s.start_time, end_time: s.end_time, crosses_midnight: s.crosses_midnight,
+                schedule_start_time: s.start_time, schedule_end_time: s.end_time, label_ids: [],
+                label_names: s.label_names ?? [], section_id: null, section_name: null, sort_order: null,
+                called_off_at: null, called_off_by: null, lineup_only: false, changed: [],
+              };
+            }),
+            ...extra[key ?? "none"],
+          };
+        }),
+      };
+    }),
+  };
 }

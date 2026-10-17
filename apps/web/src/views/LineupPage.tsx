@@ -1,8 +1,9 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useMemo, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router";
 
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { isNoAccess } from "../lib/no-access";
 import { clockIn, todayIn } from "../lib/today";
@@ -14,9 +15,12 @@ import {
   lineupShiftSpan,
   lineupWeek,
   phoneLineupShift,
+  unpublishedCount,
   type LineupLocation,
   type LineupShift,
 } from "../schedule/lineup";
+import { useLineupDay } from "../schedule/lineup-data";
+import { LineupPublishButton, LineupPublishWindow, publishedAt } from "../schedule/LineupPublishWindow";
 import { addDays, formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
@@ -84,8 +88,19 @@ export function LineupPage() {
 
   const phone = usePhoneWidth();
 
-  const query = useScheduleQuery(workspaceId, date, "day");
-  const model = query.data;
+  // The catalog around the lineups (shift types, the week, the time format) is the Schedule read's; the
+  // lineups themselves, their rows and publish state, are the lineup day read (LINEUP-PUBLISH-WEB).
+  const schedule = useScheduleQuery(workspaceId, date, "day");
+  const day = useLineupDay(workspaceId, date);
+  const model = schedule.data;
+  const query = {
+    isLoading: schedule.isLoading || day.isLoading,
+    isFetching: schedule.isFetching || day.isFetching,
+    error: schedule.error ?? day.error,
+    refetch: () => Promise.all([schedule.error ? schedule.refetch() : null, day.error ? day.refetch() : null]),
+  };
+  const [publishOpen, setPublishOpen] = useState(false);
+  const closePublish = useCallback(() => setPublishOpen(false), []);
   useScheduleRealtime({
     workspaceId,
     weekStart: model?.week_start ?? "",
@@ -93,8 +108,8 @@ export function LineupPage() {
   });
 
   const lineups = useMemo(
-    () => (model ? lineupDay(model, date, phone ? {} : { locationId, shiftTypeId }) : []),
-    [model, date, locationId, shiftTypeId, phone],
+    () => (day.data ? lineupDay(day.data, model ?? null, phone ? {} : { locationId, shiftTypeId }) : []),
+    [day.data, model, locationId, shiftTypeId, phone],
   );
   // A phone shows one location: the chosen one, else the first.
   const phoneLocation = phone ? lineups.find((location) => location.id === locationId) ?? lineups[0] ?? null : null;
@@ -110,7 +125,36 @@ export function LineupPage() {
       { replace: true },
     );
   }
-  const goTo = (day: string) => setParam("date", day === today ? "" : day);
+  const goTo = (day: string) => {
+    setPublishOpen(false);
+    setParam("date", day === today ? "" : day);
+  };
+
+  // The Publish window lists every lineup of the day, whatever the filters show (PLAN §3).
+  const allLineups = useMemo(() => (day.data ? lineupDay(day.data, model ?? null) : []), [day.data, model]);
+  const canShare = context ? can(context, "lineup.share") : false;
+  const waiting = unpublishedCount(allLineups);
+  const anyPublished = allLineups.some((location) => location.shifts.some((shift) => shift.publish.published));
+  const publishControl = canShare && day.data ? (
+    <div className={`lineup-publish-anchor${phone ? " is-dock" : ""}`}>
+      <LineupPublishButton
+        waiting={waiting}
+        anyPublished={anyPublished}
+        open={publishOpen}
+        onToggle={() => setPublishOpen(!publishOpen)}
+      />
+      {publishOpen ? (
+        <LineupPublishWindow
+          workspaceId={workspaceId}
+          date={date}
+          dateLabel={shortDate(date)}
+          locations={allLineups}
+          timeFormat={model?.settings.time_format ?? "12h"}
+          onClose={closePublish}
+        />
+      ) : null}
+    </div>
+  ) : null;
 
   const header = (
     <CatalogPageHeader
@@ -118,6 +162,7 @@ export function LineupPage() {
       title="Lineup"
       titleId="lineup-title"
       description="Today's lineups, live from the Schedule."
+      action={phone ? undefined : publishControl}
     />
   );
 
@@ -530,7 +575,10 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
   return (
     <section className="lineup-shift" style={style} aria-label={shift.name}>
       <button type="button" className="lineup-shift-head" aria-expanded={open} onClick={() => setOpen(!open)}>
-        <h3>{shift.name}</h3>
+        <span className="lineup-shift-title">
+          <h3>{shift.name}</h3>
+          <ShiftStatus shift={shift} timeFormat={timeFormat} />
+        </span>
         <span className="lineup-shift-meta">
           {shift.count} {shift.count === 1 ? "person" : "people"}
         </span>
@@ -578,6 +626,22 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
         </div>
       ) : null}
     </section>
+  );
+}
+
+/** Under the shift's name (Mert 2026-10-13): green "Published 2:10 PM" and, when staff were asked, "Read 7/11". */
+function ShiftStatus({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
+  const { publish } = shift;
+  if (!publish.published) return null;
+  return (
+    <span className="lineup-shift-status">
+      <span className="lineup-shift-published">Published {publishedAt(publish.sharedAt, timeFormat)}</span>
+      {publish.askAck ? (
+        <span className="lineup-shift-read" aria-label={`Read by ${publish.acknowledged} of ${publish.withApp} with the app`}>
+          Read {publish.acknowledged}/{publish.withApp}
+        </span>
+      ) : null}
+    </span>
   );
 }
 

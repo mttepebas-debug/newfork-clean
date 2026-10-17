@@ -279,6 +279,29 @@ button.lineup-shift-head {
   font-size: 13px;
 }
 
+/* LINEUP-PUBLISH-WEB: the status sits under the shift's name (Mert 2026-10-13). */
+.lineup-shift-title {
+  display: grid;
+  gap: 1px;
+  text-align: left;
+}
+
+.lineup-shift-status {
+  display: inline-flex;
+  gap: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+.lineup-shift-published {
+  color: var(--theme-published);
+}
+
+.lineup-shift-read {
+  color: var(--theme-text-secondary);
+}
+
 .lineup-shift-chevron {
   margin-left: auto;
   color: var(--theme-muted);

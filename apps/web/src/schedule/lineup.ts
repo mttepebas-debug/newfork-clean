@@ -1,10 +1,10 @@
+import type { LineupDay, LineupDayLineup, LineupTarget } from "@newfork/shared";
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
 
-// Lineup (Mert 2026-10-13, read-only first stage): the day's live Schedule,
-// shown per location and shift type, then by department and job. It reads the
-// same published week the Schedule reads; nothing here decides who works.
-
-type Closure = ScheduleReadModel["closures"][number];
+// Lineup (Mert 2026-10-13): the day's lineups, per location and shift type, then by department and job.
+// The rows and the publish state come from the lineup day read (LINEUP-PUBLISH-WEB: the live Schedule with
+// what the lineup changed, the one source employees see too); the Schedule read only gives the catalog
+// around it (every shift type gets a place, the week, the time format). Nothing here decides who works.
 
 export interface LineupRow {
   readonly shiftId: string;
@@ -30,6 +30,22 @@ export interface LineupDepartment {
   readonly jobs: readonly LineupJob[];
 }
 
+/** Where a lineup stands for its staff (LINEUP-PUBLISH). */
+export interface LineupPublish {
+  /** The lineup a command names. */
+  readonly target: LineupTarget;
+  readonly status: LineupDayLineup["status"];
+  /** Employees see it now. */
+  readonly published: boolean;
+  readonly sharedAt: string | null;
+  readonly sharedByName: string | null;
+  readonly askAck: boolean;
+  /** Acknowledged of the version staff see, and how many on it have the app ("Read 7/11"). */
+  readonly acknowledged: number;
+  readonly withApp: number;
+  readonly notes: LineupDayLineup["notes"];
+}
+
 export interface LineupShift {
   /** The shift type's id, or "none" for shifts that have no shift type. */
   readonly key: string;
@@ -37,15 +53,22 @@ export interface LineupShift {
   readonly color: string | null;
   readonly departments: readonly LineupDepartment[];
   readonly count: number;
+  readonly publish: LineupPublish;
+}
+
+export interface LineupClosure {
+  readonly title: string;
+  readonly opens?: string | null;
+  readonly closes?: string | null;
 }
 
 export interface LineupLocation {
   readonly id: string;
   readonly name: string;
   /** A published closed day: the location has no lineup. */
-  readonly closed: Closure | null;
+  readonly closed: LineupClosure | null;
   /** Published short hours that day. */
-  readonly shortHours: Closure | null;
+  readonly shortHours: LineupClosure | null;
   readonly shifts: readonly LineupShift[];
 }
 
@@ -63,103 +86,116 @@ function startKey(time: string): string {
   return time || "99:99";
 }
 
+const published = <T extends { readonly status: string | null }>(closure: T | null): T | null =>
+  closure && (closure.status ?? "published") === "published" ? closure : null;
+
+function emptyLineup(typeId: string | null): LineupDayLineup {
+  return {
+    id: null, shift_type_id: typeId, shift_type_name: null, color: null, status: "draft", version: null,
+    shared_at: null, ask_ack: null, acknowledged: null, revision: null, published: false, version_id: null,
+    shared_by: null, shared_by_name: null, people: 0, with_app: 0,
+    notes: { specials: "", n86: "", shift_notes: "" }, rows: [],
+  };
+}
+
+/**
+ * The day's lineups as the page shows them: the day read's rows grouped by department and job, every active
+ * shift type of the catalog in its place (Mert 2026-10-13: an empty shift stays as a short card), filtered.
+ */
 export function lineupDay(
-  model: ScheduleReadModel,
-  date: string,
+  read: LineupDay,
+  catalog: Pick<ScheduleReadModel, "shift_types"> | null,
   filters: LineupFilters = {},
 ): LineupLocation[] {
-  const employees = new Map(model.employees.map((employee) => [employee.id, employee]));
-  const jobs = new Map(
-    [...model.referenced_jobs.map((job) => ({ ...job, color: null as string | null, department_id: null as string | null })),
-      ...model.jobs].map((job) => [job.id, job]),
-  );
-  const departments = new Map(model.departments.map((department) => [department.id, department]));
-  const shiftTypes = new Map(
-    [...model.referenced_shift_types.map((type) => ({ ...type, color: null as string | null, sort_order: Number.MAX_SAFE_INTEGER })),
-      ...model.shift_types].map((type) => [type.id, type]),
-  );
-
-  const locations = [...model.locations]
+  const types = catalog?.shift_types ?? [];
+  const order = new Map(types.map((type) => [type.id, type.sort_order]));
+  return read.locations
     .filter((location) => !filters.locationId || location.id === filters.locationId)
-    .sort((a, b) => a.sort_order - b.sort_order || byName(a, b));
+    .map((location) => {
+      const closed = published(location.closed);
+      const byType = new Map(location.lineups.map((lineup) => [lineup.shift_type_id ?? NO_SHIFT_TYPE, lineup]));
+      if (!closed) for (const type of types) if (!byType.has(type.id)) byType.set(type.id, emptyLineup(type.id));
+      const shifts = closed ? [] : [...byType.entries()]
+        .filter(([key]) => !filters.shiftTypeId || key === filters.shiftTypeId)
+        .map(([key, lineup]) => {
+          const type = types.find((item) => item.id === key);
+          const rows = lineup.rows.filter((row) => row.employee_id !== null);
+          const byDepartment = new Map<string | null, { name: string; jobs: Map<string, { name: string; color: string | null; rows: LineupRow[] }> }>();
+          for (const row of rows) {
+            const department = byDepartment.get(row.department_id) ??
+              { name: row.department_id ? row.department_name ?? "Department" : "Other", jobs: new Map() };
+            byDepartment.set(row.department_id, department);
+            const jobKey = row.job_id ?? "none";
+            const job = department.jobs.get(jobKey) ?? { name: row.job_name ?? "Job", color: row.job_color, rows: [] };
+            department.jobs.set(jobKey, job);
+            job.rows.push({
+              shiftId: row.shift_id ?? row.id ?? `${row.employee_id}-${row.start_time}`,
+              employeeId: row.employee_id!,
+              name: row.name ?? "Team member",
+              jobName: row.job_name ?? "Job",
+              startTime: row.start_time,
+              endTime: row.end_time,
+              crossesMidnight: row.crosses_midnight,
+              labels: row.label_names ?? [],
+            });
+          }
+          const departments: LineupDepartment[] = [...byDepartment.entries()]
+            .map(([id, department]) => ({
+              id,
+              name: department.name,
+              jobs: [...department.jobs.entries()]
+                .map(([jobId, job]) => ({
+                  id: jobId,
+                  name: job.name,
+                  color: job.color,
+                  rows: [...job.rows].sort(
+                    (a, b) => startKey(a.startTime).localeCompare(startKey(b.startTime)) || byName(a, b),
+                  ),
+                }))
+                .sort(byName),
+            }))
+            // Departments by name, shifts without one last (catalog order, BL-475).
+            .sort((a, b) => (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || byName(a, b));
+          return {
+            key,
+            name: lineup.shift_type_name ?? type?.name ?? "No shift type",
+            color: lineup.color ?? type?.color ?? null,
+            departments,
+            count: rows.length,
+            order: key === NO_SHIFT_TYPE ? Number.MAX_SAFE_INTEGER : order.get(key) ?? Number.MAX_SAFE_INTEGER - 1,
+            publish: {
+              target: { location_id: location.id, service_date: read.date, shift_type_id: lineup.shift_type_id },
+              status: lineup.status,
+              published: lineup.published,
+              sharedAt: lineup.shared_at,
+              sharedByName: lineup.shared_by_name,
+              askAck: lineup.ask_ack ?? false,
+              acknowledged: lineup.acknowledged ?? 0,
+              withApp: lineup.with_app,
+              notes: lineup.notes,
+            },
+          };
+        })
+        .sort((a, b) => a.order - b.order || byName(a, b))
+        .map(({ order: _order, ...shift }) => shift);
+      return {
+        id: location.id,
+        name: location.name,
+        closed,
+        shortHours: published(location.short_hours),
+        shifts,
+      };
+    });
+}
 
-  const dayShifts = model.shifts.filter(
-    (shift) => shift.scheduled_date === date && shift.employee_id !== null,
-  );
+/** A lineup the manager can publish now: people on it, not published, the day not over. */
+export function canPublish(shift: LineupShift): boolean {
+  return shift.count > 0 && !shift.publish.published && shift.publish.status !== "past";
+}
 
-  return locations.map((location) => {
-    const closures = model.closures.filter(
-      (closure) =>
-        closure.location_id === location.id &&
-        closure.closed_date === date &&
-        (closure.status ?? "published") === "published",
-    );
-    const closed = closures.find((closure) => closure.kind === "closed") ?? null;
-    const shortHours = closures.find((closure) => closure.kind === "short") ?? null;
-
-    const here = dayShifts.filter((shift) => shift.location_id === location.id);
-    const keys = new Set<string>();
-    // Every active shift type gets a place, scheduled or not (Mert 2026-10-13:
-    // an empty shift stays as a short "No one is scheduled" card).
-    for (const type of model.shift_types) keys.add(type.id);
-    for (const shift of here) keys.add(shift.shift_type_id ?? NO_SHIFT_TYPE);
-
-    const shifts = [...keys]
-      .filter((key) => !filters.shiftTypeId || key === filters.shiftTypeId)
-      .filter((key) => key !== NO_SHIFT_TYPE || here.some((shift) => !shift.shift_type_id))
-      .map((key) => {
-        const type = key === NO_SHIFT_TYPE ? null : shiftTypes.get(key) ?? null;
-        const ofType = here.filter((shift) => (shift.shift_type_id ?? NO_SHIFT_TYPE) === key);
-        const byDepartment = new Map<string | null, Map<string, LineupRow[]>>();
-        for (const shift of ofType) {
-          const job = jobs.get(shift.job_id);
-          const departmentId = job?.department_id ?? null;
-          const department = byDepartment.get(departmentId) ?? new Map<string, LineupRow[]>();
-          byDepartment.set(departmentId, department);
-          const rows = department.get(shift.job_id) ?? [];
-          department.set(shift.job_id, rows);
-          rows.push({
-            shiftId: shift.id,
-            employeeId: shift.employee_id!,
-            name: employees.get(shift.employee_id!)?.display_name ?? "Team member",
-            jobName: job?.name ?? "Job",
-            startTime: shift.start_time,
-            endTime: shift.end_time,
-            crossesMidnight: shift.crosses_midnight,
-            labels: shift.label_names ?? [],
-          });
-        }
-        const departmentList: LineupDepartment[] = [...byDepartment.entries()]
-          .map(([id, jobRows]) => ({
-            id,
-            name: id ? departments.get(id)?.name ?? "Department" : "Other",
-            jobs: [...jobRows.entries()]
-              .map(([jobId, rows]) => ({
-                id: jobId,
-                name: jobs.get(jobId)?.name ?? "Job",
-                color: jobs.get(jobId)?.color ?? null,
-                rows: [...rows].sort(
-                  (a, b) => startKey(a.startTime).localeCompare(startKey(b.startTime)) || byName({ name: a.name }, { name: b.name }),
-                ),
-              }))
-              .sort(byName),
-          }))
-          // Departments by name, shifts without one last (catalog order, BL-475).
-          .sort((a, b) => (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || byName(a, b));
-        return {
-          key,
-          name: type?.name ?? "No shift type",
-          color: type?.color ?? null,
-          departments: departmentList,
-          count: ofType.length,
-          order: type?.sort_order ?? Number.MAX_SAFE_INTEGER,
-        };
-      })
-      .sort((a, b) => a.order - b.order || byName(a, b))
-      .map(({ order: _order, ...shift }) => shift);
-
-    return { id: location.id, name: location.name, closed, shortHours, shifts };
-  });
+/** Lineups waiting to be published: the Publish button's badge. */
+export function unpublishedCount(locations: readonly LineupLocation[]): number {
+  return locations.reduce((sum, location) => sum + location.shifts.filter(canPublish).length, 0);
 }
 
 /** The seven days of the week that holds `weekStart`. */
