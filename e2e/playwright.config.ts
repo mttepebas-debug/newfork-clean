@@ -1,4 +1,5 @@
 import { execSync } from "node:child_process";
+import { createECDH } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { defineConfig } from "@playwright/test";
@@ -48,6 +49,16 @@ const supabase = localSupabase();
 
 // A spec that needs the auth admin API (the password reset flow mints its
 // link there, since no email leaves a local run) reads these two.
+// A P-256 key pair for phone alerts, made fresh each run (BILDIRIM-15).
+const vapidPair = createECDH("prime256v1");
+vapidPair.generateKeys();
+// The private key is 32 bytes; Node drops leading zero bytes, so it is padded back.
+const vapidPrivate = vapidPair.getPrivateKey();
+const vapid = {
+  publicKey: vapidPair.getPublicKey("base64url"),
+  privateKey: Buffer.concat([Buffer.alloc(32 - vapidPrivate.length), vapidPrivate]).toString("base64url"),
+};
+
 process.env.E2E_SUPABASE_URL = requireSupabaseEnv("API_URL");
 process.env.E2E_SERVICE_ROLE_KEY = requireSupabaseEnv("SERVICE_ROLE_KEY");
 // A spec that calls the API the way a script would, past the screens (a fresh
@@ -118,10 +129,11 @@ export default defineConfig({
         SUPABASE_URL: requireSupabaseEnv("API_URL"),
         SUPABASE_ANON_KEY: requireSupabaseEnv("ANON_KEY"),
         SUPABASE_SERVICE_ROLE_KEY: requireSupabaseEnv("SERVICE_ROLE_KEY"),
-        // Phone alerts (BILDIRIM-15): a key pair made for these tests only, so the screens offer them. No
-        // cron runs here, so the push worker never sends; flows/phone-alerts.spec.ts blocks every push host.
-        VAPID_PUBLIC_KEY: "BN30pzPPN03dgBofXoiMnPSqFxXAQBIJkBGtE5WbY78brAlrnDQK-zkECopZKvRJTTnhAUOhirshESTeB5Xoq0c",
-        VAPID_PRIVATE_KEY: "QzDGvBrt4Ps4FBQ_kYSJ7k0jUPzufb45pXjGHYcCFxQ",
+        // Phone alerts (BILDIRIM-15): a key pair made for this run only, so the screens offer them; no key
+        // sits in the repository. No cron runs here, so the push worker never sends, and
+        // flows/phone-alerts.spec.ts blocks every push host.
+        VAPID_PUBLIC_KEY: vapid.publicKey,
+        VAPID_PRIVATE_KEY: vapid.privateKey,
         VAPID_SUBJECT: "mailto:e2e@newfork.test",
       },
     },
