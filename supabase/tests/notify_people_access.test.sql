@@ -41,6 +41,7 @@ select tests.as_browser(tests.user('pa:owner'), format(
        values (%L, %L, 'Moda', 'MDA', '3 Moda Cd', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul')$sql$,
   tests.remember('pa:M', gen_random_uuid()), tests.id('pa')));
 select tests.person('pa', 'mio', 'employee', array['M'], array['cook']);
+select tests.person('pa', 'rem', 'employee', array['M'], array['cook']);
 -- Nisantasi (N) and Pendik (P) have one manager each: Nur will miss a required document, Pam will lose her
 -- access; then their shifts fall to the admins and owner, in (f).
 select tests.as_browser(tests.user('pa:owner'), format(
@@ -84,6 +85,7 @@ select tests.publish_week('pa', 1, $$[
   {"label": "solo_tue", "person": "solo", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
   {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"},
   {"label": "mio_fri", "person": "mio", "loc": "M", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
+  {"label": "rem_sat", "person": "rem", "loc": "M", "job": "cook", "day": 5, "start": "09:00", "end": "15:00"},
   {"label": "nia_fri", "person": "nia", "loc": "N", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
   {"label": "pia_fri", "person": "pia", "loc": "P", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"}
 ]$$::jsonb);
@@ -339,9 +341,13 @@ select is(pg_temp.told_titled('schedule.shifts_unassigned', '1 shift at Pendik h
   '(f) Pia''s Pendik shift: its only manager''s access removed, the owner and the admins are told, not Pam');
 -- Another location's card is untouched by Kadikoy's republish and by these.
 select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 2, '(f) Moda''s card stays open');
--- ponytail: removed outright, as a closed day does to a shift it lands on (announcement_apply): the card closes.
-delete from public.schedule_published_shifts where id = tests.id('pa:shift:mio_fri');
-select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 0, '(f) Mio''s shift removed by a closed day: Moda''s card closes');
+-- Rem leaves Moda: his shift there has nobody, a second Moda card. A closed day removes that shift outright
+-- (announcement_apply; Mio's, tied to his offboarding, it may not): Rem's card closes, Mio's stays.
+select public.remove_employee_from_location_service(pg_temp.u('adi'), tests.id('pa'), tests.id('pa:rem'), tests.id('pa:M'));
+select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 4, '(f) two Moda cards open, Mio''s and Rem''s');
+-- ponytail: removed straight from the published row, as announcement_apply does for a closed day.
+delete from public.schedule_published_shifts where id = tests.id('pa:shift:rem_sat');
+select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 2, '(f) Rem''s shift removed by a closed day: his card closes, Mio''s stays');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('px')), 0,
   'another workspace hears nothing of this one');
