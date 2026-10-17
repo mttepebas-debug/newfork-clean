@@ -98,7 +98,6 @@ describe("frozen list pages", () => {
 
   it.each([
     ["lineup-page", "lineup-locations"],
-    ["lineup-page", "lineup-phone"],
     ["acknowledgement-page", "job-catalog"],
   ])("scrolls the list inside its frame (%s > .%s)", (page, frame) => {
     const body = bodyOf((head) => head.includes(`.${page}`) && head.includes(`> .${frame}`) && !head.includes(":focus"));
@@ -108,8 +107,8 @@ describe("frozen list pages", () => {
     expect(body).toMatch(/position\s*:\s*relative/);
   });
 
-  it("keeps Lineup's shift tabs and Acknowledgements' column headings at the top of the frame", () => {
-    for (const heading of [".lineup-phone > .lineup-phone-tabs", ".job-catalog > .job-column-headings"]) {
+  it("keeps Acknowledgements' column headings at the top of the frame", () => {
+    for (const heading of [".job-catalog > .job-column-headings"]) {
       const body = bodyOf((head) => head.includes(heading));
       expect(body).toMatch(/position\s*:\s*sticky/);
       expect(body).toMatch(/top\s*:\s*0/);

@@ -52,8 +52,9 @@ export function useFrozenTop(area: HTMLElement | null, root: HTMLElement | null 
 
     const find = () => {
       const whole = documentScrolls();
+      // A page that holds its own top (the phone Lineup, data-frozen-own) is left alone.
       const ours = (element: Element) =>
-        !element.closest('dialog, [role="dialog"], [aria-modal="true"]') &&
+        !element.closest('dialog, [role="dialog"], [aria-modal="true"], [data-frozen-own]') &&
         element.getBoundingClientRect().height > 0 &&
         (whole || element.parentElement?.closest(AREAS) === area);
       const heading = [...root.querySelectorAll<HTMLElement>(HEADINGS)].find(ours);

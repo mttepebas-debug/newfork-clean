@@ -12,9 +12,7 @@ import { useScheduleQuery } from "../schedule/hooks/useScheduleQuery";
 import { useScheduleRealtime } from "../schedule/hooks/useScheduleRealtime";
 import {
   lineupDay,
-  lineupShiftSpan,
   lineupWeek,
-  phoneLineupShift,
   unpublishedCount,
   type LineupLocation,
   type LineupShift,
@@ -25,6 +23,7 @@ import { addDays, formatTime, type ScheduleTimeFormat } from "../schedule/lib/sc
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader } from "./CatalogPageHeader";
+import { PhoneLineupPage } from "./LineupPhone";
 import "./lineup-page.css";
 
 // Lineup (Mert 2026-10-13), read-only first stage: who works each shift today,
@@ -136,7 +135,7 @@ export function LineupPage() {
   const waiting = unpublishedCount(allLineups);
   const anyPublished = allLineups.some((location) => location.shifts.some((shift) => shift.publish.published));
   const publishControl = canShare && day.data ? (
-    <div className={`lineup-publish-anchor${phone ? " is-dock" : ""}`}>
+    <div className="lineup-publish-anchor">
       <LineupPublishButton
         waiting={waiting}
         anyPublished={anyPublished}
@@ -156,13 +155,72 @@ export function LineupPage() {
     </div>
   ) : null;
 
+  const timeFormat = model?.settings.time_format ?? "12h";
+  // A phone: E · Çark tarih (KARARLAR Lineup, Mert 2026-10-17), its own page.
+  if (phone && !(query.error && isNoAccess(query.error))) {
+    return (
+      <PhoneLineupPage
+        header={
+          <CatalogPageHeader
+            eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
+            title="Lineup"
+            titleId="lineup-title"
+            description="Today's lineups, live from the Schedule."
+          />
+        }
+        date={date}
+        today={today}
+        onDate={goTo}
+        loading={query.isLoading}
+        error={
+          query.error ? (
+            <LoadError
+              title="We couldn't load the lineup"
+              detail={`${dayName(date)} didn't load. Nothing was changed.`}
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
+          ) : null
+        }
+        locations={lineups}
+        location={phoneLocation}
+        onLocation={(id) => setParam("location", id)}
+        chosen={shiftTypeId}
+        onShift={(key) => setParam("shift", key)}
+        now={date === today ? clockIn() : null}
+        timeFormat={timeFormat}
+        publish={
+          canShare && day.data
+            ? {
+                waiting,
+                anyPublished,
+                open: publishOpen,
+                onToggle: () => setPublishOpen(!publishOpen),
+                window: (
+                  <LineupPublishWindow
+                    workspaceId={workspaceId}
+                    date={date}
+                    dateLabel={shortDate(date)}
+                    locations={allLineups}
+                    timeFormat={timeFormat}
+                    onClose={closePublish}
+                    className="is-sheet"
+                  />
+                ),
+              }
+            : null
+        }
+      />
+    );
+  }
+
   const header = (
     <CatalogPageHeader
       eyebrow="THE RIGHT PEOPLE. IN THE RIGHT SPOT."
       title="Lineup"
       titleId="lineup-title"
       description="Today's lineups, live from the Schedule."
-      action={phone ? undefined : publishControl}
+      action={publishControl}
     />
   );
 
@@ -170,7 +228,6 @@ export function LineupPage() {
   if (query.error && isNoAccess(query.error))
     return <NoAccessState homeHref={noAccessHomePath(context, "/app/schedule/lineup")} />;
 
-  const timeFormat = model?.settings.time_format ?? "12h";
   const week = model ? lineupWeek(model.week_start) : [];
 
   return (
@@ -195,23 +252,6 @@ export function LineupPage() {
             <ChevronRight size={16} aria-hidden />
           </button>
         </div>
-        {phone && query.isLoading ? (
-          <Skeleton width="auto" height={34} className="on-page lineup-phone-location" />
-        ) : phone && !lineups.length ? null : phone ? (
-          <select
-            className="toolbar-filter-select lineup-phone-location"
-            value={phoneLocation?.id ?? ""}
-            aria-label="Location"
-            onChange={(event) => setParam("location", event.target.value)}
-          >
-            {lineups.map((location) => (
-              <option key={location.id} value={location.id}>
-                {location.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <>
         <select
           className="toolbar-filter-select"
           value={locationId}
@@ -238,11 +278,9 @@ export function LineupPage() {
             </option>
           ))}
         </select>
-          </>
-        )}
       </div>
 
-      {phone ? null : query.isLoading ? (
+      {query.isLoading ? (
         <div className="lineup-days" aria-hidden>
           {Array.from({ length: 7 }, (_, index) => (
             <span key={index} className="lineup-days-outline">
@@ -273,7 +311,7 @@ export function LineupPage() {
       ) : null}
 
       {query.isLoading ? (
-        phone ? <PhoneLineupOutline /> : <LineupOutline />
+        <LineupOutline />
       ) : query.error ? (
         <LoadError
           title="We couldn't load the lineup"
@@ -283,14 +321,6 @@ export function LineupPage() {
         />
       ) : !lineups.length ? (
         <p className="lineup-state">No locations to show.</p>
-      ) : phone && phoneLocation ? (
-        <PhoneLineup
-          location={phoneLocation}
-          chosen={shiftTypeId}
-          now={date === today ? clockIn() : null}
-          timeFormat={timeFormat}
-          onShift={(key) => setParam("shift", key)}
-        />
       ) : (
         <div className="lineup-locations">
           {lineups.map((location) => (
@@ -346,178 +376,6 @@ function OutlineShift({ rows }: { readonly rows: number }) {
           </div>
         </div>
       ) : null}
-    </section>
-  );
-}
-
-function PhoneLineupOutline() {
-  return (
-    <LoadingOutline label="Loading lineups" className="lineup-phone lineup-phone-outline">
-      <div className="lineup-phone-outline-tabs">
-        <Skeleton width={64} height={12} className="on-page" />
-        <Skeleton width={70} height={12} className="on-page" />
-        <Skeleton width={56} height={12} className="on-page" />
-      </div>
-      <div className="lineup-phone-summary">
-        <Skeleton width={90} height={16} />
-        <Skeleton width={150} />
-        <div className="lineup-phone-kpis">
-          {[0, 1, 2].map((index) => (
-            <div key={index}>
-              <Skeleton width={48} height={16} />
-              <Skeleton width={64} height={9} />
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="lineup-phone-team">
-        {[0, 1, 2, 3].map((index) => (
-          <div className="lineup-phone-person" key={index}>
-            <Skeleton width={36} height={36} className="lineup-phone-outline-avatar" />
-            <div>
-              <Skeleton width={`${60 - index * 6}%`} height={12} />
-              <Skeleton width="44%" />
-            </div>
-          </div>
-        ))}
-      </div>
-    </LoadingOutline>
-  );
-}
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
-
-function PhoneLineup({
-  location,
-  chosen,
-  now,
-  timeFormat,
-  onShift,
-}: {
-  readonly location: LineupLocation;
-  readonly chosen: string;
-  /** HH:MM when the day is today, so the tab on the floor opens first. */
-  readonly now: string | null;
-  readonly timeFormat: ScheduleTimeFormat;
-  readonly onShift: (key: string) => void;
-}) {
-  if (location.closed) {
-    return <p className="lineup-phone-note">Closed today · {location.closed.title}</p>;
-  }
-  const shift = phoneLineupShift(location.shifts, chosen, now);
-  return (
-    <div className="lineup-phone">
-      {location.shortHours?.opens && location.shortHours.closes ? (
-        <p className="lineup-short" role="note">
-          Short hours today: open {range(location.shortHours.opens, location.shortHours.closes, timeFormat)} (
-          {location.shortHours.title}).
-        </p>
-      ) : null}
-      {location.shifts.length ? (
-        <div className="catalog-toolbar lineup-phone-tabs">
-          <div className="catalog-toolbar-status-row">
-            <div className="catalog-status-tabs" role="group" aria-label="Shifts">
-              {location.shifts.map((item) => (
-                <button
-                  key={item.key}
-                  type="button"
-                  className={item.key === shift?.key ? "active" : ""}
-                  aria-pressed={item.key === shift?.key}
-                  aria-label={`${item.name}, ${item.count ? `${item.count} ${item.count === 1 ? "person" : "people"}` : "no one"}`}
-                  onClick={() => onShift(item.key)}
-                >
-                  <i style={{ background: item.color ?? "var(--theme-border-strong)" }} aria-hidden />
-                  {item.name}
-                  {item.count ? <strong>{item.count}</strong> : null}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      ) : null}
-      {shift ? (
-        <PhoneShift shift={shift} timeFormat={timeFormat} />
-      ) : (
-        <p className="lineup-phone-note">No shifts this day.</p>
-      )}
-    </div>
-  );
-}
-
-function PhoneShift({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
-  const headingId = `lineup-phone-shift-${shift.key}`;
-  const span = lineupShiftSpan(shift);
-  const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
-  const time = (value: string) => formatTime(value, timeFormat, "long");
-  return (
-    <section className="lineup-phone-shift" style={style} aria-labelledby={headingId}>
-      <div className="lineup-phone-summary">
-        <h2 id={headingId}>{shift.name}</h2>
-        <p className="lineup-phone-status">
-          <i aria-hidden />
-          Live from the Schedule
-        </p>
-        <div className="lineup-phone-kpis">
-          <div>
-            <strong>{shift.count}</strong>
-            <span>On the floor</span>
-          </div>
-          <div>
-            <strong>{span ? time(span.firstIn) : "—"}</strong>
-            <span>First in</span>
-          </div>
-          <div>
-            <strong>{span ? time(span.lastOut) : "—"}</strong>
-            <span>Last out</span>
-          </div>
-        </div>
-      </div>
-      {shift.count ? (
-        <div className="lineup-phone-team">
-          {shift.departments.map((department) => (
-            <section className="lineup-phone-department" key={department.id ?? "other"} aria-label={department.name}>
-              <h3>{department.name}</h3>
-              {department.jobs.map((job) => (
-                <div className="lineup-phone-job" key={job.id}>
-                  <h4>
-                    <i style={{ background: job.color ?? "var(--theme-border-strong)" }} aria-hidden />
-                    {job.name}
-                  </h4>
-                  <ul aria-label={job.name}>
-                    {job.rows.map((row) => (
-                      <li className="lineup-phone-person" key={row.shiftId}>
-                        <span className="lineup-phone-avatar" aria-hidden>
-                          {initials(row.name)}
-                        </span>
-                        <div>
-                          <strong>{row.name}</strong>
-                          <span className="lineup-time">{range(row.startTime, row.endTime, timeFormat)}</span>
-                        </div>
-                        {row.labels.length ? (
-                          <span className="lineup-phone-labels">
-                            {row.labels.map((label) => (
-                              <span key={label}>{label}</span>
-                            ))}
-                          </span>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </section>
-          ))}
-        </div>
-      ) : (
-        <p className="lineup-phone-empty">No one is scheduled for {shift.name}.</p>
-      )}
     </section>
   );
 }

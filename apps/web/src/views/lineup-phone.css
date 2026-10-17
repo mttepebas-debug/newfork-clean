@@ -1,0 +1,729 @@
+/* The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3;
+   mockup kaynak/v-e.css, v-d.css, v-c.css). Selectors carry .lineup-phone-page.list-page so the list
+   pages' own phone rules (list-page.css) don't win. Light theme, --theme-* tokens. */
+
+/* The whole page scrolls in the app's main area (not a framed list, list-page-frozen.css): the top is sticky,
+   so the page grows with its list (a 100% high page would carry the sticky top away with it). */
+.lineup-page.list-page.list-page.lineup-phone-page {
+  display: flex;
+  width: auto;
+  height: auto;
+  min-height: 100%;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 0 16px;
+}
+/* A flex column: the fold's give-back margin can't collapse into the card's margin. */
+.lineup-phone-page > * {
+  flex: none;
+}
+
+/* The fixed top: title, date and location, the wheel, the shift tabs. It ends half a pixel under the tabs,
+   so nothing that scrolls touches the selected tab's line. */
+.lineup-phone-page .lineup-phone-top {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: grid;
+  gap: 14px;
+  margin: 0 -16px;
+  padding: 16px 16px 0.5px;
+  overflow: hidden;
+  background: var(--lineup-phone-bg, var(--theme-page));
+}
+/* The header sits above the date row, so that row slides up behind its line. */
+.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header {
+  position: relative;
+  z-index: 2;
+  height: auto;
+  min-height: 0;
+  margin: 0 0 4px;
+  padding: 16px 0 20px;
+  background: var(--lineup-phone-bg, var(--theme-page));
+}
+.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header h1 {
+  flex-wrap: wrap;
+  font-size: 28px;
+}
+.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header p {
+  white-space: normal;
+}
+.lineup-phone-page .lineup-phone-top :is(.lineup-toolbar, .lineup-wheel, .lineup-phone-tabs-slot) {
+  position: relative;
+  z-index: 1;
+  background: var(--lineup-phone-bg, var(--theme-page));
+  will-change: transform;
+}
+.lineup-phone-page .lineup-toolbar .lineup-phone-location {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+.lineup-phone-page .lineup-step:hover,
+.lineup-phone-page .lineup-date-label:hover {
+  border-color: var(--theme-border-hover);
+}
+
+/* Shift tabs: a 43 px row, the tab 42 px with a 3 px dark green line sitting fully on the row's border. */
+.lineup-phone-page.list-page .lineup-phone-top .catalog-toolbar {
+  margin: 0;
+}
+.lineup-phone-page.list-page .lineup-phone-top .catalog-toolbar-status-row {
+  height: 43px;
+  min-height: 43px;
+}
+.lineup-phone-page.list-page .lineup-phone-top .catalog-status-tabs button {
+  height: 42px;
+  min-height: 42px;
+  margin-bottom: 0;
+  border-bottom-width: 3px;
+}
+.lineup-phone-page.list-page .lineup-phone-top .catalog-status-tabs button.active {
+  border-bottom-color: var(--theme-accent-deep);
+}
+.lineup-phone-tabs .catalog-status-tabs button i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+.lineup-phone-tabs .catalog-status-tabs button strong {
+  color: var(--theme-muted);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.lineup-phone-outline-tabs {
+  display: flex;
+  height: 43px;
+  align-items: center;
+  gap: 22px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+
+/* The wheel: seven days in view, the middle one the day; the edges fade. */
+.lineup-wheel {
+  position: relative;
+  height: 64px;
+  margin: 0 -16px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
+}
+.lineup-wheel:active {
+  cursor: grabbing;
+}
+/* Each day is a seventh of the strip: size them off the strip, not the track. */
+.lineup-wheel-track {
+  display: flex;
+  width: calc(100% / 7 * var(--lineup-wheel-days));
+  height: 100%;
+  will-change: transform;
+}
+.lineup-wheel-day {
+  position: relative;
+  display: grid;
+  width: calc(100% / var(--lineup-wheel-days));
+  height: 100%;
+  flex: none;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  font: inherit;
+  cursor: inherit;
+}
+.lineup-wheel-in {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding-top: 4px;
+  transform: scale(var(--s, 1));
+  transform-origin: 50% 60%;
+}
+.lineup-wheel-top {
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+.lineup-wheel-day b {
+  color: var(--theme-text);
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.lineup-wheel-day.is-first .lineup-wheel-top {
+  color: var(--theme-accent-deep);
+  font-weight: 800;
+}
+.lineup-wheel-day.is-today::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--theme-current);
+  transform: translateX(-50%);
+}
+/* The middle day, once the wheel stops: bigger, green, underlined. */
+.lineup-wheel.is-still .lineup-wheel-in {
+  transition: transform 0.18s ease-out;
+}
+.lineup-wheel-day.is-selected .lineup-wheel-in {
+  transform: scale(1.24);
+}
+.lineup-wheel-day.is-selected,
+.lineup-wheel-day.is-selected b {
+  color: var(--theme-accent-deep);
+}
+.lineup-wheel-day.is-selected b {
+  font-weight: 800;
+}
+.lineup-wheel-day::after {
+  content: "";
+  position: absolute;
+  right: 22%;
+  bottom: 0;
+  left: 22%;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--theme-accent);
+  transform: scaleX(0);
+  transition: transform 0.18s ease-out;
+}
+.lineup-wheel-day.is-selected::after {
+  transform: scaleX(1);
+}
+.lineup-wheel-day:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -4px;
+}
+/* The month detent: a tiny jolt of the strip while it holds. */
+.lineup-wheel.is-bump .lineup-wheel-track {
+  animation: lineup-wheel-bump 0.12s ease-out;
+}
+@keyframes lineup-wheel-bump {
+  40% {
+    filter: brightness(0.97);
+  }
+}
+
+/* The summary card; its status line says where the lineup stands. */
+.lineup-phone-page .lineup-phone-short {
+  margin: 20px 0 0;
+}
+.lineup-phone-page .lineup-phone-summary {
+  display: grid;
+  gap: 2px;
+  margin: 28px 0 0;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-top: 3px solid var(--lineup-shift, var(--theme-border));
+  border-radius: 8px;
+  padding: 12px 14px 14px;
+  background: var(--theme-surface);
+}
+.lineup-phone-page .lineup-phone-short + .lineup-phone-summary {
+  margin-top: 12px;
+}
+.lineup-phone-summary h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 18px;
+  font-weight: 700;
+}
+.lineup-phone-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  font-weight: 650;
+}
+.lineup-phone-status i {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+}
+.lineup-phone-status.is-draft {
+  color: var(--theme-warning-text);
+}
+.lineup-phone-status.is-draft i {
+  background: var(--theme-warning-border);
+}
+.lineup-phone-status.is-published {
+  color: var(--theme-accent-deep);
+}
+.lineup-phone-status.is-none i {
+  background: var(--theme-border-strong);
+}
+.lineup-phone-kpis {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 10px;
+  border-top: 1px solid var(--theme-border-subtle);
+  padding-top: 10px;
+}
+.lineup-phone-kpis > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 0 10px;
+}
+.lineup-phone-kpis > div:first-child {
+  padding-left: 0;
+}
+.lineup-phone-kpis > div + div {
+  border-left: 1px solid var(--theme-border-subtle);
+}
+.lineup-phone-kpis strong {
+  color: var(--theme-text);
+  font-size: 16px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lineup-phone-kpis span {
+  color: var(--theme-muted);
+  font-size: 11.5px;
+}
+
+/* Team · Notes · Read: they scroll with the list. */
+.lineup-phone-segs {
+  display: grid;
+  grid-auto-columns: minmax(0, 1fr);
+  grid-auto-flow: column;
+  margin: 12px -16px 0;
+  padding: 0 4px;
+  border-bottom: 1px solid var(--theme-border);
+}
+.lineup-phone-segs button {
+  display: inline-flex;
+  height: 44px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  margin-bottom: -1px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--theme-muted);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.lineup-phone-segs button span {
+  color: var(--theme-muted);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+.lineup-phone-segs button:hover {
+  color: var(--theme-text);
+}
+.lineup-phone-segs button[aria-selected="true"] {
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 650;
+}
+.lineup-phone-segs button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+
+/* The list (C): department, a white frame, job groups, people. Sideways swipes go to the next shift. */
+.lineup-phone-pane {
+  touch-action: pan-y;
+}
+.lineup-phone-dept {
+  margin-top: 16px;
+}
+.lineup-phone-dept h3 {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 0 4px;
+  color: var(--theme-text-secondary);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.lineup-phone-dept h3 span {
+  color: var(--theme-muted);
+  font-weight: 650;
+  letter-spacing: 0;
+}
+.lineup-phone-list {
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 12px;
+  padding: 0 0 2px;
+  background: var(--theme-surface);
+}
+.lineup-phone-job > p {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  padding: 10px 14px 2px;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 700;
+}
+.lineup-phone-job > p i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+}
+.lineup-phone-job > p span {
+  color: var(--theme-muted);
+  font-weight: 600;
+}
+.lineup-phone-job ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.lineup-phone-row {
+  display: flex;
+  min-height: 60px;
+  align-items: center;
+  gap: 10px;
+  margin: 0 4px;
+  padding: 8px;
+}
+.lineup-phone-job li + li {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.lineup-phone-avatar,
+.lineup-phone-outline-avatar.nf-skeleton {
+  display: inline-flex;
+  width: 38px;
+  height: 38px;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-body);
+  font-size: 12px;
+  font-weight: 750;
+}
+.lineup-phone-mid {
+  display: grid;
+  flex: 1;
+  gap: 2px;
+  min-width: 0;
+}
+.lineup-phone-name {
+  color: var(--theme-text);
+  font-size: 14.5px;
+  font-weight: 650;
+  line-height: 1.3;
+  overflow-wrap: anywhere;
+}
+.lineup-phone-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.lineup-phone-changed {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--theme-availability);
+}
+.lineup-phone-right {
+  display: grid;
+  flex: none;
+  justify-items: end;
+  gap: 4px;
+  max-width: 128px;
+  text-align: right;
+}
+.lineup-phone-section {
+  color: var(--theme-text-body);
+  font-size: 13px;
+  font-weight: 600;
+}
+.lineup-phone-chips {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+}
+.lineup-phone-chip {
+  display: inline-flex;
+  border-radius: 999px;
+  padding: 1px 7px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-body);
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.lineup-phone-chip.is-warn {
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+
+/* Notes (B's note block, read-only). */
+.lineup-phone-notes {
+  display: grid;
+  gap: 6px;
+  margin-top: 14px;
+  border-radius: 8px;
+  padding: 10px 12px;
+  background: var(--theme-info-soft);
+}
+.lineup-phone-notes p {
+  display: grid;
+  grid-template-columns: 84px minmax(0, 1fr);
+  gap: 8px;
+  margin: 0;
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+.lineup-phone-notes b {
+  color: var(--theme-info-text);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.6;
+  text-transform: uppercase;
+}
+.lineup-phone-notes span {
+  color: var(--theme-text-body);
+  overflow-wrap: anywhere;
+  white-space: pre-line;
+}
+
+/* Read (C). */
+.lineup-phone-read {
+  margin-top: 14px;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--theme-surface);
+}
+.lineup-phone-read > div {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+}
+.lineup-phone-read b {
+  color: var(--theme-text);
+  font-size: 30px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+}
+.lineup-phone-read span {
+  color: var(--theme-text-secondary);
+  font-size: 15px;
+  font-weight: 600;
+}
+.lineup-phone-read p {
+  margin: 8px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+}
+.lineup-phone-progress {
+  position: relative;
+  display: block;
+  height: 8px;
+  margin-top: 8px;
+  overflow: hidden;
+  border-radius: 4px;
+  background: var(--theme-border-subtle);
+}
+.lineup-phone-progress > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 4px;
+  background: var(--theme-published);
+}
+
+.lineup-phone-calm {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  margin-top: 16px;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 12px;
+  padding: 26px 18px;
+  background: var(--theme-surface);
+  text-align: center;
+}
+.lineup-phone-calm svg {
+  margin-bottom: 4px;
+  color: var(--theme-accent-deep);
+}
+.lineup-phone-calm b {
+  color: var(--theme-text);
+  font-size: 16px;
+}
+.lineup-phone-calm span {
+  color: var(--theme-muted);
+  font-size: 14px;
+  line-height: 1.45;
+}
+.lineup-phone-none {
+  margin: 0;
+  padding: 20px 4px;
+  color: var(--theme-muted);
+  font-size: 14px;
+}
+.lineup-phone-page .lineup-phone-empty {
+  margin: 16px 0 0;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 12px;
+  padding: 16px 14px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 14px;
+}
+.lineup-phone-pane > .load-error {
+  margin-top: 16px;
+}
+
+/* Loading outline. */
+.lineup-phone-outline {
+  display: grid;
+  gap: 16px;
+}
+.lineup-phone-outline .lineup-phone-summary {
+  gap: 8px;
+}
+.lineup-phone-outline .lineup-phone-kpis > div {
+  gap: 6px;
+}
+.lineup-phone-outline .lineup-phone-mid {
+  gap: 6px;
+}
+
+/* Room under the last row for the Publish dock (44 px + 10 px) and a little air. */
+.lineup-phone-end {
+  height: 70px;
+}
+
+/* Publish (D1, D3): as wide as its words, 44 px, 14 px text, 12 px corners, a light shadow; centred on the
+   line where More begins, 10 px over the bar (useDockPlace sets left and bottom). */
+.lineup-phone-dock {
+  position: fixed;
+  z-index: 25;
+  transform: translateX(-50%);
+  pointer-events: none;
+}
+.lineup-phone-dock[data-place="corner"] {
+  right: 16px;
+  transform: none;
+}
+.nf-button.lineup-publish-trigger.lineup-phone-publish {
+  min-height: 44px;
+  gap: 8px;
+  padding: 0 18px;
+  border-radius: 12px;
+  font-size: 14px;
+  pointer-events: auto;
+  box-shadow: 0 4px 12px rgb(23 34 30 / 18%), 0 1px 2px rgb(23 34 30 / 14%);
+}
+.nf-button.lineup-publish-trigger.lineup-phone-publish svg {
+  width: 17px;
+  height: 17px;
+}
+/* Nothing to publish or take back: solid grey and off, not see-through over the list. */
+.nf-button.lineup-publish-trigger.lineup-phone-publish:disabled {
+  border-color: var(--theme-border);
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted);
+  opacity: 1;
+  box-shadow: 0 2px 8px rgb(23 34 30 / 12%);
+}
+.nf-button.lineup-publish-trigger.lineup-phone-publish:focus-visible {
+  outline: 3px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* The Publish window on a phone: a sheet from the bottom, over a scrim (the More sheet's). */
+.lineup-phone-sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 95;
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+}
+.lineup-phone-scrim {
+  position: absolute;
+  inset: 0;
+  /* Same scrim as the More sheet; no backdrop token exists yet. */
+  background: rgb(15 28 22 / 45%);
+}
+.lineup-publish-window.is-sheet {
+  position: relative;
+  top: auto;
+  right: auto;
+  width: 100%;
+  max-height: 85dvh;
+  border-radius: 16px 16px 0 0;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  font-size: 14px;
+  animation: lineup-sheet-in 0.2s ease-out;
+}
+.lineup-publish-window.is-sheet .lineup-publish-top {
+  padding: 18px 18px 8px;
+}
+.lineup-publish-window.is-sheet .lineup-publish-top strong {
+  font-size: 16px;
+}
+.lineup-publish-window.is-sheet .lineup-publish-list {
+  max-height: none;
+  flex: 1 1 auto;
+}
+.lineup-publish-window.is-sheet :is(.lineup-publish-pick, .lineup-publish-item) {
+  min-height: 44px;
+}
+.lineup-publish-window.is-sheet :is(.nf-button.lineup-publish-go, .secondary-button.lineup-publish-done) {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 14px;
+}
+.lineup-publish-window.is-sheet .lineup-publish-unpublish {
+  height: 34px;
+}
+@keyframes lineup-sheet-in {
+  from {
+    transform: translateY(24px);
+    opacity: 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .lineup-wheel.is-still .lineup-wheel-in,
+  .lineup-wheel-day::after {
+    transition: none;
+  }
+  .lineup-wheel.is-bump .lineup-wheel-track,
+  .lineup-publish-window.is-sheet {
+    animation: none;
+  }
+}

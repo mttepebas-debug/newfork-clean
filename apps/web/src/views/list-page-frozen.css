@@ -136,7 +136,6 @@
     flex: 0 0 auto;
   }
   .lineup-page.list-page.list-page > .lineup-locations,
-  .lineup-page.list-page.list-page > .lineup-phone,
   .settings-page.jobs-settings-page.acknowledgement-page > .job-catalog {
     position: relative;
     min-height: 0;
@@ -147,20 +146,16 @@
     padding-bottom: 24px;
   }
   /* A row reached by Tab or a link lands below the pinned tabs or headings
-     (40 px row and its gap, 34-48 px headings), not under them. */
-  .lineup-page.list-page.list-page > .lineup-phone,
+     (34-48 px headings), not under them. */
   .settings-page.jobs-settings-page.acknowledgement-page > .job-catalog {
     scroll-padding-top: 48px;
   }
-  /* A phone shows one location: its shift tabs stay at the top of the frame. */
-  .lineup-page.list-page.list-page > .lineup-phone > .lineup-phone-tabs,
+  /* Acknowledgements' column headings stay at the top of the frame. (The phone Lineup holds its own top:
+     views/lineup-phone.css, E 2026-10-17.) */
   .acknowledgement-page.acknowledgement-page .job-catalog > .job-column-headings {
     position: sticky;
     top: 0;
     z-index: 2;
     background: var(--theme-surface);
-  }
-  .lineup-page.list-page.list-page > .lineup-phone > .lineup-phone-tabs {
-    background: var(--theme-page);
   }
 }

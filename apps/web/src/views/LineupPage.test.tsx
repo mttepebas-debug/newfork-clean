@@ -1,8 +1,8 @@
 import type { ActiveWorkspaceContext } from "@newfork/shared";
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { RequestError } from "../lib/request-error";
 import { getScheduleReadModel } from "../schedule/schedule-data";
@@ -317,5 +317,138 @@ describe("LineupPage on a phone", () => {
     renderPage();
     const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
     expect(loading.classList.contains("lineup-phone-outline")).toBe(true);
+  });
+});
+
+// E · Çark tarih (KARARLAR Lineup, Mert 2026-10-17): the wheel, the summary's state, Team · Notes · Read,
+// read-only rows and the Publish dock over the bottom bar.
+describe("LineupPage on a phone, E", () => {
+  const reduce = window.matchMedia;
+  beforeEach(() => {
+    phone = true;
+    // Reduced motion: the wheel jumps instead of spinning, so a test sees where it stops at once.
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    published = {};
+  });
+  afterEach(() => {
+    window.matchMedia = reduce;
+  });
+
+  it("shows seven days on a wheel, the day in the middle pressed", async () => {
+    renderPage("/app/schedule/lineup?date=2026-10-14");
+    const wheel = await screen.findByRole("group", { name: "Day. Swipe or use the arrow keys." });
+    const middle = within(wheel).getByRole("button", { name: "Wednesday, October 14, 2026" });
+    expect(middle.getAttribute("aria-pressed")).toBe("true");
+    expect(middle.tabIndex).toBe(0);
+    // The first of a month shows the month where the weekday sits.
+    expect(within(wheel).getByRole("button", { name: "Sunday, November 1, 2026" }).textContent).toBe("NOV1");
+    expect(screen.getByRole("button", { name: "Wed, Oct 14" }).getAttribute("data-other-day")).toBe("true");
+  });
+
+  it("turns to a tapped day and loads it; the date button brings today back", async () => {
+    renderPage();
+    const wheel = await screen.findByRole("group", { name: "Day. Swipe or use the arrow keys." });
+    fireEvent.click(within(wheel).getByRole("button", { name: "Thursday, October 15, 2026" }), { detail: 0 });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-15"));
+    await waitFor(() => expect(read).toHaveBeenCalledWith(ws, "2026-10-15", "day"));
+    fireEvent.click(screen.getByRole("button", { name: "Thu, Oct 15" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
+  });
+
+  it("steps a day with ‹ › and the arrow keys", async () => {
+    renderPage();
+    const wheel = await screen.findByRole("group", { name: "Day. Swipe or use the arrow keys." });
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
+    fireEvent.keyDown(wheel, { key: "ArrowLeft" });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
+    expect(document.activeElement?.getAttribute("aria-label")).toBe("Tuesday, October 13, 2026");
+  });
+
+  it("says a draft lineup is a draft, and a published one when it went out, with nothing to edit", async () => {
+    renderPage();
+    const summary = await screen.findByRole("region", { name: "Lunch" });
+    expect(within(summary).getByText("Draft · staff can't see it")).toBeTruthy();
+    cleanup();
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 } };
+    renderPage();
+    const after = await screen.findByRole("region", { name: "Lunch" });
+    expect(within(after).getByText(/^Published \d/)).toBeTruthy();
+    expect(within(after).queryByRole("button")).toBeNull();
+  });
+
+  it("lists the team read-only: no person panel, call off, Add Staff or note editing", async () => {
+    renderPage();
+    const team = await screen.findByRole("list", { name: "Server" });
+    const row = within(team).getByRole("listitem");
+    expect(row.textContent).toContain("MLMaria Lopez11:00 AM – 4:00 PM");
+    expect(within(row).getByText("Training")).toBeTruthy();
+    expect(within(team).queryByRole("button")).toBeNull();
+    fireEvent.click(row);
+    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add Staff|Call off|Edit/ })).toBeNull();
+    expect(screen.getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("reads the notes in the Notes tab, with nothing to type in", async () => {
+    published = { [lunch]: { notes: { specials: "Halibut", n86: "", shift_notes: "Patio opens at 5" } } };
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Notes 2" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText("Halibut")).toBeTruthy();
+    expect(within(panel).getByText("Patio opens at 5")).toBeTruthy();
+    expect(within(panel).queryByRole("textbox")).toBeNull();
+    expect(within(panel).queryByRole("button")).toBeNull();
+  });
+
+  it("counts who read it once published, and says who the app doesn't count", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read" }));
+    expect(screen.getByText("No one has seen it yet")).toBeTruthy();
+    cleanup();
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 7, with_app: 11, people: 12 } };
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 7/11" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getByText("7")).toBeTruthy();
+    expect(within(panel).getByText("of 11 read")).toBeTruthy();
+    expect(within(panel).getByText("No app · 1 person isn't counted.")).toBeTruthy();
+  });
+
+  it("keeps Publish at the bottom with the waiting count, and opens the window as a sheet", async () => {
+    renderPage();
+    const dock = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    expect(dock.closest(".lineup-phone-dock")).toBeTruthy();
+    fireEvent.click(dock);
+    const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
+    expect(sheet.classList.contains("is-sheet")).toBe(true);
+    fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
+    await within(sheet).findByText("Published 2 lineups · 2 people notified");
+    expect(commands[0]).toMatchObject({ kind: "share", ask_ack: true });
+  });
+
+  it("rests grey and off when there is nothing to publish or take back", async () => {
+    world = model([]);
+    renderPage();
+    const dock = await screen.findByRole("button", { name: "Publish" });
+    expect((dock as HTMLButtonElement).disabled).toBe(true);
+    expect(dock.closest(".lineup-phone-dock")).toBeTruthy();
+  });
+
+  it("has no Publish dock for someone who can't publish", async () => {
+    const actions = context.actions;
+    (context as { actions: string[] }).actions = ["schedule.read", "lineup.read"];
+    try {
+      renderPage();
+      await screen.findByRole("region", { name: "Lunch" });
+      expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    } finally {
+      (context as { actions: readonly string[] }).actions = actions;
+    }
   });
 });

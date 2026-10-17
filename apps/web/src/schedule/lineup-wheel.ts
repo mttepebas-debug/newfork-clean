@@ -4,8 +4,8 @@
 // the DOM with them.
 
 export const WHEEL = {
-  /** Days each side of the anchor the wheel holds. */
-  span: 400,
+  /** Days each side of the anchor the wheel holds (it re-anchors near an end). */
+  span: 190,
   /** The month detent, ms. */
   hold: 60,
   /** Slowing, days per ms². */
