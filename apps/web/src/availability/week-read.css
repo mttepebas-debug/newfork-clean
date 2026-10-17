@@ -86,12 +86,15 @@
 .avr-tile-state,
 .avr-tile-detail {
   display: block;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+.avr-tile-state {
+  white-space: nowrap;
+}
+/* Hours that do not fit one line break at the even place ("3:00 PM –" /
+   "10:00 PM", "Before" / "11:00 AM"), never inside a clock. */
 .avr-tile-detail {
   font-weight: 500;
+  text-wrap: balance;
 }
 .avr-tile-detail::first-letter {
   text-transform: uppercase;

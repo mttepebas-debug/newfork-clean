@@ -6286,6 +6286,30 @@ button.workspace-switcher-item:hover:not(:disabled) {
 [data-sonner-toaster] [data-sonner-toast].newfork-toast--timed {
   overflow: hidden;
 }
+/* Wide enough on a desktop that "6:00 PM – 10:00 PM" stays on one line;
+   still centred under the toaster's own column. */
+@media (min-width: 600px) {
+  [data-sonner-toaster] [data-sonner-toast].newfork-toast--timed {
+    --assign-width: 440px;
+    width: var(--assign-width);
+    margin-inline-start: calc((var(--width) - var(--assign-width)) / 2);
+  }
+}
+/* Undo takes something back: the white button (KARARLAR UI, "vazgeç beyaz"). */
+[data-sonner-toaster] [data-sonner-toast] [data-button].toast-action {
+  height: 30px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 6px;
+  padding: 0 12px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+[data-sonner-toaster] [data-sonner-toast] [data-button].toast-action:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
 [data-sonner-toaster] [data-sonner-toast].newfork-toast--timed::after {
   content: "";
   position: absolute;
