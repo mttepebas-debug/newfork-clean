@@ -222,47 +222,40 @@ describe("ShiftQuickEditor", () => {
 
   const noteReason = { code: "note", message: "The assignment overlaps hours a manager noted for this person.", definite: true, severity: "warn" as const };
 
-  it("asks with the rule box on every save over the employee's unavailable hours (M8)", async () => {
+  // Müsaitlik tercih 3 (2026-10-13) and M12 as of 2026-10-16: the employee's own
+  // mark and a manager's note never ask; the shift is written straight away and
+  // the page shows the short notice.
+  it.each([
+    ["the employee's unavailable hours", [availabilityReason]],
+    ["a manager's note", [noteReason]],
+    ["both together", [availabilityReason, noteReason]],
+  ] as const)("saves over %s at once, with no box or note card", async (_label, reasons) => {
     vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, has_availability_conflict: true,
-      availability_fingerprint: "c".repeat(64), reasons: [availabilityReason] });
+      availability_fingerprint: "c".repeat(64), reasons: [...reasons] });
     const onSubmit = renderAssigned();
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
-    expect(sheet.textContent).toContain("unavailable hours");
-    expect(sheet.textContent).toContain("Schedule this shift anyway?");
-    expect(onSubmit).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
     await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
+    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
+    expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Place shift" })).toBeNull();
     expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("availability_assessment_fingerprint");
+    expect(onSubmit.mock.calls[0]![0]).not.toHaveProperty("conflict_override_note");
+    // The page says it; the window adds no toast of its own.
     expect(toast.warning).not.toHaveBeenCalled();
   });
 
-  it("puts the employee's mark into another rule's confirmation, one box", async () => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weekly("confirm"), reasons: [...weekly("confirm").reasons, availabilityReason] });
+  it("another rule's confirmation names only that rule, never the employee's mark", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...weekly("confirm"), reasons: [...weekly("confirm").reasons, availabilityReason, noteReason] });
     renderAssigned();
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
     const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
-    expect(sheet.textContent).toContain("not enough rest time");
-    expect(sheet.textContent).toContain("unavailable hours");
+    expect([...sheet.querySelectorAll("[role=alert] p")].map((line) => line.textContent)).toEqual([
+      "There is not enough rest time between shifts.",
+    ]);
   });
 
-  it("asks with the note card under the cell when only a manager's note applies (S2 B)", async () => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [noteReason] });
-    const onSubmit = renderAssigned();
-    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    await screen.findByRole("dialog", { name: /^Manager note for / });
-    expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull();
-    expect(onSubmit).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Place shift" }));
-    await waitFor(() => expect(onSubmit).toHaveBeenCalledTimes(1));
-    expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
-  });
-
-  it.each([
-    ["note card", [noteReason], /^Manager note for /],
-    ["rule box", [availabilityReason], "Shift conflict"],
-  ] as const)("keeps the editor open when the %s is pressed, so Place shift saves", async (_label, reasons, dialog) => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+  it("keeps the editor open when the rule box is pressed, so Place shift saves", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue(weekly("confirm"));
     const onSubmit = vi.fn().mockResolvedValue("saved");
     const onDismiss = vi.fn();
     render(
@@ -274,7 +267,7 @@ describe("ShiftQuickEditor", () => {
       />,
     );
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    await screen.findByRole("dialog", { name: dialog });
+    await screen.findByRole("dialog", { name: "Shift conflict" });
     const place = screen.getByRole("button", { name: "Place shift" });
     dispatchPointerEvent(place, "pointerdown", { pointerId: 1, clientX: 0, clientY: 0 });
     fireEvent.click(place);
@@ -282,11 +275,8 @@ describe("ShiftQuickEditor", () => {
     expect(onDismiss).not.toHaveBeenCalled();
   });
 
-  it.each([
-    ["note card", [noteReason], /^Manager note for /],
-    ["rule box", [availabilityReason], "Shift conflict"],
-  ] as const)("spends Escape on the %s like Cancel, keeping the editor open", async (_label, reasons, dialog) => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+  it("spends Escape on the rule box like Cancel, keeping the editor open", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue(weekly("confirm"));
     const onDismiss = vi.fn();
     const onClose = vi.fn();
     render(
@@ -301,36 +291,21 @@ describe("ShiftQuickEditor", () => {
     // while it is disabled for the check.
     act(() => screen.getByRole("button", { name: "Add shift" }).focus());
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    await screen.findByRole("dialog", { name: dialog });
+    await screen.findByRole("dialog", { name: "Shift conflict" });
     fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
-    await waitFor(() => expect(screen.queryByRole("dialog", { name: dialog })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Shift conflict" })).toBeNull());
     expect(onDismiss).not.toHaveBeenCalled();
     expect(onClose).not.toHaveBeenCalled();
     // Focus goes back where the question came from, not to the top of the page.
     expect(document.activeElement).toBe(screen.getByRole("button", { name: "Add shift" }));
   });
 
-  it.each([
-    ["note card", [noteReason], /^Manager note for /],
-    ["rule box", [availabilityReason], "Shift conflict"],
-  ] as const)("moves focus to Cancel when the %s opens, so a second Enter never places unread", async (_label, reasons, dialog) => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [...reasons] });
+  it("moves focus to Cancel when the rule box opens, so a second Enter never places unread", async () => {
+    vi.mocked(loadShiftAvailability).mockResolvedValue(weekly("confirm"));
     renderAssigned();
     fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    const box = await screen.findByRole("dialog", { name: dialog });
+    const box = await screen.findByRole("dialog", { name: "Shift conflict" });
     await waitFor(() => expect(document.activeElement).toBe(within(box).getByRole("button", { name: "Cancel" })));
-  });
-
-  it("shows the mark and the note on one shift as one box with two lines", async () => {
-    vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, reasons: [availabilityReason, noteReason] });
-    renderAssigned();
-    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
-    const sheet = await screen.findByRole("dialog", { name: "Shift conflict" });
-    expect([...sheet.querySelectorAll("[role=alert] p")].map((line) => line.textContent)).toEqual([
-      "The assignment overlaps unavailable hours.",
-      "The assignment overlaps hours a manager noted for this person.",
-    ]);
-    expect(screen.queryByRole("dialog", { name: /^Manager note for / })).toBeNull();
   });
 
   it("saves a weekly warn conflict with one toast and no written reason", async () => {

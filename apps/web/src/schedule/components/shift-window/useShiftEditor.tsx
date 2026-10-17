@@ -1,7 +1,8 @@
 // What the Add / Edit / Paste shift window does, apart from how it looks:
-// starting values, eligibility, the availability check, the rule box and the
-// note card, save, delete and "changed by someone else". Both layouts (Form
-// and Timeline) drive this one hook.
+// starting values, eligibility, the server's check, the rule box, save, delete
+// and "changed by someone else". Both layouts (Form and Timeline) drive this
+// one hook. The employee's own mark and a manager's note never ask: the shift
+// is written and the page shows a short notice (KARARLAR "Müsaitlik tercih" 3).
 import type { ScheduleReadModel, ScheduleShiftMutationInput } from "@newfork/shared/schedule";
 import { scheduleShiftSchema } from "@newfork/shared/schedule";
 import { SAME_START_END_TIME_MESSAGE, type ShiftAvailabilityAssessment } from "@newfork/shared";
@@ -11,8 +12,6 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode, type RefOb
 import { loadShiftAvailability } from "../../../availability/availability-data";
 import { requestErrorText } from "../../../lib/request-error";
 import { closedDayAlreadyAnswered, rememberClosedDayAnswer } from "../../lib/closedDayAnswer";
-import { formatNoteBy, formatNoteWhen } from "../../lib/scheduleAvailabilityMark";
-import { weeklyTargetNote } from "../../lib/scheduleWeeklyAvailability";
 import {
   clampShiftEditorCount,
   getShiftEditorEligibleEmployees,
@@ -27,13 +26,11 @@ import {
   type ScheduleShiftEditorState,
 } from "../../lib/shiftEditorState";
 import {
-  assessmentAvailabilityWarnings,
   evaluateScheduleShiftConflicts,
   formatScheduleConflictMessages,
   isAvailabilityReminder,
 } from "../../schedule-conflicts";
 import { SCHEDULE_CONFLICT_QUESTION, ScheduleConflictSheet } from "../ScheduleConflictSheet";
-import { ScheduleNoteConfirm } from "../ScheduleNoteConfirm";
 import { isShiftNoteOpen } from "../ShiftNoteCorner";
 
 export interface ShiftEditorProps {
@@ -94,13 +91,11 @@ export function useShiftEditor(props: ShiftEditorProps) {
   const [count, setCount] = useState(1);
   const [stale, setStale] = useState(false);
   const [conflictSheetOpen, setConflictSheetOpen] = useState(false);
-  const [noteCardOpen, setNoteCardOpen] = useState(false);
-  // Answering the rule box or note card hands focus back to the window's own
-  // save button (it was disabled, so unfocused, while the server checked).
+  // Answering the rule box hands focus back to the window's own save button
+  // (it was disabled, so unfocused, while the server checked).
   const submitRef = useRef<HTMLButtonElement>(null);
   const closeQuestion = () => {
     setConflictSheetOpen(false);
-    setNoteCardOpen(false);
     submitRef.current?.focus();
   };
   const [conflictValidationArmed, setConflictValidationArmed] = useState(false);
@@ -116,7 +111,6 @@ export function useShiftEditor(props: ShiftEditorProps) {
   const assessment = assessmentState?.key === valueKey ? assessmentState.value : null;
   useEffect(() => {
     setConflictSheetOpen(false);
-    setNoteCardOpen(false);
   }, [valueKey]);
   const selectedEmployee = getShiftEditorSelectedEmployee(model.employees, value.employee_id);
   const initialValue = initialValueRef.current;
@@ -138,20 +132,14 @@ export function useShiftEditor(props: ShiftEditorProps) {
     selectedEmployee,
     employeeId: value.employee_id,
   });
+  // The employee's own mark and a manager's note are no conflict and never ask.
   const localConflictReasons = evaluateScheduleShiftConflicts(model, model.shifts, value, shiftId)
-    .filter((reason) => typeof reason === "string" || reason.type !== "time_off");
-  const noteText = selectedEmployee ? weeklyTargetNote(selectedEmployee, value)?.text ?? "" : "";
-  const noteProjection = selectedEmployee?.weekly_availability?.find((item) => item.location_id === value.location_id);
+    .filter((reason) => typeof reason === "string" || (reason.type !== "time_off" && !isAvailabilityReminder(reason)));
   const assessmentReasons = (result: ShiftAvailabilityAssessment | null) => {
-    if (!result) return [];
-    // The employee's own mark and a manager's note ask on every write, whatever
-    // the operation (M8, M12); the note's words come from the week on screen.
-    const reminders = assessmentAvailabilityWarnings(result)
-      .map((reason) => (typeof reason !== "string" && reason.type === "note" ? { ...reason, note: noteText } : reason));
-    if (result.operation === "allowed" || result.override_recorded || result.responsibility_retained
-      || closedDayAlreadyAnswered(result, sessionId)) return reminders;
-    return [...result.reasons.filter((reason) => reason.code !== "availability" && reason.code !== "note")
-      .map((reason) => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message })), ...reminders];
+    if (!result || result.operation === "allowed" || result.override_recorded || result.responsibility_retained
+      || closedDayAlreadyAnswered(result, sessionId)) return [];
+    return result.reasons.filter((reason) => reason.code !== "availability" && reason.code !== "note")
+      .map((reason) => ({ type: "availability_assessment", severity: reason.severity === "block" ? "hard" : "soft", message: reason.message }));
   };
   const rawConflictReasons = [...(assessment ? [] : localConflictReasons), ...assessmentReasons(assessment)];
   const conflictReasons = editorHasUserChanges || conflictSheetOpen || conflictValidationArmed ? rawConflictReasons : [];
@@ -223,22 +211,18 @@ export function useShiftEditor(props: ShiftEditorProps) {
       !checked.override_recorded && !checked.responsibility_retained && !closedDayAlreadyAnswered(checked, sessionId);
     const canConfirm = confirmed && !reasons.some(isHardScheduleConflictReason) &&
       (!weeklyWarning || checked?.warning_policy === "warn" || checked?.fingerprint === assessment?.fingerprint);
-    const reminders = reasons.filter(isAvailabilityReminder);
-    const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && effectiveLocalReasons.length === 0 && !reminders.length;
+    const warnOnly = weeklyWarning && checked?.warning_policy === "warn" && effectiveLocalReasons.length === 0;
     if (messages.length > 0 && !canConfirm && !warnOnly) {
       setConflictValidationArmed(true);
-      // A manager's note alone asks under its cell (S2 B); with anything else, one box.
-      if (reasons.every((reason) => typeof reason !== "string" && reason.type === "note")) setNoteCardOpen(true);
-      else setConflictSheetOpen(true);
+      setConflictSheetOpen(true);
       onBlockedSubmit?.(messages);
-      if (!checked?.warning_policy && reminders.length < reasons.length) {
+      if (!checked?.warning_policy) {
         const summary = summarizeEditorConflictToast(messages, !reasons.some(isHardScheduleConflictReason));
         toast[summary.tone](summary.title, { description: summary.description });
       }
       return;
     }
     setConflictSheetOpen(false);
-    setNoteCardOpen(false);
     if (weeklyWarning && checked?.warning_policy === "confirm") rememberClosedDayAnswer(checked, sessionId);
     if (warnOnly) {
       toast.warning("Shift saved with a warning", {
@@ -279,7 +263,6 @@ export function useShiftEditor(props: ShiftEditorProps) {
   }, [eligibleEmployees, showEmployeePicker, value.employee_id]);
   useEffect(() => {
     setConflictSheetOpen(false);
-    setNoteCardOpen(false);
     setConflictValidationArmed(false);
   }, [count, value]);
   useEffect(() => {
@@ -315,34 +298,20 @@ export function useShiftEditor(props: ShiftEditorProps) {
   };
 
   const questions: ReactNode = (
-    <>
-      <ScheduleConflictSheet
-        open={conflictSheetOpen}
-        messages={conflictMessages}
-        tone={conflictCanContinue ? "warning" : "blocker"}
-        description={conflictCanContinue
-          ? SCHEDULE_CONFLICT_QUESTION
-          : assessment?.warning_policy ? "Resolve this conflict before saving." : undefined}
-        submitLabel={conflictCanContinue
-          ? assessment ? "Place shift" : `${state.mode === "edit" ? "Save" : "Add"} anyway`
-          : undefined}
-        submitDisabled={checkingAvailability}
-        onSubmit={conflictCanContinue ? () => { void attemptSubmit(true); } : undefined}
-        onDismiss={closeQuestion}
-      />
-      {noteCardOpen && selectedEmployee ? (
-        <ScheduleNoteConfirm
-          cell={{ locationId: value.location_id, employeeId: selectedEmployee.id, date: value.scheduled_date }}
-          when={formatNoteWhen(noteProjection, value.scheduled_date, timeFormat)}
-          by={formatNoteBy(noteProjection)}
-          employeeName={selectedEmployee.display_name}
-          text={noteText}
-          disabled={checkingAvailability}
-          onPlace={() => void attemptSubmit(true)}
-          onCancel={closeQuestion}
-        />
-      ) : null}
-    </>
+    <ScheduleConflictSheet
+      open={conflictSheetOpen}
+      messages={conflictMessages}
+      tone={conflictCanContinue ? "warning" : "blocker"}
+      description={conflictCanContinue
+        ? SCHEDULE_CONFLICT_QUESTION
+        : assessment?.warning_policy ? "Resolve this conflict before saving." : undefined}
+      submitLabel={conflictCanContinue
+        ? assessment ? "Place shift" : `${state.mode === "edit" ? "Save" : "Add"} anyway`
+        : undefined}
+      submitDisabled={checkingAvailability}
+      onSubmit={conflictCanContinue ? () => { void attemptSubmit(true); } : undefined}
+      onDismiss={closeQuestion}
+    />
   );
 
   return {
