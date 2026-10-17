@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 501, last: 20261017130000_people_notices_follow_up.sql
--- fingerprint: sha256:1fae499277c2d5e3dbda2ce7a75a91e7ce1c10590472b310629038551b6f02af
+-- migrations: 502, last: 20261017140000_lineup_foundation.sql
+-- fingerprint: sha256:ce32a458824614b19ce6611c0327c299e64357dac3fcbecef0eddc0ab58a9d05
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -13156,6 +13156,191 @@ $$;
 
 
 ALTER FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[], "target_shift_type_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  reach uuid[] := app_private.scope_set(actor_user_id, target_workspace_id, 'lineup.read');
+  first_day text;
+  resolved_week_start date;
+  result jsonb;
+begin
+  if target_date is null then
+    raise exception 'a day is required' using errcode = '22023', hint = 'lineup.invalid_day';
+  end if;
+  if target_location_ids is not null then
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.read', target_locations => target_location_ids);
+  elsif cardinality(reach) = 0
+     and (app_private.authz_reason(actor_user_id, target_workspace_id, 'lineup.read') is distinct from 'out_of_scope'
+          or exists (select 1 from public.locations l where l.workspace_id = target_workspace_id and l.deleted_at is null)) then
+    -- Nowhere to read: the core says why. A workspace with no live location reads as empty.
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.read');
+  end if;
+
+  select s.week_start_day into first_day
+  from public.workspace_scheduling_settings s where s.workspace_id = target_workspace_id;
+  resolved_week_start := case first_day
+    when 'sunday' then target_date - extract(dow from target_date)::integer
+    else target_date - (extract(isodow from target_date)::integer - 1)
+  end;
+
+  with places as materialized (
+    select l.id, l.name, l.timezone, l.sort_order
+    from public.locations l
+    where l.workspace_id = target_workspace_id and l.archived_at is null and l.deleted_at is null
+      and l.id = any (reach)
+      and (target_location_ids is null or l.id = any (target_location_ids))
+  ), closures as materialized (
+    select c.location_id, c.kind, c.title, c.opens, c.closes, c.status
+    from public.schedule_closures c
+    join places p on p.id = c.location_id
+    where c.workspace_id = target_workspace_id and c.closed_date = target_date
+  ), shifts as materialized (
+    select s.*
+    from public.schedule_published_shifts s
+    join public.schedule_location_publications publication
+      on publication.id = s.publication_id and publication.status = 'current'
+     and publication.week_start = resolved_week_start
+    join places p on p.id = s.location_id
+    where s.workspace_id = target_workspace_id and s.scheduled_date = target_date
+  ), headers as materialized (
+    select d.*
+    from public.daily_lineups d
+    join places p on p.id = d.location_id
+    where d.workspace_id = target_workspace_id and d.service_date = target_date
+  ), rows_all as materialized (
+    -- A Schedule shift, with what its lineup changed.
+    select s.location_id,
+      case when r.id is not null then h.shift_type_id else s.shift_type_id end as group_type,
+      r.id as row_id, s.id as shift_id, s.source_shift_id, s.employee_id,
+      coalesce(r.job_id, s.job_id) as job_id, s.job_id as schedule_job_id,
+      coalesce(r.starts, s.start_time) as starts, coalesce(r.ends, s.end_time) as ends,
+      s.start_time as schedule_starts, s.end_time as schedule_ends,
+      coalesce(r.label_ids, s.label_ids) as label_ids, r.label_ids is not null as own_labels, s.label_names,
+      s.shift_type_id as schedule_type, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, false as lineup_only
+    from shifts s
+    -- Only a row of this day's lineups: a shift moved here from another day comes as the Schedule has it.
+    left join (public.daily_lineup_rows r join headers h on h.id = r.lineup_id)
+      on r.workspace_id = target_workspace_id and r.source_shift_id = s.source_shift_id
+     and r.location_id = s.location_id and r.service_date = target_date
+    union all
+    -- A person added in the lineup only.
+    select r.location_id, h.shift_type_id, r.id, null, null, r.employee_id,
+      r.job_id, null, r.starts, r.ends, null, null,
+      coalesce(r.label_ids, '{}'), true, '{}', null, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, true
+    from public.daily_lineup_rows r
+    join headers h on h.id = r.lineup_id
+    where r.source_shift_id is null
+  ), rows_wanted as materialized (
+    select r.* from rows_all r
+    where target_shift_type_ids is null or r.group_type = any (target_shift_type_ids)
+  ), groups as materialized (
+    select distinct r.location_id, r.group_type from rows_wanted r
+    union
+    select h.location_id, h.shift_type_id from headers h
+    where target_shift_type_ids is null or h.shift_type_id = any (target_shift_type_ids)
+  )
+  select jsonb_build_object(
+    'workspace_id', target_workspace_id,
+    'date', target_date,
+    'locations', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', p.id, 'name', p.name, 'timezone', p.timezone,
+        'closed', (select jsonb_build_object('title', c.title, 'status', c.status)
+                   from closures c where c.location_id = p.id and c.kind = 'closed' order by c.title limit 1),
+        'short_hours', (select jsonb_build_object('title', c.title, 'status', c.status,
+                          'opens', to_char(c.opens, 'HH24:MI'), 'closes', to_char(c.closes, 'HH24:MI'))
+                        from closures c where c.location_id = p.id and c.kind = 'short' order by c.title limit 1),
+        'lineups', case when exists (select 1 from closures c where c.location_id = p.id and c.kind = 'closed')
+          then '[]'::jsonb
+          else coalesce((
+            select jsonb_agg(jsonb_build_object(
+              'id', h.id,
+              'shift_type_id', g.group_type,
+              'shift_type_name', t.name,
+              'color', t.color,
+              'status', case
+                when target_date < (now() at time zone p.timezone)::date then 'past'
+                when h.editing then 'editing'
+                when coalesce(h.latest_version, 0) > 0 then 'shared'
+                else 'draft' end,
+              'version', nullif(h.latest_version, 0),
+              'shared_at', v.shared_at,
+              'ask_ack', v.ask_ack,
+              'acknowledged', case when v.id is null then null
+                else (select count(*) from public.daily_lineup_acknowledgements a where a.version_id = v.id) end,
+              'revision', h.revision,
+              'notes', jsonb_build_object('specials', coalesce(h.specials, ''), 'n86', coalesce(h.n86, ''),
+                'shift_notes', coalesce(h.shift_notes, '')),
+              'rows', coalesce((
+                select jsonb_agg(jsonb_build_object(
+                  'id', r.row_id,
+                  'shift_id', r.shift_id,
+                  'source_shift_id', r.source_shift_id,
+                  'employee_id', r.employee_id,
+                  'name', case when e.id is not null
+                    then coalesce(nullif(e.preferred_name, ''), e.first_name) || ' ' || e.last_name end,
+                  'job_id', r.job_id, 'job_name', j.name, 'job_color', j.color,
+                  'department_id', dept.id, 'department_name', dept.name,
+                  'start_time', to_char(r.starts, 'HH24:MI'), 'end_time', to_char(r.ends, 'HH24:MI'),
+                  'crosses_midnight', r.ends <= r.starts,
+                  'schedule_start_time', to_char(r.schedule_starts, 'HH24:MI'),
+                  'schedule_end_time', to_char(r.schedule_ends, 'HH24:MI'),
+                  'label_ids', to_jsonb(r.label_ids),
+                  'label_names', case when r.own_labels
+                    then coalesce((select jsonb_agg(sl.name order by array_position(r.label_ids, sl.id))
+                                   from public.shift_labels sl
+                                   where sl.workspace_id = target_workspace_id and sl.id = any (r.label_ids)), '[]'::jsonb)
+                    else to_jsonb(r.label_names) end,
+                  'section_id', r.section_id, 'section_name', sec.name,
+                  'sort_order', r.sort_order,
+                  'called_off_at', r.called_off_at, 'called_off_by', r.called_off_by,
+                  'lineup_only', r.lineup_only,
+                  'changed', to_jsonb(array_remove(array[
+                    case when not r.lineup_only and r.starts is distinct from r.schedule_starts then 'start_time' end,
+                    case when not r.lineup_only and r.ends is distinct from r.schedule_ends then 'end_time' end,
+                    case when not r.lineup_only and r.job_id is distinct from r.schedule_job_id then 'job_id' end,
+                    case when not r.lineup_only and r.own_labels then 'labels' end,
+                    case when not r.lineup_only and r.group_type is distinct from r.schedule_type then 'shift_type' end
+                  ]::text[], null))
+                ) order by r.sort_order nulls last, r.starts, e.last_name nulls last, e.first_name, r.shift_id)
+                from rows_wanted r
+                left join public.employee_profiles e on e.id = r.employee_id and e.workspace_id = target_workspace_id
+                -- Names as the Schedule names them: archived ones too, null once deleted.
+                left join public.jobs j on j.id = r.job_id and j.workspace_id = target_workspace_id and j.deleted_at is null
+                left join public.departments dept on dept.id = j.department_id and dept.workspace_id = target_workspace_id
+                  and dept.deleted_at is null
+                left join public.location_sections sec on sec.id = r.section_id
+                where r.location_id = p.id and r.group_type is not distinct from g.group_type
+              ), '[]'::jsonb)
+            ) order by t.sort_order nulls last, t.name nulls last)
+            from groups g
+            left join public.shift_types t on t.id = g.group_type and t.workspace_id = target_workspace_id
+              and t.deleted_at is null
+            left join headers h on h.location_id = g.location_id and h.shift_type_id is not distinct from g.group_type
+            left join public.daily_lineup_versions v on v.lineup_id = h.id and v.version = h.latest_version
+            where g.location_id = p.id
+          ), '[]'::jsonb) end
+      ) order by p.sort_order, p.name)
+      from places p
+    ), '[]'::jsonb),
+    'sections', coalesce((
+      select jsonb_agg(jsonb_build_object('id', s.id, 'location_id', s.location_id, 'name', s.name,
+        'sort_order', s.sort_order) order by s.location_id, s.sort_order, s.name)
+      from public.location_sections s
+      join places p on p.id = s.location_id
+      where s.archived_at is null
+    ), '[]'::jsonb)
+  ) into result;
+  return result;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text" DEFAULT 'all'::"text", "target_before" timestamp with time zone DEFAULT NULL::timestamp with time zone, "target_before_id" "uuid" DEFAULT NULL::"uuid", "target_limit" integer DEFAULT 30) RETURNS "jsonb"
@@ -27539,6 +27724,94 @@ CREATE TABLE IF NOT EXISTS "public"."audit_events" (
 ALTER TABLE "public"."audit_events" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."daily_lineup_acknowledgements" (
+    "version_id" "uuid" NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "acknowledged_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "carried_from_version" integer,
+    CONSTRAINT "daily_lineup_acknowledgements_carried_from_version_check" CHECK ((("carried_from_version" IS NULL) OR ("carried_from_version" > 0)))
+);
+
+
+ALTER TABLE "public"."daily_lineup_acknowledgements" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."daily_lineup_rows" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "lineup_id" "uuid" NOT NULL,
+    "location_id" "uuid" NOT NULL,
+    "service_date" "date" NOT NULL,
+    "source_shift_id" "uuid",
+    "employee_id" "uuid",
+    "job_id" "uuid",
+    "starts" time without time zone,
+    "ends" time without time zone,
+    "label_ids" "uuid"[],
+    "section_id" "uuid",
+    "sort_order" integer,
+    "called_off_at" timestamp with time zone,
+    "called_off_by" "uuid",
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_by" "uuid",
+    CONSTRAINT "daily_lineup_rows_call_off" CHECK ((("called_off_at" IS NULL) = ("called_off_by" IS NULL))),
+    CONSTRAINT "daily_lineup_rows_hours" CHECK (((("starts" IS NULL) = ("ends" IS NULL)) AND (("starts" IS NULL) OR ("starts" <> "ends")))),
+    CONSTRAINT "daily_lineup_rows_kind" CHECK (((("source_shift_id" IS NOT NULL) AND ("employee_id" IS NULL)) OR (("source_shift_id" IS NULL) AND ("employee_id" IS NOT NULL) AND ("job_id" IS NOT NULL) AND ("starts" IS NOT NULL) AND ("ends" IS NOT NULL)))),
+    CONSTRAINT "daily_lineup_rows_sort_order_check" CHECK ((("sort_order" IS NULL) OR ("sort_order" >= 0)))
+);
+
+
+ALTER TABLE "public"."daily_lineup_rows" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."daily_lineup_versions" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "lineup_id" "uuid" NOT NULL,
+    "version" integer NOT NULL,
+    "shared_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "shared_by" "uuid",
+    "ask_ack" boolean DEFAULT true NOT NULL,
+    "snapshot" "jsonb" NOT NULL,
+    "fingerprint" "text",
+    "live_changes" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
+    CONSTRAINT "daily_lineup_versions_fingerprint_check" CHECK ((("fingerprint" IS NULL) OR ("char_length"("fingerprint") = 64))),
+    CONSTRAINT "daily_lineup_versions_live_changes_check" CHECK (("jsonb_typeof"("live_changes") = 'array'::"text")),
+    CONSTRAINT "daily_lineup_versions_version_check" CHECK (("version" > 0))
+);
+
+
+ALTER TABLE "public"."daily_lineup_versions" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."daily_lineups" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "location_id" "uuid" NOT NULL,
+    "service_date" "date" NOT NULL,
+    "shift_type_id" "uuid",
+    "specials" "text" DEFAULT ''::"text" NOT NULL,
+    "n86" "text" DEFAULT ''::"text" NOT NULL,
+    "shift_notes" "text" DEFAULT ''::"text" NOT NULL,
+    "editing" boolean DEFAULT false NOT NULL,
+    "latest_version" integer DEFAULT 0 NOT NULL,
+    "revision" integer DEFAULT 1 NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_by" "uuid",
+    CONSTRAINT "daily_lineups_latest_version_check" CHECK (("latest_version" >= 0)),
+    CONSTRAINT "daily_lineups_n86_check" CHECK (("char_length"("n86") <= 500)),
+    CONSTRAINT "daily_lineups_revision_check" CHECK (("revision" > 0)),
+    CONSTRAINT "daily_lineups_shift_notes_check" CHECK (("char_length"("shift_notes") <= 1000)),
+    CONSTRAINT "daily_lineups_specials_check" CHECK (("char_length"("specials") <= 500))
+);
+
+
+ALTER TABLE "public"."daily_lineups" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."departments" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -27937,6 +28210,23 @@ CREATE TABLE IF NOT EXISTS "public"."jobs" (
 
 
 ALTER TABLE "public"."jobs" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."location_sections" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "location_id" "uuid" NOT NULL,
+    "name" "text" NOT NULL,
+    "sort_order" integer DEFAULT 0 NOT NULL,
+    "archived_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "location_sections_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 40))),
+    CONSTRAINT "location_sections_sort_order_check" CHECK (("sort_order" >= 0))
+);
+
+
+ALTER TABLE "public"."location_sections" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."manager_weekly_reminders" (
@@ -29322,6 +29612,46 @@ ALTER TABLE ONLY "public"."audit_events"
 
 
 
+ALTER TABLE ONLY "public"."daily_lineup_acknowledgements"
+    ADD CONSTRAINT "daily_lineup_acknowledgements_pkey" PRIMARY KEY ("version_id", "employee_id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_versions"
+    ADD CONSTRAINT "daily_lineup_versions_id_workspace_id_key" UNIQUE ("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_versions"
+    ADD CONSTRAINT "daily_lineup_versions_lineup_id_version_key" UNIQUE ("lineup_id", "version");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_versions"
+    ADD CONSTRAINT "daily_lineup_versions_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_id_location_id_service_date_key" UNIQUE ("id", "location_id", "service_date");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_id_workspace_id_key" UNIQUE ("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."departments"
     ADD CONSTRAINT "departments_id_workspace_id_key" UNIQUE ("id", "workspace_id");
 
@@ -29569,6 +29899,21 @@ ALTER TABLE ONLY "public"."jobs"
 
 ALTER TABLE ONLY "public"."jobs"
     ADD CONSTRAINT "jobs_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."location_sections"
+    ADD CONSTRAINT "location_sections_id_location_id_key" UNIQUE ("id", "location_id");
+
+
+
+ALTER TABLE ONLY "public"."location_sections"
+    ADD CONSTRAINT "location_sections_id_workspace_id_key" UNIQUE ("id", "workspace_id");
+
+
+
+ALTER TABLE ONLY "public"."location_sections"
+    ADD CONSTRAINT "location_sections_pkey" PRIMARY KEY ("id");
 
 
 
@@ -30223,6 +30568,30 @@ CREATE INDEX "audit_events_workspace_time_idx" ON "public"."audit_events" USING 
 
 
 
+CREATE INDEX "daily_lineup_acknowledgements_employee_idx" ON "public"."daily_lineup_acknowledgements" USING "btree" ("employee_id");
+
+
+
+CREATE INDEX "daily_lineup_rows_employee_idx" ON "public"."daily_lineup_rows" USING "btree" ("employee_id") WHERE ("employee_id" IS NOT NULL);
+
+
+
+CREATE INDEX "daily_lineup_rows_lineup_idx" ON "public"."daily_lineup_rows" USING "btree" ("lineup_id");
+
+
+
+CREATE INDEX "daily_lineup_rows_section_idx" ON "public"."daily_lineup_rows" USING "btree" ("section_id") WHERE ("section_id" IS NOT NULL);
+
+
+
+CREATE UNIQUE INDEX "daily_lineup_rows_shift_idx" ON "public"."daily_lineup_rows" USING "btree" ("workspace_id", "source_shift_id", "service_date") WHERE ("source_shift_id" IS NOT NULL);
+
+
+
+CREATE UNIQUE INDEX "daily_lineups_day_idx" ON "public"."daily_lineups" USING "btree" ("location_id", "service_date", "shift_type_id") NULLS NOT DISTINCT;
+
+
+
 CREATE UNIQUE INDEX "departments_system_key_idx" ON "public"."departments" USING "btree" ("workspace_id", "system_key") WHERE ("system_key" IS NOT NULL);
 
 
@@ -30312,6 +30681,10 @@ CREATE UNIQUE INDEX "jobs_system_key_idx" ON "public"."jobs" USING "btree" ("wor
 
 
 CREATE UNIQUE INDEX "jobs_workspace_active_name_idx" ON "public"."jobs" USING "btree" ("workspace_id", "lower"("name")) WHERE ("archived_at" IS NULL);
+
+
+
+CREATE UNIQUE INDEX "location_sections_name_idx" ON "public"."location_sections" USING "btree" ("location_id", "lower"("btrim"("name"))) WHERE ("archived_at" IS NULL);
 
 
 
@@ -31147,6 +31520,76 @@ ALTER TABLE ONLY "public"."audit_events"
 
 
 
+ALTER TABLE ONLY "public"."daily_lineup_acknowledgements"
+    ADD CONSTRAINT "daily_lineup_acknowledgements_employee_id_workspace_id_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_acknowledgements"
+    ADD CONSTRAINT "daily_lineup_acknowledgements_version_id_workspace_id_fkey" FOREIGN KEY ("version_id", "workspace_id") REFERENCES "public"."daily_lineup_versions"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_called_off_by_fkey" FOREIGN KEY ("called_off_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_employee_id_workspace_id_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_job_id_workspace_id_fkey" FOREIGN KEY ("job_id", "workspace_id") REFERENCES "public"."jobs"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_lineup_id_location_id_service_date_fkey" FOREIGN KEY ("lineup_id", "location_id", "service_date") REFERENCES "public"."daily_lineups"("id", "location_id", "service_date") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_lineup_id_workspace_id_fkey" FOREIGN KEY ("lineup_id", "workspace_id") REFERENCES "public"."daily_lineups"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_section_id_location_id_fkey" FOREIGN KEY ("section_id", "location_id") REFERENCES "public"."location_sections"("id", "location_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_versions"
+    ADD CONSTRAINT "daily_lineup_versions_lineup_id_workspace_id_fkey" FOREIGN KEY ("lineup_id", "workspace_id") REFERENCES "public"."daily_lineups"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_versions"
+    ADD CONSTRAINT "daily_lineup_versions_shared_by_fkey" FOREIGN KEY ("shared_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_shift_type_id_workspace_id_fkey" FOREIGN KEY ("shift_type_id", "workspace_id") REFERENCES "public"."shift_types"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineups"
+    ADD CONSTRAINT "daily_lineups_updated_by_fkey" FOREIGN KEY ("updated_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
 ALTER TABLE ONLY "public"."departments"
     ADD CONSTRAINT "departments_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
 
@@ -31509,6 +31952,11 @@ ALTER TABLE ONLY "public"."jobs"
 
 ALTER TABLE ONLY "public"."jobs"
     ADD CONSTRAINT "jobs_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."location_sections"
+    ADD CONSTRAINT "location_sections_location_id_workspace_id_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE CASCADE;
 
 
 
@@ -32490,6 +32938,18 @@ CREATE POLICY "audit_select_admin" ON "public"."audit_events" FOR SELECT TO "aut
 
 
 
+ALTER TABLE "public"."daily_lineup_acknowledgements" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."daily_lineup_rows" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."daily_lineup_versions" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."daily_lineups" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."departments" ENABLE ROW LEVEL SECURITY;
 
 
@@ -32591,6 +33051,9 @@ CREATE POLICY "jobs_select_member" ON "public"."jobs" FOR SELECT TO "authenticat
 
 CREATE POLICY "jobs_update_admin" ON "public"."jobs" FOR UPDATE TO "authenticated" USING (( SELECT "public"."workspace_has_permission"("jobs"."workspace_id", 'settings.jobs.manage'::"text") AS "workspace_has_permission")) WITH CHECK (( SELECT "public"."workspace_has_permission"("jobs"."workspace_id", 'settings.jobs.manage'::"text") AS "workspace_has_permission"));
 
+
+
+ALTER TABLE "public"."location_sections" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."locations" ENABLE ROW LEVEL SECURITY;
@@ -34392,6 +34855,11 @@ GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uu
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_before_id" "uuid", "target_limit" integer) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_notification_feed_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_filter" "text", "target_before" timestamp with time zone, "target_before_id" "uuid", "target_limit" integer) TO "service_role";
 
@@ -35659,6 +36127,22 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."audit_events" TO "
 
 
 
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineup_acknowledgements" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineup_rows" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineup_versions" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineups" TO "service_role";
+
+
+
 GRANT SELECT,INSERT ON TABLE "public"."departments" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."departments" TO "service_role";
 
@@ -35759,6 +36243,10 @@ GRANT UPDATE("archived_at") ON TABLE "public"."jobs" TO "authenticated";
 
 
 GRANT UPDATE("updated_at") ON TABLE "public"."jobs" TO "authenticated";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."location_sections" TO "service_role";
 
 
 

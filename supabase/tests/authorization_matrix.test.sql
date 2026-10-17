@@ -355,6 +355,10 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('schedule.read', 'location', 'schedule.read', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_read_model_service($1, $2, tests.week(0)) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$),
+  -- The day's lineups (LINEUP stage 1): the Schedule's readers, by location.
+  ('lineup.read', 'location', 'schedule.read', false, true,
+   $$select exists (select 1 from jsonb_array_elements(public.get_lineup_day_service($1, $2, tests.week(0)) -> 'locations') l
+     where (l ->> 'id')::uuid = $3)$$),
   ('schedule.edit', 'workspace', 'schedule.manage', false, false,
    $$select public.acquire_schedule_edit_session_service($1, $2, tests.week(5), 'blank') is not null$$),
   ('schedule.templates.read', 'workspace', 'schedule.templates.read', false, false,
@@ -568,6 +572,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.make_employee', 'employee.change_role', 'null'),
   ('employee.create', 'employee.create', 'org'),
   ('schedule.read', 'schedule.read', 'null'),
+  ('lineup.read', 'lineup.read', 'null'),
   ('schedule.edit', 'schedule.edit', 'null'),
   ('schedule.templates.read', 'schedule.templates.read', 'null'),
   ('schedule.publish', 'schedule.publish', 'null'),
@@ -804,7 +809,8 @@ begin
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 
-  when 'schedule.read' then
+  -- A lineup is read where the Schedule is (LINEUP stage 1).
+  when 'schedule.read', 'lineup.read' then
     if t.locs is null then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;

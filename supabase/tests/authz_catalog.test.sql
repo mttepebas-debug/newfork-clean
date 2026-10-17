@@ -125,7 +125,7 @@ select is(
     'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save',
     'employee.save_own_contact', 'employee.terminate',
     'employee_hub.read', 'employee_hub.self', 'exchange.apply_own', 'exchange.approve', 'exchange.offer_own',
-    'exchange.read', 'important_date.write', 'important_date.write_wide', 'membership.read', 'notifications.read_own', 'notifications.write_own', 'onboarding.legal_name', 'onboarding.review',
+    'exchange.read', 'important_date.write', 'important_date.write_wide', 'lineup.read', 'membership.read', 'notifications.read_own', 'notifications.write_own', 'onboarding.legal_name', 'onboarding.review',
     'onboarding.self', 'requests.read', 'schedule.edit', 'schedule.export', 'schedule.publish', 'schedule.read',
     'schedule.templates', 'schedule.templates.read', 'settings.availability.read', 'settings.availability.write',
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',

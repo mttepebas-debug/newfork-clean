@@ -78,6 +78,7 @@ insert into service_class values
   ('get_important_dates_service', 'settings.important_dates.read'),
   -- The new notification system (BILDIRIM-07): one's own list and choices, and the workspace's settings.
   ('get_notification_feed_service', 'notifications.read_own'),
+  ('get_lineup_day_service', 'lineup.read'),
   ('get_notification_preferences_service', 'notifications.read_own'),
   ('get_notification_workspace_settings_service', 'settings.organization.write'),
   ('get_employee_avatar_path_service', 'employee.read'),
