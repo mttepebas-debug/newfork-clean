@@ -22,7 +22,7 @@ function command(): WeeklyPreferenceSave {
     source: "employee",
     expected_revision: 0,
     settings_revision: 0,
-    preference: emptyWeeklyPreference("time_range"),
+    preference: emptyWeeklyPreference(),
   };
 }
 beforeEach(() => {
@@ -38,9 +38,9 @@ beforeEach(() => {
 });
 const savedModel = {
   employee_id: employee, employee_name: "Alex Kim", can_edit_employee: true, can_manage: false,
-  settings: { input_mode: "time_range", onboarding_required: true, revision: 0 },
-  employee: { revision: 1, submitted: true, updated_at: null, preference: emptyWeeklyPreference("time_range") },
-  shift_types: [], time_format: "24h",
+  settings: { onboarding_required: true, revision: 0 },
+  employee: { revision: 1, submitted: true, updated_at: null, preference: emptyWeeklyPreference() },
+  time_format: "24h",
 };
 describe("weekly preferences onboarding identity", () => {
   it("rejects another employee before save", async () => {
@@ -91,15 +91,17 @@ describe("weekly team read boundary", () => {
   const model = () => ({
     locations: [],
     time_format: "24h",
-    shift_types: [],
     employees: [
       {
         id: employee,
         display_name: "Alex Kim",
         employee_code: "E-001",
+        // The page data names the job and the week's save time (AVAIL-GUN-DB).
+        job_name: "Server",
         location_ids: [],
         submitted: false,
-        preference: emptyWeeklyPreference("time_range"),
+        updated_at: null,
+        preference: emptyWeeklyPreference(),
         can_open: true,
       },
     ],

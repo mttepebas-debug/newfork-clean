@@ -16,7 +16,7 @@ const command = {
   source: "employee",
   expected_revision: 0,
   settings_revision: 0,
-  preference: emptyWeeklyPreference("time_range"),
+  preference: emptyWeeklyPreference(),
 };
 function setup(permissions = ["availability.read", "settings.schedule_rules.manage"]) {
   const app = Fastify();
@@ -95,7 +95,6 @@ describe("weekly preference routes", () => {
   it("uses the validated actor and save key for organization settings", async () => {
     const { app, service } = setup();
     const settings = {
-      input_mode: "shift_type",
       onboarding_required: true,
       expected_revision: 2,
     };
@@ -119,7 +118,8 @@ describe("weekly preference routes", () => {
             method: "POST",
             url: `/v1/workspaces/${workspace}/availability/weekly/settings`,
             headers,
-            payload: { ...settings, actor: "spoof", can_edit: true },
+            // An entry mode is no setting any more (AVAIL-GUN-DB): it never reaches the database.
+            payload: { ...settings, input_mode: "shift_type", actor: "spoof", can_edit: true },
           })
         ).statusCode,
       ).toBe(200);
@@ -150,7 +150,6 @@ describe("weekly preference routes", () => {
           url: `/v1/workspaces/${workspace}/availability/weekly/settings`,
           headers: { authorization: "Bearer test", "idempotency-key": key },
           payload: {
-            input_mode: "time_range",
             onboarding_required: false,
             expected_revision: 0,
           },
@@ -169,7 +168,6 @@ describe("weekly preference routes", () => {
         url: `/v1/workspaces/${workspace}/availability/weekly/settings`,
         headers: { authorization: "Bearer test" },
         payload: {
-          input_mode: "time_range",
           onboarding_required: false,
           expected_revision: 0,
         },
@@ -270,7 +268,7 @@ describe("weekly preference routes", () => {
   });
   it("refuses a week with two time ranges on a day before the database sees it", async () => {
     const { app, service } = setup();
-    const preference = emptyWeeklyPreference("time_range");
+    const preference = emptyWeeklyPreference();
     preference.days[5]!.ranges = [
       { start: "09:00", end: "12:00" },
       { start: "17:00", end: "24:00" },
@@ -456,7 +454,7 @@ describe("weekly preference routes", () => {
         method,
         url: `/v1/workspaces/${key}/availability${path}`,
         headers: { authorization: "Bearer test", "idempotency-key": key },
-        payload: method === "POST" ? (path === "/weekly" ? command : { input_mode: "time_range", onboarding_required: false, expected_revision: 0 }) : undefined,
+        payload: method === "POST" ? (path === "/weekly" ? command : { onboarding_required: false, expected_revision: 0 }) : undefined,
       });
       expect(response.statusCode).toBe(404);
       // BL-794: the one "not a member" answer, so the web reads it as no access.
@@ -475,7 +473,7 @@ describe("weekly preference routes", () => {
         method: "POST",
         url: `/v1/workspaces/${workspace}/availability/weekly/settings`,
         headers: { authorization: "Bearer test", "idempotency-key": key },
-        payload: { input_mode: "time_range", onboarding_required: false, expected_revision: 0 },
+        payload: { onboarding_required: false, expected_revision: 0 },
       });
       expect(response.statusCode).toBe(403);
       expect(response.json()).toMatchObject({ reason: "authz.missing_permission" });
