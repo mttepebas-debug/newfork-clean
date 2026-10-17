@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 505, last: 20261017170000_notification_email_channel.sql
--- fingerprint: sha256:bec4a1a7620fa16b2e537b6c7332d2e5e49b5092ba7f4e05f24ad4e060e2d50f
+-- migrations: 506, last: 20261017170000_notification_email_channel.sql
+-- fingerprint: sha256:370669e73e11dab26d276996648a0d6265c6d5ae25d14e0223dd57308b2178c3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5474,6 +5474,24 @@ $$;
 ALTER FUNCTION "app_private"."keep_system_catalog_records"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."listed_job_name"("target_employee" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select job.name
+  from public.employee_job_assignments assignment
+  join public.jobs job on job.id = assignment.job_id
+  where assignment.employee_id = target_employee and assignment.ended_at is null
+    and (assignment.is_primary or job.archived_at is null)
+  order by assignment.is_primary desc, coalesce(job.system_key = 'owner', false) desc,
+    lower(job.name), job.id
+  limit 1
+$$;
+
+
+ALTER FUNCTION "app_private"."listed_job_name"("target_employee" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."live_draft_locations"("w" "uuid", "locs" "uuid"[]) RETURNS "uuid"[]
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -7269,38 +7287,24 @@ with location_zone as (
   from public.manager_weekly_reminders m
   where with_reminders and m.workspace_id = target_workspace_id and m.employee_id = any(target_employee_ids) and m.enabled
 ), mark_day as (
-  select m.employee_id, m.reminder, m.valid, m.preference ->> 'input_mode' as input_mode, d.value as rule
+  select m.employee_id, m.reminder, d.value as rule
   from mark m cross join lateral jsonb_array_elements(case when m.valid then m.preference -> 'days' else '[]'::jsonb end) d
 ), clock as (
+  -- Availability is hours only: a whole day, or the day's one range.
   select md.employee_id, md.reminder, (md.rule ->> 'day')::integer as dow,
-    time '00:00' as start_clock, time '24:00' as end_clock, true as ok
+    time '00:00' as start_clock, time '24:00' as end_clock
   from mark_day md
   where coalesce((md.rule ->> 'all_day')::boolean, false)
   union all
   select md.employee_id, md.reminder, (md.rule ->> 'day')::integer,
-    (r.value ->> 'start')::time, (r.value ->> 'end')::time, true
+    (r.value ->> 'start')::time, (r.value ->> 'end')::time
   from mark_day md
   cross join lateral jsonb_array_elements(md.rule -> 'ranges') r
-  where not coalesce((md.rule ->> 'all_day')::boolean, false) and md.input_mode = 'time_range'
-  union all
-  select md.employee_id, md.reminder, (md.rule ->> 'day')::integer, hours.start_clock, hours.end_clock,
-    hours.start_clock is not null and hours.end_clock is not null and hours.start_clock <> hours.end_clock
-  from mark_day md
-  cross join lateral jsonb_array_elements_text(md.rule -> 'shift_type_ids') selected(type_id)
-  cross join lateral (
-    select case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_start_time else d.start_time end as start_clock,
-           case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_end_time else d.end_time end as end_clock
-    from (select selected.type_id::uuid as id) chosen
-    left join public.shift_types t on t.workspace_id = target_workspace_id and t.id = chosen.id
-    left join public.weekly_preference_type_defaults d on d.workspace_id = target_workspace_id and d.shift_type_id = chosen.id
-  ) hours
-  where not coalesce((md.rule ->> 'all_day')::boolean, false) and md.input_mode = 'shift_type'
+  where not coalesce((md.rule ->> 'all_day')::boolean, false)
 ), broken as (
-  -- A mark that cannot be read (invalid, or a shift type without hours) makes
-  -- the employee's week unknown rather than partly drawn.
+  -- A mark that cannot be read makes the employee's week unknown rather than
+  -- partly drawn.
   select m.employee_id from mark m where not m.valid
-  union
-  select c.employee_id from clock c where not c.ok
 ), local_day as (
   select s.zone_name, s.utc_span, s.offset_seconds, day::date as local_date
   from segment s
@@ -7314,7 +7318,7 @@ with location_zone as (
               ((ld.local_date + c.end_clock + case when c.end_clock < c.start_clock then interval '1 day' else interval '0' end) at time zone 'UTC')
                 - make_interval(secs => ld.offset_seconds), '[)') * ld.utc_span as span
   from local_day ld
-  join clock c on c.dow = extract(dow from ld.local_date)::integer and c.ok
+  join clock c on c.dow = extract(dow from ld.local_date)::integer
 ), unavailable as (
   -- Unavailable is the employee's own marks; a manager's note is kept apart,
   -- only a reminder (M12).
@@ -8767,28 +8771,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."weekly_preference_may_write"("actor" "uuid", "w" "uuid", "source" "text", "model" "jsonb") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."weekly_preference_whole_days"("w" "uuid", "preference" "jsonb") RETURNS "jsonb"
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
- with selectable as (
-  select t.id::text as id from public.shift_types t
-  where t.workspace_id = w and t.archived_at is null and t.deleted_at is null
-   and t.default_start_time is not null and t.default_end_time is not null and t.default_start_time <> t.default_end_time
- )
- select case when preference->>'input_mode' <> 'shift_type' or not exists (select 1 from selectable) then preference
-  else jsonb_set(preference, '{days}', (
-   select jsonb_agg(case when not (d->>'all_day')::boolean
-      and not exists (select 1 from selectable s where not (d->'shift_type_ids') ? s.id)
-     then d || jsonb_build_object('all_day', true, 'shift_type_ids', '[]'::jsonb) else d end
-     order by (d->>'day')::integer)
-   from jsonb_array_elements(preference->'days') d)) end
-$$;
-
-
-ALTER FUNCTION "app_private"."weekly_preference_whole_days"("w" "uuid", "preference" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."workspace_allows_interactive_access"("target_workspace_id" "uuid") RETURNS boolean
@@ -10742,31 +10724,6 @@ end; $$;
 ALTER FUNCTION "public"."cancel_workspace_ownership_transfer_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "transfer_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."capture_weekly_preference_type_defaults"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare row_value public.shift_types%rowtype;
-begin
- if tg_op='DELETE' then
-  if old.archived_at is not null or old.deleted_at is not null then return old; end if;
-  row_value:=old;
- elsif new.archived_at is null and new.deleted_at is null then row_value:=new;
- elsif tg_op='UPDATE' and old.archived_at is null and old.deleted_at is null then row_value:=old;
- else return new; end if;
- if row_value.default_start_time is not null and row_value.default_end_time is not null and row_value.default_start_time<>row_value.default_end_time then
-  insert into public.weekly_preference_type_defaults(workspace_id,shift_type_id,name,start_time,end_time)
-   values(row_value.workspace_id,row_value.id,row_value.name,row_value.default_start_time,row_value.default_end_time)
-   on conflict(workspace_id,shift_type_id) do update set name=excluded.name,start_time=excluded.start_time,end_time=excluded.end_time;
- end if;
- if tg_op='DELETE' then return old; end if;
- return new;
-end; $$;
-
-
-ALTER FUNCTION "public"."capture_weekly_preference_type_defaults"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."check_schedule_time_source"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -12360,16 +12317,16 @@ end; $$;
 ALTER FUNCTION "public"."employee_request_action_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_request_id" "uuid", "target_kind" "text", "target_action" "text", "target_expected_revision" integer) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."empty_weekly_preference"("mode" "text") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."empty_weekly_preference"() RETURNS "jsonb"
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
     AS $$
- select jsonb_build_object('input_mode',mode,'days',jsonb_agg(jsonb_build_object('day',day,'all_day',false,'shift_type_ids','[]'::jsonb,'ranges','[]'::jsonb) order by day))
+ select jsonb_build_object('days',jsonb_agg(jsonb_build_object('day',day,'all_day',false,'ranges','[]'::jsonb) order by day))
  from generate_series(0,6) day;
 $$;
 
 
-ALTER FUNCTION "public"."empty_weekly_preference"("mode" "text") OWNER TO "postgres";
+ALTER FUNCTION "public"."empty_weekly_preference"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_active_workspace_preference_membership"() RETURNS "trigger"
@@ -15238,8 +15195,7 @@ begin
  if new.archived_at is not null or new.deleted_at is not null then return new; end if;
  if tg_op='INSERT' then must_have_hours:=true;
  else must_have_hours:=old.archived_at is not null or old.deleted_at is not null
-   or (new.default_start_time,new.default_end_time) is distinct from (old.default_start_time,old.default_end_time)
-   or (select availability_input_mode='shift_type' from public.workspace_scheduling_settings where workspace_id=new.workspace_id);
+   or (new.default_start_time,new.default_end_time) is distinct from (old.default_start_time,old.default_end_time);
  end if;
  if must_have_hours and (new.default_start_time is null or new.default_end_time is null
   or new.default_start_time=new.default_end_time or new.default_start_time='24:00'::time) then
@@ -15658,7 +15614,7 @@ begin
         join public.locations place on place.id = assignment.location_id
         where assignment.employee_id = employee.id and assignment.ended_at is null
       ), '[]'::jsonb) as locations,
-      primary_job.job_id as primary_job_id, listed_job.name as primary_job_name,
+      primary_job.job_id as primary_job_id, app_private.listed_job_name(employee.id) as primary_job_name,
       (select count(*) from public.employee_job_assignments a where a.employee_id = employee.id and a.ended_at is null) as job_count,
       role.name as role_name,
       case
@@ -15672,19 +15628,6 @@ begin
       employee.archived_at, employee.revision
     from public.employee_profiles employee
     left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
-    -- The job the list names: the stored primary; failing that the Owner job
-    -- (the owner's, never stored as primary), then the first job in the
-    -- catalog's order (A to Z, BL-475).
-    left join lateral (
-      select job.name
-      from public.employee_job_assignments assignment
-      join public.jobs job on job.id = assignment.job_id
-      where assignment.employee_id = employee.id and assignment.ended_at is null
-        and (assignment.is_primary or job.archived_at is null)
-      order by assignment.is_primary desc, coalesce(job.system_key = 'owner', false) desc,
-        lower(job.name), job.id
-      limit 1
-    ) listed_job on true
     left join public.workspace_memberships membership on membership.workspace_id = employee.workspace_id and membership.user_id = employee.user_id
     left join public.workspace_roles role on role.id = membership.role_id
     left join public.employee_onboarding_cases onboarding on onboarding.employee_id = employee.id
@@ -27187,7 +27130,7 @@ CREATE OR REPLACE FUNCTION "public"."validate_weekly_preference_command"("actor"
     SET "search_path" TO ''
     AS $$
 declare model jsonb; prior jsonb; pref jsonb:=command->'preference'; source text:=command->>'source'; copied boolean:=false;
- rule jsonb; type_id uuid; old_rule jsonb; notes jsonb:=command->'notes';
+ notes jsonb:=command->'notes';
 begin
  model:=public.weekly_preferences_read_service(actor,w,(command->>'employee_id')::uuid);
  perform app_private.weekly_preference_may_write(actor,w,source,model);
@@ -27209,18 +27152,6 @@ begin
   if not (prior->>'enabled')::boolean and not (command->>'enabled')::boolean and (pref<>prior->'preference' or notes<>prior->'notes' or copied) then
    raise exception 'Turn reminders on before editing or copying' using errcode='22023'; end if;
  end if;
- if pref->>'input_mode'<>model->'settings'->>'input_mode' then
-  raise exception 'Use the current organization entry mode' using errcode='PT409',hint='availability.changed'; end if;
- perform 1 from public.shift_types where workspace_id=w order by id for share;
- for rule in select value from jsonb_array_elements(pref->'days') loop
-  select value into old_rule from jsonb_array_elements((case when copied then model->'employee' else prior end)->'preference'->'days') where value->'day'=rule->'day';
-  for type_id in select value::uuid from jsonb_array_elements_text(rule->'shift_type_ids') loop
-   if not exists(select 1 from public.shift_types t where t.workspace_id=w and t.id=type_id and t.archived_at is null and t.deleted_at is null
-    and t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time)
-    and not (coalesce(old_rule->'shift_type_ids','[]') @> jsonb_build_array(type_id) and exists(select 1 from public.weekly_preference_type_defaults d where d.workspace_id=w and d.shift_type_id=type_id)) then
-     raise exception 'A selected shift type is no longer available. Reload before saving.' using errcode='PT409',hint='availability.changed'; end if;
-  end loop;
- end loop;
  return model;
 end; $$;
 
@@ -27294,8 +27225,7 @@ CREATE OR REPLACE FUNCTION "public"."version_weekly_preference_settings"() RETUR
     SET "search_path" TO ''
     AS $$
 begin
- if (new.availability_input_mode,new.availability_onboarding_required)
-  is distinct from (old.availability_input_mode,old.availability_onboarding_required) then
+ if new.availability_onboarding_required is distinct from old.availability_onboarding_required then
   if auth.uid() is not null then raise exception 'Use Availability settings to save these changes' using errcode='42501'; end if;
   new.availability_preferences_revision:=old.availability_preferences_revision+1;
  else new.availability_preferences_revision:=old.availability_preferences_revision; end if;
@@ -27347,7 +27277,7 @@ begin
  if not exists(select 1 from public.employee_profiles where workspace_id=w and id=emp) then raise exception 'Employee not found' using errcode='42501'; end if;
  if target_span is null or isempty(target_span) then raise exception 'A valid assignment span is required' using errcode='22023'; end if;
  select preference into employee_week from public.employee_weekly_preferences where workspace_id=w and employee_id=emp;
- employee_week:=coalesce(proposed,employee_week,public.empty_weekly_preference('time_range'));
+ employee_week:=coalesce(proposed,employee_week,public.empty_weekly_preference());
  employee_ranges:=public.weekly_preference_intersections(w,employee_week,target_span,zone_name);
  select preference into manager_week from public.manager_weekly_reminders where workspace_id=w and employee_id=emp and enabled;
  if manager_week is not null then manager_ranges:=public.weekly_preference_intersections(w,manager_week,target_span,zone_name); end if;
@@ -27359,92 +27289,11 @@ end; $$;
 ALTER FUNCTION "public"."weekly_preference_capacity"("w" "uuid", "emp" "uuid", "target_span" "tstzrange", "zone_name" "text", "proposed" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."weekly_preference_convert"("w" "uuid", "preference" "jsonb", "target_mode" "text") RETURNS "jsonb"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare days jsonb:='[]'; d integer; week int4multirange; day_set int4multirange; whole int4multirange;
- source_rule jsonb; marked jsonb; ranges jsonb; unresolved integer;
-begin
- if preference->>'input_mode'=target_mode then return preference; end if;
- -- A picked type means the hours weekly_preference_intersections reads for it:
- -- the live type while it is active, its last saved hours once archived.
- select count(*) into unresolved
- from jsonb_array_elements(preference->'days') r
- cross join lateral jsonb_array_elements_text(r->'shift_type_ids') picked(id)
- left join public.shift_types t on t.workspace_id=w and t.id=picked.id::uuid and t.archived_at is null and t.deleted_at is null
- left join public.weekly_preference_type_defaults dft on dft.workspace_id=w and dft.shift_type_id=picked.id::uuid
- where coalesce(case when t.id is not null then t.default_start_time else dft.start_time end,'00:00')
-  =coalesce(case when t.id is not null then t.default_end_time else dft.end_time end,'00:00');
- if unresolved>0 then raise exception 'A saved week names a shift type with no valid default hours' using errcode='22023'; end if;
- -- The week's unavailable minutes, Sunday 00:00 = 0, wrapping past Saturday.
- with clock as (
-  select (r->>'day')::integer as day, 0 as s, 1440 as e
-  from jsonb_array_elements(preference->'days') r where (r->>'all_day')::boolean
-  union all
-  select (r->>'day')::integer, split_part(x->>'start',':',1)::integer*60+split_part(x->>'start',':',2)::integer,
-   split_part(x->>'end',':',1)::integer*60+split_part(x->>'end',':',2)::integer
-  from jsonb_array_elements(preference->'days') r cross join lateral jsonb_array_elements(r->'ranges') x
-  where not (r->>'all_day')::boolean
-  union all
-  select (r->>'day')::integer, h.s, case when h.e<=h.s then h.e+1440 else h.e end
-  from jsonb_array_elements(preference->'days') r
-  cross join lateral jsonb_array_elements_text(r->'shift_type_ids') picked(id)
-  left join public.shift_types t on t.workspace_id=w and t.id=picked.id::uuid and t.archived_at is null and t.deleted_at is null
-  left join public.weekly_preference_type_defaults dft on dft.workspace_id=w and dft.shift_type_id=picked.id::uuid
-  cross join lateral (select
-   (extract(hour from case when t.id is not null then t.default_start_time else dft.start_time end)*60
-    +extract(minute from case when t.id is not null then t.default_start_time else dft.start_time end))::integer s,
-   (extract(hour from case when t.id is not null then t.default_end_time else dft.end_time end)*60
-    +extract(minute from case when t.id is not null then t.default_end_time else dft.end_time end))::integer e) h
-  where not (r->>'all_day')::boolean
- ), piece as (
-  select int4range(c.day*1440+c.s, least(c.day*1440+c.e,10080)) span from clock c
-  union all
-  select int4range(0, c.day*1440+c.e-10080) from clock c where c.day*1440+c.e>10080
- )
- select coalesce(range_agg(span),'{}') into week from piece where not isempty(span);
- for d in 0..6 loop
-  whole:=int4multirange(int4range(d*1440,(d+1)*1440));
-  select value into source_rule from jsonb_array_elements(preference->'days') where (value->>'day')::integer=d;
-  if target_mode='time_range' then
-   day_set:=week*whole;
-   if day_set=whole then
-    days:=days||jsonb_build_array(jsonb_build_object('day',d,'all_day',true,'shift_type_ids','[]'::jsonb,'ranges','[]'::jsonb));
-   else
-    select coalesce(jsonb_agg(jsonb_build_object(
-      'start',lpad(((lower(x)-d*1440)/60)::text,2,'0')||':'||lpad(((lower(x)-d*1440)%60)::text,2,'0'),
-      'end',lpad(((upper(x)-d*1440)/60)::text,2,'0')||':'||lpad(((upper(x)-d*1440)%60)::text,2,'0')) order by lower(x)),'[]')
-     into ranges from unnest(day_set) x;
-    days:=days||jsonb_build_array(jsonb_build_object('day',d,'all_day',false,'shift_type_ids','[]'::jsonb,'ranges',ranges));
-   end if;
-  elsif coalesce((source_rule->>'all_day')::boolean,false) then
-   days:=days||jsonb_build_array(jsonb_build_object('day',d,'all_day',true,'shift_type_ids','[]'::jsonb,'ranges','[]'::jsonb));
-  else
-   -- ponytail: a range reaching more than 64 active types fails the week's check; cap it when a workspace has that many.
-   select coalesce(jsonb_agg(t.id order by t.sort_order,t.name,t.id),'[]') into marked from public.shift_types t
-   cross join lateral (select (extract(hour from t.default_start_time)*60+extract(minute from t.default_start_time))::integer s,
-    (extract(hour from t.default_end_time)*60+extract(minute from t.default_end_time))::integer e) h
-   cross join lateral (select d*1440+h.s lo, d*1440+case when h.e<=h.s then h.e+1440 else h.e end hi) span
-   where t.workspace_id=w and t.archived_at is null and t.deleted_at is null
-    and t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time
-    and week && (int4multirange(int4range(span.lo,least(span.hi,10080)))
-     +case when span.hi>10080 then int4multirange(int4range(0,span.hi-10080)) else '{}'::int4multirange end);
-   days:=days||jsonb_build_array(jsonb_build_object('day',d,'all_day',false,'shift_type_ids',marked,'ranges','[]'::jsonb));
-  end if;
- end loop;
- return app_private.weekly_preference_whole_days(w,jsonb_build_object('input_mode',target_mode,'days',days));
-end; $$;
-
-
-ALTER FUNCTION "public"."weekly_preference_convert"("w" "uuid", "preference" "jsonb", "target_mode" "text") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."weekly_preference_intersections"("w" "uuid", "preference" "jsonb", "target_span" "tstzrange", "zone_name" "text") RETURNS "tstzmultirange"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare result tstzmultirange:='{}'; piece record; local_day date; last_day date; rule jsonb; type_id uuid;
+declare result tstzmultirange:='{}'; piece record; local_day date; last_day date; rule jsonb;
  clocks jsonb; clock jsonb; start_clock time; end_clock time; candidate tstzrange; local_start timestamp; local_end timestamp;
 begin
  if not public.weekly_preference_valid(preference) then raise exception 'Invalid weekly preferences' using errcode='22023'; end if;
@@ -27455,20 +27304,8 @@ begin
   last_day:=((upper(piece.utc_span) at time zone 'UTC')+make_interval(secs=>piece.offset_seconds))::date;
   while local_day<=last_day loop
    select value into rule from jsonb_array_elements(preference->'days') where (value->>'day')::integer=extract(dow from local_day)::integer;
-   clocks:='[]';
    if (rule->>'all_day')::boolean then clocks:='[{"start":"00:00","end":"24:00"}]';
-   elsif preference->>'input_mode'='time_range' then clocks:=rule->'ranges';
-   elsif preference->>'input_mode'='shift_type' then
-    for type_id in select value::uuid from jsonb_array_elements_text(rule->'shift_type_ids') loop
-     select case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_start_time else d.start_time end,
-      case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_end_time else d.end_time end
-      into start_clock,end_clock
-     from (select type_id id) selected left join public.shift_types t on t.workspace_id=w and t.id=selected.id
-      left join public.weekly_preference_type_defaults d on d.workspace_id=w and d.shift_type_id=selected.id;
-     if start_clock is null or end_clock is null or start_clock=end_clock then raise exception 'Selected shift type has no valid default hours' using errcode='22023'; end if;
-     clocks:=clocks||jsonb_build_array(jsonb_build_object('start',start_clock,'end',end_clock));
-    end loop;
-   end if;
+   else clocks:=rule->'ranges'; end if;
    for clock in select value from jsonb_array_elements(clocks) loop
     start_clock:=(clock->>'start')::time; end_clock:=(clock->>'end')::time;
     local_start:=local_day+start_clock;
@@ -27508,18 +27345,15 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preference_settings_read_service"("a
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare settings public.workspace_scheduling_settings%rowtype; can_edit boolean; missing jsonb;
+declare settings public.workspace_scheduling_settings%rowtype; can_edit boolean;
 begin
  perform app_private.authorize(actor,w,'settings.availability.read');
  can_edit:=app_private.authz_reason(actor,w,'settings.availability.write') is null;
  select * into settings from public.workspace_scheduling_settings where workspace_id=w;
  if not found then raise exception 'Availability settings not found' using errcode='P0002'; end if;
- select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name) order by sort_order,name,id),'[]') into missing
-  from public.shift_types where workspace_id=w and archived_at is null and deleted_at is null
-   and (default_start_time is null or default_end_time is null or default_start_time=default_end_time or default_start_time='24:00'::time);
- return jsonb_build_object('settings',jsonb_build_object('input_mode',settings.availability_input_mode,
+ return jsonb_build_object('settings',jsonb_build_object(
   'onboarding_required',settings.availability_onboarding_required,'revision',settings.availability_preferences_revision),
-  'can_edit',can_edit,'missing_shift_types',missing);
+  'can_edit',can_edit);
 end; $$;
 
 
@@ -27542,7 +27376,8 @@ begin
   if stored.command<>envelope then raise exception 'Idempotency key was used for another save' using errcode='22023'; end if;
   return model;
  end if;
- if jsonb_typeof(command) is distinct from 'object' or command->>'input_mode' is null or command->>'input_mode' not in ('time_range','shift_type')
+ -- The only availability setting is whether onboarding asks for it.
+ if jsonb_typeof(command) is distinct from 'object' or (command-array['onboarding_required','expected_revision'])<>'{}'::jsonb
   or jsonb_typeof(command->'onboarding_required') is distinct from 'boolean'
   or jsonb_typeof(command->'expected_revision') is distinct from 'number' or (command->>'expected_revision') !~ '^[0-9]+$' then
   raise exception 'Choose valid availability settings' using errcode='22023'; end if;
@@ -27550,33 +27385,12 @@ begin
  model:=public.weekly_preference_settings_read_service(actor,w); prior:=model->'settings';
  if (command->>'expected_revision')::integer is distinct from (prior->>'revision')::integer then
   raise exception 'Availability settings changed. Reload the latest settings before saving.' using errcode = 'PT409',hint='availability.changed'; end if;
- if command->>'input_mode'='shift_type' and jsonb_array_length(model->'missing_shift_types')>0 then
-  raise exception 'Complete default hours for all active shift types before using shift type availability' using errcode='22023',detail=(model->'missing_shift_types')::text; end if;
  if (command-'expected_revision') is distinct from (prior-'revision') then
-  update public.workspace_scheduling_settings set availability_input_mode=command->>'input_mode',
+  update public.workspace_scheduling_settings set
    availability_onboarding_required=(command->>'onboarding_required')::boolean,updated_at=now() where workspace_id=w;
   model:=public.weekly_preference_settings_read_service(actor,w);
   insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata)
    values(w,actor,'availability.settings_updated','scheduling_settings',w::text,jsonb_build_object('before',prior,'after',model->'settings'));
-  if prior->>'input_mode' is distinct from command->>'input_mode' then
-   -- Every saved week and manager note is converted to the new way of entering it (M4, D4).
-   with history as (
-    insert into public.weekly_preference_events(workspace_id,employee_id,source,actor_user_id,before_record,after_record)
-    select w,p.employee_id,'employee',actor,jsonb_build_object('revision',p.revision,'preference',p.preference),
-     jsonb_build_object('revision',p.revision+1,'preference',public.weekly_preference_convert(w,p.preference,command->>'input_mode'))
-    from public.employee_weekly_preferences p where p.workspace_id=w and p.preference->>'input_mode'<>command->>'input_mode'
-    returning employee_id,after_record)
-   update public.employee_weekly_preferences p set preference=h.after_record->'preference',revision=p.revision+1,updated_by=actor,updated_at=now()
-    from history h where p.workspace_id=w and p.employee_id=h.employee_id;
-   with history as (
-    insert into public.weekly_preference_events(workspace_id,employee_id,source,actor_user_id,before_record,after_record)
-    select w,p.employee_id,'manager',actor,jsonb_build_object('revision',p.revision,'preference',p.preference),
-     jsonb_build_object('revision',p.revision+1,'preference',public.weekly_preference_convert(w,p.preference,command->>'input_mode'))
-    from public.manager_weekly_reminders p where p.workspace_id=w and p.preference->>'input_mode'<>command->>'input_mode'
-    returning employee_id,after_record)
-   update public.manager_weekly_reminders p set preference=h.after_record->'preference',revision=p.revision+1,updated_by=actor,updated_at=now()
-    from history h where p.workspace_id=w and p.employee_id=h.employee_id;
-  end if;
  end if;
  insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,envelope,'{}');
  return model;
@@ -27590,35 +27404,28 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preference_valid"("preference" "json
     LANGUAGE "plpgsql" IMMUTABLE
     SET "search_path" TO ''
     AS $_$
-declare rule jsonb; mode text; seen integer[]:='{}'; weekday integer; ids uuid[]; piece jsonb; previous_end text;
+declare rule jsonb; seen integer[]:='{}'; weekday integer; piece jsonb;
 begin
- if jsonb_typeof(preference) is distinct from 'object' then return false; end if;
- mode:=preference->>'input_mode';
- if mode is null or mode not in ('shift_type','time_range') or jsonb_typeof(preference->'days') is distinct from 'array'
-  or jsonb_array_length(preference->'days')<>7 then return false; end if;
+ -- A week is seven days and nothing else; a day is a whole day or at most one
+ -- range of hours (Mert, 2026-10-16: "yalnız saat", "kural da 1'e insin").
+ if jsonb_typeof(preference) is distinct from 'object' or (preference-'days')<>'{}'::jsonb
+  or jsonb_typeof(preference->'days') is distinct from 'array' or jsonb_array_length(preference->'days')<>7 then return false; end if;
  for rule in select value from jsonb_array_elements(preference->'days') loop
-  if jsonb_typeof(rule) is distinct from 'object' or jsonb_typeof(rule->'day') is distinct from 'number'
+  if jsonb_typeof(rule) is distinct from 'object' or (rule-array['day','all_day','ranges'])<>'{}'::jsonb
+   or jsonb_typeof(rule->'day') is distinct from 'number'
    or (rule->>'day') !~ '^[0-6]$' or jsonb_typeof(rule->'all_day') is distinct from 'boolean'
-   or jsonb_typeof(rule->'shift_type_ids') is distinct from 'array' or jsonb_typeof(rule->'ranges') is distinct from 'array'
-   or rule ? 'range' or jsonb_array_length(rule->'ranges')>12 then return false; end if;
+   or jsonb_typeof(rule->'ranges') is distinct from 'array' or jsonb_array_length(rule->'ranges')>1 then return false; end if;
   weekday:=(rule->>'day')::integer;
   if weekday=any(seen) then return false; end if;
   seen:=array_append(seen,weekday);
-  if jsonb_array_length(rule->'shift_type_ids')>64 or exists(select 1 from jsonb_array_elements(rule->'shift_type_ids') x where jsonb_typeof(x)<>'string') then return false; end if;
-  select coalesce(array_agg(value::uuid),'{}') into ids from jsonb_array_elements_text(rule->'shift_type_ids');
-  if cardinality(ids)<>(select count(distinct id) from unnest(ids) id) then return false; end if;
-  if (rule->>'all_day')::boolean and (cardinality(ids)>0 or jsonb_array_length(rule->'ranges')>0) then return false; end if;
-  if mode='time_range' and cardinality(ids)>0 then return false; end if;
-  if mode='shift_type' and jsonb_array_length(rule->'ranges')>0 then return false; end if;
-  -- Several hours a day (M4, S2 a), each within the day, in order and apart.
-  previous_end:=null;
+  if (rule->>'all_day')::boolean and jsonb_array_length(rule->'ranges')>0 then return false; end if;
+  -- The day's range is within the day.
   for piece in select value from jsonb_array_elements(rule->'ranges') loop
-   if jsonb_typeof(piece) is distinct from 'object'
+   if jsonb_typeof(piece) is distinct from 'object' or (piece-array['start','end'])<>'{}'::jsonb
     or jsonb_typeof(piece->'start') is distinct from 'string' or jsonb_typeof(piece->'end') is distinct from 'string'
     or (piece->>'start') !~ '^([01][0-9]|2[0-3]):[0-5][0-9]$'
     or (piece->>'end') !~ '^(([01][0-9]|2[0-3]):[0-5][0-9]|24:00)$'
-    or (piece->>'end')<=(piece->>'start') or (piece->>'start')<=previous_end then return false; end if;
-   previous_end:=piece->>'end';
+    or (piece->>'end')<=(piece->>'start') then return false; end if;
   end loop;
  end loop;
  return true;
@@ -27634,7 +27441,7 @@ CREATE OR REPLACE FUNCTION "public"."weekly_preferences_read_service"("actor" "u
     SET "search_path" TO ''
     AS $$
 declare employee public.employee_profiles%rowtype; settings public.workspace_scheduling_settings%rowtype;
- own_record boolean; can_manage boolean; can_read boolean; can_view_manager boolean; employee_record jsonb; manager_record jsonb; types jsonb; selected_ids uuid[];
+ own_record boolean; can_manage boolean; can_read boolean; can_view_manager boolean; employee_record jsonb; manager_record jsonb; types jsonb;
 begin
  select * into employee from public.employee_profiles e where e.workspace_id=w and (e.id=emp or (emp is null and e.user_id=actor)) and e.archived_at is null;
  if employee.id is null then
@@ -27657,29 +27464,21 @@ begin
  if settings.workspace_id is null then raise exception 'Scheduling settings unavailable' using errcode='P0002'; end if;
  select jsonb_build_object('revision',p.revision,'submitted',true,'updated_at',p.updated_at,'preference',p.preference) into employee_record
   from public.employee_weekly_preferences p where p.workspace_id=w and p.employee_id=employee.id;
- employee_record:=coalesce(employee_record,jsonb_build_object('revision',0,'submitted',false,'updated_at',null,'preference',public.empty_weekly_preference(settings.availability_input_mode)));
+ employee_record:=coalesce(employee_record,jsonb_build_object('revision',0,'submitted',false,'updated_at',null,'preference',public.empty_weekly_preference()));
  if can_view_manager then
   select jsonb_build_object('revision',p.revision,'submitted',true,'updated_at',p.updated_at,'preference',p.preference,'enabled',p.enabled,'notes',to_jsonb(p.notes)) into manager_record
    from public.manager_weekly_reminders p where p.workspace_id=w and p.employee_id=employee.id;
-  manager_record:=coalesce(manager_record,jsonb_build_object('revision',0,'submitted',false,'updated_at',null,'preference',public.empty_weekly_preference(settings.availability_input_mode),'enabled',true,'notes',jsonb_build_array('','','','','','','')));
+  manager_record:=coalesce(manager_record,jsonb_build_object('revision',0,'submitted',false,'updated_at',null,'preference',public.empty_weekly_preference(),'enabled',true,'notes',jsonb_build_array('','','','','','','')));
  end if;
- -- Include fallback names only for records this actor can read. Reminder-only
- -- selections must not be inferred from the employee's catalog response.
- select coalesce(array_agg(distinct id::uuid),'{}') into selected_ids
- from jsonb_array_elements((employee_record->'preference'->'days')||coalesce(manager_record->'preference'->'days','[]')) day
- cross join lateral jsonb_array_elements_text(day->'shift_type_ids') id;
- select coalesce(jsonb_agg(jsonb_build_object('id',id,'name',name,'start_time',to_char(start_time,'HH24:MI'),'end_time',to_char(end_time,'HH24:MI'),
-  'archived',archived,'selectable',selectable) order by sort_order,name,id),'[]') into types from (
-  select t.id,t.name,t.default_start_time start_time,t.default_end_time end_time,false archived,
-   (t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time) selectable,t.sort_order
-  from public.shift_types t where t.workspace_id=w and t.archived_at is null and t.deleted_at is null
-  union all
-  select d.shift_type_id,d.name,d.start_time,d.end_time,true,false,2147483647 from public.weekly_preference_type_defaults d
-  where d.workspace_id=w and d.shift_type_id=any(selected_ids) and not exists(select 1 from public.shift_types t where t.workspace_id=w and t.id=d.shift_type_id and t.archived_at is null and t.deleted_at is null)
- ) catalog;
+ -- The workspace's live shift types, for Time off's "Replace hours with a shift
+ -- type" (Employee Hub); availability itself never reads them.
+ select coalesce(jsonb_agg(jsonb_build_object('id',t.id,'name',t.name,'start_time',to_char(t.default_start_time,'HH24:MI'),'end_time',to_char(t.default_end_time,'HH24:MI'),
+  'archived',false,'selectable',(t.default_start_time is not null and t.default_end_time is not null and t.default_start_time<>t.default_end_time))
+  order by t.sort_order,t.name,t.id),'[]') into types
+ from public.shift_types t where t.workspace_id=w and t.archived_at is null and t.deleted_at is null;
  return jsonb_build_object('employee_id',employee.id,'employee_name',concat_ws(' ',coalesce(nullif(employee.preferred_name,''),employee.first_name),employee.last_name),
   'can_edit_employee',own_record,'can_manage',can_manage,
-  'settings',jsonb_build_object('input_mode',settings.availability_input_mode,
+  'settings',jsonb_build_object(
    'onboarding_required',settings.availability_onboarding_required,'revision',settings.availability_preferences_revision),
   'employee',employee_record,'shift_types',types,'time_format',settings.time_format)
   -- The manager part: the note when it is this reader's to see; null for an
@@ -27716,7 +27515,7 @@ begin
  emp:=(model->>'employee_id')::uuid;
  -- A pending swap, cover or pickup is never asked about and never changed:
  -- the employee withdraws one in Shift Hub if they want to (M5).
- preference:=app_private.weekly_preference_whole_days(w,command->'preference');
+ preference:=command->'preference';
  insert into public.weekly_preference_events(id,workspace_id,employee_id,source,actor_user_id,before_record,after_record)
   values(event,w,emp,source,actor,prior,'{}');
  if source='employee' then
@@ -27895,11 +27694,13 @@ begin
   select e.id,e.employee_code,coalesce(nullif(e.preferred_name,''),e.first_name)||' '||e.last_name display_name,
    coalesce((select jsonb_agg(a.location_id order by a.location_id) from public.employee_location_assignments a
     join scope s on s.id=a.location_id where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null),'[]') location_ids,
-   p.employee_id is not null submitted,coalesce(p.preference,public.empty_weekly_preference(s.availability_input_mode)) preference,
+   -- The job the Employees list names.
+   app_private.listed_job_name(e.id) job_name,
+   p.employee_id is not null submitted,coalesce(p.preference,public.empty_weekly_preference()) preference,
+   p.updated_at,
    (public.weekly_preference_manager_scope(actor,w,e.id,'availability.read')
     or public.weekly_preference_manager_scope(actor,w,e.id,'availability.manage')) can_open
   from public.employee_profiles e
-  join public.workspace_scheduling_settings s on s.workspace_id=e.workspace_id
   left join public.employee_weekly_preferences p on p.workspace_id=e.workspace_id and p.employee_id=e.id
   -- Only an employee enters availability (M13): nobody ranking above one is
   -- listed, nor counted as a week not submitted (KK-178). Somebody not joined
@@ -27913,22 +27714,11 @@ begin
    or (not exists(select 1 from public.employee_location_assignments a where a.workspace_id=w and a.employee_id=e.id and a.ended_at is null)
     and org_wide)
   )
- ), selected_types as (
-  select distinct type_id::uuid id from people p cross join lateral jsonb_array_elements(p.preference->'days') day
-   cross join lateral jsonb_array_elements_text(day->'shift_type_ids') type_id
- ), types as (
-  select x.id,coalesce(t.name,d.name,'Unavailable shift type') name,
-   to_char(case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_start_time else d.start_time end,'HH24:MI') start_time,
-   to_char(case when t.id is not null and t.archived_at is null and t.deleted_at is null then t.default_end_time else d.end_time end,'HH24:MI') end_time,
-   (t.id is null or t.archived_at is not null or t.deleted_at is not null) archived,false selectable
-  from selected_types x left join public.shift_types t on t.workspace_id=w and t.id=x.id
-   left join public.weekly_preference_type_defaults d on d.workspace_id=w and d.shift_type_id=x.id
  )
  select jsonb_build_object(
   'locations',coalesce((select jsonb_agg(jsonb_build_object('id',id,'name',name) order by sort_order,name,id) from scope),'[]'),
   'time_format',(select time_format from public.workspace_scheduling_settings where workspace_id=w),
-  'employees',coalesce((select jsonb_agg(to_jsonb(p) order by display_name,employee_code,id) from people p),'[]'),
-  'shift_types',coalesce((select jsonb_agg(to_jsonb(t) order by name,id) from types t),'[]')
+  'employees',coalesce((select jsonb_agg(to_jsonb(p) order by display_name,employee_code,id) from people p),'[]')
  ) into result;
  return result;
 end; $$;
@@ -29858,19 +29648,6 @@ CREATE TABLE IF NOT EXISTS "public"."weekly_preference_events" (
 ALTER TABLE "public"."weekly_preference_events" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."weekly_preference_type_defaults" (
-    "workspace_id" "uuid" NOT NULL,
-    "shift_type_id" "uuid" NOT NULL,
-    "name" "text" NOT NULL,
-    "start_time" time without time zone NOT NULL,
-    "end_time" time without time zone NOT NULL,
-    CONSTRAINT "weekly_preference_type_defaults_check" CHECK (("start_time" <> "end_time"))
-);
-
-
-ALTER TABLE "public"."weekly_preference_type_defaults" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."workspace_closure_requests" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -30029,7 +29806,6 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_scheduling_settings" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "time_format" "text" DEFAULT '12h'::"text" NOT NULL,
     "minimum_travel_minutes" integer DEFAULT 0 NOT NULL,
-    "availability_input_mode" "text" DEFAULT 'time_range'::"text" NOT NULL,
     "availability_onboarding_required" boolean DEFAULT false NOT NULL,
     "availability_preferences_revision" integer DEFAULT 0 NOT NULL,
     "conflict_rules" "jsonb" DEFAULT '{"minimum_rest": "confirm", "minimum_travel": "confirm", "closed_location": "confirm", "approved_time_off": "block", "document_required": "confirm", "document_conditional_grace": "warn", "document_conditional_overdue": "confirm"}'::"jsonb" NOT NULL,
@@ -30038,7 +29814,6 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_scheduling_settings" (
     "time_off_lead_hours" integer DEFAULT 24 NOT NULL,
     CONSTRAINT "scheduling_conflict_rules_valid" CHECK ((("jsonb_typeof"("conflict_rules") = 'object'::"text") AND ("conflict_rules" ?& ARRAY['approved_time_off'::"text", 'closed_location'::"text", 'minimum_travel'::"text", 'minimum_rest'::"text", 'document_required'::"text", 'document_conditional_grace'::"text", 'document_conditional_overdue'::"text"]) AND (("conflict_rules" - ARRAY['approved_time_off'::"text", 'closed_location'::"text", 'minimum_travel'::"text", 'minimum_rest'::"text", 'document_required'::"text", 'document_conditional_grace'::"text", 'document_conditional_overdue'::"text"]) = '{}'::"jsonb") AND (("conflict_rules" ->> 'approved_time_off'::"text") = 'block'::"text") AND (("conflict_rules" ->> 'closed_location'::"text") = ANY (ARRAY['confirm'::"text", 'confirm_once'::"text", 'block'::"text"])) AND (("conflict_rules" ->> 'minimum_travel'::"text") = ANY (ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"])) AND (("conflict_rules" ->> 'minimum_rest'::"text") = ANY (ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"])) AND (("conflict_rules" ->> 'document_required'::"text") = ANY (ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"])) AND (("conflict_rules" ->> 'document_conditional_grace'::"text") = ANY (ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"])) AND (("conflict_rules" ->> 'document_conditional_overdue'::"text") = ANY (ARRAY['confirm'::"text", 'block'::"text"])) AND ("array_position"(ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"], ("conflict_rules" ->> 'document_conditional_overdue'::"text")) >= "array_position"(ARRAY['warn'::"text", 'confirm'::"text", 'block'::"text"], ("conflict_rules" ->> 'document_conditional_grace'::"text"))))),
     CONSTRAINT "workspace_scheduling_setting_availability_preferences_rev_check" CHECK (("availability_preferences_revision" >= 0)),
-    CONSTRAINT "workspace_scheduling_settings_availability_input_mode_check" CHECK (("availability_input_mode" = ANY (ARRAY['time_range'::"text", 'shift_type'::"text"]))),
     CONSTRAINT "workspace_scheduling_settings_conflict_rules_revision_check" CHECK (("conflict_rules_revision" > 0)),
     CONSTRAINT "workspace_scheduling_settings_minimum_rest_minutes_check" CHECK ((("minimum_rest_minutes" >= 0) AND ("minimum_rest_minutes" <= 1440))),
     CONSTRAINT "workspace_scheduling_settings_minimum_travel_minutes_check" CHECK ((("minimum_travel_minutes" >= 0) AND ("minimum_travel_minutes" <= 240))),
@@ -30944,11 +30719,6 @@ ALTER TABLE ONLY "public"."weekly_preference_events"
 
 ALTER TABLE ONLY "public"."weekly_preference_events"
     ADD CONSTRAINT "weekly_preference_events_pkey" PRIMARY KEY ("id");
-
-
-
-ALTER TABLE ONLY "public"."weekly_preference_type_defaults"
-    ADD CONSTRAINT "weekly_preference_type_defaults_pkey" PRIMARY KEY ("workspace_id", "shift_type_id");
 
 
 
@@ -31949,10 +31719,6 @@ CREATE OR REPLACE TRIGGER "weekly_onboarding_settings" AFTER UPDATE OF "availabi
 
 
 CREATE OR REPLACE TRIGGER "weekly_preference_settings_revision" BEFORE UPDATE ON "public"."workspace_scheduling_settings" FOR EACH ROW EXECUTE FUNCTION "public"."version_weekly_preference_settings"();
-
-
-
-CREATE OR REPLACE TRIGGER "weekly_preference_type_defaults" AFTER INSERT OR DELETE OR UPDATE ON "public"."shift_types" FOR EACH ROW EXECUTE FUNCTION "public"."capture_weekly_preference_type_defaults"();
 
 
 
@@ -33328,11 +33094,6 @@ ALTER TABLE ONLY "public"."weekly_preference_events"
 
 
 
-ALTER TABLE ONLY "public"."weekly_preference_type_defaults"
-    ADD CONSTRAINT "weekly_preference_type_defaults_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
 ALTER TABLE ONLY "public"."workspace_closure_requests"
     ADD CONSTRAINT "workspace_closure_requests_cancelled_by_fkey" FOREIGN KEY ("cancelled_by") REFERENCES "auth"."users"("id");
 
@@ -33919,9 +33680,6 @@ ALTER TABLE "public"."weekly_preference_commands" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."weekly_preference_events" ENABLE ROW LEVEL SECURITY;
-
-
-ALTER TABLE "public"."weekly_preference_type_defaults" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."workspace_closure_requests" ENABLE ROW LEVEL SECURITY;
@@ -34545,6 +34303,10 @@ REVOKE ALL ON FUNCTION "app_private"."keep_system_catalog_records"() FROM PUBLIC
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."listed_job_name"("target_employee" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."live_draft_locations"("w" "uuid", "locs" "uuid"[]) FROM PUBLIC;
 
 
@@ -35036,10 +34798,6 @@ REVOKE ALL ON FUNCTION "app_private"."weekly_preference_may_write"("actor" "uuid
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."weekly_preference_whole_days"("w" "uuid", "preference" "jsonb") FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."workspace_allows_interactive_access"("target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "app_private"."workspace_allows_interactive_access"("target_workspace_id" "uuid") TO "service_role";
 GRANT ALL ON FUNCTION "app_private"."workspace_allows_interactive_access"("target_workspace_id" "uuid") TO "authenticated";
@@ -35244,10 +35002,6 @@ GRANT ALL ON FUNCTION "public"."cancel_workspace_ownership_transfer_service"("ac
 
 
 
-REVOKE ALL ON FUNCTION "public"."capture_weekly_preference_type_defaults"() FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."check_schedule_time_source"() FROM PUBLIC;
 
 
@@ -35438,7 +35192,7 @@ GRANT ALL ON FUNCTION "public"."employee_request_action_service"("actor_user_id"
 
 
 
-REVOKE ALL ON FUNCTION "public"."empty_weekly_preference"("mode" "text") FROM PUBLIC;
+REVOKE ALL ON FUNCTION "public"."empty_weekly_preference"() FROM PUBLIC;
 
 
 
@@ -36705,10 +36459,6 @@ REVOKE ALL ON FUNCTION "public"."weekly_exchange_same_responsibility"("before_sh
 
 
 REVOKE ALL ON FUNCTION "public"."weekly_preference_capacity"("w" "uuid", "emp" "uuid", "target_span" "tstzrange", "zone_name" "text", "proposed" "jsonb") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."weekly_preference_convert"("w" "uuid", "preference" "jsonb", "target_mode" "text") FROM PUBLIC;
 
 
 
