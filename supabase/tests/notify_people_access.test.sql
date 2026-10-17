@@ -1,0 +1,199 @@
+begin;
+create extension if not exists pgtap with schema extensions;
+select no_plan();
+
+-- BILDIRIM-U4b (KARARLAR S-123, S-126 (5), S-127; docs/plan/research/BILDIRIM-URETICILER.md §2.1 #6, §2.5 #28-33):
+-- role, access and ownership write their own notices into the new core.
+--   (a) a role changed tells the person, once; never who changed it;
+--   (b) access ended (removed, employment ended, archived) tells the person, who is no longer a member, once,
+--       by email too; employment ended leaves shifts without anyone: who may publish there now is told;
+--   (c) access restored tells the person and who may publish at their locations;
+--   (d) somebody left without a location tells who may end their employment; their card closes when they
+--       work somewhere again; the shifts it opened are told like (b)'s;
+--   (e) an ownership transfer tells the other side at each step: asked, declined, cancelled, accepted; the
+--       asked card closes when it is answered or cancelled;
+--   (f) the five-cell probe on who may publish: a manager made an employee, moved off the location, whose role
+--       has no publishing, missing a required document, whose access was removed: none of them is told.
+
+select tests.world('pa');
+select tests.world('px');
+select tests.person('pa', 'zeynep', 'admin', array['K'], array['server']);
+select tests.person('pa', 'ayse', 'manager', array['K'], array['cook']);
+select tests.person('pa', 'veli', 'manager', array['B'], array['cook']);
+select tests.person('pa', 'emre', 'employee', array['K'], array['cook']);
+select tests.person('pa', 'deniz', 'employee', array['B'], array['cook']);
+select tests.person('pa', 'kim', 'employee', array['K'], array['cook']);
+select tests.person('pa', 'arc', 'employee', array['K'], array['cook']);
+select tests.person('pa', 'solo', 'employee', array['K'], array['cook']);
+-- The five who will lose the right to publish at Kadikoy, in (f).
+select tests.person('pa', 'dmo', 'manager', array['K'], array['cook']);
+select tests.person('pa', 'mov', 'manager', array['K', 'B'], array['cook']);
+select tests.person('pa', 'lim', 'manager', array['K'], array['cook']);
+select tests.person('pa', 'blk', 'manager', array['K'], array['cook']);
+select tests.person('pa', 'gon', 'manager', array['K'], array['cook']);
+select tests.person('pa', 'end', 'employee', array['K'], array['cook']);
+
+create temp table who as select label, tests.user(label) uid
+from unnest(array['pa:owner', 'pa:zeynep', 'pa:ayse', 'pa:veli', 'pa:emre', 'pa:deniz', 'pa:kim', 'pa:arc', 'pa:solo',
+  'pa:dmo', 'pa:mov', 'pa:lim', 'pa:blk', 'pa:gon', 'pa:end', 'px:owner']) label;
+create function pg_temp.u(person text) returns uuid language sql as $$
+  select tests.user('pa:' || person)
+$$;
+create function pg_temp.told(type_key text) returns text[] language sql stable as $$
+  select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
+  from public.person_notifications n join who w on w.uid = n.user_id
+  where n.type_key = told.type_key and n.workspace_id = tests.id('pa')
+$$;
+create function pg_temp.k_zone() returns text language sql stable as $$
+  select l.timezone from public.locations l where l.id = tests.id('pa:K')
+$$;
+create function pg_temp.terminate(person text, actor text default 'owner') returns jsonb language sql as $$
+  select public.terminate_employee_service(pg_temp.u(actor), tests.id('pa'), tests.id('pa:' || person),
+    (now() at time zone pg_temp.k_zone())::timestamp, pg_temp.k_zone(), 'Moved away', gen_random_uuid())
+$$;
+select tests.publish_week('pa', 1, $$[
+  {"label": "kim_tue", "person": "kim", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "kim_wed", "person": "kim", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
+  {"label": "solo_tue", "person": "solo", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
+  {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}
+]$$::jsonb);
+-- The world's notices so far are in their recipients' choices, read before Kim and the others leave (BILDIRIM-12).
+select is(tests.unlisted_notices(tests.id('pa')), '{}'::text[], 'the world''s notices are in their recipients'' choices');
+create temp table checked as select n.id from public.person_notifications n where n.workspace_id = tests.id('pa');
+
+-- (a) A role changed ----------------------------------------------------------------------------------------
+
+select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'manager'));
+select is(pg_temp.told('people.role_changed'), array['pa:emre'], '(a) Emre, made a manager, is told; the owner is not');
+select is((select n.title from public.person_notifications n where n.type_key = 'people.role_changed'
+           and n.user_id = pg_temp.u('emre')), 'Your role is now Manager', '(a) saying which');
+
+-- (b) Access ended ------------------------------------------------------------------------------------------
+
+select public.remove_employee_access_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:deniz'));
+select is(pg_temp.told('people.access_ended'), array['pa:deniz'], '(b) Deniz''s access removed: Deniz is told, though no longer a member');
+select is((select count(*)::integer from public.notification_deliveries d join public.person_notifications n on n.id = d.notification_id
+           where n.type_key = 'people.access_ended' and n.user_id = pg_temp.u('deniz') and d.channel = 'email'), 1,
+  '(b) by email, the only way that still reaches him');
+select pg_temp.terminate('kim');
+select is(pg_temp.told('people.access_ended'), array['pa:deniz', 'pa:kim'], '(b) Kim''s employment ended: Kim is told, once');
+create function pg_temp.unassigned() returns text[] language sql stable as $$
+  select pg_temp.told('schedule.shifts_unassigned')
+$$;
+select ok(array['pa:ayse', 'pa:zeynep'] <@ pg_temp.unassigned() and not 'pa:owner' = any (pg_temp.unassigned())
+          and not 'pa:veli' = any (pg_temp.unassigned()) and not 'pa:kim' = any (pg_temp.unassigned()),
+  '(b) Kim''s two Kadikoy shifts are left without anyone: who may publish at Kadikoy is told; not the owner who ended it, not Besiktas, not Kim');
+select ok((select bool_and(n.title = '2 shifts at Kadikoy have nobody') from public.person_notifications n
+           where n.type_key = 'schedule.shifts_unassigned' and n.workspace_id = tests.id('pa')), '(b) saying how many and where');
+select public.set_employee_archived_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:arc'), true);
+select is(pg_temp.told('people.access_ended'), array['pa:arc', 'pa:deniz', 'pa:kim'], '(b) Arc archived: Arc is told');
+
+-- (c) Access restored ---------------------------------------------------------------------------------------
+
+select public.set_employee_archived_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:arc'), false, true);
+select ok('pa:arc' = any (pg_temp.told('people.restored')) and array['pa:ayse', 'pa:zeynep'] <@ pg_temp.told('people.restored')
+          and not 'pa:veli' = any (pg_temp.told('people.restored')) and not 'pa:owner' = any (pg_temp.told('people.restored')),
+  '(c) Arc restored: Arc and who may publish at Kadikoy are told; not Besiktas, not the owner who restored him');
+select is((select n.title from public.person_notifications n where n.type_key = 'people.restored' and n.user_id = pg_temp.u('arc')),
+  'Your access is back', '(c) Arc hears it is back');
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.restored'
+           and n.user_id = pg_temp.u('ayse')), 1, '(c) once each');
+
+-- (d) Left without a location -------------------------------------------------------------------------------
+
+select public.remove_employee_from_location_service(pg_temp.u('ayse'), tests.id('pa'), tests.id('pa:solo'), tests.id('pa:K'));
+select is(pg_temp.told('people.no_location'), array['pa:owner', 'pa:zeynep'],
+  '(d) Solo has no location left: who may end his employment is told, the owner and Zeynep; not Ayse who removed him');
+select ok((select bool_and(n.title = 'Solo Person has no location') from public.person_notifications n
+           where n.type_key = 'people.no_location'), '(d) saying who');
+select ok((select count(*)::integer from public.person_notifications n where n.type_key = 'schedule.shifts_unassigned'
+           and n.workspace_id = tests.id('pa') and n.title = '1 shift at Kadikoy has nobody') >= 1,
+  '(d) his Kadikoy shift left open is told too');
+select tests.works_at((select m.id from public.workspace_memberships m where m.workspace_id = tests.id('pa')
+  and m.user_id = pg_temp.u('solo')), tests.id('pa:B'));
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
+           and n.resolved_at is null), 0, '(d) he works at Besiktas now: the cards close');
+
+-- (e) Ownership ---------------------------------------------------------------------------------------------
+
+create function pg_temp.offer() returns uuid language sql as $$
+  select (public.initiate_workspace_ownership_transfer_service(pg_temp.u('owner'), tests.id('pa'), pg_temp.u('zeynep'))
+    ->> 'transfer_id')::uuid
+$$;
+create temp table offers (step text, id uuid);
+insert into offers select 'declined', pg_temp.offer();
+select is(pg_temp.told('people.ownership_transfer_requested'), array['pa:zeynep'], '(e) Zeynep is asked; the owner is not told');
+select public.respond_workspace_ownership_transfer_service(pg_temp.u('zeynep'), tests.id('pa'), (select id from offers where step = 'declined'), 'reject');
+select is(pg_temp.told('people.ownership_transfer_answered'), array['pa:owner'], '(e) she declines: the owner hears it');
+select is((select n.resolution from public.person_notifications n where n.type_key = 'people.ownership_transfer_requested'
+           and n.subject_id = (select id from offers where step = 'declined')), 'declined', '(e) and her card closes');
+insert into offers select 'cancelled', pg_temp.offer();
+select public.cancel_workspace_ownership_transfer_service(pg_temp.u('owner'), tests.id('pa'), (select id from offers where step = 'cancelled'));
+select is(pg_temp.told('people.ownership_transfer_answered'), array['pa:owner', 'pa:zeynep'], '(e) the owner cancels: Zeynep hears it');
+select is((select n.resolution from public.person_notifications n where n.type_key = 'people.ownership_transfer_requested'
+           and n.subject_id = (select id from offers where step = 'cancelled')), 'cancelled', '(e) and her card closes');
+insert into offers select 'accepted', pg_temp.offer();
+select public.respond_workspace_ownership_transfer_service(pg_temp.u('zeynep'), tests.id('pa'), (select id from offers where step = 'accepted'), 'accept');
+select is(pg_temp.told('people.ownership_transfer_answered'), array['pa:owner', 'pa:owner', 'pa:zeynep'],
+  '(e) she accepts: the former owner hears it, once');
+select is((select n.resolution from public.person_notifications n where n.type_key = 'people.ownership_transfer_requested'
+           and n.subject_id = (select id from offers where step = 'accepted')), 'accepted', '(e) and her card closes');
+
+-- Every notice so far is in its recipient's choices, read before anyone loses a right (BILDIRIM-12).
+select is(tests.unlisted_notices(tests.id('pa'), array(select id from checked) || array(select n.id from public.person_notifications n
+  where n.workspace_id = tests.id('pa') and n.type_key = 'people.access_ended')), '{}'::text[],
+  'so far every notice is in its recipient''s choices (BILDIRIM-12); access ended goes to former members by design');
+insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('pa');
+
+-- (f) Who may publish, five cells -------------------------------------------------------------------------
+-- Dmo is made an employee, Mov leaves Kadikoy, Lim's role loses publishing, Blk misses a required document,
+-- Gon's access is removed. Then End's employment ends and his Kadikoy shift has nobody.
+
+select tests.role('pa', 'no publishing', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('pa') and r.system_key = 'manager' and rp.permission_key <> 'schedule.publish'));
+select public.update_employee_membership_role_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:dmo'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'employee'));
+select tests.stops_working_at((select m.id from public.workspace_memberships m
+  where m.workspace_id = tests.id('pa') and m.user_id = pg_temp.u('mov')), tests.id('pa:K'));
+select public.update_employee_membership_role_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:lim'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.name = 'no publishing'));
+create temp table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(pg_temp.u('zeynep'), tests.id('pa'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(pg_temp.u('zeynep'), tests.id('pa'), id);
+select public.set_document_publication_service(pg_temp.u('zeynep'), tests.id('pa'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('pa') on conflict do nothing;
+-- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = pg_temp.u('blk');
+select public.remove_employee_access_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:gon'));
+select is(
+  (select array_agg(person || ' ' || coalesce(app_private.authz_reason(pg_temp.u(person), tests.id('pa'), 'schedule.publish',
+     array[tests.id('pa:K')]), 'ok') order by person) from unnest(array['ayse', 'blk', 'dmo', 'gon', 'lim', 'mov']) person),
+  array['ayse ok', 'blk document_blocked', 'dmo missing_permission', 'gon not_active', 'lim missing_permission', 'mov out_of_scope'],
+  '(f) the core: Ayse may publish at Kadikoy; the five may not');
+delete from public.person_notifications where type_key = 'schedule.shifts_unassigned' and workspace_id = tests.id('pa');
+select pg_temp.terminate('end', 'zeynep');
+select is(pg_temp.unassigned(), array['pa:ayse', 'pa:emre', 'pa:owner'],
+  '(f) End''s shift has nobody: Ayse, Emre (a Kadikoy manager now) and the owner are told; none of the five, not Zeynep who ended it');
+
+select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('px')), 0,
+  'another workspace hears nothing of this one');
+select is(tests.unlisted_notices(tests.id('pa'), array(select id from checked) || array(select n.id from public.person_notifications n
+  where n.workspace_id = tests.id('pa') and n.type_key = 'people.access_ended')), '{}'::text[],
+  'every notice written since is in its recipient''s choices (BILDIRIM-12)');
+
+select * from finish();
+rollback;

@@ -233,6 +233,37 @@ select is(public.request_employee_preferred_name_service(tests.user('pn:owner'),
 select is(public.request_employee_preferred_name_service(tests.user('pn:bob'), tests.id('pn'), tests.id('pn:bob'), 'Rob'),
   'waiting', 'a name never takes effect on its own while somebody may decide it');
 select is(pg_temp.name_of('bob'), '', 'Bob keeps his name until then');
+-- The owner exception holds whoever else drops out (BILDIRIM-U4a review): with Kadikoy's manager missing a
+-- required document and the admin's access removed, nobody but the owner may decide, and a request still
+-- waits for the owner; it never takes effect on its own.
+create temp table required_document (id uuid, preview jsonb);
+insert into required_document (id)
+select public.save_document_type_lifecycle_service(tests.user('pn:owner'), tests.id('pn'), null, null, jsonb_build_object(
+  'title', 'Food handler card', 'description', 'Card', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update required_document set preview = public.preview_document_publication_service(tests.user('pn:owner'), tests.id('pn'), id);
+select public.set_document_publication_service(tests.user('pn:owner'), tests.id('pn'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from required_document;
+select tests.settle();
+-- ponytail: Ayse's deadline is moved into the past by hand; nothing in the product moves the clock.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = tests.user('pn:ayse');
+select public.remove_employee_access_service(tests.user('pn:owner'), tests.id('pn'), tests.id('pn:zeynep'));
+select is(public.request_employee_preferred_name_service(tests.user('pn:bob'), tests.id('pn'), tests.id('pn:bob'), 'Bobby'),
+  'waiting', 'Bob''s request still waits when only the owner may decide it');
+select is((select array_agg(n.user_id = tests.user('pn:owner')) from public.person_notifications n
+           where n.type_key = 'people.preferred_name_requested' and n.subject_id = pg_temp.pending(tests.id('pn:bob'))),
+  array[true], 'and goes to the owner alone: not Ayse, missing a document, nor Zeynep, whose access was removed');
+select is(public.request_employee_preferred_name_service(tests.user('pn:can'), tests.id('pn'), tests.id('pn:can'), 'Cano'),
+  'waiting', 'a manager''s own request waits for the owner too');
+select is((select array_agg(n.user_id = tests.user('pn:owner')) from public.person_notifications n
+           where n.type_key = 'people.preferred_name_requested' and n.subject_id = pg_temp.pending(tests.id('pn:can'))),
+  array[true], 'and goes to the owner alone');
 -- The setting that let names through is gone with its table (retired_objects_stay_gone).
 select hasnt_table('public', 'employee_name_settings', 'the preferred-name setting''s table is gone');
 select hasnt_function('public', 'get_employee_name_settings_service', 'its read is gone');
