@@ -93,9 +93,53 @@ describe("desktop: the days on the left, the day on the right", () => {
     expect(screen.queryByText(/preference, not a guarantee/)).toBeNull();
     fireEvent.click(radio(/^Unavailable/));
     expect(screen.getByText("Unsaved changes")).toBeTruthy();
-    expect(screen.getByRole("region", { name: "Unsaved changes" }).textContent).toContain(
-      "1 day changed. Your managers see it after you save.",
-    );
+    // Mert 2026-10-17: no dark bar; the card's own row under it.
+    expect(screen.queryByRole("region", { name: "Unsaved changes" })).toBeNull();
+  });
+
+  // Mert 2026-10-17: a row under the week that is always there, so nothing
+  // moves: Cancel (white) and Save (green), both faded until a day changes.
+  it("keeps Cancel and Save under the week, faded until a day changes", () => {
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} />);
+    const row = screen.getByRole("group", { name: "Save your week" });
+    const cancel = within(row).getByRole("button", { name: "Cancel" }) as HTMLButtonElement;
+    const save = within(row).getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect([cancel.disabled, save.disabled]).toEqual([true, true]);
+    expect(cancel.className).toContain("secondary-button");
+    fireEvent.click(radio(/^Unavailable/));
+    expect(screen.getByRole("group", { name: "Save your week" })).toBe(row);
+    expect([cancel.disabled, save.disabled]).toEqual([false, false]);
+    expect(within(row).queryByRole("status")).toBeNull();
+  });
+
+  it("says the week was saved, sliding in from the left, until the next change", async () => {
+    const data = model();
+    render(<MyAvailabilityForm model={data} onSave={saver(data)} />);
+    fireEvent.click(radio(/^Unavailable/));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const done = await screen.findByRole("status");
+    expect(done.textContent).toBe("Availability preferences saved");
+    expect(done.className).toContain("dav-saved");
+    expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(radio(/^Some hours/));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("drops the saved note on the next tap anywhere in the week", async () => {
+    const data = model();
+    render(<MyAvailabilityForm model={data} onSave={saver(data)} />);
+    fireEvent.click(radio(/^Unavailable/));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("status");
+    fireEvent.pointerDown(dayRow(3));
+    expect(screen.queryByRole("status")).toBeNull();
+  });
+
+  it("has no Cancel / Save row in onboarding: the step keeps its own buttons", () => {
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} wizard extraAction={<button type="button">Skip for now</button>} />);
+    expect(screen.queryByRole("group", { name: "Save your week" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Save and continue" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Skip for now" })).toBeTruthy();
   });
 
   // M5: a save decides nothing about pending requests; nothing is asked first.
@@ -106,7 +150,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     fireEvent.click(radio(/^Some hours/));
     fireEvent.click(dayRow(2));
     fireEvent.click(radio(/^Unavailable/));
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     const command = onSave.mock.calls[0]![0];
     expect(weeklyPreferenceSaveSchema.parse(command)).toEqual(command);
@@ -123,7 +167,6 @@ describe("desktop: the days on the left, the day on the right", () => {
     });
     expect(screen.queryByRole("dialog")).toBeNull();
     await screen.findByText(/^Shared with your managers · Oct 16$/);
-    expect(screen.queryByRole("region", { name: "Unsaved changes" })).toBeNull();
   });
 
   it("submits a never-shared week that is available every day", async () => {
@@ -134,7 +177,9 @@ describe("desktop: the days on the left, the day on the right", () => {
     const onSave = saver(data);
     render(<MyAvailabilityForm model={data} onSave={onSave} />);
     expect(screen.getByText("Not shared yet")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    // Nothing to throw away yet, but the week can be shared as it is.
+    expect((screen.getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].preference).toEqual(emptyWeeklyPreference());
   });
@@ -143,8 +188,9 @@ describe("desktop: the days on the left, the day on the right", () => {
     render(<MyAvailabilityForm model={model()} onSave={vi.fn()} />);
     fireEvent.click(radio(/^Unavailable/));
     fireEvent.click(screen.getByRole("button", { name: "Tuesday, now Available" }));
-    expect(screen.getByRole("region", { name: "Unsaved changes" }).textContent).toContain("2 days changed");
-    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(screen.getByText("Unsaved changes")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByText("Unsaved changes")).toBeNull();
     expect(radio(/^Available/).getAttribute("aria-checked")).toBe("true");
     expect(screen.getByRole("button", { name: "Tuesday, now Available" }).getAttribute("aria-pressed")).toBe("false");
   });
@@ -158,7 +204,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     refreshed.employee.revision = 5;
     rerender(<MyAvailabilityForm model={refreshed} onSave={onSave} />);
     expect(radio(/^Unavailable/).getAttribute("aria-checked")).toBe("true");
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].expected_revision).toBe(2);
   });
@@ -168,7 +214,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     const onSave = vi.fn(() => new Promise<WeeklyPreferenceRead>((_resolve, reject) => (fail = reject)));
     render(<MyAvailabilityForm model={model()} onSave={onSave} />);
     fireEvent.click(radio(/^Unavailable/));
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     fireEvent.click(screen.getByRole("button", { name: "Saving..." }));
     expect(onSave).toHaveBeenCalledOnce();
     await act(async () => fail(new Error("Connection lost")));
@@ -186,7 +232,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     });
     render(<MyAvailabilityForm model={model()} onSave={onSave} onReload={vi.fn()} />);
     fireEvent.click(radio(/^Unavailable/));
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Not saved.");
     expect(screen.queryByRole("button", { name: "Reload" }) !== null).toBe(offered);
   });
@@ -249,6 +295,41 @@ describe("phone: the week as a list, a day in a sheet", () => {
     expect(dayRow(5).textContent).toBe("FridayUnavailable after 6:00 PM");
     await act(async () => vi.advanceTimersByTime(1800));
     expect(dayRow(5).className).not.toContain("is-flash");
+  });
+
+  // Mert 2026-10-17: a tap inside the sheet changes only its content; the sheet
+  // slides up once, when it opens, and never again while it stays open.
+  it("keeps one open sheet through every tap and slides it up only once", () => {
+    const showModal = vi.spyOn(HTMLDialogElement.prototype, "showModal");
+    render(<MyAvailabilityForm model={model()} onSave={vi.fn()} />);
+    fireEvent.click(dayRow(2));
+    const sheet = screen.getByRole("dialog", { name: "Tuesday" });
+    expect(showModal).toHaveBeenCalledTimes(1);
+    expect(sheet.classList.contains("is-opening")).toBe(true);
+    fireEvent.animationEnd(sheet);
+    expect(sheet.classList.contains("is-opening")).toBe(false);
+    const taps = [
+      () => within(sheet).getByRole("radio", { name: /^Unavailable/ }),
+      () => within(sheet).getByRole("radio", { name: /^Some hours/ }),
+      () => within(sheet).getByRole("radio", { name: /^Available/ }),
+      () => within(sheet).getByRole("button", { name: /^Thursday, / }),
+      () => within(sheet).getByRole("button", { name: /^Thursday, / }),
+    ];
+    for (const target of taps) {
+      fireEvent.click(target());
+      expect(screen.getByRole("dialog", { name: "Tuesday" })).toBe(sheet);
+      expect(sheet.classList.contains("is-opening")).toBe(false);
+    }
+    fireEvent.change(within(sheet).getByRole("combobox", { name: "From" }), { target: { value: String(9 * 60) } });
+    fireEvent.change(within(sheet).getByRole("combobox", { name: "Until" }), { target: { value: String(17 * 60) } });
+    expect(screen.getByRole("dialog", { name: "Tuesday" })).toBe(sheet);
+    expect(sheet.classList.contains("is-opening")).toBe(false);
+    expect(showModal).toHaveBeenCalledTimes(1);
+    // A sheet opened again slides up again.
+    fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
+    fireEvent.click(dayRow(3));
+    expect(screen.getByRole("dialog", { name: "Wednesday" }).classList.contains("is-opening")).toBe(true);
+    expect(showModal).toHaveBeenCalledTimes(2);
   });
 
   it("drops the day's changes on Cancel, the close button and Escape", () => {

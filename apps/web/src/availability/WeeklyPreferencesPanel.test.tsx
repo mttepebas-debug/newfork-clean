@@ -63,7 +63,7 @@ async function setup() {
       <WeeklyPreferencesPanel workspaceId={w} audience="employee" />
     </QueryClientProvider>,
   );
-  await screen.findByRole("button", { name: "Save availability" });
+  await screen.findByRole("button", { name: "Save" });
   return { result, client };
 }
 // The desktop editor opens on Monday.
@@ -83,7 +83,7 @@ describe("weekly preferences API panel", () => {
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(new RequestError(conflictSentence, "availability.changed", undefined, 409))
       .mockResolvedValueOnce(result);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
 
     // Reload waits for Can's week before it resets the form.
@@ -92,7 +92,7 @@ describe("weekly preferences API panel", () => {
     expect(loadWeeklyPreferences).toHaveBeenCalledTimes(2);
     expect(unavailable().getAttribute("aria-checked")).toBe("false");
     fireEvent.click(unavailable());
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]![1]).toEqual(
       expect.objectContaining({ expected_revision: 3 }),
@@ -102,7 +102,7 @@ describe("weekly preferences API panel", () => {
     const { result, client } = await setup();
     const invalidate = vi.spyOn(client, "invalidateQueries");
     vi.mocked(saveWeeklyPreferences).mockResolvedValue(result);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Shared with your managers");
     expect(invalidate).toHaveBeenCalledWith({ queryKey: ["schedule-read", w] });
   });
@@ -111,9 +111,9 @@ describe("weekly preferences API panel", () => {
     vi.mocked(saveWeeklyPreferences)
       .mockRejectedValueOnce(new TypeError("Connection lost"))
       .mockResolvedValueOnce(result);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Connection lost");
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]).toEqual(
       vi.mocked(saveWeeklyPreferences).mock.calls[0],
@@ -126,7 +126,7 @@ describe("weekly preferences API panel", () => {
     vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
       new RequestError(conflictSentence, "availability.changed", undefined, 409),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
     vi.mocked(loadWeeklyPreferences).mockRejectedValueOnce(new TypeError("Refresh unavailable"));
     fireEvent.click(screen.getByRole("button", { name: "Reload" }));
@@ -143,9 +143,9 @@ describe("weekly preferences API panel", () => {
         new RequestError(conflictSentence, "availability.changed", undefined, 409),
       )
       .mockResolvedValueOnce(result);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText(conflictSentence);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledTimes(2));
     expect(vi.mocked(saveWeeklyPreferences).mock.calls[1]![2]).not.toBe(
       vi.mocked(saveWeeklyPreferences).mock.calls[0]![2],
@@ -179,7 +179,7 @@ describe("weekly preferences API panel", () => {
     });
     await screen.findByRole("heading", { level: 3, name: "We couldn't load availability" });
     expect(screen.queryByText("Access removed")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Save availability" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
   });
   // BL-798 (E4-15): the core's "Not allowed" reads as a sentence for the
   // person, without a Retry that cannot help.
@@ -229,7 +229,7 @@ describe("weekly preferences API panel", () => {
     vi.mocked(saveWeeklyPreferences).mockRejectedValueOnce(
       new RequestError("Not allowed", "authz.missing_permission", undefined, 403),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect(
       await screen.findByText("You don't have access to change this availability."),
     ).toBeTruthy();

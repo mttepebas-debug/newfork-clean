@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button } from "@newfork/ui";
-import { Check, ChevronRight, Pencil } from "lucide-react";
+import { Check, ChevronRight } from "lucide-react";
 import {
   emptyWeeklyPreference,
   weeklyPreferenceSaveSchema,
@@ -26,7 +26,7 @@ import { useListPhoneWidth } from "../lib/usePhoneWidth";
 
 // The employee's own week: Employee Hub → My Availability and the onboarding
 // step (M2: only the employee writes it). Desktop: the days on the left, the
-// chosen day on the right, one Save for the week. Phone (720 px and below):
+// chosen day on the right, Cancel / Save for the week under it. Phone (720 px and below):
 // the week as a list; a day opens in a sheet from the bottom and saves on its
 // own (Mert 2026-10-16, "A · Alt sayfa"). In onboarding the sheet's Done keeps
 // the day in the draft and the step's own button saves.
@@ -64,6 +64,8 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [flash, setFlash] = useState<number[]>([]);
   const [saving, setSaving] = useState(false);
+  // Desktop: "Availability preferences saved" beside Save until the next tap or change.
+  const [savedNote, setSavedNote] = useState(false);
   const [error, setError] = useState("");
   // BL-797: a refused save because someone saved first; Reload takes theirs.
   const [conflict, setConflict] = useState(false);
@@ -119,6 +121,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
     setError("");
     try {
       reset(await onSave(parsed.data));
+      if (!phone && !wizard) setSavedNote(true);
       return true;
     } catch (cause) {
       // BL-1028: only "the week or its settings changed meanwhile" has a
@@ -243,7 +246,11 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
   ) : null;
 
   return (
-    <section className={`dav-panel${phone ? " is-phone" : ""}`} aria-label="Weekly availability">
+    <section
+      className={`dav-panel${phone ? " is-phone" : ""}`}
+      aria-label="Weekly availability"
+      onPointerDown={savedNote ? () => setSavedNote(false) : undefined}
+    >
       {leaveDialog}
       {phone ? (
         <>
@@ -319,6 +326,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
                     setWeek(next);
                     setCopies(nextCopies);
                     setError("");
+                    setSavedNote(false);
                   }}
                   timeFormat={timeFormat}
                   disabled={saving || !canEdit}
@@ -328,31 +336,25 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
           </section>
           {error_}
           {foot}
-          {!wizard && hasChanges && canEdit && (
-            <div className="dav-savebar" role="region" aria-label="Unsaved changes">
-              <Pencil size={15} aria-hidden />
-              <span>
-                {dirty
-                  ? `${changed.length} ${changed.length === 1 ? "day" : "days"} changed. Your managers see it after you save.`
-                  : "Your week isn't shared yet. Your managers see it after you save."}
-              </span>
-              <button
-                type="button"
-                className="dav-savebar-ghost"
-                disabled={!dirty || saving}
+          {!wizard && (
+            // Mert 2026-10-17: always here, so nothing moves when a day changes.
+            <div className="dav-actions" role="group" aria-label="Save your week">
+              {savedNote && (
+                <span className="dav-saved" role="status">
+                  <Check size={14} aria-hidden />
+                  <b>Availability preferences saved</b>
+                </span>
+              )}
+              <Button
+                className="secondary-button"
+                disabled={!dirty || saving || !canEdit}
                 onClick={() => reset(latestModel)}
               >
-                Discard
-              </button>
-              <button
-                type="button"
-                className="dav-savebar-go"
-                disabled={saving}
-                onClick={() => void submit(week)}
-              >
-                <Check size={15} aria-hidden />
-                {saving ? "Saving..." : "Save availability"}
-              </button>
+                Cancel
+              </Button>
+              <Button disabled={!hasChanges || saving || !canEdit} onClick={() => void submit(week)}>
+                {saving ? "Saving..." : "Save"}
+              </Button>
             </div>
           )}
         </>

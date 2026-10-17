@@ -219,58 +219,44 @@
 }
 
 /* The save bar under the card (Tur 2): only while there is something to save. */
-.dav-savebar {
-  position: sticky;
-  bottom: 0;
-  z-index: 5;
+/* Mert 2026-10-17: Cancel / Save under the week, always there so nothing
+   moves; "Availability preferences saved" opens from the left after a save
+   (Tur 2, version 25). */
+.dav-actions {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 16px;
-  padding: 10px 14px;
-  border-radius: 10px;
-  background: var(--theme-action);
-  color: var(--theme-on-accent);
-  font-size: 12.5px;
-  box-shadow: 0 12px 30px color-mix(in srgb, var(--theme-action) 20%, transparent);
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 36px;
+  margin-top: 14px;
 }
-.dav-savebar > span {
-  flex: 1 1 auto;
-  min-width: 0;
-}
-.dav-savebar button {
+.dav-saved {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  min-height: 30px;
-  padding: 0 10px;
-  border: 1px solid transparent;
-  border-radius: 5px;
+  margin-right: auto;
+  color: var(--theme-accent);
   font-size: 12px;
+  animation: dav-saved-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.dav-saved b {
   font-weight: 650;
-  white-space: nowrap;
+  color: var(--theme-accent-strong);
 }
-.dav-savebar-ghost {
-  background: transparent;
-  color: color-mix(in srgb, var(--theme-on-accent) 85%, var(--theme-action));
+@keyframes dav-saved-in {
+  from {
+    clip-path: inset(0 100% 0 0);
+    opacity: 0.2;
+  }
+  to {
+    clip-path: inset(0 0 0 0);
+    opacity: 1;
+  }
 }
-.dav-savebar-ghost:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--theme-on-accent) 10%, transparent);
-  color: var(--theme-on-accent);
-}
-.dav-savebar-go {
-  background: var(--theme-accent);
-  border-color: var(--theme-accent);
-  color: var(--theme-on-accent);
-}
-.dav-savebar-go:hover:not(:disabled) {
-  background: var(--theme-accent-strong);
-}
-.dav-savebar button:disabled {
-  opacity: 0.5;
-}
-.dav-savebar button:focus-visible {
-  outline-color: var(--theme-on-accent);
+@media (prefers-reduced-motion: reduce) {
+  .dav-saved {
+    animation: none;
+  }
 }
 .dav-error {
   margin: 12px 0 0;
@@ -700,6 +686,9 @@
   border-radius: 22px 22px 0 0;
   background: var(--theme-surface);
   box-shadow: 0 -10px 30px color-mix(in srgb, var(--theme-action) 14%, transparent);
+}
+/* Only while it opens (DaySheet drops the class when the slide ends). */
+.dav-sheet.is-opening {
   animation: dav-up 0.22s ease-out;
 }
 .dav-sheet::backdrop {
@@ -825,7 +814,7 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .dav-row.is-flash,
-  .dav-sheet {
+  .dav-sheet.is-opening {
     animation: none;
   }
   .dav-knob em {

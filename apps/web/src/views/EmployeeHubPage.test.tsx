@@ -749,7 +749,7 @@ describe("EmployeeHubPage", () => {
     // Tur 2 (Mert 2026-10-16): no standing explainer box under the tabs.
     expect(screen.queryByText(/preference, not a guarantee/)).toBeNull();
     fireEvent.click(day);
-    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledWith(workspaceId,
       expect.objectContaining({ source: "employee", employee_id: fixture.employee.id, expected_revision: 0 }),
       expect.any(String), false));

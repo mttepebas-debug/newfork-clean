@@ -6,8 +6,8 @@ import { psql } from "../global-setup";
 
 // Employee Hub → My Availability, day by day (KARARLAR "Müsaitlik giriş
 // ekranı = 4 · Gün gün"; Mert 2026-10-16, "A · Alt sayfa"): on a computer the
-// days sit on the left and the chosen day on the right, one Save for the
-// week; on a phone a day opens in a sheet and saves on its own. One range a
+// days sit on the left and the chosen day on the right, Cancel / Save for
+// the week under it; on a phone a day opens in a sheet and saves on its own. One range a
 // day. Each test has its own employee, so no other spec sees the week.
 
 const world: { readonly run: string; readonly password: string } = JSON.parse(
@@ -50,10 +50,14 @@ test("desktop: Friday's evening and the Thursday it was copied to are saved with
   await page.getByRole("radio", { name: /^Some hours/ }).click();
   await expect(page.getByRole("combobox", { name: "From" })).toHaveValue(String(18 * 60));
   await page.getByRole("button", { name: "Thursday, now Available" }).click();
-  const bar = page.getByRole("region", { name: "Unsaved changes" });
-  await expect(bar).toContainText("2 days changed. Your managers see it after you save.");
-  await bar.getByRole("button", { name: "Save availability" }).click();
-  await expect(bar).toBeHidden();
+  // Mert 2026-10-17: no dark bar; the row under the week is always there.
+  const row = page.getByRole("group", { name: "Save your week" });
+  await expect(page.getByText("Unsaved changes")).toBeVisible();
+  const before = await row.boundingBox();
+  await row.getByRole("button", { name: "Save", exact: true }).click();
+  await expect(row.getByRole("status")).toHaveText("Availability preferences saved");
+  await expect(row.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
+  expect((await row.boundingBox())!.y).toBe(before!.y);
   await expect(page.getByText(/^Shared with your managers · /)).toBeVisible();
   // No toast after a save (Tur 2).
   await expect(page.getByRole("status").filter({ hasText: /saved/i })).toHaveCount(0);
@@ -75,6 +79,34 @@ test("phone: Monday opens in a sheet, saves on its own and stays saved", async (
   const sheet = page.getByRole("dialog", { name: "Monday" });
   await expect(sheet).toBeVisible();
   await expect(sheet.getByRole("button", { name: "Save" })).toBeDisabled();
+  // Mert 2026-10-17: taps inside change only the content; the sheet slid up
+  // once and stays where it is, the same element all along.
+  await expect(sheet).not.toHaveClass(/is-opening/);
+  await sheet.evaluate((node) => {
+    (window as unknown as { sheetNode: Element }).sheetNode = node;
+    (window as unknown as { slides: number }).slides = 0;
+    node.addEventListener("animationstart", (event) => {
+      if (event.target === node) (window as unknown as { slides: number }).slides += 1;
+    });
+  });
+  const top = (await sheet.boundingBox())!.y;
+  for (const tap of [
+    sheet.getByRole("radio", { name: /^Some hours/ }),
+    sheet.getByRole("radio", { name: /^Available/ }),
+    sheet.getByRole("button", { name: /^Tuesday, / }),
+    sheet.getByRole("button", { name: /^Tuesday, / }),
+  ]) {
+    await tap.tap();
+    expect((await sheet.boundingBox())!.y).toBe(top);
+  }
+  await sheet.getByRole("combobox", { name: "From" }).selectOption(String(9 * 60));
+  expect((await sheet.boundingBox())!.y).toBe(top);
+  expect(
+    await sheet.evaluate((node) => ({
+      same: (window as unknown as { sheetNode: Element }).sheetNode === node,
+      slides: (window as unknown as { slides: number }).slides,
+    })),
+  ).toEqual({ same: true, slides: 0 });
   await sheet.getByRole("radio", { name: /^Unavailable/ }).tap();
   await sheet.getByRole("button", { name: "Save" }).tap();
   await expect(sheet).toBeHidden();
