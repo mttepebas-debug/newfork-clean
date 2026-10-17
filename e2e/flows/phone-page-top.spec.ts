@@ -152,6 +152,14 @@ for (const person of ["zeynep", "emre"] as const) {
       if (await menu.count()) {
         const top = await menu.first().evaluate((element) => Math.round(element.getBoundingClientRect().top));
         expect.soft(top, `${path} menu under the line`).toBeGreaterThan(OPEN);
+        // The menu scrolls sideways and so cuts what is drawn outside it: the
+        // active link's focus ring (2 px, 2 px off) must fit inside it.
+        const room = await menu.first().evaluate((nav) => {
+          const box = nav.getBoundingClientRect();
+          const link = nav.querySelector('[aria-current="page"], .active')!.getBoundingClientRect();
+          return Math.min(link.top - box.top, box.bottom - link.bottom);
+        });
+        expect.soft(room, `${path} room for the focus ring`).toBeGreaterThanOrEqual(4);
       }
       await scrollDown(page);
       // Lineup keeps its heading at its full size (Mert 2026-10-17 ~8 AM): it never folds.
@@ -161,6 +169,19 @@ for (const person of ["zeynep", "emre"] as const) {
     }
   });
 }
+
+// The menu under the heading is rebuilt with each page's heading: a keyboard
+// user who picks a page from it stays in it, on the new page's link.
+test("phone: choosing a page from the Settings menu keeps focus in the menu", async ({ browser }) => {
+  const page = await open(browser, "zeynep", PHONE);
+  await visit(page, "/app/settings/general");
+  const menu = page.getByRole("navigation", { name: "Workspace settings" });
+  await menu.getByRole("link", { name: "Jobs" }).focus();
+  await page.keyboard.press("Enter");
+  await expect(page.getByRole("heading", { level: 1, name: /^Jobs/ })).toBeVisible();
+  await expect(menu.getByRole("link", { name: "Jobs" })).toHaveAttribute("aria-current", "page");
+  await expect(menu.getByRole("link", { name: "Jobs" })).toBeFocused();
+});
 
 // The employee's Home keeps no second workspace bar under the top bar.
 test("phone: the employee's Home has the one top bar", async ({ browser }) => {

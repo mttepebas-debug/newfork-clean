@@ -108,11 +108,14 @@
     order: 2;
     margin: 0 -16px;
   }
+  /* It scrolls sideways, so it cuts what is drawn outside it: 4 px above and
+     below hold a link's focus ring (2 px, 2 px off), and the row stays where it was. */
   .phone-page-menu > nav {
     display: flex;
     gap: 4px;
     overflow-x: auto;
-    padding: 0 16px;
+    margin-block: -4px;
+    padding: 4px 16px;
     scroll-padding-inline: 16px;
     scrollbar-width: none;
   }
