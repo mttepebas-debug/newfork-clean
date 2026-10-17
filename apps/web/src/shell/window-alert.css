@@ -18,7 +18,11 @@
   font-weight: 600;
   line-height: 1.4;
   text-align: left;
+  /* It says all of it: a window's own rule for its lines must not cut it. */
+  overflow: visible;
   overflow-wrap: anywhere;
+  text-overflow: clip;
+  white-space: normal;
 }
 .window-alert-slot {
   position: relative;

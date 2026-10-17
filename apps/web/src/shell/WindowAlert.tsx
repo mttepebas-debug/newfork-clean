@@ -27,13 +27,13 @@ export function WindowAlert({
   readonly between?: boolean;
 }) {
   const band = said(message) ? (
-    <p id={id} className="window-alert" role="alert">
+    <div id={id} className="window-alert" role="alert">
       {message}
-    </p>
+    </div>
   ) : said(status) ? (
-    <p id={id} className="window-alert" role="status">
+    <div id={id} className="window-alert" role="status">
       {status}
-    </p>
+    </div>
   ) : null;
   return between ? <div className="window-alert-slot">{band}</div> : band;
 }
