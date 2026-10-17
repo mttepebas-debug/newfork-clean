@@ -65,6 +65,7 @@ async function registration(win: Window): Promise<ServiceWorkerRegistration> {
 }
 
 async function existing(win: Window): Promise<PushSubscription | null> {
+  if (!("serviceWorker" in win.navigator)) return null;
   const found = await win.navigator.serviceWorker.getRegistration("/");
   return found ? found.pushManager.getSubscription() : null;
 }

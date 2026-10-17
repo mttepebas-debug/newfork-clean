@@ -19,7 +19,9 @@ import { useState, type ComponentType } from "react";
 import { useFrozenTop } from "./useFrozenTop";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
-import { NavLink, Outlet, useLocation } from "react-router";
+import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
+import { PhoneAlertsHome } from "../phone-alerts/PhoneAlertsHome";
+import { usePhoneAlertsShell } from "../phone-alerts/use-phone-alerts-shell";
 import { EmployeeMobileNav } from "../employee-hub/EmployeeMobileNav";
 import { useAuth } from "../auth/AuthContext";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
@@ -199,6 +201,8 @@ export function AppShell() {
     () => new Set(["/app/schedule", "/app/employees", "/app/announcements", "/app/employee-hub/schedule"]),
   );
   const location = useLocation();
+  const navigate = useNavigate();
+  usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
   const phone = usePhoneWidth();
   // The bottom bar's width (720 px and below): the management top bar comes with it.
   const phoneBars = useListPhoneWidth();
@@ -454,6 +458,10 @@ export function AppShell() {
       <main className="app-main" ref={setMain}>
         <Outlet />
       </main>
+      {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123). */}
+      {location.pathname === (employeeShell ? "/app/employee-hub" : managementHome) ? (
+        <PhoneAlertsHome audience={employeeShell ? "employee" : "manager"} />
+      ) : null}
       {employeeShell ? (
         <EmployeeMobileNav
           managementHome={inEmployeeView ? managementHome : null}

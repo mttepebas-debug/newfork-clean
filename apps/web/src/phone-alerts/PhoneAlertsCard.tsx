@@ -6,8 +6,8 @@ import { createPortal } from "react-dom";
 import type { PhoneAlertsSupport } from "./install-state";
 import "./phone-alerts.css";
 
-// The "Get alerts on this phone" card (plan variant A). Not on any screen yet:
-// nothing sends phone alerts, so no screen may promise them (KARARLAR S-124).
+// The "Get alerts on this phone" card (plan variant A). Home shows it through
+// PhoneAlertsHome, only once phone alerts are set up (KARARLAR S-124).
 // It never asks the browser for permission; Turn on only calls back.
 
 export type PhoneAlertsCardProps = {
@@ -73,8 +73,8 @@ export function PhoneAlertsCard({ support, audience, onTurnOn, onNotNow }: Phone
   );
 }
 
-/** iPhone Safari has no web push; the Home Screen app does (iOS 16.4+). */
-function HomeScreenSteps({ onClose, onNotNow }: { onClose: () => void; onNotNow: () => void }) {
+/** iPhone Safari has no web push; the Home Screen app does (iOS 16.4+). Account → Notifications opens it too. */
+export function HomeScreenSteps({ onClose, onNotNow }: { onClose: () => void; onNotNow: () => void }) {
   const titleId = useId();
   const textId = useId();
   const sheet = useRef<HTMLElement>(null);

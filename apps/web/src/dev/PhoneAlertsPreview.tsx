@@ -34,7 +34,7 @@ export function PhoneAlertsPreview({ state }: { state: PhoneAlertState }) {
     <main className="fg-alerts-page">
       <p className="fg-alerts-label">
         {label}
-        <span>Not on any screen yet: nothing sends phone alerts.</span>
+        <span>Home shows it once phone alerts are set up.</span>
       </p>
       {outcome === null ? (
         <PhoneAlertsCard
@@ -46,7 +46,7 @@ export function PhoneAlertsPreview({ state }: { state: PhoneAlertState }) {
       ) : (
         <p className="fg-alerts-outcome" role="status">
           {outcome === "on"
-            ? "Turn on called back. Asking the browser comes with the next step."
+            ? "Turn on called back. On Home it asks the browser here."
             : "Not now called back. The card is gone."}{" "}
           <button type="button" onClick={() => setOutcome(null)}>
             Show the card again

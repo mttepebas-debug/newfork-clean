@@ -27,6 +27,8 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { clearTenantQueriesForOrganizationSwitch } from "./tenant-query-cache";
+import { pushServer } from "../phone-alerts/channels-data";
+import { turnOffPhoneAlerts } from "../phone-alerts/push-client";
 
 interface AuthContextValue {
   readonly account: AccountProfile | null;
@@ -298,6 +300,9 @@ export function AuthProvider({
   );
 
   const signOut = useCallback(async (): Promise<void> => {
+    // This device stops taking this person's phone alerts first, while the session can still say so
+    // (BILDIRIM-15): whoever signs in here next never sees them.
+    if (supabaseClient && session) await turnOffPhoneAlerts(pushServer).catch(() => undefined);
     if (supabaseClient && session)
       await supabaseClient.auth.signOut({ scope: "local" });
     clearTabWorkspaceId();

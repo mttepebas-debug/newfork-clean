@@ -408,3 +408,12 @@
     transition: none;
   }
 }
+
+/* A device's phone alerts could not be changed (BILDIRIM-15). */
+.ns-inline-error {
+  margin: 0;
+  padding: 0 16px 12px 52px;
+  color: var(--theme-danger);
+  font-size: 13px;
+  line-height: 1.45;
+}

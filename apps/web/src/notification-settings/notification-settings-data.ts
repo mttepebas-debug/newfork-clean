@@ -11,13 +11,6 @@ import { apiRequest, supabaseClient } from "../lib/supabase";
 // Account > Notifications and Settings > Notifications read and write through
 // the API (BILDIRIM-11); the database decides what is a choice (S-123).
 
-/**
- * Whether email and phone alerts are being delivered yet. Choices are kept
- * either way; the screens say plainly that nothing goes out until then.
- * The slice that connects a channel flips it here.
- */
-export const notificationDelivery = { email: false, push: false } as const;
-
 export const notificationPreferencesKey = (workspaceId: string) =>
   ["notification-preferences", workspaceId] as const;
 export const notificationWorkspaceSettingsKey = (workspaceId: string) =>

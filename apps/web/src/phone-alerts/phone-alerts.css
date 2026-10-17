@@ -40,6 +40,24 @@
   min-height: 44px;
 }
 
+/* On Home (variant A): floating over the page, above the phone's bottom bar;
+   on a computer, in the lower right corner. */
+.phone-alerts-float {
+  position: fixed;
+  z-index: 35;
+  right: 24px;
+  bottom: 24px;
+  width: min(380px, calc(100vw - 48px));
+}
+@media (max-width: 720px) {
+  .phone-alerts-float {
+    right: 12px;
+    bottom: calc(84px + env(safe-area-inset-bottom, 0px));
+    left: 12px;
+    width: auto;
+  }
+}
+
 /* Home Screen steps: a bottom sheet over a dimmed page. */
 .phone-alerts-layer {
   position: fixed;

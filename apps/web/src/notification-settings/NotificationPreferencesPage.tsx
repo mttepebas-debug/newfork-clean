@@ -1,4 +1,5 @@
 import type {
+  NotificationChannelsConfig,
   NotificationChoiceChannel,
   NotificationPreferences,
   NotificationPreferencesInput,
@@ -7,18 +8,20 @@ import type {
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Inbox, Info, Mail, MessageSquare, Smartphone } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { useRef, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { AccountPageHeader } from "../account/components";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
+import { useNotificationChannels } from "../phone-alerts/channels-data";
+import { HomeScreenSteps } from "../phone-alerts/PhoneAlertsCard";
+import { usePhoneAlerts } from "../phone-alerts/use-phone-alerts";
 import {
   loadNotificationPreferences,
-  notificationDelivery,
   notificationPreferencesKey,
   saveNotificationPreferences,
 } from "./notification-settings-data";
-import { ChannelRow, StatusPill } from "./parts";
+import { ChannelRow, StatusPill, Switch } from "./parts";
 import { rowState, topicRows, type TopicRow } from "./topic-rows";
 import "./notification-settings.css";
 
@@ -41,6 +44,7 @@ export default function NotificationPreferencesPage() {
   const workspaceId = context?.workspace.id ?? "";
   const workspaceName = context?.workspace.name ?? "your workspace";
   const queryClient = useQueryClient();
+  const delivery = useNotificationChannels(Boolean(workspaceId));
   const query = useQuery({
     queryKey: notificationPreferencesKey(workspaceId),
     queryFn: () => loadNotificationPreferences(workspaceId),
@@ -143,9 +147,10 @@ export default function NotificationPreferencesPage() {
       ) : null}
       {query.data ? (
         <form className="ns-form" onSubmit={submit} noValidate>
-          <Channels preferences={query.data} email={account?.email ?? null} workspaceName={workspaceName} />
+          <Channels preferences={query.data} email={account?.email ?? null} workspaceName={workspaceName} delivery={delivery} />
           <TopicTable
             preferences={query.data}
+            delivery={delivery}
             value={(topic, channel) => draft.get(`${topic.key}:${channel}`) ?? stored(topic, channel)}
             onToggle={toggle}
             disabled={mutation.isPending}
@@ -187,10 +192,12 @@ function Channels({
   preferences,
   email,
   workspaceName,
+  delivery,
 }: {
   readonly preferences: NotificationPreferences;
   readonly email: string | null;
   readonly workspaceName: string;
+  readonly delivery: NotificationChannelsConfig;
 }) {
   const { channels } = preferences;
   const emailState = !channels.email.workspace_enabled
@@ -199,16 +206,9 @@ function Channels({
       ? { text: "Add a sign-in email in Security to get email.", pill: <StatusPill>No address</StatusPill>, off: true }
       : channels.email.suppressed
         ? { text: `Emails to ${email} bounced. Change it in Security.`, pill: <StatusPill tone="warning">Paused</StatusPill>, off: true }
-        : notificationDelivery.email
+        : delivery.email.available
           ? { text: email, pill: <StatusPill tone="accent">On</StatusPill>, off: false }
           : { text: `${email}. Emails start soon; your choices below are kept.`, pill: <StatusPill>Coming soon</StatusPill>, off: false };
-  const pushState = !channels.push.workspace_enabled
-    ? { text: `${workspaceName} turned phone alerts off.`, pill: <StatusPill>Off</StatusPill>, off: true }
-    : notificationDelivery.push
-      ? channels.push.devices > 0
-        ? { text: `On for ${channels.push.devices === 1 ? "1 device" : `${channels.push.devices} devices`}.`, pill: <StatusPill tone="accent">On</StatusPill>, off: false }
-        : { text: "Not on any of your devices yet.", pill: <StatusPill>Off</StatusPill>, off: false }
-      : { text: "Alerts on your phone start soon; your choices below are kept.", pill: <StatusPill>Coming soon</StatusPill>, off: false };
   return (
     <>
       <h2 className="ns-h2" id="notification-channels-title">
@@ -221,9 +221,17 @@ function Channels({
         <ChannelRow icon={<Mail size={17} />} title="Email" control={emailState.pill} off={emailState.off}>
           {emailState.text}
         </ChannelRow>
-        <ChannelRow icon={<Smartphone size={17} />} title="Phone alerts" control={pushState.pill} off={pushState.off}>
-          {pushState.text}
-        </ChannelRow>
+        {!channels.push.workspace_enabled ? (
+          <ChannelRow icon={<Smartphone size={17} />} title="Phone alerts" control={<StatusPill>Off</StatusPill>} off>
+            {workspaceName} turned phone alerts off.
+          </ChannelRow>
+        ) : delivery.push.available ? (
+          <PhoneAlertsRow publicKey={delivery.push.public_key} devices={channels.push.devices} />
+        ) : (
+          <ChannelRow icon={<Smartphone size={17} />} title="Phone alerts" control={<StatusPill>Coming soon</StatusPill>}>
+            Alerts on your phone start soon; your choices below are kept.
+          </ChannelRow>
+        )}
         <ChannelRow icon={<MessageSquare size={17} />} title="Text messages" control={<StatusPill>Not available</StatusPill>} off>
           Not available yet.
         </ChannelRow>
@@ -232,13 +240,118 @@ function Channels({
   );
 }
 
+/**
+ * Phone alerts on this device (BILDIRIM-15): the browser holds the permission and the subscription, so
+ * the row says where this device stands and turns it on or off; the count names the person's others.
+ */
+function PhoneAlertsRow({ publicKey, devices }: { readonly publicKey: string; readonly devices: number }) {
+  const alerts = usePhoneAlerts();
+  const [steps, setSteps] = useState(false);
+  const opener = useRef<HTMLButtonElement | null>(null);
+  const others = Math.max(0, devices - (alerts.state === "on" ? 1 : 0));
+  const elsewhere = others === 0 ? "" : others === 1 ? " Also on 1 other device." : ` Also on ${others} other devices.`;
+  const computer = !/Android|iPhone|iPad|Mobile/.test(window.navigator.userAgent);
+  const icon = <Smartphone size={17} />;
+  let row;
+  switch (alerts.state) {
+    case null:
+      row = (
+        <ChannelRow icon={icon} title="Phone alerts" control={<StatusPill>Checking</StatusPill>}>
+          Checking this device.
+        </ChannelRow>
+      );
+      break;
+    case "unsupported":
+      row = (
+        <ChannelRow icon={icon} title="Phone alerts" control={<StatusPill>Not available</StatusPill>} off>
+          This browser can&rsquo;t show alerts.{elsewhere}
+        </ChannelRow>
+      );
+      break;
+    case "needs-install":
+      row = (
+        <ChannelRow
+          icon={icon}
+          title="Phone alerts"
+          control={
+            <Button
+              className="secondary-button"
+              onClick={(event) => {
+                opener.current = event.currentTarget;
+                setSteps(true);
+              }}
+            >
+              Show me how
+            </Button>
+          }
+        >
+          Add Newfork to your Home Screen to get alerts on this iPhone.{elsewhere}
+        </ChannelRow>
+      );
+      break;
+    case "blocked":
+      row = (
+        <ChannelRow icon={icon} title="Phone alerts" control={<StatusPill tone="warning">Blocked</StatusPill>} off>
+          Blocked in this browser&rsquo;s settings. Allow notifications for Newfork there to get alerts here.{elsewhere}
+        </ChannelRow>
+      );
+      break;
+    case "on":
+      row = (
+        <ChannelRow
+          icon={icon}
+          title="Phone alerts"
+          control={<Switch label="Phone alerts on this device" checked disabled={alerts.busy} onChange={() => void alerts.turnOff()} />}
+        >
+          On for this {computer ? "computer" : "phone"}.{elsewhere}
+        </ChannelRow>
+      );
+      break;
+    default:
+      row = (
+        <ChannelRow
+          icon={icon}
+          title="Phone alerts"
+          control={
+            <Button disabled={alerts.busy} onClick={() => void alerts.turnOn(publicKey)}>
+              Turn on
+            </Button>
+          }
+        >
+          Off on this device. Alerts pop up even when the app is closed.{elsewhere}
+        </ChannelRow>
+      );
+  }
+  return (
+    <>
+      {row}
+      {alerts.failed ? (
+        <p className="ns-inline-error" role="alert">
+          Phone alerts couldn&rsquo;t be changed on this device. Try again.
+        </p>
+      ) : null}
+      {steps ? (
+        <HomeScreenSteps
+          onClose={() => {
+            setSteps(false);
+            opener.current?.focus();
+          }}
+          onNotNow={() => setSteps(false)}
+        />
+      ) : null}
+    </>
+  );
+}
+
 function TopicTable({
   preferences,
+  delivery,
   value,
   onToggle,
   disabled,
 }: {
   readonly preferences: NotificationPreferences;
+  readonly delivery: NotificationChannelsConfig;
   readonly value: (topic: NotificationTopicPreference, channel: NotificationChoiceChannel) => boolean;
   readonly onToggle: (row: TopicRow, channel: NotificationChoiceChannel, on: boolean) => void;
   readonly disabled: boolean;
@@ -301,13 +414,13 @@ function TopicTable({
                   Account and security <StatusPill tone="accent" locked>Required</StatusPill>
                 </strong>
                 <span>
-                  {notificationDelivery.email
+                  {delivery.email.available
                     ? "Password and sign-in changes, your role and your access. Always by email."
                     : "Password and sign-in changes, your role and your access. Always in your Notifications list, and by email once emails start."}
                 </span>
               </th>
               <td>
-                {notificationDelivery.email ? (
+                {delivery.email.available ? (
                   <label className="ns-check">
                     <input type="checkbox" aria-label="Account and security by email, always on" checked disabled readOnly />
                   </label>
@@ -318,9 +431,16 @@ function TopicTable({
                 )}
               </td>
               <td>
-                <span className="ns-na" aria-label="Account and security by phone alerts, not sent">
-                  —
-                </span>
+                {delivery.push.available ? (
+                  // Required notices reach every device that takes phone alerts.
+                  <label className="ns-check">
+                    <input type="checkbox" aria-label="Account and security by phone alerts, always on" checked disabled readOnly />
+                  </label>
+                ) : (
+                  <span className="ns-na" aria-label="Account and security by phone alerts, not sent">
+                    —
+                  </span>
+                )}
               </td>
             </tr>
           </tbody>

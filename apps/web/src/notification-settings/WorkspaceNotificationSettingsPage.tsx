@@ -4,6 +4,7 @@ import type {
   NotificationWorkspaceSettingsInput,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
+import { useNotificationChannels } from "../phone-alerts/channels-data";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Bell, ChevronDown, Lock } from "lucide-react";
 import { useState, type FormEvent } from "react";
@@ -17,7 +18,6 @@ import { NoAccessState } from "../shell/NoAccessState";
 import {
   areaName,
   loadNotificationWorkspaceSettings,
-  notificationDelivery,
   notificationWorkspaceSettingsKey,
   saveNotificationWorkspaceSettings,
 } from "./notification-settings-data";
@@ -53,6 +53,7 @@ export default function WorkspaceNotificationSettingsPage() {
   const workspaceId = context?.workspace.id ?? "";
   const workspaceName = context?.workspace.name ?? "This workspace";
   const queryClient = useQueryClient();
+  const delivery = useNotificationChannels();
   const query = useQuery({
     queryKey: notificationWorkspaceSettingsKey(workspaceId),
     queryFn: () => loadNotificationWorkspaceSettings(workspaceId),
@@ -144,7 +145,7 @@ export default function WorkspaceNotificationSettingsPage() {
               Every notification lands in each person&rsquo;s Notifications list.
             </ChannelRow>
             <ChannelRow
-              title={<>Email{notificationDelivery.email ? null : <StatusPill>Coming soon</StatusPill>}</>}
+              title={<>Email{delivery.email.available ? null : <StatusPill>Coming soon</StatusPill>}</>}
               control={
                 <Switch
                   label="Email"
@@ -154,12 +155,12 @@ export default function WorkspaceNotificationSettingsPage() {
                 />
               }
             >
-              {notificationDelivery.email
+              {delivery.email.available
                 ? "People choose which ones they get. Required notices still go by email."
                 : "People choose which ones they get. Required notices still go by email. Emails start soon; this choice is kept."}
             </ChannelRow>
             <ChannelRow
-              title={<>Phone alerts{notificationDelivery.push ? null : <StatusPill>Coming soon</StatusPill>}</>}
+              title={<>Phone alerts{delivery.push.available ? null : <StatusPill>Coming soon</StatusPill>}</>}
               control={
                 <Switch
                   label="Phone alerts"
@@ -169,7 +170,7 @@ export default function WorkspaceNotificationSettingsPage() {
                 />
               }
             >
-              {notificationDelivery.push
+              {delivery.push.available
                 ? "Pop-up alerts on phones and computers. Each person turns them on for their own device."
                 : "Pop-up alerts on phones and computers. They start soon; this choice is kept."}
             </ChannelRow>
