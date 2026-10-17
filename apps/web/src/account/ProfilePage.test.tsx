@@ -231,6 +231,19 @@ describe("ProfilePage", () => {
       { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
   });
 
+  it("saves a removed photo alone while another required field is still empty", async () => {
+    account = { ...account, phone: null, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
+    renderProfile();
+    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    expect(screen.queryByText(/To save, fill in/)).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
+      { avatarObjectPath: null, avatarUrl: null }));
+    expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
+    expect(uploadAccountAvatar).not.toHaveBeenCalled();
+  });
+
   it("rejects unsupported files before opening crop or touching storage", () => {
     renderProfile();
     fireEvent.change(screen.getByLabelText("Choose profile photo"), { target: { files: [new File(["svg"], "photo.svg", { type: "image/svg+xml" })] } });

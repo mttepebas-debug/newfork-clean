@@ -93,16 +93,16 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   };
 }
 
-/**
- * Did the core refuse for good? Access ended there, access taken away while
- * the form was open (no longer a member, a 404), or the workspace is closed.
- * Trying again changes none of them.
- */
 /** A phone as typed or on file, comparable however it is written. */
 function normalizedOrRaw(phone: string): string {
   return toUsPhone(phone) ?? phone.trim();
 }
 
+/**
+ * Did the core refuse for good? Access ended there, access taken away while
+ * the form was open (no longer a member, a 404), or the workspace is closed.
+ * Trying again changes none of them.
+ */
 function accessEnded(cause: unknown): boolean {
   return (
     cause instanceof RequestError &&

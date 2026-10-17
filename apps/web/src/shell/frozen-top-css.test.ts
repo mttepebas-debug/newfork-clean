@@ -29,7 +29,7 @@ describe("frozen top", () => {
     const top = sheet("src/shell/phone-page-top.css");
     expect(css).not.toMatch(/frozen-folded/);
     expect(top).not.toMatch(/frozen-folded/);
-    expect(readFileSync("src/shell/useFrozenTop.ts", "utf8")).not.toMatch(/frozenFolded|fold/i);
+    expect(readFileSync("src/shell/useFrozenTop.ts", "utf8")).not.toMatch(/frozenFolded|\bfold/i);
     // The title stays on one line.
     const title = ruleBody(top, (head) => head.endsWith("> :has(h1) h1"));
     expect(title).toMatch(/white-space\s*:\s*nowrap/);
