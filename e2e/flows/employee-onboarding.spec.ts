@@ -114,6 +114,9 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   // Availability can wait: opened from the steps and skipped, back to Review.
   await steps.getByRole("button", { name: "Availability (optional)", exact: true }).click();
   await expect(invitee).toHaveURL(new RegExp(`${welcome}/availability$`));
+  // The step is the day-by-day week (Mert 2026-10-16), worded as a preference.
+  await expect(invitee.getByRole("heading", { name: "When do you prefer not to work?" })).toBeVisible();
+  await expect(invitee.getByRole("navigation", { name: "Days" }).getByRole("button")).toHaveCount(7);
   await invitee.getByRole("button", { name: "Skip for now" }).click();
   await expect(invitee).toHaveURL(new RegExp(`${welcome}/review$`));
 

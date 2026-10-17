@@ -77,7 +77,6 @@ test.describe("desktop: the heading and tabs stay where they are", () => {
     ["zeynep", "/app/settings/scheduling/conflicts", []],
     ["zeynep", "/account/security", [".account-sidebar"]],
     ["emre", "/app/employee-hub", [".eh-context-bar"]],
-    ["emre", "/app/employee-hub/my-availability", ['[role="tablist"]']],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, DESKTOP);
@@ -97,7 +96,6 @@ test.describe("phone: the heading folds to one line and stays on top", () => {
     ["zeynep", "/app/settings/scheduling", [".settings-rail"]],
     ["zeynep", "/account/security", [".account-sidebar"]],
     ["emre", "/app/employee-hub", []],
-    ["emre", "/app/employee-hub/my-availability", ['[role="tablist"]']],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, PHONE);
@@ -149,6 +147,55 @@ test.describe("lists scroll inside their frame while the heading stays", () => {
       expect(moved.area).toBeLessThanOrEqual(1);
       await expect(page.locator("h1").filter({ visible: true }).first()).toBeInViewport();
       if (size.width > 700) await expect.poll(() => topOf(page, "h1")).toBe(before);
+    });
+  }
+});
+
+// My Availability (Mert 2026-10-16, "A · Alt sayfa"): the heading and the
+// tabs stay; on a phone the seven days fit under them and nothing scrolls,
+// and a day's sheet fits too, at 390 x 844 and at 390 x 800.
+test.describe("My Availability", () => {
+  test("desktop: the heading and tabs stay where they are", async ({ browser }) => {
+    const page = await open(browser, "emre", DESKTOP);
+    await visit(page, "/app/employee-hub/my-availability");
+    await expect(page.getByRole("navigation", { name: "Days" })).toBeVisible();
+    const pinned = ["h1", '[role="tablist"]'];
+    const before = await Promise.all(pinned.map((selector) => topOf(page, selector)));
+    await scrollPage(page);
+    for (const [index, selector] of pinned.entries())
+      await expect.poll(() => topOf(page, selector), { message: selector }).toBe(before[index]);
+  });
+
+  for (const height of [844, 800]) {
+    test(`phone 390 x ${height}: the week and a day's sheet fit without scrolling`, async ({ browser }) => {
+      const page = await open(browser, "emre", { width: 390, height });
+      await visit(page, "/app/employee-hub/my-availability");
+      const days = page.locator(".dav-list > .dav-row");
+      await expect(days).toHaveCount(7);
+      const overflow = () =>
+        page.evaluate(() => {
+          const main = document.querySelector(".app-main")!;
+          return main.scrollHeight - main.clientHeight;
+        });
+      expect(await overflow()).toBeLessThanOrEqual(0);
+      await expect(page.locator("h1").filter({ visible: true }).first()).toBeInViewport();
+      await expect(page.getByRole("tablist", { name: "My availability" })).toBeInViewport();
+      await expect(days.last()).toBeInViewport({ ratio: 1 });
+      await days.nth(4).tap();
+      const sheet = page.getByRole("dialog", { name: "Friday" });
+      await expect(sheet).toBeVisible();
+      await sheet.getByRole("radio", { name: /^Some hours/ }).tap();
+      const fit = await sheet.evaluate((element) => ({
+        inside: element.scrollHeight - element.clientHeight,
+        bottom: Math.round(element.getBoundingClientRect().bottom),
+        top: Math.round(element.getBoundingClientRect().top),
+      }));
+      expect(fit.inside).toBeLessThanOrEqual(0);
+      expect(fit.top).toBeGreaterThanOrEqual(0);
+      expect(fit.bottom).toBeLessThanOrEqual(height);
+      await expect(sheet.getByRole("button", { name: "Save" })).toBeInViewport({ ratio: 1 });
+      await sheet.getByRole("button", { name: "Cancel" }).tap();
+      await expect(sheet).toBeHidden();
     });
   }
 });
