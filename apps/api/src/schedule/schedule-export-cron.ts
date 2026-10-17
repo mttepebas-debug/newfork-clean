@@ -322,12 +322,13 @@ export function createResendScheduleExportDelivery(input: {
   emailFrom: string;
 }): ScheduleExportDelivery {
   return {
-    send: (message) =>
-      sendResendEmail({
+    send: async (message) => {
+      await sendResendEmail({
         apiKey: input.resendApiKey,
         failure: "Resend rejected schedule export",
         message: { ...message, from: input.emailFrom },
-      }),
+      });
+    },
   };
 }
 

@@ -20,7 +20,7 @@ function build(options: { worker?: boolean; cronSecret?: string; webhookSecret?:
   const apply = vi.fn(async (_event: ResendEvent) => "delivered");
   registerNotificationEmailRoutes(app, {
     worker: options.worker === false ? null : { runBatch },
-    cronSecret: "cron-secret" in options ? options.cronSecret : "s",
+    cronSecret: "cronSecret" in options ? options.cronSecret : "s",
     webhookSecret: "webhookSecret" in options ? options.webhookSecret : webhookSecret,
     events: { apply },
     now: () => now,

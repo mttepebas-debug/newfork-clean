@@ -61,6 +61,9 @@ $$;
 
 -- (a) The claim ---------------------------------------------------------------------------------------------
 
+-- The channel opened an hour ago (in the product, when this migration was applied).
+update app_private.notification_email_channel set opened_at = now() - interval '1 hour';
+
 select pg_temp.notice('time_off.decided', 'ali', 'e:ali:1');
 select pg_temp.notice('time_off.decided', 'bea', 'e:bea:1');
 select pg_temp.notice('people.role_changed', 'can', 'e:can:1');
@@ -105,19 +108,19 @@ select pg_temp.claim(4);
 select is(array[pg_temp.state('e:ali:off'), pg_temp.state('e:bea:joined'), pg_temp.state('e:can:suppressed'), pg_temp.state('e:dee:gone')],
   array['skipped person_off', 'skipped owner_off', 'skipped suppressed', 'skipped not_member'],
   '(b) email turned off, type turned off, address suppressed, no longer a member: skipped, never sent');
-select is(pg_temp.claimed(4), array['e:bea:account', 'e:dee:ended'],
+select is(array(select x from unnest(pg_temp.claimed(4)) x order by 1), array['e:bea:account', 'e:dee:ended'],
   '(b) "your access ended" still goes to Dee, who is gone; Bea''s account notice goes too');
 select is((select item -> 'workspace_name' from claim_log where run = 4 and item ->> 'delivery_id' = pg_temp.delivery('e:bea:account')::text),
   'null'::jsonb, '(b) an account notice names no workspace');
 
 -- (c) Launch and freshness ----------------------------------------------------------------------------------
 
+delete from public.notification_preferences where user_id = pg_temp.u('ali');
 select pg_temp.notice('time_off.decided', 'ali', 'e:ali:early');
 update public.notification_deliveries set created_at = (select opened_at from app_private.notification_email_channel) - interval '1 minute'
 where id = pg_temp.delivery('e:ali:early');
 select pg_temp.notice('people.role_changed', 'bea', 'e:bea:stale');
 update public.person_notifications set created_at = now() - interval '25 hours' where event_key = 'e:bea:stale';
-delete from public.notification_preferences where user_id = pg_temp.u('ali');
 select is(pg_temp.claim(5), 0, '(c) nothing to send');
 select is(pg_temp.state('e:ali:early'), 'skipped before_launch', '(c) queued before the channel opened: skipped, never sent');
 select is(pg_temp.state('e:bea:stale'), 'dead stale', '(c) a required notice a day old is stale: not sent');

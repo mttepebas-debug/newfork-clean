@@ -89,6 +89,15 @@ import {
 } from "./communications/communication-service";
 import { registerMaintenanceRoutes } from "./maintenance/maintenance-routes";
 import { createMaintenanceWorker, type MaintenanceWorker } from "./maintenance/maintenance-worker";
+import {
+  createNotificationEmailEvents,
+  createNotificationEmailWorker,
+  type NotificationEmailWorker,
+} from "./notifications/email-worker";
+import {
+  registerNotificationEmailRoutes,
+  type NotificationEmailEvents,
+} from "./notifications/notification-email-routes";
 import { registerDocumentTypesRoutes } from "./settings/document-types-routes";
 import {
   createDocumentTypesService,
@@ -194,6 +203,13 @@ export interface BuildAppOptions {
   readonly maintenanceWorker?: MaintenanceWorker | null;
   readonly maintenanceCron?: {
     readonly cronSecret?: string;
+  };
+  /** BILDIRIM-14: the email channel's cron worker and Resend's webhook. */
+  readonly notificationEmail?: {
+    readonly worker?: NotificationEmailWorker | null;
+    readonly cronSecret?: string;
+    readonly webhookSecret?: string;
+    readonly events?: NotificationEmailEvents | null;
   };
 }
 
@@ -806,6 +822,18 @@ export function buildApp(options: BuildAppOptions = {}) {
     worker: maintenanceWorker,
     cronSecret: options.maintenanceCron?.cronSecret ?? process.env.CRON_SECRET,
   });
+  registerNotificationEmailRoutes(app, {
+    worker:
+      options.notificationEmail?.worker === undefined
+        ? createNotificationEmailWorkerFromEnvironment()
+        : options.notificationEmail.worker,
+    cronSecret: options.notificationEmail?.cronSecret ?? process.env.CRON_SECRET,
+    webhookSecret: options.notificationEmail?.webhookSecret ?? process.env.RESEND_WEBHOOK_SECRET,
+    events:
+      options.notificationEmail?.events === undefined
+        ? createNotificationEmailEventsFromEnvironment()
+        : options.notificationEmail.events,
+  });
   registerScheduleRequestsRoutes(app, {
     service: scheduleRequestsService,
     contextResolver,
@@ -1124,6 +1152,29 @@ function createSignatureSettingsServiceFromEnvironment(): SignatureSettingsServi
   return url && serviceRoleKey
     ? createSignatureSettingsService({ url, serviceRoleKey })
     : null;
+}
+
+// The links go where the invitation and password reset links go (APP_URL); the sender is the one the
+// other emails use. Without the Resend key or a sender the cron route answers 503 and claims nothing.
+function createNotificationEmailWorkerFromEnvironment(): NotificationEmailWorker | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const resendApiKey = process.env.RESEND_API_KEY;
+  const from = process.env.EMPLOYEE_INVITE_FROM;
+  if (!url || !serviceRoleKey || !resendApiKey || !from) return null;
+  return createNotificationEmailWorker({
+    url,
+    serviceRoleKey,
+    resendApiKey,
+    from,
+    appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555",
+  });
+}
+
+function createNotificationEmailEventsFromEnvironment(): NotificationEmailEvents | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  return url && serviceRoleKey ? createNotificationEmailEvents({ url, serviceRoleKey }) : null;
 }
 
 function createMaintenanceWorkerFromEnvironment(): MaintenanceWorker | null {

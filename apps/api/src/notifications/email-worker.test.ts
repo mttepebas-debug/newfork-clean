@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ResendSendError } from "../email/resend-email";
+import { ResendSendError, type sendResendEmail } from "../email/resend-email";
 import type { NotificationEmailItem } from "./email-template";
 import { createNotificationEmailWorkerWithClient, type NotificationEmailLog } from "./email-worker";
 
@@ -80,14 +80,15 @@ function worker(items: NotificationEmailItem[], send: ReturnType<typeof vi.fn>, 
 
 describe("notification email worker", () => {
   it("claims a batch, sends each with its own key and both parts, and marks it sent", async () => {
-    const send = vi.fn(async () => ({ id: "re_1" }));
+    const send = vi.fn(async (_input: Parameters<typeof sendResendEmail>[0]) => ({ id: "re_1" }));
     const { w, calls, finished, pause } = worker([item(1), item(2)], send);
     const { log } = capturingLog();
     const result = await w.runBatch(log);
 
     expect(calls[0]).toEqual({ fn: "claim_notification_emails_service", args: { target_batch_size: 10 } });
     expect(send).toHaveBeenCalledTimes(2);
-    const first = send.mock.calls[0][0];
+    const first = send.mock.calls[0]?.[0];
+    if (!first) throw new Error("nothing was sent");
     expect(first.apiKey).toBe(key);
     expect(first.message).toMatchObject({
       from: "Newfork <no-reply@notify.example.test>",

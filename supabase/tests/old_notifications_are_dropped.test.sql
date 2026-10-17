@@ -57,7 +57,7 @@ select is(array(select name from dropped where kind = 'table' and to_regclass(na
 select is(array(select c.relname::text from pg_class c
                 where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and c.relkind in ('r', 'v', 'm', 'p') and c.relname ~ 'notif' order by 1),
-  array['notification_deliveries', 'notification_email_suppressions', 'notification_preferences',
+  array['notification_deliveries', 'notification_email_channel', 'notification_email_suppressions', 'notification_preferences',
         'notification_push_subscriptions', 'notification_sms_consents', 'notification_sms_opt_outs', 'notification_topics',
         'notification_types',
         'notification_workspace_muted_types', 'notification_workspace_settings', 'person_notifications'],
@@ -68,7 +68,8 @@ select is(array(select p.proname::text from pg_proc p join dropped d on d.kind =
 select is(array(select p.proname::text from pg_proc p
                 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and p.proname ~ '(notif|notice)' order by 1),
-  array['get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
+  array['apply_notification_email_event_service', 'claim_notification_emails_service', 'finish_notification_email_service',
+        'get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
         'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_resolve', 'notification_route',
         'notify', 'notify_account_security', 'notify_deciders', 'notify_holders', 'notify_rows', 'notify_workspace_closing',
         'purge_expired_notifications',
@@ -81,7 +82,8 @@ select is((select count(*)::integer from pg_policies where schemaname = 'realtim
 select is(array(select policyname::text from pg_policies where policyname ~ 'notif' order by 1),
   array['people hear their own notification signals'], '(a) no policy is named for notifications but the new system''s');
 select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
-  array['notification-retention'], '(a) no scheduled job sends notifications; the new system''s only deletes expired ones');
+  array['notification-email', 'notification-retention'],
+  '(a) no scheduled job sends notifications but the new system''s: its email worker (BILDIRIM-14) and the one that deletes expired ones');
 -- The domain work they served is still here.
 select ok(to_regprocedure('public.record_account_security_event_service(uuid, text, jsonb)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 504, last: 20261017140000_access_and_ownership_notices.sql
--- fingerprint: sha256:9bbbc76bb3144ad06bf0ac06db19d1140142e7959f2b04855edd1dfc123abbe1
+-- migrations: 505, last: 20261017170000_notification_email_channel.sql
+-- fingerprint: sha256:e30e76a44c88755b9eacae8df3c1158512cacae197f1236d25a94e4a109384ca
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -9373,6 +9373,61 @@ $$;
 ALTER FUNCTION "public"."add_schedule_pending_op_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_session_id" "uuid", "target_op_type" "text", "target_shift_id" "uuid", "target_payload" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."apply_notification_email_event_service"("target_type" "text", "target_provider_id" "text", "target_email" "text", "target_bounce_type" "text") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  found_row public.notification_deliveries;
+  address text := lower(btrim(coalesce(target_email, '')));
+  next_status text;
+  suppress text;
+begin
+  select * into found_row from public.notification_deliveries d
+  where d.provider_message_id = target_provider_id and d.channel = 'email' for update;
+  if not found then
+    return 'ignored';
+  end if;
+  case target_type
+    when 'email.delivered' then
+      if found_row.status <> 'sent' then
+        return found_row.status;
+      end if;
+      next_status := 'delivered';
+    when 'email.bounced' then
+      if coalesce(target_bounce_type, '') <> 'Permanent' then
+        return 'ignored';
+      end if;
+      next_status := 'bounced';
+      suppress := 'bounce';
+    when 'email.complained' then
+      next_status := 'complained';
+      suppress := 'complaint';
+    when 'email.suppressed' then
+      next_status := 'suppressed';
+      suppress := 'bounce';
+    when 'email.failed' then
+      next_status := 'dead';
+    else
+      return 'ignored';
+  end case;
+  update public.notification_deliveries set status = next_status,
+    delivered_at = case when next_status = 'delivered' then coalesce(delivered_at, now()) else delivered_at end,
+    last_error = case when next_status = 'dead' then 'provider_failed' else last_error end,
+    updated_at = now()
+  where id = found_row.id;
+  if suppress is not null and address ~ '^[^@[:space:]]+@[^@[:space:]]+$' then
+    insert into public.notification_email_suppressions (email, reason) values (address, suppress)
+    on conflict (email) do update set reason = excluded.reason, suppressed_at = now(), cleared_at = null;
+  end if;
+  return next_status;
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."apply_notification_email_event_service"("target_type" "text", "target_provider_id" "text", "target_email" "text", "target_bounce_type" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."apply_policy_definition_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid", "expected_revision" integer, "expected_preview_token" "text", "apply_reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -10760,6 +10815,97 @@ $_$;
 
 
 ALTER FUNCTION "public"."claim_account_recovery_resend_service"("address_digest" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."claim_notification_emails_service"("target_batch_size" integer) RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  channel app_private.notification_email_channel;
+  sent_today integer;
+  row record;
+  route record;
+  member boolean;
+  given jsonb := '[]'::jsonb;
+  tomorrow timestamptz := (date_trunc('day', now() at time zone 'UTC') + interval '1 day') at time zone 'UTC';
+begin
+  if target_batch_size is null or target_batch_size < 1 or target_batch_size > 100 then
+    raise exception 'a batch is 1 to 100' using errcode = '22023', hint = 'notifications.batch_size';
+  end if;
+  select * into channel from app_private.notification_email_channel;
+  if not found then
+    return given;
+  end if;
+  select count(*)::integer into sent_today from public.notification_deliveries d
+  where d.channel = 'email' and d.sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+
+  for row in
+    select d.id, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
+      n.created_at noticed_at, t.level, t.to_former_members, p.name topic
+    from public.notification_deliveries d
+    join public.person_notifications n on n.id = d.notification_id
+    join public.notification_types t on t.key = n.type_key
+    join public.notification_topics p on p.key = t.topic_key
+    where d.channel = 'email'
+      and ((d.status in ('queued', 'failed') and d.next_attempt_at <= now())
+           or (d.status = 'sending' and d.lease_expires_at < now()))
+    order by (t.level = 'required') desc, d.created_at, d.id
+    limit target_batch_size
+    for update of d skip locked
+  loop
+    if row.queued_at < channel.opened_at then
+      update public.notification_deliveries set status = 'skipped', last_error = 'before_launch', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.noticed_at < now() - interval '24 hours' then
+      update public.notification_deliveries set status = 'dead', last_error = 'stale', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    member := row.workspace_id is null or exists (
+      select 1 from public.workspace_memberships m
+      where m.workspace_id = row.workspace_id and m.user_id = row.user_id
+        and (m.status in ('active', 'pending_activation') or (row.to_former_members and m.status in ('suspended', 'removed'))));
+    if not member then
+      update public.notification_deliveries set status = 'skipped', last_error = 'not_member', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    select r.sends, r.reason into route from app_private.notification_route(row.type_key, row.workspace_id, row.user_id) r
+    where r.channel = 'email';
+    if not coalesce(route.sends, false) then
+      update public.notification_deliveries set status = 'skipped', last_error = coalesce(route.reason, 'no_route'),
+        lease_expires_at = null, updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.level <> 'required' and channel.daily_cap is not null and sent_today >= channel.daily_cap then
+      update public.notification_deliveries set status = 'queued', next_attempt_at = tomorrow, lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    update public.notification_deliveries set status = 'sending', attempts = attempts + 1,
+      lease_expires_at = now() + interval '2 minutes', updated_at = now() where id = row.id;
+    sent_today := sent_today + 1;
+    given := given || jsonb_build_array(jsonb_build_object(
+      'delivery_id', row.id,
+      'to', (select lower(u.email) from auth.users u where u.id = row.user_id),
+      'subject', row.title,
+      'title', row.title,
+      'body', row.body,
+      'url', row.url,
+      'workspace_name', (select w.name from public.workspaces w where w.id = row.workspace_id),
+      'level', row.level,
+      'topic', row.topic,
+      'idempotency_key', 'notification-delivery/' || row.id::text));
+  end loop;
+  return given;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."claim_notification_emails_service"("target_batch_size" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."claim_password_reset_send_service"("email_digest" "text", "address_digest" "text") RETURNS "text"
@@ -12418,6 +12564,54 @@ $$;
 
 
 ALTER FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  found_row public.notification_deliveries;
+begin
+  if target_outcome is null or target_outcome not in ('sent', 'retry', 'dead', 'released') then
+    raise exception 'an outcome is sent, retry, dead or released' using errcode = '22023', hint = 'notifications.outcome';
+  end if;
+  if target_error is not null and target_error !~ '^[a-z0-9_]{1,40}$' then
+    raise exception 'an error is a short code' using errcode = '22023', hint = 'notifications.error_code';
+  end if;
+  if target_provider_id is not null and char_length(target_provider_id) not between 1 and 200 then
+    raise exception 'a provider id is 1 to 200 characters' using errcode = '22023', hint = 'notifications.provider_id';
+  end if;
+  select * into found_row from public.notification_deliveries d where d.id = target_delivery and d.channel = 'email' for update;
+  if not found then
+    return null;
+  end if;
+  -- Only a row being sent is finished: a late answer never undoes what came after it.
+  if found_row.status <> 'sending' then
+    return found_row.status;
+  end if;
+  update public.notification_deliveries d set
+    status = case target_outcome
+      when 'sent' then 'sent'
+      when 'dead' then 'dead'
+      when 'released' then case when d.attempts > 1 then 'failed' else 'queued' end
+      else case when d.attempts >= 5 then 'dead' else 'failed' end end,
+    attempts = case when target_outcome = 'released' then greatest(d.attempts - 1, 0) else d.attempts end,
+    next_attempt_at = case when target_outcome = 'retry' and d.attempts < 5
+      then now() + make_interval(mins => (2 ^ (d.attempts - 1))::integer) else now() end,
+    provider_message_id = case when target_outcome = 'sent' then target_provider_id else d.provider_message_id end,
+    sent_at = case when target_outcome = 'sent' then now() else d.sent_at end,
+    last_error = case when target_outcome = 'sent' then null when target_outcome = 'released' then d.last_error else target_error end,
+    lease_expires_at = null,
+    updated_at = now()
+  where d.id = target_delivery
+  returning d.status into found_row.status;
+  return found_row.status;
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_account_deletion_blockers_service"("actor_user_id" "uuid") RETURNS "jsonb"
@@ -27854,6 +28048,18 @@ UNION ALL
 ALTER VIEW "app_private"."lifecycle_definition" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."notification_email_channel" (
+    "only_row" boolean DEFAULT true NOT NULL,
+    "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "daily_cap" integer DEFAULT 100,
+    CONSTRAINT "notification_email_channel_daily_cap_check" CHECK ((("daily_cap" IS NULL) OR ("daily_cap" > 0))),
+    CONSTRAINT "notification_email_channel_only_row_check" CHECK ("only_row")
+);
+
+
+ALTER TABLE "app_private"."notification_email_channel" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "app_private"."role_permission_dependencies" (
     "permission_key" "text" NOT NULL,
     "required_key" "text" NOT NULL
@@ -28654,7 +28860,7 @@ CREATE TABLE IF NOT EXISTS "public"."notification_deliveries" (
     CONSTRAINT "notification_deliveries_last_error_check" CHECK (("char_length"("last_error") <= 2000)),
     CONSTRAINT "notification_deliveries_provider_message_id_check" CHECK (("char_length"("provider_message_id") <= 200)),
     CONSTRAINT "notification_deliveries_reason_check" CHECK (("reason" ~ '^[a-z_]+$'::"text")),
-    CONSTRAINT "notification_deliveries_status_check" CHECK (("status" = ANY (ARRAY['queued'::"text", 'sending'::"text", 'sent'::"text", 'delivered'::"text", 'failed'::"text", 'dead'::"text", 'bounced'::"text", 'complained'::"text", 'suppressed'::"text"])))
+    CONSTRAINT "notification_deliveries_status_check" CHECK (("status" = ANY (ARRAY['queued'::"text", 'sending'::"text", 'sent'::"text", 'delivered'::"text", 'failed'::"text", 'dead'::"text", 'bounced'::"text", 'complained'::"text", 'suppressed'::"text", 'skipped'::"text"])))
 );
 
 
@@ -29846,6 +30052,11 @@ ALTER TABLE ONLY "app_private"."authz_settings"
 
 
 
+ALTER TABLE ONLY "app_private"."notification_email_channel"
+    ADD CONSTRAINT "notification_email_channel_pkey" PRIMARY KEY ("only_row");
+
+
+
 ALTER TABLE ONLY "app_private"."role_permission_dependencies"
     ADD CONSTRAINT "role_permission_dependencies_pkey" PRIMARY KEY ("permission_key", "required_key");
 
@@ -31020,6 +31231,10 @@ CREATE UNIQUE INDEX "locations_workspace_short_name" ON "public"."locations" USI
 
 
 CREATE INDEX "notification_deliveries_due" ON "public"."notification_deliveries" USING "btree" ("next_attempt_at") WHERE ("status" = ANY (ARRAY['queued'::"text", 'failed'::"text"]));
+
+
+
+CREATE INDEX "notification_deliveries_provider_message" ON "public"."notification_deliveries" USING "btree" ("provider_message_id") WHERE ("provider_message_id" IS NOT NULL);
 
 
 
@@ -34828,6 +35043,11 @@ GRANT ALL ON FUNCTION "public"."add_schedule_pending_op_service"("actor_user_id"
 
 
 
+REVOKE ALL ON FUNCTION "public"."apply_notification_email_event_service"("target_type" "text", "target_provider_id" "text", "target_email" "text", "target_bounce_type" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."apply_notification_email_event_service"("target_type" "text", "target_provider_id" "text", "target_email" "text", "target_bounce_type" "text") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."apply_policy_definition_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid", "expected_revision" integer, "expected_preview_token" "text", "apply_reason" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."apply_policy_definition_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_version_id" "uuid", "expected_revision" integer, "expected_preview_token" "text", "apply_reason" "text") TO "service_role";
 
@@ -34973,6 +35193,11 @@ GRANT ALL ON FUNCTION "public"."claim_account_deletion_work_service"("target_bat
 
 REVOKE ALL ON FUNCTION "public"."claim_account_recovery_resend_service"("address_digest" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."claim_account_recovery_resend_service"("address_digest" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."claim_notification_emails_service"("target_batch_size" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."claim_notification_emails_service"("target_batch_size" integer) TO "service_role";
 
 
 
@@ -35175,6 +35400,11 @@ GRANT ALL ON FUNCTION "public"."finalize_account_deletion_service"("target_reque
 
 REVOKE ALL ON FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."finalize_claimed_account_deletion_service"("target_request_id" "uuid", "target_lease_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."finish_notification_email_service"("target_delivery" "uuid", "target_outcome" "text", "target_provider_id" "text", "target_error" "text") TO "service_role";
 
 
 
