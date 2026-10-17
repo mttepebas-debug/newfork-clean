@@ -35,18 +35,13 @@ describe("several unavailable hours a day", () => {
   });
 });
 
-// C2.7: "Add hours" adds another range after the last one, up to 12 a day.
+// "Add hours" adds the day's one range (Mert 2026-10-16, "kural da 1'e insin").
 describe("adding hours to a day", () => {
-  it("adds a range after the last one", () => {
+  it("adds no second range once the day has one", () => {
     const value = emptyWeeklyPreference("time_range");
     value.days[1]!.ranges = [{ start: "09:00", end: "14:00" }];
-    const onChange = vi.fn();
-    render(<WeeklyUnavailableEditor value={value} shiftTypes={[]} onChange={onChange} />);
-    fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
-    expect(onChange.mock.calls[0]![0].days[1].ranges).toEqual([
-      { start: "09:00", end: "14:00" },
-      { start: "15:00", end: "16:00" },
-    ]);
+    render(<WeeklyUnavailableEditor value={value} shiftTypes={[]} onChange={vi.fn()} />);
+    expect(screen.queryByRole("button", { name: "Add hours on Monday" })).toBeNull();
   });
   it("adds the first range on an empty day", () => {
     const onChange = vi.fn();
@@ -54,14 +49,11 @@ describe("adding hours to a day", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     expect(onChange.mock.calls[0]![0].days[1].ranges).toEqual([{ start: "09:00", end: "17:00" }]);
   });
-  it("offers no more hours when the day is full or has 12 ranges", () => {
+  it("offers hours again once the day's range is removed", () => {
     const value = emptyWeeklyPreference("time_range");
     value.days[1]!.ranges = [{ start: "17:00", end: "24:00" }];
-    value.days[2]!.ranges = Array.from({ length: 12 }, (_, index) => ({
-      start: `${String(index).padStart(2, "0")}:00`, end: `${String(index).padStart(2, "0")}:30` }));
     render(<WeeklyUnavailableEditor value={value} shiftTypes={[]} onChange={vi.fn()} />);
     expect(screen.queryByRole("button", { name: "Add hours on Monday" })).toBeNull();
-    expect(screen.queryByRole("button", { name: "Add hours on Tuesday" })).toBeNull();
     expect(screen.getByRole("button", { name: "Add hours on Wednesday" })).toBeTruthy();
   });
 });
@@ -106,7 +98,9 @@ describe("focus while editing hours", () => {
   });
   it("moves to the new range's start after Add hours", () => {
     render(<Editor />);
+    fireEvent.click(screen.getByRole("button", { name: "Remove Monday hours 2" }));
+    fireEvent.click(screen.getByRole("button", { name: "Remove Monday hours" }));
     fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
-    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Monday unavailable 3 start" }));
+    expect(document.activeElement).toBe(screen.getByRole("textbox", { name: "Monday unavailable start" }));
   });
 });

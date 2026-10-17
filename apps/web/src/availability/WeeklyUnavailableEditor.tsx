@@ -21,10 +21,6 @@ const weekdays = [
   "Saturday",
 ];
 const displayDays = [1, 2, 3, 4, 5, 6, 0];
-const clockMinutes = (value: string) =>
-  Number(value.slice(0, 2)) * 60 + Number(value.slice(3, 5));
-const clock = (minutes: number) =>
-  `${String(Math.floor(minutes / 60)).padStart(2, "0")}:${String(minutes % 60).padStart(2, "0")}`;
 
 export function WeeklyUnavailableEditor({
   value,
@@ -99,14 +95,10 @@ export function WeeklyUnavailableEditor({
         : { shift_type_ids: next },
     );
   };
-  // C2.7: another range starts an hour after the last one; at most 12 a day.
-  const nextRange = (row: WeeklyPreferenceDay) => {
-    const last = row.ranges.at(-1);
-    if (!last) return { start: "09:00", end: "17:00" };
-    const start = clockMinutes(last.end) + 60;
-    if (row.ranges.length >= 12 || start >= 1440) return null;
-    return { start: clock(start), end: clock(Math.min(start + 60, 1440)) };
-  };
+  // One range a day (Mert 2026-10-16, "kural da 1'e insin"); a saved day with
+  // more (a mode change) can only lose ranges here.
+  const nextRange = (row: WeeklyPreferenceDay) =>
+    row.ranges.length ? null : { start: "09:00", end: "17:00" };
   const savedTypes = new Set(value.days.flatMap((day) => day.shift_type_ids));
   const options = shiftTypes.filter(
     (type) => type.selectable || savedTypes.has(type.id),

@@ -77,11 +77,10 @@ function model(
     ],
   };
 }
-function setup(data = model(), audience: "employee" | "manager" = "manager") {
+function setup(data = model()) {
   const onSave = vi.fn(async (command: WeeklyPreferenceSave) => {
     const next = structuredClone(data);
-    const record =
-      command.source === "employee" ? next.employee : next.manager!;
+    const record = next.manager!;
     record.preference = command.preference;
     record.revision += 1;
     record.submitted = true;
@@ -92,25 +91,13 @@ function setup(data = model(), audience: "employee" | "manager" = "manager") {
     return next;
   });
   const result = render(
-    <WeeklyPreferencesForm model={data} audience={audience} onSave={onSave} />,
+    <WeeklyPreferencesForm model={data} audience="manager" onSave={onSave} />,
   );
-  if (audience === "manager")
-    fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
+  fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
   return { ...result, onSave };
 }
 
 describe("weekly preference form", () => {
-  // M5: a save decides nothing about pending requests; nothing is asked first.
-  it("saves straight away, with no request decisions", async () => {
-    const data = model();
-    const onSave = vi.fn().mockResolvedValue(data);
-    render(<WeeklyPreferencesForm model={data} audience="employee" onSave={onSave} />);
-    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(onSave.mock.calls[0]![0]).not.toHaveProperty("decisions");
-  });
   it("removes private draft notes when manager access disappears", () => {
     const data = model();
     const { rerender, onSave } = setup(data);
@@ -167,36 +154,6 @@ describe("weekly preference form", () => {
       <WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />,
     );
     expect(screen.getByRole("tab", { name: "Manager reminders" })).toBeTruthy();
-  });
-
-  it("tells the employee in one sentence that availability is a preference (BL-186)", () => {
-    const view = render(
-      <WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />,
-    );
-    const text = (view.container.querySelector(".weekly-preferences-explainer")?.textContent ?? "").replace(/\s+/g, " ").trim();
-    expect(text).toBe("Availability is a preference, not a guarantee: a manager can still schedule you when you've marked yourself unavailable.");
-    view.unmount();
-    const onboarding = render(
-      <WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} wizard />,
-    );
-    expect(onboarding.container.querySelector(".weekly-preferences-explainer")).toBeNull();
-    onboarding.unmount();
-    render(<WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />);
-    expect(document.querySelector(".weekly-preferences-explainer")).toBeNull();
-  });
-
-  it("can submit a completely available week without making artificial edits", async () => {
-    const data = model();
-    data.employee.submitted = false;
-    data.employee.revision = 0;
-    const { onSave } = setup(data, "employee");
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
-    expect(onSave.mock.calls[0]![0].preference).toEqual(
-      emptyWeeklyPreference("shift_type"),
-    );
-    await screen.findByText("Saved");
-    expect(screen.getByText("Submitted")).toBeTruthy();
   });
 
   it("copies the employee week exactly, replacing selections but keeping notes", async () => {
@@ -403,10 +360,11 @@ describe("weekly preference form", () => {
     render(
       <WeeklyPreferencesForm
         model={model()}
-        audience="employee"
+        audience="manager"
         onSave={onSave}
       />,
     );
+    fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Monday Dinner unavailable" }),
     );
@@ -438,11 +396,12 @@ describe("weekly preference form", () => {
     render(
       <WeeklyPreferencesForm
         model={model()}
-        audience="employee"
+        audience="manager"
         onSave={onSave}
         onReload={vi.fn()}
       />,
     );
+    fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
     fireEvent.click(
       screen.getByRole("button", { name: "Monday Dinner unavailable" }),
     );
@@ -456,7 +415,7 @@ describe("weekly preference form", () => {
   });
 
   it("rejects unfinished time input and saves 24:00 as a valid end", async () => {
-    const { onSave } = setup(model("time_range"), "employee");
+    const { onSave } = setup(model("time_range"));
     fireEvent.click(screen.getByRole("button", { name: "Add hours on Monday" }));
     fireEvent.change(
       screen.getByRole("textbox", { name: "Monday unavailable start" }),
@@ -476,15 +435,14 @@ describe("weekly preference form", () => {
       start: "23:00",
       end: "24:00",
     }]);
-    expect(onSave.mock.calls[0]![0]).not.toHaveProperty("notes");
   });
 
   it("shows current default times and lets a previously selected archived type be removed", () => {
     const data = model();
     data.shift_types[0]!.archived = true;
     data.shift_types[0]!.selectable = false;
-    data.employee.preference.days[1]!.shift_type_ids = [typeId];
-    setup(data, "employee");
+    data.manager!.preference.days[1]!.shift_type_ids = [typeId];
+    setup(data);
     const option = screen.getByRole("button", {
       name: "Monday Dinner unavailable",
     });
@@ -496,26 +454,9 @@ describe("weekly preference form", () => {
   });
 });
 
-// C2.3, P26: the employee's own week asks before unsaved hours are lost; the
-// Employees drawer (a manager's view) leaves at once (K7).
+// K7: the Employees drawer (a manager's view) leaves at once; the employee's
+// own week asks (MyAvailabilityForm.test.tsx).
 describe("unsaved changes", () => {
-  it("asks before an employee leaves an unsaved week, and discards on request", async () => {
-    render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
-    fireEvent.click(screen.getByRole("button", { name: "Monday Dinner unavailable" }));
-    const navigate = vi.fn();
-    act(() => requestAppNavigation(navigate));
-    const dialog = await screen.findByRole("alertdialog", { name: "Discard availability changes?" });
-    expect(dialog.textContent).toContain("Your unsaved hours will be lost.");
-    expect(navigate).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
-    expect(navigate).toHaveBeenCalledOnce();
-  });
-  it("lets an employee leave a saved week without asking", () => {
-    render(<WeeklyPreferencesForm model={model()} audience="employee" onSave={vi.fn()} />);
-    const navigate = vi.fn();
-    act(() => requestAppNavigation(navigate));
-    expect(navigate).toHaveBeenCalledOnce();
-  });
   it("never asks in the manager's drawer", () => {
     render(<WeeklyPreferencesForm model={model()} audience="manager" onSave={vi.fn()} />);
     fireEvent.click(screen.getByRole("tab", { name: /reminder|note/i }));

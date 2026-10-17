@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState } from "react";
 import { Copy, RotateCcw, Save, ShieldCheck, Trash2 } from "lucide-react";
 import {
   emptyWeeklyPreference,
@@ -8,19 +8,17 @@ import {
   type WeeklyPreferenceSave,
 } from "@newfork/shared";
 import { WeeklyUnavailableEditor } from "./WeeklyUnavailableEditor";
-import { useAvailabilityNavigationGuard } from "./availability-navigation";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 
+// The Employees drawer (a manager's view): the employee's week read-only and
+// the manager's own reminders. The employee writes their week in
+// MyAvailabilityForm (M2); the drawer turns read-only next (AVAIL-GUN-3).
 type Props = {
   model: WeeklyPreferenceRead;
-  audience: "employee" | "manager";
+  audience: "manager";
   // M5: a save decides nothing about pending requests; nothing to review first.
   onSave: (command: WeeklyPreferenceSave) => Promise<WeeklyPreferenceRead>;
-  /** In onboarding: there are no assigned shifts yet and no time off to request. */
-  wizard?: boolean;
-  /** A step's way on, shown after Save in the same bar (one sticky bar). */
-  extraAction?: ReactNode;
   /** BL-797: fetches the week someone saved first; Reload waits for it. */
   onReload?: () => Promise<WeeklyPreferenceRead | undefined>;
 };
@@ -37,14 +35,7 @@ export function WeeklyPreferencesForm(props: Props) {
   );
 }
 
-function PreferenceForm({
-  model,
-  audience,
-  onSave,
-  wizard = false,
-  extraAction,
-  onReload,
-}: Props) {
+function PreferenceForm({ model, audience, onSave, onReload }: Props) {
   const manager = audience === "manager";
   // No reminder data (the person is a manager+, or the reader may not see
   // notes): the manager view shows only the employee's week, no reminder tab.
@@ -178,14 +169,7 @@ function PreferenceForm({
     />
   );
 
-  // P26, C2.3: the employee's own week (My availability, onboarding) asks
-  // before unsaved hours are lost; the Employees drawer never asks (K7).
-  const leaveDialog = useAvailabilityNavigationGuard({
-    dirty: !manager && dirty,
-    busy: !manager && saving,
-    onDiscard: () => reset(baseline),
-  });
-
+  // The Employees drawer never asks before leaving (K7).
   return (
     <section
       className="weekly-preferences-panel"
@@ -197,7 +181,6 @@ function PreferenceForm({
             : "Weekly availability"
       }
     >
-      {leaveDialog}
       {reminders && (
         <div
           role="tablist"
@@ -288,12 +271,6 @@ function PreferenceForm({
                 </span>
               )}
             </div>
-            {!manager && !wizard && (
-              <p className="weekly-preferences-explainer">
-                Availability is a preference, not a guarantee: a manager can
-                still schedule you when you've marked yourself unavailable.
-              </p>
-            )}
             {manager && (
               <div className="weekly-preferences-toolbar">
                 <span>
@@ -359,13 +336,6 @@ function PreferenceForm({
       </div>
       {editing && (
         <footer className="weekly-preferences-footer">
-          {!manager && (
-            <p>
-              {wizard
-                ? "You can change this later from your own availability page."
-                : "Changes apply immediately and do not change assigned shifts. For temporary changes, request time off."}
-            </p>
-          )}
           {error && (
             <p className="weekly-preferences-error" role="alert">
               {error}
@@ -427,7 +397,6 @@ function PreferenceForm({
               <Save size={14} />
               Save
             </button>
-            {extraAction}
           </div>
         </footer>
       )}

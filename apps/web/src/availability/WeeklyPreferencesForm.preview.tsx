@@ -7,6 +7,7 @@ import {
   type WeeklyPreferenceSettingsRead,
 } from "@newfork/shared";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { MyAvailabilityForm } from "./MyAvailabilityForm";
 import { WeeklyPreferenceSettings } from "./WeeklyPreferenceSettings";
 import { MemoryRouter } from "react-router";
 import { PublishPreflightPanel } from "../schedule/components/PublishPreflightPanel";
@@ -144,12 +145,10 @@ function Preview() {
             }}
           />
         </MemoryRouter>
+      ) : audience === "employee" ? (
+        <MyAvailabilityForm model={model} onSave={save} wizard={params.has("onboarding")} />
       ) : (
-        <WeeklyPreferencesForm
-          model={model}
-          audience={audience}
-          onSave={save}
-        />
+        <WeeklyPreferencesForm model={model} audience="manager" onSave={save} />
       )}
     </main>
   );

@@ -94,6 +94,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
     if (!dirty && !inFlight.current) reset(latestModel);
     // Keyed on `model` only: the revision the first edit read must survive
     // re-renders for optimistic concurrency.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [model]);
   useEffect(() => {
     if (!flash.length) return;
