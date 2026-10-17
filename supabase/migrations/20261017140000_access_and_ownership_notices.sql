@@ -5,7 +5,7 @@
 --     (to_former_members), once per go; by email, the one way that still reaches them (S-126 (5)); a
 --     "no location left" card on them closes, as the decision was made;
 --   * access restored: the person, and at each of their locations its managers who may publish there; a
---     location with none, its admins and owner (notify_place_deciders);
+--     location with none, its admins and owner (place_deciders);
 --   * no location left: who may end their employment (employee.terminate over the person); the card closes
 --     when they work somewhere again (a trigger on the assignment);
 --   * shifts left without anyone, by an employment ended or a location taken away: per location, its managers
@@ -24,7 +24,7 @@
 -- the manager-class ones; where there are none (none at all, or each one blocked, suspended or without the
 -- right), all of them: its admins and owner. No action of the workspace's stands in for "admins and owner":
 -- the place's own holders, split by class, are the rule.
-create function app_private.notify_place_deciders(target_workspace uuid, target_action text, target_place uuid,
+create function app_private.place_deciders(target_workspace uuid, target_action text, target_place uuid,
   target_person uuid default null)
 returns uuid[]
 language sql
@@ -35,10 +35,8 @@ as $$
     select unnest(app_private.notify_holders(target_workspace, target_action,
       case when target_place is null then null else array[target_place] end, target_person)) who
   ), managers as (
-    select h.who from holders h
-    join public.workspace_memberships m on m.workspace_id = target_workspace and m.user_id = h.who
-    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-    where r.access_class = 'manager'
+    -- The class as the core holds it (actor_state), not read from roles here.
+    select h.who from holders h where (app_private.actor(h.who, target_workspace)).class = 'manager'
   )
   select coalesce(array_agg(x.who order by x.who), '{}') from (
     select who from managers
@@ -47,7 +45,7 @@ as $$
   ) x
 $$;
 
-revoke all on function app_private.notify_place_deciders(uuid, text, uuid, uuid) from public;
+revoke all on function app_private.place_deciders(uuid, text, uuid, uuid) from public;
 
 -- Who may act on an onboarding sent in, now (20261017120000, final approval narrowed): a changed legal name
 -- waiting, its owner and admins (onboarding.legal_name); a final approval when its case asks for one, the
@@ -64,7 +62,7 @@ as $$
                   where r.case_id = target_case.id and r.kind = 'profile' and r.requires_review
                     and r.status <> 'completed'::public.employee_onboarding_requirement_status)
     union
-    select unnest(app_private.notify_place_deciders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
+    select unnest(app_private.place_deciders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
     where target_case.final_approval_required
   ) reviewers
 $$;
@@ -133,12 +131,12 @@ begin
   told := app_private.people_tell('people.restored', target_workspace, array[target_person], key,
     'Your access is back', 'You can use ' || app_private.workspace_name(target_workspace) || ' again.',
     '/app', actor, 'employee', target_employee, '{}'::jsonb);
-  -- Per live location of theirs, its deciders (notify_place_deciders).
+  -- Per live location of theirs, its deciders (place_deciders).
   managers := array(
     select distinct holder
     from public.employee_location_assignments a
     join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
-    cross join lateral unnest(app_private.notify_place_deciders(target_workspace, 'schedule.publish', a.location_id)) holder
+    cross join lateral unnest(app_private.place_deciders(target_workspace, 'schedule.publish', a.location_id)) holder
     where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null
       and holder is distinct from target_person);
   return told + app_private.people_tell('people.restored', target_workspace, managers, key,
@@ -218,7 +216,7 @@ begin
     -- Each card is its own subject, so closing it touches no other card about the same place.
     card := gen_random_uuid();
     told := told + app_private.people_tell('schedule.shifts_unassigned', target_workspace,
-      app_private.notify_place_deciders(target_workspace, 'schedule.publish', place.location_id),
+      app_private.place_deciders(target_workspace, 'schedule.publish', place.location_id),
       'unassigned:' || card::text,
       place.shifts || case when place.shifts = 1 then ' shift at ' else ' shifts at ' end || place.name
         || case when place.shifts = 1 then ' has nobody' else ' have nobody' end,
