@@ -6,6 +6,7 @@ import {
   saveWeeklyPreferences,
 } from "./availability-data";
 import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { MyAvailabilityForm } from "./MyAvailabilityForm";
 import { isNoAccess } from "../lib/no-access";
 import { ListOutline, LoadError } from "../shell/LoadState";
 
@@ -87,6 +88,11 @@ function ConnectedPreferences({
       throw error;
     }
   }
+  // BL-797: someone saved first; Reload shows their week.
+  const reload = async () => {
+    const latest = await query.refetch();
+    return latest.isError ? undefined : latest.data;
+  };
   const readStatus =
     query.error && typeof query.error === "object" && "status" in query.error
       ? Number(query.error.status)
@@ -130,18 +136,18 @@ function ConnectedPreferences({
           </button>
         </div>
       ) : null}
-      <WeeklyPreferencesForm
-        model={query.data}
-        audience={audience}
-        onSave={save}
-        wizard={onboarding}
-        extraAction={extraAction}
-        // BL-797: someone saved first; Reload shows their week.
-        onReload={async () => {
-          const latest = await query.refetch();
-          return latest.isError ? undefined : latest.data;
-        }}
-      />
+      {audience === "employee" ? (
+        // The person's own week, day by day (Mert 2026-10-16, "A · Alt sayfa").
+        <MyAvailabilityForm
+          model={query.data}
+          onSave={save}
+          wizard={onboarding}
+          extraAction={extraAction}
+          onReload={reload}
+        />
+      ) : (
+        <WeeklyPreferencesForm model={query.data} audience={audience} onSave={save} onReload={reload} />
+      )}
     </>
   );
 }

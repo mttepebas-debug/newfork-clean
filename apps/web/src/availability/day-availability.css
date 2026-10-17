@@ -1,0 +1,856 @@
+/* The employee's week, day by day (Mert 2026-10-16, "A · Alt sayfa").
+   Source: PD\PAGES\gorsel-kararlar\gelen\availability-gun-sayfasi (vd.css, v4.css). */
+.dav-panel,
+.dav-sheet {
+  --dav-block: color-mix(in srgb, var(--theme-availability) 20%, var(--theme-surface));
+  --dav-line: color-mix(in srgb, var(--theme-availability) 45%, var(--theme-surface));
+  --dav-free: color-mix(in srgb, var(--theme-accent) 30%, var(--theme-surface));
+  --dav-off-soft: color-mix(in srgb, var(--theme-availability) 5%, var(--theme-surface));
+  color: var(--theme-text);
+  font-family: var(--theme-font-sans);
+  min-width: 0;
+}
+.dav-panel *,
+.dav-sheet * {
+  box-sizing: border-box;
+}
+/* No weight: each control below sets its own size. */
+:where(.dav-panel, .dav-sheet) :where(button, select) {
+  font: inherit;
+}
+.dav-panel button:not(:disabled),
+.dav-sheet button:not(:disabled) {
+  cursor: pointer;
+}
+.dav-panel :is(button, select, [role="slider"]):focus-visible,
+.dav-sheet :is(button, select, [role="slider"], h2):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- desktop: the card, the days on the left, the day on the right ---------- */
+.dav-frame {
+  background: var(--theme-surface);
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 10px;
+}
+.dav-frame-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  padding: 0 18px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+}
+.dav-frame-head h2 {
+  margin: 0;
+  font-size: 15px;
+  font-weight: 650;
+}
+.dav-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-accent);
+}
+.dav-status i {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+.dav-status.is-warn {
+  color: var(--theme-availability-text);
+}
+.dav-status.is-off {
+  color: var(--theme-muted);
+}
+.dav-week {
+  display: grid;
+  grid-template-columns: 268px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+  padding: 16px 18px 18px;
+}
+.dav-days {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--theme-surface);
+}
+.dav-row {
+  display: grid;
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 58px;
+  margin: 0;
+  padding: 11px 12px 11px 16px;
+  border: 0;
+  border-top: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface);
+  color: var(--theme-text-faint);
+  text-align: left;
+}
+.dav-row:first-child {
+  border-top: 0;
+}
+.dav-row:hover {
+  background: var(--theme-surface-soft);
+  color: var(--theme-muted);
+}
+.dav-row[aria-current="true"] {
+  background: var(--theme-selected);
+  box-shadow: inset 3px 0 0 var(--theme-accent);
+  color: var(--theme-accent);
+}
+.dav-row-text {
+  min-width: 0;
+}
+.dav-row-text b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 650;
+  color: var(--theme-text);
+}
+.dav-row-text small {
+  display: block;
+  margin-top: 2px;
+  overflow: hidden;
+  font-size: 12px;
+  color: var(--theme-muted);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.dav-row:is(.is-some, .is-off) .dav-row-text small {
+  color: var(--theme-availability-text);
+  font-weight: 600;
+}
+.dav-row-dot,
+.dav-dot {
+  display: block;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--dav-free);
+  flex: none;
+}
+.dav-dot {
+  width: 8px;
+  height: 8px;
+}
+.dav-row.is-some .dav-row-dot,
+.dav-dot.is-some {
+  background: linear-gradient(90deg, var(--theme-surface) 0 50%, var(--theme-availability) 50%);
+  box-shadow: inset 0 0 0 1.5px var(--theme-availability);
+}
+.dav-row.is-off .dav-row-dot,
+.dav-dot.is-off {
+  background: var(--theme-availability);
+}
+.dav-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+  padding: 18px 22px 20px;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+.dav-detail h3 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+
+/* The save bar under the card (Tur 2): only while there is something to save. */
+.dav-savebar {
+  position: sticky;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 16px;
+  padding: 10px 14px;
+  border-radius: 10px;
+  background: var(--theme-action);
+  color: var(--theme-on-accent);
+  font-size: 12.5px;
+  box-shadow: 0 12px 30px color-mix(in srgb, var(--theme-action) 20%, transparent);
+}
+.dav-savebar > span {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.dav-savebar button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.dav-savebar-ghost {
+  background: transparent;
+  color: color-mix(in srgb, var(--theme-on-accent) 85%, var(--theme-action));
+}
+.dav-savebar-ghost:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--theme-on-accent) 10%, transparent);
+  color: var(--theme-on-accent);
+}
+.dav-savebar-go {
+  background: var(--theme-accent);
+  border-color: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.dav-savebar-go:hover:not(:disabled) {
+  background: var(--theme-accent-strong);
+}
+.dav-savebar button:disabled {
+  opacity: 0.5;
+}
+.dav-savebar button:focus-visible {
+  outline-color: var(--theme-on-accent);
+}
+.dav-error {
+  margin: 12px 0 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--theme-danger-text);
+}
+.dav-link {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-accent-strong);
+  font-weight: 650;
+  text-decoration: underline;
+}
+
+/* Onboarding: the step's own way on. */
+.dav-onboard-foot {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid var(--theme-border);
+}
+.dav-onboard-foot > span {
+  flex: 1 1 auto;
+  font-size: 12.5px;
+  color: var(--theme-muted);
+}
+
+/* ---------- the day body (desktop panel and phone sheet) ---------- */
+.dav-day {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  min-width: 0;
+}
+.dav-cards {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+.dav-card-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 72px;
+  margin: 0;
+  padding: 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  text-align: left;
+}
+.dav-card-option:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+.dav-card-option:disabled {
+  opacity: 0.5;
+}
+.dav-card-text b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 650;
+}
+.dav-card-text small {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--theme-muted);
+}
+.dav-card-icon {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+}
+.dav-card-option.is-free[aria-checked="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+  box-shadow: 0 0 0 1px var(--theme-accent);
+}
+.dav-card-option.is-free[aria-checked="true"] .dav-card-icon {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.dav-card-option:is(.is-off, .is-some)[aria-checked="true"] {
+  border-color: var(--theme-availability);
+  background: var(--dav-off-soft);
+  box-shadow: 0 0 0 1px var(--theme-availability);
+}
+.dav-card-option:is(.is-off, .is-some)[aria-checked="true"] .dav-card-icon {
+  background: var(--theme-availability);
+  color: var(--theme-on-accent);
+}
+.dav-tool {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+/* the day as one strip of hours, 12 AM to 12 AM; it always shows the day as it is */
+.dav-strip {
+  padding: 4px 9px 0;
+}
+.dav-track {
+  position: relative;
+  height: 40px;
+  border-radius: 8px;
+  background: var(--theme-surface-muted);
+  box-shadow: inset 0 0 0 1px var(--theme-border-subtle);
+  cursor: crosshair;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.dav-track::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 8px;
+  background-image: linear-gradient(90deg, var(--theme-border) 1px, transparent 1px);
+  background-position: -1px 0;
+  background-size: calc(100% / 12) 100%;
+  pointer-events: none;
+}
+.dav-track.is-disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.dav-hint {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-muted);
+  pointer-events: none;
+}
+.dav-band {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--dav-line);
+  border-radius: 6px;
+  background: var(--dav-block);
+  pointer-events: none;
+}
+.dav-band.is-cramped span {
+  visibility: hidden;
+}
+.dav-band span {
+  padding: 0 12px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--theme-availability-text);
+  white-space: nowrap;
+}
+.dav-knob {
+  position: absolute;
+  top: 50%;
+  z-index: 2;
+  width: 16px;
+  height: 32px;
+  border: 2px solid var(--theme-availability);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--theme-availability-text) 20%, transparent);
+  transform: translate(-50%, -50%);
+  cursor: ew-resize;
+  touch-action: none;
+}
+.dav-knob::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 4px;
+  height: 10px;
+  border-right: 1.5px solid var(--dav-line);
+  border-left: 1.5px solid var(--dav-line);
+  transform: translate(-50%, -50%);
+}
+.dav-knob em {
+  position: absolute;
+  bottom: calc(100% + 7px);
+  left: 50%;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: var(--theme-action);
+  color: var(--theme-on-accent);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 700;
+  white-space: nowrap;
+  opacity: 0;
+  transform: translateX(-50%);
+  transition: opacity 0.1s;
+  pointer-events: none;
+}
+.dav-knob:hover em,
+.dav-knob:focus-visible em,
+.dav-knob.is-live em {
+  opacity: 1;
+}
+.dav-knob:hover,
+.dav-knob.is-live {
+  box-shadow:
+    0 0 0 4px color-mix(in srgb, var(--theme-availability) 15%, transparent),
+    0 1px 3px color-mix(in srgb, var(--theme-availability-text) 20%, transparent);
+}
+.dav-scale {
+  position: relative;
+  height: 16px;
+  margin-top: 6px;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+  color: var(--theme-muted);
+}
+.dav-scale span {
+  position: absolute;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+.dav-scale span:first-child {
+  transform: none;
+}
+.dav-scale span:last-child {
+  transform: translateX(-100%);
+}
+
+/* exact times: From / Until, never cut off */
+.dav-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 460px;
+}
+.dav-field {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 40px;
+  min-width: 0;
+  padding: 0 30px 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+}
+.dav-field > span {
+  flex: none;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--theme-muted);
+}
+.dav-field select {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  appearance: none;
+  -webkit-appearance: none;
+  outline: 0;
+}
+.dav-field > svg {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  color: var(--theme-text-secondary);
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+.dav-field:hover {
+  border-color: var(--theme-border-hover);
+}
+.dav-field:focus-within {
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+}
+.dav-field.is-empty select {
+  color: var(--theme-muted);
+  font-weight: 500;
+}
+.dav-panel .dav-field select:focus-visible,
+.dav-sheet .dav-field select:focus-visible {
+  outline: 0;
+}
+
+/* shift types: one live card each */
+.dav-types {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 8px;
+}
+.dav-type {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 3px;
+  min-height: 84px;
+  margin: 0;
+  padding: 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-muted-strong);
+  text-align: left;
+}
+.dav-type:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+}
+.dav-type:disabled {
+  opacity: 0.5;
+}
+.dav-type b {
+  margin-top: 4px;
+  font-size: 13px;
+  font-weight: 650;
+  color: var(--theme-text);
+}
+.dav-type small {
+  font-size: 11.5px;
+  color: var(--theme-muted);
+}
+.dav-type[aria-pressed="true"] {
+  border-color: var(--dav-line);
+  background: var(--dav-block);
+  box-shadow: 0 0 0 1px var(--dav-line);
+  color: var(--theme-availability-text);
+}
+.dav-type[aria-pressed="true"] :is(b, small) {
+  color: var(--theme-availability-text);
+}
+.dav-type-mark {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+}
+.dav-empty {
+  margin: 0;
+  font-size: 13px;
+  color: var(--theme-muted);
+}
+
+/* copy the day to other days: the edited day is not in the row */
+.dav-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-top: 14px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.dav-copy-heading {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--theme-text-secondary);
+}
+.dav-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.dav-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  min-width: 66px;
+  height: 36px;
+  margin: 0;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-strong);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  font-weight: 650;
+}
+.dav-chip:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  color: var(--theme-text);
+}
+.dav-chip[aria-pressed="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+  box-shadow: inset 0 0 0 1px var(--theme-accent);
+  color: var(--theme-accent-strong);
+}
+.dav-chip[aria-pressed="true"] svg {
+  color: var(--theme-accent);
+}
+.dav-chip-mark {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+}
+
+/* ---------- phone: the week as a list, a day in a sheet ---------- */
+/* Mert 2026-10-16: the heading and tabs stay, the seven days fit under them
+   and nothing scrolls: the same 16 px above the first day and below the last. */
+@media (max-width: 720px) {
+  .employee-hub-page:has(> .employee-weekly-workspace .dav-panel.is-phone) {
+    padding-bottom: 16px;
+  }
+}
+.dav-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.dav-panel.is-phone .dav-row {
+  min-height: 62px;
+  padding: 12px 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+}
+.dav-row.is-flash {
+  animation: dav-flash 1.6s ease-out;
+}
+@keyframes dav-flash {
+  0%,
+  35% {
+    border-color: var(--dav-free);
+    background: var(--theme-accent-soft);
+  }
+  100% {
+    background: var(--theme-surface);
+  }
+}
+.dav-panel.is-phone .dav-onboard-foot {
+  margin-top: 14px;
+  padding-top: 14px;
+}
+.dav-panel.is-phone .dav-onboard-foot > * {
+  flex: 1 1 0;
+  min-height: 44px;
+}
+
+.dav-sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-width: 100%;
+  max-height: calc(100dvh - 24px);
+  margin: 0;
+  padding: 0;
+  overflow: hidden auto;
+  overscroll-behavior: contain;
+  border: 0;
+  border-radius: 22px 22px 0 0;
+  background: var(--theme-surface);
+  box-shadow: 0 -10px 30px color-mix(in srgb, var(--theme-action) 14%, transparent);
+  animation: dav-up 0.22s ease-out;
+}
+.dav-sheet::backdrop {
+  background: color-mix(in srgb, var(--theme-action) 40%, transparent);
+}
+.dav-sheet-inner {
+  padding: 8px 18px 18px;
+}
+.dav-sheet-inner::before {
+  content: "";
+  display: block;
+  width: 38px;
+  height: 5px;
+  margin: 2px auto 12px;
+  border-radius: 3px;
+  background: var(--theme-border-strong);
+}
+.dav-sheet-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0 0 14px;
+}
+.dav-sheet-head h2 {
+  flex: 1 1 auto;
+  margin: 0;
+  font-size: 20px;
+  font-weight: 650;
+  letter-spacing: -0.005em;
+}
+.dav-sheet-head h2:focus:not(:focus-visible) {
+  outline: 0;
+}
+.dav-sheet-close {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: 0 -8px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-secondary);
+}
+.dav-sheet-close:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
+}
+.dav-sheet-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 18px;
+}
+.dav-sheet-actions > * {
+  flex: 1 1 0;
+  min-height: 44px;
+  border-radius: 10px;
+  font-size: 14px;
+}
+.dav-day.is-phone {
+  gap: 14px;
+}
+.dav-day.is-phone .dav-cards {
+  grid-template-columns: 1fr;
+  gap: 6px;
+}
+.dav-day.is-phone .dav-card-option {
+  gap: 10px;
+  min-height: 52px;
+  padding: 8px 12px;
+}
+.dav-day.is-phone .dav-card-icon {
+  width: 30px;
+  height: 30px;
+}
+.dav-day.is-phone .dav-card-text small {
+  margin-top: 0;
+}
+.dav-day.is-phone .dav-strip {
+  padding: 4px 11px 0;
+}
+.dav-day.is-phone .dav-track {
+  height: 44px;
+}
+.dav-day.is-phone .dav-knob {
+  width: 20px;
+  height: 36px;
+  border-radius: 7px;
+}
+.dav-day.is-phone .dav-fields {
+  max-width: none;
+}
+.dav-day.is-phone .dav-field {
+  height: 44px;
+  border-radius: 8px;
+}
+/* 16 px: iOS does not zoom into a field this size. */
+.dav-day.is-phone .dav-field select {
+  font-size: 16px;
+}
+.dav-day.is-phone .dav-types {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.dav-day.is-phone .dav-type {
+  display: grid;
+  grid-template-columns: 20px minmax(0, 1fr);
+  align-items: center;
+  column-gap: 10px;
+  min-height: 0;
+  padding: 10px 12px;
+}
+.dav-day.is-phone .dav-type-icon {
+  grid-row: 1 / span 2;
+}
+.dav-day.is-phone .dav-type b {
+  margin-top: 0;
+}
+.dav-day.is-phone .dav-type-mark {
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+}
+.dav-day.is-phone .dav-chips {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+}
+.dav-day.is-phone .dav-chip {
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  height: 48px;
+  padding: 0;
+  border-radius: 10px;
+}
+@keyframes dav-up {
+  from {
+    opacity: 0.4;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .dav-row.is-flash,
+  .dav-sheet {
+    animation: none;
+  }
+  .dav-knob em {
+    transition: none;
+  }
+}

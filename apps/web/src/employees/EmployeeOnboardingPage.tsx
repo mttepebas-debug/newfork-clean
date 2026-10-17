@@ -12,6 +12,7 @@ import {
   type EmployeeOnboardingRequirement,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@newfork/ui";
 import { ArrowRight, Check, CircleAlert, UserRound } from "lucide-react";
 import {
   useCallback,
@@ -901,8 +902,9 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
   return (
     <section className="onboarding-step">
       <StepHeading
-        title="The hours you can work"
-        copy="Mark the hours you are not available in a normal week. Your manager builds the schedule around it."
+        title="When do you prefer not to work?"
+        // Tur 2 (Mert 2026-10-16); a workspace that requires the step is not "optional".
+        copy={`${requirement?.required === false ? "Optional. " : ""}Mark the times you'd rather not work in a normal week.`}
       />
       <WeeklyPreferencesPanel
         workspaceId={workspaceId}
@@ -910,16 +912,15 @@ function AvailabilityStep({ model, onSaved }: StepProps) {
         audience="employee"
         onboarding
         onSaved={() => void onSaved()}
-        // One action bar: the way on sits beside Save, so nothing covers Save.
+        // One action bar: the way on sits beside Save and continue.
         extraAction={completed || requirement?.required === false ? (
-          <button
-            type="button"
-            className={completed ? "weekly-primary" : undefined}
+          <Button
+            className={completed ? undefined : "secondary-button"}
             onClick={() => requestAppNavigation(() => void onSaved())}
           >
             {completed ? "Continue" : "Skip for now"}
-            <ArrowRight size={14} aria-hidden />
-          </button>
+            {completed && <ArrowRight size={14} aria-hidden />}
+          </Button>
         ) : null}
       />
     </section>
