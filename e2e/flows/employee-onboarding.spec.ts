@@ -337,6 +337,91 @@ test("onboarding masks the phone and says in red when it is somebody else's or o
   ).toBe(`+1${emre} +1${own}`);
 });
 
+// Mert 2026-10-17: on a phone the availability step is a fixed frame. The bar
+// and the heading stay on top and the two buttons at the bottom; only the days
+// scroll between them, and the page itself never does.
+for (const height of [844, 800]) {
+  test(`on a 390 x ${height} phone the availability step scrolls its days alone`, async ({ page }) => {
+    const key = `fr${height}${tag()}`;
+    const firstName = `Fr${tag()}`;
+    const email = lastLine(
+      sql(`
+      select tests.new_user('${run}:${key}', '${firstName} Person');
+      select tests.password('${run}:${key}', '${password}');`),
+    );
+    sql(`
+      with created as (
+        select public.create_employee_command_service(
+          tests.user('${run}:owner'), tests.id('${run}'), gen_random_uuid(),
+          jsonb_build_object(
+            'first_name', '${firstName}', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
+            'invitation_email', '${email}', 'start_date', '', 'internal_note', '',
+            'location_ids', jsonb_build_array(tests.id('${run}:K')),
+            'primary_location_id', tests.id('${run}:K'),
+            'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
+            'primary_job_id', tests.id('${run}:job:cook'),
+            'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
+          (select id from public.workspace_roles
+           where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+      )
+      select public.accept_employee_invitation_by_id_service(
+        tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;
+      select tests.settle();`);
+
+    await page.setViewportSize({ width: 390, height });
+    await signInAs(page, email);
+    await page.goto("/welcome");
+    await expect(page.getByRole("button", { name: "Begin" })).toBeVisible();
+    const welcome = /^\/welcome\/[0-9a-f-]{36}/.exec(new URL(page.url()).pathname)![0];
+    await page.goto(`${welcome}/availability`);
+    await expect(page.getByRole("heading", { name: "When do you prefer not to work?" })).toBeVisible();
+
+    const list = page.locator(".dav-list");
+    await expect(list.locator(".dav-row")).toHaveCount(7);
+    const skip = page.getByRole("button", { name: "Skip for now" });
+    const save = page.getByRole("button", { name: "Save and continue" });
+    const sunday = list.locator('[data-weekday="0"]');
+    const inView = async () => {
+      const box = (await skip.boundingBox())!;
+      expect(box.y + box.height).toBeLessThanOrEqual(height);
+      expect(((await save.boundingBox())!).y + ((await save.boundingBox())!).height).toBeLessThanOrEqual(height);
+    };
+
+    // The page fits the screen; the days overflow inside their own box.
+    const page_ = await page.evaluate(() => ({
+      scroll: document.scrollingElement!.scrollHeight,
+      view: window.innerHeight,
+    }));
+    expect(page_.scroll).toBeLessThanOrEqual(page_.view);
+    const box = await list.evaluate((el) => ({ scroll: el.scrollHeight, client: el.clientHeight }));
+    expect(box.scroll).toBeGreaterThan(box.client);
+    await inView();
+    const before = await save.boundingBox();
+
+    // Down to Sunday: the list moves, the buttons and the heading do not.
+    await list.hover();
+    await page.mouse.wheel(0, 600);
+    await expect.poll(() => list.evaluate((el) => Math.ceil(el.scrollTop + el.clientHeight) >= el.scrollHeight)).toBe(true);
+    const listBox = (await list.boundingBox())!;
+    const sundayBox = (await sunday.boundingBox())!;
+    expect(sundayBox.y + sundayBox.height).toBeLessThanOrEqual(listBox.y + listBox.height + 1);
+    expect(await page.evaluate(() => document.scrollingElement!.scrollTop)).toBe(0);
+    expect(await save.boundingBox()).toEqual(before);
+    await inView();
+
+    // A day still opens in its sheet from the bottom, over the fixed parts.
+    await sunday.click();
+    const sheet = page.getByRole("dialog", { name: "Sunday" });
+    await expect(sheet).toBeVisible();
+    await sheet.getByRole("button", { name: "Cancel" }).click();
+    await expect(sheet).toBeHidden();
+
+    // The way on works from where it sits.
+    await skip.click();
+    await expect(page).not.toHaveURL(new RegExp(`${welcome}/availability$`));
+  });
+}
+
 /**
  * A number nobody in the world has: a workspace refuses one another of its
  * people holds (TEL-2), and every spec here onboards into the same world.
