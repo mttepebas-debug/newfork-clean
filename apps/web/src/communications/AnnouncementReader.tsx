@@ -14,6 +14,7 @@ import {
 } from "./announcement-model";
 import { acknowledgeAnnouncement } from "./communications-data";
 import "./announcement-drawer.css";
+import { WindowAlert } from "../shell/WindowAlert";
 
 /** "Your 3:00 PM–4:00 PM shift was removed" and the like. */
 export function myShiftSentence(change: AnnouncementShiftChange, timeFormat: TimeFormat): string {
@@ -118,15 +119,12 @@ export function AnnouncementReader({
                     </Button>
                   </div>
                 ))}
-              {acknowledge.isError && (
-                <p className="annc-foot-error" role="alert">
-                  It didn&apos;t go through. Try again.
-                </p>
-              )}
             </>
           )}
         </div>
         <footer className="annc-foot">
+          {/* Over the body's bottom edge, above Close (UI-FIELDMSG). */}
+          <WindowAlert message={acknowledge.isError ? "It didn't go through. Try again." : null} />
           <div className="annc-foot-row">
             <div className="annc-foot-right">
               <Button type="button" className="secondary-button" onClick={onClose}>

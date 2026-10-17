@@ -344,6 +344,16 @@
   font-size: 10.5px;
   font-weight: 800;
 }
+/* In the field's note line (UI-FIELDMSG) the line is one block, so a long
+   message is cut with an ellipsis; the "!" stays in front of it. */
+.announcement-drawer .field-note > .annc-error {
+  display: block;
+}
+.announcement-drawer .field-note > .annc-error::before {
+  display: inline-grid;
+  margin-right: 6px;
+  vertical-align: -2px;
+}
 .announcement-drawer .annc-flags {
   display: grid;
   gap: 6px;
@@ -955,9 +965,14 @@
   color: var(--theme-muted);
   font-size: 13px;
 }
+/* Kept above the list whether or not it says something, so the list never
+   moves (UI-FIELDMSG); tinted only while it does. */
 .announcement-drawer .annc-pane-error {
-  padding: 10px;
-  border-bottom: 1px solid var(--theme-danger-soft);
+  padding: 6px 10px;
+  border-bottom: 1px solid transparent;
+}
+.announcement-drawer .annc-pane-error[data-said="true"] {
+  border-bottom-color: var(--theme-danger-soft);
   background: var(--theme-danger-surface);
 }
 .announcement-drawer .annc-pick-foot {
@@ -1467,15 +1482,6 @@
 .announcement-drawer .annc-band-link:focus-visible {
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
-}
-.announcement-drawer .annc-foot-error {
-  margin: 0;
-  border-radius: 7px;
-  padding: 7px 10px;
-  background: var(--theme-danger-surface);
-  color: var(--theme-danger-strong);
-  font-size: 12.5px;
-  font-weight: 600;
 }
 .announcement-drawer .annc-foot-row {
   display: flex;

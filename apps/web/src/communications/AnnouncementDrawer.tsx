@@ -59,6 +59,7 @@ import {
 } from "./communications-data";
 import "./announcement-drawer.css";
 import { LinesOutline, LoadError } from "../shell/LoadState";
+import { WindowAlert } from "../shell/WindowAlert";
 
 /** Everything a post's change can show up in. */
 export const announcementQueryKeys = [
@@ -837,11 +838,8 @@ function AnnouncementEditor({
               )}
             </div>
           )}
-          {failure && (
-            <p className="annc-foot-error" role="alert">
-              {failure}
-            </p>
-          )}
+          {/* Over the body's bottom edge, above the buttons (UI-FIELDMSG). */}
+          <WindowAlert message={failure} />
           <div className="annc-foot-row">
             {left.length > 0 && <div className="annc-foot-left">{left}</div>}
             <div className="annc-foot-right">{right}</div>

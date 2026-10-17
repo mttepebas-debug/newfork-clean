@@ -29,22 +29,24 @@ import {
   shiftReason,
   type TimeFormat,
 } from "./announcement-model";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 
 /** The message under a field, or nothing. */
 export type ProblemAt = (field: string) => string | undefined;
 
 type Update = (change: (draft: AnnouncementDraft) => AnnouncementDraft) => void;
 
-export function FieldError({ id, message }: { id?: string; message?: string }) {
-  return message ? (
-    <span className="annc-error" role="alert" id={id}>
-      {message}
-    </span>
-  ) : null;
+/**
+ * The field's note line (UI-FIELDMSG): always there, the error in it while
+ * there is one, so nothing below moves. Its error is `${id}-error`.
+ */
+export function FieldError({ id, message }: { id: string; message?: string }) {
+  return <FieldNote id={id} error={message} className="annc-error" />;
 }
 
 function invalid(message: string | undefined, id: string) {
-  return message ? { "aria-invalid": true as const, "aria-describedby": id } : {};
+  const describedBy = fieldNoteId(id, message);
+  return describedBy ? { "aria-invalid": true as const, "aria-describedby": describedBy } : {};
 }
 
 export function Flag({
@@ -151,9 +153,9 @@ export function DetailsTab({
             const title = event.target.value;
             update((current) => ({ ...current, title }));
           }}
-          {...invalid(titleError, id("title-error"))}
+          {...invalid(titleError, id("title"))}
         />
-        <FieldError id={id("title-error")} message={titleError} />
+        <FieldError id={id("title")} message={titleError} />
       </div>
       <div className="annc-two">
         <div className="annc-field">
@@ -214,9 +216,9 @@ export function DetailsTab({
                 const name = event.target.value;
                 update((current) => ({ ...current, category_other: name || null }));
               }}
-              {...invalid(otherError, id("other-error"))}
+              {...invalid(otherError, id("other"))}
             />
-            <FieldError id={id("other-error")} message={otherError} />
+            <FieldError id={id("other")} message={otherError} />
           </div>
         </div>
       )}
@@ -276,9 +278,9 @@ export function DetailsTab({
                 return { ...current, starts_on: starts, ends_on: ends, recurrence };
               });
             }}
-            {...invalid(startError, id("starts-error"))}
+            {...invalid(startError, id("starts"))}
           />
-          <FieldError id={id("starts-error")} message={startError} />
+          <FieldError id={id("starts")} message={startError} />
         </div>
         <div className="annc-field">
           <span className="annc-label-row">
@@ -313,9 +315,9 @@ export function DetailsTab({
               const ends = event.target.value || null;
               update((current) => ({ ...current, ends_on: ends }));
             }}
-            {...invalid(endError, id("ends-error"))}
+            {...invalid(endError, id("ends"))}
           />
-          <FieldError id={id("ends-error")} message={endError} />
+          <FieldError id={id("ends")} message={endError} />
         </div>
         <div className="annc-field">
           <AvailabilityClockInput
@@ -345,7 +347,7 @@ export function DetailsTab({
               if (until) update((current) => ({ ...current, event_until: until }));
             }}
           />
-          <FieldError id={id("until-error")} message={untilError} />
+          <FieldError id={id("until")} message={untilError} />
         </div>
       </div>
       <LocationsTable
@@ -606,9 +608,11 @@ function LocationsTable({
               <span role="cell" className="annc-loc-impact" data-tone={impact.tone}>
                 {impact.text}
               </span>
-              {error && (
+              {/* A checked place keeps its note line: hours taken there are said
+                  in it without moving the rows below (UI-FIELDMSG). */}
+              {(row || error) && (
                 <span className="annc-loc-error">
-                  <FieldError message={error} />
+                  <FieldError id={`annc-location-${location.id}`} message={error} />
                 </span>
               )}
             </div>
@@ -661,7 +665,7 @@ export function PublishingRow({
   onLater: (later: boolean) => void;
   onWall: (wall: string) => void;
 }) {
-  const errorId = `${idPrefix}-publish-error`;
+  const errorId = `${idPrefix}-publish`;
   // A day box and a clock box, so the time reads in the workspace's 12h or 24h clock.
   const [day = "", clock = ""] = publishWall.split("T");
   return (
@@ -696,7 +700,7 @@ export function PublishingRow({
             placeholder={later ? undefined : ""}
             disabled={locked || !later}
             invalid={Boolean(problem)}
-            describedBy={problem ? errorId : undefined}
+            describedBy={fieldNoteId(errorId, problem)}
             onChange={(next) => onWall(`${day}T${next}`)}
           />
         </span>
@@ -920,11 +924,9 @@ export function AudienceTab({
                 </span>
               </div>
             )}
-            {problem && (
-              <div className="annc-pane-error">
-                <FieldError message={problem} />
-              </div>
-            )}
+            <div className="annc-pane-error" data-said={Boolean(problem)}>
+              <FieldError id="annc-people" message={problem} />
+            </div>
             {checkedLocations.length > 0 && (
               <>
                 <div className="annc-group">From locations</div>
