@@ -1,7 +1,7 @@
 import type { AnnouncementRecord } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, ChevronRight, Megaphone, Search } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { noAccessHomePath } from "../auth/resolveLanding";
@@ -55,6 +55,18 @@ export function AnnouncementsPage() {
     enabled: Boolean(workspaceId),
   });
   const [adding, setAdding] = useState(false);
+  // A post that went out after the list on hand was read (a phone alert's tap lands right then): the
+  // list is asked for again once, and the reader waits for it before saying the post is gone.
+  const missing = Boolean(
+    announcementId && query.data && !query.data.announcements.some((item) => item.id === announcementId),
+  );
+  const [askedFor, setAskedFor] = useState<string | null>(null);
+  useEffect(() => {
+    if (!missing || askedFor === announcementId) return;
+    setAskedFor(announcementId ?? null);
+    void query.refetch();
+  }, [missing, askedFor, announcementId, query]);
+  const looking = missing && (askedFor !== announcementId || query.isFetching);
   const close = () => {
     setAdding(false);
     if (announcementId) navigate("/app/announcements", { replace: true, preventScrollReset: true });
@@ -120,6 +132,7 @@ export function AnnouncementsPage() {
         <AnnouncementReader
           workspaceId={workspaceId}
           record={list.announcements.find((item) => item.id === announcementId) ?? null}
+          loading={looking}
           myLocationIds={context?.locationScope.locationIds ?? []}
           timeFormat={list.time_format}
           onClose={close}

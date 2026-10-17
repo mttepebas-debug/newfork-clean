@@ -3,6 +3,7 @@ import { Button, useToast } from "@newfork/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, X } from "lucide-react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
+import { LinesOutline } from "../shell/LoadState";
 import { announcementQueryKeys } from "./AnnouncementDrawer";
 import {
   announcementCategoryText,
@@ -30,12 +31,15 @@ export function myShiftSentence(change: AnnouncementShiftChange, timeFormat: Tim
 export function AnnouncementReader({
   workspaceId,
   record,
+  loading = false,
   myLocationIds,
   timeFormat,
   onClose,
 }: {
   workspaceId: string;
   record: AnnouncementRecord | null;
+  /** The post is not in the list on hand and a fresh list is on its way. */
+  loading?: boolean;
   myLocationIds: readonly string[];
   timeFormat: TimeFormat;
   onClose: () => void;
@@ -78,7 +82,9 @@ export function AnnouncementReader({
           </div>
         </header>
         <div className="ad-body">
-          {!record ? (
+          {!record && loading ? (
+            <LinesOutline label="Loading announcement" lines={4} />
+          ) : !record ? (
             <p className="ad-note">This announcement is no longer available.</p>
           ) : (
             <>
