@@ -769,10 +769,12 @@
     /* Room for a row's focus ring, which the scroll box would otherwise cut. */
     margin-inline: -3px;
     padding: 3px;
+    /* Kept transparent, so the hairline below never moves the days by a pixel. */
+    border-top: 1px solid transparent;
   }
   /* A hairline on the top edge, only while a day passes under the heading. */
   .dav-list.is-scroller.is-under-top {
-    border-top: 1px solid var(--theme-border);
+    border-top-color: var(--theme-border);
   }
   .dav-panel.is-framed .dav-onboard-foot {
     background: var(--theme-surface);
