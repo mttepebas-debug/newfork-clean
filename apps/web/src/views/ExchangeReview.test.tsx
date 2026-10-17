@@ -127,6 +127,13 @@ describe("ExchangeReview", () => {
     expect(await screen.findByRole("button", { name: "Give shift to Sophie anyway" })).toBeTruthy();
   });
 
+  it("names the button plainly when the picked person only chose to work unavailable hours", async () => {
+    const consenting = { ...cover, applications: [application(sophie, "Sophie Martin", { status: "eligible", reasons: [], approval_flags: [{ code: "availability_consent" }] })] } as unknown as ExchangeCase;
+    renderReview(consenting);
+    expect(await screen.findByRole("button", { name: "Give shift to Sophie" })).toBeTruthy();
+    expect(screen.getByText("Unavailable · chose to take it")).toBeTruthy();
+  });
+
   it("keeps the button off and says why when the core refuses the transfer", async () => {
     vi.mocked(getExchangePreview).mockResolvedValue(preview({ allowed: false, reasons: ["Overlaps another shift."] }));
     renderReview();

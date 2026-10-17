@@ -28,6 +28,11 @@ describe("candidateChecks", () => {
     ], blocked: false, warned: true });
   });
 
+  it("an availability chip alone is information, not a warning to set aside (Müsaitlik tercih 3)", () => {
+    expect(candidateChecks(eligible({ approval_flags: [{ code: "availability_consent" }] }))).toEqual({
+      chips: [{ text: "Unavailable · chose to take it", tone: "warn" }], blocked: false, warned: false });
+  });
+
   it("stops a person on approved time off or whom the core finds ineligible", () => {
     expect(candidateChecks({ status: "ineligible", reasons: ["Approved time off overlaps."], blockers: [{ code: "approved_time_off" }] }))
       .toEqual({ chips: [{ text: "On time off", tone: "red" }], blocked: true, warned: false });

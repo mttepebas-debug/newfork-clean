@@ -29,7 +29,10 @@ export function candidateChecks(eligibility: ExchangeApplication["eligibility"])
     else if (flag.code === "minimum_travel") chips.push({ text: `${flag.gap_minutes ?? 0} min to travel · ${flag.rule_minutes ?? 0} min needed`, tone: "warn" });
     else if (flag.code === "availability_consent") chips.push({ text: "Unavailable · chose to take it", tone: "warn" });
   }
-  if (chips.length) return { chips, blocked: false, warned: true };
+  // Availability is a preference (KARARLAR "Müsaitlik tercih" 3): its chip
+  // informs, and alone it never makes the manager's button say "anyway".
+  const setAside = (eligibility.approval_flags ?? []).some((flag) => flag.code === "minimum_rest" || flag.code === "minimum_travel");
+  if (chips.length) return { chips, blocked: false, warned: setAside };
   chips.push({ text: "Available", tone: "ok" });
   const measures = eligibility.measures;
   if (measures) chips.push({ text: measures.rest_gap_minutes == null ? "No shift nearby" : `${hours(measures.rest_gap_minutes)} of rest`, tone: "ok" });
