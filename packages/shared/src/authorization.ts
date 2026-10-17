@@ -43,7 +43,9 @@ export const authzActionKeys = [
   "exchange.read",
   "important_date.write",
   "important_date.write_wide",
+  "lineup.acknowledge",
   "lineup.read",
+  "lineup.share",
   "membership.read",
   // One's own notification list and choices (BILDIRIM-07).
   "notifications.read_own",
@@ -138,6 +140,7 @@ export const targetedAuthzActions = {
   "important_date.write": { permission: "important_dates.manage" },
   "important_date.write_wide": { permission: "important_dates.manage" },
   "lineup.read": { permission: "schedule.read" },
+  "lineup.share": { permission: "schedule.publish" },
   "membership.read": { person: true, permission: null },
   "notifications.read_own": { permission: null, own: true, restrictedOk: true },
   "notifications.write_own": { permission: null, own: true, restrictedOk: true },
@@ -330,6 +333,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "schedule.read":
     case "lineup.read":
     case "schedule.publish":
+    case "lineup.share":
       return atPlace();
 
     case "announcement.write":

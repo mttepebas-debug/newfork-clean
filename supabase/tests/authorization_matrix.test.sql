@@ -546,6 +546,12 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('employee.save_own_contact', 'person', null, false, false,
    $$select true from (select public.save_own_employment_contact_service($1, $2, $3,
        'Probe Contact', 'Friend', '+14155550100') offset 0) done$$, true, true);
+-- Publishing a day's lineup (LINEUP-PUBLISH): who publishes the Schedule there, by location.
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('lineup.share', 'site', 'schedule.publish', false, false,
+   $$select public.lineup_command_service($1, $2, gen_random_uuid(), 'share', jsonb_build_object(
+       'lineups', jsonb_build_array(jsonb_build_object('location_id', $3, 'service_date', tests.week(0) + 1,
+         'shift_type_id', null)), 'ask_ack', true)) is not null$$);
 
 -- The same actions as the core names them. blank: how a blank location reaches
 -- the core, as the entry point receives it: 'null' ({NULL}, no location) or
@@ -624,6 +630,7 @@ insert into core_action (key, core_key, blank) values
   ('time_off.request_own', 'time_off.request_own', 'null'),
   ('employee.save_own_contact', 'employee.save_own_contact', 'null'),
   ('availability.own', 'availability.own', 'null');
+insert into core_action (key, core_key, blank) values ('lineup.share', 'lineup.share', 'null');
 update core_action set by_account = true where key = 'read.membership';
 
 select is(
@@ -866,7 +873,8 @@ begin
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return 'deny';
 
-  when 'schedule.publish' then
+  -- A lineup is published by whoever publishes the Schedule there (LINEUP-PUBLISH).
+  when 'schedule.publish', 'lineup.share' then
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 

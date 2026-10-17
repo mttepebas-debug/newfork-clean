@@ -1,5 +1,5 @@
 {
- "sourceSha256": "118ce08e2d8e904b8b083fd3587914980ddfb96741350ad2eb34cdbde59ecae0",
+ "sourceSha256": "297a1862d876fe72d41f782d79b7a18c82fff3188a6462a5931ab20b069b6972",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -37,7 +37,9 @@
   "exchange.read",
   "important_date.write",
   "important_date.write_wide",
+  "lineup.acknowledge",
   "lineup.read",
+  "lineup.share",
   "membership.read",
   "notifications.read_own",
   "notifications.write_own",
@@ -1028,6 +1030,13 @@
    "targetKind": "location",
    "permission": "schedule.read",
    "coreKey": "lineup.read",
+   "blank": "null"
+  },
+  {
+   "key": "lineup.share",
+   "targetKind": "site",
+   "permission": "schedule.publish",
+   "coreKey": "lineup.share",
    "blank": "null"
   },
   {
@@ -23322,6 +23331,210 @@
    "zeynep",
    "x:K",
    "deny"
+  ],
+  [
+   "lineup.share",
+   "ali",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "ali",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "aydan",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "aydan",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "ayse",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "ayse",
+   "site:K",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "can",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "can",
+   "site:K",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "derya",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "derya",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "emre",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "emre",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "kaan",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "kaan",
+   "site:K",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "mehmet",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "mehmet",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "nil",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "nil",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "nur",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "nur",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "olcay",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "olcay",
+   "site:K",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "pelin",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "pelin",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "remzi",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "remzi",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "sami",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "sami",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "veli",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "veli",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "xavier",
+   "site:B",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "xavier",
+   "site:K",
+   "deny"
+  ],
+  [
+   "lineup.share",
+   "zeynep",
+   "site:B",
+   "allow"
+  ],
+  [
+   "lineup.share",
+   "zeynep",
+   "site:K",
+   "allow"
   ],
   [
    "notifications.read_own",

@@ -259,7 +259,11 @@ insert into service_class values
   ('weekly_preferences_save_service', 'availability.own'),
   ('verify_account_password_service', 'account.self'),
   ('weekly_team_read_service', 'availability.team_read'),
-  ('withdraw_document_acknowledgement_service', 'documents.self');
+  ('withdraw_document_acknowledgement_service', 'documents.self'),
+  -- Lineup publishing (LINEUP-PUBLISH): the manager publishes, the employee reads and acknowledges her own.
+  ('lineup_command_service', 'lineup.share'),
+  ('get_my_lineups_service', 'employee_hub.read'),
+  ('acknowledge_lineup_service', 'lineup.acknowledge');
 
 select is(
   array(
