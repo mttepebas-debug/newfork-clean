@@ -14,6 +14,7 @@ import { createNotificationSettingsService } from "./notification-settings/notif
 import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-service";
 import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
 import { createNotificationsService } from "./notifications/notifications-service";
+import { createLineupService } from "./lineup/lineup-service";
 
 // BL-134: whatever the database says goes through rpcFailure, so a refusal
 // keeps its status and machine key and Postgres's own sentence never reaches
@@ -73,6 +74,7 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["shift exchanges", () => createShiftExchangesService(options).read(actor, workspace, false)],
   ["notifications", () => createNotificationsService(options).counts(input)],
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
+  ["lineup", () => createLineupService(options).myLineups({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {
