@@ -49,15 +49,17 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   const ticket = emre.locator(".employee-lineup-ticket");
   await expect(ticket).toContainText("4:00 PM – 10:00 PM");
   await expect(ticket).toContainText("Kadikoy");
-  // Mert 2026-10-17: her shift tab, then the location and date, her ticket, then Team · Notes.
-  await expect(emre.getByRole("group", { name: "Shifts" }).getByRole("button")).toHaveCount(1);
+  // Mert 2026-10-17: the shift tabs (hers the one pressable and pressed), her ticket, then Team · Notes.
+  await expect(emre.getByRole("group", { name: "Shifts" }).locator("button:not([disabled])")).toHaveCount(1);
+  await expect(emre.getByRole("group", { name: "Shifts" }).locator('button[aria-pressed="true"]')).toHaveCount(1);
   const order = await emre.evaluate(() =>
-    [".lineup-shift-tabs", ".lineup-day-head", ".employee-lineup-ticket", ".employee-lineup-tabs"].map(
+    [".lineup-shift-tabs", ".employee-lineup-ticket", ".employee-lineup-tabs"].map(
       (selector) => document.querySelector(selector)!.getBoundingClientRect().top,
     ),
   );
   expect([...order].sort((a, b) => a - b)).toEqual(order);
-  await expect(emre.locator(".lineup-day-head h2")).toHaveText("Kadikoy");
+  await expect(emre.locator(".lineup-day-head")).toHaveCount(0);
+  await expect(emre.locator(".employee-lineup-place")).toHaveText("Kadikoy");
   await expect(emre.getByRole("list", { name: "Cook" })).toContainText("Ali Person");
   await emre.getByRole("button", { name: "Acknowledge", exact: true }).click();
   await expect(emre.getByText("Acknowledged.", { exact: true })).toBeVisible();
@@ -159,9 +161,10 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await context.close();
 });
 
-// Mert 2026-10-17 (~8:10 AM): the date row, the wheel, the shift tabs and the location and date head keep one
-// rhythm on the manager's and the employee's phone Lineup: 14 px between the rows, the head 16 px under the
-// tabs; on the manager's page the date row sits 18 px under the header's line.
+// Mert 2026-10-17 (~8:10, ~8:30 AM): the date row, the wheel, the shift tabs and what comes under them (the
+// manager's location and date head, the employee's ticket) keep one rhythm on both phone Lineups: 14 px between
+// the rows, 16 px under the tabs; on the manager's page the date row sits 18 px under the header's line. On
+// both only the page header stays when the page scrolls.
 test("the manager's and the employee's phone Lineup keep one rhythm", async ({ browser }) => {
   const week = roundWeek(642);
   sql(`select tests.publish_week('${run}', ${week}, '[
@@ -188,8 +191,8 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
   await emre.goto(`/app/employee-hub/schedule/lineup?date=${day}`);
   await expect(emre.locator(".employee-lineup-ticket")).toContainText("Kadikoy");
 
-  const rows = (page: Page) =>
-    page.evaluate(() => {
+  const rows = (page: Page, under: string) =>
+    page.evaluate((under) => {
       const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top;
       const bottom = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().bottom;
       const toolbar = top(".lineup-toolbar");
@@ -197,14 +200,38 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
         line: toolbar - bottom(".catalog-page-header"),
         wheel: top(".lineup-wheel") - toolbar,
         tabs: top(".lineup-shift-tabs") - toolbar,
-        head: top(".lineup-day-head") - toolbar,
+        head: top(under) - toolbar,
       };
-    });
-  const manager = await rows(ayse);
-  const employee = await rows(emre);
+    }, under);
+  const manager = await rows(ayse, ".lineup-day-head");
+  const employee = await rows(emre, ".employee-lineup-ticket");
   expect(Math.abs(manager.line - 18)).toBeLessThanOrEqual(0.5);
   for (const key of ["wheel", "tabs", "head"] as const) expect(Math.abs(manager[key] - employee[key])).toBeLessThanOrEqual(0.5);
   expect(Math.abs(manager.wheel - 50)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(manager.tabs - 128)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(manager.head - 187)).toBeLessThanOrEqual(0.5);
+
+  // Scrolled: the page header stays at the top at its full size; the wheel goes away under it.
+  for (const page of [ayse, emre]) {
+    const header = page.locator(".catalog-page-header").first();
+    const open = await header.boundingBox();
+    await page.evaluate(() => {
+      const tall = document.createElement("div");
+      tall.style.height = "1600px";
+      document.querySelector(".lineup-phone-pane, .employee-lineup")!.append(tall);
+      document.querySelector(".app-main")!.scrollTop = 600;
+    });
+    await expect(page.locator("#lineup-title, #employee-hub-title")).toBeInViewport();
+    await expect.poll(async () => (await header.boundingBox())?.height).toBe(open?.height);
+    await expect
+      .poll(() =>
+        page.evaluate(() => {
+          const area = document.querySelector(".app-main")!.getBoundingClientRect().top;
+          const pin = document.querySelector(".lineup-phone-head, .employee-lineup-pin")!.getBoundingClientRect();
+          const wheel = document.querySelector(".lineup-wheel")!.getBoundingClientRect();
+          return Math.round(pin.top - area) === 0 && wheel.bottom <= pin.bottom;
+        }),
+      )
+      .toBe(true);
+  }
 });
