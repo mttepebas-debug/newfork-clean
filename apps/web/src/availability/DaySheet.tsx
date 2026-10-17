@@ -1,4 +1,4 @@
-import { useEffect, useId, useRef, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
 import "./day-availability.css";
@@ -24,19 +24,29 @@ export function DaySheet({
 }) {
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
+  // Mert 2026-10-17: the sheet slides up once, when it opens; a tap inside
+  // changes only its content. The class goes when the slide ends, so no later
+  // render or style change can play it again.
+  const [opening, setOpening] = useState(true);
+  const back = useRef(returnTo);
+  back.current = returnTo;
   useEffect(() => {
     const dialog = ref.current;
     dialog?.showModal?.();
     dialog?.querySelector<HTMLElement>("h2")?.focus({ preventScroll: true });
     return () => {
       dialog?.close?.();
-      queueMicrotask(() => document.querySelector<HTMLElement>(returnTo)?.focus({ preventScroll: true }));
+      queueMicrotask(() => document.querySelector<HTMLElement>(back.current)?.focus({ preventScroll: true }));
     };
-  }, [returnTo]);
+    // Once per sheet: showModal again would replay the slide (and the focus).
+  }, []);
   return createPortal(
     <dialog
       ref={ref}
-      className="dav-sheet"
+      className={`dav-sheet${opening ? " is-opening" : ""}`}
+      onAnimationEnd={(event) => {
+        if (event.target === event.currentTarget) setOpening(false);
+      }}
       aria-labelledby={titleId}
       onCancel={(event) => {
         event.preventDefault();
