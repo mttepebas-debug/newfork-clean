@@ -8,6 +8,7 @@ import {
 } from "./employee-hub-data";
 import { CardHeading } from "./DashboardPrimitives";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
+import { FieldNote } from "../shell/FieldNote";
 export function PersonalTasks({
   workspaceId,
   employeeId,
@@ -176,11 +177,11 @@ export function PersonalTasks({
           Connect to save changes to your reminders.
         </p>
       )}
-      {mutation.isError && (
-        <p role="alert" className="eh-error">
-          {mutation.error.message} Your change hasn’t been confirmed.
-        </p>
-      )}
+      <FieldNote
+        id="personal-reminders"
+        lines={2}
+        error={mutation.isError ? `${mutation.error.message} Your change hasn’t been confirmed.` : null}
+      />
       <span className="sr-only" role="status">
         {message}
       </span>

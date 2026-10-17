@@ -5,6 +5,7 @@ import {
   applyPolicyDefinition,
 } from "../settings/signature-templates-data";
 import { errorText } from "../settings/GeneralSettingsPage";
+import { FieldNote } from "../shell/FieldNote";
 
 export function DocumentDefinitionApply({
   workspaceId,
@@ -106,9 +107,11 @@ export function DocumentDefinitionApply({
         </>
       )}
       {apply.isSuccess && <p role="status">Changes applied</p>}
-      {(preview.error || apply.error) && (
-        <p role="alert">{errorText(preview.error || apply.error)}</p>
-      )}
+      <FieldNote
+        id={`document-apply-${id}`}
+        lines={2}
+        error={preview.error || apply.error ? errorText(preview.error || apply.error) : null}
+      />
     </section>
   );
 }

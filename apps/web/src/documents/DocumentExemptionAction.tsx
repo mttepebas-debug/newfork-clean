@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import type { DocumentObligation } from "@newfork/shared";
 import { setDocumentExemption, type DocumentAudience } from "./document-data";
 import { errorText } from "../settings/GeneralSettingsPage";
+import { FieldNote } from "../shell/FieldNote";
 
 /** Reuses the catalogue's inline confirmation and drawer-lock contract. */
 export function DocumentExemptionAction({
@@ -97,9 +98,11 @@ export function DocumentExemptionAction({
                 onChange={(event) => setReason(event.target.value)}
               />
             </label>
-            {mutation.error && (
-              <span role="alert">{errorText(mutation.error)}</span>
-            )}
+            <FieldNote
+              id="document-exemption"
+              lines={2}
+              error={mutation.error ? errorText(mutation.error) : null}
+            />
           </div>
           <div className="catalog-delete-buttons">
             <button

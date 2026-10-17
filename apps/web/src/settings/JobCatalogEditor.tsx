@@ -19,6 +19,7 @@ import { saveJob } from "./organization-data";
 import { errorText } from "./GeneralSettingsPage";
 import { isGoneMeanwhile } from "../lib/catalog-refusals";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
+import { WindowAlert } from "../shell/WindowAlert";
 
 export type CatalogEditor = {
   type: "departments" | "jobs";
@@ -447,12 +448,9 @@ export function JobCatalogEditor({
               </div>
             )}
           </fieldset>
-          {error && (
-            <p className="job-error" role="alert">
-              {error}
-            </p>
-          )}
         </div>
+        {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+        <WindowAlert between message={error} />
         <div className="job-editor-footer">
           {editor.item && (
             <CatalogDeleteAction

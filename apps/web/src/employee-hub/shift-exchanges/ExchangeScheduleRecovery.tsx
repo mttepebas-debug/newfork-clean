@@ -7,6 +7,7 @@ import {
   restoreExchangeSchedule,
 } from "./exchange-data";
 import "./shift-exchanges.css";
+import { FieldNote } from "../../shell/FieldNote";
 
 export function ExchangeScheduleRecovery({
   workspaceId,
@@ -162,7 +163,7 @@ export function ExchangeScheduleRecovery({
           </button>
         </>
       )}
-      {error && <p role="alert">{error}</p>}
+      <FieldNote id="exchange-schedule-recovery" lines={2} error={error} />
       {!model && error && (
         <button type="button" onClick={() => setRefresh((value) => value + 1)}>
           Reload comparison

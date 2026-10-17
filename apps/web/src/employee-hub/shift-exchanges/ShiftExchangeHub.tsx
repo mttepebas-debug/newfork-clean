@@ -48,6 +48,8 @@ import { PlanDialog } from "./PlanDialog";
 import { ReleaseCard, ReleaseDialog, firstName } from "./Release";
 import { ReleaseDeck } from "./ReleaseDeck";
 import { ShiftTicket } from "./ShiftTicket";
+import { FieldNote } from "../../shell/FieldNote";
+import { WindowAlert } from "../../shell/WindowAlert";
 export { ExchangeShiftCard } from "./ExchangeShiftCard";
 
 const stageLabels: Record<ExchangeCase["stage"], string> = {
@@ -545,13 +547,18 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
           {currentNotice}
         </p>
       )}
-      {mutation.error && (
-        <p className="sx-error" role="alert">
-          {mutation.error.message}
-          {!(mutation.error instanceof ExchangeError) &&
-            " If the response was lost, retry the same action to check its result."}
-        </p>
-      )}
+      <FieldNote
+        id="shift-exchange-hub"
+        lines={2}
+        error={
+          mutation.error
+            ? mutation.error.message +
+              (mutation.error instanceof ExchangeError
+                ? ""
+                : " If the response was lost, retry the same action to check its result.")
+            : null
+        }
+      />
       <nav
         className="sx-tabs"
         aria-label="Shift Hub views"
@@ -1215,11 +1222,7 @@ function CaseDetail({
             : "Close cover search"}
         </button>
       )}
-      {error && (
-        <p className="sx-error" role="alert">
-          {error}
-        </p>
-      )}
+      <FieldNote id={`shift-exchange-${item.id}`} lines={2} error={error} />
       {history}
       {closing && (
         <ExchangeDialog
@@ -1297,12 +1300,9 @@ function CaseDetail({
               placeholder="Give a short, clear reason"
             />
           </label>
-          {error && (
-            <p className="sx-error" role="alert">
-              {error}
-            </p>
-          )}
           <footer className="sx-actions">
+            {/* Over the form's bottom edge, above the buttons (UI-FIELDMSG). */}
+            <WindowAlert message={error} />
             <button
               className={requestEnded ? "sx-primary" : undefined}
               disabled={working}
@@ -1627,12 +1627,9 @@ function CreateExchange({
                   You remain responsible until a manager approves the transfer.
                 </p>
               </div>
-              {error && (
-                <p className="sx-error" role="alert">
-                  {error}
-                </p>
-              )}
               <footer className="sx-actions">
+                {/* Over the form's bottom edge, above the buttons (UI-FIELDMSG). */}
+                <WindowAlert message={error} />
                 <button type="button" onClick={close}>
                   Cancel
                 </button>

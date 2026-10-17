@@ -12,6 +12,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import "./weekly-preferences.css";
+import { WindowAlert } from "../shell/WindowAlert";
 
 export function WeeklyPreferenceSettingsPanel({
   workspaceId,
@@ -189,43 +190,43 @@ export function WeeklyPreferenceSettings({
       </div>
       {model.can_edit && (
         <footer className="weekly-preferences-footer">
-          {stale && (
-            <p role="alert">
-              Settings changed elsewhere. Your draft is preserved.
-            </p>
-          )}
-          {error && (
-            <p className="weekly-preferences-error" role="alert">
-              {error}
-            </p>
-          )}
-          {(stale || error) && (
-            <button
-              type="button"
-              disabled={busy}
-              onClick={async () => {
-                setBusy(true);
-                try {
-                  const latest = await onReload();
-                  setBase(latest.settings);
-                  setDraft(latest.settings);
-                  setError(null);
-                  setSaved(false);
-                } catch (error) {
-                  setError(
-                    error instanceof Error
-                      ? error.message
-                      : "Settings could not be refreshed.",
-                  );
-                } finally {
-                  setBusy(false);
-                }
-              }}
-            >
-              <RotateCcw size={14} aria-hidden />
-              Discard and reload
-            </button>
-          )}
+          {/* Over the form's bottom edge, above the buttons (UI-FIELDMSG). */}
+          <WindowAlert
+            message={
+              stale || error ? (
+                <>
+                  {[stale ? "Settings changed elsewhere. Your draft is preserved." : null, error]
+                    .filter(Boolean)
+                    .join(" ")}{" "}
+                  <button
+                    type="button"
+                    disabled={busy}
+                    onClick={async () => {
+                      setBusy(true);
+                      try {
+                        const latest = await onReload();
+                        setBase(latest.settings);
+                        setDraft(latest.settings);
+                        setError(null);
+                        setSaved(false);
+                      } catch (error) {
+                        setError(
+                          error instanceof Error
+                            ? error.message
+                            : "Settings could not be refreshed.",
+                        );
+                      } finally {
+                        setBusy(false);
+                      }
+                    }}
+                  >
+                    <RotateCcw size={14} aria-hidden />
+                    Discard and reload
+                  </button>
+                </>
+              ) : null
+            }
+          />
           <div className="weekly-preferences-actions">
             <span role="status">
               {busy

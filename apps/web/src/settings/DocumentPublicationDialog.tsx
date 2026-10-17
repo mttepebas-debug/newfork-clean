@@ -17,6 +17,7 @@ import "./document-settings-editor.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
+import { FieldNote } from "../shell/FieldNote";
 
 export function DocumentPublicationDialog({
   workspaceId,
@@ -271,9 +272,11 @@ export function DocumentPublicationDialog({
             </>
           )}
 
-          {mutation.error && (
-            <p role="alert">{errorText(mutation.error)}</p>
-          )}
+          <FieldNote
+            id="document-publication"
+            lines={2}
+            error={mutation.error ? errorText(mutation.error) : null}
+          />
 
           {mutation.error && (
             <button

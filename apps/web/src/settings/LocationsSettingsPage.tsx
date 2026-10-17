@@ -42,6 +42,7 @@ import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 import { WindowAlert } from "../shell/WindowAlert";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
@@ -587,7 +588,7 @@ function FormField({
   /** The one US phone field: a fixed +1 and the mask (BL-503). */
   readonly phone?: boolean;
 }) {
-  const errorId = useId();
+  const noteId = useId();
   return (
     <div className={`location-field ${className}`}>
       <label className="job-field">
@@ -598,7 +599,7 @@ function FormField({
             // Named outright: the +1 sits inside the label.
             aria-label={label}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-describedby={fieldNoteId(noteId, error)}
             onChange={onChange}
             required={!optional}
           />
@@ -610,17 +611,13 @@ function FormField({
             maxLength={maxLength}
             placeholder={placeholder}
             aria-invalid={error ? true : undefined}
-            aria-describedby={error ? errorId : undefined}
+            aria-describedby={fieldNoteId(noteId, error)}
             onChange={(event) => onChange(event.target.value)}
             required={!optional}
           />
         )}
       </label>
-      {error ? (
-        <small className="location-field-error" id={errorId} role="alert">
-          {error}
-        </small>
-      ) : null}
+      <FieldNote id={noteId} error={error} className="location-field-error" />
     </div>
   );
 }

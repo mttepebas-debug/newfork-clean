@@ -297,12 +297,6 @@
     animation: none;
   }
 }
-.dav-error {
-  margin: 12px 0 0;
-  font-size: 13px;
-  line-height: 1.5;
-  color: var(--theme-danger-text);
-}
 .dav-link {
   padding: 0;
   border: 0;

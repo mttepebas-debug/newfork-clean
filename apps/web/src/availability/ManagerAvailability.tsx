@@ -26,6 +26,7 @@ import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import "./manager-availability.css";
+import { WindowAlert } from "../shell/WindowAlert";
 
 // Employees → drawer → Availability, and a person's page on the Availability
 // page's phone view. Two tabs (KARARLAR "Müsaitlik tercih" 2): the employee's
@@ -345,37 +346,44 @@ function ManagerNotes({
     );
   };
 
-  const errorLine = error ? (
-    <p className="avm-error" role="alert">
-      {error}
-      {conflict && (
-        <>
-          {" "}
-          <button
-            type="button"
-            className="avm-link"
-            disabled={reloading}
-            onClick={async () => {
-              setReloading(true);
-              try {
-                if (!onReload) reset(model);
-                else {
-                  // A failed fetch keeps the warning: resetting to the old
-                  // week would only be refused again.
-                  const latest = await onReload();
-                  if (latest) reset(latest);
-                }
-              } finally {
-                setReloading(false);
-              }
-            }}
-          >
-            Reload
-          </button>
-        </>
-      )}
-    </p>
-  ) : null;
+  // Over the body's bottom edge, above the buttons; nothing moves (UI-FIELDMSG).
+  const errorLine = (
+    <WindowAlert
+      message={
+        error ? (
+          <>
+            {error}
+            {conflict && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="avm-link"
+                  disabled={reloading}
+                  onClick={async () => {
+                    setReloading(true);
+                    try {
+                      if (!onReload) reset(model);
+                      else {
+                        // A failed fetch keeps the warning: resetting to the old
+                        // week would only be refused again.
+                        const latest = await onReload();
+                        if (latest) reset(latest);
+                      }
+                    } finally {
+                      setReloading(false);
+                    }
+                  }}
+                >
+                  Reload
+                </button>
+              </>
+            )}
+          </>
+        ) : null
+      }
+    />
+  );
 
   return (
     <div className={`avm-notes dav-panel${phone ? " is-phone" : ""}`}>

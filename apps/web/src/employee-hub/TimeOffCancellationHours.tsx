@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { TimeOffCancellationPeriod } from "@newfork/shared";
 import { AvailabilityClockInput } from "../availability/AvailabilityClockInput";
 import { formatTimeOffInstant, resolveTimeOffSplit, timeOffWallParts } from "./time-off-split";
+import { FieldNote } from "../shell/FieldNote";
 
 export type CancellationChoice = TimeOffCancellationPeriod & {
   key: string; zone: string; original_start: string; original_end: string; initialEdit?: boolean;
@@ -63,7 +64,7 @@ export function TimeOffCancellationHours({ period, index, timeFormat, onChange, 
           </select></label>
         </div>;
       })}
-      {error ? <p role="alert">{error}</p> : null}
+      <FieldNote id={`time-off-hours-${index}`} lines={2} error={error} />
       <button type="button" aria-label={`Apply hours for period ${index + 1}`} onClick={apply}>Apply hours</button>
       <button type="button" aria-label={`Discard these edits for period ${index + 1}`} onClick={() => { setEditing(false); onEditing(false); setError(""); }}>Discard these edits</button>
     </fieldset>}

@@ -3,7 +3,7 @@
    its anchor unless it already is one (sticky, fixed or absolute footers
    are); between the body and the footer, a zero-height slot is. */
 :where(:has(> .window-alert)) { position: relative; }
-.window-alert {
+.window-alert[role] {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -27,6 +27,6 @@
   margin: 0;
   padding: 0;
 }
-.window-alert-slot > .window-alert {
+.window-alert-slot > .window-alert[role] {
   bottom: 0;
 }

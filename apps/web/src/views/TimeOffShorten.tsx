@@ -10,6 +10,7 @@ import {
   type CancellationChoice,
 } from "../employee-hub/TimeOffCancellationHours";
 import "../employee-hub/time-off.css";
+import { FieldNote } from "../shell/FieldNote";
 
 /**
  * BL-127: Requests → Time off → an approved request → Shorten time off. The
@@ -71,9 +72,18 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
           onEditing={active => setEditing(current => active ? [...new Set([...current, period.key])] : current.filter(key => key !== period.key))} />
       </div>)}
       <label>Note for {request.employee_name}<textarea maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label>
-      {choices.length && selectionError ? <p role="alert">{selectionError}</p> : null}
-      {unfinished ? <p>Apply or discard the hours being edited first.</p> : null}
-      {mutation.error ? <p role="alert">{isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message}</p> : null}
+      {/* Why it can't be sent, in one kept place above the buttons (UI-FIELDMSG). */}
+      <FieldNote
+        id={`time-off-shorten-${request.id}`}
+        lines={2}
+        help={unfinished ? "Apply or discard the hours being edited first." : null}
+        error={
+          (choices.length && selectionError) ||
+          (mutation.error
+            ? isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message
+            : null)
+        }
+      />
       <button type="submit" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
       <button type="button" onClick={() => setPeriods(null)}>Keep time off</button>
     </fieldset>

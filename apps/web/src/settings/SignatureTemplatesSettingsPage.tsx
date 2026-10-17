@@ -52,6 +52,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 import "../views/list-page-frozen.css";
+import { WindowAlert } from "../shell/WindowAlert";
 type View = "templates" | "retention";
 
 const defaultPolicyDraft: SignatureRetentionPolicyInput = {
@@ -594,12 +595,9 @@ export default function SignatureTemplatesSettingsPage() {
                   </label>
                 </div>
               </fieldset>
-              {formError && (
-                <p className="job-error" role="alert">
-                  {formError}
-                </p>
-              )}
             </div>
+            {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+            <WindowAlert between message={formError} />
             <div className="job-editor-footer">
               {editingPolicy !== "new" ? (
                 <RetentionPolicyFooterActions
@@ -822,12 +820,9 @@ export default function SignatureTemplatesSettingsPage() {
                     onBusyChange={setPolicyApplying}
                   />
                 )}
-              {formError && (
-                <p className="job-error" role="alert">
-                  {formError}
-                </p>
-              )}
             </div>
+            {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+            <WindowAlert between message={formError} />
             <div className="job-editor-footer">
               {editingTemplate !== "new" ? (
                 <TemplateFooterActions

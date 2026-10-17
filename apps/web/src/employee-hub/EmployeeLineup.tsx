@@ -13,6 +13,7 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs, type LineupShif
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import "./employee-lineup.css";
+import { FieldNote } from "../shell/FieldNote";
 
 // The employee's Lineup (KARARLAR 2026-10-17 "E · Çark tarih seçildi": the employee screen as in E, which is
 // C's): the manager's date row (‹ date ›, the location), day wheel and shift tabs, then her own shift as a ticket
@@ -348,11 +349,11 @@ function LineupView({
             >
               {acknowledge.isPending ? "Acknowledging…" : "Acknowledge"}
             </Button>
-            {acknowledge.isError ? (
-              <p className="employee-lineup-error" role="alert">
-                It didn't go through. Check your connection, then try again.
-              </p>
-            ) : null}
+            <FieldNote
+              id={`employee-lineup-ack-${lineup.version_id}`}
+              lines={2}
+              error={acknowledge.isError ? "It didn't go through. Check your connection, then try again." : null}
+            />
           </div>
         )
       ) : null}

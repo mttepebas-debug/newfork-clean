@@ -23,6 +23,7 @@ import { useAvailabilityNavigationGuard } from "./availability-navigation";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
+import { WindowAlert } from "../shell/WindowAlert";
 
 // The employee's own week: Employee Hub → My Availability and the onboarding
 // step (M2: only the employee writes it). Desktop: the days on the left, the
@@ -171,37 +172,45 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
     setFlash(sheetChanges);
   }
 
-  const error_ = error ? (
-    <p className="dav-error" role="alert">
-      {error}
-      {conflict && (
-        <>
-          {" "}
-          <button
-            type="button"
-            className="dav-link"
-            disabled={reloading}
-            onClick={async () => {
-              setReloading(true);
-              try {
-                if (!onReload) reset(model);
-                else {
-                  // A failed fetch keeps the warning: resetting to the old
-                  // week would only be refused again.
-                  const latest = await onReload();
-                  if (latest) reset(latest);
-                }
-              } finally {
-                setReloading(false);
-              }
-            }}
-          >
-            Reload
-          </button>
-        </>
-      )}
-    </p>
-  ) : null;
+  // Over the body's bottom edge, above the buttons; nothing moves (UI-FIELDMSG).
+  const error_ = (
+    <WindowAlert
+      between
+      message={
+        error ? (
+          <>
+            {error}
+            {conflict && (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className="dav-link"
+                  disabled={reloading}
+                  onClick={async () => {
+                    setReloading(true);
+                    try {
+                      if (!onReload) reset(model);
+                      else {
+                        // A failed fetch keeps the warning: resetting to the old
+                        // week would only be refused again.
+                        const latest = await onReload();
+                        if (latest) reset(latest);
+                      }
+                    } finally {
+                      setReloading(false);
+                    }
+                  }}
+                >
+                  Reload
+                </button>
+              </>
+            )}
+          </>
+        ) : null
+      }
+    />
+  );
 
   const status = dirty ? (
     <span className="dav-status is-warn">

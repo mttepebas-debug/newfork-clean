@@ -106,12 +106,12 @@ describe("WindowAlert", () => {
     expect(container.querySelector(".window-alert-slot > .window-alert")?.textContent).toBe("Couldn't save.");
     const css = flat("src/shell/window-alert.css");
     expect(body(css, ".window-alert-slot")).toMatch(/height: 0/);
-    expect(body(css, ".window-alert-slot > .window-alert")).toMatch(/bottom: 0/);
+    expect(body(css, ".window-alert-slot > .window-alert[role]")).toMatch(/bottom: 0/);
   });
 
   it("sits over the body's bottom edge, out of the flow, on its anchor", () => {
     const css = flat("src/shell/window-alert.css");
-    const band = body(css, ".window-alert");
+    const band = body(css, ".window-alert[role]");
     expect(band).toMatch(/position: absolute/);
     expect(band).toMatch(/bottom: 100%/);
     expect(band).toMatch(/var\(--theme-/);
