@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { sendResendEmail } from "./resend-email";
+import { ResendSendError, sendResendEmail } from "./resend-email";
 
 afterEach(() => {
   vi.unstubAllGlobals();
@@ -108,5 +108,50 @@ describe("sendResendEmail (BL-163)", () => {
         message: { from: "a@x.test", to: "b@x.test", subject: "s", html: "h" },
       }),
     ).rejects.toThrow(/^Password reset delivery failed \(422\)$/);
+  });
+});
+
+describe("sendResendEmail for notices (BILDIRIM-14)", () => {
+  it("sends a plain-text part beside the HTML and answers Resend's id", async () => {
+    const fetch = vi.fn(async () => new Response(JSON.stringify({ id: "re_abc", to: "echo@x.test" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetch);
+    const sent = await sendResendEmail({
+      apiKey: "re_test",
+      failure: "Notification delivery failed",
+      message: { from: "a@x.test", to: "b@x.test", subject: "s", html: "<p>h</p>", text: "h" },
+    });
+    expect(sent).toEqual({ id: "re_abc" });
+    expect(JSON.parse(String((fetch.mock.calls[0] as unknown as [string, RequestInit])[1].body))).toMatchObject({ text: "h" });
+  });
+
+  it("answers no id when Resend's body has none", async () => {
+    stubResend();
+    const sent = await sendResendEmail({
+      apiKey: "re_test",
+      failure: "Notification delivery failed",
+      message: { from: "a@x.test", to: "b@x.test", subject: "s", html: "h" },
+    });
+    expect(sent).toEqual({ id: null });
+  });
+
+  it("says the status of a refusal and whether it timed out, in a typed error", async () => {
+    stubResend(429);
+    const refused = await sendResendEmail({
+      apiKey: "re_test",
+      failure: "Notification delivery failed",
+      message: { from: "a@x.test", to: "b@x.test", subject: "s", html: "h" },
+    }).catch((error: unknown) => error);
+    expect(refused).toBeInstanceOf(ResendSendError);
+    expect(refused).toMatchObject({ status: 429, code: "http_429", message: "Notification delivery failed (429)" });
+
+    vi.stubGlobal("fetch", vi.fn(async () => {
+      throw new DOMException("The operation timed out.", "TimeoutError");
+    }));
+    const late = await sendResendEmail({
+      apiKey: "re_test",
+      failure: "Notification delivery failed",
+      message: { from: "a@x.test", to: "b@x.test", subject: "s", html: "h" },
+    }).catch((error: unknown) => error);
+    expect(late).toMatchObject({ status: null, code: "timeout" });
   });
 });

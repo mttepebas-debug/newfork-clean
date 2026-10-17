@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { authzActionKeys, permissionSchema, type ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
 
@@ -112,5 +113,43 @@ describe.each(requests)("%s route", (_name, method, url) => {
     const response = await send(new Error("permission denied for table employees"));
     expect(response.statusCode).toBe(500);
     expect(response.payload).not.toContain("employees");
+  });
+});
+
+// BILDIRIM-14: the email channel's two doors with no signed-in person answer a failure the same way:
+// a 500 with the request id, and nothing of what failed.
+describe("notification email routes", () => {
+  const hidden = new Error("permission denied for table notification_deliveries");
+  const webhookBytes = Buffer.from("route-contract-secret");
+  const app = () =>
+    buildApp({
+      notificationEmail: {
+        worker: { runBatch: () => Promise.reject(hidden) },
+        cronSecret: "s",
+        webhookSecret: `whsec_${webhookBytes.toString("base64")}`,
+        events: { apply: () => Promise.reject(hidden) },
+      },
+    });
+
+  it("the cron route keeps an untyped failure's message off the screen", async () => {
+    const response = await app().inject({ method: "POST", url: "/internal/cron/notification-email", headers: { authorization: "Bearer s" } });
+    expect(response.statusCode).toBe(500);
+    expect(response.payload).not.toContain("notification_deliveries");
+    expect(response.json()).toMatchObject({ requestId: expect.any(String) });
+  });
+
+  it("the webhook keeps an untyped failure's message off the screen", async () => {
+    const body = JSON.stringify({ type: "email.delivered", data: { email_id: "re_1", to: ["a@x.test"] } });
+    const ts = Math.floor(Date.now() / 1000);
+    const signature = createHmac("sha256", webhookBytes).update(`m.${ts}.${body}`).digest("base64");
+    const response = await app().inject({
+      method: "POST",
+      url: "/webhooks/resend",
+      payload: body,
+      headers: { "content-type": "application/json", "svix-id": "m", "svix-timestamp": String(ts), "svix-signature": `v1,${signature}` },
+    });
+    expect(response.statusCode).toBe(500);
+    expect(response.payload).not.toContain("notification_deliveries");
+    expect(response.json()).toMatchObject({ requestId: expect.any(String) });
   });
 });
