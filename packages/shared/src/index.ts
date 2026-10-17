@@ -37,6 +37,7 @@ export * from "./communications";
 export * from "./notifications";
 export * from "./storage-access";
 export * from "./notification-settings";
+export * from "./push-alerts";
 export * from "./lineup";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
