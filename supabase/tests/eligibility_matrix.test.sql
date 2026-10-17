@@ -66,7 +66,7 @@ insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,loc
  select 'ad426000-0000-4000-8000-000000000011','ad426000-0000-4000-8000-000000000012',w,loc,
   'ad426000-0000-4000-8000-000000000010',emp,job,'2035-01-15','09:00','12:00','explicit','America/Los_Angeles' from ws;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
+ select w,emp,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
 select is(pg_temp.candidate()->>'status','eligible','partial preference conflict does not make a candidate ineligible');
 select ok(pg_temp.has(pg_temp.candidate(),'acknowledgements','availability'),'the person is asked "are you sure?" (M6)');
 select ok(pg_temp.has(pg_temp.candidate(),'approval_flags','availability_consent'),'the approving manager sees "by their own consent" (M6)');
@@ -76,7 +76,7 @@ select is(pg_temp.candidate('{"scheduled_date":"2035-01-16"}')->'assessment'->>'
 select is(pg_temp.candidate('{"start_time":"20:00"}')->'assessment'->>'has_availability_conflict','false','touching endpoints have no conflict');
 select ok(not pg_temp.has(pg_temp.candidate('{"start_time":"20:00"}'),'acknowledgements','availability'),'and ask nothing');
 select is(pg_temp.candidate('{"time_timezone":"America/New_York"}')->'assessment'->>'coverage','partial','actual saved timezone is compared with current target location rules');
-update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference(),'{days,1,all_day}','true') where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','eligible','an all-day mark keeps the person selectable');
 select is(pg_temp.candidate()->'assessment'->>'coverage','none','full preference conflict is retained as warning evidence');
 
@@ -109,7 +109,7 @@ select throws_ok($$select pg_temp.candidate('{"location_id":"ad426000-0000-4000-
 
 -- 4. Approved time off blocks every overlapping shift, even by a minute; the
 -- person's consent no longer sets it aside (KARARLAR §1.1, Mert 2026-10-09; BL-995).
-update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=public.empty_weekly_preference() where workspace_id=(select w from ws);
 select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','09:00','10:00','ad426000-0000-4000-8000-000000000017') from ws;
 select is(pg_temp.candidate()->>'status','eligible','09:00 New York leave does not overlap the 18:00 Los Angeles shift');
 select tests.approved_leave(w,emp,employee_user,other_loc,'2035-01-15','21:00','22:00','ad426000-0000-4000-8000-000000000016') from ws;
@@ -123,7 +123,7 @@ select is(pg_temp.candidate()->>'status','eligible','pending leave does not beco
 
 -- 5. The manager's reminder note never decides eligibility (M12).
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,enabled,notes,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true'),true,
+ select w,emp,jsonb_set(public.empty_weekly_preference(),'{days,1,all_day}','true'),true,
   array['','Private manager note','','','','',''],1,owner_id from ws;
 select is(pg_temp.candidate()->>'status','eligible','manager-only reminder never becomes an assignment blocker');
 select ok(pg_temp.has(pg_temp.candidate(),'approval_flags','manager_note'),'the approving manager is reminded of it');

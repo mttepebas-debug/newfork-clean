@@ -11,7 +11,7 @@ create temp table wp_fixture as select
  'ad410000-0000-4000-8000-000000000007'::uuid other_loc,
  'ad410000-0000-4000-8000-000000000008'::uuid dinner,
  'ad410000-0000-4000-8000-000000000009'::uuid hidden_type,
- public.empty_weekly_preference('time_range') p;
+ public.empty_weekly_preference() p;
 insert into auth.users(id,email) select owner_id,'weekly-owner@example.test' from wp_fixture
  union all select actor,'weekly-employee@example.test' from wp_fixture
  union all select manager,'weekly-manager@example.test' from wp_fixture;
@@ -79,19 +79,12 @@ select is(result->'model'->'employee'->>'revision','2','the new week applies at 
 select is(result-'model','{}'::jsonb,'the answer reports no kept or cancelled requests') from wp_command;
 select is((select count(*) from public.weekly_preference_events where workspace_id=(select w from wp_fixture)),4::bigint,'one history row per saved week');
 
--- M3: in shift type mode, a day with every selectable type marked is all day.
-select public.weekly_preference_settings_save_service(owner_id,w,jsonb_build_object('input_mode','shift_type','onboarding_required',false,
- 'expected_revision',(public.weekly_preference_settings_read_service(owner_id,w)->'settings'->>'revision')::integer),gen_random_uuid()) from wp_fixture;
-update wp_command set command=jsonb_build_object('employee_id',f.emp,'source','employee',
+-- One range a day (Mert, 2026-10-16): a save with two is refused, nothing changes.
+select throws_ok($$select public.weekly_preferences_save_service(f.actor,f.w,jsonb_build_object('employee_id',f.emp,'source','employee',
  'expected_revision',(m.model->'employee'->>'revision')::integer,'settings_revision',(m.model->'settings'->>'revision')::integer,
- 'preference',jsonb_set(jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(f.dinner,f.hidden_type)),
-  '{days,2,shift_type_ids}',jsonb_build_array(f.dinner))),request_key=gen_random_uuid()
- from wp_fixture f cross join lateral (select public.weekly_preferences_read_service(f.actor,f.w) model) m;
-select lives_ok($$update wp_command set result=public.weekly_preferences_save_service(actor,w,command,request_key) from wp_fixture$$,'Monday with both types marked saves');
-select is((select preference->'days'->1 from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
- '{"day": 1, "ranges": [], "all_day": true, "shift_type_ids": []}'::jsonb,'every selectable type marked is saved as all day');
-select is((select preference->'days'->2->'shift_type_ids' from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),
- (select jsonb_build_array(dinner) from wp_fixture),'one type of two stays as it was');
+ 'preference',jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"09:00","end":"11:00"},{"start":"17:00","end":"19:00"}]')),gen_random_uuid())
+ from wp_fixture f cross join lateral (select public.weekly_preferences_read_service(f.actor,f.w) model) m$$,'22023','Check the weekly unavailable hours','two ranges on a day are refused');
+select is((select revision from public.employee_weekly_preferences where employee_id=(select emp from wp_fixture)),2,'the refused save left the week as it was');
 -- The no comes from the core: 42501 with its authz.* hint (CLAUDE.md §9).
 create function pg_temp.refusal(q text) returns text language plpgsql as $$
 declare h text; begin execute q; return 'no refusal'; exception when others then get stacked diagnostics h = pg_exception_hint; return sqlstate||' '||coalesce(h,''); end $$;

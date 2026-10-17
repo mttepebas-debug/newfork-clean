@@ -106,7 +106,6 @@ supabase/tests/eligibility_matrix.test.sql
 supabase/tests/weekly_availability_preferences.test.sql
 supabase/tests/weekly_exchange_acceptance.test.sql
 supabase/tests/weekly_onboarding_preferences.test.sql
-supabase/tests/weekly_preference_mode_conversion.test.sql
 supabase/tests/weekly_preference_settings.test.sql
 supabase/tests/weekly_preferences_commands.test.sql
 supabase/tests/weekly_schedule_acceptance.test.sql

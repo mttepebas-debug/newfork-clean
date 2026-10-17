@@ -52,7 +52,7 @@ select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model())->'weekly
 select throws_ok($$select pg_temp.read_model(employee_user) from ws$$,'42501',null,'employee cannot read shared manager preference projections');
 select is(jsonb_array_length(pg_temp.the_employee(pg_temp.read_model(owner_id))->'weekly_availability'),2,'owner sees both authorized locations') from ws;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,notes,revision,updated_by)
- select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),
+ select w,emp,true,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),
   array['private-note','','','','','',''],1,manager from ws;
 select ok(not (pg_temp.project()->'days'->0->>'has_unavailable')::boolean and jsonb_array_length(pg_temp.project()->'note_intervals')>0,'an enabled note marks no day; its hours travel apart (M12)');
 -- G14 (user decision 2026-10-01): the manager the note is for reads its words
@@ -63,19 +63,16 @@ select is((pg_temp.project()->'note_intervals'->0->>'start_at')::timestamptz,'20
 select is((pg_temp.project('2035-01-15',other_loc)->'note_intervals'->0->>'start_at')::timestamptz,'2035-01-15 23:00Z'::timestamptz,'same recurring rule uses target East timezone') from ws;
 update public.manager_weekly_reminders set enabled=false where workspace_id=(select w from ws);
 select is(pg_temp.project()->'unavailable_intervals','[]'::jsonb,'disabled reminders disappear without deleting them');
-insert into public.shift_types(id,workspace_id,name,default_start_time,default_end_time) select shift_type,w,'Night','22:00','02:00' from ws;
+-- Hours only: an overnight stretch is Monday's evening and Tuesday's early hours.
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(shift_type)),1,employee_user from ws;
-select ok((pg_temp.project()->'days'->0->>'has_unavailable')::boolean and (pg_temp.project()->'days'->1->>'has_unavailable')::boolean,'overnight default marks both affected dates');
-update public.shift_types set default_start_time='19:00',default_end_time='21:00' where id=(select shift_type from ws);
-select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 03:00Z'::timestamptz,'current default changes the next read');
-update public.shift_types set archived_at=now() where id=(select shift_type from ws);
-select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 03:00Z'::timestamptz,'archived type retains last valid default');
+ select w,emp,jsonb_set(jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"22:00","end":"24:00"}]'),'{days,2,ranges}','[{"start":"00:00","end":"02:00"}]'),1,employee_user from ws;
+select ok((pg_temp.project()->'days'->0->>'has_unavailable')::boolean and (pg_temp.project()->'days'->1->>'has_unavailable')::boolean,'an overnight stretch marks both dates');
+select is((pg_temp.project()->'unavailable_intervals'->0->>'start_at')::timestamptz,'2035-01-16 06:00Z'::timestamptz,'Monday 22:00 at West is 06:00 UTC');
 select tests.approved_leave(w,emp,employee_user,loc,'2035-01-15','12:00','14:00','ad425000-0000-4000-8000-000000000010') from ws;
 select is(jsonb_array_length(pg_temp.project()->'leave_intervals'),1,'approved leave has separate blocking intervals');
 select is(jsonb_array_length(pg_temp.project()->'unavailable_intervals'),2,'leave does not become a preference interval in the eight-day projection');
 select is((select count(distinct x->>'offset_seconds') from jsonb_array_elements(pg_temp.project('2035-11-04')->'clock_segments') x),2::bigint,'fall-back week contains both clock offsets');
-update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,all_day}','true') where workspace_id=(select w from ws);
+update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference(),'{days,1,all_day}','true') where workspace_id=(select w from ws);
 select ok((pg_temp.project()->'days'->0->>'all_day')::boolean,'all-day projection is explicit');
 select tests.stops_working_at((select id from public.workspace_memberships where workspace_id=(select w from ws) and user_id=(select manager from ws)));
 -- With no location left the manager reads no week at all (FB-6.1 .4: the core

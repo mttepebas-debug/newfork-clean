@@ -39,7 +39,7 @@ insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,loc
  select pg_temp.shift_id(n),pg_temp.shift_id(10+n),w,loc,'ad427000-0000-4000-8000-000000000010',
   case n when 2 then null when 3 then second_emp else first_emp end,job,start_day+n-1,'18:00','22:00','explicit','UTC' from ws cross join generate_series(1,4) n;
 create function pg_temp.unavailable() returns jsonb language sql as $$
- select jsonb_build_object('input_mode','time_range','days',jsonb_agg(jsonb_build_object('day',d,'all_day',true,'ranges','[]'::jsonb,'shift_type_ids','[]'::jsonb) order by d)) from generate_series(0,6) d;
+ select jsonb_build_object('days',jsonb_agg(jsonb_build_object('day',d,'all_day',true,'ranges','[]'::jsonb) order by d)) from generate_series(0,6) d;
 $$;
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
  select w,second_emp,pg_temp.unavailable(),1,second_user from ws;
@@ -112,7 +112,7 @@ select is(result->>'status','completed','swap completes without re-prompting eit
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(3)),(select first_emp from ws),'requester receives their accepted shift');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(4)),(select second_emp from ws),'invited employee receives their accepted shift');
 select is((select count(*) from public.schedule_availability_overrides where workspace_id=(select w from ws)),0::bigint,'the swap records no acceptance either');
-update public.employee_weekly_preferences set preference=public.empty_weekly_preference('time_range') where employee_id=(select second_emp from ws);
+update public.employee_weekly_preferences set preference=public.empty_weekly_preference() where employee_id=(select second_emp from ws);
 select is(pg_temp.warning(second_emp,2),null::jsonb,'manager-only conflict never asks the employee to reveal or accept a private reminder') from ws;
 update state set result=(select pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(2))) from ws);
 update state set cid=(result->>'case_id')::uuid;

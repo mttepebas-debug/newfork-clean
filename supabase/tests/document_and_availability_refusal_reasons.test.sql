@@ -117,7 +117,7 @@ create temp table wp_fixture as select
  'ad410000-0000-4000-8000-000000000007'::uuid other_loc,
  'ad410000-0000-4000-8000-000000000008'::uuid dinner,
  'ad410000-0000-4000-8000-000000000009'::uuid hidden_type,
- public.empty_weekly_preference('time_range') p;
+ public.empty_weekly_preference() p;
 insert into auth.users(id,email) select owner_id,'weekly-owner@example.test' from wp_fixture
  union all select actor,'weekly-employee@example.test' from wp_fixture
  union all select manager,'weekly-manager@example.test' from wp_fixture;
@@ -145,7 +145,7 @@ select is(pg_temp.refusal($$select public.weekly_preferences_save_service(actor,
  'PT409 availability.changed','a week saved over a newer one: changed meanwhile');
 select is(pg_temp.refusal($$select public.weekly_preferences_save_service(actor,w,jsonb_build_object('employee_id',emp,'source','employee','expected_revision',0,'settings_revision',7,'preference',p),gen_random_uuid()) from wp_fixture$$),
  'PT409 availability.changed','a week saved under old availability settings: changed meanwhile');
-select is(pg_temp.refusal($$select public.weekly_preference_settings_save_service(owner_id,w,'{"input_mode":"time_range","onboarding_required":false,"expected_revision":4}',gen_random_uuid()) from wp_fixture$$),
+select is(pg_temp.refusal($$select public.weekly_preference_settings_save_service(owner_id,w,'{"onboarding_required":false,"expected_revision":4}',gen_random_uuid()) from wp_fixture$$),
  'PT409 availability.changed','availability settings saved over newer ones: changed meanwhile');
 
 select * from finish();

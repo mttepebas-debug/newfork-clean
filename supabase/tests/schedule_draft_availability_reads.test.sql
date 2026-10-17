@@ -43,7 +43,7 @@ select is(pg_temp.lunch() -> 'availability_assessment' ->> 'conflict_severity', 
 -- Ali marks Monday 13:00-15:00 after the draft was saved.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values (tests.id('dr'), tests.id('dr:ali'),
-  jsonb_set(public.empty_weekly_preference('time_range'), '{days,1,ranges}', '[{"start": "13:00", "end": "15:00"}]'),
+  jsonb_set(public.empty_weekly_preference(), '{days,1,ranges}', '[{"start": "13:00", "end": "15:00"}]'),
   1, tests.user('dr:ali'));
 -- BL-186: a mark is a preference, a warning on the shift and never a conflict.
 select ok((pg_temp.lunch() -> 'availability_assessment' ->> 'has_availability_conflict')::boolean, 'the weekly list shows it as a warning');

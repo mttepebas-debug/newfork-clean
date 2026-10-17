@@ -222,7 +222,7 @@ begin
     'employee_id', tests.id('sc:' || whose), 'source', 'employee',
     'expected_revision', coalesce((select p.revision from public.employee_weekly_preferences p where p.employee_id = tests.id('sc:' || whose)), 0),
     'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
-    'preference', public.empty_weekly_preference('time_range')), gen_random_uuid());
+    'preference', public.empty_weekly_preference()), gen_random_uuid());
 end;
 $$;
 select throws_ok($$select pg_temp.save_own('can')$$, '42501', null, 'Can, a manager at Kadıköy, does not save a week of his own');
@@ -279,7 +279,7 @@ begin
     'employee_id', tests.id('sc:' || whose), 'source', 'manager',
     'expected_revision', coalesce((select n.revision from public.manager_weekly_reminders n where n.employee_id = tests.id('sc:' || whose)), 0),
     'settings_revision', (select s.availability_preferences_revision from public.workspace_scheduling_settings s where s.workspace_id = tests.id('sc')),
-    'preference', public.empty_weekly_preference('time_range'), 'enabled', true,
+    'preference', public.empty_weekly_preference(), 'enabled', true,
     'notes', jsonb_build_array('Call before Friday', '', '', '', '', '', '')), gen_random_uuid());
   return 'saved';
 exception when others then

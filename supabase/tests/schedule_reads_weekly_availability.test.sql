@@ -27,11 +27,11 @@ $$;
 -- Ali cannot work Monday evenings; his manager notes Friday mornings.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'),
+  pg_temp.mark(public.empty_weekly_preference(), 1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'),
   1, tests.user('wr:ali'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
+  pg_temp.mark(public.empty_weekly_preference(), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, array['', '', '', '', '', 'School mornings', ''], 1, tests.user('wr:ayse'));
 
 select tests.publish_week('wr', 1, '[{"label": "thu", "person": "ali", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}]');
@@ -85,7 +85,7 @@ select is((select jsonb_build_object('author', p -> 'note_author', 'edited_at', 
 -- here directly) still gives nobody its words.
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, notes, revision, updated_by)
 values (tests.id('wr'), tests.id('wr:ayse'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
+  pg_temp.mark(public.empty_weekly_preference(), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, array['', '', '', '', '', 'About Ayse', ''], 1, tests.user('wr:owner'));
 select is((select e -> 'weekly_availability' -> 0 -> 'manager_notes' from jsonb_array_elements(pg_temp.grid() -> 'employees') e
   where e ->> 'id' = tests.id('wr:ayse')::text), 'null'::jsonb, 'no words about a manager, Ayse herself included');

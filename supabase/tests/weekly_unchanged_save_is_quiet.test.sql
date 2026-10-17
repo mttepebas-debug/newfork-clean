@@ -35,8 +35,8 @@ create function pg_temp.save(week jsonb) returns jsonb language sql as $$
   'expected_revision',(m.model->'employee'->>'revision')::integer,'settings_revision',(m.model->'settings'->>'revision')::integer,
   'preference',week),gen_random_uuid())
  from wq_fixture f cross join lateral (select public.weekly_preferences_read_service(f.actor,f.w) model) m $$;
-create temp table wq_week as select public.empty_weekly_preference('time_range') open_week,
- jsonb_set(public.empty_weekly_preference('time_range'),'{days,2,ranges}','[{"start":"18:00","end":"23:00"}]') tuesday_evening;
+create temp table wq_week as select public.empty_weekly_preference() open_week,
+ jsonb_set(public.empty_weekly_preference(),'{days,2,ranges}','[{"start":"18:00","end":"23:00"}]') tuesday_evening;
 
 -- 1. The first save is news even with nothing marked: the week is confirmed.
 select is((pg_temp.save(open_week)->'model'->'employee'->>'revision'),'1','the first save of a fully available week is saved') from wq_week;

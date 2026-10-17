@@ -46,13 +46,13 @@ $$;
 select is(pg_temp.assess()->>'operation','allowed','canonical Schedule defaults to fully available without an old baseline');
 -- AVAIL-002 (M12): a manager's note is only a reminder shown while writing.
 insert into public.manager_weekly_reminders(workspace_id,employee_id,enabled,preference,revision,updated_by)
- select w,emp,true,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,manager from ws;
+ select w,emp,true,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,manager from ws;
 select is(pg_temp.assess()->>'has_availability_conflict','false','the manager''s note is no availability warning');
 select is((select jsonb_agg(r->>'code') from jsonb_array_elements(pg_temp.assess()->'reasons') r),'["note"]'::jsonb,'it comes back as the note');
 delete from public.manager_weekly_reminders where workspace_id=(select w from ws);
 -- BL-186, M8: the employee's own mark is a warning that never gates.
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
+ select w,emp,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,employee_user from ws;
 select is(pg_temp.assess()->>'operation','allowed','the employee''s mark does not gate the shift');
 select is(pg_temp.assess()->>'has_availability_conflict','true','canonical assessment reads the employee''s mark as a warning');
 select is(pg_temp.assess()->>'can_override','true','the manager can place anyway');

@@ -25,7 +25,7 @@ create function pg_temp.evenings(days integer[]) returns jsonb language sql as $
   select jsonb_set(p, '{days}', (select jsonb_agg(case when (d ->> 'day')::integer = any(days)
       then d || '{"ranges": [{"start": "18:00", "end": "22:00"}]}' else d end order by (d ->> 'day')::integer)
     from jsonb_array_elements(p -> 'days') d))
-  from (select public.empty_weekly_preference('time_range') p) x
+  from (select public.empty_weekly_preference() p) x
 $$;
 -- Ali marked every evening 18:00-22:00 and Ayşe noted the same evenings as a
 -- private reminder; Can, a manager who also works shifts, keeps no week (M13).

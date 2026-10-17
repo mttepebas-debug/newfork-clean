@@ -515,6 +515,18 @@ insert into retired (kind, name, step) values
   ('function', 'set_employee_name_settings_service', 'S-131'),
   ('action', 'settings.people', 'S-131'),
   ('action', 'settings.people.read', 'S-131');
+-- Availability is asked in hours only (AVAIL-GUN-DB; Mert, 2026-10-16): the organization's entry
+-- mode, the shift-type week, its conversion, the "every type picked is all day" rule and the
+-- archived shift type hours go; the empty week takes no mode.
+insert into retired (kind, name, step) values
+  ('column', 'workspace_scheduling_settings.availability_input_mode', 'AVAIL-GUN-DB'),
+  ('constraint', 'workspace_scheduling_settings_availability_input_mode_check', 'AVAIL-GUN-DB'),
+  ('table', 'weekly_preference_type_defaults', 'AVAIL-GUN-DB'),
+  ('trigger', 'shift_types.weekly_preference_type_defaults', 'AVAIL-GUN-DB'),
+  ('function', 'capture_weekly_preference_type_defaults', 'AVAIL-GUN-DB'),
+  ('function', 'weekly_preference_convert', 'AVAIL-GUN-DB'),
+  ('function', 'weekly_preference_whole_days', 'AVAIL-GUN-DB'),
+  ('function_signature', 'public.empty_weekly_preference(text)', 'AVAIL-GUN-DB');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

@@ -77,7 +77,7 @@ insert into public.workspace_role_permissions(workspace_id,role_id,permission_ke
 -- A manager-type role never writes organization settings, conflict handling included (REUSE, FB-6.1 N3).
 select throws_ok($$select public.update_scheduling_settings_service('b1640000-0000-4000-8000-000000000010',w,jsonb_build_object('minimum_rest_minutes',60,'conflict_rules_revision',s.conflict_rules_revision)) from f join public.workspace_scheduling_settings s on s.workspace_id=f.w$$,'42501','Not allowed','a manager-type role holding the conflict permission does not save conflict settings');
 select throws_ok($$select public.update_scheduling_settings_service('b1640000-0000-4000-8000-000000000010',w,'{"week_start_day":"sunday"}') from f$$,'42501',null,'conflict manager cannot alter general settings');
-select lives_ok($$select public.weekly_preference_settings_save_service(actor,w,jsonb_build_object('input_mode','time_range','onboarding_required',true,'expected_revision',s.availability_preferences_revision),gen_random_uuid()) from f join public.workspace_scheduling_settings s on s.workspace_id=f.w$$,'weekly form saves without a conflict policy field');
+select lives_ok($$select public.weekly_preference_settings_save_service(actor,w,jsonb_build_object('onboarding_required',true,'expected_revision',s.availability_preferences_revision),gen_random_uuid()) from f join public.workspace_scheduling_settings s on s.workspace_id=f.w$$,'weekly form saves without a conflict policy field');
 
 -- FB-6.1.6 (T5): approved time off is always a hard block for a manager's
 -- assignment; there is no setting for it (REUSE "İzin"). The owner tries to

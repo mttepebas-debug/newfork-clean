@@ -28,7 +28,7 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
  select w,emp,loc,owner_id from wp_fixture union all select w,emp,other_loc,owner_id from wp_fixture;
 select tests.works_at(m.id, f.loc) from wp_fixture f join public.workspace_memberships m on m.workspace_id=f.w and m.user_id in(f.actor,f.manager);
 insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('time_range'),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,actor from wp_fixture;
+ select w,emp,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"18:00","end":"20:00"}]'),1,actor from wp_fixture;
 create function pg_temp.assignment(changes jsonb default '{}') returns jsonb language sql stable as $$
  select jsonb_build_object('id',shift_id,'employee_id',emp,'location_id',loc,'scheduled_date','2035-01-15',
   'time_basis','explicit','start_time','18:00','end_time','20:00','time_timezone','America/Los_Angeles')||changes from wp_fixture;

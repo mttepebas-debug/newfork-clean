@@ -14,40 +14,32 @@ select tests.person('wa', 'veli', 'employee', array['K'], array['cook']);
 
 -- Besiktas keeps daylight saving time here, to see the spring-forward gap.
 update public.locations set timezone = 'America/Los_Angeles' where id = tests.id('wa:B');
-insert into public.shift_types (workspace_id, name, default_start_time, default_end_time)
-values (tests.id('wa'), 'Lunch', '11:00', '15:00'), (tests.id('wa'), 'Floating', '07:00', '09:00');
 
 create function pg_temp.mark(preference jsonb, day integer, change jsonb) returns jsonb language sql as $$
   select jsonb_set(preference, array['days', day::text], (preference -> 'days' -> day) || change)
 $$;
-create function pg_temp.type_id(type_name text) returns jsonb language sql as $$
-  select jsonb_build_array(t.id) from public.shift_types t where t.workspace_id = tests.id('wa') and t.name = type_name
-$$;
 
 -- Ali cannot work Monday evenings, Wednesdays, or early Sunday; his manager
--- also keeps a private note about Friday mornings. Emre marks the Lunch
--- service on Tuesdays; Veli marks a service that is archived later and has no
--- saved default hours.
+-- also keeps a private note about Friday mornings. Emre cannot work Tuesday
+-- 11:00-15:00; Veli Thursday 07:00-09:00. Availability is hours only.
 insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
 values
   (tests.id('wa'), tests.id('wa:ali'),
-   pg_temp.mark(pg_temp.mark(pg_temp.mark(public.empty_weekly_preference('time_range'),
+   pg_temp.mark(pg_temp.mark(pg_temp.mark(public.empty_weekly_preference(),
      1, '{"ranges": [{"start": "18:00", "end": "22:00"}]}'),
      3, '{"all_day": true}'),
      0, '{"ranges": [{"start": "01:30", "end": "03:30"}]}'),
    1, tests.user('wa:ali')),
   (tests.id('wa'), tests.id('wa:emre'),
-   pg_temp.mark(public.empty_weekly_preference('shift_type'), 2, jsonb_build_object('shift_type_ids', pg_temp.type_id('Lunch'))),
+   pg_temp.mark(public.empty_weekly_preference(), 2, '{"ranges": [{"start": "11:00", "end": "15:00"}]}'),
    1, tests.user('wa:emre')),
   (tests.id('wa'), tests.id('wa:veli'),
-   pg_temp.mark(public.empty_weekly_preference('shift_type'), 4, jsonb_build_object('shift_type_ids', pg_temp.type_id('Floating'))),
+   pg_temp.mark(public.empty_weekly_preference(), 4, '{"ranges": [{"start": "07:00", "end": "09:00"}]}'),
    1, tests.user('wa:veli'));
 insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
 values (tests.id('wa'), tests.id('wa:ali'),
-  pg_temp.mark(public.empty_weekly_preference('time_range'), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
+  pg_temp.mark(public.empty_weekly_preference(), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, 1, tests.user('wa:ayse'));
-update public.shift_types set archived_at = now() where workspace_id = tests.id('wa') and name = 'Floating';
-delete from public.weekly_preference_type_defaults where shift_type_id = (select id from public.shift_types where workspace_id = tests.id('wa') and name = 'Floating');
 
 create function pg_temp.week(week_start date, people text[], locs text[], reminders boolean default true)
 returns table(person text, loc text, projection jsonb) language sql as $$
@@ -81,8 +73,10 @@ select is(array(select (s ->> 'offset_seconds')::integer from jsonb_array_elemen
   array[-28800, -28800, -25200], 'the clock changes once in that week');
 select ok(pg_temp.one('2030-03-04', 'emre', 'K') -> 'unavailable_intervals'
   @> '[{"start_at": "2030-03-05T08:00:00.000000Z", "end_at": "2030-03-05T12:00:00.000000Z"}]',
-  'a marked service uses its default hours');
-select is(pg_temp.one('2030-03-04', 'veli', 'K') ->> 'status', 'unknown', 'an archived service without saved hours leaves the week unknown rather than half drawn');
+  'Tuesday 11:00-15:00 in Istanbul is 08:00-12:00 UTC');
+select ok(pg_temp.one('2030-03-04', 'veli', 'K') -> 'unavailable_intervals'
+  @> '[{"start_at": "2030-03-07T04:00:00.000000Z", "end_at": "2030-03-07T06:00:00.000000Z"}]',
+  'Thursday 07:00-09:00 in Istanbul is 04:00-06:00 UTC');
 select is(
   (select jsonb_agg(w.projection order by w.person, w.loc) from pg_temp.week('2030-03-04', array['ali', 'emre', 'veli'], array['K', 'B']) w),
   (select jsonb_agg(pg_temp.one('2030-03-04', p, l) order by p, l) from unnest(array['ali', 'emre', 'veli']) p cross join unnest(array['K', 'B']) l),

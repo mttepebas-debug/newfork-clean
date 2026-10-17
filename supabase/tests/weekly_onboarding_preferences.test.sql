@@ -32,7 +32,7 @@ select throws_ok($$select public.review_employee_onboarding_service(owner_id,w,e
  '22023',null,'manager cannot manufacture an employee declaration');
 
 create temp table wo_save as select gen_random_uuid() key,jsonb_build_object(
- 'employee_id',emp,'source','employee','expected_revision',0,'settings_revision',1,'preference',public.empty_weekly_preference('time_range')) command from wo_fixture;
+ 'employee_id',emp,'source','employee','expected_revision',0,'settings_revision',1,'preference',public.empty_weekly_preference()) command from wo_fixture;
 select lives_ok($$select public.weekly_preferences_save_service(actor,w,command,key) from wo_fixture,wo_save$$,'pending employee confirms fully available week');
 select ok((select status='completed' and completed_at is not null and not requires_review from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='availability'),'weekly save completes onboarding requirement immediately');
 select is((select status::text from public.employee_onboarding_requirements where case_id=(select id from wo_case) and kind='profile'),'completed','unrelated profile status stays intact');

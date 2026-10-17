@@ -77,7 +77,7 @@ create function pg_temp.save_week(person text) returns jsonb language sql as $$
     'employee_id', tests.id('ao:' || person), 'source', 'employee',
     'expected_revision', coalesce((m -> 'employee' ->> 'revision')::integer, 0),
     'settings_revision', (m -> 'settings' ->> 'revision')::integer,
-    'preference', jsonb_set(public.empty_weekly_preference('time_range'), '{days,1,ranges}', '[{"start": "18:00", "end": "22:00"}]')),
+    'preference', jsonb_set(public.empty_weekly_preference(), '{days,1,ranges}', '[{"start": "18:00", "end": "22:00"}]')),
     gen_random_uuid())
   from (select public.weekly_preferences_read_service(tests.user('ao:' || person), tests.id('ao')) m) x
 $$;

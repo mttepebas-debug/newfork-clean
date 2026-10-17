@@ -49,11 +49,20 @@ create function pg_temp.team_row(reader uuid, ws uuid, person uuid) returns json
 insert into public.shift_types(id,workspace_id,name,color,default_start_time,default_end_time)
  select dinner,w,'Dinner','#256b56','17:00'::time,'23:00'::time from wt_fixture
  union all select hidden_type,w,'Private fallback','#256b56','09:00'::time,'12:00'::time from wt_fixture;
-insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by)
- select w,emp,public.empty_weekly_preference('time_range'),1,actor from wt_fixture
- union all select w,hidden_emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(hidden_type)),1,owner_id from wt_fixture;
+insert into public.employee_weekly_preferences(workspace_id,employee_id,preference,revision,updated_by,updated_at)
+ select w,emp,public.empty_weekly_preference(),1,actor,'2035-01-02 03:04:05+00' from wt_fixture
+ union all select w,hidden_emp,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"09:00","end":"12:00"}]'),1,owner_id,now() from wt_fixture;
 insert into public.manager_weekly_reminders(workspace_id,employee_id,preference,notes,revision,updated_by)
- select w,emp,jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array(hidden_type)),array['secret manager note','','','','','',''],1,owner_id from wt_fixture;
+ select w,emp,jsonb_set(public.empty_weekly_preference(),'{days,1,ranges}','[{"start":"09:00","end":"12:00"}]'),array['secret manager note','','','','','',''],1,owner_id from wt_fixture;
+-- The job the Employees list names: the primary; failing that the first active job A to Z.
+insert into public.jobs(id,workspace_id,name) select 'ad438000-0000-4000-8000-000000000015'::uuid,w,'Server' from wt_fixture
+ union all select 'ad438000-0000-4000-8000-000000000016'::uuid,w,'Bartender' from wt_fixture
+ union all select 'ad438000-0000-4000-8000-000000000017'::uuid,w,'Host' from wt_fixture;
+insert into public.employee_job_assignments(workspace_id,employee_id,job_id,is_primary,created_by)
+ select w,emp,'ad438000-0000-4000-8000-000000000015'::uuid,true,owner_id from wt_fixture
+ union all select w,emp,'ad438000-0000-4000-8000-000000000016'::uuid,false,owner_id from wt_fixture
+ union all select w,undeclared,'ad438000-0000-4000-8000-000000000017'::uuid,false,owner_id from wt_fixture
+ union all select w,undeclared,'ad438000-0000-4000-8000-000000000016'::uuid,false,owner_id from wt_fixture;
 
 select lives_ok($$select public.weekly_team_read_service(manager,w) from wt_fixture$$,'scoped manager reads team');
 select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared),'scoped manager sees the employees working at their location, not their own manager record') from wt_fixture;
@@ -96,8 +105,14 @@ select is(pg_temp.team_row(manager,w,emp)->>'submitted','true','explicit fully a
 select is(pg_temp.team_row(manager,w,emp)->>'can_open','true','scoped manager can open a listed employee drawer') from wt_fixture;
 select ok((select bool_and((e->>'can_open')::boolean) from jsonb_array_elements(public.weekly_team_read_service(owner_id,w)->'employees') e),'all-location owner opens every listed person, unassigned included') from wt_fixture;
 select is(pg_temp.team_row(manager,w,undeclared)->>'submitted','false','absent record is not submitted') from wt_fixture;
-select is(pg_temp.team_row(manager,w,undeclared)->'preference',public.empty_weekly_preference('time_range'),'absent record projects a fully available week') from wt_fixture;
-select is(public.weekly_team_read_service(manager,w)->'shift_types','[]'::jsonb,'hidden employee and manager reminder types are not disclosed') from wt_fixture;
+select is(pg_temp.team_row(manager,w,undeclared)->'preference',public.empty_weekly_preference(),'absent record projects a fully available week') from wt_fixture;
+-- Each row names the person's job and when their own week was last saved (AVAIL-GUN-DB).
+select is(pg_temp.team_row(manager,w,emp)->>'job_name','Server','the primary job is the one named') from wt_fixture;
+select is(pg_temp.team_row(manager,w,undeclared)->>'job_name','Bartender','without a primary, the first job A to Z') from wt_fixture;
+select is(pg_temp.team_row(owner_id,w,unassigned)->'job_name','null'::jsonb,'nobody with no job has a job name') from wt_fixture;
+select is((pg_temp.team_row(manager,w,emp)->>'updated_at')::timestamptz,'2035-01-02 03:04:05+00'::timestamptz,'the week''s own save time') from wt_fixture;
+select is(pg_temp.team_row(manager,w,undeclared)->'updated_at','null'::jsonb,'a week never saved has no save time') from wt_fixture;
+select ok(not (public.weekly_team_read_service(manager,w) ? 'shift_types'),'the team read carries no shift type catalog') from wt_fixture;
 select ok(not (public.weekly_team_read_service(manager,w)::text like '%secret manager note%'),'manager notes never enter team response') from wt_fixture;
 select is((select count(*) from public.employee_weekly_preferences where workspace_id=(select w from wt_fixture)),2::bigint,'read does not manufacture declarations');
 select is((select count(*) from public.weekly_preference_events where workspace_id=(select w from wt_fixture)),0::bigint,'read does not manufacture audit events');
@@ -108,14 +123,6 @@ select ok(not has_function_privilege('authenticated','public.weekly_team_read_se
 select ok(not has_function_privilege('anon','public.weekly_team_read_service(uuid,uuid)','EXECUTE'),'anonymous cannot invoke service read');
 select ok(has_function_privilege('service_role','public.weekly_team_read_service(uuid,uuid)','EXECUTE'),'service role can invoke the read');
 
-update public.employee_weekly_preferences set preference=jsonb_set(public.empty_weekly_preference('shift_type'),'{days,1,shift_type_ids}',jsonb_build_array((select dinner from wt_fixture))) where employee_id=(select emp from wt_fixture);
-update public.shift_types set default_start_time='18:00' where id=(select dinner from wt_fixture);
-select is(public.weekly_team_read_service(manager,w)->'shift_types'->0->>'start_time','18:00','selected type uses current settings hours') from wt_fixture;
-update public.shift_types set archived_at=now() where id=(select dinner from wt_fixture);
-select is(public.weekly_team_read_service(manager,w)->'shift_types'->0->>'archived','true','archived type stays visible as unavailable') from wt_fixture;
-select is(public.weekly_team_read_service(manager,w)->'shift_types'->0->>'start_time','18:00','archived type retains captured hours') from wt_fixture;
-update public.workspace_scheduling_settings set availability_input_mode='shift_type' where workspace_id=(select w from wt_fixture);
-select is(pg_temp.team_row(manager,w,undeclared)->'preference'->>'input_mode','shift_type','undeclared week follows organization mode') from wt_fixture;
 -- A role without availability.read (and so without availability.manage, which
 -- needs it) keeps schedule.read but cannot read the team.
 delete from public.workspace_role_permissions p using public.workspace_memberships m where p.role_id=m.role_id and m.user_id=(select manager from wt_fixture) and p.permission_key in ('availability.read','availability.manage');
