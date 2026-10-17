@@ -719,8 +719,6 @@ describe("employee directory routes", () => {
       ["a preferred name", "request_employee_preferred_name_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/preferred-name`, { preferredName: "Ada" }, "published", 200],
       ["the pending preferred names", "list_pending_preferred_names_service", "GET", `/v1/workspaces/${workspaceId}/preferred-names/pending`, undefined, [], 200],
       ["a preferred name's answer", "decide_employee_preferred_name_service", "POST", `/v1/workspaces/${workspaceId}/preferred-names/${requestId}/decision`, { approve: true }, null, 204],
-      ["how preferred names are answered", "get_employee_name_settings_service", "GET", `/v1/workspaces/${workspaceId}/preferred-name-approval`, undefined, "manager", 200],
-      ["a change to how preferred names are answered", "set_employee_name_settings_service", "PUT", `/v1/workspaces/${workspaceId}/preferred-name-approval`, { approval: "auto" }, null, 204],
       ["their own emergency contact", "save_own_employment_contact_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}/emergency-contact`, { name: "Ayla Kim", phone: "+15550102030" }, null, 204],
     ] as const;
     // BL-503: the US form rules are the server's too, before the database is asked.
@@ -741,6 +739,28 @@ describe("employee directory routes", () => {
       expect(rpc).not.toHaveBeenCalled();
       await app.close();
     });
+
+    // KARARLAR S-131: every preferred name waits for who may decide it, so the setting that let one through
+    // is gone, its read and write with it.
+    it.each([["GET", undefined], ["PUT", { approval: "auto" }]] as const)(
+      "no longer serves the preferred-name setting: %s",
+      async (method, payload) => {
+        const rpc = vi.fn(async () => ({ data: "auto", error: null }));
+        const app = buildApp({
+          contextResolver: { resolve: async () => context },
+          employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+        });
+        const response = await app.inject({
+          method,
+          url: `/v1/workspaces/${workspaceId}/preferred-name-approval`,
+          headers: { authorization: "Bearer valid-token" },
+          payload,
+        });
+        expect(response.statusCode).toBe(404);
+        expect(rpc).not.toHaveBeenCalled();
+        await app.close();
+      },
+    );
 
     // No permission at all: the old gates stopped this person before the database was asked.
     const noPermissions = { ...context, permissions: [] as ActiveWorkspaceContext["permissions"] };

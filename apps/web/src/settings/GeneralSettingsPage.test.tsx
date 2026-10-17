@@ -9,7 +9,6 @@ import {
 } from "../communications/communications-data";
 import GeneralSettingsPage from "./GeneralSettingsPage";
 import { RequestError } from "../lib/request-error";
-import { loadPreferredNameApproval } from "../employees/employee-data";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -55,8 +54,6 @@ vi.mock("../communications/communications-data", () => ({
 }));
 
 vi.mock("../employees/employee-data", () => ({
-  loadPreferredNameApproval: vi.fn(),
-  savePreferredNameApproval: vi.fn(),
 }));
 
 vi.mock("./organization-data", () => ({
@@ -69,7 +66,6 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     vi.clearAllMocks();
     vi.mocked(saveScheduleLogo).mockResolvedValue(context.workspace);
     vi.mocked(updateOrganizationName).mockResolvedValue(undefined);
-    vi.mocked(loadPreferredNameApproval).mockResolvedValue("auto");
     vi.mocked(getOwnerSetupChecklistProgress).mockResolvedValue({
       workspace_id: workspaceId,
       user_id: userId,
@@ -101,34 +97,39 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     return { ...view, client };
   }
 
-  it("keeps the last values and says so when both settings fail to refresh", async () => {
+  // KARARLAR S-131 (Mert, 2026-10-17): every preferred name waits for who may decide it, so General has no
+  // setting that lets one through.
+  it("has no preferred-name setting: every preferred name waits for who may decide it", async () => {
+    renderPage();
+    expect(await screen.findByText("Visible on Workspace")).toBeTruthy();
+    expect(screen.queryByText("Preferred names")).toBeNull();
+    expect(screen.queryByRole("button", { name: /answer them here|let them through/i })).toBeNull();
+  });
+
+  it("keeps the last value and says so when the checklist setting fails to refresh", async () => {
     const { client } = renderPage();
     expect(await screen.findByText("Visible on Workspace")).toBeTruthy();
-    expect(await screen.findByText("Used as soon as it is entered")).toBeTruthy();
     vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(new Error("checklist service down"));
-    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(new Error("names service down"));
     await act(async () => {
       await client.refetchQueries();
     });
     await waitFor(() =>
-      expect(screen.getAllByText("This setting didn't refresh. This is the last value that loaded.").length).toBe(2),
+      expect(screen.getAllByText("This setting didn't refresh. This is the last value that loaded.").length).toBe(1),
     );
     expect(screen.getByText("Visible on Workspace")).toBeTruthy();
-    expect(screen.getByText("Used as soon as it is entered")).toBeTruthy();
     expect(screen.getByRole("button", { name: /hide checklist/i })).toHaveProperty("disabled", false);
     expect(screen.queryByText(/service down/)).toBeNull();
     expect(screen.queryByText(/could not be saved/)).toBeNull();
   });
 
   it("says plainly when the person may not read a setting, with no Try again", async () => {
-    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(
+    vi.mocked(getOwnerSetupChecklistProgress).mockRejectedValueOnce(
       new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
     );
     renderPage();
     expect(await screen.findByText("You don't have access to this setting.")).toBeTruthy();
     expect(screen.queryByText("This setting didn't load. Nothing was changed.")).toBeNull();
     expect(screen.queryByText("Forbidden")).toBeNull();
-    expect(screen.getByRole("button", { name: /answer them here|let them through/i })).toHaveProperty("disabled", true);
   });
 
   it("closes the checklist button when access is lost after it loaded", async () => {
@@ -142,19 +143,6 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     });
     expect(await screen.findByText("You don't have access to this setting.")).toBeTruthy();
     expect(screen.getByRole("button", { name: /hide checklist/i })).toHaveProperty("disabled", true);
-  });
-
-  it("closes the button when access is lost after the setting loaded", async () => {
-    const { client } = renderPage();
-    expect(await screen.findByText("Used as soon as it is entered")).toBeTruthy();
-    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(
-      new RequestError("Forbidden", "authz.missing_permission", undefined, 403),
-    );
-    await act(async () => {
-      await client.refetchQueries();
-    });
-    expect(await screen.findByText("You don't have access to this setting.")).toBeTruthy();
-    expect(screen.getByRole("button", { name: /answer them here/i })).toHaveProperty("disabled", true);
   });
 
   // BL-503: KARARLAR "Form ve girdi kuralları (ABD)".
@@ -200,15 +188,6 @@ describe("GeneralSettingsPage setup checklist controls", () => {
     expect(screen.getByRole("button", { name: /hide checklist/i })).toHaveProperty("disabled", true);
     fireEvent.click(within(line.closest(".load-refresh") as HTMLElement).getByRole("button", { name: "Try again" }));
     expect(await screen.findByText("Visible on Workspace")).toBeTruthy();
-  });
-
-  it("says the preferred name setting didn't load instead of that it wasn't saved", async () => {
-    vi.mocked(loadPreferredNameApproval).mockRejectedValueOnce(new Error("names service down"));
-    renderPage();
-    expect(await screen.findByText("This setting didn't load. Nothing was changed.")).toBeTruthy();
-    expect(screen.queryByText("That setting could not be saved.")).toBeNull();
-    expect(screen.queryByText("Used as soon as it is entered")).toBeNull();
-    expect(screen.getByRole("button", { name: /answer them here/i })).toHaveProperty("disabled", true);
   });
 
   it("hides the Workspace setup checklist from General settings", async () => {
