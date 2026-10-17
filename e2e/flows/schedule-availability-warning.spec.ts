@@ -11,8 +11,8 @@ import { draftName, roundLabel, roundWeek, signIn, type Person } from "../fixtur
 // manager's note alone opens the note card under its cell and is never drawn
 // on the grid; Auto-fill leaves the marked person out; Pre-flight lists the
 // marks on one folded line and asks nothing; a mark made after publishing says
-// so on the card, approved time off does not; changing the entry mode tells
-// every employee and leaves an open swap request alone.
+// so on the card, approved time off does not. Availability is asked in hours
+// only (Mert 2026-10-16): there is no entry mode to change.
 //
 // Weeks: 4, 7 and 0 are this file's (the other specs hold 1-3, 5, 6, 8, 9);
 // each --repeat-each round gets its own through roundWeek.
@@ -312,8 +312,8 @@ test("M12: a manager's note alone opens the note card and never shows on the gri
   // drawer saves it with (source 'manager'). The person has no week of her own.
   sql(`select public.weekly_preferences_save_service(tests.user('${run}:ayse'), tests.id('${run}'),
       jsonb_build_object('source', 'manager', 'employee_id', tests.id('${run}:${person.label}'),
-        'preference', jsonb_build_object('input_mode', 'time_range', 'days', (
-          select jsonb_agg(jsonb_build_object('day', d, 'all_day', false, 'shift_type_ids', '[]'::jsonb,
+        'preference', jsonb_build_object('days', (
+          select jsonb_agg(jsonb_build_object('day', d, 'all_day', false,
             'ranges', case when d = 3 then jsonb_build_array(jsonb_build_object('start', '09:00', 'end', '12:00')) else '[]'::jsonb end)
             order by d) from generate_series(0, 6) d)),
         'enabled', true,
@@ -353,71 +353,19 @@ test("M12: a manager's note alone opens the note card and never shows on the gri
   await expect(wednesdayCell).not.toHaveAttribute("data-availability-kind");
 });
 
-test("M4, M5: the owner changes the entry mode; a saved week is converted, an open swap stays open", async ({
-  browser,
-}) => {
-  const week = roundWeek(7);
-  // Ali has a saved week the change converts.
-  sql(`select tests.availability('${run}', 'ali', 2, '18:00', '22:00');`);
-
-  // An open swap: Ali offers his Kadikoy Tuesday for Deniz's Besiktas one and
-  // Deniz accepts; it waits on the managers (shift-hub-swap.spec.ts).
-  const caseId = sql(`
-    select tests.publish_week('${run}', ${week}, '[
-      {"label": "${roundLabel("ali-mode")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-      {"label": "${roundLabel("deniz-mode")}", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
-    ]');
-    select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
-      jsonb_build_object('action', 'create', 'kind', 'swap',
-        'shift_id', tests.id('${run}:shift:${roundLabel("ali-mode")}'), 'requested_shift_id', tests.id('${run}:shift:${roundLabel("deniz-mode")}')),
-      gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
-  sql(`select public.shift_exchanges_command_service(tests.user('${run}:deniz'), tests.id('${run}'),
-      jsonb_build_object('action', 'accept', 'case_id', c.id, 'application_id', a.id, 'expected_revision', c.revision),
-      gen_random_uuid())
-    from public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id = c.id
-    where c.id = '${caseId}';`);
-  const swapState = () =>
-    sql(`select c.status || ' ' || a.status || ' ' || c.revision
-      from public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id = c.id
-      where c.id = '${caseId}';`);
-  const before = swapState();
-  expect(before).toMatch(/^open pending_manager /);
-
+// Mert 2026-10-16 ("yalnız saat"): Settings > Scheduling > Availability has
+// no Entry mode; the one setting is Required during onboarding.
+test("Settings > Scheduling > Availability has no entry mode", async ({ browser }) => {
   // The world's owner has no sign-in until somebody gives them a password.
   const owner = await openPage(
     browser,
     { email: sql(`select tests.password('${run}:owner', '${world.password}');`) },
     "/app/settings/scheduling",
   );
-  try {
-    // Settings > Scheduling > Availability: Time range -> Shift type.
-    const settings = owner.getByRole("region", { name: "Availability settings", exact: true });
-    // The radio itself is visually hidden; the owner presses its label.
-    await settings.locator("label", { hasText: "Shift type" }).click();
-    await expect(settings.getByRole("radio", { name: "Shift type", exact: true })).toBeChecked();
-    await expect(settings).toContainText("Saved weeks will be converted to the new entry mode.");
-    await settings.getByRole("button", { name: "Save", exact: true }).click();
-    await expect(settings.getByRole("status")).toHaveText("Saved");
-    expect(
-      sql(`select availability_input_mode from public.workspace_scheduling_settings where workspace_id = tests.id('${run}');`),
-    ).toBe("shift_type");
-
-    // M4: Ali's saved week is converted to the new entry mode.
-    expect(
-      sql(`select p.preference ->> 'input_mode' from public.employee_weekly_preferences p where p.employee_id = tests.id('${run}:ali');`),
-    ).toBe("shift_type");
-
-    // M5: the swap is untouched -- same state, same revision.
-    expect(swapState()).toBe(before);
-  } finally {
-    // Back to Time range for the rest of the run (tests.availability writes in it).
-    sql(`select public.weekly_preference_settings_save_service(tests.user('${run}:owner'), tests.id('${run}'),
-        jsonb_build_object('input_mode', 'time_range', 'onboarding_required', s.availability_onboarding_required,
-          'expected_revision', s.availability_preferences_revision),
-        gen_random_uuid())
-      from public.workspace_scheduling_settings s
-      where s.workspace_id = tests.id('${run}') and s.availability_input_mode <> 'time_range';`);
-  }
+  const settings = owner.getByRole("region", { name: "Availability settings", exact: true });
+  await expect(settings.getByRole("switch", { name: "Availability required during onboarding", exact: true })).toBeVisible();
+  await expect(settings.getByText("Entry mode")).toHaveCount(0);
+  await expect(settings.getByRole("radio")).toHaveCount(0);
 });
 
 // M8: availability is always a warning, so Settings > Conflict handling has no
