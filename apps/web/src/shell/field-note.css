@@ -9,6 +9,14 @@
   grid-area: 1 / 1;
   min-width: 0;
 }
+/* The default look; a screen's own class (className) wins over it. */
+:where(.field-note > small) {
+  display: block;
+  margin: 0;
+  font-size: 12px;
+  font-weight: 400;
+  line-height: 1.45;
+}
 .field-note > .field-note-room,
 .field-note > .field-note-hidden {
   visibility: hidden;

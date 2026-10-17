@@ -18,6 +18,7 @@ import {
 import { RequestError } from "../lib/request-error";
 import { RefreshError } from "../shell/LoadState";
 import { AccountPageHeader } from "./components";
+import { FieldNote } from "../shell/FieldNote";
 
 export default function SecurityPage() {
   const { account, context, signOut } = useAuth();
@@ -167,7 +168,7 @@ export default function SecurityPage() {
             <label className="account-field"><span>New password</span><input type="password" autoComplete="new-password" minLength={8} value={newPassword} onChange={(event) => setNewPassword(event.target.value)} required /></label>
             <label className="account-field"><span>Confirm password</span><input type="password" autoComplete="new-password" minLength={8} value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} required /></label>
           </div>
-          <FormAlert className="form-error" message={errorIn("password")} />
+          <FormAlert id="security-password" message={errorIn("password")} />
           <div className="account-form-actions">
             <Button type="submit" disabled={busy !== null || !currentPassword || newPassword.length < 8 || newPassword !== confirmPassword}>Change password</Button>
           </div>
@@ -184,7 +185,7 @@ export default function SecurityPage() {
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={sessionPassword} onChange={(event) => setSessionPassword(event.target.value)} required /></label>
             <Button type="submit" disabled={busy !== null || !sessionPassword}>Sign out other sessions</Button>
           </form>
-          <FormAlert className="form-error" message={errorIn("sessions")} />
+          <FormAlert id="security-sessions" message={errorIn("sessions")} />
         </div>
       </section>
 
@@ -211,7 +212,7 @@ export default function SecurityPage() {
             await signOut();
           }, "Account deletion requested"); }}>
             <label className="account-field"><span>Current password</span><input type="password" autoComplete="current-password" value={deletionPassword} onChange={(event) => setDeletionPassword(event.target.value)} required /></label>
-            <FormAlert className="form-error" message={errorIn("delete")} />
+            <FormAlert id="security-delete" message={errorIn("delete")} />
             <div className="account-form-actions">
               <Button type="button" className="secondary-button" disabled={busy === "delete"} onClick={() => { setConfirmDeletion(false); setDeletionPassword(""); setFailure(null); }}>Cancel</Button>
               <Button className="danger-button" type="submit" disabled={busy !== null || blockers.length > 0 || !deletionPassword}>Confirm account deletion</Button>
@@ -222,7 +223,10 @@ export default function SecurityPage() {
       </section>
 
       {/* The three password forms answer beside their own button; the rest here. */}
-      {failure && !["password", "sessions", "delete"].includes(failure.key) ? <p className="form-error" role="alert">{failure.message}</p> : null}
+      <FieldNote
+        id="security-page"
+        error={failure && !["password", "sessions", "delete"].includes(failure.key) ? failure.message : null}
+      />
       {status ? <p className="form-success" role="status">{status}</p> : null}
     </section>
   );
@@ -234,13 +238,17 @@ const passwordRefusals: Readonly<Record<string, string>> = {
   "session.password_required": "Type your account password to continue.",
 };
 
-/** A form's own refusal, under its button; scrolled into view so a button at the fold still shows it. */
-function FormAlert({ className, message }: { readonly className: string; readonly message: string | null }) {
-  const ref = useRef<HTMLParagraphElement>(null);
+/** A form's own refusal in its kept line (UI-FIELDMSG); scrolled into view so a button at the fold still shows it. */
+function FormAlert({ id, message }: { readonly id: string; readonly message: string | null }) {
+  const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
-    ref.current?.scrollIntoView?.({ block: "nearest" });
+    if (message) ref.current?.scrollIntoView?.({ block: "nearest" });
   }, [message]);
-  return message ? <p ref={ref} role="alert" className={className}>{message}</p> : null;
+  return (
+    <div ref={ref}>
+      <FieldNote id={id} error={message} />
+    </div>
+  );
 }
 
 function errorMessage(error: unknown, fallback: string): string {

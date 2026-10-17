@@ -79,6 +79,18 @@ describe("WindowAlert", () => {
     expect(alert.classList.contains("window-alert")).toBe(true);
   });
 
+  it("keeps a zero-height slot between body and footer, said or not", () => {
+    const { container, rerender } = render(<WindowAlert message={null} between />);
+    const slot = container.querySelector(".window-alert-slot");
+    expect(slot).toBeTruthy();
+    expect(slot!.childElementCount).toBe(0);
+    rerender(<WindowAlert message="Couldn't save." between />);
+    expect(container.querySelector(".window-alert-slot > .window-alert")?.textContent).toBe("Couldn't save.");
+    const css = flat("src/shell/window-alert.css");
+    expect(body(css, ".window-alert-slot")).toMatch(/height: 0/);
+    expect(body(css, ".window-alert-slot > .window-alert")).toMatch(/bottom: 0/);
+  });
+
   it("sits over the body's bottom edge, out of the flow, on its anchor", () => {
     const css = flat("src/shell/window-alert.css");
     const band = body(css, ".window-alert");

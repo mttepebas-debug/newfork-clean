@@ -636,14 +636,13 @@
 .job-draft-row > .job-icon-button {
   justify-self: end;
 }
-/* The US letter rule's line under a name (BL-503). */
-.job-field > small.form-error {
-  display: block;
+/* The note line under a name (BL-503, UI-FIELDMSG): always there, so the
+   letter rule coming or going moves nothing. */
+.job-field > .field-note {
   margin: 6px 0 0;
 }
-.job-draft-list > small.form-error {
-  display: block;
-  margin: -2px 0 8px;
+.job-draft-list > .field-note {
+  margin: -6px 0 2px;
 }
 .job-section-label {
   display: flex;

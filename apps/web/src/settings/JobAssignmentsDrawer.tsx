@@ -27,7 +27,7 @@ import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { JobColorInput } from "./JobCatalogEditor";
 import { jobInputSchema } from "@newfork/shared";
-import { LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import { listJobs } from "./organization-data";
 import { isChangedMeanwhile } from "../lib/catalog-refusals";
 
@@ -413,7 +413,7 @@ export function JobAssignmentsDrawer({
                       name: event.target.value,
                     }));
                   }}
-                  {...letterRuleProps(jobDraft.name, "edit-job-name-error")}
+                  {...letterRuleProps(jobDraft.name, "edit-job-name")}
                 />
                 <JobColorInput
                   label="Job color"
@@ -424,7 +424,7 @@ export function JobAssignmentsDrawer({
                   }}
                 />
               </div>
-              <LetterRuleError value={jobDraft.name} id="edit-job-name-error" />
+              <LetterRuleNote value={jobDraft.name} id="edit-job-name" />
             </div>
             <label className="job-field">
               <span>Department</span>

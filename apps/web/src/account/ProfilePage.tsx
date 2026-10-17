@@ -45,7 +45,7 @@ import { RequestError } from "../lib/request-error";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
-import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
 
 /**
  * What the page's one Save needs from each legal name form. The legal name is
@@ -73,6 +73,8 @@ type Contact = {
 };
 
 /** "a", "a and b", "a, b and c". */
+const preferredNameHelp = "Shown everywhere except documents. A manager approves it.";
+
 function listWords(words: readonly string[]): string {
   return words.length < 2
     ? (words[0] ?? "")
@@ -558,14 +560,10 @@ export default function ProfilePage() {
                 setPreferredSent(new Set());
                 setSaved(null);
               }}
-              {...letterRuleProps(preferred, "account-preferred-name-error")}
+              {...letterRuleProps(preferred, "account-preferred-name", null, preferredNameHelp)}
             />
             {/* One line under the field: the rule while it is broken, else the help. */}
-            {breaksLetterRule(preferred) ? (
-              <LetterRuleError value={preferred} id="account-preferred-name-error" />
-            ) : (
-              <small>Shown everywhere except documents. A manager approves it.</small>
-            )}
+            <LetterRuleNote value={preferred} id="account-preferred-name" help={preferredNameHelp} />
           </label>
           <label className="account-field account-field-span-2" htmlFor="account-phone-number">
             <span>Phone number</span>
@@ -599,9 +597,9 @@ export default function ProfilePage() {
                     onChange={(event) => editContact("name", event.target.value)}
                     placeholder="Morgan Reyes"
                     required
-                    {...letterRuleProps(contact.name, "account-contact-name-error")}
+                    {...letterRuleProps(contact.name, "account-contact-name")}
                   />
-                  <LetterRuleError value={contact.name} id="account-contact-name-error" />
+                  <LetterRuleNote value={contact.name} id="account-contact-name" />
                 </label>
                 <label className="account-field" htmlFor="account-contact-relationship">
                   <span>Relationship</span>
@@ -613,12 +611,9 @@ export default function ProfilePage() {
                     onChange={(event) => editContact("relationship", event.target.value)}
                     placeholder="Spouse"
                     required
-                    {...letterRuleProps(contact.relationship, "account-contact-relationship-error")}
+                    {...letterRuleProps(contact.relationship, "account-contact-relationship")}
                   />
-                  <LetterRuleError
-                    value={contact.relationship}
-                    id="account-contact-relationship-error"
-                  />
+                  <LetterRuleNote value={contact.relationship} id="account-contact-relationship" />
                 </label>
                 <label className="account-field" htmlFor="account-contact-phone">
                   <span>Contact phone</span>
@@ -673,7 +668,8 @@ export default function ProfilePage() {
           </fieldset>
         ) : null}
 
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        {/* The form's own error keeps one line of room, so it moves nothing. */}
+        <FieldNote id="profile-form" error={error} />
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
         {/* Why Save is off: the missing fields, by name. */}
         {missing.length > 0 && !photoOnly ? (
@@ -848,9 +844,9 @@ function OwnerLegalNameFields({
           onEdit();
           setDraft({ ...draft, [part]: event.target.value });
         }}
-        {...letterRuleProps(draft[part], field(`${suffix}-error`))}
+        {...letterRuleProps(draft[part], field(suffix))}
       />
-      <LetterRuleError value={draft[part]} id={field(`${suffix}-error`)} />
+      <LetterRuleNote value={draft[part]} id={field(suffix)} />
     </label>
   );
 

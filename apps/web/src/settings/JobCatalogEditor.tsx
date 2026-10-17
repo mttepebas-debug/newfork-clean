@@ -9,7 +9,7 @@ import {
   type Department,
   type Job,
 } from "@newfork/shared";
-import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import {
   createDepartmentWithJobs,
   createDepartmentJobs,
@@ -312,7 +312,7 @@ export function JobCatalogEditor({
                     value={name}
                     placeholder={isJob ? "e.g. Server" : "e.g. Front of house"}
                     onChange={(event) => setName(event.target.value)}
-                    {...letterRuleProps(name, "catalog-entity-name-error")}
+                    {...letterRuleProps(name, "catalog-entity-name")}
                     onKeyDown={(event) => {
                       if (
                         bundled &&
@@ -330,7 +330,7 @@ export function JobCatalogEditor({
                     onChange={setColor}
                   />
                 </div>
-                <LetterRuleError value={name} id="catalog-entity-name-error" />
+                <LetterRuleNote value={name} id="catalog-entity-name" />
               </div>
             )}
             {isJob && !existingDepartment && (
@@ -371,7 +371,7 @@ export function JobCatalogEditor({
                         else inputs.current.delete(row.key);
                       }}
                       aria-label={`Job name ${index + 1}`}
-                      {...letterRuleProps(row.name, `job-row-${row.key}-error`)}
+                      {...letterRuleProps(row.name, `job-row-${row.key}`)}
                       placeholder="Add a job…"
                       maxLength={100}
                       value={row.name}
@@ -438,7 +438,7 @@ export function JobCatalogEditor({
                       </button>
                     )}
                   </div>
-                  <LetterRuleError value={row.name} id={`job-row-${row.key}-error`} />
+                  <LetterRuleNote value={row.name} id={`job-row-${row.key}`} />
                   </Fragment>
                 ))}
                 <p className="job-hint">

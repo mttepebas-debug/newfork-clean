@@ -7,6 +7,7 @@ import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { AccountPageHeader } from "./components";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
+import { FieldNote } from "../shell/FieldNote";
 
 export default function PreferencesPage() {
   const { account, updateAccount } = useAuth();
@@ -98,7 +99,7 @@ export default function PreferencesPage() {
           </label>
         </div>
 
-        {error ? <p className="form-error" role="alert">{error}</p> : null}
+        <FieldNote id="preferences-form" error={error} />
         {saved ? <p className="form-success" role="status">Preferences saved</p> : null}
         <div className="account-form-actions">
           {dirty ? <Button className="secondary-button" type="button" disabled={saving} onClick={discard}>Discard</Button> : null}

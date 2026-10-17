@@ -18,7 +18,8 @@ import {
 } from "../schedule/components/ScheduleLogoUploadDialog";
 import { ScheduleLogoFrame } from "../schedule/components/ScheduleLogoFrame";
 import { saveScheduleLogo, updateOrganizationName } from "./organization-data";
-import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
+import { FieldNote } from "../shell/FieldNote";
 import { isNoAccess } from "../lib/no-access";
 import { LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 
@@ -139,25 +140,13 @@ export default function GeneralSettingsPage() {
               onChange={(event) => setName(event.target.value)}
               maxLength={120}
               required
-              {...letterRuleProps(name, "organization-name-error")}
+              {...letterRuleProps(name, "organization-name")}
             />
-            <LetterRuleError
-              value={name}
-              id="organization-name-error"
-              className="form-error us-letters-line"
-            />
+            <LetterRuleNote value={name} id="organization-name" />
           </div>
         </div>
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
-        {logoError ? (
-          <p className="form-error" role="alert">
-            {logoError}
-          </p>
-        ) : null}
+        {/* The form's own error keeps its line, so it moves nothing (UI-FIELDMSG). */}
+        <FieldNote id="organization-form" error={error ?? logoError} />
         {saved ? (
           <p className="form-success" role="status">
             Workspace settings saved.
@@ -219,11 +208,7 @@ export default function GeneralSettingsPage() {
           </div>
         </div>
         {/* A failed read is not a failed save (Mert 2026-10-14, "B"). */}
-        {isNoAccess(checklistQuery.error) ? (
-          <p className="form-error" role="alert">
-            You don't have access to this setting.
-          </p>
-        ) : checklistQuery.error ? (
+        {checklistQuery.error && !isNoAccess(checklistQuery.error) ? (
           <RefreshError
             message={
               checklistQuery.data !== undefined
@@ -234,11 +219,16 @@ export default function GeneralSettingsPage() {
             onRetry={() => void checklistQuery.refetch()}
           />
         ) : null}
-        {checklistMutation.error ? (
-          <p className="form-error" role="alert">
-            Setup checklist visibility could not be saved.
-          </p>
-        ) : null}
+        <FieldNote
+          id="setup-checklist"
+          error={
+            isNoAccess(checklistQuery.error)
+              ? "You don't have access to this setting."
+              : checklistMutation.error
+                ? "Setup checklist visibility could not be saved."
+                : null
+          }
+        />
       </section>
       <ScheduleLogoUploadDialog
         open={logoOpen}

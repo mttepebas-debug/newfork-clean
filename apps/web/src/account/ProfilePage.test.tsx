@@ -807,7 +807,8 @@ describe("ProfilePage US form rules", () => {
     await screen.findByDisplayValue("Morgan");
     const help = "Shown everywhere except documents. A manager approves it.";
     fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ayşe" } });
-    expect(screen.queryByText(help)).toBeNull();
+    // The help only keeps its room, hidden and unread (UI-FIELDMSG).
+    expect(screen.queryByText(help, { ignore: '[aria-hidden="true"], script, style' })).toBeNull();
     fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Ayse" } });
     expect(screen.getByText(help)).toBeTruthy();
     expect(screen.queryByText(usLettersMessage)).toBeNull();

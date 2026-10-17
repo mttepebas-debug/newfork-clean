@@ -472,12 +472,6 @@ button.pb-link {
   margin-left: auto;
   gap: 10px;
 }
-.pb-bar .form-error {
-  max-width: 380px;
-  margin: 0;
-  font-size: 13px;
-  line-height: 1.45;
-}
 .pb-bar .pb-btn-primary {
   min-height: 42px;
   padding: 0 20px;

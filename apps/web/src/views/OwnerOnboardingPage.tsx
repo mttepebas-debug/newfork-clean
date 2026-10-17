@@ -14,7 +14,7 @@ import {
 } from "../settings/location-draft";
 import { LocationTimezoneField } from "../settings/LocationTimezoneField";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
-import { breaksLetterRule, LetterRuleError, letterRuleProps } from "../shell/us-text";
+import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import { ConfirmButton } from "@newfork/ui";
 import {
   BriefcaseBusiness,
@@ -62,6 +62,7 @@ import {
   setJobArchived,
   setLocationArchived,
 } from "../settings/organization-data";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 
 type OwnerStep = 1 | 2 | 3 | 4;
 
@@ -627,9 +628,9 @@ export default function OwnerOnboardingPage() {
             value={jobPanelName}
             maxLength={100}
             onChange={(event) => setJobPanelName(event.target.value)}
-            {...letterRuleProps(jobPanelName, "job-panel-name-error")}
+            {...letterRuleProps(jobPanelName, "job-panel-name")}
           />
-          <LetterRuleError value={jobPanelName} id="job-panel-name-error" />
+          <LetterRuleNote value={jobPanelName} id="job-panel-name" />
         </label>
         <label htmlFor="job-panel-department">
           Department
@@ -938,9 +939,9 @@ export default function OwnerOnboardingPage() {
                       autoComplete="given-name"
                       autoFocus
                       required
-                      {...letterRuleProps(ownerFirstName, "owner-first-name-error")}
+                      {...letterRuleProps(ownerFirstName, "owner-first-name")}
                     />
-                    <LetterRuleError value={ownerFirstName} id="owner-first-name-error" />
+                    <LetterRuleNote value={ownerFirstName} id="owner-first-name" />
                   </label>
                   <label htmlFor="owner-middle-name">
                     Middle name <span className="field-optional">optional</span>
@@ -952,9 +953,9 @@ export default function OwnerOnboardingPage() {
                       maxLength={80}
                       onChange={(event) => setOwnerMiddleName(event.target.value)}
                       autoComplete="additional-name"
-                      {...letterRuleProps(ownerMiddleName, "owner-middle-name-error")}
+                      {...letterRuleProps(ownerMiddleName, "owner-middle-name")}
                     />
-                    <LetterRuleError value={ownerMiddleName} id="owner-middle-name-error" />
+                    <LetterRuleNote value={ownerMiddleName} id="owner-middle-name" />
                   </label>
                   <label htmlFor="owner-last-name">
                     Last name
@@ -967,9 +968,9 @@ export default function OwnerOnboardingPage() {
                       onChange={(event) => setOwnerLastName(event.target.value)}
                       autoComplete="family-name"
                       required
-                      {...letterRuleProps(ownerLastName, "owner-last-name-error")}
+                      {...letterRuleProps(ownerLastName, "owner-last-name")}
                     />
-                    <LetterRuleError value={ownerLastName} id="owner-last-name-error" />
+                    <LetterRuleNote value={ownerLastName} id="owner-last-name" />
                   </label>
                   <small id="owner-name-help" className="field-help">
                     Documents and signatures use this name. Go by something
@@ -986,9 +987,9 @@ export default function OwnerOnboardingPage() {
                     maxLength={120}
                     onChange={(event) => setWorkspaceName(event.target.value)}
                     required
-                    {...letterRuleProps(workspaceName, "workspace-name-error")}
+                    {...letterRuleProps(workspaceName, "workspace-name")}
                   />
-                  <LetterRuleError value={workspaceName} id="workspace-name-error" />
+                  <LetterRuleNote value={workspaceName} id="workspace-name" />
                 </label>
               </div>
               <Feedback success={success} />
@@ -1204,7 +1205,7 @@ export default function OwnerOnboardingPage() {
                           onChange={(event) =>
                             setRenameDepartmentName(event.target.value)
                           }
-                          {...letterRuleProps(renameDepartmentName, "rename-department-error")}
+                          {...letterRuleProps(renameDepartmentName, "rename-department")}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
                               event.preventDefault();
@@ -1285,10 +1286,7 @@ export default function OwnerOnboardingPage() {
                       </div>
                     </div>
                     {renamingDepartmentId === department.id ? (
-                      <LetterRuleError
-                        value={renameDepartmentName}
-                        id="rename-department-error"
-                      />
+                      <LetterRuleNote value={renameDepartmentName} id="rename-department" />
                     ) : null}
                     <JobChips
                       jobs={jobsIn(department.id)}
@@ -1356,9 +1354,9 @@ export default function OwnerOnboardingPage() {
                       }
                       placeholder="Front of house"
                       required
-                      {...letterRuleProps(departmentName, "department-name-error")}
+                      {...letterRuleProps(departmentName, "department-name")}
                     />
-                    <LetterRuleError value={departmentName} id="department-name-error" />
+                    <LetterRuleNote value={departmentName} id="department-name" />
                   </label>
                 ) : (
                   <>
@@ -1389,9 +1387,9 @@ export default function OwnerOnboardingPage() {
                         onChange={(event) => setJobName(event.target.value)}
                         placeholder="Server"
                         required
-                        {...letterRuleProps(jobName, "job-name-error")}
+                        {...letterRuleProps(jobName, "job-name")}
                       />
-                      <LetterRuleError value={jobName} id="job-name-error" />
+                      <LetterRuleNote value={jobName} id="job-name" />
                     </label>
                   </>
                 )}
@@ -1611,13 +1609,9 @@ function LocationFields({
           placeholder="Main dining room"
           required
           aria-invalid={errors.name ? true : undefined}
-          aria-describedby={errors.name ? "location-name-error" : undefined}
+          aria-describedby={fieldNoteId("location-name", errors.name)}
         />
-        {errors.name ? (
-          <small className="form-error" id="location-name-error" role="alert">
-            {errors.name}
-          </small>
-        ) : null}
+        <FieldNote id="location-name" error={errors.name} />
       </label>
       <label htmlFor="location-short-name">
         Short name
@@ -1633,20 +1627,10 @@ function LocationFields({
           }
           placeholder={suggestLocationShortName(draft.name)}
           aria-invalid={errors.short_name ? true : undefined}
-          aria-describedby={
-            errors.short_name ? "location-short-name-error" : undefined
-          }
+          aria-describedby={fieldNoteId("location-short-name", errors.short_name)}
           aria-required
         />
-        {errors.short_name ? (
-          <small
-            className="form-error"
-            id="location-short-name-error"
-            role="alert"
-          >
-            {errors.short_name}
-          </small>
-        ) : null}
+        <FieldNote id="location-short-name" error={errors.short_name} />
       </label>
       <label htmlFor="location-timezone">
         Timezone
@@ -1673,13 +1657,9 @@ function LocationFields({
             onChange({ ...draft, street_address: event.target.value }, "street_address")
           }
           aria-invalid={errors.street_address ? true : undefined}
-          aria-describedby={errors.street_address ? "location-street-error" : undefined}
+          aria-describedby={fieldNoteId("location-street", errors.street_address)}
         />
-        {errors.street_address ? (
-          <small className="form-error" id="location-street-error" role="alert">
-            {errors.street_address}
-          </small>
-        ) : null}
+        <FieldNote id="location-street" error={errors.street_address} />
       </label>
       <label htmlFor="location-city">
         City
@@ -1691,13 +1671,9 @@ function LocationFields({
           maxLength={100}
           onChange={(event) => onChange({ ...draft, city: event.target.value }, "city")}
           aria-invalid={errors.city ? true : undefined}
-          aria-describedby={errors.city ? "location-city-error" : undefined}
+          aria-describedby={fieldNoteId("location-city", errors.city)}
         />
-        {errors.city ? (
-          <small className="form-error" id="location-city-error" role="alert">
-            {errors.city}
-          </small>
-        ) : null}
+        <FieldNote id="location-city" error={errors.city} />
       </label>
       <label htmlFor="location-region">
         State or region
@@ -1711,13 +1687,9 @@ function LocationFields({
             onChange({ ...draft, region: event.target.value }, "region")
           }
           aria-invalid={errors.region ? true : undefined}
-          aria-describedby={errors.region ? "location-region-error" : undefined}
+          aria-describedby={fieldNoteId("location-region", errors.region)}
         />
-        {errors.region ? (
-          <small className="form-error" id="location-region-error" role="alert">
-            {errors.region}
-          </small>
-        ) : null}
+        <FieldNote id="location-region" error={errors.region} />
       </label>
       <label htmlFor="location-postal">
         Postal code
@@ -1757,13 +1729,9 @@ function LocationFields({
           value={draft.phone}
           onChange={(phone) => onChange({ ...draft, phone }, "phone")}
           aria-invalid={errors.phone ? true : undefined}
-          aria-describedby={errors.phone ? "location-phone-error" : undefined}
+          aria-describedby={fieldNoteId("location-phone", errors.phone)}
         />
-        {errors.phone ? (
-          <small className="form-error" id="location-phone-error" role="alert">
-            {errors.phone}
-          </small>
-        ) : null}
+        <FieldNote id="location-phone" error={errors.phone} />
       </label>
       </fieldset>
     </>
@@ -1865,9 +1833,9 @@ function EmployeeFields({
             onChange({ ...draft, first_name: event.target.value })
           }
           required
-          {...letterRuleProps(draft.first_name, "employee-first-name-error")}
+          {...letterRuleProps(draft.first_name, "employee-first-name")}
         />
-        <LetterRuleError value={draft.first_name} id="employee-first-name-error" />
+        <LetterRuleNote value={draft.first_name} id="employee-first-name" />
       </label>
       <label htmlFor="employee-last-name">
         Last name
@@ -1881,9 +1849,9 @@ function EmployeeFields({
             onChange({ ...draft, last_name: event.target.value })
           }
           required
-          {...letterRuleProps(draft.last_name, "employee-last-name-error")}
+          {...letterRuleProps(draft.last_name, "employee-last-name")}
         />
-        <LetterRuleError value={draft.last_name} id="employee-last-name-error" />
+        <LetterRuleNote value={draft.last_name} id="employee-last-name" />
       </label>
       <label htmlFor="employee-start-date">
         Start date

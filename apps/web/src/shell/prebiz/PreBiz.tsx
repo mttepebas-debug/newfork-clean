@@ -2,6 +2,7 @@ import { useId, type ReactNode } from "react";
 import type { WorkspaceSummary } from "@newfork/shared";
 import { ChevronLeft, LogOut } from "lucide-react";
 import { useAuth } from "../../auth/AuthContext";
+import { WindowAlert } from "../WindowAlert";
 import "./prebiz.css";
 
 /** The account and its way out. Every screen before a business shows this one block. */
@@ -83,6 +84,9 @@ export function WizardBar({
 }) {
   return (
     <footer className="pb-bar">
+      {/* The step's error lies over the form's bottom edge, above this bar,
+          so neither the form nor the buttons move (UI-FIELDMSG). */}
+      <WindowAlert message={error} />
       {back ? (
         <button
           type="button"
@@ -91,11 +95,6 @@ export function WizardBar({
         >
           <ChevronLeft size={15} aria-hidden /> {back.label}
         </button>
-      ) : null}
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
       ) : null}
       <div className="pb-bar-end">{children}</div>
     </footer>

@@ -10733,6 +10733,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   font-weight: 800;
 }
+.organization-form-row .field-note {
+  margin-top: 6px;
+}
 .organization-form-row p {
   margin: 6px 0 0;
   color: var(--theme-muted);
@@ -10788,7 +10791,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   font-weight: 700;
 }
-.organization-form > .form-error,
+.organization-form > .field-note,
 .organization-form > .form-success {
   margin: 0;
   padding: 0 24px 16px;
