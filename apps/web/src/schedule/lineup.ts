@@ -116,7 +116,6 @@ export function lineupDay(
   filters: LineupFilters = {},
 ): LineupLocation[] {
   const types = catalog?.shift_types ?? [];
-  const order = new Map(types.map((type) => [type.id, type.sort_order]));
   return read.locations
     .filter((location) => !filters.locationId || location.id === filters.locationId)
     .map((location) => {
@@ -173,7 +172,10 @@ export function lineupDay(
             color: lineup.color ?? type?.color ?? null,
             departments,
             count: rows.length,
-            order: key === NO_SHIFT_TYPE ? Number.MAX_SAFE_INTEGER : order.get(key) ?? Number.MAX_SAFE_INTEGER - 1,
+            // By the shift type's start (a type gone from the catalog: its earliest row), shifts with no type last.
+            start: key === NO_SHIFT_TYPE
+              ? "99:99:99"
+              : startKey(type?.default_start_time ?? rows.map((row) => row.start_time).sort()[0] ?? ""),
             publish: {
               target: { location_id: location.id, service_date: read.date, shift_type_id: lineup.shift_type_id },
               status: lineup.status,
@@ -188,8 +190,8 @@ export function lineupDay(
             },
           };
         })
-        .sort((a, b) => a.order - b.order || byName(a, b))
-        .map(({ order: _order, ...shift }) => shift);
+        .sort((a, b) => (a.start < b.start ? -1 : a.start > b.start ? 1 : 0) || byName(a, b))
+        .map(({ start: _start, ...shift }) => shift);
       return {
         id: location.id,
         name: location.name,

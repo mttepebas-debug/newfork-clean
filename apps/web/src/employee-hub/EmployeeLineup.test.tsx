@@ -96,6 +96,28 @@ describe("EmployeeLineup", () => {
     expect(within(team).getByText("Hannah Lee")).toBeTruthy();
   });
 
+  it("orders her lineups by start time, the same start by name", async () => {
+    const [dinnerLineup] = mine().lineups;
+    const at = (id: string, name: string, start: string) => ({
+      ...dinnerLineup!,
+      id,
+      shift_type_name: name,
+      mine: [{ ...row, start_time: start }],
+    });
+    answer = {
+      ...mine(),
+      lineups: [
+        at("91000000-0000-4000-8000-000000000001", "Dinner", "16:00"),
+        at("91000000-0000-4000-8000-000000000002", "Lunch", "11:00"),
+        at("91000000-0000-4000-8000-000000000003", "Brunch", "11:00"),
+      ],
+    };
+    renderLineup();
+    const group = await screen.findByRole("group", { name: "Your lineups" });
+    expect(within(group).getAllByRole("button").map((button) => button.textContent)).toEqual(["Brunch", "Lunch", "Dinner"]);
+    expect(within(group).getByRole("button", { name: "Brunch" }).getAttribute("aria-pressed")).toBe("true");
+  });
+
   it("reads the notes", async () => {
     renderLineup();
     fireEvent.click(await screen.findByRole("tab", { name: /^Notes/ }));

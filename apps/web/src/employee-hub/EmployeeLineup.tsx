@@ -65,7 +65,14 @@ export function EmployeeLineup({
   readonly timeFormat: ScheduleTimeFormat;
 }): JSX.Element {
   const query = useMyLineups(workspaceId, date);
-  const lineups = query.data?.lineups ?? [];
+  // Her lineups in the day's order: by her own start, the same start by shift type name.
+  const lineups = [...(query.data?.lineups ?? [])].sort((a, b) => {
+    const start = (lineup: (typeof a)) => lineup.mine.map((row) => row.start_time).sort()[0] ?? "99:99";
+    const at = start(a);
+    const bt = start(b);
+    return (at < bt ? -1 : at > bt ? 1 : 0) ||
+      (a.shift_type_name ?? "").localeCompare(b.shift_type_name ?? "", "en-US", { sensitivity: "base" });
+  });
   const [chosen, setChosen] = useState<string | null>(null);
   // Not on a published lineup: is she working that day, so a lineup is still to come?
   const board = useQuery({

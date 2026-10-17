@@ -25,6 +25,28 @@ describe("lineupDay", () => {
     expect(result[0]!.shifts.map((s) => [s.name, s.count])).toEqual([["Lunch", 0], ["Dinner", 0]]);
   });
 
+  it("orders shift types by their start time, the same start by name, no shift type last", () => {
+    const brunch = "30000000-0000-4000-8000-000000000003";
+    const m = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: null, start: "09:00", end: "12:00" }),
+    ]);
+    // The catalog's own order says Dinner, Lunch, Brunch; the start times say otherwise.
+    const catalog = {
+      shift_types: [
+        { id: dinner, name: "Dinner", color: null, sort_order: 1, default_start_time: "16:00", default_end_time: "22:00" },
+        { id: lunch, name: "Lunch", color: null, sort_order: 2, default_start_time: "11:00", default_end_time: "16:00" },
+        { id: brunch, name: "Brunch", color: null, sort_order: 3, default_start_time: "11:00", default_end_time: "14:00" },
+      ],
+    } as unknown as Parameters<typeof lineupDay>[1];
+    expect(lineupDay(dayRead(m, day), catalog)[0]!.shifts.map((s) => s.name)).toEqual([
+      "Brunch",
+      "Lunch",
+      "Dinner",
+      "No shift type",
+    ]);
+  });
+
   it("groups the day's people by department, then job, earliest first", () => {
     const result = view(
       model([
