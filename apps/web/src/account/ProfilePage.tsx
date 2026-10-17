@@ -98,6 +98,11 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
  * the form was open (no longer a member, a 404), or the workspace is closed.
  * Trying again changes none of them.
  */
+/** A phone as typed or on file, comparable however it is written. */
+function normalizedOrRaw(phone: string): string {
+  return toUsPhone(phone) ?? phone.trim();
+}
+
 function accessEnded(cause: unknown): boolean {
   return (
     cause instanceof RequestError &&
@@ -241,6 +246,16 @@ export default function ProfilePage() {
   // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
   const contactIsOwn = hasContactForm && sameUsPhone(phone, contact.phone);
   const complete = missing.length === 0 && lettersOk && !contactIsOwn;
+  // A new or removed photo alone saves though a field elsewhere is still
+  // empty: it is the account's own, apart from those (Mert's phone notes
+  // 2026-10-17 #10). A field edit still waits for everything.
+  const photoOnly =
+    (draftFile !== null || avatarObjectPath !== (account?.avatarObjectPath ?? null)) &&
+    normalizedOrRaw(phone) === normalizedOrRaw(account?.phone ?? "") &&
+    !legalDirty &&
+    !preferredDirty &&
+    !contactDirty;
+  const canSave = complete || photoOnly;
 
   useEffect(() => {
     if (!draftFile) return;
@@ -482,7 +497,8 @@ export default function ProfilePage() {
         titleId="profile-title"
         description="Your name, photo and phone, and who to call in an emergency."
       />
-      <form className="account-profile-form" aria-label="Profile" onSubmit={submit}>
+      {/* Save itself says what is missing; the browser's own check would stop a photo saved alone. */}
+      <form className="account-profile-form" aria-label="Profile" noValidate onSubmit={submit}>
         <div className="account-profile-head">
           <div className="account-photo">
             <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={account.displayName} />
@@ -660,7 +676,7 @@ export default function ProfilePage() {
         {error ? <p className="form-error" role="alert">{error}</p> : null}
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
         {/* Why Save is off: the missing fields, by name. */}
-        {missing.length > 0 ? (
+        {missing.length > 0 && !photoOnly ? (
           <p className="account-form-missing" id="profile-missing">
             To save, fill in {listWords(missing)}.
           </p>
@@ -673,8 +689,8 @@ export default function ProfilePage() {
           ) : null}
           <Button
             type="submit"
-            disabled={!formDirty || saving || !complete}
-            aria-describedby={missing.length > 0 ? "profile-missing" : undefined}
+            disabled={!formDirty || saving || !canSave}
+            aria-describedby={missing.length > 0 && !photoOnly ? "profile-missing" : undefined}
           >
             {saving ? "Saving" : "Save"}
           </Button>

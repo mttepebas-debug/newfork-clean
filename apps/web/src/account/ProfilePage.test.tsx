@@ -210,6 +210,27 @@ describe("ProfilePage", () => {
     expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
   });
 
+  // Mert's phone notes 2026-10-17 #10: a new photo alone saves, though a
+  // field elsewhere on the page is still empty; a field edit still waits.
+  it("saves a new photo alone while another required field is still empty", async () => {
+    account = { ...account, phone: null };
+    renderProfile();
+    expect(screen.getByText(/To save, fill in phone number/)).toBeTruthy();
+    choosePhoto();
+    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(screen.queryByText(/To save, fill in/)).toBeNull();
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Owner Updated" } });
+    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
+    expect(screen.getByText(/To save, fill in phone number/)).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Owner User" } });
+    const save = screen.getByRole("button", { name: "Save" });
+    expect(save).toHaveProperty("disabled", false);
+    fireEvent.click(save);
+    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
+      { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
+  });
+
   it("rejects unsupported files before opening crop or touching storage", () => {
     renderProfile();
     fireEvent.change(screen.getByLabelText("Choose profile photo"), { target: { files: [new File(["svg"], "photo.svg", { type: "image/svg+xml" })] } });
