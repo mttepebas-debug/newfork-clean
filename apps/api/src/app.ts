@@ -103,6 +103,7 @@ import { notificationChannelsConfigFromEnvironment, vapidFromEnvironment } from 
 import { createNotificationPushWorker, type NotificationPushWorker, type PushSend } from "./notifications/push-worker";
 import { registerNotificationPushRoutes, type PushSubscriptionService } from "./notifications/push-routes";
 import { createPushSubscriptionService } from "./notifications/push-subscription-service";
+import { createUserVerifier } from "./auth/verify-user.js";
 import { registerDocumentTypesRoutes } from "./settings/document-types-routes";
 import {
   createDocumentTypesService,
@@ -224,6 +225,7 @@ export interface BuildAppOptions {
     readonly worker?: NotificationPushWorker | null;
     readonly cronSecret?: string;
     readonly service?: PushSubscriptionService | null;
+    readonly verifySession?: ((accessToken: string) => Promise<boolean>) | null;
     readonly config?: () => NotificationChannelsConfig;
   };
 }
@@ -859,6 +861,10 @@ export function buildApp(options: BuildAppOptions = {}) {
       options.notificationPush?.service === undefined
         ? createPushSubscriptionServiceFromEnvironment()
         : options.notificationPush.service,
+    verifySession:
+      options.notificationPush?.verifySession === undefined
+        ? createSessionCheckFromEnvironment()
+        : options.notificationPush.verifySession,
     config: options.notificationPush?.config ?? (() => notificationChannelsConfigFromEnvironment(process.env)),
   });
   registerScheduleRequestsRoutes(app, {
@@ -1212,6 +1218,14 @@ function createNotificationPushWorkerFromEnvironment(): NotificationPushWorker |
     return (await loaded)(target, payload, sendOptions);
   };
   return createNotificationPushWorker({ url, serviceRoleKey, send, appUrl: process.env.APP_URL ?? "http://127.0.0.1:5555" });
+}
+
+function createSessionCheckFromEnvironment(): ((accessToken: string) => Promise<boolean>) | null {
+  const url = process.env.SUPABASE_URL;
+  const anonKey = process.env.SUPABASE_ANON_KEY;
+  if (!url || !anonKey) return null;
+  const verifyUser = createUserVerifier(createClient(url, anonKey, { auth: { autoRefreshToken: false, persistSession: false } }));
+  return async (accessToken) => (await verifyUser(accessToken)) !== null;
 }
 
 function createPushSubscriptionServiceFromEnvironment(): PushSubscriptionService | null {

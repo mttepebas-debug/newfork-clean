@@ -1,3 +1,4 @@
+import { pushEndpointSchema, pushKeysSchema } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { NotificationEmailBatchResult, NotificationEmailLog } from "./email-worker";
@@ -48,11 +49,12 @@ export interface PushSendOptions {
 /** Sends one encrypted alert; answers the push service's status, or throws PushSendError. */
 export type PushSend = (target: PushTarget, payload: string, options: PushSendOptions) => Promise<{ status: number; retryAfter: number | null }>;
 
+// Read loosely, then each device checked on its own: one bad address never stops the others.
 const targetSchema = z.object({
   subscription_id: z.string().uuid(),
-  endpoint: z.string().min(1),
-  p256dh: z.string().min(1),
-  auth: z.string().min(1),
+  endpoint: z.string(),
+  p256dh: z.string(),
+  auth: z.string(),
 });
 
 const itemSchema = z.object({
@@ -176,6 +178,10 @@ export function createNotificationPushWorkerWithClient(client: PushRpcClient, op
           };
           answers = await Promise.all(
             item.targets.map(async (t): Promise<Answer> => {
+              // Our server posts only to the four push services, whatever the database handed over.
+              if (!pushEndpointSchema.safeParse(t.endpoint).success || !pushKeysSchema.safeParse({ p256dh: t.p256dh, auth: t.auth }).success) {
+                return { subscription_id: t.subscription_id, outcome: "refused", code: "bad_endpoint", retry_after: null };
+              }
               try {
                 const sent = await options.send({ endpoint: t.endpoint, keys: { p256dh: t.p256dh, auth: t.auth } }, payload, sendOptions);
                 return { subscription_id: t.subscription_id, ...answerFor(sent.status, sent.retryAfter) };

@@ -26,6 +26,8 @@ export interface NotificationPushRouteOptions {
   readonly worker: NotificationPushWorker | null;
   readonly cronSecret?: string;
   readonly service: PushSubscriptionService | null;
+  /** Whether the auth server knows this session; the channels are told to a signed-in person only. */
+  readonly verifySession: ((accessToken: string) => Promise<boolean>) | null;
   readonly config: () => NotificationChannelsConfig;
 }
 
@@ -45,7 +47,10 @@ export function registerNotificationPushRoutes(app: FastifyInstance, options: No
   app.post("/internal/cron/notification-push", run);
 
   app.get("/v1/account/notification-channels", async (request, reply) => {
-    if (!bearerToken(request.headers.authorization)) return reply.status(401).send({ error: "Bearer token required" });
+    const accessToken = bearerToken(request.headers.authorization);
+    if (!accessToken) return reply.status(401).send({ error: "Bearer token required" });
+    if (!options.verifySession) return reply.status(503).send({ error: "Notifications are not configured" });
+    if (!(await options.verifySession(accessToken))) return reply.status(401).send({ error: "Valid bearer session required" });
     return reply.send(options.config());
   });
 
