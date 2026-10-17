@@ -25,12 +25,17 @@
   position: sticky;
   top: 0;
   z-index: 5;
-  display: grid;
+  display: flex;
+  flex-direction: column;
   gap: 14px;
   margin: 0 -16px;
   padding: 16px 16px 0.5px;
   overflow: hidden;
   background: var(--lineup-phone-bg, var(--theme-page));
+}
+/* While it folds the top gets shorter; its pieces keep their size (they slide, they don't shrink). */
+.lineup-phone-page .lineup-phone-top > * {
+  flex: none;
 }
 /* The header sits above the date row, so that row slides up behind its line. */
 .lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header {
