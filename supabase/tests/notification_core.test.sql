@@ -344,7 +344,7 @@ select is(
      'muted', (select jsonb_agg(o ->> 'key') from jsonb_array_elements(s -> 'optional') o where not (o ->> 'enabled')::boolean),
      'optional', jsonb_array_length(s -> 'optional'), 'always', jsonb_array_length(s -> 'always_sent'))
    from (select public.get_notification_workspace_settings_service(pg_temp.u('nc:zeynep'), tests.id('nc')) s) x),
-  '{"email": true, "push": true, "sms": false, "muted": ["shift_changes.open_shift_available"], "optional": 9, "always": 56}'::jsonb,
+  '{"email": true, "push": true, "sms": false, "muted": ["shift_changes.open_shift_available"], "optional": 9, "always": 55}'::jsonb,
   '(e) an admin reads the workspace settings: the channels, the nine optional types, and what is always sent');
 select public.save_notification_workspace_settings_service(pg_temp.u('nc:zeynep'), tests.id('nc'),
   '{"email_enabled": true, "push_enabled": true, "sms_enabled": false, "muted_types": []}');

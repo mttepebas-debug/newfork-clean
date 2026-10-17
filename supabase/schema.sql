@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 506, last: 20261017170000_notification_email_channel.sql
--- fingerprint: sha256:370669e73e11dab26d276996648a0d6265c6d5ae25d14e0223dd57308b2178c3
+-- migrations: 507, last: 20261017170000_notification_email_channel.sql
+-- fingerprint: sha256:247080fd128c97626e5f4728d2c9d0a2fe9da516a5cc621530e71d0cc2a90171
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3328,6 +3328,32 @@ $$;
 
 
 ALTER FUNCTION "app_private"."availability_follows_role"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."availability_tell_updated"("target_workspace" "uuid", "target_employee" "uuid", "confirmed" boolean, "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  day date;
+  told uuid[];
+begin
+  day := (now() at time zone coalesce(app_private.time_off_timezone(target_workspace, target_employee), 'UTC'))::date;
+  told := app_private.notify_holders(target_workspace, 'availability.team_read', null, target_employee);
+  return app_private.notify('availability.updated', target_workspace, told,
+    'availability:' || target_employee::text || ':' || day::text,
+    app_private.people_name(target_employee)
+      || case when confirmed then ' confirmed their availability' else ' changed their availability' end,
+    null, '/app/employees?employeeId=' || target_employee::text || '&section=availability', actor,
+    'employee', target_employee, jsonb_build_object('employee_id', target_employee, 'day', day));
+exception when others then
+  raise warning 'availability_tell_updated: notice for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."availability_tell_updated"("target_workspace" "uuid", "target_employee" "uuid", "confirmed" boolean, "actor" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."can_access_location"("target_workspace_id" "uuid", "target_location_id" "uuid") RETURNS boolean
@@ -27535,6 +27561,11 @@ begin
  where d is distinct from (select value from jsonb_array_elements(prior->'preference'->'days') where value->'day'=d->'day');
  summary:=case when source='manager' then 'Manager reminders updated.' else 'Weekly availability updated. '||case when changed_days is null then 'Week confirmed.' else 'Changed days: '||changed_days||'.' end end;
  insert into public.employee_events(workspace_id,employee_id,actor_user_id,action,summary) values(w,emp,actor,case when source='manager' then 'manager_reminders_updated' else 'weekly_availability_updated' end,summary);
+ -- Who may read their availability hears of it, once a day; a save that changes no day is news only the
+ -- first time (S-32). A manager's own notes tell nobody (availability_tell_updated).
+ if source='employee' and (changed_days is not null or not coalesce((prior->>'submitted')::boolean,false)) then
+  perform app_private.availability_tell_updated(w,emp,changed_days is null,actor);
+ end if;
  insert into public.weekly_preference_commands(workspace_id,actor_user_id,request_key,command,result) values(w,actor,request_key,command,result);
  return result||jsonb_build_object('model',model);
 end; $$;
@@ -34009,6 +34040,10 @@ REVOKE ALL ON FUNCTION "app_private"."authz_reason"("actor" "uuid", "w" "uuid", 
 
 
 REVOKE ALL ON FUNCTION "app_private"."availability_follows_role"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."availability_tell_updated"("target_workspace" "uuid", "target_employee" "uuid", "confirmed" boolean, "actor" "uuid") FROM PUBLIC;
 
 
 
