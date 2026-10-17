@@ -156,11 +156,19 @@ export function EmployeeHubPage() {
     );
   return (
     <section className="employee-hub-page" aria-labelledby="employee-hub-title">
-      <CatalogPageHeader
-        {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
-          fallbackCopy)}
-        titleId="employee-hub-title"
-      />
+      {path === "schedule/lineup" ? (
+        // Lineup: only the page header stays put, at its full size, as on the manager's phone Lineup (Mert
+        // 2026-10-17 ~8:30 AM); the shell's frozen top leaves it alone (data-frozen-own).
+        <div className="employee-lineup-pin" data-frozen-own="">
+          <CatalogPageHeader {...pageCopy["schedule/lineup"]!} titleId="employee-hub-title" />
+        </div>
+      ) : (
+        <CatalogPageHeader
+          {...(pageCopy[path.startsWith("shift-hub") ? "shift-hub" : path] ??
+            fallbackCopy)}
+          titleId="employee-hub-title"
+        />
+      )}
       {query.isError ? (
         <RefreshError
           message="Employee Hub didn't refresh. This is the last information that loaded."

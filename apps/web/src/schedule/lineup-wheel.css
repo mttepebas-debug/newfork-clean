@@ -247,6 +247,14 @@
   outline: 2px solid var(--theme-focus);
   outline-offset: -2px;
 }
+/* A shift the employee isn't on: grey, not pressable, no count (Mert 2026-10-17 ~8:35 AM). */
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button.is-off {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button.is-off:hover {
+  color: var(--theme-muted);
+}
 .lineup-shift-tabs .catalog-status-tabs button i {
   display: inline-block;
   width: 8px;

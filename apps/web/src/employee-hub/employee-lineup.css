@@ -20,6 +20,9 @@
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
 /* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
 .employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
+/* The ticket 16 px under the shift tabs (Mert 2026-10-17 ~8:30 AM; no heading over it any more). */
+.employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-ticket,
+.employee-lineup > .lineup-shift-tabs + .employee-lineup-calm { margin-top: 16px; }
 .employee-lineup :is(button, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 
 /* The ticket: a stub with the shift's color, a dashed tear, her time, job and place */
@@ -29,11 +32,29 @@
 .employee-lineup-ticket::before, .employee-lineup-ticket::after { content: ""; position: absolute; left: 87px; width: 18px; height: 9px; border: 1px solid var(--theme-list-frame); background: var(--theme-page); }
 .employee-lineup-ticket::before { top: -1px; border-top: 0; border-radius: 0 0 9px 9px; }
 .employee-lineup-ticket::after { bottom: -1px; border-bottom: 0; border-radius: 9px 9px 0 0; }
-.employee-lineup-ticket-body { display: grid; align-content: center; gap: 4px; padding: 14px 14px 14px 16px; }
+.employee-lineup-ticket-body { display: grid; align-content: center; gap: 3px; padding: 14px 14px 14px 16px; }
 .employee-lineup-ticket-body p { margin: 0; color: var(--theme-text-body); font-size: 14.5px; }
-.employee-lineup-ticket-body .employee-lineup-time { color: var(--theme-text); font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
-.employee-lineup-ticket-body .employee-lineup-place { display: flex; align-items: center; gap: 6px; color: var(--theme-text-secondary); font-size: 13.5px; }
-.employee-lineup-ticket-body .employee-lineup-called-off { color: var(--theme-danger-text); font-size: 13px; font-weight: 700; }
+.employee-lineup-ticket-body .employee-lineup-time { margin-top: 3px; color: var(--theme-text); font-size: 19px; font-weight: 750; font-variant-numeric: tabular-nums; white-space: nowrap; }
+/* Ticket body, top to bottom: location, date, in – out, position · label · section (Mert 2026-10-17 ~8:30 AM). */
+.employee-lineup-ticket-body .employee-lineup-place { display: flex; align-items: center; gap: 5px; color: var(--theme-text); font-size: 14px; font-weight: 650; }
+.employee-lineup-ticket-body .employee-lineup-place svg { flex: none; color: var(--theme-text-secondary); }
+.employee-lineup-ticket-body .employee-lineup-date { color: var(--theme-text-secondary); font-size: 13.5px; }
+.employee-lineup-ticket-body .employee-lineup-detail { color: var(--theme-text-body); font-size: 14px; }
+
+/* A changed time, every 5 s: the old value is struck through left to right, fades, and the new one is written
+   over it in amber, holds, and fades (mockup v-e.css .e-swap). Less motion: the new value alone. */
+.employee-lineup-swap { display: inline-grid; vertical-align: bottom; }
+.employee-lineup-swap > span { position: relative; grid-area: 1 / 1; }
+.employee-lineup-old { color: var(--theme-muted); animation: employee-lineup-old 5s linear infinite; }
+.employee-lineup-old i { position: absolute; top: 53%; right: -1px; left: -1px; height: 2px; border-radius: 1px; background: var(--theme-availability-text); transform: scaleX(0); transform-origin: left center; animation: employee-lineup-strike 5s linear infinite; }
+.employee-lineup-new { color: var(--theme-availability-text); clip-path: inset(0 100% 0 0); animation: employee-lineup-new 5s linear infinite; }
+@keyframes employee-lineup-old { 0%, 44% { opacity: 1; } 52%, 92% { opacity: 0; } 100% { opacity: 1; } }
+@keyframes employee-lineup-strike { 0%, 12% { transform: scaleX(0); } 30%, 52% { transform: scaleX(1); } 53%, 100% { transform: scaleX(0); } }
+@keyframes employee-lineup-new { 0%, 50% { clip-path: inset(0 100% 0 0); opacity: 1; } 68%, 90% { clip-path: inset(0 0 0 0); opacity: 1; } 98% { clip-path: inset(0 0 0 0); opacity: 0; } 100% { clip-path: inset(0 100% 0 0); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) {
+  .employee-lineup-old { display: none; }
+  .employee-lineup-new { clip-path: none; animation: none; }
+}
 
 .employee-lineup-avatar { display: inline-grid; flex: none; width: 38px; height: 38px; place-items: center; border-radius: 50%; background: var(--theme-surface-muted); box-shadow: inset 0 0 0 2px var(--job); color: var(--theme-text); font-size: 13px; font-weight: 750; }
 .employee-lineup-avatar.is-large { width: 52px; height: 52px; font-size: 16px; }
@@ -81,3 +102,11 @@
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
 .employee-lineup-calm b { color: var(--theme-text); font-size: 16px; }
 .employee-lineup-calm span { color: var(--theme-muted); font-size: 14px; line-height: 1.45; }
+
+/* The page header, pinned at the top of the main area at its full size; everything under it scrolls (Mert
+   2026-10-17 ~8:30 AM, as on the manager's phone Lineup). It reaches over the page's top padding so nothing
+   shows above it. */
+.employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; margin-top: -30px; padding-top: 30px; background: inherit; }
+@media (max-width: 720px) {
+  .employee-hub-page > .employee-lineup-pin { margin: -16px -14px 0; padding: 16px 14px 0; }
+}

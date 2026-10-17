@@ -200,6 +200,9 @@ export interface LineupShiftTab {
   readonly name: string;
   readonly color: string | null;
   readonly count: number;
+  /** Greyed out and not pressable (the employee's page: a shift she isn't on); `title` says why. */
+  readonly disabled?: boolean;
+  readonly title?: string;
 }
 
 /** The shift tabs under the wheel (one per shift; the chosen one underlined). */
@@ -217,18 +220,25 @@ export function LineupShiftTabs({
       <div className="catalog-toolbar-status-row">
         <div className="catalog-status-tabs" role="group" aria-label="Shifts">
           {shifts.map((item) => (
-            <button
-              key={item.key}
-              type="button"
-              className={item.key === chosen ? "active" : ""}
-              aria-pressed={item.key === chosen}
-              aria-label={`${item.name}, ${item.count ? `${item.count} ${item.count === 1 ? "person" : "people"}` : "no one"}`}
-              onClick={() => onChoose(item.key)}
-            >
-              <i style={{ background: item.color ?? "var(--theme-border-strong)" }} aria-hidden />
-              {item.name}
-              {item.count ? <strong>{item.count}</strong> : null}
-            </button>
+            item.disabled ? (
+              <button key={item.key} type="button" className="is-off" disabled title={item.title} aria-label={`${item.name}. ${item.title ?? ""}`.trim()}>
+                <i style={{ background: item.color ?? "var(--theme-border-strong)" }} aria-hidden />
+                {item.name}
+              </button>
+            ) : (
+              <button
+                key={item.key}
+                type="button"
+                className={item.key === chosen ? "active" : ""}
+                aria-pressed={item.key === chosen}
+                aria-label={`${item.name}, ${item.count ? `${item.count} ${item.count === 1 ? "person" : "people"}` : "no one"}`}
+                onClick={() => onChoose(item.key)}
+              >
+                <i style={{ background: item.color ?? "var(--theme-border-strong)" }} aria-hidden />
+                {item.name}
+                {item.count ? <strong>{item.count}</strong> : null}
+              </button>
+            )
           ))}
         </div>
       </div>
