@@ -109,7 +109,7 @@ export function formatAvailabilityRange(
 }
 
 /** "after 2:00 PM", "until 9:00 AM", "all day", "9:00 AM – 2:00 PM". */
-function hoursWords(range: AvailabilityRange, timeFormat: "12h" | "24h"): string {
+export function hoursWords(range: AvailabilityRange, timeFormat: "12h" | "24h"): string {
   const clock = (minutes: number) => formatAvailabilityClock(minutes, timeFormat);
   if (range.from <= 0 && range.to >= 1440) return "all day";
   if (range.from <= 0) return `until ${clock(range.to)}`;
