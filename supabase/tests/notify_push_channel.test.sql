@@ -126,8 +126,8 @@ select is(pg_temp.device('can', 'can-11'), '{"devices": 10}'::jsonb, '(a) an ele
 select is((select s.revoked_reason from public.notification_push_subscriptions s where s.id = pg_temp.sub('can-4')), 'expired',
   '(a) the one used longest ago goes');
 
-select is(pg_temp.refusal(format('select public.save_notification_push_subscription_service(%L, %L, %L, %L, null)',
-    gen_random_uuid(), pg_temp.endpoint('nobody'), 'B' || repeat('p', 86), repeat('a', 22))),
+select is(pg_temp.refusal(format('select public.save_notification_push_subscription_service(null, %L, %L, %L, null)',
+    pg_temp.endpoint('nobody'), 'B' || repeat('p', 86), repeat('a', 22))),
   '42501 authz.not_member', '(a) nobody signed in saves nothing');
 
 select is(array[
@@ -215,20 +215,22 @@ select is(pg_temp.claim(4), 0, '(b) nothing else is due');
 -- (c) The claim asks again ----------------------------------------------------------------------------------
 
 select pg_temp.notice('time_off.decided', 'ali', 'p:ali:off');
+select pg_temp.notice('time_off.decided', 'dee', 'p:dee:gone');
+select pg_temp.notice('people.access_ended', 'dee', 'p:dee:ended');
 insert into public.notification_preferences (workspace_id, user_id, topic_key, channel, enabled)
 values (tests.id('np'), pg_temp.u('ali'), 'time_off', 'push', false);
+update public.workspace_memberships set status = 'removed' where workspace_id = tests.id('np') and user_id = pg_temp.u('dee');
+select is(pg_temp.claim(5), 0, '(c) nothing goes');
+select is(array[pg_temp.state('p:ali:off'), pg_temp.state('p:dee:gone'), pg_temp.state('p:dee:ended')],
+  array['skipped person_off', 'skipped not_member', 'skipped not_member'],
+  '(c) push turned off by the person, no longer a member: skipped, "your access ended" too (S-126 (5))');
+delete from public.notification_preferences where user_id = pg_temp.u('ali') and channel = 'push';
 select pg_temp.notice('time_off.decided', 'eve', 'p:eve:owner');
 insert into public.notification_workspace_settings (workspace_id, push_enabled) values (tests.id('np'), false)
 on conflict (workspace_id) do update set push_enabled = false;
-select pg_temp.notice('time_off.decided', 'dee', 'p:dee:gone');
-select pg_temp.notice('people.access_ended', 'dee', 'p:dee:ended');
-update public.workspace_memberships set status = 'removed' where workspace_id = tests.id('np') and user_id = pg_temp.u('dee');
-select is(pg_temp.claim(5), 0, '(c) nothing goes');
-select is(array[pg_temp.state('p:ali:off'), pg_temp.state('p:eve:owner'), pg_temp.state('p:dee:gone'), pg_temp.state('p:dee:ended')],
-  array['skipped person_off', 'skipped owner_off', 'skipped not_member', 'skipped not_member'],
-  '(c) push turned off by the person, by the owner, no longer a member: skipped, "your access ended" too (S-126 (5))');
+select is(pg_temp.claim(51), 0, '(c) the owner turned phone alerts off');
+select is(pg_temp.state('p:eve:owner'), 'skipped owner_off', '(c) skipped, never sent');
 update public.notification_workspace_settings set push_enabled = true where workspace_id = tests.id('np');
-delete from public.notification_preferences where user_id = pg_temp.u('ali') and channel = 'push';
 
 -- No device left once it is due: the important one goes by email instead (announcements email only when asked).
 select pg_temp.notice('announcements.published', 'eve', 'p:eve:nodevice');
