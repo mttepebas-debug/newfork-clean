@@ -126,16 +126,15 @@ describe("notification email routes", () => {
   const webhookBytes = Buffer.from("route-contract-webhook-secret-bytes");
   const app = () =>
     buildApp({
+      notificationDispatch: { dispatcher: { run: () => Promise.reject(hidden) }, cronSecret: "s" },
       notificationEmail: {
-        worker: { runBatch: () => Promise.reject(hidden) },
-        cronSecret: "s",
         webhookSecret: `whsec_${webhookBytes.toString("base64")}`,
         events: { apply: () => Promise.reject(hidden) },
       },
     });
 
   it("the cron route keeps an untyped failure's message off the screen", async () => {
-    const response = await app().inject({ method: "POST", url: "/internal/cron/notification-email", headers: { authorization: "Bearer s" } });
+    const response = await app().inject({ method: "POST", url: "/internal/cron/notification-dispatch", headers: { authorization: "Bearer s" } });
     expect(response.statusCode).toBe(500);
     expect(response.payload).not.toContain("notification_deliveries");
     expect(response.json()).toMatchObject({ requestId: expect.any(String) });

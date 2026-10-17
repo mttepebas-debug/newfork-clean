@@ -3,23 +3,19 @@ import { describe, expect, it, vi } from "vitest";
 import { notificationChannelsConfigFromEnvironment } from "./channel-config";
 import { registerNotificationPushRoutes, type PushSubscriptionService } from "./push-routes";
 
-// BILDIRIM-15: the cron route runs the push worker with the cron secret; a signed-in person saves and
-// removes their own devices (account-wide, no workspace); every screen asks which channels the server can
+// BILDIRIM-15: a signed-in person saves and removes their own devices (account-wide, no workspace); every screen asks which channels the server can
 // send on, so none promises what is not set up.
 const publicKey = "B" + "k".repeat(86);
 const keys = { p256dh: "B" + "p".repeat(86), auth: "a".repeat(22) };
 const endpoint = "https://fcm.googleapis.com/fcm/send/abc";
 
-function build(options: { worker?: boolean; cronSecret?: string; pushAvailable?: boolean } = {}) {
-  const runBatch = vi.fn(async () => ({ claimed: 1, sent: 1, retried: 0, dead: 0, released: 0 }));
+function build(options: { pushAvailable?: boolean } = {}) {
   const service: PushSubscriptionService = {
     save: vi.fn(async () => ({ devices: 1 })),
     remove: vi.fn(async () => ({ devices: 0 })),
   };
   const app = Fastify();
   registerNotificationPushRoutes(app, {
-    worker: options.worker === false ? null : { runBatch },
-    cronSecret: "cronSecret" in options ? options.cronSecret : "s",
     service,
     // A session the auth server knows; any other token is signed out.
     verifySession: async (token: string) => token === "t",
@@ -28,39 +24,8 @@ function build(options: { worker?: boolean; cronSecret?: string; pushAvailable?:
       push: options.pushAvailable === false ? { available: false, public_key: null } : { available: true, public_key: publicKey },
     }),
   });
-  return { app, runBatch, service };
+  return { app, service };
 }
-
-describe("notification push cron route", () => {
-  it("runs the worker only with the cron secret", async () => {
-    const { app, runBatch } = build();
-    expect((await app.inject({ method: "POST", url: "/internal/cron/notification-push", headers: { authorization: "Bearer no" } })).statusCode).toBe(401);
-    expect(runBatch).not.toHaveBeenCalled();
-    const ok = await app.inject({ method: "GET", url: "/internal/cron/notification-push", headers: { authorization: "Bearer s" } });
-    expect(ok.statusCode).toBe(200);
-    expect(ok.json()).toEqual({ claimed: 1, sent: 1, retried: 0, dead: 0, released: 0 });
-    await app.close();
-  });
-
-  it("answers 503 without the worker (no VAPID keys) or the secret", async () => {
-    const noWorker = build({ worker: false });
-    expect((await noWorker.app.inject({ method: "POST", url: "/internal/cron/notification-push", headers: { authorization: "Bearer s" } })).statusCode).toBe(503);
-    await noWorker.app.close();
-    const noSecret = build({ cronSecret: undefined });
-    expect((await noSecret.app.inject({ method: "POST", url: "/internal/cron/notification-push" })).statusCode).toBe(503);
-    expect(noSecret.runBatch).not.toHaveBeenCalled();
-    await noSecret.app.close();
-  });
-
-  it("answers a failed run without internals", async () => {
-    const { app, runBatch } = build();
-    runBatch.mockRejectedValueOnce(new Error("claim failed: secret detail"));
-    const response = await app.inject({ method: "POST", url: "/internal/cron/notification-push", headers: { authorization: "Bearer s" } });
-    expect(response.statusCode).toBe(500);
-    expect(response.body).not.toContain("secret detail");
-    await app.close();
-  });
-});
 
 describe("a person's devices", () => {
   it("says which channels the server can send on, to a signed-in person", async () => {

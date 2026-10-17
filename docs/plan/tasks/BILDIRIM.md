@@ -178,7 +178,7 @@ Bildirim üretmeyecekler (bilerek): SCH-01…08, SCH-15, SCH-16, SCH-19, T03, A0
 | `DELETE /v1/workspaces/:w/notifications` `{ ids: uuid[] }` | bilgi satırlarını sil | `delete_notifications_service` |
 | `GET/PUT /v1/workspaces/:w/me/notification-preferences` | e-posta, kategori başına | `get_/save_notification_preferences_service` |
 | `GET /v1/account/notifications`, `POST /v1/account/notifications/read` | hesap satırları | aynı servisler, workspace null |
-| `POST /api/internal/cron/notification-emails`, `/notification-purge` | işçi | sır sabit sürede karşılaştırılır (`timingSafeEqual`) |
+| `POST /api/internal/cron/notification-dispatch` (bütün kanallar, BILDIRIM-DAGITICI), `/notification-purge` | işçi | sır sabit sürede karşılaştırılır (`timingSafeEqual`) |
 
 Silinenler: `/v1/workspaces/:w/communications/notifications` (+ `/action`), `/v1/workspaces/:w/notification-settings` (+ `/reset`, `/test`), eski `/me/notification-preferences` şekli, `/v1/account/notification-preferences`, `/api/internal/cron/notification-outbox`. Rota-yerel kapı ve `permissions.includes` yok (BL-898'in bildirim payı). Cevap şekli `packages/shared`'de tek zod şeması.
 

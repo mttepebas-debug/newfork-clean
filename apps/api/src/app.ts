@@ -9,7 +9,7 @@ import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
 import { HttpError, replyWithError } from "./http-error.js";
-import { initSentry } from "./sentry.js";
+import { initSentry, reportOperatorAlert } from "./sentry.js";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
   createAccountDeletionWorker,
@@ -102,6 +102,8 @@ import {
 import { notificationChannelsConfigFromEnvironment, vapidFromEnvironment } from "./notifications/channel-config";
 import { createNotificationPushWorker, type NotificationPushWorker, type PushSend } from "./notifications/push-worker";
 import { registerNotificationPushRoutes, type PushSubscriptionService } from "./notifications/push-routes";
+import { alertMessage, createNotificationDispatcher, type NotificationDispatcher } from "./notifications/dispatcher";
+import { registerNotificationDispatchRoutes } from "./notifications/dispatch-routes";
 import { createPushSubscriptionService } from "./notifications/push-subscription-service";
 import { createUserVerifier } from "./auth/verify-user.js";
 import { registerDocumentTypesRoutes } from "./settings/document-types-routes";
@@ -213,17 +215,18 @@ export interface BuildAppOptions {
   readonly maintenanceCron?: {
     readonly cronSecret?: string;
   };
-  /** BILDIRIM-14: the email channel's cron worker and Resend's webhook. */
+  /** BILDIRIM-14: Resend's webhook. */
   readonly notificationEmail?: {
-    readonly worker?: NotificationEmailWorker | null;
-    readonly cronSecret?: string;
     readonly webhookSecret?: string;
     readonly events?: NotificationEmailEvents | null;
   };
-  /** BILDIRIM-15: phone alerts' cron worker, a person's devices and which channels can send. */
-  readonly notificationPush?: {
-    readonly worker?: NotificationPushWorker | null;
+  /** BILDIRIM-DAGITICI: the one cron door of every notification channel. */
+  readonly notificationDispatch?: {
+    readonly dispatcher?: NotificationDispatcher | null;
     readonly cronSecret?: string;
+  };
+  /** BILDIRIM-15: a person's devices and which channels can send. */
+  readonly notificationPush?: {
     readonly service?: PushSubscriptionService | null;
     readonly verifySession?: ((accessToken: string) => Promise<boolean>) | null;
     readonly config?: () => NotificationChannelsConfig;
@@ -839,12 +842,14 @@ export function buildApp(options: BuildAppOptions = {}) {
     worker: maintenanceWorker,
     cronSecret: options.maintenanceCron?.cronSecret ?? process.env.CRON_SECRET,
   });
+  registerNotificationDispatchRoutes(app, {
+    dispatcher:
+      options.notificationDispatch?.dispatcher === undefined
+        ? createNotificationDispatcherFromEnvironment()
+        : options.notificationDispatch.dispatcher,
+    cronSecret: options.notificationDispatch?.cronSecret ?? process.env.CRON_SECRET,
+  });
   registerNotificationEmailRoutes(app, {
-    worker:
-      options.notificationEmail?.worker === undefined
-        ? createNotificationEmailWorkerFromEnvironment()
-        : options.notificationEmail.worker,
-    cronSecret: options.notificationEmail?.cronSecret ?? process.env.CRON_SECRET,
     webhookSecret: options.notificationEmail?.webhookSecret ?? process.env.RESEND_WEBHOOK_SECRET,
     events:
       options.notificationEmail?.events === undefined
@@ -852,11 +857,6 @@ export function buildApp(options: BuildAppOptions = {}) {
         : options.notificationEmail.events,
   });
   registerNotificationPushRoutes(app, {
-    worker:
-      options.notificationPush?.worker === undefined
-        ? createNotificationPushWorkerFromEnvironment()
-        : options.notificationPush.worker,
-    cronSecret: options.notificationPush?.cronSecret ?? process.env.CRON_SECRET,
     service:
       options.notificationPush?.service === undefined
         ? createPushSubscriptionServiceFromEnvironment()
@@ -1188,8 +1188,34 @@ function createSignatureSettingsServiceFromEnvironment(): SignatureSettingsServi
     : null;
 }
 
+// One dispatcher for every channel (BILDIRIM-DAGITICI). A channel whose secrets are not set has no worker
+// and is left alone; with neither, the cron route answers 503. An alert goes to Sentry, which emails Mert.
+function createNotificationDispatcherFromEnvironment(): NotificationDispatcher | null {
+  const url = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const email = createNotificationEmailWorkerFromEnvironment();
+  const push = createNotificationPushWorkerFromEnvironment();
+  if (!url || !serviceRoleKey || (!email && !push)) return null;
+  return createNotificationDispatcher({
+    url,
+    serviceRoleKey,
+    email,
+    push,
+    report: (alert) =>
+      reportOperatorAlert(alertMessage(alert), ["notification-alert", alert.kind, alert.channel], {
+        kind: alert.kind,
+        channel: alert.channel,
+        period: alert.period,
+        ...(alert.sent === undefined ? {} : { sent: alert.sent }),
+        ...(alert.limit === undefined ? {} : { limit: alert.limit }),
+        ...(alert.waiting_seconds === undefined ? {} : { waiting_seconds: alert.waiting_seconds }),
+        ...(alert.due === undefined ? {} : { due: alert.due }),
+      }),
+  });
+}
+
 // The links go where the invitation and password reset links go (APP_URL); the sender is the one the
-// other emails use. Without the Resend key or a sender the cron route answers 503 and claims nothing.
+// other emails use. Without the Resend key or a sender email has no worker and claims nothing.
 function createNotificationEmailWorkerFromEnvironment(): NotificationEmailWorker | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;

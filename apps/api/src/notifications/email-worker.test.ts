@@ -3,9 +3,10 @@ import { ResendSendError, type sendResendEmail } from "../email/resend-email";
 import type { NotificationEmailItem } from "./email-template";
 import { createNotificationEmailWorkerWithClient, type NotificationEmailLog } from "./email-worker";
 
-// BILDIRIM-14 (KARARLAR S-130): the cron worker claims due email deliveries, sends each through Resend
-// with the delivery's own idempotency key, and says how each went. It stops starting sends well inside
-// the function's time and gives back what it had no time for. The address and the key never reach a log.
+// BILDIRIM-14 (KARARLAR S-130): the worker claims due email deliveries, sends each through Resend with the
+// delivery's own idempotency key, and says how each went. Starts are spaced for Resend's rate limit, a few
+// at once (BILDIRIM-DAGITICI); it stops starting sends close to its deadline and gives back what it had no
+// time for. The address and the key never reach a log.
 const key = "re_secret_key_123";
 
 function item(n: number): NotificationEmailItem {
@@ -34,13 +35,12 @@ function fakeClient(items: unknown[]) {
       return { data: "ok", error: null };
     }),
   };
+  // A few sends are on the wire at once, so they finish in any order: listed by delivery.
   const finished = () =>
-    calls.filter((c) => c.fn === "finish_notification_email_service").map((c) => [
-      c.args.target_delivery,
-      c.args.target_outcome,
-      c.args.target_provider_id ?? null,
-      c.args.target_error ?? null,
-    ]);
+    calls
+      .filter((c) => c.fn === "finish_notification_email_service")
+      .map((c) => [c.args.target_delivery, c.args.target_outcome, c.args.target_provider_id ?? null, c.args.target_error ?? null])
+      .sort((a, b) => String(a[0]).localeCompare(String(b[0])));
   const released = () =>
     calls.filter((c) => c.fn === "release_notification_emails_service").map((c) => c.args.target_deliveries);
   return { client, calls, finished, released };
@@ -88,7 +88,7 @@ describe("notification email worker", () => {
     const { log } = capturingLog();
     const result = await w.runBatch(log);
 
-    expect(calls[0]).toEqual({ fn: "claim_notification_emails_service", args: { target_batch_size: 10 } });
+    expect(calls[0]).toEqual({ fn: "claim_notification_emails_service", args: { target_batch_size: 25 } });
     expect(send).toHaveBeenCalledTimes(2);
     const first = send.mock.calls[0]?.[0];
     if (!first) throw new Error("nothing was sent");
@@ -105,7 +105,8 @@ describe("notification email worker", () => {
       [item(1).delivery_id, "sent", "re_1", null],
       [item(2).delivery_id, "sent", "re_1", null],
     ]);
-    expect(pause).toHaveBeenCalledWith(550);
+    // 8 starts a second: Resend takes 10 for the whole team and 2 stay for invitations and resets.
+    expect(pause).toHaveBeenCalledWith(125);
     expect(result).toEqual({ claimed: 2, sent: 2, retried: 0, dead: 0, released: 0 });
   });
 
@@ -166,17 +167,31 @@ describe("notification email worker", () => {
     expect(finished()).toEqual([[item(1).delivery_id, "retry", null, "network"]]);
   });
 
-  it("asks the time left again after its wait between sends", async () => {
-    const clock = { now: 0 };
-    const send = vi.fn(async () => {
-      clock.now += 4_600;
-      return { id: "re_x" };
-    });
-    // After the first send 2.4 s are left; the 550 ms wait leaves 1.85 s, too little to start another.
-    const { w, released } = worker([item(1), item(2)], send, clock);
-    await w.runBatch(capturingLog().log);
+  it("asks the time left again after its wait between starts", async () => {
+    const send = vi.fn(async () => ({ id: "re_x" }));
+    // 2.1 s to the deadline: the first starts at once; the second waits 125 ms, which leaves 1.975 s,
+    // too little to start another.
+    const { w, released } = worker([item(1), item(2)], send);
+    await w.runBatch(capturingLog().log, 2_100);
     expect(send).toHaveBeenCalledTimes(1);
     expect(released()).toEqual([[item(2).delivery_id]]);
+  });
+
+  it("keeps four on the wire at most, and works to the dispatcher's deadline", async () => {
+    let open = 0;
+    let most = 0;
+    const send = vi.fn(async () => {
+      open += 1;
+      most = Math.max(most, open);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      open -= 1;
+      return { id: "re_x" };
+    });
+    const { w, finished } = worker([1, 2, 3, 4, 5, 6, 7, 8, 9].map(item), send);
+    const result = await w.runBatch(capturingLog().log, 60_000);
+    expect(most).toBe(4);
+    expect(finished()).toHaveLength(9);
+    expect(result).toMatchObject({ claimed: 9, sent: 9, released: 0 });
   });
 
   it("finishes a row it cannot read as dead and still sends the others", async () => {

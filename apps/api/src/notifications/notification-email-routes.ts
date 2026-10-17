@@ -1,15 +1,13 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
-import { hasCronSecret } from "../cron-secret";
-import type { NotificationEmailWorker } from "./email-worker";
+import type { FastifyInstance, FastifyRequest } from "fastify";
 
 /**
- * The email channel's two doors with no signed-in person (BILDIRIM-14, KARARLAR S-130):
- *   * the cron route runs one batch of the email worker, with the cron secret;
+ * The email channel's door with no signed-in person (BILDIRIM-14, KARARLAR S-130); its sending runs in the
+ * dispatcher of every channel (dispatch-routes.ts, BILDIRIM-DAGITICI):
  *   * Resend's webhook says what happened to an email. It is taken only with a valid Svix signature
  *     (HMAC-SHA256 of "<svix-id>.<svix-timestamp>.<raw body>" with the endpoint secret, any one of the
  *     space-separated v1 signatures, compared in constant time) and a timestamp within five minutes.
- * Neither answer nor log carries an address, a key or what failed inside.
+ * Neither the answer nor the log carries an address, a key or what failed inside.
  */
 export interface ResendEvent {
   readonly type: string;
@@ -23,8 +21,6 @@ export interface NotificationEmailEvents {
 }
 
 export interface NotificationEmailRouteOptions {
-  readonly worker: NotificationEmailWorker | null;
-  readonly cronSecret?: string;
   /** Resend's endpoint secret ("whsec_..."); without it the webhook answers 503 and sending still works. */
   readonly webhookSecret?: string;
   readonly events: NotificationEmailEvents | null;
@@ -39,20 +35,6 @@ const used = new Set(["email.delivered", "email.bounced", "email.complained", "e
 
 export function registerNotificationEmailRoutes(app: FastifyInstance, options: NotificationEmailRouteOptions) {
   const now = options.now ?? (() => Date.now());
-
-  const run = async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!options.worker) return reply.status(503).send({ error: "Notification email is not configured" });
-    if (!options.cronSecret) return reply.status(503).send({ error: "Notification email cron is not configured" });
-    if (!hasCronSecret(request, options.cronSecret)) return reply.status(401).send({ error: "Invalid cron secret" });
-    try {
-      return reply.send(await options.worker.runBatch(request.log));
-    } catch (error) {
-      request.log.error({ error: error instanceof Error ? error.message : String(error) }, "notification email run failed");
-      return reply.status(500).send({ error: "Internal server error", requestId: request.id });
-    }
-  };
-  app.get("/internal/cron/notification-email", run);
-  app.post("/internal/cron/notification-email", run);
 
   // The signature is over the bytes Resend sent, so this door reads its body raw.
   app.register(async (scope) => {

@@ -2,14 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { ResendSendError, sendResendEmail } from "../email/resend-email";
 import { renderNotificationEmail } from "./email-template";
+import { inLanes } from "./lanes";
 
 /**
- * The email channel's worker (BILDIRIM-14, KARARLAR S-130). Every minute the cron route runs one batch:
- * claim due email deliveries (the database leases them and asks again who may still get them), send each
- * through Resend with the delivery's own idempotency key, and say how each went. Sends are a little apart
- * for Resend's rate limit (2 a second), and no send starts once the run's time is up, so a run ends well
- * inside the function's 10 s: what is left is given back untried. A delivery whose run died anyway is
- * claimed again when its lease runs out, with the same key, so Resend never sends it twice.
+ * The email channel's worker (BILDIRIM-14, KARARLAR S-130). The dispatcher (BILDIRIM-DAGITICI) runs batch
+ * after batch until its deadline: claim due email deliveries (the database leases them, takes them fairly
+ * across workspaces and asks again who may still get them), send each through Resend with the delivery's
+ * own idempotency key, and say how each went. Starts are spaced for Resend's rate limit, a few at once, and
+ * none starts close to the deadline: what is left is given back untried. A delivery whose run died anyway
+ * is claimed again when its lease runs out, with the same key, so Resend never sends it twice.
  * The address and the key never reach a log or an error.
  */
 interface EmailRpcClient {
@@ -36,7 +37,8 @@ export interface NotificationEmailBatchResult {
 }
 
 export interface NotificationEmailWorker {
-  runBatch(log: NotificationEmailLog): Promise<NotificationEmailBatchResult>;
+  /** One claim's worth; no send starts within LEAST_LEFT_MS of the deadline (ms, on the worker's clock). */
+  runBatch(log: NotificationEmailLog, deadline?: number): Promise<NotificationEmailBatchResult>;
 }
 
 const itemSchema = z.object({
@@ -53,9 +55,13 @@ const itemSchema = z.object({
   idempotency_key: z.string().min(1).max(256),
 });
 
-const BATCH_SIZE = 10;
+const BATCH_SIZE = 25;
+// A run alone (no dispatcher's deadline) stops starting sends after this.
 const BUDGET_MS = 7_000;
-const SPACING_MS = 550;
+// Resend takes 10 requests a second for the whole team; notices start 8 a second and leave 2 to
+// invitations, password resets and exports. Four are on the wire at most.
+const SPACING_MS = 125;
+const IN_FLIGHT = 4;
 const SEND_TIMEOUT_MS = 4_000;
 // A send is started only with at least this much of the run left.
 const LEAST_LEFT_MS = 2_000;
@@ -97,16 +103,17 @@ export function createNotificationEmailWorkerWithClient(
   }
 
   return {
-    async runBatch(log) {
-      const started = now();
+    async runBatch(log, deadline = now() + BUDGET_MS) {
       const claim = await client.rpc("claim_notification_emails_service", { target_batch_size: BATCH_SIZE });
       if (claim.error) throw new Error(`claim failed: ${claim.error.message}`);
       const rows: unknown[] = z.array(z.unknown()).parse(claim.data);
       const result: NotificationEmailBatchResult = { claimed: rows.length, sent: 0, retried: 0, dead: 0, released: 0 };
       const giveBack: string[] = [];
-      let tried = 0;
+      let stopping = false;
+      // Starts are SPACING_MS apart, whichever lane starts next.
+      let nextStart = now();
 
-      for (const row of rows) {
+      await inLanes(rows, IN_FLIGHT, async (row) => {
         // One row the worker cannot read never stops the others: it is dead, or, without even an id,
         // left to its lease (it comes back and dies there, lease_exhausted).
         const read = itemSchema.safeParse(row);
@@ -119,21 +126,24 @@ export function createNotificationEmailWorkerWithClient(
           } else {
             log.error({ code: "bad_item" }, "notification email row without an id");
           }
-          continue;
+          return;
         }
         const item = read.data;
-        if (giveBack.length > 0 || BUDGET_MS - (now() - started) < LEAST_LEFT_MS) {
+        if (stopping || deadline - now() < LEAST_LEFT_MS) {
+          stopping = true;
           giveBack.push(item.delivery_id);
-          continue;
+          return;
         }
-        if (tried > 0) await pause(SPACING_MS);
+        const wait = nextStart - now();
+        nextStart = Math.max(now(), nextStart) + SPACING_MS;
+        if (wait > 0) await pause(wait);
         // The wait took time too: ask again before starting.
-        const left = BUDGET_MS - (now() - started);
-        if (left < LEAST_LEFT_MS) {
+        const left = deadline - now();
+        if (stopping || left < LEAST_LEFT_MS) {
+          stopping = true;
           giveBack.push(item.delivery_id);
-          continue;
+          return;
         }
-        tried += 1;
         const email = renderNotificationEmail(item, options.appUrl);
         try {
           const sent = await send({
@@ -161,7 +171,7 @@ export function createNotificationEmailWorkerWithClient(
           else result.dead += 1;
           log.info({ delivery: item.delivery_id, code, retry }, "notification email not sent");
         }
-      }
+      });
       if (giveBack.length > 0) {
         const released = await client.rpc("release_notification_emails_service", { target_deliveries: giveBack });
         if (released.error) throw new Error(`release failed: ${released.error.message}`);

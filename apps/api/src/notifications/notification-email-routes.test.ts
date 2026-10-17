@@ -3,8 +3,8 @@ import Fastify from "fastify";
 import { describe, expect, it, vi } from "vitest";
 import { registerNotificationEmailRoutes, type ResendEvent } from "./notification-email-routes";
 
-// BILDIRIM-14: the cron route runs the email worker with the cron secret; Resend's webhook is taken only
-// with a valid Svix signature over the raw body, within five minutes, and says what happened to an email.
+// BILDIRIM-14: Resend's webhook is taken only with a valid Svix signature over the raw body, within five
+// minutes, and says what happened to an email. Sending runs in the dispatcher (dispatch-routes.test.ts).
 const secretBytes = Buffer.from("resend-webhook-test-secret");
 const webhookSecret = `whsec_${secretBytes.toString("base64")}`;
 const now = 1_760_000_000_000;
@@ -13,19 +13,16 @@ function sign(id: string, timestamp: number, body: string, bytes = secretBytes) 
   return `v1,${createHmac("sha256", bytes).update(`${id}.${timestamp}.${body}`).digest("base64")}`;
 }
 
-function build(options: { worker?: boolean; cronSecret?: string; webhookSecret?: string } = {}) {
+function build(options: { webhookSecret?: string } = {}) {
   const lines: Record<string, unknown>[] = [];
   const app = Fastify({ logger: { level: "info", stream: { write: (line: string) => lines.push(JSON.parse(line)) } } });
-  const runBatch = vi.fn(async () => ({ claimed: 1, sent: 1, retried: 0, dead: 0, released: 0 }));
   const apply = vi.fn(async (_event: ResendEvent) => "delivered");
   registerNotificationEmailRoutes(app, {
-    worker: options.worker === false ? null : { runBatch },
-    cronSecret: "cronSecret" in options ? options.cronSecret : "s",
     webhookSecret: "webhookSecret" in options ? options.webhookSecret : webhookSecret,
     events: { apply },
     now: () => now,
   });
-  return { app, runBatch, apply, lines };
+  return { app, apply, lines };
 }
 
 function delivered(emailId = "re_1") {
@@ -35,38 +32,6 @@ function delivered(emailId = "re_1") {
 async function post(app: ReturnType<typeof build>["app"], body: string, headers: Record<string, string>) {
   return app.inject({ method: "POST", url: "/webhooks/resend", payload: body, headers: { "content-type": "application/json", ...headers } });
 }
-
-describe("notification email cron route", () => {
-  it("runs the worker only with the cron secret", async () => {
-    const { app, runBatch } = build();
-    expect((await app.inject({ method: "POST", url: "/internal/cron/notification-email", headers: { authorization: "Bearer no" } })).statusCode).toBe(401);
-    expect(runBatch).not.toHaveBeenCalled();
-    const ok = await app.inject({ method: "POST", url: "/internal/cron/notification-email", headers: { authorization: "Bearer s" } });
-    expect(ok.statusCode).toBe(200);
-    expect(ok.json()).toEqual({ claimed: 1, sent: 1, retried: 0, dead: 0, released: 0 });
-    await app.close();
-  });
-
-  it("answers 503 without the worker (no Resend key or sender) or the secret, and claims nothing", async () => {
-    const noWorker = build({ worker: false });
-    expect((await noWorker.app.inject({ method: "GET", url: "/internal/cron/notification-email", headers: { authorization: "Bearer s" } })).statusCode).toBe(503);
-    await noWorker.app.close();
-    const noSecret = build({ cronSecret: undefined });
-    expect((await noSecret.app.inject({ method: "GET", url: "/internal/cron/notification-email" })).statusCode).toBe(503);
-    expect(noSecret.runBatch).not.toHaveBeenCalled();
-    await noSecret.app.close();
-  });
-
-  it("logs a failed run with its message and answers without internals", async () => {
-    const { app, runBatch, lines } = build();
-    runBatch.mockRejectedValueOnce(new Error("claim failed: permission denied for table notification_deliveries"));
-    const response = await app.inject({ method: "POST", url: "/internal/cron/notification-email", headers: { authorization: "Bearer s" } });
-    expect(response.statusCode).toBe(500);
-    expect(response.payload).not.toContain("notification_deliveries");
-    expect(lines.some((line) => line.msg === "notification email run failed")).toBe(true);
-    await app.close();
-  });
-});
 
 describe("Resend webhook", () => {
   it("takes a signed event and applies what it says", async () => {

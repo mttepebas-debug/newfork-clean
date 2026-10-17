@@ -2,14 +2,15 @@ import { pushEndpointSchema, pushKeysSchema } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import type { NotificationEmailBatchResult, NotificationEmailLog } from "./email-worker";
+import { inLanes } from "./lanes";
 
 /**
- * The phone alerts' worker (BILDIRIM-15, KARARLAR S-138). Every minute a push is due, the cron route runs
- * one batch: claim due push deliveries (the database leases them, asks again who may still get them and
- * lists the devices that have not taken each yet), send each device its alert through its push service,
- * and say, device by device, how each answered. Deliveries go one after another, a delivery's devices at
- * once; none starts once the run's time is up, so a run ends well inside the function's 10 s, and what is
- * left is given back untried. A device that took an alert is never sent it again; a duplicate after a
+ * The phone alerts' worker (BILDIRIM-15, KARARLAR S-138). The dispatcher (BILDIRIM-DAGITICI) runs batch
+ * after batch until its deadline: claim due push deliveries (the database leases them, takes them fairly
+ * across workspaces, asks again who may still get them and lists the devices that have not taken each yet),
+ * send each device its alert through its push service, and say, device by device, how each answered. A few
+ * deliveries go at once, a delivery's devices at once; none starts close to the deadline, and what is left
+ * is given back untried. A device that took an alert is never sent it again; a duplicate after a
  * crash is folded by the push service (topic) or the device (tag).
  * No address, key or alert text reaches a log or an error.
  */
@@ -23,7 +24,8 @@ interface PushRpcClient {
 export type NotificationPushBatchResult = NotificationEmailBatchResult;
 
 export interface NotificationPushWorker {
-  runBatch(log: NotificationEmailLog): Promise<NotificationPushBatchResult>;
+  /** One claim's worth; no delivery starts within LEAST_LEFT_MS of the deadline (ms, on the worker's clock). */
+  runBatch(log: NotificationEmailLog, deadline?: number): Promise<NotificationPushBatchResult>;
 }
 
 /** Thrown by a sender that got no answer at all. */
@@ -75,7 +77,10 @@ const itemSchema = z.object({
 type Answer = { subscription_id: string; outcome: "accepted" | "gone" | "refused" | "retry" | "too_large"; code: string | null; retry_after: number | null };
 
 const BATCH_SIZE = 25;
+// A run alone (no dispatcher's deadline) stops starting deliveries after this.
 const BUDGET_MS = 7_000;
+// Deliveries on the wire at once, each to all its devices at once.
+const IN_FLIGHT = 8;
 const SEND_TIMEOUT_MS = 3_000;
 // A delivery is started only with at least this much of the run left.
 const LEAST_LEFT_MS = 2_500;
@@ -126,15 +131,15 @@ export function createNotificationPushWorkerWithClient(client: PushRpcClient, op
   }
 
   return {
-    async runBatch(log) {
-      const started = now();
+    async runBatch(log, deadline = now() + BUDGET_MS) {
       const claim = await client.rpc("claim_notification_push_service", { target_batch_size: BATCH_SIZE });
       if (claim.error) throw new Error(`claim failed: ${claim.error.message}`);
       const rows: unknown[] = z.array(z.unknown()).parse(claim.data);
       const result: NotificationPushBatchResult = { claimed: rows.length, sent: 0, retried: 0, dead: 0, released: 0 };
       const giveBack: string[] = [];
+      let stopping = false;
 
-      for (const row of rows) {
+      await inLanes(rows, IN_FLIGHT, async (row) => {
         // One row the worker cannot read never stops the others: with an id it is finished as reaching no
         // device; without one it is left to its lease (it comes back and dies there, lease_exhausted).
         const read = itemSchema.safeParse(row);
@@ -146,13 +151,14 @@ export function createNotificationPushWorkerWithClient(client: PushRpcClient, op
           } else {
             log.error({ code: "bad_item" }, "notification push row without an id");
           }
-          continue;
+          return;
         }
         const item = read.data;
-        const left = BUDGET_MS - (now() - started);
-        if (giveBack.length > 0 || left < LEAST_LEFT_MS) {
+        const left = deadline - now();
+        if (stopping || left < LEAST_LEFT_MS) {
+          stopping = true;
           giveBack.push(item.delivery_id);
-          continue;
+          return;
         }
 
         // Declarative Web Push (Safari 18.4+ shows it without the worker); our worker reads the same.
@@ -197,7 +203,7 @@ export function createNotificationPushWorkerWithClient(client: PushRpcClient, op
         count(result, status);
         const codes = answers.filter((a) => a.outcome !== "accepted").map((a) => a.code);
         if (codes.length > 0) log.info({ delivery: item.delivery_id, status, codes }, "notification push not taken by every device");
-      }
+      });
       if (giveBack.length > 0) {
         const released = await client.rpc("release_notification_push_service", { target_deliveries: giveBack });
         if (released.error) throw new Error(`release failed: ${released.error.message}`);

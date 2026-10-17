@@ -5,14 +5,12 @@ import {
   type PushDevices,
   type PushSubscriptionInput,
 } from "@newfork/shared";
-import type { FastifyInstance, FastifyReply, FastifyRequest } from "fastify";
+import type { FastifyInstance } from "fastify";
 import { bearerToken } from "../auth/workspace-context";
-import { hasCronSecret } from "../cron-secret";
-import type { NotificationPushWorker } from "./push-worker";
 
 /**
- * Phone alerts' doors (BILDIRIM-15, KARARLAR S-138):
- *   * the cron route runs one batch of the push worker, with the cron secret;
+ * Phone alerts' doors (BILDIRIM-15, KARARLAR S-138); their sending runs in the dispatcher of every channel
+ * (dispatch-routes.ts, BILDIRIM-DAGITICI):
  *   * a signed-in person saves and removes their own devices. A device is the account's, never a
  *     workspace's, so these name none. The address goes in the body, never in a URL (it is a capability);
  *   * every screen asks which channels the server can send on, so none promises what is not set up.
@@ -23,8 +21,6 @@ export interface PushSubscriptionService {
 }
 
 export interface NotificationPushRouteOptions {
-  readonly worker: NotificationPushWorker | null;
-  readonly cronSecret?: string;
   readonly service: PushSubscriptionService | null;
   /** Whether the auth server knows this session; the channels are told to a signed-in person only. */
   readonly verifySession: ((accessToken: string) => Promise<boolean>) | null;
@@ -32,20 +28,6 @@ export interface NotificationPushRouteOptions {
 }
 
 export function registerNotificationPushRoutes(app: FastifyInstance, options: NotificationPushRouteOptions) {
-  const run = async (request: FastifyRequest, reply: FastifyReply) => {
-    if (!options.worker) return reply.status(503).send({ error: "Phone alerts are not configured" });
-    if (!options.cronSecret) return reply.status(503).send({ error: "Phone alerts cron is not configured" });
-    if (!hasCronSecret(request, options.cronSecret)) return reply.status(401).send({ error: "Invalid cron secret" });
-    try {
-      return reply.send(await options.worker.runBatch(request.log));
-    } catch (error) {
-      request.log.error({ error: error instanceof Error ? error.message : String(error) }, "notification push run failed");
-      return reply.status(500).send({ error: "Internal server error", requestId: request.id });
-    }
-  };
-  app.get("/internal/cron/notification-push", run);
-  app.post("/internal/cron/notification-push", run);
-
   app.get("/v1/account/notification-channels", async (request, reply) => {
     const accessToken = bearerToken(request.headers.authorization);
     if (!accessToken) return reply.status(401).send({ error: "Bearer token required" });

@@ -82,3 +82,19 @@ export async function reportServerError(error: unknown, requestId: string) {
   });
   await Sentry.flush(2000);
 }
+
+/**
+ * A limit or a delay Mert must hear about (BILDIRIM-DAGITICI): a warning, one Sentry issue per kind and
+ * channel, so Sentry's email tells him the first time and counts the rest. Answers whether it went out.
+ */
+export async function reportOperatorAlert(message: string, fingerprint: readonly string[], details: Record<string, string | number>) {
+  if (!started) return false;
+  Sentry.withScope((scope) => {
+    scope.setLevel("warning");
+    scope.setFingerprint([...fingerprint]);
+    scope.setContext("alert", details);
+    Sentry.captureMessage(message);
+  });
+  await Sentry.flush(2000);
+  return true;
+}

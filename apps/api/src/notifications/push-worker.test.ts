@@ -72,6 +72,24 @@ function worker(items: unknown[], send: PushSend, clock = { now: 0 }, finishAnsw
 const accepted: PushSend = async () => ({ status: 201, retryAfter: null });
 
 describe("notification push worker", () => {
+  it("sends eight deliveries at once at most, and works to the dispatcher's deadline (BILDIRIM-DAGITICI)", async () => {
+    let open = 0;
+    let most = 0;
+    const send: PushSend = async () => {
+      open += 1;
+      most = Math.max(most, open);
+      await new Promise((resolve) => setTimeout(resolve, 5));
+      open -= 1;
+      return { status: 201, retryAfter: null };
+    };
+    const items = Array.from({ length: 9 }, (_, n) => item(n + 1));
+    const { push, finished } = worker(items, send);
+    const result = await push.runBatch(capturingLog().log, 60_000);
+    expect(most).toBe(8);
+    expect(finished()).toHaveLength(9);
+    expect(result).toMatchObject({ claimed: 9, sent: 9, released: 0 });
+  });
+
   it("sends each device the alert in the declarative shape, for the day, urgent, under its topic", async () => {
     const send = vi.fn(accepted);
     const { push, finished } = worker([item(1, [target(1), target(2)])], send);
