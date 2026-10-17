@@ -135,6 +135,24 @@ select tests.works_at((select m.id from public.workspace_memberships m where m.w
   and m.user_id = pg_temp.u('solo')), tests.id('pa:B'));
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
            and n.resolved_at is null), 0, '(d) he works at Besiktas now: the cards close');
+-- An unassigned card closes once its shifts are given to somebody (plan §2.1 row 6). Solo's one shift is taken
+-- by Emre; Kim's two go to Emre in Kadikoy's week published again.
+create function pg_temp.unassigned_open(title text) returns integer language sql stable as $$
+  select count(*)::integer from public.person_notifications n where n.type_key = 'schedule.shifts_unassigned'
+  and n.workspace_id = tests.id('pa') and n.title = unassigned_open.title and n.resolved_at is null
+$$;
+-- ponytail: given straight on the published row, as an approved pickup or cover does.
+update public.schedule_published_shifts set employee_id = tests.id('pa:emre') where id = tests.id('pa:shift:solo_tue');
+select is(pg_temp.unassigned_open('1 shift at Kadikoy has nobody'), 0, '(d) Solo''s shift taken by Emre: its card closes');
+select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 7, '(d) Kim''s two still have nobody: theirs stays open');
+select tests.publish_week('pa', 1, $$[
+  {"label": "kim_tue", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "kim_wed", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
+  {"label": "solo_tue", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
+  {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}
+]$$::jsonb);
+select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 0, '(d) Kadikoy''s week published again with them given: Kim''s card closes');
+
 -- Nob, invited and never joined, has no account: removed from Kadikoy, then archived, his cards close all the same.
 select public.remove_employee_from_location_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:nob'), tests.id('pa:K'));
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
