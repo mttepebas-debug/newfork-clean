@@ -30,6 +30,7 @@ import {
 
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
+import { EmployeeLineup, EmployeeScheduleTabs } from "../employee-hub/EmployeeLineup";
 import { useHubClock } from "../employee-hub/useHubClock";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
@@ -49,6 +50,11 @@ const pageCopy: Record<
     eyebrow: "YOUR WEEK, WITHOUT SURPRISES.",
     description:
       "Your published shifts, with the hours, location and position for each one.",
+  },
+  "schedule/lineup": {
+    title: "Lineup",
+    eyebrow: "THE RIGHT PEOPLE. IN THE RIGHT SPOT.",
+    description: "Your shift, your team and the notes for the day.",
   },
   "shift-hub": {
     title: "Shift Hub",
@@ -163,12 +169,26 @@ export function EmployeeHubPage() {
         />
       ) : null}
       {path === "schedule" ? (
-        <EmployeeScheduleBoard
-          key={`${workspaceId}:${context?.userId}`}
-          workspaceId={workspaceId}
-          employeeId={model.employee.id}
-          organizationName={context?.workspace.name ?? ""}
-        />
+        <>
+          <EmployeeScheduleTabs />
+          <EmployeeScheduleBoard
+            key={`${workspaceId}:${context?.userId}`}
+            workspaceId={workspaceId}
+            employeeId={model.employee.id}
+            organizationName={context?.workspace.name ?? ""}
+          />
+        </>
+      ) : path === "schedule/lineup" ? (
+        <>
+          <EmployeeScheduleTabs />
+          <EmployeeLineup
+            key={`${workspaceId}:${context?.userId}`}
+            workspaceId={workspaceId}
+            employeeId={model.employee.id}
+            date={scheduleDateFromSearch(`?view=day&date=${new URLSearchParams(location.search).get("date") ?? ""}`) ?? today}
+            timeFormat={model.settings.time_format}
+          />
+        </>
       ) : path.startsWith("shift-hub") ? (
         <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
       ) : (

@@ -130,6 +130,17 @@ const navItems: readonly NavItem[] = [
     anyOf: ["workspace.read"],
     section: "employee",
     roles: ["employee"],
+    exact: true,
+  },
+  // Employee → Schedule → Lineup (LINEUP-PUBLISH-WEB): the published lineups she is on.
+  {
+    to: "/app/employee-hub/schedule/lineup",
+    label: "Lineup",
+    icon: ClipboardList,
+    anyOf: ["workspace.read"],
+    section: "employee",
+    parentTo: "/app/employee-hub/schedule",
+    roles: ["employee"],
   },
   {
     to: "/app/employee-hub/shift-hub",
@@ -185,7 +196,7 @@ export function AppShell() {
   const [main, setMain] = useState<HTMLElement | null>(null);
   useFrozenTop(main);
   const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
-    () => new Set(["/app/schedule", "/app/employees", "/app/announcements"]),
+    () => new Set(["/app/schedule", "/app/employees", "/app/announcements", "/app/employee-hub/schedule"]),
   );
   const location = useLocation();
   const phone = usePhoneWidth();
