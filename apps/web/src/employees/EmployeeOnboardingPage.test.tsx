@@ -213,7 +213,7 @@ describe("EmployeeOnboardingPage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    fireEvent.click(await screen.findByRole("button", { name: "Save" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Save and continue" }));
     expect(
       await screen.findByText(
         "Try again, or ask your manager to check your invitation.",
@@ -255,7 +255,7 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.click(
       await screen.findByRole("button", { name: "Availability (optional)" }),
     );
-    expect(await screen.findByRole("button", { name: "Save" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Save and continue" })).toBeTruthy();
     // The step is listed and reachable, but an optional one never counts.
     const progress = screen.getByRole("progressbar", { name: "Steps done" });
     expect(progress.getAttribute("aria-valuenow")).toBe("0");
@@ -284,8 +284,8 @@ describe("EmployeeOnboardingPage", () => {
     expect(loadWeeklyPreferences).not.toHaveBeenCalled();
   });
 
-  // One action bar: Skip for now sits with Save, nothing covers Save.
-  it("keeps Skip for now and Save in the same action bar", async () => {
+  // One action bar: Skip for now sits with Save and continue (Tur 2).
+  it("keeps Skip for now and Save and continue in the same action bar", async () => {
     vi.mocked(getMyOnboarding).mockResolvedValue(employeeOnboarding);
     render(
       <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
@@ -294,9 +294,12 @@ describe("EmployeeOnboardingPage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    const save = await screen.findByRole("button", { name: "Save" });
+    const save = await screen.findByRole("button", { name: "Save and continue" });
     const skip = screen.getByRole("button", { name: /Skip for now/ });
-    expect(skip.closest("footer")).toBe(save.closest("footer"));
+    expect(skip.closest(".dav-onboard-foot")).toBe(save.closest(".dav-onboard-foot"));
+    expect(skip.closest(".dav-onboard-foot")).not.toBeNull();
+    expect(screen.getByRole("heading", { name: "When do you prefer not to work?" })).toBeTruthy();
+    expect(screen.getByText("Optional. Mark the times you'd rather not work in a normal week.")).toBeTruthy();
     expect(document.querySelectorAll("footer.pb-bar")).toHaveLength(0);
   });
 
@@ -315,12 +318,12 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
     fireEvent.click(
-      await screen.findByRole("switch", { name: "Monday all day unavailable" }),
+      await screen.findByRole("radio", { name: /^Unavailable/ }),
     );
     fireEvent.click(screen.getByRole("button", { name: "Profile" }));
     expect(screen.getByRole("alertdialog").textContent).toContain("Discard availability changes?");
     fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
-    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: /^Unavailable/ })).toHaveProperty("ariaChecked", "true");
     fireEvent.click(screen.getByRole("button", { name: "Profile" }));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     expect(await screen.findByText("Your details")).toBeTruthy();
@@ -345,7 +348,7 @@ describe("EmployeeOnboardingPage", () => {
         </MemoryRouter>
       </QueryClientProvider>,
     );
-    const save = await screen.findByRole("button", { name: "Save" });
+    const save = await screen.findByRole("button", { name: "Save and continue" });
     expect(screen.queryByRole("button", { name: "Skip for now" })).toBeNull();
     expect(screen.queryByLabelText("Starts on")).toBeNull();
     fireEvent.click(save);
@@ -419,15 +422,15 @@ describe("EmployeeOnboardingPage", () => {
       </QueryClientProvider>,
     );
     fireEvent.click(
-      await screen.findByRole("switch", { name: "Monday all day unavailable" }),
+      await screen.findByRole("radio", { name: /^Unavailable/ }),
     );
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save and continue" }));
     expect(
       await screen.findByText("Settings changed; refresh required"),
     ).toBeTruthy();
     expect(
-      screen.getByRole("switch", { name: "Monday all day unavailable" }),
-    ).toHaveProperty("checked", true);
+      screen.getByRole("radio", { name: /^Unavailable/ }),
+    ).toHaveProperty("ariaChecked", "true");
     expect(getMyOnboarding).toHaveBeenCalledOnce();
   });
 

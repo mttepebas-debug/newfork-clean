@@ -708,7 +708,7 @@ describe("EmployeeHubPage", () => {
 
   it("keeps My availability on screen and says so when the hub's refresh fails", async () => {
     const { client } = renderPageWithFixture(fixture, "/app/employee-hub/my-availability");
-    expect(await screen.findByRole("switch", { name: "Monday all day unavailable" })).toBeTruthy();
+    expect(await screen.findByRole("radio", { name: /^Unavailable/ })).toBeTruthy();
     vi.mocked(getEmployeeHub).mockRejectedValueOnce(new Error("hub service down"));
     await act(async () => {
       await client.refetchQueries({ queryKey: ["employee-hub"] });
@@ -716,19 +716,20 @@ describe("EmployeeHubPage", () => {
     expect(
       await screen.findByText("Employee Hub didn't refresh. This is the last information that loaded."),
     ).toBeTruthy();
-    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /^Unavailable/ })).toBeTruthy();
     expect(screen.queryByText("hub service down")).toBeNull();
   });
 
   it("opens the current weekly editor by default and saves without approval", async () => {
     renderPage("/app/employee-hub/my-availability");
-    const day = await screen.findByRole("switch", { name: "Monday all day unavailable" });
+    const day = await screen.findByRole("radio", { name: /^Unavailable/ });
     expect(screen.getByRole("tab", { name: "Availability" }).getAttribute("aria-selected")).toBe("true");
     expect(screen.queryByLabelText("Start")).toBeNull();
     expect(screen.queryByLabelText("Starts on")).toBeNull();
-    expect(screen.getByText(/do not change assigned shifts/)).toBeTruthy();
+    // Tur 2 (Mert 2026-10-16): no standing explainer box under the tabs.
+    expect(screen.queryByText(/preference, not a guarantee/)).toBeNull();
     fireEvent.click(day);
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
     await waitFor(() => expect(saveWeeklyPreferences).toHaveBeenCalledWith(workspaceId,
       expect.objectContaining({ source: "employee", employee_id: fixture.employee.id, expected_revision: 0 }),
       expect.any(String), false));
@@ -754,11 +755,11 @@ describe("EmployeeHubPage", () => {
   // C2.3, P26: both drafts ask before a tab change loses them.
   it("protects an unsaved weekly draft and a time-off draft on tab changes", async () => {
     renderPage("/app/employee-hub/my-availability");
-    fireEvent.click(await screen.findByRole("switch", { name: "Monday all day unavailable" }));
+    fireEvent.click(await screen.findByRole("radio", { name: /^Unavailable/ }));
     fireEvent.click(screen.getByRole("tab", { name: "Time Off Requests" }));
     expect(screen.getByRole("alertdialog").textContent).toContain("Discard availability changes?");
     fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
-    expect(screen.getByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", true);
+    expect(screen.getByRole("radio", { name: /^Unavailable/ })).toHaveProperty("ariaChecked", "true");
     fireEvent.click(screen.getByRole("tab", { name: "Time Off Requests" }));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
@@ -769,7 +770,7 @@ describe("EmployeeHubPage", () => {
     expect(screen.getByLabelText("Start")).toHaveProperty("value", "2035-01-15");
     fireEvent.click(screen.getByRole("tab", { name: "Availability" }));
     fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
-    expect(await screen.findByRole("switch", { name: "Monday all day unavailable" })).toHaveProperty("checked", false);
+    expect(await screen.findByRole("radio", { name: /^Unavailable/ })).toHaveProperty("ariaChecked", "false");
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
     expect(submitTimeOff).not.toHaveBeenCalled();
   });
