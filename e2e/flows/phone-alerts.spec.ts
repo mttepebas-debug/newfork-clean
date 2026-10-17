@@ -46,25 +46,26 @@ test("an employee turns phone alerts on from Home and Account says this computer
     reached.push(route.request().url());
     return route.abort();
   });
-  // The browser's push subscription, stood in: the real one would register with Google.
+  // The browser's push subscription, stood in: the real one would register with Google. A browser keeps its
+  // subscription from page to page, so the stand-in keeps it in this origin's storage, not in the page.
   await context.addInitScript((address: string) => {
+    const held = "e2e.pushSubscription";
     const bytes = (size: number, fill: number) => new Uint8Array(size).fill(fill).buffer;
-    let current: object | null = null;
     const make = () => ({
       endpoint: address,
       expirationTime: null,
       getKey: (name: string) => (name === "p256dh" ? bytes(65, 4) : bytes(16, 7)),
       unsubscribe: async () => {
-        current = null;
+        window.localStorage.removeItem(held);
         return true;
       },
     });
     PushManager.prototype.getSubscription = async function () {
-      return current as PushSubscription | null;
+      return (window.localStorage.getItem(held) === address ? make() : null) as PushSubscription | null;
     };
     PushManager.prototype.subscribe = async function () {
-      current = make();
-      return current as PushSubscription;
+      window.localStorage.setItem(held, address);
+      return make() as PushSubscription;
     };
   }, endpoint);
 
@@ -98,6 +99,23 @@ test("an employee turns phone alerts on from Home and Account says this computer
   expect(sql(`select count(*) from public.notification_push_subscriptions where user_id = '${employeeId}' and endpoint = '${endpoint}' and revoked_at is null;`)).toBe("1");
 
   await page.goto("/account/preferences/notifications");
+  // What this browser itself holds after the page changed: its worker and the subscription it saved
+  // (the address's host and last 8 characters only).
+  const browserHolds = () =>
+    page.evaluate(async () => {
+      const worker = await navigator.serviceWorker.getRegistration("/");
+      const subscription = await worker?.pushManager.getSubscription();
+      return {
+        permission: Notification.permission,
+        worker: worker ? new URL(worker.scope).pathname : null,
+        subscription: subscription ? `${new URL(subscription.endpoint).host}…${subscription.endpoint.slice(-8)}` : null,
+      };
+    });
+  expect(await browserHolds(), "this browser after the page changed").toEqual({
+    permission: "granted",
+    worker: "/",
+    subscription: `fcm.googleapis.com…${endpoint.slice(-8)}`,
+  });
   const channels = page.getByRole("group", { name: "Where you get notified" });
   await expect(channels.getByText("On for this computer.")).toBeVisible();
   await expect(channels.getByRole("switch", { name: "Phone alerts on this device" })).toBeChecked();
