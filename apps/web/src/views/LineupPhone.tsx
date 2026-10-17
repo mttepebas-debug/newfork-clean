@@ -120,11 +120,6 @@ export function PhoneLineupPage({
   const ready = !loading && !error && location && !location.closed;
   const shift = ready ? phoneLineupShift(location.shifts, chosen, now) : null;
   useFold({ top, bar, wheel: wheelBox, tabs, pane }, `${loading}:${location?.id}:${shift?.key}:${seg}`);
-  useSwipe(pane, (direction) => {
-    if (!location || !shift) return;
-    const next = location.shifts[location.shifts.findIndex((item) => item.key === shift.key) + direction];
-    if (next) onShift(next.key);
-  });
 
   return (
     <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title">
@@ -784,34 +779,3 @@ function useFold(
   // New content (a day, a shift, a tab): measure again.
   useLayoutEffect(() => measureRef.current(), [version]);
 }
-
-/** A sideways swipe on the list moves to the next or previous shift tab (D); a vertical one scrolls. */
-function useSwipe(ref: RefObject<HTMLDivElement | null>, onSwipe: (direction: 1 | -1) => void) {
-  const latest = useRef(onSwipe);
-  latest.current = onSwipe;
-  useEffect(() => {
-    const element = ref.current;
-    if (!element) return;
-    let x0: number | null = null;
-    let y0 = 0;
-    const down = (event: PointerEvent) => {
-      if ((event.target as Element | null)?.closest?.("input, select, textarea")) return;
-      x0 = event.clientX;
-      y0 = event.clientY;
-    };
-    const up = (event: PointerEvent) => {
-      if (x0 === null) return;
-      const dx = event.clientX - x0;
-      const dy = event.clientY - y0;
-      x0 = null;
-      if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) latest.current(dx < 0 ? 1 : -1);
-    };
-    element.addEventListener("pointerdown", down);
-    element.addEventListener("pointerup", up);
-    return () => {
-      element.removeEventListener("pointerdown", down);
-      element.removeEventListener("pointerup", up);
-    };
-  }, [ref]);
-}
-

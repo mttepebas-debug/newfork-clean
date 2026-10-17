@@ -38,6 +38,8 @@
   z-index: 2;
   height: auto;
   min-height: 0;
+  flex-direction: column;
+  align-items: flex-start;
   margin: 0 0 4px;
   padding: 16px 0 20px;
   background: var(--lineup-phone-bg, var(--theme-page));
@@ -340,10 +342,7 @@
   outline-offset: -2px;
 }
 
-/* The list (C): department, a white frame, job groups, people. Sideways swipes go to the next shift. */
-.lineup-phone-pane {
-  touch-action: pan-y;
-}
+/* The list (C): department, a white frame, job groups, people. */
 .lineup-phone-dept {
   margin-top: 16px;
 }
