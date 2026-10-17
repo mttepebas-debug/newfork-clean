@@ -26,9 +26,11 @@
 -- The job a person is listed under is one rule (CLAUDE.md 3.A.4): app_private.listed_job_name,
 -- asked by the Employees list and by the team read.
 
--- A held lock fails the migration rather than queueing every read behind it (MCP sends this file
--- as one query, so the setting lasts for its transaction).
-set lock_timeout = '5s';
+-- A held lock fails the migration rather than queueing every read behind it. LOCAL keeps the
+-- setting inside this migration's transaction (MCP sends the file as one query, one transaction)
+-- so the session's own lock_timeout comes back after it; where the file runs statement by
+-- statement (the local CLI) there is no transaction and Postgres only warns.
+set local lock_timeout = '5s';
 
 -- The two checks name the validator; they come back at the end, once every row fits.
 alter table public.employee_weekly_preferences drop constraint employee_weekly_preferences_preference_check;
