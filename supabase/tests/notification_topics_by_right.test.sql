@@ -30,6 +30,16 @@ select tests.role('tb', 'no decisions', 'manager', array(
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('tb') and r.system_key = 'manager' and rp.permission_key not in (select key from gone)));
 select tests.person('tb', 'lim', 'no decisions', array['K'], array['cook']);
+-- A manager's role that reads the team's availability but invites nobody (BILDIRIM-U7, KARARLAR S-133).
+select tests.role('tb', 'reads availability', 'manager', array(
+  with recursive gone(key) as (
+    select 'employees.manage'::text
+    union select d.permission_key from app_private.role_permission_dependencies d join gone on gone.key = d.required_key
+  )
+  select rp.permission_key from public.workspace_role_permissions rp
+  join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('tb') and r.system_key = 'manager' and rp.permission_key not in (select key from gone)));
+select tests.person('tb', 'rav', 'reads availability', array['K'], array['cook']);
 select tests.person('tb', 'blk', 'manager', array['K'], array['cook']);
 select tests.person('tb', 'gon', 'manager', array['K'], array['cook']);
 -- Onur is still onboarding.
@@ -72,6 +82,14 @@ select is(pg_temp.topics('mov'), pg_temp.topics('ayse'),
   '(b) a manager moved to Besiktas still decides there: still the manager''s ten');
 
 select ok(not ('approvals' = any (pg_temp.topics('lim'))), '(b) a role without the decisions: no approvals');
+
+select ok(exists (select 1 from public.workspace_role_permissions rp join public.workspace_roles r on r.id = rp.role_id
+  where r.id = tests.id('tb:role:reads availability') and rp.permission_key = 'availability.read')
+  and not exists (select 1 from public.workspace_role_permissions rp join public.workspace_roles r on r.id = rp.role_id
+  where r.id = tests.id('tb:role:reads availability') and rp.permission_key = 'employees.manage'),
+  '(b) Rav''s role reads the team''s availability and does not invite');
+select ok(not ('team' = any (pg_temp.topics('rav'))),
+  '(b) reading the team''s availability brings no team updates: availability tells nobody, and the rest is for who invites');
 
 create temp table required_document (id uuid, preview jsonb);
 insert into required_document (id)
