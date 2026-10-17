@@ -107,6 +107,9 @@ insert into new_system values
   ('claim_notification_push_service'), ('finish_notification_push_service'), ('release_notification_push_service'),
   ('save_notification_push_subscription_service'), ('delete_notification_push_subscription_service'),
   ('notification_push_channel'), ('notification_push_sends'),
+  -- One dispatcher for every channel (BILDIRIM-DAGITICI).
+  ('begin_notification_dispatch_service'), ('end_notification_dispatch_service'), ('notification_dispatch_alerts_service'),
+  ('notification_dispatch'), ('notification_quotas'), ('notification_alerts'),
   ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
   ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_sms_opt_outs'), ('notification_topics'),
   ('notification_types'),

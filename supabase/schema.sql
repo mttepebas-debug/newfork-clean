@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 509, last: 20261017195822_notification_push_channel.sql
--- fingerprint: sha256:a89695e99b7f1a9a1e3c082a0898b31fb9330536b62364823c83d2ca372bc58b
+-- migrations: 510, last: 20261017230000_notification_dispatch.sql
+-- fingerprint: sha256:6b8639c5afc22129e21219a6a0318035e2dbbcd729f64a9e72bbc1688b0ab94c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3402,6 +3402,41 @@ $$;
 ALTER FUNCTION "app_private"."can_manage_workspace"("target_workspace_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."channel_room"("target_channel" "text", OUT "room" integer, OUT "opens_at" timestamp with time zone) RETURNS "record"
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  quota app_private.notification_quotas;
+  day_start timestamptz := date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+  month_start timestamptz := date_trunc('month', now() at time zone 'UTC') at time zone 'UTC';
+  sent_today integer;
+  sent_month integer;
+  day_room integer;
+  month_room integer;
+begin
+  select * into quota from app_private.notification_quotas q where q.channel = target_channel;
+  if not found or (quota.daily_limit is null and quota.monthly_limit is null) then
+    return;
+  end if;
+  select count(*) filter (where d.sent_at >= day_start)::integer, count(*)::integer
+    into sent_today, sent_month
+  from public.notification_deliveries d
+  where d.channel = target_channel and d.sent_at >= month_start;
+  day_room := case when quota.daily_limit is null then null else quota.daily_limit - quota.reserved_daily - sent_today end;
+  month_room := case when quota.monthly_limit is null then null else quota.monthly_limit - quota.reserved_monthly - sent_month end;
+  room := greatest(0, least(coalesce(day_room, month_room), coalesce(month_room, day_room)));
+  if room = 0 then
+    opens_at := case when month_room is not null and month_room <= 0 then month_start + interval '1 month'
+                     else day_start + interval '1 day' end;
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."channel_room"("target_channel" "text", OUT "room" integer, OUT "opens_at" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "public"."schedule_edit_sessions" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -3626,6 +3661,18 @@ COMMENT ON FUNCTION "app_private"."default_closure_period"() IS 'How long a sche
 
 
 
+CREATE OR REPLACE FUNCTION "app_private"."delivery_due"("status" "text", "next_attempt_at" timestamp with time zone, "lease_expires_at" timestamp with time zone) RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select (status in ('queued', 'failed') and next_attempt_at <= now())
+      or (status = 'sending' and lease_expires_at < now())
+$$;
+
+
+ALTER FUNCTION "app_private"."delivery_due"("status" "text", "next_attempt_at" timestamp with time zone, "lease_expires_at" timestamp with time zone) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."department_archive_takes_its_jobs"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -3677,6 +3724,15 @@ $$;
 
 
 ALTER FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."dispatched_channels"() RETURNS "text"[]
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$ select array['email', 'push'] $$;
+
+
+ALTER FUNCTION "app_private"."dispatched_channels"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."document_access_told"() RETURNS "trigger"
@@ -4860,6 +4916,28 @@ $$;
 
 
 ALTER FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."fair_due"("target_channel" "text", "target_size" integer) RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((array_agg(x.id order by x.required desc, x.turn, x.created_at, x.id))[1:target_size], '{}')
+  from (
+    select d.id, d.created_at, (t.level = 'required') required,
+      row_number() over (partition by n.workspace_id, (t.level = 'required') order by d.created_at, d.id) turn
+    from public.notification_deliveries d
+    join public.person_notifications n on n.id = d.notification_id
+    join public.notification_types t on t.key = n.type_key
+    where d.channel = target_channel
+      and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)
+  ) x
+  -- No workspace's turn past one batch can make it into one.
+  where x.turn <= target_size
+$$;
+
+
+ALTER FUNCTION "app_private"."fair_due"("target_channel" "text", "target_size" integer) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."finish_workspace_closure"("target_workspace_id" "uuid", "closing_actor" "uuid", "closure_request" "uuid", "closed_at_time" timestamp with time zone, "closure_mode" "text") RETURNS "jsonb"
@@ -10620,6 +10698,28 @@ $$;
 ALTER FUNCTION "public"."availability_utc_offset"("at_instant" timestamp with time zone, "zone_name" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."begin_notification_dispatch_service"("target_seconds" integer) RETURNS "uuid"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  taken uuid;
+begin
+  if target_seconds is null or target_seconds < 1 or target_seconds > 60 then
+    raise exception 'a lease is 1 to 60 seconds' using errcode = '22023', hint = 'notifications.lease_seconds';
+  end if;
+  update app_private.notification_dispatch set run_id = gen_random_uuid(),
+    held_until = now() + make_interval(secs => target_seconds)
+  where only_row and held_until < now()
+  returning run_id into taken;
+  return taken;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."begin_notification_dispatch_service"("target_seconds" integer) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."block_closure_when_ownership_transfer_pending"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -11148,11 +11248,12 @@ CREATE OR REPLACE FUNCTION "public"."claim_notification_emails_service"("target_
     AS $$
 declare
   channel app_private.notification_email_channel;
-  sent_today integer;
+  quota record;
+  room integer;
   row record;
   route record;
   given jsonb := '[]'::jsonb;
-  tomorrow timestamptz := (date_trunc('day', now() at time zone 'UTC') + interval '1 day') at time zone 'UTC';
+  picked uuid[];
 begin
   if target_batch_size is null or target_batch_size < 1 or target_batch_size > 100 then
     raise exception 'a batch is 1 to 100' using errcode = '22023', hint = 'notifications.batch_size';
@@ -11161,21 +11262,20 @@ begin
   if not found then
     return given;
   end if;
-  select count(*)::integer into sent_today from public.notification_deliveries d
-  where d.channel = 'email' and d.sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+  select * into quota from app_private.channel_room('email');
+  room := quota.room;
+  picked := app_private.fair_due('email', target_batch_size);
 
   for row in
-    select d.id, d.status, d.attempts, d.reason, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
-      n.created_at noticed_at, t.level, t.to_former_members, p.name topic
+    select d.id, d.status, d.attempts, d.reason, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title,
+      n.body, n.url, n.created_at noticed_at, t.level, t.to_former_members, p.name topic
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
     join public.notification_types t on t.key = n.type_key
     join public.notification_topics p on p.key = t.topic_key
-    where d.channel = 'email'
-      and ((d.status in ('queued', 'failed') and d.next_attempt_at <= now())
-           or (d.status = 'sending' and d.lease_expires_at < now()))
-    order by (t.level = 'required') desc, d.created_at, d.id
-    limit target_batch_size
+    where d.id = any (picked)
+      and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)
+    order by array_position(picked, d.id)
     for update of d skip locked
   loop
     if row.queued_at < channel.opened_at then
@@ -11207,14 +11307,16 @@ begin
         lease_expires_at = null, updated_at = now() where id = row.id;
       continue;
     end if;
-    if row.level <> 'required' and channel.daily_cap is not null and sent_today >= channel.daily_cap then
-      update public.notification_deliveries set status = 'queued', next_attempt_at = tomorrow, lease_expires_at = null,
-        updated_at = now() where id = row.id;
+    -- No room left in the plan: it waits until room comes back; required mail still goes, and counts.
+    if row.level <> 'required' and room is not null and room <= 0 then
+      update public.notification_deliveries set status = 'queued',
+        next_attempt_at = coalesce((select q.opens_at from app_private.channel_room('email') q), now() + interval '1 hour'),
+        lease_expires_at = null, updated_at = now() where id = row.id;
       continue;
     end if;
     update public.notification_deliveries set status = 'sending', attempts = attempts + 1,
       lease_expires_at = now() + interval '2 minutes', updated_at = now() where id = row.id;
-    sent_today := sent_today + 1;
+    room := room - 1;
     given := given || jsonb_build_array(jsonb_build_object(
       'delivery_id', row.id,
       'to', (select lower(u.email) from auth.users u where u.id = row.user_id),
@@ -11241,11 +11343,14 @@ CREATE OR REPLACE FUNCTION "public"."claim_notification_push_service"("target_ba
     AS $$
 declare
   channel app_private.notification_push_channel;
+  quota record;
+  room integer;
   row record;
   route record;
   targets jsonb;
   workspace_name text;
   given jsonb := '[]'::jsonb;
+  picked uuid[];
 begin
   if target_batch_size is null or target_batch_size < 1 or target_batch_size > 100 then
     raise exception 'a batch is 1 to 100' using errcode = '22023', hint = 'notifications.batch_size';
@@ -11254,6 +11359,10 @@ begin
   if not found then
     return given;
   end if;
+  -- Push has no provider quota today (no row); a row added later holds here as it does for email.
+  select * into quota from app_private.channel_room('push');
+  room := quota.room;
+  picked := app_private.fair_due('push', target_batch_size);
 
   for row in
     select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body,
@@ -11261,11 +11370,9 @@ begin
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
     join public.notification_types t on t.key = n.type_key
-    where d.channel = 'push'
-      and ((d.status in ('queued', 'failed') and d.next_attempt_at <= now())
-           or (d.status = 'sending' and d.lease_expires_at < now()))
-    order by (t.level = 'required') desc, d.created_at, d.id
-    limit target_batch_size
+    where d.id = any (picked)
+      and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)
+    order by array_position(picked, d.id)
     for update of d skip locked
   loop
     if row.queued_at < channel.opened_at then
@@ -11305,6 +11412,12 @@ begin
       end if;
       continue;
     end if;
+    if row.level <> 'required' and room is not null and room <= 0 then
+      update public.notification_deliveries set status = 'queued',
+        next_attempt_at = coalesce((select q.opens_at from app_private.channel_room('push') q), now() + interval '1 hour'),
+        lease_expires_at = null, updated_at = now() where id = row.id;
+      continue;
+    end if;
     -- Ten at most, the most recently used first: two saves at once can leave one more for a moment.
     select coalesce(jsonb_agg(jsonb_build_object('subscription_id', s.id, 'endpoint', s.endpoint, 'p256dh', s.p256dh,
              'auth', s.auth_secret) order by s.used desc, s.id), '[]'::jsonb)
@@ -11322,6 +11435,7 @@ begin
     end if;
     update public.notification_deliveries set status = 'sending', attempts = attempts + 1,
       lease_expires_at = now() + interval '2 minutes', updated_at = now() where id = row.id;
+    room := room - 1;
     workspace_name := (select w.name from public.workspaces w where w.id = row.workspace_id);
     given := given || jsonb_build_array(jsonb_build_object(
       'delivery_id', row.id,
@@ -12795,6 +12909,18 @@ $$;
 
 
 ALTER FUNCTION "public"."empty_weekly_preference"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."end_notification_dispatch_service"("target_run" "uuid") RETURNS "void"
+    LANGUAGE "sql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  update app_private.notification_dispatch set run_id = null, held_until = '-infinity'
+  where only_row and run_id = target_run;
+$$;
+
+
+ALTER FUNCTION "public"."end_notification_dispatch_service"("target_run" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."enforce_active_workspace_preference_membership"() RETURNS "trigger"
@@ -18401,6 +18527,81 @@ $$;
 
 
 ALTER FUNCTION "public"."normalize_workspace_widget_order"("target_widget_order" "text"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."notification_dispatch_alerts_service"() RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  quota app_private.notification_quotas;
+  day_start timestamptz := date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+  month_start timestamptz := date_trunc('month', now() at time zone 'UTC') at time zone 'UTC';
+  day_key text := to_char(now() at time zone 'UTC', 'YYYY-MM-DD');
+  month_key text := to_char(now() at time zone 'UTC', 'YYYY-MM');
+  sent_today integer;
+  sent_month integer;
+  share integer;
+  candidate record;
+  late record;
+  raised jsonb := '[]'::jsonb;
+begin
+  for quota in select * from app_private.notification_quotas order by channel loop
+    select count(*) filter (where d.sent_at >= day_start)::integer, count(*)::integer
+      into sent_today, sent_month
+    from public.notification_deliveries d
+    where d.channel = quota.channel and d.sent_at >= month_start;
+    for candidate in
+      select * from (values
+        (1, 'quota_day_full', day_key, sent_today, quota.daily_limit - quota.reserved_daily, 1.0),
+        (2, 'quota_day_80', day_key, sent_today, quota.daily_limit - quota.reserved_daily, 0.8),
+        (3, 'quota_month_full', month_key, sent_month, quota.monthly_limit - quota.reserved_monthly, 1.0),
+        (4, 'quota_month_80', month_key, sent_month, quota.monthly_limit - quota.reserved_monthly, 0.8)
+      ) v(place, kind, period, sent, cap, part)
+      where v.cap is not null and v.sent >= ceil(v.cap * v.part)
+      order by v.place
+    loop
+      -- Full says it all: no 80% alert after a full one in the same period.
+      continue when candidate.part = 0.8 and exists (select 1 from app_private.notification_alerts a
+        where a.kind = replace(candidate.kind, '_80', '_full') and a.channel = quota.channel and a.period = candidate.period);
+      insert into app_private.notification_alerts (kind, channel, period) values (candidate.kind, quota.channel, candidate.period)
+      on conflict do nothing;
+      if found then
+        raised := raised || jsonb_build_array(jsonb_build_object('kind', candidate.kind, 'channel', quota.channel,
+          'period', candidate.period, 'sent', candidate.sent, 'limit', candidate.cap));
+      end if;
+    end loop;
+  end loop;
+
+  for late in
+    select d.channel, count(*)::integer due,
+      max(extract(epoch from now() - case when d.status = 'sending' then d.lease_expires_at else d.next_attempt_at end))::integer waited
+    from public.notification_deliveries d
+    where d.channel = any (app_private.dispatched_channels())
+      and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)
+    group by d.channel
+    having max(now() - case when d.status = 'sending' then d.lease_expires_at else d.next_attempt_at end) > interval '2 minutes'
+    order by d.channel
+  loop
+    -- Once per half hour while it lasts.
+    insert into app_private.notification_alerts (kind, channel, period)
+    values ('late', late.channel, to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC',
+      'YYYY-MM-DD"T"HH24:MI'))
+    on conflict do nothing;
+    if found then
+      raised := raised || jsonb_build_array(jsonb_build_object('kind', 'late', 'channel', late.channel,
+        'period', to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI'),
+        'waiting_seconds', late.waited, 'due', late.due));
+    end if;
+  end loop;
+
+  delete from app_private.notification_alerts a where a.raised_at < now() - interval '90 days';
+  return raised;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."notification_dispatch_alerts_service"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."onboarding_phone_in_use_service"("target_user_id" "uuid", "typed_phone" "text", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS boolean
@@ -28600,11 +28801,34 @@ UNION ALL
 ALTER VIEW "app_private"."lifecycle_definition" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."notification_alerts" (
+    "kind" "text" NOT NULL,
+    "channel" "text" NOT NULL,
+    "period" "text" NOT NULL,
+    "raised_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "notification_alerts_channel_check" CHECK (("channel" = ANY (ARRAY['email'::"text", 'push'::"text", 'sms'::"text"]))),
+    CONSTRAINT "notification_alerts_kind_check" CHECK (("kind" = ANY (ARRAY['quota_day_80'::"text", 'quota_day_full'::"text", 'quota_month_80'::"text", 'quota_month_full'::"text", 'late'::"text"]))),
+    CONSTRAINT "notification_alerts_period_check" CHECK (("period" ~ '^[0-9T:-]{7,16}$'::"text"))
+);
+
+
+ALTER TABLE "app_private"."notification_alerts" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "app_private"."notification_dispatch" (
+    "only_row" boolean DEFAULT true NOT NULL,
+    "run_id" "uuid",
+    "held_until" timestamp with time zone DEFAULT '-infinity'::timestamp with time zone NOT NULL,
+    CONSTRAINT "notification_dispatch_only_row_check" CHECK ("only_row")
+);
+
+
+ALTER TABLE "app_private"."notification_dispatch" OWNER TO "postgres";
+
+
 CREATE TABLE IF NOT EXISTS "app_private"."notification_email_channel" (
     "only_row" boolean DEFAULT true NOT NULL,
     "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "daily_cap" integer DEFAULT 70,
-    CONSTRAINT "notification_email_channel_daily_cap_check" CHECK ((("daily_cap" IS NULL) OR ("daily_cap" > 0))),
     CONSTRAINT "notification_email_channel_only_row_check" CHECK ("only_row")
 );
 
@@ -28620,6 +28844,23 @@ CREATE TABLE IF NOT EXISTS "app_private"."notification_push_channel" (
 
 
 ALTER TABLE "app_private"."notification_push_channel" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "app_private"."notification_quotas" (
+    "channel" "text" NOT NULL,
+    "daily_limit" integer,
+    "monthly_limit" integer,
+    "reserved_daily" integer DEFAULT 0 NOT NULL,
+    "reserved_monthly" integer DEFAULT 0 NOT NULL,
+    CONSTRAINT "notification_quotas_channel_check" CHECK (("channel" = ANY (ARRAY['email'::"text", 'push'::"text", 'sms'::"text"]))),
+    CONSTRAINT "notification_quotas_check" CHECK ((("reserved_daily" >= 0) AND (("daily_limit" IS NULL) OR ("reserved_daily" < "daily_limit")))),
+    CONSTRAINT "notification_quotas_check1" CHECK ((("reserved_monthly" >= 0) AND (("monthly_limit" IS NULL) OR ("reserved_monthly" < "monthly_limit")))),
+    CONSTRAINT "notification_quotas_daily_limit_check" CHECK ((("daily_limit" IS NULL) OR ("daily_limit" > 0))),
+    CONSTRAINT "notification_quotas_monthly_limit_check" CHECK ((("monthly_limit" IS NULL) OR ("monthly_limit" > 0)))
+);
+
+
+ALTER TABLE "app_private"."notification_quotas" OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "app_private"."role_permission_dependencies" (
@@ -30624,6 +30865,16 @@ ALTER TABLE ONLY "app_private"."authz_settings"
 
 
 
+ALTER TABLE ONLY "app_private"."notification_alerts"
+    ADD CONSTRAINT "notification_alerts_pkey" PRIMARY KEY ("kind", "channel", "period");
+
+
+
+ALTER TABLE ONLY "app_private"."notification_dispatch"
+    ADD CONSTRAINT "notification_dispatch_pkey" PRIMARY KEY ("only_row");
+
+
+
 ALTER TABLE ONLY "app_private"."notification_email_channel"
     ADD CONSTRAINT "notification_email_channel_pkey" PRIMARY KEY ("only_row");
 
@@ -30631,6 +30882,11 @@ ALTER TABLE ONLY "app_private"."notification_email_channel"
 
 ALTER TABLE ONLY "app_private"."notification_push_channel"
     ADD CONSTRAINT "notification_push_channel_pkey" PRIMARY KEY ("only_row");
+
+
+
+ALTER TABLE ONLY "app_private"."notification_quotas"
+    ADD CONSTRAINT "notification_quotas_pkey" PRIMARY KEY ("channel");
 
 
 
@@ -31816,15 +32072,15 @@ CREATE INDEX "notification_deliveries_due" ON "public"."notification_deliveries"
 
 
 
-CREATE INDEX "notification_deliveries_email_sent" ON "public"."notification_deliveries" USING "btree" ("sent_at") WHERE (("channel" = 'email'::"text") AND ("sent_at" IS NOT NULL));
-
-
-
 CREATE INDEX "notification_deliveries_leased" ON "public"."notification_deliveries" USING "btree" ("lease_expires_at") WHERE ("status" = 'sending'::"text");
 
 
 
 CREATE INDEX "notification_deliveries_provider_message" ON "public"."notification_deliveries" USING "btree" ("provider_message_id") WHERE ("provider_message_id" IS NOT NULL);
+
+
+
+CREATE INDEX "notification_deliveries_sent" ON "public"."notification_deliveries" USING "btree" ("channel", "sent_at") WHERE ("sent_at" IS NOT NULL);
 
 
 
@@ -34824,6 +35080,10 @@ GRANT ALL ON FUNCTION "app_private"."can_manage_workspace"("target_workspace_id"
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."channel_room"("target_channel" "text", OUT "room" integer, OUT "opens_at" timestamp with time zone) FROM PUBLIC;
+
+
+
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."schedule_edit_sessions" TO "service_role";
 
 
@@ -34852,11 +35112,19 @@ REVOKE ALL ON FUNCTION "app_private"."default_closure_period"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."delivery_due"("status" "text", "next_attempt_at" timestamp with time zone, "lease_expires_at" timestamp with time zone) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."department_archive_takes_its_jobs"() FROM PUBLIC;
 
 
 
 REVOKE ALL ON FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."dispatched_channels"() FROM PUBLIC;
 
 
 
@@ -35013,6 +35281,10 @@ REVOKE ALL ON FUNCTION "app_private"."every_member_has_an_account_row"() FROM PU
 
 
 REVOKE ALL ON FUNCTION "app_private"."exchange_decision_reason"("actor" "uuid", "w" "uuid", "giver" "uuid", "receiver" "uuid", "loc" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."fair_due"("target_channel" "text", "target_size" integer) FROM PUBLIC;
 
 
 
@@ -35774,6 +36046,11 @@ REVOKE ALL ON FUNCTION "public"."availability_utc_offset"("at_instant" timestamp
 
 
 
+REVOKE ALL ON FUNCTION "public"."begin_notification_dispatch_service"("target_seconds" integer) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."begin_notification_dispatch_service"("target_seconds" integer) TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."block_closure_when_ownership_transfer_pending"() FROM PUBLIC;
 
 
@@ -36028,6 +36305,11 @@ GRANT ALL ON FUNCTION "public"."employee_request_action_service"("actor_user_id"
 
 
 REVOKE ALL ON FUNCTION "public"."empty_weekly_preference"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "public"."end_notification_dispatch_service"("target_run" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."end_notification_dispatch_service"("target_run" "uuid") TO "service_role";
 
 
 
@@ -36479,6 +36761,11 @@ GRANT ALL ON FUNCTION "public"."normalize_schedule_time_source"("w" "uuid", "pay
 
 REVOKE ALL ON FUNCTION "public"."normalize_workspace_widget_order"("target_widget_order" "text"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."normalize_workspace_widget_order"("target_widget_order" "text"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."notification_dispatch_alerts_service"() FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."notification_dispatch_alerts_service"() TO "service_role";
 
 
 

@@ -57,9 +57,9 @@ select is(array(select name from dropped where kind = 'table' and to_regclass(na
 select is(array(select c.relname::text from pg_class c
                 where c.relnamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and c.relkind in ('r', 'v', 'm', 'p') and c.relname ~ 'notif' order by 1),
-  array['notification_deliveries', 'notification_email_channel', 'notification_email_suppressions', 'notification_preferences',
-        'notification_push_channel', 'notification_push_sends', 'notification_push_subscriptions', 'notification_sms_consents',
-        'notification_sms_opt_outs', 'notification_topics',
+  array['notification_alerts', 'notification_deliveries', 'notification_dispatch', 'notification_email_channel', 'notification_email_suppressions', 'notification_preferences',
+        'notification_push_channel', 'notification_push_sends', 'notification_push_subscriptions', 'notification_quotas',
+        'notification_sms_consents', 'notification_sms_opt_outs', 'notification_topics',
         'notification_types',
         'notification_workspace_muted_types', 'notification_workspace_settings', 'person_notifications'],
   '(a) no table, view or partition named for notifications is left but the new system''s');
@@ -69,11 +69,12 @@ select is(array(select p.proname::text from pg_proc p join dropped d on d.kind =
 select is(array(select p.proname::text from pg_proc p
                 where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace)
                   and p.proname ~ '(notif|notice)' order by 1),
-  array['apply_notification_email_event_service', 'claim_notification_emails_service', 'claim_notification_push_service',
-        'delete_notification_push_subscription_service', 'finish_notification_email_service', 'finish_notification_push_service',
+  array['apply_notification_email_event_service', 'begin_notification_dispatch_service', 'claim_notification_emails_service',
+        'claim_notification_push_service', 'delete_notification_push_subscription_service', 'end_notification_dispatch_service',
+        'finish_notification_email_service', 'finish_notification_push_service',
         'get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
-        'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_resolve', 'notification_route',
-        'notify', 'notify_account_security', 'notify_deciders', 'notify_holders', 'notify_rows', 'notify_workspace_closing',
+        'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_dispatch_alerts_service',
+        'notification_resolve', 'notification_route', 'notify', 'notify_account_security', 'notify_deciders', 'notify_holders', 'notify_rows', 'notify_workspace_closing',
         'purge_expired_notifications', 'release_notification_emails_service', 'release_notification_push_service',
         'save_notification_preferences_service', 'save_notification_push_subscription_service',
         'save_notification_workspace_settings_service'],
@@ -85,8 +86,8 @@ select is((select count(*)::integer from pg_policies where schemaname = 'realtim
 select is(array(select policyname::text from pg_policies where policyname ~ 'notif' order by 1),
   array['people hear their own notification signals'], '(a) no policy is named for notifications but the new system''s');
 select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
-  array['notification-email', 'notification-push', 'notification-retention'],
-  '(a) no scheduled job sends notifications but the new system''s: its email worker (BILDIRIM-14), its push worker (BILDIRIM-15) and the one that deletes expired ones');
+  array['notification-dispatch', 'notification-retention'],
+  '(a) no scheduled job sends notifications but the new system''s: its one dispatcher for every channel (BILDIRIM-DAGITICI) and the one that deletes expired ones');
 -- The domain work they served is still here.
 select ok(to_regprocedure('public.record_account_security_event_service(uuid, text, jsonb)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null

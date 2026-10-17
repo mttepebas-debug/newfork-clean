@@ -17,7 +17,7 @@ select no_plan();
 --       refusal, it is dead; a row not tried is given back;
 --   (f) Resend's word: delivered, a permanent bounce or a complaint suppresses the address, a temporary
 --       bounce changes nothing, the same event twice changes nothing more, an unknown email is ignored;
---   (g) only the worker may call these, and the cron calls it every minute;
+--   (g) only the worker may call these, and the dispatcher's cron calls it (BILDIRIM-DAGITICI);
 --   (h) review (BILDIRIM-14 ONAY @6457b4db): the cap leaves 30 of Resend's free 100 to invitations, resets
 --       and exports; a row whose lease ran out five times is dead; a link with a control character is
 --       refused; one rule says who still receives a notice; the run gives back what it did not try in one
@@ -67,8 +67,9 @@ $$;
 
 -- (a) The claim ---------------------------------------------------------------------------------------------
 
-select is((select daily_cap from app_private.notification_email_channel), 70,
-  '(h) the free plan''s cap for notices is 70 a day: 30 of Resend''s 100 stay for invitations, resets and exports');
+select is((select q.daily_limit - q.reserved_daily || ' ' || q.monthly_limit - q.reserved_monthly
+           from app_private.notification_quotas q where q.channel = 'email'), '70 2100',
+  '(h) the free plan''s room for notices is 70 a day and 2,100 a month: 30 of Resend''s 100 a day and 900 of its 3,000 a month stay for invitations, resets and exports');
 -- The channel opened an hour ago (in the product, when this migration was applied).
 update app_private.notification_email_channel set opened_at = now() - interval '1 hour';
 -- The queue is the whole database's: email waiting from other work on a shared database is set aside, and
@@ -141,7 +142,8 @@ select is(pg_temp.state('e:bea:stale'), 'dead stale', '(c) a required notice a d
 
 -- (d) The daily cap -----------------------------------------------------------------------------------------
 
-update app_private.notification_email_channel set daily_cap = 1;
+-- Room for one notice today: 31 a day with 30 kept back.
+update app_private.notification_quotas set daily_limit = 31, monthly_limit = null where channel = 'email';
 -- One sent today already (Can's role change, finished below).
 select public.finish_notification_email_service(pg_temp.delivery('e:can:1'), 'sent', 're_can_1', null);
 delete from public.notification_email_suppressions where email = pg_temp.address('can');
@@ -152,7 +154,7 @@ select is(pg_temp.claimed(6), array['e:ali:required'], '(d) at the cap, required
 select ok((select d.status = 'queued' and d.next_attempt_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC' + interval '1 day'
            from public.notification_deliveries d where d.id = pg_temp.delivery('e:can:capped')),
   '(d) an important one waits for tomorrow');
-update app_private.notification_email_channel set daily_cap = null;
+update app_private.notification_quotas set daily_limit = null where channel = 'email';
 
 -- (e) Finishing ---------------------------------------------------------------------------------------------
 
@@ -295,8 +297,10 @@ select is(
         'release_notification_emails_service(uuid[]) authenticated false',
         'release_notification_emails_service(uuid[]) service_role true'],
   '(g) only the worker may claim, finish or apply');
-select is((select schedule || ' ' || command from cron.job where jobname = 'notification-email'),
-  '* * * * * select app_private.dispatch_cron_endpoint(''/api/internal/cron/notification-email'');', '(g) the cron calls it every minute');
+select ok((select command ~ 'dispatch_cron_endpoint\(''/api/internal/cron/notification-dispatch''\)' from cron.job
+           where jobname = 'notification-dispatch')
+  and not exists (select 1 from cron.job where jobname = 'notification-email'),
+  '(g) the dispatcher of every channel sends email; email has no cron of its own (BILDIRIM-DAGITICI)');
 
 select * from finish();
 rollback;

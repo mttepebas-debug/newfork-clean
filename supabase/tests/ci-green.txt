@@ -202,6 +202,7 @@ supabase/tests/notification_feed_pages.test.sql
 supabase/tests/notify_documents.test.sql
 supabase/tests/sms_channel_gate.test.sql
 supabase/tests/notify_announcements.test.sql
+supabase/tests/notify_dispatch.test.sql
 supabase/tests/notify_email_channel.test.sql
 supabase/tests/notify_push_channel.test.sql
 supabase/tests/notify_availability.test.sql

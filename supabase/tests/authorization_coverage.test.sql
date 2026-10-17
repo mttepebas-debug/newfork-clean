@@ -269,7 +269,11 @@ insert into service_class values
   ('save_notification_push_subscription_service', 'account.self'),
   ('delete_notification_push_subscription_service', 'account.self'),
   ('finish_notification_push_service', 'exempt:worker'),
-  ('release_notification_push_service', 'exempt:worker');
+  ('release_notification_push_service', 'exempt:worker'),
+  -- One dispatcher for every channel (BILDIRIM-DAGITICI): its lease and its alerts are the worker's.
+  ('begin_notification_dispatch_service', 'exempt:worker'),
+  ('end_notification_dispatch_service', 'exempt:worker'),
+  ('notification_dispatch_alerts_service', 'exempt:worker');
 
 select is(
   array(

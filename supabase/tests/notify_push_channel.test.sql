@@ -103,7 +103,8 @@ update public.notification_deliveries set status = 'skipped', last_error = 'test
 where channel in ('push', 'email') and status in ('queued', 'sending', 'failed');
 update public.notification_deliveries set sent_at = sent_at - interval '2 days'
 where channel = 'email' and sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
-update app_private.notification_email_channel set opened_at = now() - interval '1 hour', daily_cap = null;
+update app_private.notification_email_channel set opened_at = now() - interval '1 hour';
+update app_private.notification_quotas set daily_limit = null, monthly_limit = null where channel = 'email';
 
 -- (a) Devices -----------------------------------------------------------------------------------------------
 
@@ -444,10 +445,11 @@ select is(array(select c.relname::text from pg_class c
                 order by 1),
   array['notification_push_sends', 'notification_push_subscriptions'],
   '(h) the devices and the sent record: row level security on, nothing granted to the browser');
-select is((select schedule from cron.job where jobname = 'notification-push'), '* * * * *', '(h) the cron looks every minute');
-select ok((select command ~ 'dispatch_cron_endpoint\(''/api/internal/cron/notification-push''\)' and command ~ 'where exists'
-           from cron.job where jobname = 'notification-push'),
-  '(h) and calls the worker only when a push is due');
+select is((select schedule from cron.job where jobname = 'notification-dispatch'), '5 seconds',
+  '(h) the dispatcher of every channel looks every 5 seconds (BILDIRIM-DAGITICI)');
+select ok((select command ~ 'dispatch_cron_endpoint\(''/api/internal/cron/notification-dispatch''\)' and command ~ 'exists \('
+           from cron.job where jobname = 'notification-dispatch'),
+  '(h) and calls it only when a delivery is due');
 
 -- Opening the channel skips waiting push only, never a sent one or another channel's.
 select pg_temp.device('ali', 'ali-4');
