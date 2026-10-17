@@ -60,7 +60,7 @@
   border-radius: 3px;
 }
 .avt-legend i.is-free {
-  border: 1px solid color-mix(in srgb, var(--theme-accent) 25%, var(--theme-surface));
+  border: 1px solid color-mix(in srgb, var(--theme-accent) 50%, var(--theme-surface));
   background: var(--theme-success-soft);
 }
 .avt-legend i.is-blocked {
@@ -206,6 +206,9 @@
   align-items: center;
   gap: 6px;
   flex: none;
+  min-height: 34px;
+  padding: 6px 12px;
+  font-size: 13px;
 }
 
 /* ---------- a person's page (phone) ---------- */
