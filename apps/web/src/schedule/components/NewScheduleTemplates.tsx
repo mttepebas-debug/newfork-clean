@@ -13,6 +13,8 @@ import { requestErrorText } from "../../lib/request-error";
 import { ListOutline, LoadError, RefreshError } from "../../shell/LoadState";
 import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
 import { agoText, plural } from "./newScheduleWindowText";
+import { FieldNote } from "../../shell/FieldNote";
+import { WindowAlert } from "../../shell/WindowAlert";
 
 export const TEMPLATE_NO_DEPARTMENT_KEY = "__no_department__";
 
@@ -205,7 +207,8 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
           </li>
         ))}
       </ul>
-      {error ? <p className="new-schedule-window-error" role="alert">{error}</p> : null}
+      {/* The list's own error keeps its room under the list (UI-FIELDMSG). */}
+      <FieldNote id="new-schedule-templates" error={error} lines={2} />
       {loadError}
     </>
   );
@@ -334,8 +337,9 @@ function SaveTemplate(props: NewScheduleTemplatesProps): JSX.Element {
         <input type="checkbox" checked={strip} onChange={(event) => setStrip(event.target.checked)} />
         Remove employee names (save as open shifts)
       </label>
-      {error ? <p className="new-schedule-window-error" role="alert">{error}</p> : null}
       <div className="new-schedule-window-actions">
+        {/* Over the form's bottom edge, above the buttons (UI-FIELDMSG). */}
+        <WindowAlert message={error} />
         <button type="button" className="secondary-button new-schedule-window-button" onClick={() => props.onSavingChange(false)}>Cancel</button>
         <button type="submit" className="nf-button new-schedule-window-button" disabled={pending || !draftId || !name.trim()}>
           {pending ? "Saving…" : "Save template"}
@@ -403,8 +407,9 @@ function UseInEdit(props: NewScheduleTemplatesProps & { readonly template: Sched
       {hasShifts ? (
         <p className="new-schedule-window-note">This schedule already has shifts. Add keeps them; Replace first removes the ones this template covers that haven't started.</p>
       ) : null}
-      {error ? <p className="new-schedule-window-error" role="alert">{error}</p> : null}
       <div className="new-schedule-window-actions is-start">
+        {/* Over the form's bottom edge, above the buttons (UI-FIELDMSG). */}
+        <WindowAlert message={error} />
         {hasShifts ? (
           <ReplaceShiftsButton
             countRemoved={() => props.onPreviewReplace(template.id, keysForApply)}

@@ -7,6 +7,7 @@ import { canPublish, type LineupLocation, type LineupShift } from "./lineup";
 import { lineupCommandMessage, useLineupCommand } from "./lineup-data";
 import { formatTime, type ScheduleTimeFormat } from "./lib/scheduleDateTime";
 import "./lineup-publish.css";
+import { WindowAlert } from "../shell/WindowAlert";
 
 // The Publish window (Mert 2026-10-13, "harika bu"; PLAN §3): one small window under the page's Publish
 // button, the look of the Schedule's top-right menus (style B). Lineups by location; a box beside each one
@@ -218,10 +219,9 @@ export function LineupPublishWindow({
         <span>Ask staff to acknowledge</span>
         <span className="lineup-publish-switch" aria-hidden />
       </button>
-      {note?.kind === "error" ? (
-        <p className="lineup-publish-error" role="alert">{note.text}</p>
-      ) : null}
       <footer className="lineup-publish-foot">
+        {/* Over the window's bottom edge, above the buttons (UI-FIELDMSG). */}
+        <WindowAlert message={note?.kind === "error" ? note.text : null} />
         {note?.kind === "ok" ? (
           <span className="lineup-publish-sum is-ok" role="status">
             <Check size={14} aria-hidden />

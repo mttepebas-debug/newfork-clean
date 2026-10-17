@@ -6,6 +6,7 @@ import type { ExportDownload } from "./files";
 import type { ExportPreferences } from "./preferences";
 import type { SnapshotResult } from "./snapshot";
 import "./export-v2.css";
+import { WindowAlert } from "../../shell/WindowAlert";
 
 type Format = ExportPreferences["format"];
 const formats: readonly { value: Format; label: string; hint: string; icon: typeof FileText }[] = [
@@ -64,8 +65,9 @@ export function ExportSettingsPanel(props: ExportSettingsPanelProps) {
             </Section>
           ) : null}
           <Section title={print ? "Paper" : "Layout"}><LayoutControls {...props} /></Section>
-          {error ? <p role="alert" className="form-error export-v2-error">{error}</p> : null}
           <div className="export-v2-footer">
+            {/* Over the settings' bottom edge, above the buttons (UI-FIELDMSG). */}
+            <WindowAlert message={error} />
             <button type="button" className="export-v2-secondary" disabled={disabled} onClick={onPreview}>
               <ExternalLink size={14} aria-hidden="true" />Open in a tab
             </button>

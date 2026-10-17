@@ -50,7 +50,6 @@ div.lineup-publish-pick { cursor: default; }
 .lineup-publish-switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--theme-surface); box-shadow: 0 1px 2px rgb(0 0 0 / 20%); transition: transform .15s; }
 .lineup-publish-item[aria-checked="true"] .lineup-publish-switch { background: var(--theme-accent); }
 .lineup-publish-item[aria-checked="true"] .lineup-publish-switch::after { transform: translateX(12px); }
-.lineup-publish-error { margin: 6px 12px 0; padding: 8px 10px; border-radius: 6px; background: var(--theme-danger-surface); color: var(--theme-danger-text); font-size: 12px; line-height: 1.4; }
 .lineup-publish-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; padding: 10px 12px 10px 16px; border-top: 1px solid var(--theme-border-subtle); }
 .lineup-publish-sum { color: var(--theme-muted); font-size: 12px; }
 .lineup-publish-sum.is-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--theme-published); font-weight: 500; }

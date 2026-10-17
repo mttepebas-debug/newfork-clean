@@ -5,6 +5,7 @@ import { applyScheduleDefaultHours, previewScheduleDefaultHours } from "../sched
 import "./default-hours-review.css";
 import { requestErrorText } from "../../lib/request-error";
 import { scheduleRefusalReason } from "../lib/scheduleRefusalReason";
+import { FieldNote } from "../../shell/FieldNote";
 
 export function DefaultHoursReviewDialog({ workspaceId, session, model, initialSelectedIds = [], onClose, onApplied }: {
   workspaceId: string; session: ScheduleEditSession; model: ScheduleReadModel; initialSelectedIds?: readonly string[];
@@ -102,7 +103,8 @@ export function DefaultHoursReviewDialog({ workspaceId, session, model, initialS
         {!candidates.length ? <p>No saved reference-hour shifts in this range.</p> : null}
         {candidates.length && !command ? <p>{ids.length ? "Check the dates and shifts selected." : "Choose at least one shift to review."}</p> : null}
         <button type="button" disabled={!command || Boolean(pending)} onClick={() => void load()}>{pending === "review" ? "Reviewing…" : `Review ${ids.length} shift${ids.length === 1 ? "" : "s"}`}</button>
-        {error ? <p role="alert" className="default-hours-problem"><CircleAlert size={15} aria-hidden />{error}</p> : null}
+        {/* Kept room under the button: the review below never moves (UI-FIELDMSG). */}
+        <FieldNote id="default-hours-review" error={error} lines={2} />
         {review ? <section aria-label="Default hours comparison" aria-live="polite">
           <p>Review for {review.starts_on} through {review.ends_on}: {review.changed_count} change{review.changed_count === 1 ? "" : "s"}, {review.blocked_count} blocked.</p>
           {!fresh ? <p role="status">This review is out of date. Review the selected shifts again before applying.</p> : null}

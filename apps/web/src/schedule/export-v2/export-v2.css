@@ -19,7 +19,6 @@
 .export-v2-section { display: flex; flex-direction: column; gap: 7px; }
 .export-v2-section > strong { color: var(--theme-muted); font-size: 10px; font-weight: 750; letter-spacing: .02em; text-transform: uppercase; }
 .export-v2-hint { margin: 0; color: var(--theme-muted); font-size: 12px; line-height: 1.5; }
-.export-v2-error { margin: 0; font-size: 12px; }
 
 /* File: three cards */
 .export-v2-formats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
