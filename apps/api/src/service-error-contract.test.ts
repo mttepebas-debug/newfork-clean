@@ -75,6 +75,7 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["notifications", () => createNotificationsService(options).counts(input)],
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
   ["lineup", () => createLineupService(options).myLineups({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
+  ["lineup day", () => createLineupService(options).day({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {

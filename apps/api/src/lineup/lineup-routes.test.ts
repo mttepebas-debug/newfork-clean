@@ -1,7 +1,7 @@
 import { authzActionKeys, permissionSchema, type ActiveWorkspaceContext, type AuthzAction } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
-import { acknowledgement, myLineups, shareResult } from "./lineup-fixtures";
+import { acknowledgement, lineupDay, myLineups, shareResult } from "./lineup-fixtures";
 import type { LineupService } from "./lineup-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -45,6 +45,7 @@ function serviceMock(): LineupService {
     command: vi.fn(async () => shareResult as never),
     myLineups: vi.fn(async () => myLineups as never),
     acknowledge: vi.fn(async () => acknowledgement as never),
+    day: vi.fn(async () => lineupDay as never),
   };
 }
 
@@ -61,6 +62,7 @@ const routes = [
   ["publish", "POST", `${w}/lineups/commands`, share, "lineup.share"],
   ["my lineups", "GET", `${w}/my-lineups/2028-09-11`, undefined, "employee_hub.read"],
   ["acknowledge", "POST", `${w}/lineups/versions/${versionId}/acknowledge`, undefined, "lineup.acknowledge"],
+  ["day", "GET", `${w}/lineups/2028-09-11`, undefined, "lineup.read"],
 ] as const;
 
 describe("lineup routes", () => {
@@ -84,6 +86,25 @@ describe("lineup routes", () => {
     expect(service.myLineups).toHaveBeenCalledWith({ ...actor, date: "2028-09-11" });
   });
 
+  it("reads the manager's day, every location she reads", async () => {
+    const service = serviceMock();
+    const response = await appWith(service).inject({ method: "GET", url: `${w}/lineups/2028-09-11`, headers: auth });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(lineupDay);
+    expect(service.day).toHaveBeenCalledWith({ ...actor, date: "2028-09-11" });
+  });
+
+  it("reads the day at chosen locations and shift types", async () => {
+    const service = serviceMock();
+    const [a, b] = [lineup.location_id, "9f0c4e8e-4a0a-4d55-9d3f-8f3b2f7e1c11"];
+    const type = "c31b6d2a-4a25-4404-8fb0-bd9903551d4c";
+    const response = await appWith(service).inject({
+      method: "GET", url: `${w}/lineups/2028-09-11?location_ids=${a},${b}&shift_type_ids=${type}`, headers: auth,
+    });
+    expect(response.statusCode).toBe(200);
+    expect(service.day).toHaveBeenCalledWith({ ...actor, date: "2028-09-11", locationIds: [a, b], shiftTypeIds: [type] });
+  });
+
   it("acknowledges a version", async () => {
     const service = serviceMock();
     const response = await appWith(service).inject({
@@ -103,6 +124,9 @@ describe("lineup routes", () => {
     ["GET", `${w}/my-lineups/yesterday`, undefined],
     ["POST", `${w}/lineups/versions/not-a-uuid/acknowledge`, undefined],
     ["GET", "/v1/workspaces/not-a-uuid/my-lineups/2028-09-11", undefined],
+    ["GET", `${w}/lineups/tomorrow`, undefined],
+    ["GET", `${w}/lineups/2028-09-11?location_ids=not-a-uuid`, undefined],
+    ["GET", `${w}/lineups/2028-09-11?shift_type_ids=`, undefined],
   ] as const)("refuses %s %s with 400 and never asks the core", async (method, url, payload) => {
     const service = serviceMock();
     const response = await appWith(service).inject({ method, url, headers: auth, payload });
@@ -110,6 +134,7 @@ describe("lineup routes", () => {
     expect(service.command).not.toHaveBeenCalled();
     expect(service.myLineups).not.toHaveBeenCalled();
     expect(service.acknowledge).not.toHaveBeenCalled();
+    expect(service.day).not.toHaveBeenCalled();
   });
 
   it.each(routes)("%s: without its action, 403 before the body is read", async (_name, method, url, payload, action) => {

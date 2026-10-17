@@ -104,3 +104,88 @@ export const lineupAcknowledgementSchema = z.object({
   acknowledged_at: instant,
 });
 export type LineupAcknowledgement = z.infer<typeof lineupAcknowledgementSchema>;
+
+// The manager's day (get_lineup_day_service, LINEUP-DB + LINEUP-PUBLISH): the day's lineups at each location
+// the actor reads, each with its publish state and its rows as the live Schedule has them plus what the lineup
+// changed. A lineup with no header yet (never touched, never published) has a null id.
+
+const lineupDayRowSchema = z.object({
+  id: id.nullable(),
+  shift_id: id.nullable(),
+  source_shift_id: id.nullable(),
+  // null: an open shift.
+  employee_id: id.nullable(),
+  name: z.string().nullable(),
+  job_id: id.nullable(),
+  job_name: z.string().nullable(),
+  job_color: z.string().nullable(),
+  department_id: id.nullable(),
+  department_name: z.string().nullable(),
+  start_time: timeOfDay,
+  end_time: timeOfDay,
+  crosses_midnight: z.boolean(),
+  schedule_start_time: timeOfDay.nullable(),
+  schedule_end_time: timeOfDay.nullable(),
+  label_ids: z.array(id).nullable(),
+  label_names: z.array(z.string()).nullable(),
+  section_id: id.nullable(),
+  section_name: z.string().nullable(),
+  sort_order: z.number().int().nullable(),
+  called_off_at: instant.nullable(),
+  called_off_by: id.nullable(),
+  lineup_only: z.boolean(),
+  changed: z.array(z.string()),
+});
+export type LineupDayRow = z.infer<typeof lineupDayRowSchema>;
+
+export const lineupDayLineupSchema = z.object({
+  id: id.nullable(),
+  shift_type_id: id.nullable(),
+  shift_type_name: z.string().nullable(),
+  color: z.string().nullable(),
+  /** past: the day is over where the location is; editing: published once, taken back. */
+  status: z.enum(["draft", "shared", "editing", "past"]),
+  version: z.number().int().positive().nullable(),
+  shared_at: instant.nullable(),
+  ask_ack: z.boolean().nullable(),
+  /** Acknowledgements of the version employees see; null before the first publish. */
+  acknowledged: z.number().int().nonnegative().nullable(),
+  revision: z.number().int().nullable(),
+  /** Employees see it now. */
+  published: z.boolean(),
+  version_id: id.nullable(),
+  shared_by: id.nullable(),
+  shared_by_name: z.string().nullable(),
+  /** Everybody on it, and those of them with the app ("Read 7/11" is acknowledged / with_app). */
+  people: z.number().int().nonnegative(),
+  with_app: z.number().int().nonnegative(),
+  notes: z.object({ specials: z.string(), n86: z.string(), shift_notes: z.string() }),
+  rows: z.array(lineupDayRowSchema),
+});
+export type LineupDayLineup = z.infer<typeof lineupDayLineupSchema>;
+
+const lineupClosureSchema = z.object({ title: z.string(), status: z.string().nullable() });
+
+export const lineupDaySchema = z.object({
+  workspace_id: id,
+  date: day,
+  locations: z.array(
+    z.object({
+      id,
+      name: z.string(),
+      timezone: z.string(),
+      closed: lineupClosureSchema.nullable(),
+      short_hours: lineupClosureSchema.extend({ opens: timeOfDay.nullable(), closes: timeOfDay.nullable() }).nullable(),
+      lineups: z.array(lineupDayLineupSchema),
+    }),
+  ),
+  sections: z.array(z.object({ id, location_id: id, name: z.string(), sort_order: z.number().int() })),
+});
+export type LineupDay = z.infer<typeof lineupDaySchema>;
+
+/** The day read's filters: comma-separated ids in the query string, each list optional. */
+export const lineupDayQuerySchema = z.object({
+  location_ids: z.array(id).min(1).max(100).optional(),
+  shift_type_ids: z.array(id).min(1).max(100).optional(),
+});
+export type LineupDayQuery = z.infer<typeof lineupDayQuerySchema>;

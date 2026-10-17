@@ -86,6 +86,7 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["employee onboarding", "GET", "/v1/me/onboarding"],
   ["employee onboarding phone", "GET", "/v1/me/onboarding/phone-in-use?phone=4155550100"],
   ["lineup", "GET", `${w}/my-lineups/2028-09-11`],
+  ["lineup day", "GET", `${w}/lineups/2028-09-11`],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {

@@ -1,4 +1,4 @@
-import { lineupCommandInputSchema, type AuthzAction } from "@newfork/shared";
+import { lineupCommandInputSchema, lineupDayQuerySchema, type AuthzAction } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
@@ -7,6 +7,10 @@ import { lineupServiceFromEnvironment, type LineupService } from "./lineup-servi
 const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 const dayParams = workspaceParams.extend({ date: z.string().date() });
 const versionParams = workspaceParams.extend({ versionId: z.string().uuid() });
+
+// ?location_ids=a,b&shift_type_ids=c: comma-separated; an absent list reads everything the actor may.
+const idList = z.string().transform((value) => value.split(","));
+const dayQuery = z.object({ location_ids: idList.optional(), shift_type_ids: idList.optional() }).pipe(lineupDayQuerySchema);
 
 /**
  * LINEUP-PUBLISH: a manager publishes a day's lineups or takes them back (lineup.share, where she may publish
@@ -33,6 +37,23 @@ export function registerLineupRoutes(
     if (!body.success) return reply.status(400).send({ error: "Choose lineups to publish or unpublish" });
     if (!service) return reply.status(503).send(unavailable);
     return reply.send(await service.command({ ...actor, command: body.data }));
+  });
+
+  app.get("/v1/workspaces/:workspaceId/lineups/:date", async (request, reply) => {
+    const workspace = workspaceParams.safeParse(request.params);
+    if (!workspace.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const actor = await actorFor(request.headers.authorization, workspace.data.workspaceId, "lineup.read");
+    const params = dayParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid day required" });
+    const query = dayQuery.safeParse(request.query);
+    if (!query.success) return reply.status(400).send({ error: "Valid locations and shift types required" });
+    if (!service) return reply.status(503).send(unavailable);
+    return reply.send(await service.day({
+      ...actor,
+      date: params.data.date,
+      ...(query.data.location_ids ? { locationIds: query.data.location_ids } : {}),
+      ...(query.data.shift_type_ids ? { shiftTypeIds: query.data.shift_type_ids } : {}),
+    }));
   });
 
   app.get("/v1/workspaces/:workspaceId/my-lineups/:date", async (request, reply) => {

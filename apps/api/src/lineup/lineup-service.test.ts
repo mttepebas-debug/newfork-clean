@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { lineupService } from "./lineup-service";
-import { acknowledgement, myLineups, shareResult, unpublishResult } from "./lineup-fixtures";
+import { acknowledgement, lineupDay, myLineups, shareResult, unpublishResult } from "./lineup-fixtures";
 
 const actor = { actorUserId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
 const lineup = {
@@ -40,6 +40,19 @@ describe("lineup service", () => {
     expect(await lineupService(rpc).myLineups({ ...actor, date: "2028-09-11" })).toEqual(myLineups);
     expect(rpc.rpc).toHaveBeenCalledWith("get_my_lineups_service", {
       actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, target_date: "2028-09-11",
+    });
+  });
+
+  it("reads the manager's day: every reachable location unless she chose some", async () => {
+    const rpc = client(lineupDay);
+    expect(await lineupService(rpc).day({ ...actor, date: "2028-09-11" })).toEqual(lineupDay);
+    expect(rpc.rpc).toHaveBeenCalledWith("get_lineup_day_service", {
+      actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, target_date: "2028-09-11",
+      target_location_ids: null, target_shift_type_ids: null,
+    });
+    await lineupService(rpc).day({ ...actor, date: "2028-09-11", locationIds: [lineup.location_id], shiftTypeIds: [lineup.shift_type_id] });
+    expect(rpc.rpc.mock.calls[1]?.[1]).toMatchObject({
+      target_location_ids: [lineup.location_id], target_shift_type_ids: [lineup.shift_type_id],
     });
   });
 

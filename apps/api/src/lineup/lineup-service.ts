@@ -2,10 +2,12 @@ import { createClient } from "@supabase/supabase-js";
 import {
   lineupAcknowledgementSchema,
   lineupCommandResultSchema,
+  lineupDaySchema,
   myLineupsSchema,
   type LineupAcknowledgement,
   type LineupCommandInput,
   type LineupCommandResult,
+  type LineupDay,
   type MyLineups,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
@@ -20,6 +22,10 @@ export interface LineupService {
   command(input: Actor & { readonly command: LineupCommandInput }): Promise<LineupCommandResult>;
   myLineups(input: Actor & { readonly date: string }): Promise<MyLineups>;
   acknowledge(input: Actor & { readonly versionId: string }): Promise<LineupAcknowledgement>;
+  /** The manager's day: every location she reads, unless she chose some (lineup.read). */
+  day(
+    input: Actor & { readonly date: string; readonly locationIds?: readonly string[]; readonly shiftTypeIds?: readonly string[] },
+  ): Promise<LineupDay>;
 }
 
 type RpcError = { message: string; code?: string; hint?: string | null; details?: string | null };
@@ -74,6 +80,15 @@ export function lineupService(client: RpcClient): LineupService {
         actor_user_id: actor.actorUserId,
         target_workspace_id: actor.workspaceId,
         version_id: versionId,
+      }));
+    },
+    async day({ date, locationIds, shiftTypeIds, ...actor }) {
+      return lineupDaySchema.parse(await rpc("get_lineup_day_service", {
+        actor_user_id: actor.actorUserId,
+        target_workspace_id: actor.workspaceId,
+        target_date: date,
+        target_location_ids: locationIds ?? null,
+        target_shift_type_ids: shiftTypeIds ?? null,
       }));
     },
   };

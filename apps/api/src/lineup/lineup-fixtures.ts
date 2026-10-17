@@ -48,3 +48,159 @@ export const myLineups = {
   }],
   workspace_id: "bd582081-5bae-4793-ab87-43bb7de21e53",
 };
+
+// get_lineup_day_service for the owner the same day, after Mia published Kadikoy's Dinner (asking to
+// acknowledge) and Eli acknowledged it; Besiktas has a shift with no shift type, never published.
+export const lineupDay = {
+  "date": "2028-09-11",
+  "sections": [],
+  "locations": [
+    {
+      "id": "e49ebe95-bfc2-401e-babf-5d1de656b68d",
+      "name": "Besiktas",
+      "closed": null,
+      "lineups": [
+        {
+          "id": null,
+          "rows": [
+            {
+              "id": null,
+              "name": "Bo Person",
+              "job_id": "37ba0e0a-fc35-4b66-8a10-d475394e51a6",
+              "changed": [],
+              "end_time": "22:00",
+              "job_name": "Server",
+              "shift_id": "eb32cb63-e347-4da4-b1bf-78bbb4074f05",
+              "job_color": "#4478A8",
+              "label_ids": [],
+              "section_id": null,
+              "sort_order": null,
+              "start_time": "16:00",
+              "employee_id": "ba9729ba-8fb0-4c57-aa59-677ac5900638",
+              "label_names": [],
+              "lineup_only": false,
+              "section_name": null,
+              "called_off_at": null,
+              "called_off_by": null,
+              "department_id": "5599a92c-5bb6-40b5-be06-1e53bcc2ffa8",
+              "department_name": "Kitchen",
+              "source_shift_id": "be50320c-52d9-4f54-9684-372461ec9a95",
+              "crosses_midnight": false,
+              "schedule_end_time": "22:00",
+              "schedule_start_time": "16:00"
+            }
+          ],
+          "color": null,
+          "notes": {
+            "n86": "",
+            "specials": "",
+            "shift_notes": ""
+          },
+          "people": 1,
+          "status": "draft",
+          "ask_ack": null,
+          "version": null,
+          "revision": null,
+          "with_app": 1,
+          "published": false,
+          "shared_at": null,
+          "shared_by": null,
+          "version_id": null,
+          "acknowledged": null,
+          "shift_type_id": null,
+          "shared_by_name": null,
+          "shift_type_name": null
+        }
+      ],
+      "timezone": "Europe/Istanbul",
+      "short_hours": null
+    },
+    {
+      "id": "1becc136-8d0e-448f-9875-b7902eb78740",
+      "name": "Kadikoy",
+      "closed": null,
+      "lineups": [
+        {
+          "id": "710250b6-b07c-4dae-bf1e-7ae7a8dc5b4d",
+          "rows": [
+            {
+              "id": null,
+              "name": "Eli Person",
+              "job_id": "58de85cc-ea3d-4273-ad94-a9b3abaefd68",
+              "changed": [],
+              "end_time": "22:00",
+              "job_name": "Cook",
+              "shift_id": "440fb7b4-6bd2-4353-bb55-eda4131ef292",
+              "job_color": "#D39A36",
+              "label_ids": [],
+              "section_id": null,
+              "sort_order": null,
+              "start_time": "16:00",
+              "employee_id": "44224ba5-39b4-4caf-9959-453689224959",
+              "label_names": [],
+              "lineup_only": false,
+              "section_name": null,
+              "called_off_at": null,
+              "called_off_by": null,
+              "department_id": "5599a92c-5bb6-40b5-be06-1e53bcc2ffa8",
+              "department_name": "Kitchen",
+              "source_shift_id": "4d1581ea-be80-4e60-a350-3875763b288d",
+              "crosses_midnight": false,
+              "schedule_end_time": "22:00",
+              "schedule_start_time": "16:00"
+            },
+            {
+              "id": null,
+              "name": "Mia Person",
+              "job_id": "58de85cc-ea3d-4273-ad94-a9b3abaefd68",
+              "changed": [],
+              "end_time": "23:30",
+              "job_name": "Cook",
+              "shift_id": "fadc67dd-28f3-4e55-9722-594aab24e134",
+              "job_color": "#D39A36",
+              "label_ids": [],
+              "section_id": null,
+              "sort_order": null,
+              "start_time": "17:00",
+              "employee_id": "37aa71a4-48a6-4eb6-b68f-8d03db074c6e",
+              "label_names": [],
+              "lineup_only": false,
+              "section_name": null,
+              "called_off_at": null,
+              "called_off_by": null,
+              "department_id": "5599a92c-5bb6-40b5-be06-1e53bcc2ffa8",
+              "department_name": "Kitchen",
+              "source_shift_id": "61fdae84-2fa2-4b52-bb58-6d1351b44e82",
+              "crosses_midnight": false,
+              "schedule_end_time": "23:30",
+              "schedule_start_time": "17:00"
+            }
+          ],
+          "color": "#1F9D74",
+          "notes": {
+            "n86": "",
+            "specials": "",
+            "shift_notes": ""
+          },
+          "people": 2,
+          "status": "shared",
+          "ask_ack": true,
+          "version": 1,
+          "revision": 2,
+          "with_app": 2,
+          "published": true,
+          "shared_at": "2026-10-17T09:48:50.540623+00:00",
+          "shared_by": "358ce37a-fa2f-4e94-98a8-8d2269a26a72",
+          "version_id": "9ee08a43-b13d-473d-834c-414871230e66",
+          "acknowledged": 1,
+          "shift_type_id": "8f64971f-15de-40e0-9b18-edc24428fc4c",
+          "shared_by_name": "Mia Person",
+          "shift_type_name": "Dinner"
+        }
+      ],
+      "timezone": "Europe/Istanbul",
+      "short_hours": null
+    }
+  ],
+  "workspace_id": "5ad738d1-44eb-4ea5-a7a7-37bb87809484"
+};
