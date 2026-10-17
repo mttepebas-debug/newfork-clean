@@ -1,5 +1,6 @@
 import { useRef, type JSX } from "react";
 import { useDialogFocus } from "../lib/useDialogFocus";
+import { WindowAlert } from "../../shell/WindowAlert";
 
 export interface ScheduleEditTimeoutDialogProps {
   readonly open: boolean;
@@ -52,12 +53,9 @@ export function ScheduleEditTimeoutDialog({
           <p>No activity for {idleMinutes} minutes.</p>
           {/* BL-719 (S1): what the countdown ends in. */}
           <p>When time runs out, your changes are saved as a draft and editing ends.</p>
-          {error ? (
-            <p className="schedule-timeout-error" role="alert">
-              {error}
-            </p>
-          ) : null}
           <div className="schedule-dialog-actions">
+            {/* Over the text's bottom edge, above the buttons (UI-FIELDMSG). */}
+            <WindowAlert message={error} />
             <button type="button" disabled={isSaving} onClick={onSaveDraft}>
               {isSaving ? "SAVING..." : "SAVE"}
             </button>

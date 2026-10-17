@@ -7552,14 +7552,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
   font-size: 13px;
   line-height: 18px;
 }
-.schedule-timeout-error {
-  border: 1px solid #fde68a;
-  border-radius: 6px;
-  background: #fffbeb;
-  padding: 8px 10px;
-  color: #713f12 !important;
-  line-height: 18px;
-}
 .schedule-retroactive-dialog {
   position: relative;
   display: grid;
@@ -8586,16 +8578,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .schedule-unpublish-effects span {
   color: #26312d;
   font-size: 13px;
-  font-weight: 700;
-}
-.schedule-unpublish-error {
-  margin: 0;
-  border: 1px solid #e4b2a8;
-  border-radius: 6px;
-  padding: 10px 12px;
-  background: #fff4f1;
-  color: #9f352a;
-  font-size: 12px;
   font-weight: 700;
 }
 .schedule-unpublish-dialog > footer {

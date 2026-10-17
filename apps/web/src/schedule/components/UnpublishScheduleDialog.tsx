@@ -7,6 +7,7 @@ import type { LocationPublicationChipStatus } from "../lib/scheduleFilterModel";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { countLabel } from "./PublishPreflightPanel";
 import { requestErrorText } from "../../lib/request-error";
+import { WindowAlert } from "../../shell/WindowAlert";
 
 export function UnpublishScheduleDialog({
   open,
@@ -169,14 +170,11 @@ export function UnpublishScheduleDialog({
               text="Publish again to bring these shifts back."
             />
           </div>
-          {error ? (
-            <p className="schedule-unpublish-error" role="alert">
-              {error}
-            </p>
-          ) : null}
         </div>
 
         <footer>
+          {/* Over the body's bottom edge, above the buttons (UI-FIELDMSG). */}
+          <WindowAlert message={error} />
           <button
             ref={cancelButtonRef}
             type="button"
