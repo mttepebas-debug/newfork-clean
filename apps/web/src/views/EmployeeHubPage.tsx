@@ -42,6 +42,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { FieldNote } from "../shell/FieldNote";
 // Navigation between these pages lives in the app sidebar. This map supplies
 // the shared catalog header copy, written for the employee reading it.
 const pageCopy: Record<
@@ -419,14 +420,11 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
             </select>
           </label>
           {periodMode === "hours" ? <TimeOffHourFields ranges={hours} onChange={setHours} timeFormat={model.settings.time_format} presets={presets} /> : null}
-          {rangeTooLong ? <p role="alert">Choose a date range of at most 31 calendar days. No dates will be silently omitted.</p> : null}
           {periodMode === "per_date" && !rangeTooLong ? <TimeOffDateFields dates={selectedDates} drafts={dateDrafts} defaults={dateDefaults} onChange={setDateDrafts} timeFormat={model.settings.time_format} presets={presets} /> : null}
           {Object.keys(dateDrafts).some(date=>!selectedDates.includes(date)) ? <p>Some customized dates are outside this range and will not be submitted. Their edits are kept if you restore those dates before submitting.</p> : null}
           {periodMode !== "per_date" && Object.keys(dateDrafts).length ? <p>Your per-date edits are kept if you switch back before submitting. The current time choice applies to every selected date.</p> : null}
           {periodMode === "per_date" && selectedDates.length && !rangeTooLong ? <p>{periods.length} requested period(s) across {new Set(periods.map(period=>period.segment_date)).size} date(s).</p> : null}
           {urgent ? <p className="time-off-urgent" role="status">This starts soon. Talk to your manager directly if it's urgent.</p> : null}
-          {started ? <p role="alert">This time off has already started. Talk to your manager directly.</p>
-            : start && !validation.success ? <p role="alert">{validation.error.issues[0]?.message}</p> : null}
           <label>
             Note
             <textarea
@@ -436,13 +434,27 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               placeholder="Optional context"
             />
           </label>
+          {/* Why it can't be sent, in one kept place above Submit (UI-FIELDMSG). */}
+          <FieldNote
+            id="time-off-check"
+            lines={2}
+            error={
+              rangeTooLong
+                ? "Choose a date range of at most 31 calendar days. No dates will be silently omitted."
+                : started
+                  ? "This time off has already started. Talk to your manager directly."
+                  : start && !validation.success
+                    ? validation.error.issues[0]?.message
+                    : null
+            }
+          />
           <Button type="submit" disabled={timeOff.isPending || !validation.success || started || rangeTooLong}>
             Submit request
           </Button>
           </fieldset>
         </form>
         {sent ? <p className="time-off-sent" role="status">{sent}</p> : null}
-        {timeOff.error ? <InlineError error={timeOff.error} /> : null}
+        <InlineError id="time-off-submit" error={timeOff.error} />
       </HubSection>
       <HubSection
         title="Time off requests"
@@ -494,9 +506,10 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
         {!timeOffRequests.length ? (
           <Empty text="No time off requests submitted yet." />
         ) : null}
-        {actionMutation.error ? (
-          <InlineError error={isStaleTimeOff(actionMutation.error) ? new Error("This request changed. Review it again.") : actionMutation.error} />
-        ) : null}
+        <InlineError
+          id="time-off-action"
+          error={isStaleTimeOff(actionMutation.error) ? new Error("This request changed. Review it again.") : actionMutation.error}
+        />
       </HubSection>
     </div>
   );
@@ -551,11 +564,14 @@ function HubSection({
 function Empty({ text }: { text: string }) {
   return <p className="muted empty-inline">{text}</p>;
 }
-function InlineError({ error }: { error: unknown }) {
+/** A section's own error in its kept place, so nothing below it moves (UI-FIELDMSG). */
+function InlineError({ id, error }: { id: string; error: unknown }) {
   return (
-    <p className="form-error" role="alert">
-      {error instanceof Error ? error.message : "Operation failed"}
-    </p>
+    <FieldNote
+      id={id}
+      lines={2}
+      error={error ? (error instanceof Error ? error.message : "Operation failed") : null}
+    />
   );
 }
 function scheduleDateFromSearch(search: string): string | null {
