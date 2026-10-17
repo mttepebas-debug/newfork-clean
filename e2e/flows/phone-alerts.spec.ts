@@ -75,6 +75,11 @@ test("an employee turns phone alerts on from Home and Account says this computer
   await expect(page.getByRole("heading", { level: 1 }).first()).toBeVisible();
   await expect(page.getByRole("complementary", { name: /Get alerts on this/ })).toHaveCount(0);
   await page.goto("/app/employee-hub/schedule");
+  // The schedule is seen once the signed-in app has drawn it here, not when the address loads: the device
+  // remembers it then (home-card-memory.ts).
+  await expect
+    .poll(() => page.evaluate(() => window.localStorage.getItem("newfork.phoneAlerts.scheduleSeen")), { timeout: 15_000 })
+    .toBe("1");
   await page.goto("/app/employee-hub");
   const card = page.getByRole("complementary", { name: "Get alerts on this computer" });
   await expect(card).toBeVisible();
