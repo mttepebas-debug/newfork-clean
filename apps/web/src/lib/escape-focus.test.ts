@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from "vitest";
 import { installEscapeFocus } from "./escape-focus";
 let dispose: (() => void) | undefined;
+// jsdom has no PointerEvent.
+const pointer = (pointerType: string) => Object.assign(new Event("pointerdown"), { pointerType });
 afterEach(() => {
   dispose?.();
   document.body.replaceChildren();
@@ -42,5 +44,28 @@ describe("Escape focus presentation", () => {
     window.dispatchEvent(new KeyboardEvent("keydown", { key: " " }));
     dispose();
     expect(document.documentElement.dataset.keyboardInput).toBeUndefined();
+  });
+  // Mert's phone notes 2026-10-17 #3: under a finger a sheet's first focus
+  // draws no ring; a physical keyboard brings rings back, typing in a field
+  // on the screen's keyboard does not.
+  it("marks the page while a finger is in use", () => {
+    dispose = installEscapeFocus(window, document);
+    const field = document.createElement("input");
+    document.body.append(field);
+    window.dispatchEvent(pointer("touch"));
+    expect(document.documentElement.dataset.touchInput).toBe("true");
+    field.dispatchEvent(new KeyboardEvent("keydown", { key: "a", bubbles: true }));
+    expect(document.documentElement.dataset.touchInput).toBe("true");
+    document.body.dispatchEvent(new KeyboardEvent("keydown", { key: "ArrowDown", bubbles: true }));
+    expect(document.documentElement.dataset.touchInput).toBeUndefined();
+    window.dispatchEvent(pointer("touch"));
+    field.dispatchEvent(new KeyboardEvent("keydown", { key: "Tab", bubbles: true }));
+    expect(document.documentElement.dataset.touchInput).toBeUndefined();
+    window.dispatchEvent(pointer("touch"));
+    window.dispatchEvent(pointer("mouse"));
+    expect(document.documentElement.dataset.touchInput).toBeUndefined();
+    window.dispatchEvent(pointer("touch"));
+    dispose();
+    expect(document.documentElement.dataset.touchInput).toBeUndefined();
   });
 });
