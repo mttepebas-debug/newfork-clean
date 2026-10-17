@@ -28,7 +28,8 @@ test("a tapped notice opens its announcement on a phone, cold and with the app o
   // Ali has his announcements open when the post goes out: the list he holds does not have it yet.
   await page.goto("/app/announcements");
   await expect(page.getByRole("heading", { name: "Announcements", level: 1 })).toBeVisible();
-  await expect(page.getByText("No announcements for you right now.").or(page.locator(".announcement-reader-row").first())).toBeVisible();
+  // The reader's tabs come with the loaded list, whatever other posts the shared world holds.
+  await expect(page.getByRole("tab", { name: "Current", selected: true })).toBeVisible();
 
   const ids = JSON.parse(
     sql(`select json_build_object('workspace', tests.id('${world.run}'), 'kadikoy', tests.id('${world.run}:K'));`),
@@ -80,7 +81,7 @@ test("a tapped notice opens its announcement on a phone, cold and with the app o
   await expect(reader.getByRole("heading", { name: title })).toBeVisible();
   await expect(reader.getByText(message)).toBeVisible();
   await page.screenshot({ path: `${shots}tap-warm-390.png` });
-  await reader.getByRole("button", { name: "Close", exact: true }).last().click();
+  await reader.locator("footer").getByRole("button", { name: "Close", exact: true }).click();
   await expect(reader).toHaveCount(0);
 
   // Cold: the app starts on the notice's address.
