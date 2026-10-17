@@ -64,6 +64,30 @@ describe("weekly unavailable preference contract", () => {
     expect(weeklyPreferenceSchema.safeParse(types).success).toBe(false);
   });
 
+  // Mert 2026-10-16 ("kural da 1'e insin"): a person saves one time range a
+  // day. A read still takes what the database holds (a mode change can write
+  // several), so the week loads and the person can bring it down to one.
+  it("saves one time range a day, and still reads a week with several", () => {
+    const preference = emptyWeeklyPreference("time_range");
+    const command = {
+      employee_id: employee,
+      source: "employee" as const,
+      expected_revision: 0,
+      settings_revision: 1,
+      preference,
+    };
+    preference.days[2]!.ranges = [{ start: "17:00", end: "24:00" }];
+    expect(weeklyPreferenceSaveSchema.safeParse(command).success).toBe(true);
+    preference.days[2]!.ranges = [
+      { start: "09:00", end: "12:00" },
+      { start: "17:00", end: "24:00" },
+    ];
+    const refused = weeklyPreferenceSaveSchema.safeParse(command);
+    expect(refused.success).toBe(false);
+    expect(refused.error?.issues[0]?.message).toBe("Keep one time range on Tuesday.");
+    expect(weeklyPreferenceSchema.safeParse(preference).success).toBe(true);
+  });
+
   it("has no single range any more", () => {
     const preference = { ...emptyWeeklyPreference("time_range") };
     expect(preference.days.every((day) => !("range" in day) && day.ranges.length === 0)).toBe(true);

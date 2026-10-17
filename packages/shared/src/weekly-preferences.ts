@@ -14,8 +14,9 @@ export const weeklyPreferenceDaySchema = z
     day: z.number().int().min(0).max(6),
     all_day: z.boolean(),
     shift_type_ids: z.array(z.string().uuid()).max(64),
-    // M4, S2 (a): several hours a day, in order and apart (touching hours are
-    // one range), each within the day.
+    // What the database holds: in order and apart (touching hours are one
+    // range), each within the day. A mode change (M4) can write several; a
+    // save takes one (weeklyPreferenceSaveSchema).
     ranges: z.array(unavailableRangeSchema).max(12),
   })
   .superRefine((value, ctx) => {
@@ -134,6 +135,15 @@ export const weeklyTeamReadSchema = z.object({
   ),
 });
 export type WeeklyTeamRead = z.infer<typeof weeklyTeamReadSchema>;
+const weekdayNames = [
+  "Sunday",
+  "Monday",
+  "Tuesday",
+  "Wednesday",
+  "Thursday",
+  "Friday",
+  "Saturday",
+];
 export const weeklyPreferenceSaveSchema = z
   .object({
     employee_id: z.string().uuid(),
@@ -146,6 +156,15 @@ export const weeklyPreferenceSaveSchema = z
     copy_employee_revision: z.number().int().positive().optional(),
   })
   .superRefine((value, ctx) => {
+    // Mert 2026-10-16: one time range a day ("kural da 1'e insin").
+    value.preference.days.forEach((day, index) => {
+      if (day.ranges.length > 1)
+        ctx.addIssue({
+          code: "custom",
+          path: ["preference", "days", index, "ranges"],
+          message: `Keep one time range on ${weekdayNames[day.day]}.`,
+        });
+    });
     if (
       value.source === "employee" &&
       (value.enabled !== undefined ||

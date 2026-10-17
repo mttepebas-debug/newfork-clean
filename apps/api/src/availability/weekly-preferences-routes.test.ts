@@ -268,6 +268,26 @@ describe("weekly preference routes", () => {
       await app.close();
     }
   });
+  it("refuses a week with two time ranges on a day before the database sees it", async () => {
+    const { app, service } = setup();
+    const preference = emptyWeeklyPreference("time_range");
+    preference.days[5]!.ranges = [
+      { start: "09:00", end: "12:00" },
+      { start: "17:00", end: "24:00" },
+    ];
+    try {
+      const response = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspace}/availability/weekly`,
+        headers: { authorization: "Bearer test", "idempotency-key": key },
+        payload: { ...command, preference },
+      });
+      expect(response.statusCode).toBe(400);
+      expect(service.saveWeekly).not.toHaveBeenCalled();
+    } finally {
+      await app.close();
+    }
+  });
   it.each([
     ["42501", 403],
     ["PT409", 409],
