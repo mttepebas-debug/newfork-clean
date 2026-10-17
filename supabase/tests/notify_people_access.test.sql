@@ -146,6 +146,75 @@ select is(tests.unlisted_notices(tests.id('pa'), array(select id from checked) |
   'so far every notice is in its recipient''s choices (BILDIRIM-12); access ended goes to former members by design');
 insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('pa');
 
+-- (g) The access work outlives its notices ---------------------------------------------------------------
+-- With the core's write (notify_rows), its card close (notification_resolve) or its holder list
+-- (notify_holders) broken in turn, every path still completes: a role changed, access removed, employment
+-- ended, archived and restored, a last location taken, an ownership transfer asked, declined, asked and
+-- cancelled. The failure is logged; the work stands.
+
+select tests.person('pa', kind || tag, 'employee', array['K'], array['cook'])
+from unnest(array['role', 'rm', 'term', 'arc', 'loc']) kind, unnest(array['r', 'c', 'h']) tag;
+create temp table outlived (broken text, done text);
+create function pg_temp.paths(broken text, tag text) returns void language plpgsql as $$
+declare
+  w uuid := tests.id('pa');
+  boss uuid := pg_temp.u('zeynep');
+  offer uuid;
+begin
+  perform public.update_employee_membership_role_service(boss, w, tests.id('pa:role' || tag),
+    (select r.id from public.workspace_roles r where r.workspace_id = w and r.system_key = 'manager'));
+  perform public.remove_employee_access_service(boss, w, tests.id('pa:rm' || tag));
+  perform public.terminate_employee_service(boss, w, tests.id('pa:term' || tag),
+    (now() at time zone pg_temp.k_zone())::timestamp, pg_temp.k_zone(), 'Moved away', gen_random_uuid());
+  perform public.set_employee_archived_service(boss, w, tests.id('pa:arc' || tag), true);
+  perform public.set_employee_archived_service(boss, w, tests.id('pa:arc' || tag), false, true);
+  perform public.remove_employee_from_location_service(boss, w, tests.id('pa:loc' || tag), tests.id('pa:K'));
+  offer := (public.initiate_workspace_ownership_transfer_service(boss, w, pg_temp.u('owner')) ->> 'transfer_id')::uuid;
+  perform public.respond_workspace_ownership_transfer_service(pg_temp.u('owner'), w, offer, 'reject');
+  offer := (public.initiate_workspace_ownership_transfer_service(boss, w, pg_temp.u('owner')) ->> 'transfer_id')::uuid;
+  perform public.cancel_workspace_ownership_transfer_service(boss, w, offer);
+  insert into outlived values (broken, (
+    select string_agg(x, ' | ' order by n) from (values
+      (1, (select r.system_key::text from public.workspace_memberships m join public.workspace_roles r on r.id = m.role_id
+           where m.workspace_id = w and m.user_id = tests.user('pa:role' || tag))),
+      (2, (select m.status::text from public.workspace_memberships m where m.workspace_id = w and m.user_id = tests.user('pa:rm' || tag))),
+      (3, (select (e.archived_at is not null)::text from public.employee_profiles e where e.id = tests.id('pa:term' || tag))),
+      (4, (select m.status::text from public.workspace_memberships m where m.workspace_id = w and m.user_id = tests.user('pa:arc' || tag))),
+      (5, (select count(*)::text from public.employee_location_assignments a where a.employee_id = tests.id('pa:loc' || tag) and a.ended_at is null)),
+      (6, (select string_agg(distinct t.status::text, ',' order by t.status::text) from public.workspace_ownership_transfers t
+           where t.workspace_id = w and t.initiated_by = boss))
+    ) v(n, x)));
+exception when others then
+  insert into outlived values (broken, 'died: ' || sqlerrm);
+end $$;
+create temp table core_saved as select p.proname, pg_get_functiondef(p.oid) def from pg_proc p
+where p.pronamespace = 'app_private'::regnamespace and p.proname in ('notify_rows', 'notification_resolve', 'notify_holders');
+create function pg_temp.restore_core() returns void language plpgsql as $$
+declare d text;
+begin
+  for d in select def from core_saved loop execute d; end loop;
+end $$;
+create or replace function app_private.notify_rows(target_workspace uuid, target_actor uuid, target_rows jsonb)
+returns integer language plpgsql set search_path = '' as $$ begin raise exception 'notices are down'; end $$;
+select pg_temp.paths('notify_rows', 'r');
+select pg_temp.restore_core();
+create or replace function app_private.notification_resolve(target_workspace uuid, target_subject_type text, target_subject_id uuid,
+  target_resolution text, target_resolved_by uuid)
+returns integer language plpgsql set search_path = '' as $$ begin raise exception 'closing is down'; end $$;
+select pg_temp.paths('notification_resolve', 'c');
+select pg_temp.restore_core();
+create or replace function app_private.notify_holders(target_workspace uuid, target_action text, target_places uuid[] default null,
+  target_person uuid default null)
+returns uuid[] language plpgsql set search_path = '' as $$ begin raise exception 'holders are down'; end $$;
+select pg_temp.paths('notify_holders', 'h');
+select pg_temp.restore_core();
+select is((select array_agg(broken || ': ' || done order by broken) from outlived),
+  array['notification_resolve: manager | suspended | true | active | 0 | cancelled,rejected',
+        'notify_holders: manager | suspended | true | active | 0 | cancelled,rejected',
+        'notify_rows: manager | suspended | true | active | 0 | cancelled,rejected'],
+  '(g) with notices, card closes or holder lists down, every access path completes');
+insert into checked select n.id from public.person_notifications n where n.workspace_id = tests.id('pa');
+
 -- (f) Who may publish, five cells -------------------------------------------------------------------------
 -- Dmo is made an employee, Mov leaves Kadikoy, Lim's role loses publishing, Blk misses a required document,
 -- Gon's access is removed. Then End's employment ends and his Kadikoy shift has nobody.
