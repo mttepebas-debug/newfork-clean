@@ -12,6 +12,10 @@ import {
   toggleCopy,
   withRange,
   noCopies,
+  firstName,
+  updatedOn,
+  weekPhrases,
+  weekSentence,
 } from "./day-availability";
 
 describe("one day of the week", () => {
@@ -105,5 +109,57 @@ describe("copying a day to other days", () => {
     draft.days[1]!.all_day = true;
     draft.days[3]!.ranges = [{ start: "09:00", end: "12:00" }];
     expect(changedDays(saved, draft)).toEqual([1, 3]);
+  });
+});
+
+describe("the week in one sentence (a manager reads it)", () => {
+  it("says an open week plainly", () => {
+    expect(weekSentence(emptyWeeklyPreference(), "Maria", "12h")).toBe(
+      "Maria is open to work any time.",
+    );
+    expect(weekPhrases(emptyWeeklyPreference(), "12h")).toEqual([]);
+  });
+
+  it("names each marked day Monday first, in the hours a person reads", () => {
+    const week = emptyWeeklyPreference();
+    week.days[2]!.all_day = true;
+    week.days[5]!.ranges = [{ start: "18:00", end: "24:00" }];
+    week.days[0]!.ranges = [{ start: "00:00", end: "11:00" }];
+    expect(weekPhrases(week, "12h")).toEqual([
+      { days: "Tue", text: "all day" },
+      { days: "Fri", text: "after 6 PM" },
+      { days: "Sun", text: "before 11 AM" },
+    ]);
+    expect(weekSentence(week, "Maria", "12h")).toBe(
+      "Maria prefers not to work Tue all day, Fri after 6 PM and Sun before 11 AM.",
+    );
+  });
+
+  it("joins days that read the same: a run, the weekdays, the weekend", () => {
+    const week = emptyWeeklyPreference();
+    for (const day of [1, 2, 3, 4, 5]) week.days[day]!.ranges = [{ start: "09:00", end: "15:00" }];
+    week.days[6]!.all_day = true;
+    week.days[0]!.all_day = true;
+    expect(weekPhrases(week, "12h")).toEqual([
+      { days: "Mon–Fri", text: "9 AM – 3 PM" },
+      { days: "Sat, Sun", text: "all day" },
+    ]);
+    const run = emptyWeeklyPreference();
+    for (const day of [1, 2, 3, 5]) run.days[day]!.all_day = true;
+    expect(weekPhrases(run, "24h")).toEqual([{ days: "Mon–Wed, Fri", text: "all day" }]);
+    const every = emptyWeeklyPreference();
+    every.days.forEach((day) => (day.all_day = true));
+    expect(weekPhrases(every, "12h")).toEqual([{ days: "Every day", text: "all day" }]);
+  });
+});
+
+describe("a person's name and save date as the manager reads them", () => {
+  it("takes the first name", () => {
+    expect(firstName("Maria Lopez")).toBe("Maria");
+    expect(firstName("  Cher ")).toBe("Cher");
+  });
+  it("says the save date as month and day", () => {
+    expect(updatedOn("2026-10-09T18:00:00.000Z")).toBe("Oct 9");
+    expect(updatedOn(null)).toBe("");
   });
 });

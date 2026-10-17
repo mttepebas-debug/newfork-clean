@@ -121,6 +121,58 @@ export function dayTone(
   return { tone, label: `Unavailable ${pieces.join(", ")}`, className };
 }
 
+/** "Maria" from "Maria Lopez": how the manager's screens name the person. */
+export const firstName = (name: string) => name.trim().split(/\s+/)[0] ?? name;
+
+/** "Oct 9": when the person last saved their week; "" when never. */
+export const updatedOn = (value: string | null) =>
+  value ? new Date(value).toLocaleDateString("en-US", { month: "short", day: "numeric" }) : "";
+
+/** Days that read the same, said together: "Tue", "Mon–Fri", "Sat, Sun". */
+export type WeekPhrase = { readonly days: string; readonly text: string };
+
+function daysLabel(positions: readonly number[]) {
+  // Positions in the Monday-first week (0 = Monday … 6 = Sunday).
+  const key = positions.join();
+  if (positions.length === 7) return "Every day";
+  if (key === "0,1,2,3,4") return "Mon–Fri";
+  const runs: [number, number][] = [];
+  positions.forEach((position) => {
+    const last = runs[runs.length - 1];
+    if (last && last[1] === position - 1) last[1] = position;
+    else runs.push([position, position]);
+  });
+  const name = (position: number) => shortDay(DISPLAY_DAYS[position]!);
+  return runs
+    .map(([from, to]) =>
+      to - from >= 2 ? `${name(from)}–${name(to)}` : from === to ? name(from) : `${name(from)}, ${name(to)}`,
+    )
+    .join(", ");
+}
+
+/** The marked days of a week, Monday first, the same hours said once. */
+export function weekPhrases(week: WeeklyPreference, format: TimeFormat): WeekPhrase[] {
+  const groups = new Map<string, number[]>();
+  DISPLAY_DAYS.forEach((weekday, position) => {
+    const range = rangeOf(week.days.find((day) => day.day === weekday)!);
+    if (!range) return;
+    const said = rangeText(range, format);
+    const text = said.charAt(0).toLowerCase() + said.slice(1);
+    groups.set(text, [...(groups.get(text) ?? []), position]);
+  });
+  return [...groups].map(([text, positions]) => ({ days: daysLabel(positions), text }));
+}
+
+const joined = (items: readonly string[]) =>
+  items.length < 2 ? (items[0] ?? "") : `${items.slice(0, -1).join(", ")} and ${items[items.length - 1]}`;
+
+/** "Maria prefers not to work Tue all day and Fri after 6 PM." */
+export function weekSentence(week: WeeklyPreference, who: string, format: TimeFormat) {
+  const phrases = weekPhrases(week, format);
+  if (!phrases.length) return `${who} is open to work any time.`;
+  return `${who} prefers not to work ${joined(phrases.map((phrase) => `${phrase.days} ${phrase.text}`))}.`;
+}
+
 const evening: MinuteRange = [18 * 60, DAY_END];
 
 export function setDayState(day: WeeklyPreferenceDay, state: DayState): WeeklyPreferenceDay {
