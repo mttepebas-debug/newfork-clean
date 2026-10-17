@@ -34,6 +34,11 @@ describe("frozen top", () => {
     expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("[data-frozen-piece]"))).toMatch(
       /--page-line\s*:\s*47px/,
     );
+    // The title stays on one line, open and folded (the folded rule sets only its size).
+    const title = ruleBody(top, (head) => head.endsWith("> :has(h1) h1") && !head.includes("[data-frozen-folded]"));
+    expect(title).toMatch(/white-space\s*:\s*nowrap/);
+    expect(title).toMatch(/text-overflow\s*:\s*ellipsis/);
+    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("h1"))).not.toMatch(/white-space/);
   });
 
   it("keeps the page its length while folded, so the content does not jump", () => {
