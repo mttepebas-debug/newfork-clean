@@ -142,7 +142,7 @@ export const lineupDay = {
               "label_names": [],
               "lineup_only": false,
               "has_app": true,
-              "acknowledged_at": null,
+              "acknowledged_at": "2026-10-17T09:34:24.639422+00:00",
               "section_name": null,
               "called_off_at": null,
               "called_off_by": null,

@@ -434,7 +434,10 @@ begin
       from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
         jsonb_array_elements(l -> 'lineups') x
       where (x ->> 'shift_type_id')::uuid is not distinct from type_id;
-      live := jsonb_build_object('notes', live -> 'notes', 'rows', coalesce(live -> 'rows', '[]'::jsonb));
+      -- The rows as published: who has the app and who read an earlier version are the day's, not the record's.
+      live := jsonb_build_object('notes', live -> 'notes', 'rows', coalesce(
+        (select jsonb_agg(r - 'has_app' - 'acknowledged_at' order by o)
+         from jsonb_array_elements(live -> 'rows') with ordinality t(r, o)), '[]'::jsonb));
       insert into public.daily_lineup_versions (workspace_id, lineup_id, version, shared_by, ask_ack, snapshot, fingerprint)
       values (target_workspace_id, header.id, header.latest_version + 1, actor_user_id, ask, live,
         encode(sha256(convert_to(live::text, 'UTF8')), 'hex'))

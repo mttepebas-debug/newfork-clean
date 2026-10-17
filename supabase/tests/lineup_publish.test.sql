@@ -112,6 +112,12 @@ select is(
   row(tests.user('p:mia'), true, 64, 2)::text,
   'the version records who, whether it asks to acknowledge, and the rows as they were, with a fingerprint'
 );
+select ok(
+  not exists (select 1 from public.daily_lineup_versions v, jsonb_array_elements(v.snapshot -> 'rows') r
+              where v.id = (select (body -> 'lineups' -> 0 ->> 'version_id')::uuid from first_share)
+                and (r ? 'has_app' or r ? 'acknowledged_at')),
+  'the record keeps the rows as published, not who has the app or read an earlier version'
+);
 
 -- 4. The same command again: the same answer, nothing more. Another command under its id: refused.
 select is(pg_temp.share('p:mia', pg_temp.cmd('first'), pg_temp.dinner()), (select body from first_share),
