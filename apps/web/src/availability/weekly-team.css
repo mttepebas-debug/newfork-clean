@@ -327,19 +327,11 @@
     max-width: none;
     min-height: 44px;
   }
-  .weekly-team-filters {
-    width: 100%;
-    flex-wrap: nowrap;
-  }
-  .weekly-team-filters button {
-    flex: 1 1 auto;
-    min-height: 38px;
-    padding-inline: 8px;
-    white-space: nowrap;
-  }
-  /* The tabs carry the counts; the row has no room for a second one. */
-  .weekly-team-count {
-    display: none;
+  /* No status tabs on a phone (Mert, 2026-10-17): the count of everyone
+     the location and the search leave stands alone on the row. */
+  .weekly-team-page.list-page.list-page .catalog-toolbar-status-row .weekly-team-count {
+    margin-left: 0;
+    padding-left: 0;
   }
   .avt-legend {
     margin: 0;

@@ -65,6 +65,8 @@ test("desktop: Availability lists the person, shows their week, and the drawer r
 test("phone: a tap opens the person's page with the week and the manager's notes", async ({ browser }) => {
   const person = freshEmployee("mgrphone");
   const page = await open(browser, { width: 390, height: 844 }, person.name);
+  // No status tabs on a phone (Mert, 2026-10-17): the list is everyone.
+  await expect(page.getByRole("group", { name: "Submission status" })).toHaveCount(0);
   await page.getByRole("navigation", { name: "Employees" }).getByRole("button", { name: new RegExp(person.name) }).tap();
   await expect(page.getByRole("heading", { name: person.name })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Availability" })).toHaveAttribute("aria-selected", "true");

@@ -28,8 +28,9 @@ const EmployeeDrawer = lazy(() =>
 // "Availability sayfasında kişi listesi ve seçilen kişinin haftası"). The
 // heading, the status tabs, the filters and the legend stay; the people on
 // the left, the chosen person's week on the right. On a phone (720 px and
-// below) the people are a list and a tap opens the person's page with the
-// drawer's two tabs. Only employees are listed (S-32).
+// below) the people are a list of everyone, without the status tabs (Mert,
+// 2026-10-17), and a tap opens the person's page with the drawer's two tabs.
+// Only employees are listed (S-32).
 
 type Person = WeeklyTeamRead["employees"][number];
 const STATUSES = [
@@ -55,7 +56,9 @@ export function AvailabilityPage() {
   const workspaceId = context?.workspace.id ?? "";
   const locationId = search.get("location") ?? "all";
   const queryText = search.get("q") ?? "";
-  const submission = search.get("submission") ?? "all";
+  // A phone has no status tabs, so a status left in the address (say, from a
+  // narrowed window) never hides anyone there.
+  const submission = phone ? "all" : (search.get("submission") ?? "all");
   const query = useQuery({
     queryKey: ["weekly-preferences", workspaceId, "team"],
     queryFn: () => loadWeeklyTeam(workspaceId),
@@ -186,20 +189,22 @@ export function AvailabilityPage() {
       />
       <div className="weekly-team-toolbar catalog-toolbar">
         <div className="catalog-toolbar-status-row">
-          <div className="catalog-status-tabs weekly-team-filters" role="group" aria-label="Submission status">
-            {STATUSES.map(([value, label]) => (
-              <button
-                key={value}
-                type="button"
-                className={submission === value ? "active" : ""}
-                aria-pressed={submission === value}
-                onClick={() => updateParams({ submission: value === "all" ? null : value })}
-              >
-                {label}
-                {model && <span className="avt-count">{counts[value]}</span>}
-              </button>
-            ))}
-          </div>
+          {!phone && (
+            <div className="catalog-status-tabs weekly-team-filters" role="group" aria-label="Submission status">
+              {STATUSES.map(([value, label]) => (
+                <button
+                  key={value}
+                  type="button"
+                  className={submission === value ? "active" : ""}
+                  aria-pressed={submission === value}
+                  onClick={() => updateParams({ submission: value === "all" ? null : value })}
+                >
+                  {label}
+                  {model && <span className="avt-count">{counts[value]}</span>}
+                </button>
+              ))}
+            </div>
+          )}
           {model && (
             <span className="weekly-team-count" role="status">
               {employees.length} {employees.length === 1 ? "employee" : "employees"}
@@ -266,7 +271,11 @@ export function AvailabilityPage() {
               <CalendarCheck size={22} />
             </span>
             <h2>No employees match this view</h2>
-            <p>Try another status or location, or clear your search.</p>
+            <p>
+              {phone
+                ? "Try another location, or clear your search."
+                : "Try another status or location, or clear your search."}
+            </p>
           </div>
         ) : (
           <div className={`avt-split${phone ? " is-phone" : ""}`}>

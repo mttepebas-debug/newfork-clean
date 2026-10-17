@@ -305,6 +305,21 @@ describe("Availability on a phone (720 px and below)", () => {
     expect(people()).toHaveLength(3);
   });
 
+  // Mert 2026-10-17 (AVAIL-GUN-S2): no status tabs on a phone; the list is everyone.
+  it("has no status tabs and lists everyone, even with a status left in the address", async () => {
+    renderPage("/app/availability?submission=missing");
+    await screen.findByRole("navigation", { name: "Employees" });
+    expect(screen.queryByRole("group", { name: "Submission status" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Not submitted/ })).toBeNull();
+    expect(people()).toHaveLength(3);
+    expect(screen.getByText("3 employees")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search employees"), { target: { value: "e-003" } });
+    expect(people().map((person) => person.textContent)).toEqual(["SCSam ChenHost"]);
+    expect(screen.getByText("1 employee")).toBeTruthy();
+    fireEvent.change(screen.getByLabelText("Search employees"), { target: { value: "nobody" } });
+    expect(screen.getByText("Try another location, or clear your search.")).toBeTruthy();
+  });
+
   it("shows a person the reader may not open from the list's own week, read only", async () => {
     renderPage(`/app/availability?person=${sam}`);
     expect(await screen.findByRole("heading", { name: "Sam Chen" })).toBeTruthy();
