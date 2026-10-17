@@ -21,6 +21,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { FieldNote } from "../shell/FieldNote";
 const defaults: SchedulingSettingsInput = {
   week_start_day: "monday",
   schedule_deadline_day: "sunday",
@@ -253,16 +254,11 @@ export default function SchedulingSettingsPage() {
                 />
                 <span className="setting-unit">hours</span>
               </SettingsChoiceRow>
-              {mutation.error ? (
-                <p className="form-error" role="alert">
-                  {errorText(mutation.error)}
-                </p>
-              ) : null}
-              {validationError ? (
-                <p className="form-error" role="alert">
-                  {validationError}
-                </p>
-              ) : null}
+              <FieldNote
+                id="scheduling-settings"
+                lines={2}
+                error={validationError || (mutation.error ? errorText(mutation.error) : null)}
+              />
               {saved ? (
                 <p className="form-success" role="status">
                   Scheduling rules saved.

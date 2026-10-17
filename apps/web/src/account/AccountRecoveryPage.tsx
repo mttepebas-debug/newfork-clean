@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router";
 import { restoreAccountDeletionWithToken } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
+import { FieldNote } from "../shell/FieldNote";
 
 export default function AccountRecoveryPage() {
   const [searchParams] = useSearchParams();
@@ -38,11 +39,8 @@ export default function AccountRecoveryPage() {
           : "This link works once, and only while the 14-day window is open."
       }
     >
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {/* Kept room above the buttons, so they never move (UI-FIELDMSG). */}
+      <FieldNote id="account-recovery" error={error} lines={2} />
       <div className="pb-footer">
         {restored ? (
           <button

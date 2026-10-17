@@ -41,6 +41,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
+import { WindowAlert } from "../shell/WindowAlert";
 const emptyLocation: LocationDraft = {
   name: "",
   short_name: "",
@@ -377,12 +378,9 @@ export default function LocationsSettingsPage() {
                   />
                 </label>
               </fieldset>
-              {formError ? (
-                <p className="form-error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
             </div>
+            {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+            <WindowAlert between message={formError} />
             <div className="job-editor-footer">
               {editing !== "new" && (
                 <CatalogDeleteAction

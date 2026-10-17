@@ -29,6 +29,8 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { WindowAlert } from "../shell/WindowAlert";
+import { FieldNote } from "../shell/FieldNote";
 const defaultDraft: ShiftTypeInput = {
   name: "",
   color: "#5B7FA3",
@@ -329,11 +331,10 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                       }
                     />
                     {/* BL-677 (3): the schema's refusal, said where Save went grey. */}
-                    {sameHours ? (
-                      <small className="form-error" id="shift-catalog-time-error">
-                        {SAME_START_END_TIME_MESSAGE}
-                      </small>
-                    ) : null}
+                    <FieldNote
+                      id="shift-catalog-time"
+                      error={sameHours ? SAME_START_END_TIME_MESSAGE : null}
+                    />
                   </div>
                 </div>
               </fieldset>
@@ -390,12 +391,9 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                   Discard draft and reload latest
                 </Button>
               ) : null}
-              {formError ? (
-                <p className="form-error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
             </div>
+            {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+            <WindowAlert between message={formError} />
             <div className="job-editor-footer">
               {savedType && (
                 <CatalogDeleteAction

@@ -16,6 +16,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { FieldNote } from "../shell/FieldNote";
 const conflictRuleChoices: readonly {
   key: keyof ScheduleConflictRules;
   label: string;
@@ -246,14 +247,18 @@ export default function ConflictHandlingSettingsPage() {
                 </div>
               </SettingsChoiceRow>
             ))}
-            {validation || mutation.error || stale ? (
-              <p className="form-error" role="alert">
-                {validation ??
-                  (mutation.error
-                    ? errorText(mutation.error)
-                    : "Conflict rules changed. Reload before saving.")}
-              </p>
-            ) : null}
+            <FieldNote
+              id="conflict-handling"
+              lines={2}
+              error={
+                validation ??
+                (mutation.error
+                  ? errorText(mutation.error)
+                  : stale
+                    ? "Conflict rules changed. Reload before saving."
+                    : null)
+              }
+            />
             {mutation.isSuccess && !dirty ? (
               <p className="form-success" role="status">
                 Conflict rules saved.

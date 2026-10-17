@@ -10,6 +10,7 @@ import {
   setTabWorkspaceId,
   supabaseClient,
 } from "../lib/supabase";
+import { FieldNote } from "./FieldNote";
 
 // Owner onboarding step 1 asks for the real name, so nothing is asked here.
 const draftWorkspaceName = "New workspace";
@@ -73,11 +74,8 @@ export function CreateOrganizationButton({
         <Building2 size={16} aria-hidden />
         {busy ? "Starting" : "Create your workspace"}
       </Button>
-      {error ? (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      ) : null}
+      {/* Kept room under the button, so nothing below moves (UI-FIELDMSG). */}
+      <FieldNote id="create-workspace" error={error} lines={2} />
     </>
   );
 }

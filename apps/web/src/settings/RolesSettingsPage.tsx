@@ -42,6 +42,7 @@ import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { FieldNote } from "../shell/FieldNote";
 const blankRole = (): WorkspaceRoleInput => ({
   name: "",
   description: "",
@@ -617,11 +618,7 @@ function RoleEditor({
             : "You can view this role. Only an authorized higher role can change it."}
         </p>
       )}
-      {error && (
-        <p className="form-error" role="alert">
-          {error}
-        </p>
-      )}
+      <FieldNote id="role-permissions" error={error} lines={2} />
       {saved && !dirty && (
         <p className="form-success" role="status">
           Role saved.

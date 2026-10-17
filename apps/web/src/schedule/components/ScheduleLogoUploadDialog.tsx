@@ -27,6 +27,7 @@ import {
   scheduleLogoFrameAspectRatio,
 } from "./ScheduleLogoFrame";
 import { useDialogFocus } from "../lib/useDialogFocus";
+import { WindowAlert } from "../../shell/WindowAlert";
 
 export interface ScheduleLogoSaveDraft {
   readonly file: File | null;
@@ -270,13 +271,9 @@ export function ScheduleLogoUploadDialog({
           </button>
         </div>
 
-        {shownError ? (
-          <p className="form-error" role="alert">
-            {shownError}
-          </p>
-        ) : null}
-
         <footer>
+          {/* Over the preview's bottom edge, above the buttons (UI-FIELDMSG). */}
+          <WindowAlert message={shownError} />
           <button
             type="button"
             className="primary"

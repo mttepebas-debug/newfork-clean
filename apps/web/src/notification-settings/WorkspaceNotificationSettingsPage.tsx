@@ -23,6 +23,7 @@ import {
 } from "./notification-settings-data";
 import { ChannelRow, StatusPill, Switch } from "./parts";
 import "./notification-settings.css";
+import { FieldNote } from "../shell/FieldNote";
 
 type Draft = NotificationWorkspaceSettingsInput;
 
@@ -203,11 +204,11 @@ export default function WorkspaceNotificationSettingsPage() {
 
           <AlwaysSent types={query.data.always_sent} />
 
-          {mutation.error ? (
-            <p className="form-error" role="alert">
-              Notification settings weren&rsquo;t saved. Try again.
-            </p>
-          ) : null}
+          <FieldNote
+            id="workspace-notification-settings"
+            lines={2}
+            error={mutation.error ? "Notification settings weren\u2019t saved. Try again." : null}
+          />
           {saved ? (
             <p className="form-success" role="status">
               Notification settings saved

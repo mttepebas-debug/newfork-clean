@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@newfork/ui";
 import { cropAvatar, squareCrop } from "./avatar-crop";
+import { WindowAlert } from "../shell/WindowAlert";
 
 export function AvatarCropDialog({ file, onCancel, onConfirm }: {
   file: File; onCancel: () => void; onConfirm: (file: File) => void;
@@ -57,8 +58,9 @@ export function AvatarCropDialog({ file, onCancel, onConfirm }: {
       <label>Horizontal position<input type="range" min="0" max="100" value={horizontal} onChange={e => setHorizontal(Number(e.target.value))} /></label>
       <label>Vertical position<input type="range" min="0" max="100" value={vertical} onChange={e => setVertical(Number(e.target.value))} /></label>
     </fieldset>
-    {error ? <p role="alert" className="form-error">{error}</p> : null}
     <div className="account-form-actions">
+      {/* Over the controls' bottom edge, above the buttons (UI-FIELDMSG). */}
+      <WindowAlert message={error} />
       <Button type="button" className="secondary-button" disabled={busy} onClick={onCancel}>Cancel crop</Button>
       <Button type="button" disabled={busy || !crop.size} onClick={() => void confirm()}>{busy ? "Preparing" : "Use photo"}</Button>
     </div>

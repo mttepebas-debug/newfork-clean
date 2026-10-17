@@ -24,6 +24,7 @@ import {
 import { ChannelRow, StatusPill, Switch } from "./parts";
 import { rowState, topicRows, type TopicRow } from "./topic-rows";
 import "./notification-settings.css";
+import { FieldNote } from "../shell/FieldNote";
 
 type CellKey = `${string}:${NotificationChoiceChannel}`;
 const channels: readonly NotificationChoiceChannel[] = ["email", "push"];
@@ -162,11 +163,11 @@ export default function NotificationPreferencesPage() {
               reach your Notifications list; here you choose the extra ways they reach you.
             </span>
           </p>
-          {mutation.error ? (
-            <p className="form-error" role="alert">
-              Your notification choices weren&rsquo;t saved. Try again.
-            </p>
-          ) : null}
+          <FieldNote
+            id="notification-preferences"
+            lines={2}
+            error={mutation.error ? "Your notification choices weren\u2019t saved. Try again." : null}
+          />
           {saved ? (
             <p className="form-success" role="status">
               Notification choices saved

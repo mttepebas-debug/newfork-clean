@@ -3,6 +3,7 @@ import { Check, Copy, LifeBuoy, Mail } from "lucide-react";
 import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { SettingsHeader } from "./GeneralSettingsPage";
+import { FieldNote } from "../shell/FieldNote";
 
 type CopyState = "idle" | "copied" | "failed";
 
@@ -111,11 +112,10 @@ export default function SupportSettingsPage() {
               <dd>{roleName}</dd>
             </div>
           </dl>
-          {copyState === "failed" ? (
-            <p className="form-error" role="alert">
-              Copy failed. Select the values manually.
-            </p>
-          ) : null}
+          <FieldNote
+            id="support-copy"
+            error={copyState === "failed" ? "Copy failed. Select the values manually." : null}
+          />
         </section>
       </div>
     </section>

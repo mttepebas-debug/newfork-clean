@@ -212,7 +212,8 @@ describe("SchedulingSettingsPage checklist mode", () => {
       fireEvent.click(screen.getByRole("button", { name: /save rules/i }));
       const alert = await screen.findByRole("alert");
       expect(alert.textContent).toBe("Enter a time off decision window from 0 to 720 hours.");
-      expect(alert.className).toBe("form-error");
+      // In the form's kept note line (UI-FIELDMSG).
+      expect(alert.classList.contains("field-note-error")).toBe(true);
     }
     expect(hours.closest("form")!.noValidate).toBe(true);
     expect(saveSchedulingSettings).toHaveBeenCalledOnce();

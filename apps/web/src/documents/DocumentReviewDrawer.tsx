@@ -38,6 +38,7 @@ import {
   statusLabel,
   versionStateLabel,
 } from "./document-rules";
+import { WindowAlert } from "../shell/WindowAlert";
 
 // What a person typed into the drawer. Nothing stores it before its own
 // command runs, so each value is kept here against what it was typed for:
@@ -970,12 +971,9 @@ function DocumentDetailContent({
             </p>
           )}
           {notice && <p role="status">{notice}</p>}
-          {shownError && (
-            <p role="alert" className="form-error">
-              {shownError}
-            </p>
-          )}
         </div>
+        {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+        <WindowAlert between message={shownError} />
         <div className="job-editor-footer">
           <div>
             {props.onNext && (

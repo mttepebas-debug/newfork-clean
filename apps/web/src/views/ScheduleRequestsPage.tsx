@@ -43,6 +43,7 @@ import {
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { FieldNote } from "../shell/FieldNote";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -681,7 +682,8 @@ function ActDialog({
           />
         </label>
       ) : null}
-      {error ? <p className="form-error" role="alert">{error}</p> : null}
+      {/* Kept room above the buttons, so they never move (UI-FIELDMSG). */}
+      <FieldNote id="request-confirm" error={error} lines={2} />
     </ConfirmDialog>
   );
 }

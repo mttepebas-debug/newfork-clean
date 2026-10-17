@@ -27,6 +27,7 @@ import {
 import { isNoAccess } from "../lib/no-access";
 import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
+import { WindowAlert } from "../shell/WindowAlert";
 const defaultDraft: ShiftLabelInput = {
   name: "",
   color: "#54736A",
@@ -208,12 +209,9 @@ export default function ShiftLabelsSettingsPage() {
                   </div>
                 </div>
               </fieldset>
-              {formError ? (
-                <p className="form-error" role="alert">
-                  {formError}
-                </p>
-              ) : null}
             </div>
+            {/* Over the body's bottom edge, above the footer, which scrolls (UI-FIELDMSG). */}
+            <WindowAlert between message={formError} />
             <div className="job-editor-footer">
               {editing !== "new" && (
                 <CatalogDeleteAction
