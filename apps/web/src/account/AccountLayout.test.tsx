@@ -1,4 +1,4 @@
-import { fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { MemoryRouter, Route, Routes } from "react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -32,7 +32,7 @@ vi.mock("./AccountAvatar", () => ({
 // A window as wide as `phone` says; the layout listens for rotation.
 const media = (phone: boolean) => vi.fn(() => ({ matches: phone, addEventListener: () => undefined, removeEventListener: () => undefined }));
 
-function renderLayout(profile = <p>Profile content</p>) {
+function renderLayout(profile = <p>Profile content</p>, workspaces = <p>Workspace content</p>) {
   return render(
     <QueryClientProvider
       client={
@@ -43,10 +43,7 @@ function renderLayout(profile = <p>Profile content</p>) {
         <Routes>
           <Route element={<AccountLayout />}>
             <Route path="/account/profile" element={profile} />
-            <Route
-              path="/account/workspaces"
-              element={<p>Workspace content</p>}
-            />
+            <Route path="/account/workspaces" element={workspaces} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -97,6 +94,42 @@ describe("AccountLayout mobile navigation", () => {
     const bar = screen.getByRole("complementary", { name: "Account navigation" });
     expect(bar.querySelector("nav")).toBeNull();
     expect(screen.getByRole("button", { name: "Sign out" }).closest("aside")).toBe(bar);
+  });
+
+  // Two different pages, so the heading (and the menu's box in it) is a new
+  // one: the link that was chosen is gone, and focus goes to the new page's
+  // active link instead of falling to the page body.
+  it("keeps focus on the menu when a phone moves to another page", async () => {
+    function ProfileHeading() {
+      return (
+        <header className="account-page-header">
+          <div>
+            <h1>Profile</h1>
+          </div>
+        </header>
+      );
+    }
+    function WorkspacesHeading() {
+      return (
+        <header className="account-page-header">
+          <div>
+            <h1>Workspaces</h1>
+          </div>
+        </header>
+      );
+    }
+    renderLayout(<ProfileHeading />, <WorkspacesHeading />);
+    const menu = () => screen.getByRole("banner").querySelector<HTMLElement>('nav[aria-label="Account"]');
+    await waitFor(() => expect(menu()).not.toBeNull());
+    const profile = within(menu()!).getByRole("link", { name: "Profile" });
+    profile.focus();
+    fireEvent.click(profile);
+    await screen.findByRole("heading", { name: "Profile" });
+    await waitFor(() => {
+      const active = within(menu()!).getByRole("link", { name: "Profile" });
+      expect(active.getAttribute("aria-current")).toBe("page");
+      expect(document.activeElement).toBe(active);
+    });
   });
 });
 
