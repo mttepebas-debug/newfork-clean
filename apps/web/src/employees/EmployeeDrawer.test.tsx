@@ -2598,7 +2598,8 @@ describe("EmployeeDrawer EMP-001 look", () => {
     const first = await screen.findByLabelText("First name");
     expect(first).toHaveProperty("disabled", true);
     expect(described(first)).toEqual({ text: "Locked after activation", hidden: true });
-    expect(document.querySelector(".employee-field-helper")).toBeNull();
+    // Only the note line's kept, empty room is under it (UI-FIELDMSG).
+    expect(document.querySelector(".employee-field-helper:not(.field-note-room)")).toBeNull();
   });
 
   it("marks a verified e-mail inside the field", async () => {

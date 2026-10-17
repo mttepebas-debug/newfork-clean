@@ -89,6 +89,14 @@ describe("WindowAlert", () => {
     expect(alert.classList.contains("window-alert")).toBe(true);
   });
 
+  it("says a held state politely while there is no error, and the error over it", () => {
+    const { rerender } = render(<WindowAlert message={null} status="Pick a location first." />);
+    expect(screen.getByRole("status").textContent).toBe("Pick a location first.");
+    rerender(<WindowAlert message="Couldn't save." status="Pick a location first." />);
+    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("alert").textContent).toBe("Couldn't save.");
+  });
+
   it("keeps a zero-height slot between body and footer, said or not", () => {
     const { container, rerender } = render(<WindowAlert message={null} between />);
     const slot = container.querySelector(".window-alert-slot");

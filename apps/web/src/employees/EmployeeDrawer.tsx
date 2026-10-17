@@ -67,7 +67,7 @@ import {
   RefreshError,
   Skeleton,
 } from "../shell/LoadState";
-import { FieldNote } from "../shell/FieldNote";
+import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import "./employee-termination.css";
@@ -111,6 +111,7 @@ import {
   TerminateNote,
 } from "./EmployeeLocationParts";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
+import { WindowAlert } from "../shell/WindowAlert";
 
 const sections = [
   ["profile", "Profile", UserRound],
@@ -1391,13 +1392,15 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     </button>
                   </div>
                 ) : null}
-                {props.creating &&
-                activeSection === "employment" &&
-                readiness.emailPresent &&
-                !readiness.emailReady ? (
-                  <p className="employee-field-error" role="alert">
-                    Enter a valid email address in Profile.
-                  </p>
+                {props.creating && activeSection === "employment" ? (
+                  <FieldNote
+                    id="employee-invite-email"
+                    error={
+                      readiness.emailPresent && !readiness.emailReady
+                        ? "Enter a valid email address in Profile."
+                        : null
+                    }
+                  />
                 ) : null}
               </div>
             </div>
@@ -1438,18 +1441,19 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
               ) : null}
             </div>
           ) : null}
-          {error ? (
-            <p className="employee-drawer-error" role="alert">
-              {error}
-            </p>
-          ) : dirty &&
-            readiness.assignmentBlocker &&
-            // A new person hears about Employment once there (E10, BL-669).
-            !(props.creating && activeSection === "profile") ? (
-            <p className="employee-drawer-error" role="status">
-              {readiness.assignmentBlocker}
-            </p>
-          ) : null}
+          {/* The drawer's error, or why Save is held, lies over the body's
+              bottom edge above the footer: nothing moves (UI-FIELDMSG). */}
+          <WindowAlert
+            between
+            message={error}
+            status={
+              dirty &&
+              // A new person hears about Employment once there (E10, BL-669).
+              !(props.creating && activeSection === "profile")
+                ? readiness.assignmentBlocker
+                : null
+            }
+          />
           {uncertainCreate ? (
             <div className="employee-drawer-notice" role="alert">
               <span>Check the previous request before continuing.</span>
@@ -1874,15 +1878,9 @@ function EmployeeTerminationDialog({
               }}
               aria-required
               aria-invalid={fieldErrors.effective ? true : undefined}
-              aria-describedby={
-                fieldErrors.effective ? `${fieldId}-effective` : undefined
-              }
+              aria-describedby={fieldNoteId(`${fieldId}-effective`, fieldErrors.effective)}
             />
-            {fieldErrors.effective ? (
-              <small id={`${fieldId}-effective`} className="employee-field-error">
-                {fieldErrors.effective}
-              </small>
-            ) : null}
+            <FieldNote id={`${fieldId}-effective`} error={fieldErrors.effective} />
           </label>
           <label>
             Worksite timezone
@@ -1915,13 +1913,9 @@ function EmployeeTerminationDialog({
               }}
               aria-required
               aria-invalid={fieldErrors.reason ? true : undefined}
-              aria-describedby={fieldErrors.reason ? `${fieldId}-reason` : undefined}
+              aria-describedby={fieldNoteId(`${fieldId}-reason`, fieldErrors.reason)}
             />
-            {fieldErrors.reason ? (
-              <small id={`${fieldId}-reason`} className="employee-field-error">
-                {fieldErrors.reason}
-              </small>
-            ) : null}
+            <FieldNote id={`${fieldId}-reason`} error={fieldErrors.reason} />
           </label>
           <p className="employee-termination-warning">
             {/* The effective time can be in the past; a worked shift stays
@@ -1929,17 +1923,16 @@ function EmployeeTerminationDialog({
             Access will be suspended. Published shifts that haven't started yet
             will become open and create manager follow-ups.
           </p>
-          {!timezoneOptions.length ? (
-            <p className="employee-drawer-error" role="alert">
-              An active employee location with a timezone is required.
-            </p>
-          ) : null}
-          {error ? (
-            <p className="employee-drawer-error" role="alert">
-              {error}
-            </p>
-          ) : null}
           <footer>
+            {/* Over the warning's bottom edge, above the buttons (UI-FIELDMSG). */}
+            <WindowAlert
+              message={
+                error ||
+                (!timezoneOptions.length
+                  ? "An active employee location with a timezone is required."
+                  : null)
+              }
+            />
             <Button
               type="button"
               className="secondary-button"
@@ -3049,9 +3042,10 @@ function EmployeeAvatarControl({
       {!readOnly ? (
         <div>
           <strong>Profile photo removal</strong>
-          {remove.error ? (
-            <small role="alert">{errorMessage(remove.error)}</small>
-          ) : null}
+          <FieldNote
+            id="employee-avatar-remove"
+            error={remove.error ? errorMessage(remove.error) : null}
+          />
         </div>
       ) : null}
       {!readOnly ? (
@@ -3283,10 +3277,12 @@ function Field({
   // The US letter rule (BL-503), said as it is typed, not on leaving the field.
   const lettersBroken =
     type === "text" && !readOnly && !disabled && hasTurkishOnlyLetters(value);
+  // One note line under the field (TEL-2, UI-FIELDMSG): the server's refusal,
+  // else the field's own check, else the letter rule; its room is kept.
+  const note =
+    refusal || (invalid ? validationMessage : lettersBroken ? usLettersMessage : null);
   const describedBy = [
-    invalid ? `${id}-error` : null,
-    refusal ? `${id}-note-error` : null,
-    lettersBroken ? `${id}-letters` : null,
+    fieldNoteId(id, note),
     lockedReason ? `${id}-reason` : null,
     mark ? `${id}-mark` : null,
   ]
@@ -3359,28 +3355,7 @@ function Field({
           </span>
         ) : null}
       </span>
-      {invalid ? (
-        <small
-          id={`${id}-error`}
-          className="employee-field-helper employee-field-error"
-        >
-          {validationMessage}
-        </small>
-      ) : null}
-      <FieldNote
-        id={`${id}-note`}
-        error={refusal}
-        reserve={reserve}
-        className="employee-field-helper employee-field-error"
-      />
-      {lettersBroken ? (
-        <small
-          id={`${id}-letters`}
-          className="employee-field-helper employee-field-error"
-        >
-          {usLettersMessage}
-        </small>
-      ) : null}
+      <FieldNote id={id} error={note} reserve={reserve} className="employee-field-helper" />
       {lockedReason ? (
         <span id={`${id}-reason`} className="sr-only">
           {lockedReason}
@@ -3877,11 +3852,10 @@ export function PendingPreferredNameRow({
           Leave it
         </Button>
       </div>
-      {decide.error ? (
-        <p className="employee-field-error" role="alert">
-          {errorMessage(decide.error)}
-        </p>
-      ) : null}
+      <FieldNote
+        id="preferred-name-decision"
+        error={decide.error ? errorMessage(decide.error) : null}
+      />
     </div>
   );
 }

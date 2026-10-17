@@ -2301,16 +2301,8 @@
   color: #68726e;
   text-align: center;
 }
-.employee-panel-state.error,
-.employee-drawer-error {
+.employee-panel-state.error {
   color: #a23725;
-}
-.employee-drawer-error {
-  margin: 0;
-  padding: 8px 24px;
-  border-top: 1px solid #ecd1cb;
-  background: #fff5f3;
-  font-size: 12px;
 }
 .employee-drawer-notice {
   display: flex;
@@ -2468,11 +2460,6 @@
   font-size: 12px;
   font-weight: 400;
   color: var(--text-muted, #68746e);
-}
-/* BL-782, BL-971: ".employee-field small" (0,1,1) greyed the error line. */
-.employee-field-error,
-.employee-field .employee-field-error {
-  color: var(--danger, #a13f30);
 }
 .employee-field input[aria-invalid="true"],
 .employee-field textarea[aria-invalid="true"],

@@ -106,7 +106,7 @@ describe("employee create flow", () => {
   it("says a missing location or job only from the Employment step", () => {
     setup();
     fillNames();
-    const blocker = () => document.querySelector('.employee-drawer-error[role="status"]');
+    const blocker = () => document.querySelector('.window-alert[role="status"]');
     expect(blocker()).toBeNull();
     next();
     expect(blocker()?.textContent).toBeTruthy();
