@@ -1,0 +1,404 @@
+/* Employees → drawer → Availability (ManagerAvailability.tsx): the employee's
+   week read only and the manager's notes. The tabs and the footer stay; only
+   the body scrolls (Mert 2026-10-16, "header ve tableri freeze yap"). */
+.employee-section-scroll[data-section="availability"] {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  overflow: hidden;
+}
+.avm-panel {
+  display: flex;
+  min-width: 0;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+  color: var(--theme-text);
+  font-family: var(--theme-font-sans);
+}
+.avm-panel * {
+  box-sizing: border-box;
+}
+.avm-tabs {
+  display: flex;
+  flex: none;
+  gap: 18px;
+  padding: 0 24px;
+  border-bottom: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.avm-tabs > button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 44px;
+  margin-bottom: -1px;
+  padding: 0;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--theme-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.avm-tabs > button[aria-selected="true"] {
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-accent-deep);
+}
+.avm-tabs > button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.avm-tabs > button:disabled {
+  cursor: default;
+}
+.avm-count {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted-strong);
+  font-size: 11px;
+  font-weight: 700;
+}
+.avm-tabs > button[aria-selected="true"] .avm-count {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.avm-tabpanel,
+.avm-notes {
+  display: flex;
+  min-height: 0;
+  flex: 1 1 auto;
+  flex-direction: column;
+}
+.avm-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 20px 24px 24px;
+}
+.avm-notes .avm-body {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.avm-notes-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.avm-ro-line {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin: 0;
+  color: var(--theme-muted-strong);
+  font-size: 12.5px;
+}
+.avm-ro-line > svg {
+  flex: none;
+  color: var(--theme-muted);
+}
+.avm-switch {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  color: var(--theme-text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.avm-switch input {
+  position: relative;
+  width: 34px;
+  height: 20px;
+  margin: 0;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 20px;
+  background: var(--theme-border-strong);
+  appearance: none;
+  cursor: pointer;
+}
+.avm-switch input::before {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--theme-surface);
+  content: "";
+  transition: left 0.12s ease-out;
+}
+.avm-switch input:checked {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+}
+.avm-switch input:checked::before {
+  left: 16px;
+}
+.avm-switch input:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.avm-switch input:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.avm-notice {
+  margin: 0;
+  padding: 9px 12px;
+  border-left: 3px solid var(--theme-warning);
+  border-radius: 4px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.avm-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.avm-section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+}
+.avm-section-head h3 {
+  margin: 0 auto 0 0;
+  font-size: 14px;
+  font-weight: 650;
+}
+.avm-tool {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.avm-tool:hover:not(:disabled) {
+  background: var(--theme-surface-soft);
+}
+.avm-tool-icon {
+  width: 32px;
+  justify-content: center;
+  padding: 0;
+}
+.avm-tool:disabled {
+  opacity: 0.45;
+}
+/* The day-by-day editor inside the drawer: a narrower day list, no card padding. */
+.avm-notes .dav-week {
+  grid-template-columns: minmax(170px, 210px) minmax(0, 1fr);
+  gap: 12px;
+  padding: 0;
+}
+.avm-notes .dav-row {
+  min-height: 52px;
+  padding: 9px 10px 9px 14px;
+}
+.avm-notes .dav-detail {
+  gap: 14px;
+  padding: 14px 16px 16px;
+}
+.avm-notes .dav-detail h4 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 650;
+}
+.avm-notes .dav-row:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+.avm-note-list {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  list-style: none;
+}
+.avm-note {
+  display: grid;
+  grid-template-columns: 96px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 11px 14px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.avm-note:first-child {
+  border-top: 0;
+}
+.avm-note > b {
+  padding-top: 6px;
+  font-size: 13px;
+  font-weight: 650;
+}
+.avm-note > p {
+  margin: 0;
+  padding: 7px 10px;
+  border: 1px solid color-mix(in srgb, var(--theme-info-text) 22%, var(--theme-surface));
+  border-radius: 7px;
+  background: var(--theme-info-soft);
+  color: var(--theme-text-body);
+  font-size: 12.5px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.avm-note-empty {
+  padding-top: 6px;
+  color: var(--theme-muted);
+  font-size: 12.5px;
+}
+.avm-note-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  min-height: 30px;
+  padding: 0 9px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-accent-deep);
+  font-size: 12.5px;
+  font-weight: 600;
+}
+.avm-note-button:hover:not(:disabled) {
+  background: var(--theme-accent-soft);
+}
+.avm-note-button:disabled {
+  color: var(--theme-muted);
+  opacity: 0.6;
+}
+.avm-note.is-editing {
+  grid-template-columns: 96px minmax(0, 1fr);
+}
+.avm-note-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.avm-note-edit textarea {
+  width: 100%;
+  min-height: 72px;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 7px;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  line-height: 1.5;
+  resize: vertical;
+}
+.avm-note-edit textarea:focus-visible {
+  border-color: var(--theme-accent);
+  outline: 2px solid var(--theme-focus-halo);
+}
+.avm-note-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.avm-note-count {
+  margin-right: auto;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+}
+.avm-link {
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.avm-note-actions .avm-link {
+  color: var(--theme-danger-text);
+}
+.avm-panel :is(.avm-tool, .avm-note-button, .avm-link):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+.avm-footer {
+  flex: none;
+  padding: 12px 24px;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface);
+}
+.avm-error {
+  margin: 0 0 10px;
+  color: var(--theme-danger-text);
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.avm-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.avm-actions > span {
+  margin-right: auto;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+@media (max-width: 720px) {
+  .avm-tabs {
+    padding: 0 16px;
+  }
+  .avm-tabs > button {
+    flex: 1 1 0;
+    justify-content: center;
+  }
+  .avm-body {
+    padding: 16px;
+  }
+  .avm-footer {
+    padding: 12px 16px;
+  }
+  .avm-notes-head {
+    align-items: flex-start;
+  }
+  .avm-section-head {
+    flex-wrap: wrap;
+  }
+  .avm-note {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 6px 10px;
+  }
+  .avm-note > :is(p, .avm-note-empty) {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    padding-top: 0;
+  }
+  .avm-note.is-editing {
+    grid-template-columns: 1fr;
+  }
+  .avm-note-edit textarea {
+    font-size: 16px;
+  }
+  .avm-note-button,
+  .avm-tool {
+    min-height: 44px;
+  }
+  .avm-tool-icon {
+    width: 44px;
+  }
+}

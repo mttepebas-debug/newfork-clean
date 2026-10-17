@@ -588,11 +588,10 @@ describe("EmployeeDrawer", () => {
   it("leaves weekly drafts without the obsolete availability navigation prompt", async () => {
     const { onClose, onSectionChange } = renderDrawer("availability");
     fireEvent.click(
-      await screen.findByRole("tab", { name: "Manager reminders" }),
+      await screen.findByRole("tab", { name: "Manager notes" }),
     );
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Monday all day unavailable" }),
-    );
+    // Monday is the day open in the manager's hours; mark it unavailable.
+    fireEvent.click(screen.getByRole("radio", { name: /^Unavailable/ }));
     fireEvent.click(
       screen.getAllByRole("button", { name: "Close employee details" })[0]!,
     );
@@ -616,7 +615,7 @@ describe("EmployeeDrawer", () => {
     });
     const { container } = renderDrawer("availability");
     fireEvent.click(
-      await screen.findByRole("tab", { name: "Manager reminders" }),
+      await screen.findByRole("tab", { name: "Manager notes" }),
     );
     expect(loadWeeklyPreferences).toHaveBeenCalledWith(
       workspaceId,
@@ -625,9 +624,8 @@ describe("EmployeeDrawer", () => {
     );
     expect(container.querySelectorAll("form")).toHaveLength(0);
     expect(screen.queryByRole("button", { name: /^Save changes$/ })).toBeNull();
-    fireEvent.click(
-      screen.getByRole("switch", { name: "Monday all day unavailable" }),
-    );
+    // Monday is the day open in the manager's hours; mark it unavailable.
+    fireEvent.click(screen.getByRole("radio", { name: /^Unavailable/ }));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await screen.findByText("Saved");
     expect(saveEmployee).not.toHaveBeenCalled();
@@ -648,21 +646,19 @@ describe("EmployeeDrawer", () => {
     );
   });
 
-  it("shows an expandable empty employee week and honors server read-only manager scope", async () => {
+  it("reads the employee's week read only and honors server read-only manager scope", async () => {
     const model = weeklyModel();
     model.can_manage = false;
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(model);
-    const { container } = renderDrawer("availability");
-    await screen.findByText("Available all week");
-    expect(
-      container
-        .querySelector("details.weekly-available-summary")
-        ?.hasAttribute("open"),
-    ).toBe(false);
-    fireEvent.click(screen.getByRole("tab", { name: "Manager reminders" }));
+    renderDrawer("availability");
+    // KARARLAR M2: only Alex changes his week; the drawer reads it.
+    await screen.findByText("Read only. Only Alex can change this.");
+    expect(screen.getByText("Alex is open to work any time.")).toBeTruthy();
+    expect(screen.getAllByRole("listitem").filter((item) => item.classList.contains("avr-tile"))).toHaveLength(7);
+    fireEvent.click(screen.getByRole("tab", { name: "Manager notes" }));
     expect(
       screen
-        .getByRole("switch", { name: "Enable manager reminders" })
+        .getByRole("switch", { name: "Manager notes" })
         .hasAttribute("disabled"),
     ).toBe(true);
     expect(
@@ -681,7 +677,7 @@ describe("EmployeeDrawer", () => {
       screen.queryByRole("button", { name: "Enter availability for employee" }),
     ).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Try again" }));
-    await screen.findByRole("tab", { name: "Manager reminders" });
+    await screen.findByRole("tab", { name: "Manager notes" });
     expect(saveWeeklyPreferences).not.toHaveBeenCalled();
   });
 

@@ -5,10 +5,12 @@ import {
   loadWeeklyPreferences,
   saveWeeklyPreferences,
 } from "./availability-data";
-import { WeeklyPreferencesForm } from "./WeeklyPreferencesForm";
+import { ManagerAvailability } from "./ManagerAvailability";
 import { MyAvailabilityForm } from "./MyAvailabilityForm";
 import { isNoAccess } from "../lib/no-access";
 import { ListOutline, LoadError } from "../shell/LoadState";
+// Employee Hub's "My availability" tabs (employee-weekly-workspace) are drawn here too.
+import "./weekly-preferences.css";
 
 type Props = {
   workspaceId: string;
@@ -16,6 +18,8 @@ type Props = {
   audience: "employee" | "manager";
   onboarding?: boolean;
   onSaved?: () => void;
+  /** The Availability page's phone view: the manager's tabs read "Availability" / "Manager notes". */
+  short?: boolean;
   /** Onboarding's way on ("Skip for now"), kept in the one action bar beside Save. */
   extraAction?: ReactNode;
 };
@@ -36,6 +40,7 @@ function ConnectedPreferences({
   onboarding = false,
   onSaved,
   extraAction,
+  short,
 }: Props) {
   const client = useQueryClient();
   const queryKey = [
@@ -146,7 +151,8 @@ function ConnectedPreferences({
           onReload={reload}
         />
       ) : (
-        <WeeklyPreferencesForm model={query.data} audience={audience} onSave={save} onReload={reload} />
+        // Employees drawer: the employee's week read only and the manager's notes (AVAIL-GUN-3).
+        <ManagerAvailability model={query.data} onSave={save} onReload={reload} short={short} />
       )}
     </>
   );
