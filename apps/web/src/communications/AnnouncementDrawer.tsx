@@ -363,14 +363,21 @@ function AnnouncementEditor({
     mutationFn: ({ action, bringBack = [] }: { action: AnnouncementStateAction; bringBack?: string[] }) =>
       setAnnouncementState(workspaceId, record!.id, action, record!.revision, bringBack),
     onSuccess: async (result, { action, bringBack = [] }) => {
-      await refresh();
       if (action === "unschedule") {
+        await refresh();
         toast.success("Unscheduled. It's a draft again; nothing was sent.");
         onClose();
-      } else if (action === "archive") {
+        return;
+      }
+      if (action === "archive") {
+        await refresh();
         toast.success("Archived. Nobody sees it; it stays under Archived.");
         onClose();
-      } else if (action === "unpublish") {
+        return;
+      }
+      // The drawer stays: say where before the refresh, whose new copy of the post reopens the drawer
+      // (its key is the revision) and may come back before the lists do.
+      if (action === "unpublish") {
         const back = (record?.shift_change_count ?? 0) > 0;
         onStay(
           back ? "shifts" : "details",
@@ -383,6 +390,7 @@ function AnnouncementEditor({
       } else {
         onStay("aud", `Reminder sent to ${plural(result.told, "person", "people")} who ${result.told === 1 ? "hasn't" : "haven't"} acknowledged.`);
       }
+      await refresh();
     },
     onError: (error) => {
       setFailure(refusalText(error));
