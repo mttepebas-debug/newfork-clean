@@ -97,8 +97,8 @@ describe("the service worker file", () => {
     expect(source).not.toMatch(/respondWith/);
   });
 
-  it("has no push handling yet", () => {
-    expect(source).not.toMatch(/["']push["']/);
-    expect(source).not.toMatch(/["']notificationclick["']/);
+  it("handles phone alerts (BILDIRIM-15; src/phone-alerts/sw.test.ts runs them)", () => {
+    expect(source).toMatch(/addEventListener\("push"/);
+    expect(source).toMatch(/addEventListener\("notificationclick"/);
   });
 });
