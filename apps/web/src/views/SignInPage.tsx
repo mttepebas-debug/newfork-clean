@@ -4,6 +4,7 @@ import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { sessionExpiredStorageKey } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
+import { FieldNote } from "../shell/FieldNote";
 
 export function SignInPage() {
   const {
@@ -148,11 +149,8 @@ export function SignInPage() {
               </Link>
             )}
           </div>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+          {/* Kept room: the error moves nothing (UI-FIELDMSG). */}
+          <FieldNote id="sign-in-form" error={error} lines={2} />
           <div className="pb-stack">
             <button
               type="submit"

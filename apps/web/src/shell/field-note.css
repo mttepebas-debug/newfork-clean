@@ -29,3 +29,10 @@
   white-space: nowrap;
   text-overflow: ellipsis;
 }
+.field-note > small.is-two-lines {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+}

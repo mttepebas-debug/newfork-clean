@@ -146,7 +146,7 @@ export default function GeneralSettingsPage() {
           </div>
         </div>
         {/* The form's own error keeps its line, so it moves nothing (UI-FIELDMSG). */}
-        <FieldNote id="organization-form" error={error ?? logoError} />
+        <FieldNote id="organization-form" error={error ?? logoError} lines={2} />
         {saved ? (
           <p className="form-success" role="status">
             Workspace settings saved.

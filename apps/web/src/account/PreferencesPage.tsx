@@ -99,7 +99,7 @@ export default function PreferencesPage() {
           </label>
         </div>
 
-        <FieldNote id="preferences-form" error={error} />
+        <FieldNote id="preferences-form" error={error} lines={2} />
         {saved ? <p className="form-success" role="status">Preferences saved</p> : null}
         <div className="account-form-actions">
           {dirty ? <Button className="secondary-button" type="button" disabled={saving} onClick={discard}>Discard</Button> : null}

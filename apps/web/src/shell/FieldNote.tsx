@@ -1,6 +1,9 @@
 import type { ReactNode } from "react";
 import "./field-note.css";
 
+/** One line's height in the screen's type, unseen. */
+const NBSP = "\u00a0";
+
 /**
  * The line under a field (TEL-2; Mert, 2026-10-09; UI-FIELDMSG, Mert
  * 2026-10-17): its help, or in its place the error, in one cell that is always
@@ -16,6 +19,7 @@ export function FieldNote({
   error,
   reserve,
   className,
+  lines = 1,
 }: {
   readonly id: string;
   /** The screen's own class for the lines under its fields. */
@@ -25,14 +29,26 @@ export function FieldNote({
   readonly error?: ReactNode;
   /** The longest error the field can show, whose room is always kept. */
   readonly reserve?: ReactNode;
+  /**
+   * How many lines are always kept for an error with no reserve: one under a
+   * field; two for a whole form's error (a server's sentence), cut after them.
+   */
+  readonly lines?: 1 | 2;
 }) {
   const hasError = said(error);
   const hasHelp = said(help);
   const hasReserve = said(reserve);
+  const cut = hasReserve ? undefined : lines === 1 ? "is-one-line" : "is-two-lines";
   return (
     <span className="field-note">
       <small className={cx(className, "field-note-room")} aria-hidden="true">
-        {" "}
+        {NBSP}
+        {lines === 2 ? (
+          <>
+            <br />
+            {NBSP}
+          </>
+        ) : null}
       </small>
       {hasReserve ? (
         <small className={cx(className, "field-note-hidden")} aria-hidden="true">
@@ -47,7 +63,7 @@ export function FieldNote({
       {hasError ? (
         <small
           id={`${id}-error`}
-          className={cx(className, "field-note-error", hasReserve ? undefined : "is-one-line")}
+          className={cx(className, "field-note-error", cut)}
           role="alert"
           title={typeof error === "string" ? error : undefined}
         >

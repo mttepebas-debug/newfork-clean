@@ -225,6 +225,7 @@ export default function SecurityPage() {
       {/* The three password forms answer beside their own button; the rest here. */}
       <FieldNote
         id="security-page"
+        lines={2}
         error={failure && !["password", "sessions", "delete"].includes(failure.key) ? failure.message : null}
       />
       {status ? <p className="form-success" role="status">{status}</p> : null}
@@ -246,7 +247,7 @@ function FormAlert({ id, message }: { readonly id: string; readonly message: str
   }, [message]);
   return (
     <div ref={ref}>
-      <FieldNote id={id} error={message} />
+      <FieldNote id={id} error={message} lines={2} />
     </div>
   );
 }

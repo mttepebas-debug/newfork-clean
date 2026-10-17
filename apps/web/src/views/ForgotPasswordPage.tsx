@@ -2,6 +2,7 @@ import { useState, type FormEvent } from "react";
 import { Link } from "react-router";
 import { requestPasswordReset } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
+import { FieldNote } from "../shell/FieldNote";
 
 // BL-137. One answer for every email, so the screen never says whether an
 // account exists. Visual polish is nf-arayuz's; this reuses the sign-in parts.
@@ -57,11 +58,8 @@ export default function ForgotPasswordPage() {
               required
             />
           </div>
-          {error ? (
-            <p className="form-error" role="alert">
-              {error}
-            </p>
-          ) : null}
+          {/* Kept room: the error moves nothing (UI-FIELDMSG). */}
+          <FieldNote id="forgot-password-form" error={error} lines={2} />
           <div className="pb-stack">
             <button
               type="submit"

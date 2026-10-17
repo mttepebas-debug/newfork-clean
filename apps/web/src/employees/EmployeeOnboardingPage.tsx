@@ -2,11 +2,9 @@ import { todayIn } from "../lib/today";
 import {
   emergencyIsOwnPhoneMessage,
   employeeOnboardingProfileSchema,
-  hasTurkishOnlyLetters,
   phoneInUseMessage,
   sameUsPhone,
   toUsPhone,
-  usLettersMessage,
   type EmployeeOnboarding,
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
@@ -50,6 +48,7 @@ import {
   saveMyOnboardingProfile,
   submitMyOnboarding,
 } from "./onboarding-data";
+import { letterRuleError } from "../shell/us-text";
 
 export default function EmployeeOnboardingPage() {
   const location = useLocation();
@@ -731,13 +730,9 @@ function ProfileStep({
             required={false}
           />
         </div>
-        {validationError ? (
-          <p className="form-error" role="alert">
-            {validationError}
-          </p>
-        ) : null}
         <MutationFooter
           mutation={mutation}
+          error={validationError}
           back={{ label: "Your details", onClick: () => onPage("personal") }}
         />
       </form>
@@ -861,14 +856,9 @@ function ProfileStep({
           }
         />
       </fieldset>
-      {validationError ? (
-        <p className="form-error" role="alert">
-          {validationError}
-        </p>
-      ) : null}
       {/* Page one only moves on; the single save happens on page two, because the
           server rejects a profile that is missing its emergency contact. */}
-      <MutationFooter mutation={mutation} label="Continue" />
+      <MutationFooter mutation={mutation} error={validationError} label="Continue" />
     </form>
   );
 }
@@ -1046,16 +1036,19 @@ function MutationFooter({
   disabled = false,
   label = "Save and continue",
   back,
+  error,
 }: {
   readonly mutation: { isPending: boolean; error: unknown; mutate: () => void };
   readonly disabled?: boolean;
   readonly label?: string;
   readonly back?: { readonly label: string; readonly onClick: () => void };
+  /** The form's own refusal before it is sent; said where a failed save is. */
+  readonly error?: string | null;
 }) {
   return (
     <WizardBar
       back={back}
-      error={mutation.error ? errorMessage(mutation.error) : null}
+      error={error || (mutation.error ? errorMessage(mutation.error) : null)}
     >
       <button
         type="submit"
@@ -1104,10 +1097,8 @@ function TextField({
 }) {
   const id = useId();
   // The US letter rule (BL-503), said under the field as it is typed.
-  const lettersBroken = type === "text" && !readOnly && hasTurkishOnlyLetters(value);
-  const describedBy = [help ? `${id}-help` : null, lettersBroken ? `${id}-letters` : null]
-    .filter(Boolean)
-    .join(" ");
+  // It takes the help's place in the field's one note line (UI-FIELDMSG).
+  const error = type === "text" && !readOnly ? letterRuleError(value) : null;
   return (
     <div className={`onboarding-field${wide ? " wide" : ""}`}>
       <label htmlFor={id}>
@@ -1123,16 +1114,11 @@ function TextField({
         minLength={minLength}
         max={max}
         readOnly={readOnly}
-        aria-invalid={lettersBroken ? true : undefined}
-        aria-describedby={describedBy || undefined}
+        aria-invalid={error ? true : undefined}
+        aria-describedby={fieldNoteId(id, error, help)}
         onChange={(event) => onChange(event.target.value)}
       />
-      {lettersBroken ? (
-        <small id={`${id}-letters`} className="form-error" role="alert">
-          {usLettersMessage}
-        </small>
-      ) : null}
-      {help ? <small id={`${id}-help`}>{help}</small> : null}
+      <FieldNote id={id} help={help} error={error} />
     </div>
   );
 }

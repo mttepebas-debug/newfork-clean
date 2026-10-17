@@ -320,9 +320,7 @@ button.pb-link {
 }
 /* Form and stage messages read like the stage alert above: danger colour,
    left under the fields they are about; the answer to a request, centred. */
-.pb-stage-narrow .sign-in-form > .form-error {
-  margin: 0;
-  color: var(--theme-danger);
+.pb-stage-narrow .sign-in-form > .field-note > small {
   font-size: 14px;
   line-height: 1.5;
   text-align: left;

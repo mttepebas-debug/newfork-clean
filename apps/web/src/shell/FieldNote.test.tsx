@@ -50,6 +50,16 @@ describe("FieldNote", () => {
     expect(alert.classList.contains("is-one-line")).toBe(true);
   });
 
+  it("keeps two lines for a whole form's error and cuts it after them", () => {
+    const { container } = render(<FieldNote id="f" lines={2} error="The server said no." />);
+    expect(container.querySelector(".field-note-room br")).toBeTruthy();
+    const alert = screen.getByRole("alert");
+    expect(alert.classList.contains("is-two-lines")).toBe(true);
+    expect(alert.getAttribute("title")).toBe("The server said no.");
+    const css = flat("src/shell/field-note.css");
+    expect(body(css, ".field-note > small.is-two-lines")).toMatch(/-webkit-line-clamp: 2/);
+  });
+
   it("lets an error wrap only inside a kept reserve", () => {
     render(<FieldNote id="f" error="Too long" reserve="The longest thing it can say" />);
     expect(screen.getByRole("alert").classList.contains("is-one-line")).toBe(false);

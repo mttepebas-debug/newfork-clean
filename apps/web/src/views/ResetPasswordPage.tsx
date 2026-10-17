@@ -6,6 +6,7 @@ import {
   saveNewPassword,
 } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
+import { FieldNote } from "../shell/FieldNote";
 
 // BL-137. The token is in the fragment (#token_hash=), which never reaches a
 // server log. It is spent on Save, not on page load, so a mail scanner that
@@ -116,11 +117,8 @@ export default function ResetPasswordPage() {
             required
           />
         </div>
-        {error ? (
-          <p className="form-error" role="alert">
-            {error}
-          </p>
-        ) : null}
+        {/* Kept room: the error moves nothing (UI-FIELDMSG). */}
+        <FieldNote id="reset-password-form" error={error} lines={2} />
         <div className="pb-stack">
           <button
             type="submit"
