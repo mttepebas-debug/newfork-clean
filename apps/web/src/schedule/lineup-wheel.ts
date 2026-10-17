@@ -108,22 +108,6 @@ export function easeInOut(t: number): number {
 }
 
 /**
- * How far the date row may slide up behind the header's line: until the wheel sits 4 px under it
- * (both measured where they rest).
- */
-export function foldTravel({ wheelTop, headerBottom }: { wheelTop: number; headerBottom: number }): number {
-  return Math.max(0, wheelTop - headerBottom - 4);
-}
-
-/**
- * The fold at a scroll position (Mert 2026-10-17): nothing until the list reaches the shift tabs (`start`),
- * then the date row slides up with the scroll, `travel` at most; after that only the list moves.
- */
-export function foldOffset(scrollTop: number, start: number, travel: number): number {
-  return Math.max(0, Math.min(travel, scrollTop - start));
-}
-
-/**
  * The Publish dock (D1, D3; Mert 2026-10-17 "a little further right"): 10 px over the phone's bottom bar,
  * its right edge on the bar's inner edge, where the last tab (More) ends. With no bar (a window between the
  * phone and the computer layouts), 16 px off the corner.

@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+
 import type { ActiveWorkspaceContext } from "@newfork/shared";
 import { cleanup, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -430,6 +432,24 @@ describe("LineupPage on a phone, E", () => {
     const after = await screen.findByRole("region", { name: "Lunch" });
     expect(within(after).getByText(/^Published \d/)).toBeTruthy();
     expect(within(after).queryByRole("button")).toBeNull();
+  });
+
+  // Mert 2026-10-17 (~8 AM): only the page header stays fixed, at full size; everything under it scrolls.
+  it("pins only the page header; the date row, wheel and tabs scroll with the page", async () => {
+    renderPage();
+    await screen.findByRole("region", { name: "Lunch" });
+    const pinned = document.querySelectorAll("[data-frozen-own]");
+    expect(pinned).toHaveLength(1);
+    const head = pinned[0]!;
+    expect(head.className).toBe("lineup-phone-head");
+    expect(head.querySelector(".catalog-page-header")).toBeTruthy();
+    for (const name of ["Day", "Day. Swipe or use the arrow keys.", "Shifts"])
+      expect(head.contains(screen.getByRole("group", { name }))).toBe(false);
+    const css = readFileSync("src/views/lineup-phone.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+    const sticky = [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, , body]) => /position\s*:\s*sticky/.test(body!))
+      .map(([, selector]) => selector!.trim());
+    expect(sticky).toEqual([".lineup-phone-page .lineup-phone-head"]);
   });
 
   // Mert 2026-10-17 (~7:40 AM): the employee page's location and date head, under the shift tabs, over the card.

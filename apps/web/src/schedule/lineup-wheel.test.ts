@@ -7,8 +7,6 @@ import {
   easeInOut,
   easeOut,
   flingTarget,
-  foldOffset,
-  foldTravel,
   monthEdges,
   releaseVelocity,
   seekDuration,
@@ -91,20 +89,6 @@ describe("the wheel's spin", () => {
       expect(ease(0.5)).toBeGreaterThan(0);
     }
     expect(easeInOut(0.5)).toBeCloseTo(0.5, 6);
-  });
-});
-
-describe("the phone top's fold", () => {
-  it("starts once the list meets the shift tabs and stops when the wheel reaches the separator", () => {
-    // The date row slides up behind the header's line until the wheel sits 4 px under it.
-    const travel = foldTravel({ wheelTop: 300, headerBottom: 218 });
-    expect(travel).toBe(78);
-    expect(foldOffset(100, 213, travel)).toBe(0);
-    expect(foldOffset(213, 213, travel)).toBe(0);
-    expect(foldOffset(250, 213, travel)).toBe(37);
-    expect(foldOffset(291, 213, travel)).toBe(78);
-    expect(foldOffset(900, 213, travel)).toBe(78);
-    expect(foldTravel({ wheelTop: 100, headerBottom: 120 })).toBe(0);
   });
 });
 

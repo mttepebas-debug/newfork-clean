@@ -2,8 +2,8 @@
    mockup kaynak/v-e.css, v-d.css, v-c.css). Selectors carry .lineup-phone-page.list-page so the list
    pages' own phone rules (list-page.css) don't win. Light theme, --theme-* tokens. */
 
-/* The whole page scrolls in the app's main area (not a framed list, list-page-frozen.css): the top is sticky,
-   so the page grows with its list (a 100% high page would carry the sticky top away with it). */
+/* The whole page scrolls in the app's main area (not a framed list, list-page-frozen.css), so the page grows
+   with its list. Only the page header stays put (Mert 2026-10-17 ~8 AM); everything under it scrolls. */
 .lineup-page.list-page.list-page.lineup-phone-page {
   display: flex;
   width: auto;
@@ -14,56 +14,46 @@
   margin: 0;
   padding: 0 16px;
 }
-/* A flex column: the fold's give-back margin can't collapse into the card's margin. */
 .lineup-phone-page > * {
   flex: none;
 }
 
-/* The fixed top: title, date and location, the wheel, the shift tabs. It ends half a pixel under the tabs,
-   so nothing that scrolls touches the selected tab's line. */
-.lineup-phone-page .lineup-phone-top {
+/* The page header, pinned at the top of the main area at its full size (the shell's frozen top, which would
+   fold it to one line, leaves it alone: data-frozen-own). */
+.lineup-phone-page .lineup-phone-head {
   position: sticky;
   top: 0;
   z-index: 5;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
   margin: 0 -16px;
-  padding: 16px 16px 0.5px;
-  overflow: hidden;
-  background: var(--lineup-phone-bg, var(--theme-page));
+  padding: 16px 16px 0;
+  background: var(--theme-page);
 }
-/* While it folds the top gets shorter; its pieces keep their size (they slide, they don't shrink). */
-.lineup-phone-page .lineup-phone-top > * {
-  flex: none;
-}
-/* The header sits above the date row, so that row slides up behind its line. */
-.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header {
-  position: relative;
-  z-index: 2;
+.lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header {
   height: auto;
   min-height: 0;
   flex-direction: column;
   align-items: flex-start;
-  margin: 0 0 4px;
+  margin: 0;
   padding: 16px 0 20px;
-  background: var(--lineup-phone-bg, var(--theme-page));
+  background: var(--theme-page);
 }
-.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header h1 {
+.lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header h1 {
   flex-wrap: wrap;
   font-size: 28px;
 }
-.lineup-phone-page.list-page .lineup-phone-top > .catalog-page-header p {
+.lineup-phone-page.list-page .lineup-phone-head > .catalog-page-header p {
   white-space: normal;
 }
-.lineup-phone-page .lineup-phone-top :is(.lineup-toolbar, .lineup-wheel, .lineup-phone-tabs-slot) {
-  position: relative;
-  z-index: 1;
-  background: var(--lineup-phone-bg, var(--theme-page));
+
+/* Under it, scrolling with the page: the date and location, the wheel, the shift tabs. */
+.lineup-phone-page .lineup-phone-top {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 18px;
 }
-/* A compositor layer only while the top folds: a standing one blurs the wheel's days (Mert 2026-10-17). */
-.lineup-phone-page .lineup-phone-top.is-folding :is(.lineup-toolbar, .lineup-wheel, .lineup-phone-tabs-slot) {
-  will-change: transform;
+.lineup-phone-page .lineup-phone-top > * {
+  flex: none;
 }
 /* Shift tabs: a 43 px row, the tab 42 px with a 3 px dark green line sitting fully on the row's border. */
 .lineup-phone-page.list-page .lineup-phone-top .catalog-toolbar {
@@ -118,11 +108,8 @@
 .lineup-phone-page .lineup-phone-short + .lineup-phone-summary {
   margin-top: 12px;
 }
-/* The location and date head (schedule/lineup-wheel.css) 20 px under the shift tabs, the card 14 px under it
-   (Mert 2026-10-17 ~7:40 AM; mockup v-e.css .e-mgrhead). */
-.lineup-phone-page .lineup-day-head {
-  margin-top: 20px;
-}
+/* The location and date head (schedule/lineup-wheel.css) 16 px under the shift tabs as on the employee's page
+   (Mert 2026-10-17 ~8:10 AM, one rhythm on both), the card 14 px under it (~7:40 AM; mockup .e-mgrhead). */
 .lineup-phone-page .lineup-day-head + :is(.lineup-phone-summary, .lineup-phone-short) {
   margin-top: 14px;
 }

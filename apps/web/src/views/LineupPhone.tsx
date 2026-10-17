@@ -20,16 +20,16 @@ import {
 } from "../schedule/lineup";
 import { LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
 import { LineupReadLists } from "../schedule/LineupReadList";
-import { dockPlace, foldOffset, foldTravel } from "../schedule/lineup-wheel";
+import { dockPlace } from "../schedule/lineup-wheel";
 import { LineupDayHead, LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import "./lineup-phone.css";
 
 // The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3):
-// today's top (title, date and location, the day wheel, the shift tabs) stays fixed; under it the summary
-// card, Team · Notes · Read and the team, read-only. Scrolling the list folds the top in three steps
-// (useFold). Publish waits at the bottom over the bar; it opens the Publish window as a sheet.
+// only the page header stays fixed (Mert 2026-10-17 ~8 AM); under it the date and location, the day wheel,
+// the shift tabs, the location and date, the summary card, Team · Notes · Read and the team, read-only, all
+// scroll. Publish waits at the bottom over the bar; it opens the Publish window as a sheet.
 
 export interface PhonePublish {
   readonly waiting: number;
@@ -90,25 +90,21 @@ export function PhoneLineupPage({
   readonly publish: PhonePublish | null;
 }) {
   const [seg, setSeg] = useState<Seg>("team");
-  const top = useRef<HTMLDivElement | null>(null);
-  const bar = useRef<HTMLDivElement | null>(null);
-  const wheelBox = useRef<HTMLDivElement | null>(null);
-  const tabs = useRef<HTMLDivElement | null>(null);
-  const pane = useRef<HTMLDivElement | null>(null);
 
   const ready = !loading && !error && location && !location.closed;
   const shift = ready ? phoneLineupShift(location.shifts, chosen, now) : null;
-  useFold({ top, bar, wheel: wheelBox, tabs, pane }, `${loading}:${location?.id}:${shift?.key}:${seg}`);
 
   return (
     <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title">
-      {/* The page's own fixed top: the shell's frozen-top leaves it alone (data-frozen-own). */}
-      <div className="lineup-phone-top" ref={top} data-frozen-own="">
+      {/* The one fixed piece, at its full size: the shell's frozen top leaves it alone (data-frozen-own). */}
+      <div className="lineup-phone-head" data-frozen-own="">
         {header}
-        <LineupDayPicker date={date} today={today} onDate={onDate} barRef={bar} wheelRef={wheelBox}>
+      </div>
+      <div className="lineup-phone-top">
+        <LineupDayPicker date={date} today={today} onDate={onDate}>
           <LineupLocationSelect loading={loading} locations={locations} value={location?.id ?? ""} onChange={onLocation} />
         </LineupDayPicker>
-        <div className="lineup-phone-tabs-slot" ref={tabs}>
+        <div className="lineup-phone-tabs-slot">
           {loading ? (
             <div className="lineup-phone-outline-tabs" aria-hidden>
               <Skeleton width={64} height={12} className="on-page" />
@@ -139,7 +135,6 @@ export function PhoneLineupPage({
       ) : null}
       <div
         className="lineup-phone-pane"
-        ref={pane}
         {...(shift && !loading ? { role: "tabpanel", id: "lineup-phone-panel", "aria-labelledby": `lineup-phone-seg-${seg}` } : {})}
       >
         {loading ? null : error ? (
@@ -459,103 +454,4 @@ function useDockPlace(ref: RefObject<HTMLDivElement | null>) {
       window.removeEventListener("resize", place);
     };
   }, [ref]);
-}
-
-/** The scrolling area the page sits in (the app's main area). */
-function scroller(element: HTMLElement): HTMLElement | null {
-  for (let node = element.parentElement; node; node = node.parentElement) {
-    if (/(auto|scroll)/.test(getComputedStyle(node).overflowY)) return node;
-  }
-  return null;
-}
-
-/**
- * The top's fold (Mert 2026-10-17; mockup v-e.js collapse()). Scrolling the list up: (1) the summary card and
- * Team · Notes · Read slide under the shift tabs until the list meets them; (2) the date row slides up behind
- * the header's line, the wheel and the tabs rise with it until the wheel sits 4 px under the line; (3) only
- * the list moves. A function of the scroll position; the top keeps its height in the page (given back as
- * margin), so nothing jumps.
- */
-function useFold(
-  refs: {
-    readonly top: RefObject<HTMLDivElement | null>;
-    readonly bar: RefObject<HTMLDivElement | null>;
-    readonly wheel: RefObject<HTMLDivElement | null>;
-    readonly tabs: RefObject<HTMLDivElement | null>;
-    readonly pane: RefObject<HTMLDivElement | null>;
-  },
-  version: string,
-) {
-  const measureRef = useRef<() => void>(() => undefined);
-  useLayoutEffect(() => {
-    const top = refs.top.current;
-    const pane = refs.pane.current;
-    const bar = refs.bar.current;
-    const wheel = refs.wheel.current;
-    const head = top?.querySelector<HTMLElement>(".catalog-page-header");
-    if (!top || !pane || !bar || !wheel || !head) return;
-    const area = scroller(top);
-    if (!area) return;
-    const moving = [bar, wheel, refs.tabs.current].filter((element): element is HTMLDivElement => Boolean(element));
-    let height = 0;
-    let start = 0;
-    let travel = 0;
-    let frame = 0;
-
-    const measure = () => {
-      top.style.height = "";
-      top.style.marginBottom = "";
-      for (const element of moving) element.style.transform = "";
-      const scrolled = area.scrollTop;
-      const box = area.getBoundingClientRect();
-      height = top.offsetHeight;
-      start = Math.max(0, pane.getBoundingClientRect().top - box.top - area.clientTop + scrolled - height);
-      travel = foldTravel({ wheelTop: wheel.getBoundingClientRect().top, headerBottom: head.getBoundingClientRect().bottom });
-    };
-    const apply = () => {
-      frame = 0;
-      if (!top.isConnected) return;
-      // Open: read the sizes again (fonts and rows change them).
-      if (!top.style.height) measure();
-      const fold = foldOffset(area.scrollTop, start, travel);
-      top.style.height = fold ? `${height - fold}px` : "";
-      top.style.marginBottom = fold ? `${fold}px` : "";
-      for (const element of moving) element.style.transform = fold ? `translateY(${-fold}px)` : "";
-      top.classList.toggle("is-folding", fold > 0);
-    };
-    const again = () => {
-      if (!top.isConnected) return;
-      const scrolled = area.scrollTop;
-      measure();
-      area.scrollTop = scrolled;
-      apply();
-    };
-    measureRef.current = again;
-    const onScroll = () => {
-      if (!frame) frame = requestAnimationFrame(apply);
-    };
-    // The fold does the page's arithmetic itself: the browser's scroll anchoring must not nudge it.
-    const anchoring = area.style.overflowAnchor;
-    area.style.overflowAnchor = "none";
-    // The top hides what passes under it with the area's own background.
-    top.style.setProperty("--lineup-phone-bg", getComputedStyle(area).backgroundColor);
-    measure();
-    apply();
-    area.addEventListener("scroll", onScroll, { passive: true });
-    const watched = typeof ResizeObserver === "function" ? new ResizeObserver(again) : null;
-    watched?.observe(area);
-    watched?.observe(pane);
-    void document.fonts?.ready.then(again);
-    return () => {
-      if (frame) cancelAnimationFrame(frame);
-      area.removeEventListener("scroll", onScroll);
-      watched?.disconnect();
-      area.style.overflowAnchor = anchoring;
-      top.style.height = "";
-      top.style.marginBottom = "";
-      for (const element of moving) element.style.transform = "";
-    };
-  }, [refs.top, refs.bar, refs.wheel, refs.tabs, refs.pane]);
-  // New content (a day, a shift, a tab): measure again.
-  useLayoutEffect(() => measureRef.current(), [version]);
 }
