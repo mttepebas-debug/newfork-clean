@@ -344,7 +344,12 @@ function TimeFields({
       >
         {!range && <option value="">—</option>}
         {TIMES.filter((minutes) => minutes >= from && minutes <= to).map((minutes) => (
-          <option key={minutes} value={minutes}>
+          <option
+            key={minutes}
+            value={minutes}
+            // Told apart from From's 12:00 AM by name: this is the end of the day.
+            aria-label={minutes === DAY_END ? `${label(minutes)}, end of day` : undefined}
+          >
             {label(minutes)}
           </option>
         ))}

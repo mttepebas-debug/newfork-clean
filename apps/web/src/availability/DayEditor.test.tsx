@@ -165,6 +165,10 @@ describe("From and Until", () => {
     expect(options("From").at(-1)).toBe("11:30 PM");
     expect(options("Until")[1]).toBe("12:30 AM");
     expect(options("Until").at(-1)).toBe("12:00 AM");
+    // The two 12:00 AMs are told apart by name: the end of the day says so.
+    const ends = (name: string) => [...(screen.getByRole("combobox", { name }) as HTMLSelectElement).options];
+    expect(ends("Until").at(-1)!.getAttribute("aria-label")).toBe("12:00 AM, end of day");
+    expect(ends("From")[1]!.getAttribute("aria-label")).toBeNull();
     const words = /Midnight|End of day|Open|Close/;
     expect([...options("From"), ...options("Until")].filter((label) => words.test(label ?? ""))).toEqual([]);
     expect([...options("From"), ...options("Until")].filter((label) => label !== "—").every((label) => /^\d{1,2}:\d{2} [AP]M$/.test(label ?? ""))).toBe(true);

@@ -59,8 +59,11 @@ test("desktop: Friday's evening and the Thursday it was copied to are saved with
   await expect(row.getByRole("button", { name: "Save", exact: true })).toBeDisabled();
   expect((await row.boundingBox())!.y).toBe(before!.y);
   await expect(page.getByText(/^Shared with your managers · /)).toBeVisible();
-  // No toast after a save (Tur 2).
-  await expect(page.getByRole("status").filter({ hasText: /saved/i })).toHaveCount(0);
+  // No toast after a save (Tur 2): the row's note is the only word of it.
+  await expect(page.getByRole("status").filter({ hasText: /saved/i })).toHaveCount(1);
+  // One tap anywhere in the week drops the note; its live region stays, empty.
+  await days.getByRole("button", { name: /^Friday/ }).click();
+  await expect(row.getByRole("status")).toHaveText("");
 
   await page.reload();
   await expect(days.getByRole("button", { name: /^Friday/ })).toHaveText(/Unavailable after 6:00 PM/);

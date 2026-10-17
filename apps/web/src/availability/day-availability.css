@@ -254,13 +254,29 @@
   margin-top: 14px;
 }
 .dav-saved {
+  margin-right: auto;
+  border-radius: 4px;
+  color: var(--theme-accent);
+  font-size: 12px;
+}
+/* The note slides in only while it shows; the live region around it stays. */
+.dav-saved-text {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  margin-right: auto;
-  color: var(--theme-accent);
-  font-size: 12px;
   animation: dav-saved-in 0.7s cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.dav-actions {
+  border-radius: 6px;
+}
+.dav-actions:focus,
+.dav-saved:focus {
+  outline: none;
+}
+.dav-actions:focus-visible,
+.dav-saved:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
 }
 .dav-saved b {
   font-weight: 650;
@@ -277,7 +293,7 @@
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .dav-saved {
+  .dav-saved-text {
     animation: none;
   }
 }

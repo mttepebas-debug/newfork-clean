@@ -109,7 +109,9 @@ describe("desktop: the days on the left, the day on the right", () => {
     fireEvent.click(radio(/^Unavailable/));
     expect(screen.getByRole("group", { name: "Save your week" })).toBe(row);
     expect([cancel.disabled, save.disabled]).toEqual([false, false]);
-    expect(within(row).queryByRole("status")).toBeNull();
+    // The live region is always in the row, empty until a save (screen
+    // readers miss a region that appears with its text).
+    expect(within(row).getByRole("status").textContent).toBe("");
   });
 
   it("says the week was saved, sliding in from the left, until the next change", async () => {
@@ -117,12 +119,35 @@ describe("desktop: the days on the left, the day on the right", () => {
     render(<MyAvailabilityForm model={data} onSave={saver(data)} />);
     fireEvent.click(radio(/^Unavailable/));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    const done = await screen.findByRole("status");
+    const done = screen.getByRole("status");
+    await screen.findByText("Availability preferences saved");
+    expect(screen.getByRole("status")).toBe(done);
     expect(done.textContent).toBe("Availability preferences saved");
     expect(done.className).toContain("dav-saved");
+    expect(done.querySelector(".dav-saved-text")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Save" }) as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(radio(/^Some hours/));
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("status")).toBe(done);
+    expect(done.textContent).toBe("");
+  });
+
+  // A pressed Save or Cancel turns faded; the focus stays in the row, not on the page.
+  it("keeps the focus in the row when Save or Cancel fades after a press", async () => {
+    const data = model();
+    render(<MyAvailabilityForm model={data} onSave={saver(data)} />);
+    const row = screen.getByRole("group", { name: "Save your week" });
+    fireEvent.click(radio(/^Unavailable/));
+    const save = within(row).getByRole("button", { name: "Save" });
+    save.focus();
+    fireEvent.click(save);
+    await screen.findByText("Availability preferences saved");
+    expect(document.activeElement).toBe(within(row).getByRole("status"));
+    fireEvent.click(radio(/^Some hours/));
+    const cancel = within(row).getByRole("button", { name: "Cancel" });
+    cancel.focus();
+    fireEvent.click(cancel);
+    expect((cancel as HTMLButtonElement).disabled).toBe(true);
+    expect(document.activeElement).toBe(row);
   });
 
   it("drops the saved note on the next tap anywhere in the week", async () => {
@@ -130,9 +155,9 @@ describe("desktop: the days on the left, the day on the right", () => {
     render(<MyAvailabilityForm model={data} onSave={saver(data)} />);
     fireEvent.click(radio(/^Unavailable/));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await screen.findByRole("status");
+    await screen.findByText("Availability preferences saved");
     fireEvent.pointerDown(dayRow(3));
-    expect(screen.queryByRole("status")).toBeNull();
+    expect(screen.getByRole("status").textContent).toBe("");
   });
 
   it("has no Cancel / Save row in onboarding: the step keeps its own buttons", () => {

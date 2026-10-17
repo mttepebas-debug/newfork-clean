@@ -71,6 +71,9 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
   const [conflict, setConflict] = useState(false);
   const [reloading, setReloading] = useState(false);
   const inFlight = useRef(false);
+  // A pressed Save or Cancel turns faded; the focus moves to the note or the row, not the page.
+  const actionsRef = useRef<HTMLDivElement>(null);
+  const savedRef = useRef<HTMLSpanElement>(null);
   const canEdit = model.can_edit_employee;
   const saved = weekOf(baseline);
   const changed = changedDays(saved, week);
@@ -338,21 +341,37 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
           {foot}
           {!wizard && (
             // Mert 2026-10-17: always here, so nothing moves when a day changes.
-            <div className="dav-actions" role="group" aria-label="Save your week">
-              {savedNote && (
-                <span className="dav-saved" role="status">
-                  <Check size={14} aria-hidden />
-                  <b>Availability preferences saved</b>
-                </span>
-              )}
+            <div className="dav-actions" role="group" aria-label="Save your week" ref={actionsRef} tabIndex={-1}>
+              {/* Always in the row and empty until a save: screen readers miss
+                  a live region that appears together with its text. */}
+              <span className="dav-saved" role="status" ref={savedRef} tabIndex={-1}>
+                {savedNote && (
+                  <span className="dav-saved-text">
+                    <Check size={14} aria-hidden />
+                    <b>Availability preferences saved</b>
+                  </span>
+                )}
+              </span>
               <Button
                 className="secondary-button"
                 disabled={!dirty || saving || !canEdit}
-                onClick={() => reset(latestModel)}
+                onClick={(event) => {
+                  const focused = document.activeElement === event.currentTarget;
+                  reset(latestModel);
+                  if (focused) actionsRef.current?.focus();
+                }}
               >
                 Cancel
               </Button>
-              <Button disabled={!hasChanges || saving || !canEdit} onClick={() => void submit(week)}>
+              <Button
+                disabled={!hasChanges || saving || !canEdit}
+                onClick={(event) => {
+                  const focused = document.activeElement === event.currentTarget;
+                  void submit(week).then((done) => {
+                    if (focused) (done ? savedRef : actionsRef).current?.focus();
+                  });
+                }}
+              >
                 {saving ? "Saving..." : "Save"}
               </Button>
             </div>
