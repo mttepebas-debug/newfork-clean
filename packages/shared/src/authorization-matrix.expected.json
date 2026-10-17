@@ -1,5 +1,5 @@
 {
- "sourceSha256": "c6a538d6825f3d0d27df501eb692d949fcf4d30850b93431388733e5cfe24ac0",
+ "sourceSha256": "bfccc0faad3da8d1412158f718ee34ea7124f2edb512517a1d0f67696f890ef1",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -62,8 +62,6 @@
   "settings.locations.read",
   "settings.locations.write",
   "settings.organization.write",
-  "settings.people",
-  "settings.people.read",
   "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
@@ -1204,20 +1202,6 @@
    "targetKind": "workspace",
    "permission": null,
    "coreKey": "settings.organization.write",
-   "blank": "null"
-  },
-  {
-   "key": "settings.people",
-   "targetKind": "workspace",
-   "permission": null,
-   "coreKey": "settings.people",
-   "blank": "null"
-  },
-  {
-   "key": "settings.people.read",
-   "targetKind": "workspace",
-   "permission": "employees.read",
-   "coreKey": "settings.people.read",
    "blank": "null"
   },
   {
@@ -30467,210 +30451,6 @@
   ],
   [
    "settings.organization.write",
-   "zeynep",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people",
-   "ali",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "aydan",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "ayse",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "can",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "derya",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "emre",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "kaan",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people",
-   "mehmet",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "nil",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "nur",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "olcay",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people",
-   "pelin",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "remzi",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "sami",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "veli",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "xavier",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people",
-   "zeynep",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "ali",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "aydan",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "ayse",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "can",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "derya",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "emre",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "kaan",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "mehmet",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "nil",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "nur",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "olcay",
-   "workspace",
-   "allow"
-  ],
-  [
-   "settings.people.read",
-   "pelin",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "remzi",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "sami",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "veli",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
-   "xavier",
-   "workspace",
-   "deny"
-  ],
-  [
-   "settings.people.read",
    "zeynep",
    "workspace",
    "allow"

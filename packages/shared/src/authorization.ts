@@ -69,8 +69,6 @@ export const authzActionKeys = [
   "settings.locations.read",
   "settings.locations.write",
   "settings.organization.write",
-  "settings.people",
-  "settings.people.read",
   "settings.roles.read",
   "settings.roles.write",
   "settings.scheduling.write",
@@ -154,8 +152,6 @@ export const targetedAuthzActions = {
   "settings.jobs.write": { permission: "settings.jobs.manage" },
   "settings.locations.write": { permission: "settings.locations.manage" },
   "settings.organization.write": { permission: "settings.general.manage" },
-  "settings.people": { permission: "settings.general.manage" },
-  "settings.people.read": { permission: "employees.read" },
   "settings.roles.write": { permission: "roles.manage" },
   "settings.scheduling.write": { permission: "settings.schedule_rules.manage" },
   "settings.conflict_rules.write": { permission: "schedule.conflict_rules.manage" },
@@ -358,7 +354,6 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.roles.write":
     case "settings.scheduling.write":
     case "settings.conflict_rules.write":
-    case "settings.people":
     case "audit.read":
       // Managers read the catalog; they never write organization settings.
       return high;
@@ -381,11 +376,6 @@ export function expected<A extends TargetedAuthzAction>(
     case "settings.roles.read":
       // Roles are not shown to managers.
       return high;
-
-    case "settings.people.read":
-      // Whether a preferred name waits for an answer is about the workspace:
-      // whoever reads employees reads it (BL-443).
-      return true;
 
     case "workspace.close":
     case "workspace.transfer_ownership":
