@@ -14,24 +14,40 @@
 --     the push service may hold it (what is left of the 24 hours), its urgency, a topic (the push service
 --     keeps one of two with the same) and the devices that have not taken it yet;
 --   * the lock screen: an alert shows the notice's title and the workspace's name; the notice's body only
---     for the types whose body the product writes itself from dates, hours and counts (push_shows_body),
---     never a person's own words (a time off reason, a note). A title is cut at 120 characters, a body at 140;
+--     where the product writes it itself from dates, hours and counts: a type from one producer, named by
+--     the record it is about (app_private.push_shows_body). Never a person's own words (a time off reason,
+--     a note) nor an announcement's (a closed day's shift change). A title is cut at 120 characters, a body
+--     at 140;
 --   * finishing (finish_notification_push_service), device by device: accepted is recorded and never sent
 --     again (notification_push_sends); gone removes the device; a retry waits 1, 2, 4, 8 minutes, or what
 --     the push service asked, and goes only to the devices still waiting; the fifth try is the last; too
 --     large is dead at once; no device reached is dead. What the run had no time for is given back untried
 --     (release_notification_push_service);
 --   * fallback: an important or required notice that reached no device goes by email, unless the person or
---     the owner turned that email off or the address is suppressed; an optional one never does;
+--     the owner turned that email off or the address is suppressed; an optional one never does. The email
+--     worker sends it though a device is still there (claim_notification_emails_service: a fallback is
+--     stopped by the owner, the person, a suppressed or missing address, never by "off by default");
 --   * launch (as S-130 (4)): the channel opens when this migration is applied; push queued before is skipped.
 -- Only the worker (service_role) claims, finishes and gives back; the person's two through the API.
 
 -- The lock screen ------------------------------------------------------------------------------------------
 
-alter table public.notification_types add column push_shows_body boolean not null default false;
-update public.notification_types set push_shows_body = true
-where key in ('schedule.published', 'schedule.shift_added', 'schedule.shift_changed', 'schedule.shift_removed',
-              'people.onboarding_completed', 'time_off.decision_reminder');
+-- Whose body may show: each pair is one producer, which writes the body from dates, hours and counts
+-- (schedule_publish_tell, the onboarding case's completion, the time off decision reminder). The same type
+-- from another producer (a closed day's announcement changes a shift too) shows only its title.
+create function app_private.push_shows_body(target_type text, target_subject text)
+returns boolean
+language sql
+immutable
+set search_path = ''
+as $$
+  select (target_type, target_subject) in (
+    ('schedule.published', 'schedule_publication'), ('schedule.shift_added', 'schedule_publication'),
+    ('schedule.shift_changed', 'schedule_publication'), ('schedule.shift_removed', 'schedule_publication'),
+    ('people.onboarding_completed', 'onboarding_case'), ('time_off.decision_reminder', 'time_off_request'))
+$$;
+
+revoke all on function app_private.push_shows_body(text, text) from public;
 
 -- Devices ---------------------------------------------------------------------------------------------------
 
@@ -191,6 +207,99 @@ $$;
 
 revoke all on function app_private.push_fallback_email(uuid) from public, anon, authenticated;
 
+-- The email worker sends a push fallback (BILDIRIM-14's claim, one rule more) ----------------------------------
+
+create or replace function public.claim_notification_emails_service(target_batch_size integer)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  channel app_private.notification_email_channel;
+  sent_today integer;
+  row record;
+  route record;
+  given jsonb := '[]'::jsonb;
+  tomorrow timestamptz := (date_trunc('day', now() at time zone 'UTC') + interval '1 day') at time zone 'UTC';
+begin
+  if target_batch_size is null or target_batch_size < 1 or target_batch_size > 100 then
+    raise exception 'a batch is 1 to 100' using errcode = '22023', hint = 'notifications.batch_size';
+  end if;
+  select * into channel from app_private.notification_email_channel;
+  if not found then
+    return given;
+  end if;
+  select count(*)::integer into sent_today from public.notification_deliveries d
+  where d.channel = 'email' and d.sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
+
+  for row in
+    select d.id, d.status, d.attempts, d.reason, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
+      n.created_at noticed_at, t.level, t.to_former_members, p.name topic
+    from public.notification_deliveries d
+    join public.person_notifications n on n.id = d.notification_id
+    join public.notification_types t on t.key = n.type_key
+    join public.notification_topics p on p.key = t.topic_key
+    where d.channel = 'email'
+      and ((d.status in ('queued', 'failed') and d.next_attempt_at <= now())
+           or (d.status = 'sending' and d.lease_expires_at < now()))
+    order by (t.level = 'required') desc, d.created_at, d.id
+    limit target_batch_size
+    for update of d skip locked
+  loop
+    if row.queued_at < channel.opened_at then
+      update public.notification_deliveries set status = 'skipped', last_error = 'before_launch', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.status = 'sending' and row.attempts >= 5 then
+      update public.notification_deliveries set status = 'dead', last_error = 'lease_exhausted', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.noticed_at < now() - interval '24 hours' then
+      update public.notification_deliveries set status = 'dead', last_error = 'stale', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if not app_private.membership_receives(row.workspace_id, row.user_id, row.to_former_members) then
+      update public.notification_deliveries set status = 'skipped', last_error = 'not_member', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    select r.sends, r.reason into route from app_private.notification_route(row.type_key, row.workspace_id, row.user_id) r
+    where r.channel = 'email';
+    -- A phone alert that reached no device comes by email though email is off by default for it, and
+    -- though the person still has a device (BILDIRIM-15); the owner, the person or the address still stop it.
+    if not coalesce(route.sends, false) and not (row.reason = 'push_fallback' and route.reason = 'default_off') then
+      update public.notification_deliveries set status = 'skipped', last_error = coalesce(route.reason, 'no_route'),
+        lease_expires_at = null, updated_at = now() where id = row.id;
+      continue;
+    end if;
+    if row.level <> 'required' and channel.daily_cap is not null and sent_today >= channel.daily_cap then
+      update public.notification_deliveries set status = 'queued', next_attempt_at = tomorrow, lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
+    update public.notification_deliveries set status = 'sending', attempts = attempts + 1,
+      lease_expires_at = now() + interval '2 minutes', updated_at = now() where id = row.id;
+    sent_today := sent_today + 1;
+    given := given || jsonb_build_array(jsonb_build_object(
+      'delivery_id', row.id,
+      'to', (select lower(u.email) from auth.users u where u.id = row.user_id),
+      'subject', row.title,
+      'title', row.title,
+      'body', row.body,
+      'url', row.url,
+      'workspace_name', (select w.name from public.workspaces w where w.id = row.workspace_id),
+      'level', row.level,
+      'topic', row.topic,
+      'idempotency_key', 'notification-delivery/' || row.id::text));
+  end loop;
+  return given;
+end;
+$$;
+
 -- The worker ------------------------------------------------------------------------------------------------
 
 create function public.claim_notification_push_service(target_batch_size integer)
@@ -217,7 +326,7 @@ begin
 
   for row in
     select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body,
-      n.url, n.created_at noticed_at, t.level, t.push_shows_body
+      n.url, n.subject_type, n.created_at noticed_at, t.level
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
     join public.notification_types t on t.key = n.type_key
@@ -265,12 +374,15 @@ begin
       end if;
       continue;
     end if;
+    -- Ten at most, the most recently used first: two saves at once can leave one more for a moment.
     select coalesce(jsonb_agg(jsonb_build_object('subscription_id', s.id, 'endpoint', s.endpoint, 'p256dh', s.p256dh,
-             'auth', s.auth_secret) order by s.created_at, s.id), '[]'::jsonb)
+             'auth', s.auth_secret) order by s.used desc, s.id), '[]'::jsonb)
       into targets
-    from public.notification_push_subscriptions s
-    where s.user_id = row.user_id and s.revoked_at is null
-      and not exists (select 1 from public.notification_push_sends x where x.delivery_id = row.id and x.subscription_id = s.id);
+    from (select x.*, coalesce(x.last_used_at, x.created_at) used from public.notification_push_subscriptions x
+          where x.user_id = row.user_id and x.revoked_at is null
+            and not exists (select 1 from public.notification_push_sends y where y.delivery_id = row.id and y.subscription_id = x.id)
+          order by used desc, x.id
+          limit 10) s;
     if jsonb_array_length(targets) = 0 then
       -- Every device left has taken it already.
       update public.notification_deliveries set status = 'sent', sent_at = coalesce(sent_at, now()), last_error = null,
@@ -288,7 +400,7 @@ begin
       'payload', jsonb_build_object(
         'title', case when char_length(row.title) > 120 then left(row.title, 119) || '…' else row.title end,
         'body', nullif(concat_ws(' · ', workspace_name,
-          case when row.push_shows_body and row.body is not null then
+          case when app_private.push_shows_body(row.type_key, row.subject_type) and row.body is not null then
             case when char_length(row.body) > 140 then left(row.body, 139) || '…' else row.body end end), ''),
         'url', coalesce(row.url, '/app'),
         'tag', row.notice::text),
