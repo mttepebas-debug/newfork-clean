@@ -2,8 +2,9 @@
    çizgilerin pixel hassasitetinde ayni koordinatlarda olmasi gerekiyor";
    variant A, 12 px). Under the 56 px top bar (Account: its own 56 px row)
    every page's heading has the same box: 12 px, a 36 px title row, 12 px and
-   a 1 px line, so the line is 116 px down the screen on every page; folded
-   (frozen-top.css) 6 px, the row, 5 px and the line: 103 px. The title row
+   a 1 px line, so the line is 116 px down the screen on every page, and it
+   stays there as the page scrolls: the heading never folds (Mert 2026-10-17,
+   phone notes #4, "Hep büyük, sabit"). The title row
    holds the page name and its control; the eyebrow and the description show
    on the desktop only. What does not fit next to the title (a second
    control, the heading's own tabs, Settings' and Account's menu) wraps under
@@ -162,24 +163,5 @@
     [data-frozen-scrolled]
     :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-last] {
     box-shadow: 0 calc(-1 * var(--frozen-gap, 0px)) 0 0 var(--frozen-bg);
-  }
-}
-
-/* Folded (frozen-top.css): the same box, tighter. */
-@media (max-width: 720px) and (min-height: 560px) {
-  :root:root:root:root
-    [data-frozen-folded]
-    :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-piece] {
-    --page-line: 47px;
-    gap: 18px 12px;
-    padding-top: 6px;
-    padding-bottom: 6px;
-  }
-  :root:root:root:root
-    [data-frozen-folded]
-    :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-piece]
-    > :has(h1)
-    h1 {
-    font-size: 19px;
   }
 }

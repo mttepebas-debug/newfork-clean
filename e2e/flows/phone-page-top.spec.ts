@@ -6,12 +6,12 @@ import { signIn, type Person } from "../fixtures/world";
 // çizgilerin pixel hassasitetinde ayni koordinatlarda olmasi gerekiyor"; A,
 // 12 px, the Settings and Account menus under the heading, a top bar on the
 // employee's pages too): under the 56 px top bar every page's heading line
-// sits 116 px down the screen, and 103 px once the heading has folded.
+// sits 116 px down the screen, and stays there as the page scrolls: the
+// heading never folds (Mert 2026-10-17, phone notes #4, "Hep büyük, sabit").
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1440, height: 900 };
 const OPEN = 116;
-const FOLDED = 103;
 // Every page is checked even after one is off, so a run names them all.
 const soft = expect.configure({ soft: true });
 
@@ -139,7 +139,7 @@ const scrollDown = (page: Page) =>
   });
 
 for (const person of ["zeynep", "emre"] as const) {
-  test(`phone: every page's heading line at ${OPEN} px, ${FOLDED} px folded (${person})`, async ({ browser }) => {
+  test(`phone: every page's heading line at ${OPEN} px, scrolled too (${person})`, async ({ browser }) => {
     test.setTimeout(15 * 60_000);
     const page = await open(browser, person, PHONE);
     for (const path of PAGES[person]) {
@@ -162,9 +162,7 @@ for (const person of ["zeynep", "emre"] as const) {
         expect.soft(room, `${path} room for the focus ring`).toBeGreaterThanOrEqual(4);
       }
       await scrollDown(page);
-      // Lineup keeps its heading at its full size (Mert 2026-10-17 ~8 AM): it never folds.
-      const folded = path.endsWith("/lineup") ? OPEN : FOLDED;
-      await soft.poll(() => lineOf(page), { message: `${path} folded`, timeout: 5000 }).toBe(folded);
+      await soft.poll(() => lineOf(page), { message: `${path} scrolled`, timeout: 5000 }).toBe(OPEN);
       await expect.soft(page.locator("h1").filter({ visible: true }).first(), path).toBeInViewport();
     }
   });

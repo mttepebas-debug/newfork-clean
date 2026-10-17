@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 // Every screen keeps its heading and tabs in place (Mert 2026-10-16). jsdom
 // lays nothing out, so these read the sheets and the wiring; the scrolling
-// itself is e2e/flows/frozen-header.spec.ts.
+// itself is e2e/flows/frozen-header.spec.ts and phone-page-top.spec.ts.
 const sheet = (path: string) => readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
 const ruleBody = (css: string, head: (selector: string) => boolean) =>
   [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -19,32 +19,21 @@ describe("frozen top", () => {
     const piece = ruleBody(css, (head) => head === "[data-frozen-piece][data-frozen-piece]");
     expect(piece).toMatch(/position\s*:\s*sticky/);
     expect(piece).toMatch(/top\s*:\s*var\(--frozen-top/);
-    // a piece that folds must not be what the browser anchors the scroll to
+    // a piece that stays put must not be what the browser anchors the scroll to
     expect(piece).toMatch(/overflow-anchor\s*:\s*none/);
   });
 
-  it("folds the heading only on a phone", () => {
-    expect(css).toMatch(/@media \(max-width: 720px\) and \(min-height: 560px\)/);
-    // The folded box itself: one 19 px line, the heading line 47 px down (MOBIL-BASLIK).
+  // Mert 2026-10-17 (phone notes #4, "Hep büyük, sabit"): the heading never
+  // folds; every page keeps its full top, as Lineup always did.
+  it("never folds the heading", () => {
     const top = sheet("src/shell/phone-page-top.css");
-    expect(top).toMatch(/@media \(max-width: 720px\) and \(min-height: 560px\)/);
-    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("h1"))).toMatch(
-      /font-size\s*:\s*19px/,
-    );
-    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("[data-frozen-piece]"))).toMatch(
-      /--page-line\s*:\s*47px/,
-    );
-    // The title stays on one line, open and folded (the folded rule sets only its size).
-    const title = ruleBody(top, (head) => head.endsWith("> :has(h1) h1") && !head.includes("[data-frozen-folded]"));
+    expect(css).not.toMatch(/frozen-folded/);
+    expect(top).not.toMatch(/frozen-folded/);
+    expect(readFileSync("src/shell/useFrozenTop.ts", "utf8")).not.toMatch(/frozenFolded|fold/i);
+    // The title stays on one line.
+    const title = ruleBody(top, (head) => head.endsWith("> :has(h1) h1"));
     expect(title).toMatch(/white-space\s*:\s*nowrap/);
     expect(title).toMatch(/text-overflow\s*:\s*ellipsis/);
-    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("h1"))).not.toMatch(/white-space/);
-  });
-
-  it("keeps the page its length while folded, so the content does not jump", () => {
-    expect(ruleBody(css, (head) => head.includes('[data-frozen-folded="page"]'))).toMatch(
-      /margin-bottom\s*:\s*var\(--frozen-fold-mb/,
-    );
   });
 
   it.each([

@@ -3,9 +3,9 @@ import { expect, test } from "../fixtures/test";
 import { signIn, type Person } from "../fixtures/world";
 
 // Every screen keeps its heading and tabs in place; only the content scrolls
-// (Mert 2026-10-16, "header ve tableri freeze yap bütün ekranlarda"). On a
-// phone the heading folds to one line once the page has moved ("B"). A window
-// shorter than 560 px scrolls the whole page as before.
+// (Mert 2026-10-16, "header ve tableri freeze yap bütün ekranlarda"). The
+// heading never folds, on a phone too (Mert 2026-10-17, phone notes #4, "Hep
+// büyük, sabit"). A window shorter than 560 px scrolls the whole page as before.
 
 const DESKTOP = { width: 1440, height: 900 };
 const PHONE = { width: 390, height: 844 };
@@ -46,7 +46,9 @@ const scrollPage = (page: Page) =>
 
 // Scrolls the page down 20 px at a time, as a finger would, and follows a
 // piece of content under the heading: it must move exactly as far as the
-// page did, also in the moment the heading folds (the content never jumps).
+// page did (the content never jumps). It also notes whether the heading
+// changed size and whether content ever drew over the frozen top (Account's
+// menu, phone notes #9).
 const sweep = (page: Page) =>
   page.evaluate(async () => {
     const settle = () =>
@@ -60,14 +62,22 @@ const sweep = (page: Page) =>
     if (content.closest("[data-frozen-piece]")) throw new Error("the followed element is part of the frozen top");
     const start = content.getBoundingClientRect().top;
     let worst = 0;
-    let folded = false;
+    let resized = false;
+    let covered = 0;
     for (let y = 20; y <= area.scrollHeight - area.clientHeight; y += 20) {
       area.scrollTop = y;
       await settle();
       worst = Math.max(worst, Math.abs(content.getBoundingClientRect().top - (start - area.scrollTop)));
-      folded ||= parseFloat(getComputedStyle(heading).fontSize) < size;
+      resized ||= parseFloat(getComputedStyle(heading).fontSize) !== size;
+      for (const piece of document.querySelectorAll("[data-frozen-piece]")) {
+        const box = piece.getBoundingClientRect();
+        for (let x = box.left + 8; x < box.right - 4; x += 24) {
+          const hit = document.elementFromPoint(x, box.top + box.height / 2);
+          if (hit && !hit.closest("[data-frozen-piece]") && hit !== piece.parentElement) covered += 1;
+        }
+      }
     }
-    return { worst, folded };
+    return { worst, resized, covered };
   });
 
 test.describe("desktop: the heading and tabs stay where they are", () => {
@@ -90,22 +100,26 @@ test.describe("desktop: the heading and tabs stay where they are", () => {
   }
 });
 
-test.describe("phone: the heading folds to one line and stays on top", () => {
+test.describe("phone: the heading keeps its size and stays on top", () => {
   for (const [person, path, more] of [
     ["zeynep", "/app/workspace", []],
     // The Settings menu sits under the heading's line on a phone (MOBIL-BASLIK).
     ["zeynep", "/app/settings/scheduling", ['nav[aria-label="Workspace settings"]']],
-    ["zeynep", "/account/security", [".account-sidebar"]],
+    ["zeynep", "/account/security", [".account-sidebar", 'nav[aria-label="Account"]']],
+    ["zeynep", "/account/preferences/notifications", ['nav[aria-label="Account"]']],
     ["emre", "/app/employee-hub", []],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, PHONE);
       await visit(page, path);
       const rail = path.includes("/settings/") ? await topOf(page, ".settings-content") : null;
-      const { worst, folded } = await sweep(page);
-      expect(folded).toBe(true);
-      // the content never jumps, not even when the heading folds
+      const before = await topOf(page, "h1");
+      const { worst, resized, covered } = await sweep(page);
+      expect(resized).toBe(false);
+      expect(await topOf(page, "h1")).toBe(before);
+      // the content never jumps and never draws over the heading or its menu
       expect(worst).toBeLessThanOrEqual(2);
+      expect(covered).toBe(0);
       await expect(page.locator("h1").filter({ visible: true }).first()).toBeInViewport();
       for (const selector of more) await expect(page.locator(selector).filter({ visible: true }).first()).toBeInViewport();
       // Settings' scrolling area no longer scrolls a second time with the page.
@@ -117,7 +131,7 @@ test.describe("phone: the heading folds to one line and stays on top", () => {
 // Lineup and Settings → Acknowledgements scroll only their list. The world
 // has too little to fill them, so a tall block goes into the list (and
 // Acknowledgements, which has no templates yet, gets an empty list first).
-// The phone Lineup holds its own folding top (E, 2026-10-17): lineup-publish.spec.ts.
+// The phone Lineup holds its own top (E, 2026-10-17): lineup-publish.spec.ts.
 test.describe("lists scroll inside their frame while the heading stays", () => {
   for (const [path, size, frame] of [
     ["/app/schedule/lineup", DESKTOP, ".lineup-locations"],
