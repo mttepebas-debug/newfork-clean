@@ -4,17 +4,72 @@
 --   * access ended (access removed, employment ended, archived): the person, no longer a member
 --     (to_former_members), once per go; by email, the one way that still reaches them (S-126 (5)); a
 --     "no location left" card on them closes, as the decision was made;
---   * access restored: the person, and who may publish at their locations now (schedule.publish, one place
---     at a time: the core's place-scoped answer is for exactly one);
+--   * access restored: the person, and at each of their locations its managers who may publish there; a
+--     location with none, its admins and owner (notify_managers_first);
 --   * no location left: who may end their employment (employee.terminate over the person); the card closes
 --     when they work somewhere again (a trigger on the assignment);
---   * shifts left without anyone, by an employment ended or a location taken away: per location, who may
---     publish there now; the count and the place;
+--   * shifts left without anyone, by an employment ended or a location taken away: per location, its managers
+--     who may publish there, else its admins and owner; the count and the place; the card lists that
+--     location's shifts only;
 --   * ownership transfer: the asked admin, then the other side at each answer (declined, accepted,
 --     cancelled); the asked card closes on the answer or the cancel. The recipients are the transfer's own
 --     two people, the parties to it, not holders of a right (S-127 does not apply).
+--   * onboarding's final approval (live since 20261017120000) goes to the person's managers who may review it,
+--     else the admins and owner, as plan §2.5 row 23 says; a changed legal name stays owner and admins only.
 -- Every notice's work (who to tell, the cards it closes, the notice) runs guarded: a failure is logged and the
 -- people work stands.
+
+-- Managers first (plan §1, §6.2), place by place: of who may do this at a place (or over the person, with no
+-- place), the manager-class ones; where there are none, all of them (its admins and owner). No action of the
+-- workspace's stands in for "admins and owner" here: the place's own holders, split by class, are the rule.
+create function app_private.notify_managers_first(target_workspace uuid, target_action text, target_places uuid[],
+  target_person uuid default null)
+returns uuid[]
+language plpgsql
+stable
+set search_path = ''
+as $$
+declare
+  found uuid[] := '{}';
+  holders uuid[];
+  managers uuid[];
+  place uuid;
+begin
+  foreach place in array case when coalesce(cardinality(target_places), 0) = 0 then array[null::uuid] else target_places end loop
+    holders := app_private.notify_holders(target_workspace, target_action,
+      case when place is null then null else array[place] end, target_person);
+    managers := array(
+      select h from unnest(holders) h
+      join public.workspace_memberships m on m.workspace_id = target_workspace and m.user_id = h
+      join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+      where r.access_class = 'manager');
+    found := found || case when cardinality(managers) > 0 then managers else holders end;
+  end loop;
+  return array(select distinct u from unnest(found) u order by u);
+end;
+$$;
+
+revoke all on function app_private.notify_managers_first(uuid, text, uuid[], uuid) from public;
+
+-- Who may act on an onboarding sent in, now (20261017120000, final approval narrowed): a changed legal name
+-- waiting, its owner and admins (onboarding.legal_name); a final approval when its case asks for one, the
+-- person's managers who may review it, else the admins and owner.
+create or replace function app_private.onboarding_reviewers(target_case public.employee_onboarding_cases)
+returns uuid[]
+language sql
+stable
+set search_path = ''
+as $$
+  select coalesce(array_agg(distinct who order by who), '{}') from (
+    select unnest(app_private.notify_holders(target_case.workspace_id, 'onboarding.legal_name', null, target_case.employee_id)) who
+    where exists (select 1 from public.employee_onboarding_requirements r
+                  where r.case_id = target_case.id and r.kind = 'profile' and r.requires_review
+                    and r.status <> 'completed'::public.employee_onboarding_requirement_status)
+    union
+    select unnest(app_private.notify_managers_first(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
+    where target_case.final_approval_required
+  ) reviewers
+$$;
 
 -- The workspace's name and a person's account name, for titles.
 create function app_private.workspace_name(target_workspace uuid)
@@ -34,7 +89,7 @@ language sql
 stable
 set search_path = ''
 as $$
-  select coalesce(nullif(btrim(p.display_name), ''), 'Somebody') from public.user_profiles p where p.user_id = target_user
+  select coalesce((select nullif(btrim(p.display_name), '') from public.user_profiles p where p.user_id = target_user), 'Somebody')
 $$;
 
 revoke all on function app_private.account_name(uuid) from public;
@@ -72,20 +127,20 @@ language plpgsql
 set search_path = ''
 as $$
 declare
-  key text := 'restored:' || target_employee::text || ':' || txid_current()::text;
+  key text;
   managers uuid[];
   told integer;
 begin
+  key := 'restored:' || target_employee::text || ':' || txid_current()::text;
   told := app_private.people_tell('people.restored', target_workspace, array[target_person], key,
     'Your access is back', 'You can use ' || app_private.workspace_name(target_workspace) || ' again.',
     '/app', actor, 'employee', target_employee, '{}'::jsonb);
   managers := array(
-    select distinct holder
-    from public.employee_location_assignments a
-    join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
-    cross join lateral unnest(app_private.notify_holders(target_workspace, 'schedule.publish', array[a.location_id])) holder
-    where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null
-      and holder is distinct from target_person);
+    select holder from unnest(app_private.notify_managers_first(target_workspace, 'schedule.publish', array(
+      select a.location_id from public.employee_location_assignments a
+      join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
+      where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null))) holder
+    where holder is distinct from target_person);
   return told + app_private.people_tell('people.restored', target_workspace, managers, key,
     app_private.people_name(target_employee) || '''s access is back', null,
     '/app/employees?employeeId=' || target_employee::text, actor, 'employee', target_employee, '{}'::jsonb);
@@ -151,22 +206,25 @@ as $$
 declare
   place record;
   told integer := 0;
+  card uuid;
 begin
   for place in
-    select s.location_id, l.name, count(*)::integer shifts
+    select s.location_id, l.name, count(*)::integer shifts, array_agg(s.id order by s.id) ids
     from public.schedule_published_shifts s
     join public.locations l on l.id = s.location_id and l.workspace_id = s.workspace_id
     where s.workspace_id = target_workspace and s.id = any (coalesce(shift_ids, '{}'))
     group by s.location_id, l.name
   loop
+    -- Each card is its own subject, so closing it touches no other card about the same place.
+    card := gen_random_uuid();
     told := told + app_private.people_tell('schedule.shifts_unassigned', target_workspace,
-      app_private.notify_holders(target_workspace, 'schedule.publish', array[place.location_id]),
-      'unassigned:' || place.location_id::text || ':' || txid_current()::text,
+      app_private.notify_managers_first(target_workspace, 'schedule.publish', array[place.location_id]),
+      'unassigned:' || card::text,
       place.shifts || case when place.shifts = 1 then ' shift at ' else ' shifts at ' end || place.name
         || case when place.shifts = 1 then ' has nobody' else ' have nobody' end,
       'Give them to somebody or leave them open.',
-      '/app/schedule', actor, 'location', place.location_id,
-      jsonb_build_object('location_id', place.location_id, 'shift_ids', to_jsonb(shift_ids)));
+      '/app/schedule', actor, 'unassigned_shifts', card,
+      jsonb_build_object('location_id', place.location_id, 'shift_ids', to_jsonb(place.ids)));
   end loop;
   return told;
 exception when others then
@@ -185,8 +243,9 @@ language plpgsql
 set search_path = ''
 as $$
 declare
-  place text := app_private.workspace_name(transfer.workspace_id);
+  place text;
 begin
+  place := app_private.workspace_name(transfer.workspace_id);
   if event = 'initiated' then
     return app_private.people_tell('people.ownership_transfer_requested', transfer.workspace_id, array[transfer.target_user_id],
       'ownership:' || transfer.id::text || ':initiated',
@@ -284,11 +343,13 @@ begin
     )
   );
 
-  -- The person hears their new role (guarded).
-  perform app_private.people_tell('people.role_changed', target_workspace_id, array[target_employee.user_id],
-    'role:' || target_membership.id::text || ':' || txid_current()::text,
-    'Your role is now ' || next_role.name, null, '/app', actor_user_id, 'workspace_membership', target_membership.id,
-    jsonb_build_object('role_id', next_role.id));
+  -- The person hears their new role, when it is a new one (guarded).
+  if existing_role.id is distinct from next_role.id then
+    perform app_private.people_tell('people.role_changed', target_workspace_id, array[target_employee.user_id],
+      'role:' || target_membership.id::text || ':' || txid_current()::text,
+      'Your role is now ' || next_role.name, null, '/app', actor_user_id, 'workspace_membership', target_membership.id,
+      jsonb_build_object('role_id', next_role.id));
+  end if;
 
   return jsonb_build_object(
     'membership_id', target_membership.id,
@@ -641,6 +702,8 @@ begin
   -- where they work (access_tell_ended, access_tell_restored).
   if should_archive and member.id is not null and member.status in ('active', 'pending_activation') then
     perform app_private.access_tell_ended(target_workspace_id, target_employee_id, employee_user_id, member.id, actor_user_id);
+  elsif should_archive then
+    perform app_private.access_tell_ended(target_workspace_id, target_employee_id, null, null, actor_user_id);
   elsif not should_archive and restore_access then
     perform app_private.access_tell_restored(target_workspace_id, target_employee_id, reopened.user_id, actor_user_id);
   end if;
@@ -1169,82 +1232,3 @@ begin
   perform app_private.ownership_tell(transfer_row, 'cancelled', actor_user_id);
   return jsonb_build_object('status', 'cancelled', 'transfer_id', transfer_row.id, 'workspace_id', target_workspace_id);
 end; $$;
-
-
-ALTER FUNCTION "public"."cancel_workspace_ownership_transfer_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "transfer_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."capture_weekly_preference_type_defaults"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare row_value public.shift_types%rowtype;
-begin
- if tg_op='DELETE' then
-  if old.archived_at is not null or old.deleted_at is not null then return old; end if;
-  row_value:=old;
- elsif new.archived_at is null and new.deleted_at is null then row_value:=new;
- elsif tg_op='UPDATE' and old.archived_at is null and old.deleted_at is null then row_value:=old;
- else return new; end if;
- if row_value.default_start_time is not null and row_value.default_end_time is not null and row_value.default_start_time<>row_value.default_end_time then
-  insert into public.weekly_preference_type_defaults(workspace_id,shift_type_id,name,start_time,end_time)
-   values(row_value.workspace_id,row_value.id,row_value.name,row_value.default_start_time,row_value.default_end_time)
-   on conflict(workspace_id,shift_type_id) do update set name=excluded.name,start_time=excluded.start_time,end_time=excluded.end_time;
- end if;
- if tg_op='DELETE' then return old; end if;
- return new;
-end; $$;
-
-
-ALTER FUNCTION "public"."capture_weekly_preference_type_defaults"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."check_schedule_time_source"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare normalized jsonb;
-begin
-  new.time_basis:=coalesce(new.time_basis,'explicit');
-  normalized:=public.normalize_schedule_time_source(new.workspace_id,to_jsonb(new),case when tg_op='UPDATE' then to_jsonb(old) else null end,true);
-  if (new.start_time,new.end_time) is distinct from
-    (nullif(normalized->>'start_time','')::time,nullif(normalized->>'end_time','')::time) then
-    raise exception 'The shift interval does not match its saved time source' using errcode='23514';
-  end if;
-  new.time_snapshot:=normalized->'time_snapshot'; new.time_timezone:=normalized->>'time_timezone';
-  return new;
-end; $$;
-
-
-ALTER FUNCTION "public"."check_schedule_time_source"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."claim_account_deletion_work_service"("target_batch_size" integer DEFAULT 20) RETURNS TABLE("request_id" "uuid", "user_id" "uuid", "email" "text", "restore_until" timestamp with time zone, "action" "text", "lease_id" "uuid")
-    LANGUAGE "sql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  with candidates as (
-    select request.id,
-      case when request.restore_until <= now() then 'finalize'
-        when request.restore_until <= now() + interval '24 hours' and request.reminder_24h_sent_at is null then 'last_24h'
-        else 'day_7' end as action
-    from public.account_deletion_requests request
-    where request.status = 'pending'
-      and (request.work_lease_until is null or request.work_lease_until <= now())
-      and (request.restore_until <= now()
-        or (request.restore_until <= now() + interval '24 hours' and request.reminder_24h_sent_at is null)
-        or (request.restore_until > now() + interval '24 hours'
-          and request.requested_at <= now() - interval '7 days' and request.reminder_7d_sent_at is null))
-    order by request.restore_until, request.id
-    limit greatest(1, least(coalesce(target_batch_size, 20), 100))
-    for update skip locked
-  ), claimed as (
-    update public.account_deletion_requests request
-    set work_lease_id = gen_random_uuid(), work_lease_until = now() + interval '10 minutes'
-    from candidates where request.id = candidates.id
-    returning request.*, candidates.action
-  )
-  select claimed.id, claimed.user_id, lower(btrim(auth_user.email)), claimed.restore_until,
-    claimed.action, claimed.work_lease_id
-  from claimed join auth.users auth_user on auth_user.id = claimed.user_id;
-$$;
