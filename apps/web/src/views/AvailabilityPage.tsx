@@ -146,6 +146,7 @@ export function AvailabilityPage() {
                 preference={phonePerson.preference}
                 timeFormat={model.time_format}
                 readOnlyBar
+                header={false}
               />
             </div>
           )}

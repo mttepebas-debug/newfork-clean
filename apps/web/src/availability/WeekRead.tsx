@@ -34,9 +34,12 @@ type Props = {
   timeFormat: TimeFormat;
   /** The drawer: the lock bar with the save date, and the line under the boxes. */
   readOnlyBar?: boolean;
+  /** The lock bar and the week sentence above the boxes. The phone's person page
+   * on Availability leaves both out and starts with the boxes (Mert 2026-10-17). */
+  header?: boolean;
 };
 
-export function WeekRead({ name, submitted, updatedAt, preference, timeFormat, readOnlyBar = false }: Props) {
+export function WeekRead({ name, submitted, updatedAt, preference, timeFormat, readOnlyBar = false, header = true }: Props) {
   const who = firstName(name);
   if (!submitted)
     return (
@@ -49,14 +52,14 @@ export function WeekRead({ name, submitted, updatedAt, preference, timeFormat, r
   const updated = updatedOn(updatedAt);
   return (
     <div className="avr-week">
-      {readOnlyBar && (
+      {header && readOnlyBar && (
         <p className="avr-ro-bar">
           <Lock size={14} aria-hidden />
           <span>Read only. Only {who} can change this.</span>
           {updated && <span className="avr-ro-date">Updated {updated}</span>}
         </p>
       )}
-      <WeekSentence who={who} preference={preference} timeFormat={timeFormat} />
+      {header && <WeekSentence who={who} preference={preference} timeFormat={timeFormat} />}
       <WeekTiles who={who} preference={preference} timeFormat={timeFormat} />
       {readOnlyBar && (
         <p className="avr-mgr-note">

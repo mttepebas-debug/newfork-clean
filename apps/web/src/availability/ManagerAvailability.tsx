@@ -68,6 +68,7 @@ function Tabs({ model, onSave, onReload, short = false }: Props) {
       preference={model.employee.preference}
       timeFormat={model.time_format}
       readOnlyBar
+      header={!short}
     />
   );
   if (!hasNotes)

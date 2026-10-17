@@ -71,6 +71,9 @@ test("phone: a tap opens the person's page with the week and the manager's notes
   await expect(page.getByRole("heading", { name: person.name })).toBeVisible();
   await expect(page.getByRole("tab", { name: "Availability" })).toHaveAttribute("aria-selected", "true");
   await expect(page.locator(".avr-tile").nth(1)).toContainText("Unavailable 6:00 PM – 10:00 PM");
+  // The boxes start right under the tabs (Mert, 2026-10-17): no lock line, no week sentence.
+  await expect(page.getByText(`Read only. Only ${person.first} can change this.`)).toHaveCount(0);
+  await expect(page.locator(".avr-sum")).toHaveCount(0);
   await page.getByRole("tab", { name: "Manager notes" }).tap();
   await expect(page.getByRole("list", { name: "Day notes" }).getByRole("listitem")).toHaveCount(7);
   await page.getByRole("button", { name: "Availability" }).tap();

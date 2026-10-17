@@ -40,6 +40,41 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(document.querySelectorAll("input, select, textarea")).toHaveLength(0);
   });
 
+  // Mert 2026-10-17 (AVAIL-GUN-S3): the phone's person page starts with the boxes.
+  it("leaves out the lock line and the sentence without a header, keeping the boxes and the note under them", () => {
+    render(
+      <WeekRead
+        name="Maria Lopez"
+        submitted
+        updatedAt="2026-10-09T18:00:00.000Z"
+        preference={marked()}
+        timeFormat="12h"
+        readOnlyBar
+        header={false}
+      />,
+    );
+    expect(screen.queryByText("Read only. Only Maria can change this.")).toBeNull();
+    expect(screen.queryByText("Updated Oct 9")).toBeNull();
+    expect(document.querySelector(".avr-sum")).toBeNull();
+    expect(document.querySelector(".avr-week")?.firstElementChild?.className).toBe("avr-tiles");
+    expect(document.querySelector(".avr-mgr-note")).toBeTruthy();
+  });
+
+  it("keeps the empty state for a week never shared, without a header too", () => {
+    render(
+      <WeekRead
+        name="Maria Lopez"
+        submitted={false}
+        updatedAt={null}
+        preference={emptyWeeklyPreference()}
+        timeFormat="12h"
+        readOnlyBar
+        header={false}
+      />,
+    );
+    expect(screen.getByText("Maria hasn't shared availability yet.")).toBeTruthy();
+  });
+
   it("draws seven day boxes Monday first: green when open, orange with the hours when not", () => {
     render(
       <WeekRead name="Maria Lopez" submitted updatedAt={null} preference={marked()} timeFormat="12h" />,

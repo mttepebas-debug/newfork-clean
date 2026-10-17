@@ -115,6 +115,18 @@ describe("Employees drawer, Availability: the employee's week", () => {
     render(<ManagerAvailability model={model()} onSave={vi.fn()} short />);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Availability", "Manager notes1"]);
   });
+
+  // Mert 2026-10-17 (AVAIL-GUN-S3): on the phone the boxes sit right under the tabs.
+  it("drops the lock line and the week sentence on the phone, and keeps them in the drawer", () => {
+    render(<ManagerAvailability model={model()} onSave={vi.fn()} short />);
+    expect(screen.queryByText("Read only. Only Ada can change this.")).toBeNull();
+    expect(document.querySelector(".avr-sum")).toBeNull();
+    expect(document.querySelectorAll(".avr-tile")).toHaveLength(7);
+    cleanup();
+    render(<ManagerAvailability model={model()} onSave={vi.fn()} />);
+    expect(screen.getByText("Read only. Only Ada can change this.")).toBeTruthy();
+    expect(document.querySelector(".avr-sum")).toBeTruthy();
+  });
 });
 
 describe("Employees drawer, Availability: Manager notes (the same four parts, Mert 2026-10-16)", () => {

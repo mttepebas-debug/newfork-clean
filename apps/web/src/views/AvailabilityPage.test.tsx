@@ -324,8 +324,10 @@ describe("Availability on a phone (720 px and below)", () => {
     renderPage(`/app/availability?person=${sam}`);
     expect(await screen.findByRole("heading", { name: "Sam Chen" })).toBeTruthy();
     expect(screen.queryByTestId("panel")).toBeNull();
-    expect(screen.getByText("Read only. Only Sam can change this.")).toBeTruthy();
-    expect(screen.getByText("Sam is open to work any time.")).toBeTruthy();
+    // Mert 2026-10-17 (AVAIL-GUN-S3): the boxes start right under the person; no lock line, no sentence.
+    expect(screen.queryByText("Read only. Only Sam can change this.")).toBeNull();
+    expect(screen.queryByText("Sam is open to work any time.")).toBeNull();
+    expect(screen.getByRole("list", { name: "Sam's week" })).toBeTruthy();
   });
 });
 
