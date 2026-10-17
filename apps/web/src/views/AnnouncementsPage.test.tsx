@@ -642,6 +642,79 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(within(again).queryByRole("button", { name: /^Remind \d/ })).toBeNull();
   });
 
+  // CI 38984890125: the post's new revision can come back before the lists do; the drawer that reopens for it
+  // must already know to stay on Audience, so the second Remind is there to press.
+  it("stays on Audience when the post's new copy comes back before the lists", async () => {
+    const id = "a8200000-0000-4000-8000-000000000086";
+    const asked = {
+      user_id: "d1000000-0000-4000-8000-000000000001",
+      employee_id: null,
+      name: "Ali Kaya",
+      job_name: "Server",
+      job_ids: [],
+      department_ids: [],
+      location_ids: [downtown],
+      location_name: "Downtown",
+    };
+    const posted = (left: number, revision: number) =>
+      detail({
+        id,
+        title: "Knife rules",
+        status: "published",
+        display_status: "published",
+        published_at: "2026-10-10T16:00:00.000Z",
+        ask_ack: true,
+        recipient_count: 2,
+        respondent_count: 2,
+        acknowledged_count: 0,
+        revision,
+        reminders_left_today: left,
+        locations: [
+          { location_id: downtown, name: "Downtown", short_name: "Downtown", timezone: "America/Los_Angeles", archived: false, day: "open", opens: null, closes: null },
+        ],
+        acknowledgements: [
+          { ...asked, acknowledged_at: null },
+          { ...asked, user_id: "d1000000-0000-4000-8000-000000000002", name: "Bea Lane", acknowledged_at: null },
+        ],
+      });
+    let release: () => void = () => undefined;
+    vi.mocked(getAnnouncements).mockResolvedValue(list());
+    vi.mocked(previewAnnouncement).mockResolvedValue(preview({ recipient_count: 2 }));
+    vi.mocked(getAnnouncement).mockResolvedValue(posted(2, 3));
+    vi.mocked(setAnnouncementState).mockImplementation(async () => {
+      // The post's new copy answers at once; the lists hang until released.
+      vi.mocked(getAnnouncement).mockResolvedValue(posted(1, 4));
+      vi.mocked(getAnnouncements).mockImplementation(
+        () => new Promise((resolve) => {
+          release = () => resolve(list());
+        }),
+      );
+      return {
+        status: "published",
+        display_status: "published",
+        announcement_id: id,
+        revision: 4,
+        archived_at: null,
+        told: 2,
+        reminders_left_today: 1,
+      };
+    });
+    renderList(`/app/announcements/${id}`);
+    const drawer = await screen.findByRole("dialog", { name: "Knife rules" });
+    fireEvent.click(await within(drawer).findByRole("tab", { name: /Audience/ }));
+    fireEvent.click(within(drawer).getByRole("button", { name: "Remind 2 people" }));
+    await waitFor(() => expect(setAnnouncementState).toHaveBeenCalledTimes(1));
+    // The new copy has come back and the drawer reopened for it, before the lists answer.
+    await waitFor(() => expect(vi.mocked(getAnnouncement).mock.calls.length).toBeGreaterThanOrEqual(2));
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 50));
+    });
+    release();
+    const again = await screen.findByRole("dialog", { name: "Knife rules" });
+    await waitFor(() => expect(within(again).getByRole("tab", { name: /Audience/ }).getAttribute("aria-selected")).toBe("true"));
+    expect(within(again).getByRole("button", { name: "Remind 2 people" })).toBeTruthy();
+  });
+
   it("has nothing to remind once everyone acknowledged", async () => {
     const id = "a8200000-0000-4000-8000-000000000085";
     vi.mocked(getAnnouncements).mockResolvedValue(list());
