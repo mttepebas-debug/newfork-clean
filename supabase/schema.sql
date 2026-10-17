@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 503, last: 20261017130000_people_notices_follow_up.sql
--- fingerprint: sha256:7cef811a6bee888d306fd8a6342382b00ad443ef64874eed6dc82b24aa4fcec7
+-- migrations: 504, last: 20261017140000_access_and_ownership_notices.sql
+-- fingerprint: sha256:9bbbc76bb3144ad06bf0ac06db19d1140142e7959f2b04855edd1dfc123abbe1
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -570,6 +570,113 @@ $$;
 
 
 ALTER FUNCTION "app_private"."accept_employee_invitation_for_user"("target_user_id" "uuid", "target_invitation_id" "uuid", "invitation_token_hash" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_location_given"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  begin
+    perform app_private.notification_resolve(new.workspace_id, 'employee_no_location', new.employee_id, 'closed', null);
+  exception when others then
+    raise warning 'access_location_given: card for % not closed: % (%)', new.employee_id, sqlerrm, sqlstate;
+  end;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."access_location_given"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_tell_ended"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "target_membership" "uuid", "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.notification_resolve(target_workspace, 'employee_no_location', target_employee, 'closed', actor);
+  if target_person is null then
+    return 0;
+  end if;
+  return app_private.people_tell('people.access_ended', target_workspace, array[target_person],
+    'access_ended:' || coalesce(target_membership, target_employee)::text || ':' || txid_current()::text,
+    'Your access to ' || app_private.workspace_name(target_workspace) || ' ended', null,
+    '/account/workspaces', actor, 'workspace_membership', target_membership, '{}'::jsonb);
+exception when others then
+  raise warning 'access_tell_ended: notices for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."access_tell_ended"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "target_membership" "uuid", "actor" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_tell_no_location"("target_workspace" "uuid", "target_employee" "uuid", "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  return app_private.people_tell('people.no_location', target_workspace,
+    app_private.notify_holders(target_workspace, 'employee.terminate', null, target_employee),
+    'no_location:' || target_employee::text || ':' || txid_current()::text,
+    app_private.people_name(target_employee) || ' has no location', 'Give them a location, or end their employment.',
+    '/app/employees?employeeId=' || target_employee::text, actor, 'employee_no_location', target_employee,
+    jsonb_build_object('employee_id', target_employee));
+exception when others then
+  raise warning 'access_tell_no_location: notice for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."access_tell_no_location"("target_workspace" "uuid", "target_employee" "uuid", "actor" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_tell_restored"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  key text;
+  managers uuid[];
+  told integer;
+begin
+  key := 'restored:' || target_employee::text || ':' || txid_current()::text;
+  told := app_private.people_tell('people.restored', target_workspace, array[target_person], key,
+    'Your access is back', 'You can use ' || app_private.workspace_name(target_workspace) || ' again.',
+    '/app', actor, 'employee', target_employee, '{}'::jsonb);
+  -- Per live location of theirs, its deciders (place_deciders).
+  managers := array(
+    select distinct holder
+    from public.employee_location_assignments a
+    join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id and l.archived_at is null
+    cross join lateral unnest(app_private.place_deciders(target_workspace, 'schedule.publish', a.location_id)) holder
+    where a.workspace_id = target_workspace and a.employee_id = target_employee and a.ended_at is null
+      and holder is distinct from target_person);
+  return told + app_private.people_tell('people.restored', target_workspace, managers, key,
+    app_private.people_name(target_employee) || '''s access is back', null,
+    '/app/employees?employeeId=' || target_employee::text, actor, 'employee', target_employee, '{}'::jsonb);
+exception when others then
+  raise warning 'access_tell_restored: notices for % skipped: % (%)', target_employee, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."access_tell_restored"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "actor" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."account_name"("target_user" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((select nullif(btrim(p.display_name), '') from public.user_profiles p where p.user_id = target_user), 'Somebody')
+$$;
+
+
+ALTER FUNCTION "app_private"."account_name"("target_user" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."account_phone_e164"("raw_phone" "text") RETURNS "text"
@@ -5878,7 +5985,7 @@ CREATE OR REPLACE FUNCTION "app_private"."onboarding_reviewers"("target_case" "p
                   where r.case_id = target_case.id and r.kind = 'profile' and r.requires_review
                     and r.status <> 'completed'::public.employee_onboarding_requirement_status)
     union
-    select unnest(app_private.notify_holders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
+    select unnest(app_private.place_deciders(target_case.workspace_id, 'onboarding.review', null, target_case.employee_id))
     where target_case.final_approval_required
   ) reviewers
 $$;
@@ -6133,6 +6240,62 @@ $$;
 ALTER FUNCTION "app_private"."owner_setup_checklist_item_ids"() OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."workspace_ownership_transfers" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "initiated_by" "uuid" NOT NULL,
+    "target_user_id" "uuid" NOT NULL,
+    "previous_owner_membership_id" "uuid" NOT NULL,
+    "target_membership_id" "uuid" NOT NULL,
+    "status" "public"."workspace_ownership_transfer_status" DEFAULT 'pending'::"public"."workspace_ownership_transfer_status" NOT NULL,
+    "expires_at" timestamp with time zone DEFAULT ("now"() + '7 days'::interval) NOT NULL,
+    "accepted_at" timestamp with time zone,
+    "rejected_at" timestamp with time zone,
+    "cancelled_at" timestamp with time zone,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "cancelled_by" "uuid",
+    CONSTRAINT "workspace_ownership_transfers_check" CHECK (("initiated_by" <> "target_user_id")),
+    CONSTRAINT "workspace_ownership_transfers_check1" CHECK (((("status" = 'pending'::"public"."workspace_ownership_transfer_status") AND ("accepted_at" IS NULL) AND ("rejected_at" IS NULL) AND ("cancelled_at" IS NULL)) OR (("status" = 'accepted'::"public"."workspace_ownership_transfer_status") AND ("accepted_at" IS NOT NULL)) OR (("status" = 'rejected'::"public"."workspace_ownership_transfer_status") AND ("rejected_at" IS NOT NULL)) OR (("status" = 'cancelled'::"public"."workspace_ownership_transfer_status") AND ("cancelled_at" IS NOT NULL))))
+);
+
+
+ALTER TABLE "public"."workspace_ownership_transfers" OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."ownership_tell"("transfer" "public"."workspace_ownership_transfers", "event" "text", "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  place text;
+begin
+  place := app_private.workspace_name(transfer.workspace_id);
+  if event = 'initiated' then
+    return app_private.people_tell('people.ownership_transfer_requested', transfer.workspace_id, array[transfer.target_user_id],
+      'ownership:' || transfer.id::text || ':initiated',
+      app_private.account_name(transfer.initiated_by) || ' asked you to become the owner of ' || place, null,
+      '/account/workspaces', actor, 'ownership_transfer', transfer.id, '{}'::jsonb);
+  end if;
+  perform app_private.notification_resolve(transfer.workspace_id, 'ownership_transfer', transfer.id, event, actor);
+  return app_private.people_tell('people.ownership_transfer_answered', transfer.workspace_id,
+    array[case when event = 'cancelled' then transfer.target_user_id else transfer.initiated_by end],
+    'ownership:' || transfer.id::text || ':' || event,
+    case event
+      when 'declined' then app_private.account_name(transfer.target_user_id) || ' declined to become the owner of ' || place
+      when 'accepted' then app_private.account_name(transfer.target_user_id) || ' is the owner of ' || place || ' now'
+      else 'The ownership transfer of ' || place || ' was cancelled' end,
+    null, '/account/workspaces', actor, 'ownership_transfer', transfer.id, jsonb_build_object('outcome', event));
+exception when others then
+  raise warning 'ownership_tell: % notice for % skipped: % (%)', event, transfer.id, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."ownership_tell"("transfer" "public"."workspace_ownership_transfers", "event" "text", "actor" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."people_name"("target_employee" "uuid") RETURNS "text"
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -6250,6 +6413,28 @@ $$;
 
 
 ALTER FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid" DEFAULT NULL::"uuid") RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with holders as (
+    select unnest(app_private.notify_holders(target_workspace, target_action,
+      case when target_place is null then null else array[target_place] end, target_person)) who
+  ), managers as (
+    -- The class as the core holds it (actor_state), not read from roles here.
+    select h.who from holders h where (app_private.actor(h.who, target_workspace)).class = 'manager'
+  )
+  select coalesce(array_agg(x.who order by x.who), '{}') from (
+    select who from managers
+    union all
+    select who from holders where not exists (select 1 from managers)
+  ) x
+$$;
+
+
+ALTER FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."signature_template_versions" (
@@ -6879,6 +7064,44 @@ $$;
 
 
 ALTER FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb", "target_told" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_unassigned"("target_workspace" "uuid", "shift_ids" "uuid"[], "actor" "uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  place record;
+  told integer := 0;
+  card uuid;
+begin
+  for place in
+    select s.location_id, l.name, count(*)::integer shifts, array_agg(s.id order by s.id) ids
+    from public.schedule_published_shifts s
+    join public.locations l on l.id = s.location_id and l.workspace_id = s.workspace_id
+    where s.workspace_id = target_workspace and s.id = any (coalesce(shift_ids, '{}'))
+    group by s.location_id, l.name
+  loop
+    -- Each card is its own subject, so closing it touches no other card about the same place.
+    card := gen_random_uuid();
+    told := told + app_private.people_tell('schedule.shifts_unassigned', target_workspace,
+      app_private.place_deciders(target_workspace, 'schedule.publish', place.location_id),
+      'unassigned:' || card::text,
+      place.shifts || case when place.shifts = 1 then ' shift at ' else ' shifts at ' end || place.name
+        || case when place.shifts = 1 then ' has nobody' else ' have nobody' end,
+      'Give them to somebody or leave them open.',
+      '/app/schedule', actor, 'unassigned_shifts', card,
+      jsonb_build_object('location_id', place.location_id, 'shift_ids', to_jsonb(place.ids)));
+  end loop;
+  return told;
+exception when others then
+  raise warning 'schedule_tell_unassigned: notices skipped: % (%)', sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."schedule_tell_unassigned"("target_workspace" "uuid", "shift_ids" "uuid"[], "actor" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."schedule_tell_unpublished"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_publications" "uuid"[]) RETURNS integer
@@ -8393,6 +8616,72 @@ $$;
 ALTER FUNCTION "app_private"."timezone_name_valid"("zone" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."unassigned_cards_settle"("target_workspace" "uuid", "target_shift" "uuid" DEFAULT NULL::"uuid") RETURNS integer
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  card record;
+  closed integer := 0;
+begin
+  for card in
+    select distinct n.subject_id, n.data -> 'shift_ids' shift_ids
+    from public.person_notifications n
+    where n.workspace_id = target_workspace and n.subject_type = 'unassigned_shifts' and n.resolved_at is null
+      and n.subject_id is not null and n.type_key = 'schedule.shifts_unassigned'
+      and (target_shift is null or n.data -> 'shift_ids' ? target_shift::text)
+  loop
+    if not exists (
+      select 1 from jsonb_array_elements_text(card.shift_ids) x
+      join public.schedule_published_shifts s on s.id = x::uuid
+      join public.schedule_location_publications p on p.id = s.publication_id and p.status = 'current'
+      where s.employee_id is null) then
+      closed := closed + app_private.notification_resolve(target_workspace, 'unassigned_shifts', card.subject_id, 'closed', null);
+    end if;
+  end loop;
+  return closed;
+exception when others then
+  raise warning 'unassigned_cards_settle: cards in % not settled: % (%)', target_workspace, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."unassigned_cards_settle"("target_workspace" "uuid", "target_shift" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."unassigned_publication_replaced"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.unassigned_cards_settle(new.workspace_id, null);
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."unassigned_publication_replaced"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."unassigned_shift_changed"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  if tg_op = 'DELETE' then
+    perform app_private.unassigned_cards_settle(old.workspace_id, old.id);
+  else
+    perform app_private.unassigned_cards_settle(new.workspace_id, new.id);
+  end if;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."unassigned_shift_changed"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."user_has_active_organization_access"("actor_user_id" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -8516,6 +8805,17 @@ $$;
 
 
 ALTER FUNCTION "app_private"."workspace_has_permission"("target_workspace_id" "uuid", "target_permission" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."workspace_name"("target_workspace" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select w.name from public.workspaces w where w.id = target_workspace
+$$;
+
+
+ALTER FUNCTION "app_private"."workspace_name"("target_workspace" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."workspace_open_to_actor"("target_workspace_id" "uuid", "actor_user_id" "uuid") RETURNS boolean
@@ -10350,6 +10650,7 @@ begin
     cancelled_by = actor_user_id, updated_at = now() where id = transfer_row.id;
   insert into public.audit_events(workspace_id, actor_user_id, action, target_type, target_id)
     values(target_workspace_id, actor_user_id, 'workspace.ownership_transfer.cancelled', 'workspace_ownership_transfer', transfer_row.id::text);
+  perform app_private.ownership_tell(transfer_row, 'cancelled', actor_user_id);
   return jsonb_build_object('status', 'cancelled', 'transfer_id', transfer_row.id, 'workspace_id', target_workspace_id);
 end; $$;
 
@@ -14970,6 +15271,10 @@ begin
     jsonb_build_object('target_user_id', target_user_id)
   );
 
+  -- The admin it names is asked (ownership_tell).
+  perform app_private.ownership_tell((select t from public.workspace_ownership_transfers t where t.id = transfer_id),
+    'initiated', actor_user_id);
+
   return jsonb_build_object(
     'status', 'pending',
     'transfer_id', transfer_id,
@@ -19548,6 +19853,8 @@ begin
   insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
   values (target_workspace_id, target_employee_id, actor_user_id, 'employee.access_removed',
     'Workspace access removed and employee account unlinked');
+  -- The person, no longer a member, hears it (access_tell_ended).
+  perform app_private.access_tell_ended(target_workspace_id, employee.id, employee.user_id, membership.id, actor_user_id);
 end;
 $$;
 
@@ -19698,8 +20005,12 @@ begin
     jsonb_build_object('location_id', target_location_id, 'released_shift_ids', to_jsonb(released),
       'locations_left', locations_left));
 
-  -- No location left: whoever may end their employment or give them another
-  -- location decides (the owner and admins; S1). The record stays.
+  -- The shifts left open are told; with no location left, whoever may end their employment or give them
+  -- another location decides (the owner and admins; S1). The record stays.
+  perform app_private.schedule_tell_unassigned(target_workspace_id, released, actor_user_id);
+  if locations_left = 0 then
+    perform app_private.access_tell_no_location(target_workspace_id, target_employee_id, actor_user_id);
+  end if;
   return jsonb_build_object(
     'employee_id', target_employee_id,
     'location_id', target_location_id,
@@ -20732,6 +21043,7 @@ begin
       transfer_id::text
     );
 
+    perform app_private.ownership_tell(transfer_row, 'declined', actor_user_id);
     return jsonb_build_object(
       'status', 'rejected',
       'transfer_id', transfer_id,
@@ -20904,6 +21216,7 @@ begin
     jsonb_build_object('previous_owner_user_id', transfer_row.initiated_by)
   );
 
+  perform app_private.ownership_tell(transfer_row, 'accepted', actor_user_id);
   return jsonb_build_object(
     'status', 'accepted',
     'transfer_id', transfer_id,
@@ -23822,6 +24135,16 @@ begin
       else 'Employee record restored for rehire'
     end
   );
+
+  -- Archived with access: the person hears it ended. Restored with access: the person and who may publish
+  -- where they work (access_tell_ended, access_tell_restored).
+  if should_archive and member.id is not null and member.status in ('active', 'pending_activation') then
+    perform app_private.access_tell_ended(target_workspace_id, target_employee_id, employee_user_id, member.id, actor_user_id);
+  elsif should_archive then
+    perform app_private.access_tell_ended(target_workspace_id, target_employee_id, null, null, actor_user_id);
+  elsif not should_archive and restore_access then
+    perform app_private.access_tell_restored(target_workspace_id, target_employee_id, reopened.user_id, actor_user_id);
+  end if;
 end;
 $$;
 
@@ -25479,6 +25802,17 @@ begin
     resolved_effective_at
   );
 
+  -- The person hears their access ended, when they had any; the shifts left without anyone are told per
+  -- location (access_tell_ended, schedule_tell_unassigned).
+  if member.id is not null and member.status in ('active', 'pending_activation') then
+    perform app_private.access_tell_ended(target_workspace_id, target_employee_id, employee.user_id, member.id, actor_user_id);
+  else
+    perform app_private.access_tell_ended(target_workspace_id, target_employee_id, null, null, actor_user_id);
+  end if;
+  perform app_private.schedule_tell_unassigned(target_workspace_id,
+    array(select action.shift_id from public.employee_offboarding_shift_actions action
+          where action.termination_id = v_termination_id), actor_user_id);
+
   response := jsonb_build_object(
     'termination_id', v_termination_id,
     'effective_at', resolved_effective_at,
@@ -26120,6 +26454,14 @@ begin
       'to_access_class', next_role.access_class
     )
   );
+
+  -- The person hears their new role, when it is a new one (guarded).
+  if existing_role.id is distinct from next_role.id then
+    perform app_private.people_tell('people.role_changed', target_workspace_id, array[target_employee.user_id],
+      'role:' || target_membership.id::text || ':' || txid_current()::text,
+      'Your role is now ' || next_role.name, null, '/app', actor_user_id, 'workspace_membership', target_membership.id,
+      jsonb_build_object('role_id', next_role.id));
+  end if;
 
   return jsonb_build_object(
     'membership_id', target_membership.id,
@@ -29359,29 +29701,6 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_onboarding" (
 ALTER TABLE "public"."workspace_onboarding" OWNER TO "postgres";
 
 
-CREATE TABLE IF NOT EXISTS "public"."workspace_ownership_transfers" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "initiated_by" "uuid" NOT NULL,
-    "target_user_id" "uuid" NOT NULL,
-    "previous_owner_membership_id" "uuid" NOT NULL,
-    "target_membership_id" "uuid" NOT NULL,
-    "status" "public"."workspace_ownership_transfer_status" DEFAULT 'pending'::"public"."workspace_ownership_transfer_status" NOT NULL,
-    "expires_at" timestamp with time zone DEFAULT ("now"() + '7 days'::interval) NOT NULL,
-    "accepted_at" timestamp with time zone,
-    "rejected_at" timestamp with time zone,
-    "cancelled_at" timestamp with time zone,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "cancelled_by" "uuid",
-    CONSTRAINT "workspace_ownership_transfers_check" CHECK (("initiated_by" <> "target_user_id")),
-    CONSTRAINT "workspace_ownership_transfers_check1" CHECK (((("status" = 'pending'::"public"."workspace_ownership_transfer_status") AND ("accepted_at" IS NULL) AND ("rejected_at" IS NULL) AND ("cancelled_at" IS NULL)) OR (("status" = 'accepted'::"public"."workspace_ownership_transfer_status") AND ("accepted_at" IS NOT NULL)) OR (("status" = 'rejected'::"public"."workspace_ownership_transfer_status") AND ("rejected_at" IS NOT NULL)) OR (("status" = 'cancelled'::"public"."workspace_ownership_transfer_status") AND ("cancelled_at" IS NOT NULL))))
-);
-
-
-ALTER TABLE "public"."workspace_ownership_transfers" OWNER TO "postgres";
-
-
 CREATE TABLE IF NOT EXISTS "public"."workspace_retention_purge_jobs" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -31004,6 +31323,10 @@ CREATE OR REPLACE TRIGGER "a_weekly_preference_catalog_lock" BEFORE INSERT OR DE
 
 
 
+CREATE OR REPLACE TRIGGER "access_location_given" AFTER INSERT ON "public"."employee_location_assignments" FOR EACH ROW WHEN (("new"."ended_at" IS NULL)) EXECUTE FUNCTION "app_private"."access_location_given"();
+
+
+
 CREATE OR REPLACE TRIGGER "account_phone_reaches_employee_records" AFTER INSERT OR UPDATE OF "phone_e164" ON "public"."user_profiles" FOR EACH ROW EXECUTE FUNCTION "app_private"."account_phone_reaches_employee_records"();
 
 
@@ -31321,6 +31644,18 @@ CREATE OR REPLACE TRIGGER "start_document_activation_periods" AFTER UPDATE OF "s
 
 
 CREATE OR REPLACE TRIGGER "sync_workspace_entitlement_billing_owner_trigger" AFTER UPDATE OF "role", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."sync_workspace_entitlement_billing_owner"();
+
+
+
+CREATE OR REPLACE TRIGGER "unassigned_publication_replaced" AFTER UPDATE OF "status" ON "public"."schedule_location_publications" FOR EACH ROW WHEN ((("old"."status" = 'current'::"public"."schedule_publication_status") AND ("new"."status" <> 'current'::"public"."schedule_publication_status"))) EXECUTE FUNCTION "app_private"."unassigned_publication_replaced"();
+
+
+
+CREATE OR REPLACE TRIGGER "unassigned_shift_given" AFTER UPDATE OF "employee_id" ON "public"."schedule_published_shifts" FOR EACH ROW WHEN ((("new"."employee_id" IS NOT NULL) AND ("old"."employee_id" IS DISTINCT FROM "new"."employee_id"))) EXECUTE FUNCTION "app_private"."unassigned_shift_changed"();
+
+
+
+CREATE OR REPLACE TRIGGER "unassigned_shift_removed" AFTER DELETE ON "public"."schedule_published_shifts" FOR EACH ROW EXECUTE FUNCTION "app_private"."unassigned_shift_changed"();
 
 
 
@@ -33410,6 +33745,26 @@ REVOKE ALL ON FUNCTION "app_private"."accept_employee_invitation_for_user"("targ
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."access_location_given"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."access_tell_ended"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "target_membership" "uuid", "actor" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."access_tell_no_location"("target_workspace" "uuid", "target_employee" "uuid", "actor" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."access_tell_restored"("target_workspace" "uuid", "target_employee" "uuid", "target_person" "uuid", "actor" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."account_name"("target_user" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."account_phone_e164"("raw_phone" "text") FROM PUBLIC;
 
 
@@ -34065,6 +34420,15 @@ REVOKE ALL ON FUNCTION "app_private"."owner_setup_checklist_item_ids"() FROM PUB
 
 
 
+GRANT ALL ON TABLE "public"."workspace_ownership_transfers" TO "service_role";
+GRANT SELECT ON TABLE "public"."workspace_ownership_transfers" TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."ownership_tell"("transfer" "public"."workspace_ownership_transfers", "event" "text", "actor" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."people_name"("target_employee" "uuid") FROM PUBLIC;
 
 
@@ -34082,6 +34446,10 @@ REVOKE ALL ON FUNCTION "app_private"."people_tell_invitation"("invitation" "publ
 
 
 REVOKE ALL ON FUNCTION "app_private"."phone_used_in_workspace"("target_workspace_id" "uuid", "target_phone" "text", "except_employee_id" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") FROM PUBLIC;
 
 
 
@@ -34172,6 +34540,10 @@ REVOKE ALL ON FUNCTION "app_private"."schedule_tell_closed_day"("target_workspac
 
 
 REVOKE ALL ON FUNCTION "app_private"."schedule_tell_published"("target_workspace" "uuid", "target_actor" "uuid", "target_event" "uuid", "target_week" "date", "target_pairs" "jsonb", "target_told" "uuid"[]) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."schedule_tell_unassigned"("target_workspace" "uuid", "shift_ids" "uuid"[], "actor" "uuid") FROM PUBLIC;
 
 
 
@@ -34359,6 +34731,18 @@ REVOKE ALL ON FUNCTION "app_private"."timezone_name_valid"("zone" "text") FROM P
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."unassigned_cards_settle"("target_workspace" "uuid", "target_shift" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."unassigned_publication_replaced"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."unassigned_shift_changed"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."user_has_active_organization_access"("actor_user_id" "uuid") FROM PUBLIC;
 
 
@@ -34384,6 +34768,10 @@ GRANT ALL ON FUNCTION "app_private"."workspace_allows_interactive_access"("targe
 REVOKE ALL ON FUNCTION "app_private"."workspace_has_permission"("target_workspace_id" "uuid", "target_permission" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "app_private"."workspace_has_permission"("target_workspace_id" "uuid", "target_permission" "text") TO "authenticated";
 GRANT ALL ON FUNCTION "app_private"."workspace_has_permission"("target_workspace_id" "uuid", "target_permission" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."workspace_name"("target_workspace" "uuid") FROM PUBLIC;
 
 
 
@@ -36480,11 +36868,6 @@ GRANT ALL ON TABLE "public"."workspace_layout_preferences" TO "service_role";
 
 GRANT SELECT ON TABLE "public"."workspace_onboarding" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."workspace_onboarding" TO "service_role";
-
-
-
-GRANT ALL ON TABLE "public"."workspace_ownership_transfers" TO "service_role";
-GRANT SELECT ON TABLE "public"."workspace_ownership_transfers" TO "authenticated";
 
 
 
