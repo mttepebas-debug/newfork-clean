@@ -21,6 +21,8 @@ async function open(browser: Browser, person: Person, size: { width: number; hei
 async function visit(page: Page, path: string) {
   await page.goto(path);
   await expect(page.locator("h1").filter({ visible: true }).first()).not.toBeEmpty();
+  // The heading paints before the data: measure only once the page has stopped loading.
+  await expect(page.locator(".nf-loading, .nf-skeleton")).toHaveCount(0);
 }
 
 // The top of an element on screen, or null when there is none.
