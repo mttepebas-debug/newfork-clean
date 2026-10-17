@@ -210,6 +210,30 @@
   border: 1px solid var(--theme-list-frame);
   border-radius: 8px;
   background: var(--theme-surface);
+  container: dav-detail / inline-size;
+}
+/* A narrow day panel (onboarding on a laptop): the three cards stack, as in
+   the phone's sheet, instead of cutting "Unavailable" and wrapping "Some hours". */
+@container dav-detail (max-width: 600px) {
+  .dav-detail .dav-cards {
+    grid-template-columns: 1fr;
+    gap: 6px;
+  }
+  .dav-detail .dav-card-option {
+    min-height: 52px;
+    padding: 8px 12px;
+  }
+  .dav-detail .dav-fields {
+    max-width: none;
+  }
+}
+/* Onboarding on a computer reads like My Availability: the step is as wide as
+   the week needs (the other steps keep 760 px). */
+.pb-stage-wide:has(.dav-panel:not(.is-phone)) {
+  width: min(100% - 48px, 1000px);
+}
+.pb-stage-wide .onboarding-step:has(.dav-panel:not(.is-phone)) {
+  width: 100%;
 }
 .dav-detail h3 {
   margin: 0;
@@ -218,7 +242,6 @@
   letter-spacing: -0.005em;
 }
 
-/* The save bar under the card (Tur 2): only while there is something to save. */
 /* Mert 2026-10-17: Cancel / Save under the week, always there so nothing
    moves; "Availability preferences saved" opens from the left after a save
    (Tur 2, version 25). */
@@ -667,7 +690,10 @@
   margin-top: 14px;
   padding-top: 14px;
 }
+/* One line each: "Save and continue" wrapped to two in its half (AVAIL-GUN-S). */
 .dav-panel.is-phone .dav-onboard-foot > * {
+  padding-inline: 12px;
+  white-space: nowrap;
   flex: 1 1 0;
   min-height: 44px;
 }
