@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  notificationAreaSchema,
   notificationFeedQuerySchema,
   notificationItemSchema,
   notificationReadInputSchema,
@@ -71,5 +72,12 @@ describe("notificationFeedQuerySchema", () => {
     expect(notificationFeedQuerySchema.safeParse({ before: "2026-10-16T16:38:10+00:00" }).success).toBe(false);
     expect(notificationFeedQuerySchema.safeParse({ before: "" }).success).toBe(false);
     expect(notificationFeedQuerySchema.safeParse({ limit: "101" }).success).toBe(false);
+  });
+});
+
+describe("notification areas", () => {
+  // KARARLAR S-133 (BILDIRIM-U7): availability raises no notification, so no notice is filed under it.
+  it("has no availability area", () => {
+    expect(notificationAreaSchema.options).not.toContain("availability");
   });
 });

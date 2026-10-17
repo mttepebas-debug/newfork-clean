@@ -527,9 +527,10 @@ insert into retired (kind, name, step) values
   ('function', 'weekly_preference_convert', 'AVAIL-GUN-DB'),
   ('function', 'weekly_preference_whole_days', 'AVAIL-GUN-DB'),
   ('function_signature', 'public.empty_weekly_preference(text)', 'AVAIL-GUN-DB');
--- With the entry mode gone, nothing changes how availability is entered, so its notice goes from the new
--- catalog (BILDIRIM-U7).
+-- Availability raises no notification at all (KARARLAR S-133; BILDIRIM-U7): both its types leave the new
+-- catalog.
 insert into retired (kind, name, step) values
+  ('notification', 'availability.updated', 'BILDIRIM-U7'),
   ('notification', 'availability.mode_changed', 'BILDIRIM-U7');
 
 select is(
