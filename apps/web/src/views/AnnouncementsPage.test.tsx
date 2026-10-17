@@ -524,7 +524,8 @@ describe("Announcement drawer (EKRAN-08)", () => {
       expect(field.getAttribute("aria-describedby")).toBe(message.id);
     }
     // Right under the day and clock boxes, inside the row; the row itself stays its usual colour.
-    expect(box.closest(".annc-publish-boxes")?.nextElementSibling).toBe(message);
+    // In the note line kept there (UI-FIELDMSG).
+    expect(box.closest(".annc-publish-boxes")?.nextElementSibling).toBe(message.closest(".field-note"));
     expect(message.closest(".annc-publish-row")?.getAttribute("data-bad")).toBeNull();
   });
 
