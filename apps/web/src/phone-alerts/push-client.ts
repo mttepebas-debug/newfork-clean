@@ -70,6 +70,25 @@ async function existing(win: Window): Promise<PushSubscription | null> {
   return found ? found.pushManager.getSubscription() : null;
 }
 
+/** Whether the browser's subscription was made with this server key; one made with an older key is refused. */
+function madeWith(subscription: PushSubscription, publicKey: string): boolean {
+  const held = subscription.options?.applicationServerKey;
+  // A browser that does not say keeps what it has.
+  if (!held) return true;
+  const mine = applicationServerKey(publicKey);
+  const theirs = new Uint8Array(held);
+  return theirs.length === mine.length && theirs.every((byte, i) => byte === mine[i]);
+}
+
+/** This browser's subscription for this server key: the one it has, or a new one in place of an old key's. */
+async function subscribed(worker: ServiceWorkerRegistration, publicKey: string): Promise<PushSubscription> {
+  const held = await worker.pushManager.getSubscription();
+  if (held && madeWith(held, publicKey)) return held;
+  // The old key's subscription answers 403 for ever; the server removes it once its push service says gone.
+  if (held) await held.unsubscribe();
+  return worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey(publicKey) });
+}
+
 function input(subscription: PushSubscription, win: Window): PushSubscriptionInput {
   return {
     endpoint: subscription.endpoint,
@@ -96,31 +115,45 @@ export async function turnOnPhoneAlerts(publicKey: string, server: PushServer, w
   const permission = await win.Notification!.requestPermission();
   if (permission === "denied") return "blocked";
   if (permission !== "granted") return "off";
-  const worker = await registration(win);
-  const subscription =
-    (await worker.pushManager.getSubscription()) ??
-    (await worker.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: applicationServerKey(publicKey) }));
+  const subscription = await subscribed(await registration(win), publicKey);
   await server.save(input(subscription, win));
   return "on";
 }
 
-/** Removes this device on the server first, then in the browser. */
+/**
+ * Removes this device on the server, then in the browser. The browser forgets it even when the server
+ * cannot be told: nothing more reaches this screen, and the server drops the address once it is gone.
+ */
 export async function turnOffPhoneAlerts(server: PushServer, win: Window = window): Promise<void> {
   const subscription = await existing(win);
   if (!subscription) return;
-  await server.remove(subscription.endpoint);
-  await subscription.unsubscribe();
+  try {
+    await server.remove(subscription.endpoint);
+  } finally {
+    await subscription.unsubscribe();
+  }
+}
+
+/** A session that ended (expired, or signed out elsewhere): this browser forgets the device, asking nobody. */
+export async function dropPhoneAlertsHere(win: Window = window): Promise<void> {
+  try {
+    await (await existing(win))?.unsubscribe();
+  } catch {
+    // Nothing to forget.
+  }
 }
 
 /**
  * At every start while alerts are allowed: tells the server this device again, so a subscription the
- * browser replaced, or one the server forgot, comes back. Never asks anything; never throws.
+ * browser replaced, or one the server forgot, comes back; one made with an older server key is made anew.
+ * Never asks anything; never throws.
  */
-export async function syncPhoneAlerts(server: PushServer, win: PushWindow = window): Promise<void> {
+export async function syncPhoneAlerts(server: PushServer, publicKey: string, win: PushWindow = window): Promise<void> {
   try {
     if (win.Notification?.permission !== "granted" || !("serviceWorker" in win.navigator)) return;
-    const subscription = await existing(win);
-    if (subscription) await server.save(input(subscription, win));
+    const worker = await win.navigator.serviceWorker.getRegistration("/");
+    if (!worker || !(await worker.pushManager.getSubscription())) return;
+    await server.save(input(await subscribed(worker, publicKey), win));
   } catch {
     // The next start tries again.
   }

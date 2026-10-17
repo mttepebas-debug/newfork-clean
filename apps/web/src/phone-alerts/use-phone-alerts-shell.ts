@@ -21,8 +21,8 @@ export function usePhoneAlertsShell(userId: string | null, pathname: string, nav
   }, [pathname]);
 
   useEffect(() => {
-    if (userId && config.push.available) void syncPhoneAlerts(pushServer);
-  }, [userId, config.push.available]);
+    if (userId && config.push.available) void syncPhoneAlerts(pushServer, config.push.public_key);
+  }, [userId, config.push.available, config.push.public_key]);
 
   useEffect(() => {
     if (typeof navigator === "undefined" || !("serviceWorker" in navigator)) return;

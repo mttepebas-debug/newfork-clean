@@ -28,7 +28,7 @@ import {
 } from "../lib/supabase";
 import { clearTenantQueriesForOrganizationSwitch } from "./tenant-query-cache";
 import { pushServer } from "../phone-alerts/channels-data";
-import { turnOffPhoneAlerts } from "../phone-alerts/push-client";
+import { dropPhoneAlertsHere, turnOffPhoneAlerts } from "../phone-alerts/push-client";
 
 interface AuthContextValue {
   readonly account: AccountProfile | null;
@@ -210,6 +210,9 @@ export function AuthProvider({
         if (nextSession) {
           void resolveAuthenticatedSession(nextSession, { silent });
         } else {
+          // The session ended without a sign-out here (it expired, or was signed out elsewhere): this browser
+          // stops taking the last person's phone alerts (BILDIRIM-15).
+          void dropPhoneAlertsHere();
           clearAccountCache();
           resolvedUserIdRef.current = null;
           setAccount(null);
