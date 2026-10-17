@@ -363,6 +363,13 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); 
   - Reddedilirse sessizce iptal olur (S-131).
   - Preferred name legal belgelerde asla kullanılmaz.
 
+- **Alan altı mesaj yuvası (S-139; Mert, 2026-10-17 ~1:40 PM PT, Line-up tasarım oturumu, aktaran Mobil arayüz oturumu: "kırmızı hata mesajları yazıları hiçbir zaman görüntüyü sıkıştırmasın başka elementleri iteklemesin. bu app genelinde geçerli bir kural").** Uygulamanın her yerinde geçerlidir: sayfalar, çekmeceler, pencereler, alttan açılan kartlar.
+  - Alan altı mesajlar yerleşimi asla itmez ve sıkıştırmaz. Buna kırmızı hata, uyarı ve "Schedule: 4:00 PM" gibi notlar dahildir.
+  - Her alanın altında bir satırlık sabit bir mesaj yuvası vardır. Mesaj o yuvada tek satır durur; uzunsa "…" ile kırpılır, tam metin `aria-describedby` / `title` ile okunur.
+  - Hata, aynı yuvadaki notun yerini alır.
+  - Ortak parça `apps/web/src/shell/FieldNote.tsx`. `LetterRuleError` (`shell/us-text.tsx`), Announcements `FieldError` ve koşullu `.form-error` `<small>`'lar ona taşınır.
+  - Kurala uymayan ekranlar (nf-okur taraması, origin/main c310665a): Employees kişi çekmecesi, owner onboarding lokasyon formu, employee onboarding, Announcements çekmecesi, Lineup Publish penceresi, Schedule vardiya penceresi (bilgi satırı boşken), New Schedule / Default hours / Export pencereleri, giriş ve parola ekranları, Account Profile / Preferences / Security, Settings General, çalışan talep pencereleri ve onay pencereleri (Exchange / Swap / Time off). Düzeltme için Mert'in onayı bekleniyor (CLAUDE.md §3.A.7).
+
 ### 1.4 MVP sınırı
 
 Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001). Neden: self-serve ücretli ABD lansmanı önce (ILKELER P13).
@@ -857,6 +864,7 @@ Ortak parçalar ve operasyon kuralları. Ölçü ve CSS değerlerini buraya kopy
 - **S-136** İşçi sınırı 3 (Mert, 2026-10-17 ~2:20 AM PDT, ana oturum, "evet"): aynı anda üç kod yazan iş — Bildirim motoru, Lineup yayını (mobil stüdyo oturumu) ve Availability (day view oturumu, AVAIL-GUN). 16 Ekim'deki "İkisi birden" (Bildirim + Lineup, sınır 2) kararının üstüne Availability eklendi. Sıra: canlı göçler ve trenler ana oturumda tek tek; Availability'nin göçü Lineup yayınınınkinden önce. Bir iş bitince sınır kendiliğinden düşmez; yeniden 2 ya da 1 Mert'in sözüyle.
 - **S-137** İşçi sınırı 5 (Mert, 2026-10-17 ~4 AM PDT, ana oturum: "İki kartı da başlat: çalışan More menüsü ve telefon başlıkları. İşçi sınırı 5 olsun."): S-136'nın üç işine (Bildirim, Lineup yayını, Availability) çalışan More menüsü (CALISAN-MORE) ve telefon başlıkları (MOBIL-BASLIK) eklendi. Trenler ve canlı göçler ana oturumda tek tek.
 - **S-138** Telefona bildirim (yol haritası 8. dilim) `web-push` kütüphanesiyle (npm, MPL-2.0 lisanslı, ücretsiz; 17 Ekim'de "MIT" yazılmıştı, düzeltildi) gönderilir; Apple, Google ve Mozilla'nın gönderim servisleri ücretsiz. Yeni bağımlılık Mert'in onayıyla eklendi (CLAUDE.md §4). VAPID anahtar çifti gizli değerdir: Vercel Production'a Mert girer, koordinatör görmez. iPhone'da bildirim için uygulama ana ekrana eklenmiş olmalı (Apple kuralı). (Mert, 2026-10-17, ana oturum: "Evet: telefona bildirim için web-push kütüphanesini ekleyin, 8. dilime başlayın.")
+- **S-139** Alan altı mesajlar yerleşimi itmez; her alanın altında tek satırlık sabit mesaj yuvası (Mert, 2026-10-17 ~1:40 PM PT). Ayrıntı ve uymayan ekranlar: §1.3 "Alan altı mesaj yuvası".
 
 ## Bırakılanlar
 
