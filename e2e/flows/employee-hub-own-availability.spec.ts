@@ -13,7 +13,10 @@ import { round } from "../fixtures/world";
 //
 // Employee Hub lists shifts from two days ago to six weeks ahead, so the shifts
 // are next week's (tests.week(-99) is next Monday), not ~700 days out. The
-// employee is fresh, so no other spec's shifts or week reach this Home.
+// employee is fresh, so no other spec's shifts or week reach this Home. The
+// week is Besiktas's: schedule-shift-note.spec.ts builds and publishes the
+// same week at Kadikoy from a blank draft, and a week already out there
+// breaks its Publish (CI run 39023052297).
 
 const world: { readonly run: string; readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
@@ -23,7 +26,7 @@ const sql = (query: string) => execSync(psql, { input: query, encoding: "utf8" }
 function freshEmployee() {
   const label = `ownav${Math.random().toString(36).slice(2, 7)}`;
   const email = sql(`
-    select tests.person('${world.run}', '${label}', 'employee', array['K'], array['cook']);
+    select tests.person('${world.run}', '${label}', 'employee', array['B'], array['cook']);
     select tests.password('${world.run}:${label}', '${world.password}');`)
     .split(/\r?\n/)
     .at(-1)!;
@@ -45,8 +48,8 @@ test("a shift on hours the employee marked unavailable carries a note with swap 
   const week = -99 + round();
   // Monday evening (the marked hours) and Wednesday morning (free).
   sql(`select tests.publish_week('${world.run}', ${week}, '[
-    {"label": "${label}-mon", "person": "${label}", "loc": "K", "job": "cook", "day": 0, "start": "18:00", "end": "22:00"},
-    {"label": "${label}-wed", "person": "${label}", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}
+    {"label": "${label}-mon", "person": "${label}", "loc": "B", "job": "cook", "day": 0, "start": "18:00", "end": "22:00"},
+    {"label": "${label}-wed", "person": "${label}", "loc": "B", "job": "cook", "day": 2, "start": "09:00", "end": "13:00"}
   ]');`);
   const evening = sql(`select tests.id('${world.run}:shift:${label}-mon');`);
   const morning = sql(`select tests.id('${world.run}:shift:${label}-wed');`);
@@ -84,7 +87,7 @@ test("a shift on hours the employee marked unavailable carries a note with swap 
   await expect(page.getByRole("heading", { name: "Request time off" })).toBeVisible();
 
   await page.goto(`/app/employee-hub?shift=${morning}`);
-  await expect(sheet).toContainText("Kadikoy");
+  await expect(sheet).toContainText("Besiktas");
   await expect(sheet.getByRole("note")).toHaveCount(0);
 
   // "Swap or give up" opens Shift Hub's offer on that shift.
