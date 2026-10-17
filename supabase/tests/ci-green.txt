@@ -208,3 +208,4 @@ supabase/tests/notify_people.test.sql
 supabase/tests/notify_people_access.test.sql
 supabase/tests/listed_job_one_rule.test.sql
 supabase/tests/lineup_publish.test.sql
+supabase/tests/notify_lineup.test.sql

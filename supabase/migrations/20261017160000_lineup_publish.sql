@@ -284,6 +284,25 @@ $$;
 
 -- Share and unpublish ---------------------------------------------------------------------------------------
 
+-- app_private.notify, guarded: the lineup work outlives a notice that fails (domain_work_outlives_notifications).
+create function app_private.lineup_tell(target_type text, target_workspace uuid, target_recipients uuid[],
+  target_event_key text, target_title text, target_body text, target_url text, target_actor uuid,
+  target_subject_type text, target_subject_id uuid, target_data jsonb default '{}')
+returns integer
+language plpgsql
+set search_path = ''
+as $$
+begin
+  return app_private.notify(target_type, target_workspace, target_recipients, target_event_key, target_title, target_body,
+    target_url, target_actor, target_subject_type, target_subject_id, target_data);
+exception when others then
+  raise warning 'lineup_tell: % notice % skipped: % (%)', target_type, target_event_key, sqlerrm, sqlstate;
+  return 0;
+end;
+$$;
+
+revoke all on function app_private.lineup_tell(text, uuid, uuid[], text, text, text, text, uuid, text, uuid, jsonb) from public;
+
 -- One entry for a manager's lineup commands (PLAN §6); this round share and unpublish. The same command id
 -- sent again by the same person answers what it answered the first time and does nothing more.
 --   share     {lineups: [{location_id, service_date, shift_type_id | null}], ask_ack}: each lineup is
@@ -436,7 +455,22 @@ begin
   insert into public.lineup_commands (workspace_id, actor_user_id, command_id, kind, payload, result)
   values (target_workspace_id, actor_user_id, command_id, kind, payload, result);
 
-  -- notification producer goes here: one per employee per share batch (told, shared_lineups, shared_names).
+  -- One notice per person per share, however many lineups it published (PLAN §9; lineup.shared). Its event key
+  -- is the transaction's, so a share sent again under the same command id (answered above) tells nobody again.
+  if shared_lineups > 0 then
+    perform app_private.lineup_tell('lineup.shared', target_workspace_id,
+      array(select distinct x from unnest(told) x),
+      'lineup_published:' || target_workspace_id::text || ':' || txid_current()::text,
+      case when shared_lineups = 1
+        then 'Your ' || coalesce(nullif(shared_names[1], '') || ' ', '') || 'lineup is ready'
+        else 'Your lineups for ' || to_char(shared_day, 'Dy, Mon FMDD') || ' are ready' end
+        || case when ask then ' · please acknowledge' else '' end,
+      null,
+      '/app/employee-hub/schedule?view=day&date=' || to_char(shared_day, 'YYYY-MM-DD'),
+      actor_user_id, 'lineup_share', command_id,
+      jsonb_build_object('date', shared_day, 'ask_ack', ask,
+        'lineup_ids', (select jsonb_agg(d -> 'lineup_id') from jsonb_array_elements(done) d where d ->> 'status' = 'shared')));
+  end if;
   return result;
 end;
 $$;
