@@ -415,7 +415,7 @@ function TopicTable({
                 </strong>
                 <span>
                   {delivery.email.available
-                    ? "Password and sign-in changes, your role and your access. Always by email."
+                    ? `Password and sign-in changes, your role and your access. Always by email${delivery.push.available ? ", and on every device with phone alerts on" : ""}.`
                     : "Password and sign-in changes, your role and your access. Always in your Notifications list, and by email once emails start."}
                 </span>
               </th>
