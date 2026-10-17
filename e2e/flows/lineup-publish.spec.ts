@@ -49,6 +49,15 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   const ticket = emre.locator(".employee-lineup-ticket");
   await expect(ticket).toContainText("4:00 PM – 10:00 PM");
   await expect(ticket).toContainText("Kadikoy");
+  // Mert 2026-10-17: her shift tab, then the location and date, her ticket, then Team · Notes.
+  await expect(emre.getByRole("group", { name: "Shifts" }).getByRole("button")).toHaveCount(1);
+  const order = await emre.evaluate(() =>
+    [".lineup-shift-tabs", ".lineup-day-head", ".employee-lineup-ticket", ".employee-lineup-tabs"].map(
+      (selector) => document.querySelector(selector)!.getBoundingClientRect().top,
+    ),
+  );
+  expect([...order].sort((a, b) => a - b)).toEqual(order);
+  await expect(emre.locator(".lineup-day-head h2")).toHaveText("Kadikoy");
   await expect(emre.getByRole("list", { name: "Cook" })).toContainText("Ali Person");
   await emre.getByRole("button", { name: "Acknowledge", exact: true }).click();
   await expect(emre.getByText("Acknowledged.", { exact: true })).toBeVisible();
@@ -80,8 +89,7 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
 
 // LINEUP-PUBLISH-PHONE (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih): on a phone Ayse turns the day wheel
 // to the day, reads the team (nothing to edit), publishes from the dock over the bottom bar through the
-// sheet, and the Read tab counts. The top stays while the list scrolls; folded, the wheel sits 4 px under
-// the header's line.
+// sheet, and the Read tab counts. Only the page header stays while the page scrolls (Mert 2026-10-17 ~8 AM).
 test("a manager publishes a lineup from a phone", async ({ browser }) => {
   const week = roundWeek(641);
   sql(`select tests.publish_week('${run}', ${week}, '[
@@ -110,7 +118,9 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await expect(team.getByRole("button")).toHaveCount(0);
   await expect(ayse.getByText("Draft · staff can't see it", { exact: true })).toBeVisible();
 
-  // The top stays put while the page scrolls under it, and the date row folds away.
+  // Only the page header stays put, at its full size; the date row, the wheel and the shift tabs scroll away.
+  const header = ayse.locator(".lineup-phone-head .catalog-page-header");
+  const open = await header.boundingBox();
   await ayse.evaluate(() => {
     const tall = document.createElement("div");
     tall.style.height = "1600px";
@@ -118,14 +128,18 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
     document.querySelector(".app-main")!.scrollTop = 2000;
   });
   await expect(ayse.locator("#lineup-title")).toBeInViewport();
-  await expect
-    .poll(() =>
-      ayse.evaluate(() => {
-        const line = document.querySelector(".lineup-phone-top .catalog-page-header")!.getBoundingClientRect().bottom;
-        return Math.round(document.querySelector(".lineup-wheel")!.getBoundingClientRect().top - line);
-      }),
-    )
-    .toBe(4);
+  await expect.poll(async () => (await header.boundingBox())?.height).toBe(open?.height);
+  for (const piece of [".lineup-toolbar", ".lineup-wheel", ".lineup-shift-tabs"])
+    await expect
+      .poll(() =>
+        ayse.evaluate(
+          (selector) =>
+            document.querySelector(selector)!.getBoundingClientRect().bottom <=
+            document.querySelector(".lineup-phone-head")!.getBoundingClientRect().bottom,
+          piece,
+        ),
+      )
+      .toBe(true);
   await ayse.evaluate(() => {
     document.querySelector(".app-main")!.scrollTop = 0;
   });
@@ -143,4 +157,54 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await ayse.getByRole("tab", { name: /^Read \d+\/\d+$/ }).tap();
   await expect(ayse.getByRole("tabpanel")).toContainText(/of \d+ read/);
   await context.close();
+});
+
+// Mert 2026-10-17 (~8:10 AM): the date row, the wheel, the shift tabs and the location and date head keep one
+// rhythm on the manager's and the employee's phone Lineup: 14 px between the rows, the head 16 px under the
+// tabs; on the manager's page the date row sits 18 px under the header's line.
+test("the manager's and the employee's phone Lineup keep one rhythm", async ({ browser }) => {
+  const week = roundWeek(642);
+  sql(`select tests.publish_week('${run}', ${week}, '[
+    {"label": "${roundLabel("emre-k-lineup-rhythm")}", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "16:00", "end": "22:00"}
+  ]');`);
+  const day = sql(`select tests.week(${week}) + 2;`);
+  const phone = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
+
+  const ayse = await (await browser.newContext(phone)).newPage();
+  await signIn(ayse, "ayse");
+  await expect(ayse).not.toHaveURL(/\/sign-in/);
+  await ayse.goto(`/app/schedule/lineup?date=${day}`);
+  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  await expect(ayse.getByRole("list", { name: "Cook" })).toContainText("Emre Person");
+  // Publish it, so Emre's page shows the same pieces.
+  await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
+  const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
+  await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
+  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+
+  const emre = await (await browser.newContext(phone)).newPage();
+  await signIn(emre, "emre");
+  await expect(emre).not.toHaveURL(/\/sign-in/);
+  await emre.goto(`/app/employee-hub/schedule/lineup?date=${day}`);
+  await expect(emre.locator(".employee-lineup-ticket")).toContainText("Kadikoy");
+
+  const rows = (page: Page) =>
+    page.evaluate(() => {
+      const top = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().top;
+      const bottom = (selector: string) => document.querySelector(selector)!.getBoundingClientRect().bottom;
+      const toolbar = top(".lineup-toolbar");
+      return {
+        line: toolbar - bottom(".catalog-page-header"),
+        wheel: top(".lineup-wheel") - toolbar,
+        tabs: top(".lineup-shift-tabs") - toolbar,
+        head: top(".lineup-day-head") - toolbar,
+      };
+    });
+  const manager = await rows(ayse);
+  const employee = await rows(emre);
+  expect(Math.abs(manager.line - 18)).toBeLessThanOrEqual(0.5);
+  for (const key of ["wheel", "tabs", "head"] as const) expect(Math.abs(manager[key] - employee[key])).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(manager.wheel - 50)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(manager.tabs - 128)).toBeLessThanOrEqual(0.5);
+  expect(Math.abs(manager.head - 187)).toBeLessThanOrEqual(0.5);
 });

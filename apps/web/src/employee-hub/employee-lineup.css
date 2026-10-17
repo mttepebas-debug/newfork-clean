@@ -18,6 +18,8 @@
 }
 
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
+/* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
+.employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
 .employee-lineup :is(button, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 
 /* The ticket: a stub with the shift's color, a dashed tear, her time, job and place */

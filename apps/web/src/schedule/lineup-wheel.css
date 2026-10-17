@@ -52,10 +52,11 @@
   border-color: var(--theme-border-hover);
 }
 
-/* The location beside the date takes the rest of the row. */
+/* The location beside the date takes the rest of the row; at 390 px it stays on the date's row even when the
+   date carries a year ("Wed, Feb 27, 2041"), so the rows under it keep the same height on every page. */
 .lineup-toolbar .lineup-location {
   min-width: 0;
-  flex: 1 1 140px;
+  flex: 1 1 120px;
 }
 
 .lineup-step:focus-visible,
