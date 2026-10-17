@@ -3,7 +3,7 @@ import type { NotificationArea, NotificationItem } from "@newfork/shared";
 // BILDIRIM-10: how a row reads (KARARLAR S-123, variant A): its tile, its
 // time, its group, and the decision it carries.
 
-export type Tone = "amber" | "green" | "red" | "blue" | "orange" | "slate";
+export type Tone = "amber" | "green" | "red" | "blue" | "slate";
 export type TileIcon =
   | "clipboard"
   | "calendar"
@@ -11,7 +11,6 @@ export type TileIcon =
   | "time-off"
   | "users"
   | "file"
-  | "availability"
   | "megaphone"
   | "shield"
   | "building";
@@ -20,7 +19,6 @@ const areaLooks: Record<NotificationArea, { label: string; icon: TileIcon; tone:
   schedule: { label: "Schedule", icon: "calendar", tone: "green" },
   shift_changes: { label: "Shift changes", icon: "swap", tone: "green" },
   time_off: { label: "Time off", icon: "time-off", tone: "red" },
-  availability: { label: "Availability", icon: "availability", tone: "orange" },
   lineup: { label: "Lineup", icon: "clipboard", tone: "green" },
   people: { label: "People", icon: "users", tone: "blue" },
   documents: { label: "Documents", icon: "file", tone: "blue" },

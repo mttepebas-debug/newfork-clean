@@ -67,7 +67,6 @@ const areaNames: Record<string, string> = {
   schedule: "Schedule",
   shift_changes: "Shift changes",
   time_off: "Time off",
-  availability: "Availability",
   lineup: "Lineup",
   people: "People",
   documents: "Documents",

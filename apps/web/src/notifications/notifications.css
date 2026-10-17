@@ -197,7 +197,6 @@
 .ni-amber { background: var(--theme-warning-soft); color: var(--theme-warning); }
 .ni-red { background: var(--theme-time-off-soft); color: var(--theme-danger-strong); }
 .ni-blue { background: var(--theme-info-soft); color: var(--theme-info-text); }
-.ni-orange { background: var(--theme-availability-soft); color: var(--theme-warning); }
 .ni-slate { background: var(--theme-surface-muted); color: var(--theme-muted-strong); }
 .ni-row-text {
   display: grid;

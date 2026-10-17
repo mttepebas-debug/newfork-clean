@@ -14,7 +14,6 @@ export const notificationAreaSchema = z.enum([
   "schedule",
   "shift_changes",
   "time_off",
-  "availability",
   "lineup",
   "people",
   "documents",

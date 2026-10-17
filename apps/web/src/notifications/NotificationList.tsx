@@ -2,7 +2,6 @@ import type { NotificationFilter, NotificationItem } from "@newfork/shared";
 import {
   BellOff,
   Building2,
-  CalendarCheck,
   CalendarDays,
   CalendarOff,
   Check,
@@ -38,7 +37,6 @@ const icons: Record<TileIcon, LucideIcon> = {
   "time-off": CalendarOff,
   users: Users,
   file: FileText,
-  availability: CalendarCheck,
   megaphone: Megaphone,
   shield: ShieldCheck,
   building: Building2,
