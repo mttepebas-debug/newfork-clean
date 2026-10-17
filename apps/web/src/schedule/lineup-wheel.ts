@@ -124,18 +124,19 @@ export function foldOffset(scrollTop: number, start: number, travel: number): nu
 }
 
 /**
- * The Publish dock (D1, D3): 10 px over the phone's bottom bar, centred on the line where More meets the
- * tab before it. With no bar (a window between the phone and the computer layouts), 16 px off the corner.
+ * The Publish dock (D1, D3; Mert 2026-10-17 "a little further right"): 10 px over the phone's bottom bar,
+ * its right edge on the bar's inner edge, where the last tab (More) ends. With no bar (a window between the
+ * phone and the computer layouts), 16 px off the corner.
  */
 export function dockPlace({
   bar,
-  moreLeft,
+  moreRight,
   viewport,
 }: {
   bar: { top: number } | null;
-  moreLeft: number | null;
+  moreRight: number | null;
   viewport: { width: number; height: number };
-}): { left: number | null; bottom: number } {
-  if (!bar || moreLeft === null) return { left: null, bottom: 16 };
-  return { left: moreLeft, bottom: Math.round(viewport.height - bar.top + 10) };
+}): { right: number | null; bottom: number } {
+  if (!bar || moreRight === null) return { right: null, bottom: 16 };
+  return { right: Math.round(viewport.width - moreRight), bottom: Math.round(viewport.height - bar.top + 10) };
 }

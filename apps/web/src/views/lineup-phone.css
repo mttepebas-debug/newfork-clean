@@ -584,17 +584,15 @@
   height: 70px;
 }
 
-/* Publish (D1, D3): as wide as its words, 44 px, 14 px text, 12 px corners, a light shadow; centred on the
-   line where More begins, 10 px over the bar (useDockPlace sets left and bottom). */
+/* Publish (D1, D3): as wide as its words, 44 px, 14 px text, 12 px corners, a light shadow; its right edge on
+   the bar's inner edge where More ends (Mert 2026-10-17), 10 px over the bar (useDockPlace sets right and bottom). */
 .lineup-phone-dock {
   position: fixed;
   z-index: 25;
-  transform: translateX(-50%);
   pointer-events: none;
 }
 .lineup-phone-dock[data-place="corner"] {
   right: 16px;
-  transform: none;
 }
 .nf-button.lineup-publish-trigger.lineup-phone-publish {
   min-height: 44px;

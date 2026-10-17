@@ -109,16 +109,16 @@ describe("the phone top's fold", () => {
 });
 
 describe("the Publish dock", () => {
-  it("sits 10 px over the bottom bar, centred on the line where More begins", () => {
-    expect(dockPlace({ bar: { top: 782 }, moreLeft: 306, viewport: { width: 390, height: 844 } })).toEqual({
-      left: 306,
+  it("sits 10 px over the bottom bar, its right edge on the bar's inner edge (where More ends)", () => {
+    expect(dockPlace({ bar: { top: 782 }, moreRight: 380, viewport: { width: 390, height: 844 } })).toEqual({
+      right: 10,
       bottom: 72,
     });
   });
 
   it("keeps clear of the screen's edges with no bar under it", () => {
-    expect(dockPlace({ bar: null, moreLeft: null, viewport: { width: 740, height: 900 } })).toEqual({
-      left: null,
+    expect(dockPlace({ bar: null, moreRight: null, viewport: { width: 740, height: 900 } })).toEqual({
+      right: null,
       bottom: 16,
     });
   });

@@ -605,7 +605,7 @@ function PhoneLineupOutline() {
 }
 
 /**
- * Publish, as wide as its words, over the bottom bar where More begins (D1, D3). Its window opens as a sheet
+ * Publish, as wide as its words, over the bottom bar, its right edge where More ends (D1, D3). Its window opens as a sheet
  * from the bottom (the window takes focus in and gives it back).
  */
 function PublishDock({ publish }: { readonly publish: PhonePublish }) {
@@ -643,12 +643,12 @@ function useDockPlace(ref: RefObject<HTMLDivElement | null>) {
       const more = shown ? (bar!.lastElementChild as HTMLElement | null)?.getBoundingClientRect() ?? null : null;
       const at = dockPlace({
         bar: shown ? { top: shown.top } : null,
-        moreLeft: more ? more.left : null,
+        moreRight: more ? more.right : null,
         viewport: { width: window.innerWidth, height: window.innerHeight },
       });
-      element.style.left = at.left === null ? "" : `${at.left}px`;
+      element.style.right = at.right === null ? "" : `${at.right}px`;
       element.style.bottom = `${at.bottom}px`;
-      element.dataset.place = at.left === null ? "corner" : "bar";
+      element.dataset.place = at.right === null ? "corner" : "bar";
     };
     place();
     const watched = typeof ResizeObserver === "function" ? new ResizeObserver(place) : null;
