@@ -522,16 +522,6 @@ parts.push(
   ),
 );
 
-parts.push(
-  block(
-    "weekly preference defaults",
-    "public",
-    "weekly_preference_type_defaults",
-    `select ${rowJson("d")} from public.weekly_preference_type_defaults d
-     where d.workspace_id = '${WORKSPACE}'`,
-  ),
-);
-
 parts.push(`-- So the next employee added gets a code nobody is using.
 insert into public.workspace_employee_counters (workspace_id, next_value)
 values ('${WORKSPACE}', 9200)

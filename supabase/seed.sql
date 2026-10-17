@@ -328,7 +328,7 @@ begin
   -- Alex Kim marked every Friday as a day they cannot work.
   insert into public.employee_weekly_preferences (workspace_id, employee_id, preference, revision, updated_by)
   values ('6ea5d512-bc7f-4cf3-aad4-2f0815de00fd', '15000000-0000-4000-8000-000000000001',
-    jsonb_set(public.empty_weekly_preference('time_range'), '{days,5,all_day}', 'true'),
+    jsonb_set(public.empty_weekly_preference(), '{days,5,all_day}', 'true'),
     1, 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5');
 
   -- A closed day is a published announcement whose location is Closed that

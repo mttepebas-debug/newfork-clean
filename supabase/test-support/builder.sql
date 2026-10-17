@@ -416,11 +416,11 @@ declare
   model jsonb := public.weekly_preferences_read_service(actor, workspace, employee);
   preference jsonb;
 begin
-  select jsonb_build_object('input_mode', 'time_range', 'days', jsonb_agg(
+  select jsonb_build_object('days', jsonb_agg(
     case when day = weekday then jsonb_build_object(
-      'day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb,
+      'day', day, 'all_day', false,
       'ranges', jsonb_build_array(jsonb_build_object('start', start_time, 'end', end_time)))
-    else jsonb_build_object('day', day, 'all_day', false, 'shift_type_ids', '[]'::jsonb, 'ranges', '[]'::jsonb) end
+    else jsonb_build_object('day', day, 'all_day', false, 'ranges', '[]'::jsonb) end
     order by day
   )) into preference
   from generate_series(0, 6) day;
