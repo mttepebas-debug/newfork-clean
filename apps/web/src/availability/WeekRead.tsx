@@ -10,6 +10,7 @@ import {
   dayTone,
   firstName,
   rangeOf,
+  rangeText,
   shortDay,
   updatedOn,
   weekPhrases,
@@ -95,6 +96,18 @@ function WeekSentence({ who, preference, timeFormat }: { who: string; preference
   );
 }
 
+// "3:30 PM – 10 PM" as two unbreakable pieces, "3:30 PM –" and "10 PM": a box too
+// narrow for the range breaks it at the dash, never inside a clock.
+function hoursPieces(hours: string) {
+  const [from, to] = hours.split(" – ");
+  if (to === undefined) return hours;
+  return (
+    <>
+      <span>{from} –</span> <span>{to}</span>
+    </>
+  );
+}
+
 const percent = (minutes: number) => `${((minutes - DAY_START) / (DAY_END - DAY_START)) * 100}%`;
 
 /** Seven boxes, Monday first; each with its tone, its words and a strip from 12 AM to 12 AM. */
@@ -105,9 +118,11 @@ export function WeekTiles({ who, preference, timeFormat }: { who: string; prefer
         const day = preference.days.find((item) => item.day === weekday)!;
         const tone = dayTone(day, timeFormat);
         const range = rangeOf(day);
-        // "Unavailable after 6:00 PM" as two fixed lines in a box: the state
-        // word, then the hours (capitalised by CSS); one line in a row.
+        // A box reads two fixed lines, the state word and the hours in the
+        // short clock ("Unavailable" / "After 6 PM"); a row reads the full
+        // phrase ("Unavailable after 6:00 PM"). CSS shows one of the two.
         const [state, ...rest] = tone.label.split(" ");
+        const hours = range ? rangeText(range, timeFormat) : "All day";
         return (
           <li key={weekday} className={`avr-tile ${tone.className} is-${dayState(day)}`} data-weekday={weekday}>
             <span className="avr-tile-day">
@@ -117,6 +132,7 @@ export function WeekTiles({ who, preference, timeFormat }: { who: string; prefer
             </span>
             <small>
               <span className="avr-tile-state">{state}</span> <span className="avr-tile-detail">{rest.join(" ")}</span>
+              <span className="avr-tile-hours">{hoursPieces(hours)}</span>
             </small>
             <span className="avr-rail" aria-hidden>
               {range && <i style={{ left: percent(range[0]), width: percent(range[1] - range[0] + DAY_START) }} />}

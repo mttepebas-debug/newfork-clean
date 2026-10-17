@@ -49,7 +49,7 @@
 .avr-tiles {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
-  gap: 6px;
+  gap: 4px;
   margin: 0;
   padding: 0;
   list-style: none;
@@ -59,7 +59,7 @@
   min-width: 0;
   flex-direction: column;
   gap: 6px;
-  padding: 9px 9px 10px;
+  padding: 9px 6px 10px;
   border: 1px solid var(--dav-tone-line);
   border-radius: 8px;
 }
@@ -76,28 +76,31 @@
 .avr-tile small {
   min-height: 31px;
   color: var(--dav-tone-text);
-  font-size: 11.5px;
+  font-size: 11px;
   font-weight: 600;
   line-height: 1.35;
 }
-/* A box holds two fixed lines, the state word and the hours ("Available" /
-   "All day", "Unavailable" / "After 6:00 PM"), so a phrase never breaks in
-   the middle (AVAIL-GUN-1). A row (below) reads them as one line. */
-.avr-tile-state,
-.avr-tile-detail {
-  display: block;
-}
+/* A box holds two fixed lines, the state word and the hours in the short
+   clock ("Available" / "All day", "Unavailable" / "3:30 PM – 10 PM"), each on
+   one line (AVAIL-GUN). Measured at 1440: a box's words have 85 px, enough
+   for every whole-hour range and one half-hour ("3:30 PM – 10 PM"); a longer
+   range ("10:30 AM – 11:30 PM") breaks at its dash, never inside a clock
+   (WeekRead hoursPieces). A row (below) reads the full phrase on one line
+   instead ("Unavailable 3:00 PM – 10:00 PM"). */
 .avr-tile-state {
+  display: block;
   white-space: nowrap;
 }
-/* Hours that do not fit one line break at the even place ("3:00 PM –" /
-   "10:00 PM", "Before" / "11:00 AM"), never inside a clock. */
-.avr-tile-detail {
+.avr-tile-hours {
+  display: block;
   font-weight: 500;
-  text-wrap: balance;
+  word-spacing: -1px;
 }
-.avr-tile-detail::first-letter {
-  text-transform: uppercase;
+.avr-tile-hours > span {
+  white-space: nowrap;
+}
+.avr-tile-detail {
+  display: none;
 }
 .avr-dot {
   display: block;
@@ -170,6 +173,7 @@
 @container avr (max-width: 660px) {
   .avr-tiles {
     grid-template-columns: 1fr;
+    gap: 6px;
   }
   .avr-tile {
     display: grid;
@@ -181,12 +185,15 @@
   }
   .avr-tile small {
     min-height: 0;
+    font-size: 11.5px;
   }
   .avr-tile-state,
   .avr-tile-detail {
     display: inline;
     white-space: normal;
-    font-weight: inherit;
+  }
+  .avr-tile-hours {
+    display: none;
   }
   .avr-rail {
     margin-top: 0;

@@ -55,11 +55,16 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(boxes[1]!.className).toContain("is-blocked");
     expect(boxes[4]!.textContent).toContain("Unavailable after 6:00 PM");
     expect(boxes[4]!.className).toContain("is-blocked");
-    // Two fixed lines in a box: the state word, then the hours, never one phrase broken mid-way.
-    const lines = (box: HTMLElement) => [box.querySelector(".avr-tile-state")?.textContent, box.querySelector(".avr-tile-detail")?.textContent];
-    expect(lines(boxes[0]!)).toEqual(["Available", "all day"]);
-    expect(lines(boxes[1]!)).toEqual(["Unavailable", "all day"]);
-    expect(lines(boxes[4]!)).toEqual(["Unavailable", "after 6:00 PM"]);
+    // Two fixed lines in a box: the state word, then the hours in the short clock, one line each.
+    const lines = (box: HTMLElement) => [box.querySelector(".avr-tile-state")?.textContent, box.querySelector(".avr-tile-hours")?.textContent];
+    expect(lines(boxes[0]!)).toEqual(["Available", "All day"]);
+    expect(lines(boxes[1]!)).toEqual(["Unavailable", "All day"]);
+    expect(lines(boxes[4]!)).toEqual(["Unavailable", "After 6 PM"]);
+    // A row (the drawer, the phone) keeps the full clock: "Unavailable after 6:00 PM".
+    const row = (box: HTMLElement) =>
+      `${box.querySelector(".avr-tile-state")?.textContent} ${box.querySelector(".avr-tile-detail")?.textContent}`;
+    expect(row(boxes[0]!)).toBe("Available all day");
+    expect(row(boxes[4]!)).toBe("Unavailable after 6:00 PM");
     // The mini strip marks the hours from 12 AM to 12 AM: Friday 6 PM on.
     const band = boxes[4]!.querySelector<HTMLElement>(".avr-rail > i")!;
     expect(band.style.left).toBe("75%");
@@ -67,6 +72,20 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(boxes[0]!.querySelector(".avr-rail > i")).toBeNull();
     // No lock bar unless asked (the Availability page names the date itself).
     expect(screen.queryByText(/Read only/)).toBeNull();
+  });
+
+  it("says a box's hours in the short clock, minutes only when they are not :00", () => {
+    const week = emptyWeeklyPreference();
+    week.days[1]!.ranges = [{ start: "00:00", end: "11:00" }];
+    week.days[2]!.ranges = [{ start: "15:00", end: "22:00" }];
+    week.days[3]!.ranges = [{ start: "15:30", end: "22:00" }];
+    render(<WeekRead name="Maria Lopez" submitted updatedAt={null} preference={week} timeFormat="12h" />);
+    const boxes = within(screen.getByRole("list", { name: "Maria's week" })).getAllByRole("listitem");
+    const hours = (box: HTMLElement) => box.querySelector(".avr-tile-hours")?.textContent;
+    const full = (box: HTMLElement) => box.querySelector(".avr-tile-detail")?.textContent;
+    expect([hours(boxes[0]!), full(boxes[0]!)]).toEqual(["Before 11 AM", "before 11:00 AM"]);
+    expect([hours(boxes[1]!), full(boxes[1]!)]).toEqual(["3 PM – 10 PM", "3:00 PM – 10:00 PM"]);
+    expect([hours(boxes[2]!), full(boxes[2]!)]).toEqual(["3:30 PM – 10 PM", "3:30 PM – 10:00 PM"]);
   });
 
   it("says an open week plainly", () => {
