@@ -14,8 +14,7 @@ select tests.person('m', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('m', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('m', 'veli', 'employee', array['B'], array['cook']);
 select tests.person('t', 'tarik', 'employee', array['K'], array['cook']);
-select public.set_employee_name_settings_service(tests.user('m:owner'), tests.id('m'), 'manager');
-select public.set_employee_name_settings_service(tests.user('t:owner'), tests.id('t'), 'manager');
+-- Every workspace answers preferred names; there is no setting to let them through (KARARLAR S-131).
 
 create function pg_temp.refusal(statement text) returns text language plpgsql as $$
 declare

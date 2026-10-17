@@ -131,7 +131,7 @@ select is(
     'settings.catalog.read', 'settings.conflict_rules.write', 'settings.documents.read', 'settings.documents.write',
     'settings.important_dates.read', 'settings.jobs.read', 'settings.jobs.write', 'settings.locations.read',
     'settings.locations.write',
-    'settings.organization.write', 'settings.people', 'settings.people.read', 'settings.roles.read',
+    'settings.organization.write', 'settings.roles.read',
     'settings.roles.write',
     'settings.scheduling.write', 'settings.shift_catalog.read', 'settings.signature_templates.read',
     'time_off.decide', 'time_off.decide_alone', 'time_off.request_own', 'time_off.revoke', 'workspace.accept_ownership', 'workspace.close',

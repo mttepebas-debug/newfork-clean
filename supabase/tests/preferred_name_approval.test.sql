@@ -1,10 +1,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(18);
+select no_plan();
 
 -- A preferred name was storable in name only: the column existed and a check
--- constraint held it at the empty string. A workspace now chooses between
--- answering these itself and letting them through, and this is both answers.
+-- constraint held it at the empty string. KARARLAR S-131 (Mert, 2026-10-17): a
+-- preferred name always waits for the people the core lets decide it; there is
+-- no setting that lets one through. Only with nobody above to decide (the
+-- owner's own) does it take effect at once. A refusal tells the person nothing.
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -44,16 +46,7 @@ select
   'active'::public.membership_status,
   '1d000000-0000-4000-8000-000000000001';
 
--- A workspace that has never said anything lets them through.
-select is(
-  public.get_employee_name_settings_service(
-    '1c000000-0000-4000-8000-000000000001',
-    (select workspace_id from preferred_target)
-  ),
-  'auto',
-  'a workspace that has not chosen lets a preferred name through'
-);
-
+-- Every workspace answers them: the first request waits for its deciders.
 select is(
   public.request_employee_preferred_name_service(
     '1c000000-0000-4000-8000-000000000002',
@@ -61,22 +54,24 @@ select is(
     '1d000000-0000-4000-8000-000000000001',
     'Alex'
   ),
-  'published',
-  'and on that setting the name is theirs straight away'
+  'waiting',
+  'a preferred name waits for an answer, from the first one on'
+);
+select public.decide_employee_preferred_name_service(
+  '1c000000-0000-4000-8000-000000000001',
+  (select workspace_id from preferred_target),
+  (select request_id from public.list_pending_preferred_names_service(
+    '1c000000-0000-4000-8000-000000000001',
+    (select workspace_id from preferred_target)
+  )),
+  true
 );
 
 select is(
   (select preferred_name from public.employee_profiles
    where id = '1d000000-0000-4000-8000-000000000001'),
   'Alex',
-  'which the record shows, where the check constraint used to forbid it'
-);
-
--- Now the workspace decides to answer them itself.
-select public.set_employee_name_settings_service(
-  '1c000000-0000-4000-8000-000000000001',
-  (select workspace_id from preferred_target),
-  'manager'
+  'approved, the record shows it, where the check constraint used to forbid it'
 );
 
 select is(
@@ -87,7 +82,7 @@ select is(
     'Xander'
   ),
   'waiting',
-  'on the other setting the same request waits instead'
+  'the next request waits too'
 );
 
 select is(
@@ -132,6 +127,12 @@ select is(
   )),
   0,
   'and nothing is left waiting'
+);
+select is(
+  (select array_agg(n.title order by n.created_at, n.id) from public.person_notifications n
+   where n.type_key = 'people.preferred_name_decided' and n.user_id = '1c000000-0000-4000-8000-000000000002'),
+  array['You''ll be called Alex'],
+  'S-131: the refusal tells him nothing; only the approval was told'
 );
 
 -- Approved: it takes effect.
@@ -181,7 +182,6 @@ select tests.person('pn', 'zeynep', 'admin', array['K'], array['cook']);
 select tests.person('pn', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('pn', 'bob', 'employee', array['K'], array['cook']);
 select tests.person('pn', 'deniz', 'employee', array['B'], array['cook']);
-select public.set_employee_name_settings_service(tests.user('pn:owner'), tests.id('pn'), 'manager');
 
 -- Who finds this person's request among the names waiting for them.
 create function pg_temp.asked(person text) returns text[] language plpgsql as $$
@@ -229,11 +229,14 @@ select isnt(pg_temp.name_of('deniz'), 'Den', 'a refused name is not Deniz''s');
 select is(public.request_employee_preferred_name_service(tests.user('pn:owner'), tests.id('pn'), tests.id('pn:owner'), 'Olly'),
   'published', 'the owner''s own name does not wait for an answer');
 
--- On auto nobody answers: the name is theirs at once.
-select public.set_employee_name_settings_service(tests.user('pn:owner'), tests.id('pn'), 'auto');
+-- S-131: no workspace lets a name through on its own; Bob's waits like everyone's.
 select is(public.request_employee_preferred_name_service(tests.user('pn:bob'), tests.id('pn'), tests.id('pn:bob'), 'Rob'),
-  'published', 'on auto a name takes effect on its own');
-select is(pg_temp.name_of('bob'), 'Rob', 'Bob now goes by Rob');
+  'waiting', 'a name never takes effect on its own while somebody may decide it');
+select is(pg_temp.name_of('bob'), '', 'Bob keeps his name until then');
+-- The setting that let names through is gone with its table (retired_objects_stay_gone).
+select hasnt_table('public', 'employee_name_settings', 'the preferred-name setting''s table is gone');
+select hasnt_function('public', 'get_employee_name_settings_service', 'its read is gone');
+select hasnt_function('public', 'set_employee_name_settings_service', 'its write is gone');
 
 select * from finish();
 rollback;

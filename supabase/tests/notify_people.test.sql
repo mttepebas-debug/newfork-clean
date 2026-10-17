@@ -150,10 +150,53 @@ select is((select array_agg(distinct coalesce(n.resolution, 'open')) from public
   array['approved'], '(c) every card reads Approved');
 update public.employee_onboarding_settings set final_approval_required = false where workspace_id = tests.id('np');
 
+-- One source for a final approval: the case's own flag, read at sending in and at review alike. Tom's case
+-- began without one; the owner turns it on while he onboards. His changed legal name approved, he is let in,
+-- and told so; nobody's card closes on a wait that would tell nobody.
+select tests.person('np', 'tom', 'employee', array['K'], array['cook'], 'onboarding');
+insert into who values ('np:tom', tests.user('np:tom'));
+create function pg_temp.one_case(person text) returns public.employee_onboarding_cases language sql as $$
+  select c from public.employee_onboarding_cases c where c.employee_id = tests.id('np:' || person)
+$$;
+create function pg_temp.one_sends(person text, legal_first text) returns integer language plpgsql as $$
+begin
+  perform public.save_employee_onboarding_profile_service(pg_temp.u(person), jsonb_build_object(
+      'legal_first_name', legal_first, 'legal_last_name', 'Person', 'phone', tests.phone('np:' || person),
+      'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
+    (pg_temp.one_case(person)).revision, tests.id('np'));
+  return public.submit_employee_onboarding_service(pg_temp.u(person), (pg_temp.one_case(person)).revision, tests.id('np'));
+end $$;
+create function pg_temp.one_profile(person text) returns uuid language sql as $$
+  select r.id from public.employee_onboarding_requirements r where r.case_id = (pg_temp.one_case(person)).id and r.kind = 'profile'
+$$;
+update public.employee_onboarding_settings set final_approval_required = true where workspace_id = tests.id('np');
+select pg_temp.one_sends('tom', 'Thomas');
+select public.review_employee_onboarding_service(pg_temp.u('zeynep'), tests.id('np'), tests.id('np:tom'), 'accept_requirement',
+  pg_temp.one_profile('tom'), '', (pg_temp.one_case('tom')).revision, true);
+select is((pg_temp.one_case('tom')).status::text, 'approved',
+  '(c) Tom''s case asked for no final approval when it began: his name approved, he is in');
+select is(pg_temp.told('people.onboarding_completed', (pg_temp.one_case('tom')).id), array['np:tom'], '(c) and told so');
+update public.employee_onboarding_settings set final_approval_required = false where workspace_id = tests.id('np');
+
+-- Two changes asked in a row, before Two sends again: both stay open until he does.
+select tests.person('np', 'two', 'employee', array['K'], array['cook'], 'onboarding');
+insert into who values ('np:two', tests.user('np:two'));
+select pg_temp.one_sends('two', 'Twain');
+select public.review_employee_onboarding_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:two'), 'reject_requirement',
+  pg_temp.one_profile('two'), 'Use the name on your ID', (pg_temp.one_case('two')).revision, true);
+select public.review_employee_onboarding_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:two'), 'reject_requirement',
+  pg_temp.one_profile('two'), 'And your middle name', (pg_temp.one_case('two')).revision, true);
+select is((select array_agg(n.body order by n.body) from public.person_notifications n
+           where n.type_key = 'people.onboarding_change_requested' and n.user_id = tests.user('np:two') and n.resolved_at is null),
+  array['And your middle name', 'Use the name on your ID'], '(c) two changes asked in a row: both stay open');
+select pg_temp.one_sends('two', 'Twain');
+select is((select count(*)::integer from public.person_notifications n
+           where n.type_key = 'people.onboarding_change_requested' and n.user_id = tests.user('np:two') and n.resolved_at is null),
+  0, '(c) sent again: both close');
+
 -- (d) Preferred name ---------------------------------------------------------------------------------------
 
-insert into public.employee_name_settings (workspace_id, preferred_name_approval) values (tests.id('np'), 'manager')
-on conflict (workspace_id) do update set preferred_name_approval = 'manager';
+-- Every preferred name waits for who may decide it (KARARLAR S-131): no setting lets one through.
 create function pg_temp.asks(person text, wanted text) returns text language sql as $$
   select public.request_employee_preferred_name_service(pg_temp.u(person), tests.id('np'), tests.id('np:' || person), wanted)
 $$;
@@ -179,6 +222,16 @@ select is((select n.title from public.person_notifications n where n.type_key = 
 select is((select array_agg(distinct n.resolution) from public.person_notifications n
            where n.type_key = 'people.preferred_name_requested' and n.subject_id = (select id from second_ask)), array['approved'],
   '(d) the deciders'' cards read Approved');
+-- S-131: a refusal is silent. Emre asks again and Ayse declines: the deciders' cards say so, Emre hears nothing.
+select pg_temp.asks('emre', 'Emmy');
+create temp table third_ask as select pg_temp.request('emre') id;
+select public.decide_employee_preferred_name_service(pg_temp.u('ayse'), tests.id('np'), (select id from third_ask), false);
+select is(pg_temp.told('people.preferred_name_decided'), array['np:emre'], '(d) declined: Emre is not told; only the approval was');
+select is((select array_agg(distinct n.resolution) from public.person_notifications n
+           where n.type_key = 'people.preferred_name_requested' and n.subject_id = (select id from third_ask)), array['declined'],
+  '(d) the deciders'' cards read Declined');
+select is((select t.description from public.notification_types t where t.key = 'people.preferred_name_decided'),
+  'Your preferred name was approved', '(d) and the catalog says what is told');
 select is(pg_temp.asks('owner', 'Boss'), 'published', '(d) the owner''s own preferred name needs nobody');
 select is((select count(*)::integer from public.person_notifications n join public.employee_preferred_name_requests r on r.id = n.subject_id
            where n.type_key = 'people.preferred_name_requested' and r.employee_id = tests.id('np:owner')), 0, '(d) and tells nobody');

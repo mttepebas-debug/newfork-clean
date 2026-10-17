@@ -127,10 +127,7 @@ select tests.remember('m:pl:' || x.holder || '@' || x.loc, (
   where a.employee_id = tests.id(case x.holder when 'olcay' then 'm:owner' else 'm:' || x.holder end)
     and a.location_id = tests.id('m:' || x.loc) and a.ended_at is null))
 from (values ('emre', 'K'), ('ali', 'K'), ('ali', 'B'), ('veli', 'B'), ('can', 'K'), ('zeynep', 'K'), ('olcay', 'K')) x(holder, loc);
--- Preferred names waiting for a manager's answer. Label m:nr:<holder>.
-insert into public.employee_name_settings (workspace_id, preferred_name_approval)
-values (tests.id('m'), 'manager')
-on conflict (workspace_id) do update set preferred_name_approval = excluded.preferred_name_approval;
+-- Preferred names waiting for an answer (every one waits, KARARLAR S-131). Label m:nr:<holder>.
 select public.request_employee_preferred_name_service(tests.user('m:' || h), tests.id('m'), tests.id('m:' || h), initcap(h) || 'y')
 from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep', 'kaan']) h;
 select tests.remember('m:nr:' || h, (
@@ -504,14 +501,6 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select exists (select 1 from jsonb_array_elements(public.read_employee_references_service($1, $2) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$);
 
--- The preferred-name setting, read and written (BL-443). Reading it is about
--- the workspace, for whoever reads employees; writing it is a Settings write.
-insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
-  ('settings.people', 'workspace', null, false, false,
-   $$select true from (select public.set_employee_name_settings_service($1, $2, 'manager') offset 0) done$$),
-  ('settings.people.read', 'workspace', 'employees.read', false, false,
-   $$select public.get_employee_name_settings_service($1, $2) is not null$$);
-
 -- Somebody's documents (FB-6.6): read, and decided on. Exempting is the
 -- decision a probe can make on any badge without a submission.
 insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
@@ -628,8 +617,6 @@ insert into core_action (key, core_key, blank) values
   ('onboarding.self', 'onboarding.self', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
   ('time_off.request_own', 'time_off.request_own', 'null'),
-  ('settings.people', 'settings.people', 'null'),
-  ('settings.people.read', 'settings.people.read', 'null'),
   ('employee.save_own_contact', 'employee.save_own_contact', 'null'),
   ('availability.own', 'availability.own', 'null');
 update core_action set by_account = true where key = 'read.membership';
@@ -829,14 +816,9 @@ begin
 
   when 'settings.organization.write', 'settings.locations.write', 'settings.jobs.write',
        'settings.roles.write', 'settings.scheduling.write', 'settings.conflict_rules.write',
-       'settings.people', 'notifications.workspace_settings' then
+       'notifications.workspace_settings' then
     -- Managers read the catalog; they never write organization settings (D1).
     return case when p.class in ('owner', 'admin') then 'allow' else 'deny' end;
-
-  when 'settings.people.read' then
-    -- Whether a preferred name waits for an answer is about the workspace, not a
-    -- location: whoever reads employees (checked above) reads it (BL-443).
-    return 'allow';
 
   when 'settings.locations.read', 'employee.references.read' then
     -- Owner and admins read every location; the Employees drawer's pickers

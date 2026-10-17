@@ -507,6 +507,14 @@ select 'permission', name, 'BILDIRIM-06' from unnest(array[
 union all
 select 'action', name, 'BILDIRIM-06' from unnest(array[
   'settings.notifications.read', 'settings.notifications.write', 'settings.notifications.test']) name;
+-- KARARLAR S-131 (BILDIRIM-U4a fix): a preferred name always waits for its deciders, so the setting that let
+-- one through is gone: its table, its read and write, and their two actions.
+insert into retired (kind, name, step) values
+  ('table', 'employee_name_settings', 'S-131'),
+  ('function', 'get_employee_name_settings_service', 'S-131'),
+  ('function', 'set_employee_name_settings_service', 'S-131'),
+  ('action', 'settings.people', 'S-131'),
+  ('action', 'settings.people.read', 'S-131');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
