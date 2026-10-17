@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 502, last: 20261017130000_people_notices_follow_up.sql
--- fingerprint: sha256:2cc9f6bd7390f04c29476785bc952504d68408595491556b24268bb3aaac94cd
+-- migrations: 503, last: 20261017130000_people_notices_follow_up.sql
+-- fingerprint: sha256:6be9913aab788d5df4c15a9541a6c9695fbb033891d01432c25d898ef1a8dccf
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -29638,7 +29638,7 @@ ALTER TABLE ONLY "public"."daily_lineup_versions"
 
 
 ALTER TABLE ONLY "public"."daily_lineups"
-    ADD CONSTRAINT "daily_lineups_id_location_id_service_date_key" UNIQUE ("id", "location_id", "service_date");
+    ADD CONSTRAINT "daily_lineups_id_location_id_service_date_workspace_id_key" UNIQUE ("id", "location_id", "service_date", "workspace_id");
 
 
 
@@ -29903,7 +29903,7 @@ ALTER TABLE ONLY "public"."jobs"
 
 
 ALTER TABLE ONLY "public"."location_sections"
-    ADD CONSTRAINT "location_sections_id_location_id_key" UNIQUE ("id", "location_id");
+    ADD CONSTRAINT "location_sections_id_location_id_workspace_id_key" UNIQUE ("id", "location_id", "workspace_id");
 
 
 
@@ -31546,17 +31546,17 @@ ALTER TABLE ONLY "public"."daily_lineup_rows"
 
 
 ALTER TABLE ONLY "public"."daily_lineup_rows"
-    ADD CONSTRAINT "daily_lineup_rows_lineup_id_location_id_service_date_fkey" FOREIGN KEY ("lineup_id", "location_id", "service_date") REFERENCES "public"."daily_lineups"("id", "location_id", "service_date") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."daily_lineup_rows"
     ADD CONSTRAINT "daily_lineup_rows_lineup_id_workspace_id_fkey" FOREIGN KEY ("lineup_id", "workspace_id") REFERENCES "public"."daily_lineups"("id", "workspace_id") ON DELETE CASCADE;
 
 
 
 ALTER TABLE ONLY "public"."daily_lineup_rows"
-    ADD CONSTRAINT "daily_lineup_rows_section_id_location_id_fkey" FOREIGN KEY ("section_id", "location_id") REFERENCES "public"."location_sections"("id", "location_id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "daily_lineup_rows_lineup_location_day_workspace_fkey" FOREIGN KEY ("lineup_id", "location_id", "service_date", "workspace_id") REFERENCES "public"."daily_lineups"("id", "location_id", "service_date", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_section_id_location_id_workspace_id_fkey" FOREIGN KEY ("section_id", "location_id", "workspace_id") REFERENCES "public"."location_sections"("id", "location_id", "workspace_id") ON DELETE RESTRICT;
 
 
 
