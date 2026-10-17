@@ -155,7 +155,6 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
             ? asked.length > 1 ? "The others can still take the shift." : `${owner ?? "The shift"} ${owner ? "keeps the shift" : "stays open"} until someone else asks.`
             : `${owner ? `${owner} keeps the shift.` : "The shift stays open."}`}
         </p>
-        {decide.error ? <p className="form-error" role="alert">{decide.error.message}</p> : null}
         <div className="rd-foot-row">
           <button type="button" className="nf-button secondary-button" disabled={decide.isPending} onClick={() => setStep({ kind: "decide" })}>
             Back
@@ -178,7 +177,6 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
     footer = (
       <>
         {preview.data?.requires_other_manager ? <p className="rd-foot-note">Another location's manager also approves.</p> : null}
-        {decide.error ? <p className="form-error" role="alert">{decide.error.message}</p> : null}
         <div className="rd-foot-row">
           <button type="button" className="nf-button danger-outline" disabled={!decides || decide.isPending} onClick={() => setStep({ kind: "close" })}>
             Close request
@@ -206,6 +204,10 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
 
   return (
     <RequestDrawer
+      footerAlert={
+        decide.error?.message ||
+        (preview.isError ? "Eligibility could not be checked. Close and try again." : null)
+      }
       title={pickup ? "Shift pickup" : "Cover request"}
       status={statusChip(item)}
       sub={
@@ -309,7 +311,6 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
                 {refusals.map((text) => <li key={text}>{text}</li>)}
               </ul>
             ) : null}
-            {preview.isError ? <p className="form-error" role="alert">Eligibility could not be checked. Close and try again.</p> : null}
           </DrawerSection>
         </>
       ) : (

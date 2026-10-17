@@ -299,9 +299,11 @@ describe("ExchangeReview", () => {
     const give = await screen.findByRole("button", { name: "Give to Emma" });
     await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(give);
-    expect((await within(footer()).findByRole("alert")).textContent).toBe("This request changed. Review the latest details");
+    // Said over the body's bottom edge, right above the footer (UI-FIELDMSG).
+    const band = () => footer().previousElementSibling as HTMLElement;
+    expect((await within(band()).findByRole("alert")).textContent).toBe("This request changed. Review the latest details");
     fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
-    expect(within(footer()).queryByRole("alert")).toBeNull();
+    expect(within(band()).queryByRole("alert")).toBeNull();
   });
 
   it("says why the core refuses the person", async () => {

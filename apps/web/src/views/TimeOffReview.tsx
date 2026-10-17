@@ -97,7 +97,6 @@ export function TimeOffReview({
             onChange={(event) => setReason(event.target.value)}
           />
         </label>
-        {denyError ? <p className="form-error" role="alert">{denyError}</p> : null}
         <div className="rd-foot-row">
           <button type="button" className="nf-button secondary-button" disabled={busy} onClick={() => setDenying(false)}>
             Back
@@ -157,6 +156,7 @@ export function TimeOffReview({
       notice={notice}
       onClose={onClose}
       footer={footer}
+      footerAlert={canVote && denying ? denyError : null}
     >
       {tab === "details" ? (
         <Details request={request} first={first} alsoOff={alsoOff} opening={opening} timeFormat={timeFormat} onSeeShifts={() => setTab("shifts")} />

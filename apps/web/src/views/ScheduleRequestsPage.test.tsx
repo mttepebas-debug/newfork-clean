@@ -909,8 +909,8 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(within(drawer).getByRole("button", { name: "Confirm deny" }));
     const alert = await within(drawer).findByRole("alert");
     expect(alert.textContent).toBe("Connection lost");
-    // QA D2: red like every other form error.
-    expect(alert.className).toBe("form-error");
+    // QA D2: red like every other window error, in the shared band (UI-FIELDMSG).
+    expect(alert.className).toBe("window-alert");
     expect((within(drawer).getByLabelText("Reason for Alex") as HTMLTextAreaElement).value).toBe("Short staffed");
   });
   it("offers no Partial or Return to pending any more", async () => {

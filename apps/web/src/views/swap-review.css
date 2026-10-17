@@ -183,7 +183,6 @@
   color: var(--theme-text-secondary);
 }
 .swap-review-note,
-.swap-review-error,
 .swap-review-blockers {
   margin: 0;
   font-size: 12px;
@@ -196,7 +195,6 @@
   align-items: center;
   gap: 6px;
 }
-.swap-review-error,
 .swap-review-blockers {
   color: var(--theme-danger);
 }

@@ -1,6 +1,7 @@
 import { ArrowUpRight, X } from "lucide-react";
 import { useId, type ReactNode } from "react";
 import { Link } from "react-router";
+import { WindowAlert } from "../shell/WindowAlert";
 import "./request-drawer.css";
 
 // Mert, 2026-10-11: every Requests drawer (time off, cover, open shift) speaks
@@ -23,6 +24,7 @@ export function RequestDrawer<Key extends string>({
   notice,
   onClose,
   footer,
+  footerAlert,
   children,
 }: {
   title: string;
@@ -38,6 +40,11 @@ export function RequestDrawer<Key extends string>({
   notice?: DrawerNotice | null;
   onClose: () => void;
   footer?: ReactNode;
+  /**
+   * The decision's error: laid over the body's bottom edge above the footer,
+   * so neither moves (UI-FIELDMSG). The footer scrolls, so it sits between.
+   */
+  footerAlert?: ReactNode;
   children: ReactNode;
 }) {
   const id = useId();
@@ -111,7 +118,12 @@ export function RequestDrawer<Key extends string>({
       <div className="rd-body" role="tabpanel" id={`${id}-panel`} aria-labelledby={`${id}-tab-${tab}`}>
         {children}
       </div>
-      {footer ? <footer className="rd-foot">{footer}</footer> : null}
+      {footer ? (
+        <>
+          <WindowAlert between message={footerAlert} />
+          <footer className="rd-foot">{footer}</footer>
+        </>
+      ) : null}
     </div>
   );
 }

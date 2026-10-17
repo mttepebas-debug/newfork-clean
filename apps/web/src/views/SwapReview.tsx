@@ -9,6 +9,7 @@ import { timeOffDeadlineAt } from "../employee-hub/time-off-split";
 import { clockRange, shortDate } from "./RequestsTable";
 import { blockerLines, reviewBoxes, timeOffStops, type ReviewBox, type ReviewSide } from "./swap-review";
 import "./swap-review.css";
+import { WindowAlert } from "../shell/WindowAlert";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", 2026-10-07): Requests →
 // Review → a swap opens this compact window. Centred title and names; the two
@@ -152,6 +153,9 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
   ];
   const blocked = reasons.length > 0;
   const decideBy = timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat);
+  const windowError =
+    decide.error?.message ||
+    (preview.isError ? "Eligibility could not be checked. Close and try again." : null);
   const places = [...new Set([item.shift.location_name, item.requested_shift?.location_name].filter(Boolean))].join(" or ");
   return (
     // Esc in the decline step goes back to the shifts and keeps the reason (P26).
@@ -174,7 +178,6 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
             {[...new Set(reasons)].map((text) => <li key={text}>{text}</li>)}
           </ul>
         ) : null}
-        {preview.isError ? <p className="swap-review-error" role="alert">Eligibility could not be checked. Close and try again.</p> : null}
         {preview.data?.requires_other_manager ? <p className="swap-review-note">Another location’s manager also approves.</p> : null}
         {!item.can_manage && item.status === "open" ? (
           <p className="swap-review-note swap-review-lock">
@@ -182,7 +185,6 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
             Another {places} manager, the owner or an admin decides this request.
           </p>
         ) : null}
-        {decide.error ? <p className="swap-review-error" role="alert">{decide.error.message}</p> : null}
       </div>
       {declining ? (
         <div className="swap-review-decline">
@@ -191,6 +193,8 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
             <textarea rows={3} maxLength={1000} autoFocus value={reason} onChange={(event) => setReason(event.target.value)} />
           </label>
           <footer className="swap-review-foot">
+            {/* Over the window's bottom edge, above the buttons (UI-FIELDMSG). */}
+            <WindowAlert message={windowError} />
             <button type="button" className="nf-button secondary-button" disabled={decide.isPending} onClick={() => setDeclining(false)}>
               Back
             </button>
@@ -201,6 +205,7 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
         </div>
       ) : (
         <footer className="swap-review-foot">
+          <WindowAlert message={windowError} />
           {open ? <span className="swap-review-deadline">Decide by {decideBy}</span> : null}
           {!open ? (
             <span className="swap-review-deadline" role="status">{outcomes[item.status] ?? "This swap request is closed."}</span>
