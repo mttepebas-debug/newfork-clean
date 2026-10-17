@@ -432,6 +432,17 @@ describe("LineupPage on a phone, E", () => {
     expect(within(after).queryByRole("button")).toBeNull();
   });
 
+  // Mert 2026-10-17 (~7:40 AM): the employee page's location and date head, under the shift tabs, over the card.
+  it("puts the location and date under the shift tabs, over the summary card", async () => {
+    renderPage();
+    const summary = await screen.findByRole("region", { name: "Lunch" });
+    const head = screen.getByRole("heading", { name: "Downtown" }).closest(".lineup-day-head")!;
+    expect(head.textContent).toBe("DowntownTuesday, October 13 · Lunch");
+    expect(head.nextElementSibling).toBe(summary);
+    expect(head.previousElementSibling?.classList.contains("lineup-phone-top")).toBe(true);
+    expect(screen.getByRole("group", { name: "Shifts" }).compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+  });
+
   it("lists the team read-only: no person panel, call off, Add Staff or note editing", async () => {
     renderPage();
     const team = await screen.findByRole("list", { name: "Server" });

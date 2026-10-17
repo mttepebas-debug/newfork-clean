@@ -12,57 +12,6 @@
   padding: 30px 0 54px;
 }
 
-.lineup-toolbar {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 8px;
-}
-
-.lineup-date {
-  display: inline-flex;
-  align-items: stretch;
-  gap: 6px;
-}
-
-.lineup-step,
-.lineup-date-label {
-  display: inline-flex;
-  min-height: 34px;
-  align-items: center;
-  justify-content: center;
-  border: 1px solid var(--theme-border-control);
-  border-radius: 5px;
-  background: var(--theme-surface);
-  color: var(--theme-text);
-  font: inherit;
-  font-size: 12px;
-  font-weight: 750;
-  cursor: pointer;
-}
-
-.lineup-step {
-  width: 34px;
-  padding: 0;
-}
-
-.lineup-date-label {
-  min-width: 118px;
-  padding: 0 12px;
-}
-
-/* A day other than today: the date lights amber and takes you back (Mert 2026-10-13). */
-.lineup-date-label[data-other-day="true"] {
-  border-color: var(--theme-warning-border);
-  background: var(--theme-warning-soft);
-  color: var(--theme-warning-text);
-}
-
-.lineup-step:hover,
-.lineup-date-label:hover {
-  border-color: var(--theme-border-hover);
-}
-
 .lineup-days {
   display: grid;
   grid-template-columns: repeat(7, minmax(0, 1fr));
@@ -458,8 +407,6 @@
   vertical-align: 1px;
 }
 
-.lineup-step:focus-visible,
-.lineup-date-label:focus-visible,
 .lineup-days button:focus-visible,
 .lineup-shift-toggle:focus-visible,
 .lineup-shift-read:focus-visible {

@@ -1,0 +1,278 @@
+/* The Lineup's day picker (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih): the date row and the day wheel,
+   shared by the manager's Lineup (views/) and the employee's (employee-hub/). Light theme, --theme-* tokens. */
+
+.lineup-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.lineup-date {
+  display: inline-flex;
+  align-items: stretch;
+  gap: 6px;
+}
+
+.lineup-step,
+.lineup-date-label {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 5px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.lineup-step {
+  width: 34px;
+  padding: 0;
+}
+
+.lineup-date-label {
+  min-width: 118px;
+  padding: 0 12px;
+}
+
+/* A day other than today: the date lights amber and takes you back (Mert 2026-10-13). */
+.lineup-date-label[data-other-day="true"] {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning-text);
+}
+
+.lineup-step:hover,
+.lineup-date-label:hover {
+  border-color: var(--theme-border-hover);
+}
+
+/* The location beside the date takes the rest of the row. */
+.lineup-toolbar .lineup-location {
+  min-width: 0;
+  flex: 1 1 140px;
+}
+
+.lineup-step:focus-visible,
+.lineup-date-label:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* The wheel: seven days in view, the middle one the day; the edges fade. */
+.lineup-wheel {
+  position: relative;
+  height: 64px;
+  margin: 0 -16px;
+  overflow: hidden;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  touch-action: pan-y;
+  user-select: none;
+  cursor: grab;
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
+  mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
+}
+.lineup-wheel:active {
+  cursor: grabbing;
+}
+/* Each day is a seventh of the strip: size them off the strip, not the track. */
+.lineup-wheel-track {
+  display: flex;
+  width: calc(100% / 7 * var(--lineup-wheel-days));
+  height: 100%;
+}
+/* Sharp days (Mert 2026-10-17, "çözünürlüğü düşük gibi"): the strip is its own compositor layer only while it
+   moves; stopped, it sits on whole device pixels and is drawn with the page. */
+.lineup-wheel:not(.is-still) .lineup-wheel-track {
+  will-change: transform;
+}
+.lineup-wheel-day {
+  position: relative;
+  display: grid;
+  width: calc(100% / var(--lineup-wheel-days));
+  height: 100%;
+  flex: none;
+  place-items: center;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  font: inherit;
+  cursor: inherit;
+}
+.lineup-wheel-in {
+  display: grid;
+  place-items: center;
+  gap: 1px;
+  padding-top: 4px;
+  transform: scale(var(--s, 1));
+  transform-origin: 50% 60%;
+}
+.lineup-wheel-top {
+  font-size: 10.5px;
+  transition: font-size 0.18s ease-out;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+}
+.lineup-wheel-day b {
+  color: var(--theme-text);
+  font-size: 16px;
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  transition: font-size 0.18s ease-out;
+}
+.lineup-wheel-day.is-first .lineup-wheel-top {
+  color: var(--theme-accent-deep);
+  font-weight: 800;
+}
+.lineup-wheel-day.is-today::before {
+  content: "";
+  position: absolute;
+  top: 5px;
+  left: 50%;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--theme-current);
+  transform: translateX(-50%);
+}
+/* The middle day, once the wheel stops: bigger, green, underlined. It grows by its font size, not by
+   transform: scale (a scaled day is a stretched bitmap; mockup v-e.css, 16 -> 20 px and 10.5 -> 12 px). */
+.lineup-wheel-day.is-selected .lineup-wheel-in {
+  transform: none;
+}
+.lineup-wheel-day.is-selected b {
+  font-size: 20px;
+}
+.lineup-wheel-day.is-selected .lineup-wheel-top {
+  font-size: 12px;
+}
+.lineup-wheel-day.is-selected,
+.lineup-wheel-day.is-selected b {
+  color: var(--theme-accent-deep);
+}
+.lineup-wheel-day.is-selected b {
+  font-weight: 800;
+}
+.lineup-wheel-day::after {
+  content: "";
+  position: absolute;
+  right: 22%;
+  bottom: 0;
+  left: 22%;
+  height: 3px;
+  border-radius: 2px 2px 0 0;
+  background: var(--theme-accent);
+  transform: scaleX(0);
+  transition: transform 0.18s ease-out;
+}
+.lineup-wheel-day.is-selected::after {
+  transform: scaleX(1);
+}
+.lineup-wheel-day:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -4px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lineup-wheel-top,
+  .lineup-wheel-day b,
+  .lineup-wheel-day::after {
+    transition: none;
+  }
+}
+
+/* The shift tabs under the wheel: a 43 px row, the tab 42 px with a 3 px dark green line on the row's border;
+   a color dot, the name, the head count. Outside the list pages (the employee's page) they draw themselves;
+   on the manager's list page the list-page tabs and views/lineup-phone.css give the same. */
+.lineup-shift-tabs.catalog-toolbar {
+  display: grid;
+  margin: 0;
+}
+.lineup-shift-tabs .catalog-toolbar-status-row {
+  display: flex;
+  height: 43px;
+  min-height: 43px;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+  border-bottom: 1px solid var(--theme-border);
+}
+.lineup-shift-tabs .catalog-status-tabs {
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: nowrap;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: none;
+}
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button {
+  display: inline-flex;
+  height: 42px;
+  min-height: 42px;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  padding: 8px 10px;
+  border: 0;
+  border-bottom: 3px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--theme-muted);
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button:hover {
+  color: var(--theme-text);
+}
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button.active {
+  border-bottom-color: var(--theme-accent-deep);
+  background: none;
+  box-shadow: none;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.lineup-shift-tabs.catalog-toolbar .catalog-status-tabs button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+.lineup-shift-tabs .catalog-status-tabs button i {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+}
+.lineup-shift-tabs .catalog-status-tabs button strong {
+  color: var(--theme-muted);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The location and the day over a lineup's tabs (Mert 2026-10-17; mockup v-e.css .e-emphead): 12 px over the
+   tabs, the same on the employee's page and the manager's phone page. */
+.lineup-day-head {
+  margin: 16px 4px 0;
+}
+.lineup-day-head h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 26px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+.lineup-day-head p {
+  margin: 2px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 14px;
+}

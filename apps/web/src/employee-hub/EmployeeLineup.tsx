@@ -3,18 +3,21 @@ import { Button } from "@newfork/ui";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, MapPin } from "lucide-react";
 import { useState, type CSSProperties, type JSX } from "react";
-import { Link, useLocation } from "react-router";
+import { Link, useLocation, useNavigate } from "react-router";
 
 import { todayIn } from "../lib/today";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { lineupKeys, useAcknowledgeLineup, useMyLineups } from "../schedule/lineup-data";
+import { LineupDayHead, LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import "./employee-lineup.css";
 
 // The employee's Lineup (KARARLAR 2026-10-17 "E · Çark tarih seçildi": the employee screen as in E, which is
-// C's): her own shift as a ticket, the Team and Notes, Acknowledge at the bottom. She sees a lineup only
-// while it is published (PLAN §3); otherwise "isn't published yet". Employee → Schedule → Lineup.
+// C's): the manager's date row (‹ date ›, the location), day wheel and shift tabs (her own lineups only), then
+// the location and date, her own shift as a ticket, Team · Notes, Acknowledge at the bottom (Mert 2026-10-17,
+// ~7–7:50 AM). She sees a lineup only while it is published (PLAN §3); otherwise "isn't published yet".
+// Employee → Schedule → Lineup.
 
 type Row = MyLineup["team"][number];
 
@@ -64,6 +67,8 @@ export function EmployeeLineup({
   readonly date: string;
   readonly timeFormat: ScheduleTimeFormat;
 }): JSX.Element {
+  const today = todayIn();
+  const navigate = useNavigate();
   const query = useMyLineups(workspaceId, date);
   // Her lineups in the day's order: by her own start, the same start by shift type name.
   const lineups = [...(query.data?.lineups ?? [])].sort((a, b) => {
@@ -73,6 +78,7 @@ export function EmployeeLineup({
     return (at < bt ? -1 : at > bt ? 1 : 0) ||
       (a.shift_type_name ?? "").localeCompare(b.shift_type_name ?? "", "en-US", { sensitivity: "base" });
   });
+  const [chosenLocation, setChosenLocation] = useState<string | null>(null);
   const [chosen, setChosen] = useState<string | null>(null);
   // Not on a published lineup: is she working that day, so a lineup is still to come?
   const board = useQuery({
@@ -80,10 +86,24 @@ export function EmployeeLineup({
     queryFn: () => getEmployeeScheduleBoard(workspaceId, date),
     enabled: Boolean(query.data) && lineups.length === 0,
   });
+  const ownShifts = lineups.length
+    ? []
+    : (board.data?.shifts ?? [])
+        .filter((s) => s.employee_id === employeeId && s.scheduled_date === date)
+        .sort((a, b) => (a.start_time < b.start_time ? -1 : a.start_time > b.start_time ? 1 : 0));
+  // The location row lists where she has a lineup that day, or, before it is published, where she works.
+  const locations = unique(
+    lineups.length
+      ? lineups.map((item) => item.location)
+      : ownShifts.flatMap((s) => board.data?.locations.filter((item) => item.id === s.location_id) ?? []),
+  );
+  const location = locations.find((item) => item.id === chosenLocation) ?? locations[0] ?? null;
+  const loading = query.isLoading || (lineups.length === 0 && board.isLoading);
 
-  if (query.isLoading) return <LineupOutline />;
-  if (!query.data)
-    return (
+  let body: JSX.Element;
+  if (loading) body = <LineupOutline />;
+  else if (!query.data)
+    body = (
       <LoadError
         title="We couldn't load your lineup"
         detail={`${longDate(date)} didn't load. Nothing was changed.`}
@@ -91,35 +111,67 @@ export function EmployeeLineup({
         onRetry={() => void query.refetch()}
       />
     );
-  if (!lineups.length) {
-    if (board.isLoading) return <LineupOutline />;
-    const own = board.data?.shifts.find((s) => s.employee_id === employeeId && s.scheduled_date === date);
+  else if (!lineups.length) {
+    const own = ownShifts.find((s) => s.location_id === location?.id) ?? ownShifts[0];
     const type = own?.shift_type_id ? board.data?.shift_types.find((t) => t.id === own.shift_type_id)?.name : null;
-    return own ? (
+    body = own ? (
       <Calm icon={<Clock size={26} aria-hidden />} title={`Your ${type ? `${type} ` : ""}lineup isn't published yet`}>
         You'll get a notification when it is.
       </Calm>
     ) : (
-      <Calm icon={<CalendarDays size={26} aria-hidden />} title={`You're not on a lineup ${date === todayIn() ? "today" : "that day"}`}>
+      <Calm icon={<CalendarDays size={26} aria-hidden />} title={`You're not on a lineup ${date === today ? "today" : "that day"}`}>
         When you are, it shows here.
       </Calm>
     );
+  } else {
+    const here = lineups.filter((item) => item.location.id === location?.id);
+    const lineup = here.find((item) => item.id === chosen) ?? here[0]!;
+    body = (
+      <div className="employee-lineup">
+        {/* Mert 2026-10-17 (~7:30 AM): the manager's shift tabs, with only her own lineups (she sees no other). */}
+        <LineupShiftTabs
+          shifts={here.map((item) => ({
+            key: item.id,
+            name: item.shift_type_name ?? "Shift",
+            color: item.color,
+            count: item.team.filter((row) => !row.called_off).length,
+          }))}
+          chosen={lineup.id}
+          onChoose={setChosen}
+        />
+        <LineupView key={lineup.version_id} workspaceId={workspaceId} lineup={lineup} date={date} timeFormat={timeFormat} />
+      </div>
+    );
   }
-  const lineup = lineups.find((item) => item.id === chosen) ?? lineups[0]!;
+
   return (
-    <div className="employee-lineup">
-      {lineups.length > 1 ? (
-        <div className="employee-lineup-shifts" role="group" aria-label="Your lineups">
-          {lineups.map((item) => (
-            <button key={item.id} type="button" aria-pressed={item.id === lineup.id} onClick={() => setChosen(item.id)}>
-              {item.shift_type_name ?? "Shift"}
-            </button>
-          ))}
-        </div>
-      ) : null}
-      <LineupView key={lineup.version_id} workspaceId={workspaceId} lineup={lineup} date={date} timeFormat={timeFormat} />
+    <div className="employee-lineup-page">
+      <div className="employee-lineup-day">
+        <LineupDayPicker
+          date={date}
+          today={today}
+          onDate={(iso) => void navigate({ search: iso === today ? "" : `?date=${iso}` }, { replace: true })}
+        >
+          <LineupLocationSelect
+            loading={loading}
+            locations={locations}
+            value={location?.id ?? ""}
+            onChange={(id) => {
+              setChosenLocation(id);
+              setChosen(null);
+            }}
+          />
+        </LineupDayPicker>
+      </div>
+      {body}
     </div>
   );
+}
+
+/** Each location once, in the order first met. */
+function unique<T extends { readonly id: string; readonly name: string }>(items: readonly T[]): T[] {
+  const seen = new Set<string>();
+  return items.filter((item) => !seen.has(item.id) && Boolean(seen.add(item.id)));
 }
 
 function LineupView({
@@ -149,6 +201,7 @@ function LineupView({
 
   return (
     <section className="employee-lineup-view" style={style} aria-label={`${name} lineup`}>
+      <LineupDayHead location={lineup.location.name} date={date} shift={name} />
       <div className="employee-lineup-ticket">
         <div className="employee-lineup-stub">
           <span className="employee-lineup-avatar is-large" style={{ "--job": me.job_color ?? "var(--theme-border-strong)" } as CSSProperties} aria-hidden>
@@ -205,13 +258,7 @@ function LineupView({
             <p className="employee-lineup-none">No notes for this shift.</p>
           )
         ) : (
-          <>
-            <div className="employee-lineup-teamhead">
-              <h2>{lineup.location.name}</h2>
-              <p>{longDate(date)} · {name}</p>
-            </div>
-            <Team rows={lineup.team} timeFormat={timeFormat} />
-          </>
+          <Team rows={lineup.team} timeFormat={timeFormat} />
         )}
       </div>
 

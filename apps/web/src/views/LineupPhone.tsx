@@ -1,8 +1,6 @@
-import { ChevronLeft, ChevronRight, Eye, Lock } from "lucide-react";
+import { Eye, Lock } from "lucide-react";
 import {
-  useEffect,
   useLayoutEffect,
-  useMemo,
   useRef,
   useState,
   type CSSProperties,
@@ -22,20 +20,10 @@ import {
 } from "../schedule/lineup";
 import { LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
 import { LineupReadLists } from "../schedule/LineupReadList";
-import {
-  WHEEL,
-  dockPlace,
-  foldOffset,
-  foldTravel,
-  monthEdges,
-  wheelCell,
-  wheelDateText,
-  wheelIndex,
-  wheelIso,
-} from "../schedule/lineup-wheel";
+import { dockPlace, foldOffset, foldTravel } from "../schedule/lineup-wheel";
+import { LineupDayHead, LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
-import { mountWheel } from "./lineup-wheel-engine";
 import "./lineup-phone.css";
 
 // The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3):
@@ -54,12 +42,6 @@ export interface PhonePublish {
 
 type Seg = "team" | "notes" | "read";
 
-/** What the date row asks of the wheel. */
-interface WheelControl {
-  step(delta: number): void;
-  seekIso(iso: string): void;
-}
-
 function initials(name: string): string {
   return name
     .split(/\s+/)
@@ -73,8 +55,6 @@ function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
   return `${formatTime(start, format, "long")} – ${formatTime(end, format, "long")}`;
 }
-
-const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`;
 
 export function PhoneLineupPage({
   header,
@@ -110,8 +90,6 @@ export function PhoneLineupPage({
   readonly publish: PhonePublish | null;
 }) {
   const [seg, setSeg] = useState<Seg>("team");
-  const wheel = useRef<WheelControl | null>(null);
-  const preview = useRef<((iso: string) => void) | null>(null);
   const top = useRef<HTMLDivElement | null>(null);
   const bar = useRef<HTMLDivElement | null>(null);
   const wheelBox = useRef<HTMLDivElement | null>(null);
@@ -127,41 +105,9 @@ export function PhoneLineupPage({
       {/* The page's own fixed top: the shell's frozen-top leaves it alone (data-frozen-own). */}
       <div className="lineup-phone-top" ref={top} data-frozen-own="">
         {header}
-        <div className="lineup-toolbar" ref={bar}>
-          <div className="lineup-date" role="group" aria-label="Day">
-            <button type="button" className="lineup-step" aria-label="Previous day" onClick={() => wheel.current?.step(-1)}>
-              <ChevronLeft size={16} aria-hidden />
-            </button>
-            <WheelDate date={date} today={today} preview={preview} onToday={() => wheel.current?.seekIso(today)} />
-            <button type="button" className="lineup-step" aria-label="Next day" onClick={() => wheel.current?.step(1)}>
-              <ChevronRight size={16} aria-hidden />
-            </button>
-          </div>
-          {loading ? (
-            <Skeleton width="auto" height={34} className="on-page lineup-phone-location" />
-          ) : locations.length ? (
-            <select
-              className="toolbar-filter-select lineup-phone-location"
-              value={location?.id ?? ""}
-              aria-label="Location"
-              onChange={(event) => onLocation(event.target.value)}
-            >
-              {locations.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </select>
-          ) : null}
-        </div>
-        <DayWheel
-          boxRef={wheelBox}
-          date={date}
-          today={today}
-          engine={wheel}
-          onCommit={onDate}
-          onMiddle={(iso) => preview.current?.(iso)}
-        />
+        <LineupDayPicker date={date} today={today} onDate={onDate} barRef={bar} wheelRef={wheelBox}>
+          <LineupLocationSelect loading={loading} locations={locations} value={location?.id ?? ""} onChange={onLocation} />
+        </LineupDayPicker>
         <div className="lineup-phone-tabs-slot" ref={tabs}>
           {loading ? (
             <div className="lineup-phone-outline-tabs" aria-hidden>
@@ -170,26 +116,7 @@ export function PhoneLineupPage({
               <Skeleton width={56} height={12} className="on-page" />
             </div>
           ) : ready && location.shifts.length ? (
-            <div className="catalog-toolbar lineup-phone-tabs">
-              <div className="catalog-toolbar-status-row">
-                <div className="catalog-status-tabs" role="group" aria-label="Shifts">
-                  {location.shifts.map((item) => (
-                    <button
-                      key={item.key}
-                      type="button"
-                      className={item.key === shift?.key ? "active" : ""}
-                      aria-pressed={item.key === shift?.key}
-                      aria-label={`${item.name}, ${item.count ? plural(item.count, "person", "people") : "no one"}`}
-                      onClick={() => onShift(item.key)}
-                    >
-                      <i style={{ background: item.color ?? "var(--theme-border-strong)" }} aria-hidden />
-                      {item.name}
-                      {item.count ? <strong>{item.count}</strong> : null}
-                    </button>
-                  ))}
-                </div>
-              </div>
-            </div>
+            <LineupShiftTabs shifts={location.shifts} chosen={shift?.key ?? null} onChoose={onShift} />
           ) : null}
         </div>
       </div>
@@ -198,6 +125,8 @@ export function PhoneLineupPage({
         <PhoneLineupOutline />
       ) : shift ? (
         <>
+          {/* Mert 2026-10-17 (~7:40 AM): the employee page's location and date head, under the shift tabs. */}
+          {location ? <LineupDayHead location={location.name} date={date} shift={shift.name} /> : null}
           {location?.shortHours?.opens && location.shortHours.closes ? (
             <p className="lineup-short lineup-phone-short" role="note">
               Short hours today: open {range(location.shortHours.opens, location.shortHours.closes, timeFormat)} (
@@ -233,135 +162,6 @@ export function PhoneLineupPage({
       <div className="lineup-phone-end" aria-hidden />
       {publish ? <PublishDock publish={publish} /> : null}
     </section>
-  );
-}
-
-/** The date button over the wheel: the middle day as it spins, amber away from today; a tap brings today back. */
-function WheelDate({
-  date,
-  today,
-  preview,
-  onToday,
-}: {
-  readonly date: string;
-  readonly today: string;
-  readonly preview: RefObject<((iso: string) => void) | null>;
-  readonly onToday: () => void;
-}) {
-  const [shown, setShown] = useState(date);
-  useEffect(() => {
-    preview.current = setShown;
-    return () => {
-      preview.current = null;
-    };
-  }, [preview]);
-  useEffect(() => setShown(date), [date]);
-  const other = shown !== today;
-  return (
-    <button
-      type="button"
-      className="lineup-date-label"
-      data-other-day={other ? "true" : undefined}
-      title={other ? "Back to today" : undefined}
-      onClick={onToday}
-    >
-      {wheelDateText(shown, today)}
-    </button>
-  );
-}
-
-/**
- * The day wheel: every day ±span around its anchor as a button, rendered once; the engine moves them. It stops
- * on a day → `onCommit`; a new date from outside (a link, the date button) turns it there.
- */
-function DayWheel({
-  boxRef,
-  date,
-  today,
-  engine,
-  onCommit,
-  onMiddle,
-}: {
-  readonly boxRef: RefObject<HTMLDivElement | null>;
-  readonly date: string;
-  readonly today: string;
-  readonly engine: RefObject<WheelControl | null>;
-  readonly onCommit: (iso: string) => void;
-  readonly onMiddle: (iso: string) => void;
-}) {
-  const span = WHEEL.span;
-  // The wheel counts from today; a day near its end re-anchors it there.
-  const [anchor, setAnchor] = useState(today);
-  const far = Math.abs(wheelIndex(anchor, date)) > span - 30;
-  useEffect(() => {
-    if (far) setAnchor(date);
-  }, [far, date]);
-  const track = useRef<HTMLDivElement | null>(null);
-  const seekRef = useRef<((iso: string) => void) | null>(null);
-  const latest = useRef({ date, onCommit, onMiddle });
-  latest.current = { date, onCommit, onMiddle };
-
-  const cells = useMemo(
-    () =>
-      Array.from({ length: 2 * span + 1 }, (_, offset) => {
-        const index = offset - span;
-        const iso = wheelIso(anchor, index);
-        const cell = wheelCell(iso);
-        return (
-          <button
-            key={iso}
-            type="button"
-            className={`lineup-wheel-day${iso === today ? " is-today" : ""}${cell.first ? " is-first" : ""}`}
-            data-i={index}
-            tabIndex={-1}
-            aria-label={cell.label}
-            aria-pressed={false}
-          >
-            <span className="lineup-wheel-in">
-              <span className="lineup-wheel-top">{cell.top}</span>
-              <b>{cell.day}</b>
-            </span>
-          </button>
-        );
-      }),
-    [anchor, today, span],
-  );
-
-  useLayoutEffect(() => {
-    const box = boxRef.current;
-    const strip = track.current;
-    if (!box || !strip) return;
-    const mounted = mountWheel(box, strip, {
-      start: wheelIndex(anchor, latest.current.date),
-      span,
-      edges: monthEdges(anchor, span),
-      onStill: (index) => {
-        const iso = wheelIso(anchor, index);
-        if (iso !== latest.current.date) latest.current.onCommit(iso);
-      },
-      onMiddle: (index) => latest.current.onMiddle(wheelIso(anchor, index)),
-    });
-    const control: WheelControl = { step: mounted.step, seekIso: (iso) => mounted.seek(wheelIndex(anchor, iso)) };
-    engine.current = control;
-    seekRef.current = control.seekIso;
-    return () => {
-      mounted.destroy();
-      if (engine.current === control) engine.current = null;
-      seekRef.current = null;
-    };
-  }, [anchor, cells, span, boxRef, engine]);
-
-  // A date from outside: turn the wheel there (it stops on it, so nothing is committed twice).
-  useEffect(() => {
-    seekRef.current?.(date);
-  }, [date]);
-
-  return (
-    <div className="lineup-wheel" role="group" aria-label="Day. Swipe or use the arrow keys." ref={boxRef}>
-      <div className="lineup-wheel-track" ref={track} style={{ "--lineup-wheel-days": 2 * span + 1 } as CSSProperties}>
-        {cells}
-      </div>
-    </div>
   );
 }
 

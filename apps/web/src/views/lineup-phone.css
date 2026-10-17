@@ -60,17 +60,11 @@
   position: relative;
   z-index: 1;
   background: var(--lineup-phone-bg, var(--theme-page));
+}
+/* A compositor layer only while the top folds: a standing one blurs the wheel's days (Mert 2026-10-17). */
+.lineup-phone-page .lineup-phone-top.is-folding :is(.lineup-toolbar, .lineup-wheel, .lineup-phone-tabs-slot) {
   will-change: transform;
 }
-.lineup-phone-page .lineup-toolbar .lineup-phone-location {
-  min-width: 0;
-  flex: 1 1 140px;
-}
-.lineup-phone-page .lineup-step:hover,
-.lineup-phone-page .lineup-date-label:hover {
-  border-color: var(--theme-border-hover);
-}
-
 /* Shift tabs: a 43 px row, the tab 42 px with a 3 px dark green line sitting fully on the row's border. */
 .lineup-phone-page.list-page .lineup-phone-top .catalog-toolbar {
   margin: 0;
@@ -88,18 +82,6 @@
 .lineup-phone-page.list-page .lineup-phone-top .catalog-status-tabs button.active {
   border-bottom-color: var(--theme-accent-deep);
 }
-.lineup-phone-tabs .catalog-status-tabs button i {
-  display: inline-block;
-  width: 8px;
-  height: 8px;
-  flex: none;
-  border-radius: 50%;
-}
-.lineup-phone-tabs .catalog-status-tabs button strong {
-  color: var(--theme-muted);
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
 .lineup-phone-outline-tabs {
   display: flex;
   height: 43px;
@@ -109,110 +91,6 @@
   border-bottom: 1px solid var(--theme-border-subtle);
 }
 
-/* The wheel: seven days in view, the middle one the day; the edges fade. */
-.lineup-wheel {
-  position: relative;
-  height: 64px;
-  margin: 0 -16px;
-  overflow: hidden;
-  border-bottom: 1px solid var(--theme-border-subtle);
-  touch-action: pan-y;
-  user-select: none;
-  cursor: grab;
-  -webkit-mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
-  mask-image: linear-gradient(90deg, transparent 0, rgb(0 0 0) 18%, rgb(0 0 0) 82%, transparent 100%);
-}
-.lineup-wheel:active {
-  cursor: grabbing;
-}
-/* Each day is a seventh of the strip: size them off the strip, not the track. */
-.lineup-wheel-track {
-  display: flex;
-  width: calc(100% / 7 * var(--lineup-wheel-days));
-  height: 100%;
-  will-change: transform;
-}
-.lineup-wheel-day {
-  position: relative;
-  display: grid;
-  width: calc(100% / var(--lineup-wheel-days));
-  height: 100%;
-  flex: none;
-  place-items: center;
-  border: 0;
-  padding: 0;
-  background: transparent;
-  color: var(--theme-text-secondary);
-  font: inherit;
-  cursor: inherit;
-}
-.lineup-wheel-in {
-  display: grid;
-  place-items: center;
-  gap: 1px;
-  padding-top: 4px;
-  transform: scale(var(--s, 1));
-  transform-origin: 50% 60%;
-}
-.lineup-wheel-top {
-  font-size: 10.5px;
-  font-weight: 650;
-  letter-spacing: 0.06em;
-}
-.lineup-wheel-day b {
-  color: var(--theme-text);
-  font-size: 16px;
-  font-weight: 650;
-  font-variant-numeric: tabular-nums;
-}
-.lineup-wheel-day.is-first .lineup-wheel-top {
-  color: var(--theme-accent-deep);
-  font-weight: 800;
-}
-.lineup-wheel-day.is-today::before {
-  content: "";
-  position: absolute;
-  top: 5px;
-  left: 50%;
-  width: 5px;
-  height: 5px;
-  border-radius: 50%;
-  background: var(--theme-current);
-  transform: translateX(-50%);
-}
-/* The middle day, once the wheel stops: bigger, green, underlined. */
-.lineup-wheel.is-still .lineup-wheel-in {
-  transition: transform 0.18s ease-out;
-}
-.lineup-wheel-day.is-selected .lineup-wheel-in {
-  transform: scale(1.24);
-}
-.lineup-wheel-day.is-selected,
-.lineup-wheel-day.is-selected b {
-  color: var(--theme-accent-deep);
-}
-.lineup-wheel-day.is-selected b {
-  font-weight: 800;
-}
-.lineup-wheel-day::after {
-  content: "";
-  position: absolute;
-  right: 22%;
-  bottom: 0;
-  left: 22%;
-  height: 3px;
-  border-radius: 2px 2px 0 0;
-  background: var(--theme-accent);
-  transform: scaleX(0);
-  transition: transform 0.18s ease-out;
-}
-.lineup-wheel-day.is-selected::after {
-  transform: scaleX(1);
-}
-.lineup-wheel-day:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: -4px;
-}
 /* The month detent: a tiny jolt of the strip while it holds. */
 .lineup-wheel.is-bump .lineup-wheel-track {
   animation: lineup-wheel-bump 0.12s ease-out;
@@ -239,6 +117,14 @@
 }
 .lineup-phone-page .lineup-phone-short + .lineup-phone-summary {
   margin-top: 12px;
+}
+/* The location and date head (schedule/lineup-wheel.css) 20 px under the shift tabs, the card 14 px under it
+   (Mert 2026-10-17 ~7:40 AM; mockup v-e.css .e-mgrhead). */
+.lineup-phone-page .lineup-day-head {
+  margin-top: 20px;
+}
+.lineup-phone-page .lineup-day-head + :is(.lineup-phone-summary, .lineup-phone-short) {
+  margin-top: 14px;
 }
 .lineup-phone-summary h2 {
   margin: 0;

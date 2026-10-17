@@ -6,7 +6,7 @@ import {
   flingTarget,
   releaseVelocity,
   seekDuration,
-} from "../schedule/lineup-wheel";
+} from "./lineup-wheel";
 
 // The day wheel's motion (E · Çark tarih, Mert 2026-10-17; mockup v-e.js mount()). One float position, the day
 // index at the middle, drawn every frame while it moves: a drag follows the finger, a release spins on and
@@ -75,7 +75,9 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   }
 
   function show(p: number) {
-    track.style.transform = `translate3d(${3 * width - (p + span) * width}px,0,0)`;
+    // On whole device pixels and a 2D move: a stopped strip half a pixel off draws its days soft.
+    const ratio = window.devicePixelRatio || 1;
+    track.style.transform = `translateX(${Math.round((3 * width - (p + span) * width) * ratio) / ratio}px)`;
     const middle = Math.round(p);
     for (let index = Math.max(-span, middle - 6); index <= Math.min(span, middle + 6); index++) {
       const cell = cells[index + span];

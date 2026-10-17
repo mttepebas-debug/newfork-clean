@@ -1,11 +1,11 @@
 import type { MyLineups } from "@newfork/shared";
-import { fireEvent, render, screen, within } from "@testing-library/react";
+import { configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { MemoryRouter } from "react-router";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { MemoryRouter, useLocation } from "react-router";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../lib/supabase";
-import { dinner, hannah, maria, model, server, shift, ws } from "../schedule/lineup.testing";
+import { dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import { EmployeeLineup } from "./EmployeeLineup";
 
@@ -14,6 +14,9 @@ import { EmployeeLineup } from "./EmployeeLineup";
 vi.mock("../lib/supabase", async (original) => ({ ...(await original<object>()), supabaseClient: {}, apiRequest: vi.fn() }));
 vi.mock("./employee-hub-data", async (original) => ({ ...(await original<object>()), getEmployeeScheduleBoard: vi.fn() }));
 vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13" }));
+
+// The day wheel carries a few hundred day buttons: a role query over them is slow on a busy machine.
+configure({ asyncUtilTimeout: 5000 });
 
 const api = vi.mocked(apiRequest);
 const board = vi.mocked(getEmployeeScheduleBoard);
@@ -52,23 +55,49 @@ function mine(overrides: Partial<MyLineups["lineups"][number]> = {}): MyLineups 
 let answer: MyLineups;
 const acknowledged: string[] = [];
 
+function Where() {
+  return <div data-testid="where">{useLocation().search}</div>;
+}
+
+// The hub's part: the day is the address's ?date=, today without one.
+function Page() {
+  const date = new URLSearchParams(useLocation().search).get("date") ?? "2026-10-13";
+  return <EmployeeLineup workspaceId={ws} employeeId={maria} date={date} timeFormat="12h" />;
+}
+
 function renderLineup() {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   return render(
     <QueryClientProvider client={client}>
-      <MemoryRouter>
-        <EmployeeLineup workspaceId={ws} employeeId={maria} date="2026-10-13" timeFormat="12h" />
+      <MemoryRouter initialEntries={["/app/employee-hub/schedule/lineup"]}>
+        <Page />
+        <Where />
       </MemoryRouter>
     </QueryClientProvider>,
   );
 }
 
+const reduce = window.matchMedia;
+afterEach(() => {
+  window.matchMedia = reduce;
+});
+
 beforeEach(() => {
+  // Reduced motion: the wheel jumps instead of spinning, so a test sees where it stops at once.
+  window.matchMedia = ((query: string) => ({
+    matches: query.includes("prefers-reduced-motion"),
+    media: query,
+    addEventListener: () => undefined,
+    removeEventListener: () => undefined,
+  })) as unknown as typeof window.matchMedia;
   answer = mine();
   acknowledged.length = 0;
   api.mockReset();
   api.mockImplementation(async (_client, path) => {
     if (path.endsWith("/my-lineups/2026-10-13")) return answer;
+    // Another day the wheel turns to: nothing published.
+    const other = /\/my-lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+    if (other) return { workspace_id: ws, date: other[1], lineups: [] };
     const ack = /\/lineups\/versions\/([^/]+)\/acknowledge$/.exec(path);
     if (ack) {
       acknowledged.push(ack[1]!);
@@ -77,6 +106,7 @@ beforeEach(() => {
     throw new Error(`unexpected ${path}`);
   });
   board.mockReset();
+  board.mockResolvedValue(model([]));
 });
 
 describe("EmployeeLineup", () => {
@@ -96,7 +126,8 @@ describe("EmployeeLineup", () => {
     expect(within(team).getByText("Hannah Lee")).toBeTruthy();
   });
 
-  it("orders her lineups by start time, the same start by name", async () => {
+  // Mert 2026-10-17 (~7:30 AM): the manager's shift tabs, with her own lineups only (the read gives no other).
+  it("shows her lineups as the shift tabs, by start time, the same start by name", async () => {
     const [dinnerLineup] = mine().lineups;
     const at = (id: string, name: string, start: string) => ({
       ...dinnerLineup!,
@@ -113,9 +144,19 @@ describe("EmployeeLineup", () => {
       ],
     };
     renderLineup();
-    const group = await screen.findByRole("group", { name: "Your lineups" });
-    expect(within(group).getAllByRole("button").map((button) => button.textContent)).toEqual(["Brunch", "Lunch", "Dinner"]);
-    expect(within(group).getByRole("button", { name: "Brunch" }).getAttribute("aria-pressed")).toBe("true");
+    const group = await screen.findByRole("group", { name: "Shifts" });
+    expect(within(group).getAllByRole("button").map((button) => button.getAttribute("aria-label"))).toEqual([
+      "Brunch, 2 people",
+      "Lunch, 2 people",
+      "Dinner, 2 people",
+    ]);
+    expect(group.closest(".lineup-shift-tabs")).toBeTruthy();
+    expect(within(group).getByRole("button", { name: "Brunch, 2 people" }).getAttribute("aria-pressed")).toBe("true");
+    // The tabs sit over the location and date head.
+    const head = screen.getByRole("heading", { name: "Downtown" });
+    expect(group.compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    fireEvent.click(within(group).getByRole("button", { name: "Dinner, 2 people" }));
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
   });
 
   it("moves between Team and Notes with the arrow keys, one tab stop", async () => {
@@ -169,5 +210,80 @@ describe("EmployeeLineup", () => {
     board.mockResolvedValue(model([]));
     renderLineup();
     expect(await screen.findByText("You're not on a lineup today")).toBeTruthy();
+  });
+  // Mert 2026-10-17 (~7 AM, ~7:50 AM): the location and date, then her ticket, then Team · Notes; the ticket
+  // stays over both tabs.
+  it("puts the location and date, then her ticket, over Team · Notes", async () => {
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    const heading = within(view).getByRole("heading", { name: "Downtown" });
+    const ticket = view.querySelector(".employee-lineup-ticket")!;
+    const tabs = within(view).getByRole("tablist");
+    const after = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(heading, ticket)).toBe(true);
+    expect(after(ticket, tabs)).toBe(true);
+    expect(within(view).getByText("Tuesday, October 13 · Dinner")).toBeTruthy();
+    expect(within(view).getByRole("tabpanel").contains(ticket)).toBe(false);
+    fireEvent.click(within(view).getByRole("tab", { name: /^Notes/ }));
+    expect(view.querySelector(".employee-lineup-ticket")).toBeTruthy();
+    expect(within(view).getByRole("tabpanel").textContent).toContain("Halibut");
+  });
+
+  // Mert 2026-10-17 (~7:10, ~7:20 AM): the manager's date row and day wheel, on her page too.
+  it("turns the day with the wheel, the arrows and the date button, as the manager's does", async () => {
+    renderLineup();
+    await screen.findByRole("region", { name: "Dinner lineup" });
+    const wheel = screen.getByRole("group", { name: "Day. Swipe or use the arrow keys." });
+    expect(within(wheel).getByRole("button", { name: "Tuesday, October 13, 2026" }).getAttribute("aria-pressed")).toBe("true");
+    const label = screen.getByRole("button", { name: "Tue, Oct 13" });
+    expect(label.getAttribute("data-other-day")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
+    expect(screen.getByRole("button", { name: "Wed, Oct 14" }).getAttribute("data-other-day")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "Wed, Oct 14" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(""));
+    fireEvent.click(within(wheel).getByRole("button", { name: "Thursday, October 15, 2026" }), { detail: 0 });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-15"));
+    fireEvent.keyDown(wheel, { key: "ArrowLeft" });
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
+  });
+
+  it("lists her lineups' locations; choosing one shows its lineup", async () => {
+    const [dinnerLineup] = mine().lineups;
+    answer = {
+      ...mine(),
+      lineups: [
+        dinnerLineup!,
+        {
+          ...dinnerLineup!,
+          id: "91000000-0000-4000-8000-000000000002",
+          version_id: "90000000-0000-4000-8000-000000000002",
+          location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
+          shift_type_id: lunch,
+          shift_type_name: "Lunch",
+          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+        },
+      ],
+    };
+    renderLineup();
+    const select = await screen.findByRole("combobox", { name: "Location" });
+    expect([...(select as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["Uptown", "Downtown"]);
+    expect(await screen.findByRole("region", { name: "Lunch lineup" })).toBeTruthy();
+    // One lineup at each location: one shift tab.
+    expect(within(screen.getByRole("group", { name: "Shifts" })).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
+      "Lunch, 2 people",
+    ]);
+    fireEvent.change(select, { target: { value: downtown } });
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Downtown" })).toBeTruthy();
+  });
+
+  it("keeps the location row on a day with no published lineup: where she works", async () => {
+    answer = { workspace_id: ws, date: "2026-10-13", lineups: [] };
+    board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
+    renderLineup();
+    await screen.findByText("Your Dinner lineup isn't published yet");
+    const select = screen.getByRole("combobox", { name: "Location" });
+    expect([...(select as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["Downtown"]);
   });
 });

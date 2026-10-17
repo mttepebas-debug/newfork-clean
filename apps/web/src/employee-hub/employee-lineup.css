@@ -8,14 +8,20 @@
 .employee-schedule-tabs a[aria-current="page"] { border-bottom-color: var(--theme-accent); color: var(--theme-text); }
 .employee-schedule-tabs a:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; border-radius: 2px; }
 
+/* The day: the manager's date row and wheel (schedule/lineup-wheel.css), as wide as the lineup under it; on a
+   phone the wheel runs edge to edge like the manager's (the hub page's side padding is 14 px there). */
+.employee-lineup-day { display: grid; gap: 14px; max-width: 560px; }
+.employee-lineup-day .lineup-wheel { margin: 0; }
+@media (max-width: 720px) {
+  .employee-lineup-day { max-width: none; }
+  .employee-lineup-day .lineup-wheel { margin: 0 -14px; }
+}
+
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
 .employee-lineup :is(button, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
-.employee-lineup-shifts { display: flex; gap: 6px; margin-bottom: 4px; }
-.employee-lineup-shifts button { min-height: 36px; padding: 0 14px; border: 1px solid var(--theme-border-control); border-radius: 999px; background: var(--theme-surface); color: var(--theme-text-body); font-size: 13px; font-weight: 650; cursor: pointer; }
-.employee-lineup-shifts button[aria-pressed="true"] { border-color: var(--theme-accent-deep); background: var(--theme-accent-deep); color: var(--theme-on-accent); }
 
 /* The ticket: a stub with the shift's color, a dashed tear, her time, job and place */
-.employee-lineup-ticket { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); margin-top: 12px; border: 1px solid var(--theme-list-frame); border-radius: 14px; background: var(--theme-surface); }
+.employee-lineup-ticket { position: relative; display: grid; grid-template-columns: 96px minmax(0, 1fr); margin-top: 14px; border: 1px solid var(--theme-list-frame); border-radius: 14px; background: var(--theme-surface); }
 .employee-lineup-stub { display: grid; justify-items: center; align-content: center; gap: 6px; padding: 14px 6px; border-right: 2px dashed var(--theme-border); border-radius: 14px 0 0 14px; box-shadow: inset 4px 0 0 var(--lineup-shift); }
 .employee-lineup-stub b { color: var(--theme-text); font-size: 14px; font-weight: 750; text-align: center; }
 .employee-lineup-ticket::before, .employee-lineup-ticket::after { content: ""; position: absolute; left: 87px; width: 18px; height: 9px; border: 1px solid var(--theme-list-frame); background: var(--theme-page); }
@@ -38,9 +44,6 @@
 .employee-lineup-tabs button[aria-selected="true"] { border-bottom-color: var(--theme-accent-deep); color: var(--theme-text); font-weight: 650; }
 .employee-lineup-tabs button:focus-visible { outline-offset: -2px; }
 
-.employee-lineup-teamhead { margin: 18px 4px 0; }
-.employee-lineup-teamhead h2 { margin: 0; color: var(--theme-text); font-size: 26px; font-weight: 750; letter-spacing: -0.01em; }
-.employee-lineup-teamhead p { margin: 2px 0 0; color: var(--theme-text-secondary); font-size: 14px; }
 .employee-lineup-department { margin-top: 16px; }
 .employee-lineup-department h3 { display: flex; align-items: baseline; gap: 6px; min-height: 32px; margin: 0; padding: 0 4px; color: var(--theme-text-secondary); font-size: 11.5px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; }
 .employee-lineup-department h3 span { color: var(--theme-muted); font-weight: 650; letter-spacing: 0; }
