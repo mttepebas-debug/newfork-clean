@@ -5,7 +5,6 @@ import {
   ImagePlus,
   ListChecks,
   Save,
-  UserRoundCheck,
 } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
@@ -14,10 +13,7 @@ import {
   setOwnerSetupChecklistClosed,
 } from "../communications/communications-data";
 import {
-  loadPreferredNameApproval,
-  savePreferredNameApproval,
 } from "../employees/employee-data";
-import type { PreferredNameApproval } from "@newfork/shared";
 import {
   ScheduleLogoUploadDialog,
   type ScheduleLogoSaveDraft,
@@ -61,22 +57,6 @@ export default function GeneralSettingsPage() {
     },
   });
   const checklistClosed = Boolean(checklistQuery.data?.closed_at);
-  // Whether a preferred name is answered here or let through. Separate from the
-  // onboarding approval setting on purpose, and separate in the database too.
-  const preferredQueryKey = ["preferred-name-approval", workspaceId];
-  const preferredQuery = useQuery({
-    queryKey: preferredQueryKey,
-    queryFn: () => loadPreferredNameApproval(workspaceId),
-    enabled: Boolean(workspaceId),
-  });
-  const preferredMutation = useMutation({
-    mutationFn: (approval: PreferredNameApproval) =>
-      savePreferredNameApproval(workspaceId, approval),
-    onSuccess: async () => {
-      await queryClient.invalidateQueries({ queryKey: preferredQueryKey });
-    },
-  });
-  const preferredApproval = preferredQuery.data ?? "auto";
 
   if (!context) return null;
 
@@ -259,73 +239,6 @@ export default function GeneralSettingsPage() {
         {checklistMutation.error ? (
           <p className="form-error" role="alert">
             Setup checklist visibility could not be saved.
-          </p>
-        ) : null}
-      </section>
-      <section
-        className="organization-form setup-checklist-settings"
-        aria-labelledby="preferred-name-settings-title"
-      >
-        <div className="organization-form-row">
-          <div>
-            <label id="preferred-name-settings-title">Preferred names</label>
-            <p>
-              A preferred name is what people here call somebody. Documents and
-              signatures always use the name on file. This is not the onboarding
-              approval setting.
-            </p>
-          </div>
-          <div className="setup-checklist-settings-control">
-            {preferredQuery.isLoading ? (
-              <LoadingOutline label="Loading preferred name setting">
-                <Skeleton width={190} height={12} />
-              </LoadingOutline>
-            ) : preferredQuery.data !== undefined ? (
-              <span>
-                {preferredApproval === "manager"
-                  ? "Answered here before it is used"
-                  : "Used as soon as it is entered"}
-              </span>
-            ) : null}
-            <Button
-              type="button"
-              disabled={
-                !canEdit ||
-                preferredQuery.data === undefined ||
-                isNoAccess(preferredQuery.error) ||
-                preferredMutation.isPending
-              }
-              onClick={() =>
-                preferredMutation.mutate(
-                  preferredApproval === "manager" ? "auto" : "manager",
-                )
-              }
-            >
-              <UserRoundCheck size={16} aria-hidden />
-              {preferredApproval === "manager"
-                ? "Let them through"
-                : "Answer them here"}
-            </Button>
-          </div>
-        </div>
-        {isNoAccess(preferredQuery.error) ? (
-          <p className="form-error" role="alert">
-            You don't have access to this setting.
-          </p>
-        ) : preferredQuery.error ? (
-          <RefreshError
-            message={
-              preferredQuery.data !== undefined
-                ? "This setting didn't refresh. This is the last value that loaded."
-                : "This setting didn't load. Nothing was changed."
-            }
-            retrying={preferredQuery.isFetching}
-            onRetry={() => void preferredQuery.refetch()}
-          />
-        ) : null}
-        {preferredMutation.error ? (
-          <p className="form-error" role="alert">
-            That setting could not be saved.
           </p>
         ) : null}
       </section>

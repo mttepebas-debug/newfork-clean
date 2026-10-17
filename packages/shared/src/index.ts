@@ -285,14 +285,6 @@ export const accountProfileSchema = z
   });
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
 
-/**
- * How a workspace answers a preferred name: "auto" lets it through and tells
- * the managers, "manager" holds it until one of them answers. Not the
- * onboarding approval setting, which decides something else entirely.
- */
-export const preferredNameApprovalSchema = z.enum(["auto", "manager"]);
-export type PreferredNameApproval = z.infer<typeof preferredNameApprovalSchema>;
-
 /** What a request for a preferred name did: took effect, or is waiting. */
 export const preferredNameOutcomeSchema = z.enum([
   "published",

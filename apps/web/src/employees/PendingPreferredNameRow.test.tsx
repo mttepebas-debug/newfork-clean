@@ -20,8 +20,6 @@ vi.mock("./employee-data", () => ({
   resendEmployeeInvitation: vi.fn(),
   revokeEmployeeInvitation: vi.fn(),
   requestPreferredName: vi.fn(),
-  loadPreferredNameApproval: vi.fn(),
-  savePreferredNameApproval: vi.fn(),
 }));
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context: null }),

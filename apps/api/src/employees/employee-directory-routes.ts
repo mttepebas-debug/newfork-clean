@@ -280,63 +280,8 @@ export function registerEmployeeDirectoryRoutes(
     },
   );
 
-  // How this workspace answers a preferred name, and the asking and answering
-  // of one.
-  app.get(
-    "/v1/workspaces/:workspaceId/preferred-name-approval",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      if (!params.success)
-        return reply.status(400).send({ error: "Valid workspace required" });
-      // No gate here: the service asks the core (settings.people.read; BL-443).
-      const context = await resolveActor(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-      );
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee directory service is not configured" });
-      return reply.send({
-        approval: await options.service.getPreferredNameApproval({
-          actorUserId: context.userId,
-          workspaceId: params.data.workspaceId,
-        }),
-      });
-    },
-  );
-
-  app.put(
-    "/v1/workspaces/:workspaceId/preferred-name-approval",
-    async (request, reply) => {
-      const params = workspaceParams.safeParse(request.params);
-      const body = z
-        .object({ approval: z.enum(["auto", "manager"]) })
-        .safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "A preferred name is either answered here or let through" });
-      // No gate here: the service asks the core (settings.people; BL-443).
-      const context = await resolveActor(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-      );
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee directory service is not configured" });
-      await options.service.setPreferredNameApproval({
-        actorUserId: context.userId,
-        workspaceId: params.data.workspaceId,
-        approval: body.data.approval,
-      });
-      return reply.status(204).send();
-    },
-  );
-
+  // The asking and answering of a preferred name; every one waits for who may
+  // decide it (KARARLAR S-131).
   app.put(
     "/v1/workspaces/:workspaceId/employees/:employeeId/preferred-name",
     async (request, reply) => {

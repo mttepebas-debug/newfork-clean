@@ -7,7 +7,6 @@ import {
   employeeRoleUpdateInputSchema,
   employeeSummarySchema,
   pendingPreferredNameFromRow,
-  preferredNameApprovalSchema,
   preferredNameOutcomeSchema,
   type EmployeeDetail,
   type EmployeeInput,
@@ -15,7 +14,6 @@ import {
   type EmployeeRoleUpdateInput,
   type EmployeeSummary,
   type PendingPreferredName,
-  type PreferredNameApproval,
   type PreferredNameOutcome,
 } from "@newfork/shared";
 import { createClient } from "@supabase/supabase-js";
@@ -103,17 +101,7 @@ export interface EmployeeDirectoryService {
     readonly employeeId: string;
     readonly locationId: string;
   }): Promise<EmployeeLocationRemoval>;
-  /** How this workspace answers a preferred name. */
-  getPreferredNameApproval(input: {
-    readonly actorUserId: string;
-    readonly workspaceId: string;
-  }): Promise<PreferredNameApproval>;
-  setPreferredNameApproval(input: {
-    readonly actorUserId: string;
-    readonly workspaceId: string;
-    readonly approval: PreferredNameApproval;
-  }): Promise<void>;
-  /** The person asks for their own. What happens next is the setting's answer. */
+  /** The person asks for their own; it waits for who may decide it (KARARLAR S-131). */
   requestPreferredName(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -334,21 +322,6 @@ export function createEmployeeDirectoryServiceWithClient(
       if (typeof path === "string" && path) {
         await client.storage?.from("employee-profile-photos").remove([path]);
       }
-    },
-    async getPreferredNameApproval(input) {
-      return preferredNameApprovalSchema.parse(
-        await rpc("get_employee_name_settings_service", {
-          actor_user_id: input.actorUserId,
-          target_workspace_id: input.workspaceId,
-        }),
-      );
-    },
-    async setPreferredNameApproval(input) {
-      await rpc("set_employee_name_settings_service", {
-        actor_user_id: input.actorUserId,
-        target_workspace_id: input.workspaceId,
-        approval: input.approval,
-      });
     },
     async requestPreferredName(input) {
       return preferredNameOutcomeSchema.parse(

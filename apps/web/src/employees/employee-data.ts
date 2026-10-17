@@ -15,10 +15,8 @@ import {
   invitationFailureCodeSchema,
   invitationPreviewSchema,
   pendingPreferredNameSchema,
-  preferredNameApprovalSchema,
   preferredNameOutcomeSchema,
   type PendingPreferredName,
-  type PreferredNameApproval,
   type PreferredNameOutcome,
   type AccountPendingInvitation,
   type InvitationPreview,
@@ -393,26 +391,6 @@ export async function acceptEmployeeInvitation(
  * The owner's own emergency contact. Everyone else gives one during onboarding;
  * the owner never runs it, so theirs is entered by hand in their own record.
  */
-/** How this workspace answers a preferred name. */
-export async function loadPreferredNameApproval(
-  workspaceId: string,
-): Promise<PreferredNameApproval> {
-  const body = (await employeeApi(
-    `/v1/workspaces/${workspaceId}/preferred-name-approval`,
-  )) as { approval: unknown };
-  return preferredNameApprovalSchema.parse(body.approval);
-}
-
-export async function savePreferredNameApproval(
-  workspaceId: string,
-  approval: PreferredNameApproval,
-): Promise<void> {
-  await employeeApi(`/v1/workspaces/${workspaceId}/preferred-name-approval`, {
-    method: "PUT",
-    body: JSON.stringify({ approval }),
-  });
-}
-
 /** The person asks for their own. The answer says what happened to it. */
 export async function requestPreferredName(
   workspaceId: string,
