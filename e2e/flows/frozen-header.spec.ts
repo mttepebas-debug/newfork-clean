@@ -121,6 +121,8 @@ test.describe("lists scroll inside their frame while the heading stays", () => {
     ["/app/schedule/lineup", DESKTOP, ".lineup-locations"],
     ["/app/schedule/lineup", PHONE, ".lineup-phone"],
     ["/app/settings/acknowledgements", DESKTOP, ".acknowledgement-page > .job-catalog"],
+    // Availability's people list scrolls in its own frame beside the week (AVAIL-GUN-3).
+    ["/app/availability", DESKTOP, ".avt-split > .avt-list"],
   ] as const) {
     test(`${path} at ${size.width}`, async ({ browser }) => {
       const page = await open(browser, "zeynep", size);

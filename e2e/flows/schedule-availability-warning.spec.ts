@@ -5,14 +5,15 @@ import { expect, test } from "../fixtures/test";
 import { psql } from "../global-setup";
 import { draftName, roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
-// AVAIL-002 (KARARLAR "Müsaitlik" M4, M5, M8, M9, M11, M12): availability is a
-// preference that asks on every write and never blocks or makes a conflict.
-// Writing onto an employee's own "unavailable" hours opens the rule box; a
-// manager's note alone opens the note card under its cell and is never drawn
-// on the grid; Auto-fill leaves the marked person out; Pre-flight lists the
-// marks on one folded line and asks nothing; a mark made after publishing says
-// so on the card, approved time off does not. Availability is asked in hours
-// only (Mert 2026-10-16): there is no entry mode to change.
+// AVAIL-002, AVAIL-GUN-1 (KARARLAR "Müsaitlik tercih" 3, M9, M11, M12 as of
+// Mert 2026-10-16): availability is a preference that never asks, never blocks
+// and makes no conflict. Writing onto an employee's own "unavailable" hours, or
+// under a manager's note, writes the shift at once; one short notice says so
+// and its Undo takes the write back. A note is never drawn on the grid;
+// Auto-fill leaves the marked person out; Pre-flight lists the marks on one
+// folded line and asks nothing; a mark made after publishing says so on the
+// card, approved time off does not. Availability is asked in hours only (Mert
+// 2026-10-16): there is no entry mode to change.
 //
 // Weeks: 4, 7 and 0 are this file's (the other specs hold 1-3, 5, 6, 8, 9);
 // each --repeat-each round gets its own through roundWeek.
@@ -57,6 +58,9 @@ function freshPerson(tag: string): { readonly label: string; readonly name: stri
   return { label, name: `${label[0]!.toUpperCase()}${label.slice(1)} Person` };
 }
 
+// The short notice after a write (a toast with Undo), found by its first line.
+const notice = (page: Page, title: string) => page.locator("[data-sonner-toast]").filter({ hasText: title });
+
 // Opens the shift editor on an empty cell. The button only turns interactive
 // on :hover (opacity/pointer-events are CSS-driven); force the first move so
 // the real hover state is in place before the click.
@@ -98,7 +102,7 @@ test.afterAll(() => {
   sql(`select tests.availability('${run}', 'ali', 2, '18:00', '22:00');`);
 });
 
-test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed after publishing' only for a later mark", async ({
+test("Müsaitlik tercih 3, M9, M11: no question on a write, a notice with Undo, a quiet Pre-flight, and 'Changed after publishing' only for a later mark", async ({
   browser,
 }) => {
   const week = roundWeek(4);
@@ -112,32 +116,26 @@ test("M8, M9, M11: the rule box on every write, a quiet Pre-flight, and 'Changed
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
   await startBlankSchedule(ayse);
 
-  // (a) M8: writing onto his marked hours asks, every time.
+  // (a) Writing onto his marked hours asks nothing: the shift is written and
+  // one short notice names the preference.
   const editor = await openAddShift(ayse, "Ali Person", tuesday, "6:00 PM", "10:00 PM");
   const ruleBox = ayse.getByRole("dialog", { name: "Shift conflict", exact: true });
-  await expect(ruleBox).toBeVisible();
-  await expect(ruleBox).toContainText("Schedule this shift anyway?");
-  await expect(ruleBox).toContainText("unavailable");
-  await expect(ruleBox.getByRole("button", { name: "Cancel", exact: true })).toBeVisible();
-  // Escape is Cancel: the box closes, the editor and what was typed stay.
-  await ayse.keyboard.press("Escape");
-  await expect(ruleBox).toHaveCount(0);
-  await expect(editor).toBeVisible();
-  // Asked again on the next try; Cancel also keeps the editor.
-  await editor.getByRole("button", { name: "Add shift", exact: true }).click();
-  await expect(ruleBox).toBeVisible();
-  await ruleBox.getByRole("button", { name: "Cancel", exact: true }).click();
-  await expect(ruleBox).toHaveCount(0);
-  await expect(editor).toBeVisible();
-  // Place shift writes it.
-  await editor.getByRole("button", { name: "Add shift", exact: true }).click();
-  await ruleBox.getByRole("button", { name: "Place shift", exact: true }).click();
-  await expect(ruleBox).toHaveCount(0);
   await expect(editor).toHaveCount(0);
+  await expect(ruleBox).toHaveCount(0);
+  const added = notice(ayse, "Shift added to Ali Person.");
+  await expect(added).toContainText("Ali prefers not to work Tue 6:00 PM – 10:00 PM.");
+  const tuesdayCard = cell(ayse, aliId, tuesday).locator("[data-shift-badge]");
+  await expect(tuesdayCard).toBeVisible();
+  // Its Undo takes the write back, as the edit bar's Undo would.
+  await added.getByRole("button", { name: "Undo", exact: true }).click();
+  await expect(tuesdayCard).toHaveCount(0);
+  // Written again: again no question, again the notice.
+  await expect(await openAddShift(ayse, "Ali Person", tuesday, "6:00 PM", "10:00 PM")).toHaveCount(0);
+  await expect(ruleBox).toHaveCount(0);
+  await expect(notice(ayse, "Shift added to Ali Person.")).toBeVisible();
 
   // The card carries the warning: an orange mark, an accessible name and a
   // description that say Ali's status, not that anything changed (G14).
-  const tuesdayCard = cell(ayse, aliId, tuesday).locator("[data-shift-badge]");
   await expect(tuesdayCard).toHaveAttribute("data-availability-warning", "true");
   await expect(tuesdayCard).toHaveAccessibleName(/shows as unavailable for this shift/);
   await expect(tuesdayCard).toHaveAccessibleDescription(/^Ali Person/);
@@ -276,11 +274,10 @@ test("M8, D3: Auto-fill leaves Ali out of his marked evening, and no write is re
   await review.getByRole("button", { name: "Cancel", exact: true }).click();
   await expect(review).toHaveCount(0);
 
-  // M8: Ayse still writes Ali onto his marked evening after Place shift.
+  // Ayse still writes Ali onto his marked evening, and nothing asks first.
   await openAddShift(ayse, "Ali Person", tuesday, "6:00 PM", "10:00 PM");
-  const ruleBox = ayse.getByRole("dialog", { name: "Shift conflict", exact: true });
-  await ruleBox.getByRole("button", { name: "Place shift", exact: true }).click();
   await expect(ayse.getByRole("dialog", { name: "Add shift", exact: true })).toHaveCount(0);
+  await expect(ayse.getByRole("dialog", { name: "Shift conflict", exact: true })).toHaveCount(0);
   await expect(cell(ayse, aliId, tuesday).locator("[data-shift-badge]")).toHaveAttribute(
     "data-availability-warning",
     "true",
@@ -301,7 +298,7 @@ test("M8, D3: Auto-fill leaves Ali out of his marked evening, and no write is re
     .toBe("1 1");
 });
 
-test("M12: a manager's note alone opens the note card and never shows on the grid", async ({ browser }) => {
+test("M12: a manager's note never asks and never shows on the grid; the notice carries its words", async ({ browser }) => {
   const week = roundWeek(0);
   const person = freshPerson("nora");
   const [monday, wednesday, personId] = sql(
@@ -323,9 +320,6 @@ test("M12: a manager's note alone opens the note card and never shows on the gri
       gen_random_uuid())
     from (select public.weekly_preferences_read_service(tests.user('${run}:ayse'), tests.id('${run}'),
       tests.id('${run}:${person.label}')) m) model;`);
-  // The day the note was written, as the card names it (Kadikoy's time zone).
-  const writtenOn = sql(`select to_char(r.updated_at at time zone 'Europe/Istanbul', 'Mon FMDD')
-    from public.manager_weekly_reminders r where r.employee_id = tests.id('${run}:${person.label}');`);
 
   const ayse = await openPage(browser, "ayse", `/app/schedule?date=${monday}`);
   await startBlankSchedule(ayse);
@@ -335,17 +329,11 @@ test("M12: a manager's note alone opens the note card and never shows on the gri
   await expect(wednesdayCell).not.toHaveAttribute("data-availability-kind");
 
   const editor = await openAddShift(ayse, person.name, wednesday, "9:00 AM", "12:00 PM");
-  const card = ayse.getByRole("dialog", { name: `Manager note for ${person.name}`, exact: true });
-  await expect(card).toBeVisible();
-  await expect(card).toContainText("Manager note · Wed 9:00 AM – 12:00 PM");
-  await expect(card).toContainText("School mornings");
-  await expect(card).toContainText(`Ayse Person · ${writtenOn}`);
-  // A note alone is the card, not the rule box.
-  await expect(ayse.getByRole("dialog", { name: "Shift conflict", exact: true })).toHaveCount(0);
-
-  await card.getByRole("button", { name: "Place shift", exact: true }).click();
-  await expect(card).toHaveCount(0);
+  // Mert 2026-10-16: the note is a short notice too, no card and no box.
   await expect(editor).toHaveCount(0);
+  await expect(ayse.getByRole("dialog", { name: `Manager note for ${person.name}`, exact: true })).toHaveCount(0);
+  await expect(ayse.getByRole("dialog", { name: "Shift conflict", exact: true })).toHaveCount(0);
+  await expect(notice(ayse, `Shift added to ${person.name}.`)).toContainText("Manager note: School mornings");
   // The shift is written and, like the cell, carries no mark from the note.
   const shift = wednesdayCell.locator("[data-shift-badge]");
   await expect(shift).toBeVisible();
