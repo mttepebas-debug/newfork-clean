@@ -32,10 +32,25 @@ select tests.person('pa', 'lim', 'manager', array['K'], array['cook']);
 select tests.person('pa', 'blk', 'manager', array['K'], array['cook']);
 select tests.person('pa', 'gon', 'manager', array['K'], array['cook']);
 select tests.person('pa', 'end', 'employee', array['K'], array['cook']);
+-- A second admin, who ends Mio's employment in (f); Nob, invited and never joined, in (d).
+select tests.person('pa', 'adi', 'admin', array['K'], array['server']);
+select tests.person('pa', 'nob', 'employee', array['K'], array['cook'], 'pending');
+-- Moda (M) has no manager: its shifts are the admins' and the owner's.
+select tests.as_browser(tests.user('pa:owner'), format(
+  $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+       values (%L, %L, 'Moda', 'MDA', '3 Moda Cd', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul')$sql$,
+  tests.remember('pa:M', gen_random_uuid()), tests.id('pa')));
+select tests.person('pa', 'mio', 'employee', array['M'], array['cook']);
 
 create temp table who as select label, tests.user(label) uid
 from unnest(array['pa:owner', 'pa:zeynep', 'pa:ayse', 'pa:veli', 'pa:emre', 'pa:deniz', 'pa:kim', 'pa:arc', 'pa:solo',
-  'pa:dmo', 'pa:mov', 'pa:lim', 'pa:blk', 'pa:gon', 'pa:end', 'px:owner']) label;
+  'pa:dmo', 'pa:mov', 'pa:lim', 'pa:blk', 'pa:gon', 'pa:end', 'pa:adi', 'pa:mio', 'px:owner']) label;
+-- Who was told about one notice (by its title).
+create function pg_temp.told_titled(type_key text, title text) returns text[] language sql stable as $$
+  select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
+  from public.person_notifications n join who w on w.uid = n.user_id
+  where n.type_key = told_titled.type_key and n.title = told_titled.title and n.workspace_id = tests.id('pa')
+$$;
 create function pg_temp.u(person text) returns uuid language sql as $$
   select tests.user('pa:' || person)
 $$;
@@ -55,7 +70,8 @@ select tests.publish_week('pa', 1, $$[
   {"label": "kim_tue", "person": "kim", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
   {"label": "kim_wed", "person": "kim", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
   {"label": "solo_tue", "person": "solo", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
-  {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}
+  {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"},
+  {"label": "mio_fri", "person": "mio", "loc": "M", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"}
 ]$$::jsonb);
 -- The world's notices so far are in their recipients' choices, read before Kim and the others leave (BILDIRIM-12).
 select is(tests.unlisted_notices(tests.id('pa')), '{}'::text[], 'the world''s notices are in their recipients'' choices');
@@ -68,6 +84,11 @@ select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.
 select is(pg_temp.told('people.role_changed'), array['pa:emre'], '(a) Emre, made a manager, is told; the owner is not');
 select is((select n.title from public.person_notifications n where n.type_key = 'people.role_changed'
            and n.user_id = pg_temp.u('emre')), 'Your role is now Manager', '(a) saying which');
+-- The same role given again changes nothing, and tells nothing.
+select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'manager'));
+select is(pg_temp.told('people.role_changed'), array['pa:emre'], '(a) given the same role again: not told again');
+select is(app_private.account_name(gen_random_uuid()), 'Somebody', '(a) an account without a profile is named Somebody');
 
 -- (b) Access ended ------------------------------------------------------------------------------------------
 
@@ -81,9 +102,10 @@ select is(pg_temp.told('people.access_ended'), array['pa:deniz', 'pa:kim'], '(b)
 create function pg_temp.unassigned() returns text[] language sql stable as $$
   select pg_temp.told('schedule.shifts_unassigned')
 $$;
-select ok(array['pa:ayse', 'pa:zeynep'] <@ pg_temp.unassigned() and not 'pa:owner' = any (pg_temp.unassigned())
-          and not 'pa:veli' = any (pg_temp.unassigned()) and not 'pa:kim' = any (pg_temp.unassigned()),
-  '(b) Kim''s two Kadikoy shifts are left without anyone: who may publish at Kadikoy is told; not the owner who ended it, not Besiktas, not Kim');
+select is(pg_temp.unassigned(), array['pa:ayse', 'pa:blk', 'pa:dmo', 'pa:emre', 'pa:gon', 'pa:lim', 'pa:mov'],
+  '(b) Kim''s two Kadikoy shifts are left without anyone: Kadikoy''s managers are told; not the admins or owner while it has managers, not Besiktas, not Kim');
+select is((select array_agg(distinct jsonb_array_length(n.data -> 'shift_ids')) from public.person_notifications n
+           where n.type_key = 'schedule.shifts_unassigned' and n.workspace_id = tests.id('pa')), array[2], '(b) the card lists Kadikoy''s two');
 select ok((select bool_and(n.title = '2 shifts at Kadikoy have nobody') from public.person_notifications n
            where n.type_key = 'schedule.shifts_unassigned' and n.workspace_id = tests.id('pa')), '(b) saying how many and where');
 select public.set_employee_archived_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:arc'), true);
@@ -92,9 +114,8 @@ select is(pg_temp.told('people.access_ended'), array['pa:arc', 'pa:deniz', 'pa:k
 -- (c) Access restored ---------------------------------------------------------------------------------------
 
 select public.set_employee_archived_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:arc'), false, true);
-select ok('pa:arc' = any (pg_temp.told('people.restored')) and array['pa:ayse', 'pa:zeynep'] <@ pg_temp.told('people.restored')
-          and not 'pa:veli' = any (pg_temp.told('people.restored')) and not 'pa:owner' = any (pg_temp.told('people.restored')),
-  '(c) Arc restored: Arc and who may publish at Kadikoy are told; not Besiktas, not the owner who restored him');
+select is(pg_temp.told('people.restored'), array['pa:arc', 'pa:ayse', 'pa:blk', 'pa:dmo', 'pa:emre', 'pa:gon', 'pa:lim', 'pa:mov'],
+  '(c) Arc restored: Arc and Kadikoy''s managers are told; not the admins or owner while it has managers, not Besiktas');
 select is((select n.title from public.person_notifications n where n.type_key = 'people.restored' and n.user_id = pg_temp.u('arc')),
   'Your access is back', '(c) Arc hears it is back');
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.restored'
@@ -103,17 +124,24 @@ select is((select count(*)::integer from public.person_notifications n where n.t
 -- (d) Left without a location -------------------------------------------------------------------------------
 
 select public.remove_employee_from_location_service(pg_temp.u('ayse'), tests.id('pa'), tests.id('pa:solo'), tests.id('pa:K'));
-select is(pg_temp.told('people.no_location'), array['pa:owner', 'pa:zeynep'],
-  '(d) Solo has no location left: who may end his employment is told, the owner and Zeynep; not Ayse who removed him');
+select is(pg_temp.told('people.no_location'), array['pa:adi', 'pa:owner', 'pa:zeynep'],
+  '(d) Solo has no location left: who may end his employment is told, the owner and the admins; not Ayse who removed him');
 select ok((select bool_and(n.title = 'Solo Person has no location') from public.person_notifications n
            where n.type_key = 'people.no_location'), '(d) saying who');
-select ok((select count(*)::integer from public.person_notifications n where n.type_key = 'schedule.shifts_unassigned'
-           and n.workspace_id = tests.id('pa') and n.title = '1 shift at Kadikoy has nobody') >= 1,
-  '(d) his Kadikoy shift left open is told too');
+select is(pg_temp.told_titled('schedule.shifts_unassigned', '1 shift at Kadikoy has nobody'),
+  array['pa:blk', 'pa:dmo', 'pa:emre', 'pa:gon', 'pa:lim', 'pa:mov'],
+  '(d) his Kadikoy shift left open is told to Kadikoy''s other managers; not Ayse who removed him');
 select tests.works_at((select m.id from public.workspace_memberships m where m.workspace_id = tests.id('pa')
   and m.user_id = pg_temp.u('solo')), tests.id('pa:B'));
 select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
            and n.resolved_at is null), 0, '(d) he works at Besiktas now: the cards close');
+-- Nob, invited and never joined, has no account: removed from Kadikoy, then archived, his cards close all the same.
+select public.remove_employee_from_location_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:nob'), tests.id('pa:K'));
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
+           and n.subject_id = tests.id('pa:nob') and n.resolved_at is null), 2, '(d) Nob has no location: the owner''s and Adi''s cards open');
+select public.set_employee_archived_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:nob'), true);
+select is((select count(*)::integer from public.person_notifications n where n.type_key = 'people.no_location'
+           and n.subject_id = tests.id('pa:nob') and n.resolved_at is null), 0, '(d) archived without an account: they close');
 
 -- (e) Ownership ---------------------------------------------------------------------------------------------
 
@@ -153,6 +181,8 @@ insert into checked select n.id from public.person_notifications n where n.works
 -- cancelled. The failure is logged; the work stands.
 
 select tests.person('pa', kind || tag, 'employee', array['K'], array['cook'])
+from unnest(array['role', 'rm', 'term', 'arc', 'loc']) kind, unnest(array['r', 'c', 'h']) tag;
+insert into who select 'pa:' || kind || tag, tests.user('pa:' || kind || tag)
 from unnest(array['role', 'rm', 'term', 'arc', 'loc']) kind, unnest(array['r', 'c', 'h']) tag;
 create temp table outlived (broken text, done text);
 create function pg_temp.paths(broken text, tag text) returns void language plpgsql as $$
@@ -255,8 +285,13 @@ select is(
   '(f) the core: Ayse may publish at Kadikoy; the five may not');
 delete from public.person_notifications where type_key = 'schedule.shifts_unassigned' and workspace_id = tests.id('pa');
 select pg_temp.terminate('end', 'zeynep');
-select is(pg_temp.unassigned(), array['pa:ayse', 'pa:emre', 'pa:owner'],
-  '(f) End''s shift has nobody: Ayse, Emre (a Kadikoy manager now) and the owner are told; none of the five, not Zeynep who ended it');
+select is(pg_temp.unassigned(), array['pa:ayse', 'pa:emre', 'pa:rolec', 'pa:roleh', 'pa:roler'],
+  '(f) End''s shift has nobody: Kadikoy''s managers who may publish are told (Ayse, Emre, the three made managers in (g)); none of the five, not the admins or owner');
+-- Moda has no manager: Mio's shift left without anyone goes to the admins and the owner.
+delete from public.person_notifications where type_key = 'schedule.shifts_unassigned' and workspace_id = tests.id('pa');
+select pg_temp.terminate('mio', 'adi');
+select is(pg_temp.unassigned(), array['pa:owner', 'pa:zeynep'],
+  '(f) Mio''s Moda shift has nobody and Moda no manager: the owner and the admins are told, not Adi who ended it');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('px')), 0,
   'another workspace hears nothing of this one');

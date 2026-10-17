@@ -139,9 +139,10 @@ select public.save_employee_onboarding_profile_service(pg_temp.u('rio'), jsonb_b
     'emergency_contact_name', 'Contact', 'emergency_contact_relationship', 'Friend', 'emergency_contact_phone', '+14155550100'),
   (pg_temp.rio_case()).revision, tests.id('np'));
 select public.submit_employee_onboarding_service(pg_temp.u('rio'), (pg_temp.rio_case()).revision, tests.id('np'));
+-- Plan §2.5 row 23: a final approval is his managers' first; the admins and owner only with none (BILDIRIM-U4b).
 select is(pg_temp.told('people.onboarding_review_needed', (pg_temp.rio_case()).id),
-  array['np:ayse', 'np:blk', 'np:dmo', 'np:gon', 'np:lim', 'np:mov', 'np:owner', 'np:zeynep'],
-  '(c) Rio waits for a final approval: the owner, Zeynep and his Kadikoy managers; not Veli at Besiktas');
+  array['np:ayse', 'np:blk', 'np:dmo', 'np:gon', 'np:lim', 'np:mov'],
+  '(c) Rio waits for a final approval: his Kadikoy managers; not the admins or owner while he has managers, not Veli at Besiktas');
 select public.review_employee_onboarding_service(pg_temp.u('ayse'), tests.id('np'), tests.id('np:rio'), 'activate',
   null, '', (pg_temp.rio_case()).revision, true);
 select is(pg_temp.told('people.onboarding_completed', (pg_temp.rio_case()).id), array['np:rio'], '(c) Ayse lets him in: Rio is told');
