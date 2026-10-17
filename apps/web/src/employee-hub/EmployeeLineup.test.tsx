@@ -89,7 +89,10 @@ describe("EmployeeLineup", () => {
     const team = within(view).getByRole("list", { name: "Server" });
     const me = within(team).getByText("Maria Lopez").closest("li")!;
     expect(me.className).toBe("is-me");
-    expect(within(me).getByText("You")).toBeTruthy();
+    // Mert 2026-10-14 (PLAN §4): the green row alone marks her; no "You" label on screen.
+    expect(within(me).queryByText("You")).toBeNull();
+    expect(me.querySelector(".employee-lineup-you")).toBeNull();
+    expect(me.querySelector(".sr-only")?.textContent).toBe("(you)");
     expect(within(team).getByText("Hannah Lee")).toBeTruthy();
   });
 

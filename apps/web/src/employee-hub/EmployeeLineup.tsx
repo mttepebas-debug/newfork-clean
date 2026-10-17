@@ -256,7 +256,8 @@ function Team({ rows, timeFormat }: { readonly rows: readonly Row[]; readonly ti
                       <span className="employee-lineup-mid">
                         <span className="employee-lineup-name">
                           {row.name ?? "Team member"}
-                          {row.is_me ? <span className="employee-lineup-you">You</span> : null}
+                          {/* Mert 2026-10-14: the green row marks her, no "You" on screen; a screen reader still hears it. */}
+                          {row.is_me ? <span className="sr-only">(you)</span> : null}
                         </span>
                         <span className="employee-lineup-row-time">
                           {row.called_off ? "Called off" : range(row, timeFormat)}
