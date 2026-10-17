@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 509, last: 20261017210000_notification_push_channel.sql
--- fingerprint: sha256:9a8cd7a6b6d356b716ea60b83926d661e60bd2df12975dde5bd710c152218fb8
+-- fingerprint: sha256:4d2d3812d11e906a4189683b4888b8e87cae6ea090411e279b4e69c84de3cdfc
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6949,6 +6949,20 @@ $$;
 ALTER FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."push_shows_body"("target_type" "text", "target_subject" "text") RETURNS boolean
+    LANGUAGE "sql" IMMUTABLE
+    SET "search_path" TO ''
+    AS $$
+  select (target_type, target_subject) in (
+    ('schedule.published', 'schedule_publication'), ('schedule.shift_added', 'schedule_publication'),
+    ('schedule.shift_changed', 'schedule_publication'), ('schedule.shift_removed', 'schedule_publication'),
+    ('people.onboarding_completed', 'onboarding_case'), ('time_off.decision_reminder', 'time_off_request'))
+$$;
+
+
+ALTER FUNCTION "app_private"."push_shows_body"("target_type" "text", "target_subject" "text") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") RETURNS boolean
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -11151,7 +11165,7 @@ begin
   where d.channel = 'email' and d.sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
 
   for row in
-    select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
+    select d.id, d.status, d.attempts, d.reason, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
       n.created_at noticed_at, t.level, t.to_former_members, p.name topic
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
@@ -11186,7 +11200,9 @@ begin
     end if;
     select r.sends, r.reason into route from app_private.notification_route(row.type_key, row.workspace_id, row.user_id) r
     where r.channel = 'email';
-    if not coalesce(route.sends, false) then
+    -- A phone alert that reached no device comes by email though email is off by default for it, and
+    -- though the person still has a device (BILDIRIM-15); the owner, the person or the address still stop it.
+    if not coalesce(route.sends, false) and not (row.reason = 'push_fallback' and route.reason = 'default_off') then
       update public.notification_deliveries set status = 'skipped', last_error = coalesce(route.reason, 'no_route'),
         lease_expires_at = null, updated_at = now() where id = row.id;
       continue;
@@ -11241,7 +11257,7 @@ begin
 
   for row in
     select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body,
-      n.url, n.created_at noticed_at, t.level, t.push_shows_body
+      n.url, n.subject_type, n.created_at noticed_at, t.level
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
     join public.notification_types t on t.key = n.type_key
@@ -11289,12 +11305,15 @@ begin
       end if;
       continue;
     end if;
+    -- Ten at most, the most recently used first: two saves at once can leave one more for a moment.
     select coalesce(jsonb_agg(jsonb_build_object('subscription_id', s.id, 'endpoint', s.endpoint, 'p256dh', s.p256dh,
-             'auth', s.auth_secret) order by s.created_at, s.id), '[]'::jsonb)
+             'auth', s.auth_secret) order by s.used desc, s.id), '[]'::jsonb)
       into targets
-    from public.notification_push_subscriptions s
-    where s.user_id = row.user_id and s.revoked_at is null
-      and not exists (select 1 from public.notification_push_sends x where x.delivery_id = row.id and x.subscription_id = s.id);
+    from (select x.*, coalesce(x.last_used_at, x.created_at) used from public.notification_push_subscriptions x
+          where x.user_id = row.user_id and x.revoked_at is null
+            and not exists (select 1 from public.notification_push_sends y where y.delivery_id = row.id and y.subscription_id = x.id)
+          order by used desc, x.id
+          limit 10) s;
     if jsonb_array_length(targets) = 0 then
       -- Every device left has taken it already.
       update public.notification_deliveries set status = 'sent', sent_at = coalesce(sent_at, now()), last_error = null,
@@ -11312,7 +11331,7 @@ begin
       'payload', jsonb_build_object(
         'title', case when char_length(row.title) > 120 then left(row.title, 119) || '…' else row.title end,
         'body', nullif(concat_ws(' · ', workspace_name,
-          case when row.push_shows_body and row.body is not null then
+          case when app_private.push_shows_body(row.type_key, row.subject_type) and row.body is not null then
             case when char_length(row.body) > 140 then left(row.body, 139) || '…' else row.body end end), ''),
         'url', coalesce(row.url, '/app'),
         'tag', row.notice::text),
@@ -29550,7 +29569,6 @@ CREATE TABLE IF NOT EXISTS "public"."notification_types" (
     "description" "text" NOT NULL,
     "position" smallint NOT NULL,
     "heard_by" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
-    "push_shows_body" boolean DEFAULT false NOT NULL,
     CONSTRAINT "notification_types_area_check" CHECK (("area" = ANY (ARRAY['schedule'::"text", 'shift_changes'::"text", 'time_off'::"text", 'lineup'::"text", 'people'::"text", 'documents'::"text", 'announcements'::"text", 'account'::"text", 'workspace'::"text"]))),
     CONSTRAINT "notification_types_check" CHECK ((("level" <> 'required'::"text") OR "default_email")),
     CONSTRAINT "notification_types_check1" CHECK ((("scope" = 'workspace'::"text") OR ("level" = 'required'::"text"))),
@@ -35319,6 +35337,10 @@ REVOKE ALL ON FUNCTION "app_private"."push_endpoint_ok"("target" "text") FROM PU
 
 
 REVOKE ALL ON FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."push_shows_body"("target_type" "text", "target_subject" "text") FROM PUBLIC;
 
 
 
