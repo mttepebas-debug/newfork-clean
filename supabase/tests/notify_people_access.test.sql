@@ -41,10 +41,22 @@ select tests.as_browser(tests.user('pa:owner'), format(
        values (%L, %L, 'Moda', 'MDA', '3 Moda Cd', 'Istanbul', 'Istanbul', '34710', 'Europe/Istanbul')$sql$,
   tests.remember('pa:M', gen_random_uuid()), tests.id('pa')));
 select tests.person('pa', 'mio', 'employee', array['M'], array['cook']);
+-- Nisantasi (N) and Pendik (P) have one manager each: Nur will miss a required document, Pam will lose her
+-- access; then their shifts fall to the admins and owner, in (f).
+select tests.as_browser(tests.user('pa:owner'), format(
+  $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+       values (%L, %L, 'Nisantasi', 'NST', '4 Abdi Ipekci', 'Istanbul', 'Istanbul', '34367', 'Europe/Istanbul'),
+              (%L, %L, 'Pendik', 'PDK', '5 Sahil Yolu', 'Istanbul', 'Istanbul', '34890', 'Europe/Istanbul')$sql$,
+  tests.remember('pa:N', gen_random_uuid()), tests.id('pa'), tests.remember('pa:P', gen_random_uuid()), tests.id('pa')));
+select tests.person('pa', 'nur', 'manager', array['N'], array['cook']);
+select tests.person('pa', 'nia', 'employee', array['N'], array['cook']);
+select tests.person('pa', 'pam', 'manager', array['P'], array['cook']);
+select tests.person('pa', 'pia', 'employee', array['P'], array['cook']);
 
 create temp table who as select label, tests.user(label) uid
 from unnest(array['pa:owner', 'pa:zeynep', 'pa:ayse', 'pa:veli', 'pa:emre', 'pa:deniz', 'pa:kim', 'pa:arc', 'pa:solo',
-  'pa:dmo', 'pa:mov', 'pa:lim', 'pa:blk', 'pa:gon', 'pa:end', 'pa:adi', 'pa:mio', 'px:owner']) label;
+  'pa:dmo', 'pa:mov', 'pa:lim', 'pa:blk', 'pa:gon', 'pa:end', 'pa:adi', 'pa:mio', 'pa:nur', 'pa:nia', 'pa:pam', 'pa:pia',
+  'px:owner']) label;
 -- Who was told about one notice (by its title).
 create function pg_temp.told_titled(type_key text, title text) returns text[] language sql stable as $$
   select coalesce(array_agg(w.label order by w.label collate "C"), '{}')
@@ -71,7 +83,9 @@ select tests.publish_week('pa', 1, $$[
   {"label": "kim_wed", "person": "kim", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
   {"label": "solo_tue", "person": "solo", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
   {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"},
-  {"label": "mio_fri", "person": "mio", "loc": "M", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"}
+  {"label": "mio_fri", "person": "mio", "loc": "M", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
+  {"label": "nia_fri", "person": "nia", "loc": "N", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"},
+  {"label": "pia_fri", "person": "pia", "loc": "P", "job": "cook", "day": 4, "start": "09:00", "end": "15:00"}
 ]$$::jsonb);
 -- The world's notices so far are in their recipients' choices, read before Kim and the others leave (BILDIRIM-12).
 select is(tests.unlisted_notices(tests.id('pa')), '{}'::text[], 'the world''s notices are in their recipients'' choices');
@@ -145,13 +159,10 @@ $$;
 update public.schedule_published_shifts set employee_id = tests.id('pa:emre') where id = tests.id('pa:shift:solo_tue');
 select is(pg_temp.unassigned_open('1 shift at Kadikoy has nobody'), 0, '(d) Solo''s shift taken by Emre: its card closes');
 select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 7, '(d) Kim''s two still have nobody: theirs stays open');
-select tests.publish_week('pa', 1, $$[
-  {"label": "kim_tue", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-  {"label": "kim_wed", "person": "emre", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"},
-  {"label": "solo_tue", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
-  {"label": "end_thu", "person": "end", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}
-]$$::jsonb);
-select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 0, '(d) Kadikoy''s week published again with them given: Kim''s card closes');
+update public.schedule_published_shifts set employee_id = tests.id('pa:emre') where id = tests.id('pa:shift:kim_tue');
+select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 7, '(d) one of Kim''s two given: still open');
+update public.schedule_published_shifts set employee_id = tests.id('pa:emre') where id = tests.id('pa:shift:kim_wed');
+select is(pg_temp.unassigned_open('2 shifts at Kadikoy have nobody'), 0, '(d) both given: Kim''s card closes');
 
 -- Nob, invited and never joined, has no account: removed from Kadikoy, then archived, his cards close all the same.
 select public.remove_employee_from_location_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:nob'), tests.id('pa:K'));
@@ -305,11 +316,29 @@ delete from public.person_notifications where type_key = 'schedule.shifts_unassi
 select pg_temp.terminate('end', 'zeynep');
 select is(pg_temp.unassigned(), array['pa:ayse', 'pa:emre', 'pa:rolec', 'pa:roleh', 'pa:roler'],
   '(f) End''s shift has nobody: Kadikoy''s managers who may publish are told (Ayse, Emre, the three made managers in (g)); none of the five, not the admins or owner');
+-- Kadikoy's week published again: End's card closes; Moda's (Mio's, below) is another location's.
+select tests.publish_week('pa', 1, $$[
+  {"label": "end_thu", "person": "emre", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00"}
+]$$::jsonb);
+select is(pg_temp.unassigned_open('1 shift at Kadikoy has nobody'), 0, '(f) Kadikoy''s week published again: End''s card closes');
 -- Moda has no manager: Mio's shift left without anyone goes to the admins and the owner.
 delete from public.person_notifications where type_key = 'schedule.shifts_unassigned' and workspace_id = tests.id('pa');
 select pg_temp.terminate('mio', 'adi');
 select is(pg_temp.unassigned(), array['pa:owner', 'pa:zeynep'],
   '(f) Mio''s Moda shift has nobody and Moda no manager: the owner and the admins are told, not Adi who ended it');
+-- Nur, Nisantasi's only manager, misses a required document; Pam, Pendik's, loses her access: their shifts
+-- fall to the admins and owner.
+update public.employee_onboarding_requirements set deadline_at = now() - interval '1 day'
+where source_id = (select id from required_document) and lifecycle_user_id = pg_temp.u('nur');
+select public.remove_employee_access_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:pam'));
+select pg_temp.terminate('nia', 'adi');
+select pg_temp.terminate('pia', 'adi');
+select is(pg_temp.told_titled('schedule.shifts_unassigned', '1 shift at Nisantasi has nobody'), array['pa:owner', 'pa:zeynep'],
+  '(f) Nia''s Nisantasi shift: its only manager missing a document, the owner and the admins are told, not Nur');
+select is(pg_temp.told_titled('schedule.shifts_unassigned', '1 shift at Pendik has nobody'), array['pa:owner', 'pa:zeynep'],
+  '(f) Pia''s Pendik shift: its only manager''s access removed, the owner and the admins are told, not Pam');
+-- Another location's card is untouched by Kadikoy's republish and by these.
+select is(pg_temp.unassigned_open('1 shift at Moda has nobody'), 2, '(f) Moda''s card stays open');
 
 select is((select count(*)::integer from public.person_notifications where workspace_id = tests.id('px')), 0,
   'another workspace hears nothing of this one');
