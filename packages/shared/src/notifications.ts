@@ -36,7 +36,7 @@ export const notificationItemSchema = z.object({
   title: z.string().min(1),
   body: z.string().nullable(),
   // A path inside the app, never another site (the table checks it too).
-  url: z.string().regex(/^\/([^/\\].*)?$/).nullable(),
+  url: z.string().regex(/^\/(?:[^/\\\u0000-\u001f\u007f][^\u0000-\u001f\u007f]*)?$/).nullable(),
   data: z.record(z.string(), z.unknown()),
   actor_user_id: id.nullable(),
   subject_type: z.string().nullable(),

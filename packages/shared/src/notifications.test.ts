@@ -46,6 +46,12 @@ describe("notificationItemSchema", () => {
 });
 
 describe("notificationReadInputSchema", () => {
+  it("refuses a link with a control character, as the table does (BILDIRIM-14)", () => {
+    for (const url of ["/app\nx", "/app\tx", "/\u0000"]) {
+      expect(notificationItemSchema.safeParse({ ...fromCore, url }).success).toBe(false);
+    }
+  });
+
   it("takes ids or all, never an empty body", () => {
     expect(notificationReadInputSchema.safeParse({ ids: [fromCore.id] }).success).toBe(true);
     expect(notificationReadInputSchema.safeParse({ all: true }).success).toBe(true);

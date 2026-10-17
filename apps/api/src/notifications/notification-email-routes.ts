@@ -32,6 +32,8 @@ export interface NotificationEmailRouteOptions {
 }
 
 const TOLERANCE_SECONDS = 5 * 60;
+// A secret shorter than this is no secret: the webhook stays shut (503) rather than trust it.
+const LEAST_SECRET_BYTES = 24;
 // What Resend says that changes a delivery; anything else (opened, clicked, delayed) is taken and dropped.
 const used = new Set(["email.delivered", "email.bounced", "email.complained", "email.suppressed", "email.failed"]);
 
@@ -57,11 +59,12 @@ export function registerNotificationEmailRoutes(app: FastifyInstance, options: N
     scope.removeAllContentTypeParsers();
     scope.addContentTypeParser("*", { parseAs: "string" }, (_request, body, done) => done(null, body));
     scope.post("/webhooks/resend", async (request, reply) => {
-      if (!options.webhookSecret || !options.events) {
+      const key = options.webhookSecret ? secretBytes(options.webhookSecret) : null;
+      if (!key || key.length < LEAST_SECRET_BYTES || !options.events) {
         return reply.status(503).send({ error: "Resend webhook is not configured" });
       }
       const body = typeof request.body === "string" ? request.body : "";
-      if (!signed(request.headers, body, options.webhookSecret, now())) {
+      if (!signed(request.headers, body, key, now())) {
         return reply.status(401).send({ error: "Invalid signature" });
       }
       const event = readEvent(body);
@@ -83,13 +86,16 @@ function header(headers: FastifyRequest["headers"], name: string): string | null
   return typeof value === "string" && value.length > 0 ? value : null;
 }
 
-function signed(headers: FastifyRequest["headers"], body: string, secret: string, nowMs: number): boolean {
+function secretBytes(secret: string): Buffer {
+  return Buffer.from(secret.startsWith("whsec_") ? secret.slice(6) : secret, "base64");
+}
+
+function signed(headers: FastifyRequest["headers"], body: string, key: Buffer, nowMs: number): boolean {
   const id = header(headers, "svix-id");
   const timestamp = header(headers, "svix-timestamp");
   const signatures = header(headers, "svix-signature");
   if (!id || !timestamp || !signatures || !/^\d+$/.test(timestamp)) return false;
   if (Math.abs(Math.floor(nowMs / 1000) - Number(timestamp)) > TOLERANCE_SECONDS) return false;
-  const key = Buffer.from(secret.startsWith("whsec_") ? secret.slice(6) : secret, "base64");
   const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${body}`).digest();
   return signatures.split(" ").some((entry) => {
     const [version, value] = entry.split(",", 2);

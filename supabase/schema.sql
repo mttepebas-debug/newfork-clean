@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 505, last: 20261017170000_notification_email_channel.sql
--- fingerprint: sha256:e30e76a44c88755b9eacae8df3c1158512cacae197f1236d25a94e4a109384ca
+-- fingerprint: sha256:bec4a1a7620fa16b2e537b6c7332d2e5e49b5092ba7f4e05f24ad4e060e2d50f
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4583,6 +4583,23 @@ $$;
 ALTER FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "shift" "jsonb", "ctx" "jsonb") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."email_channel_open"() RETURNS "void"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  insert into app_private.notification_email_channel (opened_at) values (now())
+  on conflict (only_row) do update set opened_at = excluded.opened_at;
+  update public.notification_deliveries set status = 'skipped', last_error = 'before_launch', lease_expires_at = null,
+    updated_at = now()
+  where channel = 'email' and status in ('queued', 'sending', 'failed');
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."email_channel_open"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."employee_onboarding_case_id"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "uuid"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -5546,6 +5563,20 @@ end; $$;
 ALTER FUNCTION "app_private"."mark_account_organization_history"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select target_workspace is null or exists (
+    select 1 from public.workspace_memberships m
+    where m.workspace_id = target_workspace and m.user_id = target_user
+      and (m.status in ('active', 'pending_activation') or (to_former_members and m.status in ('suspended', 'removed'))))
+$$;
+
+
+ALTER FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."notification_resolve"("target_workspace" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_resolution" "text", "target_resolved_by" "uuid") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5848,7 +5879,7 @@ begin
     raise exception 'a title is required' using errcode = '22023', hint = 'notifications.title_required';
   end if;
   if exists (select 1 from jsonb_array_elements(coalesce(target_rows, '[]'::jsonb)) x
-             where x ->> 'url' is not null and x ->> 'url' !~ '^/([^/\\].*)?$') then
+             where x ->> 'url' is not null and (x ->> 'url' !~ '^/([^/\\].*)?$' or x ->> 'url' ~ '[[:cntrl:]]')) then
     raise exception 'a link stays inside the app' using errcode = '22023', hint = 'notifications.url_outside_app';
   end if;
 
@@ -5867,11 +5898,7 @@ begin
       and not exists (select 1 from public.notification_workspace_muted_types m
                       where m.workspace_id = target_workspace and m.type_key = t.key)
       and exists (select 1 from auth.users u where u.id = g.user_id)
-      and (t.scope = 'account' or exists (
-        select 1 from public.workspace_memberships m
-        where m.workspace_id = target_workspace and m.user_id = g.user_id
-          and (m.status in ('active', 'pending_activation')
-               or (t.to_former_members and m.status in ('suspended', 'removed')))))
+      and (t.scope = 'account' or app_private.membership_receives(target_workspace, g.user_id, t.to_former_members))
   ), written as (
     insert into public.person_notifications (
       workspace_id, user_id, type_key, event_key, actor_user_id, subject_type, subject_id, title, body, url, data, expires_at
@@ -6863,9 +6890,7 @@ CREATE OR REPLACE FUNCTION "app_private"."schedule_people_told"("target_workspac
   where e.workspace_id = target_workspace and e.id = any (target_employees)
     and e.user_id is not null and e.user_id is distinct from target_actor
     and exists (select 1 from auth.users u where u.id = e.user_id)
-    and exists (select 1 from public.workspace_memberships m
-                where m.workspace_id = target_workspace and m.user_id = e.user_id
-                  and m.status in ('active', 'pending_activation'));
+    and app_private.membership_receives(target_workspace, e.user_id, false);
 $$;
 
 
@@ -9407,6 +9432,10 @@ begin
       next_status := 'suppressed';
       suppress := 'bounce';
     when 'email.failed' then
+      -- Only a sent email fails; a delivered one stays delivered.
+      if found_row.status <> 'sent' then
+        return found_row.status;
+      end if;
       next_status := 'dead';
     else
       return 'ignored';
@@ -10826,7 +10855,6 @@ declare
   sent_today integer;
   row record;
   route record;
-  member boolean;
   given jsonb := '[]'::jsonb;
   tomorrow timestamptz := (date_trunc('day', now() at time zone 'UTC') + interval '1 day') at time zone 'UTC';
 begin
@@ -10841,7 +10869,7 @@ begin
   where d.channel = 'email' and d.sent_at >= date_trunc('day', now() at time zone 'UTC') at time zone 'UTC';
 
   for row in
-    select d.id, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
+    select d.id, d.status, d.attempts, d.created_at queued_at, n.id notice, n.workspace_id, n.user_id, n.type_key, n.title, n.body, n.url,
       n.created_at noticed_at, t.level, t.to_former_members, p.name topic
     from public.notification_deliveries d
     join public.person_notifications n on n.id = d.notification_id
@@ -10859,16 +10887,17 @@ begin
         updated_at = now() where id = row.id;
       continue;
     end if;
+    if row.status = 'sending' and row.attempts >= 5 then
+      update public.notification_deliveries set status = 'dead', last_error = 'lease_exhausted', lease_expires_at = null,
+        updated_at = now() where id = row.id;
+      continue;
+    end if;
     if row.noticed_at < now() - interval '24 hours' then
       update public.notification_deliveries set status = 'dead', last_error = 'stale', lease_expires_at = null,
         updated_at = now() where id = row.id;
       continue;
     end if;
-    member := row.workspace_id is null or exists (
-      select 1 from public.workspace_memberships m
-      where m.workspace_id = row.workspace_id and m.user_id = row.user_id
-        and (m.status in ('active', 'pending_activation') or (row.to_former_members and m.status in ('suspended', 'removed'))));
-    if not member then
+    if not app_private.membership_receives(row.workspace_id, row.user_id, row.to_former_members) then
       update public.notification_deliveries set status = 'skipped', last_error = 'not_member', lease_expires_at = null,
         updated_at = now() where id = row.id;
       continue;
@@ -12573,8 +12602,8 @@ CREATE OR REPLACE FUNCTION "public"."finish_notification_email_service"("target_
 declare
   found_row public.notification_deliveries;
 begin
-  if target_outcome is null or target_outcome not in ('sent', 'retry', 'dead', 'released') then
-    raise exception 'an outcome is sent, retry, dead or released' using errcode = '22023', hint = 'notifications.outcome';
+  if target_outcome is null or target_outcome not in ('sent', 'retry', 'dead') then
+    raise exception 'an outcome is sent, retry or dead' using errcode = '22023', hint = 'notifications.outcome';
   end if;
   if target_error is not null and target_error !~ '^[a-z0-9_]{1,40}$' then
     raise exception 'an error is a short code' using errcode = '22023', hint = 'notifications.error_code';
@@ -12594,14 +12623,12 @@ begin
     status = case target_outcome
       when 'sent' then 'sent'
       when 'dead' then 'dead'
-      when 'released' then case when d.attempts > 1 then 'failed' else 'queued' end
       else case when d.attempts >= 5 then 'dead' else 'failed' end end,
-    attempts = case when target_outcome = 'released' then greatest(d.attempts - 1, 0) else d.attempts end,
     next_attempt_at = case when target_outcome = 'retry' and d.attempts < 5
       then now() + make_interval(mins => (2 ^ (d.attempts - 1))::integer) else now() end,
     provider_message_id = case when target_outcome = 'sent' then target_provider_id else d.provider_message_id end,
     sent_at = case when target_outcome = 'sent' then now() else d.sent_at end,
-    last_error = case when target_outcome = 'sent' then null when target_outcome = 'released' then d.last_error else target_error end,
+    last_error = case when target_outcome = 'sent' then null else target_error end,
     lease_expires_at = null,
     updated_at = now()
   where d.id = target_delivery
@@ -19991,6 +20018,29 @@ end; $$;
 
 
 ALTER FUNCTION "public"."refresh_weekly_exchange_terms_after_publication"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."release_notification_emails_service"("target_deliveries" "uuid"[]) RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  given integer;
+begin
+  update public.notification_deliveries d set
+    status = case when d.attempts > 1 then 'failed' else 'queued' end,
+    attempts = greatest(d.attempts - 1, 0),
+    next_attempt_at = now(),
+    lease_expires_at = null,
+    updated_at = now()
+  where d.id = any (coalesce(target_deliveries, '{}'::uuid[])) and d.channel = 'email' and d.status = 'sending';
+  get diagnostics given = row_count;
+  return given;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."release_notification_emails_service"("target_deliveries" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "void"
@@ -28051,7 +28101,7 @@ ALTER VIEW "app_private"."lifecycle_definition" OWNER TO "postgres";
 CREATE TABLE IF NOT EXISTS "app_private"."notification_email_channel" (
     "only_row" boolean DEFAULT true NOT NULL,
     "opened_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "daily_cap" integer DEFAULT 100,
+    "daily_cap" integer DEFAULT 70,
     CONSTRAINT "notification_email_channel_daily_cap_check" CHECK ((("daily_cap" IS NULL) OR ("daily_cap" > 0))),
     CONSTRAINT "notification_email_channel_only_row_check" CHECK ("only_row")
 );
@@ -29123,7 +29173,7 @@ CREATE TABLE IF NOT EXISTS "public"."person_notifications" (
     CONSTRAINT "person_notifications_resolution_check" CHECK (("resolution" ~ '^[a-z_]+$'::"text")),
     CONSTRAINT "person_notifications_subject_type_check" CHECK (("subject_type" ~ '^[a-z_]+$'::"text")),
     CONSTRAINT "person_notifications_title_check" CHECK ((("char_length"("btrim"("title")) >= 1) AND ("char_length"("btrim"("title")) <= 200))),
-    CONSTRAINT "person_notifications_url_check" CHECK (("url" ~ '^/([^/\\].*)?$'::"text"))
+    CONSTRAINT "person_notifications_url_check" CHECK ((("url" ~ '^/([^/\\].*)?$'::"text") AND ("url" !~ '[[:cntrl:]]'::"text")))
 );
 
 
@@ -31231,6 +31281,14 @@ CREATE UNIQUE INDEX "locations_workspace_short_name" ON "public"."locations" USI
 
 
 CREATE INDEX "notification_deliveries_due" ON "public"."notification_deliveries" USING "btree" ("next_attempt_at") WHERE ("status" = ANY (ARRAY['queued'::"text", 'failed'::"text"]));
+
+
+
+CREATE INDEX "notification_deliveries_email_sent" ON "public"."notification_deliveries" USING "btree" ("sent_at") WHERE (("channel" = 'email'::"text") AND ("sent_at" IS NOT NULL));
+
+
+
+CREATE INDEX "notification_deliveries_leased" ON "public"."notification_deliveries" USING "btree" ("lease_expires_at") WHERE ("status" = 'sending'::"text");
 
 
 
@@ -34372,6 +34430,10 @@ REVOKE ALL ON FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "sh
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."email_channel_open"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."employee_onboarding_case_id"("target_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 
 
@@ -34556,6 +34618,10 @@ REVOKE ALL ON FUNCTION "app_private"."location_is_live"("location" "public"."loc
 
 
 REVOKE ALL ON FUNCTION "app_private"."mark_account_organization_history"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) FROM PUBLIC;
 
 
 
@@ -35990,6 +36056,11 @@ REVOKE ALL ON FUNCTION "public"."refresh_weekly_exchange_terms"("w" "uuid", "cid
 
 
 REVOKE ALL ON FUNCTION "public"."refresh_weekly_exchange_terms_after_publication"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "public"."release_notification_emails_service"("target_deliveries" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."release_notification_emails_service"("target_deliveries" "uuid"[]) TO "service_role";
 
 
 

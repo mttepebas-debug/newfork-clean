@@ -178,8 +178,9 @@ select is(public.finish_notification_email_service(pg_temp.delivery('e:dee:ended
   '(e) a refusal is dead at once');
 select pg_temp.notice('time_off.decided', 'bea', 'e:bea:given');
 select pg_temp.claim(7);
-select is(public.finish_notification_email_service(pg_temp.delivery('e:bea:given'), 'released', null, null), 'queued',
+select is(public.release_notification_emails_service(array[pg_temp.delivery('e:bea:given')]), 1,
   '(e) a row the run had no time for is given back');
+select is(pg_temp.state('e:bea:given'), 'queued', '(e) it waits again');
 select is((select d.attempts from public.notification_deliveries d where d.id = pg_temp.delivery('e:bea:given')), smallint '0',
   '(e) and the try it never made is not counted');
 select throws_ok($$select public.finish_notification_email_service(gen_random_uuid(), 'maybe', null, null)$$, '22023', null,

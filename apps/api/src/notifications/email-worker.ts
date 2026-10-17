@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
 import { ResendSendError, sendResendEmail } from "../email/resend-email";
-import { renderNotificationEmail, type NotificationEmailItem } from "./email-template";
+import { renderNotificationEmail } from "./email-template";
 
 /**
  * The email channel's worker (BILDIRIM-14, KARARLAR S-130). Every minute the cron route runs one batch:
@@ -14,7 +14,10 @@ import { renderNotificationEmail, type NotificationEmailItem } from "./email-tem
  */
 interface EmailRpcClient {
   rpc(
-    functionName: "claim_notification_emails_service" | "finish_notification_email_service",
+    functionName:
+      | "claim_notification_emails_service"
+      | "finish_notification_email_service"
+      | "release_notification_emails_service",
     args: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
@@ -42,7 +45,8 @@ const itemSchema = z.object({
   subject: z.string().min(1),
   title: z.string().min(1),
   body: z.string().nullable(),
-  url: z.string().regex(/^\/([^/\\].*)?$/).nullable(),
+  // A path inside the app with no control character, as the table checks it (person_notifications_url_check).
+  url: z.string().regex(/^\/(?:[^/\\\u0000-\u001f\u007f][^\u0000-\u001f\u007f]*)?$/).nullable(),
   workspace_name: z.string().nullable(),
   level: z.enum(["required", "important", "optional"]),
   topic: z.string().min(1),
@@ -82,7 +86,7 @@ export function createNotificationEmailWorkerWithClient(
   const now = options.now ?? (() => Date.now());
   const pause = options.pause ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
 
-  async function finish(id: string, outcome: "sent" | "retry" | "dead" | "released", providerId: string | null, error: string | null) {
+  async function finish(id: string, outcome: "sent" | "retry" | "dead", providerId: string | null, error: string | null) {
     const response = await client.rpc("finish_notification_email_service", {
       target_delivery: id,
       target_outcome: outcome,
@@ -97,17 +101,39 @@ export function createNotificationEmailWorkerWithClient(
       const started = now();
       const claim = await client.rpc("claim_notification_emails_service", { target_batch_size: BATCH_SIZE });
       if (claim.error) throw new Error(`claim failed: ${claim.error.message}`);
-      const items: NotificationEmailItem[] = z.array(itemSchema).parse(claim.data);
-      const result: NotificationEmailBatchResult = { claimed: items.length, sent: 0, retried: 0, dead: 0, released: 0 };
+      const rows: unknown[] = z.array(z.unknown()).parse(claim.data);
+      const result: NotificationEmailBatchResult = { claimed: rows.length, sent: 0, retried: 0, dead: 0, released: 0 };
+      const giveBack: string[] = [];
+      let tried = 0;
 
-      for (const [index, item] of items.entries()) {
-        const left = BUDGET_MS - (now() - started);
-        if (left < LEAST_LEFT_MS) {
-          await finish(item.delivery_id, "released", null, null);
-          result.released += 1;
+      for (const row of rows) {
+        // One row the worker cannot read never stops the others: it is dead, or, without even an id,
+        // left to its lease (it comes back and dies there, lease_exhausted).
+        const read = itemSchema.safeParse(row);
+        if (!read.success) {
+          const id = z.object({ delivery_id: z.string().uuid() }).safeParse(row);
+          if (id.success) {
+            await finish(id.data.delivery_id, "dead", null, "bad_item");
+            result.dead += 1;
+            log.info({ delivery: id.data.delivery_id, code: "bad_item" }, "notification email not sent");
+          } else {
+            log.error({ code: "bad_item" }, "notification email row without an id");
+          }
           continue;
         }
-        if (index > 0) await pause(SPACING_MS);
+        const item = read.data;
+        if (giveBack.length > 0 || BUDGET_MS - (now() - started) < LEAST_LEFT_MS) {
+          giveBack.push(item.delivery_id);
+          continue;
+        }
+        if (tried > 0) await pause(SPACING_MS);
+        // The wait took time too: ask again before starting.
+        const left = BUDGET_MS - (now() - started);
+        if (left < LEAST_LEFT_MS) {
+          giveBack.push(item.delivery_id);
+          continue;
+        }
+        tried += 1;
         const email = renderNotificationEmail(item, options.appUrl);
         try {
           const sent = await send({
@@ -135,6 +161,11 @@ export function createNotificationEmailWorkerWithClient(
           else result.dead += 1;
           log.info({ delivery: item.delivery_id, code, retry }, "notification email not sent");
         }
+      }
+      if (giveBack.length > 0) {
+        const released = await client.rpc("release_notification_emails_service", { target_deliveries: giveBack });
+        if (released.error) throw new Error(`release failed: ${released.error.message}`);
+        result.released = giveBack.length;
       }
       return result;
     },
