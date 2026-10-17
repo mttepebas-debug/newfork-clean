@@ -319,8 +319,9 @@
     padding-inline: 8px;
     white-space: nowrap;
   }
+  /* The tabs carry the counts; the row has no room for a second one. */
   .weekly-team-count {
-    margin-left: 0;
+    display: none;
   }
   .avt-legend {
     margin: 0;

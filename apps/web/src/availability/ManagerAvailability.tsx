@@ -464,6 +464,8 @@ function ManagerNotes({
                   }}
                   timeFormat={timeFormat}
                   disabled={locked}
+                  // The drawer's column is narrow: the cards stand one under the other.
+                  phone
                 />
               </section>
             </div>

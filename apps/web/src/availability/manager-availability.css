@@ -359,6 +359,17 @@
   color: var(--theme-muted);
   font-size: 12px;
 }
+/* The drawer's own size for its buttons (.employee-drawer-actions). */
+.avm-actions .nf-button {
+  min-height: 38px;
+  padding: 8px 13px;
+  font-size: 13px;
+}
+.avm-note-actions .nf-button {
+  min-height: 32px;
+  padding: 5px 11px;
+  font-size: 12.5px;
+}
 @media (max-width: 720px) {
   .avm-tabs {
     padding: 0 16px;
@@ -395,7 +406,9 @@
     font-size: 16px;
   }
   .avm-note-button,
-  .avm-tool {
+  .avm-tool,
+  .avm-actions .nf-button,
+  .avm-note-actions .nf-button {
     min-height: 44px;
   }
   .avm-tool-icon {

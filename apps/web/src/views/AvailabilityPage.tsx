@@ -1,5 +1,6 @@
 import { employeeSectionSchema, type WeeklyTeamRead } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@newfork/ui";
 import { ArrowRight, CalendarCheck, ChevronLeft, ChevronRight, RotateCcw, Search } from "lucide-react";
 import { lazy, Suspense, useMemo } from "react";
 import { useSearchParams } from "react-router";
@@ -287,10 +288,10 @@ export function AvailabilityPage() {
                     </small>
                   </div>
                   {opensEmployees && chosen.can_open && (
-                    <button type="button" className="secondary-button avt-open" onClick={() => openEmployee(chosen.id)}>
+                    <Button className="secondary-button avt-open" onClick={() => openEmployee(chosen.id)}>
                       Open profile
                       <ArrowRight size={14} aria-hidden />
-                    </button>
+                    </Button>
                   )}
                 </header>
                 <WeekRead

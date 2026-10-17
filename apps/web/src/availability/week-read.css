@@ -79,7 +79,6 @@
   font-size: 11.5px;
   font-weight: 600;
   line-height: 1.35;
-  overflow-wrap: anywhere;
 }
 .avr-dot {
   display: block;
@@ -145,15 +144,17 @@
   font-size: 14px;
   font-weight: 650;
 }
-/* A narrow column (the phone, a narrow drawer): the boxes stand one under the
-   other, the day and its words on one line, the strip below. */
-@container avr (max-width: 520px) {
+/* Seven boxes side by side need about 90 px each, or "Unavailable after
+   6:00 PM" breaks inside a word. A narrower column (the Employees drawer, the
+   phone) stands the boxes one under the other: the day, its words and the
+   strip on one line; on a phone the strip goes under them. */
+@container avr (max-width: 660px) {
   .avr-tiles {
     grid-template-columns: 1fr;
   }
   .avr-tile {
     display: grid;
-    grid-template-columns: 58px minmax(0, 1fr);
+    grid-template-columns: 58px minmax(0, 1fr) minmax(120px, 38%);
     align-items: center;
     gap: 6px 10px;
     padding: 10px 12px;
@@ -161,6 +162,14 @@
   }
   .avr-tile small {
     min-height: 0;
+  }
+  .avr-rail {
+    margin-top: 0;
+  }
+}
+@container avr (max-width: 440px) {
+  .avr-tile {
+    grid-template-columns: 58px minmax(0, 1fr);
   }
   .avr-rail {
     grid-column: 1 / -1;
