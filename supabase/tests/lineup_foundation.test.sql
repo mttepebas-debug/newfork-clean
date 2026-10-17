@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(40);
 
 -- Lineup, stage 1 (Line-up PLAN §5, §6, §7; KARARLAR "Lineup"): the tables a
 -- lineup keeps beside the Schedule and the day's read. A lineup is the day's
@@ -279,11 +279,44 @@ select throws_ok(
     tests.id('l'), tests.id('l:lineup:lunch'), tests.id('l:K'), tests.week(0), tests.id('l:job:cook')),
   '23514', null, 'a row is a Schedule shift or a person added in the lineup, not neither'
 );
-select throws_ok(
-  format($$insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, section_id)
+-- Each row rule alone, named by the key that refuses it (one case that breaks two rules proves neither).
+create function pg_temp.refused_by(statement text)
+returns text
+language plpgsql
+as $$
+declare
+  state text;
+  key text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics state = returned_sqlstate, key = constraint_name;
+  return state || ' ' || coalesce(key, '');
+end;
+$$;
+insert into public.location_sections (id, workspace_id, location_id, name, sort_order)
+values (tests.remember('l:section:bar', gen_random_uuid()), tests.id('l'), tests.id('l:B'), 'Bar', 1);
+select is(
+  pg_temp.refused_by(format($$insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, section_id)
            values (%L, %L, %L, %L, %L, %L)$$,
-    tests.id('l'), tests.id('l:lineup:lunch'), tests.id('l:B'), tests.week(0), gen_random_uuid(), tests.id('l:section:patio')),
-  '23503', null, 'a row stays at its lineup''s location and takes only that location''s sections'
+    tests.id('l'), tests.id('l:lineup:lunch'), tests.id('l:K'), tests.week(0), gen_random_uuid(), tests.id('l:section:bar'))),
+  '23503 daily_lineup_rows_section_id_location_id_workspace_id_fkey',
+  'a row takes only its own location''s sections'
+);
+select is(
+  pg_temp.refused_by(format($$insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id)
+           values (%L, %L, %L, %L, %L)$$,
+    tests.id('l'), tests.id('l:lineup:lunch'), tests.id('l:K'), tests.week(1), gen_random_uuid())),
+  '23503 daily_lineup_rows_lineup_location_day_workspace_fkey',
+  'a row stays on its lineup''s day'
+);
+select is(
+  pg_temp.refused_by(format($$insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id)
+           values (%L, %L, %L, %L, %L)$$,
+    tests.id('l'), tests.id('l:lineup:lunch'), tests.id('l:B'), tests.week(0), gen_random_uuid())),
+  '23503 daily_lineup_rows_lineup_location_day_workspace_fkey',
+  'a row stays at its lineup''s location'
 );
 select throws_ok(
   format($$insert into public.location_sections (workspace_id, location_id, name) values (%L, %L, 'patio')$$,
