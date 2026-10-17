@@ -2819,6 +2819,12 @@
 * {
   box-sizing: border-box;
 }
+/* Pulled past its ends the page holds still: no stretch that takes the top
+   bar and the phone's bottom bar with it (Mert's phone notes 2026-10-17 #2). */
+html,
+body {
+  overscroll-behavior: none;
+}
 body {
   margin: 0;
   min-width: 320px;
@@ -2943,6 +2949,12 @@ select:focus-visible {
   outline-offset: 2px;
 }
 :root[data-escape-focus="true"] :focus {
+  outline: none !important;
+}
+/* Under a finger, focus that a tap or the app gave (More's X, a sheet's
+   heading) draws no ring; a keyboard brings it back (lib/escape-focus.ts).
+   Fields keep their focused look. Mert's phone notes 2026-10-17 #3. */
+:root[data-touch-input="true"] :focus-visible:not(input, textarea, select, [contenteditable]) {
   outline: none !important;
 }
 :root[data-escape-focus="true"] :is(input, select, textarea):focus,
