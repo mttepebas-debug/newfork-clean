@@ -25,7 +25,9 @@ const context = {
 } as unknown as ActiveWorkspaceContext;
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
-vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13" }));
+// The day and its wall clock are fixed: "today" is October 13 at 9 AM, before any test shift begins, so a draft or
+// published lineup isn't drawn as started in the afternoon.
+vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13", clockIn: () => "09:00" }));
 let phone = false;
 vi.mock("../lib/usePhoneWidth", () => ({ usePhoneWidth: () => phone }));
 vi.mock("../schedule/hooks/useScheduleRealtime", () => ({ useScheduleRealtime: () => undefined }));
