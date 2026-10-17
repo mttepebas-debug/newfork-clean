@@ -24,12 +24,13 @@ function item(n: number): NotificationEmailItem {
   };
 }
 
-function fakeClient(items: NotificationEmailItem[]) {
+function fakeClient(items: unknown[]) {
   const calls: { fn: string; args: Record<string, unknown> }[] = [];
   const client = {
     rpc: vi.fn(async (fn: string, args: Record<string, unknown>) => {
       calls.push({ fn, args });
       if (fn === "claim_notification_emails_service") return { data: items, error: null };
+      if (fn === "release_notification_emails_service") return { data: (args.target_deliveries as unknown[]).length, error: null };
       return { data: "ok", error: null };
     }),
   };
@@ -40,7 +41,9 @@ function fakeClient(items: NotificationEmailItem[]) {
       c.args.target_provider_id ?? null,
       c.args.target_error ?? null,
     ]);
-  return { client, calls, finished };
+  const released = () =>
+    calls.filter((c) => c.fn === "release_notification_emails_service").map((c) => c.args.target_deliveries);
+  return { client, calls, finished, released };
 }
 
 function capturingLog() {
@@ -62,7 +65,7 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-function worker(items: NotificationEmailItem[], send: ReturnType<typeof vi.fn>, clock = { now: 0 }) {
+function worker(items: unknown[], send: ReturnType<typeof vi.fn>, clock = { now: 0 }) {
   const fake = fakeClient(items);
   const pause = vi.fn(async (ms: number) => {
     clock.now += ms;
@@ -130,15 +133,15 @@ describe("notification email worker", () => {
       clock.now += 3_000;
       return { id: "re_x" };
     });
-    const { w, finished } = worker([item(1), item(2), item(3), item(4)], send, clock);
+    const { w, finished, released } = worker([item(1), item(2), item(3), item(4)], send, clock);
     const result = await w.runBatch(capturingLog().log);
     expect(send).toHaveBeenCalledTimes(2);
     expect(finished().map(([id, outcome]) => [id, outcome])).toEqual([
       [item(1).delivery_id, "sent"],
       [item(2).delivery_id, "sent"],
-      [item(3).delivery_id, "released"],
-      [item(4).delivery_id, "released"],
     ]);
+    // What it had no time for goes back in one call.
+    expect(released()).toEqual([[item(3).delivery_id, item(4).delivery_id]]);
     expect(result).toMatchObject({ sent: 2, released: 2 });
   });
 
@@ -161,5 +164,43 @@ describe("notification email worker", () => {
     const { w, finished } = worker([item(1)], send);
     await w.runBatch(capturingLog().log);
     expect(finished()).toEqual([[item(1).delivery_id, "retry", null, "network"]]);
+  });
+
+  it("asks the time left again after its wait between sends", async () => {
+    const clock = { now: 0 };
+    const send = vi.fn(async () => {
+      clock.now += 4_600;
+      return { id: "re_x" };
+    });
+    // After the first send 2.4 s are left; the 550 ms wait leaves 1.85 s, too little to start another.
+    const { w, released } = worker([item(1), item(2)], send, clock);
+    await w.runBatch(capturingLog().log);
+    expect(send).toHaveBeenCalledTimes(1);
+    expect(released()).toEqual([[item(2).delivery_id]]);
+  });
+
+  it("finishes a row it cannot read as dead and still sends the others", async () => {
+    const send = vi.fn(async () => ({ id: "re_ok" }));
+    const broken = { ...item(2), url: "https://elsewhere.example.test/", level: "loud" };
+    const nameless = { to: "x@example.test" };
+    const { w, finished } = worker([item(1), broken, nameless, item(3)], send);
+    const { log, text } = capturingLog();
+    const result = await w.runBatch(log);
+    expect(finished()).toEqual([
+      [item(1).delivery_id, "sent", "re_ok", null],
+      [item(2).delivery_id, "dead", null, "bad_item"],
+      [item(3).delivery_id, "sent", "re_ok", null],
+    ]);
+    expect(send).toHaveBeenCalledTimes(2);
+    expect(result).toMatchObject({ claimed: 4, sent: 2, dead: 1 });
+    expect(text()).not.toContain("@example.test");
+  });
+
+  it("refuses a link with a control character, as the table does", async () => {
+    const send = vi.fn(async () => ({ id: "re_ok" }));
+    const { w, finished } = worker([{ ...item(1), url: "/app\tx" }], send);
+    await w.runBatch(capturingLog().log);
+    expect(finished()).toEqual([[item(1).delivery_id, "dead", null, "bad_item"]]);
+    expect(send).not.toHaveBeenCalled();
   });
 });

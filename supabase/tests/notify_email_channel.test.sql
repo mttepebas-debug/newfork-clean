@@ -17,13 +17,19 @@ select no_plan();
 --       refusal, it is dead; a row not tried is given back;
 --   (f) Resend's word: delivered, a permanent bounce or a complaint suppresses the address, a temporary
 --       bounce changes nothing, the same event twice changes nothing more, an unknown email is ignored;
---   (g) only the worker may call these, and the cron calls it every minute.
+--   (g) only the worker may call these, and the cron calls it every minute;
+--   (h) review (BILDIRIM-14 ONAY @6457b4db): the cap leaves 30 of Resend's free 100 to invitations, resets
+--       and exports; a row whose lease ran out five times is dead; a link with a control character is
+--       refused; one rule says who still receives a notice; the run gives back what it did not try in one
+--       call; a failure never undoes a delivered email; opening the channel skips only queued email.
 
 select tests.world('ne');
 select tests.person('ne', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('ne', 'bea', 'employee', array['K'], array['cook']);
 select tests.person('ne', 'can', 'employee', array['K'], array['cook']);
 select tests.person('ne', 'dee', 'employee', array['K'], array['cook']);
+-- Eve's address is never suppressed: the review fixes in (h) use her.
+select tests.person('ne', 'eve', 'employee', array['K'], array['cook']);
 
 create function pg_temp.u(person text) returns uuid language sql as $$
   select tests.user('ne:' || person)
@@ -61,6 +67,8 @@ $$;
 
 -- (a) The claim ---------------------------------------------------------------------------------------------
 
+select is((select daily_cap from app_private.notification_email_channel), 70,
+  '(h) the free plan''s cap for notices is 70 a day: 30 of Resend''s 100 stay for invitations, resets and exports');
 -- The channel opened an hour ago (in the product, when this migration was applied).
 update app_private.notification_email_channel set opened_at = now() - interval '1 hour';
 
@@ -204,13 +212,68 @@ select is(public.apply_notification_email_event_service('email.delivered', 're_u
 select is(public.apply_notification_email_event_service('email.bounced', 're_ali_1', pg_temp.address('ali'), 'Permanent'), 'bounced',
   '(f) a delivered email that bounces later is bounced');
 
+-- (h) Review fixes -------------------------------------------------------------------------------------------
+
+-- A row whose lease ran out on its fifth try is not tried a sixth time.
+select pg_temp.notice('time_off.decided', 'eve', 'e:can:lease');
+update public.notification_deliveries set status = 'sending', attempts = 5, lease_expires_at = now() - interval '1 second'
+where id = pg_temp.delivery('e:can:lease');
+select pg_temp.claim(8);
+select is(pg_temp.state('e:can:lease'), 'dead lease_exhausted', '(h) a lease that ran out on the fifth try is the last');
+-- A link with a control character is refused by the table and by the core.
+select throws_ok(format($$update public.person_notifications set url = %L where event_key = 'e:can:lease'$$, E'/app
+x'), '23514', null,
+  '(h) the table refuses a link with a line break');
+select throws_ok(format($$select app_private.notify('time_off.decided', %L::uuid, array[%L::uuid], 'e:bad:url', 'T', null, %L)$$,
+  tests.id('ne'), pg_temp.u('eve'), E'/app	x'), '22023', null, '(h) and so does the core, with its own refusal');
+-- One rule says who still receives a notice.
+select is(array[app_private.membership_receives(tests.id('ne'), pg_temp.u('ali'), false),
+                app_private.membership_receives(tests.id('ne'), pg_temp.u('dee'), false),
+                app_private.membership_receives(tests.id('ne'), pg_temp.u('dee'), true),
+                app_private.membership_receives(null, pg_temp.u('dee'), false),
+                app_private.membership_receives(tests.id('ne'), gen_random_uuid(), true)],
+  array[true, false, true, true, false],
+  '(h) a member receives; a removed one only what goes to former members; an account notice always; a stranger never');
+-- What the run had no time for goes back in one call, untried.
+select pg_temp.notice('time_off.decided', 'eve', 'e:can:back1');
+select pg_temp.notice('time_off.decided', 'eve', 'e:can:back2');
+select pg_temp.claim(9);
+select is(public.release_notification_emails_service(array[pg_temp.delivery('e:can:back1'), pg_temp.delivery('e:can:back2'), gen_random_uuid()]), 2,
+  '(h) two given back at once; an unknown one is not counted');
+select is(array[pg_temp.state('e:can:back1'), pg_temp.state('e:can:back2')], array['queued', 'queued'], '(h) both wait again');
+select is((select sum(d.attempts)::integer from public.notification_deliveries d
+           where d.id in (pg_temp.delivery('e:can:back1'), pg_temp.delivery('e:can:back2'))), 0, '(h) with no try counted');
+-- A failure reported after delivery never undoes it.
+select public.finish_notification_email_service(pg_temp.delivery('e:bea:1'), 'retry', null, 'timeout');
+update public.notification_deliveries set status = 'delivered', provider_message_id = 're_bea_1' where id = pg_temp.delivery('e:bea:1');
+select is(public.apply_notification_email_event_service('email.failed', 're_bea_1', pg_temp.address('bea'), null), 'delivered',
+  '(h) email.failed after delivered changes nothing');
+-- Opening the channel skips only email still waiting: not a sent one, not a push.
+select pg_temp.notice('people.role_changed', 'eve', 'e:open:queued');
+select pg_temp.notice('people.role_changed', 'eve', 'e:open:sending');
+select pg_temp.notice('people.role_changed', 'eve', 'e:open:failed');
+select pg_temp.notice('people.role_changed', 'eve', 'e:open:sent');
+update public.notification_deliveries set status = 'sending', lease_expires_at = now() + interval '2 minutes' where id = pg_temp.delivery('e:open:sending');
+update public.notification_deliveries set status = 'failed' where id = pg_temp.delivery('e:open:failed');
+update public.notification_deliveries set status = 'sent', sent_at = now() where id = pg_temp.delivery('e:open:sent');
+insert into public.notification_deliveries (notification_id, channel, reason)
+select n.id, 'push', 'required' from public.person_notifications n where n.event_key = 'e:open:queued';
+select app_private.email_channel_open();
+select is(array[pg_temp.state('e:open:queued'), pg_temp.state('e:open:sending'), pg_temp.state('e:open:failed'), pg_temp.state('e:open:sent')],
+  array['skipped before_launch', 'skipped before_launch', 'skipped before_launch', 'sent'],
+  '(h) opening the channel skips the email still queued, being sent or waiting to retry; a sent one stays');
+select is((select d.status from public.notification_deliveries d join public.person_notifications n on n.id = d.notification_id
+           where n.event_key = 'e:open:queued' and d.channel = 'push'), 'queued', '(h) a push is not email: it stays');
+select is((select opened_at from app_private.notification_email_channel), now(), '(h) and the channel opens now');
+
 -- (g) Only the worker ---------------------------------------------------------------------------------------
 
 select is(
   array(select p.oid::regprocedure::text || ' ' || r.role || ' ' || has_function_privilege(r.role, p.oid, 'execute')::text
         from pg_proc p cross join unnest(array['anon', 'authenticated', 'service_role']) r(role)
         where p.pronamespace = 'public'::regnamespace
-          and p.proname in ('claim_notification_emails_service', 'finish_notification_email_service', 'apply_notification_email_event_service')
+          and p.proname in ('claim_notification_emails_service', 'finish_notification_email_service', 'apply_notification_email_event_service',
+            'release_notification_emails_service')
         order by 1),
   array['apply_notification_email_event_service(text,text,text,text) anon false',
         'apply_notification_email_event_service(text,text,text,text) authenticated false',
@@ -220,7 +283,10 @@ select is(
         'claim_notification_emails_service(integer) service_role true',
         'finish_notification_email_service(uuid,text,text,text) anon false',
         'finish_notification_email_service(uuid,text,text,text) authenticated false',
-        'finish_notification_email_service(uuid,text,text,text) service_role true'],
+        'finish_notification_email_service(uuid,text,text,text) service_role true',
+        'release_notification_emails_service(uuid[]) anon false',
+        'release_notification_emails_service(uuid[]) authenticated false',
+        'release_notification_emails_service(uuid[]) service_role true'],
   '(g) only the worker may claim, finish or apply');
 select is((select schedule || ' ' || command from cron.job where jobname = 'notification-email'),
   '* * * * * select app_private.dispatch_cron_endpoint(''/api/internal/cron/notification-email'');', '(g) the cron calls it every minute');

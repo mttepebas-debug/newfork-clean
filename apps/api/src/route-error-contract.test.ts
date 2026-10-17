@@ -120,7 +120,7 @@ describe.each(requests)("%s route", (_name, method, url) => {
 // a 500 with the request id, and nothing of what failed.
 describe("notification email routes", () => {
   const hidden = new Error("permission denied for table notification_deliveries");
-  const webhookBytes = Buffer.from("route-contract-secret");
+  const webhookBytes = Buffer.from("route-contract-webhook-secret-bytes");
   const app = () =>
     buildApp({
       notificationEmail: {

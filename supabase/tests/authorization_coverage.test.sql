@@ -170,6 +170,7 @@ insert into service_class values
   ('record_schedule_export_event_service', 'schedule.export'),
   ('record_schedule_export_schedule_failure_service', 'exempt:worker'),
   ('record_schedule_export_schedule_success_service', 'exempt:worker'),
+  ('release_notification_emails_service', 'exempt:worker'),
   ('remove_employee_access_service', 'employee.remove_access'),
   ('remove_employee_avatar_service', 'employee.save'),
   ('remove_employee_document_draft_file_service', 'documents.self'),

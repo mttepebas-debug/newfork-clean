@@ -102,7 +102,7 @@ insert into new_system values
   ('notify_account_security'), ('notify_deciders'), ('notify_holders'), ('notify_rows'), ('notify_workspace_closing'),
   -- The email channel (BILDIRIM-14).
   ('claim_notification_emails_service'), ('finish_notification_email_service'), ('apply_notification_email_event_service'),
-  ('notification_email_channel'),
+  ('release_notification_emails_service'), ('notification_email_channel'),
   ('notification_deliveries'), ('notification_email_suppressions'), ('notification_preferences'),
   ('notification_push_subscriptions'), ('notification_sms_consents'), ('notification_sms_opt_outs'), ('notification_topics'),
   ('notification_types'),

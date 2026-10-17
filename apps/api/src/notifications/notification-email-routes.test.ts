@@ -120,6 +120,18 @@ describe("Resend webhook", () => {
     await app.close();
   });
 
+  it("answers 503 when its secret is shorter than 24 bytes", async () => {
+    const weak = build({ webhookSecret: `whsec_${Buffer.from("short").toString("base64")}` });
+    const body = delivered();
+    const ts = Math.floor(now / 1000);
+    const response = await post(weak.app, body, {
+      "svix-id": "m", "svix-timestamp": String(ts), "svix-signature": sign("m", ts, body, Buffer.from("short")),
+    });
+    expect(response.statusCode).toBe(503);
+    expect(weak.apply).not.toHaveBeenCalled();
+    await weak.app.close();
+  });
+
   it("answers 503 without its secret, and keeps the address out of the log", async () => {
     const off = build({ webhookSecret: undefined });
     expect((await post(off.app, delivered(), {})).statusCode).toBe(503);
