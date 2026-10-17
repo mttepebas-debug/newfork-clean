@@ -15,6 +15,12 @@ export interface LineupRow {
   readonly endTime: string;
   readonly crossesMidnight: boolean;
   readonly labels: readonly string[];
+  /** Where on the floor (the lineup's own), if set. */
+  readonly sectionName: string | null;
+  /** Added on the lineup, not in the Schedule. */
+  readonly lineupOnly: boolean;
+  /** What the lineup changed against the Schedule. */
+  readonly changed: readonly string[];
 }
 
 export interface LineupJob {
@@ -43,6 +49,8 @@ export interface LineupPublish {
   /** Acknowledged of the version staff see, and how many on it have the app ("Read 7/11"). */
   readonly acknowledged: number;
   readonly withApp: number;
+  /** Everybody on it; those without the app are not counted in "Read". */
+  readonly people: number;
   readonly notes: LineupDayLineup["notes"];
 }
 
@@ -137,6 +145,9 @@ export function lineupDay(
               endTime: row.end_time,
               crossesMidnight: row.crosses_midnight,
               labels: row.label_names ?? [],
+              sectionName: row.section_name,
+              lineupOnly: row.lineup_only,
+              changed: row.changed,
             });
           }
           const departments: LineupDepartment[] = [...byDepartment.entries()]
@@ -172,6 +183,7 @@ export function lineupDay(
               askAck: lineup.ask_ack ?? false,
               acknowledged: lineup.acknowledged ?? 0,
               withApp: lineup.with_app,
+              people: lineup.people,
               notes: lineup.notes,
             },
           };
@@ -252,4 +264,22 @@ export function phoneLineupShift(
     if (staffed.length) return staffed[staffed.length - 1]!;
   }
   return staffed[0] ?? shifts[0] ?? null;
+}
+
+/**
+ * The phone summary's state line (D2, Mert 2026-10-16): published; started (the day is over, or today its
+ * first person is in: `now` is HH:MM when the day is today); a draft staff can't see; nobody on it yet.
+ */
+export function lineupPhoneState(shift: LineupShift, now: string | null): "published" | "started" | "draft" | "none" {
+  if (shift.publish.published) return "published";
+  if (shift.publish.status === "past") return "started";
+  if (!shift.count) return "none";
+  const span = lineupShiftSpan(shift);
+  if (now !== null && span && minutes(now) >= minutes(span.firstIn)) return "started";
+  return "draft";
+}
+
+/** How many of a lineup's notes staff see (an empty note doesn't show). */
+export function lineupNoteCount(notes: LineupPublish["notes"]): number {
+  return [notes.specials, notes.n86, notes.shift_notes].filter((note) => note.trim()).length;
 }

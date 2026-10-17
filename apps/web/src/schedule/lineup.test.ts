@@ -3,6 +3,8 @@ import { describe, expect, it } from "vitest";
 import {
   canPublish,
   lineupDay,
+  lineupNoteCount,
+  lineupPhoneState,
   lineupShiftSpan,
   lineupWeek,
   phoneLineupShift,
@@ -186,5 +188,46 @@ describe("lineupShiftSpan", () => {
 
   it("is empty for a shift no one works", () => {
     expect(lineupShiftSpan(view(model([]), day)[0]!.shifts[0]!)).toBeNull();
+  });
+});
+
+// The phone Lineup (E, Mert 2026-10-17): C's rows, the summary's state line, the Notes and Read counts.
+describe("the phone's lineup parts", () => {
+  const m = model([
+    shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+    shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" }),
+  ]);
+
+  it("carries each row's section, whether it is on the lineup only, and what the lineup changed", () => {
+    const read = dayRead(m, day);
+    const row = read.locations[0]!.lineups[0]!.rows[0]!;
+    read.locations[0]!.lineups[0]!.rows[0] = { ...row, section_name: "Patio", lineup_only: true, changed: ["start_time"] };
+    const first = lineupDay(read, m)[0]!.shifts[0]!.departments[0]!.jobs[0]!.rows[0]!;
+    expect(first).toMatchObject({ sectionName: "Patio", lineupOnly: true, changed: ["start_time"] });
+    const plain = lineupDay(dayRead(m, day), m)[0]!.shifts[0]!.departments[0]!.jobs[0]!.rows[0]!;
+    expect(plain).toMatchObject({ sectionName: null, lineupOnly: false, changed: [] });
+  });
+
+  it("carries how many are on a lineup, with or without the app", () => {
+    const read = dayRead(m, day, { [dinner]: { people: 12, with_app: 11 } });
+    expect(lineupDay(read, m)[0]!.shifts[1]!.publish).toMatchObject({ people: 12, withApp: 11 });
+  });
+
+  it("names the summary's state: draft, published, started or nobody yet", () => {
+    const shifts = (extra: Parameters<typeof dayRead>[2] = {}) => lineupDay(dayRead(m, day, extra), m)[0]!.shifts;
+    const [lunchDraft, dinnerDraft] = shifts();
+    expect(lineupPhoneState(lunchDraft!, null)).toBe("draft");
+    // Today, once its first person is in, a lineup has started.
+    expect(lineupPhoneState(lunchDraft!, "10:59")).toBe("draft");
+    expect(lineupPhoneState(lunchDraft!, "11:00")).toBe("started");
+    expect(lineupPhoneState(dinnerDraft!, "12:00")).toBe("draft");
+    expect(lineupPhoneState(shifts({ [lunch]: { status: "past" } })[0]!, null)).toBe("started");
+    expect(lineupPhoneState(shifts({ [lunch]: { status: "shared", published: true } })[0]!, "12:00")).toBe("published");
+    expect(lineupPhoneState(lineupDay(dayRead(model([]), day), m)[0]!.shifts[0]!, null)).toBe("none");
+  });
+
+  it("counts the notes staff will see", () => {
+    expect(lineupNoteCount({ specials: "Halibut", n86: "", shift_notes: "  " })).toBe(1);
+    expect(lineupNoteCount({ specials: "", n86: "", shift_notes: "" })).toBe(0);
   });
 });
