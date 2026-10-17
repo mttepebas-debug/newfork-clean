@@ -67,6 +67,7 @@ function mount(path = "/app/schedule") {
             <Route path="employees" element={<h1>Employees page</h1>} />
             <Route path="settings" element={<h1>Settings page</h1>} />
             <Route path="employee-hub" element={<h1>Hub page</h1>} />
+            <Route path="employee-hub/my-availability" element={<h1>My availability page</h1>} />
           </Route>
         </Routes>
       </MemoryRouter>
@@ -158,6 +159,77 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(sheet.hasAttribute("open")).toBe(false);
 
     fireEvent.click(within(bar()).getByRole("button", { name: "More" }));
+    fireEvent.click(within(morePages()).getByRole("button", { name: "Sign out", hidden: true }));
+    expect(signOut).toHaveBeenCalledOnce();
+  });
+});
+
+// CALISAN-MORE (Mert 2026-10-17): the employee view's More opens the very
+// sheet management's More opens, with the employee's own pages in it.
+describe("the employee view's phone bar", () => {
+  const employee = {
+    ...owner,
+    membership: { role: "employee" },
+    permissions: ["workspace.read", "announcements.read"],
+  };
+  const employeeBar = () => screen.getByRole("navigation", { name: "Employee navigation" });
+
+  it("opens the same More sheet, with the employee's pages and Sign out", () => {
+    context = owner;
+    mount();
+    fireEvent.click(within(bar()).getByRole("button", { name: "More" }));
+    const managementSheet = screen.getByRole("dialog", { name: "More" }).className;
+    cleanup();
+
+    context = employee;
+    mount("/app/employee-hub");
+    expect(names(employeeBar())).toEqual(["Home", "Schedule", "Requests", "More"]);
+    const more = within(employeeBar()).getByRole("button", { name: "More" });
+    expect(more.getAttribute("aria-haspopup")).toBe("dialog");
+    fireEvent.click(more);
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    expect(sheet.hasAttribute("open")).toBe(true);
+    expect(sheet.className).toBe(managementSheet);
+    expect(within(sheet).getByRole("button", { name: "Close", hidden: true })).toBeTruthy();
+    expect(names(morePages())).toEqual([
+      "My availability",
+      "Announcements",
+      "My account",
+      "Switch workspace",
+      "Sign out",
+    ]);
+  });
+
+  it("offers the way back to management in a manager's employee view (FB-6.2.8)", () => {
+    context = { ...manager, actions: ["employee_hub.read"] };
+    mount("/app/employee-hub");
+    expect(names(morePages())[0]).toBe("Management view");
+    expect(within(morePages()).getByRole("link", { name: "Management view", hidden: true }).getAttribute("href")).toBe(
+      "/app/workspace",
+    );
+    cleanup();
+    context = { ...employee, permissions: ["workspace.read"] };
+    mount("/app/employee-hub");
+    expect(names(morePages())).toEqual(["My availability", "My account", "Switch workspace", "Sign out"]);
+  });
+
+  it("goes to a page and closes, Escape closes, and Sign out signs out", () => {
+    context = employee;
+    mount("/app/employee-hub");
+    const more = () => within(employeeBar()).getByRole("button", { name: "More" });
+    fireEvent.click(more());
+    const sheet = screen.getByRole("dialog", { name: "More" });
+    fireEvent.click(within(morePages()).getByRole("link", { name: "My availability" }));
+    expect(screen.getByRole("heading", { name: "My availability page" })).toBeTruthy();
+    expect(sheet.hasAttribute("open")).toBe(false);
+    // My availability lives under More, so More carries the active state.
+    expect(more().className).toBe("active");
+
+    fireEvent.click(more());
+    fireEvent.keyDown(sheet, { key: "Escape" });
+    expect(sheet.hasAttribute("open")).toBe(false);
+
+    fireEvent.click(more());
     fireEvent.click(within(morePages()).getByRole("button", { name: "Sign out", hidden: true }));
     expect(signOut).toHaveBeenCalledOnce();
   });

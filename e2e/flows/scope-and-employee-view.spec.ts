@@ -209,8 +209,8 @@ test("on a phone the switch sits under More, and the way back under the employee
   await ayse.getByRole("dialog", { name: "More" }).getByRole("link", { name: "Employee view" }).click();
   await expect(ayse).toHaveURL(/\/app\/employee-hub$/);
 
-  await ayse.getByRole("navigation", { name: "Employee navigation" }).getByRole("link", { name: "More" }).click();
-  await ayse.getByRole("link", { name: /Management view/ }).click();
+  await ayse.getByRole("navigation", { name: "Employee navigation" }).getByRole("button", { name: "More" }).click();
+  await ayse.getByRole("dialog", { name: "More" }).getByRole("link", { name: "Management view" }).click();
   await expect(ayse).toHaveURL(/\/app\/workspace$/);
   await expect(ayse.getByRole("navigation", { name: "Main navigation" })).toBeVisible();
 });

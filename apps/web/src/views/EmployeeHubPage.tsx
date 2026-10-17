@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
-import { useLocation, useNavigate } from "react-router";
+import { Navigate, useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { AvailabilityDraftScope, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { requestAppNavigation } from "../shell/leave-guard";
@@ -31,7 +31,6 @@ import {
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
 import { useHubClock } from "../employee-hub/useHubClock";
-import { EmployeeMorePage } from "../employee-hub/EmployeeMobileNav";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 
@@ -62,11 +61,6 @@ const pageCopy: Record<
     eyebrow: "WHEN YOU CAN WORK.",
     description: "Set your weekly preferences and request time off.",
   },
-  more: {
-    title: "More",
-    eyebrow: "EVERYTHING ELSE.",
-    description: "The rest of your workspace, one tap away.",
-  },
 };
 const fallbackCopy = {
   title: "Employee Hub",
@@ -78,8 +72,11 @@ export function EmployeeHubPage() {
   const location = useLocation();
   const queryClient = useQueryClient();
   const workspaceId = context?.workspace.id ?? "";
-  const path = location.pathname.split("/employee-hub/")[1] ?? "";
-  const independentPage = path === "more";
+  const path = location.pathname.split("/employee-hub/")[1]?.replace(/\/$/, "") ?? "";
+  // More is a sheet over the page (CALISAN-MORE): the old More page's address,
+  // and any other the hub does not know, opens Home.
+  const knownPage =
+    path === "" || path === "schedule" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
   const now = useHubClock();
   // The hub's date range is asked before its locations load: the device's calendar.
   const today = todayIn(undefined, now);
@@ -91,7 +88,7 @@ export function EmployeeHubPage() {
   const query = useQuery({
     queryKey: ["employee-hub", workspaceId, context?.userId, from, end],
     queryFn: () => getEmployeeHub(workspaceId, from, end),
-    enabled: Boolean(workspaceId) && !independentPage,
+    enabled: Boolean(workspaceId) && knownPage,
     refetchInterval: 60_000,
   });
   const refresh = () =>
@@ -114,19 +111,7 @@ export function EmployeeHubPage() {
         homeHref={noAccessHomePath(context, "/app/employee-hub")}
       />
     );
-  if (independentPage)
-    return (
-      <section
-        className="employee-hub-page"
-        aria-labelledby="employee-hub-title"
-      >
-        <CatalogPageHeader
-          {...(pageCopy[path] ?? fallbackCopy)}
-          titleId="employee-hub-title"
-        />
-        <EmployeeMorePage />
-      </section>
-    );
+  if (!knownPage) return <Navigate to="/app/employee-hub" replace />;
   // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
   if (query.isLoading)
     return (
@@ -186,10 +171,8 @@ export function EmployeeHubPage() {
         />
       ) : path.startsWith("shift-hub") ? (
         <ShiftExchangeHub key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
-      ) : path === "my-availability" ? (
-        <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
       ) : (
-        <EmployeeMorePage />
+        <AvailabilityView key={`${model.workspace_id}:${model.employee.id}`} model={model} refresh={refresh} />
       )}
     </section>
   );

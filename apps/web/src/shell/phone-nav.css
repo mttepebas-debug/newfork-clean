@@ -1,0 +1,143 @@
+/* The phone's bottom bar and its More sheet, one for management and the
+   employee view (BL-192; CALISAN-MORE, Mert 2026-10-17). Above 720px the
+   sidebar stays and none of this draws. */
+.phone-bar,
+.phone-more {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  /* The shell's last row, under the page, in either frame. */
+  .phone-bar {
+    display: grid;
+    grid-row: -2 / -1;
+    grid-auto-flow: column;
+    grid-auto-columns: minmax(0, 1fr);
+    z-index: 30;
+    padding: 7px 10px max(7px, env(safe-area-inset-bottom));
+    border-top: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+  }
+  /* The on-screen keyboard needs the room while a field is being typed in. */
+  .app-shell:has(input:focus, textarea:focus, select:focus) .phone-bar {
+    display: none;
+  }
+  .phone-bar a,
+  .phone-bar button {
+    display: flex;
+    min-width: 0;
+    min-height: 51px;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--theme-muted);
+    font: inherit;
+    font-size: 10px;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .phone-bar span {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .phone-bar .active,
+  .phone-more nav .active {
+    background: var(--theme-selected);
+    color: var(--theme-accent-strong);
+    font-weight: 650;
+  }
+  .phone-bar :focus-visible,
+  .phone-more :focus-visible {
+    outline: 3px solid var(--theme-focus);
+    outline-offset: 2px;
+  }
+
+  /* More rises from the bottom as a sheet. */
+  .phone-more[open] {
+    display: block;
+    inset: auto 0 0;
+    width: 100%;
+    max-width: none;
+    max-height: none;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    background: transparent;
+  }
+  .phone-more::backdrop {
+    /* Same scrim as the Account confirmation dialog; no backdrop token exists yet. */
+    background: rgb(15 28 22 / 45%);
+  }
+  .phone-more-body {
+    display: grid;
+    gap: 4px;
+    padding: 8px 12px max(16px, env(safe-area-inset-bottom));
+    border-radius: 16px 16px 0 0;
+    background: var(--theme-surface);
+  }
+  .phone-more-body header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-left: 8px;
+    color: var(--theme-text);
+    font-size: 16px;
+  }
+  .phone-more-close {
+    display: grid;
+    width: 44px;
+    height: 44px;
+    place-items: center;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--theme-text);
+    cursor: pointer;
+  }
+  .phone-more nav {
+    display: grid;
+    gap: 2px;
+  }
+  /* Every row one height, every label from one edge: the icon (or the
+     avatar) sits in a 24 px slot, and a long label ends in an ellipsis. */
+  .phone-more nav a,
+  .phone-more nav button {
+    display: flex;
+    box-sizing: border-box;
+    height: 48px;
+    min-width: 0;
+    align-items: center;
+    gap: 12px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--theme-text-body);
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+  }
+  .phone-more-icon {
+    display: grid;
+    flex: 0 0 24px;
+    width: 24px;
+    height: 24px;
+    place-items: center;
+  }
+  .phone-more nav a > span:last-child,
+  .phone-more nav button > span:last-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+}

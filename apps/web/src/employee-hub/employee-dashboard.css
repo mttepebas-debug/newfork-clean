@@ -1,6 +1,4 @@
 .eh-dashboard,
-.eh-more,
-.eh-mobile-nav,
 .eh-sheet {
   --eh-ink: #243a32;
   --eh-muted: var(--theme-muted);
@@ -14,34 +12,25 @@
   min-width: 0;
 }
 .eh-dashboard *,
-.eh-sheet *,
-.eh-more * {
+.eh-sheet * {
   box-sizing: border-box;
 }
 .eh-dashboard a,
-.eh-sheet a,
-.eh-more a {
+.eh-sheet a {
   color: inherit;
   text-decoration: none;
 }
 .eh-dashboard button,
-.eh-sheet button,
-.eh-more button {
+.eh-sheet button {
   font: inherit;
   cursor: pointer;
 }
 .eh-dashboard a:focus-visible,
 .eh-dashboard button:focus-visible,
 .eh-dashboard input:focus-visible,
-.eh-mobile-nav a:focus-visible,
-.eh-sheet :focus-visible,
-.eh-more :focus-visible {
+.eh-sheet :focus-visible {
   outline: 3px solid var(--theme-focus);
   outline-offset: 4px;
-}
-/* Both phone bars share one focus ring: 2px out stays inside the bar's padding. */
-.eh-mobile-nav a:focus-visible {
-  outline-offset: 2px;
 }
 .eh-dashboard p,
 .eh-dashboard h1,
@@ -714,53 +703,6 @@
   gap: 6px;
   min-height: 32px;
 }
-.eh-mobile-nav {
-  display: none;
-}
-.eh-more {
-  max-width: 680px;
-  margin: 0 auto;
-}
-.eh-more > div {
-  margin-top: 20px;
-  background: var(--eh-paper);
-  border: 1px solid var(--theme-border);
-  border-radius: 16px;
-  overflow: hidden;
-}
-.eh-more > div > a {
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  padding: 18px;
-  border-bottom: 1px solid var(--theme-border);
-}
-.eh-more a:hover {
-  background: var(--eh-wash);
-}
-.eh-more a span {
-  flex: 1;
-}
-.eh-more strong {
-  display: block;
-  font-size: 14px;
-}
-.eh-more small {
-  display: block;
-  color: var(--eh-muted);
-  margin-top: 5px;
-  font-size: 12px;
-}
-.eh-sign-out {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 15px 0;
-  background: none;
-  border: 0;
-  color: #9c4e3d;
-  margin-top: 20px;
-}
 .eh-sheet {
   border: 1px solid var(--theme-border);
   background: var(--eh-paper);
@@ -966,40 +908,6 @@
   .app-shell[data-employee-shell="true"] > .app-main {
     grid-row: 1;
     scrollbar-gutter: auto;
-  }
-  .eh-mobile-nav {
-    display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    grid-row: 2;
-    padding: 7px 10px max(7px, env(safe-area-inset-bottom));
-    border-top: 1px solid var(--theme-border);
-    background: var(--eh-paper);
-    z-index: 30;
-  }
-  .eh-mobile-nav a {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    gap: 5px;
-    color: var(--eh-muted);
-    text-decoration: none;
-    min-height: 51px;
-    font-size: 10px;
-    border-radius: 11px;
-  }
-  .eh-mobile-nav a.active {
-    background: var(--theme-selected);
-    color: var(--theme-accent-strong);
-    font-weight: 650;
-  }
-  .app-shell[data-employee-shell="true"]:has(
-      input:focus,
-      textarea:focus,
-      select:focus
-    )
-    .eh-mobile-nav {
-    display: none;
   }
   .employee-hub-page {
     min-width: 0;

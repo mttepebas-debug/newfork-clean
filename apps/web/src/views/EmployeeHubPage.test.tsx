@@ -1,4 +1,4 @@
-import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
   EmployeeHubReadModel,
@@ -305,12 +305,15 @@ describe("EmployeeHubPage", () => {
     expect(screen.queryByRole("link", { name: /Notification preferences/ })).toBeNull();
   });
 
-  it("lets the employee reach More without loading the schedule service", async () => {
-    renderPage("/app/employee-hub/more");
-    expect(
-      await screen.findByRole("link", { name: /My account/ }),
-    ).toBeTruthy();
-    expect(getEmployeeHub).not.toHaveBeenCalled();
+  // CALISAN-MORE: More is a sheet over the page now; the old More page's
+  // address, and any address the hub does not know, opens Home.
+  it("opens Home for the old More address and for an unknown one", async () => {
+    for (const path of ["/app/employee-hub/more", "/app/employee-hub/nothing-here"]) {
+      renderPage(path);
+      expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+      expect(screen.queryByRole("link", { name: /My account/ })).toBeNull();
+      cleanup();
+    }
   });
   // BL-278 (7): a failed request check must not read as "nothing waiting".
   it("does not say all caught up when the requests could not be checked", async () => {

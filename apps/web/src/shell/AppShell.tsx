@@ -443,7 +443,13 @@ export function AppShell() {
       <main className="app-main" ref={setMain}>
         <Outlet />
       </main>
-      {employeeShell && <EmployeeMobileNav />}
+      {employeeShell ? (
+        <EmployeeMobileNav
+          managementHome={inEmployeeView ? managementHome : null}
+          announcements={visibleNavItems.some((item) => item.to === "/app/announcements")}
+          onSignOut={signOutAfterAvailabilityCheck}
+        />
+      ) : null}
       {employeeShell ? null : (
         <ManagementMobileNav
           links={[
