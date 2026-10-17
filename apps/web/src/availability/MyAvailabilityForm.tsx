@@ -71,6 +71,11 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
   const [conflict, setConflict] = useState(false);
   const [reloading, setReloading] = useState(false);
   const inFlight = useRef(false);
+  // Onboarding on a phone (Mert 2026-10-17): only the days scroll, between the
+  // fixed heading and the fixed buttons; a hairline marks the top edge while a
+  // day passes under it.
+  const framed = phone && wizard;
+  const [underTop, setUnderTop] = useState(false);
   // A pressed Save or Cancel turns faded; the focus moves to the note or the row, not the page.
   const actionsRef = useRef<HTMLDivElement>(null);
   const savedRef = useRef<HTMLSpanElement>(null);
@@ -250,14 +255,17 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
 
   return (
     <section
-      className={`dav-panel${phone ? " is-phone" : ""}`}
+      className={`dav-panel${phone ? " is-phone" : ""}${framed ? " is-framed" : ""}`}
       aria-label="Weekly availability"
       onPointerDown={savedNote ? () => setSavedNote(false) : undefined}
     >
       {leaveDialog}
       {phone ? (
         <>
-          <div className="dav-list">
+          <div
+            className={`dav-list${framed ? " is-scroller" : ""}${underTop ? " is-under-top" : ""}`}
+            onScroll={framed ? (event) => setUnderTop(event.currentTarget.scrollTop > 0) : undefined}
+          >
             {DISPLAY_DAYS.map((weekday) =>
               row(weekday, () => {
                 if (!canEdit) return;

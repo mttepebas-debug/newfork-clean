@@ -714,6 +714,71 @@
   min-height: 44px;
 }
 
+/* Onboarding on a phone (Mert 2026-10-17): the step fills the screen exactly.
+   The bar on top, the heading and the two buttons stay where they are; only
+   the days scroll between them, behind the fixed parts. When the seven days
+   fit, nothing scrolls and the step reads as before. The chain of flex boxes
+   with min-height: 0 lets the list, and only the list, give up height. */
+@media (max-width: 720px) {
+  .pb.pb-frame-fixed {
+    display: flex;
+    height: 100vh;
+    height: 100dvh;
+    min-height: 0;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .pb-frame-fixed > .pb-side {
+    flex: none;
+  }
+  .pb-frame-fixed > .pb-stage {
+    display: flex;
+    flex: 1 1 auto;
+    min-height: 0;
+    flex-direction: column;
+    /* The buttons end the screen: the safe area (the home bar) stays clear. */
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    /* Only a screen too short for the heading and two days scrolls the stage. */
+    overflow-y: auto;
+  }
+  .pb-frame-fixed .onboarding-step {
+    display: flex;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+  }
+  .pb-frame-fixed .onboarding-step-heading {
+    flex: none;
+  }
+  .dav-panel.is-framed {
+    display: flex;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+  }
+  .dav-panel.is-framed > :not(.dav-list) {
+    flex: none;
+  }
+  .dav-list.is-scroller {
+    flex: 0 1 auto;
+    /* Two days at least; below that the stage scrolls instead. */
+    min-height: 140px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    /* Room for a row's focus ring, which the scroll box would otherwise cut. */
+    margin-inline: -3px;
+    padding: 3px;
+  }
+  /* A hairline on the top edge, only while a day passes under the heading. */
+  .dav-list.is-scroller.is-under-top {
+    border-top: 1px solid var(--theme-border);
+  }
+  .dav-panel.is-framed .dav-onboard-foot {
+    background: var(--theme-surface);
+  }
+}
+
 .dav-sheet {
   position: fixed;
   inset: auto 0 0;

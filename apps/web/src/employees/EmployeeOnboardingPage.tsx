@@ -27,6 +27,7 @@ import { Link, Navigate, useLocation, useNavigate, useParams } from "react-route
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { requestAppNavigation } from "../shell/leave-guard";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { useAuth } from "../auth/AuthContext";
 import { hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
@@ -304,8 +305,11 @@ function OnboardingShell({
     model.case_status === "submitted" || model.case_status === "approved";
   const total = steps.length;
   const done = steps.filter((step) => stepDone(step, submitted)).length;
+  // Mert 2026-10-17: on a phone the availability step fills the screen exactly;
+  // the bar, the heading and the buttons stay, only the days scroll.
+  const framed = useListPhoneWidth() && pathname === "/welcome/availability";
   return (
-    <div className="pb">
+    <div className={`pb${framed ? " pb-frame-fixed" : ""}`}>
       <aside className="pb-side">
         <div className="pb-side-group">
           <span className="pb-brand">NEWFORK</span>
