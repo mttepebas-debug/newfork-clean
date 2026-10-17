@@ -34,8 +34,9 @@
 /* Phone "B": the heading folds to one line once the page has moved; the tabs
    stay under it. The eyebrow, the description, the heading's icon, a
    heading block with no control in it and Employee Hub's workspace bar fold
-   away. Selectors repeat their attributes to win over each page's own sheet
-   (the list pages pin their heading at 142 px). */
+   away; the folded box itself (19 px title, the line 47 px down) is
+   phone-page-top.css. Selectors repeat their attributes to win over each
+   page's own sheet. */
 @media (max-width: 720px) and (min-height: 560px) {
   [data-frozen-folded][data-frozen-folded] .eh-context-bar[data-frozen-piece],
   [data-frozen-folded][data-frozen-folded]
@@ -53,59 +54,6 @@
     )
     :is(h1 + p, .catalog-page-heading > p) {
     display: none;
-  }
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]:is(
-      .catalog-page-header,
-      .settings-page-header,
-      .account-page-header
-    ) {
-    display: flex;
-    height: auto;
-    min-height: 0;
-    flex-direction: row;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 8px 12px;
-    margin-bottom: 0;
-    padding-top: 10px;
-    padding-bottom: 10px;
-    text-align: left;
-  }
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]
-    :is(.catalog-page-heading, .catalog-page-heading > *, h1) {
-    min-width: 0;
-    margin: 0;
-  }
-  /* The title takes the row; tabs in the heading (Acknowledgements) keep
-     their own full row under it, as before folding. */
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]
-    > :has(> h1) {
-    min-width: 0;
-    flex: 1 1 0;
-  }
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]
-    > :not(:has(> h1)) {
-    width: auto;
-    flex: 0 0 auto;
-  }
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]
-    > :has([role="tablist"]) {
-    flex: 1 1 100%;
-  }
-  [data-frozen-folded][data-frozen-folded]
-    [data-frozen-piece][data-frozen-piece]
-    h1 {
-    overflow: hidden;
-    font-size: 19px;
-    line-height: 1.25;
-    text-overflow: ellipsis;
-    white-space: nowrap;
   }
   /* Folded while the page itself scrolls: the last piece's margin keeps the
      page its length, so the content does not jump. */

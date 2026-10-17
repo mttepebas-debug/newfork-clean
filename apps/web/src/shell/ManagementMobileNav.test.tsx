@@ -236,7 +236,8 @@ describe("the employee view's phone bar", () => {
 });
 
 // BILDIRIM-13 (Mert 2026-10-16, variant A): on a phone the management pages
-// have a top bar: the workspace (to switch), the notification bell and Account.
+// have a top bar: the workspace (to switch), the notification bell and Account;
+// since 2026-10-17 the employee's pages too (MOBIL-BASLIK).
 describe("the management phone's top bar", () => {
   const phoneWidth = (matches: boolean) =>
     vi.stubGlobal("matchMedia", (query: string) => ({ matches: matches && query.includes("max-width"), media: query, addEventListener: () => undefined, removeEventListener: () => undefined }));
@@ -261,15 +262,21 @@ describe("the management phone's top bar", () => {
     expect(within(topBar()!).queryByRole("button", { name: /^Notifications/ })).toBeNull();
   });
 
-  it("is not drawn on a computer, nor in the employee's own frame", () => {
+  it("is not drawn on a computer", () => {
     phoneWidth(false);
     context = { ...owner, actions: ["notifications.read_own"] };
     mount();
     expect(topBar()).toBeNull();
-    cleanup();
+  });
+
+  // Mert 2026-10-17: "çalışan sayfalarına da üst çubuk ekleyelim".
+  it("is drawn in the employee's own frame too", () => {
     phoneWidth(true);
     context = { ...owner, membership: { role: "employee" }, permissions: ["workspace.read"], actions: ["notifications.read_own"] };
     mount("/app/employee-hub");
-    expect(topBar()).toBeNull();
+    const bar = topBar()!;
+    expect(within(bar).getByRole("link", { name: "Meyhouse. Switch workspace" })).toBeTruthy();
+    expect(within(bar).getByRole("button", { name: /^Notifications/ })).toBeTruthy();
+    expect(within(bar).getByRole("link", { name: "Account" }).getAttribute("href")).toBe("/account/profile");
   });
 });

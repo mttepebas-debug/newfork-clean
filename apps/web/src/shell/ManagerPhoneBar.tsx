@@ -6,11 +6,13 @@ import { can } from "../auth/can";
 import { NotificationBell } from "../notifications/NotificationViews";
 
 /**
- * The top bar of owner, admin and manager on a phone (Mert 2026-10-16,
- * variant A): the workspace (tap to switch), the notification bell with what
- * arrived since the list was last opened, and Account. It sits above the
- * scrolling page, so a page's own frozen heading keeps its place under it.
- * The shell draws it only at phone width (720 px and below, like the bottom bar).
+ * The top bar on a phone (Mert 2026-10-16, variant A, for owner, admin and
+ * manager; 2026-10-17 the employee's pages too, "çalışan sayfalarına da üst
+ * çubuk ekleyelim"): the workspace (tap to switch), the notification bell
+ * with what arrived since the list was last opened, and Account. It sits
+ * above the scrolling page, so every page's heading line is at the same
+ * height under it (phone-page-top.css). The shell draws it only at phone
+ * width (720 px and below, like the bottom bar).
  */
 export function ManagerPhoneBar() {
   const { context } = useAuth();

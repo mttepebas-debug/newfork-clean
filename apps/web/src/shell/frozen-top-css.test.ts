@@ -25,8 +25,14 @@ describe("frozen top", () => {
 
   it("folds the heading only on a phone", () => {
     expect(css).toMatch(/@media \(max-width: 720px\) and \(min-height: 560px\)/);
-    expect(ruleBody(css, (head) => head.includes("[data-frozen-folded]") && head.endsWith("h1"))).toMatch(
-      /white-space\s*:\s*nowrap/,
+    // The folded box itself: one 19 px line, the heading line 47 px down (MOBIL-BASLIK).
+    const top = sheet("src/shell/phone-page-top.css");
+    expect(top).toMatch(/@media \(max-width: 720px\) and \(min-height: 560px\)/);
+    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("h1"))).toMatch(
+      /font-size\s*:\s*19px/,
+    );
+    expect(ruleBody(top, (head) => head.includes("[data-frozen-folded]") && head.endsWith("[data-frozen-piece]"))).toMatch(
+      /--page-line\s*:\s*47px/,
     );
   });
 

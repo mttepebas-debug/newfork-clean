@@ -10,7 +10,9 @@ import {
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useFrozenTop } from "../shell/useFrozenTop";
+import { usePhonePageMenu } from "../shell/usePhonePageMenu";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import "./account.css";
@@ -59,6 +61,9 @@ export default function AccountLayout() {
   }, []);
   // On a phone the whole document scrolls and the Account menu stays above the page too.
   useFrozenTop(content, grid);
+  // On a phone the menu sits under the page heading's line and Back and Sign
+  // out make the 56 px top bar (Mert 2026-10-17).
+  const menuSlot = usePhonePageMenu(content);
   // A number here means somebody is waiting for an answer. It closes when the
   // thing is done, not when the tab is opened, so it cannot be cleared by
   // looking at it.
@@ -83,6 +88,38 @@ export default function AccountLayout() {
     return () => window.cancelAnimationFrame(frame);
   }, [pathname]);
 
+  const menu = (
+    <nav ref={navRef} aria-label="Account">
+      {accountNav.map((item) => {
+        const Icon = item.icon;
+        const count = "waiting" in item ? waiting[item.waiting] : 0;
+        return (
+          <NavLink
+            key={item.to}
+            to={item.to}
+            end={item.to === "/account/preferences"}
+            className={({ isActive }) =>
+              "account-nav-item" + (isActive ? " active" : "")
+            }
+            aria-label={
+              count > 0
+                ? `${item.label}, ${count} waiting on you`
+                : undefined
+            }
+          >
+            <Icon size={17} aria-hidden />
+            {item.label}
+            {count > 0 ? (
+              <span className="account-nav-count" aria-hidden>
+                {count}
+              </span>
+            ) : null}
+          </NavLink>
+        );
+      })}
+    </nav>
+  );
+
   return (
     <div className="account-shell">
       <div className="account-layout-grid" ref={setGrid}>
@@ -93,35 +130,7 @@ export default function AccountLayout() {
             <strong>{account?.displayName ?? "Account"}</strong>
           </div>
         </div>
-        <nav ref={navRef} aria-label="Account">
-          {accountNav.map((item) => {
-            const Icon = item.icon;
-            const count = "waiting" in item ? waiting[item.waiting] : 0;
-            return (
-              <NavLink
-                key={item.to}
-                to={item.to}
-                end={item.to === "/account/preferences"}
-                className={({ isActive }) =>
-                  "account-nav-item" + (isActive ? " active" : "")
-                }
-                aria-label={
-                  count > 0
-                    ? `${item.label}, ${count} waiting on you`
-                    : undefined
-                }
-              >
-                <Icon size={17} aria-hidden />
-                {item.label}
-                {count > 0 ? (
-                  <span className="account-nav-count" aria-hidden>
-                    {count}
-                  </span>
-                ) : null}
-              </NavLink>
-            );
-          })}
-        </nav>
+        {menuSlot ? null : menu}
         <div className="account-sidebar-footer">
           {context ? (
             <button
@@ -142,6 +151,7 @@ export default function AccountLayout() {
             <Outlet />
           </div>
         </main>
+        {menuSlot ? createPortal(menu, menuSlot) : null}
       </div>
     </div>
   );

@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { foldPoint, nextFolded, stickyStack, type Band } from "./frozen-top";
 import "./frozen-top.css";
+import "./phone-page-top.css";
 
 // Every screen keeps its top in place (Mert 2026-10-16, "header ve tableri
 // freeze yap bütün ekranlarda"): the page heading, then the tabs and bars

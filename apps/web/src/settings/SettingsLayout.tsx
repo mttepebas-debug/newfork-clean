@@ -13,7 +13,9 @@ import {
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { useFrozenTop } from "../shell/useFrozenTop";
+import { usePhonePageMenu } from "../shell/usePhonePageMenu";
 import { NoAccessRoute } from "../shell/NoAccessState";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -115,6 +117,8 @@ export default function SettingsLayout() {
   const location = useLocation();
   const [content, setContent] = useState<HTMLElement | null>(null);
   useFrozenTop(content);
+  // On a phone the menu sits under the page heading's line (Mert 2026-10-17).
+  const menuSlot = usePhonePageMenu(content);
   // Nobody's settings: the no-access card, not a silent trip home (Mert 2026-10-14).
   if (!canEnterSettings(context)) return <NoAccessRoute subject="Settings" />;
 
@@ -131,6 +135,35 @@ export default function SettingsLayout() {
     }))
     .filter((group) => group.items.length > 0);
 
+  const menu = (
+    <nav aria-label="Workspace settings">
+      {visibleGroups.map((group) => (
+        <div className="settings-nav-group" key={group.label}>
+          <span className="settings-nav-label">{group.label}</span>
+          {group.items.map((item) => {
+            const Icon = item.icon;
+            return (
+              <NavLink
+                key={item.to}
+                to={item.to}
+                end={"end" in item ? item.end : undefined}
+                className={({ isActive }) => {
+                  const shiftCatalogActive =
+                    item.label === "Shift catalog" &&
+                    location.pathname.endsWith("/shift-labels");
+                  return `settings-nav-item${isActive || shiftCatalogActive ? " active" : ""}`;
+                }}
+              >
+                <Icon size={17} aria-hidden />
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
+        </div>
+      ))}
+    </nav>
+  );
+
   return (
     <div className="organization-settings">
       <aside className="settings-rail">
@@ -138,36 +171,12 @@ export default function SettingsLayout() {
           <SlidersHorizontal size={18} aria-hidden />
           <strong>Settings</strong>
         </div>
-        <nav aria-label="Workspace settings">
-          {visibleGroups.map((group) => (
-            <div className="settings-nav-group" key={group.label}>
-              <span className="settings-nav-label">{group.label}</span>
-              {group.items.map((item) => {
-                const Icon = item.icon;
-                return (
-                  <NavLink
-                    key={item.to}
-                    to={item.to}
-                    end={"end" in item ? item.end : undefined}
-                    className={({ isActive }) => {
-                      const shiftCatalogActive =
-                        item.label === "Shift catalog" &&
-                        location.pathname.endsWith("/shift-labels");
-                      return `settings-nav-item${isActive || shiftCatalogActive ? " active" : ""}`;
-                    }}
-                  >
-                    <Icon size={17} aria-hidden />
-                    <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-            </div>
-          ))}
-        </nav>
+        {menuSlot ? null : menu}
       </aside>
       <main className="settings-content" ref={setContent}>
         <Outlet />
       </main>
+      {menuSlot ? createPortal(menu, menuSlot) : null}
     </div>
   );
 }

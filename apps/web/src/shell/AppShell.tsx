@@ -454,7 +454,7 @@ export function AppShell() {
           </button>
         </div>
       </aside>
-      {!employeeShell && phoneBars ? <ManagerPhoneBar /> : null}
+      {phoneBars ? <ManagerPhoneBar /> : null}
       <main className="app-main" ref={setMain}>
         <Outlet />
       </main>

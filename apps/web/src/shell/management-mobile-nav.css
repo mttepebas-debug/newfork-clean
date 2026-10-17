@@ -1,19 +1,21 @@
-/* The management frame on a phone (BL-192): a top bar with the workspace, the
-   notification bell and Account (Mert 2026-10-16, variant A); the bottom bar
-   and More are the shared phone-nav.css. Above 720px the sidebar stays and
-   none of this draws. */
+/* The frame on a phone (BL-192): a top bar with the workspace, the
+   notification bell and Account (Mert 2026-10-16, variant A; the employee's
+   frame too since 2026-10-17); the bottom bar and More are the shared
+   phone-nav.css. Above 720px the sidebar stays and none of this draws. */
 .mm-top {
   display: none;
 }
 
 @media (max-width: 720px) {
-  .app-shell[data-employee-shell="false"],
-  .app-shell[data-employee-shell="false"][data-sidebar-collapsed="true"] {
+  /* Either frame, the manager's or the employee's (its own sheet lays it out
+     without the top bar). */
+  .app-shell[data-employee-shell]:has(> .mm-top),
+  .app-shell[data-employee-shell][data-sidebar-collapsed="true"]:has(> .mm-top) {
     grid-template-columns: minmax(0, 1fr);
     grid-template-rows: auto minmax(0, 1fr) auto;
   }
   /* The page scrolls between the two bars, so nothing sits underneath either. */
-  .app-shell[data-employee-shell="false"] > .app-main {
+  .app-shell[data-employee-shell]:has(> .mm-top) > .app-main {
     grid-row: 2;
   }
 

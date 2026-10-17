@@ -1,0 +1,182 @@
+/* One page top on a phone (Mert 2026-10-17: "Bütün headerlarin Separator
+   çizgilerin pixel hassasitetinde ayni koordinatlarda olmasi gerekiyor";
+   variant A, 12 px). Under the 56 px top bar (Account: its own 56 px row)
+   every page's heading has the same box: 12 px, a 36 px title row, 12 px and
+   a 1 px line, so the line is 116 px down the screen on every page; folded
+   (frozen-top.css) 6 px, the row, 5 px and the line: 103 px. The title row
+   holds the page name and its control; the eyebrow and the description show
+   on the desktop only. What does not fit next to the title (a second
+   control, the heading's own tabs, Settings' and Account's menu) wraps under
+   the line, 12 px below it. The space under the line stays each page's own.
+   A desktop is untouched. `:root:root:root:root` lifts these over each page's
+   own sheet, whichever loads later (Lineup pins its heading with four
+   classes). */
+
+@media (max-width: 720px) {
+  /* The page starts at the top of the area it scrolls in. */
+  :root:root:root:root :is(.app-main > *, .settings-content > *):has(:is(.catalog-page-header, .settings-page-header)),
+  :root:root:root:root :is(.employee-hub-page, .eh-dashboard, .account-layout-grid, .account-page, .lineup-phone-head) {
+    padding-top: 0;
+  }
+  :root:root:root:root .employee-hub-page > .employee-lineup-pin {
+    margin-top: 0;
+    padding-top: 0;
+  }
+  /* The employee's Home: the top bar holds its workspace, bell and Account. */
+  :root:root:root:root .eh-dashboard > .eh-context-bar {
+    display: none;
+  }
+
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) {
+    --page-line: 60px;
+    display: flex;
+    box-sizing: border-box;
+    height: auto;
+    min-height: 0;
+    flex-flow: row wrap;
+    align-content: flex-start;
+    align-items: center;
+    justify-content: space-between;
+    gap: 25px 12px;
+    margin-top: 0;
+    padding: 12px 0 13px;
+    border-bottom: 0;
+    text-align: left;
+  }
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header):not([data-frozen-piece]) {
+    position: relative;
+  }
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header)::after {
+    position: absolute;
+    top: var(--page-line);
+    right: 0;
+    left: 0;
+    height: 1px;
+    background: var(--theme-border);
+    content: "";
+  }
+  :root:root:root:root
+    :is(.catalog-page-header, .settings-page-header, .account-page-header)
+    :is(.catalog-page-eyebrow, .settings-heading-icon, h1 + p, .catalog-page-heading > p) {
+    display: none;
+  }
+  /* The title block takes the first row; a control that no longer fits wraps under the line. */
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) > :has(h1) {
+    min-width: 0;
+    max-width: 100%;
+    flex: 1 0 auto;
+    margin: 0;
+  }
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) > :has(h1) h1 {
+    display: flex;
+    height: 36px;
+    min-width: 0;
+    flex-wrap: nowrap;
+    align-items: center;
+    margin: 0;
+    overflow: hidden;
+    font-size: 28px;
+    line-height: 36px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) > :not(:has(h1)) {
+    width: auto;
+    flex: 0 0 auto;
+    order: 1;
+    margin: 0;
+  }
+  /* A control beside the title is as tall as the title row (Workspace's Customize). */
+  :root:root:root:root
+    :is(.catalog-page-header, .settings-page-header, .account-page-header)
+    > :not(:has(h1), .phone-page-menu, :has([role="tablist"]))
+    :is(.nf-button, button, a) {
+    width: auto;
+    height: 36px;
+    min-height: 36px;
+  }
+  /* The heading's own tabs (Acknowledgements) keep a full row under the line. */
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) > :has([role="tablist"]) {
+    flex: 1 1 100%;
+    order: 3;
+  }
+
+  /* Settings' and Account's menu: the first row under the line (usePhonePageMenu). */
+  :root:root:root:root :is(.catalog-page-header, .settings-page-header, .account-page-header) > .phone-page-menu {
+    min-width: 0;
+    flex: 1 1 100%;
+    order: 2;
+    margin: 0 -16px;
+  }
+  .phone-page-menu > nav {
+    display: flex;
+    gap: 4px;
+    overflow-x: auto;
+    padding: 0 16px;
+    scroll-padding-inline: 16px;
+    scrollbar-width: none;
+  }
+  .phone-page-menu > nav::-webkit-scrollbar {
+    display: none;
+  }
+  .phone-page-menu .settings-nav-group {
+    display: flex;
+    flex: 0 0 auto;
+    gap: 4px;
+  }
+  .phone-page-menu .settings-nav-label {
+    display: none;
+  }
+  :root:root:root:root .phone-page-menu :is(.settings-nav-item, .account-nav-item) {
+    width: auto;
+    min-height: 40px;
+    flex: 0 0 auto;
+    margin: 0;
+    white-space: nowrap;
+  }
+  /* Settings' side menu has nothing left on a phone once its menu is under the heading. */
+  :root:root:root:root .settings-rail:not(:has(nav)) {
+    display: none;
+  }
+  /* Account: Back and Sign out are its 56 px top bar. */
+  :root:root:root:root .account-sidebar:not(:has(nav)) {
+    box-sizing: border-box;
+    height: 56px;
+    min-height: 56px;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    margin: 0 -16px;
+    padding: 0 16px;
+    border-bottom: 1px solid var(--theme-border);
+    background: var(--theme-surface);
+  }
+  :root:root:root:root .account-sidebar:not(:has(nav)) > .account-sidebar-footer {
+    margin: 0;
+  }
+  /* A heading draws its own line, so the hairline under the frozen top is not doubled. */
+  :root:root:root:root
+    [data-frozen-scrolled]
+    :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-last] {
+    box-shadow: 0 calc(-1 * var(--frozen-gap, 0px)) 0 0 var(--frozen-bg);
+  }
+}
+
+/* Folded (frozen-top.css): the same box, tighter. */
+@media (max-width: 720px) and (min-height: 560px) {
+  :root:root:root:root
+    [data-frozen-folded]
+    :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-piece] {
+    --page-line: 47px;
+    gap: 18px 12px;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+  :root:root:root:root
+    [data-frozen-folded]
+    :is(.catalog-page-header, .settings-page-header, .account-page-header)[data-frozen-piece]
+    > :has(h1)
+    h1 {
+    font-size: 19px;
+  }
+}

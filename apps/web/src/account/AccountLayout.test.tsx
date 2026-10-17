@@ -29,7 +29,10 @@ vi.mock("./AccountAvatar", () => ({
   AccountAvatar: () => <span aria-hidden />,
 }));
 
-function renderLayout() {
+// A window as wide as `phone` says; the layout listens for rotation.
+const media = (phone: boolean) => vi.fn(() => ({ matches: phone, addEventListener: () => undefined, removeEventListener: () => undefined }));
+
+function renderLayout(profile = <p>Profile content</p>) {
   return render(
     <QueryClientProvider
       client={
@@ -39,7 +42,7 @@ function renderLayout() {
       <MemoryRouter initialEntries={["/account/workspaces"]}>
         <Routes>
           <Route element={<AccountLayout />}>
-            <Route path="/account/profile" element={<p>Profile content</p>} />
+            <Route path="/account/profile" element={profile} />
             <Route
               path="/account/workspaces"
               element={<p>Workspace content</p>}
@@ -60,7 +63,7 @@ describe("AccountLayout mobile navigation", () => {
       documents: 0,
       workspaces: 0,
     });
-    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: true })));
+    vi.stubGlobal("matchMedia", media(true));
     HTMLElement.prototype.scrollIntoView = function () {
       scrolledLabels.push(this.textContent?.trim() ?? "");
     };
@@ -77,11 +80,29 @@ describe("AccountLayout mobile navigation", () => {
     fireEvent.click(screen.getByRole("link", { name: "Profile" }));
     await waitFor(() => expect(scrolledLabels.at(-1)).toBe("Profile"));
   });
+
+  // MOBIL-BASLIK (Mert 2026-10-17): on a phone the menu sits under the page
+  // heading's line; Back and Sign out stay in the bar above it.
+  it("puts the menu under the page heading on a phone", async () => {
+    renderLayout(
+      <header className="account-page-header">
+        <div>
+          <h1>Profile</h1>
+        </div>
+      </header>,
+    );
+    fireEvent.click(screen.getByRole("link", { name: "Profile" }));
+    const heading = await screen.findByRole("banner");
+    await waitFor(() => expect(heading.querySelector('nav[aria-label="Account"]')).not.toBeNull());
+    const bar = screen.getByRole("complementary", { name: "Account navigation" });
+    expect(bar.querySelector("nav")).toBeNull();
+    expect(screen.getByRole("button", { name: "Sign out" }).closest("aside")).toBe(bar);
+  });
 });
 
 describe("AccountLayout counts", () => {
   beforeEach(() => {
-    vi.stubGlobal("matchMedia", vi.fn(() => ({ matches: false })));
+    vi.stubGlobal("matchMedia", media(false));
   });
 
   afterEach(() => {
