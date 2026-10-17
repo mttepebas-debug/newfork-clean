@@ -153,6 +153,54 @@
 .dav-dot.is-off {
   background: var(--theme-availability);
 }
+/* A day's tone (Mert 2026-10-16), from dayTone() in day-availability.ts:
+   green when the day is open, orange when any of it is not. The manager's
+   read-only days use the same classes. Text on its ground passes AA
+   (accent-deep on success-soft about 8.4:1, availability-text on availability-soft about 6.2:1). */
+.dav-tone.is-free {
+  --dav-tone-bg: var(--theme-success-soft);
+  --dav-tone-line: color-mix(in srgb, var(--theme-accent) 25%, var(--theme-surface));
+  --dav-tone-text: var(--theme-accent-deep);
+  --dav-tone-dot: var(--theme-accent);
+}
+.dav-tone.is-blocked {
+  --dav-tone-bg: var(--theme-availability-soft);
+  --dav-tone-line: color-mix(in srgb, var(--theme-availability) 35%, var(--theme-surface));
+  --dav-tone-text: var(--theme-availability-text);
+  --dav-tone-dot: var(--theme-availability);
+}
+.dav-tone {
+  background: var(--dav-tone-bg);
+  color: var(--dav-tone-text);
+}
+.dav-row.dav-tone {
+  border-top-color: var(--dav-tone-line);
+  background: var(--dav-tone-bg);
+  color: var(--dav-tone-text);
+}
+.dav-row.dav-tone .dav-row-text :is(b, small) {
+  color: var(--dav-tone-text);
+}
+.dav-row.dav-tone .dav-row-text small {
+  font-weight: 600;
+}
+.dav-row.dav-tone.is-free .dav-row-dot {
+  background: var(--dav-tone-dot);
+  box-shadow: none;
+}
+.dav-row.dav-tone:hover {
+  background: color-mix(in srgb, var(--dav-tone-bg) 80%, var(--dav-tone-line));
+}
+/* The day being edited keeps its colour: a green bar and ring mark it. */
+.dav-row.dav-tone[aria-current="true"] {
+  background: var(--dav-tone-bg);
+  box-shadow:
+    inset 4px 0 0 var(--theme-accent),
+    inset 0 0 0 2px var(--theme-accent);
+}
+.dav-panel.is-phone .dav-row.dav-tone {
+  border-color: var(--dav-tone-line);
+}
 .dav-detail {
   display: flex;
   flex-direction: column;
@@ -673,7 +721,7 @@
     background: var(--theme-accent-soft);
   }
   100% {
-    background: var(--theme-surface);
+    background: var(--dav-tone-bg, var(--theme-surface));
   }
 }
 .dav-panel.is-phone .dav-onboard-foot {

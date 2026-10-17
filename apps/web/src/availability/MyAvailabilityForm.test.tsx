@@ -69,14 +69,17 @@ describe("desktop: the days on the left, the day on the right", () => {
     render(<MyAvailabilityForm model={data} onSave={vi.fn()} />);
     const days = within(screen.getByRole("navigation", { name: "Days" })).getAllByRole("button");
     expect(days.map((day) => day.textContent)).toEqual([
-      "MondayAvailable",
+      "MondayAvailable all day",
       "TuesdayUnavailable all day",
-      "WednesdayAvailable",
-      "ThursdayAvailable",
-      "FridayAfter 6 PM",
-      "SaturdayAvailable",
-      "SundayAvailable",
+      "WednesdayAvailable all day",
+      "ThursdayAvailable all day",
+      "FridayUnavailable after 6:00 PM",
+      "SaturdayAvailable all day",
+      "SundayAvailable all day",
     ]);
+    // Green when open, orange when any of the day is not (Mert 2026-10-16).
+    expect(days.map((day) => day.classList.contains("is-blocked"))).toEqual([false, true, false, false, true, false, false]);
+    expect(days[0]!.className).toContain("dav-tone is-free");
     expect(days[0]!.getAttribute("aria-current")).toBe("true");
     fireEvent.click(days[4]!);
     expect(screen.getByRole("heading", { level: 3 }).textContent).toBe("Friday");
@@ -159,7 +162,7 @@ describe("desktop: the days on the left, the day on the right", () => {
     ];
     const onSave = saver(data);
     render(<MyAvailabilityForm model={data} onSave={onSave} />);
-    expect(dayRow(1).textContent).toBe("Monday9 AM – 12 PM, After 5 PM");
+    expect(dayRow(1).textContent).toBe("MondayUnavailable 9:00 AM – 12:00 PM, after 5:00 PM");
     fireEvent.click(dayRow(3));
     fireEvent.click(radio(/^Unavailable/));
     fireEvent.click(screen.getByRole("button", { name: "Save availability" }));
@@ -276,7 +279,7 @@ describe("phone: the week as a list, a day in a sheet", () => {
     expect(dayRow(5).className).toContain("is-flash");
     expect(dayRow(4).className).toContain("is-flash");
     expect(dayRow(3).className).not.toContain("is-flash");
-    expect(dayRow(5).textContent).toBe("FridayAfter 6 PM");
+    expect(dayRow(5).textContent).toBe("FridayUnavailable after 6:00 PM");
     await act(async () => vi.advanceTimersByTime(1800));
     expect(dayRow(5).className).not.toContain("is-flash");
   });
@@ -293,7 +296,7 @@ describe("phone: the week as a list, a day in a sheet", () => {
       fireEvent.click(screen.getByRole("radio", { name: /^Unavailable/ }));
       close();
       expect(screen.queryByRole("dialog")).toBeNull();
-      expect(dayRow(1).textContent).toBe("MondayAvailable");
+      expect(dayRow(1).textContent).toBe("MondayAvailable all day");
     }
     expect(onSave).not.toHaveBeenCalled();
   });

@@ -5,6 +5,7 @@ import {
   changedDays,
   dayState,
   dayStatusText,
+  dayTone,
   rangeOf,
   rangeText,
   setDayState,
@@ -86,6 +87,32 @@ describe("one day of the week", () => {
     expect(all).toEqual({ ...day, all_day: true, shift_type_ids: [] });
     // Unmarking one from all day leaves the other selectable ones marked.
     expect(toggleShiftType(all, types[1]!.id, types).shift_type_ids).toEqual([types[0]!.id, types[2]!.id]);
+  });
+});
+
+// Mert 2026-10-16: a row says the day plainly and takes its colour from it
+// (green available, orange unavailable); the manager's read-only days reuse it.
+describe("a day's row: colour and words", () => {
+  const day = emptyWeeklyPreference("time_range").days[1]!;
+  it.each([
+    [day, "free", "Available all day"],
+    [{ ...day, all_day: true }, "blocked", "Unavailable all day"],
+    [{ ...day, ranges: [{ start: "15:00", end: "22:00" }] }, "blocked", "Unavailable 3:00 PM – 10:00 PM"],
+    [{ ...day, ranges: [{ start: "00:00", end: "11:00" }] }, "blocked", "Unavailable before 11:00 AM"],
+    [{ ...day, ranges: [{ start: "18:00", end: "24:00" }] }, "blocked", "Unavailable after 6:00 PM"],
+  ] as const)("%j", (rule, tone, label) => {
+    expect(dayTone(rule, types, "12h")).toEqual({ tone, label, className: `dav-tone is-${tone}` });
+  });
+  it("names the shift types in the workspace's order", () => {
+    const shifts = emptyWeeklyPreference("shift_type").days[5]!;
+    expect(dayTone({ ...shifts, shift_type_ids: [types[2]!.id, types[1]!.id] }, types, "12h").label).toBe(
+      "Unavailable for Lunch, Dinner",
+    );
+  });
+  it("writes a 24-hour workspace's clock", () => {
+    expect(dayTone({ ...day, ranges: [{ start: "18:00", end: "24:00" }] }, types, "24h").label).toBe(
+      "Unavailable after 18:00",
+    );
   });
 });
 

@@ -59,8 +59,8 @@ test("desktop: Friday's evening and the Thursday it was copied to are saved with
   await expect(page.getByRole("status").filter({ hasText: /saved/i })).toHaveCount(0);
 
   await page.reload();
-  await expect(days.getByRole("button", { name: /^Friday/ })).toHaveText(/After 6 PM/);
-  await expect(days.getByRole("button", { name: /^Thursday/ })).toHaveText(/After 6 PM/);
+  await expect(days.getByRole("button", { name: /^Friday/ })).toHaveText(/Unavailable after 6:00 PM/);
+  await expect(days.getByRole("button", { name: /^Thursday/ })).toHaveText(/Unavailable after 6:00 PM/);
   const week = savedWeek(person.label)!;
   expect(week.days.find((day) => day.day === 5)!.ranges).toEqual([{ start: "18:00", end: "24:00" }]);
   expect(week.days.find((day) => day.day === 4)!.ranges).toEqual([{ start: "18:00", end: "24:00" }]);
@@ -70,7 +70,7 @@ test("phone: Monday opens in a sheet, saves on its own and stays saved", async (
   const person = freshEmployee("daysheet");
   const page = await open(browser, person.email, { width: 390, height: 844 });
   const monday = page.locator(".dav-list > .dav-row").first();
-  await expect(monday).toHaveText(/MondayAvailable/);
+  await expect(monday).toHaveText(/MondayAvailable all day/);
   await monday.tap();
   const sheet = page.getByRole("dialog", { name: "Monday" });
   await expect(sheet).toBeVisible();
@@ -79,6 +79,8 @@ test("phone: Monday opens in a sheet, saves on its own and stays saved", async (
   await sheet.getByRole("button", { name: "Save" }).tap();
   await expect(sheet).toBeHidden();
   await expect(monday).toHaveText(/Unavailable all day/);
+  // An unavailable day turns orange (Mert 2026-10-16).
+  await expect(monday).toHaveClass(/is-blocked/);
   await page.reload();
   await expect(page.locator(".dav-list > .dav-row").first()).toHaveText(/Unavailable all day/);
   expect(savedWeek(person.label)!.days.find((day) => day.day === 1)!.all_day).toBe(true);

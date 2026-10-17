@@ -15,7 +15,7 @@ import {
   WEEKDAY_NAMES,
   changedDays,
   dayState,
-  dayStatusText,
+  dayTone,
   noCopies,
   type Copies,
 } from "./day-availability";
@@ -212,19 +212,21 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
 
   const row = (weekday: number, onClick: () => void, current?: boolean) => {
     const day = week.days.find((item) => item.day === weekday)!;
+    // Green when the day is open, orange when any of it is not (Mert 2026-10-16).
+    const tone = dayTone(day, shiftTypes, timeFormat);
     return (
       <button
         key={weekday}
         type="button"
         data-weekday={weekday}
-        className={`dav-row is-${dayState(day)}${flash.includes(weekday) ? " is-flash" : ""}`}
+        className={`dav-row ${tone.className} is-${dayState(day)}${flash.includes(weekday) ? " is-flash" : ""}`}
         aria-current={current === undefined ? undefined : current}
         onClick={onClick}
       >
         <i className="dav-row-dot" aria-hidden />
         <span className="dav-row-text">
           <b>{WEEKDAY_NAMES[weekday]}</b>
-          <small>{dayStatusText(day, shiftTypes, timeFormat)}</small>
+          <small>{tone.label}</small>
         </span>
         <ChevronRight size={phone ? 16 : 15} aria-hidden />
       </button>

@@ -111,6 +111,35 @@ export function dayStatusText(
     .join(", ");
 }
 
+/** A row's tone: green when the day is open, orange when any of it is not. */
+export type DayTone = "free" | "blocked";
+
+/**
+ * How a day of the week reads in a list (Mert 2026-10-16): its tone, a plain
+ * sentence and the class that colours it (`.dav-tone` in day-availability.css).
+ * The employee's day list uses it; the manager's read-only days reuse it.
+ */
+export function dayTone(
+  day: WeeklyPreferenceDay,
+  shiftTypes: readonly PreferenceShiftType[],
+  format: TimeFormat,
+): { tone: DayTone; label: string; className: string } {
+  const state = dayState(day);
+  const tone: DayTone = state === "free" ? "free" : "blocked";
+  const className = `dav-tone is-${tone}`;
+  if (state === "free") return { tone, label: "Available all day", className };
+  if (state === "off") return { tone, label: "Unavailable all day", className };
+  if (!day.ranges.length)
+    return { tone, label: `Unavailable for ${dayStatusText(day, shiftTypes, format)}`, className };
+  const pieces = day.ranges.map((range) => {
+    const [start, end] = [toMinutes(range.start), toMinutes(range.end)];
+    if (start <= DAY_START) return `before ${fullClock(end, format)}`;
+    if (end >= DAY_END) return `after ${fullClock(start, format)}`;
+    return `${fullClock(start, format)} – ${fullClock(end, format)}`;
+  });
+  return { tone, label: `Unavailable ${pieces.join(", ")}`, className };
+}
+
 const evening: MinuteRange = [18 * 60, DAY_END];
 
 export function setDayState(
