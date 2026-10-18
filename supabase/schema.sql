@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:a12adad9c400ee2f08b477e34c9ae9df13467775d1e1847620e12af689341b73
+-- fingerprint: sha256:8a6b8457002b9943048e619952b318de47c9e92efda61b26b1e9756b0ed832c2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -24832,7 +24832,8 @@ begin
  perform pg_advisory_xact_lock(hashtextextended('roles:'||target_workspace_id::text,0));
  perform app_private.authorize(actor_user_id,target_workspace_id,'settings.roles.write');
  if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when target_role_id is not null and not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
- select role into actor_class from public.workspace_memberships where user_id=actor_user_id and workspace_id=target_workspace_id and status='active';
+ -- The editor's class, from the core (ROL-CIFT: the management slot's, else employee).
+ actor_class := (app_private.actor(actor_user_id,target_workspace_id)).class;
  if target_role_id is not null then
   select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
   if expected_updated_at is null or expected_updated_at<>target.updated_at then raise exception 'Role changed since you opened it. Reload before saving.' using errcode='PT409',hint='role.changed'; end if;
