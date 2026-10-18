@@ -11,4 +11,3 @@
 # - Extending: the same line (same BL number) gets new start and end dates. The coordinator may extend a BL once; a second
 #   extension needs Mert's "evet".
 # - Lines starting with # are comments.
-the manager's phone Lineup: a swipe moves through Team, Notes and Read | BL-1136 | 2026-10-17 | 2026-10-24
