@@ -158,6 +158,22 @@ describe("WindowAlert", () => {
     expect(last.style.marginBottom).toBe("4px");
   });
 
+  it("makes a static footer its anchor while it shows, whatever the screen's rules say", () => {
+    bandHeight(20);
+    const window = (message: string | null) => (
+      <section>
+        <div>Days</div>
+        <footer data-testid="foot" style={{ position: "static" }}>
+          <WindowAlert message={message} />
+        </footer>
+      </section>
+    );
+    const { rerender, getByTestId } = render(window("Couldn't save."));
+    expect(getByTestId("foot").style.position).toBe("relative");
+    rerender(window(null));
+    expect(getByTestId("foot").style.position).toBe("static");
+  });
+
   it("finds the body above a footer it opens", () => {
     bandHeight(24);
     const window = (message: string | null) => (

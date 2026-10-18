@@ -177,21 +177,13 @@
   z-index: 1;
   margin-top: auto;
 }
-.weekly-preferences-footer > p {
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0 0 10px;
-  color: var(--wp-muted);
-}
 .settings-page > .weekly-settings {
   margin-top: 24px;
 }
+/* Not sticky in Settings, but still the anchor of its error band (UI-FIELDMSG-2). */
 .weekly-settings .weekly-preferences-footer {
-  position: static;
+  position: relative;
   margin-top: 0;
-}
-.weekly-preferences-footer .weekly-preferences-error {
-  color: var(--wp-red);
 }
 .weekly-preferences-actions {
   display: flex;

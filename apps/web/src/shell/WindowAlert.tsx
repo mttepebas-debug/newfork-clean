@@ -45,9 +45,18 @@ export function WindowAlert({
 /** Room above the band's anchor for as long as the band shows; returns the undo. */
 function keepRoomUnder(band: HTMLElement): () => void {
   const anchor = band.parentElement;
-  const room = anchor ? bodyAbove(anchor) : null;
-  if (!anchor || !room) return () => {};
-  const view = room.ownerDocument.defaultView;
+  if (!anchor) return () => {};
+  const view = anchor.ownerDocument.defaultView;
+  // The band hangs from its footer or slot. A screen whose own rule makes that
+  // footer static would hand the band to some far ancestor (off screen), so the
+  // anchor is made relative here, inline, for as long as the band shows.
+  const anchorBefore = anchor.style.position;
+  if (view?.getComputedStyle(anchor).position === "static") anchor.style.position = "relative";
+  const unanchor = () => {
+    anchor.style.position = anchorBefore;
+  };
+  const room = bodyAbove(anchor);
+  if (!room) return unanchor;
   const scrolls = scrollsItself(room);
   const side = scrolls ? "paddingBottom" : "marginBottom";
   const before = { [side]: room.style[side], scrollPaddingBottom: room.style.scrollPaddingBottom };
@@ -76,6 +85,7 @@ function keepRoomUnder(band: HTMLElement): () => void {
   watch?.observe(band);
   return () => {
     watch?.disconnect();
+    unanchor();
     room.style[side] = before[side] ?? "";
     if (scrolls) room.style.scrollPaddingBottom = before.scrollPaddingBottom;
     if (outer) outer.style.scrollPaddingBottom = outerBefore;
