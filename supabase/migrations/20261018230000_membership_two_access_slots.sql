@@ -474,7 +474,8 @@ begin
   from rol_cift_people person
   join public.employee_job_assignments a
     on a.workspace_id = person.workspace_id and a.employee_id = person.employee_id and a.ended_at is null
-  join public.jobs j on j.id = a.job_id and j.workspace_id = a.workspace_id and j.deleted_at is null
+  join public.jobs j on j.id = a.job_id and j.workspace_id = a.workspace_id
+    and j.archived_at is null and j.deleted_at is null
   join public.departments d on d.id = j.department_id and d.system_key = 'management'
   where person.class <> 'employee' and (j.system_key is distinct from 'owner' or person.class = 'owner')
   on conflict (membership_id, job_id) do nothing;

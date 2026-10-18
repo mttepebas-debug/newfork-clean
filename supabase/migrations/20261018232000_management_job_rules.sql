@@ -184,3 +184,70 @@ begin
   return null;
 end;
 $$;
+
+-- Setup starts over only while nobody but the owner holds a Management job.
+CREATE OR REPLACE FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  onboarding_status public.onboarding_status;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'workspace.setup');
+
+  select onboarding.status
+  into onboarding_status
+  from public.workspace_onboarding onboarding
+  where onboarding.workspace_id = target_workspace_id
+  for update;
+
+  if onboarding_status is null then
+    raise exception 'workspace onboarding was not found' using errcode = 'P0002';
+  end if;
+  if onboarding_status = 'complete'::public.onboarding_status then
+    raise exception 'completed owner onboarding cannot be reset' using errcode = '22023';
+  end if;
+  -- The reset deletes every job; a Management job somebody other than the owner holds would go with it
+  -- and leave them without one (KARARLAR S-168, ROL-CIFT 1.3).
+  if exists (
+    select 1 from public.membership_management_jobs held
+    join public.workspace_memberships membership on membership.id = held.membership_id
+    join public.workspace_roles role on role.id = membership.role_id
+    where held.workspace_id = target_workspace_id and role.access_class <> 'owner'
+  ) then
+    raise exception 'somebody besides the owner holds a Management job; setup cannot start over'
+      using errcode = '22023', hint = 'onboarding.reset_management_jobs_held';
+  end if;
+
+  delete from public.employee_profiles
+  where workspace_id = target_workspace_id
+    and user_id is null;
+
+  delete from public.jobs
+  where workspace_id = target_workspace_id;
+
+  delete from public.departments
+  where workspace_id = target_workspace_id;
+
+  delete from public.locations
+  where workspace_id = target_workspace_id;
+
+  update public.workspace_onboarding
+  set status = 'incomplete'::public.onboarding_status,
+      current_step = 1,
+      completed_at = null,
+      updated_by = actor_user_id,
+      updated_at = now()
+  where workspace_id = target_workspace_id;
+
+  insert into public.audit_events (
+    workspace_id, actor_user_id, action, target_type, target_id
+  ) values (
+    target_workspace_id,
+    actor_user_id,
+    'workspace.onboarding_reset',
+    'workspace',
+    target_workspace_id::text
+  );
+end;
+$$;

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(14);
 
 -- ROL-CIFT 1.3 (KARARLAR S-168; design §4.13): every management access keeps a Management job.
 -- Setup makes Management with Owner, General Manager and Assistant Manager; the last Management job,
@@ -124,6 +124,32 @@ select is(
     pg_temp.job('c1300000-0000-4000-8000-000000000101', 'Assistant Manager'))),
   '22023|jobs.last_management_job|{"people": ["Mona Person"]}',
   'Assistant Manager, now the last Management job and Mona''s only one, is not deleted'
+);
+
+-- One statement archiving two jobs is refused whole: the second would leave Mona without one.
+insert into public.jobs (workspace_id, name, department_id)
+select 'c1300000-0000-4000-8000-000000000101', 'Shift Manager', d.id from public.departments d
+where d.workspace_id = 'c1300000-0000-4000-8000-000000000101' and d.system_key = 'management';
+insert into public.membership_management_jobs (workspace_id, membership_id, job_id) values
+  ('c1300000-0000-4000-8000-000000000101', 'c1300000-0000-4000-8000-000000000502',
+   pg_temp.job('c1300000-0000-4000-8000-000000000101', 'Shift Manager'));
+select is(
+  pg_temp.refusal($q$update public.jobs set archived_at = now()
+    where workspace_id = 'c1300000-0000-4000-8000-000000000101' and name in ('Assistant Manager', 'Shift Manager')$q$),
+  '22023|jobs.last_management_job|{"people": ["Mona Person"]}',
+  'archiving Assistant Manager and Shift Manager in one statement is refused'
+);
+select is(pg_temp.holds('c1300000-0000-4000-8000-000000000502'), array['Assistant Manager', 'Shift Manager'],
+  'and nothing of it stays: Mona still holds both');
+
+-- The setup reset deletes every job, so it does not run while somebody besides the owner holds one.
+insert into public.workspace_onboarding (workspace_id, status, current_step, updated_by)
+values ('c1300000-0000-4000-8000-000000000101', 'incomplete', 3, 'c1300000-0000-4000-8000-000000000001');
+select is(
+  pg_temp.refusal($q$select public.reset_owner_onboarding_service('c1300000-0000-4000-8000-000000000001',
+    'c1300000-0000-4000-8000-000000000101')$q$),
+  '22023|onboarding.reset_management_jobs_held|',
+  'Olcay cannot start setup over while Mona holds Management jobs'
 );
 
 -- In Bare Co only Nora holds General Manager: the last job a manager could hold stays.
