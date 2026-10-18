@@ -200,6 +200,30 @@ test("a manager switches to the employee view from the sidebar and comes back", 
   await expect(sidebar.getByRole("link", { name: "Employee view" })).toBeVisible();
 });
 
+// ACCOUNT-BACK (Mert 2026-10-18): Account's "Back to workspace" returns to the
+// page it came from, in the view it came from; it used to drop a manager who
+// went to Account from the employee view into the management view.
+test("Back to workspace in Account returns to the page and the view it came from", async ({ browser }) => {
+  const ayse = await openPage(browser, "ayse", "/app/employee-hub/schedule");
+  const sidebar = ayse.getByRole("complementary", { name: "Application sidebar" });
+  const backFromAccount = async () => {
+    await sidebar.getByRole("link", { name: /^Account/ }).click();
+    await expect(ayse).toHaveURL(/\/account\/profile$/);
+    // A second Account page on the way, as people do.
+    await ayse.getByRole("navigation", { name: "Account" }).getByRole("link", { name: "Security" }).click();
+    await ayse.getByRole("button", { name: "Back to workspace" }).click();
+  };
+
+  await backFromAccount();
+  await expect(ayse).toHaveURL(/\/app\/employee-hub\/schedule$/);
+  await expect(sidebar.getByRole("link", { name: "Management view" })).toBeVisible();
+
+  await ayse.goto("/app/employees");
+  await backFromAccount();
+  await expect(ayse).toHaveURL(/\/app\/employees$/);
+  await expect(sidebar.getByRole("link", { name: "Employee view" })).toBeVisible();
+});
+
 test("on a phone the switch sits under More, and the way back under the employee view's More", async ({
   browser,
 }) => {

@@ -17,6 +17,7 @@ import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import "./account.css";
 import { requestAppNavigation } from "../shell/leave-guard";
+import { workspaceReturnPath } from "../shell/last-app-page";
 import { AccountAvatar } from "./AccountAvatar";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
@@ -136,7 +137,11 @@ export default function AccountLayout() {
             <button
               type="button"
               className="account-nav-item"
-              onClick={() => requestAppNavigation(() => navigate("/app"))}
+              onClick={() =>
+                requestAppNavigation(() =>
+                  navigate(workspaceReturnPath(account?.userId, context.workspace.id)),
+                )
+              }
             >
               <ArrowLeft size={17} aria-hidden /> Back to workspace
             </button>

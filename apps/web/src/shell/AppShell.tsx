@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useState, type ComponentType } from "react";
+import { useEffect, useState, type ComponentType } from "react";
 import { useFrozenTop } from "./useFrozenTop";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
@@ -39,6 +39,7 @@ import { countAccountAttention, supabaseClient } from "../lib/supabase";
 import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
+import { rememberAppPage } from "./last-app-page";
 
 interface NavItem {
   readonly to: string;
@@ -213,6 +214,13 @@ export function AppShell() {
   const location = useLocation();
   const navigate = useNavigate();
   usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
+  // Account's "Back to workspace" returns here, in this view (ACCOUNT-BACK).
+  const workspaceId = context?.workspace.id;
+  const userId = account?.userId;
+  useEffect(() => {
+    if (userId && workspaceId)
+      rememberAppPage({ userId, workspaceId, path: location.pathname + location.search });
+  }, [userId, workspaceId, location.pathname, location.search]);
   const phone = usePhoneWidth();
   // The bottom bar's width (720 px and below): the management top bar comes with it.
   const phoneBars = useListPhoneWidth();
