@@ -468,10 +468,8 @@ export function AppShell() {
       <main className="app-main" ref={setMain}>
         <Outlet />
       </main>
-      {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123). */}
-      {location.pathname === (employeeShell ? "/app/employee-hub" : managementHome) ? (
-        <PhoneAlertsHome audience={employeeShell ? "employee" : "manager"} />
-      ) : null}
+      {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); the employee's Home shows it in its own list (Daylight, Mert 2026-10-18). */}
+      {!employeeShell && location.pathname === managementHome ? <PhoneAlertsHome audience="manager" /> : null}
       {employeeShell ? (
         <EmployeeMobileNav
           managementHome={inEmployeeView ? managementHome : null}

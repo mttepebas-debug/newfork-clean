@@ -299,7 +299,7 @@ describe("EmployeeHubPage", () => {
   it("shows Home without the old notification bell, updates card or preferences link", async () => {
     context.permissions = [...context.permissions, "notifications.read"];
     renderPage();
-    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Full schedule/ })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /^Notifications/ })).toBeNull();
     expect(screen.queryByRole("heading", { name: "Latest updates" })).toBeNull();
     expect(screen.queryByRole("link", { name: /Notification preferences/ })).toBeNull();
@@ -310,7 +310,7 @@ describe("EmployeeHubPage", () => {
   it("opens Home for the old More address and for an unknown one", async () => {
     for (const path of ["/app/employee-hub/more", "/app/employee-hub/nothing-here"]) {
       renderPage(path);
-      expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+      expect(await screen.findByRole("link", { name: /Full schedule/ })).toBeTruthy();
       expect(screen.queryByRole("link", { name: /My account/ })).toBeNull();
       cleanup();
     }
@@ -319,7 +319,7 @@ describe("EmployeeHubPage", () => {
   it("keeps Schedule → Lineup on its own page", async () => {
     renderPage("/app/employee-hub/schedule/lineup");
     expect(await screen.findByRole("heading", { level: 1, name: "Lineup" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: /My schedule/ })).toBeNull();
+    expect(screen.queryByRole("link", { name: /Full schedule/ })).toBeNull();
   });
   // BL-278 (7): a failed request check must not read as "nothing waiting".
   it("does not say all caught up when the requests could not be checked", async () => {
@@ -338,7 +338,7 @@ describe("EmployeeHubPage", () => {
     renderPage();
     expect(await screen.findByRole("heading", { name: "We couldn't load team notices" })).toBeTruthy();
     expect(screen.queryByText(/unavailable/)).toBeNull();
-    expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Full schedule/ })).toBeTruthy();
     expect(screen.getByLabelText("New personal reminder")).toBeTruthy();
   });
 
@@ -404,12 +404,12 @@ describe("EmployeeHubPage", () => {
     expect(within(card).getByRole("heading", { name: "We couldn't load Employee Hub" })).toBeTruthy();
     expect(screen.queryByText("hub service down")).toBeNull();
     fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Full schedule/ })).toBeTruthy();
   });
 
   it("keeps the last day and says so when the hub's refresh fails", async () => {
     const { client } = renderPageWithFixture(fixture);
-    expect(await screen.findByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: /Full schedule/ })).toBeTruthy();
     vi.mocked(getEmployeeHub).mockRejectedValueOnce(new Error("hub service down"));
     await act(async () => {
       await client.refetchQueries({ queryKey: ["employee-hub"] });
@@ -417,7 +417,7 @@ describe("EmployeeHubPage", () => {
     expect(
       await screen.findByText("Your day didn't refresh. This is the last schedule that loaded."),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Full schedule/ })).toBeTruthy();
     expect(screen.queryByText("Your schedule may be out of date.")).toBeNull();
     expect(screen.queryByText("hub service down")).toBeNull();
 
@@ -433,7 +433,7 @@ describe("EmployeeHubPage", () => {
     );
   });
   // EKRAN-08: dated posts show under Coming up, for the person's own location; the rest stay Team notices.
-  it("lists published Important Dates under Coming up and keeps them out of Team notices", async () => {
+  it("lists published Important Dates under Coming up and keeps them out of the team's notices", async () => {
     context.actions = ["announcement.read"];
     const thanksgiving = record({
       id: "a8200000-0000-4000-8000-000000000091",
@@ -479,7 +479,7 @@ describe("EmployeeHubPage", () => {
     renderPage();
     const line = await screen.findByText("Main Dining closed · Thu, Nov 26");
     expect(line.closest("a")?.getAttribute("href")).toBe(`/app/announcements/${thanksgiving.id}`);
-    const notices = screen.getByText("Team notices").closest("section")!;
+    const notices = screen.getByRole("heading", { name: "From your team" }).closest("section")!;
     expect(notices.textContent).toContain("New coffee");
     expect(notices.textContent).not.toContain("Thanksgiving");
   });
@@ -551,7 +551,7 @@ describe("EmployeeHubPage", () => {
     expect(
       await screen.findByRole("heading", { name: "We couldn't load your reminders" }),
     ).toBeTruthy();
-    expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
+    expect(screen.getByRole("link", { name: /Full schedule/ })).toBeTruthy();
   });
   // CALISAN-SCHEDULE-LISTE (Mert 2026-10-17): Schedule opens on My shifts, the lab's "Zaman çizgisi" week list.
   it("opens Schedule on My shifts: one card per day, time off, open shifts, and the week from the switch", async () => {
@@ -724,23 +724,24 @@ describe("EmployeeHubPage", () => {
     expect(screen.queryByText(/Unassigned Shifts Row/)).toBeNull();
   });
 
-  it("greets the employee and separates waiting requests from required responses", async () => {
+  // Daylight (Mert 2026-10-18): the greeting, the next shift's card and the day's sections.
+  it("greets the employee with the next shift, the week and the sections", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
     try {
       renderPage();
       expect(
-        await screen.findByRole("heading", { name: /Good .*Alex/ }),
+        await screen.findByRole("heading", { level: 1, name: /Good morning,\s*Alex/ }),
       ).toBeTruthy();
-      expect(screen.getByText("TODAY’S SHIFT")).toBeTruthy();
-      expect(screen.getByText("No requests need your response.")).toBeTruthy();
-      expect(screen.getByText("1 request awaiting a response")).toBeTruthy();
-      expect(
-        screen
-          .getByRole("link", { name: /^Request time off/ })
-          .getAttribute("href"),
-      ).toBe("/app/employee-hub/my-availability?section=time-off#time-off");
-      expect(screen.getByRole("heading", { name: "Coming up" })).toBeTruthy();
+      const card = screen.getByRole("link", { name: /^Open details for your today shift, 9:00 AM to/ });
+      expect(card.textContent).toMatch(/Today · Starts in 4h/);
+      expect(card.getAttribute("href")).toMatch(/\?shift=/);
+      expect(screen.getByRole("group", { name: /Next 7 days/ }).querySelectorAll("button")).toHaveLength(7);
+      expect(screen.getByText("You’re all caught up")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Your week" })).toBeTruthy();
+      expect(screen.getByRole("link", { name: "All open shifts" }).getAttribute("href")).toBe(
+        "/app/employee-hub/shift-hub?hub_view=available",
+      );
     } finally {
       vi.useRealTimers();
     }
@@ -818,20 +819,27 @@ describe("EmployeeHubPage", () => {
     expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
-  // C2.4: the dashboard's "My availability" opens the Availability tab itself.
-  it("opens the Availability tab from the dashboard, without a dead anchor", async () => {
+  // C2.4: with nothing scheduled, Home's "Update availability" opens the Availability tab itself.
+  it("opens the Availability tab from Home, without a dead anchor", async () => {
     renderPage();
-    const link = await screen.findByRole("link", { name: /My availability/ });
+    const link = await screen.findByRole("link", { name: "Update availability" });
     expect(link.getAttribute("href")).toMatch(/\/my-availability\?section=availability$/);
     fireEvent.click(link);
     expect(await screen.findByRole("tab", { name: "Availability" })).toHaveProperty("ariaSelected", "true");
   });
 
-  // EKRAN-02 C2 #89: the dashboard's "Open shifts" lands on the Shift Hub's open shifts.
-  it("opens the Shift Hub's available shifts from the dashboard's Open shifts", async () => {
-    renderPage();
-    const link = await screen.findByRole("link", { name: /Open shifts/ });
-    expect(link.getAttribute("href")).toMatch(/\/shift-hub\?hub_view=available$/);
+  // EKRAN-02 C2 #89: an open shift on Home lands on the Shift Hub's open shifts.
+  it("opens the Shift Hub's available shifts from Home's open shifts", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      renderPage();
+      const row = await screen.findByRole("heading", { name: "Pick up a shift" });
+      const card = row.closest("section")!.querySelector('[role="listitem"]')!;
+      expect(card.getAttribute("href")).toBe("/app/employee-hub/shift-hub?hub_view=available");
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   // C2.3, P26: both drafts ask before a tab change loses them.

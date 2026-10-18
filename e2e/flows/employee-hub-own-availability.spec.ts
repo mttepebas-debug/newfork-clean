@@ -7,7 +7,7 @@ import { round } from "../fixtures/world";
 
 // AVAIL-GUN-1 (spec "Kurallar" 5): a published shift on hours the employee
 // marked unavailable stays theirs and carries a small note, under the shift
-// in Employee Hub -> Home -> Coming up and in the shift's window, with two
+// in Employee Hub -> Home, under the next 7 days, and in the shift's window, with two
 // ways out: "Swap or give up" (Shift Hub's offer) and "Request time off".
 // A shift outside the marked hours carries no note.
 //
@@ -65,14 +65,14 @@ test("a shift on hours the employee marked unavailable carries a note with swap 
 
   const page = await signInAs(browser, email);
   await page.goto("/app/employee-hub");
-  const comingUp = page.getByRole("region", { name: "Coming up" });
-  const note = comingUp.getByRole("note");
+  // Daylight Home (Mert 2026-10-18): the notes sit under the next 7 days.
+  const flags = page.getByRole("list", { name: "Shifts on hours you marked unavailable" });
+  const note = flags.getByRole("note");
   // One note: the Monday evening's; the Wednesday morning has none.
   await expect(note).toHaveCount(1);
   await expect(note).toContainText(/You marked Mon .+ unavailable\./);
   await expect(note).toContainText("You're scheduled, so the shift is yours.");
-  await expect(comingUp.locator(".eh-upcoming-row")).toHaveCount(2);
-  await expect(comingUp.locator(".eh-upcoming-row.has-flag")).toHaveCount(1);
+  await expect(flags.getByRole("link", { name: /6:00 PM – 10:00 PM/ })).toHaveAttribute("href", `/app/employee-hub?shift=${evening}`);
   await expect(note.getByRole("link", { name: "Swap or give up" })).toHaveAttribute(
     "href",
     `/app/employee-hub/shift-hub?offer=${evening}`,
@@ -92,6 +92,6 @@ test("a shift on hours the employee marked unavailable carries a note with swap 
 
   // "Swap or give up" opens Shift Hub's offer on that shift.
   await page.goto("/app/employee-hub");
-  await page.getByRole("region", { name: "Coming up" }).getByRole("link", { name: "Swap or give up" }).click();
+  await page.getByRole("list", { name: "Shifts on hours you marked unavailable" }).getByRole("link", { name: "Swap or give up" }).click();
   await expect(page).toHaveURL(new RegExp(`/app/employee-hub/shift-hub\\?offer=${evening}`));
 });

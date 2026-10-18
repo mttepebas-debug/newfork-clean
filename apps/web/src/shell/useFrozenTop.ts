@@ -18,7 +18,6 @@ const HEADINGS = ".catalog-page-header, .settings-page-header, .account-page-hea
 /** What else stays above the content. */
 const PIECES = [
   ".account-sidebar", // a phone's Account menu, above the page
-  ".eh-context-bar", // Employee Hub's workspace bar, above the greeting
   ".rp-directory", // Settings → Roles: the role tabs
   ".rp-mobile-selector", // … and a phone's role picker
   ".account-page > .requests-tabs", // Account → Documents

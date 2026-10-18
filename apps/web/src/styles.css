@@ -94,6 +94,24 @@
      #234a7a on #e8eff8 is 8.2:1. */
   --theme-info-soft: #e8eff8;
   --theme-info-text: #234a7a;
+  /* The employee's Home sky behind its greeting (Daylight, Mert 2026-10-18):
+     a glow and a ground for each part of the day, fading into the page. */
+  --theme-sky-morning-glow: #ffdcb3;
+  --theme-sky-morning: #fbefe1;
+  --theme-sky-afternoon-glow: #cfeadf;
+  --theme-sky-afternoon: #e7f3ed;
+  --theme-sky-evening-rose: #f3d5e2;
+  --theme-sky-evening-glow: #fcdcc2;
+  --theme-sky-evening: #f7e9ec;
+  --theme-sky-night-glow: #d9def4;
+  --theme-sky-night: #e8ebf5;
+  /* Six soft avatar grounds for people without a photo; ink is --theme-text. */
+  --theme-avatar-0: #ecd8c4;
+  --theme-avatar-1: #cfe5da;
+  --theme-avatar-2: #d7ddf0;
+  --theme-avatar-3: #efd4da;
+  --theme-avatar-4: #e6e1c6;
+  --theme-avatar-5: #d5e7f0;
   /* List pages (DOC-TABLE, KARARLAR Genel → "Liste sayfalarının ortak dili"):
      table frame, column-heading row, body cell ink, the line between
      Availability day headings, and the faint "—" / disabled ink. */

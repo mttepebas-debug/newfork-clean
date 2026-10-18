@@ -86,7 +86,6 @@ test.describe("desktop: the heading and tabs stay where they are", () => {
     ["zeynep", "/app/settings/scheduling", [".settings-rail"]],
     ["zeynep", "/app/settings/scheduling/conflicts", []],
     ["zeynep", "/account/security", [".account-sidebar"]],
-    ["emre", "/app/employee-hub", [".eh-context-bar"]],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, DESKTOP);
@@ -100,6 +99,16 @@ test.describe("desktop: the heading and tabs stay where they are", () => {
   }
 });
 
+// The employee's Home is the one exception: its greeting fades and folds into
+// the bar as the page scrolls, and the bar stays (Daylight, Mert 2026-10-18).
+test("the employee's Home keeps its bar while the greeting scrolls away (emre)", async ({ browser }) => {
+  const page = await open(browser, "emre", DESKTOP);
+  await visit(page, "/app/employee-hub");
+  const before = await topOf(page, ".eh-context-bar");
+  expect(await scrollPage(page)).toBeGreaterThan(0);
+  await expect.poll(() => topOf(page, ".eh-context-bar")).toBe(before);
+});
+
 test.describe("phone: the heading keeps its size and stays on top", () => {
   for (const [person, path, more] of [
     ["zeynep", "/app/workspace", []],
@@ -107,7 +116,6 @@ test.describe("phone: the heading keeps its size and stays on top", () => {
     ["zeynep", "/app/settings/scheduling", ['nav[aria-label="Workspace settings"]']],
     ["zeynep", "/account/security", [".account-sidebar", 'nav[aria-label="Account"]']],
     ["zeynep", "/account/preferences/notifications", ['nav[aria-label="Account"]']],
-    ["emre", "/app/employee-hub", []],
   ] as const) {
     test(`${path} (${person})`, async ({ browser }) => {
       const page = await open(browser, person, PHONE);

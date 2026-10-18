@@ -1,0 +1,43 @@
+/* The turning mark of pull to refresh (PullToRefresh.tsx). It follows the
+   finger down from the top of the page and turns; the page stays put. */
+.pull-mark {
+  position: absolute;
+  z-index: 6;
+  top: 8px;
+  left: 50%;
+  display: grid;
+  width: 38px;
+  height: 38px;
+  margin-left: -19px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-surface);
+  box-shadow: 0 0 0 1px var(--theme-border-subtle), 0 8px 20px -8px rgb(0 0 0 / 35%);
+  color: var(--theme-accent);
+  opacity: var(--pp, 0);
+  pointer-events: none;
+  transform: translateY(calc(var(--pull, 0px) * 0.5 - 34px)) rotate(calc(var(--pp, 0) * 320deg)) scale(calc(0.55 + var(--pp, 0) * 0.45));
+}
+.pull-mark.is-idle {
+  transition: transform 0.4s cubic-bezier(0.2, 0.9, 0.25, 1), opacity 0.3s;
+}
+.pull-mark.is-ready,
+.pull-mark.is-refreshing {
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.pull-mark.is-refreshing svg {
+  animation: pull-mark-spin 0.75s linear infinite;
+}
+@keyframes pull-mark-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pull-mark,
+  .pull-mark svg {
+    animation: none !important;
+    transition: none !important;
+  }
+}

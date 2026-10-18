@@ -176,7 +176,7 @@ export function EmployeeHubPage() {
           now={now}
           stale={query.isError}
           refreshing={query.isFetching}
-          onRefresh={() => void query.refetch()}
+          onRefresh={() => query.refetch()}
         />
       </section>
     );

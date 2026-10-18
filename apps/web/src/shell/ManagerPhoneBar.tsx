@@ -27,6 +27,8 @@ export function ManagerPhoneBar() {
         <span className="mm-top-name">{name}</span>
         <ChevronRight size={16} aria-hidden />
       </Link>
+      {/* The employee's Home puts its next shift here once its greeting scrolls away (Daylight, Mert 2026-10-18). */}
+      <div className="mm-top-mid" id="mm-top-mid" />
       <div className="mm-top-tools">
         {can(context, "notifications.read_own") ? <NotificationBell workspaceId={context.workspace.id} /> : null}
         <Link className="mm-top-account" to="/account/profile" aria-label="Account">

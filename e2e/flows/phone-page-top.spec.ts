@@ -46,12 +46,12 @@ const PAGES: Record<"zeynep" | "emre", string[]> = {
     "/account/workspaces",
     "/account/documents",
   ],
+  // Home is not here, nor the old time-off address that now opens it: Home's greeting folds into
+  // the bar instead (Daylight, Mert 2026-10-18, S-163).
   emre: [
-    "/app/employee-hub",
     "/app/employee-hub/schedule",
     "/app/employee-hub/shift-hub",
     "/app/employee-hub/my-availability",
-    "/app/employee-hub/time-off",
     "/app/employee-hub/schedule/lineup",
     "/app/notifications",
     "/app/announcements",
