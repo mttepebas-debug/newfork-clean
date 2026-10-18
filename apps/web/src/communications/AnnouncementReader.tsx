@@ -2,6 +2,7 @@ import type { AnnouncementRecord, AnnouncementShiftChange } from "@newfork/share
 import { Button, useToast } from "@newfork/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, X } from "lucide-react";
+import { useEffect } from "react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { LinesOutline } from "../shell/LoadState";
 import { announcementQueryKeys } from "./AnnouncementDrawer";
@@ -13,6 +14,7 @@ import {
   type TimeFormat,
 } from "./announcement-model";
 import { acknowledgeAnnouncement } from "./communications-data";
+import { probeReaderLayout } from "./reader-layout-probe";
 import "./announcement-drawer.css";
 
 /** "Your 3:00 PM–4:00 PM shift was removed" and the like. */
@@ -46,6 +48,8 @@ export function AnnouncementReader({
 }) {
   const client = useQueryClient();
   const toast = useToast();
+  // Temporary: measures the reader on an iPhone (reader-layout-probe.ts).
+  useEffect(() => probeReaderLayout(), []);
   const acknowledge = useMutation({
     mutationFn: () => acknowledgeAnnouncement(workspaceId, record!.id),
     onSuccess: async () => {
