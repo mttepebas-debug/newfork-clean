@@ -2,12 +2,14 @@ import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
+import { personWithPassword, signInAs } from "../fixtures/documents";
 import { psql } from "../global-setup";
 import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // TAKAS-RELEASE (Mert, 2026-10-13/14 plan; first slice 2026-10-17): Emre releases
 // his Thursday shift with a note for teammates. Ali finds it in Available Shifts
-// and takes it; Deniz says "Not for me" and the card leaves his deck. Emre reads
+// and takes it; Pia says "Not for me" and the card leaves her deck. Pia is this
+// spec's own teammate: the password reset spec changes a world person's password. Emre reads
 // who wants it in My requests and takes his shift back in two clicks, no reason.
 
 const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
@@ -16,9 +18,10 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
-async function open(browser: Browser, person: Person, path: string): Promise<Page> {
+async function open(browser: Browser, person: Person | { email: string }, path: string): Promise<Page> {
   const page = await (await browser.newContext()).newPage();
-  await signIn(page, person);
+  if (typeof person === "string") await signIn(page, person);
+  else await signInAs(page, person.email);
   await expect(page).toHaveURL(/\/app\/(employee-hub|workspace)/);
   await page.goto(path);
   return page;
@@ -35,6 +38,10 @@ test("a released shift reaches teammates' decks, and its owner takes it back", a
     select tests.id('${run}:shift:${label}');`).split(/\r?\n/).at(-1)!;
   const day = sql(`select tests.week(${week}) + 3;`);
   const range = `from=${day}&to=${day}`;
+  const piaLabel = roundLabel("pia");
+  const piaEmail = personWithPassword(piaLabel, "employee", ["K", "B"], "cook");
+  // The builder names a person initcap(label) + " Person".
+  const piaName = `${piaLabel.replace(/(^|[^a-z0-9])([a-z])/g, (_, edge: string, letter: string) => edge + letter.toUpperCase())} Person`;
 
   // Emre releases it from the three named options, with a note for teammates.
   const emre = await open(browser, "emre", `/app/employee-hub/shift-hub?offer=${shiftId}&${range}`);
@@ -59,23 +66,23 @@ test("a released shift reaches teammates' decks, and its owner takes it back", a
       where a.case_id = '${caseId}' and p.first_name = 'Ali' and a.status = 'pending_manager';`), { timeout: 30_000 })
     .toBe("1");
 
-  // Deniz passes with the left arrow key; the card leaves his deck.
-  const deniz = await open(browser, "deniz", `/app/employee-hub/shift-hub?hub_view=available&${range}`);
-  const top = deniz.getByRole("article", { name: /Emre Person can’t make this shift/ });
+  // Pia passes with the left arrow key; the card leaves her deck.
+  const pia = await open(browser, { email: piaEmail }, `/app/employee-hub/shift-hub?hub_view=available&${range}`);
+  const top = pia.getByRole("article", { name: /Emre Person can’t make this shift/ });
   await top.focus();
-  await deniz.keyboard.press("ArrowLeft");
+  await pia.keyboard.press("ArrowLeft");
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_applications a join public.employee_profiles p on p.id = a.employee_id
-      where a.case_id = '${caseId}' and p.first_name = 'Deniz' and a.status = 'declined_by_employee';`), { timeout: 30_000 })
+      where a.case_id = '${caseId}' and p.user_id = tests.user('${run}:${piaLabel}') and a.status = 'declined_by_employee';`), { timeout: 30_000 })
     .toBe("1");
-  await deniz.reload();
-  await expect(deniz.getByRole("article", { name: /Emre Person can’t make this shift/ })).toHaveCount(0);
+  await pia.reload();
+  await expect(pia.getByRole("article", { name: /Emre Person can’t make this shift/ })).toHaveCount(0);
 
   // Emre reads who wants it, not who passed, and takes the shift back.
   await emre.goto(`/app/employee-hub/shift-hub?case=${caseId}&${range}`);
   const release = emre.getByRole("region", { name: "Released shift" });
   await expect(release).toContainText("Ali Person");
-  await expect(release).not.toContainText("Deniz Person");
+  await expect(release).not.toContainText(piaName);
   await release.getByRole("button", { name: "Take back shift", exact: true }).click();
   await release.getByRole("button", { name: "Confirm take back", exact: true }).click();
   await expect
