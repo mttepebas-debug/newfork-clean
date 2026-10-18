@@ -1,25 +1,21 @@
 import type { ReactNode } from "react";
 import "./field-note.css";
 
-/** One line's height in the screen's type, unseen. */
-const NBSP = "\u00a0";
-
 /**
- * The line under a field (TEL-2; Mert, 2026-10-09; UI-FIELDMSG, Mert
- * 2026-10-17): its help, or in its place the error, in one cell that is always
- * there: at least one line tall, and as tall as the help or the kept reserve.
- * An error coming or going moves neither the field nor anything below it, and
- * never squeezes it: without a reserve the error stays on one line, cut with an
- * ellipsis, its whole text in `title` and read whole through the field's
- * `aria-describedby`, which points at `fieldNoteId(id, error, help)`.
+ * The line under a field (TEL-2; UI-FIELDMSG-2, Mert 2026-10-18): its help, or
+ * in the help's place its error. A short message from this one field only; a
+ * window's general error or a long server sentence goes in the window's band
+ * (`WindowAlert`). Nothing is kept in advance: with neither help nor error it
+ * renders nothing, so it adds no height. When it appears, what is below may
+ * move down; fields side by side share their row, so the row grows as one.
+ * It is always said whole, wrapping, never cut. The field's
+ * `aria-describedby` points at `fieldNoteId(id, error, help)`.
  */
 export function FieldNote({
   id,
   help,
   error,
-  reserve,
   className,
-  lines = 1,
 }: {
   readonly id: string;
   /** The screen's own class for the lines under its fields. */
@@ -27,55 +23,24 @@ export function FieldNote({
   readonly help?: ReactNode;
   /** Said in red; the field shows itself invalid while it is here. */
   readonly error?: ReactNode;
-  /** The longest error the field can show, whose room is always kept. */
-  readonly reserve?: ReactNode;
-  /**
-   * How many lines are always kept for an error with no reserve: one under a
-   * field; two for a whole form's error (a server's sentence), cut after them.
-   */
-  readonly lines?: 1 | 2;
 }) {
-  const hasError = said(error);
-  const hasHelp = said(help);
-  const hasReserve = said(reserve);
-  const cut = hasReserve ? undefined : lines === 1 ? "is-one-line" : "is-two-lines";
-  return (
-    <span className="field-note">
-      <small className={cx(className, "field-note-room")} aria-hidden="true">
-        {NBSP}
-        {lines === 2 ? (
-          <>
-            <br />
-            {NBSP}
-          </>
-        ) : null}
-      </small>
-      {hasReserve ? (
-        <small className={cx(className, "field-note-hidden")} aria-hidden="true">
-          {reserve}
-        </small>
-      ) : null}
-      {hasHelp && hasError ? (
-        <small className={cx(className, "field-note-hidden")} aria-hidden="true">
-          {help}
-        </small>
-      ) : null}
-      {hasError ? (
-        <small
-          id={`${id}-error`}
-          className={cx(className, "field-note-error", cut)}
-          role="alert"
-          title={typeof error === "string" ? error : undefined}
-        >
+  if (said(error))
+    return (
+      <span className="field-note">
+        <small id={`${id}-error`} className={cx(className, "field-note-error")} role="alert">
           {error}
         </small>
-      ) : hasHelp ? (
+      </span>
+    );
+  if (said(help))
+    return (
+      <span className="field-note">
         <small id={`${id}-help`} className={className}>
           {help}
         </small>
-      ) : null}
-    </span>
-  );
+      </span>
+    );
+  return null;
 }
 
 /** What the field's `aria-describedby` names: the error while there is one. */

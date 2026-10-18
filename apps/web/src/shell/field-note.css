@@ -1,13 +1,12 @@
-/* The line under a field (TEL-2; UI-FIELDMSG): help and error share one cell,
-   at least one line tall and as tall as the longest kept line, so an error
-   coming or going moves nothing and squeezes nothing. */
+/* The line under a field (TEL-2; UI-FIELDMSG-2, Mert 2026-10-18): there only
+   while it says something, said whole and wrapping. */
 .field-note {
-  display: grid;
+  display: block;
   min-width: 0;
 }
 .field-note > small {
-  grid-area: 1 / 1;
   min-width: 0;
+  overflow-wrap: anywhere;
 }
 /* The default look; a screen's own class (className) wins over it. */
 :where(.field-note > small) {
@@ -17,22 +16,6 @@
   font-weight: 400;
   line-height: 1.45;
 }
-.field-note > .field-note-room,
-.field-note > .field-note-hidden {
-  visibility: hidden;
-}
 .field-note > small.field-note-error {
   color: var(--theme-danger);
-}
-.field-note > small.is-one-line {
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-}
-.field-note > small.is-two-lines {
-  display: -webkit-box;
-  overflow: hidden;
-  -webkit-box-orient: vertical;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
 }

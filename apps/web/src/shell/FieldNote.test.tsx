@@ -1,12 +1,14 @@
 import { readFileSync } from "node:fs";
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { FieldNote, fieldNoteId } from "./FieldNote";
 import { WindowAlert } from "./WindowAlert";
 
-// A message under a field, or at the foot of a window, never moves or squeezes
-// anything (Mert 2026-10-17, UI-FIELDMSG). jsdom lays nothing out, so the CSS
+// Mert 2026-10-18 (UI-FIELDMSG-2, replacing S-139's kept line): a field's short
+// error goes right under it and a window's general or long error in the
+// window's band; no room is kept while there is nothing to say; a message is
+// always said whole, never cut with "…". jsdom lays nothing out, so the CSS
 // rules are the contract here; the Playwright measurements check the result.
 const flat = (path: string) =>
   readFileSync(path, "utf8").replace(/\/\*[\s\S]*?\*\//g, "").replace(/\s+/g, " ");
@@ -17,12 +19,13 @@ const body = (css: string, selector: string) => {
 };
 
 describe("FieldNote", () => {
-  it("keeps a one-line room even with nothing to say", () => {
+  it("takes no room at all with nothing to say", () => {
     const { container } = render(<FieldNote id="f" />);
-    const room = container.querySelector(".field-note-room");
-    expect(room).toBeTruthy();
-    expect(room!.getAttribute("aria-hidden")).toBe("true");
-    expect(screen.queryByRole("alert")).toBeNull();
+    // Nothing rendered: the empty note adds zero height under its field.
+    expect(container.childElementCount).toBe(0);
+    expect(container.innerHTML).toBe("");
+    const { container: blank } = render(<FieldNote id="g" help="" error={null} />);
+    expect(blank.innerHTML).toBe("");
   });
 
   it("says the help, then the error in the help's place", () => {
@@ -34,49 +37,32 @@ describe("FieldNote", () => {
     const alert = screen.getByRole("alert");
     expect(alert.id).toBe("f-error");
     expect(alert.textContent).toBe("Enter a name.");
-    // The help keeps its room but is no longer shown nor read.
+    // The help is gone, not kept unseen for its room.
     expect(document.getElementById("f-help")).toBeNull();
-    const hiddenHelp = document.querySelector(".field-note-hidden");
-    expect(hiddenHelp?.textContent).toBe("Shown on the schedule.");
-    expect(hiddenHelp?.getAttribute("aria-hidden")).toBe("true");
+    expect(document.body.textContent).not.toContain("Shown on the schedule.");
+    expect(document.querySelector("[aria-hidden='true']")).toBeNull();
     expect(fieldNoteId("f", "Enter a name.", "Shown on the schedule.")).toBe("f-error");
   });
 
-  it("puts a long error's whole text in its title and cuts it to one line", () => {
+  it("says a long error whole: no cut class, no title-only text", () => {
     const long = "Use US letters only: replace ç, ğ, ı, İ, ö, ş and ü with c, g, i, I, o, s and u.";
     render(<FieldNote id="f" error={long} />);
     const alert = screen.getByRole("alert");
-    expect(alert.getAttribute("title")).toBe(long);
-    expect(alert.classList.contains("is-one-line")).toBe(true);
+    expect(alert.textContent).toBe(long);
+    expect(alert.getAttribute("title")).toBeNull();
+    expect(alert.className).not.toMatch(/is-one-line|is-two-lines|field-note-room|field-note-hidden/);
   });
 
-  it("keeps two lines for a whole form's error and cuts it after them", () => {
-    const { container } = render(<FieldNote id="f" lines={2} error="The server said no." />);
-    expect(container.querySelector(".field-note-room br")).toBeTruthy();
-    const alert = screen.getByRole("alert");
-    expect(alert.classList.contains("is-two-lines")).toBe(true);
-    expect(alert.getAttribute("title")).toBe("The server said no.");
+  it("wraps and never cuts in its CSS", () => {
     const css = flat("src/shell/field-note.css");
-    expect(body(css, ".field-note > small.is-two-lines")).toMatch(/-webkit-line-clamp: 2/);
-  });
-
-  it("lets an error wrap only inside a kept reserve", () => {
-    render(<FieldNote id="f" error="Too long" reserve="The longest thing it can say" />);
-    expect(screen.getByRole("alert").classList.contains("is-one-line")).toBe(false);
-  });
-
-  it("stacks every line in one grid cell and cuts the one-line error with an ellipsis", () => {
-    const css = flat("src/shell/field-note.css");
-    expect(body(css, ".field-note")).toMatch(/display: grid/);
-    expect(body(css, ".field-note > small")).toMatch(/grid-area: 1 \/ 1/);
-    const oneLine = body(css, ".field-note > small.is-one-line");
-    expect(oneLine).toMatch(/white-space: nowrap/);
-    expect(oneLine).toMatch(/text-overflow: ellipsis/);
-    expect(oneLine).toMatch(/overflow: hidden/);
+    expect(css).not.toMatch(/text-overflow|line-clamp|white-space: nowrap|field-note-room|visibility: hidden/);
+    expect(body(css, ".field-note > small")).toMatch(/overflow-wrap: anywhere/);
   });
 });
 
 describe("WindowAlert", () => {
+  afterEach(() => vi.restoreAllMocks());
+
   it("says nothing while there is nothing to say", () => {
     const { container } = render(<WindowAlert message={null} />);
     expect(container.innerHTML).toBe("");
@@ -109,13 +95,66 @@ describe("WindowAlert", () => {
     expect(body(css, ".window-alert-slot > .window-alert[role]")).toMatch(/bottom: 0/);
   });
 
-  it("sits over the body's bottom edge, out of the flow, on its anchor", () => {
+  it("sits over the body's bottom edge, full width, wrapping, never cut", () => {
     const css = flat("src/shell/window-alert.css");
     const band = body(css, ".window-alert[role]");
     expect(band).toMatch(/position: absolute/);
     expect(band).toMatch(/bottom: 100%/);
+    expect(band).toMatch(/left: 0/);
+    expect(band).toMatch(/right: 0/);
+    expect(band).toMatch(/white-space: normal/);
+    expect(band).not.toMatch(/text-overflow: ellipsis|line-clamp/);
     expect(band).toMatch(/var\(--theme-/);
     expect(band).not.toMatch(/#[0-9a-f]{3,6}\b/i);
     expect(css).toMatch(/:where\(:has\(> \.window-alert\)\) \{ position: relative; \}/);
+  });
+
+  function bandHeight(height: number) {
+    const real = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains("window-alert") ? ({ height } as DOMRect) : real.call(this);
+    });
+  }
+
+  it("gives a scrolling body room below its last control, and takes it back", () => {
+    bandHeight(40);
+    const window = (message: string | null) => (
+      <section>
+        <div data-testid="body" style={{ overflowY: "auto", paddingBottom: "12px" }}>
+          <textarea aria-label="Reason" />
+        </div>
+        <footer>
+          <WindowAlert message={message} />
+        </footer>
+      </section>
+    );
+    const { rerender, getByTestId } = render(window(null));
+    const scroller = getByTestId("body");
+    expect(scroller.style.paddingBottom).toBe("12px");
+    rerender(window("This swap couldn't be accepted."));
+    expect(scroller.style.paddingBottom).toBe("52px");
+    expect(scroller.style.scrollPaddingBottom).toBe("40px");
+    rerender(window(null));
+    expect(scroller.style.paddingBottom).toBe("12px");
+    expect(scroller.style.scrollPaddingBottom).toBe("");
+  });
+
+  it("grows a short window whose body doesn't scroll, between or in the footer", () => {
+    bandHeight(30);
+    const window = (message: string | null) => (
+      <section>
+        <button type="button" data-testid="last" style={{ marginBottom: "4px" }}>
+          Ask staff to acknowledge
+        </button>
+        <WindowAlert between message={message} />
+        <footer>Publish</footer>
+      </section>
+    );
+    const { rerender, getByTestId } = render(window("We couldn't publish this lineup."));
+    const last = getByTestId("last");
+    expect(last.style.marginBottom).toBe("34px");
+    expect(last.style.paddingBottom).toBe("");
+    rerender(window(null));
+    expect(last.style.marginBottom).toBe("4px");
   });
 });
