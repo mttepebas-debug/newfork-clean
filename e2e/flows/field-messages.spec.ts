@@ -140,9 +140,11 @@ for (const screen of screens) {
       await window.getByRole("button", { name: "Decline", exact: true }).click();
       const reason = window.getByRole("textbox", { name: /^Reason for Deniz/ });
       await reason.fill("Kitchen is short that day");
+      await shot(ayse, `swap-decline-${screen.name}-hidden`);
       await window.getByRole("button", { name: "Decline swap", exact: true }).click();
       await window.getByRole("button", { name: "Confirm decline", exact: true }).click();
       await bandSays(window, refusal);
+      await shot(ayse, `swap-decline-${screen.name}-shown`);
       await reachable(reason);
       await reason.click();
       await reason.press("End");
@@ -311,6 +313,7 @@ for (const screen of screens) {
       const window = page.getByRole("dialog", { name: "Cancel this swap request" });
       const reason = window.getByRole("textbox", { name: "Reason shared with affected employees" });
       await reason.fill("I found someone to cover it");
+      await shot(page, `shift-hub-cancel-${screen.name}-hidden`);
       await window.getByRole("button", { name: "Cancel request", exact: true }).click();
       await window.getByRole("button", { name: "Confirm cancel", exact: true }).click();
       await bandSays(window, refusal);
