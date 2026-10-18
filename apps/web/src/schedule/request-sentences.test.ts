@@ -109,12 +109,13 @@ describe("rowKind and rowStatus", () => {
     expect(exchangeStatus(release([person("Jake Miller", "rejected_by_manager")], { stage: "seeking_candidates" }))).toEqual({ label: "Open", tone: "gray" });
   });
 
-  it("says which location a half-approved swap waits for", () => {
+  // Mert, 2026-10-18: a swap one location approved is still Needs decision; the drawer says who else approves.
+  it("calls a half-approved swap Needs decision", () => {
     const swap = release([person("Priya Shah")], {
       kind: "swap", stage: "awaiting_other_manager",
       requested_shift: { ...shift, location_id: "11000000-0000-4000-8000-000000000002", location_name: "Midtown" },
     });
-    expect(rowStatus(row(swap, "needs_review"))).toEqual({ label: "Waiting for Midtown", tone: "amber" });
+    expect(rowStatus(row(swap, "needs_review"))).toEqual({ label: "Needs decision", tone: "amber" });
   });
 });
 

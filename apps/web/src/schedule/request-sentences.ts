@@ -101,7 +101,7 @@ export const awaitsDecision = (item: ExchangeCase) =>
 /**
  * A shift change's word (Mert, 2026-10-14 08:32 and 2026-10-18): Needs decision,
  * Approved, Declined, Expired. Somebody waiting is Needs decision whoever votes
- * first; the details say who else approves. A release nobody waits on is an open
+ * first, a half-approved swap too; the details say who else approves. A release nobody waits on is an open
  * shift, off the Requests table. A request that closed without a decision (the
  * owner took it back, the shift changed) has no word and leaves the table.
  */
@@ -113,11 +113,7 @@ export function exchangeStatus(item: ExchangeCase): { label: string; tone: Tone 
     const refused = item.audience === "direct" && item.applications.some((application) => application.status === "rejected_by_manager");
     return refused ? { label: "Declined", tone: "red" } : null;
   }
-  // A swap one location approved waits for the other (Mert, 2026-10-14 10:34).
-  if (item.stage === "awaiting_other_manager") {
-    const other = item.requested_shift && item.requested_shift.location_id !== item.shift.location_id ? item.requested_shift.location_name : null;
-    return { label: other ? `Waiting for ${other}` : "Waiting for the other manager", tone: "amber" };
-  }
+  // A swap one location approved is still Needs decision (Mert, 2026-10-18).
   return awaitsDecision(item) ? { label: "Needs decision", tone: "amber" } : { label: "Open", tone: "gray" };
 }
 
