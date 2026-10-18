@@ -35,20 +35,25 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   const ayse = await openPage(browser, "ayse", `/app/schedule/lineup?date=${day}`);
   const kadikoy = ayse.getByRole("article", { name: "Kadikoy" });
   await expect(kadikoy).toContainText("Emre Person");
-  await ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).click();
+  const trigger = ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ });
+  await trigger.click();
   const window = ayse.getByRole("dialog", { name: "Publish lineups" });
   const box = window.getByRole("region", { name: "Kadikoy" }).getByRole("checkbox").first();
   await expect(box).toHaveAttribute("aria-checked", "true");
-  // Publish works in its own button (Mert 2026-10-17, notice A): Publishing…, then Published, then Done; no green
-  // line in the window. It keeps the keyboard's focus all the way.
+  // Publish says what it did (Mert 2026-10-17, notice A; mockup v-e.js .d-pub): the window's Publish says
+  // Publishing… and keeps focus; then the window closes and the page's Publish says Published, focused, then is
+  // as it was; the shift's Published lights up once. No green line, no notice.
   const go = window.getByRole("button", { name: /^Publish \d+$/ });
   await go.focus();
   await ayse.keyboard.press("Enter");
-  await expect(window.getByRole("button", { name: "Published", exact: true })).toBeFocused();
-  await expect(window.getByText(/notified/)).toHaveCount(0);
-  const done = window.getByRole("button", { name: "Done", exact: true });
+  await expect(window.getByRole("button", { name: "Publishing…" })).toBeFocused();
+  await expect(window).toHaveCount(0);
+  const done = ayse.getByRole("button", { name: "Published", exact: true });
   await expect(done).toBeFocused();
-  await done.click();
+  await expect(done).toHaveAttribute("aria-live", "polite");
+  await expect(ayse.getByText(/notified/)).toHaveCount(0);
+  await expect(kadikoy.locator(".lineup-shift-published.is-flash")).toHaveCount(1);
+  await expect(ayse.getByRole("button", { name: /^Publish(, \d+ lineups? waiting)?$/ })).toBeFocused();
   await expect(kadikoy.getByText(/^Read 0\/\d+$/)).toBeVisible();
 
   const emre = await openPage(browser, "emre", `/app/employee-hub/schedule/lineup?date=${day}`);
@@ -181,15 +186,22 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
   await expect(sheet).toHaveClass(/is-sheet/);
   await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
-  await expect(sheet.getByRole("button", { name: "Published", exact: true })).toBeVisible();
-  await expect(sheet.getByText(/notified/)).toHaveCount(0);
-  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  // Publishing… in the sheet, then the sheet closes and the floating Publish says Published (notice A).
+  await expect(sheet.getByRole("button", { name: "Publishing…" })).toBeVisible();
   await expect(sheet).toHaveCount(0);
+  const dockSaid = ayse.locator(".lineup-phone-dock").getByRole("button", { name: "Published", exact: true });
+  await expect(dockSaid).toBeVisible();
+  await expect(dockSaid).toBeFocused();
+  await expect(ayse.getByText(/notified/)).toHaveCount(0);
+  // The card's Live and "Published at" light up once, with the sheet gone.
+  await expect(card.locator(".lineup-card-status.is-live.is-flash")).toHaveCount(1);
+  await expect(card.locator(".lineup-card-at.is-flash")).toHaveCount(1);
 
-  // Live now, and nothing left to publish on this shift: Publish goes.
+  // Live now, and nothing left to publish on this shift: Publish goes, focus to the card's Edit.
   await expect(card.getByText("Live", { exact: true })).toBeVisible();
   await expect(card.getByText(/^Published at \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
   await expect(ayse.locator(".lineup-phone-dock")).toHaveCount(0);
+  await expect(card.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
   await ayse.getByRole("tab", { name: /^Read \d+\/\d+$/ }).tap();
   await expect(ayse.getByRole("tabpanel").getByRole("progressbar", { name: /^0 of \d+ read$/ })).toBeVisible();
   await expect(ayse.getByRole("tabpanel").getByRole("region", { name: "Not read yet" })).toContainText("Emre Person");
@@ -227,7 +239,8 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
   await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
   const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
   await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
-  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  // The sheet closes on its own once it has gone out.
+  await expect(sheet).toHaveCount(0);
 
   const emre = await (await browser.newContext(phone)).newPage();
   await signIn(emre, "emre");
@@ -312,7 +325,8 @@ test("All locations on the manager's and the employee's phone", async ({ browser
   await zeynep.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
   const sheet = zeynep.getByRole("dialog", { name: "Publish lineups" });
   await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
-  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  // The sheet closes on its own once it has gone out.
+  await expect(sheet).toHaveCount(0);
   await expect(cards.getByText("Live", { exact: true })).toHaveCount(2);
   // One location picked: that one alone.
   await location.selectOption({ label: "Besiktas" });
