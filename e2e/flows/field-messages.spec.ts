@@ -165,6 +165,8 @@ for (const screen of screens) {
           const below = [...element.querySelectorAll("input, select, textarea")]
             .filter(
               (box) =>
+                // The drawer's body, not its fixed footer.
+                box.closest(".employee-profile-sections") !== null &&
                 !names?.contains(box) &&
                 (names!.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
                 box.getBoundingClientRect().height > 0,
