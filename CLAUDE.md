@@ -36,6 +36,14 @@ Bu repoda çalışan her oturumun ve ajanın ortak kuralı. Mert'in (ürün sahi
 7. **Arayüz.** Yalnız light tema; ham hex yerine `--theme-*`. Aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı (`ConfirmButton` / `useConfirmClick`). Tarayıcı diyaloğu yok (`apps/web/src/shell/ConfirmDialog.tsx`). Kullanıcı metninde "workspace" ve "team"; kod adları ekranda görünmez. Tasarım kaynağı `docs/design-canvas.md`. Aynı işlevdeki bileşenler aynı ölçü ve renk rolüyle. Bir ekranda ortak bir değer (başlık boşluğu, font, padding, buton biçimi) değişirse önce kural `KARARLAR.md`'ye yazılır, ona artık uymayan ekranlar adıyla söylenir, onları düzeltmeden önce Mert'e sorulur.
 8. **Erişilebilirlik.** WCAG 2.1 AA kontrast, klavye, görünür odak.
 9. **Bilinen muafiyetler (Mert).** Supabase "Leaked password protection" kapalı (ücretli). GitHub Actions harcama limiti $0; GitHub'ın makinesinde iş koşmaz. Realtime "Allow public access" kapalı; her canlı kanal private.
+10. **Artifact düzeni, katı kural (S-157; Mert, 2026-10-17 ~23:20 PT, "YENİ KATI BİR KURAL!"). Neden: her yeni işe yeni Artifact açılınca her birinde sevilen ve sevilmeyen özellikler oluyor; Mert farkında olmadan aynı ürünün 10 varyasyonunda ilerletiyor, 1 saatlik iş 2 gün sürüyor.**
+   - (1) Çizimden ÖNCE sor: bu çizim projede nereye (hangi ekran, sayfa, parça) ait? O yer için zaten bir Artifact var mı? Varsa ona DEVAM edilir (aynı bağlantı, yeni sürüm/sekme/tur); yeni Artifact yalnız o yer için hiç yoksa açılır ve koordinatöre bildirilir.
+   - (2) Her Artifact 5N1K'ya cevap veren notlar ve hatırlatmalar taşır: ne, nerede (ekran → bölüm → düğme), ne zaman, nasıl, neden, kim istedi/karar verdi.
+   - (3) Her düzenlemenin logu tutulur (Artifact'ın içinde ve kaynak klasörünün README'sinde): tarih-saat (California), ne değişti, kimin isteğiyle.
+   - (4) Sevilmeyen varyantlar Artifact'tan silinir.
+   - (5) Sevilen özellikler bir araya toplanıp yeni varyant yapılırsa, öbür varyantların silinmesi için Mert'e hatırlatma yapılır.
+   - (6) Bir Artifact'ta bayatlamış görünüm ya da özellik varsa (elde daha günceli, daha iyisi varken), kafa karıştırmaması için temizlenmesi için Mert'e haber (heads-up) verilir.
+   - (7) Artifact'lar, sol menüdeki oturumlar gibi temiz ve düzenli tutulur. Bu görev ve sorumluluk koordinatörün (ana oturum); her oturum Artifact açmadan ve yayınlamadan önce bu kurala uyar, koordinatör düzenli olarak denetler.
 ### B. Kod kaybı olmaz
 1. Ana klasör (`newfork-clean`, main) Mert'indir: orada iş yapılmaz, dal değiştirilmez. Ana oturum orada açılır ama orada kod değiştirmez; işi worktree'lere verir.
 2. Her iş kendi worktree'sinde ve dalında, güncel `origin/main`'den.
