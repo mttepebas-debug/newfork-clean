@@ -150,6 +150,11 @@ begin
    if action='pass' then
     -- Not for me (plan 04:52): the card leaves this person's Available Shifts. Only
     -- they read it; the request itself does not change, so the owner's Take back holds.
+    -- One passes only on a card one is shown: eligible, or held back by approved time off alone.
+    checked:=app_private.eligibility(w,emp.id,s,'{"operation":"release_pickup"}');
+    if checked->>'status'<>'eligible' and exists(select 1 from jsonb_array_elements(checked->'blockers') b where b->>'code'<>'approved_time_off') then
+     raise exception 'This offer is not available' using errcode='42501',hint='authz.out_of_scope';
+    end if;
     if not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='declined_by_employee') then
      insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'declined_by_employee',c.consent_fingerprint);
     end if;
@@ -170,7 +175,8 @@ begin
   owns:=c.owner_id=emp.id;
   manager:=app_private.authz_reason(actor,w,'exchange.approve',array[(c.offered_snapshot->>'location_id')::uuid]) is null
    or (c.kind='swap' and app_private.authz_reason(actor,w,'exchange.approve',array[(c.requested_snapshot->>'location_id')::uuid]) is null);
-  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id) then raise exception 'Request access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
+  -- A pass on a release is no request of one's own (TAKAS-RELEASE).
+  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications ap where ap.case_id=cid and ap.employee_id=emp.id and (ap.status<>'declined_by_employee' or c.audience='direct')) then raise exception 'Request access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
   if c.status<>'open' or c.revision is distinct from (command->>'expected_revision')::integer then raise exception 'This request changed. Review the latest details' using errcode='PT409'; end if;
   if c.expires_at<=clock_timestamp() then
    update public.shift_exchange_cases set status='expired',revision=revision+1,updated_at=now() where id=cid returning * into c;
@@ -276,7 +282,10 @@ begin
    update public.shift_exchange_cases set revision=revision+1,updated_at=clock_timestamp() where id=cid returning * into c;
   end if;
  end if;
- perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision),'changed','shift-exchanges:'||w::text,true);
+ -- A pass changes nothing anyone else reads, so it tells nobody.
+ if action<>'pass' then
+  perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision),'changed','shift-exchanges:'||w::text,true);
+ end if;
  result:=jsonb_build_object('case_id',cid,'status',c.status,'revision',c.revision);
  insert into public.shift_exchange_commands(workspace_id,actor_user_id,idempotency_key,command,result) values(w,actor,idempotency_key,command,result);
  return result;
@@ -391,7 +400,19 @@ select pg_temp.patch('public.refresh_weekly_exchange_terms(uuid, uuid)', array[
 ]);
 
 select pg_temp.patch('public.shift_exchange_preview(uuid, uuid, uuid, uuid)', array[
-  $a$case when c.kind in ('swap','open_pickup') then c.kind when$a$, $a$case when c.kind='swap' then 'swap' when$a$, '1'
+  $a$case when c.kind in ('swap','open_pickup') then c.kind when$a$, $a$case when c.kind='swap' then 'swap' when$a$, '1',
+  $a$if c.expires_at<=clock_timestamp() or (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;$a$,
+  $a$if c.expires_at<=clock_timestamp() then problems:=array_append(problems,'This request closed 4 hours before the shift');
+ elsif (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;$a$, '1'
+]);
+
+-- Requests -> Closed counts a pass as no request of one's own, and never finds a passer by name.
+select pg_temp.patch('public.get_schedule_requests_closed_service(uuid, uuid, text[], uuid, text, integer, integer)', array[
+  $a$exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id)$a$,
+  $a$exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id
+         and (a.status <> 'declined_by_employee' or c.audience = 'direct'))$a$, '2',
+  $a$where a.case_id = c.id and (a.employee_id = emp_id or c.owner_id = emp_id$a$,
+  $a$where a.case_id = c.id and (a.status <> 'declined_by_employee' or c.audience = 'direct') and (a.employee_id = emp_id or c.owner_id = emp_id$a$, '1'
 ]);
 
 select pg_temp.patch('public.shift_exchange_guard_commit_deadline()', array[

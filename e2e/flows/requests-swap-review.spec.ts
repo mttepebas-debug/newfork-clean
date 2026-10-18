@@ -30,14 +30,14 @@ async function openRequests(browser: Browser, person: Person): Promise<Page> {
   return page;
 }
 
-// The row's name as Requests writes it: "Ali Person, Swap, Mon, Jan 15, 2029 · 9:00 AM–3:00 PM".
-function rowName(day: string, who = "Ali Person", kind = "Swap") {
-  const date = new Date(`${day}T12:00:00`);
-  const when = new Intl.DateTimeFormat("en-US", {
-    weekday: "short", month: "short", day: "numeric",
-    year: date.getFullYear() === new Date().getFullYear() ? undefined : "numeric",
-  }).format(date);
-  return new RegExp(`^${who}, ${kind}, ${when.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}`);
+// The row's name as Requests writes it (TAKAS-RELEASE: one sentence), with the day
+// it names: "Shift swap: Ali Person and Deniz Person want to swap their Cook shifts."
+// or "Shift pickup: Ali Person and Deniz Person want to take over Emre Person’s 9:00 AM Cook shift at Kadikoy on Wed, Jan 16."
+function rowName(day: string, kind: "swap" | "pickup") {
+  if (kind === "swap") return /^Shift swap: Ali Person and Deniz Person want to swap/;
+  const when = new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" })
+    .format(new Date(`${day}T12:00:00Z`));
+  return new RegExp(`^Shift pickup: .*Emre Person’s .* on ${when}\\.`);
 }
 
 test("two managers approve a swap from its review window in Requests", async ({ browser }) => {
@@ -61,7 +61,7 @@ test("two managers approve a swap from its review window in Requests", async ({ 
   const day = sql(`select tests.week(${week}) + 1;`);
 
   const ayse = await openRequests(browser, "ayse");
-  await ayse.getByRole("row", { name: rowName(day) }).first().click();
+  await ayse.getByRole("row", { name: rowName(day, "swap") }).first().click();
   const first = ayse.getByRole("dialog", { name: "Swap request" });
   await expect(first).toContainText("Ali Person ⇄ Deniz Person");
   await first.getByRole("button", { name: "Approve", exact: true }).click();
@@ -71,7 +71,7 @@ test("two managers approve a swap from its review window in Requests", async ({ 
   expect(holder(roundLabel("ali-k-rv"))).toBe("Ali");
 
   const mehmet = await openRequests(browser, "mehmet");
-  await mehmet.getByRole("row", { name: rowName(day) }).first().click();
+  await mehmet.getByRole("row", { name: rowName(day, "swap") }).first().click();
   await mehmet.getByRole("dialog", { name: "Swap request" }).getByRole("button", { name: "Approve", exact: true }).click();
   await expect(mehmet.getByText("Swap approved.")).toBeVisible();
   // BL-180: the shared CI machine can outrun the default poll window.
@@ -100,7 +100,7 @@ test("a manager declines one person asking for a cover; the others stay", async 
   const day = sql(`select tests.week(${week}) + 2;`);
 
   const ayse = await openRequests(browser, "ayse");
-  await ayse.getByRole("row", { name: rowName(day, "Emre Person", "Cover") }).first().click();
+  await ayse.getByRole("row", { name: rowName(day, "pickup") }).first().click();
   const drawer = ayse.getByRole("dialog", { name: "Review shift change" });
   await drawer.getByRole("button", { name: "Decline Ali Person" }).click();
   await drawer.getByLabel("Reason for Ali").fill("You are over your hours this week");

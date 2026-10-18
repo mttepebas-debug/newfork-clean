@@ -74,7 +74,8 @@ test("approved time off keeps a shift from the employee until they get those hou
 
   await ali.goto(hub);
   await expect(ali.getByText("On time off")).toHaveCount(0);
-  await ali.getByRole("button", { name: "Request to cover" }).click();
+  // TAKAS-RELEASE: the released shift is a card in Ali's deck.
+  await ali.getByRole("button", { name: "I’ll take it" }).click();
   await expect
     .poll(() => sql(`select count(*) from public.shift_exchange_applications where case_id = '${caseId}' and status = 'pending_manager';`))
     .toBe("1");
@@ -83,7 +84,7 @@ test("approved time off keeps a shift from the employee until they get those hou
   // The link opens the cover's drawer in Requests; giving the shift is one step (Mert, 2026-10-11).
   const drawer = ayse.getByRole("dialog", { name: "Review shift change" });
   await drawer.getByRole("radio", { name: /Ali Person/ }).check();
-  await drawer.getByRole("button", { name: /^Give shift to Ali/ }).click();
+  await drawer.getByRole("button", { name: /^Give to Ali/ }).click();
   await expect
     .poll(() => sql(`select p.first_name from public.schedule_published_shifts s join public.employee_profiles p on p.id = s.employee_id
       where s.id = tests.id('${run}:shift:emre-wed6');`), { timeout: 30_000 })

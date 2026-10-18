@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 511, last: 20261018100000_shift_exchange_release.sql
--- fingerprint: sha256:0fb41612a64d95da03374703556930a1a8c3e2c92c0f20a38dd71972dd95384b
+-- fingerprint: sha256:e735d1c6f53366cc2f52e7db7c5a04f46874158b90d9e532a659f5def5427e2c
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15286,10 +15286,12 @@ begin
    and ((c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
         or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))
         or c.owner_id = emp_id
-        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id))
+        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id
+         and (a.status <> 'declined_by_employee' or c.audience = 'direct')))
    -- Reached the manager only once both sides agreed (Mert, 2026-10-11), as the open list.
    and (c.owner_id = emp_id
-        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id)
+        or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id
+         and (a.status <> 'declined_by_employee' or c.audience = 'direct'))
         or coalesce(app_private.shift_exchange_reached_managers(target_workspace_id, c.id), false))
    and (target_location_id is null or target_location_id in
         ((c.offered_snapshot ->> 'location_id')::uuid, (c.requested_snapshot ->> 'location_id')::uuid))
@@ -15299,7 +15301,7 @@ begin
          -- Only the applications the row shows: a reader who only applied finds no one else's.
          (select string_agg(concat_ws(' ', ae.first_name, ae.last_name, ae.preferred_name), ' ')
           from public.shift_exchange_applications a join public.employee_profiles ae on ae.id = a.employee_id
-          where a.case_id = c.id and (a.employee_id = emp_id or c.owner_id = emp_id
+          where a.case_id = c.id and (a.status <> 'declined_by_employee' or c.audience = 'direct') and (a.employee_id = emp_id or c.owner_id = emp_id
            or (c.offered_snapshot ->> 'location_id')::uuid = any (shift_scope)
            or (c.kind = 'swap' and (c.requested_snapshot ->> 'location_id')::uuid = any (shift_scope))))) ilike '%' || needle || '%')
  ), page as (
@@ -25647,7 +25649,8 @@ begin
  if s is null or (c.kind='swap' and t is null) then problems:=array_append(problems,'The published shift changed or was unpublished'); end if;
  fp:=public.shift_exchange_fingerprint(w,s,t);
  if fp is distinct from c.consent_fingerprint or fp is distinct from a.consent_fingerprint then problems:=array_append(problems,'Shift conditions changed. New employee consent is required'); end if;
- if c.expires_at<=clock_timestamp() or (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;
+ if c.expires_at<=clock_timestamp() then problems:=array_append(problems,'This request closed 4 hours before the shift');
+ elsif (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;
  if exists(select 1 from public.employee_profiles where workspace_id=w and user_id=actor and id in(c.owner_id,a.employee_id)) then problems:=array_append(problems,'A separate manager must approve your own exchange');
  -- D3: a peer manager reads the case and cannot decide it.
  elsif not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
@@ -25925,6 +25928,11 @@ begin
    if action='pass' then
     -- Not for me (plan 04:52): the card leaves this person's Available Shifts. Only
     -- they read it; the request itself does not change, so the owner's Take back holds.
+    -- One passes only on a card one is shown: eligible, or held back by approved time off alone.
+    checked:=app_private.eligibility(w,emp.id,s,'{"operation":"release_pickup"}');
+    if checked->>'status'<>'eligible' and exists(select 1 from jsonb_array_elements(checked->'blockers') b where b->>'code'<>'approved_time_off') then
+     raise exception 'This offer is not available' using errcode='42501',hint='authz.out_of_scope';
+    end if;
     if not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='declined_by_employee') then
      insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'declined_by_employee',c.consent_fingerprint);
     end if;
@@ -25945,7 +25953,8 @@ begin
   owns:=c.owner_id=emp.id;
   manager:=app_private.authz_reason(actor,w,'exchange.approve',array[(c.offered_snapshot->>'location_id')::uuid]) is null
    or (c.kind='swap' and app_private.authz_reason(actor,w,'exchange.approve',array[(c.requested_snapshot->>'location_id')::uuid]) is null);
-  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id) then raise exception 'Request access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
+  -- A pass on a release is no request of one's own (TAKAS-RELEASE).
+  if not coalesce(owns,false) and not coalesce(manager,false) and not exists(select 1 from public.shift_exchange_applications ap where ap.case_id=cid and ap.employee_id=emp.id and (ap.status<>'declined_by_employee' or c.audience='direct')) then raise exception 'Request access denied' using errcode='42501',hint='authz.out_of_scope'; end if;
   if c.status<>'open' or c.revision is distinct from (command->>'expected_revision')::integer then raise exception 'This request changed. Review the latest details' using errcode='PT409'; end if;
   if c.expires_at<=clock_timestamp() then
    update public.shift_exchange_cases set status='expired',revision=revision+1,updated_at=now() where id=cid returning * into c;
@@ -26051,7 +26060,10 @@ begin
    update public.shift_exchange_cases set revision=revision+1,updated_at=clock_timestamp() where id=cid returning * into c;
   end if;
  end if;
- perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision),'changed','shift-exchanges:'||w::text,true);
+ -- A pass changes nothing anyone else reads, so it tells nobody.
+ if action<>'pass' then
+  perform realtime.send(jsonb_build_object('workspace_id',w,'case_id',cid,'revision',c.revision),'changed','shift-exchanges:'||w::text,true);
+ end if;
  result:=jsonb_build_object('case_id',cid,'status',c.status,'revision',c.revision);
  insert into public.shift_exchange_commands(workspace_id,actor_user_id,idempotency_key,command,result) values(w,actor,idempotency_key,command,result);
  return result;

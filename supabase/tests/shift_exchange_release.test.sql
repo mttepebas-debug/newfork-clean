@@ -15,6 +15,9 @@ select tests.person('rl', 'rachel', 'manager', array['K'], array['cook']);
 select tests.person('rl', 'maria', 'employee', array['K'], array['cook']);
 select tests.person('rl', 'jake', 'employee', array['K'], array['cook']);
 select tests.person('rl', 'leo', 'employee', array['K'], array['cook']);
+select tests.person('rl', 'berk', 'employee', array['B'], array['cook']);
+-- Mira manages Besiktas only.
+select tests.person('rl', 'mira', 'manager', array['B'], array['cook']);
 select tests.publish_week('rl', 1, '[
   {"label": "maria-mon", "person": "maria", "loc": "K", "job": "cook", "day": 0, "start": "16:00", "end": "22:00"},
   {"label": "maria-tue", "person": "maria", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
@@ -23,6 +26,12 @@ select tests.publish_week('rl', 1, '[
   {"label": "jake-fri", "person": "jake", "loc": "K", "job": "cook", "day": 4, "start": "10:00", "end": "15:00"},
   {"label": "open-sat", "loc": "K", "job": "cook", "day": 5, "start": "09:00", "end": "15:00"},
   {"label": "maria-sun", "person": "maria", "loc": "K", "job": "cook", "day": 6, "start": "09:00", "end": "15:00"}
+]');
+select tests.publish_week('rl', 2, '[
+  {"label": "maria-mon2", "person": "maria", "loc": "K", "job": "cook", "day": 0, "start": "16:00", "end": "22:00"},
+  {"label": "maria-tue2", "person": "maria", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"},
+  {"label": "maria-wed2", "person": "maria", "loc": "K", "job": "cook", "day": 2, "start": "16:00", "end": "22:00"},
+  {"label": "jake-thu2", "person": "jake", "loc": "K", "job": "cook", "day": 3, "start": "16:00", "end": "22:00"}
 ]');
 
 create function pg_temp.command(who text, command jsonb) returns jsonb language sql as $$
@@ -144,6 +153,62 @@ select ok(not pg_temp.offered('leo', 'maria-wed'), 'Wednesday leaves Available S
 select throws_ok($$ select pg_temp.command('leo', jsonb_build_object('action', 'apply', 'shift_id', tests.id('rl:shift:maria-wed'),
   'case_id', tests.id('rl:case:maria-wed'))) $$, 'PT409', 'This request closed 4 hours before the shift',
   'and Leo can no longer ask for it');
+
+-- A pass only on a release one may take (review O1, Y2) -------------------------------
+create function pg_temp.pass(who text, label text, target uuid) returns jsonb language sql as $$
+  select pg_temp.command(who, jsonb_build_object('action', 'pass', 'shift_id', tests.id('rl:shift:' || label), 'case_id', target))
+$$;
+grant execute on all functions in schema pg_temp to public;
+select tests.remember('rl:case:direct', (pg_temp.command('maria', jsonb_build_object('action', 'create', 'kind', 'cover',
+  'shift_id', tests.id('rl:shift:maria-mon2'), 'employee_id', tests.id('rl:leo'), 'teammate_note', 'Should not stick')) ->> 'case_id')::uuid);
+select is((select teammate_note from public.shift_exchange_cases where id = tests.id('rl:case:direct')), '',
+  'a cover asked of one teammate keeps no note for teammates');
+select throws_ok($$ select pg_temp.pass('jake', 'maria-mon2', tests.id('rl:case:direct')) $$, '42501', 'This offer is not available',
+  'nobody passes on a cover asked of one teammate');
+select throws_ok($$ select pg_temp.pass('leo', 'maria-sun', tests.id('rl:case:swap')) $$, '42501', 'This offer is not available',
+  'nor on a swap');
+select pg_temp.release('maria-tue2');
+select throws_ok($$ select pg_temp.pass('maria', 'maria-tue2', tests.id('rl:case:maria-tue2')) $$, 'P0001', 'You already own this shift',
+  'Maria cannot pass on her own release');
+select throws_ok($$ select pg_temp.pass('jake', 'maria-tue2', tests.id('rl:case:direct')) $$, '42501', 'This offer is not available',
+  'a pass names the request of that shift');
+select throws_ok($$ select pg_temp.pass('berk', 'maria-tue2', tests.id('rl:case:maria-tue2')) $$, '42501', 'This offer is not available',
+  'Berk, who cannot work at Kadikoy, cannot pass on its release: he never sees the card');
+update public.shift_exchange_cases set expires_at = now() - interval '1 minute' where id = tests.id('rl:case:maria-wed');
+select throws_ok($$ select pg_temp.pass('jake', 'maria-wed', tests.id('rl:case:maria-wed')) $$, 'PT409', 'This request closed 4 hours before the shift',
+  'nor on a release past its 4-hour mark');
+
+select throws_ok($$ select pg_temp.pass('mira', 'maria-tue2', tests.id('rl:case:maria-tue2')) $$, '42501', 'This offer is not available',
+  'nor can Mira, who manages Besiktas only');
+
+-- A pass is no request of one's own: not in the command gate, not in the closed list.
+-- (Written by hand here: the service no longer lets Mira pass on a Kadikoy release.)
+insert into public.shift_exchange_applications (workspace_id, case_id, employee_id, status, consent_fingerprint)
+select workspace_id, id, tests.id('rl:mira'), 'declined_by_employee', consent_fingerprint
+from public.shift_exchange_cases where id = tests.id('rl:case:maria-tue2');
+select throws_ok($$ select pg_temp.command('mira', jsonb_build_object('action', 'withdraw', 'case_id', tests.id('rl:case:maria-tue2'),
+  'application_id', (select id from public.shift_exchange_applications where case_id = tests.id('rl:case:maria-tue2')
+    and employee_id = tests.id('rl:mira')), 'expected_revision', pg_temp.revision(tests.id('rl:case:maria-tue2')))) $$,
+  '42501', 'Request access denied', 'a pass gives Mira no way into Maria''s request');
+select pg_temp.command('leo', jsonb_build_object('action', 'apply', 'shift_id', tests.id('rl:shift:maria-tue2'),
+  'case_id', tests.id('rl:case:maria-tue2')));
+select pg_temp.command('maria', jsonb_build_object('action', 'close', 'case_id', tests.id('rl:case:maria-tue2'),
+  'expected_revision', pg_temp.revision(tests.id('rl:case:maria-tue2'))));
+select ok(not exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('rl:mira'), tests.id('rl'),
+  array['cover'], null, '', 1, 100) -> 'rows') r where r ->> 'id' = tests.id('rl:case:maria-tue2')::text),
+  'Mira, who manages Besiktas, does not find the Kadikoy release she passed on in Requests -> Closed');
+select ok(exists(select 1 from jsonb_array_elements(public.get_schedule_requests_closed_service(tests.user('rl:rachel'), tests.id('rl'),
+  array['cover'], null, '', 1, 100) -> 'rows') r where r ->> 'id' = tests.id('rl:case:maria-tue2')::text),
+  'Rachel, who manages Kadikoy, does');
+
+-- A manager's preview names the 4-hour mark, not a start (review, low).
+select pg_temp.release('maria-wed2');
+select pg_temp.command('leo', jsonb_build_object('action', 'apply', 'shift_id', tests.id('rl:shift:maria-wed2'),
+  'case_id', tests.id('rl:case:maria-wed2')));
+update public.shift_exchange_cases set expires_at = now() - interval '1 minute' where id = tests.id('rl:case:maria-wed2');
+select ok(public.shift_exchange_preview(tests.user('rl:rachel'), tests.id('rl'), tests.id('rl:case:maria-wed2'),
+  (select id from public.shift_exchange_applications where case_id = tests.id('rl:case:maria-wed2') and employee_id = tests.id('rl:leo')))
+  -> 'reasons' ? 'This request closed 4 hours before the shift', 'a request past its mark says it closed 4 hours before the shift');
 
 select * from finish();
 rollback;
