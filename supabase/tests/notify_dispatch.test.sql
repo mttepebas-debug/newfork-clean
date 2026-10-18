@@ -8,10 +8,12 @@ select no_plan();
 --       non-required rows wait for the next day or month, required ones still go; a channel without a quota
 --       has no limit;
 --   (c) one run at a time: the lease is taken once, freed only by its own run, and taken again once it ran out;
---   (d) alerts: a quota at 80% and full, by day and month, and a delivery due for over 2 minutes, each once
+--   (d) alerts: a quota at 80% and full, by day and month, and a delivery due for over 2 minutes, handed over
+--       until the API says it told them, then once
 --       per period; full silences 80% in the same period;
 --   (e) only the dispatcher may call these; one cron job every 5 seconds, only while something is due and the
---       lease is free; the per-channel jobs are gone; pg_cron's history is trimmed daily.
+--       lease is free, reading the partial indexes; a heartbeat every 5 minutes; the per-channel jobs are gone;
+--       pg_cron's history is trimmed daily.
 
 select tests.world('da');
 select tests.world('db');
@@ -128,15 +130,22 @@ update app_private.notification_quotas set daily_limit = 35, monthly_limit = nul
 update public.notification_deliveries set status = 'sent', sent_at = now(), next_attempt_at = now()
 where channel = 'email' and pg_temp.key(id) in ('a2');
 select is((select jsonb_agg(x - 'period') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
-  '[{"kind": "quota_day_80", "channel": "email", "sent": 4, "limit": 5}]'::jsonb, '(d) 80% of the day''s room: told');
-select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) once a day');
+  '[{"kind": "quota_day_80", "channel": "email", "sent": 4, "limit": 5}]'::jsonb, '(d) 80% of the day''s room: handed over');
+select is((select jsonb_agg(x ->> 'kind') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
+  '["quota_day_80"]'::jsonb, '(d) until the API says it told Mert: a send that failed comes back');
+select is(public.raise_notification_alerts_service(public.notification_dispatch_alerts_service()), 1, '(d) told');
+select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) then once a day');
+select is(public.raise_notification_alerts_service('[{"kind": "quota_day_80", "channel": "email", "period": "2026-10-17"}]'
+  ::jsonb || jsonb_build_array(jsonb_build_object('kind', 'quota_day_80', 'channel', 'email',
+  'period', to_char(now() at time zone 'UTC', 'YYYY-MM-DD')))), 1, '(d) telling it twice changes nothing');
 update public.notification_deliveries set status = 'sent', sent_at = now() where channel = 'email' and pg_temp.key(id) = 'a3';
 select is((select jsonb_agg(x ->> 'kind') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
-  '["quota_day_full"]'::jsonb, '(d) full: told once more');
+  '["quota_day_full"]'::jsonb, '(d) full: handed over once more');
+select public.raise_notification_alerts_service(public.notification_dispatch_alerts_service());
 select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) and once');
 delete from app_private.notification_alerts;
 select is((select jsonb_agg(x ->> 'kind') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
-  '["quota_day_full"]'::jsonb, '(d) full first: no 80% after it in the same day');
+  '["quota_day_full"]'::jsonb, '(d) full first: no 80% with it in the same day');
 update app_private.notification_quotas set daily_limit = null where channel = 'email';
 -- A delivery due for three minutes.
 select pg_temp.notice('time_off.decided', 'db:bob', 'b-late');
@@ -144,38 +153,49 @@ update public.notification_deliveries set next_attempt_at = now() - interval '3 
 where channel = 'email' and pg_temp.key(id) = 'b-late';
 select is((select jsonb_agg(x - 'period') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
   '[{"kind": "late", "channel": "email", "due": 1, "waiting_seconds": 180}]'::jsonb,
-  '(d) a delivery due for over 2 minutes: told, with how long and how many');
+  '(d) a delivery due for over 2 minutes: handed over, with how long and how many');
+select public.raise_notification_alerts_service(public.notification_dispatch_alerts_service());
 select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) once per half hour');
 update public.notification_deliveries set next_attempt_at = now() - interval '1 minute'
 where channel = 'email' and pg_temp.key(id) = 'b-late';
 delete from app_private.notification_alerts;
 select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) a minute is not late');
+select throws_ok($$select public.raise_notification_alerts_service('{"kind": "late"}'::jsonb)$$, '22023', null,
+  '(d) alerts are a list');
+select throws_ok($$select public.raise_notification_alerts_service('[{"kind": "loud", "channel": "email", "period": "2026-10"}]'::jsonb)$$,
+  '23514', null, '(d) of the kinds there are');
 
--- (e) Who may call, and the schedule ------------------------------------------------------------------------
+-- (e) Who may call, the schedule, and the plan ----------------------------------------------------------------
 
 select is(array(select p.proname || ' ' || r.rolname || ' ' || has_function_privilege(r.rolname, p.oid, 'EXECUTE')::text
                 from pg_proc p cross join (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
                 where p.pronamespace = 'public'::regnamespace
                   and p.proname in ('begin_notification_dispatch_service', 'end_notification_dispatch_service',
-                                    'notification_dispatch_alerts_service')
+                                    'notification_dispatch_alerts_service', 'raise_notification_alerts_service')
                 order by 1),
   array['begin_notification_dispatch_service anon false', 'begin_notification_dispatch_service authenticated false',
         'begin_notification_dispatch_service service_role true', 'end_notification_dispatch_service anon false',
         'end_notification_dispatch_service authenticated false', 'end_notification_dispatch_service service_role true',
         'notification_dispatch_alerts_service anon false', 'notification_dispatch_alerts_service authenticated false',
-        'notification_dispatch_alerts_service service_role true'],
-  '(e) only the dispatcher may take the lease or read the alerts');
+        'notification_dispatch_alerts_service service_role true', 'raise_notification_alerts_service anon false',
+        'raise_notification_alerts_service authenticated false', 'raise_notification_alerts_service service_role true'],
+  '(e) only the dispatcher may take the lease or read and raise the alerts');
 select is(array(select c.relname::text from pg_class c
                 where c.relnamespace = 'app_private'::regnamespace
                   and c.relname in ('notification_quotas', 'notification_dispatch', 'notification_alerts')
+                  and c.relrowsecurity
                   and not has_table_privilege('anon', c.oid, 'SELECT') and not has_table_privilege('authenticated', c.oid, 'SELECT')
                 order by 1),
-  array['notification_alerts', 'notification_dispatch', 'notification_quotas'], '(e) its tables are nobody else''s');
+  array['notification_alerts', 'notification_dispatch', 'notification_quotas'],
+  '(e) its tables are nobody else''s: row level security on, nothing granted');
 select is((select schedule from cron.job where jobname = 'notification-dispatch'), '5 seconds', '(e) one job, every 5 seconds');
 select ok((select command ~ 'dispatch_cron_endpoint\(''/api/internal/cron/notification-dispatch''\)'
                   and command ~ 'held_until' and command ~ 'exists \(' and command ~ 'delivery_due'
            from cron.job where jobname = 'notification-dispatch'),
   '(e) it calls the dispatcher only while something is due and no run holds the lease');
+select is((select schedule || ' ' || command from cron.job where jobname = 'notification-heartbeat'),
+  '*/5 * * * * select app_private.dispatch_cron_endpoint(''/api/internal/cron/notification-heartbeat'');',
+  '(e) a heartbeat every 5 minutes, whatever is due, so a dispatcher that cannot run is heard of');
 select is((select count(*)::integer from cron.job where jobname in ('notification-email', 'notification-push')), 0,
   '(e) the per-channel jobs are gone');
 select ok((select schedule = '17 4 * * *' and command ~ 'delete from cron.job_run_details' from cron.job
@@ -183,6 +203,30 @@ select ok((select schedule = '17 4 * * *' and command ~ 'delete from cron.job_ru
 select ok(to_regclass('public.notification_deliveries_sent') is not null
   and to_regclass('public.notification_deliveries_email_sent') is null, '(e) one sent index for every channel');
 select hasnt_column('app_private', 'notification_email_channel', 'daily_cap', '(e) the email cap is the quota keeper''s now');
+
+-- Every 5 seconds the guard asks whether anything is due: through the partial indexes, never by reading every
+-- delivery. The planner inlines the due check only while it has no settings of its own.
+create function pg_temp.plan(query text) returns text language plpgsql as $$
+declare line text; lines text := '';
+begin
+  for line in execute 'explain (costs off) ' || query loop lines := lines || line || E'\n'; end loop;
+  return lines;
+end $$;
+select ok((select p.proconfig is null and p.provolatile = 's'
+           from pg_proc p where p.oid = 'app_private.delivery_due(text, timestamptz, timestamptz)'::regprocedure),
+  '(e) the due check has no settings of its own');
+set local enable_seqscan = off;
+select ok(pg_temp.plan($$select 1 from public.notification_deliveries d
+                         where d.channel = any (app_private.dispatched_channels())
+                           and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)$$)
+          !~ 'delivery_due',
+  '(e) the guard''s due check is inlined, not called for every delivery');
+select ok(pg_temp.plan($$select 1 from public.notification_deliveries d
+                         where d.channel = any (app_private.dispatched_channels())
+                           and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)$$)
+          ~ 'notification_deliveries_due' ,
+  '(e) and it can use the partial index of waiting deliveries');
+reset enable_seqscan;
 
 select * from finish();
 rollback;

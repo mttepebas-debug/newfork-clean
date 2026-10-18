@@ -75,7 +75,8 @@ select is(array(select p.proname::text from pg_proc p
         'get_notification_feed_service', 'get_notification_preferences_service', 'get_notification_workspace_settings_service',
         'mark_notifications_read_service', 'mark_notifications_seen_service', 'notification_dispatch_alerts_service',
         'notification_resolve', 'notification_route', 'notify', 'notify_account_security', 'notify_deciders', 'notify_holders', 'notify_rows', 'notify_workspace_closing',
-        'purge_expired_notifications', 'release_notification_emails_service', 'release_notification_push_service',
+        'purge_expired_notifications', 'raise_notification_alerts_service', 'release_notification_emails_service',
+        'release_notification_push_service',
         'save_notification_preferences_service', 'save_notification_push_subscription_service',
         'save_notification_workspace_settings_service'],
   '(a) no function named for notifications or notices is left but the new system''s (its producers'' helpers too)');
@@ -86,8 +87,8 @@ select is((select count(*)::integer from pg_policies where schemaname = 'realtim
 select is(array(select policyname::text from pg_policies where policyname ~ 'notif' order by 1),
   array['people hear their own notification signals'], '(a) no policy is named for notifications but the new system''s');
 select is(array(select jobname::text from cron.job where jobname ~ 'notif' order by 1),
-  array['notification-dispatch', 'notification-retention'],
-  '(a) no scheduled job sends notifications but the new system''s: its one dispatcher for every channel (BILDIRIM-DAGITICI) and the one that deletes expired ones');
+  array['notification-dispatch', 'notification-heartbeat', 'notification-retention'],
+  '(a) no scheduled job sends notifications but the new system''s: its one dispatcher for every channel and its heartbeat (BILDIRIM-DAGITICI) and the one that deletes expired ones');
 -- The domain work they served is still here.
 select ok(to_regprocedure('public.record_account_security_event_service(uuid, text, jsonb)') is not null
   and to_regprocedure('public.shift_exchange_emit(uuid, uuid, uuid, uuid, text, text, text)') is not null

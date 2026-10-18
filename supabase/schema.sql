@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 510, last: 20261017230000_notification_dispatch.sql
--- fingerprint: sha256:6b8639c5afc22129e21219a6a0318035e2dbbcd729f64a9e72bbc1688b0ab94c
+-- fingerprint: sha256:29b44342acb341c05e9e1fc242cb6331da5d7ba9f61459279a2868396a5841d9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3663,7 +3663,6 @@ COMMENT ON FUNCTION "app_private"."default_closure_period"() IS 'How long a sche
 
 CREATE OR REPLACE FUNCTION "app_private"."delivery_due"("status" "text", "next_attempt_at" timestamp with time zone, "lease_expires_at" timestamp with time zone) RETURNS boolean
     LANGUAGE "sql" STABLE
-    SET "search_path" TO ''
     AS $$
   select (status in ('queued', 'failed') and next_attempt_at <= now())
       or (status = 'sending' and lease_expires_at < now())
@@ -3728,7 +3727,6 @@ ALTER FUNCTION "app_private"."dispatch_cron_endpoint"("endpoint_path" "text") OW
 
 CREATE OR REPLACE FUNCTION "app_private"."dispatched_channels"() RETURNS "text"[]
     LANGUAGE "sql" IMMUTABLE
-    SET "search_path" TO ''
     AS $$ select array['email', 'push'] $$;
 
 
@@ -18541,9 +18539,10 @@ declare
   month_key text := to_char(now() at time zone 'UTC', 'YYYY-MM');
   sent_today integer;
   sent_month integer;
-  share integer;
   candidate record;
   late record;
+  late_period text := to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI');
+  full_now text[];
   raised jsonb := '[]'::jsonb;
 begin
   for quota in select * from app_private.notification_quotas order by channel loop
@@ -18551,6 +18550,7 @@ begin
       into sent_today, sent_month
     from public.notification_deliveries d
     where d.channel = quota.channel and d.sent_at >= month_start;
+    full_now := '{}';
     for candidate in
       select * from (values
         (1, 'quota_day_full', day_key, sent_today, quota.daily_limit - quota.reserved_daily, 1.0),
@@ -18561,15 +18561,18 @@ begin
       where v.cap is not null and v.sent >= ceil(v.cap * v.part)
       order by v.place
     loop
-      -- Full says it all: no 80% alert after a full one in the same period.
-      continue when candidate.part = 0.8 and exists (select 1 from app_private.notification_alerts a
-        where a.kind = replace(candidate.kind, '_80', '_full') and a.channel = quota.channel and a.period = candidate.period);
-      insert into app_private.notification_alerts (kind, channel, period) values (candidate.kind, quota.channel, candidate.period)
-      on conflict do nothing;
-      if found then
-        raised := raised || jsonb_build_array(jsonb_build_object('kind', candidate.kind, 'channel', quota.channel,
-          'period', candidate.period, 'sent', candidate.sent, 'limit', candidate.cap));
+      -- Full says it all: no 80% alert with or after a full one in the same period.
+      continue when candidate.part = 0.8 and (replace(candidate.kind, '_80', '_full') = any (full_now)
+        or exists (select 1 from app_private.notification_alerts a
+                   where a.kind = replace(candidate.kind, '_80', '_full') and a.channel = quota.channel
+                     and a.period = candidate.period));
+      if candidate.part = 1.0 then
+        full_now := full_now || candidate.kind::text;
       end if;
+      continue when exists (select 1 from app_private.notification_alerts a
+        where a.kind = candidate.kind and a.channel = quota.channel and a.period = candidate.period);
+      raised := raised || jsonb_build_array(jsonb_build_object('kind', candidate.kind, 'channel', quota.channel,
+        'period', candidate.period, 'sent', candidate.sent, 'limit', candidate.cap));
     end loop;
   end loop;
 
@@ -18584,18 +18587,11 @@ begin
     order by d.channel
   loop
     -- Once per half hour while it lasts.
-    insert into app_private.notification_alerts (kind, channel, period)
-    values ('late', late.channel, to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC',
-      'YYYY-MM-DD"T"HH24:MI'))
-    on conflict do nothing;
-    if found then
-      raised := raised || jsonb_build_array(jsonb_build_object('kind', 'late', 'channel', late.channel,
-        'period', to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI'),
-        'waiting_seconds', late.waited, 'due', late.due));
-    end if;
+    continue when exists (select 1 from app_private.notification_alerts a
+      where a.kind = 'late' and a.channel = late.channel and a.period = late_period);
+    raised := raised || jsonb_build_array(jsonb_build_object('kind', 'late', 'channel', late.channel,
+      'period', late_period, 'waiting_seconds', late.waited, 'due', late.due));
   end loop;
-
-  delete from app_private.notification_alerts a where a.raised_at < now() - interval '90 days';
   return raised;
 end;
 $$;
@@ -20221,6 +20217,29 @@ $_$;
 
 
 ALTER FUNCTION "public"."queue_owner_onboarding_invitation_intent_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."raise_notification_alerts_service"("target_alerts" "jsonb") RETURNS integer
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  added integer;
+begin
+  if target_alerts is null or jsonb_typeof(target_alerts) <> 'array' or jsonb_array_length(target_alerts) > 50 then
+    raise exception 'alerts are a list of at most 50' using errcode = '22023', hint = 'notifications.alerts';
+  end if;
+  insert into app_private.notification_alerts (kind, channel, period)
+  select x ->> 'kind', x ->> 'channel', x ->> 'period' from jsonb_array_elements(target_alerts) x
+  on conflict do nothing;
+  get diagnostics added = row_count;
+  delete from app_private.notification_alerts a where a.raised_at < now() - interval '90 days';
+  return added;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."raise_notification_alerts_service"("target_alerts" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."read_employee_references_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
@@ -34291,6 +34310,15 @@ ALTER TABLE ONLY "public"."workspaces"
 
 
 
+ALTER TABLE "app_private"."notification_alerts" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "app_private"."notification_dispatch" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "app_private"."notification_quotas" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "app_private"."role_permission_dependencies" ENABLE ROW LEVEL SECURITY;
 
 
@@ -36881,6 +36909,11 @@ GRANT ALL ON FUNCTION "public"."publish_signature_template_service"("actor_user_
 
 REVOKE ALL ON FUNCTION "public"."queue_owner_onboarding_invitation_intent_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."queue_owner_onboarding_invitation_intent_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."raise_notification_alerts_service"("target_alerts" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."raise_notification_alerts_service"("target_alerts" "jsonb") TO "service_role";
 
 
 

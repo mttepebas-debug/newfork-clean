@@ -3,18 +3,19 @@ import { describe, expect, it, vi } from "vitest";
 import { registerNotificationDispatchRoutes } from "./dispatch-routes";
 import type { NotificationDispatchResult } from "./dispatcher";
 
-// BILDIRIM-DAGITICI: the one cron door of every notification channel runs the dispatcher with the cron
-// secret; the per-channel doors are gone.
+// BILDIRIM-DAGITICI: the cron doors of every notification channel run the dispatcher and its heartbeat with
+// the cron secret; the per-channel doors are gone.
 function build(options: { dispatcher?: boolean; cronSecret?: string } = {}) {
   const lines: Record<string, unknown>[] = [];
   const app = Fastify({ logger: { level: "info", stream: { write: (line: string) => lines.push(JSON.parse(line)) } } });
   const ran: NotificationDispatchResult = { ran: true, email: null, push: null, alerts: 0 };
   const run = vi.fn(async () => ran);
+  const heartbeat = vi.fn(async () => ({ alerts: 0 }));
   registerNotificationDispatchRoutes(app, {
-    dispatcher: options.dispatcher === false ? null : { run },
+    dispatcher: options.dispatcher === false ? null : { run, heartbeat },
     cronSecret: "cronSecret" in options ? options.cronSecret : "s",
   });
-  return { app, run, lines };
+  return { app, run, heartbeat, lines };
 }
 
 describe("notification dispatch cron route", () => {
@@ -46,6 +47,22 @@ describe("notification dispatch cron route", () => {
     expect(response.statusCode).toBe(500);
     expect(response.payload).not.toContain("notification_deliveries");
     expect(lines.some((line) => line.msg === "notification dispatch failed")).toBe(true);
+    await app.close();
+  });
+
+  it("runs the heartbeat only with the cron secret, and answers its failure without internals", async () => {
+    const { app, run, heartbeat, lines } = build();
+    expect((await app.inject({ method: "POST", url: "/internal/cron/notification-heartbeat" })).statusCode).toBe(401);
+    expect(heartbeat).not.toHaveBeenCalled();
+    const ok = await app.inject({ method: "POST", url: "/internal/cron/notification-heartbeat", headers: { authorization: "Bearer s" } });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toEqual({ alerts: 0 });
+    expect(run).not.toHaveBeenCalled();
+    heartbeat.mockRejectedValueOnce(new Error("alerts failed: permission denied for table notification_alerts"));
+    const failed = await app.inject({ method: "GET", url: "/internal/cron/notification-heartbeat", headers: { authorization: "Bearer s" } });
+    expect(failed.statusCode).toBe(500);
+    expect(failed.payload).not.toContain("notification_alerts");
+    expect(lines.some((line) => line.msg === "notification heartbeat failed")).toBe(true);
     await app.close();
   });
 

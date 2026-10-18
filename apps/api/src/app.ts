@@ -9,7 +9,7 @@ import { registerDocumentLifecycleRoutes } from "./employees/document-lifecycle-
 import { registerTimezoneSuggestionRoutes } from "./settings/timezone-suggestion";
 import { z } from "zod";
 import { HttpError, replyWithError } from "./http-error.js";
-import { initSentry, reportOperatorAlert } from "./sentry.js";
+import { initSentry, reportCheckIn, reportOperatorAlert } from "./sentry.js";
 import { registerAccountDeletionRoutes } from "./account/account-deletion-routes";
 import {
   createAccountDeletionWorker,
@@ -102,7 +102,12 @@ import {
 import { notificationChannelsConfigFromEnvironment, vapidFromEnvironment } from "./notifications/channel-config";
 import { createNotificationPushWorker, type NotificationPushWorker, type PushSend } from "./notifications/push-worker";
 import { registerNotificationPushRoutes, type PushSubscriptionService } from "./notifications/push-routes";
-import { alertMessage, createNotificationDispatcher, type NotificationDispatcher } from "./notifications/dispatcher";
+import {
+  alertMessage,
+  createNotificationDispatcher,
+  HEARTBEAT_MONITOR,
+  type NotificationDispatcher,
+} from "./notifications/dispatcher";
 import { registerNotificationDispatchRoutes } from "./notifications/dispatch-routes";
 import { createPushSubscriptionService } from "./notifications/push-subscription-service";
 import { createUserVerifier } from "./auth/verify-user.js";
@@ -1189,7 +1194,8 @@ function createSignatureSettingsServiceFromEnvironment(): SignatureSettingsServi
 }
 
 // One dispatcher for every channel (BILDIRIM-DAGITICI). A channel whose secrets are not set has no worker
-// and is left alone; with neither, the cron route answers 503. An alert goes to Sentry, which emails Mert.
+// and is left alone; with neither, the cron routes answer 503. An alert goes to Sentry, which emails Mert;
+// the heartbeat checks in with Sentry's cron monitor, made on the first check-in.
 function createNotificationDispatcherFromEnvironment(): NotificationDispatcher | null {
   const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1201,6 +1207,7 @@ function createNotificationDispatcherFromEnvironment(): NotificationDispatcher |
     serviceRoleKey,
     email,
     push,
+    checkIn: (status) => reportCheckIn(HEARTBEAT_MONITOR.slug, status, HEARTBEAT_MONITOR.config),
     report: (alert) =>
       reportOperatorAlert(alertMessage(alert), ["notification-alert", alert.kind, alert.channel], {
         kind: alert.kind,

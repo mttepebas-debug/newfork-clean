@@ -273,7 +273,8 @@ insert into service_class values
   -- One dispatcher for every channel (BILDIRIM-DAGITICI): its lease and its alerts are the worker's.
   ('begin_notification_dispatch_service', 'exempt:worker'),
   ('end_notification_dispatch_service', 'exempt:worker'),
-  ('notification_dispatch_alerts_service', 'exempt:worker');
+  ('notification_dispatch_alerts_service', 'exempt:worker'),
+  ('raise_notification_alerts_service', 'exempt:worker');
 
 select is(
   array(

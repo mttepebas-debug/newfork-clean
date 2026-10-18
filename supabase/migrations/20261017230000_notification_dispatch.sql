@@ -10,27 +10,32 @@
 --     and exports. With no room, non-required rows wait for the next UTC day or month; required rows still go.
 --     Email starts at Resend Free (100 a day, 30 kept; 3,000 a month, 900 kept). At Pro the row is updated;
 --   * alerts (notification_dispatch_alerts_service): a quota at 80% and full, by day and by month, and a due
---     delivery waiting over 2 minutes are each handed to the API once per period; it tells Mert (Sentry);
+--     delivery waiting over 2 minutes are handed to the API until it says it told Mert (Sentry), then once
+--     per period (raise_notification_alerts_service): an alert whose send failed comes back;
+--   * a heartbeat every 5 minutes, whatever is due: the API asks for the alerts and checks in with Sentry's
+--     cron monitor, so a dispatcher that cannot run at all (a wrong secret, a deploy gap, an outage) is
+--     still heard of: a missed check-in is Sentry's own alert;
 --   * pg_cron keeps a row per run; at one run every 5 seconds the history is trimmed daily to 2 days.
 -- Only the dispatcher (service_role) calls the services; no person and no browser.
 
 -- The channels a worker sends today. SMS rows are never queued (no route sends SMS); if one were, it would not
--- wake the dispatcher every 5 seconds for ever.
+-- wake the dispatcher every 5 seconds for ever. No search_path of its own (it names no object), so the
+-- planner folds it into the query.
 create function app_private.dispatched_channels()
 returns text[]
 language sql
 immutable
-set search_path = ''
 as $$ select array['email', 'push'] $$;
 
 revoke all on function app_private.dispatched_channels() from public, anon, authenticated;
 
--- A delivery is due when its time came and it waits, or when its run's lease ran out.
+-- A delivery is due when its time came and it waits, or when its run's lease ran out. No search_path of its
+-- own (it names no object): the planner inlines it, so the cron guard and fair_due use the partial indexes
+-- notification_deliveries_due and notification_deliveries_leased instead of reading every delivery.
 create function app_private.delivery_due(status text, next_attempt_at timestamptz, lease_expires_at timestamptz)
 returns boolean
 language sql
 stable
-set search_path = ''
 as $$
   select (status in ('queued', 'failed') and next_attempt_at <= now())
       or (status = 'sending' and lease_expires_at < now())
@@ -72,6 +77,7 @@ create table app_private.notification_quotas (
   reserved_monthly integer not null default 0
     check (reserved_monthly >= 0 and (monthly_limit is null or reserved_monthly < monthly_limit))
 );
+alter table app_private.notification_quotas enable row level security;
 revoke all on table app_private.notification_quotas from public, anon, authenticated;
 
 -- Resend Free (KARARLAR S-130): 100 a day and 3,000 a month, shared with invitations, password resets, account
@@ -126,6 +132,7 @@ create table app_private.notification_dispatch (
   run_id uuid,
   held_until timestamptz not null default '-infinity'
 );
+alter table app_private.notification_dispatch enable row level security;
 revoke all on table app_private.notification_dispatch from public, anon, authenticated;
 insert into app_private.notification_dispatch default values;
 
@@ -170,9 +177,12 @@ create table app_private.notification_alerts (
   raised_at timestamptz not null default now(),
   primary key (kind, channel, period)
 );
+alter table app_private.notification_alerts enable row level security;
 revoke all on table app_private.notification_alerts from public, anon, authenticated;
 
--- [{kind, channel, period, sent, limit} | {kind: late, channel, period, waiting_seconds, due}], each once.
+-- [{kind, channel, period, sent, limit} | {kind: late, channel, period, waiting_seconds, due}]: what is true
+-- now and was not told yet this period. Nothing is written here: raise_notification_alerts_service writes
+-- what the API told, so an alert whose send failed comes back on the next call.
 create function public.notification_dispatch_alerts_service()
 returns jsonb
 language plpgsql
@@ -187,9 +197,10 @@ declare
   month_key text := to_char(now() at time zone 'UTC', 'YYYY-MM');
   sent_today integer;
   sent_month integer;
-  share integer;
   candidate record;
   late record;
+  late_period text := to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI');
+  full_now text[];
   raised jsonb := '[]'::jsonb;
 begin
   for quota in select * from app_private.notification_quotas order by channel loop
@@ -197,6 +208,7 @@ begin
       into sent_today, sent_month
     from public.notification_deliveries d
     where d.channel = quota.channel and d.sent_at >= month_start;
+    full_now := '{}';
     for candidate in
       select * from (values
         (1, 'quota_day_full', day_key, sent_today, quota.daily_limit - quota.reserved_daily, 1.0),
@@ -207,15 +219,18 @@ begin
       where v.cap is not null and v.sent >= ceil(v.cap * v.part)
       order by v.place
     loop
-      -- Full says it all: no 80% alert after a full one in the same period.
-      continue when candidate.part = 0.8 and exists (select 1 from app_private.notification_alerts a
-        where a.kind = replace(candidate.kind, '_80', '_full') and a.channel = quota.channel and a.period = candidate.period);
-      insert into app_private.notification_alerts (kind, channel, period) values (candidate.kind, quota.channel, candidate.period)
-      on conflict do nothing;
-      if found then
-        raised := raised || jsonb_build_array(jsonb_build_object('kind', candidate.kind, 'channel', quota.channel,
-          'period', candidate.period, 'sent', candidate.sent, 'limit', candidate.cap));
+      -- Full says it all: no 80% alert with or after a full one in the same period.
+      continue when candidate.part = 0.8 and (replace(candidate.kind, '_80', '_full') = any (full_now)
+        or exists (select 1 from app_private.notification_alerts a
+                   where a.kind = replace(candidate.kind, '_80', '_full') and a.channel = quota.channel
+                     and a.period = candidate.period));
+      if candidate.part = 1.0 then
+        full_now := full_now || candidate.kind::text;
       end if;
+      continue when exists (select 1 from app_private.notification_alerts a
+        where a.kind = candidate.kind and a.channel = quota.channel and a.period = candidate.period);
+      raised := raised || jsonb_build_array(jsonb_build_object('kind', candidate.kind, 'channel', quota.channel,
+        'period', candidate.period, 'sent', candidate.sent, 'limit', candidate.cap));
     end loop;
   end loop;
 
@@ -230,19 +245,34 @@ begin
     order by d.channel
   loop
     -- Once per half hour while it lasts.
-    insert into app_private.notification_alerts (kind, channel, period)
-    values ('late', late.channel, to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC',
-      'YYYY-MM-DD"T"HH24:MI'))
-    on conflict do nothing;
-    if found then
-      raised := raised || jsonb_build_array(jsonb_build_object('kind', 'late', 'channel', late.channel,
-        'period', to_char(date_bin('30 minutes', now(), timestamptz '2000-01-01') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI'),
-        'waiting_seconds', late.waited, 'due', late.due));
-    end if;
+    continue when exists (select 1 from app_private.notification_alerts a
+      where a.kind = 'late' and a.channel = late.channel and a.period = late_period);
+    raised := raised || jsonb_build_array(jsonb_build_object('kind', 'late', 'channel', late.channel,
+      'period', late_period, 'waiting_seconds', late.waited, 'due', late.due));
   end loop;
-
-  delete from app_private.notification_alerts a where a.raised_at < now() - interval '90 days';
   return raised;
+end;
+$$;
+
+-- The alerts the API told: none is handed over again in its period. Answers how many were new.
+create function public.raise_notification_alerts_service(target_alerts jsonb)
+returns integer
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  added integer;
+begin
+  if target_alerts is null or jsonb_typeof(target_alerts) <> 'array' or jsonb_array_length(target_alerts) > 50 then
+    raise exception 'alerts are a list of at most 50' using errcode = '22023', hint = 'notifications.alerts';
+  end if;
+  insert into app_private.notification_alerts (kind, channel, period)
+  select x ->> 'kind', x ->> 'channel', x ->> 'period' from jsonb_array_elements(target_alerts) x
+  on conflict do nothing;
+  get diagnostics added = row_count;
+  delete from app_private.notification_alerts a where a.raised_at < now() - interval '90 days';
+  return added;
 end;
 $$;
 
@@ -464,13 +494,16 @@ $$;
 revoke all on function public.begin_notification_dispatch_service(integer) from public, anon, authenticated;
 revoke all on function public.end_notification_dispatch_service(uuid) from public, anon, authenticated;
 revoke all on function public.notification_dispatch_alerts_service() from public, anon, authenticated;
+revoke all on function public.raise_notification_alerts_service(jsonb) from public, anon, authenticated;
 grant execute on function public.begin_notification_dispatch_service(integer) to service_role;
 grant execute on function public.end_notification_dispatch_service(uuid) to service_role;
 grant execute on function public.notification_dispatch_alerts_service() to service_role;
+grant execute on function public.raise_notification_alerts_service(jsonb) to service_role;
 
 -- The schedule ----------------------------------------------------------------------------------------------
 
-select cron.unschedule(jobid) from cron.job where jobname in ('notification-email', 'notification-push', 'notification-dispatch');
+select cron.unschedule(jobid) from cron.job
+where jobname in ('notification-email', 'notification-push', 'notification-dispatch', 'notification-heartbeat');
 -- Every 5 seconds, only while something is due and no run holds the lease; a database without its Vault
 -- secrets (local, CI) stays quiet.
 select cron.schedule('notification-dispatch', '5 seconds',
@@ -479,6 +512,11 @@ select cron.schedule('notification-dispatch', '5 seconds',
       and exists (select 1 from public.notification_deliveries d
                   where d.channel = any (app_private.dispatched_channels())
                     and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at));$$);
+
+-- Every 5 minutes, whatever is due: the API asks for the alerts and checks in with Sentry's cron monitor
+-- ("notification-delivery"). If this call stops arriving, Sentry tells Mert itself.
+select cron.schedule('notification-heartbeat', '*/5 * * * *',
+  $$select app_private.dispatch_cron_endpoint('/api/internal/cron/notification-heartbeat');$$);
 
 select cron.unschedule(jobid) from cron.job where jobname = 'cron-history-trim';
 select cron.schedule('cron-history-trim', '17 4 * * *',

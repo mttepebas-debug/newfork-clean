@@ -8,13 +8,21 @@ import type { NotificationPushWorker } from "./push-worker";
  * every 5 seconds while a delivery is due and no run holds the lease:
  *   * it takes the lease (one run at a time, so the quota count and the providers' rate limits hold);
  *   * each channel's worker runs batch after batch, side by side, until the deadline or until nothing is due;
- *   * it lets the lease go, then hands each new alert (a quota at 80% or full, a delivery waiting over
- *     2 minutes) to `report`, which tells Mert.
- * A run ends inside the cron call's 10 s. SMS gets a worker here when it comes.
+ *   * it lets the lease go, then tells Mert each alert not told yet (a quota at 80% or full, a delivery
+ *     waiting over 2 minutes); an alert is marked told only once its send went out, so a failed one comes back.
+ * The heartbeat (every 5 minutes, whatever is due) tells the same alerts and checks in with Sentry's cron
+ * monitor: if the dispatcher cannot run at all, the queue still raises "late", and if even the heartbeat
+ * stops arriving, Sentry tells Mert itself.
+ * Sends end by the deadline (their timeouts are cut to the time left), then a few database calls follow:
+ * a run ends well inside the cron call's 10 s. SMS gets a worker here when it comes.
  */
 interface DispatchRpcClient {
   rpc(
-    functionName: "begin_notification_dispatch_service" | "end_notification_dispatch_service" | "notification_dispatch_alerts_service",
+    functionName:
+      | "begin_notification_dispatch_service"
+      | "end_notification_dispatch_service"
+      | "notification_dispatch_alerts_service"
+      | "raise_notification_alerts_service",
     args: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
 }
@@ -33,23 +41,29 @@ export type NotificationDispatchAlert = z.infer<typeof alertSchema>;
 export type ChannelTotals = NotificationEmailBatchResult & { batches: number };
 
 export type NotificationDispatchResult =
-  | { readonly ran: false }
+  | { readonly ran: false; readonly alerts: number }
   | { readonly ran: true; readonly email: ChannelTotals | null; readonly push: ChannelTotals | null; readonly alerts: number };
 
 export interface NotificationDispatcher {
   run(log: NotificationEmailLog): Promise<NotificationDispatchResult>;
+  /** The heartbeat: tells the alerts and checks in, whether or not anything is due. */
+  heartbeat(log: NotificationEmailLog): Promise<{ readonly alerts: number }>;
 }
+
+/** Sentry's cron monitor check-in; answers whether it went out. */
+export type CheckIn = (status: "ok" | "error") => Promise<boolean>;
 
 export interface NotificationDispatcherOptions {
   readonly email: NotificationEmailWorker | null;
   readonly push: NotificationPushWorker | null;
-  /** Tells Mert; answers whether it went out (no Sentry, no telling: the log still has it). */
+  /** Tells Mert; answers whether it went out. Not told: it stays untold and comes back next time. */
   readonly report: (alert: NotificationDispatchAlert) => Promise<boolean>;
+  readonly checkIn: CheckIn;
   readonly now?: () => number;
 }
 
-// The cron's call gives up after 10 s; the run stops starting work well before.
-const BUDGET_MS = 8_000;
+// Sends end by the deadline; a few database calls after it keep the run well inside the cron call's 10 s.
+const BUDGET_MS = 7_000;
 // A batch is started only with at least this much left.
 const LEAST_LEFT_MS = 2_500;
 // Longer than a run, so a run that dies frees the lease soon after.
@@ -87,12 +101,32 @@ export function createNotificationDispatcherWithClient(
     return totals;
   }
 
+  /** Tells each alert not told yet; marks told only what went out. Answers how many were told. */
+  async function tellAlerts(log: NotificationEmailLog): Promise<number> {
+    const raised = await client.rpc("notification_dispatch_alerts_service", {});
+    if (raised.error) throw new Error(`alerts failed: ${raised.error.message}`);
+    const alerts = z.array(alertSchema).parse(raised.data ?? []);
+    const told: NotificationDispatchAlert[] = [];
+    for (const alert of alerts) {
+      const sent = await options.report(alert).catch(() => false);
+      log.error({ alert: alert.kind, channel: alert.channel, period: alert.period, told: sent }, "notification delivery alert");
+      if (sent) told.push(alert);
+    }
+    if (told.length > 0) {
+      const marked = await client.rpc("raise_notification_alerts_service", {
+        target_alerts: told.map(({ kind, channel, period }) => ({ kind, channel, period })),
+      });
+      if (marked.error) throw new Error(`raise failed: ${marked.error.message}`);
+    }
+    return told.length;
+  }
+
   return {
     async run(log) {
       const begun = await client.rpc("begin_notification_dispatch_service", { target_seconds: LEASE_SECONDS });
       if (begun.error) throw new Error(`begin failed: ${begun.error.message}`);
       const runId = z.string().uuid().nullable().parse(begun.data ?? null);
-      if (!runId) return { ran: false };
+      if (!runId) return { ran: false, alerts: 0 };
 
       const deadline = now() + BUDGET_MS;
       const [email, push] = await Promise.allSettled([drain(options.email, deadline, log), drain(options.push, deadline, log)]);
@@ -100,13 +134,7 @@ export function createNotificationDispatcherWithClient(
       if (ended.error) log.error({ code: "end_failed" }, "notification dispatch lease not let go; it runs out");
 
       // The alerts are asked even after a channel failed: a failing channel is what makes a queue late.
-      const raised = await client.rpc("notification_dispatch_alerts_service", {});
-      if (raised.error) throw new Error(`alerts failed: ${raised.error.message}`);
-      const alerts = z.array(alertSchema).parse(raised.data ?? []);
-      for (const alert of alerts) {
-        const told = await options.report(alert);
-        log.error({ alert: alert.kind, channel: alert.channel, period: alert.period, told }, "notification delivery alert");
-      }
+      const alerts = await tellAlerts(log);
 
       const failed = [email, push].find((outcome): outcome is PromiseRejectedResult => outcome.status === "rejected");
       if (failed) throw failed.reason instanceof Error ? failed.reason : new Error(String(failed.reason));
@@ -114,8 +142,20 @@ export function createNotificationDispatcherWithClient(
         ran: true,
         email: email.status === "fulfilled" ? email.value : null,
         push: push.status === "fulfilled" ? push.value : null,
-        alerts: alerts.length,
+        alerts,
       };
+    },
+
+    async heartbeat(log) {
+      try {
+        const alerts = await tellAlerts(log);
+        await options.checkIn("ok");
+        return { alerts };
+      } catch (error) {
+        // The database or the alerts did not answer: Sentry hears it now rather than at the next missed beat.
+        await options.checkIn("error").catch(() => false);
+        throw error;
+      }
     },
   };
 }
@@ -137,3 +177,16 @@ export function alertMessage(alert: NotificationDispatchAlert): string {
       return `${channel} notifications are late: ${alert.due ?? "some"} due, the oldest waiting ${Math.round((alert.waiting_seconds ?? 0) / 60)} min.`;
   }
 }
+
+/** Sentry's cron monitor for the heartbeat: every 5 minutes, missed after 5 more, two misses make an issue. */
+export const HEARTBEAT_MONITOR = {
+  slug: "notification-delivery",
+  config: {
+    schedule: { type: "crontab" as const, value: "*/5 * * * *" },
+    checkinMargin: 5,
+    maxRuntime: 2,
+    failureIssueThreshold: 2,
+    recoveryThreshold: 1,
+    timezone: "UTC",
+  },
+};

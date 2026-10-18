@@ -98,3 +98,18 @@ export async function reportOperatorAlert(message: string, fingerprint: readonly
   await Sentry.flush(2000);
   return true;
 }
+
+/**
+ * A cron monitor check-in (BILDIRIM-DAGITICI): the monitor is made on the first one from `config`, so
+ * nothing needs setting up in Sentry by hand. A missed or failed check-in is Sentry's own alert.
+ */
+export async function reportCheckIn(
+  monitorSlug: string,
+  status: "ok" | "error",
+  config: Parameters<typeof Sentry.captureCheckIn>[1],
+) {
+  if (!started) return false;
+  Sentry.captureCheckIn({ monitorSlug, status }, config);
+  await Sentry.flush(2000);
+  return true;
+}

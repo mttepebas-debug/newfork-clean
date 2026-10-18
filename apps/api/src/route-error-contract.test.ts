@@ -126,7 +126,10 @@ describe("notification email routes", () => {
   const webhookBytes = Buffer.from("route-contract-webhook-secret-bytes");
   const app = () =>
     buildApp({
-      notificationDispatch: { dispatcher: { run: () => Promise.reject(hidden) }, cronSecret: "s" },
+      notificationDispatch: {
+        dispatcher: { run: () => Promise.reject(hidden), heartbeat: () => Promise.reject(hidden) },
+        cronSecret: "s",
+      },
       notificationEmail: {
         webhookSecret: `whsec_${webhookBytes.toString("base64")}`,
         events: { apply: () => Promise.reject(hidden) },
