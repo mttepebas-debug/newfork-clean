@@ -413,3 +413,23 @@
   outline: 2px solid var(--theme-focus);
   outline-offset: 2px;
 }
+
+/* While the Publish window publishes, the day controls wait (aria-disabled, still focusable): the app's off look
+   (.nf-button:disabled, 0.55), a plain cursor, no hover. */
+.lineup-toolbar :is(.lineup-step, .lineup-date-label)[aria-disabled="true"],
+.lineup-days button[aria-disabled="true"] {
+  cursor: default;
+  opacity: 0.55;
+}
+.lineup-toolbar :is(.lineup-step, .lineup-date-label)[aria-disabled="true"]:hover {
+  border-color: var(--theme-border-control);
+}
+.lineup-toolbar .lineup-date-label[data-other-day="true"][aria-disabled="true"]:hover {
+  border-color: var(--theme-warning-border);
+}
+.lineup-days button[aria-disabled="true"]:hover {
+  color: var(--theme-muted);
+}
+.lineup-days button[aria-disabled="true"][aria-pressed="true"]:hover {
+  color: var(--theme-accent-deep);
+}

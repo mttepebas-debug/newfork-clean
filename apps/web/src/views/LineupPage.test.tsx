@@ -359,6 +359,20 @@ describe("LineupPage publishing", () => {
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
   });
 
+  // LINEUP-E-POLISH-2 (review D-2): what waits while it publishes looks off: the app's 0.55, a plain cursor, no hover.
+  it("gives the waiting day controls and the page's Publish the off look, with no hover", () => {
+    const page = readFileSync("src/views/lineup-page.css", "utf8");
+    expect(page).toMatch(
+      /\.lineup-toolbar :is\(\.lineup-step, \.lineup-date-label\)\[aria-disabled="true"\],\s*\.lineup-days button\[aria-disabled="true"\]\s*\{\s*cursor:\s*default;\s*opacity:\s*0\.55;/,
+    );
+    expect(page).toMatch(/\.lineup-toolbar :is\(\.lineup-step, \.lineup-date-label\)\[aria-disabled="true"\]:hover\s*\{\s*border-color:\s*var\(--theme-border-control\);/);
+    expect(page).toMatch(/\.lineup-days button\[aria-disabled="true"\]:hover\s*\{\s*color:\s*var\(--theme-muted\);/);
+    const publish = readFileSync("src/schedule/lineup-publish.css", "utf8");
+    expect(publish).toMatch(
+      /\.nf-button\.lineup-publish-trigger\[aria-busy="true"\],\s*\.nf-button\.lineup-publish-trigger\[aria-busy="true"\]:hover\s*\{\s*background:\s*var\(--theme-accent\);\s*opacity:\s*\.55;\s*cursor:\s*default;/,
+    );
+  });
+
   it("keeps the window open through Escape and a click outside while it publishes, and shows a refusal", async () => {
     let refuse: ((reason: unknown) => void) | null = null;
     api.mockImplementation(async (_client, path) => {
