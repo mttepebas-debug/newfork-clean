@@ -31,6 +31,7 @@ export function TimeOffReview({
   onRevoke,
   onHold,
   shorten,
+  shortenError = null,
 }: {
   request: TimeOffRequest;
   alsoOff: AlsoOff[];
@@ -46,6 +47,8 @@ export function TimeOffReview({
   /** True while a reason is being written: the page keeps the drawer open (P26). */
   onHold?: (held: boolean) => void;
   shorten?: ReactNode;
+  /** Shorten's server sentence, said in the drawer's band (UI-FIELDMSG-2). */
+  shortenError?: string | null;
 }) {
   const [tab, setTab] = useState<Tab>("details");
   const [denying, setDenying] = useState(false);
@@ -156,7 +159,7 @@ export function TimeOffReview({
       notice={notice}
       onClose={onClose}
       footer={footer}
-      footerAlert={canVote && denying ? denyError : null}
+      footerAlert={[canVote && denying ? denyError : null, shortenError].filter(Boolean).join(" ") || null}
     >
       {tab === "details" ? (
         <Details request={request} first={first} alsoOff={alsoOff} opening={opening} timeFormat={timeFormat} onSeeShifts={() => setTab("shifts")} />

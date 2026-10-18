@@ -434,17 +434,18 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
               placeholder="Optional context"
             />
           </label>
-          {/* Why it can't be sent, in one kept place above Submit (UI-FIELDMSG). */}
+          {/* Why it can't be sent, above Submit: every reason that holds, each
+              whole, none dropped (UI-FIELDMSG-2). */}
           <FieldNote
             id="time-off-check"
             error={
-              rangeTooLong
-                ? "Choose a date range of at most 31 calendar days. No dates will be silently omitted."
-                : started
-                  ? "This time off has already started. Talk to your manager directly."
-                  : start && !validation.success
-                    ? validation.error.issues[0]?.message
-                    : null
+              [
+                rangeTooLong ? "Choose a date range of at most 31 calendar days. No dates will be silently omitted." : null,
+                started ? "This time off has already started. Talk to your manager directly." : null,
+                !rangeTooLong && !started && start && !validation.success ? validation.error.issues[0]?.message : null,
+              ]
+                .filter(Boolean)
+                .join(" ") || null
             }
           />
           <Button type="submit" disabled={timeOff.isPending || !validation.success || started || rangeTooLong}>

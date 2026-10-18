@@ -636,8 +636,8 @@
 .job-draft-row > .job-icon-button {
   justify-self: end;
 }
-/* The note line under a name (BL-503, UI-FIELDMSG): always there, so the
-   letter rule coming or going moves nothing. */
+/* The note under a name (BL-503, UI-FIELDMSG-2): there only while the
+   letter rule is broken. */
 .job-field > .field-note {
   margin: 6px 0 0;
 }

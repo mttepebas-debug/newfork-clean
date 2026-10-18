@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Scissors } from "lucide-react";
 import type { TimeOffRequest } from "@newfork/shared";
@@ -18,8 +18,10 @@ import { FieldNote } from "../shell/FieldNote";
  * 10:00–2:00 shift); it takes effect at once. Same hour picker as the
  * employee's cancellation.
  */
-export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
+export function TimeOffShorten({ request, workspaceId, timeFormat, onDone, onError }: {
   request: TimeOffRequest; workspaceId: string; timeFormat: "12h" | "24h"; onDone: (message: string) => void;
+  /** The server's sentence, for the Requests drawer's band (UI-FIELDMSG-2); null when there is none. */
+  onError?: (message: string | null) => void;
 }) {
   const client = useQueryClient();
   const [periods, setPeriods] = useState<CancellationChoice[] | null>(null);
@@ -48,6 +50,15 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
       if (isStaleTimeOff(error)) void client.invalidateQueries({ queryKey: timeOffKeys.requests(workspaceId) });
     },
   });
+  // The server's sentence goes to the drawer's band, not into this form (UI-FIELDMSG-2).
+  const serverError = mutation.error
+    ? isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message
+    : null;
+  const shown = periods ? serverError : null;
+  useEffect(() => {
+    onError?.(shown);
+  }, [shown, onError]);
+  useEffect(() => () => onError?.(null), [onError]);
   function begin() {
     const open = request.segments.flatMap(p => p.time_timezone ? (p.effective_intervals ?? [])
       .filter(span => Date.parse(span.end_at) > Date.now()).map(span => ({ key: crypto.randomUUID(), segment_id: p.id,
@@ -79,14 +90,7 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
         id={`time-off-shorten-unfinished-${request.id}`}
         help={unfinished ? "Apply or discard the hours being edited first." : null}
       />
-      <FieldNote
-        id={`time-off-shorten-${request.id}`}
-        error={
-          mutation.error
-            ? isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message
-            : null
-        }
-      />
+      {onError ? null : <FieldNote id={`time-off-shorten-${request.id}`} error={serverError} />}
       <button type="submit" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
       <button type="button" onClick={() => setPeriods(null)}>Keep time off</button>
     </fieldset>

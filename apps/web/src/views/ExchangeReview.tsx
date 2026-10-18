@@ -204,9 +204,11 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
 
   return (
     <RequestDrawer
+      // Both when both hold, each whole (UI-FIELDMSG-2): the decision's refusal and the check's.
       footerAlert={
-        decide.error?.message ||
-        (preview.isError ? "Eligibility could not be checked. Close and try again." : null)
+        [decide.error?.message, preview.isError ? "Eligibility could not be checked. Close and try again." : null]
+          .filter(Boolean)
+          .join(" ") || null
       }
       title={pickup ? "Shift pickup" : "Cover request"}
       status={statusChip(item)}

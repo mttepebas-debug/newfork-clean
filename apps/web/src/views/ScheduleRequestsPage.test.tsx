@@ -993,7 +993,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Shorten time off" }));
     fireEvent.click(screen.getByRole("checkbox", { name: "Give back period 1" }));
     fireEvent.click(screen.getByRole("button", { name: "Give back these hours" }));
-    expect((await screen.findByRole("alert")).textContent).toBe("This request changed. Review it again.");
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("This request changed. Review it again.");
+    // The server's sentence is the drawer's: in its band, not in the form (UI-FIELDMSG-2).
+    expect(alert.classList.contains("window-alert")).toBe(true);
+    expect(alert.closest(".time-off-cancellation")).toBeNull();
     await waitFor(() => expect(fetchRequests.mock.calls.length).toBeGreaterThan(reads));
   });
   it("offers no shortening while time off is still pending", async () => {

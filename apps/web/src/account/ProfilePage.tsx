@@ -667,7 +667,7 @@ export default function ProfilePage() {
           </fieldset>
         ) : null}
 
-        {/* The form's own error keeps one line of room, so it moves nothing. */}
+        {/* The form's own error above Save, said whole (UI-FIELDMSG-2). */}
         <FieldNote id="profile-form" error={error} />
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
         {/* Why Save is off: the missing fields, by name. */}

@@ -91,6 +91,7 @@ function ScheduleRequestsPageContent() {
   const [actError, setActError] = useState("");
   // The reason a Deny written in the drawer could not send (Mert, 2026-10-11).
   const [denyError, setDenyError] = useState("");
+  const [shortenError, setShortenError] = useState<string | null>(null);
   const toast = useToast();
   // Said inside the drawer while it stays open (CatalogDrawer).
   const [drawerNotice, setDrawerNotice] = useState<DrawerNotice | null>(null);
@@ -493,12 +494,14 @@ function ScheduleRequestsPageContent() {
             onDeny={(reason) => void runAct({ request: selected, kind: "deny" }, reason, true)}
             onRevoke={() => startAct(selected, "revoke")}
             onHold={setHeld}
+            shortenError={shortenError}
             shorten={
               <TimeOffShorten
                 key={`${selected.id}:${selected.revision}`}
                 request={selected}
                 workspaceId={workspaceId}
                 timeFormat={timeFormat}
+                onError={setShortenError}
                 onDone={(message) => {
                   selectRequest("");
                   toast.success(message);
