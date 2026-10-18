@@ -62,9 +62,23 @@ async function open(browser: Browser, person: Person, size: typeof PHONE, path: 
   return page;
 }
 
+/** The page has loaded: a finger on an outline that the content replaces mid-swipe never reaches the page. */
+async function settled(page: Page) {
+  await expect(page.locator(".employee-hub-page h1")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator(".nf-loading")).toHaveCount(0, { timeout: 30_000 });
+}
+
+/** Where `on` is on the screen, once it is there. */
+async function boxOf(on: Locator) {
+  await expect(on).toBeVisible();
+  const box = await on.boundingBox();
+  if (!box) throw new Error(`No box for ${on}: it is not on the screen`);
+  return box;
+}
+
 /** A finger across `on`'s middle, `dx` px sideways (Chrome's touch events through the DevTools protocol). */
 async function swipe(page: Page, on: Locator, dx: number) {
-  const box = (await on.boundingBox())!;
+  const box = await boxOf(on);
   const x = box.x + box.width / 2 - dx / 2;
   const y = box.y + Math.min(box.height / 2, 60);
   const cdp = await page.context().newCDPSession(page);
@@ -79,7 +93,7 @@ async function swipe(page: Page, on: Locator, dx: number) {
 
 /** A finger's tap on `on` (Playwright's own tap scrolls the target into view first, which a finger never does). */
 async function touch(page: Page, on: Locator) {
-  const box = (await on.boundingBox())!;
+  const box = await boxOf(on);
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
   await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
@@ -133,10 +147,13 @@ test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a t
   await emre.screenshot({ path: `${shots}my-shifts-390.png` });
 
   // The finger moves the page tab, never the week: over the list it goes to Lineup, and back.
+  await settled(emre);
   await swipe(emre, emre.getByRole("tabpanel", { name: "This week" }), -160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/lineup/);
+  await settled(emre);
   await swipe(emre, emre.locator(".employee-hub-page h1"), 160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule(\?|$)/);
+  await settled(emre);
   await expect(emre.getByRole("tab", { name: "This week" })).toHaveAttribute("aria-selected", "true");
   // Where a week sits in the list's frame (both move together in the tab's own 0.22 s slide-in).
   const offset = (name: string) => emre.getByRole("tabpanel", { name }).evaluate((panel) => Math.round(panel.getBoundingClientRect().x - panel.closest(".ems-pager")!.getBoundingClientRect().x));
