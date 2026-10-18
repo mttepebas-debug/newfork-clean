@@ -862,7 +862,13 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
           <PlanDialog eyebrow="Your shift" onClose={() => navigate({ offer: null, mode: null })}>
             <ShiftTicket shift={offerShift} />
             <ChangeOptions
-              hrefFor={(mode) => `?offer=${offerShift.id}&mode=${mode}`}
+              // The page's own dates stay: a shift past today's 42 days was opened with from/to.
+              hrefFor={(mode) => {
+                const next = new URLSearchParams(params);
+                next.set("offer", offerShift.id);
+                next.set("mode", mode);
+                return `?${next}`;
+              }}
               closed={
                 Boolean(offerShift.starts_at) &&
                 Date.parse(offerShift.starts_at!) - CLOSE_BEFORE_MS <= Date.now()

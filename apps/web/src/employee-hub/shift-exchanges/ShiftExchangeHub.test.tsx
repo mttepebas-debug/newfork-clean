@@ -1284,6 +1284,16 @@ describe("Shift Hub release", () => {
     expect(screen.getByRole("link", { name: /Swap/, hidden: true }).getAttribute("href")).toContain("mode=swap");
   });
 
+  // CI 39099739762: the options kept only offer and mode, so a shift outside today's 42 days
+  // (opened with from/to) was "no longer on your upcoming schedule" one click later.
+  it("keeps the page's dates in the options' links", async () => {
+    model.cases = [];
+    mount("/app/employee-hub/shift-hub?offer=shift&from=2030-01-01&to=2030-01-31");
+    const href = (await screen.findByRole("link", { name: /Release shift/, hidden: true })).getAttribute("href")!;
+    const query = new URLSearchParams(href.slice(href.indexOf("?")));
+    expect(Object.fromEntries(query)).toMatchObject({ offer: "shift", mode: "release", from: "2030-01-01", to: "2030-01-31" });
+  });
+
   it("closes the options in the last 4 hours before the shift", async () => {
     model.cases = [];
     const soon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
