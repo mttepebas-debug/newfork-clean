@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(31);
+select plan(32);
 
 -- ROL-CIFT 1.1 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.13, §5.1): a membership holds two
 -- access slots. role_id is the management slot (a manager, admin or owner class role), employee_role_id
@@ -220,15 +220,29 @@ select is(
   'and Mona holds it'
 );
 
--- What the move promises holds across the database (design §5.1, KARARLAR S-168) ------------------
+-- Setup's catalog: Management with Owner, General Manager and Assistant Manager (design §4.13) -----
+-- The one function that makes it, for setup and for the move's workspaces with nothing to take.
+-- ponytail: with triggers off, as above: a new job's trigger still reads the dropped membership role.
+insert into public.workspaces (id, name, created_by)
+values ('c1100000-0000-4000-8000-000000000102', 'Bare Co', 'c1100000-0000-4000-8000-000000000001');
+set local session_replication_role = replica;
+select app_private.ensure_management_and_owner('c1100000-0000-4000-8000-000000000102');
 select is(
-  (select count(*)::int from public.workspace_memberships m join public.workspaces w on w.id = m.workspace_id
-   where m.role_id is not null
-     and not exists (select 1 from public.membership_management_jobs x where x.membership_id = m.id)
-     and m.workspace_id <> 'c1100000-0000-4000-8000-000000000101'),
-  0,
-  'every management access outside this test holds a Management job'
+  (select array_agg(j.name || coalesce(' [' || j.system_key || ']', '') order by j.name)
+   from public.jobs j join public.departments d on d.id = j.department_id
+   where d.workspace_id = 'c1100000-0000-4000-8000-000000000102' and d.system_key = 'management'),
+  array['Assistant Manager', 'General Manager', 'Owner [owner]'],
+  'a workspace without Management gets it with Owner, General Manager and Assistant Manager'
 );
+update public.jobs set archived_at = now()
+where workspace_id = 'c1100000-0000-4000-8000-000000000102' and name = 'Assistant Manager';
+select app_private.ensure_management_and_owner('c1100000-0000-4000-8000-000000000102');
+select is(
+  (select count(*)::int from public.jobs j where j.workspace_id = 'c1100000-0000-4000-8000-000000000102' and j.archived_at is null),
+  2,
+  'while Management keeps a job a manager can hold, setup adds nothing'
+);
+set local session_replication_role = origin;
 
 -- The rows follow the management slot ----------------------------------------------------------------
 update public.workspace_memberships set role_id = (select id from slot_role where key = 'admin')

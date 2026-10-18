@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 513, last: 20261018230000_membership_two_access_slots.sql
--- fingerprint: sha256:0a04a3379be827d5a4a65672372a0472f014f1217300f451a336d6129ede9fba
+-- fingerprint: sha256:c3d9f65c9c8e1241b6189febbe08f6b2dd8575b09ab88d89f5e3c9b7681c7712
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4741,24 +4741,27 @@ CREATE OR REPLACE FUNCTION "app_private"."ensure_management_and_owner"("target_w
     SET "search_path" TO ''
     AS $$
 declare
-  made_management uuid;
+  management uuid;
 begin
   insert into public.departments (workspace_id, name, system_key)
   values (target_workspace_id, 'Management', 'management')
-  on conflict (workspace_id, system_key) where system_key is not null do nothing
-  returning id into made_management;
-  -- Manager is made with Management and never again: it is an ordinary job, so
-  -- an owner who deletes it does not get it back on the next setup save. A job
-  -- of that name already there is left alone.
-  if made_management is not null then
+  on conflict (workspace_id, system_key) where system_key is not null do nothing;
+  select d.id into management from public.departments d
+  where d.workspace_id = target_workspace_id and d.system_key = 'management';
+
+  if not exists (
+    select 1 from public.jobs j
+    where j.workspace_id = target_workspace_id and j.department_id = management
+      and j.archived_at is null and j.system_key is null
+  ) then
     insert into public.jobs (workspace_id, name, department_id)
-    values (target_workspace_id, 'Manager', made_management)
+    values (target_workspace_id, 'General Manager', management),
+           (target_workspace_id, 'Assistant Manager', management)
     on conflict (workspace_id, lower(name)) where archived_at is null do nothing;
   end if;
+
   insert into public.jobs (workspace_id, name, department_id, system_key)
-  select target_workspace_id, 'Owner', department.id, 'owner'
-  from public.departments department
-  where department.workspace_id = target_workspace_id and department.system_key = 'management'
+  values (target_workspace_id, 'Owner', management, 'owner')
   on conflict (workspace_id, system_key) where system_key is not null do nothing;
 end;
 $$;

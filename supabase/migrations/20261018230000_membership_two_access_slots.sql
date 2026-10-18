@@ -364,6 +364,43 @@ begin
 end;
 $$;
 
+-- Setup's catalog: Management with Owner, General Manager and Assistant Manager (design §4.13; it made
+-- Manager before). Every management access holds a Management job (KARARLAR S-168), so Management
+-- always keeps a job a manager or admin can hold: when it has none, General Manager and Assistant
+-- Manager come back. The one way the catalog gets them: setup and the move below both call this.
+create or replace function app_private.ensure_management_and_owner(target_workspace_id uuid)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  management uuid;
+begin
+  insert into public.departments (workspace_id, name, system_key)
+  values (target_workspace_id, 'Management', 'management')
+  on conflict (workspace_id, system_key) where system_key is not null do nothing;
+  select d.id into management from public.departments d
+  where d.workspace_id = target_workspace_id and d.system_key = 'management';
+
+  if not exists (
+    select 1 from public.jobs j
+    where j.workspace_id = target_workspace_id and j.department_id = management
+      and j.archived_at is null and j.system_key is null
+  ) then
+    insert into public.jobs (workspace_id, name, department_id)
+    values (target_workspace_id, 'General Manager', management),
+           (target_workspace_id, 'Assistant Manager', management)
+    on conflict (workspace_id, lower(name)) where archived_at is null do nothing;
+  end if;
+
+  insert into public.jobs (workspace_id, name, department_id, system_key)
+  values (target_workspace_id, 'Owner', management, 'owner')
+  on conflict (workspace_id, system_key) where system_key is not null do nothing;
+end;
+$$;
+revoke all on function app_private.ensure_management_and_owner(uuid) from public, anon, authenticated;
+
 -- The move: lock, check, convert and drop in one block --------------------------------------------------
 -- The CLI runs a migration statement by statement; the lock and the checks hold only inside one block.
 
@@ -371,6 +408,7 @@ do $$
 declare
   before_counts jsonb;
   after_counts jsonb;
+  short_of_a_job uuid;
 begin
   perform set_config('lock_timeout', '5s', true);
   lock table public.workspace_memberships, public.workspace_roles, public.employee_profiles,
@@ -401,7 +439,9 @@ begin
         and j.deleted_at is null and d.system_key is distinct from 'management'
     ) as works
   from public.workspace_memberships m
-  join public.workspaces workspace on workspace.id = m.workspace_id -- a row left by a deleted workspace has nobody to move
+  -- Only memberships whose workspace exists: the shared local database holds a few whose workspace row
+  -- was removed with its foreign keys off (2026-09-26); the live one cannot.
+  join public.workspaces workspace on workspace.id = m.workspace_id
   left join public.employee_profiles p
     on p.workspace_id = m.workspace_id and p.user_id = m.user_id and p.archived_at is null;
 
@@ -439,34 +479,16 @@ begin
   on conflict (membership_id, job_id) do nothing;
 
   -- Every management access holds a Management job (KARARLAR S-168, design §4.13). A workspace with
-  -- nobody to take one from gets what setup makes (design §4.13): the Management department, the Owner
-  -- job, and General Manager and Assistant Manager when a manager or admin has none to take. A same
-  -- named catalog record already there is left alone; the checks below then stop the move.
-  insert into public.departments (workspace_id, name, system_key)
-  select distinct person.workspace_id, 'Management', 'management'
-  from rol_cift_people person
-  where person.class <> 'employee'
-    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
-  on conflict do nothing;
-  insert into public.jobs (workspace_id, name, department_id, system_key)
-  select distinct person.workspace_id, 'Owner', d.id, 'owner'
-  from rol_cift_people person
-  join public.departments d on d.workspace_id = person.workspace_id and d.system_key = 'management'
-  where person.class = 'owner'
-    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
-  on conflict do nothing;
-  insert into public.jobs (workspace_id, name, department_id)
-  select distinct person.workspace_id, made.name, d.id
-  from rol_cift_people person
-  join public.departments d on d.workspace_id = person.workspace_id and d.system_key = 'management'
-  cross join (values ('General Manager'), ('Assistant Manager')) made(name)
-  where person.class in ('manager', 'admin')
-    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
-    and not exists (
-      select 1 from public.jobs j
-      where j.workspace_id = person.workspace_id and j.department_id = d.id
-        and j.archived_at is null and j.system_key is null)
-  on conflict do nothing;
+  -- nobody to take one from gets what setup makes, through setup's own function. A catalog record of the
+  -- same name outside Management is left alone; the checks below then stop the move
+  -- (artifacts/ROL-CIFT-1/canli-oncesi-sayim.sql measures that before the live run).
+  for short_of_a_job in
+    select distinct person.workspace_id from rol_cift_people person
+    where person.class <> 'employee'
+      and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
+  loop
+    perform app_private.ensure_management_and_owner(short_of_a_job);
+  end loop;
 
   insert into public.membership_management_jobs (workspace_id, membership_id, job_id, created_by)
   select person.workspace_id, person.membership_id, fallback.id, null
