@@ -804,6 +804,37 @@ describe("EmployeeHubPage", () => {
     expect(submitTimeOff).not.toHaveBeenCalled();
   });
 
+  // SEKME-KAYDIR (KARARLAR §1.5): on a phone a swipe changes the tab the way a tap does, so it asks first too.
+  it("asks before a phone swipe to the other tab loses an unsaved time-off draft", async () => {
+    const media = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      renderPage("/app/employee-hub/my-availability?section=time-off");
+      fireEvent.change(await screen.findByLabelText("Start"), { target: { value: "2035-01-15" } });
+      const swipeRight = () => {
+        const panel = screen.getByRole("tabpanel");
+        fireEvent.touchStart(panel, { touches: [{ clientX: 100, clientY: 500 }] });
+        fireEvent.touchEnd(panel, { touches: [], changedTouches: [{ clientX: 250, clientY: 505 }] });
+      };
+      swipeRight();
+      expect(screen.getByRole("alertdialog").textContent).toContain("Discard time off changes?");
+      fireEvent.click(screen.getByRole("button", { name: "Stay here" }));
+      expect(screen.getByRole("tab", { name: "Time Off Requests" })).toHaveProperty("ariaSelected", "true");
+      expect(screen.getByLabelText("Start")).toHaveProperty("value", "2035-01-15");
+      swipeRight();
+      fireEvent.click(screen.getByRole("button", { name: "Discard and leave" }));
+      expect(await screen.findByRole("tab", { name: "Availability" })).toHaveProperty("ariaSelected", "true");
+      expect(submitTimeOff).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = media;
+    }
+  });
+
   it("opens time-off request deep links and keeps time off usable when weekly data fails", async () => {
     vi.mocked(loadWeeklyPreferences).mockRejectedValue(new Error("Weekly unavailable"));
     renderPage("/app/employee-hub/my-availability#request-98200000-0000-4000-8000-000000000003");
