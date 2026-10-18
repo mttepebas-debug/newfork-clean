@@ -144,4 +144,31 @@ describe("frozen list pages", () => {
     const list = [...team.matchAll(/(^|})\s*\.avt-list\s*\{([^}]*)\}/g)].map((match) => match[2]).join(";");
     expect(list).toMatch(/overflow\s*:\s*hidden auto/);
   });
+
+  // The frozen heading rests at --frozen-top, measured from the scrolling area
+  // (useFrozenTop.ts). A list page that is its own scroll container counts its
+  // top padding twice: Employees and Employees → Documents sat 30 px lower
+  // than every other page (Mert 2026-10-18).
+  it.each([...pages, "employee-documents-page"])("never becomes a scroll container of its own (%s)", (page) => {
+    const sheets = ["src/styles.css", "src/views/list-page.css", "src/views/list-page-frozen.css"].map((file) =>
+      readFileSync(file, "utf8").replace(/\/\*[\s\S]*?\*\//g, ""),
+    );
+    // A selector list split at its own commas, not those inside :is(…).
+    const selectors = (head: string) => {
+      const parts = [""];
+      let depth = 0;
+      for (const char of head) {
+        depth += char === "(" ? 1 : char === ")" ? -1 : 0;
+        if (char === "," && depth === 0) parts.push("");
+        else parts[parts.length - 1] += char;
+      }
+      return parts.map((part) => part.trim());
+    };
+    const own = sheets
+      .flatMap((sheet) => [...sheet.matchAll(/([^{}]+)\{([^}]*)\}/g)])
+      .filter(([, head]) => selectors(head!).some((selector) => new RegExp(`\\.${page}(?![\\w-])[^\\s>+~()]*$`).test(selector)))
+      .map(([, , body]) => body!)
+      .join(";");
+    expect(own).not.toMatch(/overflow(-x|-y)?\s*:\s*[^;]*\b(hidden|auto|scroll)\b/);
+  });
 });

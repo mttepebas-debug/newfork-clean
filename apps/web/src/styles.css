@@ -1086,7 +1086,9 @@
   min-height: 0;
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
-  overflow: hidden;
+  /* clip, not hidden: a scroll container of its own would put the frozen
+     heading 30 px lower than on every other page (useFrozenTop.ts). */
+  overflow: clip;
   padding: 30px clamp(22px, 4vw, 54px) 48px;
   background: #f6f7f5;
 }
