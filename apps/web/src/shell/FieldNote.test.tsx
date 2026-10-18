@@ -174,6 +174,30 @@ describe("WindowAlert", () => {
     expect(getByTestId("foot").style.position).toBe("static");
   });
 
+  it("keeps a sticky footer's height in the scroller's scroll padding too", () => {
+    const real = HTMLElement.prototype.getBoundingClientRect;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      if (this.classList.contains("window-alert")) return { height: 20 } as DOMRect;
+      if (this.tagName === "FOOTER") return { height: 50 } as DOMRect;
+      return real.call(this);
+    });
+    const window = (message: string | null) => (
+      <section data-testid="scroller" style={{ overflowY: "auto" }}>
+        <label>
+          Reason
+          <textarea />
+        </label>
+        <footer style={{ position: "sticky", bottom: "0" }}>
+          <WindowAlert message={message} />
+        </footer>
+      </section>
+    );
+    const { rerender, getByTestId } = render(window("Couldn't cancel."));
+    expect(getByTestId("scroller").style.scrollPaddingBottom).toBe("70px");
+    rerender(window(null));
+    expect(getByTestId("scroller").style.scrollPaddingBottom).toBe("");
+  });
+
   it("finds the body above a footer it opens", () => {
     bandHeight(24);
     const window = (message: string | null) => (

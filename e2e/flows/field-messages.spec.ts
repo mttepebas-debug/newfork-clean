@@ -38,7 +38,8 @@ async function open(browser: Browser, person: Person, screen: (typeof screens)[n
 
 /** In view, not under the band or anything else, and it takes a click. */
 async function reachable(control: Locator) {
-  await control.scrollIntoViewIfNeeded();
+  // The way a browser brings a control into view on focus: its scroller's scroll padding counts.
+  await control.evaluate((element) => element.scrollIntoView({ block: "nearest" }));
   await expect(control).toBeInViewport();
   const onTop = await control.evaluate((element) => {
     const box = element.getBoundingClientRect();
@@ -111,7 +112,6 @@ for (const screen of screens) {
           gen_random_uuid())
         from public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id = c.id
         where c.id = '${caseId}';`);
-      const day = sql(`select tests.week(${week}) + 1;`);
 
       const ayse = await open(browser, "ayse", screen, `/app/schedule/requests?type=swap`);
       const refusal =
@@ -125,15 +125,11 @@ for (const screen of screens) {
             })
           : route.fallback(),
       );
-      const when = new Intl.DateTimeFormat("en-US", {
-        weekday: "short",
-        month: "short",
-        day: "numeric",
-        year: new Date(`${day}T12:00:00`).getFullYear() === new Date().getFullYear() ? undefined : "numeric",
-      }).format(new Date(`${day}T12:00:00`));
-      // A table row on a desktop, a card button on a phone.
+      // TAKAS-RELEASE: a swap row is one sentence; the day it ends tells this week's apart.
+      const expires = sql(`select to_char(expires_at at time zone 'Europe/Istanbul', 'Mon FMDD') from public.shift_exchange_cases where id = '${caseId}';`);
       await ayse
-        .getByRole(screen.name === "phone" ? "button" : "row", { name: new RegExp(`^Ali Person, Swap, ${when}`) })
+        .getByRole(screen.name === "phone" ? "button" : "row", { name: /^Shift swap: Ali Person and Deniz Person want to swap/ })
+        .filter({ hasText: `${expires},` })
         .first()
         .click();
       const window = ayse.getByRole("dialog", { name: "Swap request" });

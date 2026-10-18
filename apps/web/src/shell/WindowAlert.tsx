@@ -65,6 +65,7 @@ function keepRoomUnder(band: HTMLElement): () => void {
   // focus and scrolled-to controls above the band too.
   const outer = scrolls ? null : scrollingAncestor(anchor);
   const outerBefore = outer?.style.scrollPaddingBottom ?? "";
+  const overlays = /^(sticky|fixed)$/.test(view?.getComputedStyle(anchor).position ?? "");
 
   let height = -1;
   const fit = () => {
@@ -73,7 +74,8 @@ function keepRoomUnder(band: HTMLElement): () => void {
     height = next;
     room.style[side] = `${base + height}px`;
     if (scrolls) room.style.scrollPaddingBottom = `${height}px`;
-    if (outer) outer.style.scrollPaddingBottom = `${height}px`;
+    // A sticky or fixed footer lies over the scroller's content too, under the band.
+    if (outer) outer.style.scrollPaddingBottom = `${height + (overlays ? Math.ceil(anchor.getBoundingClientRect().height) : 0)}px`;
     // Whoever is typing in the body stays in sight above the band.
     const focused = room.ownerDocument.activeElement;
     if (focused instanceof HTMLElement && room.contains(focused) && focused !== room)
