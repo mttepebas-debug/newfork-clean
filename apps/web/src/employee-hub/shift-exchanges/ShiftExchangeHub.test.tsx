@@ -1374,6 +1374,30 @@ describe("Shift Hub release", () => {
     }
   });
 
+  // UI-FIELDMSG-2 (Mert 2026-10-18): a window's own refusal is said in its band, above its footer.
+  it("says a refused release in the window's band", async () => {
+    model.cases = [];
+    vi.mocked(changeExchange).mockRejectedValueOnce(new Error("This shift starts too soon to release it."));
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=release");
+    await screen.findByLabelText(/Note for teammates/);
+    fireEvent.click(screen.getByRole("button", { name: "Release shift", hidden: true }));
+    const alert = await screen.findByRole("alert", { hidden: true });
+    expect(alert.textContent).toBe("This shift starts too soon to release it.");
+    expect(alert.classList.contains("window-alert")).toBe(true);
+    expect(alert.parentElement?.classList.contains("sx-w-foot")).toBe(true);
+  });
+
+  it("says a refused take back in the card's band", async () => {
+    vi.mocked(changeExchange).mockRejectedValueOnce(new Error("Your manager already gave this shift to someone."));
+    mount("/app/employee-hub/shift-hub?case=case");
+    fireEvent.click(await screen.findByRole("button", { name: "Take back shift" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm take back" }));
+    const alert = await screen.findByRole("alert");
+    expect(alert.textContent).toBe("Your manager already gave this shift to someone.");
+    expect(alert.classList.contains("window-alert")).toBe(true);
+    expect(alert.parentElement?.classList.contains("sx-w-foot")).toBe(true);
+  });
+
   it("takes the shift back in two clicks, without a reason", async () => {
     mount("/app/employee-hub/shift-hub?case=case");
     const back = await screen.findByRole("button", { name: "Take back shift" });

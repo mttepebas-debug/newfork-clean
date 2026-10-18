@@ -1,6 +1,7 @@
 import { ArrowLeft, X } from "lucide-react";
 import { useEffect, useId, useRef, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { WindowAlert } from "../../shell/WindowAlert";
 import "./shift-release.css";
 
 // One window language for the shift change plan (Mert, 2026-10-13 10:31): a small
@@ -15,6 +16,7 @@ export function PlanDialog({
   names,
   children,
   foot,
+  alert,
   onClose,
   onBack,
   busy = false,
@@ -23,6 +25,8 @@ export function PlanDialog({
   names?: ReactNode;
   children: ReactNode;
   foot?: ReactNode;
+  /** The window's own refusal, in its band over the body's bottom edge (UI-FIELDMSG-2). */
+  alert?: ReactNode;
   onClose: () => void;
   onBack?: () => void;
   busy?: boolean;
@@ -77,7 +81,14 @@ export function PlanDialog({
         </header>
         {names ? <p className="sx-w-names">{names}</p> : null}
         <div className="sx-w-body">{children}</div>
-        {foot ? <footer className="sx-w-foot">{foot}</footer> : null}
+        {foot ? (
+          <footer className="sx-w-foot">
+            <WindowAlert message={alert} />
+            {foot}
+          </footer>
+        ) : (
+          <WindowAlert between message={alert} />
+        )}
       </div>
     </dialog>,
     document.body,

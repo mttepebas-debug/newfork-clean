@@ -3,6 +3,7 @@ import { ConfirmButton } from "@newfork/ui";
 import { Check } from "lucide-react";
 import { useState } from "react";
 import { PlanDialog } from "./PlanDialog";
+import { WindowAlert } from "../../shell/WindowAlert";
 import { Hand, ShiftTicket } from "./ShiftTicket";
 
 // TAKAS-RELEASE (Mert, 2026-10-13/14): the release window and the release card in
@@ -61,6 +62,7 @@ export function ReleaseDialog({
       onBack={onBack}
       onClose={onClose}
       busy={working}
+      alert={error}
       foot={
         <>
           <p className="sx-w-meta">Teammates who can work it see it. You stay responsible until your manager approves.</p>
@@ -77,11 +79,6 @@ export function ReleaseDialog({
         </span>
         <textarea value={note} maxLength={NOTE_LIMIT} onChange={(event) => setNote(event.target.value)} />
       </label>
-      {error ? (
-        <p className="sx-error" role="alert">
-          {error}
-        </p>
-      ) : null}
     </PlanDialog>
   );
 }
@@ -188,25 +185,26 @@ export function ReleaseCard({
             )}
           </>
         ) : null}
-        {error ? (
-          <p className="sx-error" role="alert">
-            {error}
-          </p>
-        ) : null}
       </div>
-      {open && item.is_owner ? (
+      {(open && item.is_owner) || error ? (
         <footer className="sx-w-foot">
-          <p className="sx-w-meta">Your manager picks who gets it. Until then it is your shift.</p>
-          {/* Taking the shift back ends the release for everyone who asked: red, two clicks (BL-748). */}
-          <ConfirmButton
-            unstyled
-            className="sx-danger"
-            confirmLabel="Confirm take back"
-            disabled={!canWrite || working}
-            onConfirm={() => void takeBack()}
-          >
-            Take back shift
-          </ConfirmButton>
+          {/* Its refusal in the band over the body's bottom edge (UI-FIELDMSG-2). */}
+          <WindowAlert message={error} />
+          {open && item.is_owner ? (
+            <>
+              <p className="sx-w-meta">Your manager picks who gets it. Until then it is your shift.</p>
+              {/* Taking the shift back ends the release for everyone who asked: red, two clicks (BL-748). */}
+              <ConfirmButton
+                unstyled
+                className="sx-danger"
+                confirmLabel="Confirm take back"
+                disabled={!canWrite || working}
+                onConfirm={() => void takeBack()}
+              >
+                Take back shift
+              </ConfirmButton>
+            </>
+          ) : null}
         </footer>
       ) : null}
     </section>
