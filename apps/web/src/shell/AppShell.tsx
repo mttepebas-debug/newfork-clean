@@ -1,4 +1,5 @@
 import type { Permission } from "@newfork/shared";
+import { contentHeldAtMenuEdge } from "./content-held";
 import {
   CalendarCheck,
   CalendarDays,
@@ -275,6 +276,7 @@ export function AppShell() {
       className="app-shell"
       data-sidebar-collapsed={collapsed}
       data-employee-shell={employeeShell}
+      data-content-held={contentHeldAtMenuEdge(location.pathname)}
     >
       <aside className="app-sidebar" aria-label="Application sidebar">
         <div className="sidebar-tools">

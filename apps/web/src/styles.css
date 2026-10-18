@@ -2998,6 +2998,39 @@ select:focus-visible {
 .app-shell[data-sidebar-collapsed="true"] .app-sidebar {
   overflow: visible;
 }
+/* A main-menu page starts 4 px (about a millimetre) right of the open menu's
+   edge and holds still when the menu collapses: the menu narrows inside its
+   column and the page keeps its place. Schedule and Settings are not held
+   (AppShell data-content-held; Mert 2026-10-18). */
+@media (min-width: 721px) {
+  .app-shell[data-content-held="true"] {
+    --app-page-gutter-start: 4px;
+    --app-page-gutter-end: 32px;
+  }
+  .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] {
+    grid-template-columns: 288px minmax(0, 1fr);
+  }
+  .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] .app-sidebar {
+    width: 64px;
+  }
+  .app-shell[data-content-held="true"]
+    > .app-main
+    > :is(
+      .workspace-page,
+      .settings-page,
+      .lineup-page,
+      .employees-page,
+      .availability-page,
+      .employee-hub-page
+    ) {
+    width: min(
+      100% - var(--app-page-gutter-start) - var(--app-page-gutter-end),
+      1320px
+    );
+    margin-right: auto;
+    margin-left: var(--app-page-gutter-start);
+  }
+}
 .sidebar-tools {
   display: flex;
   height: 52px;
