@@ -256,3 +256,57 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
       .toBe(true);
   }
 });
+
+// LINEUP-E-UI-BC (Mert 2026-10-17 ~9:10 AM, All locations): someone with more than one location opens the phone
+// Lineup on All locations, every location's lineup one under the other; picking one shows that one alone. Zeynep
+// (admin) sees both locations; Ali works at both and sees his lineup at each.
+test("All locations on the manager's and the employee's phone", async ({ browser }) => {
+  const week = roundWeek(643);
+  sql(`select tests.publish_week('${run}', ${week}, '[
+    {"label": "${roundLabel("ali-k-all")}", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "12:00"},
+    {"label": "${roundLabel("ali-b-all")}", "person": "ali", "loc": "B", "job": "cook", "day": 2, "start": "13:00", "end": "17:00"}
+  ]');`);
+  const day = sql(`select tests.week(${week}) + 2;`);
+  const phone = { viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true };
+
+  const zeynep = await (await browser.newContext(phone)).newPage();
+  await signIn(zeynep, "zeynep");
+  await expect(zeynep).not.toHaveURL(/\/sign-in/);
+  await zeynep.goto(`/app/schedule/lineup?date=${day}`);
+  const location = zeynep.getByRole("combobox", { name: "Location" });
+  await expect(location).toHaveValue("");
+  await expect(location.locator("option").first()).toHaveText("All locations");
+  const cards = zeynep.locator(".lineup-card");
+  await expect(cards).toHaveCount(2);
+  // In the workspace's location order, as the list under it.
+  const order = (await location.locator("option").allTextContents()).slice(1);
+  expect([...order].sort()).toEqual(["Besiktas", "Kadikoy"]);
+  await expect(cards.locator(".lineup-card-loc")).toHaveText(order);
+  await expect(zeynep.getByRole("separator")).toHaveCount(1);
+  // Publish both from the dock, so Ali sees them.
+  await zeynep.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
+  const sheet = zeynep.getByRole("dialog", { name: "Publish lineups" });
+  await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
+  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  await expect(cards.getByText("Live", { exact: true })).toHaveCount(2);
+  // One location picked: that one alone.
+  await location.selectOption({ label: "Besiktas" });
+  await expect(cards).toHaveCount(1);
+  await expect(cards.locator(".lineup-card-loc")).toHaveText("Besiktas");
+
+  const ali = await (await browser.newContext(phone)).newPage();
+  await signIn(ali, "ali");
+  await expect(ali).not.toHaveURL(/\/sign-in/);
+  await ali.goto(`/app/employee-hub/schedule/lineup?date=${day}`);
+  const tickets = ali.locator(".employee-lineup-ticket");
+  await expect(tickets).toHaveCount(2);
+  await expect(tickets.locator(".employee-lineup-place")).toHaveText(["Kadikoy", "Besiktas"]);
+  await expect(ali.getByRole("combobox", { name: "Location" })).toHaveValue("");
+  // A tap on a ticket folds its Team · Notes; Acknowledge stays.
+  await tickets.first().locator(".employee-lineup-time").tap();
+  await expect(ali.getByRole("tablist")).toHaveCount(1);
+  await expect(ali.getByRole("button", { name: "Acknowledge", exact: true })).toHaveCount(2);
+  await ali.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  await expect(tickets).toHaveCount(1);
+  await expect(tickets.locator(".employee-lineup-place")).toHaveText("Kadikoy");
+});
