@@ -245,6 +245,29 @@ describe("the open tab's line", () => {
     expect(row().style.getPropertyValue("--tab-line-x")).toBe("72px");
   });
 
+  it("finds a tab row that comes after the page has loaded (Schedule, Shift hub)", () => {
+    function Later({ loaded }: { loaded: boolean }) {
+      const swipe = useTabSwipe({ tabs: TABS, active: "two", onSelect: () => undefined });
+      return (
+        <section ref={swipe.root}>
+          {loaded ? (
+            <div role="tablist" aria-label="Pages" ref={swipe.tabs}>
+              {TABS.map((key) => (
+                <button key={key} type="button" role="tab" aria-selected={key === "two"}>
+                  {key}
+                </button>
+              ))}
+            </div>
+          ) : null}
+        </section>
+      );
+    }
+    const { rerender } = render(<Later loaded={false} />);
+    rerender(<Later loaded />);
+    expect(row().dataset.tabLine).toBe("");
+    expect(row().style.getPropertyValue("--tab-line-x")).toBe("72px");
+  });
+
   it("leaves a computer's tab row alone", () => {
     vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }));
     render(<Page />);

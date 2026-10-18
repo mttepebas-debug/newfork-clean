@@ -151,10 +151,10 @@ export function useTabSwipe<T extends string>({
   // The open tab's line (S-152, Mert 2026-10-17, D): the tab row learns where the open tab is, and
   // phone-page-tabs.css draws the line there on a page's own tab strips and slides it when the tab
   // changes. A page that draws a new tab row for the new tab (Schedule → Lineup) starts its line where
-  // the last row's was, so it slides across too.
+  // the last row's was, so it slides across too. A row that comes once the page has loaded gets its line then.
   const line = useRef<{ x: number; w: number } | null>(null);
+  const [row, setRow] = useState<HTMLElement | null>(null);
   useLayoutEffect(() => {
-    const row = tabRow.current;
     if (!phone || !row) return;
     const place = () => {
       const open = row.querySelector<HTMLElement>(':scope > [aria-current="page"], :scope > [aria-selected="true"]');
@@ -180,10 +180,11 @@ export function useTabSwipe<T extends string>({
     const resized = new ResizeObserver(place);
     resized.observe(row);
     return () => resized.disconnect();
-  }, [active, phone]);
+  }, [active, phone, row]);
 
   const setTabs = useCallback<RefCallback<HTMLElement>>((element) => {
     tabRow.current = element;
+    setRow(element);
   }, []);
   return { root: setRoot, tabs: setTabs };
 }
