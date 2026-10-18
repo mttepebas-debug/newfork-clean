@@ -5,6 +5,12 @@
 .mm-top {
   display: none;
 }
+/* A page's slot in the top bar (the employee's Home puts its next shift
+   there once its greeting scrolls away, Daylight, Mert 2026-10-18). It takes
+   no room in the row: empty, the workspace name keeps its full width. */
+.mm-top-mid {
+  display: none;
+}
 
 @media (max-width: 720px) {
   /* Either frame, the manager's or the employee's (its own sheet lays it out
@@ -31,8 +37,31 @@
     justify-content: space-between;
     gap: 12px;
     padding: env(safe-area-inset-top, 0px) 16px 0;
+    position: relative;
     border-bottom: 1px solid var(--theme-border);
     background: var(--theme-surface);
+  }
+  .mm-top-mid {
+    position: absolute;
+    top: env(safe-area-inset-top, 0px);
+    right: 100px;
+    bottom: 0;
+    left: 16px;
+    display: flex;
+    align-items: center;
+    pointer-events: none;
+  }
+  /* While the slot shows something, it takes the workspace's place and the bar the page's ground. */
+  .mm-top:has(.mm-top-mid [data-bar-shown]) {
+    background: var(--theme-page);
+  }
+  .mm-top:has(.mm-top-mid [data-bar-shown]) .mm-top-workspace {
+    opacity: 0;
+    pointer-events: none;
+    transform: translateY(-8px);
+  }
+  .mm-top-workspace {
+    transition: opacity 0.2s, transform 0.25s;
   }
   .mm-top-workspace {
     display: flex;

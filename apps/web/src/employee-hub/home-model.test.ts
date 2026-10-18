@@ -4,7 +4,6 @@ import {
   arcPoint,
   arcSegments,
   countdown,
-  crewFor,
   daySlot,
   homeSubline,
   homeWeek,
@@ -23,13 +22,6 @@ const base: EmployeeHubShift = {
   start_time: "16:00",
   end_time: "23:00",
 };
-const mate = (name: string, patch: Partial<EmployeeHubShift> = {}): EmployeeHubShift => ({
-  ...base,
-  id: `40000000-0000-4000-8000-${String(name.length).padStart(12, "0")}${name}`.slice(0, 36),
-  employee_id: null,
-  employee_name: name,
-  ...patch,
-});
 const model = (patch: Partial<EmployeeHubReadModel> = {}): EmployeeHubReadModel => ({
   workspace_id: "50000000-0000-4000-8000-000000000001",
   employee: { id: base.employee_id!, display_name: "Ali Rivera" },
@@ -75,18 +67,6 @@ describe("home model", () => {
     expect(x0).toBeCloseTo(12);
     expect(xm).toBeCloseTo(179);
     expect(ym).toBeLessThan(y0);
-  });
-
-  it("finds who works the same shift: same place, same day, hours that overlap", () => {
-    const team = [
-      mate("Marcus Reed", { start_time: "15:00", end_time: "22:00" }),
-      mate("Priya Shah"),
-      mate("Dana Cole", { start_time: "08:00", end_time: "12:00" }),
-      mate("Jordan Lee", { location_id: "20000000-0000-4000-8000-000000000002" }),
-      mate("Kai Nguyen", { scheduled_date: "2026-10-17" }),
-      mate("Ali Rivera", { employee_id: base.employee_id }),
-    ];
-    expect(crewFor(model({ team_shifts: team }), base).map((p) => p.name)).toEqual(["Marcus Reed", "Priya Shah"]);
   });
 
   it("builds seven days from today with hours, time off and open shifts", () => {

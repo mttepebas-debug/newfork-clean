@@ -56,6 +56,18 @@ describe("pull to refresh", () => {
     vi.useRealTimers();
   });
 
+  it("leaves a pull alone when the page is not at its top", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Page onRefresh={onRefresh} />);
+    const area = screen.getByTestId("area");
+    area.scrollTop = 120;
+    touch(area, "touchstart", 100);
+    expect(touch(area, "touchmove", 400).defaultPrevented).toBe(false);
+    touch(area, "touchend", 400);
+    expect(onRefresh).not.toHaveBeenCalled();
+    expect(screen.getByTestId("state").textContent).toBe("idle");
+  });
+
   it("lets a short pull go, and leaves drags that start on a strip alone", () => {
     const onRefresh = vi.fn(() => Promise.resolve());
     render(<Page onRefresh={onRefresh} />);

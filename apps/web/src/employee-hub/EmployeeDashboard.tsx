@@ -131,7 +131,13 @@ export function EmployeeDashboard({
       return when ? [{ item, when }] : [];
     });
   const pill = shift ? (
-    <Link className={`dl-pill${far ? " is-shown" : ""}`} to={`?shift=${shift.id}`} tabIndex={far ? 0 : -1} aria-hidden={!far}>
+    <Link
+      className={`dl-pill${far ? " is-shown" : ""}`}
+      to={`?shift=${shift.id}`}
+      tabIndex={far ? 0 : -1}
+      aria-hidden={!far}
+      data-bar-shown={far ? "" : undefined}
+    >
       <i className={`dl-pulse${state === "scheduled_now" ? " is-on" : ""}`} />
       {state === "scheduled_now" ? (
         <>

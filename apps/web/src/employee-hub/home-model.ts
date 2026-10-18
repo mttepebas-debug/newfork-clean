@@ -57,27 +57,6 @@ export function arcSegments(shifts: readonly { start_time: string; end_time: str
 }
 export const arcNow = (minute: number) => arcT(minute);
 
-export type CrewMate = { id: string; name: string; job: string };
-/** Teammates on the same day, at the same place, whose hours overlap this shift. */
-export function crewFor(model: EmployeeHubReadModel, shift: EmployeeHubShift): CrewMate[] {
-  const span = (item: EmployeeHubShift) => {
-    const start = minutesOf(item.start_time);
-    const end = minutesOf(item.end_time);
-    return [start, end <= start ? end + 1440 : end] as const;
-  };
-  const [start, end] = span(shift);
-  const seen = new Set<string>();
-  return model.team_shifts
-    .filter((item) => item.id !== shift.id && item.scheduled_date === shift.scheduled_date && item.location_id === shift.location_id)
-    .filter((item) => item.employee_id !== model.employee.id && item.employee_name)
-    .filter((item) => {
-      const [s, e] = span(item);
-      return s < end && e > start;
-    })
-    .sort((a, b) => a.start_time.localeCompare(b.start_time))
-    .filter((item) => (seen.has(item.employee_name!) ? false : (seen.add(item.employee_name!), true)))
-    .map((item) => ({ id: item.id, name: item.employee_name!, job: item.job_name }));
-}
 export const initials = (name: string) =>
   name
     .trim()
