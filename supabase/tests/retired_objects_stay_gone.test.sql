@@ -277,8 +277,10 @@ insert into retired (kind, name, step) values
 -- EMP-001: a manager manages the locations they are assigned to. "Manages
 -- without working there" goes whole: its table, the command, the core action,
 -- the role trigger and the key only its foreign key used.
+-- ROL-CIFT (KARARLAR S-167, design §4.2) brings Manages back apart from Works at, in a new
+-- membership_managed_locations of the two-slot model, so that table leaves this list; the old
+-- command, action and trigger stay gone.
 insert into retired (kind, name, step) values
-  ('table', 'membership_managed_locations', 'EMP-001'),
   ('function', 'set_employee_managed_locations_service', 'EMP-001'),
   ('function', 'manages_without_working', 'EMP-001'),
   ('function', 'managed_locations_follow_role', 'EMP-001'),
@@ -532,6 +534,16 @@ insert into retired (kind, name, step) values
 insert into retired (kind, name, step) values
   ('notification', 'availability.updated', 'BILDIRIM-U7'),
   ('notification', 'availability.mode_changed', 'BILDIRIM-U7');
+-- A membership holds two access slots (ROL-CIFT 1.1): the class name copied next to role_id and the
+-- all-locations flag go, with the two triggers that kept them.
+insert into retired (kind, name, step) values
+  ('column', 'workspace_memberships.role', 'ROL-CIFT'),
+  ('column', 'workspace_memberships.all_locations', 'ROL-CIFT'),
+  ('constraint', 'workspace_memberships_employee_not_all_locations', 'ROL-CIFT'),
+  ('trigger', 'workspace_memberships.a_sync_membership_role_reference_trigger', 'ROL-CIFT'),
+  ('trigger', 'workspace_memberships.b_enforce_role_location_scope', 'ROL-CIFT'),
+  ('function', 'sync_membership_role_reference', 'ROL-CIFT'),
+  ('function', 'enforce_role_location_scope', 'ROL-CIFT');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

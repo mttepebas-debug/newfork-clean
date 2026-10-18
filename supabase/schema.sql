@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 513, last: 20261018222122_employee_home_reads_shift_type_and_expiry.sql
--- fingerprint: sha256:4ad28d9790977f9e6677442d7abc5ca25cfb4f575bdb71d2b404f3323d4d5b10
+-- migrations: 513, last: 20261018230000_membership_two_access_slots.sql
+-- fingerprint: sha256:4eccdee588d208bd6b73b5441296ec7bab74c0ed3ad0d27c764fff6e12f22b47
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4126,12 +4126,7 @@ CREATE OR REPLACE FUNCTION "app_private"."document_obligation_json"("r" "public"
   'location_ids',coalesce((select jsonb_agg(l.id order by l.name) from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id where a.employee_id=r.employee_id and a.workspace_id=r.workspace_id and a.ended_at is null),'[]'),
   'location_names',coalesce((select jsonb_agg(l.name order by l.name) from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id where a.employee_id=r.employee_id and a.workspace_id=r.workspace_id and a.ended_at is null),'[]'),
   'timezone',app_private.document_employee_timezone(r.workspace_id,r.employee_id),'settings',r.lifecycle_settings,
-  'accepted_formats',coalesce(r.source_snapshot->'accepted_formats','[]'), 'tracks_expiry',coalesce((r.source_snapshot->>'tracks_expiry')::boolean,false),
-  'expiry_date',(select s.expiry_date from public.employee_document_submissions s where s.id=r.approved_document_id and s.requirement_id=r.id),
-  'expiring_soon',coalesce((select s.expiry_date<=current_date+t.expiry_warning_days
-    from public.employee_document_submissions s
-    join public.document_types t on t.id=r.source_id and t.workspace_id=r.workspace_id and t.tracks_expiry and t.archived_at is null
-    where s.id=r.approved_document_id and s.requirement_id=r.id and s.expiry_date is not null),false))
+  'accepted_formats',coalesce(r.source_snapshot->'accepted_formats','[]'), 'tracks_expiry',coalesce((r.source_snapshot->>'tracks_expiry')::boolean,false))
  from public.employee_profiles e where e.id=r.employee_id and e.workspace_id=r.workspace_id;
 $$;
 
@@ -4697,21 +4692,6 @@ $$;
 ALTER FUNCTION "app_private"."employee_record_is_workspace_owner"("target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."enforce_role_location_scope"() RETURNS "trigger"
-    LANGUAGE "plpgsql"
-    SET "search_path" TO ''
-    AS $$
-begin
- if new.role in ('owner','admin') then new.all_locations:=true;
- else new.all_locations:=false;
- end if;
- return new;
-end; $$;
-
-
-ALTER FUNCTION "app_private"."enforce_role_location_scope"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "app_private"."enqueue_workspace_retention_purge_job"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5158,6 +5138,26 @@ end; $$;
 
 
 ALTER FUNCTION "app_private"."guard_job_deletion_state"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."held_role_keeps_its_class"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.access_class is distinct from old.access_class and exists (
+    select 1 from public.workspace_memberships m
+    where m.workspace_id = old.workspace_id and old.id in (m.role_id, m.employee_role_id)
+  ) then
+    raise exception 'a role somebody holds keeps its class'
+      using errcode = '23514', hint = 'role.held_class';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."held_role_keeps_its_class"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."initialize_employee_onboarding"("target_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "uuid"
@@ -5874,6 +5874,63 @@ CREATE OR REPLACE FUNCTION "app_private"."location_is_live"("location" "public".
 ALTER FUNCTION "app_private"."location_is_live"("location" "public"."locations") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."managed_location_needs_manager"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if not exists (
+    select 1 from public.workspace_memberships m
+    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+    where m.id = new.membership_id and m.workspace_id = new.workspace_id and r.access_class = 'manager'
+  ) then
+    raise exception 'only a manager has Manages; admins and owners manage every location'
+      using errcode = '23514', hint = 'membership.manages_needs_manager';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."managed_location_needs_manager"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."management_job_holds"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  slot_class public.workspace_role;
+  job public.jobs;
+begin
+  select r.access_class into slot_class
+  from public.workspace_memberships m
+  join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
+  where m.id = new.membership_id and m.workspace_id = new.workspace_id;
+  if slot_class is null then
+    raise exception 'a management job needs a management access'
+      using errcode = '23514', hint = 'membership.management_job_needs_access';
+  end if;
+  select j.* into job from public.jobs j where j.id = new.job_id and j.workspace_id = new.workspace_id;
+  if not exists (
+    select 1 from public.departments d
+    where d.id = job.department_id and d.workspace_id = new.workspace_id and d.system_key = 'management'
+  ) then
+    raise exception 'a management job is a job of the Management department'
+      using errcode = '23514', hint = 'membership.management_job_department';
+  end if;
+  if job.system_key = 'owner' and slot_class <> 'owner' then
+    raise exception 'the Owner job belongs to the owner'
+      using errcode = '23514', hint = 'membership.owner_job';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."management_job_holds"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."mark_account_organization_history"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5889,6 +5946,33 @@ end; $$;
 ALTER FUNCTION "app_private"."mark_account_organization_history"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."membership_access_slots_hold"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+begin
+  if new.role_id is not null and not exists (
+    select 1 from public.workspace_roles r
+    where r.id = new.role_id and r.workspace_id = new.workspace_id and r.access_class in ('manager', 'admin', 'owner')
+  ) then
+    raise exception 'the management slot holds a manager, admin or owner class role'
+      using errcode = '23514', hint = 'membership.management_slot';
+  end if;
+  if new.employee_role_id is not null and not exists (
+    select 1 from public.workspace_roles r
+    where r.id = new.employee_role_id and r.workspace_id = new.workspace_id and r.access_class = 'employee'
+  ) then
+    raise exception 'the employee slot holds an employee class role'
+      using errcode = '23514', hint = 'membership.employee_slot';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."membership_access_slots_hold"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -5901,6 +5985,31 @@ $$;
 
 
 ALTER FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."membership_slot_rows_follow"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  slot_class public.workspace_role := (select r.access_class from public.workspace_roles r where r.id = new.role_id);
+begin
+  if slot_class is distinct from 'manager' then
+    delete from public.membership_managed_locations where membership_id = new.id;
+  end if;
+  if slot_class is null then
+    delete from public.membership_management_jobs where membership_id = new.id;
+  elsif slot_class <> 'owner' then
+    delete from public.membership_management_jobs mj
+    using public.jobs j
+    where mj.membership_id = new.id and j.id = mj.job_id and j.system_key = 'owner';
+  end if;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."membership_slot_rows_follow"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."notification_resolve"("target_workspace" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_resolution" "text", "target_resolved_by" "uuid") RETURNS integer
@@ -12992,17 +13101,20 @@ begin
   if session_user = 'postgres' and current_setting('role') in ('none', 'postgres') then
     return new;
   end if;
-  new_class := (select role.access_class from public.workspace_roles role where role.id = new.role_id);
+  new_class := (select role.access_class from public.workspace_roles role
+                where role.id = coalesce(new.role_id, new.employee_role_id));
   if tg_op = 'UPDATE' then
-    old_class := (select role.access_class from public.workspace_roles role where role.id = old.role_id);
+    old_class := (select role.access_class from public.workspace_roles role
+                  where role.id = coalesce(old.role_id, old.employee_role_id));
   end if;
 
-  -- Taking access away grants nothing; neither does a change that leaves the
-  -- role, the account and the status as they were.
+  -- Taking access away grants nothing; neither does a change that leaves both
+  -- slots, the account and the status as they were.
   if tg_op = 'UPDATE'
      and new.workspace_id = old.workspace_id
      and new.user_id is not distinct from old.user_id
-     and new.role_id = old.role_id
+     and new.role_id is not distinct from old.role_id
+     and new.employee_role_id is not distinct from old.employee_role_id
      and (new.status = old.status or new.status = 'suspended'::public.membership_status) then
     return new;
   end if;
@@ -13025,9 +13137,11 @@ begin
 
   -- The accepted ownership transfer's two rows, validated and locked by the
   -- transfer service: the target admin becomes owner and the owner admin, both
-  -- staying active, for the account the transfer names (nf-guvenlik O1).
+  -- staying active, for the account the transfer names (nf-guvenlik O1). The
+  -- employee slot does not move with it.
   if tg_op = 'UPDATE' and coalesce(current_setting('app.owner_transfer', true), '') = 'on'
      and new.workspace_id = old.workspace_id and new.user_id = old.user_id
+     and new.employee_role_id is not distinct from old.employee_role_id
      and new.status = 'active'::public.membership_status and old.status = 'active'::public.membership_status
      and exists (
        select 1 from public.workspace_ownership_transfers transfer
@@ -13873,14 +13987,12 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
         'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
-        'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',shift.employee_id,
-        'shift_type_name',shift_type.name
+        'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',shift.employee_id
       ) order by shift.scheduled_date,shift.start_time)
       from public.schedule_published_shifts shift
       join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
       join public.locations location on location.id=shift.location_id
       join public.jobs job on job.id=shift.job_id
-      left join public.shift_types shift_type on shift_type.id=shift.shift_type_id and shift_type.workspace_id=shift.workspace_id
       where shift.workspace_id=target_workspace_id and shift.employee_id=employee.id
         and shift.scheduled_date between target_from and target_to
     ),'[]'::jsonb),
@@ -13904,9 +14016,7 @@ begin
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
         'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
         'end_time',to_char(shift.end_time,'HH24:MI'),'note','','employee_id',shift.employee_id,
-        'employee_name',concat_ws(' ',coalesce(nullif(teammate.preferred_name,''),teammate.first_name),teammate.last_name),
-        'is_management',coalesce((select department.system_key='management' from public.departments department
-          where department.id=job.department_id and department.workspace_id=shift.workspace_id),false)
+        'employee_name',concat_ws(' ',coalesce(nullif(teammate.preferred_name,''),teammate.first_name),teammate.last_name)
       ) order by shift.scheduled_date,shift.start_time)
       from public.schedule_published_shifts shift
       join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
@@ -18922,8 +19032,9 @@ CREATE OR REPLACE FUNCTION "public"."prevent_last_workspace_owner_removal"() RET
 declare
   workspace_state public.workspace_lifecycle_status;
   transfer_bypass boolean := coalesce(current_setting('app.owner_transfer', true), '') = 'on';
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = old.workspace_id and r.system_key = 'owner');
 begin
-  if old.role <> 'owner' or old.status <> 'active' then
+  if old.role_id is distinct from owner_role or old.status <> 'active' then
     return case when tg_op = 'DELETE' then old else new end;
   end if;
 
@@ -18935,7 +19046,7 @@ begin
     return case when tg_op = 'DELETE' then old else new end;
   end if;
 
-  if tg_op = 'UPDATE' and new.role = 'owner' and new.status = 'active' then
+  if tg_op = 'UPDATE' and new.role_id = owner_role and new.status = 'active' then
     return new;
   end if;
 
@@ -18944,7 +19055,7 @@ begin
     from public.workspace_memberships other
     where other.workspace_id = old.workspace_id
       and other.id <> old.id
-      and other.role = 'owner'
+      and other.role_id = owner_role
       and other.status = 'active'
   ) then
     raise exception 'workspace must retain an active owner' using errcode = '23514';
@@ -26687,39 +26798,6 @@ $$;
 ALTER FUNCTION "public"."sync_expiring_document_todos_service"("target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."sync_membership_role_reference"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  resolved_role public.workspace_roles;
-begin
-  if new.role_id is null then
-    select candidate.* into resolved_role
-    from public.workspace_roles candidate
-    where candidate.workspace_id = new.workspace_id
-      and candidate.system_key = new.role;
-  else
-    select candidate.* into resolved_role
-    from public.workspace_roles candidate
-    where candidate.workspace_id = new.workspace_id
-      and candidate.id = new.role_id;
-  end if;
-
-  if resolved_role.id is null then
-    raise exception 'membership role must belong to the workspace' using errcode = '23503';
-  end if;
-
-  new.role_id := resolved_role.id;
-  new.role := resolved_role.access_class;
-  return new;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."sync_membership_role_reference"() OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."sync_schedule_conflict_rules"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -26793,11 +26871,13 @@ CREATE OR REPLACE FUNCTION "public"."sync_workspace_entitlement_billing_owner"()
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
+declare
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = new.workspace_id and r.system_key = 'owner');
 begin
-  if new.role = 'owner'::public.workspace_role
+  if new.role_id = owner_role
      and new.status = 'active'::public.membership_status
      and (
-       old.role is distinct from new.role
+       old.role_id is distinct from new.role_id
        or old.status is distinct from new.status
      ) then
     update public.workspace_entitlements
@@ -29691,15 +29771,14 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_memberships" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
     "user_id" "uuid" NOT NULL,
-    "role" "public"."workspace_role" NOT NULL,
     "status" "public"."membership_status" DEFAULT 'active'::"public"."membership_status" NOT NULL,
-    "all_locations" boolean DEFAULT true NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "role_id" "uuid" NOT NULL,
+    "role_id" "uuid",
     "last_used_at" timestamp with time zone,
     "employee_id" "uuid",
-    CONSTRAINT "workspace_memberships_employee_not_all_locations" CHECK ((("role" <> 'employee'::"public"."workspace_role") OR (NOT "all_locations")))
+    "employee_role_id" "uuid",
+    CONSTRAINT "workspace_memberships_holds_an_access" CHECK ((("role_id" IS NOT NULL) OR ("employee_role_id" IS NOT NULL)))
 );
 
 
@@ -29729,6 +29808,40 @@ ALTER VIEW "public"."membership_location_scopes" OWNER TO "postgres";
 
 
 COMMENT ON VIEW "public"."membership_location_scopes" IS 'Where each member works: their active location assignments. Derived, never written; readers move to app_private.scope_set() in stage 6.';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."membership_managed_locations" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "membership_id" "uuid" NOT NULL,
+    "location_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_by" "uuid"
+);
+
+
+ALTER TABLE "public"."membership_managed_locations" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."membership_managed_locations" IS 'Manages: the locations a manager class management access manages. Admins and owners manage every live location and have no rows (ROL-CIFT, design §4.2).';
+
+
+
+CREATE TABLE IF NOT EXISTS "public"."membership_management_jobs" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "membership_id" "uuid" NOT NULL,
+    "job_id" "uuid" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "created_by" "uuid"
+);
+
+
+ALTER TABLE "public"."membership_management_jobs" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."membership_management_jobs" IS 'The Management department jobs of a management access (General Manager, Owner ...): the position document rules read (ROL-CIFT, design §4.13).';
 
 
 
@@ -31374,6 +31487,26 @@ ALTER TABLE ONLY "public"."manager_weekly_reminders"
 
 
 
+ALTER TABLE ONLY "public"."membership_managed_locations"
+    ADD CONSTRAINT "membership_managed_locations_once" UNIQUE ("membership_id", "location_id");
+
+
+
+ALTER TABLE ONLY "public"."membership_managed_locations"
+    ADD CONSTRAINT "membership_managed_locations_pkey" PRIMARY KEY ("id");
+
+
+
+ALTER TABLE ONLY "public"."membership_management_jobs"
+    ADD CONSTRAINT "membership_management_jobs_once" UNIQUE ("membership_id", "job_id");
+
+
+
+ALTER TABLE ONLY "public"."membership_management_jobs"
+    ADD CONSTRAINT "membership_management_jobs_pkey" PRIMARY KEY ("id");
+
+
+
 ALTER TABLE ONLY "public"."notification_deliveries"
     ADD CONSTRAINT "notification_deliveries_notification_id_channel_key" UNIQUE ("notification_id", "channel");
 
@@ -32142,6 +32275,14 @@ CREATE UNIQUE INDEX "locations_workspace_short_name" ON "public"."locations" USI
 
 
 
+CREATE INDEX "membership_managed_locations_location_idx" ON "public"."membership_managed_locations" USING "btree" ("workspace_id", "location_id");
+
+
+
+CREATE INDEX "membership_management_jobs_job_idx" ON "public"."membership_management_jobs" USING "btree" ("workspace_id", "job_id");
+
+
+
 CREATE INDEX "notification_deliveries_due" ON "public"."notification_deliveries" USING "btree" ("next_attempt_at") WHERE ("status" = ANY (ARRAY['queued'::"text", 'failed'::"text"]));
 
 
@@ -32370,6 +32511,10 @@ CREATE UNIQUE INDEX "workspace_closure_one_scheduled_idx" ON "public"."workspace
 
 
 
+CREATE INDEX "workspace_memberships_employee_role_idx" ON "public"."workspace_memberships" USING "btree" ("workspace_id", "employee_role_id") WHERE ("status" = 'active'::"public"."membership_status");
+
+
+
 CREATE INDEX "workspace_memberships_last_used_idx" ON "public"."workspace_memberships" USING "btree" ("user_id", "last_used_at" DESC NULLS LAST);
 
 
@@ -32426,6 +32571,10 @@ CREATE OR REPLACE TRIGGER "a_document_requirement_publication" BEFORE INSERT ON 
 
 
 
+CREATE OR REPLACE TRIGGER "a_membership_access_slots_hold" BEFORE INSERT OR UPDATE OF "workspace_id", "role_id", "employee_role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."membership_access_slots_hold"();
+
+
+
 CREATE OR REPLACE TRIGGER "a_owner_job_and_management_primary" BEFORE INSERT OR UPDATE ON "public"."employee_job_assignments" FOR EACH ROW EXECUTE FUNCTION "app_private"."keep_job_assignment_rules"();
 
 
@@ -32443,10 +32592,6 @@ CREATE OR REPLACE TRIGGER "a_shift_exchange_eligibility_write" BEFORE INSERT OR 
 
 
 CREATE OR REPLACE TRIGGER "a_shift_exchange_eligibility_write" BEFORE DELETE OR UPDATE OF "workspace_id", "archived_at", "is_excluded_from_schedule", "start_date", "user_id" ON "public"."employee_profiles" FOR EACH ROW EXECUTE FUNCTION "public"."shift_exchange_guard_eligibility_write"();
-
-
-
-CREATE OR REPLACE TRIGGER "a_sync_membership_role_reference_trigger" BEFORE INSERT OR UPDATE OF "workspace_id", "role", "role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."sync_membership_role_reference"();
 
 
 
@@ -32470,7 +32615,7 @@ CREATE OR REPLACE TRIGGER "account_phone_reaches_employee_records" AFTER INSERT 
 
 
 
-CREATE OR REPLACE TRIGGER "availability_follows_role" AFTER INSERT OR UPDATE OF "role", "role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."availability_follows_role"();
+CREATE OR REPLACE TRIGGER "availability_follows_role" AFTER INSERT OR UPDATE OF "role_id", "employee_role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."availability_follows_role"();
 
 
 
@@ -32483,10 +32628,6 @@ CREATE OR REPLACE TRIGGER "availability_removed_assignment" AFTER DELETE ON "pub
 
 
 CREATE OR REPLACE TRIGGER "availability_removed_assignment" AFTER DELETE ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."revoke_removed_assignment_availability_override"();
-
-
-
-CREATE OR REPLACE TRIGGER "b_enforce_role_location_scope" BEFORE INSERT OR UPDATE ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."enforce_role_location_scope"();
 
 
 
@@ -32506,7 +32647,7 @@ CREATE OR REPLACE TRIGGER "block_entitlement_billing_owner_when_ownership_transf
 
 
 
-CREATE OR REPLACE TRIGGER "block_membership_change_when_ownership_transfer_pending_trigger" BEFORE DELETE OR UPDATE OF "user_id", "role", "role_id", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."block_membership_change_when_ownership_transfer_pending"();
+CREATE OR REPLACE TRIGGER "block_membership_change_when_ownership_transfer_pending_trigger" BEFORE DELETE OR UPDATE OF "user_id", "role_id", "employee_role_id", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."block_membership_change_when_ownership_transfer_pending"();
 
 
 
@@ -32670,6 +32811,10 @@ CREATE OR REPLACE TRIGGER "guard_time_off_cancellation_history" BEFORE DELETE OR
 
 
 
+CREATE OR REPLACE TRIGGER "held_role_keeps_its_class" BEFORE UPDATE OF "access_class" ON "public"."workspace_roles" FOR EACH ROW EXECUTE FUNCTION "app_private"."held_role_keeps_its_class"();
+
+
+
 CREATE OR REPLACE TRIGGER "immutable_schedule_default_hours_review" BEFORE DELETE OR UPDATE ON "public"."schedule_default_hours_reviews" FOR EACH ROW EXECUTE FUNCTION "public"."guard_schedule_default_hours_review"();
 
 
@@ -32702,7 +32847,19 @@ CREATE OR REPLACE TRIGGER "locations_reach_the_owner_on_restore" AFTER UPDATE OF
 
 
 
+CREATE OR REPLACE TRIGGER "managed_location_needs_manager" BEFORE INSERT OR UPDATE ON "public"."membership_managed_locations" FOR EACH ROW EXECUTE FUNCTION "app_private"."managed_location_needs_manager"();
+
+
+
+CREATE OR REPLACE TRIGGER "management_job_holds" BEFORE INSERT OR UPDATE ON "public"."membership_management_jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."management_job_holds"();
+
+
+
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
+
+
+
+CREATE OR REPLACE TRIGGER "membership_slot_rows_follow" AFTER UPDATE OF "role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."membership_slot_rows_follow"();
 
 
 
@@ -32782,7 +32939,7 @@ CREATE OR REPLACE TRIGGER "start_document_activation_periods" AFTER UPDATE OF "s
 
 
 
-CREATE OR REPLACE TRIGGER "sync_workspace_entitlement_billing_owner_trigger" AFTER UPDATE OF "role", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."sync_workspace_entitlement_billing_owner"();
+CREATE OR REPLACE TRIGGER "sync_workspace_entitlement_billing_owner_trigger" AFTER UPDATE OF "role_id", "status" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "public"."sync_workspace_entitlement_billing_owner"();
 
 
 
@@ -33452,6 +33609,36 @@ ALTER TABLE ONLY "public"."manager_weekly_reminders"
 
 ALTER TABLE ONLY "public"."manager_weekly_reminders"
     ADD CONSTRAINT "manager_weekly_reminders_workspace_id_employee_id_fkey" FOREIGN KEY ("workspace_id", "employee_id") REFERENCES "public"."employee_profiles"("workspace_id", "id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."membership_managed_locations"
+    ADD CONSTRAINT "membership_managed_locations_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."membership_managed_locations"
+    ADD CONSTRAINT "membership_managed_locations_location_fkey" FOREIGN KEY ("location_id", "workspace_id") REFERENCES "public"."locations"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."membership_managed_locations"
+    ADD CONSTRAINT "membership_managed_locations_membership_fkey" FOREIGN KEY ("membership_id", "workspace_id") REFERENCES "public"."workspace_memberships"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."membership_management_jobs"
+    ADD CONSTRAINT "membership_management_jobs_created_by_fkey" FOREIGN KEY ("created_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "public"."membership_management_jobs"
+    ADD CONSTRAINT "membership_management_jobs_job_fkey" FOREIGN KEY ("job_id", "workspace_id") REFERENCES "public"."jobs"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."membership_management_jobs"
+    ADD CONSTRAINT "membership_management_jobs_membership_fkey" FOREIGN KEY ("membership_id", "workspace_id") REFERENCES "public"."workspace_memberships"("id", "workspace_id") ON DELETE CASCADE;
 
 
 
@@ -34256,7 +34443,12 @@ ALTER TABLE ONLY "public"."workspace_memberships"
 
 
 ALTER TABLE ONLY "public"."workspace_memberships"
-    ADD CONSTRAINT "workspace_memberships_role_fk" FOREIGN KEY ("role_id", "workspace_id", "role") REFERENCES "public"."workspace_roles"("id", "workspace_id", "access_class") ON UPDATE CASCADE ON DELETE RESTRICT;
+    ADD CONSTRAINT "workspace_memberships_employee_role_fk" FOREIGN KEY ("employee_role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."workspace_memberships"
+    ADD CONSTRAINT "workspace_memberships_role_fk" FOREIGN KEY ("role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE RESTRICT;
 
 
 
@@ -34569,6 +34761,12 @@ CREATE POLICY "locations_update_admin" ON "public"."locations" FOR UPDATE TO "au
 
 
 ALTER TABLE "public"."manager_weekly_reminders" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."membership_managed_locations" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."membership_management_jobs" ENABLE ROW LEVEL SECURITY;
 
 
 CREATE POLICY "memberships_select_reached" ON "public"."workspace_memberships" FOR SELECT TO "authenticated" USING ("app_private"."rls_can"("workspace_id", 'membership.read'::"text", NULL::"uuid"[], NULL::"uuid", "user_id"));
@@ -35343,10 +35541,6 @@ REVOKE ALL ON FUNCTION "app_private"."employee_record_is_workspace_owner"("targe
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."enforce_role_location_scope"() FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "app_private"."enqueue_workspace_retention_purge_job"() FROM PUBLIC;
 
 
@@ -35404,6 +35598,10 @@ REVOKE ALL ON FUNCTION "app_private"."guard_document_requirement_publication"() 
 
 
 REVOKE ALL ON FUNCTION "app_private"."guard_job_deletion_state"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."held_role_keeps_its_class"() FROM PUBLIC;
 
 
 
@@ -35538,11 +35736,27 @@ REVOKE ALL ON FUNCTION "app_private"."location_is_live"("location" "public"."loc
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."managed_location_needs_manager"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."management_job_holds"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."mark_account_organization_history"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."membership_access_slots_hold"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."membership_slot_rows_follow"() FROM PUBLIC;
 
 
 
@@ -37520,10 +37734,6 @@ GRANT ALL ON FUNCTION "public"."sync_expiring_document_todos_service"("target_wo
 
 
 
-REVOKE ALL ON FUNCTION "public"."sync_membership_role_reference"() FROM PUBLIC;
-
-
-
 REVOKE ALL ON FUNCTION "public"."sync_schedule_conflict_rules"() FROM PUBLIC;
 
 
@@ -37934,6 +38144,14 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."location_sections"
 
 GRANT SELECT ON TABLE "public"."workspace_memberships" TO "authenticated";
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."workspace_memberships" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."membership_managed_locations" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."membership_management_jobs" TO "service_role";
 
 
 
