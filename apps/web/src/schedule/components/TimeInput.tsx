@@ -33,6 +33,8 @@ export interface TimeInputProps {
   readonly onChange: (value: string) => void;
   readonly timeFormat: TimeFormat;
   readonly ariaLabel: string;
+  /** The note that speaks for this box (a row's help or error), by id. */
+  readonly ariaDescribedBy?: string;
   readonly id?: string;
   readonly name?: string;
   readonly placeholder?: string;
@@ -54,6 +56,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
     onChange,
     timeFormat,
     ariaLabel,
+    ariaDescribedBy,
     id,
     name,
     placeholder,
@@ -582,6 +585,7 @@ export const TimeInput = forwardRef<HTMLInputElement, TimeInputProps>(function T
         inputMode="text"
         autoComplete="off"
         aria-label={ariaLabel}
+        aria-describedby={ariaDescribedBy}
         aria-invalid={isInvalid || undefined}
         value={draft}
         disabled={disabled}

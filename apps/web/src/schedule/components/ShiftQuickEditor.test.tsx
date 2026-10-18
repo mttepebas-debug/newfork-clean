@@ -1065,6 +1065,9 @@ describe("ShiftQuickEditor", () => {
     expect(screen.getByRole("alert").textContent).toBe(
       "Enter start and end time.",
     );
+    // Both boxes are described by the row's note (UI-FIELDMSG-2).
+    for (const label of ["Start time", "End time"])
+      expect(screen.getByLabelText(label).getAttribute("aria-describedby")).toBe(screen.getByRole("alert").id);
     const addButton = screen.getByRole("button", { name: "Add shift" });
     expect((addButton as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(addButton);

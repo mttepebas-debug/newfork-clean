@@ -47,7 +47,7 @@ import {
   type ShiftEditorProps,
 } from "./shift-window/useShiftEditor";
 import "./shift-window/shift-window.css";
-import { FieldNote } from "../../shell/FieldNote";
+import { FieldNote, fieldNoteId } from "../../shell/FieldNote";
 
 export { formatShiftNoteRemaining, shiftNoteMaxLength };
 
@@ -311,6 +311,8 @@ function TimeRow({ editor, model, timeFormat, startRef, changes }: LayoutProps &
     facts.push(fact);
     if (overtime) warnings.add(fact);
   }
+  // Both times are described by the row's one note: its error, else its facts (UI-FIELDMSG-2).
+  const timeNote = fieldNoteId("shift-window-time", editor.timeValidationMessage, facts.length ? facts.join(" · ") : null);
   return (
     <Row label="Time" className="shift-window-row-time" changed={"time" in changes} was={changes.time} labelFor={startId}>
       <div className="shift-window-time">
@@ -319,6 +321,7 @@ function TimeRow({ editor, model, timeFormat, startRef, changes }: LayoutProps &
           id={startId}
           value={editor.value.start_time}
           ariaLabel="Start time"
+          ariaDescribedBy={timeNote}
           timeFormat={timeFormat}
           density="compact"
           className="shift-window-time-input"
@@ -335,6 +338,7 @@ function TimeRow({ editor, model, timeFormat, startRef, changes }: LayoutProps &
           ref={endRef}
           value={editor.value.end_time}
           ariaLabel="End time"
+          ariaDescribedBy={timeNote}
           timeFormat={timeFormat}
           density="compact"
           className="shift-window-time-input"
