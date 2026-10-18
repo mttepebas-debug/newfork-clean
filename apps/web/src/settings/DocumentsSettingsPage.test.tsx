@@ -213,7 +213,9 @@ it("keeps the heading row over an empty catalog and adds from the table", async 
     ),
   ).toBeTruthy();
   // One add button at the right end of the filter row, none in the heading.
-  expect(screen.getByText("SETTINGS")).toBeTruthy();
+  // A computer shows General's heading, not the list eyebrow (Mert 2026-10-18).
+  expect(document.querySelector(".settings-page-header .settings-heading-icon")).toBeTruthy();
+  expect(screen.queryByText("SETTINGS")).toBeNull();
   expect(
     screen.getAllByRole("button", { name: "New document" }).map((button) =>
       Boolean(button.closest(".catalog-toolbar-filter-row, .catalog-table-empty")),

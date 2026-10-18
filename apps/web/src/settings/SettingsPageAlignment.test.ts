@@ -85,6 +85,15 @@ describe("settings page alignment styles", () => {
       /\.(?:shift-catalog-settings-page|acknowledgement-page)\s+\.settings-header-action\s*\{[^}]*(?:align|justify)-self\s*:/,
     );
   });
+  it("keeps Settings → Notifications on the shared page frame (Mert 2026-10-18)", () => {
+    const notificationStyles = readFileSync(
+      "src/notification-settings/notification-settings.css",
+      "utf8",
+    );
+    expect(notificationStyles).toMatch(
+      /\.settings-page\.ns-page\s*\{[^}]*max-width:\s*none/,
+    );
+  });
   it("keeps a single frame on the job drawer's search box", () => {
     // The editor's field rule (0,2,1, later in the file) would add an inner border.
     const body = /\.job-assignment-drawer \.job-search\.job-search input \{([^}]*)\}/.exec(

@@ -1,4 +1,5 @@
 import { useDeferredValue, useState, type ReactNode } from "react";
+import { SettingsListHeader } from "./SettingsListHeader";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useSearchParams } from "react-router";
 import { Archive, BriefcaseBusiness, Folder, Plus, Search, X } from "lucide-react";
@@ -11,7 +12,7 @@ import { loadJobCounts } from "./jobs-management-data";
 import { JobCatalogEditor, type CatalogEditor } from "./JobCatalogEditor";
 import { JobAssignmentsDrawer } from "./JobAssignmentsDrawer";
 import { CatalogArchiveButton, CatalogRowMenu as RowMenu } from "./CatalogRowMenu";
-import { CatalogPageHeader, ListAddButton, TabRowAdd } from "../views/CatalogPageHeader";
+import { ListAddButton, TabRowAdd } from "../views/CatalogPageHeader";
 import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { isNoAccess } from "../lib/no-access";
@@ -495,8 +496,8 @@ export default function JobsSettingsPage() {
   ];
   return (
     <section className="settings-page jobs-settings-page jobs-catalog-page list-page" aria-labelledby="jobs-settings-title">
-      <CatalogPageHeader
-        eyebrow="SETTINGS"
+      <SettingsListHeader
+        icon={<BriefcaseBusiness size={21} aria-hidden />}
         title="Jobs & departments"
         titleId="jobs-settings-title"
         description="Organize your jobs. Connect the right people to each one."

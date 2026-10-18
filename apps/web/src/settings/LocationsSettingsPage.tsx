@@ -1,4 +1,5 @@
 import { CatalogDrawer } from "./CatalogDrawer";
+import { SettingsListHeader } from "./SettingsListHeader";
 import {
   displayUsPhone,
   suggestLocationShortName,
@@ -11,7 +12,6 @@ import { MapPin, Search, X } from "lucide-react";
 import { useId, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
 import {
-  CatalogPageHeader,
   ListAddButton,
   TabRowAdd,
 } from "../views/CatalogPageHeader";
@@ -227,8 +227,8 @@ export default function LocationsSettingsPage() {
       className="settings-page jobs-settings-page locations-catalog-settings-page list-page"
       aria-labelledby="locations-settings-title"
     >
-      <CatalogPageHeader
-        eyebrow="SETTINGS"
+      <SettingsListHeader
+        icon={<MapPin size={21} aria-hidden />}
         title="Locations"
         titleId="locations-settings-title"
         description="Restaurant addresses and local time zones used throughout scheduling."

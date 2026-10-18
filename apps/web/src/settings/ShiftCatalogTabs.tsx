@@ -1,6 +1,8 @@
 import type { ReactNode } from "react";
+import { CalendarClock } from "lucide-react";
+import { SettingsListHeader } from "./SettingsListHeader";
 import { useLocation, useNavigate } from "react-router";
-import { CatalogPageHeader, TabRowAdd } from "../views/CatalogPageHeader";
+import { TabRowAdd } from "../views/CatalogPageHeader";
 
 type CatalogTab = "types" | "labels";
 
@@ -8,9 +10,9 @@ type CatalogTab = "types" | "labels";
  * language, Shift types and Shift labels as its tabs. */
 export function ShiftCatalogHeader({ titleId }: { titleId: string }) {
   return (
-    <CatalogPageHeader
-      eyebrow="SETTINGS"
-      title="Shift catalog"
+    <SettingsListHeader
+        icon={<CalendarClock size={21} aria-hidden />}
+        title="Shift catalog"
       titleId={titleId}
       description="Shift types and labels used across the Schedule."
     />

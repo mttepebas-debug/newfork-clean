@@ -331,9 +331,11 @@ describe("shift catalog list", () => {
     expect(screen.getByRole("heading", { level: 1 }).textContent).toBe(
       "Shift catalog",
     );
-    expect(container.querySelector(".catalog-page-eyebrow")?.textContent).toBe(
-      "SETTINGS",
-    );
+    // A computer shows General's heading, not the list eyebrow (Mert 2026-10-18).
+    expect(container.querySelector(".catalog-page-eyebrow")).toBeNull();
+    expect(
+      container.querySelector(".settings-page-header .settings-heading-icon"),
+    ).toBeTruthy();
     expect(container.querySelector("section")?.classList).toContain(
       "list-page",
     );

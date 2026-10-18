@@ -1,4 +1,5 @@
 import { CatalogDrawer } from "./CatalogDrawer";
+import { SettingsListHeader } from "./SettingsListHeader";
 import {
   defaultDocumentLifecycleSettings,
   documentTypeInputSchema,
@@ -14,7 +15,6 @@ import { CatalogSortButton, nextCatalogSort } from "../views/CatalogSortButton";
 import { CatalogArchiveButton, CatalogRowMenu } from "./CatalogRowMenu";
 import { errorText } from "./GeneralSettingsPage";
 import {
-  CatalogPageHeader,
   ListAddButton,
   TabRowAdd,
 } from "../views/CatalogPageHeader";
@@ -237,8 +237,8 @@ export default function DocumentsSettingsPage() {
       className="settings-page jobs-settings-page document-catalog-settings-page list-page"
       aria-labelledby="documents-settings-title"
     >
-      <CatalogPageHeader
-        eyebrow="SETTINGS"
+      <SettingsListHeader
+        icon={<FileText size={21} aria-hidden />}
         title="Documents"
         titleId="documents-settings-title"
         description="Set up the documents employees need to upload, with review and expiry rules."
