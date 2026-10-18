@@ -60,12 +60,13 @@ Sunucu kapısı rolden okunur: çalışan arayüzünün okuma servisleri (bugün
 ### 4.2 Lokasyon ve iş (Mert, S-167)
 - Davette ve Employees çekmecesinde önce roller seçilir (en az biri). İşaretlenen rolün bölümü açılır:
   - Employee → **Works at**: lokasyon + iş, en az 1 lokasyon ve 1 iş zorunlu (bugünkü kural).
-  - Manager → **Manages**: yalnız lokasyon, en az 1; iş seçilmez.
+  - Manager → **Manages**: lokasyon, en az 1.
   - Admin, Owner → "Manages" yok (bütün lokasyonlar).
+  - Her yönetim erişiminde (Manager, Admin, Owner) **en az 1 Management departmanı işi** zorunlu (Mert, 2026-10-18; madde 4.13). Owner'da bu, kendiliğinden atanan Owner işidir.
 - İkisi birden işaretlenince "Manages", "Works at" lokasyonlarıyla önceden dolu gelir; kullanıcı değiştirebilir.
 - Örnek: Ali Kadıköy'ü yönetir, Beşiktaş'ta yalnız çalışır. Ali'nin yönetim kapsamı yalnız Kadıköy'dür; Beşiktaş'ın programını, ekibini ve taleplerini yönetici olarak görmez. Beşiktaş'ta çalışan tarafında görünür ve oradaki talebine Beşiktaş müdürü karar verir.
 - Bu, 2026-09-30 "Lokasyonu yöneten manager oraya atanır / yalnız yönetir lokasyonu yok" ve "Manager'ın lokasyonları = çalıştığı atamalar" kurallarının yerine geçer. Yetki çekirdeğinin yönetim kapsamı (`scope_set`) "Manages"tan okunur.
-- İşler yalnız çalışan tarafına aittir. Management departmanı ve içindeki işler (Owner, Manager, Assistant Manager) çalışan tarafında yönetici vardiyası yazmak için kalır (Claude'un kararı). Owner işi owner'a yalnız Employee rolü varsa atanır (Claude'un kararı).
+- Sözlük (Mert): rol = erişim (access); iş (job) = vardiyada ve belgede kullanılan pozisyon. "Unvan" denmez.
 
 ### 4.3 Schedule ızgarası
 - Izgarada yalnız Employee rolü olan ve "Works at"ta o lokasyon bulunan kişi vardır (Mert).
@@ -119,7 +120,7 @@ Sunucu kapısı rolden okunur: çalışan arayüzünün okuma servisleri (bugün
 - En az bir rol zorunlu; rol boş gelirse sunucu Employee'ye düşmez, reddeder.
 - Kim neyi verebilir bugünkü gibi: müdür yalnız Employee; admin Manager ve Employee (birlikte de); Admin rolünü yalnız owner verir. Özel roller bugünkü gibi.
 - Her işaretli rol kendi bölümünü doldurur (madde 4.2). Müdür, "Manages" doldurulan bir davet gönderemez.
-- Belge kuralı (2026-10-04 karma akış) yalnız Employee rolüne bağlı belgeler için davette sorulur; yalnız yönetim rolündeki kişiye yönetim rolüne bağlı belgeler istenir (Claude'un kararı; bugün "Who needs it" kuralı iş ve lokasyona bakıyor).
+- Yönetim erişimi seçilince en az 1 Management departmanı işi seçilmeden davet gönderilemez (madde 4.13). Belge adımı (2026-10-04 karma akış) bugünkü gibi kişinin işlerine ve lokasyonlarına göre listeyi hesaplar; yönetim tarafındaki iş de sayılır.
 
 ### 4.10 Katılım, onboarding, iniş (Mert, S-166)
 - Yalnız yönetim rolündeki kişi katılınca ve onboarding onaylanınca yönetim arayüzüne iner (bugün çalışan arayüzüne iniyor).
@@ -134,6 +135,17 @@ Sunucu kapısı rolden okunur: çalışan arayüzünün okuma servisleri (bugün
 ### 4.12 Sahiplik devri
 - Devir artık yeni owner'ın çalışan kaydını şart koşmaz (bugünkü BL-252 kuralı kalkar). Yeni owner'ın Employee rolü olduğu gibi kalır. Eski owner'ın aldığı yönetim rolü bugünkü devir kuralıyla belirlenir; Employee rolü varsa kalır (Claude'un kararı).
 
+### 4.13 Yönetim işi ve belgeler (Mert, 2026-10-18)
+- Yönetim erişimi olan her üyeye en az 1 Management departmanı işi atanır (General Manager, Assistant Manager gibi). Neden: belge kuralı ("Who needs it") bugünkü gibi işe bakarak karar verir; yönetici sertifikası (ör. Food Protection Manager) "General Manager" işine bağlanınca bugünkü ve gelecekteki bütün GM'lerden kendiliğinden istenir, özel roller de kapsanır (iş rolden bağımsız). Settings → Documents'a yeni seçenek eklenmez.
+- Yönetim işi vardiya için değil, erişimin pozisyonudur. Kişi istenirse vardiyaya da eklenir: Employee erişimi verilir ve "Works at"ında o Management işi seçilir. Böyle bir vardiya çalışan Home'unda "Manager on the floor" olarak gösterilebilir (tanım: o gün o lokasyonda Management departmanı işinde yayınlanmış vardiyası olan kişi; yetki çekirdeğine sorulmaz).
+- Kural tek yönlüdür: yönetim erişimi ⇒ en az 1 Management işi. Yalnız Employee olan kişi de Management işinde vardiya tutabilir (ör. yönetim erişimi olmayan shift lead) (Claude'un kararı).
+- Kurulum Management departmanını Owner, General Manager ve Assistant Manager işleriyle açar (Mert'in örneği). Bugün kurulan "Manager" işi yeni workspace'lerde bu ikisiyle değişir (Claude'un kararı); var olan test workspace'lerinde işler olduğu gibi kalır.
+- Son Management işi korunur: owner dışı yöneticilere atanabilecek son Management işi silinemez ve arşivlenemez; bir yöneticinin tek Management işi de, önce başka bir iş atanmadan silinemez ve arşivlenemez (ekran kimin etkilendiğini adıyla söyler) (Claude'un kararı). Bu, 2026-09-30 "Manager sıradan iştir: … arşivlenir, silinir" kuralını daraltır.
+- Terfide (Employee'ye yönetim erişimi eklenir) Management işi seçmek zorunludur.
+- Yönetim erişimi bırakılınca yalnız yönetim tarafındaki Management işi düşer; "Works at"taki işler kalır.
+- Yönetim tarafındaki iş, belge kuralında kişinin "Manages" lokasyonlarıyla birlikte değerlendirilir (Admin ve Owner'da bütün lokasyonlar) (Claude'un kararı).
+- Belge kişiye aittir, arayüze değil: tek dosya, iki tarafta da geçerli. Yönetici belgesinin çalışan belgesini karşılaması ("covers", ör. Food Protection Manager → Food Handler) bu işte yok; Newfork'un hazır belge önerileriyle birlikte backlog'da (Mert). O gelene kadar çift rollü kişiden iki belge istenirse ya ikisini yükler ya da bir üst rütbe muaf tutar (bugünkü muafiyet yolu).
+
 ## 5. Yapım kısıtları
 - CLAUDE.md §3.A bütünüyle: her yeni tablo ve fonksiyon RLS + `app_private.authorize()` / `scope_set()`; satır içi kapsam mantığı yok; "hayır" 42501 + `authz.*`; yeni `*_service` yetki matrisinde ve katalogda sınıflanır; eski kapı silinir ve `retired_objects_stay_gone`'a eklenir.
 - Önce kırmızı test: yetki matrisi (`supabase/tests/authorization_matrix.test.sql`), uygunluk matrisi (`supabase/tests/eligibility_matrix.test.sql`), katalog; akış değiştiği için Playwright.
@@ -147,7 +159,8 @@ Canlıdaki veri test verisidir (§3.A.5), ama taşıma yetki modelini değiştir
 |---|---|
 | `employee` rolü | yalnız Employee; "Works at" = bugünkü lokasyon + iş atamaları |
 | manager / admin / owner, arşivsiz çalışan kaydı ve en az bir Management dışı iş ataması var | yönetim rolü + Employee; "Works at" = bugünkü atamalar; Manager'da "Manages" = bugünkü lokasyon atamaları |
-| manager / admin / owner, çalışan kaydı yok ya da yalnız Management işleri var | yalnız yönetim rolü; Manager'da "Manages" = bugünkü lokasyon atamaları; iş atamaları ve müsaitliği silinir |
+| manager / admin / owner, çalışan kaydı yok ya da yalnız Management işleri var | yalnız yönetim rolü; Manager'da "Manages" = bugünkü lokasyon atamaları; Management işleri yönetim tarafına geçer; müsaitliği silinir |
+| Management işi olmayan manager / admin | workspace'in "Manager" işi (yoksa General Manager) yönetim tarafına atanır (madde 4.13) |
 | İkinci satırdaki kişi "Exclude from schedule" işaretliyse | aynı (yönetim rolü + Employee), işaret korunur |
 | Lokasyonu olmayan Manager (bugün "No location") | yalnız yönetim rolü, "Manages" boş; Employees listesinde bugünkü "No location" etiketi kalır |
 Migration'dan önce canlıda ve yerelde her satırın sayısı çıkarılır; taşımadan sonra aynı sayılar tutmalı (doğrulama SELECT'i kontrol listesinde).
@@ -166,8 +179,15 @@ Yetki çekirdeği ve üyelik modeli; davet (Employees → Add employee, Access);
 - **Bu işte:** "Employee view" düğmesi çalışan kaydı olmayan yöneticide görünüyor (madde 4.1 ile kalkar).
 - **Karar defteri tutarsızlığı:** "owner'ın talebi onaysız kaydolur" yazıyor, kod owner'ın takasını onaya gönderiyor. Madde 4.5 çalışan tarafı için kuralı koyuyor; izin için bugünkü onaysız kayıt kuralı yalnız yönetim tarafında anlamsızlaşır (owner'ın izni Employee rolüyle verilir). Açık soru 8.1.
 
-## 8. Açık sorular
-(Builder kontrolünden sonra doldurulur.)
+## 8. Açık sorular ve builder kontrolünde verilen cevaplar
+**8.1 Açık (Mert):** owner + Employee kişi lokasyonun tek yöneticisiyse ve workspace'te admin yoksa çalışan tarafındaki takasına ya da iznine kim karar verir? Öneri: lokasyonda başka müdür varsa o; yoksa herhangi bir admin; o da yoksa talep onaysız geçerli olur ve müdürlere / adminlere bilgi bildirimi gider (bugünkü "owner'ın talebi onaysız kaydolur" kuralıyla aynı yön). Reddedilecek alternatif: talep hiç açılamasın. Cevap gelene kadar bu durum için kod yazılmaz.
+
+**Builder kontrolünde Claude'un verdiği cevaplar (Mert okurken bakar):**
+- **Özel roller:** hesapta iki rol yuvası olur: çalışan yuvası (yok ya da employee sınıfından bir rol: Employee ya da "Trainee" gibi özel rol) ve yönetim yuvası (yok, manager sınıfından bir rol, Admin ya da Owner). Kişinin kendi işlerine ait izinler (`exchange.offer_own`, `availability.own` gibi) yalnız çalışan yuvasındaki rolden okunur; yönetim rollerinin izin listesinden bu izinler kalkar. Settings → Roles ekranı değişmez.
+- **Ayrım nerede uygulanır:** yetki çekirdeği iki ayrı kimlik hesaplamaz. Çalışan arayüzü yalnız çalışan servislerini çağırır; bu servisler kişinin kendi kapsamıyla ve çalışan yuvasındaki rolle cevap verir, yönetim verisi döndürmez. Bildirimlerin arayüz alanı ve "kişi kendi hakkındaki yönetim bilgisini görmez" kuralı sunucuda uygulanır.
+- **Sonradan Employee eklenen yönetici:** çalışan arayüzüne ilk girişte yalnız eksik adımları görür; eksik zorunlu belge bugünkü kısıt kuralıyla programı kapatır; müsaitlik adımı bugünkü gibi isteğe bağlıdır. Owner'ın kendine Employee vermesi de aynı.
+- **Kapatma işi:** madde 5.2.
+- **Kayıtlar:** S-164 … S-167 şu an `coord/kayit2`'de; plan yazılmadan önce o dal bir trenle main'e iner (ana oturum).
 
 ## 9. Yapana bırakılanlar
 - Veri modelinin biçimi (üyelikte Employee bayrağı + yönetim rolü mü, ayrı rol satırları mı), "Manages" tablosu, bildirim türlerine arayüz alanı.
