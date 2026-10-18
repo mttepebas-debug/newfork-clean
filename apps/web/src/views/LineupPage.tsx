@@ -131,6 +131,8 @@ export function LineupPage() {
   // The Publish window lists every lineup of the day, whatever the filters show (PLAN §3).
   const allLineups = useMemo(() => (day.data ? lineupDay(day.data, model ?? null) : []), [day.data, model]);
   const canShare = context ? can(context, "lineup.share") : false;
+  // Whether a shift has started is told by each location's clock, not the device's: it locks Edit.
+  const nowAt = (location: LineupLocation) => (date === todayIn(location.timezone) ? clockIn(location.timezone) : null);
   const waiting = unpublishedCount(allLineups);
   const anyPublished = allLineups.some((location) => location.shifts.some((shift) => shift.publish.published));
   const publishControl = canShare && day.data ? (
@@ -148,6 +150,7 @@ export function LineupPage() {
           dateLabel={shortDate(date)}
           locations={allLineups}
           timeFormat={model?.settings.time_format ?? "12h"}
+          nowAt={nowAt}
           onClose={closePublish}
         />
       ) : null}
@@ -188,8 +191,7 @@ export function LineupPage() {
         onLocation={(id) => setParam("location", id)}
         chosen={shiftTypeId}
         onShift={(key) => setParam("shift", key)}
-        // Whether a shift has started is told by each location's clock, not the phone's.
-        nowAt={(location) => (date === todayIn(location.timezone) ? clockIn(location.timezone) : null)}
+        nowAt={nowAt}
         timeFormat={timeFormat}
         publish={
           canShare && day.data
@@ -205,6 +207,7 @@ export function LineupPage() {
                     dateLabel={shortDate(date)}
                     locations={allLineups}
                     timeFormat={timeFormat}
+                    nowAt={nowAt}
                     onClose={closePublish}
                     className="is-sheet"
                   />

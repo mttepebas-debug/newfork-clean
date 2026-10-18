@@ -232,7 +232,7 @@ describe("LineupPage publishing", () => {
     expect(ask.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(ask);
     fireEvent.click(within(window).getByRole("button", { name: "Publish 1" }));
-    await within(window).findByText("Published 1 lineup · 1 person notified");
+    await within(window).findByRole("button", { name: "Published" }, { timeout: 2000 });
     expect(commands).toHaveLength(1);
     expect(commands[0]).toMatchObject({
       kind: "share",
@@ -241,7 +241,9 @@ describe("LineupPage publishing", () => {
     });
   });
 
-  it("shows a published lineup green with its readers, and unpublishes it with two clicks", async () => {
+  // S-162 (Mert 2026-10-18): a published lineup has the phone's green Edit here too, not a red two-click Unpublish;
+  // it opens the same Edit window, in the middle of the page.
+  it("shows a published lineup green with its readers, and takes it back with the green Edit", async () => {
     published = {
       [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
     };
@@ -255,12 +257,96 @@ describe("LineupPage publishing", () => {
     const window = screen.getByRole("dialog", { name: "Publish lineups" });
     const downtownList = within(window).getByRole("region", { name: "Downtown" });
     expect(within(downtownList).queryByRole("checkbox")).toBeNull();
-    const unpublish = within(downtownList).getByRole("button", { name: "Unpublish Lunch" });
-    fireEvent.click(unpublish);
+    expect(within(window).queryByRole("button", { name: /Unpublish/ })).toBeNull();
+    expect(document.querySelector(".lineup-publish-unpublish")).toBeNull();
+    const edit = within(downtownList).getByRole("button", { name: "Edit Lunch lineup" });
+    expect(edit.textContent).toBe("Edit");
+    fireEvent.click(edit);
     expect(commands).toHaveLength(0);
-    fireEvent.click(within(downtownList).getByRole("button", { name: /Unpublish Lunch\?/ }));
-    await within(window).findByText("Unpublished. Staff can't see Lunch until you publish it again.");
-    expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, shift_type_id: lunch }] });
+    const ask = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
+    expect(within(ask).getByText("Downtown · Published at 2:10 PM")).toBeTruthy();
+    expect(within(ask).getByText("Back to draft")).toBeTruthy();
+    expect(within(ask).getByText("Staff don't see it until you publish again.")).toBeTruthy();
+    expect(within(ask).getByText("Everyone gets the new version")).toBeTruthy();
+    expect(
+      within(ask).getByText("When you publish again, everyone sees the new version; their earlier read doesn't carry over."),
+    ).toBeTruthy();
+    // Escape answers the Edit window only; the Publish window stays under it.
+    fireEvent.keyDown(ask, { key: "Escape" });
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBeTruthy();
+    // A click inside the Edit window isn't a click outside the Publish window.
+    fireEvent.click(within(downtownList).getByRole("button", { name: "Edit Lunch lineup" }));
+    const again = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
+    fireEvent.pointerDown(within(again).getByText("Back to draft"));
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBeTruthy();
+    published = {};
+    fireEvent.click(within(again).getByRole("button", { name: "Edit" }));
+    expect(within(again).getByRole("button", { name: "Unpublishing…" })).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(commands).toHaveLength(1);
+    expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, service_date: day, shift_type_id: lunch }] });
+    // Back to draft, ticked to go out again; focus waits on its box, not on the page; no green line in the window.
+    const box = await within(within(window).getByRole("region", { name: "Downtown" })).findByRole("checkbox", { name: /Lunch/ });
+    expect(box.getAttribute("aria-checked")).toBe("true");
+    expect(document.activeElement).toBe(box);
+    expect(within(window).queryByRole("status")).toBeNull();
+  });
+
+  it("locks the green Edit once the shift has started, as on the phone", async () => {
+    clocks = { "America/Los_Angeles": "12:00" };
+    published = {
+      [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    renderPage();
+    await screen.findByRole("article", { name: "Downtown" });
+    fireEvent.click(screen.getByRole("button", { name: /^Publish/ }));
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    const edit = within(within(window).getByRole("region", { name: "Downtown" })).getByRole("button", { name: "Edit Lunch lineup" });
+    expect((edit as HTMLButtonElement).disabled).toBe(true);
+    expect(edit.title).toBe("This shift has started");
+  });
+
+  // Mert 2026-10-17 (notice A): Publish says what it does inside itself, a spinner and "Publishing…", then a check
+  // and "Published" (2.6 s in all), then the button as it was; no green line in the window, no notice.
+  it("works inside the Publish button, then gives the button back, with one command however often it is pressed", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    const go = within(window).getByRole("button", { name: "Publish 2" });
+    go.focus();
+    fireEvent.click(go);
+    const pressed = Date.now();
+    const working = within(window).getByRole("button", { name: "Publishing…" });
+    expect(working).toBe(go);
+    expect(working.getAttribute("aria-busy")).toBe("true");
+    expect(working.getAttribute("aria-disabled")).toBe("true");
+    expect(working.querySelector(".lineup-publish-spin")?.getAttribute("aria-hidden")).toBe("true");
+    // Still in the keyboard's hands while it works.
+    expect(document.activeElement).toBe(working);
+    fireEvent.click(working);
+    fireEvent.click(working);
+    const done = await within(window).findByRole("button", { name: "Published" }, { timeout: 2000 });
+    expect(done).toBe(go);
+    expect(Date.now() - pressed).toBeGreaterThanOrEqual(850);
+    fireEvent.click(done);
+    expect(commands).toHaveLength(1);
+    expect(within(window).queryByText(/notified/)).toBeNull();
+    expect(within(window).queryByRole("status")).toBeNull();
+    // Then the button as it was: nothing left to publish, so Done, which closes; focus stays on it.
+    const back = await within(window).findByRole("button", { name: "Done" }, { timeout: 3000 });
+    expect(Date.now() - pressed).toBeGreaterThanOrEqual(2550);
+    expect(back.getAttribute("aria-busy")).toBeNull();
+    expect(document.activeElement).toBe(back);
+    expect(screen.queryAllByRole("status").filter((element) => element.getAttribute("data-testid") !== "where")).toEqual([]);
+  });
+
+  it("leaves the spinner out and only changes the words when motion is reduced", () => {
+    const css = readFileSync("src/schedule/lineup-publish.css", "utf8");
+    const reduced = css.slice(css.indexOf("@media (prefers-reduced-motion: reduce)"));
+    expect(reduced).toMatch(/\.lineup-publish-spin\s*\{\s*display:\s*none;/);
+    expect(css).not.toMatch(/lineup-publish-unpublish/);
+    expect(css).not.toMatch(/lineup-publish-sum\.is-ok/);
   });
 
   it("opens who read a lineup from its Read count, and closes with a click outside or Escape", async () => {
@@ -691,12 +777,30 @@ describe("LineupPage on a phone, E", () => {
     const ask = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
     // The day read answers with the draft from now on.
     published = {};
-    fireEvent.click(within(ask).getByRole("button", { name: "Edit" }));
+    const edit = within(ask).getByRole("button", { name: "Edit" });
+    edit.focus();
+    fireEvent.click(edit);
     const pressed = Date.now();
     const working = within(ask).getByRole("button", { name: "Unpublishing…" }) as HTMLButtonElement;
-    expect(working.disabled).toBe(true);
-    expect((within(ask).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    // Off while it works, yet still holding the keyboard's focus (not dropped on the page): aria-disabled, not disabled.
+    expect(working).toBe(edit);
+    expect(working.getAttribute("aria-disabled")).toBe("true");
+    expect(working.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(working);
+    const cancel = within(ask).getByRole("button", { name: "Cancel" });
+    expect(cancel.getAttribute("aria-disabled")).toBe("true");
+    // A second press, Cancel or Escape while it works do nothing.
+    fireEvent.click(working);
+    fireEvent.click(cancel);
+    fireEvent.keyDown(working, { key: "Escape" });
+    expect(screen.getByRole("alertdialog")).toBe(ask);
+    // The day read already says draft, the window still says when it went out (frozen when it opened).
+    await within(card).findByText("Draft");
+    expect(screen.queryByRole("alertdialog")).toBe(ask);
+    expect(within(ask).getByText(/^Downtown · Published at \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
+    expect(document.activeElement).toBe(working);
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(commands).toHaveLength(1);
     // The answer is quick here; the button still holds LINEUP_BUSY_MS so its words can be read.
     expect(Date.now() - pressed).toBeGreaterThanOrEqual(LINEUP_BUSY_MS - 20);
     const status = within(card).getByText("Draft");
@@ -960,7 +1064,9 @@ describe("LineupPage on a phone, E", () => {
     const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
     expect(sheet.classList.contains("is-sheet")).toBe(true);
     fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
-    await within(sheet).findByText("Published 2 lineups · 2 people notified");
+    expect(within(sheet).getByRole("button", { name: "Publishing…" })).toBeTruthy();
+    await within(sheet).findByRole("button", { name: "Published" }, { timeout: 2000 });
+    expect(within(sheet).queryByText(/notified/)).toBeNull();
     expect(commands[0]).toMatchObject({ kind: "share", ask_ack: true });
   });
 
@@ -1031,9 +1137,12 @@ describe("LineupPage on a phone, E", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
     const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
     fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
-    await within(sheet).findByText("Published 2 lineups · 2 people notified");
-    await within(await screen.findByRole("region", { name: "Downtown, Lunch" })).findByText("Live");
-    fireEvent.click(within(screen.getByRole("dialog", { name: "Publish lineups" })).getByRole("button", { name: "Done" }));
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    await within(card).findByText("Live");
+    // Live and "Published at" light up once on the card (notice A), no notice.
+    expect(within(card).getByText("Live").classList.contains("is-flash")).toBe(true);
+    expect(within(card).getByText(/^Published at /).classList.contains("is-flash")).toBe(true);
+    fireEvent.click(await within(sheet).findByRole("button", { name: "Done" }, { timeout: 4000 }));
     expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
     expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
   });

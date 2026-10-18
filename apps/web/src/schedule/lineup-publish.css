@@ -29,19 +29,12 @@ div.lineup-publish-pick { cursor: default; }
 .lineup-publish-meta { display: inline-flex; flex: none; align-items: center; gap: 4px; color: var(--theme-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
 .lineup-publish-meta.is-published { color: var(--theme-published); }
 .lineup-publish-meta.is-editing { color: var(--theme-warning-text); }
-/* Unpublish: shows on hover or keyboard focus, like the Schedule menus; always on a touch screen; two clicks. */
-.lineup-publish-unpublish { position: absolute; top: 50%; right: 6px; height: 26px; padding: 0 9px; border: 0; border-radius: 5px; background: var(--theme-surface-muted); color: var(--theme-danger); font-size: 12px; font-weight: 600; opacity: 0; pointer-events: none; transform: translateY(-50%); cursor: pointer; }
-.lineup-publish-row:hover .lineup-publish-unpublish, .lineup-publish-unpublish:focus-visible, .lineup-publish-unpublish.is-armed { opacity: 1; pointer-events: auto; }
-.lineup-publish-unpublish:hover { background: var(--theme-danger-soft); }
-.lineup-publish-unpublish.is-armed { background: var(--theme-danger); color: var(--theme-on-accent); }
-.lineup-publish-unpublish:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
-.lineup-publish-row:hover .lineup-publish-meta.is-published,
-.lineup-publish-row:has(.lineup-publish-unpublish:focus-visible) .lineup-publish-meta.is-published,
-.lineup-publish-row:has(.lineup-publish-unpublish.is-armed) .lineup-publish-meta.is-published { visibility: hidden; }
-@media (hover: none) {
-  .lineup-publish-unpublish { position: static; flex: none; margin-right: 4px; opacity: 1; pointer-events: auto; transform: none; }
-  .lineup-publish-row .lineup-publish-meta.is-published { visibility: visible !important; }
-}
+/* A published lineup's green Edit (S-162, Mert 2026-10-18): the phone card's Edit, always shown; it opens the Edit
+   window. Locked with the padlock once the shift has started, as on the phone. */
+.lineup-publish-edit { display: inline-flex; flex: none; min-height: 28px; align-items: center; gap: 4px; margin: 0 4px 0 2px; padding: 0 7px; border: 0; border-radius: 6px; background: none; color: var(--theme-accent-deep); font-size: 12.5px; font-weight: 650; cursor: pointer; }
+.lineup-publish-edit svg { width: 13px; height: 13px; }
+.lineup-publish-edit:hover:not(:disabled) { background: var(--theme-accent-soft); }
+.lineup-publish-edit:disabled { color: var(--theme-muted); cursor: default; }
 .lineup-publish-sep { height: 1px; margin: 6px 0; background: var(--theme-border-subtle); }
 .lineup-publish-item { display: flex; min-height: 36px; align-items: center; gap: 10px; margin: 0 6px; padding: 0 10px; border: 0; border-radius: 6px; background: transparent; color: var(--theme-text); text-align: left; cursor: pointer; }
 .lineup-publish-item:hover { background: var(--theme-surface-muted); }
@@ -52,10 +45,40 @@ div.lineup-publish-pick { cursor: default; }
 .lineup-publish-item[aria-checked="true"] .lineup-publish-switch::after { transform: translateX(12px); }
 .lineup-publish-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; padding: 10px 12px 10px 16px; border-top: 1px solid var(--theme-border-subtle); }
 .lineup-publish-sum { color: var(--theme-muted); font-size: 12px; }
-.lineup-publish-sum.is-ok { display: inline-flex; align-items: center; gap: 6px; color: var(--theme-published); font-weight: 500; }
-.nf-button.lineup-publish-go { display: inline-flex; min-height: 32px; align-items: center; gap: 6px; padding: 0 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
-.secondary-button.lineup-publish-done { min-height: 32px; padding: 0 12px; font-size: 12.5px; font-weight: 700; }
+.nf-button.lineup-publish-go { display: inline-flex; min-width: 112px; min-height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
+.secondary-button.lineup-publish-done { min-width: 112px; min-height: 32px; padding: 0 12px; font-size: 12.5px; font-weight: 700; }
+/* Publish works in place (Mert 2026-10-17, notice A; mockup v-e.css e-pb): a spinner and "Publishing…", then a
+   check that pops in and "Published", then the button as it was. Off while it works, but still focusable. */
+.nf-button.lineup-publish-go[aria-disabled="true"] { cursor: default; }
+.nf-button.lineup-publish-go[aria-disabled="true"]:hover { background: var(--theme-accent); }
+.lineup-publish-spin { width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
+.lineup-publish-ok { display: inline-flex; align-items: center; gap: 6px; animation: lineup-publish-pop .35s ease-out both; }
+@keyframes lineup-publish-spin { to { transform: rotate(360deg); } }
+@keyframes lineup-publish-pop { 0% { opacity: 0; transform: scale(.8); } 60% { transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
 .lineup-publish-empty { margin: 0; padding: 10px; color: var(--theme-muted); }
+
+/* Edit window A (Mert 2026-10-17 ~1:15 PM; mockup lineup-edit-bildirim x-ui.css .x-cons), on the phone card and in
+   this window (S-162): two consequences, each an icon, a bold line and one line under it, in the app's own window
+   (shell/ConfirmDialog, a portal, in the middle of the page). */
+.lineup-edit-points { display: grid; gap: 14px; margin: 16px 0 0; padding: 0; list-style: none; }
+.lineup-edit-points li { display: grid; grid-template-columns: 34px minmax(0, 1fr); align-items: start; gap: 12px; }
+.lineup-edit-icon { display: grid; width: 34px; height: 34px; place-items: center; border-radius: 9px; background: var(--theme-surface-muted); color: var(--theme-accent-deep); }
+.lineup-edit-icon svg { width: 17px; height: 17px; }
+.lineup-edit-text { display: grid; gap: 2px; padding-top: 1px; }
+.lineup-edit-text b { color: var(--theme-text); font-size: 14px; font-weight: 700; line-height: 1.35; }
+.lineup-edit-text span { color: var(--theme-text-secondary); font-size: 13px; line-height: 1.4; }
+/* Its green Edit works in place (Mert 2026-10-17 ~1:45 PM): while it takes the lineup back it spins and says
+   "Unpublishing…"; it and Cancel are off (aria-disabled) but keep the keyboard's focus (D2). */
+.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-disabled="true"] { cursor: default; }
+.app-confirm:has(.lineup-edit-points) footer .secondary-button[aria-disabled="true"] { opacity: .55; }
+.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"] { gap: 8px; }
+.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]:hover { background: var(--theme-accent); }
+.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
+
+/* No motion: the words change, no spinner, nothing pops. */
 @media (prefers-reduced-motion: reduce) {
   .lineup-publish-switch, .lineup-publish-switch::after { transition: none; }
+  .lineup-publish-spin { display: none; }
+  .lineup-publish-ok { animation: none; }
+  .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: none; }
 }

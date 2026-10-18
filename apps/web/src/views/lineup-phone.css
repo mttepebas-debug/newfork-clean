@@ -534,51 +534,6 @@
   color: var(--theme-warning-text);
 }
 
-/* Edit window A (Mert 2026-10-17 ~1:15 PM; mockup lineup-edit-bildirim x-ui.css .x-cons): two consequences, each an
-   icon, a bold line and one line under it, in the app's own window (shell/ConfirmDialog, a portal). */
-.lineup-edit-points {
-  display: grid;
-  gap: 14px;
-  margin: 16px 0 0;
-  padding: 0;
-  list-style: none;
-}
-.lineup-edit-points li {
-  display: grid;
-  grid-template-columns: 34px minmax(0, 1fr);
-  align-items: start;
-  gap: 12px;
-}
-.lineup-edit-icon {
-  display: grid;
-  width: 34px;
-  height: 34px;
-  place-items: center;
-  border-radius: 9px;
-  background: var(--theme-surface-muted);
-  color: var(--theme-accent-deep);
-}
-.lineup-edit-icon svg {
-  width: 17px;
-  height: 17px;
-}
-.lineup-edit-text {
-  display: grid;
-  gap: 2px;
-  padding-top: 1px;
-}
-.lineup-edit-text b {
-  color: var(--theme-text);
-  font-size: 14px;
-  font-weight: 700;
-  line-height: 1.35;
-}
-.lineup-edit-text span {
-  color: var(--theme-text-secondary);
-  font-size: 13px;
-  line-height: 1.4;
-}
-
 /* Notes (Mert 2026-10-17 ~11:30 AM; mockup v-e.css .e-notes): one white card, a section per note with its icon
    and heading over the text. Nothing edits them here. */
 .lineup-notes {
@@ -749,12 +704,28 @@
   margin-top: 10px;
 }
 
-/* Edit has taken the lineup back (notice A, Mert 2026-10-17 ~1:15 PM): no notice; Draft and "Not published yet"
-   light up once on the card (mockup v-e.css e-flash-draft). */
+/* Notice A (Mert 2026-10-17 ~1:15 PM): no notice. Edit has taken the lineup back: Draft and "Not published yet"
+   light up once on the card (mockup v-e.css e-flash-draft); it has gone out: Live and "Published at" light up once
+   (e-flash-live). */
 .lineup-card-status.is-flash,
 .lineup-card-at.is-flash {
   border-radius: 6px;
-  animation: lineup-flash-draft 1.8s ease-out;
+  animation: lineup-flash-live 1.8s ease-out;
+}
+.lineup-card-status.is-draft.is-flash,
+.lineup-card-at.is-off.is-flash {
+  animation-name: lineup-flash-draft;
+}
+@keyframes lineup-flash-live {
+  0%,
+  35% {
+    background: var(--theme-accent-soft);
+    box-shadow: 0 0 0 4px var(--theme-accent-soft);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
 }
 @keyframes lineup-flash-draft {
   0%,
@@ -765,30 +736,6 @@
   100% {
     background: transparent;
     box-shadow: 0 0 0 4px transparent;
-  }
-}
-
-/* The Edit window's green Edit works in place (Mert 2026-10-17 ~1:45 PM): while it takes the lineup back it spins
-   and says "Unpublishing…" (the window is shell/ConfirmDialog; its points mark it as the Edit window). */
-.app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled {
-  gap: 8px;
-  opacity: 1;
-  cursor: default;
-}
-.app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled::before {
-  content: "";
-  width: 14px;
-  height: 14px;
-  flex: none;
-  box-sizing: border-box;
-  border: 2px solid currentColor;
-  border-top-color: transparent;
-  border-radius: 50%;
-  animation: lineup-spin 0.7s linear infinite;
-}
-@keyframes lineup-spin {
-  to {
-    transform: rotate(360deg);
   }
 }
 
@@ -872,8 +819,8 @@
   padding: 0 16px;
   font-size: 14px;
 }
-.lineup-publish-window.is-sheet .lineup-publish-unpublish {
-  height: 34px;
+.lineup-publish-window.is-sheet .lineup-publish-edit {
+  min-height: 44px;
 }
 @keyframes lineup-sheet-in {
   from {
@@ -892,9 +839,5 @@
   .lineup-card-status.is-flash,
   .lineup-card-at.is-flash {
     animation: none;
-  }
-  /* No motion: the words change, no spinner. */
-  .app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled::before {
-    content: none;
   }
 }

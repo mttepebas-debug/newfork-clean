@@ -1,4 +1,4 @@
-import { Ban, ChevronDown, Eye, EyeOff, Lock, MapPin, MessageSquareText, Pencil, RotateCw, Sparkles, Users } from "lucide-react";
+import { Ban, ChevronDown, Eye, Lock, MapPin, MessageSquareText, Pencil, Sparkles, Users } from "lucide-react";
 import {
   Fragment,
   useEffect,
@@ -19,20 +19,17 @@ import {
   lineupCardState,
   lineupNoteCount,
   lineupShiftSpan,
-  LINEUP_BUSY_MS as BUSY_MS,
   phoneLineupKey,
   phoneShiftTabs,
   type LineupLocation,
   type LineupRow,
   type LineupShift,
 } from "../schedule/lineup";
-import { lineupCommandMessage, useLineupCommand } from "../schedule/lineup-data";
-import { LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
+import { LineupEditWindow, LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
 import { LineupReadPhone } from "../schedule/LineupReadList";
 import { dockPlace } from "../schedule/lineup-wheel";
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
-import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
 import "./lineup-phone.css";
@@ -327,9 +324,16 @@ function LineupCard({
 }) {
   const [editing, setEditing] = useState(false);
   const { live, started } = lineupCardState(shift, now);
-  // Edit has taken it back (Mert 2026-10-17 ~1:15 PM, notice A): no notice; the card's Draft lights up once.
+  // Notice A (Mert 2026-10-17 ~1:15 PM): no notice. Edit has taken it back: the card's Draft lights up once; it has
+  // gone out (Publish, or anyone's publish while the card is on screen): Live and "Published at" light up once.
   const [flash, setFlash] = useState(false);
-  const lit = flash && !live ? " is-flash" : "";
+  const lit = flash ? " is-flash" : "";
+  const seen = useRef({ key: `${location.id}:${shift.key}`, live });
+  useEffect(() => {
+    const key = `${location.id}:${shift.key}`;
+    if (seen.current.key === key && !seen.current.live && live) setFlash(true);
+    seen.current = { key, live };
+  }, [location.id, shift.key, live]);
   const span = lineupShiftSpan(shift);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   // On the location's clock, the one the started lock reads.
@@ -417,7 +421,7 @@ function LineupCard({
         </>
       ) : null}
       {editing && edit ? (
-        <EditLineup
+        <LineupEditWindow
           workspaceId={edit.workspaceId}
           date={edit.date}
           location={location}
@@ -432,91 +436,6 @@ function LineupCard({
         />
       ) : null}
     </section>
-  );
-}
-
-/**
- * Edit window A (Mert 2026-10-17 ~1:15 PM): what Edit does, in two lines, before the lineup goes back to draft. The
- * words follow today's rule: a republished lineup asks everyone again (the changed-only rule is BL-1135).
- */
-function EditLineup({
-  workspaceId,
-  date,
-  location,
-  shift,
-  at,
-  onClose,
-  onDone,
-}: {
-  readonly workspaceId: string | null;
-  readonly date: string;
-  readonly location: LineupLocation;
-  readonly shift: LineupShift;
-  readonly at: string;
-  readonly onClose: () => void;
-  /** The lineup is back in draft. */
-  readonly onDone: () => void;
-}) {
-  const command = useLineupCommand(workspaceId, date);
-  const [refused, setRefused] = useState<string | null>(null);
-  // The green Edit says what it does (Mert 2026-10-17 ~1:45 PM): a spinner and "Unpublishing…" for at least
-  // BUSY_MS, so a quick answer still reads; then the window closes on the draft.
-  const [working, setWorking] = useState(false);
-  const timer = useRef<number | undefined>(undefined);
-  useEffect(() => () => window.clearTimeout(timer.current), []);
-  const busy = working || command.isPending;
-  return (
-    <ConfirmDialog
-      open
-      title={`Edit ${shift.name} lineup?`}
-      description={`${location.name} · Published at ${at}`}
-      confirmLabel={busy ? "Unpublishing…" : "Edit"}
-      busy={busy}
-      onCancel={onClose}
-      onConfirm={() => {
-        const since = Date.now();
-        setWorking(true);
-        setRefused(null);
-        command.mutate(
-          { kind: "unpublish", lineups: [shift.publish.target] },
-          {
-            onSuccess: () => {
-              timer.current = window.setTimeout(onDone, Math.max(0, BUSY_MS - (Date.now() - since)));
-            },
-            onError: (reason) => {
-              setWorking(false);
-              setRefused(lineupCommandMessage(reason));
-            },
-          },
-        );
-      }}
-    >
-      <ul className="lineup-edit-points">
-        <li>
-          <span className="lineup-edit-icon" aria-hidden>
-            <EyeOff />
-          </span>
-          <span className="lineup-edit-text">
-            <b>Back to draft</b>
-            <span>Staff don't see it until you publish again.</span>
-          </span>
-        </li>
-        <li>
-          <span className="lineup-edit-icon" aria-hidden>
-            <RotateCw />
-          </span>
-          <span className="lineup-edit-text">
-            <b>Everyone gets the new version</b>
-            <span>When you publish again, everyone sees the new version; their earlier read doesn't carry over.</span>
-          </span>
-        </li>
-      </ul>
-      {refused ? (
-        <p className="form-error" role="alert">
-          {refused}
-        </p>
-      ) : null}
-    </ConfirmDialog>
   );
 }
 
