@@ -77,6 +77,8 @@ export interface LineupClosure {
 export interface LineupLocation {
   readonly id: string;
   readonly name: string;
+  /** The location's IANA time zone: its own clock says when a shift has started. */
+  readonly timezone: string;
   /** A published closed day: the location has no lineup. */
   readonly closed: LineupClosure | null;
   /** Published short hours that day. */
@@ -201,6 +203,7 @@ export function lineupDay(
       return {
         id: location.id,
         name: location.name,
+        timezone: location.timezone,
         closed,
         shortHours: published(location.short_hours),
         shifts,
@@ -275,16 +278,14 @@ export function phoneLineupShift(
 }
 
 /**
- * The phone summary's state line (D2, Mert 2026-10-16): published; started (the day is over, or today its
- * first person is in: `now` is HH:MM when the day is today); a draft staff can't see; nobody on it yet.
+ * The phone card's state (E, card 1; Mert 2026-10-17): live (staff see it) or a draft, and whether the shift has
+ * started: the day is over, or today (`now` is HH:MM on the location's clock) its first person is in. A started
+ * shift locks Edit, live or not.
  */
-export function lineupPhoneState(shift: LineupShift, now: string | null): "published" | "started" | "draft" | "none" {
-  if (shift.publish.published) return "published";
-  if (shift.publish.status === "past") return "started";
-  if (!shift.count) return "none";
+export function lineupCardState(shift: LineupShift, now: string | null): { readonly live: boolean; readonly started: boolean } {
   const span = lineupShiftSpan(shift);
-  if (now !== null && span && minutes(now) >= minutes(span.firstIn)) return "started";
-  return "draft";
+  const started = shift.publish.status === "past" || (now !== null && span !== null && minutes(now) >= minutes(span.firstIn));
+  return { live: shift.publish.published, started };
 }
 
 /** How many of a lineup's notes staff see (an empty note doesn't show). */

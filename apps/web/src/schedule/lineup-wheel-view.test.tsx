@@ -2,7 +2,7 @@ import { configure, fireEvent, render, screen, waitFor, within } from "@testing-
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { LineupDayHead, LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "./lineup-wheel-view";
+import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "./lineup-wheel-view";
 
 // The Lineup's day picker, shared by the manager's phone Lineup and the employee's Lineup (Mert 2026-10-17).
 
@@ -110,13 +110,7 @@ describe("LineupShiftTabs", () => {
   });
 });
 
-describe("LineupDayHead and LineupLocationSelect", () => {
-  it("names the location and the day", () => {
-    render(<LineupDayHead location="Downtown" date="2026-10-14" shift="Dinner" />);
-    expect(screen.getByRole("heading", { name: "Downtown" })).toBeTruthy();
-    expect(screen.getByText("Wednesday, October 14 · Dinner")).toBeTruthy();
-  });
-
+describe("LineupLocationSelect", () => {
   it("lists the locations; nothing without one", () => {
     const { rerender } = render(
       <LineupLocationSelect loading={false} locations={[{ id: "a", name: "Downtown" }]} value="a" onChange={() => undefined} />,

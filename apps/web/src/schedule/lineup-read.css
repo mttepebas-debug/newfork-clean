@@ -65,6 +65,47 @@
   font-weight: 650;
   letter-spacing: 0;
 }
+/* The phone's Read tab (Mert 2026-10-17 ~1 PM; mockup v-e.css .e-rprog): the first heading carries "N/M" and a
+   thin 120 px bar, right-aligned. */
+.lineup-read-head {
+  display: flex;
+  min-height: 32px;
+  align-items: center;
+  gap: 14px;
+  padding: 0 4px;
+}
+.lineup-read-head h3 {
+  padding: 0;
+}
+.lineup-read-prog {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 10px;
+  margin-left: auto;
+}
+.lineup-read-prog b {
+  color: var(--theme-text);
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+}
+.lineup-read-bar {
+  position: relative;
+  display: block;
+  width: 120px;
+  height: 6px;
+  flex: none;
+  overflow: hidden;
+  border-radius: 3px;
+  background: var(--theme-border-subtle);
+}
+.lineup-read-bar > i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  border-radius: 3px;
+  background: var(--theme-published);
+}
 .lineup-read-list {
   margin: 0;
   border: 1px solid var(--theme-list-frame, var(--theme-border));

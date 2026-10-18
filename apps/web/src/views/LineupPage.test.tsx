@@ -27,7 +27,13 @@ const context = {
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 // The day and its wall clock are fixed: "today" is October 13 at 9 AM, before any test shift begins, so a draft or
 // published lineup isn't drawn as started in the afternoon.
-vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13", clockIn: () => "09:00" }));
+// A test can set another zone's wall clock: `clocks` by IANA zone, the device's own under "device".
+let clocks: Record<string, string> = {};
+vi.mock("../lib/today", async (original) => ({
+  ...(await original<object>()),
+  todayIn: () => "2026-10-13",
+  clockIn: (zone?: string) => clocks[zone ?? "device"] ?? "09:00",
+}));
 let phone = false;
 vi.mock("../lib/usePhoneWidth", () => ({ usePhoneWidth: () => phone, useListPhoneWidth: () => phone }));
 vi.mock("../schedule/hooks/useScheduleRealtime", () => ({ useScheduleRealtime: () => undefined }));
@@ -91,6 +97,7 @@ beforeEach(() => {
   phone = false;
   published = {};
   reads = {};
+  clocks = {};
   commands.length = 0;
   world = model([
     shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] }),
@@ -344,10 +351,11 @@ describe("LineupPage on a phone", () => {
     renderPage();
     const lunchTab = await screen.findByRole("button", { name: "Lunch, 1 person" });
     expect(lunchTab.getAttribute("aria-pressed")).toBe("true");
-    const summary = screen.getByRole("region", { name: "Lunch" });
-    expect(within(summary).getByText("On the floor").previousSibling?.textContent).toBe("1");
-    expect(within(summary).getByText("First in").previousSibling?.textContent).toBe("11:00 AM");
-    expect(within(summary).getByText("Last out").previousSibling?.textContent).toBe("4:00 PM");
+    // Card 1 (Mert 2026-10-17): under the torn edge, Shift · People · Hours.
+    const card = screen.getByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Shift").nextElementSibling?.textContent).toBe("Lunch");
+    expect(within(card).getByText("People").nextElementSibling?.textContent).toBe("1");
+    expect(within(card).getByText("Hours").nextElementSibling?.textContent).toBe("11:00 AM – 4:00 PM");
     const team = screen.getByRole("list", { name: "Server" });
     const maria = within(team).getByRole("listitem");
     expect(maria.textContent).toContain("Maria Lopez");
@@ -359,7 +367,7 @@ describe("LineupPage on a phone", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Dinner, no one" }));
     expect(screen.getByTestId("where").textContent).toBe(`?shift=${dinner}`);
-    expect(screen.getByText("No one is scheduled for Dinner.")).toBeTruthy();
+    expect(screen.getByText("No one is scheduled for Dinner at Downtown")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Location" }), { target: { value: uptown } });
     expect(screen.getByTestId("where").textContent).toContain(`location=${uptown}`);
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
@@ -424,22 +432,104 @@ describe("LineupPage on a phone, E", () => {
     expect(document.activeElement?.getAttribute("aria-label")).toBe("Tuesday, October 13, 2026");
   });
 
-  it("says a draft lineup is a draft, and a published one when it went out, with nothing to edit", async () => {
+  // Card 1 (Mert 2026-10-17): "● Draft ✎ Edit" over "Not published yet", Edit off; "● Live ✎ Edit" over "Published
+  // at <time>"; a started shift locks Edit. No "read-only" anywhere.
+  const editOf = (card: HTMLElement) => within(card).getByRole("button", { name: "Edit" }) as HTMLButtonElement;
+  const live = { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 } as const;
+
+  it("says a draft is a draft, not published yet, its Edit off", async () => {
     renderPage();
-    const summary = await screen.findByRole("region", { name: "Lunch" });
-    expect(within(summary).getByText("Draft · staff can't see it")).toBeTruthy();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Draft")).toBeTruthy();
+    expect(within(card).getByText("Not published yet")).toBeTruthy();
+    expect(editOf(card).disabled).toBe(true);
+    expect(document.body.textContent).not.toMatch(/read-only|staff can't see it/i);
+  });
+
+  it("says a published lineup is live and when it went out, its Edit on", async () => {
+    published = { [lunch]: live };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Live")).toBeTruthy();
+    expect(within(card).getByText(/^Published at \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
+    expect(editOf(card).disabled).toBe(false);
+  });
+
+  it("locks Edit once the shift has started, live or not", async () => {
+    clocks = { "America/Los_Angeles": "12:00" };
+    published = { [lunch]: live };
+    renderPage();
+    let card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Live")).toBeTruthy();
+    expect(editOf(card).disabled).toBe(true);
+    expect(editOf(card).title).toBe("This shift has started");
     cleanup();
-    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 } };
+    published = {};
     renderPage();
-    const after = await screen.findByRole("region", { name: "Lunch" });
-    expect(within(after).getByText(/^Published \d/)).toBeTruthy();
-    expect(within(after).queryByRole("button")).toBeNull();
+    card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Draft")).toBeTruthy();
+    expect(within(card).getByText("Not published")).toBeTruthy();
+    expect(editOf(card).disabled).toBe(true);
+    expect(document.body.textContent).not.toMatch(/read-only/i);
+  });
+
+  // The lock reads the location's clock: noon in Los Angeles while the phone's own clock says 9 AM.
+  it("tells a started shift by the location's clock, not the phone's", async () => {
+    clocks = { "America/Los_Angeles": "12:00", device: "09:00" };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Not published")).toBeTruthy();
+    cleanup();
+    clocks = { "America/Los_Angeles": "09:00", device: "12:00" };
+    renderPage();
+    expect(within(await screen.findByRole("region", { name: "Downtown, Lunch" })).getByText("Not published yet")).toBeTruthy();
+  });
+
+  it("folds the card to its header from a tap or its chevron; the tabs' strip doesn't fold it", async () => {
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const fold = within(card).getByRole("button", { name: "Hide list" });
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(within(card).getByRole("tab", { name: "Notes" }));
+    expect(fold.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(within(card).getByText("Downtown"));
+    expect(within(card).getByRole("button", { name: "Show list" }).getAttribute("aria-expanded")).toBe("false");
+    expect(screen.queryByRole("tablist")).toBeNull();
+    expect(screen.queryByRole("tabpanel")).toBeNull();
+    expect(within(card).queryByText("Hours")).toBeNull();
+    fireEvent.click(within(card).getByRole("button", { name: "Show list" }));
+    expect(screen.getByRole("tablist")).toBeTruthy();
+    expect(screen.getByRole("tabpanel")).toBeTruthy();
+  });
+
+  // Edit window A (Mert 2026-10-17): today's rule, everyone acknowledges again (the changed-only rule is BL-1135).
+  it("asks before Edit takes a published lineup back to draft, in the app's own window", async () => {
+    published = { [lunch]: live };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    fireEvent.click(editOf(card));
+    const ask = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
+    expect(within(ask).getByText(/^Downtown · Published at \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
+    expect(within(ask).getByText("Back to draft")).toBeTruthy();
+    expect(within(ask).getByText("Staff don't see it until you publish again.")).toBeTruthy();
+    expect(within(ask).getByText("Everyone reads it again")).toBeTruthy();
+    expect(within(ask).getByText("When you publish again, everyone is asked to acknowledge.")).toBeTruthy();
+    expect(ask.textContent).not.toMatch(/only|change/i);
+    // The card doesn't fold under the window.
+    expect(within(card).getByRole("button", { name: "Hide list" })).toBeTruthy();
+    fireEvent.click(within(ask).getByRole("button", { name: "Cancel" }));
+    expect(screen.queryByRole("alertdialog")).toBeNull();
+    expect(commands).toHaveLength(0);
+    fireEvent.click(editOf(card));
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }));
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, service_date: day, shift_type_id: lunch }] });
   });
 
   // Mert 2026-10-17 (~8 AM): only the page header stays fixed, at full size; everything under it scrolls.
   it("pins only the page header; the date row, wheel and tabs scroll with the page", async () => {
     renderPage();
-    await screen.findByRole("region", { name: "Lunch" });
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
     const pinned = document.querySelectorAll("[data-frozen-own]");
     expect(pinned).toHaveLength(1);
     const head = pinned[0]!;
@@ -454,15 +544,16 @@ describe("LineupPage on a phone, E", () => {
     expect(sticky).toEqual([".lineup-phone-page .lineup-phone-head"]);
   });
 
-  // Mert 2026-10-17 (~7:40 AM): the employee page's location and date head, under the shift tabs, over the card.
-  it("puts the location and date under the shift tabs, over the summary card", async () => {
+  // Mert 2026-10-17 (~9:10 AM): the location and the day go into the card, right under the shift tabs.
+  it("puts the location and date in the card, under the shift tabs", async () => {
     renderPage();
-    const summary = await screen.findByRole("region", { name: "Lunch" });
-    const head = screen.getByRole("heading", { name: "Downtown" }).closest(".lineup-day-head")!;
-    expect(head.textContent).toBe("DowntownTuesday, October 13 · Lunch");
-    expect(head.nextElementSibling).toBe(summary);
-    expect(head.previousElementSibling?.classList.contains("lineup-phone-top")).toBe(true);
-    expect(screen.getByRole("group", { name: "Shifts" }).compareDocumentPosition(head) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(card.querySelector(".lineup-card-loc")?.textContent).toBe("Downtown");
+    expect(card.querySelector(".lineup-card-date")?.textContent).toBe("Tue, Oct 13");
+    expect(document.querySelector(".lineup-day-head")).toBeNull();
+    expect(card.previousElementSibling?.classList.contains("lineup-phone-top")).toBe(true);
+    // Team · Notes · Read sit inside the card.
+    expect(card.contains(screen.getByRole("tablist", { name: "Lineup" }))).toBe(true);
   });
 
   it("lists the team read-only: no person panel, call off, Add Staff or note editing", async () => {
@@ -474,24 +565,47 @@ describe("LineupPage on a phone, E", () => {
     expect(within(team).queryByRole("button")).toBeNull();
     fireEvent.click(row);
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(screen.queryByRole("button", { name: /Add Staff|Call off|Edit/ })).toBeNull();
+    expect(screen.queryByRole("button", { name: /Add Staff|Call off/ })).toBeNull();
+    // The one Edit is the card's (it takes the lineup back to draft); the list has none.
+    expect(screen.getAllByRole("button", { name: /Edit/ })).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Edit" }).closest(".lineup-card-head")).toBeTruthy();
     expect(screen.getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
   });
 
-  it("reads the notes in the Notes tab, with nothing to type in", async () => {
+  // Mert 2026-10-17 (~11:30 AM): one white card, a section per note with its icon and heading; nothing edits it.
+  it("reads the notes in the Notes tab, each in its own section, with nothing to type in", async () => {
     published = { [lunch]: { notes: { specials: "Halibut", n86: "", shift_notes: "Patio opens at 5" } } };
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Notes 2" }));
     const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText("Halibut")).toBeTruthy();
-    expect(within(panel).getByText("Patio opens at 5")).toBeTruthy();
+    const notes = within(panel).getByRole("region", { name: "Notes" });
+    expect(within(notes).getAllByRole("heading").map((heading) => heading.textContent)).toEqual(["Specials", "Shift notes"]);
+    expect(within(notes).getByRole("heading", { name: "Specials" }).nextElementSibling?.textContent).toBe("Halibut");
+    expect(within(notes).getByRole("heading", { name: "Shift notes" }).nextElementSibling?.textContent).toBe("Patio opens at 5");
     expect(within(panel).queryByRole("textbox")).toBeNull();
     expect(within(panel).queryByRole("button")).toBeNull();
   });
 
+  it("says when a lineup has no notes yet", async () => {
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+    expect(within(screen.getByRole("tabpanel")).getByText("No notes yet.")).toBeTruthy();
+  });
+
+  // Mert 2026-10-17 (~2 PM): an empty shift's box hangs off its card and names the shift and the place, one line.
+  it("joins an empty shift's box to its card, with no Add Staff", async () => {
+    renderPage(`/app/schedule/lineup?shift=${dinner}`);
+    const card = await screen.findByRole("region", { name: "Downtown, Dinner" });
+    const box = screen.getByText("No one is scheduled for Dinner at Downtown");
+    expect(box.getAttribute("title")).toBe("No one is scheduled for Dinner at Downtown");
+    expect(card.classList.contains("is-joined")).toBe(true);
+    expect(screen.queryByRole("button", { name: /Add Staff/ })).toBeNull();
+  });
+
   // KARARLAR §1.5: a swipe sideways moves between Team, Notes and Read; the day wheel and the shift tabs keep
-  // their own (a swipe never changes the shift).
+  // their own (a swipe never changes the shift). Read opens once the lineup is published.
   it("moves between Team, Notes and Read on a swipe, never the shift", async () => {
+    published = { [lunch]: live };
     renderPage();
     const swipe = (target: Element, dx: number) => {
       fireEvent.touchStart(target, { touches: [{ clientX: 200, clientY: 500 }] });
@@ -512,11 +626,47 @@ describe("LineupPage on a phone, E", () => {
     expect(selected()).toMatch(/^Read/);
   });
 
-  it("lists who read it once published, who hasn't, and who has no app", async () => {
+  it("stops a swipe at Notes while Read is off", async () => {
     renderPage();
-    fireEvent.click(await screen.findByRole("tab", { name: "Read" }));
-    expect(screen.getByText("No one has seen it yet")).toBeTruthy();
-    cleanup();
+    const swipe = (target: Element) => {
+      fireEvent.touchStart(target, { touches: [{ clientX: 200, clientY: 500 }] });
+      fireEvent.touchEnd(target, { touches: [], changedTouches: [{ clientX: 80, clientY: 505 }] });
+    };
+    swipe(await screen.findByRole("tabpanel"));
+    swipe(screen.getByRole("tabpanel"));
+    expect(screen.getByRole("tab", { name: "Notes" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  // Mert 2026-10-17 (~12:30 PM): Read stays in view but is off until the lineup is published.
+  it("shows Read off until the lineup is published", async () => {
+    renderPage();
+    const tab = (await screen.findByRole("tab", { name: "Read" })) as HTMLButtonElement;
+    expect(tab.disabled).toBe(true);
+    fireEvent.click(tab);
+    expect(screen.getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
+    fireEvent.keyDown(screen.getByRole("tab", { name: "Team 1" }), { key: "ArrowLeft" });
+    expect(screen.getByRole("tab", { name: "Notes" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  // Mert 2026-10-17 (~1 PM): no summary card; one bar on the first heading (Read, or Not read yet when no one has
+  // read it), N/N and the bar on the right; Read first, then Not read yet, then No app; no empty Read section.
+  it("puts one progress bar on the first heading, nobody read yet", async () => {
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00" }),
+    ]);
+    published = { [lunch]: { ...live, acknowledged: 0, with_app: 2, people: 2 } };
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 0/2" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).getAllByRole("region").map((region) => region.getAttribute("aria-label"))).toEqual(["Not read yet"]);
+    const bar = within(within(panel).getByRole("region", { name: "Not read yet" })).getByRole("progressbar", { name: "0 of 2 read" });
+    expect(bar.getAttribute("aria-valuenow")).toBe("0");
+    expect(bar.previousElementSibling?.textContent).toBe("0/2");
+    expect(within(panel).getAllByRole("progressbar")).toHaveLength(1);
+  });
+
+  it("lists who read it once published, who hasn't, and who has no app", async () => {
     world = model([
       shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
       shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00" }),
@@ -527,7 +677,10 @@ describe("LineupPage on a phone, E", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Read 1/2" }));
     const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText("of 2 read")).toBeTruthy();
+    expect(within(panel).queryByText(/of 2 read/)).toBeNull();
+    expect(within(panel).getAllByRole("region").map((region) => region.getAttribute("aria-label"))).toEqual(["Read", "Not read yet", "No app"]);
+    expect(within(within(panel).getByRole("region", { name: "Read" })).getByRole("progressbar", { name: "1 of 2 read" })).toBeTruthy();
+    expect(within(panel).getAllByRole("progressbar")).toHaveLength(1);
     const group = (name: string) => within(within(panel).getByRole("region", { name })).getAllByRole("listitem");
     expect(group("Not read yet").map((row) => row.textContent)).toEqual(["MLMaria LopezServer—"]);
     const [read] = group("Read");
@@ -569,12 +722,53 @@ describe("LineupPage on a phone, E", () => {
     }
   });
 
-  it("rests grey and off when there is nothing to publish or take back", async () => {
+  // Mert 2026-10-17 (~1:40 PM, ~9:50 PM): Publish shows only while the shift on screen, at the location shown, has
+  // a draft that can go out; its count still says how many the window sends.
+  it("draws no Publish when the shift on screen has nothing to publish", async () => {
     world = model([]);
     renderPage();
-    const dock = await screen.findByRole("button", { name: "Publish" });
-    expect((dock as HTMLButtonElement).disabled).toBe(true);
-    expect(dock.closest(".lineup-phone-dock")).toBeTruthy();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    expect(document.querySelector(".lineup-phone-dock")).toBeNull();
+  });
+
+  it("draws Publish on a shift with a draft, not on a published or an empty one", async () => {
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00", location: uptown }),
+      shift({ employee: hannah, job: server, type: dinner, start: "17:00", end: "22:00", location: uptown }),
+    ]);
+    published = { [lunch]: live };
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    // Uptown's dinner still waits, but Downtown's lunch is out: nothing to publish here.
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Dinner, no one" }));
+    await screen.findByRole("region", { name: "Downtown, Dinner" });
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    fireEvent.change(screen.getByRole("combobox", { name: "Location" }), { target: { value: uptown } });
+    await screen.findByRole("region", { name: "Uptown, Dinner" });
+    expect(screen.getByRole("button", { name: "Publish, 1 lineup waiting" })).toBeTruthy();
+  });
+
+  it("keeps the sheet open after publishing until Done, though nothing is left to publish", async () => {
+    api.mockImplementation(async (_client, path, init) => {
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      if (dayPath) return readers(dayRead(world, dayPath[1]!, published));
+      const body = JSON.parse(String(init?.body)) as { command_id: string; kind: string };
+      commands.push(body);
+      published = { [lunch]: live };
+      return { command_id: body.command_id, kind: body.kind, lineups: [] };
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
+    const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
+    await within(sheet).findByText("Published 2 lineups · 2 people notified");
+    await within(await screen.findByRole("region", { name: "Downtown, Lunch" })).findByText("Live");
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Publish lineups" })).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
   });
 
   it("has no Publish dock for someone who can't publish", async () => {
@@ -582,8 +776,10 @@ describe("LineupPage on a phone, E", () => {
     (context as { actions: string[] }).actions = ["schedule.read", "lineup.read"];
     try {
       renderPage();
-      await screen.findByRole("region", { name: "Lunch" });
+      await screen.findByRole("region", { name: "Downtown, Lunch" });
       expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+      // Nor an Edit: taking a lineup back is publishing's other half.
+      expect(screen.queryByRole("button", { name: "Edit" })).toBeNull();
     } finally {
       (context as { actions: readonly string[] }).actions = actions;
     }

@@ -246,16 +246,6 @@ export function LineupShiftTabs({
   );
 }
 
-/** The location and the day over a lineup's tabs: "Downtown", "Wednesday, October 14 · Dinner". */
-export function LineupDayHead({ location, date, shift }: { readonly location: string; readonly date: string; readonly shift: string }) {
-  return (
-    <div className="lineup-day-head">
-      <h2>{location}</h2>
-      <p>{`${new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })} · ${shift}`}</p>
-    </div>
-  );
-}
-
 /** The location beside the date: a skeleton while the day loads, nothing when there is no location. */
 export function LineupLocationSelect({
   loading,

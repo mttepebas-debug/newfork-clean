@@ -169,7 +169,9 @@ export function LineupPage() {
             description="Today's lineups, live from the Schedule."
           />
         }
+        workspaceId={workspaceId}
         date={date}
+        dateLabel={shortDate(date)}
         today={today}
         onDate={goTo}
         loading={query.isLoading}
@@ -188,7 +190,8 @@ export function LineupPage() {
         onLocation={(id) => setParam("location", id)}
         chosen={shiftTypeId}
         onShift={(key) => setParam("shift", key)}
-        now={date === today ? clockIn() : null}
+        // Whether a shift has started is told by the location's clock, not the phone's.
+        now={phoneLocation && date === todayIn(phoneLocation.timezone) ? clockIn(phoneLocation.timezone) : null}
         timeFormat={timeFormat}
         publish={
           canShare && day.data

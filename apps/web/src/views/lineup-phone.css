@@ -91,110 +91,267 @@
   }
 }
 
-/* The summary card; its status line says where the lineup stands. */
+/* Short hours, over the card. */
 .lineup-phone-page .lineup-phone-short {
-  margin: 20px 0 0;
+  margin: 16px 0 0;
 }
-.lineup-phone-page .lineup-phone-summary {
-  display: grid;
-  gap: 2px;
-  margin: 28px 0 0;
+
+/* The lineup card (card 1, "boarding pass"; Mert 2026-10-17 ~11:45 AM; mockup v-e.css .e-lc.v1): 16 px under the
+   shift tabs, as the employee's ticket. A tap on it (not its tabs) folds it to its header. */
+.lineup-phone-page .lineup-card {
+  position: relative;
+  margin: 16px 0 0;
+  overflow: hidden;
   border: 1px solid var(--theme-list-frame, var(--theme-border));
-  border-top: 3px solid var(--lineup-shift, var(--theme-border));
-  border-radius: 8px;
-  padding: 12px 14px 14px;
+  border-radius: 16px;
   background: var(--theme-surface);
+  cursor: pointer;
 }
-.lineup-phone-page .lineup-phone-short + .lineup-phone-summary {
+.lineup-phone-page .lineup-phone-short + .lineup-card {
   margin-top: 12px;
 }
-/* The location and date head (schedule/lineup-wheel.css) 16 px under the shift tabs as on the employee's page
-   (Mert 2026-10-17 ~8:10 AM, one rhythm on both), the card 14 px under it (~7:40 AM; mockup .e-mgrhead). */
-.lineup-phone-page .lineup-day-head + :is(.lineup-phone-summary, .lineup-phone-short) {
-  margin-top: 14px;
+/* An empty shift's box hangs off the card (Mert 2026-10-17 ~2 PM): the card's lower corners go square. */
+.lineup-phone-page .lineup-card.is-joined {
+  border-bottom-right-radius: 0;
+  border-bottom-left-radius: 0;
 }
-.lineup-phone-summary h2 {
+.lineup-card-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 32px;
+  grid-template-areas:
+    "loc state fold"
+    "date at .";
+  align-items: center;
+  column-gap: 6px;
+  row-gap: 2px;
+  padding: 15px 10px 15px 16px;
+}
+.lineup-card.is-open > .lineup-card-head {
+  padding-bottom: 12px;
+}
+.lineup-card-loc {
+  display: flex;
+  grid-area: loc;
+  min-width: 0;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   color: var(--theme-text);
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 700;
+  line-height: 22px;
 }
-.lineup-phone-status {
+.lineup-card-loc svg {
+  width: 16px;
+  height: 16px;
+  flex: none;
+  color: var(--theme-text-secondary);
+}
+.lineup-card-loc span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineup-card-date {
+  grid-area: date;
+  min-width: 0;
+  margin: 0 0 0 22px;
+  overflow: hidden;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Top right, right-aligned: "● Live  ✎ Edit" over "Published at <time>" (Mert 2026-10-17 ~12:30 PM, ~1:10 PM). */
+.lineup-card-state {
+  display: flex;
+  grid-area: state;
+  justify-self: end;
+  align-items: center;
+  gap: 4px;
+}
+.lineup-card-status {
   display: flex;
   align-items: center;
   gap: 6px;
   margin: 0;
-  color: var(--theme-muted);
-  font-size: 12px;
-  font-weight: 650;
-}
-.lineup-phone-status i {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: var(--theme-accent);
-}
-.lineup-phone-status.is-draft {
-  color: var(--theme-warning-text);
-}
-.lineup-phone-status.is-draft i {
-  background: var(--theme-warning-border);
-}
-.lineup-phone-status.is-published {
-  color: var(--theme-accent-deep);
-}
-.lineup-phone-status.is-none i {
-  background: var(--theme-border-strong);
-}
-.lineup-phone-kpis {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  margin-top: 10px;
-  border-top: 1px solid var(--theme-border-subtle);
-  padding-top: 10px;
-}
-.lineup-phone-kpis > div {
-  display: grid;
-  gap: 4px;
-  min-width: 0;
-  padding: 0 10px;
-}
-.lineup-phone-kpis > div:first-child {
-  padding-left: 0;
-}
-.lineup-phone-kpis > div + div {
-  border-left: 1px solid var(--theme-border-subtle);
-}
-.lineup-phone-kpis strong {
-  color: var(--theme-text);
-  font-size: 16px;
-  font-weight: 700;
-  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
   white-space: nowrap;
 }
-.lineup-phone-kpis span {
-  color: var(--theme-muted);
-  font-size: 11.5px;
+.lineup-card-status i {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
 }
-
-/* Team · Notes · Read: they scroll with the list. */
+.lineup-card-status.is-live {
+  color: var(--theme-published);
+}
+.lineup-card-status.is-live i {
+  background: var(--theme-published);
+}
+.lineup-card-status.is-draft {
+  color: var(--theme-warning-text);
+}
+.lineup-card-status.is-draft i {
+  background: var(--theme-warning-border);
+}
+.lineup-card-edit {
+  display: inline-flex;
+  min-height: 30px;
+  align-items: center;
+  gap: 5px;
+  margin: -3px -6px -3px 0;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1;
+  cursor: pointer;
+}
+.lineup-card-edit svg {
+  width: 15px;
+  height: 15px;
+}
+.lineup-card-edit:hover:not(:disabled) {
+  background: var(--theme-accent-soft);
+}
+/* Off (a draft, or a started shift with its lock): greyed, the plain arrow (Mert 2026-10-17 ~1:40 PM). */
+.lineup-card-edit:disabled {
+  color: var(--theme-muted);
+  cursor: default;
+}
+.lineup-card-at {
+  grid-area: at;
+  justify-self: end;
+  margin: 0;
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 18px;
+  white-space: nowrap;
+}
+.lineup-card-at.is-off {
+  color: var(--theme-muted);
+}
+.lineup-card-fold {
+  display: inline-grid;
+  grid-area: fold;
+  justify-self: end;
+  width: 32px;
+  height: 32px;
+  place-items: center;
+  margin-right: -2px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+}
+.lineup-card-fold svg {
+  width: 18px;
+  height: 18px;
+  transition: transform 0.18s ease-out;
+}
+.lineup-card:not(.is-open) .lineup-card-fold svg {
+  transform: rotate(-90deg);
+}
+.lineup-card-fold:hover {
+  background: var(--theme-accent-soft);
+}
+:is(.lineup-card-edit, .lineup-card-fold):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+/* The torn edge: a dashed line with a half-moon notch at each side. */
+.lineup-card-perf {
+  position: relative;
+  height: 0;
+  margin: 0 16px;
+  border-top: 1.5px dashed var(--theme-border-strong);
+}
+.lineup-card-perf::before,
+.lineup-card-perf::after {
+  content: "";
+  position: absolute;
+  top: -9px;
+  width: 16px;
+  height: 16px;
+  box-sizing: border-box;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 50%;
+  background: var(--theme-page);
+}
+.lineup-card-perf::before {
+  left: -25px;
+}
+.lineup-card-perf::after {
+  right: -25px;
+}
+/* Shift · People · Hours. */
+.lineup-card-facts {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  gap: 22px;
+  margin: 0;
+  padding: 12px 16px;
+}
+.lineup-card-facts dt {
+  color: var(--theme-text-secondary);
+  font-size: 11px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  line-height: 14px;
+  text-transform: uppercase;
+}
+.lineup-card-facts dd {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin: 3px 0 0;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 700;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineup-card-facts dd i {
+  width: 8px;
+  height: 8px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--lineup-shift, var(--theme-border-strong));
+}
+/* Team · Notes · Read inside the card, underlined; the open tab's line stays clear of the corners. */
+.lineup-card-band {
+  padding: 0 8px 6px;
+  border-top: 1px solid var(--theme-border-subtle);
+  cursor: default;
+}
 .lineup-phone-segs {
   display: grid;
   grid-auto-columns: minmax(0, 1fr);
   grid-auto-flow: column;
-  margin: 12px -16px 0;
-  padding: 0 4px;
-  border-bottom: 1px solid var(--theme-border);
 }
 .lineup-phone-segs button {
+  position: relative;
   display: inline-flex;
   height: 44px;
   align-items: center;
   justify-content: center;
   gap: 2px;
-  margin-bottom: -1px;
   border: 0;
-  border-bottom: 2px solid transparent;
   background: transparent;
   color: var(--theme-muted);
   font: inherit;
@@ -204,16 +361,30 @@
 }
 .lineup-phone-segs button span {
   color: var(--theme-muted);
-  font-weight: 650;
   font-variant-numeric: tabular-nums;
+  font-weight: 650;
 }
-.lineup-phone-segs button:hover {
+.lineup-phone-segs button:hover:not(:disabled) {
   color: var(--theme-text);
 }
 .lineup-phone-segs button[aria-selected="true"] {
-  border-bottom-color: var(--theme-accent);
   color: var(--theme-text);
   font-weight: 650;
+}
+.lineup-phone-segs button[aria-selected="true"]::after {
+  content: "";
+  position: absolute;
+  right: 14px;
+  bottom: 0;
+  left: 14px;
+  height: 3px;
+  border-radius: 3px;
+  background: var(--theme-accent);
+}
+/* Read before the lineup is published: in view, off. */
+.lineup-phone-segs button:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 .lineup-phone-segs button:focus-visible {
   outline: 2px solid var(--theme-focus);
@@ -363,35 +534,88 @@
   color: var(--theme-warning-text);
 }
 
-/* Notes (B's note block, read-only). */
-.lineup-phone-notes {
-  display: grid;
-  gap: 6px;
+/* Notes (Mert 2026-10-17 ~11:30 AM; mockup v-e.css .e-notes): one white card, a section per note with its icon
+   and heading over the text. Nothing edits them here. */
+.lineup-notes {
   margin-top: 14px;
-  border-radius: 8px;
-  padding: 10px 12px;
-  background: var(--theme-info-soft);
+  overflow: hidden;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 14px;
+  background: var(--theme-surface);
 }
-.lineup-phone-notes p {
-  display: grid;
-  grid-template-columns: 84px minmax(0, 1fr);
+.lineup-note {
+  padding: 14px 16px 15px;
+}
+.lineup-note + .lineup-note {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.lineup-note h3 {
+  display: flex;
+  min-height: 24px;
+  align-items: center;
   gap: 8px;
   margin: 0;
-  font-size: 13.5px;
-  line-height: 1.4;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 20px;
 }
-.lineup-phone-notes b {
+.lineup-note h3 svg {
+  width: 17px;
+  height: 17px;
+  flex: none;
+}
+.lineup-note.is-specials h3 svg {
+  color: var(--theme-accent);
+}
+.lineup-note.is-n86 h3 svg {
+  color: var(--theme-danger);
+}
+.lineup-note.is-shift_notes h3 svg {
   color: var(--theme-info-text);
-  font-size: 11.5px;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  line-height: 1.6;
-  text-transform: uppercase;
 }
-.lineup-phone-notes span {
+.lineup-note p {
+  margin: 6px 0 0 25px;
   color: var(--theme-text-body);
+  font-size: 15px;
+  line-height: 1.45;
   overflow-wrap: anywhere;
   white-space: pre-line;
+}
+.lineup-notes .lineup-note-none {
+  margin: 0;
+  padding: 14px 16px 15px;
+  color: var(--theme-text-secondary);
+  font-size: 15px;
+}
+
+/* An empty shift's box, one piece with its card (Mert 2026-10-17 ~2 PM): no line between, the lower corners
+   round; its title one line, stepping down to 13 px before it would wrap, then "…". */
+.lineup-phone-noone {
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-top: 0;
+  border-radius: 0 0 16px 16px;
+  padding: 20px 14px 22px;
+  background: var(--theme-surface);
+  text-align: center;
+}
+.lineup-phone-noone svg {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 4px;
+  color: var(--theme-accent-deep);
+}
+.lineup-phone-noone b {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 16px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .lineup-phone-calm {
@@ -418,12 +642,6 @@
   font-size: 14px;
   line-height: 1.45;
 }
-.lineup-phone-none {
-  margin: 0;
-  padding: 20px 4px;
-  color: var(--theme-muted);
-  font-size: 14px;
-}
 .lineup-phone-page .lineup-phone-empty {
   margin: 16px 0 0;
   border: 1px solid var(--theme-list-frame, var(--theme-border));
@@ -442,10 +660,15 @@
   display: grid;
   gap: 16px;
 }
-.lineup-phone-outline .lineup-phone-summary {
-  gap: 8px;
+.lineup-phone-outline .lineup-card {
+  margin-top: 16px;
+  cursor: default;
 }
-.lineup-phone-outline .lineup-phone-kpis > div {
+.lineup-phone-outline .lineup-card-head {
+  row-gap: 8px;
+}
+.lineup-phone-outline .lineup-card-facts > div {
+  display: grid;
   gap: 6px;
 }
 .lineup-phone-outline .lineup-phone-mid {

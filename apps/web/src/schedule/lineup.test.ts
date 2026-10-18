@@ -4,7 +4,7 @@ import {
   canPublish,
   lineupDay,
   lineupNoteCount,
-  lineupPhoneState,
+  lineupCardState,
   lineupReadLists,
   lineupShiftSpan,
   lineupWeek,
@@ -231,22 +231,32 @@ describe("the phone's lineup parts", () => {
     expect(plain).toMatchObject({ sectionName: null, lineupOnly: false, changed: [] });
   });
 
+  // The started lock reads the location's own clock, not the phone's.
+  it("carries each location's time zone", () => {
+    const read = dayRead(m, day);
+    read.locations[0] = { ...read.locations[0]!, timezone: "America/New_York" };
+    expect(lineupDay(read, m).map((location) => location.timezone)).toEqual(["America/New_York", "America/Los_Angeles"]);
+  });
+
   it("carries how many are on a lineup, with or without the app", () => {
     const read = dayRead(m, day, { [dinner]: { people: 12, with_app: 11 } });
     expect(lineupDay(read, m)[0]!.shifts[1]!.publish).toMatchObject({ people: 12, withApp: 11 });
   });
 
-  it("names the summary's state: draft, published, started or nobody yet", () => {
+  // Mert 2026-10-17 (E, card 1): the card says Live or Draft, and a started shift locks its Edit either way.
+  it("names the card's state: live or draft, and whether the shift has started", () => {
     const shifts = (extra: Parameters<typeof dayRead>[2] = {}) => lineupDay(dayRead(m, day, extra), m)[0]!.shifts;
     const [lunchDraft, dinnerDraft] = shifts();
-    expect(lineupPhoneState(lunchDraft!, null)).toBe("draft");
+    expect(lineupCardState(lunchDraft!, null)).toEqual({ live: false, started: false });
     // Today, once its first person is in, a lineup has started.
-    expect(lineupPhoneState(lunchDraft!, "10:59")).toBe("draft");
-    expect(lineupPhoneState(lunchDraft!, "11:00")).toBe("started");
-    expect(lineupPhoneState(dinnerDraft!, "12:00")).toBe("draft");
-    expect(lineupPhoneState(shifts({ [lunch]: { status: "past" } })[0]!, null)).toBe("started");
-    expect(lineupPhoneState(shifts({ [lunch]: { status: "shared", published: true } })[0]!, "12:00")).toBe("published");
-    expect(lineupPhoneState(lineupDay(dayRead(model([]), day), m)[0]!.shifts[0]!, null)).toBe("none");
+    expect(lineupCardState(lunchDraft!, "10:59")).toEqual({ live: false, started: false });
+    expect(lineupCardState(lunchDraft!, "11:00")).toEqual({ live: false, started: true });
+    expect(lineupCardState(dinnerDraft!, "12:00")).toEqual({ live: false, started: false });
+    expect(lineupCardState(shifts({ [lunch]: { status: "past" } })[0]!, null)).toEqual({ live: false, started: true });
+    expect(lineupCardState(shifts({ [lunch]: { status: "shared", published: true } })[0]!, "10:00")).toEqual({ live: true, started: false });
+    // Published and started: still live, its Edit locked.
+    expect(lineupCardState(shifts({ [lunch]: { status: "shared", published: true } })[0]!, "12:00")).toEqual({ live: true, started: true });
+    expect(lineupCardState(lineupDay(dayRead(model([]), day), m)[0]!.shifts[0]!, "12:00")).toEqual({ live: false, started: false });
   });
 
   it("sorts the people on it into not read yet, read (earliest first) and no app, once each", () => {
