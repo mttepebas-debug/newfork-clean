@@ -35,6 +35,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - Veri yoksa `page.route` + `route.fetch()` ile yanıtı değiştir, raporda söyle; regex'i API portuna sabitle (yoksa sayfanın adresini de yakalar). Hata taklidi `{ error, reason }`; geçersiz enum ham zod JSON basar.
 - Schedule okuması `/schedule/reference?date=&view=`; hayalet kartı web hesaplar (`useCellState.ts`). `/dev/schedule-shift-design` girişsiz gerçek ızgara. Employees çekmecesi: `/app/employees?employeeId=<id>&section=profile`.
 - Sayfa `main.app-main` içinde kayar; fullPage görüntü keser.
+- Mutlak konumlu ortak bindirmeyi (ör. `WindowAlert` şeridi) sıfır özgüllüklü kuralla bağlama: ekranın kendi `position: static`'i onu sessizce ezer, vitest göremez; `WindowAlert` görünürken alt çubuğu satır içi `relative` yapar. En az bir ekranda tarayıcıda ölç (UI-FIELDMSG).
 - Playwright yalnız pnpm deposunda (`node_modules/.pnpm/playwright@<sürüm>/…`), `channel: "chrome"`.
 - Port yabancı PID'deyse öldürme; boş çift al, `APP_URL`'ü eşitle (yoksa CORS).
 - Commit değişince ya da rebase sonrası yetkili düğme kaybolur ya da eski CSS gelir: önce `vite --force`.
