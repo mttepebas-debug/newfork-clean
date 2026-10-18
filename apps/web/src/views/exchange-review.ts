@@ -39,12 +39,3 @@ export function candidateChecks(eligibility: ExchangeApplication["eligibility"])
   return { chips, blocked: false, warned: false };
 }
 
-/** "5.5 h, 30 min unpaid break": paid length of a shift from its wall clock. */
-export function shiftLength(start: string | null, end: string | null, unpaidBreak = 0) {
-  if (!start || !end) return "";
-  const minutes = (clock: string) => Number(clock.slice(0, 2)) * 60 + Number(clock.slice(3, 5));
-  let span = minutes(end) - minutes(start);
-  if (span <= 0) span += 24 * 60;
-  const paid = hours(span - unpaidBreak);
-  return unpaidBreak ? `${paid}, ${unpaidBreak} min unpaid break` : paid;
-}

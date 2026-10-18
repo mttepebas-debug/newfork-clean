@@ -1,6 +1,6 @@
 import type { ExchangeApplication } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { candidateChecks, shiftLength } from "./exchange-review";
+import { candidateChecks } from "./exchange-review";
 
 type Eligibility = NonNullable<ExchangeApplication["eligibility"]>;
 const eligible = (extra: Partial<Eligibility> = {}): Eligibility => ({ status: "eligible", reasons: [], ...extra });
@@ -44,13 +44,5 @@ describe("candidateChecks", () => {
     expect(candidateChecks({ status: "verification_required", reasons: ["Shift hours need verification."] }))
       .toEqual({ chips: [{ text: "Shift hours need verification", tone: "warn" }], blocked: false, warned: true });
     expect(candidateChecks(null)).toEqual({ chips: [{ text: "Not checked yet", tone: "grey" }], blocked: false, warned: false });
-  });
-});
-
-describe("shiftLength", () => {
-  it("counts paid hours and names the unpaid break, across midnight too", () => {
-    expect(shiftLength("16:00", "22:00", 30)).toBe("5.5 h, 30 min unpaid break");
-    expect(shiftLength("22:00", "06:00", 0)).toBe("8 h");
-    expect(shiftLength(null, "06:00", 0)).toBe("");
   });
 });

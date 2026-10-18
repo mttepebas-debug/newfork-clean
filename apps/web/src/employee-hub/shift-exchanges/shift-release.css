@@ -117,6 +117,8 @@
   align-items: center;
   padding: 6px 6px 0;
 }
+.sx-root .sx-w-head h2,
+.sx-root .sx-w-head h3,
 .sx-w-head h2,
 .sx-w-head h3 {
   grid-column: 2;
@@ -146,6 +148,7 @@
 .sx-w-head .sx-w-icon[data-end] {
   grid-column: 3;
 }
+.sx-root .sx-w-names,
 .sx-w-names {
   margin: -8px 0 12px;
   padding: 0 16px;
@@ -237,7 +240,8 @@
     border-radius: 20px 20px 0 0;
   }
   .sx-plan-dialog .sx-w-foot .sx-primary {
-    flex: 1 1 0;
+    flex: 1 1 100%;
+    white-space: nowrap;
   }
 }
 
@@ -461,6 +465,7 @@
   color: var(--theme-muted);
   font-weight: 400;
 }
+.sx-root .sx-note-field textarea,
 .sx-note-field textarea {
   min-height: 72px;
   padding: 10px 12px;
@@ -473,11 +478,22 @@
 }
 
 /* Available Shifts: one card at a time. Right takes it, left passes. */
+/* The deck spans the Shift Hub list's grid, centred; the cards below it too. */
+.sx-list > .sx-deck-area,
+.sx-list > .sx-section-title,
+.sx-list > .sx-asked {
+  grid-column: 1 / -1;
+}
+.sx-deck-area {
+  display: grid;
+  gap: 12px;
+  justify-items: center;
+}
 .sx-deck {
   position: relative;
   width: 100%;
   max-width: 420px;
-  height: 430px;
+  height: 400px;
   margin: 0 auto;
   touch-action: pan-y;
   user-select: none;
@@ -579,6 +595,7 @@
   color: var(--theme-text);
   font-size: 14px;
 }
+.sx-root .sx-section-title,
 .sx-section-title {
   margin: 8px 0 0;
   color: var(--theme-text-secondary);
@@ -590,6 +607,16 @@
 .sx-asked {
   display: grid;
   gap: 8px;
+}
+.sx-list > .sx-asked {
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
+}
+.sx-list > .sx-section-title {
+  width: 100%;
+  max-width: 420px;
+  justify-self: center;
 }
 @media (prefers-reduced-motion: reduce) {
   .sx-dcard {

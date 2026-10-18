@@ -78,7 +78,7 @@ export function ReleaseDeck({
   const left = cards.length - (leaving ? 1 : 0);
   let depth = 0;
   return (
-    <>
+    <div className="sx-deck-area">
       <div className="sx-deck">
         {left === 0 && !leaving ? (
           <div className="sx-deck-empty">
@@ -135,7 +135,7 @@ export function ReleaseDeck({
       <p className="sx-deck-hint" aria-live="polite">
         {left ? `Swipe right to take · left to pass · ${left} left` : "Nothing left to look at"}
       </p>
-    </>
+    </div>
   );
 }
 

@@ -109,8 +109,9 @@ export function RequestsTable({
       <colgroup>
         <col style={{ width: "64px" }} />
         <col />
-        <col style={{ width: "1%" }} />
-        <col style={{ width: "1%" }} />
+        {/* "Waiting for teammates" and "Oct 23, 12:00 PM" fit whole. */}
+        <col style={{ width: "190px" }} />
+        <col style={{ width: "180px" }} />
       </colgroup>
       <thead>
         <tr>
