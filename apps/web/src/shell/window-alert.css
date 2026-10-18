@@ -1,5 +1,7 @@
-/* A window's error band (UI-FIELDMSG): over the body's bottom edge, above the
-   footer, out of the flow so nothing moves. In the footer, the footer becomes
+/* A window's error band (UI-FIELDMSG-2): over the body's bottom edge, above
+   the footer, full width, said whole; WindowAlert gives the body under it as
+   much room as the band is tall, so nothing it covers is out of reach. In the
+   footer, the footer becomes
    its anchor unless it already is one (sticky, fixed or absolute footers
    are); between the body and the footer, a zero-height slot is. */
 :where(:has(> .window-alert)) { position: relative; }
@@ -21,7 +23,6 @@
   /* It says all of it: a window's own rule for its lines must not cut it. */
   overflow: visible;
   overflow-wrap: anywhere;
-  text-overflow: clip;
   white-space: normal;
 }
 .window-alert-slot {
