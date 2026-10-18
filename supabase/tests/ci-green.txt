@@ -46,6 +46,7 @@ supabase/tests/lifecycle_refusals_carry_keys.test.sql
 supabase/tests/lineup_foundation.test.sql
 supabase/tests/live_updates_are_private.test.sql
 supabase/tests/location_short_names.test.sql
+supabase/tests/management_job_rules.test.sql
 supabase/tests/membership_two_access_slots.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql

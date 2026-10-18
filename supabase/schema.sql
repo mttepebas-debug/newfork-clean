@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 514, last: 20261018231000_core_reads_two_slots.sql
--- fingerprint: sha256:5165dee27dad5e6f5cc24fb393b103fad5e6254b98b39fc55a145edede4a4bda
+-- migrations: 515, last: 20261018232000_management_job_rules.sql
+-- fingerprint: sha256:e92e01f456d1a83a19174320d118e41b78f329ad28d973d806fae99a4abbcd00
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4802,6 +4802,15 @@ begin
   insert into public.jobs (workspace_id, name, department_id, system_key)
   values (target_workspace_id, 'Owner', management, 'owner')
   on conflict (workspace_id, system_key) where system_key is not null do nothing;
+
+  -- The owner holds the Owner job on the management side (design §4.2).
+  insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+  select target_workspace_id, m.id, j.id
+  from public.workspace_memberships m
+  join public.workspace_roles r on r.id = m.role_id and r.access_class = 'owner'
+  join public.jobs j on j.workspace_id = m.workspace_id and j.system_key = 'owner'
+  where m.workspace_id = target_workspace_id
+  on conflict (membership_id, job_id) do nothing;
 end;
 $$;
 
@@ -5999,6 +6008,57 @@ $$;
 ALTER FUNCTION "app_private"."management_job_holds"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."management_job_stays_held"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  leaving boolean;
+  stranded text[];
+begin
+  leaving := old.system_key is null
+    and old.archived_at is null and old.deleted_at is null
+    and exists (select 1 from public.departments d where d.id = old.department_id and d.system_key = 'management')
+    and (tg_op = 'DELETE'
+         or new.archived_at is not null or new.deleted_at is not null
+         or not exists (select 1 from public.departments d where d.id = new.department_id and d.system_key = 'management'));
+  if not leaving then
+    return case when tg_op = 'DELETE' then old else new end;
+  end if;
+  -- ponytail: the setup reset deletes every job of an unfinished workspace at once; nobody but the owner
+  -- holds one there, and the reset starts setup over.
+  if tg_op = 'DELETE' then
+    return old;
+  end if;
+
+  select coalesce(array_agg(app_private.membership_display_name(mj.membership_id)
+                           order by app_private.membership_display_name(mj.membership_id)), '{}')
+    into stranded
+  from public.membership_management_jobs mj
+  where mj.job_id = old.id
+    and not exists (select 1 from public.membership_management_jobs other
+                    where other.membership_id = mj.membership_id and other.job_id <> old.id);
+
+  if cardinality(stranded) > 0 or not exists (
+    select 1 from public.jobs j
+    join public.departments d on d.id = j.department_id and d.system_key = 'management'
+    where j.workspace_id = old.workspace_id and j.id <> old.id
+      and j.archived_at is null and j.deleted_at is null and j.system_key is null
+  ) then
+    raise exception 'Management keeps at least one job, and everybody with management access keeps one'
+      using errcode = '22023', hint = 'jobs.last_management_job',
+            detail = jsonb_build_object('people', to_jsonb(stranded))::text;
+  end if;
+
+  delete from public.membership_management_jobs where job_id = old.id;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."management_job_stays_held"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."mark_account_organization_history"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -6041,6 +6101,26 @@ $$;
 ALTER FUNCTION "app_private"."membership_access_slots_hold"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."membership_display_name"("target_membership" "uuid") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce(
+    (select coalesce(nullif(btrim(p.preferred_name), ''), p.first_name) || ' ' || p.last_name
+     from public.workspace_memberships m
+     join public.employee_profiles p on p.workspace_id = m.workspace_id and p.user_id = m.user_id
+     where m.id = target_membership
+     order by p.archived_at nulls first
+     limit 1),
+    (select u.email from public.workspace_memberships m join auth.users u on u.id = m.user_id
+     where m.id = target_membership)
+  );
+$$;
+
+
+ALTER FUNCTION "app_private"."membership_display_name"("target_membership" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."membership_receives"("target_workspace" "uuid", "target_user" "uuid", "to_former_members" boolean) RETURNS boolean
     LANGUAGE "sql" STABLE
     SET "search_path" TO ''
@@ -6061,16 +6141,38 @@ CREATE OR REPLACE FUNCTION "app_private"."membership_slot_rows_follow"() RETURNS
     AS $$
 declare
   slot_class public.workspace_role := (select r.access_class from public.workspace_roles r where r.id = new.role_id);
+  was_class public.workspace_role := (select r.access_class from public.workspace_roles r where r.id = old.role_id);
 begin
   if slot_class is distinct from 'manager' then
     delete from public.membership_managed_locations where membership_id = new.id;
   end if;
   if slot_class is null then
     delete from public.membership_management_jobs where membership_id = new.id;
+    return null;
+  end if;
+
+  if slot_class = 'owner' and was_class is distinct from 'owner' then
+    insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+    select new.workspace_id, new.id, j.id from public.jobs j
+    where j.workspace_id = new.workspace_id and j.system_key = 'owner'
+    on conflict (membership_id, job_id) do nothing;
   elsif slot_class <> 'owner' then
     delete from public.membership_management_jobs mj
     using public.jobs j
     where mj.membership_id = new.id and j.id = mj.job_id and j.system_key = 'owner';
+    -- An owner who hands the workspace over keeps a Management job (KARARLAR S-168).
+    if was_class = 'owner' and not exists (
+      select 1 from public.membership_management_jobs mj where mj.membership_id = new.id
+    ) then
+      insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+      select new.workspace_id, new.id, j.id
+      from public.jobs j
+      join public.departments d on d.id = j.department_id and d.system_key = 'management'
+      where j.workspace_id = new.workspace_id and j.archived_at is null and j.deleted_at is null
+        and j.system_key is null
+      order by (lower(j.name) = 'general manager') desc, lower(j.name)
+      limit 1;
+    end if;
   end if;
   return null;
 end;
@@ -32912,6 +33014,10 @@ CREATE OR REPLACE TRIGGER "management_job_holds" BEFORE INSERT OR UPDATE ON "pub
 
 
 
+CREATE OR REPLACE TRIGGER "management_job_stays_held" BEFORE UPDATE OF "department_id", "archived_at", "deleted_at" ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."management_job_stays_held"();
+
+
+
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
 
 
@@ -33690,7 +33796,7 @@ ALTER TABLE ONLY "public"."membership_management_jobs"
 
 
 ALTER TABLE ONLY "public"."membership_management_jobs"
-    ADD CONSTRAINT "membership_management_jobs_job_fkey" FOREIGN KEY ("job_id", "workspace_id") REFERENCES "public"."jobs"("id", "workspace_id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "membership_management_jobs_job_fkey" FOREIGN KEY ("job_id", "workspace_id") REFERENCES "public"."jobs"("id", "workspace_id") ON DELETE CASCADE;
 
 
 
@@ -35805,11 +35911,19 @@ REVOKE ALL ON FUNCTION "app_private"."management_job_holds"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."management_job_stays_held"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."mark_account_organization_history"() FROM PUBLIC;
 
 
 
 REVOKE ALL ON FUNCTION "app_private"."membership_access_slots_hold"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."membership_display_name"("target_membership" "uuid") FROM PUBLIC;
 
 
 
