@@ -71,14 +71,17 @@ values (
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5'
 );
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values (
+-- A membership holds two access slots (ROL-CIFT): role_id is the management slot,
+-- employee_role_id the employee slot.
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, status)
+select
   'bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4',
   '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
   'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5',
-  'owner',
+  r.id,
   'active'
-);
+from public.workspace_roles r
+where r.workspace_id = '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and r.system_key = 'owner';
 
 insert into public.user_workspace_preferences (user_id, active_workspace_id)
 values (
@@ -146,14 +149,19 @@ values
   ('8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Pending Demo', 'b0000000-0000-4000-8000-000000000001'),
   ('9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'Suspended Demo', 'b0000000-0000-4000-8000-000000000001');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id, status)
+select v.id::uuid, v.workspace_id::uuid, v.user_id::uuid,
+  (select r.id from public.workspace_roles r where r.workspace_id = v.workspace_id::uuid and r.system_key::text = v.role and v.role <> 'employee'),
+  (select r.id from public.workspace_roles r where r.workspace_id = v.workspace_id::uuid and r.system_key = 'employee' and v.role = 'employee'),
+  v.status::public.membership_status
+from (values
   ('b1000000-0000-4000-8000-000000000001', '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
   ('b1000000-0000-4000-8000-000000000002', '8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
   ('b1000000-0000-4000-8000-000000000003', '9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'b0000000-0000-4000-8000-000000000001', 'owner', 'active'),
   ('b1000000-0000-4000-8000-000000000004', '7ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'employee', 'active'),
   ('b1000000-0000-4000-8000-000000000005', '8ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'employee', 'pending_activation'),
-  ('b1000000-0000-4000-8000-000000000006', '9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'manager', 'suspended');
+  ('b1000000-0000-4000-8000-000000000006', '9ea5d512-bc7f-4cf3-aad4-2f0815de00fd', 'd9f43e62-e099-48e1-bc6f-a5aabe8e87d5', 'manager', 'suspended')
+) v(id, workspace_id, user_id, role, status);
 
 insert into public.workspace_onboarding (workspace_id, status, current_step, completed_at, updated_by)
 values
@@ -254,13 +262,14 @@ on conflict (user_id) do update set display_name = excluded.display_name;
 insert into public.user_preferences (user_id, theme)
 values ('e44f1741-9d58-4e38-8a62-3bc1c27bcd21', 'system');
 insert into public.workspace_memberships (
-  id, workspace_id, user_id, role, status, all_locations
-) values (
+  id, workspace_id, user_id, employee_role_id, status
+) select
   'efea5f44-d86a-4650-94d0-5e63840fcfe1',
   '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
   'e44f1741-9d58-4e38-8a62-3bc1c27bcd21',
-  'employee', 'pending_activation', true
-);
+  r.id, 'pending_activation'
+from public.workspace_roles r
+where r.workspace_id = '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and r.system_key = 'employee';
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name,
   preferred_name, invitation_email, created_by
@@ -441,13 +450,14 @@ on conflict (user_id) do update set display_name = excluded.display_name;
 insert into public.user_preferences (user_id, theme)
 values ('a6000000-0000-4000-8000-000000000001', 'system');
 insert into public.workspace_memberships (
-  id, workspace_id, user_id, role, status, all_locations
-) values (
+  id, workspace_id, user_id, employee_role_id, status
+) select
   'a6000000-0000-4000-8000-000000000003',
   '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',
   'a6000000-0000-4000-8000-000000000001',
-  'employee', 'active', false
-);
+  r.id, 'active'
+from public.workspace_roles r
+where r.workspace_id = '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd' and r.system_key = 'employee';
 update public.employee_profiles
 set user_id = 'a6000000-0000-4000-8000-000000000001'
 where id = '15000000-0000-4000-8000-000000000001';

@@ -152,10 +152,12 @@ $$;
 -- A workspace as its owner leaves setup: two locations (K = Kadikoy,
 -- B = Besiktas), one department (Kitchen) with two jobs (cook, server), and
 -- the owner filed as an employee at both locations with the Owner job only
--- (setup also makes Management with Owner and Manager under it; cook, server and
--- manager are assigned by hand).
+-- (setup also makes Management with Owner, General Manager and Assistant Manager
+-- under it; cook, server and the Management jobs are assigned by hand). The
+-- owner holds the management slot and the Owner job on the management side.
 -- Labels: <w>:owner, <w>:K, <w>:B, <w>:job:cook, <w>:job:server, <w>:kitchen,
--- <w>:management, <w>:job:owner, <w>:job:manager.
+-- <w>:management, <w>:job:owner, <w>:job:general manager,
+-- <w>:job:assistant manager.
 create or replace function tests.world(w text)
 returns uuid
 language plpgsql
@@ -176,7 +178,7 @@ begin
     'Olcay', null, 'Owner'
   );
 
-  -- Setup's first save made Management with Owner and Manager under it.
+  -- Setup's first save made Management with Owner, General Manager and Assistant Manager.
   insert into tests.ids (label, id)
   select w || ':management', d.id from public.departments d
   where d.workspace_id = workspace and d.system_key = 'management'
@@ -242,7 +244,11 @@ as $$
 $$;
 
 -- Somebody the owner added and invited, who accepted. access is a system role
--- (admin, manager, employee) or the name of a role made with tests.role.
+-- (admin, manager, employee) or the name of a role made with tests.role, placed
+-- in the two access slots the way the product places one role (design §5.1): a
+-- management role holds the employee slot too when one of the jobs is outside
+-- Management, and a manager manages where they work. '<role>+employee' gives the
+-- employee slot whatever the jobs (ROL-CIFT); tests.manages sets Manages apart.
 -- locs are location keys (K, B), jobs are job keys (cook, server); both empty
 -- files them as remote. status: active (accepted and finished their own
 -- onboarding) | onboarding (accepted, onboarding not finished) | pending
@@ -270,6 +276,8 @@ declare
   role_id uuid;
   created jsonb;
   employee uuid;
+  role_key text := split_part(access, '+', 1);
+  also_works boolean := access like '%+employee';
 begin
   if status not in ('active', 'onboarding', 'pending', 'suspended', 'removed') then
     raise exception 'tests.person: unknown status %', status;
@@ -277,7 +285,7 @@ begin
   select r.id into role_id
   from public.workspace_roles r
   where r.workspace_id = workspace
-    and (r.system_key::text = access or r.id = (select i.id from tests.ids i where i.label = w || ':role:' || access));
+    and (r.system_key::text = role_key or r.id = (select i.id from tests.ids i where i.label = w || ':role:' || role_key));
   if role_id is null then
     raise exception 'tests.person: no role % in world %', access, w;
   end if;
@@ -304,6 +312,12 @@ begin
 
   if status <> 'pending' then
     perform public.accept_employee_invitation_by_id_service(user_id, (created ->> 'invitation_id')::uuid);
+    -- ponytail: the product names the employee slot apart from 2026-10 slice 6 (the invitation).
+    if also_works then
+      update public.workspace_memberships m
+      set employee_role_id = (select r.id from public.workspace_roles r where r.workspace_id = workspace and r.system_key = 'employee')
+      where m.workspace_id = workspace and m.user_id = person.user_id and m.employee_role_id is null;
+    end if;
   end if;
   perform tests.settle();
 
@@ -646,7 +660,8 @@ begin
   end if;
   maker := coalesce((
     select m.user_id from public.workspace_memberships m
-    where m.workspace_id = member.workspace_id and m.role = 'owner' limit 1
+    join public.workspace_roles r on r.id = m.role_id and r.access_class = 'owner'
+    where m.workspace_id = member.workspace_id limit 1
   ), member.user_id);
   select * into profile from public.employee_profiles e
   where e.workspace_id = member.workspace_id and e.user_id = member.user_id;
@@ -778,5 +793,27 @@ end;
 $$;
 
 revoke all on all functions in schema tests from public;
+-- Manages (ROL-CIFT): the locations a manager of the test world manages, set
+-- apart from where they work. Labels as tests.person's; locs are location keys.
+-- ponytail: a later change to their location assignments resets Manages to
+-- where they work until slice 6.3 (app_private.manages_follow_works).
+create or replace function tests.manages(w text, person_label text, locs text[])
+returns void
+language plpgsql
+set search_path = ''
+as $$
+declare
+  member uuid := (select m.id from public.workspace_memberships m
+                  where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label));
+begin
+  if member is null then
+    raise exception 'tests.manages: % has no membership in world %', person_label, w;
+  end if;
+  delete from public.membership_managed_locations where membership_id = member;
+  insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+  select tests.id(w), member, tests.id(w || ':' || k) from unnest(coalesce(locs, '{}')) k;
+end;
+$$;
+
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

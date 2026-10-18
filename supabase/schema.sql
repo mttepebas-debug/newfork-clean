@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 515, last: 20261018232000_management_job_rules.sql
--- fingerprint: sha256:df838fef19187a5c3c9a31a6c3b6f28bfc4cbfbc0c44620fafdbfd5ec8f5e54b
+-- migrations: 516, last: 20261018233000_services_read_two_slots.sql
+-- fingerprint: sha256:b2681847dcbb38b100c0dc36fd2cbce7d588d15a8f4775f9259c14475a3edcbe
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -518,26 +518,23 @@ begin
 
   if membership.id is not null then
     update public.workspace_memberships
-    set role = employee_role.access_class::public.workspace_role,
-        role_id = invitation.role_id,
-        status = 'pending_activation'::public.membership_status,
-        all_locations = invitation.all_locations,
+    set status = 'pending_activation'::public.membership_status,
         updated_at = now()
     where id = membership.id
     returning id into accepted_membership_id;
   else
     insert into public.workspace_memberships (
-      workspace_id, user_id, role, role_id, status, all_locations
+      workspace_id, user_id, role_id, employee_role_id, status
     ) values (
       invitation.workspace_id,
       target_user_id,
-      employee_role.access_class::public.workspace_role,
-      invitation.role_id,
-      'pending_activation'::public.membership_status,
-      invitation.all_locations
+      case when employee_role.access_class = 'employee' then null else invitation.role_id end,
+      case when employee_role.access_class = 'employee' then invitation.role_id end,
+      'pending_activation'::public.membership_status
     )
     returning id into accepted_membership_id;
   end if;
+  perform app_private.place_single_role(accepted_membership_id, invitation.role_id);
 
   perform app_private.reset_employee_onboarding_for_rehire(
     invitation.workspace_id,
@@ -2448,11 +2445,11 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_respondents"("item" "publ
   where item.ask_ack and item.status = 'published'
     and app_private.authz_rank(coalesce((
       select role.access_class from public.workspace_memberships membership
-      join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+      join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id) and role.workspace_id = membership.workspace_id
       where membership.workspace_id = item.workspace_id and membership.user_id = who), 'employee'))
     < app_private.authz_rank(coalesce((
       select role.access_class from public.workspace_memberships membership
-      join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+      join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id) and role.workspace_id = membership.workspace_id
       where membership.workspace_id = item.workspace_id and membership.user_id = coalesce(item.published_by, item.created_by)),
       'owner'))
 $$;
@@ -2707,7 +2704,7 @@ begin
     from public.workspace_memberships membership
     where membership.workspace_id = target_workspace_id
       and membership.user_id = actor_user_id
-      and membership.role = 'owner'
+      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
       and membership.status = 'active'
   ) then
     raise exception 'owner access required' using errcode = '42501';
@@ -3400,9 +3397,9 @@ CREATE OR REPLACE FUNCTION "app_private"."can_edit_role"("actor" "uuid", "w" "uu
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
- select exists(select 1 from public.workspace_memberships m join public.workspace_roles ar on ar.id=m.role_id
+ select exists(select 1 from public.workspace_memberships m join public.workspace_roles ar on ar.id=coalesce(m.role_id, m.employee_role_id)
  left join public.workspace_roles target on target.id=rid and target.workspace_id=w
- where m.user_id=actor and m.workspace_id=w and m.status='active' and m.role_id is distinct from rid
+ where m.user_id=actor and m.workspace_id=w and m.status='active' and coalesce(m.role_id, m.employee_role_id) is distinct from rid
  and app_private.authz_reason(actor,w,'settings.roles.write') is null
  and (rid is null or (target.id is not null and target.access_class<>'owner'))
  and (ar.access_class='owner' or (ar.access_class='admin' and (rid is null or target.access_class in ('manager','employee')))));
@@ -3604,7 +3601,7 @@ declare
   -- The role the author last had here, whether they are still here or not.
   last_role public.workspace_role := (
     select role.access_class from public.workspace_memberships membership
-    join public.workspace_roles role on role.id = membership.role_id and role.workspace_id = membership.workspace_id
+    join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id) and role.workspace_id = membership.workspace_id
     where membership.workspace_id = w and membership.user_id = author
   );
   narrow app_private.authz_actions;
@@ -4834,7 +4831,7 @@ begin
     from public.workspace_memberships membership
     where membership.workspace_id = target_workspace_id
       and membership.user_id = owner_user_id
-      and membership.role = 'owner'::public.workspace_role
+      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
       and membership.status = 'active'::public.membership_status
   ) then
     raise exception 'active owner membership required' using errcode = '42501';
@@ -6059,6 +6056,60 @@ $$;
 ALTER FUNCTION "app_private"."management_job_stays_held"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  member public.workspace_memberships;
+  profile_id uuid;
+begin
+  select * into member from public.workspace_memberships m where m.id = target_membership;
+  if member.id is null or not exists (
+    select 1 from public.workspace_roles r where r.id = member.role_id and r.access_class = 'manager'
+  ) then
+    return;
+  end if;
+  select p.id into profile_id from public.employee_profiles p
+  where p.workspace_id = member.workspace_id and p.user_id = member.user_id and p.archived_at is null;
+
+  delete from public.membership_managed_locations managed
+  where managed.membership_id = member.id
+    and not exists (
+      select 1 from public.employee_location_assignments a
+      where a.employee_id = profile_id and a.location_id = managed.location_id and a.ended_at is null);
+  insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+  select member.workspace_id, member.id, a.location_id
+  from public.employee_location_assignments a
+  join public.locations l on l.id = a.location_id and app_private.location_is_live(l)
+  where a.employee_id = profile_id and a.ended_at is null
+  on conflict (membership_id, location_id) do nothing;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works_trigger"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  row_data public.employee_location_assignments := coalesce(new, old);
+begin
+  perform app_private.manages_follow_works(m.id)
+  from public.employee_profiles p
+  join public.workspace_memberships m on m.workspace_id = p.workspace_id and m.user_id = p.user_id
+  where p.id = row_data.employee_id;
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."manages_follow_works_trigger"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."mark_account_organization_history"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -6794,7 +6845,7 @@ begin
      and membership.user_id = employee.user_id
     where employee.workspace_id = new.workspace_id
       and employee.archived_at is null
-      and membership.role = 'owner'::public.workspace_role
+      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
       and membership.status = 'active'::public.membership_status
   loop
     perform app_private.open_owner_record_to_everything(
@@ -7067,6 +7118,76 @@ $$;
 
 
 ALTER FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") RETURNS "void"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  member public.workspace_memberships;
+  chosen_class public.workspace_role;
+  profile_id uuid;
+  works boolean;
+  asked text := current_setting('app.membership_change', true);
+begin
+  select * into member from public.workspace_memberships m where m.id = target_membership;
+  select r.access_class into chosen_class from public.workspace_roles r
+  where r.id = chosen_role and r.workspace_id = member.workspace_id;
+  if member.id is null or chosen_class is null then
+    raise exception 'role must belong to the workspace' using errcode = '23503';
+  end if;
+  select p.id into profile_id from public.employee_profiles p
+  where p.workspace_id = member.workspace_id and p.user_id = member.user_id and p.archived_at is null;
+  works := chosen_class = 'employee' or exists (
+    select 1 from public.employee_job_assignments a
+    join public.jobs j on j.id = a.job_id and j.deleted_at is null
+    left join public.departments d on d.id = j.department_id
+    where a.employee_id = profile_id and a.ended_at is null and d.system_key is distinct from 'management');
+
+  perform set_config('app.membership_change', member.id::text, true);
+  update public.workspace_memberships
+  set role_id = case when chosen_class = 'employee' then null else chosen_role end,
+      employee_role_id = case
+        when chosen_class = 'employee' then chosen_role
+        when works then coalesce(member.employee_role_id, (
+          select r.id from public.workspace_roles r where r.workspace_id = member.workspace_id and r.system_key = 'employee'))
+      end,
+      updated_at = now()
+  where id = member.id;
+
+  perform app_private.manages_follow_works(member.id);
+
+  if chosen_class <> 'employee' then
+    insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+    select member.workspace_id, member.id, a.job_id
+    from public.employee_job_assignments a
+    join public.jobs j on j.id = a.job_id and j.archived_at is null and j.deleted_at is null
+    join public.departments d on d.id = j.department_id and d.system_key = 'management'
+    where a.employee_id = profile_id and a.ended_at is null
+      and (j.system_key is null or chosen_class = 'owner')
+    on conflict (membership_id, job_id) do nothing;
+    if not exists (select 1 from public.membership_management_jobs x where x.membership_id = member.id) then
+      insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+      select member.workspace_id, member.id, j.id
+      from public.jobs j
+      join public.departments d on d.id = j.department_id and d.system_key = 'management'
+      where j.workspace_id = member.workspace_id and j.archived_at is null and j.deleted_at is null
+        and (j.system_key is null or chosen_class = 'owner')
+      order by case
+        when chosen_class = 'owner' and j.system_key = 'owner' then 0
+        when lower(j.name) = 'manager' then 1
+        when lower(j.name) = 'general manager' then 2
+        else 3 end, lower(j.name)
+      limit 1;
+    end if;
+  end if;
+  perform set_config('app.membership_change', coalesce(asked, ''), true);
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."signature_template_versions" (
@@ -11329,7 +11450,7 @@ begin
     raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
   end if;
 
-  select coalesce(role.access_class, membership.role) into actor_role
+  select coalesce(role.access_class, 'employee'::public.workspace_role) into actor_role
   from public.workspace_memberships membership
   left join public.workspace_roles role
     on role.id = membership.role_id
@@ -11431,7 +11552,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-      and m.status = 'active' and coalesce(r.access_class, m.role) = 'owner'
+      and m.status = 'active' and r.access_class = 'owner'
   ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   select * into transfer_row from public.workspace_ownership_transfers t
     where t.id = transfer_id and t.workspace_id = target_workspace_id for update;
@@ -12102,7 +12223,7 @@ begin
   join public.workspace_memberships membership
     on membership.workspace_id = workspace.id
    and membership.user_id = actor_id
-   and membership.role = 'owner'::public.workspace_role
+   and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
    and membership.status = 'active'::public.membership_status
   join public.workspace_onboarding onboarding
     on onboarding.workspace_id = workspace.id
@@ -12128,8 +12249,9 @@ begin
   values (btrim(workspace_name), actor_id)
   returning id into created_workspace_id;
 
-  insert into public.workspace_memberships (workspace_id, user_id, role)
-  values (created_workspace_id, actor_id, 'owner');
+  insert into public.workspace_memberships (workspace_id, user_id, role_id)
+  select created_workspace_id, actor_id, r.id from public.workspace_roles r
+  where r.workspace_id = created_workspace_id and r.system_key = 'owner';
 
   insert into public.workspace_onboarding (workspace_id, updated_by)
   values (created_workspace_id, actor_id);
@@ -12164,7 +12286,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and coalesce(r.access_class, m.role) = 'owner'
+      and r.access_class = 'owner'
   ) and exists (
     select 1
     from public.employee_invitations invitation
@@ -12188,7 +12310,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and coalesce(r.access_class, m.role) = 'owner'
+      and r.access_class = 'owner'
       and app_private.workspace_allows_interactive_access(m.workspace_id)
   ) then
     raise exception 'workspace owner access required' using errcode = '42501';
@@ -13600,7 +13722,7 @@ CREATE OR REPLACE FUNCTION "public"."get_account_deletion_blockers_service"("act
       null::text as transfer_direction
     from public.workspace_memberships membership
     join public.workspaces workspace on workspace.id = membership.workspace_id
-    join public.workspace_roles role on role.id = membership.role_id
+    join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id)
     where membership.user_id = actor_user_id
       and membership.status = 'active'
       and (
@@ -14022,7 +14144,7 @@ begin
   left join public.workspace_memberships membership
     on membership.workspace_id = employee.workspace_id
     and membership.user_id = employee.user_id
-  left join public.workspace_roles role on role.id = membership.role_id
+  left join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id)
   left join lateral (
     select *
     from public.employee_invitations candidate
@@ -16267,7 +16389,7 @@ begin
   limit 1
   for update;
 
-  select coalesce(role.access_class, membership.role) into target_access
+  select coalesce(role.access_class, 'employee'::public.workspace_role) into target_access
   from public.workspace_memberships membership
   left join public.workspace_roles role
     on role.id = membership.role_id
@@ -16699,7 +16821,7 @@ begin
     from public.employee_profiles employee
     left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
     left join public.workspace_memberships membership on membership.workspace_id = employee.workspace_id and membership.user_id = employee.user_id
-    left join public.workspace_roles role on role.id = membership.role_id
+    left join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id)
     left join public.employee_onboarding_cases onboarding on onboarding.employee_id = employee.id
     left join lateral (
       select candidate.status, candidate.expires_at
@@ -16743,7 +16865,7 @@ CREATE OR REPLACE FUNCTION "public"."list_my_workspace_identities_service"("acto
   select
     workspace.id,
     workspace.name,
-    membership.role,
+    coalesce((select slot.access_class from public.workspace_roles slot where slot.id = membership.role_id), 'employee'::public.workspace_role),
     nullif(btrim(coalesce(employee.first_name, '') || ' ' || coalesce(employee.last_name, '')), ''),
     employee.employee_code
   from public.workspace_memberships membership
@@ -16772,7 +16894,7 @@ CREATE OR REPLACE FUNCTION "public"."list_my_workspaces"() RETURNS TABLE("worksp
   select
     workspace.id,
     workspace.name,
-    membership.role,
+    coalesce((select slot.access_class from public.workspace_roles slot where slot.id = membership.role_id), 'employee'::public.workspace_role),
     membership.status,
     coalesce(workspace.id = preference.active_workspace_id, false)
       and membership.status = 'active'
@@ -19245,7 +19367,7 @@ begin
       from public.workspace_memberships membership
       where membership.workspace_id = old.workspace_id
         and membership.user_id = old.user_id
-        and membership.role = 'owner'::public.workspace_role
+        and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
     ) then
     raise exception 'owner employee record cannot be archived through ordinary lifecycle'
       using errcode = '42501';
@@ -20699,15 +20821,15 @@ begin
       select jsonb_agg(to_jsonb(r) || jsonb_build_object(
         'permission_keys', coalesce((select jsonb_agg(g.permission_key order by g.permission_key)
           from public.workspace_role_permissions g where g.role_id = r.id), '[]'::jsonb),
-        'member_count', (select count(*) from public.workspace_memberships m where m.role_id = r.id and m.status = 'active'),
+        'member_count', (select count(*) from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id) and m.status = 'active'),
         'pending_invite_count', (select count(*) from public.employee_invitations i
           where i.role_id = r.id and i.status = 'pending' and i.expires_at > now()),
-        'blocking_member_count', (select count(*) from public.workspace_memberships m where m.role_id = r.id)
+        'blocking_member_count', (select count(*) from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id))
           + (select count(*) from public.employee_access_snapshots snap where snap.role_id = r.id),
         'blocking_invite_count', (select count(*) from public.employee_invitations i where i.role_id = r.id),
         'editable', app_private.can_edit_role(actor_user_id, target_workspace_id, r.id),
         'deletable', r.system_key is null and app_private.can_edit_role(actor_user_id, target_workspace_id, r.id)
-          and not exists (select 1 from public.workspace_memberships m where m.role_id = r.id)
+          and not exists (select 1 from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id))
           and not exists (select 1 from public.employee_invitations i where i.role_id = r.id)
           and not exists (select 1 from public.employee_access_snapshots snap where snap.role_id = r.id)
       ) order by r.sort_order, r.name)
@@ -21994,7 +22116,7 @@ begin
     raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
   end if;
 
-  select coalesce(role.access_class, membership.role) into actor_role
+  select coalesce(role.access_class, 'employee'::public.workspace_role) into actor_role
   from public.workspace_memberships membership
   left join public.workspace_roles role
     on role.id = membership.role_id
@@ -22264,25 +22386,28 @@ begin
     workspace.schedule_logo_offset_y,
     membership.id,
     role.access_class,
-    membership.role_id,
+    role.id,
     role.name,
     coalesce(
       array_agg(grant_row.permission_key order by permission.sort_order)
         filter (where grant_row.permission_key is not null),
       '{}'::text[]
     ),
-    membership.all_locations,
+    role.access_class in ('owner', 'admin'),
     onboarding.status,
     onboarding.current_step,
     onboarding.revision,
     app_private.actor_actions(state),
-    case when membership.all_locations then '{}'::uuid[] else state.works end,
+    case when role.access_class in ('owner', 'admin') then '{}'::uuid[]
+         when role.access_class = 'manager' then state.manages else state.works end,
     state.document_blocked
   from public.workspace_memberships membership
   join public.workspaces workspace
     on workspace.id = membership.workspace_id
+  -- The role a screen shows: the management slot's, else the employee slot's (ROL-CIFT 1.4; the
+  -- membership's two slots reach the API in 1.5).
   join public.workspace_roles role
-    on role.id = membership.role_id
+    on role.id = coalesce(membership.role_id, membership.employee_role_id)
    and role.workspace_id = membership.workspace_id
   left join public.workspace_role_permissions grant_row
     on grant_row.role_id = role.id
@@ -22308,9 +22433,8 @@ begin
     workspace.schedule_logo_offset_y,
     membership.id,
     role.access_class,
-    membership.role_id,
+    role.id,
     role.name,
-    membership.all_locations,
     onboarding.status,
     onboarding.current_step,
     onboarding.revision;
@@ -22444,7 +22568,7 @@ begin
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
     where m.id = transfer_row.target_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = actor_user_id and m.status = 'active' and coalesce(r.access_class, m.role) = 'admin'
+      and m.user_id = actor_user_id and m.status = 'active' and r.access_class = 'admin'
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.membership_id = m.id and c.workspace_id = m.workspace_id and c.status <> 'approved')
       -- The owner works the Owner job on their own record (BL-252), so only
@@ -22456,7 +22580,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.id = transfer_row.previous_owner_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = transfer_row.initiated_by and m.status = 'active' and coalesce(r.access_class, m.role) = 'owner'
+      and m.user_id = transfer_row.initiated_by and m.status = 'active' and r.access_class = 'owner'
   ) then raise exception 'ownership transfer participants are no longer eligible' using errcode = '42501', hint = 'transfer.participants_ineligible'; end if;
 
   select id into owner_role_id
@@ -22478,8 +22602,6 @@ begin
 
   update public.workspace_memberships
   set role_id = owner_role_id,
-      role = 'owner',
-      all_locations = true,
       updated_at = now()
   where id = transfer_row.target_membership_id
     and workspace_id = target_workspace_id
@@ -22487,8 +22609,6 @@ begin
 
   update public.workspace_memberships
   set role_id = admin_role_id,
-      role = 'admin',
-      all_locations = true,
       updated_at = now()
   where id = transfer_row.previous_owner_membership_id
     and workspace_id = target_workspace_id
@@ -25151,7 +25271,7 @@ begin
       select 1 from public.workspace_memberships m
       left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
       where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-        and m.status = 'active' and coalesce(r.access_class, m.role) = 'owner'
+        and m.status = 'active' and r.access_class = 'owner'
     ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
     raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
@@ -25164,7 +25284,7 @@ begin
     left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
     left join public.user_profiles p on p.user_id = m.user_id
     where m.workspace_id = target_workspace_id and m.status = 'active'
-      and m.user_id <> actor_user_id and coalesce(r.access_class, m.role) = 'admin'
+      and m.user_id <> actor_user_id and r.access_class = 'admin'
       -- Active legacy memberships without an onboarding case are already complete.
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
@@ -25253,7 +25373,7 @@ begin
       on workspace.id = membership.workspace_id
     where membership.workspace_id = new.workspace_id
       and membership.user_id = new.updated_by
-      and membership.role = 'owner'::public.workspace_role
+      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
       and membership.status = 'active'::public.membership_status
       and workspace.lifecycle_status = 'active'::public.workspace_lifecycle_status
   ) then
@@ -25527,7 +25647,7 @@ begin
 
   if should_archive and member.id is not null and member.status in ('active', 'pending_activation') then
     insert into public.employee_access_snapshots (workspace_id, employee_id, membership_id, role_id, captured_by)
-    values (target_workspace_id, target_employee_id, member.id, member.role_id, actor_user_id);
+    values (target_workspace_id, target_employee_id, member.id, coalesce(member.role_id, member.employee_role_id), actor_user_id);
 
     update public.workspace_memberships
     set status = 'suspended'::public.membership_status, updated_at = now()
@@ -25548,8 +25668,9 @@ begin
   if not should_archive and restore_access then
     perform set_config('app.membership_change', snapshot.membership_id::text, true);
     update public.workspace_memberships
-    set role_id = snapshot.role_id, status = 'active'::public.membership_status, updated_at = now()
+    set status = 'active'::public.membership_status, updated_at = now()
     where id = snapshot.membership_id;
+    perform app_private.place_single_role(snapshot.membership_id, snapshot.role_id);
 
     update public.employee_access_snapshots set restored_at = now() where id = snapshot.id;
   end if;
@@ -27159,7 +27280,7 @@ begin
 
   if member.id is not null and member.status in ('active', 'pending_activation') then
     insert into public.employee_access_snapshots (workspace_id, employee_id, membership_id, role_id, captured_by)
-    values (target_workspace_id, target_employee_id, member.id, member.role_id, actor_user_id);
+    values (target_workspace_id, target_employee_id, member.id, coalesce(member.role_id, member.employee_role_id), actor_user_id);
     update public.workspace_memberships
     set status = 'suspended', updated_at = now()
     where id = member.id;
@@ -27846,12 +27967,10 @@ begin
 
   select role.* into existing_role
   from public.workspace_roles role
-  where role.id = target_membership.role_id and role.workspace_id = target_workspace_id;
+  where role.id = coalesce(target_membership.role_id, target_membership.employee_role_id) and role.workspace_id = target_workspace_id;
 
   perform set_config('app.membership_change', target_membership.id::text, true);
-  update public.workspace_memberships
-  set role_id = next_role.id, updated_at = now()
-  where id = target_membership.id and workspace_id = target_workspace_id;
+  perform app_private.place_single_role(target_membership.id, next_role.id);
 
   -- K4: nobody without a location becomes a manager, unless Remote.
   perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee.id);
@@ -33029,6 +33148,10 @@ CREATE OR REPLACE TRIGGER "management_job_stays_held" BEFORE UPDATE OF "departme
 
 
 
+CREATE OR REPLACE TRIGGER "manages_follow_works" AFTER INSERT OR DELETE OR UPDATE OF "location_id", "ended_at" ON "public"."employee_location_assignments" FOR EACH ROW EXECUTE FUNCTION "app_private"."manages_follow_works_trigger"();
+
+
+
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
 
 
@@ -35926,6 +36049,14 @@ REVOKE ALL ON FUNCTION "app_private"."management_job_stays_held"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."manages_follow_works_trigger"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."mark_account_organization_history"() FROM PUBLIC;
 
 
@@ -36052,6 +36183,10 @@ REVOKE ALL ON FUNCTION "app_private"."phone_used_in_workspace"("target_workspace
 
 
 REVOKE ALL ON FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") FROM PUBLIC;
 
 
 
