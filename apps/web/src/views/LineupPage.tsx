@@ -106,6 +106,8 @@ export function LineupPage() {
     refetch: () => Promise.all([schedule.error ? schedule.refetch() : null, day.error ? day.refetch() : null]),
   };
   const [publishOpen, setPublishOpen] = useState(false);
+  // The Publish window is publishing: its Publish and the day controls wait until it has answered.
+  const [publishing, setPublishing] = useState(false);
   const closePublish = useCallback(() => setPublishOpen(false), []);
   // It went out (notice A, mockup v-e.js .d-pub): the window closes and the Publish that opened it says
   // "Published" for PUBLISH_DONE_MS, then is as it was.
@@ -144,6 +146,7 @@ export function LineupPage() {
     );
   }
   const goTo = (day: string) => {
+    if (publishing) return;
     setPublishOpen(false);
     setParam("date", day === today ? "" : day);
   };
@@ -162,6 +165,7 @@ export function LineupPage() {
         anyPublished={anyPublished}
         open={publishOpen}
         published={justPublished}
+        busy={publishing}
         onToggle={() => setPublishOpen(!publishOpen)}
       />
       {publishOpen ? (
@@ -174,6 +178,7 @@ export function LineupPage() {
           nowAt={nowAt}
           onClose={closePublish}
           onPublished={published}
+          onWorking={setPublishing}
         />
       ) : null}
     </div>
@@ -222,6 +227,7 @@ export function LineupPage() {
                 anyPublished,
                 open: publishOpen,
                 published: justPublished,
+                busy: publishing,
                 sent,
                 onToggle: () => setPublishOpen(!publishOpen),
                 window: (
@@ -234,6 +240,7 @@ export function LineupPage() {
                     nowAt={nowAt}
                     onClose={closePublish}
                     onPublished={published}
+                    onWorking={setPublishing}
                     className="is-sheet"
                   />
                 ),
@@ -266,19 +273,20 @@ export function LineupPage() {
 
       <div className="lineup-toolbar">
         <div className="lineup-date" role="group" aria-label="Day">
-          <button type="button" className="lineup-step" aria-label="Previous day" onClick={() => goTo(addDays(date, -1))}>
+          <button type="button" className="lineup-step" aria-label="Previous day" aria-disabled={publishing || undefined} onClick={() => goTo(addDays(date, -1))}>
             <ChevronLeft size={16} aria-hidden />
           </button>
           <button
             type="button"
             className="lineup-date-label"
+            aria-disabled={publishing || undefined}
             data-other-day={date !== today ? "true" : undefined}
             title={date !== today ? "Back to today" : undefined}
             onClick={() => goTo(today)}
           >
             {shortDate(date)}
           </button>
-          <button type="button" className="lineup-step" aria-label="Next day" onClick={() => goTo(addDays(date, 1))}>
+          <button type="button" className="lineup-step" aria-label="Next day" aria-disabled={publishing || undefined} onClick={() => goTo(addDays(date, 1))}>
             <ChevronRight size={16} aria-hidden />
           </button>
         </div>
@@ -328,6 +336,7 @@ export function LineupPage() {
                 key={day}
                 type="button"
                 aria-pressed={day === date}
+                aria-disabled={publishing || undefined}
                 aria-label={longDate(day)}
                 data-today={day === today ? "true" : undefined}
                 onClick={() => goTo(day)}

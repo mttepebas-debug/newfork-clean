@@ -70,6 +70,7 @@ export function LineupPublishButton({
   anyPublished,
   open,
   published = false,
+  busy = false,
   onToggle,
   className,
 }: {
@@ -78,6 +79,8 @@ export function LineupPublishButton({
   readonly open: boolean;
   /** It has just published: a check and "Published" for PUBLISH_DONE_MS; presses wait. */
   readonly published?: boolean;
+  /** The window it opened is publishing: a press waits (aria-disabled, aria-busy), the window stays. */
+  readonly busy?: boolean;
   readonly onToggle: () => void;
   readonly className?: string;
 }): JSX.Element {
@@ -89,12 +92,13 @@ export function LineupPublishButton({
       aria-expanded={open}
       aria-haspopup="dialog"
       aria-label={published ? undefined : waiting ? `Publish, ${plural(waiting, "lineup")} waiting` : "Publish"}
-      aria-disabled={published || undefined}
+      aria-disabled={published || busy || undefined}
+      aria-busy={busy || undefined}
       aria-live="polite"
       disabled={idle}
       title={idle ? "No lineups to publish this day." : undefined}
       onClick={() => {
-        if (!published) onToggle();
+        if (!published && !busy) onToggle();
       }}
     >
       {published ? (
@@ -122,6 +126,7 @@ export function LineupPublishWindow({
   nowAt,
   onClose,
   onPublished,
+  onWorking,
   className,
 }: {
   readonly workspaceId: string | null;
@@ -138,6 +143,11 @@ export function LineupPublishWindow({
    * "<location id>:<shift key>".
    */
   readonly onPublished: (keys: readonly string[]) => void;
+  /**
+   * Publish is working (true) or done (false, also when the window goes): the page's Publish and its day controls
+   * wait meanwhile, so the window and the answer stay (TanStack drops a closed window's onSuccess / onError).
+   */
+  readonly onWorking?: (working: boolean) => void;
   readonly className?: string;
 }): JSX.Element {
   const ref = useRef<HTMLElement | null>(null);
@@ -161,6 +171,10 @@ export function LineupPublishWindow({
   editingNow.current = editing !== null;
   const workingNow = useRef(false);
   workingNow.current = working;
+  const tell = useRef(onWorking);
+  tell.current = onWorking;
+  useEffect(() => tell.current?.(working), [working]);
+  useEffect(() => () => tell.current?.(false), []);
   const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // Focus goes into the window when it opens and back to what opened it (or the Publish button) when it closes.

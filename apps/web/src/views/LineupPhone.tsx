@@ -53,6 +53,8 @@ export interface PhonePublish {
   readonly open: boolean;
   /** It has just published: the dock stays and says "Published" (notice A), then goes if nothing is left. */
   readonly published: boolean;
+  /** The sheet is publishing: the floating Publish waits. */
+  readonly busy: boolean;
   /** The lineups that went out last, "<location id>:<shift key>": focus goes to the first one's card. */
   readonly sent: readonly string[];
   readonly onToggle: () => void;
@@ -758,6 +760,7 @@ function PublishDock({
           anyPublished={publish.anyPublished}
           open={publish.open}
           published={publish.published}
+          busy={publish.busy}
           onToggle={publish.onToggle}
           className="lineup-phone-publish"
         />

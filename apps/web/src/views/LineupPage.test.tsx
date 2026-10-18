@@ -324,6 +324,41 @@ describe("LineupPage publishing", () => {
 
   // LINEUP-E-POLISH 1: while Publishing… works, Escape and a click outside leave the window open, so a refusal
   // still shows in its band.
+  // LINEUP-E-POLISH review (orta-1): the Publish that opened the window and the day controls wait while it publishes,
+  // so the window and the answer stay.
+  it("keeps the window and the day while it publishes: the page's Publish and the day controls wait", async () => {
+    let refuse: ((reason: unknown) => void) | null = null;
+    api.mockImplementation(async (_client, path) => {
+      if (path.endsWith("/lineups/commands")) return new Promise((_resolve, reject) => (refuse = reject));
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      return readers(dayRead(world, dayPath![1]!, published));
+    });
+    renderPage();
+    const trigger = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    fireEvent.click(trigger);
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    fireEvent.click(within(window).getByRole("button", { name: "Publish 2" }));
+    expect(trigger.getAttribute("aria-busy")).toBe("true");
+    expect(trigger.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(trigger);
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(window);
+    const next = screen.getByRole("button", { name: "Next day" });
+    expect(next.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(next);
+    fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
+    fireEvent.click(screen.getByRole("button", { name: /^Wednesday, October 14/ }));
+    expect(screen.getByTestId("where").textContent).toBe("");
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(window);
+    await waitFor(() => expect(refuse).not.toBeNull());
+    refuse!(new RequestError("No", "lineup.one_day", undefined, 400));
+    expect((await within(window).findByRole("alert")).textContent).toBe("Publish one day's lineups at a time.");
+    // Back to normal once it has answered.
+    expect(trigger.getAttribute("aria-busy")).toBeNull();
+    expect(next.getAttribute("aria-disabled")).toBeNull();
+    fireEvent.click(next);
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
+  });
+
   it("keeps the window open through Escape and a click outside while it publishes, and shows a refusal", async () => {
     let refuse: ((reason: unknown) => void) | null = null;
     api.mockImplementation(async (_client, path) => {
@@ -408,6 +443,11 @@ describe("LineupPage publishing", () => {
     expect(shared).toMatch(/\.app-confirm footer \.secondary-button\[aria-disabled="true"\]\s*\{[^}]*opacity:\s*0?\.55/);
     const lineup = readFileSync("src/schedule/lineup-publish.css", "utf8");
     expect(lineup).not.toMatch(/secondary-button\[aria-disabled="true"\]/);
+    // Hovering an answer that is off while it works doesn't light it up (review, low-2).
+    expect(shared).toMatch(
+      /\.nf-button:not\(\.secondary-button\):not\(\.danger-button\)\[aria-disabled="true"\]:hover\s*\{\s*background:\s*var\(--theme-accent\);/,
+    );
+    expect(shared).toMatch(/\.app-confirm footer \.secondary-button\[aria-disabled="true"\]:hover\s*\{\s*background:\s*var\(--theme-surface\);/);
   });
 
   // Mert 2026-10-17 (notice A; mockup v-e.js .d-pub): the window's Publish spins and says "Publishing…"; then the
@@ -895,7 +935,8 @@ describe("LineupPage on a phone, E", () => {
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, service_date: day, shift_type_id: lunch }] });
     // Edit goes off once the lineup is a draft: focus waits on the card's chevron, not on the page's top.
-    expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Hide list" }));
+    // The focus moves in an effect after the window has gone: wait for it (a busy machine may run the check first).
+    await waitFor(() => expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Hide list" })));
   });
 
   // Mert 2026-10-17 (~1:45 PM, notice A): the green Edit spins and says "Unpublishing…" while it works, then the
@@ -1363,6 +1404,33 @@ describe("LineupPage on a phone, E", () => {
     expect(document.querySelector(".lineup-phone-dock")).toBeNull();
     expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Edit" }));
     expect(screen.queryAllByRole("status").filter((element) => element.getAttribute("data-testid") !== "where")).toEqual([]);
+  });
+
+  // LINEUP-E-POLISH review (orta-1): a press on the floating Publish while the sheet publishes leaves the sheet, and
+  // the day wheel's day stays, so a refusal still shows.
+  it("keeps the sheet and the day while it publishes: the floating Publish and the day wait", async () => {
+    only = null;
+    let refuse: ((reason: unknown) => void) | null = null;
+    api.mockImplementation(async (_client, path) => {
+      if (path.endsWith("/lineups/commands")) return new Promise((_resolve, reject) => (refuse = reject));
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      return readers(dayRead(world, dayPath![1]!, published));
+    });
+    renderPage();
+    const dock = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    fireEvent.click(dock);
+    const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
+    expect(dock.getAttribute("aria-busy")).toBe("true");
+    fireEvent.click(dock);
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(sheet);
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    expect(screen.getByTestId("where").textContent).toBe("");
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(sheet);
+    await waitFor(() => expect(refuse).not.toBeNull());
+    refuse!(new RequestError("No", "lineup.one_day", undefined, 400));
+    expect((await within(sheet).findByRole("alert")).textContent).toBe("Publish one day's lineups at a time.");
+    expect(dock.getAttribute("aria-busy")).toBeNull();
   });
 
   it("has no Publish dock for someone who can't publish", async () => {
