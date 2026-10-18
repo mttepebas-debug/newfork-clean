@@ -19,6 +19,9 @@ async function phone(browser: Browser, person: Person, path: string): Promise<Pa
   await signIn(page, person);
   await expect(page).not.toHaveURL(/\/sign-in/);
   await page.goto(path);
+  // The page has loaded: an outline that the content replaces mid-swipe takes the finger's lift with it.
+  await expect(page.locator("h1").filter({ visible: true }).first()).not.toBeEmpty({ timeout: 30_000 });
+  await expect(page.locator(".nf-loading")).toHaveCount(0, { timeout: 30_000 });
   return page;
 }
 
