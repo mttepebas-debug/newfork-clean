@@ -37,7 +37,7 @@ type Update = (change: (draft: AnnouncementDraft) => AnnouncementDraft) => void;
 
 export function FieldError({ id, message }: { id?: string; message?: string }) {
   return message ? (
-    <span className="ad-error" role="alert" id={id}>
+    <span className="annc-error" role="alert" id={id}>
       {message}
     </span>
   ) : null;
@@ -64,7 +64,7 @@ export function Flag({
   onChange: (checked: boolean) => void;
 }) {
   return (
-    <label className="ad-flag" data-compact={compact || undefined} title={compact ? hint : undefined}>
+    <label className="annc-flag" data-compact={compact || undefined} title={compact ? hint : undefined}>
       <input
         type="checkbox"
         checked={checked}
@@ -73,7 +73,7 @@ export function Flag({
       />
       <span>
         <b>{label}</b>
-        <span className={compact ? "sr-only" : "ad-hint"}>{hint}</span>
+        <span className={compact ? "sr-only" : "annc-hint"}>{hint}</span>
       </span>
     </label>
   );
@@ -137,11 +137,11 @@ export function DetailsTab({
   const allDay = draft.event_from === null;
   return (
     <>
-      <div className="ad-field">
+      <div className="annc-field">
         <label htmlFor={id("title")}>Title</label>
         <input
           id={id("title")}
-          className="ad-input"
+          className="annc-input"
           maxLength={120}
           placeholder="What is it about?"
           value={draft.title}
@@ -155,12 +155,12 @@ export function DetailsTab({
         />
         <FieldError id={id("title-error")} message={titleError} />
       </div>
-      <div className="ad-two">
-        <div className="ad-field">
+      <div className="annc-two">
+        <div className="annc-field">
           <label htmlFor={id("category")}>Category</label>
           <select
             id={id("category")}
-            className="ad-input"
+            className="annc-input"
             value={draft.category}
             disabled={locked}
             onChange={(event) => {
@@ -175,14 +175,14 @@ export function DetailsTab({
             ))}
           </select>
         </div>
-        <div className="ad-field">
-          <span className="ad-label-row">
+        <div className="annc-field">
+          <span className="annc-label-row">
             <label htmlFor={id("repeat")}>Repeats</label>
-            {nextDay && <span className="ad-next">Next: {dayText(nextDay, true)}</span>}
+            {nextDay && <span className="annc-next">Next: {dayText(nextDay, true)}</span>}
           </span>
           <select
             id={id("repeat")}
-            className="ad-input"
+            className="annc-input"
             value={draft.recurrence}
             disabled={frozen || !draft.starts_on}
             onChange={(event) => {
@@ -199,12 +199,12 @@ export function DetailsTab({
         </div>
       </div>
       {draft.category === "other" && (
-        <div className="ad-two">
-          <div className="ad-field">
+        <div className="annc-two">
+          <div className="annc-field">
             <label htmlFor={id("other")}>Category name</label>
             <input
               id={id("other")}
-              className="ad-input"
+              className="annc-input"
               maxLength={40}
               placeholder="Repair"
               value={draft.category_other ?? ""}
@@ -220,7 +220,7 @@ export function DetailsTab({
           </div>
         </div>
       )}
-      <div className="ad-flags">
+      <div className="annc-flags">
         <Flag
           compact
           label="Add to Important Dates"
@@ -252,16 +252,16 @@ export function DetailsTab({
           onChange={(checked) => update((current) => ({ ...current, on_schedule: checked }))}
         />
       </div>
-      <div className="ad-when" data-focus="when" role="group" aria-label="When">
-        <div className="ad-field">
-          <span className="ad-label-row">
+      <div className="annc-when" data-focus="when" role="group" aria-label="When">
+        <div className="annc-field">
+          <span className="annc-label-row">
             <label htmlFor={id("starts")}>Starts</label>
-            {!needsDate && <span className="ad-optional">Optional</span>}
+            {!needsDate && <span className="annc-optional">Optional</span>}
           </span>
           <input
             id={id("starts")}
             type="date"
-            className="ad-input"
+            className="annc-input"
             min={started ? undefined : today}
             value={draft.starts_on ?? ""}
             disabled={frozen}
@@ -280,11 +280,11 @@ export function DetailsTab({
           />
           <FieldError id={id("starts-error")} message={startError} />
         </div>
-        <div className="ad-field">
-          <span className="ad-label-row">
+        <div className="annc-field">
+          <span className="annc-label-row">
             <label htmlFor={id("ends")}>Ends</label>
             {/* Checked by default; the times open when it's cleared (Mert, 2026-10-12). */}
-            <label className="ad-check">
+            <label className="annc-check">
               <input
                 type="checkbox"
                 checked={allDay}
@@ -304,7 +304,7 @@ export function DetailsTab({
           <input
             id={id("ends")}
             type="date"
-            className="ad-input"
+            className="annc-input"
             min={started ? today : (draft.starts_on ?? today)}
             value={draft.ends_on ?? ""}
             disabled={locked}
@@ -317,9 +317,9 @@ export function DetailsTab({
           />
           <FieldError id={id("ends-error")} message={endError} />
         </div>
-        <div className="ad-field">
+        <div className="annc-field">
           <AvailabilityClockInput
-            className="ad-input ad-clock"
+            className="annc-input annc-clock"
             label="Start time"
             value={draft.event_from ?? ""}
             timeFormat={timeFormat}
@@ -330,9 +330,9 @@ export function DetailsTab({
             }}
           />
         </div>
-        <div className="ad-field">
+        <div className="annc-field">
           <AvailabilityClockInput
-            className="ad-input ad-clock"
+            className="annc-input annc-clock"
             label="End time"
             value={draft.event_until ?? ""}
             timeFormat={timeFormat}
@@ -360,11 +360,11 @@ export function DetailsTab({
         timeFormat={timeFormat}
       />
       {publishing}
-      <div className="ad-field ad-message">
+      <div className="annc-field annc-message">
         <label htmlFor={id("body")}>Message</label>
         <textarea
           id={id("body")}
-          className="ad-input"
+          className="annc-input"
           maxLength={5000}
           placeholder="Share the details your team needs."
           value={draft.body}
@@ -398,7 +398,7 @@ function DaySeg({
   onChange: (day: AnnouncementDay) => void;
 }) {
   return (
-    <span className="ad-seg" role="group" aria-label={label}>
+    <span className="annc-seg" role="group" aria-label={label}>
       {dayOptions.map((option) => (
         <button
           key={option.value}
@@ -408,7 +408,7 @@ function DaySeg({
           disabled={disabled}
           onClick={() => onChange(option.value)}
         >
-          <span className="ad-dot" aria-hidden />
+          <span className="annc-dot" aria-hidden />
           {option.label}
         </button>
       ))}
@@ -454,15 +454,15 @@ function LocationsTable({
   const listed = preview?.shifts ?? null;
   const labelId = `${idPrefix}-locations`;
   return (
-    <div className="ad-field" data-focus="locs">
-      <span className="ad-label" id={labelId}>
+    <div className="annc-field" data-focus="locs">
+      <span className="annc-label" id={labelId}>
         Locations
       </span>
-      <div className="ad-locs" role="table" aria-labelledby={labelId}>
-        <div className="ad-loc-head" role="row">
+      <div className="annc-locs" role="table" aria-labelledby={labelId}>
+        <div className="annc-loc-head" role="row">
           <span role="columnheader">
             {locations.length > 1 ? (
-              <label className="ad-loc-name">
+              <label className="annc-loc-name">
                 <input
                   type="checkbox"
                   checked={allChecked}
@@ -515,7 +515,7 @@ function LocationsTable({
               "That day"
             )}
           </span>
-          <span role="columnheader" className="ad-loc-impact">
+          <span role="columnheader" className="annc-loc-impact">
             Shifts
           </span>
         </div>
@@ -528,9 +528,9 @@ function LocationsTable({
             listed && listed.filter((shift) => shift.location_id === location.id),
           );
           return (
-            <div key={location.id} role="row" className="ad-loc" data-off={!row} data-bad={Boolean(error)}>
+            <div key={location.id} role="row" className="annc-loc" data-off={!row} data-bad={Boolean(error)}>
               <span role="cell">
-                <label className="ad-loc-name">
+                <label className="annc-loc-name">
                   <input
                     type="checkbox"
                     checked={Boolean(row)}
@@ -551,8 +551,8 @@ function LocationsTable({
                   {location.name}
                 </label>
               </span>
-              <span role="cell" className="ad-loc-day">
-                <span className="ad-day-stack">
+              <span role="cell" className="annc-loc-day">
+                <span className="annc-day-stack">
                   {row ? (
                     <DaySeg
                       label={`${location.name} that day`}
@@ -561,10 +561,10 @@ function LocationsTable({
                       onChange={(day) => setDay(location.id, day)}
                     />
                   ) : (
-                    <span className="ad-muted">Not included</span>
+                    <span className="annc-muted">Not included</span>
                   )}
                   {row?.day === "short" && (
-                    <span className="ad-times">
+                    <span className="annc-times">
                       <AvailabilityClockInput
                         label={`${location.name} opens`}
                         value={row.opens ?? ""}
@@ -600,14 +600,14 @@ function LocationsTable({
                   )}
                 </span>
                 {row?.day === "short" && row.opens && row.closes && closesNextDay(row.opens, row.closes) && (
-                  <span className="ad-next-day">next day</span>
+                  <span className="annc-next-day">next day</span>
                 )}
               </span>
-              <span role="cell" className="ad-loc-impact" data-tone={impact.tone}>
+              <span role="cell" className="annc-loc-impact" data-tone={impact.tone}>
                 {impact.text}
               </span>
               {error && (
-                <span className="ad-loc-error">
+                <span className="annc-loc-error">
                   <FieldError message={error} />
                 </span>
               )}
@@ -616,10 +616,10 @@ function LocationsTable({
         })}
       </div>
       {lockedHours && (
-        <p className="ad-note">Your role can&apos;t change opening hours. Checked locations keep their usual hours.</p>
+        <p className="annc-note">Your role can&apos;t change opening hours. Checked locations keep their usual hours.</p>
       )}
       {preview && preview.quiet_count > 0 && (
-        <p className="ad-note">
+        <p className="annc-note">
           {plural(preview.quiet_count, "shift")} in a week that isn&apos;t published yet follow the same defaults,
           without a shift notice.
         </p>
@@ -665,8 +665,8 @@ export function PublishingRow({
   // A day box and a clock box, so the time reads in the workspace's 12h or 24h clock.
   const [day = "", clock = ""] = publishWall.split("T");
   return (
-    <div className="ad-flag ad-publish-row" data-focus="pub">
-      <label className="ad-publish-label">
+    <div className="annc-flag annc-publish-row" data-focus="pub">
+      <label className="annc-publish-label">
         <input
           type="checkbox"
           checked={later}
@@ -675,11 +675,11 @@ export function PublishingRow({
         />
         <b>Schedule for later</b>
       </label>
-      <span className="ad-publish-at">
-        <span className="ad-publish-boxes">
+      <span className="annc-publish-at">
+        <span className="annc-publish-boxes">
           <input
             type="date"
-            className="ad-input"
+            className="annc-input"
             aria-label="Publish on"
             value={day}
             min={minWall.slice(0, 10)}
@@ -689,7 +689,7 @@ export function PublishingRow({
             {...invalid(problem, errorId)}
           />
           <AvailabilityClockInput
-            className="ad-input ad-clock"
+            className="annc-input annc-clock"
             label="Publish at"
             value={clock}
             timeFormat={timeFormat}
@@ -702,7 +702,7 @@ export function PublishingRow({
         </span>
         <FieldError id={errorId} message={problem} />
       </span>
-      {laterBlocked && <span className="ad-hint">It starts today, so it goes out when you publish.</span>}
+      {laterBlocked && <span className="annc-hint">It starts today, so it goes out when you publish.</span>}
     </div>
   );
 }
@@ -795,11 +795,11 @@ export function AudienceTab({
     close();
   };
   const row = (person: { user_id: string; name: string }, sub: string, end?: ReactNode) => (
-    <div className="ad-row" key={person.user_id}>
-      <span className="ad-avatar ad-av" aria-hidden>
+    <div className="annc-row" key={person.user_id}>
+      <span className="annc-avatar annc-av" aria-hidden>
         {initials(person.name)}
       </span>
-      <span className="ad-row-text">
+      <span className="annc-row-text">
         <b>{person.name}</b>
         <small>{sub}</small>
       </span>
@@ -807,7 +807,7 @@ export function AudienceTab({
       {!locked && draft.people.includes(person.user_id) && (
         <button
           type="button"
-          className="ad-x"
+          className="annc-x"
           aria-label={`Remove ${person.name}`}
           onClick={() =>
             update((current) => ({ ...current, people: current.people.filter((id) => id !== person.user_id) }))
@@ -821,19 +821,19 @@ export function AudienceTab({
 
   return (
     <>
-      <section className="ad-pane ad-who" aria-label="Who gets it">
-        <div className="ad-who-head">
+      <section className="annc-pane annc-who" aria-label="Who gets it">
+        <div className="annc-who-head">
           <b>{adding ? "Add people" : "Who gets it"}</b>
-          {!adding && <span className="ad-who-pill">{plural(recipientCount, "person", "people")}</span>}
+          {!adding && <span className="annc-who-pill">{plural(recipientCount, "person", "people")}</span>}
           {!adding && !locked && (
-            <Button type="button" className="secondary-button ad-add-open" onClick={() => setAdding(true)}>
+            <Button type="button" className="secondary-button annc-add-open" onClick={() => setAdding(true)}>
               <Plus size={15} aria-hidden /> Add people
             </Button>
           )}
         </div>
         {adding ? (
           <>
-            <label className="ad-search">
+            <label className="annc-search">
               <Search size={15} aria-hidden />
               <input
                 type="search"
@@ -843,42 +843,42 @@ export function AudienceTab({
                 onChange={(event) => setQuery(event.target.value)}
               />
             </label>
-            <div className="ad-list">
+            <div className="annc-list">
               {shown.length ? (
-                <label className="ad-row ad-row-all">
+                <label className="annc-row annc-row-all">
                   <input
                     type="checkbox"
                     aria-label="Select all"
                     checked={allShownPicked}
                     onChange={(event) => choose(shown.map((person) => person.user_id), event.target.checked)}
                   />
-                  <span className="ad-row-text">
+                  <span className="annc-row-text">
                     <b>Select all</b>
                   </span>
-                  <span className="ad-count">{shown.length}</span>
+                  <span className="annc-count">{shown.length}</span>
                 </label>
               ) : (
-                <div className="ad-empty">{pool.length ? "Nobody matches." : "Everyone already gets it."}</div>
+                <div className="annc-empty">{pool.length ? "Nobody matches." : "Everyone already gets it."}</div>
               )}
               {shown.map((person) => (
-                <label className="ad-row" key={person.user_id}>
+                <label className="annc-row" key={person.user_id}>
                   <input
                     type="checkbox"
                     checked={chosen.has(person.user_id)}
                     onChange={(event) => choose([person.user_id], event.target.checked)}
                   />
-                  <span className="ad-avatar ad-av" aria-hidden>
+                  <span className="annc-avatar annc-av" aria-hidden>
                     {initials(person.name)}
                   </span>
-                  <span className="ad-row-text">
+                  <span className="annc-row-text">
                     <b>{person.name}</b>
                     <small>{meta(person)}</small>
                   </span>
                 </label>
               ))}
             </div>
-            <div className="ad-pick-foot">
-              <span className="ad-muted">{picked.length ? `${picked.length} selected` : "Pick people to add"}</span>
+            <div className="annc-pick-foot">
+              <span className="annc-muted">{picked.length ? `${picked.length} selected` : "Pick people to add"}</span>
               <Button type="button" className="secondary-button" onClick={close}>
                 Cancel
               </Button>
@@ -888,17 +888,17 @@ export function AudienceTab({
             </div>
           </>
         ) : (
-          <div className="ad-list">
+          <div className="annc-list">
             {acks && (
-              <div className="ad-ack-box">
-                <div className="ad-ack-line">
+              <div className="annc-ack-box">
+                <div className="annc-ack-line">
                   <span>
                     <b>{done.length}</b> of {asked.length} acknowledged
                   </span>
                   {/* Remind: who hasn't acknowledged, twice a day at most (KARARLAR S-124, S-126). */}
                   <button
                     type="button"
-                    className="ad-mini"
+                    className="annc-mini"
                     aria-label={
                       notYet.length && acks.remindersLeft > 0
                         ? `Remind ${plural(notYet.length, "person", "people")}`
@@ -915,25 +915,25 @@ export function AudienceTab({
                         : `Remind ${notYet.length}`}
                   </button>
                 </div>
-                <span className="ad-bar" aria-hidden>
+                <span className="annc-bar" aria-hidden>
                   <span style={{ width: `${share}%` }} />
                 </span>
               </div>
             )}
             {problem && (
-              <div className="ad-pane-error">
+              <div className="annc-pane-error">
                 <FieldError message={problem} />
               </div>
             )}
             {checkedLocations.length > 0 && (
               <>
-                <div className="ad-group">From locations</div>
+                <div className="annc-group">From locations</div>
                 {checkedLocations.map((location) => (
-                  <div className="ad-row" key={location.id}>
-                    <span className="ad-ico" aria-hidden>
+                  <div className="annc-row" key={location.id}>
+                    <span className="annc-ico" aria-hidden>
                       <MapPin size={14} />
                     </span>
-                    <span className="ad-row-text">
+                    <span className="annc-row-text">
                       <b>{location.name}</b>
                       <small>
                         Everyone there{location.count !== null ? ` · ${plural(location.count, "person", "people")}` : ""}
@@ -945,31 +945,31 @@ export function AudienceTab({
             )}
             {(added.length > 0 || unknownAdded > 0) && (
               <>
-                <div className="ad-group">
+                <div className="annc-group">
                   Added here · {added.length + unknownAdded}
                   {!locked && (
-                    <button type="button" className="ad-link" onClick={() => update((current) => ({ ...current, people: [] }))}>
+                    <button type="button" className="annc-link" onClick={() => update((current) => ({ ...current, people: [] }))}>
                       Clear
                     </button>
                   )}
                 </div>
                 {added.map((person) => row(person, meta(person)))}
                 {unknownAdded > 0 && (
-                  <div className="ad-row">
-                    <span className="ad-muted">{plural(unknownAdded, "other person", "other people")}</span>
+                  <div className="annc-row">
+                    <span className="annc-muted">{plural(unknownAdded, "other person", "other people")}</span>
                   </div>
                 )}
               </>
             )}
             {shiftPeople.length > 0 && (
               <>
-                <div className="ad-group">Their shift changes · {shiftPeople.length}</div>
+                <div className="annc-group">Their shift changes · {shiftPeople.length}</div>
                 {shiftPeople.map((person) => row(person, person.meta))}
               </>
             )}
             {notYet.length > 0 && (
               <>
-                <div className="ad-group" data-tone="amber">
+                <div className="annc-group" data-tone="amber">
                   Not yet · {notYet.length}
                 </div>
                 {notYet.map((person) => row(person, meta(person)))}
@@ -977,14 +977,14 @@ export function AudienceTab({
             )}
             {done.length > 0 && (
               <>
-                <div className="ad-group" data-tone="green">
+                <div className="annc-group" data-tone="green">
                   Acknowledged · {done.length}
                 </div>
                 {done.map((person) =>
                   row(
                     person,
                     meta(person),
-                    <span className="ad-ack-when">
+                    <span className="annc-ack-when">
                       <Check size={13} aria-hidden />
                       {momentText(person.acknowledged_at!, acks!.zone, acks!.timeFormat)}
                     </span>,
@@ -993,12 +993,12 @@ export function AudienceTab({
               </>
             )}
             {!checkedLocations.length && !added.length && !unknownAdded && !shiftPeople.length && !asked.length && !problem && (
-              <div className="ad-empty">Nobody yet. Check a location on Details or add people.</div>
+              <div className="annc-empty">Nobody yet. Check a location on Details or add people.</div>
             )}
           </div>
         )}
       </section>
-      <div className="ad-ack-flag">
+      <div className="annc-ack-flag">
         <Flag
           label="Ask people to acknowledge"
           hint="They see an Acknowledge button. You see who has and who hasn't."
@@ -1058,18 +1058,18 @@ export function ShiftsTab({
   if (changes) {
     const live = changes.filter((change) => !change.brought_back_at);
     return (
-      <section className="ad-shift-group" aria-label="Changed shifts">
-        <div className="ad-shift-group-head">
-          <span className="ad-strong">Changed shifts</span>
-          <span className="ad-shift-count">{plural(live.length, "shift")}</span>
+      <section className="annc-shift-group" aria-label="Changed shifts">
+        <div className="annc-shift-group-head">
+          <span className="annc-strong">Changed shifts</span>
+          <span className="annc-shift-count">{plural(live.length, "shift")}</span>
         </div>
         {live.map((change) => (
-          <div className="ad-back-row" key={change.id} data-locked="true">
+          <div className="annc-back-row" key={change.id} data-locked="true">
             <span />
-            <span className="ad-avatar" aria-hidden>
+            <span className="annc-avatar" aria-hidden>
               {initials(change.employee_name)}
             </span>
-            <span className="ad-back-name">
+            <span className="annc-back-name">
               <b>{change.employee_name ?? "Open shift"}</b>
               <span>
                 {[dayText(change.scheduled_date), change.location_name, shiftTime(change, timeFormat), changeText(change, timeFormat)]
@@ -1115,7 +1115,7 @@ export function ShiftsTab({
     <>
       {hours && (
         <>
-          <div className="ad-sums">
+          <div className="annc-sums">
             {(
               [
                 ["removed", "Removed", "red"],
@@ -1124,30 +1124,30 @@ export function ShiftsTab({
                 ["kept", "Kept", ""],
               ] as const
             ).map(([key, label, tone]) => (
-              <span key={key} className="ad-sum" data-tone={tone || undefined} data-zero={!counts[key]}>
+              <span key={key} className="annc-sum" data-tone={tone || undefined} data-zero={!counts[key]}>
                 <b>{counts[key]}</b>
                 {label}
               </span>
             ))}
           </div>
-          <p className="ad-desc">
+          <p className="annc-desc">
             Choices apply {applyText}. Until then this list follows the Schedule. Shifts inside the hours aren&apos;t
             listed.
           </p>
-          {!shifts.length && <div className="ad-empty-tab">Every shift on these days fits the hours.</div>}
+          {!shifts.length && <div className="annc-empty-tab">Every shift on these days fits the hours.</div>}
           {groups.map((group) => {
             const first = group.items[0]!;
             return (
-              <section className="ad-shift-group" key={group.key} aria-label={`${dayText(first.scheduled_date)}, ${first.location_name}`}>
-                <div className="ad-shift-group-head">
-                  <span className="ad-strong">{dayText(first.scheduled_date)}</span>
-                  <span className="ad-strong ad-dot-before">{first.location_name}</span>
-                  <span className="ad-pill" data-tone={first.day === "closed" ? "red" : "amber"}>
+              <section className="annc-shift-group" key={group.key} aria-label={`${dayText(first.scheduled_date)}, ${first.location_name}`}>
+                <div className="annc-shift-group-head">
+                  <span className="annc-strong">{dayText(first.scheduled_date)}</span>
+                  <span className="annc-strong annc-dot-before">{first.location_name}</span>
+                  <span className="annc-pill" data-tone={first.day === "closed" ? "red" : "amber"}>
                     {first.day === "closed" || !first.opens || !first.closes
                       ? "Closed"
                       : `Short hours ${hoursText(first.opens, first.closes, timeFormat)}`}
                   </span>
-                  <span className="ad-shift-count">{plural(group.items.length, "shift")}</span>
+                  <span className="annc-shift-count">{plural(group.items.length, "shift")}</span>
                 </div>
                 {group.items.map((shift) => (
                   <ShiftRow
@@ -1211,19 +1211,19 @@ function ShiftRow({
   ];
   const pressed = choice.choice === "edit" ? "keep" : choice.choice;
   return (
-    <div className="ad-shift" data-locked={shift.started}>
-      <span className="ad-avatar" aria-hidden>
+    <div className="annc-shift" data-locked={shift.started}>
+      <span className="annc-avatar" aria-hidden>
         {initials(shift.employee_name)}
       </span>
-      <div className="ad-shift-who">
+      <div className="annc-shift-who">
         <b>{name}</b>
         <span>{shift.job_name}</span>
       </div>
-      <div className="ad-shift-time">
+      <div className="annc-shift-time">
         {edited ? (
           <>
-            <b className="ad-strike">{time}</b>
-            <span className="ad-chip" data-tone="blue">
+            <b className="annc-strike">{time}</b>
+            <span className="annc-chip" data-tone="blue">
               Now {hoursText(edited.from, edited.until, timeFormat)}
             </span>
           </>
@@ -1231,20 +1231,20 @@ function ShiftRow({
           <b>{time}</b>
         )}
         {shift.started ? (
-          <span className="ad-tag">Started · can&apos;t change</span>
+          <span className="annc-tag">Started · can&apos;t change</span>
         ) : shift.changed_in_schedule ? (
-          <span className="ad-tag" data-tone="blue">
+          <span className="annc-tag" data-tone="blue">
             Changed in Schedule
           </span>
         ) : shift.tied ? (
-          <span className="ad-tag">Tied to time off or an offboarding · can&apos;t remove</span>
+          <span className="annc-tag">Tied to time off or an offboarding · can&apos;t remove</span>
         ) : edited ? null : (
-          <span className="ad-why">{shiftReason(shift)}</span>
+          <span className="annc-why">{shiftReason(shift)}</span>
         )}
       </div>
-      <div className="ad-shift-acts">
+      <div className="annc-shift-acts">
         {!shift.started && (
-          <span className="ad-seg" role="group" aria-label={`What happens to ${name}'s shift`}>
+          <span className="annc-seg" role="group" aria-label={`What happens to ${name}'s shift`}>
             {options.map((option) => (
               <button
                 key={option.value}
@@ -1260,15 +1260,15 @@ function ShiftRow({
           </span>
         )}
         {!shift.started && shift.day === "short" && !locked && !editing && (
-          <span className="ad-shift-more">
+          <span className="annc-shift-more">
             {fit && (
-              <button type="button" className="ad-link" onClick={() => onChoice({ choice: "edit", ...fit })}>
+              <button type="button" className="annc-link" onClick={() => onChoice({ choice: "edit", ...fit })}>
                 Fit to hours
               </button>
             )}
             <button
               type="button"
-              className="ad-link"
+              className="annc-link"
               onClick={() => {
                 if (!edited) onChoice({ choice: "edit", from: shift.start_time, until: shift.end_time });
                 onEdit(true);
@@ -1280,7 +1280,7 @@ function ShiftRow({
         )}
       </div>
       {editing && (
-        <div className="ad-shift-edit">
+        <div className="annc-shift-edit">
           <label>
             <span>Starts</span>
             <AvailabilityClockInput
@@ -1314,7 +1314,7 @@ function ShiftRow({
           {edited && (
             <button
               type="button"
-              className="ad-link"
+              className="annc-link"
               data-tone="red"
               onClick={() => {
                 onChoice(null);
@@ -1362,7 +1362,7 @@ function BringBack({
   onBringBack: (ids: string[]) => void;
 }) {
   if (!rows.length)
-    return standalone ? <div className="ad-empty-tab">No shift to bring back.</div> : null;
+    return standalone ? <div className="annc-empty-tab">No shift to bring back.</div> : null;
   const free = rows.filter((row) => !row.lock);
   const chosen = free.filter((row) => selected.includes(row.id));
   const toggle = (id: string, on: boolean) =>
@@ -1371,11 +1371,11 @@ function BringBack({
       bring_back: on ? [...new Set([...current.bring_back, id])] : current.bring_back.filter((item) => item !== id),
     }));
   return (
-    <section className="ad-back" data-focus="bring" aria-label="Bring back">
-      <div className="ad-back-head">
+    <section className="annc-back" data-focus="bring" aria-label="Bring back">
+      <div className="annc-back-head">
         <div>
           <b>Bring back</b>
-          <p className="ad-desc">
+          <p className="annc-desc">
             {standalone
               ? "These shifts changed because of this post. Nothing comes back on its own: check the ones to put back on the Schedule. Bring back works on its own; publishing again sends the post as new."
               : "These shifts aren't affected anymore. Nothing comes back on its own: check the ones to put back. They come back when you save."}
@@ -1383,7 +1383,7 @@ function BringBack({
         </div>
         <button
           type="button"
-          className="ad-link"
+          className="annc-link"
           disabled={locked || !free.length}
           onClick={() =>
             update((current) => ({
@@ -1396,29 +1396,29 @@ function BringBack({
         </button>
       </div>
       {rows.map((row) => (
-        <label className="ad-back-row" key={row.id} data-locked={Boolean(row.lock)}>
+        <label className="annc-back-row" key={row.id} data-locked={Boolean(row.lock)}>
           <input
             type="checkbox"
             checked={!row.lock && selected.includes(row.id)}
             disabled={Boolean(row.lock) || locked}
             onChange={(event) => toggle(row.id, event.target.checked)}
           />
-          <span className="ad-avatar" aria-hidden>
+          <span className="annc-avatar" aria-hidden>
             {initials(row.employee_name)}
           </span>
-          <span className="ad-back-name">
+          <span className="annc-back-name">
             <b>{row.employee_name ?? "Open shift"}</b>
             <span>
               {[dayText(row.scheduled_date), row.location_name, shiftTime(row, timeFormat), changeText(row, timeFormat)]
                 .filter(Boolean)
                 .join(" · ")}
-              {row.lock && <span className="ad-tag"> {row.lock}</span>}
+              {row.lock && <span className="annc-tag"> {row.lock}</span>}
             </span>
           </span>
         </label>
       ))}
       {standalone && (
-        <div className="ad-back-foot">
+        <div className="annc-back-foot">
           <Button
             type="button"
             disabled={!chosen.length || locked || busy}
@@ -1447,21 +1447,21 @@ export function HistoryTab({
   const lastPublished = entries.reduce((found, entry, index) => (entry.action === "published" ? index : found), -1);
   const changes = (record.changes ?? []).filter((change) => !change.brought_back_at);
   const ordered = entries.map((entry, index) => ({ entry, index })).reverse();
-  if (!ordered.length) return <div className="ad-empty-tab">Nothing has happened yet.</div>;
+  if (!ordered.length) return <div className="annc-empty-tab">Nothing has happened yet.</div>;
   return (
-    <ol className="ad-history">
+    <ol className="annc-history">
       {ordered.map(({ entry, index }, position) => {
         const step = historyStep(entry, zone, timeFormat);
         const said = typeof entry.detail.shift_changes === "number" ? entry.detail.shift_changes : 0;
         return (
           <li key={entry.id} data-bad={step.bad} data-last={position === ordered.length - 1}>
-            <span className="ad-history-dot" aria-hidden />
+            <span className="annc-history-dot" aria-hidden />
             <div>
               <strong>{step.head}</strong>
               <small>{momentText(entry.changed_at, zone, timeFormat)}</small>
-              {step.more && <span className="ad-history-more">{step.more}</span>}
+              {step.more && <span className="annc-history-more">{step.more}</span>}
               {index === lastPublished && changes.length > 0 && (
-                <details className="ad-history-changes">
+                <details className="annc-history-changes">
                   <summary>
                     {said === changes.length
                       ? `Show the ${plural(changes.length, "shift change")}`

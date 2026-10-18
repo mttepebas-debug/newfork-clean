@@ -2,7 +2,6 @@ import type { AnnouncementRecord, AnnouncementShiftChange } from "@newfork/share
 import { Button, useToast } from "@newfork/ui";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { CheckCircle2, X } from "lucide-react";
-import { useEffect } from "react";
 import { CatalogDrawer } from "../settings/CatalogDrawer";
 import { LinesOutline } from "../shell/LoadState";
 import { announcementQueryKeys } from "./AnnouncementDrawer";
@@ -14,7 +13,6 @@ import {
   type TimeFormat,
 } from "./announcement-model";
 import { acknowledgeAnnouncement } from "./communications-data";
-import { probeReaderLayout } from "./reader-layout-probe";
 import "./announcement-drawer.css";
 
 /** "Your 3:00 PM–4:00 PM shift was removed" and the like. */
@@ -48,8 +46,6 @@ export function AnnouncementReader({
 }) {
   const client = useQueryClient();
   const toast = useToast();
-  // Temporary: measures the reader on an iPhone (reader-layout-probe.ts).
-  useEffect(() => probeReaderLayout(), []);
   const acknowledge = useMutation({
     mutationFn: () => acknowledgeAnnouncement(workspaceId, record!.id),
     onSuccess: async () => {
@@ -64,14 +60,14 @@ export function AnnouncementReader({
   const changes = (record?.my_changes ?? []).filter((change) => !change.silent && !change.brought_back_at);
   return (
     <CatalogDrawer label={title} className="announcement-drawer announcement-reader" onClose={onClose}>
-      <div className="ad">
-        <header className="ad-head ad-head-plain">
-          <div className="ad-head-row">
-            <div className="ad-head-text">
-              {record && <span className="ad-chip">{announcementCategoryText(record)}</span>}
-              <h2 className="ad-title ad-title-large">{title}</h2>
+      <div className="annc">
+        <header className="annc-head annc-head-plain">
+          <div className="annc-head-row">
+            <div className="annc-head-text">
+              {record && <span className="annc-chip">{announcementCategoryText(record)}</span>}
+              <h2 className="annc-title annc-title-large">{title}</h2>
               {record?.starts_on && (
-                <p className="ad-sub">
+                <p className="annc-sub">
                   {rangeText(record.starts_on, record.ends_on)}
                   {record.event_from && record.event_until
                     ? `, ${hoursText(record.event_from, record.event_until, timeFormat)}`
@@ -80,21 +76,21 @@ export function AnnouncementReader({
                 </p>
               )}
             </div>
-            <button type="button" className="ad-close" aria-label="Close" onClick={onClose}>
+            <button type="button" className="annc-close" aria-label="Close" onClick={onClose}>
               <X size={18} aria-hidden />
             </button>
           </div>
         </header>
-        <div className="ad-body">
+        <div className="annc-body">
           {!record && loading ? (
             <LinesOutline label="Loading announcement" lines={4} />
           ) : !record ? (
-            <p className="ad-note">This announcement is no longer available.</p>
+            <p className="annc-note">This announcement is no longer available.</p>
           ) : (
             <>
-              {record.body && <p className="ad-reader-body">{record.body}</p>}
+              {record.body && <p className="annc-reader-body">{record.body}</p>}
               {mine.map((location) => (
-                <p className="ad-reader-day" key={location.location_id}>
+                <p className="annc-reader-day" key={location.location_id}>
                   <b>{location.short_name || location.name}:</b>{" "}
                   {location.day === "closed"
                     ? "closed"
@@ -104,15 +100,15 @@ export function AnnouncementReader({
                 </p>
               ))}
               {changes.map((change) => (
-                <div className="ad-yours" key={change.id} data-tone={change.outcome === "edited" ? "blue" : "red"}>
-                  <span className="ad-yours-head">Your shift · {dayText(change.scheduled_date)}</span>
+                <div className="annc-yours" key={change.id} data-tone={change.outcome === "edited" ? "blue" : "red"}>
+                  <span className="annc-yours-head">Your shift · {dayText(change.scheduled_date)}</span>
                   <span>{myShiftSentence(change, timeFormat)}</span>
                 </div>
               ))}
               {record.asked_to_acknowledge &&
                 record.display_status === "published" &&
                 (record.acknowledged_at ? (
-                  <span className="ad-acked">
+                  <span className="annc-acked">
                     <CheckCircle2 size={16} aria-hidden /> Acknowledged
                   </span>
                 ) : (
@@ -123,16 +119,16 @@ export function AnnouncementReader({
                   </div>
                 ))}
               {acknowledge.isError && (
-                <p className="ad-foot-error" role="alert">
+                <p className="annc-foot-error" role="alert">
                   It didn&apos;t go through. Try again.
                 </p>
               )}
             </>
           )}
         </div>
-        <footer className="ad-foot">
-          <div className="ad-foot-row">
-            <div className="ad-foot-right">
+        <footer className="annc-foot">
+          <div className="annc-foot-row">
+            <div className="annc-foot-right">
               <Button type="button" className="secondary-button" onClick={onClose}>
                 Close
               </Button>

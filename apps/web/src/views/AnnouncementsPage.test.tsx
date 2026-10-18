@@ -375,8 +375,8 @@ describe("Announcement drawer (EKRAN-08)", () => {
     );
     // Six shifts reached, two removed: a yellow count and the band over the buttons.
     const shiftsTab = await within(drawer).findByRole("tab", { name: "Shifts 6" });
-    expect(shiftsTab.querySelector(".ad-badge")?.getAttribute("data-tone")).toBe("warn");
-    const band = drawer.querySelector(".ad-band") as HTMLElement;
+    expect(shiftsTab.querySelector(".annc-badge")?.getAttribute("data-tone")).toBe("warn");
+    const band = drawer.querySelector(".annc-band") as HTMLElement;
     expect(band.getAttribute("data-tone")).toBe("warn");
     expect(band.textContent).toBe("2 shifts will be removed · 4 kept" + "Review shifts");
     fireEvent.click(within(drawer).getByRole("button", { name: "Next" }));
@@ -408,11 +408,11 @@ describe("Announcement drawer (EKRAN-08)", () => {
     renderList();
     fireEvent.click(await screen.findByRole("button", { name: "New" }));
     const drawer = screen.getByRole("dialog", { name: "New announcement" });
-    expect(drawer.querySelector(".ad-sub")?.textContent).toBe("General");
+    expect(drawer.querySelector(".annc-sub")?.textContent).toBe("General");
     fireEvent.change(within(drawer).getByLabelText("Category"), { target: { value: "holiday" } });
     fireEvent.change(within(drawer).getByLabelText(/^Starts/), { target: { value: "2099-07-04" } });
     fireEvent.change(within(drawer).getByLabelText("Repeats"), { target: { value: "date" } });
-    expect(drawer.querySelector(".ad-sub")?.textContent).toBe("Holiday · Sat, Jul 4, 2099 · Every year");
+    expect(drawer.querySelector(".annc-sub")?.textContent).toBe("Holiday · Sat, Jul 4, 2099 · Every year");
 
     // All day starts checked; the times are there but closed until it's cleared.
     const allDay = within(drawer).getByRole("checkbox", { name: "All day" }) as HTMLInputElement;
@@ -430,11 +430,11 @@ describe("Announcement drawer (EKRAN-08)", () => {
         .getAllByRole("button")
         .map((button) => button.textContent),
     ).toEqual(["Open", "Short hours", "Closed"]);
-    expect(drawer.querySelector(".ad-loc .ad-loc-impact")?.textContent).toBe("Usual hours");
+    expect(drawer.querySelector(".annc-loc .annc-loc-impact")?.textContent).toBe("Usual hours");
 
     // Show on the Schedule sits with the other two boxes; Message is the last field.
     const panel = within(drawer).getByRole("tabpanel");
-    const boxes = [...panel.querySelectorAll(".ad-flags input")].map((box) => box.closest("label")?.querySelector("b")?.textContent);
+    const boxes = [...panel.querySelectorAll(".annc-flags input")].map((box) => box.closest("label")?.querySelector("b")?.textContent);
     expect(boxes).toEqual(["Add to Important Dates", "Add to Calendar", "Show on the Schedule"]);
     expect(within(drawer).getByRole("checkbox", { name: "Schedule for later" })).toBeTruthy();
     const fields = [...panel.querySelectorAll("input, textarea, select")];
@@ -524,8 +524,8 @@ describe("Announcement drawer (EKRAN-08)", () => {
       expect(field.getAttribute("aria-describedby")).toBe(message.id);
     }
     // Right under the day and clock boxes, inside the row; the row itself stays its usual colour.
-    expect(box.closest(".ad-publish-boxes")?.nextElementSibling).toBe(message);
-    expect(message.closest(".ad-publish-row")?.getAttribute("data-bad")).toBeNull();
+    expect(box.closest(".annc-publish-boxes")?.nextElementSibling).toBe(message);
+    expect(message.closest(".annc-publish-row")?.getAttribute("data-bad")).toBeNull();
   });
 
   it("shows History only once published, and who acknowledged inside Audience", async () => {
@@ -572,7 +572,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(who.textContent).toContain("1 of 2 acknowledged");
     expect(within(who).getByText("Not yet · 1")).toBeTruthy();
     expect(within(who).getByText("Acknowledged · 1")).toBeTruthy();
-    expect(drawer.querySelector(".ad-band")).toBeNull();
+    expect(drawer.querySelector(".annc-band")).toBeNull();
   });
 
   // BILDIRIM-U6 (KARARLAR S-124, S-126): Remind is back for those who haven't acknowledged, twice a day at most; at
@@ -790,7 +790,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect(within(drawer).queryByRole("combobox")).toBeNull();
     expect(who.textContent).toContain("Downtown");
     expect(who.textContent).toContain("Everyone there · 4 people");
-    const body = drawer.querySelector(".ad-body") as HTMLElement;
+    const body = drawer.querySelector(".annc-body") as HTMLElement;
     expect(body.lastElementChild?.textContent).toContain("Ask people to acknowledge");
 
     fireEvent.click(within(who).getByRole("button", { name: "Add people" }));
@@ -867,7 +867,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     expect((within(drawer).getByLabelText("Title") as HTMLInputElement).disabled).toBe(true);
     expect(within(drawer).queryByText(/can't be before today/)).toBeNull();
     expect(previewAnnouncement).not.toHaveBeenCalled();
-    const footer = drawer.querySelector(".ad-foot") as HTMLElement;
+    const footer = drawer.querySelector(".annc-foot") as HTMLElement;
     expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual(["Archive", "Close"]);
 
     fireEvent.click(within(footer).getByRole("button", { name: "Archive" }));
@@ -907,7 +907,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
     renderList(`/app/announcements/${id}`);
     const drawer = await screen.findByRole("dialog", { name: "Fire drill" });
     // No "Archive: unpublish first" line (Mert, 2026-10-12): Unpublish and the green button only.
-    const footer = drawer.querySelector(".ad-foot") as HTMLElement;
+    const footer = drawer.querySelector(".annc-foot") as HTMLElement;
     expect(within(footer).getAllByRole("button").map((button) => button.textContent)).toEqual(["Unpublish", "Save changes"]);
     expect(within(drawer).queryByText(/unpublish first/)).toBeNull();
     fireEvent.click(within(drawer).getByRole("button", { name: "Unpublish" }));

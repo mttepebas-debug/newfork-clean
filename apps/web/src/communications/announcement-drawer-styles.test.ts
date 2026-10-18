@@ -13,11 +13,11 @@ const rule = (selector: string) =>
 // desktop and phone).
 describe("announcement drawer fields", () => {
   it("keep side-by-side boxes on one line when an error grows one of them", () => {
-    expect(rule(".announcement-drawer .ad-when")).toMatch(/align-items\s*:\s*start/);
-    expect(rule(".announcement-drawer .ad-field")).toMatch(/align-content\s*:\s*start/);
+    expect(rule(".announcement-drawer .annc-when")).toMatch(/align-items\s*:\s*start/);
+    expect(rule(".announcement-drawer .annc-field")).toMatch(/align-content\s*:\s*start/);
   });
 
   it("keep Message's label on its box while the box takes the room that is left", () => {
-    expect(rule(".announcement-drawer .ad-field.ad-message")).toMatch(/grid-template-rows\s*:\s*auto minmax\(0, 1fr\)/);
+    expect(rule(".announcement-drawer .annc-field.annc-message")).toMatch(/grid-template-rows\s*:\s*auto minmax\(0, 1fr\)/);
   });
 });

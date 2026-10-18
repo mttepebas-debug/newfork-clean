@@ -102,16 +102,16 @@ export function AnnouncementDrawer({
   if (announcementId && !detail.data)
     return (
       <CatalogDrawer label="Announcement" className="announcement-drawer" onClose={onClose}>
-        <div className="ad">
-          <header className="ad-head">
-            <div className="ad-head-row">
-              <h2 className="ad-title">Announcement</h2>
+        <div className="annc">
+          <header className="annc-head">
+            <div className="annc-head-row">
+              <h2 className="annc-title">Announcement</h2>
               <CloseButton onClose={onClose} />
             </div>
           </header>
-          <div className="ad-body">
+          <div className="annc-body">
             {detail.error && isNoAccess(detail.error) ? (
-              <p className="ad-note" data-tone="red" role="alert">
+              <p className="annc-note" data-tone="red" role="alert">
                 This announcement is no longer available.
               </p>
             ) : detail.error ? (
@@ -150,7 +150,7 @@ export function AnnouncementDrawer({
 
 function CloseButton({ onClose, disabled = false }: { onClose: () => void; disabled?: boolean }) {
   return (
-    <button type="button" className="ad-close" aria-label="Close" disabled={disabled} onClick={onClose}>
+    <button type="button" className="annc-close" aria-label="Close" disabled={disabled} onClick={onClose}>
       <X size={18} aria-hidden />
     </button>
   );
@@ -415,7 +415,7 @@ function AnnouncementEditor({
       id: "aud",
       label: (
         <>
-          Audience <span className="ad-badge">{recipients}</span>
+          Audience <span className="annc-badge">{recipients}</span>
         </>
       ),
       name: "Audience",
@@ -427,7 +427,7 @@ function AnnouncementEditor({
       label: (
         <>
           Shifts{" "}
-          <span className="ad-badge" data-tone={badge.warn ? "warn" : undefined}>
+          <span className="annc-badge" data-tone={badge.warn ? "warn" : undefined}>
             {badge.count}
           </span>
         </>
@@ -561,7 +561,7 @@ function AnnouncementEditor({
   const banner = (() => {
     if (readOnly)
       return (
-        <div className="ad-readonly">
+        <div className="annc-readonly">
           {status === "archived"
             ? "Archived. It stays here for the record; nobody sees it."
             : "You can read this but not change it."}
@@ -569,28 +569,28 @@ function AnnouncementEditor({
       );
     if (status === "publish_failed")
       return (
-        <p className="ad-note" data-tone="red">
+        <p className="annc-note" data-tone="red">
           <b>Couldn&apos;t publish.</b> {failureReason(record?.publish_error_code ?? null)} Nothing was sent. Publish
           now to send it.
         </p>
       );
     if (status === "unpublished")
       return (
-        <p className="ad-note">
+        <p className="annc-note">
           Unpublished: nobody sees it and it isn&apos;t on the Schedule. Publishing it again works like a new publish.
         </p>
       );
-    if (past) return <p className="ad-note">This is over. It can&apos;t change anymore; you can archive it.</p>;
+    if (past) return <p className="annc-note">This is over. It can&apos;t change anymore; you can archive it.</p>;
     if (status === "scheduled" && record?.publish_at)
       return (
-        <p className="ad-note" data-tone="blue">
+        <p className="annc-note" data-tone="blue">
           Scheduled for {momentText(record.publish_at, zone, timeFormat)}. Nobody sees it yet; shift choices apply when
           it publishes.
         </p>
       );
     if (started)
       return (
-        <p className="ad-note" data-tone="blue">
+        <p className="annc-note" data-tone="blue">
           It has started. Only the text and Ends can change now.
         </p>
       );
@@ -683,24 +683,24 @@ function AnnouncementEditor({
 
   return (
     <CatalogDrawer label={title} className="announcement-drawer" onClose={onClose} busy={save.isPending || change.isPending}>
-      <div className="ad">
-        <header className="ad-head">
-          <div className="ad-head-row">
-            <div className="ad-head-text">
-              <h2 className="ad-title">
+      <div className="annc">
+        <header className="annc-head">
+          <div className="annc-head-row">
+            <div className="annc-head-text">
+              <h2 className="annc-title">
                 <span>{title}</span>
                 {record && (
-                  <span className="ad-status" data-tone={statusTones[record.display_status]}>
+                  <span className="annc-status" data-tone={statusTones[record.display_status]}>
                     {statusLabels[record.display_status]}
                   </span>
                 )}
-                {draft.on_important_dates && <span className="ad-chip">On Important Dates</span>}
+                {draft.on_important_dates && <span className="annc-chip">On Important Dates</span>}
               </h2>
-              <p className="ad-sub">{headerLine(draft)}</p>
+              <p className="annc-sub">{headerLine(draft)}</p>
             </div>
             <CloseButton onClose={onClose} disabled={save.isPending || change.isPending} />
           </div>
-          <div className="ad-tabs" role="tablist" aria-label="Announcement sections">
+          <div className="annc-tabs" role="tablist" aria-label="Announcement sections">
             {tabs.map((item) => {
               const gap = stepBefore(wizard, steps, problems, item.id);
               const gapName = gap ? tabs.find((other) => other.id === gap)?.name : undefined;
@@ -718,7 +718,7 @@ function AnnouncementEditor({
                 >
                   {item.label}
                   {errorTabs.has(item.id) && (
-                    <span className="ad-error-dot" title="Something here needs a fix">
+                    <span className="annc-error-dot" title="Something here needs a fix">
                       <span className="sr-only">, needs a fix</span>
                     </span>
                   )}
@@ -729,7 +729,7 @@ function AnnouncementEditor({
         </header>
         <div
           ref={bodyRef}
-          className="ad-body"
+          className="annc-body"
           data-tab={current}
           role="tabpanel"
           id={`${idPrefix}-panel`}
@@ -737,7 +737,7 @@ function AnnouncementEditor({
         >
           {banner}
           {notice && (
-            <p className="ad-note" data-tone="green" role="status">
+            <p className="annc-note" data-tone="green" role="status">
               {notice}
             </p>
           )}
@@ -819,9 +819,9 @@ function AnnouncementEditor({
           )}
           {current === "history" && record && <HistoryTab record={record} zone={zone} timeFormat={timeFormat} />}
         </div>
-        <footer className="ad-foot">
+        <footer className="annc-foot">
           {band && (
-            <div className="ad-band" data-tone={band.tone} role="status">
+            <div className="annc-band" data-tone={band.tone} role="status">
               {band.tone === "warn" ? (
                 <AlertTriangle size={16} aria-hidden />
               ) : band.tone === "ok" ? (
@@ -831,20 +831,20 @@ function AnnouncementEditor({
               )}
               <span>{band.text}</span>
               {current !== "shifts" && badge && (
-                <button type="button" className="ad-band-link" onClick={() => void openTab("shifts")}>
+                <button type="button" className="annc-band-link" onClick={() => void openTab("shifts")}>
                   Review shifts
                 </button>
               )}
             </div>
           )}
           {failure && (
-            <p className="ad-foot-error" role="alert">
+            <p className="annc-foot-error" role="alert">
               {failure}
             </p>
           )}
-          <div className="ad-foot-row">
-            {left.length > 0 && <div className="ad-foot-left">{left}</div>}
-            <div className="ad-foot-right">{right}</div>
+          <div className="annc-foot-row">
+            {left.length > 0 && <div className="annc-foot-left">{left}</div>}
+            <div className="annc-foot-right">{right}</div>
           </div>
         </footer>
       </div>
