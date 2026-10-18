@@ -12,6 +12,7 @@ import { psql } from "../global-setup";
 // manager's long workspace name keeps its width.
 
 const PHONE = { width: 390, height: 844 };
+const DESKTOP = { width: 1440, height: 900 };
 const world: { readonly run: string; readonly password: string } = JSON.parse(
   readFileSync(new URL("../.world.json", import.meta.url), "utf8"),
 );
@@ -90,4 +91,41 @@ test("phone: the bar's slot takes no room on a manager's page (zeynep)", async (
     return { gap: Math.round(tools.left - name.right), fits: text.scrollWidth <= text.clientWidth };
   });
   expect(room.fits || room.gap <= 12).toBe(true);
+});
+
+// S-172 (Mert 2026-10-18): the page box starts 4 px right of the open menu and
+// holds still when it folds. Home draws no ground of its own, and its sky runs
+// past the box to the scrolling area's edges, so there is no seam on either
+// side, menu open or folded, and nothing scrolls sideways.
+test("desktop: Home's sky and ground meet the menu and the right edge with no seam (emre)", async ({ browser }) => {
+  const page = await (await browser.newContext({ viewport: DESKTOP })).newPage();
+  await signIn(page, "emre");
+  await expect(page).not.toHaveURL(/\/sign-in/);
+  await page.goto("/app/employee-hub");
+  await expect(page.locator(".dl-home")).toBeVisible();
+  const measure = () =>
+    page.evaluate(() => {
+      const main = document.querySelector<HTMLElement>(".app-main")!;
+      const area = main.getBoundingClientRect();
+      const sky = document.querySelector(".dl-sky")!.getBoundingClientRect();
+      const box = document.querySelector(".employee-hub-page")!;
+      return {
+        skyLeft: Math.round(sky.left - area.left),
+        skyRight: Math.round(area.left + main.clientWidth - sky.right),
+        boxLeft: Math.round(box.getBoundingClientRect().left),
+        boxGround: getComputedStyle(box).backgroundColor,
+        shellGround: getComputedStyle(document.querySelector(".app-shell")!).backgroundColor,
+        mainGround: getComputedStyle(main).backgroundColor,
+        sideways: main.scrollWidth > main.clientWidth,
+      };
+    });
+  const open = await measure();
+  expect(open).toMatchObject({ skyLeft: 0, skyRight: 0, boxLeft: 292, boxGround: "rgba(0, 0, 0, 0)", sideways: false });
+  await page.getByRole("button", { name: "Collapse menu" }).click();
+  await expect.poll(async () => (await measure()).boxLeft).toBe(292);
+  const folded = await measure();
+  expect(folded).toMatchObject({ skyLeft: 0, skyRight: 0, sideways: false });
+  // The band the folded menu leaves is the same ground as the page under Home.
+  expect(folded.shellGround).toBe(folded.mainGround);
+  await page.getByRole("button", { name: "Expand menu" }).click();
 });

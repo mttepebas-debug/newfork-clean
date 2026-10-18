@@ -4,10 +4,21 @@
    writes --st (how far the page scrolled) and --p (how far a section came
    into view). */
 
+/* The page box is the shell's (S-172: 4 px right of the open menu, held when
+   it folds); Home draws no ground of its own, so the app's ground runs on
+   under it, past both its edges and into the band a folded menu leaves. */
 .employee-hub-page:has(> .dl-home) {
-  width: 100%;
   padding: 0;
-  background: var(--theme-page);
+  background: transparent;
+}
+/* The sky reaches the scrolling area's edges; the area clips it there. */
+.app-main:has(> .employee-hub-page > .dl-home) {
+  overflow-x: hidden;
+}
+@media (max-width: 720px) {
+  .employee-hub-page:has(> .dl-home) {
+    width: 100%;
+  }
 }
 .dl-home {
   --dl-g: 16px;
@@ -33,23 +44,22 @@
   position: relative;
   isolation: isolate;
   min-height: 100%;
-  overflow-x: clip;
   color: var(--theme-text);
   font-size: 15px;
   line-height: 1.4;
   letter-spacing: -0.006em;
 }
 .dl-home[data-slot="morning"] {
-  --dl-sky: radial-gradient(90% 60% at 88% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, var(--theme-page) 100%);
+  --dl-sky: radial-gradient(90% 60% at 88% 0%, var(--theme-sky-morning-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-morning) 0%, transparent 100%);
 }
 .dl-home[data-slot="afternoon"] {
-  --dl-sky: radial-gradient(90% 60% at 80% -6%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, var(--theme-page) 100%);
+  --dl-sky: radial-gradient(90% 60% at 80% -6%, var(--theme-sky-afternoon-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-afternoon) 0%, transparent 100%);
 }
 .dl-home[data-slot="evening"] {
-  --dl-sky: radial-gradient(80% 55% at 12% 0%, var(--theme-sky-evening-rose) 0%, transparent 70%), radial-gradient(80% 60% at 92% 6%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, var(--theme-page) 100%);
+  --dl-sky: radial-gradient(80% 55% at 12% 0%, var(--theme-sky-evening-rose) 0%, transparent 70%), radial-gradient(80% 60% at 92% 6%, var(--theme-sky-evening-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-evening) 0%, transparent 100%);
 }
 .dl-home[data-slot="night"] {
-  --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, var(--theme-page) 100%);
+  --dl-sky: radial-gradient(90% 60% at 84% 0%, var(--theme-sky-night-glow) 0%, transparent 70%), linear-gradient(180deg, var(--theme-sky-night) 0%, transparent 100%);
 }
 .dl-home :is(h1, h2, h3, p, ul) {
   margin: 0;
@@ -67,10 +77,13 @@
   position: absolute;
   z-index: -1;
   top: 0;
-  left: 0;
-  width: 100%;
+  /* Past the page box's gutters to the scrolling area's edges (S-172), fading in from the left. */
+  right: calc(-1 * var(--app-page-gutter-end, 0px));
+  left: calc(-1 * var(--app-page-gutter-start, 0px));
   height: 470px;
   background: var(--dl-sky);
+  -webkit-mask-image: linear-gradient(90deg, transparent 0, var(--theme-text) var(--dl-sky-fade, 0px));
+  mask-image: linear-gradient(90deg, transparent 0, var(--theme-text) var(--dl-sky-fade, 0px));
   opacity: clamp(0, calc(1 - var(--st, 0) / 430), 1);
   transform: translateY(calc(var(--st, 0) * 0.32px));
   pointer-events: none;
@@ -1106,6 +1119,10 @@ a.dl-shift:active {
 }
 /* Pulling to refresh is a phone's; a desktop has no hint for it. */
 @media (min-width: 721px) {
+  /* Beside the menu the sky fades in, so a folded menu's band meets no edge. */
+  .dl-home {
+    --dl-sky-fade: 96px;
+  }
   .dl-end small {
     display: none;
   }
