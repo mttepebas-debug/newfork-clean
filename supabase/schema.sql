@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 511, last: 20261018163447_shift_exchange_release.sql
--- fingerprint: sha256:b77ecec0a9deae8cb453e6a89938942e8c8421b7a379388b68f60630ae41bfad
+-- migrations: 512, last: 20261018190000_shift_exchange_closed_one_rank_up.sql
+-- fingerprint: sha256:bbe096f1eade0d41c619392c3baada29a4f884919e41f7ed7a796638f31f68c6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -25967,7 +25967,13 @@ begin
    delete from public.shift_exchange_votes where case_id=cid;
    perform public.shift_exchange_emit(actor,w,cid,null,'invalidated','Shift details changed. This offer ended without a transfer. Start a new request from the current schedule.');
   elsif action='close' then
-   if not coalesce(owns,false) and not coalesce(manager,false) then raise exception 'Only the owner or a manager can close this search' using errcode='42501',hint='authz.out_of_scope'; end if;
+   -- P07: a peer reads the case (G1) and does not close it; the reason comes from the core.
+   if not coalesce(owns,false) and not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+    where app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) is null) then
+    raise exception 'Only the owner or someone with a higher role can close this request' using errcode='42501',detail='exchange.approve',hint='authz.'||coalesce((select r from
+     unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x,
+     app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) r where r<>'out_of_scope' limit 1),'out_of_scope');
+   end if;
    update public.shift_exchange_cases set status='cancelled',revision=revision+1,updated_at=now() where id=cid returning * into c;
    -- Take back needs no reason (plan 04:52); the owner keeps the shift.
    update public.shift_exchange_applications set status='closed_case_cancelled',reason=coalesce(trim(command->>'reason'),''),updated_at=now() where case_id=cid and status in('invited','pending_manager');
