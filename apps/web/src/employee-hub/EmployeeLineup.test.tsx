@@ -5,6 +5,7 @@ import { MemoryRouter, useLocation } from "react-router";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { apiRequest } from "../lib/supabase";
+import { LINEUP_BUSY_MS } from "../schedule/lineup";
 import { dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import { EmployeeLineup } from "./EmployeeLineup";
@@ -240,12 +241,13 @@ describe("EmployeeLineup", () => {
   it("works inside the Acknowledge button, then slides Acknowledged. in where it was", async () => {
     renderLineup();
     fireEvent.click(await screen.findByRole("button", { name: "Acknowledge" }));
+    const pressed = Date.now();
     const working = screen.getByRole("button", { name: "Acknowledging…" }) as HTMLButtonElement;
     expect(working.disabled).toBe(true);
     expect(working.querySelector(".employee-lineup-spin")?.getAttribute("aria-hidden")).toBe("true");
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(screen.queryByRole("status")).toBeNull();
     const done = await screen.findByRole("status");
+    // The answer is quick here; the button still holds LINEUP_BUSY_MS so its words can be read.
+    expect(Date.now() - pressed).toBeGreaterThanOrEqual(LINEUP_BUSY_MS - 20);
     expect(done.textContent).toBe("Acknowledged.");
     expect(done.classList.contains("is-in")).toBe(true);
   });

@@ -11,6 +11,7 @@ import { getScheduleReadModel } from "../schedule/schedule-data";
 import type { LineupDayLineup } from "@newfork/shared";
 import { apiRequest } from "../lib/supabase";
 import { chloe, day, dayRead, dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
+import { LINEUP_BUSY_MS } from "../schedule/lineup";
 import { LineupPage } from "./LineupPage";
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live Schedule
@@ -691,13 +692,13 @@ describe("LineupPage on a phone, E", () => {
     // The day read answers with the draft from now on.
     published = {};
     fireEvent.click(within(ask).getByRole("button", { name: "Edit" }));
+    const pressed = Date.now();
     const working = within(ask).getByRole("button", { name: "Unpublishing…" }) as HTMLButtonElement;
     expect(working.disabled).toBe(true);
     expect((within(ask).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
-    // It holds a moment even when the answer is quick, so the words can be read.
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    expect(screen.getByRole("alertdialog")).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    // The answer is quick here; the button still holds LINEUP_BUSY_MS so its words can be read.
+    expect(Date.now() - pressed).toBeGreaterThanOrEqual(LINEUP_BUSY_MS - 20);
     const status = within(card).getByText("Draft");
     expect(status.classList.contains("is-flash")).toBe(true);
     expect(within(card).getByText("Not published yet").classList.contains("is-flash")).toBe(true);
