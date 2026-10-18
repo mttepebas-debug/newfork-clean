@@ -77,6 +77,15 @@ async function swipe(page: Page, on: Locator, dx: number) {
   await cdp.detach();
 }
 
+/** A finger's tap on `on` (Playwright's own tap scrolls the target into view first, which a finger never does). */
+async function touch(page: Page, on: Locator) {
+  const box = (await on.boundingBox())!;
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x: box.x + box.width / 2, y: box.y + box.height / 2 }] });
+  await cdp.send("Input.dispatchTouchEvent", { type: "touchEnd", touchPoints: [] });
+  await cdp.detach();
+}
+
 test("desktop: My shifts first, the week from the switch, Team schedule is the board", async ({ browser }) => {
   const emre = await open(browser, "emre", DESKTOP, "/app/employee-hub/schedule");
   const pages = emre.getByRole("navigation", { name: "Schedule pages" });
@@ -135,10 +144,11 @@ test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a t
   // Nothing on the page is wider than the phone, so no swipe leaves the page itself sideways.
   expect(await emre.evaluate(() => [document.scrollingElement!.scrollLeft, document.querySelector(".app-main")?.scrollLeft ?? 0, document.documentElement.scrollWidth])).toEqual([0, 0, 390]);
 
-  await emre.getByRole("tab", { name: "Next week" }).tap();
+  await touch(emre, emre.getByRole("tab", { name: "Next week" }));
   await expect(emre.getByRole("tab", { name: "Next week" })).toHaveAttribute("aria-selected", "true");
   await expect.poll(() => offset("Next week")).toBe(0);
-  expect(await emre.evaluate(() => document.querySelector(".app-main")?.scrollLeft ?? 0)).toBe(0);
+  // The week changes in place: the page moves neither sideways nor down.
+  expect(await emre.evaluate(() => [document.querySelector(".app-main")?.scrollLeft, document.querySelector(".app-main")?.scrollTop])).toEqual([0, 0]);
   await emre.screenshot({ path: `${shots}my-shifts-next-390.png` });
   await emre.getByRole("tab", { name: "This week" }).tap();
 
