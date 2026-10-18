@@ -350,7 +350,7 @@
   height: 44px;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 6px;
   border: 0;
   background: transparent;
   color: var(--theme-muted);
@@ -532,6 +532,51 @@
 .lineup-phone-chip.is-warn {
   background: var(--theme-warning-soft);
   color: var(--theme-warning-text);
+}
+
+/* Edit window A (Mert 2026-10-17 ~1:15 PM; mockup lineup-edit-bildirim x-ui.css .x-cons): two consequences, each an
+   icon, a bold line and one line under it, in the app's own window (shell/ConfirmDialog, a portal). */
+.lineup-edit-points {
+  display: grid;
+  gap: 14px;
+  margin: 16px 0 0;
+  padding: 0;
+  list-style: none;
+}
+.lineup-edit-points li {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  align-items: start;
+  gap: 12px;
+}
+.lineup-edit-icon {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 9px;
+  background: var(--theme-surface-muted);
+  color: var(--theme-accent-deep);
+}
+.lineup-edit-icon svg {
+  width: 17px;
+  height: 17px;
+}
+.lineup-edit-text {
+  display: grid;
+  gap: 2px;
+  padding-top: 1px;
+}
+.lineup-edit-text b {
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+}
+.lineup-edit-text span {
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  line-height: 1.4;
 }
 
 /* Notes (Mert 2026-10-17 ~11:30 AM; mockup v-e.css .e-notes): one white card, a section per note with its icon

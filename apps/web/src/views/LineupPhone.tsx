@@ -391,9 +391,9 @@ function EditLineup({
         </li>
       </ul>
       {refused ? (
-        <div className="lineup-edit-error" role="alert">
+        <p className="form-error" role="alert">
           {refused}
-        </div>
+        </p>
       ) : null}
     </ConfirmDialog>
   );
