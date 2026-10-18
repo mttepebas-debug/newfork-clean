@@ -7032,6 +7032,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .app-confirm footer .secondary-button[aria-disabled="true"] {
   opacity: 0.55;
 }
+/* Off while it works: hovering doesn't light it up. */
+.app-confirm footer .nf-button:not(.secondary-button):not(.danger-button)[aria-disabled="true"]:hover {
+  background: var(--theme-accent);
+}
+.app-confirm footer .secondary-button[aria-disabled="true"]:hover {
+  background: var(--theme-surface);
+}
 .app-confirm footer .nf-button[aria-busy="true"] {
   gap: 8px;
 }
