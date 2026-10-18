@@ -30,6 +30,8 @@ function Page({ onSelect }: { onSelect?: (tab: string) => void }) {
       <div role="tabpanel" data-testid="panel">
         <p data-testid="text">Panel {tab}</p>
         <input aria-label="Name" />
+        <input aria-label="Start" type="date" />
+        <select aria-label="Requested time" />
         <div role="group" aria-label="Day" data-testid="wheel" />
         <div role="dialog" aria-label="Sheet" data-testid="sheet" />
       </div>
@@ -99,11 +101,19 @@ describe("a tabbed page on a phone", () => {
     expect(selected()).toBe("one");
   });
 
-  it("leaves what moves sideways on its own: the tabs, fields, a group like the day wheel, a sheet", () => {
+  it("leaves what moves sideways on its own: the tabs, a text box, a group like the day wheel, a sheet", () => {
     render(<Page />);
     for (const target of [screen.getAllByRole("tab")[0]!, screen.getByLabelText("Name"), screen.getByTestId("wheel"), screen.getByTestId("sheet")])
       swipe(target, [300, 400], [150, 400]);
     expect(selected()).toBe("one");
+  });
+
+  it("still changes the tab across a date or a choice box, which have no caret to drag", () => {
+    render(<Page />);
+    swipe(screen.getByLabelText("Start"), [300, 400], [150, 400]);
+    expect(selected()).toBe("two");
+    swipe(screen.getByLabelText("Requested time"), [300, 400], [150, 400]);
+    expect(selected()).toBe("three");
   });
 
   it("leaves a strip that scrolls sideways", () => {

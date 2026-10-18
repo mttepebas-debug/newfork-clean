@@ -19,8 +19,10 @@ export const EDGE_BAND = 16;
 const SLIDE_PX = 26;
 const SLIDE_MS = 220;
 
+// Text boxes keep a finger's sideways move for the caret and the selection (a date, a time, a choice box and a
+// checkbox have none: a swipe across them still changes the tab).
 const OWN_SWIPE =
-  'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], [aria-modal="true"], nav';
+  'textarea, input:not([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"], [type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"]), [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], [aria-modal="true"], nav';
 const CONTROL = 'a, button, input, select, textarea, label, summary, [role="button"], [role="tab"], [contenteditable=""], [contenteditable="true"]';
 
 /** 1: the next tab (the finger went left), -1: the previous one, 0: not a swipe. */
