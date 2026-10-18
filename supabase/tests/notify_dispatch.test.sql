@@ -135,9 +135,9 @@ select is((select jsonb_agg(x ->> 'kind') from jsonb_array_elements(public.notif
   '["quota_day_80"]'::jsonb, '(d) until the API says it told Mert: a send that failed comes back');
 select is(public.raise_notification_alerts_service(public.notification_dispatch_alerts_service()), 1, '(d) told');
 select is(public.notification_dispatch_alerts_service(), '[]'::jsonb, '(d) then once a day');
-select is(public.raise_notification_alerts_service('[{"kind": "quota_day_80", "channel": "email", "period": "2026-10-17"}]'
-  ::jsonb || jsonb_build_array(jsonb_build_object('kind', 'quota_day_80', 'channel', 'email',
-  'period', to_char(now() at time zone 'UTC', 'YYYY-MM-DD')))), 1, '(d) telling it twice changes nothing');
+select is(public.raise_notification_alerts_service((select jsonb_build_array(x, x) from (select jsonb_build_object(
+  'kind', 'quota_day_80', 'channel', 'email', 'period', to_char(now() at time zone 'UTC', 'YYYY-MM-DD')) x) y)), 0,
+  '(d) telling it again, twice in one call, changes nothing');
 update public.notification_deliveries set status = 'sent', sent_at = now() where channel = 'email' and pg_temp.key(id) = 'a3';
 select is((select jsonb_agg(x ->> 'kind') from jsonb_array_elements(public.notification_dispatch_alerts_service()) x),
   '["quota_day_full"]'::jsonb, '(d) full: handed over once more');
