@@ -1221,7 +1221,9 @@ function CaseDetail({
             : "Close cover search"}
         </button>
       )}
-      <FieldNote id={`shift-exchange-${item.id}`} error={error} />
+      {/* While the close window is open its band says the server's sentence;
+          the panel says it only for its own actions (UI-FIELDMSG-2). */}
+      <FieldNote id={`shift-exchange-${item.id}`} error={closing ? null : error} />
       {history}
       {closing && (
         <ExchangeDialog
