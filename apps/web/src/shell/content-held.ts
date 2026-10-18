@@ -1,3 +1,7 @@
+/** Schedule's own list pages; every other path under Schedule draws the grid
+ * (export and templates open their panel over it). */
+const SCHEDULE_LIST_PAGES = new Set(["/app/schedule/requests", "/app/schedule/lineup"]);
+
 /**
  * Whether a page holds still when the main menu collapses: it starts next to
  * the open menu's edge and keeps that place. Schedule's grid and Settings
@@ -6,5 +10,11 @@
  */
 export function contentHeldAtMenuEdge(pathname: string): boolean {
   const path = pathname.replace(/\/+$/, "");
-  return path !== "/app/schedule" && path !== "/app/settings" && !path.startsWith("/app/settings/");
+  const under = (root: string) => path === root || path.startsWith(`${root}/`);
+  if (under("/app/settings")) return false;
+  if (under("/app/schedule-badge-lab")) return false;
+  if (under("/app/schedule")) {
+    return [...SCHEDULE_LIST_PAGES].some((page) => under(page));
+  }
+  return true;
 }

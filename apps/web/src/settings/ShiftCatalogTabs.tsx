@@ -11,8 +11,8 @@ type CatalogTab = "types" | "labels";
 export function ShiftCatalogHeader({ titleId }: { titleId: string }) {
   return (
     <SettingsListHeader
-        icon={<CalendarClock size={21} aria-hidden />}
-        title="Shift catalog"
+      icon={<CalendarClock size={21} aria-hidden />}
+      title="Shift catalog"
       titleId={titleId}
       description="Shift types and labels used across the Schedule."
     />

@@ -20,7 +20,7 @@ describe("main-menu pages hold still when the menu collapses (Mert 2026-10-18)",
     expect(contentHeldAtMenuEdge(path)).toBe(true);
   });
 
-  it.each(["/app/schedule", "/app/schedule/", "/app/settings", "/app/settings/general", "/app/settings/scheduling/conflicts"])(
+  it.each(["/app/schedule", "/app/schedule/", "/app/schedule/export", "/app/schedule/templates", "/app/schedule-badge-lab", "/app/settings", "/app/settings/general", "/app/settings/scheduling/conflicts"])(
     "lets %s take the room",
     (path) => {
       expect(contentHeldAtMenuEdge(path)).toBe(false);

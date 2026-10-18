@@ -3009,6 +3009,8 @@ select:focus-visible {
   }
   .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] {
     grid-template-columns: 288px minmax(0, 1fr);
+    /* The room the menu gives up is the page's own colour, with no seam. */
+    background: #f6f7f5;
   }
   .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] .app-sidebar {
     width: 64px;
