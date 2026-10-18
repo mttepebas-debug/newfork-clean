@@ -126,15 +126,18 @@ select is(preview->>'requires_other_manager','false','second scoped manager has 
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(6),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',3,'fingerprint',preview->>'fingerprint'),gen_random_uuid());
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(5)),pg_temp.emp(2),'AT16 final scoped approval transfers source');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(6)),pg_temp.emp(1),'AT16 final scoped approval transfers target');
--- Open pickup, withdrawal, close and both-direction final eligibility recheck.
-update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(4)),gen_random_uuid());
+-- A shift nobody holds stays the manager's (TAKAS-RELEASE); withdrawal and close on a release.
+select throws_ok($$select public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(4)),gen_random_uuid())$$,
+  'P0001','This shift has not been released','AT10 a shift nobody holds is not in the pool');
+update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(3),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(1)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
+update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(1),'case_id',cid),gen_random_uuid());
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid);
-select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(4)),null::uuid,'AT10 open pickup stays unassigned until final approval');
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(1)),pg_temp.emp(3),'AT10 a released shift stays with its owner until final approval');
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','withdraw','case_id',cid,'application_id',aid,'expected_revision',2),gen_random_uuid());
 select is((select status from public.shift_exchange_applications where id=aid),'withdrawn','AT05 participant can withdraw before final decision') from sx_state;
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','close','case_id',cid,'expected_revision',3,'reason','Coverage no longer needed'),gen_random_uuid());
-select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(4)),null::uuid,'close does not assign an open shift');
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(1)),pg_temp.emp(3),'close does not move a released shift');
 -- Material change is visible immediately, and renewal retires old consent.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(3),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(1)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
@@ -163,7 +166,7 @@ update public.employee_location_assignments set ended_at=null where workspace_id
 -- A worker closes deadlines without an employee or manager screen being open.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(2),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(2)),gen_random_uuid());
 update sx_state set cid=(result->>'case_id')::uuid;
-select is((select expires_at from public.shift_exchange_cases where id=cid),(public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2))->>'starts_at')::timestamptz,'AT26 deadline is the offered shift start') from sx_state;
+select is((select expires_at from public.shift_exchange_cases where id=cid),(public.shift_exchange_shift(pg_temp.w(),pg_temp.shift(2))->>'starts_at')::timestamptz-interval '4 hours','AT26 deadline is 4 hours before the offered shift (TAKAS-RELEASE)') from sx_state;
 select public.shift_exchanges_command_service(pg_temp.actor(4),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(2),'case_id',cid),gen_random_uuid()) from sx_state;
 update public.shift_exchange_cases set expires_at=now()-interval '1 second' where id=(select cid from sx_state);
 select public.shift_exchanges_maintain_service(100);
@@ -210,15 +213,18 @@ select is((select employee_id from public.schedule_published_shifts where id=pg_
 select is((select count(*)::int from public.shift_exchange_applications where case_id=cid and status='closed_case_cancelled'),2,'AT06 owner close closes all remaining applications') from sx_state;
 select is((select status from public.shift_exchange_applications where id=aid),'withdrawn','AT06 owner close preserves an earlier withdrawal') from sx_state;
 
--- A genuine open shift also supports multiple candidates and a final winner.
+-- A released shift also takes several candidates and one final winner (TAKAS-RELEASE:
+-- only a release reaches the pool, so the shift nobody held is given to Employee 1 first).
+update public.schedule_published_shifts set employee_id=pg_temp.emp(1) where id=pg_temp.shift(11);
+select public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift(11)),gen_random_uuid());
 select public.shift_exchanges_command_service(pg_temp.actor(n),pg_temp.w(),jsonb_build_object('action','apply','shift_id',pg_temp.shift(11)),gen_random_uuid()) from generate_series(2,4)n;
 update sx_state set cid=(select id from public.shift_exchange_cases where offered_source_id=(select source_shift_id from public.schedule_published_shifts where id=pg_temp.shift(11)) and status='open');
 update sx_state set aid=(select id from public.shift_exchange_applications where case_id=cid and employee_id=pg_temp.emp(3));
 update sx_state set preview=public.shift_exchange_preview(pg_temp.manager(),pg_temp.w(),cid,aid);
-select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(11)),null::uuid,'AT10 three open-shift candidates still do not assign anyone');
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(11)),pg_temp.emp(1),'AT10 three candidates still leave the shift with its owner');
 select public.shift_exchanges_command_service(pg_temp.manager(),pg_temp.w(),jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',4,'fingerprint',preview->>'fingerprint'),gen_random_uuid()) from sx_state;
-select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(11)),pg_temp.emp(3),'AT10 open shift assigns only the approved winner');
-select is((select count(*)::int from public.shift_exchange_applications where case_id=cid and status='closed_other_selected'),2,'AT10 other open-shift candidates close neutrally') from sx_state;
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(11)),pg_temp.emp(3),'AT10 the released shift goes only to the approved winner');
+select is((select count(*)::int from public.shift_exchange_applications where case_id=cid and status='closed_other_selected'),2,'AT10 the other candidates close neutrally') from sx_state;
 
 -- Each side of a swap is independently mandatory, including after peer consent.
 update sx_state set result=public.shift_exchanges_command_service(pg_temp.actor(1),pg_temp.w(),jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.shift(12),'requested_shift_id',pg_temp.shift(13)),gen_random_uuid());

@@ -2280,10 +2280,13 @@ describe("publish finding: an approved shift change the draft would undo (BL-198
     expect(schedulePublishFindingSchema.parse(undone)).toEqual(undone);
   });
 
-  it("takes an open pickup (no previous owner) and a draft that left the shift out", () => {
-    const pickup = { ...undone, exchange_kind: "open_pickup", from_employee_id: null, from_employee_name: null,
-      draft_employee_id: null, draft_employee_name: null, shift_ids: [] };
+  it("takes a released shift and a draft that left the shift out", () => {
+    const pickup = { ...undone, exchange_kind: "cover", draft_employee_id: null, draft_employee_name: null, shift_ids: [] };
     expect(schedulePublishFindingSchema.parse(pickup)).toEqual(pickup);
+  });
+
+  it("refuses the open pickup kind, which is gone (TAKAS-RELEASE)", () => {
+    expect(schedulePublishFindingSchema.safeParse({ ...undone, exchange_kind: "open_pickup" }).success).toBe(false);
   });
 });
 

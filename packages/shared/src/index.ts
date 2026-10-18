@@ -1730,12 +1730,12 @@ export const schedulePublishFindingSchema = z.object({
   date: z.string().date().nullable().optional(),
   shift_ids: z.array(z.string().uuid()),
   // shift_exchange_undone only: the approved change and what the draft has instead.
-  // from_* is null for an open pickup; draft_* is null when the draft left the shift out.
+  // draft_* is null when the draft left the shift out.
   start_time: timeOfDaySchema.optional(),
   end_time: timeOfDaySchema.optional(),
   exchange_case_id: z.string().uuid().optional(),
-  exchange_kind: z.enum(["cover", "open_pickup", "swap"]).optional(),
-  from_employee_id: z.string().uuid().nullable().optional(),
+  exchange_kind: z.enum(["cover", "swap"]).optional(),
+  from_employee_id: z.string().uuid().optional(),
   from_employee_name: z.string().trim().min(1).max(161).nullable().optional(),
   to_employee_id: z.string().uuid().optional(),
   to_employee_name: z.string().trim().min(1).max(161).nullable().optional(),

@@ -37,7 +37,7 @@ create function pg_temp.shift_id(n integer) returns uuid language sql immutable 
 $$;
 insert into public.schedule_published_shifts(id,source_shift_id,workspace_id,location_id,publication_id,employee_id,job_id,scheduled_date,start_time,end_time,time_basis,time_timezone)
  select pg_temp.shift_id(n),pg_temp.shift_id(10+n),w,loc,'ad427000-0000-4000-8000-000000000010',
-  case n when 2 then null when 3 then second_emp else first_emp end,job,start_day+n-1,'18:00','22:00','explicit','UTC' from ws cross join generate_series(1,4) n;
+  case n when 3 then second_emp else first_emp end,job,start_day+n-1,'18:00','22:00','explicit','UTC' from ws cross join generate_series(1,4) n;
 create function pg_temp.unavailable() returns jsonb language sql as $$
  select jsonb_build_object('days',jsonb_agg(jsonb_build_object('day',d,'all_day',true,'ranges','[]'::jsonb) order by d)) from generate_series(0,6) d;
 $$;
@@ -55,10 +55,12 @@ $$;
 create temp table state(cid uuid,aid uuid,result jsonb,preview jsonb,token text,key uuid default gen_random_uuid());
 insert into state(result) select pg_temp.command(first_user,jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift_id(1))) from ws;
 update state set cid=(result->>'case_id')::uuid;
+-- The first employee releases shift 2 too: only a release reaches the pool (TAKAS-RELEASE).
+select pg_temp.command(first_user,jsonb_build_object('action','create','kind','cover','shift_id',pg_temp.shift_id(2))) from ws;
 select is(jsonb_array_length(public.shift_exchanges_candidates_service(first_user,w,pg_temp.shift_id(1))->'employees'),1,'unavailable cover candidate is not hidden') from ws;
 select ok(not (public.shift_exchanges_candidates_service(first_user,w,pg_temp.shift_id(1))::text like '%availability_warning%') or
  not (public.shift_exchanges_candidates_service(first_user,w,pg_temp.shift_id(1))->'employees'->0->'eligibility' ? 'availability_warning'),'cover search does not reveal another employee preference') from ws;
-select is(jsonb_array_length(pg_temp.read_model(second_user)->'opportunities'),2,'cover and open pickup remain listed despite own unavailability') from ws;
+select is(jsonb_array_length(pg_temp.read_model(second_user)->'opportunities'),2,'both released shifts remain listed despite own unavailability') from ws;
 select ok((pg_temp.read_model(second_user)->'opportunities'->0->'eligibility'->'availability_warning'->>'fingerprint') is not null,'own opportunity includes explicit decision token') from ws;
 select throws_ok($$select pg_temp.command(second_user,jsonb_build_object('action','apply','shift_id',pg_temp.shift_id(1),'case_id',cid,'availability_accepted',true)) from ws,state$$,'PT409',null,'client boolean cannot invent acceptance');
 select is((select count(*) from public.shift_exchange_applications where workspace_id=(select w from ws)),0::bigint,'missing acknowledgment rolls back without an application');
@@ -120,8 +122,8 @@ update state set aid=(select id from public.shift_exchange_applications where ca
 update state set preview=(select public.shift_exchange_preview(manager,w,cid,aid) from ws);
 select is(preview->>'allowed','true','manager-only reminder does not require second consent after voluntary pickup') from state;
 update state set result=(select pg_temp.command(manager,jsonb_build_object('action','approve','case_id',cid,'application_id',aid,'expected_revision',result->>'revision','fingerprint',preview->>'fingerprint')) from ws);
-select is(result->>'status','completed','real open pickup completes with private reminder and no employee preference token') from state;
-select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(2)),(select second_emp from ws),'open shift is assigned directly to the volunteer');
+select is(result->>'status','completed','a released shift completes with private reminder and no employee preference token') from state;
+select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift_id(2)),(select second_emp from ws),'the released shift goes to the volunteer');
 select ok(not has_function_privilege('service_role','public.record_weekly_exchange_acceptance(uuid,uuid,uuid)','execute'),'raw acceptance writer is not an exposed RPC');
 select ok(not has_function_privilege('authenticated','public.weekly_exchange_employee_warning(uuid,uuid,jsonb)','execute'),'employee cannot read another employee token directly');
 select * from finish();

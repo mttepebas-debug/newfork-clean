@@ -86,7 +86,9 @@ export const exchangeApplicationSchema = z.object({
 });
 export const exchangeCaseSchema = z.object({
   id: z.string().uuid(),
-  kind: z.enum(["cover", "open_pickup", "swap"]),
+  // TAKAS-RELEASE: a release is a cover asked of everyone eligible (audience
+  // eligible_pool); only a release reaches the open pool.
+  kind: z.enum(["cover", "swap"]),
   audience: z.enum(["eligible_pool", "direct"]),
   status: z.enum(["open", "completed", "cancelled", "expired", "invalidated"]),
   stage: z.enum([
@@ -99,7 +101,7 @@ export const exchangeCaseSchema = z.object({
   revision: z.number().int(),
   created_at: z.string(),
   expires_at: z.string(),
-  owner_id: z.string().uuid().nullable(),
+  owner_id: z.string().uuid(),
   owner_name: z.string().nullable(),
   shift: exchangeShiftSchema,
   requested_shift: exchangeShiftSchema.nullable(),
@@ -108,6 +110,7 @@ export const exchangeCaseSchema = z.object({
   can_manage: z.boolean(),
   is_owner: z.boolean(),
   private_note: z.string().optional(),
+  teammate_note: z.string(),
   current_published: z.boolean().optional(),
   requested_current_published: z.boolean().nullable().optional(),
   history: z.array(
@@ -124,9 +127,10 @@ export const exchangeReadModelSchema = z.object({
   cases: z.array(exchangeCaseSchema),
   opportunities: z.array(
     z.object({
-      case_id: z.string().uuid().nullable(),
+      case_id: z.string().uuid(),
       shift: exchangeShiftSchema,
       eligibility: exchangeEligibilitySchema,
+      note: z.string(),
     }),
   ),
   own_shifts: z.array(exchangeShiftSchema),
@@ -143,6 +147,8 @@ export const exchangeCommandSchema = z.discriminatedUnion("action", [
     requested_shift_id: z.string().uuid().optional(),
     employee_id: z.string().uuid().optional(),
     note: z.string().max(1000).default(""),
+    // A release's note for teammates: everyone it reaches reads it.
+    teammate_note: z.string().max(200).optional(),
   }),
   z.object({
     action: z.literal("apply"),
@@ -152,6 +158,12 @@ export const exchangeCommandSchema = z.discriminatedUnion("action", [
       .optional(),
     shift_id: z.string().uuid(),
     case_id: z.string().uuid().optional(),
+  }),
+  // Not for me: the released shift leaves this person's Available Shifts.
+  z.object({
+    action: z.literal("pass"),
+    shift_id: z.string().uuid(),
+    case_id: z.string().uuid(),
   }),
   z.object({
     action: z.enum(["accept", "decline", "withdraw"]),

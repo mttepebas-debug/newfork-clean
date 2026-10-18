@@ -126,12 +126,11 @@ select ok(pg_temp.closed('ayse', tests.id('ag:case:cover')), 'Ayse''s closed lis
 select ok(pg_temp.closed('ayse', tests.id('ag:case:swap')), 'and the swap closed after Veli accepted');
 select ok(not pg_temp.closed('ayse', tests.id('ag:case:quiet')), 'but not the cover closed before anybody asked');
 
--- An open shift is somebody asking already ----------------------------------------
-select tests.remember('ag:case:open', (pg_temp.command('veli', jsonb_build_object('action', 'apply',
-  'shift_id', tests.id('ag:shift:open-sat'))) ->> 'case_id')::uuid);
-select tests.settle();
-select is(pg_temp.read('ayse', true, tests.id('ag:case:open')) ->> 'kind', 'open_pickup',
-  'Veli asking for Saturday''s open shift is in Ayse''s Requests');
+-- A shift nobody holds is the manager's to fill (TAKAS-RELEASE) ---------------------
+select throws_ok($$ select pg_temp.command('veli', jsonb_build_object('action', 'apply', 'shift_id', tests.id('ag:shift:open-sat'))) $$,
+  'P0001', 'This shift has not been released', 'Veli cannot ask for Saturday''s shift nobody holds');
+select is((select count(*)::integer from public.shift_exchange_cases where workspace_id = tests.id('ag')
+  and offered_source_id = tests.id('ag:shift:open-sat')), 0, 'and no request reaches Ayse for it');
 
 select * from finish();
 rollback;

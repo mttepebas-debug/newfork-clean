@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 510, last: 20261018014446_notification_dispatch.sql
--- fingerprint: sha256:8381c90fc2d25f832aaee1fe67da2de1430d9597af89b75a4eaa9f20db8e43bc
+-- migrations: 511, last: 20261018100000_shift_exchange_release.sql
+-- fingerprint: sha256:0fb41612a64d95da03374703556930a1a8c3e2c92c0f20a38dd71972dd95384b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4556,7 +4556,7 @@ declare
  blockers jsonb:='[]'; acks jsonb:='[]'; flags jsonb:='[]'; r jsonb;
  travel numeric; rest numeric; gap numeric; n record; near numeric; near_travel numeric;
 begin
- if op is null or op not in ('swap','release_pickup','open_pickup','cover_accept') then
+ if op is null or op not in ('swap','release_pickup','cover_accept') then
   raise exception 'Unknown exchange operation' using errcode='22023'; end if;
  if nullif(shift->>'start_time','') is null or nullif(shift->>'end_time','') is null then
   return jsonb_build_object('employee_id',emp,'operation',op,'eligible',false,'status','verification_required',
@@ -7898,7 +7898,7 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
     "status" "text" DEFAULT 'open'::"text" NOT NULL,
     "offered_source_id" "uuid" NOT NULL,
     "requested_source_id" "uuid",
-    "owner_id" "uuid",
+    "owner_id" "uuid" NOT NULL,
     "offered_snapshot" "jsonb" NOT NULL,
     "requested_snapshot" "jsonb",
     "consent_fingerprint" "text" NOT NULL,
@@ -7908,16 +7908,21 @@ CREATE TABLE IF NOT EXISTS "public"."shift_exchange_cases" (
     "created_by" "uuid" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "teammate_note" "text" DEFAULT ''::"text" NOT NULL,
     CONSTRAINT "shift_exchange_cases_audience_check" CHECK (("audience" = ANY (ARRAY['eligible_pool'::"text", 'direct'::"text"]))),
     CONSTRAINT "shift_exchange_cases_check" CHECK ((("kind" = 'swap'::"text") = ("requested_source_id" IS NOT NULL))),
-    CONSTRAINT "shift_exchange_cases_check1" CHECK ((("kind" = 'open_pickup'::"text") = ("owner_id" IS NULL))),
-    CONSTRAINT "shift_exchange_cases_kind_check" CHECK (("kind" = ANY (ARRAY['cover'::"text", 'open_pickup'::"text", 'swap'::"text"]))),
+    CONSTRAINT "shift_exchange_cases_kind_check" CHECK (("kind" = ANY (ARRAY['cover'::"text", 'swap'::"text"]))),
     CONSTRAINT "shift_exchange_cases_private_note_check" CHECK (("length"("private_note") <= 1000)),
-    CONSTRAINT "shift_exchange_cases_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'completed'::"text", 'cancelled'::"text", 'expired'::"text", 'invalidated'::"text"])))
+    CONSTRAINT "shift_exchange_cases_status_check" CHECK (("status" = ANY (ARRAY['open'::"text", 'completed'::"text", 'cancelled'::"text", 'expired'::"text", 'invalidated'::"text"]))),
+    CONSTRAINT "shift_exchange_cases_teammate_note_check" CHECK (("length"("teammate_note") <= 200))
 );
 
 
 ALTER TABLE "public"."shift_exchange_cases" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."shift_exchange_cases"."teammate_note" IS 'A release''s note for teammates: everyone it reaches reads it (TAKAS-RELEASE).';
+
 
 
 CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") RETURNS "jsonb"
@@ -7933,8 +7938,8 @@ begin
    where app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) is null);
   select coalesce(jsonb_agg(jsonb_build_object('id',a.id,'employee_id',a.employee_id,'employee_name',coalesce(nullif(e.preferred_name,''),concat_ws(' ',e.first_name,e.last_name)),
    'status',case when live_status in('expired','invalidated') and a.status in('invited','pending_manager') then live_status else a.status end,'created_at',a.created_at,'reason',case when allowed or a.employee_id=emp_id then a.reason else '' end,
-   'eligibility',case when (allowed or a.employee_id=emp_id) and live_status='open' then (app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))-case when allowed then '{}'::text[] else array['approval_flags'] end) || case when a.employee_id=emp_id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp_id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
-  into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp_id);
+   'eligibility',case when (allowed or a.employee_id=emp_id) and live_status='open' then (app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))-case when allowed then '{}'::text[] else array['approval_flags'] end) || case when a.employee_id=emp_id and a.status='invited' then jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp_id,s)) else '{}'::jsonb end end) order by a.created_at),'[]'::jsonb)
+  into apps from public.shift_exchange_applications a join public.employee_profiles e on e.id=a.employee_id where a.case_id=c.id and (allowed or mine or a.employee_id=emp_id) and (a.status<>'declined_by_employee' or c.audience='direct');
   select coalesce(jsonb_agg(jsonb_build_object('id',e.id,'action',e.action,'created_at',e.created_at,
    -- BL-910: a declined application's reason is read by the applicant and by who reads the
    -- location's requests (allowed), as applications[].reason already is.
@@ -7953,7 +7958,7 @@ begin
    'stage',stage,'revision',c.revision,'created_at',c.created_at,'expires_at',c.expires_at,'owner_id',c.owner_id,'owner_name',c.offered_snapshot->'employee_name',
    'shift',s,'requested_shift',t,'applications',apps,'candidate_count',(select count(*) from public.shift_exchange_applications where case_id=c.id and status in('invited','pending_manager') and live_status='open'),
    'can_manage',decides,
-   'is_owner',mine,'private_note',case when allowed or mine then c.private_note else '' end,'history',hist);
+   'is_owner',mine,'teammate_note',c.teammate_note,'private_note',case when allowed or mine then c.private_note else '' end,'history',hist);
 end; $$;
 
 
@@ -7964,11 +7969,26 @@ COMMENT ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w"
 
 
 
+CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_deadline"("s" "jsonb", "t" "jsonb") RETURNS timestamp with time zone
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select least((s ->> 'starts_at')::timestamptz, (t ->> 'starts_at')::timestamptz) - interval '4 hours'
+$$;
+
+
+ALTER FUNCTION "app_private"."shift_exchange_deadline"("s" "jsonb", "t" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "app_private"."shift_exchange_deadline"("s" "jsonb", "t" "jsonb") IS 'When a shift change closes: 4 hours before its shift, the earlier one in a swap (TAKAS-RELEASE).';
+
+
+
 CREATE OR REPLACE FUNCTION "app_private"."shift_exchange_reached_managers"("w" "uuid", "cid" "uuid") RETURNS boolean
     LANGUAGE "sql"
     SET "search_path" TO ''
     AS $$
-  select c.kind = 'open_pickup' or case
+  select case
     when c.status = 'open' and public.shift_exchange_live_status(shift_exchange_reached_managers.w, c.id) = 'open' then
       exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.status in ('pending_manager', 'rejected_by_manager'))
       or exists (select 1 from public.shift_exchange_votes v where v.case_id = c.id)
@@ -20713,7 +20733,7 @@ begin
   raise exception 'Current employee acceptance is required' using errcode='PT409'; end if;
  for item in select s target,app.employee_id emp union all select t,c.owner_id where c.kind='swap' loop
   normalized:=item.target||jsonb_build_object('id',item.target->>'source_id','employee_id',item.emp);
-  e:=app_private.eligibility(w,item.emp,normalized,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
+  e:=app_private.eligibility(w,item.emp,normalized,jsonb_build_object('operation',case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
    'excluded',to_jsonb(array_remove(array[(s->>'source_id')::uuid,(t->>'source_id')::uuid],null)),'with_assessment',true));
   a:=e->'assessment';
   if not (e->>'eligible')::boolean then
@@ -20753,7 +20773,7 @@ begin
   and public.shift_exchange_terms(c.requested_snapshot)=public.shift_exchange_terms(t) then return; end if;
  fp:=public.shift_exchange_fingerprint(w,s,t);
  if fp=c.consent_fingerprint then return; end if;
- deadline:=coalesce(least((s->>'starts_at')::timestamptz,(t->>'starts_at')::timestamptz),c.expires_at);
+ deadline:=coalesce(app_private.shift_exchange_deadline(s,t),c.expires_at);
  event_action:=case when deadline<=clock_timestamp() then 'expired' else 'terms_changed' end;
  if event_action='terms_changed' then
   given_up:=to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null));
@@ -20764,7 +20784,7 @@ begin
    select coalesce(array_agg(a.id order by a.id),'{}') into dropped from public.shift_exchange_applications a
     where a.case_id=cid and a.workspace_id=w and a.status='pending_manager'
      and app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',
-      case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
+      case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,
       'excluded',given_up))->'blockers' @> '[{"code":"time_overlap"}]';
    if c.audience='direct' and cardinality(dropped)>0 then event_action:='invalidated'; dropped:='{}'; end if;
   end if;
@@ -20782,7 +20802,7 @@ begin
  -- Employee consent survives; a manager's old scoped review does not.
  delete from public.shift_exchange_votes where workspace_id=w and case_id=cid;
  message:=case when event_action='expired' then
-  'The updated shift has already started. This request closed without a transfer. Check your current schedule.'
+  'The updated shift starts within 4 hours. This request closed without a transfer. Check your current schedule.'
  when event_action='invalidated' then
   'The new shift hours overlap another shift. This request ended without a transfer. Start a new request from the current schedule.'
  else format('Shift details changed: %s, %s, %s-%s (%s).%s Existing acceptances remain valid; pending invitations still need a response. Final manager approval is required.',
@@ -25460,10 +25480,8 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_draft_undoes"("w" "uuid", "d
    'from_employee_id',x.from_id,'from_employee_name',x.from_name,
    'to_employee_id',x.to_id,'to_employee_name',x.to_name,
    'draft_employee_id',x.draft_employee_id,'draft_employee_name',x.draft_employee_name,
-   'message',case when x.from_id is null
-     then coalesce(x.to_name,'A teammate')||' picked up this open shift after the schedule was last published, and this draft does not have it. Publishing would undo it.'
-     else 'This shift was '||case x.kind when 'swap' then 'swapped' else 'handed over' end||' from '||coalesce(x.from_name,'a teammate')
-      ||' to '||coalesce(x.to_name,'a teammate')||' after the schedule was last published, and this draft does not have it. Publishing would undo it.' end)
+   'message','This shift was '||case x.kind when 'swap' then 'swapped' else 'handed over' end||' from '||coalesce(x.from_name,'a teammate')
+      ||' to '||coalesce(x.to_name,'a teammate')||' after the schedule was last published, and this draft does not have it. Publishing would undo it.')
   order by x.scheduled_date,x.start_time,x.shift_id),'[]'::jsonb)
  from (
   select distinct on (p.id) p.id shift_id,p.location_id,l.name location_name,p.scheduled_date,p.start_time,p.end_time,
@@ -25558,7 +25576,7 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchange_guard_commit_deadline"() RET
     AS $$
 begin
  if clock_timestamp()>=new.expires_at then
-  raise exception 'The shift started before this approval could finish. No transfer was made. Refresh the request.' using errcode='PT409';
+  raise exception 'This request closed 4 hours before the shift, before this approval could finish. No transfer was made. Refresh the request.' using errcode='PT409';
  end if;
  return new;
 end;
@@ -25635,7 +25653,7 @@ begin
  elsif not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
   where app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) is null) then
   problems:=array_append(problems,'Someone with a higher role must approve this exchange'); end if;
- if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)),'with_measures',true)); end if;
+ if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)),'with_measures',true)); end if;
  if r is null then r:='{"status":"ineligible","reasons":["Published shift unavailable"]}'; end if;
  if r->>'status'<>'eligible' then problems:=array_append(problems,'The receiving employee is not eligible for the full shift'); end if;
  if c.kind='swap' and t is not null then
@@ -25851,7 +25869,7 @@ begin
  if idempotency_key is null then raise exception 'Idempotency key required'; end if;
  -- The core says who may act (FB-6.4 A2): one's own offer and application,
  -- never while restricted (D4); a decision on a case is asked below, per case.
- perform app_private.authorize(actor,w,case when action in('apply','accept','decline','withdraw') then 'exchange.apply_own' else 'exchange.offer_own' end);
+ perform app_private.authorize(actor,w,case when action in('apply','pass','accept','decline','withdraw') then 'exchange.apply_own' else 'exchange.offer_own' end);
  perform pg_advisory_xact_lock(hashtextextended(w::text,921));
  select * into old_cmd from public.shift_exchange_commands q where q.workspace_id=w and q.actor_user_id=actor and q.idempotency_key=shift_exchanges_command_service.idempotency_key;
  if old_cmd.idempotency_key is not null then
@@ -25859,7 +25877,7 @@ begin
   return old_cmd.result;
  end if;
  select * into emp from public.employee_profiles where workspace_id=w and user_id=actor and archived_at is null;
- if action in('create','apply') then
+ if action in('create','apply','pass') then
   if emp.id is null then raise exception 'Employee profile required' using errcode='42501',hint='authz.out_of_scope'; end if;
   s:=public.shift_exchange_shift(w,(command->>'shift_id')::uuid);
   if s is null or (s->>'starts_at')::timestamptz<=clock_timestamp() then raise exception 'Choose an upcoming published shift' using errcode='PT409'; end if;
@@ -25885,9 +25903,12 @@ begin
     end if;
    end loop;
    fp:=public.shift_exchange_fingerprint(w,s,t);
-   expires:=least((s->>'starts_at')::timestamptz,(t->>'starts_at')::timestamptz);
-   insert into public.shift_exchange_cases(workspace_id,kind,audience,offered_source_id,requested_source_id,owner_id,offered_snapshot,requested_snapshot,consent_fingerprint,expires_at,private_note,created_by)
-   values(w,command->>'kind',case when candidate is null then 'eligible_pool' else 'direct' end,(s->>'source_id')::uuid,(t->>'source_id')::uuid,emp.id,s,t,fp,expires,coalesce(command->>'note',''),actor) returning * into c;
+   -- Nothing opens in the last 4 hours before the shift (plan 04:56).
+   expires:=app_private.shift_exchange_deadline(s,t);
+   if expires<=clock_timestamp() then raise exception 'Too close to the shift. Talk to your manager.' using errcode='PT409',hint='exchange.too_close'; end if;
+   insert into public.shift_exchange_cases(workspace_id,kind,audience,offered_source_id,requested_source_id,owner_id,offered_snapshot,requested_snapshot,consent_fingerprint,expires_at,private_note,teammate_note,created_by)
+   values(w,command->>'kind',case when candidate is null then 'eligible_pool' else 'direct' end,(s->>'source_id')::uuid,(t->>'source_id')::uuid,emp.id,s,t,fp,expires,coalesce(command->>'note',''),
+    case when candidate is null then coalesce(trim(command->>'teammate_note'),'') else '' end,actor) returning * into c;
    cid:=c.id;
    if candidate is not null then
     insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,candidate,'invited',fp) returning id into aid;
@@ -25896,21 +25917,26 @@ begin
   else
    if (s->>'employee_id')::uuid=emp.id then raise exception 'You already own this shift'; end if;
    select * into c from public.shift_exchange_cases where workspace_id=w and offered_source_id=(s->>'source_id')::uuid and status='open' for update;
-   if c.id is null then
-    if s->>'employee_id' is not null then raise exception 'This shift has not been offered for cover'; end if;
-    fp:=public.shift_exchange_fingerprint(w,s,null);
-    insert into public.shift_exchange_cases(workspace_id,kind,offered_source_id,offered_snapshot,consent_fingerprint,expires_at,created_by)
-    values(w,'open_pickup',(s->>'source_id')::uuid,s,fp,(s->>'starts_at')::timestamptz,actor) returning * into c;
-   end if;
+   -- Only a release reaches the pool: a shift nobody holds stays the manager's (plan 07:08).
+   if c.id is null then raise exception 'This shift has not been released'; end if;
    if c.audience<>'eligible_pool' or c.kind='swap' or (cid is not null and cid<>c.id) then raise exception 'This offer is not available' using errcode='42501',hint='authz.out_of_scope'; end if;
-   if public.shift_exchange_fingerprint(w,s,null)<>c.consent_fingerprint then raise exception 'Shift conditions changed. The owner must renew this offer' using errcode='PT409'; end if;
-   perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
-   if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind='open_pickup' then 'open_pickup' else 'release_pickup' end))->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
+   if c.expires_at<=clock_timestamp() then raise exception 'This request closed 4 hours before the shift' using errcode='PT409'; end if;
    cid:=c.id;
-   if exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='pending_manager') then raise exception 'You already have an active application'; end if;
-   insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'pending_manager',c.consent_fingerprint) returning id into aid;
-   update public.shift_exchange_cases set revision=revision+1,updated_at=now() where id=cid returning * into c;
-   perform public.shift_exchange_emit(actor,w,cid,aid,'application_submitted','A teammate requested this shift. The current owner remains responsible.');
+   if action='pass' then
+    -- Not for me (plan 04:52): the card leaves this person's Available Shifts. Only
+    -- they read it; the request itself does not change, so the owner's Take back holds.
+    if not exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='declined_by_employee') then
+     insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'declined_by_employee',c.consent_fingerprint);
+    end if;
+   else
+    if public.shift_exchange_fingerprint(w,s,null)<>c.consent_fingerprint then raise exception 'Shift conditions changed. The owner must renew this offer' using errcode='PT409'; end if;
+    perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
+    if app_private.eligibility(w,emp.id,s,'{"operation":"release_pickup"}')->>'status'<>'eligible' then raise exception 'You are not eligible for the full shift'; end if;
+    if exists(select 1 from public.shift_exchange_applications where case_id=cid and employee_id=emp.id and status='pending_manager') then raise exception 'You already have an active application'; end if;
+    insert into public.shift_exchange_applications(workspace_id,case_id,employee_id,status,consent_fingerprint) values(w,cid,emp.id,'pending_manager',c.consent_fingerprint) returning id into aid;
+    update public.shift_exchange_cases set revision=revision+1,updated_at=now() where id=cid returning * into c;
+    perform public.shift_exchange_emit(actor,w,cid,aid,'application_submitted','A teammate requested this shift. The current owner remains responsible.');
+   end if;
   end if;
  else
   select * into c from public.shift_exchange_cases where id=cid and workspace_id=w for update;
@@ -25925,7 +25951,7 @@ begin
    update public.shift_exchange_cases set status='expired',revision=revision+1,updated_at=now() where id=cid returning * into c;
    update public.shift_exchange_applications set status='expired',updated_at=now() where case_id=cid and status in('invited','pending_manager');
    delete from public.shift_exchange_votes where case_id=cid;
-   perform public.shift_exchange_emit(null,w,cid,null,'expired','The shift has started. The current owner remains responsible.');
+   perform public.shift_exchange_emit(null,w,cid,null,'expired','This request closed 4 hours before the shift. The current owner remains responsible.');
   elsif public.shift_exchange_live_status(w,cid)='invalidated' then
    update public.shift_exchange_cases set status='invalidated',revision=revision+1,updated_at=now() where id=cid returning * into c;
    update public.shift_exchange_applications set status='invalidated',updated_at=now() where case_id=cid and status in('invited','pending_manager');
@@ -25933,10 +25959,11 @@ begin
    perform public.shift_exchange_emit(actor,w,cid,null,'invalidated','Shift details changed. This offer ended without a transfer. Start a new request from the current schedule.');
   elsif action='close' then
    if not coalesce(owns,false) and not coalesce(manager,false) then raise exception 'Only the owner or a manager can close this search' using errcode='42501',hint='authz.out_of_scope'; end if;
-   if coalesce(length(trim(command->>'reason')),0)=0 then raise exception 'Choose a reason for closing this search'; end if;
    update public.shift_exchange_cases set status='cancelled',revision=revision+1,updated_at=now() where id=cid returning * into c;
-   update public.shift_exchange_applications set status='closed_case_cancelled',reason=command->>'reason',updated_at=now() where case_id=cid and status in('invited','pending_manager');
-   perform public.shift_exchange_emit(actor,w,cid,null,'case_closed',command->>'reason',coalesce(command->>'private_note',''));
+   -- Take back needs no reason (plan 04:52); the owner keeps the shift.
+   update public.shift_exchange_applications set status='closed_case_cancelled',reason=coalesce(trim(command->>'reason'),''),updated_at=now() where case_id=cid and status in('invited','pending_manager');
+   perform public.shift_exchange_emit(actor,w,cid,null,'case_closed',coalesce(nullif(trim(command->>'reason'),''),
+    case when coalesce(owns,false) then 'Taken back. The owner keeps this shift.' else 'A manager closed this request. The owner keeps this shift.' end),coalesce(command->>'private_note',''));
   else
    select * into a from public.shift_exchange_applications where id=aid and case_id=cid and workspace_id=w for update;
    if a.id is null or a.status not in('invited','pending_manager') then raise exception 'This application is no longer active' using errcode='PT409'; end if;
@@ -25946,7 +25973,7 @@ begin
     if action='accept' then
      if public.shift_exchange_fingerprint(w,s,t) is distinct from c.consent_fingerprint then raise exception 'Shift conditions changed. Ask for a new offer' using errcode='PT409'; end if;
      perform public.require_weekly_exchange_employee_warning(actor,w,emp.id,s,command);
-     if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind in ('swap','open_pickup') then c.kind when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible'
+     if app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null))))->>'status'<>'eligible'
       or (c.kind='swap' and app_private.eligibility(w,c.owner_id,t,jsonb_build_object('operation','swap','excluded',jsonb_build_array(s->>'id',t->>'id')))->>'status'<>'eligible') then raise exception 'Both employees must be eligible for the full exchange'; end if;
     end if;
     update public.shift_exchange_applications set status=case action when 'accept' then 'pending_manager' when 'decline' then 'declined_by_employee' else 'withdrawn' end,
@@ -25966,11 +25993,11 @@ begin
       app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) r where r<>'out_of_scope' limit 1),'out_of_scope');
     end if;
     if action='reject' then
-     if coalesce(length(trim(command->>'reason')),0)=0 then raise exception 'Provide a reason visible to this employee'; end if;
-     update public.shift_exchange_applications set status='rejected_by_manager',reason=command->>'reason',updated_at=now() where id=aid;
+     -- The reason is optional; when given, the employee reads it (plan 05:03; Mert, 2026-10-16).
+     update public.shift_exchange_applications set status='rejected_by_manager',reason=coalesce(trim(command->>'reason'),''),updated_at=now() where id=aid;
      delete from public.shift_exchange_votes where case_id=cid and application_id=aid;
      if c.audience='direct' then update public.shift_exchange_cases set status='cancelled' where id=cid; end if;
-     perform public.shift_exchange_emit(actor,w,cid,aid,'application_rejected',command->>'reason',coalesce(command->>'private_note',''));
+     perform public.shift_exchange_emit(actor,w,cid,aid,'application_rejected',coalesce(nullif(trim(command->>'reason'),''),'Your manager declined this request.'),coalesce(command->>'private_note',''));
     else
      checked:=public.shift_exchange_preview(actor,w,cid,aid);
      if not (checked->>'allowed')::boolean then raise exception '%',checked->'reasons' using errcode='PT409'; end if;
@@ -26097,11 +26124,11 @@ begin
    and p.scheduled_date between from_date and to_date)) order by x.expires_at,x.created_at loop
   allowed:=manager_view and coalesce((c.offered_snapshot->>'location_id')::uuid=any(read_scope) or (c.kind='swap' and (c.requested_snapshot->>'location_id')::uuid=any(read_scope)),false);
   mine:=coalesce(c.owner_id=emp.id,false);
-  if not allowed and not mine and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id) then continue; end if;
+  if not allowed and not mine and not exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id and (a.status<>'declined_by_employee' or c.audience='direct')) then continue; end if;
   -- A swap or a cover reaches a manager once both sides agreed (Mert, 2026-10-11):
   -- somebody asks for the shift, or the teammate accepted the swap.
   if manager_view and not mine
-   and not exists(select 1 from public.shift_exchange_applications where case_id=c.id and employee_id=emp.id)
+   and not exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id and (a.status<>'declined_by_employee' or c.audience='direct'))
    and not coalesce(app_private.shift_exchange_reached_managers(w,c.id),false)
    then continue; end if;
   -- Repeated historical requests refer to the same published source. Resolve
@@ -26129,12 +26156,13 @@ begin
    s:=public.shift_exchange_shift(w,shift_row.id);
    if (s->>'starts_at')::timestamptz<=clock_timestamp() then continue; end if;
    if (s->>'employee_id')::uuid=emp.id then own_shifts:=own_shifts||jsonb_build_array(s); continue; end if;
+   -- Only a release is in the pool (plan 07:08), and not one this person passed on (04:52).
    select * into c from public.shift_exchange_cases where workspace_id=w and offered_source_id=(s->>'source_id')::uuid and status='open' and expires_at>clock_timestamp() and audience='eligible_pool' and kind<>'swap';
-   if s->>'employee_id' is not null and c.id is null then continue; end if;
-   chk:=(app_private.eligibility(w,emp.id,s,jsonb_build_object('operation',case when c.id is null then 'open_pickup' else 'release_pickup' end))-'approval_flags')||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s));
+   if c.id is null or exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id and a.status='declined_by_employee') then continue; end if;
+   chk:=(app_private.eligibility(w,emp.id,s,'{"operation":"release_pickup"}')-'approval_flags')||jsonb_build_object('availability_warning',public.weekly_exchange_employee_warning(w,emp.id,s));
    if (chk->>'status'='eligible' or (chk->>'status'='ineligible' and not exists(select 1 from jsonb_array_elements(chk->'blockers') b
-     where b->>'code'<>'approved_time_off'))) and (c.id is null or c.consent_fingerprint=public.shift_exchange_fingerprint(w,s,null)) then
-    opportunities:=opportunities||jsonb_build_array(jsonb_build_object('case_id',c.id,'shift',s,'eligibility',chk));
+     where b->>'code'<>'approved_time_off'))) and c.consent_fingerprint=public.shift_exchange_fingerprint(w,s,null) then
+    opportunities:=opportunities||jsonb_build_array(jsonb_build_object('case_id',c.id,'shift',s,'eligibility',chk,'note',c.teammate_note));
    end if;
   end loop;
  end if;
@@ -35751,6 +35779,10 @@ GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."shift_excha
 
 
 REVOKE ALL ON FUNCTION "app_private"."shift_exchange_case_item"("actor" "uuid", "w" "uuid", "c" "public"."shift_exchange_cases", "allowed" boolean, "emp_id" "uuid", "published_offered" "jsonb", "published_requested" "jsonb", "live_status" "text") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."shift_exchange_deadline"("s" "jsonb", "t" "jsonb") FROM PUBLIC;
 
 
 

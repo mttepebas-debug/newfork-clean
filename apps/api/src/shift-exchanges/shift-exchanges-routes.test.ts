@@ -206,4 +206,32 @@ describe("Shift exchange authorization boundary", () => {
     expect(response.json().error).toBe("Review the latest details");
     await app.close();
   });
+  // TAKAS-RELEASE: "Not for me" on a released shift, and the 4-hour mark.
+  it("forwards a pass on a released shift", async () => {
+    const { app, service } = setup();
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspace}/shift-exchanges`,
+      headers: { authorization: "Bearer token", "idempotency-key": key },
+      payload: { action: "pass", shift_id: shift, case_id: key },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(service.command).toHaveBeenCalledWith(actor, workspace, { action: "pass", shift_id: shift, case_id: key }, key);
+    await app.close();
+  });
+  it("says a shift is too close to change, with its reason", async () => {
+    const { app, service } = setup();
+    vi.mocked(service.command).mockRejectedValue(
+      rpcFailure({ message: "Too close to the shift. Talk to your manager.", code: "PT409", hint: "exchange.too_close" }),
+    );
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspace}/shift-exchanges`,
+      headers: { authorization: "Bearer token", "idempotency-key": key },
+      payload: { action: "create", kind: "cover", shift_id: shift },
+    });
+    expect(response.statusCode).toBe(409);
+    expect(response.json()).toMatchObject({ error: "Too close to the shift. Talk to your manager.", reason: "exchange.too_close" });
+    await app.close();
+  });
 });

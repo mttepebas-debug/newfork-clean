@@ -63,7 +63,7 @@ select ok(pg_get_functiondef('public.validate_weekly_preference_command(uuid,uui
 update public.locations set timezone='UTC' where workspace_id=(select w from wp_fixture);
 create temp table wp_requests as select i,gen_random_uuid() cid,gen_random_uuid() aid,gen_random_uuid() source_id from generate_series(1,5) i;
 insert into public.shift_exchange_cases(id,workspace_id,kind,owner_id,offered_source_id,requested_source_id,offered_snapshot,requested_snapshot,consent_fingerprint,expires_at,created_by)
-select r.cid,f.w,case when r.i=4 then 'swap' when r.i=5 then 'cover' else 'open_pickup' end,case when r.i in(4,5) then f.emp else null end,r.source_id,
+select r.cid,f.w,case when r.i=4 then 'swap' else 'cover' end,f.emp,r.source_id,
  case when r.i=4 then gen_random_uuid() else null end,
  jsonb_build_object('location_id',f.loc,'location_name','West','date','2035-01-15','start_time','09:00','end_time','17:00','time_basis','explicit','time_timezone','UTC'),
  case when r.i=4 then jsonb_build_object('location_id',f.loc,'date','2035-01-16','start_time','09:00','end_time','17:00','time_basis','explicit','time_timezone','UTC') else null end,

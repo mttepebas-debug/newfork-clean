@@ -203,7 +203,7 @@ select is(pg_temp.published_note('ali', 1, 1), 'Bring the catering order list an
 select tests.publish_week('np', 3, '[
   {"label": "ali-tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00", "note": "Count the till before close"},
   {"label": "deniz-wed", "person": "deniz", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00", "note": "Take the produce delivery"},
-  {"label": "open-thu", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00", "note": "The new oven arrives at 10"}
+  {"label": "deniz-thu", "person": "deniz", "loc": "K", "job": "cook", "day": 3, "start": "09:00", "end": "15:00", "note": "The new oven arrives at 10"}
 ]');
 
 -- Manager approval, the way Schedule > Requests sends it.
@@ -244,15 +244,14 @@ select ok(jsonb_path_exists(pg_temp.hub('ali', 3), '$.team_shifts[*] ? (@.id == 
     jsonb_build_object('id', tests.id('np:shift:ali-tue'))),
   'and in Employee Hub without its note');
 
--- Ali picks up Thursday's open shift; Ayse approves.
-select tests.remember('np:case:pickup', (public.shift_exchanges_command_service(tests.user('np:ali'), tests.id('np'), jsonb_build_object(
-  'action', 'apply', 'shift_id', tests.id('np:shift:open-thu')), gen_random_uuid()) ->> 'case_id')::uuid);
-select pg_temp.approve(tests.id('np:case:pickup'));
+-- Deniz releases Thursday and Ali picks it up; Ayse approves.
+select tests.cover_case('np', 'deniz-thu', 'deniz', 'ali');
+select pg_temp.approve(tests.id('np:case:deniz-thu'));
 select tests.settle();
 
-select is((select p.employee_id from public.schedule_published_shifts p where p.id = tests.id('np:shift:open-thu')),
-  tests.id('np:ali'), 'the approved pickup gave the open Thursday to Ali');
-select is((select p.note from public.schedule_published_shifts p where p.id = tests.id('np:shift:open-thu')),
+select is((select p.employee_id from public.schedule_published_shifts p where p.id = tests.id('np:shift:deniz-thu')),
+  tests.id('np:ali'), 'the approved pickup gave Deniz''s Thursday to Ali');
+select is((select p.note from public.schedule_published_shifts p where p.id = tests.id('np:shift:deniz-thu')),
   'The new oven arrives at 10', 'the Thursday keeps its note');
 select ok(jsonb_path_exists(pg_temp.hub('ali', 3), '$.shifts[*] ? (@.note == "The new oven arrives at 10")'),
   'Ali, its new owner, reads it in Employee Hub');

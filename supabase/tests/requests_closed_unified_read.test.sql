@@ -60,7 +60,7 @@ create temporary table rc_seed (n integer, kind text, id uuid, closed_at timesta
 insert into rc_seed
 select n, 'time_off', gen_random_uuid(), date_trunc('minute', now()) - make_interval(mins => 2 * n) from generate_series(1, 60) n;
 insert into rc_seed
-select n, case when n <= 20 then 'swap' when n <= 40 then 'cover' else 'open_pickup' end, gen_random_uuid(),
+select n, case when n <= 20 then 'swap' else 'cover' end, gen_random_uuid(),
   date_trunc('minute', now()) - make_interval(mins => case when n = 1 then 2 else 2 * n + 1 end)
 from generate_series(1, 60) n;
 
@@ -81,7 +81,8 @@ from rc_seed s where s.kind = 'time_off' and s.n = 3;
 update public.schedule_time_off_requests r set status = 'approved' from rc_seed s where s.kind = 'time_off' and s.n = 3 and r.id = s.id;
 
 -- Shift changes: swaps Ali for Veli at Kadikoy (swap 5 is on March 3, 2031);
--- covers 39 and 40 are Deniz's at Besiktas; open shift 60 is at Besiktas.
+-- covers 39, 40 and 60 are Deniz's at Besiktas (41-60 are released shifts:
+-- TAKAS-RELEASE, only a release reaches the pool).
 insert into public.shift_exchange_cases (id, workspace_id, kind, audience, status, offered_source_id, requested_source_id, owner_id,
   offered_snapshot, requested_snapshot, consent_fingerprint, revision, expires_at, created_by, created_at, updated_at)
 select s.id, tests.id('rc'), s.kind, 'eligible_pool', (array['completed', 'cancelled', 'expired', 'invalidated'])[1 + s.n % 4],
@@ -89,7 +90,7 @@ select s.id, tests.id('rc'), s.kind, 'eligible_pool', (array['completed', 'cance
   o.snap, r.snap, md5(s.id::text), 2, s.closed_at, tests.user('rc:owner'), s.closed_at - interval '1 day', s.closed_at
 from rc_seed s
 cross join lateral (select case when s.n = 5 then date '2031-03-03' else current_date + 1 + s.n % 30 end d) dd
-cross join lateral (select pg_temp.snap(case when s.kind = 'open_pickup' then null when s.n in (39, 40) then 'deniz' else 'ali' end,
+cross join lateral (select pg_temp.snap(case when s.n in (39, 40, 60) then 'deniz' else 'ali' end,
   case when s.n in (39, 40, 60) then 'B' else 'K' end, dd.d) snap) o
 cross join lateral (select case when s.kind = 'swap' then pg_temp.snap('veli', 'K', dd.d) end snap) r
 where s.kind <> 'time_off';
@@ -150,13 +151,13 @@ select is((pg_temp.closed('owner', array['time_off']) ->> 'total')::integer, 60,
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('owner', array['time_off'], size => 100) -> 'rows') i
   where i ->> 'kind' <> 'time_off'), 0, 'and only time off');
 select is((pg_temp.closed('owner', array['swap']) ->> 'total')::integer, 20, 'Swap: 20');
-select is((pg_temp.closed('owner', array['cover', 'open_pickup']) ->> 'total')::integer, 40, 'Cover and Open shift: 40');
+select is((pg_temp.closed('owner', array['cover']) ->> 'total')::integer, 40, 'Cover: 40');
 select is((pg_temp.closed('owner', array['nonsense']) ->> 'total')::integer, 0, 'an unknown type reads nothing');
 
 -- Location and search -------------------------------------------------------------
 select is((pg_temp.closed('owner', loc => tests.id('rc:B')) ->> 'total')::integer, 4,
-  'Besiktas: Deniz''s time off, her two covers and its open shift');
-select is((pg_temp.closed('owner', q => 'deniz') ->> 'total')::integer, 3, 'a name finds Deniz''s three requests');
+  'Besiktas: Deniz''s time off and her three covers');
+select is((pg_temp.closed('owner', q => 'deniz') ->> 'total')::integer, 4, 'a name finds Deniz''s four requests');
 select is((pg_temp.closed('owner', q => 'Mar 3, 2031') ->> 'total')::integer, 1, 'a date as the list writes it finds the swap');
 select is((pg_temp.closed('owner', q => '2031-03-04') ->> 'total')::integer, 1, 'a date finds the time off');
 select is(pg_temp.refusal(format('select pg_temp.closed(%L, loc => %L)', 'ayse', tests.id('rc:B'))), '42501 authz.out_of_scope',
@@ -171,11 +172,11 @@ select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('ha
   where i ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 1)), 0, 'nor does Hande in Requests');
 select is((select count(*)::integer from rc_pages where id = (select id from rc_seed where kind = 'time_off' and n = 1)), 1,
   'the owner, who decides it, reads it');
-select is((pg_temp.closed('ayse', array['swap', 'cover', 'open_pickup']) ->> 'total')::integer, 57,
+select is((pg_temp.closed('ayse', array['swap', 'cover']) ->> 'total')::integer, 57,
   'Ayse reads Kadikoy''s 57 shift changes, not Besiktas''s three');
 
 -- (d) no exchange.read: no shift-change row and no count of them ------------------
-select is((pg_temp.closed('tolga', array['swap', 'cover', 'open_pickup']) ->> 'total')::integer, 0, 'Tolga: no shift changes');
+select is((pg_temp.closed('tolga', array['swap', 'cover']) ->> 'total')::integer, 0, 'Tolga: no shift changes');
 select is((pg_temp.closed('tolga') ->> 'total')::integer, 58, 'Tolga''s whole list is the time off he reads');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('tolga', size => 100) -> 'rows') i
   where i ->> 'kind' <> 'time_off'), 0, 'and every row is time off');
@@ -192,7 +193,7 @@ create function pg_temp.case_of(who text, n integer) returns jsonb language sql 
   select i -> 'exchange' from jsonb_array_elements(pg_temp.closed(who, array['cover'], size => 100) -> 'rows') i
   where i ->> 'id' = (select id::text from rc_seed where kind = 'cover' and rc_seed.n = case_of.n)
 $$;
-select is((pg_temp.closed('mehmet', array['swap', 'cover', 'open_pickup']) ->> 'total')::integer, 5,
+select is((pg_temp.closed('mehmet', array['swap', 'cover']) ->> 'total')::integer, 5,
   'Mehmet reads Besiktas''s three, the Kadikoy cover he owns and the one he applied to');
 select is(pg_temp.case_of('mehmet', 24) ->> 'can_manage', 'false', 'he does not decide his own');
 select is(pg_temp.case_of('mehmet', 24) ->> 'private_note', 'Owner note', 'and reads its note as its owner');

@@ -2,10 +2,11 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(7);
 
--- BL-198 for a cover and an open pickup (BL-229), approved in the same moment
--- as the publication they follow (BL-228). Ali's Tuesday shift and an open
--- Wednesday shift at Kadikoy are published; Deniz covers Tuesday and picks up
--- Wednesday, Ayse approves both. A draft that missed them is refused.
+-- BL-198 for a cover and a released shift (BL-229), approved in the same moment
+-- as the publication they follow (BL-228). Ali's Tuesday and Wednesday shifts at
+-- Kadikoy are published; Deniz covers Tuesday and picks up the Wednesday Ali
+-- released (TAKAS-RELEASE: only a release reaches the pool), Ayse approves both.
+-- A draft that missed them is refused.
 -- Nothing moves the publication back in time: one transaction has one now(),
 -- the closest a test gets to an approval that waited for the workspace lock
 -- behind a publish.
@@ -16,7 +17,7 @@ select tests.person('cp', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('cp', 'deniz', 'employee', array['K'], array['cook']);
 select tests.remember('cp:draft', tests.publish_week('cp', 1, '[
   {"label": "ali-tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
-  {"label": "open-wed", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
+  {"label": "ali-wed", "person": "ali", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "15:00"}
 ]'));
 
 create function pg_temp.command(person text, command jsonb) returns jsonb language sql as $$
@@ -40,16 +41,12 @@ $$;
 select tests.cover_case('cp', 'ali-tue', 'ali', 'deniz');
 select is(pg_temp.approve('ali-tue') ->> 'status', 'completed', 'Ayse approves Deniz covering Ali''s Tuesday');
 
--- Deniz picks up the open Wednesday shift; Ayse approves.
-select tests.remember('cp:case:open-wed', (pg_temp.command('deniz', jsonb_build_object('action', 'apply',
-  'shift_id', tests.id('cp:shift:open-wed'))) ->> 'case_id')::uuid);
-select tests.remember('cp:application:open-wed', (select a.id from public.shift_exchange_applications a
-  where a.case_id = tests.id('cp:case:open-wed')));
-select tests.settle();
-select is(pg_temp.approve('open-wed') ->> 'status', 'completed', 'Ayse approves Deniz picking up the open Wednesday');
+-- Ali releases Wednesday, Deniz picks it up; Ayse approves.
+select tests.cover_case('cp', 'ali-wed', 'ali', 'deniz');
+select is(pg_temp.approve('ali-wed') ->> 'status', 'completed', 'Ayse approves Deniz picking up Ali''s released Wednesday');
 
 -- The first draft saved again from a screen that missed both.
-update public.schedule_draft_shifts set employee_id = case scheduled_date when tests.week(1) + 1 then tests.id('cp:ali') end
+update public.schedule_draft_shifts set employee_id = tests.id('cp:ali')
 where draft_id = tests.id('cp:draft');
 
 select is(jsonb_array_length(pg_temp.undone()), 2, 'both approved changes are findings, though approved in the publish''s own moment');
@@ -57,10 +54,10 @@ select is(pg_temp.undone() -> 0 ->> 'exchange_kind', 'cover', 'Tuesday is the co
 select is(pg_temp.undone() -> 0 ->> 'message',
   'This shift was handed over from Ali Person to Deniz Person after the schedule was last published, and this draft does not have it. Publishing would undo it.',
   'and says who handed it over to whom');
-select is(pg_temp.undone() -> 1 ->> 'exchange_kind', 'open_pickup', 'Wednesday is the open pickup');
+select is(pg_temp.undone() -> 1 ->> 'exchange_kind', 'cover', 'Wednesday is the released shift');
 select is(pg_temp.undone() -> 1 ->> 'message',
-  'Deniz Person picked up this open shift after the schedule was last published, and this draft does not have it. Publishing would undo it.',
-  'and says who picked it up');
+  'This shift was handed over from Ali Person to Deniz Person after the schedule was last published, and this draft does not have it. Publishing would undo it.',
+  'and says who handed it over to whom');
 
 select * from finish();
 rollback;

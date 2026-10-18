@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { exchangePreviewSchema } from "./shift-exchanges";
+import { exchangeCommandSchema, exchangePreviewSchema } from "./shift-exchanges";
 
 // EKRAN-02 C2 (KARARLAR "Takas inceleme penceresi H2", uyarı kutuları): the swap
 // review draws its boxes from the decision preview, so the manager's flags and
@@ -26,5 +26,21 @@ describe("exchangePreviewSchema", () => {
       requires_other_manager: false, other_applications: 0,
     });
     expect(preview.receiver.approval_flags).toBeUndefined();
+  });
+});
+
+// TAKAS-RELEASE: "Not for me" names the released shift and its request; Take back
+// and a manager's decline need no reason.
+describe("exchangeCommandSchema", () => {
+  const ids = { shift_id: "11111111-1111-4111-8111-111111111111", case_id: "22222222-2222-4222-8222-222222222222" };
+  it("takes a pass on a released shift", () => {
+    expect(exchangeCommandSchema.parse({ action: "pass", ...ids })).toEqual({ action: "pass", ...ids });
+  });
+  it("refuses a pass without its request", () => {
+    expect(exchangeCommandSchema.safeParse({ action: "pass", shift_id: ids.shift_id }).success).toBe(false);
+  });
+  it("closes and declines without a reason", () => {
+    for (const action of ["close", "reject"] as const)
+      expect(exchangeCommandSchema.parse({ action, case_id: ids.case_id, expected_revision: 2 })).toMatchObject({ action, reason: "" });
   });
 });
