@@ -111,35 +111,17 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
   // The page opens on the week of ?date= (a notification, a shift's "Open in my schedule"); This week otherwise.
   // A new ?date= while the page is open moves it too.
   const [page, setPage] = useState<0 | 1>(0);
-  const pager = useRef<HTMLDivElement>(null);
   const seg = useRef<HTMLDivElement>(null);
   const placedFor = useRef<string | null>(null);
   const place = weeks ? `${weeks.starts.join()}|${weeks.open}` : null;
   useEffect(() => {
-    if (!weeks || !pager.current || placedFor.current === place) return;
+    if (!weeks || placedFor.current === place) return;
     placedFor.current = place;
     setPage(weeks.open);
-    pager.current.scrollLeft = weeks.open * pager.current.clientWidth;
-  }, [place, weeks, model]);
-  // The white pill follows the pager while it slides, as in the lab page.
-  useEffect(() => {
-    const el = pager.current;
-    if (!el) return;
-    const sync = () => seg.current?.style.setProperty("--pos", (el.scrollLeft / Math.max(1, el.clientWidth)).toFixed(3));
-    sync();
-    el.addEventListener("scroll", sync, { passive: true });
-    const keep = () => { el.scrollLeft = page * el.clientWidth; sync(); };
-    window.addEventListener("resize", keep);
-    return () => { el.removeEventListener("scroll", sync); window.removeEventListener("resize", keep); };
-  }, [page, model]);
-  const go = (next: 0 | 1) => {
-    setPage(next);
-    const el = pager.current;
-    if (!el) return;
-    const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (typeof el.scrollTo === "function") el.scrollTo({ left: next * el.clientWidth, behavior: reduce ? "auto" : "smooth" });
-    else el.scrollLeft = next * el.clientWidth;
-  };
+  }, [place, weeks]);
+  // The two weeks slide as one track and the white pill with them (the lab's pager, drawn with a transform: a
+  // scrolled pager pushed the app's own scroll area sideways on a phone).
+  const go = (next: 0 | 1) => setPage(next);
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -177,7 +159,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
   const pages = [weekDays(model, weeks.starts[0]), weekDays(model, weeks.starts[1])];
   const timeFormat = model.settings.time_format;
   return (
-    <div className="ems">
+    <div className="ems" style={{ "--pos": page } as CSSProperties}>
       {hub.isError ? (
         <RefreshError
           message="Your shifts didn't refresh. This is the last schedule that loaded."
@@ -185,7 +167,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
           onRetry={() => void hub.refetch()}
         />
       ) : null}
-      <div className="ems-seg" role="tablist" aria-label="Week" ref={seg} style={{ "--pos": page } as CSSProperties}>
+      <div className="ems-seg" role="tablist" aria-label="Week" ref={seg}>
         {weeks.labels.map((label, i) => (
           <button
             key={label}
@@ -203,7 +185,8 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
         ))}
         <i className="ems-seg-i" aria-hidden="true" />
       </div>
-      <div className="ems-pager" ref={pager}>
+      <div className="ems-pager">
+        <div className="ems-track">
         {pages.map((days, i) => (
           <div
             key={i}
@@ -258,6 +241,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
             ))}
           </div>
         ))}
+        </div>
       </div>
       {selected ? (
         <ShiftSheet shift={selected} model={model} clash={ownAvailabilityClash(pattern, selected, timeFormat)} onClose={closeDetail} />

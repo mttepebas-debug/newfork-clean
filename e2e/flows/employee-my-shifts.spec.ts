@@ -97,7 +97,8 @@ test("desktop: My shifts first, the week from the switch, Team schedule is the b
   await expect(emre.getByRole("tab", { name: "Next week" })).toHaveAttribute("aria-selected", "true");
   const nextWeek = emre.getByRole("tabpanel", { name: "Next week" });
   await expect(nextWeek.locator(`[data-day="${addDays(start, 8)}"]`)).toContainText("4:00 PM – 10:00 PM");
-  await expect.poll(() => emre.locator(".ems-pager").evaluate((el) => el.scrollLeft)).toBeGreaterThan(300);
+  const listLeft = async () => Math.round((await emre.locator(".ems-pager").boundingBox())!.x);
+  await expect.poll(async () => Math.round((await nextWeek.boundingBox())!.x)).toBe(await listLeft());
   await emre.screenshot({ path: `${shots}my-shifts-next-1440.png` });
 
   await pages.getByRole("link", { name: "Team schedule" }).click();
@@ -128,11 +129,16 @@ test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a t
   await swipe(emre, emre.locator(".employee-hub-page h1"), 160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule(\?|$)/);
   await expect(emre.getByRole("tab", { name: "This week" })).toHaveAttribute("aria-selected", "true");
-  expect(await emre.locator(".ems-pager").evaluate((el) => el.scrollLeft)).toBe(0);
+  // Where a week sits in the list's frame (both move together in the tab's own 0.22 s slide-in).
+  const offset = (name: string) => emre.getByRole("tabpanel", { name }).evaluate((panel) => Math.round(panel.getBoundingClientRect().x - panel.closest(".ems-pager")!.getBoundingClientRect().x));
+  await expect.poll(() => offset("This week")).toBe(0);
+  // Nothing on the page is wider than the phone, so no swipe leaves the page itself sideways.
+  expect(await emre.evaluate(() => [document.scrollingElement!.scrollLeft, document.querySelector(".app-main")?.scrollLeft ?? 0, document.documentElement.scrollWidth])).toEqual([0, 0, 390]);
 
   await emre.getByRole("tab", { name: "Next week" }).tap();
   await expect(emre.getByRole("tab", { name: "Next week" })).toHaveAttribute("aria-selected", "true");
-  await emre.waitForTimeout(500);
+  await expect.poll(() => offset("Next week")).toBe(0);
+  expect(await emre.evaluate(() => document.querySelector(".app-main")?.scrollLeft ?? 0)).toBe(0);
   await emre.screenshot({ path: `${shots}my-shifts-next-390.png` });
   await emre.getByRole("tab", { name: "This week" }).tap();
 
