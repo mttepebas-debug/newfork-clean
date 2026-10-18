@@ -1339,6 +1339,31 @@ describe("Shift Hub release", () => {
     }
   });
 
+  it("lets a swipe on an empty deck change the tab", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [];
+    const media = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      mount("/app/employee-hub/shift-hub?hub_view=available");
+      const empty = await screen.findByText("You’re all caught up");
+      fireEvent.touchStart(empty, { touches: [{ clientX: 300, clientY: 400 }] });
+      fireEvent.touchEnd(empty, { touches: [], changedTouches: [{ clientX: 120, clientY: 405 }] });
+      const views = screen.getByRole("navigation", { name: "Shift Hub views" });
+      await waitFor(() =>
+        expect(within(views).getByRole("button", { name: /My requests/ }).getAttribute("aria-current")).toBe("page"),
+      );
+    } finally {
+      window.matchMedia = media;
+    }
+  });
+
   it("takes the shift back in two clicks, without a reason", async () => {
     mount("/app/employee-hub/shift-hub?case=case");
     const back = await screen.findByRole("button", { name: "Take back shift" });
