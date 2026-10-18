@@ -1,6 +1,6 @@
 import { Button } from "@newfork/ui";
 import { Check, EyeOff, Lock, Pencil, RotateCw, Send } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type JSX } from "react";
+import { useCallback, useEffect, useRef, useState, type CSSProperties, type JSX } from "react";
 
 import { validZone } from "../lib/today";
 import { canPublish, lineupCardState, LINEUP_BUSY_MS, type LineupLocation, type LineupShift } from "./lineup";
@@ -20,11 +20,30 @@ const plural = (n: number, one: string, many = `${one}s`) => `${n} ${n === 1 ? o
 const keyOf = (location: LineupLocation, shift: LineupShift) => `${location.id}:${shift.key}`;
 
 /**
- * Publish works in its own button (Mert 2026-10-17, notice A; mockup v-e.js): a spinner and "Publishing…" for at
- * least PUBLISH_WORK_MS, then a check and "Published" for PUBLISH_DONE_MS (2.6 s in all), then the button as it was.
+ * Publish says what it did in its buttons (Mert 2026-10-17, notice A; mockup v-e.js .d-pub): the window's Publish
+ * spins and says "Publishing…" for at least PUBLISH_WORK_MS; then the window closes and the Publish that opened it
+ * says "Published" for PUBLISH_DONE_MS (2.6 s in all), then is as it was. No notice, no line in the window.
  */
 export const PUBLISH_WORK_MS = 900;
 export const PUBLISH_DONE_MS = 1700;
+
+/**
+ * A lineup has gone out (notice A): true once when `live` turns on for the same lineup, held back while `held` (the
+ * Publish window over it is open) so the light shows when the window has closed. The second value turns it off
+ * (the light's animation end).
+ */
+export function useGoneOutLight(key: string, live: boolean, held: boolean): readonly [boolean, () => void] {
+  const [lit, setLit] = useState(false);
+  const seen = useRef({ key, live, waiting: false });
+  useEffect(() => {
+    const before = seen.current;
+    const waiting = live && before.key === key && (before.waiting || !before.live);
+    if (waiting && !held) setLit(true);
+    seen.current = { key, live, waiting: waiting && held };
+  }, [key, live, held]);
+  const off = useCallback(() => setLit(false), []);
+  return [lit, off];
+}
 
 function people(shifts: readonly LineupShift[]): number {
   return new Set(
@@ -50,30 +69,46 @@ export function LineupPublishButton({
   waiting,
   anyPublished,
   open,
+  published = false,
   onToggle,
   className,
 }: {
   readonly waiting: number;
   readonly anyPublished: boolean;
   readonly open: boolean;
+  /** It has just published: a check and "Published" for PUBLISH_DONE_MS; presses wait. */
+  readonly published?: boolean;
   readonly onToggle: () => void;
   readonly className?: string;
 }): JSX.Element {
   // Nothing to publish and nothing to take back: the button rests, faded.
-  const idle = waiting === 0 && !anyPublished;
+  const idle = waiting === 0 && !anyPublished && !published;
   return (
     <Button
-      className={`lineup-publish-trigger${className ? ` ${className}` : ""}`}
+      className={`lineup-publish-trigger${published ? " is-published" : ""}${className ? ` ${className}` : ""}`}
       aria-expanded={open}
       aria-haspopup="dialog"
-      aria-label={waiting ? `Publish, ${plural(waiting, "lineup")} waiting` : "Publish"}
+      aria-label={published ? undefined : waiting ? `Publish, ${plural(waiting, "lineup")} waiting` : "Publish"}
+      aria-disabled={published || undefined}
+      aria-live="polite"
       disabled={idle}
       title={idle ? "No lineups to publish this day." : undefined}
-      onClick={onToggle}
+      onClick={() => {
+        if (!published) onToggle();
+      }}
     >
-      <Send size={15} aria-hidden />
-      Publish
-      {waiting ? <span className="lineup-publish-badge" aria-hidden>{waiting}</span> : null}
+      {published ? (
+        <span className="lineup-publish-ok">
+          <Check size={16} strokeWidth={3} aria-hidden />
+          Published
+        </span>
+      ) : (
+        <>
+          <Send size={15} aria-hidden />
+          Publish
+          {waiting ? <span className="lineup-publish-badge" aria-hidden>{waiting}</span> : null}
+        </>
+      )}
     </Button>
   );
 }
@@ -86,6 +121,7 @@ export function LineupPublishWindow({
   timeFormat,
   nowAt,
   onClose,
+  onPublished,
   className,
 }: {
   readonly workspaceId: string | null;
@@ -96,6 +132,11 @@ export function LineupPublishWindow({
   /** A location's wall clock on this day ("HH:MM"), null on another day: a started shift locks Edit. */
   readonly nowAt?: (location: LineupLocation) => string | null;
   readonly onClose: () => void;
+  /**
+   * It went out and "Publishing…" has shown PUBLISH_WORK_MS: the page closes the window and its Publish says
+   * "Published" (focus goes back to that button as the window closes).
+   */
+  readonly onPublished: () => void;
   readonly className?: string;
 }): JSX.Element {
   const ref = useRef<HTMLElement | null>(null);
@@ -107,11 +148,10 @@ export function LineupPublishWindow({
   const [askAck, setAskAck] = useState(true);
   // Why the last press didn't go through (S-139: the window's band). A success says so in its button only.
   const [refusal, setRefusal] = useState<string | null>(null);
-  const [phase, setPhase] = useState<"idle" | "working" | "done">("idle");
-  // Something went out: with nothing ticked the button is Done.
-  const [sent, setSent] = useState(false);
-  const timers = useRef<number[]>([]);
-  useEffect(() => () => timers.current.forEach((timer) => window.clearTimeout(timer)), []);
+  // Publish is working: "Publishing…" in its button; presses wait (one command per press).
+  const [working, setWorking] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
   // The lineup the Edit window is open on, and the lineup whose box takes focus once Edit has taken it back.
   const [editing, setEditing] = useState<{ readonly location: LineupLocation; readonly shift: LineupShift } | null>(null);
   const editingNow = useRef(false);
@@ -171,7 +211,6 @@ export function LineupPublishWindow({
 
   function toggle(key: string) {
     setRefusal(null);
-    setSent(false);
     setPicked((current) => {
       const next = new Set(current);
       if (next.has(key)) next.delete(key);
@@ -180,37 +219,28 @@ export function LineupPublishWindow({
     });
   }
 
-  function later(run: () => void, ms: number) {
-    timers.current.push(window.setTimeout(run, ms));
-  }
-
   function publish() {
-    // One command per press: a press while it works, or on "Published", does nothing.
-    if (phase !== "idle" || !chosen.length) return;
+    // One command per press: a press while it works does nothing.
+    if (working || !chosen.length) return;
     const since = Date.now();
-    setPhase("working");
+    setWorking(true);
     setRefusal(null);
     command.mutate(
       { kind: "share", lineups: chosen.map((s) => s.publish.target), askAck },
       {
         onSuccess: () => {
-          setPicked(new Set());
-          setSent(true);
-          later(() => {
-            setPhase("done");
-            later(() => setPhase("idle"), PUBLISH_DONE_MS);
-          }, Math.max(0, PUBLISH_WORK_MS - (Date.now() - since)));
+          timer.current = window.setTimeout(onPublished, Math.max(0, PUBLISH_WORK_MS - (Date.now() - since)));
         },
+        // The window stays: the button as it was, why in the window's band (S-139).
         onError: (error) => {
-          setPhase("idle");
+          setWorking(false);
           setRefusal(lineupCommandMessage(error));
         },
       },
     );
   }
 
-  const busy = phase !== "idle";
-  const finished = !busy && sent && !chosen.length;
+  const busy = working;
   return (
     <section
       ref={ref}
@@ -271,28 +301,20 @@ export function LineupPublishWindow({
             ? `${plural(chosen.length, "lineup")} · ${plural(people(chosen), "person", "people")}`
             : "Nothing to publish"}
         </span>
-        {/* One button through it all, so the keyboard's focus stays on it: Publish, Publishing…, Published, then
-            Publish again or Done. While it works it is aria-disabled, not disabled (D2). */}
+        {/* While it works it is aria-disabled, not disabled, so the keyboard's focus stays on it (D2). */}
         <Button
-          className={finished ? "secondary-button lineup-publish-done" : `lineup-publish-go${busy ? ` is-${phase}` : ""}`}
-          disabled={!busy && !finished && !chosen.length}
-          aria-disabled={busy || undefined}
-          aria-busy={phase === "working" || undefined}
-          aria-live={busy ? "polite" : undefined}
-          onClick={finished ? onClose : publish}
+          className={`lineup-publish-go${working ? " is-working" : ""}`}
+          disabled={!working && !chosen.length}
+          aria-disabled={working || undefined}
+          aria-busy={working || undefined}
+          aria-live="polite"
+          onClick={publish}
         >
-          {phase === "working" ? (
+          {working ? (
             <>
               <span className="lineup-publish-spin" aria-hidden />
               Publishing…
             </>
-          ) : phase === "done" ? (
-            <span className="lineup-publish-ok">
-              <Check size={15} strokeWidth={3} aria-hidden />
-              Published
-            </span>
-          ) : finished ? (
-            "Done"
           ) : (
             <>
               <Send size={14} aria-hidden />
@@ -312,7 +334,6 @@ export function LineupPublishWindow({
           onDone={() => {
             const key = keyOf(editing.location, editing.shift);
             setEditing(null);
-            setSent(false);
             setPicked((current) => new Set(current).add(key));
             setFocusKey(key);
           }}

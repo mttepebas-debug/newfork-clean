@@ -1,5 +1,5 @@
 import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
-import { useCallback, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { useSearchParams } from "react-router";
 
 import { useAuth } from "../auth/AuthContext";
@@ -18,7 +18,13 @@ import {
   type LineupShift,
 } from "../schedule/lineup";
 import { useLineupDay } from "../schedule/lineup-data";
-import { LineupPublishButton, LineupPublishWindow, publishedAt } from "../schedule/LineupPublishWindow";
+import {
+  LineupPublishButton,
+  LineupPublishWindow,
+  PUBLISH_DONE_MS,
+  publishedAt,
+  useGoneOutLight,
+} from "../schedule/LineupPublishWindow";
 import { LineupReadPanel } from "../schedule/LineupReadList";
 import { addDays, formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
@@ -101,6 +107,17 @@ export function LineupPage() {
   };
   const [publishOpen, setPublishOpen] = useState(false);
   const closePublish = useCallback(() => setPublishOpen(false), []);
+  // It went out (notice A, mockup v-e.js .d-pub): the window closes and the Publish that opened it says
+  // "Published" for PUBLISH_DONE_MS, then is as it was.
+  const [justPublished, setJustPublished] = useState(false);
+  const publishedTimer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(publishedTimer.current), []);
+  const published = useCallback(() => {
+    setPublishOpen(false);
+    setJustPublished(true);
+    window.clearTimeout(publishedTimer.current);
+    publishedTimer.current = window.setTimeout(() => setJustPublished(false), PUBLISH_DONE_MS);
+  }, []);
   useScheduleRealtime({
     workspaceId,
     weekStart: model?.week_start ?? "",
@@ -141,6 +158,7 @@ export function LineupPage() {
         waiting={waiting}
         anyPublished={anyPublished}
         open={publishOpen}
+        published={justPublished}
         onToggle={() => setPublishOpen(!publishOpen)}
       />
       {publishOpen ? (
@@ -152,6 +170,7 @@ export function LineupPage() {
           timeFormat={model?.settings.time_format ?? "12h"}
           nowAt={nowAt}
           onClose={closePublish}
+          onPublished={published}
         />
       ) : null}
     </div>
@@ -199,6 +218,7 @@ export function LineupPage() {
                 waiting,
                 anyPublished,
                 open: publishOpen,
+                published: justPublished,
                 onToggle: () => setPublishOpen(!publishOpen),
                 window: (
                   <LineupPublishWindow
@@ -209,6 +229,7 @@ export function LineupPage() {
                     timeFormat={timeFormat}
                     nowAt={nowAt}
                     onClose={closePublish}
+                    onPublished={published}
                     className="is-sheet"
                   />
                 ),
@@ -329,7 +350,7 @@ export function LineupPage() {
       ) : (
         <div className="lineup-locations">
           {lineups.map((location) => (
-            <LocationLineup key={location.id} location={location} date={date} timeFormat={timeFormat} />
+            <LocationLineup key={location.id} location={location} date={date} timeFormat={timeFormat} held={publishOpen} />
           ))}
         </div>
       )}
@@ -389,10 +410,13 @@ function LocationLineup({
   location,
   date,
   timeFormat,
+  held,
 }: {
   readonly location: LineupLocation;
   readonly date: string;
   readonly timeFormat: ScheduleTimeFormat;
+  /** The Publish window is open over the page: a lineup that goes out lights up once it closes. */
+  readonly held: boolean;
 }) {
   const headingId = `lineup-location-${location.id}`;
   return (
@@ -413,7 +437,14 @@ function LocationLineup({
           ) : null}
           {location.shifts.length ? (
             location.shifts.map((shift) => (
-              <ShiftLineup key={shift.key} shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
+              <ShiftLineup
+                key={shift.key}
+                lightKey={`${location.id}:${shift.key}`}
+                shift={shift}
+                timeFormat={timeFormat}
+                timezone={location.timezone}
+                held={held}
+              />
             ))
           ) : (
             <p className="lineup-empty-shift">No shifts for this filter.</p>
@@ -425,16 +456,22 @@ function LocationLineup({
 }
 
 function ShiftLineup({
+  lightKey,
   shift,
   timeFormat,
   timezone,
+  held,
 }: {
+  readonly lightKey: string;
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
   /** The location's IANA zone: when it went out and who read it when, on its clock. */
   readonly timezone: string;
+  readonly held: boolean;
 }) {
   const [open, setOpen] = useState(true);
+  // It has gone out (notice A): its "Published" lights up once, after the Publish window has closed.
+  const [lit, unlight] = useGoneOutLight(lightKey, shift.publish.published, held);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   if (!shift.count) {
     return (
@@ -460,7 +497,7 @@ function ShiftLineup({
         />
         <span className="lineup-shift-title">
           <h3>{shift.name}</h3>
-          <ShiftStatus shift={shift} timeFormat={timeFormat} timezone={timezone} />
+          <ShiftStatus shift={shift} timeFormat={timeFormat} timezone={timezone} lit={lit} onLit={unlight} />
         </span>
         <span className="lineup-shift-meta">
           {shift.count} {shift.count === 1 ? "person" : "people"}
@@ -517,10 +554,14 @@ function ShiftStatus({
   shift,
   timeFormat,
   timezone,
+  lit,
+  onLit,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
   readonly timezone: string;
+  readonly lit: boolean;
+  readonly onLit: () => void;
 }) {
   const { publish } = shift;
   const [reading, setReading] = useState(false);
@@ -530,7 +571,9 @@ function ShiftStatus({
   if (!publish.published) return null;
   return (
     <span className="lineup-shift-status">
-      <span className="lineup-shift-published">Published {publishedAt(publish.sharedAt, timeFormat, timezone)}</span>
+      <span className={`lineup-shift-published${lit ? " is-flash" : ""}`} onAnimationEnd={onLit}>
+        Published {publishedAt(publish.sharedAt, timeFormat, timezone)}
+      </span>
       {publish.askAck ? (
         // Mert 2026-10-17: the count opens who read it and who hasn't.
         <span className="lineup-shift-read-anchor">

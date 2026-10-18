@@ -46,12 +46,14 @@ div.lineup-publish-pick { cursor: default; }
 .lineup-publish-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 6px; padding: 10px 12px 10px 16px; border-top: 1px solid var(--theme-border-subtle); }
 .lineup-publish-sum { color: var(--theme-muted); font-size: 12px; }
 .nf-button.lineup-publish-go { display: inline-flex; min-width: 112px; min-height: 32px; align-items: center; justify-content: center; gap: 6px; padding: 0 12px; font-size: 12.5px; font-weight: 700; white-space: nowrap; }
-.secondary-button.lineup-publish-done { min-width: 112px; min-height: 32px; padding: 0 12px; font-size: 12.5px; font-weight: 700; }
-/* Publish works in place (Mert 2026-10-17, notice A; mockup v-e.css e-pb): a spinner and "Publishing…", then a
-   check that pops in and "Published", then the button as it was. Off while it works, but still focusable. */
+/* Publish says what it did (Mert 2026-10-17, notice A; mockup v-e.css e-pb, .d-pub): the window's Publish spins and
+   says "Publishing…" (off, but still focusable); the window closes and the Publish that opened it shows a check that
+   pops in and "Published", solid green, then is as it was. */
 .nf-button.lineup-publish-go[aria-disabled="true"] { cursor: default; }
 .nf-button.lineup-publish-go[aria-disabled="true"]:hover { background: var(--theme-accent); }
 .lineup-publish-spin { width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
+.nf-button.lineup-publish-trigger.is-published,
+.nf-button.lineup-publish-trigger.is-published:hover { border-color: var(--theme-accent); background: var(--theme-accent); color: var(--theme-on-accent); opacity: 1; cursor: default; }
 .lineup-publish-ok { display: inline-flex; align-items: center; gap: 6px; animation: lineup-publish-pop .35s ease-out both; }
 @keyframes lineup-publish-spin { to { transform: rotate(360deg); } }
 @keyframes lineup-publish-pop { 0% { opacity: 0; transform: scale(.8); } 60% { transform: scale(1.06); } 100% { opacity: 1; transform: scale(1); } }
@@ -76,9 +78,13 @@ div.lineup-publish-pick { cursor: default; }
 .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
 
 /* No motion: the words change, no spinner, nothing pops. */
+/* It has gone out: on the desktop page the shift's "Published" lights up once (the phone card: lineup-phone.css). */
+.lineup-shift-published.is-flash { border-radius: 6px; animation: lineup-publish-lit 1.8s ease-out; }
+@keyframes lineup-publish-lit { 0%, 35% { background: var(--theme-accent-soft); box-shadow: 0 0 0 4px var(--theme-accent-soft); } 100% { background: transparent; box-shadow: 0 0 0 4px transparent; } }
+
 @media (prefers-reduced-motion: reduce) {
   .lineup-publish-switch, .lineup-publish-switch::after { transition: none; }
   .lineup-publish-spin { display: none; }
-  .lineup-publish-ok { animation: none; }
+  .lineup-publish-ok, .lineup-shift-published.is-flash { animation: none; }
   .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: none; }
 }

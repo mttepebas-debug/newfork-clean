@@ -232,7 +232,8 @@ describe("LineupPage publishing", () => {
     expect(ask.getAttribute("aria-checked")).toBe("true");
     fireEvent.click(ask);
     fireEvent.click(within(window).getByRole("button", { name: "Publish 1" }));
-    await within(window).findByRole("button", { name: "Published" }, { timeout: 2000 });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull(), { timeout: 2000 });
+    expect(screen.getByRole("button", { name: "Published" })).toBeTruthy();
     expect(commands).toHaveLength(1);
     expect(commands[0]).toMatchObject({
       kind: "share",
@@ -307,11 +308,23 @@ describe("LineupPage publishing", () => {
     expect(edit.title).toBe("This shift has started");
   });
 
-  // Mert 2026-10-17 (notice A): Publish says what it does inside itself, a spinner and "Publishing…", then a check
-  // and "Published" (2.6 s in all), then the button as it was; no green line in the window, no notice.
-  it("works inside the Publish button, then gives the button back, with one command however often it is pressed", async () => {
+  // Mert 2026-10-17 (notice A; mockup v-e.js .d-pub): the window's Publish spins and says "Publishing…"; then the
+  // window closes, the Publish that opened it says "Published" (2.6 s in all) with focus on it, then is as it was,
+  // and the shift's "Published" lights up once; no green line, no notice.
+  it("works in the window's Publish, then closes it and says Published on the page's Publish, one command however often it is pressed", async () => {
+    // The day read says published once the command has gone.
+    api.mockImplementation(async (_client, path, init) => {
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      if (dayPath) return readers(dayRead(world, dayPath[1]!, published));
+      const body = JSON.parse(String(init?.body)) as { command_id: string; kind: string };
+      commands.push(body);
+      published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 0, with_app: 1 } };
+      return { command_id: body.command_id, kind: body.kind, lineups: [] };
+    });
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
+    const trigger = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    trigger.focus();
+    fireEvent.click(trigger);
     const window = screen.getByRole("dialog", { name: "Publish lineups" });
     const go = within(window).getByRole("button", { name: "Publish 2" });
     go.focus();
@@ -326,18 +339,27 @@ describe("LineupPage publishing", () => {
     expect(document.activeElement).toBe(working);
     fireEvent.click(working);
     fireEvent.click(working);
-    const done = await within(window).findByRole("button", { name: "Published" }, { timeout: 2000 });
-    expect(done).toBe(go);
-    expect(Date.now() - pressed).toBeGreaterThanOrEqual(850);
-    fireEvent.click(done);
-    expect(commands).toHaveLength(1);
     expect(within(window).queryByText(/notified/)).toBeNull();
-    expect(within(window).queryByRole("status")).toBeNull();
-    // Then the button as it was: nothing left to publish, so Done, which closes; focus stays on it.
-    const back = await within(window).findByRole("button", { name: "Done" }, { timeout: 3000 });
+    // The window stays while it works, then closes.
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull(), { timeout: 2000 });
+    expect(Date.now() - pressed).toBeGreaterThanOrEqual(850);
+    const done = screen.getByRole("button", { name: "Published" });
+    expect(done).toBe(trigger);
+    expect(done.getAttribute("aria-live")).toBe("polite");
+    expect(done.getAttribute("aria-disabled")).toBe("true");
+    expect(document.activeElement).toBe(done);
+    // A press on Published doesn't open the window again.
+    fireEvent.click(done);
+    expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
+    expect(commands).toHaveLength(1);
+    // The shift's "Published" lights up once, the window gone.
+    const lunchShift = within(screen.getByRole("article", { name: "Downtown" })).getByRole("region", { name: "Lunch" });
+    await waitFor(() => expect(within(lunchShift).getByText(/^Published /).classList.contains("is-flash")).toBe(true));
+    // Then the button as it was, still holding focus.
+    await waitFor(() => expect(trigger.getAttribute("aria-label")).toMatch(/^Publish/), { timeout: 3000 });
     expect(Date.now() - pressed).toBeGreaterThanOrEqual(2550);
-    expect(back.getAttribute("aria-busy")).toBeNull();
-    expect(document.activeElement).toBe(back);
+    expect(trigger.getAttribute("aria-disabled")).toBeNull();
+    expect(document.activeElement).toBe(trigger);
     expect(screen.queryAllByRole("status").filter((element) => element.getAttribute("data-testid") !== "where")).toEqual([]);
   });
 
@@ -347,6 +369,8 @@ describe("LineupPage publishing", () => {
     expect(reduced).toMatch(/\.lineup-publish-spin\s*\{\s*display:\s*none;/);
     expect(css).not.toMatch(/lineup-publish-unpublish/);
     expect(css).not.toMatch(/lineup-publish-sum\.is-ok/);
+    expect(css).not.toMatch(/lineup-publish-done/);
+    expect(reduced).toMatch(/\.lineup-publish-ok, \.lineup-shift-published\.is-flash\s*\{\s*animation:\s*none;/);
   });
 
   it("opens who read a lineup from its Read count, and closes with a click outside or Escape", async () => {
@@ -400,6 +424,11 @@ describe("LineupPage publishing", () => {
     fireEvent.click(screen.getByRole("button", { name: "Publish 2" }));
     expect((await screen.findByRole("alert")).textContent).toBe("Publish one day's lineups at a time.");
     expect(screen.queryByText("raw sentence")).toBeNull();
+    // The window stays open over the band (S-139), its Publish as it was; the page's Publish doesn't say Published.
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    const go = within(window).getByRole("button", { name: "Publish 2" });
+    expect(go.getAttribute("aria-busy")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Published" })).toBeNull();
   });
 
   it("closes with Escape", async () => {
@@ -1065,8 +1094,10 @@ describe("LineupPage on a phone, E", () => {
     expect(sheet.classList.contains("is-sheet")).toBe(true);
     fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
     expect(within(sheet).getByRole("button", { name: "Publishing…" })).toBeTruthy();
-    await within(sheet).findByRole("button", { name: "Published" }, { timeout: 2000 });
     expect(within(sheet).queryByText(/notified/)).toBeNull();
+    // The sheet closes; the dock says Published.
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull(), { timeout: 2000 });
+    expect(screen.getByRole("button", { name: "Published" }).closest(".lineup-phone-dock")).toBeTruthy();
     expect(commands[0]).toMatchObject({ kind: "share", ask_ack: true });
   });
 
@@ -1123,7 +1154,10 @@ describe("LineupPage on a phone, E", () => {
     expect(screen.getByRole("button", { name: "Publish, 1 lineup waiting" })).toBeTruthy();
   });
 
-  it("keeps the sheet open after publishing until Done, though nothing is left to publish", async () => {
+  // Mert 2026-10-17 (notice A; mockup v-e.js .d-pub): the sheet closes, the dock says Published, then goes (nothing
+  // left to publish here); the card's Live and "Published at" light up once the sheet has closed, not behind it;
+  // focus goes from the dock to the card's Edit, never to the page.
+  it("closes the sheet on publish, says Published on the dock, then lets it go and lights the card", async () => {
     only = null;
     api.mockImplementation(async (_client, path, init) => {
       const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
@@ -1134,17 +1168,28 @@ describe("LineupPage on a phone, E", () => {
       return { command_id: body.command_id, kind: body.kind, lineups: [] };
     });
     renderPage();
-    fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
+    const dock = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
+    dock.focus();
+    fireEvent.click(dock);
     const sheet = screen.getByRole("dialog", { name: "Publish lineups" });
     fireEvent.click(within(sheet).getByRole("button", { name: "Publish 2" }));
     const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    // Live under the sheet: not lit yet.
     await within(card).findByText("Live");
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBeTruthy();
+    expect(within(card).getByText("Live").classList.contains("is-flash")).toBe(false);
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull(), { timeout: 2000 });
     // Live and "Published at" light up once on the card (notice A), no notice.
-    expect(within(card).getByText("Live").classList.contains("is-flash")).toBe(true);
+    await waitFor(() => expect(within(card).getByText("Live").classList.contains("is-flash")).toBe(true));
     expect(within(card).getByText(/^Published at /).classList.contains("is-flash")).toBe(true);
-    fireEvent.click(await within(sheet).findByRole("button", { name: "Done" }, { timeout: 4000 }));
-    expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
-    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    const said = screen.getByRole("button", { name: "Published" });
+    expect(said).toBe(dock);
+    expect(document.activeElement).toBe(dock);
+    // Then it goes: nothing left to publish on this shift; focus waits on the card's Edit.
+    await waitFor(() => expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull(), { timeout: 3000 });
+    expect(document.querySelector(".lineup-phone-dock")).toBeNull();
+    expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Edit" }));
+    expect(screen.queryAllByRole("status").filter((element) => element.getAttribute("data-testid") !== "where")).toEqual([]);
   });
 
   it("has no Publish dock for someone who can't publish", async () => {

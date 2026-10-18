@@ -814,7 +814,7 @@
 .lineup-publish-window.is-sheet :is(.lineup-publish-pick, .lineup-publish-item) {
   min-height: 44px;
 }
-.lineup-publish-window.is-sheet :is(.nf-button.lineup-publish-go, .secondary-button.lineup-publish-done) {
+.lineup-publish-window.is-sheet .nf-button.lineup-publish-go {
   min-height: 44px;
   padding: 0 16px;
   font-size: 14px;

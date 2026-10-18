@@ -25,7 +25,7 @@ import {
   type LineupRow,
   type LineupShift,
 } from "../schedule/lineup";
-import { LineupEditWindow, LineupPublishButton, publishedAt } from "../schedule/LineupPublishWindow";
+import { LineupEditWindow, LineupPublishButton, publishedAt, useGoneOutLight } from "../schedule/LineupPublishWindow";
 import { LineupReadPhone } from "../schedule/LineupReadList";
 import { dockPlace } from "../schedule/lineup-wheel";
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
@@ -45,6 +45,8 @@ export interface PhonePublish {
   readonly waiting: number;
   readonly anyPublished: boolean;
   readonly open: boolean;
+  /** It has just published: the dock stays and says "Published" (notice A), then goes if nothing is left. */
+  readonly published: boolean;
   readonly onToggle: () => void;
   /** The Publish window, drawn as a sheet while open. */
   readonly window: ReactNode;
@@ -136,7 +138,19 @@ export function PhoneLineupPage({
     });
   // Publish only while the shift on screen, at a location shown, has a draft that can go out (Mert 2026-10-17
   // ~1:40 PM); an open sheet stays until it is closed.
-  const dock = publish && (publish.open || blocks.some(({ shift }) => shift && canPublish(shift))) ? publish : null;
+  const dock =
+    publish && (publish.open || publish.published || blocks.some(({ shift }) => shift && canPublish(shift))) ? publish : null;
+  // Publish goes once nothing is left to publish on screen: focus that was on it moves to the card's Edit (the
+  // lineup just published), else its chevron, never to the page.
+  const dockHadFocus = useRef(false);
+  const docked = Boolean(dock);
+  useEffect(() => {
+    if (docked || !dockHadFocus.current) return;
+    dockHadFocus.current = false;
+    const active = document.activeElement;
+    if (active && active !== document.body && active.isConnected) return;
+    document.querySelector<HTMLElement>(".lineup-card-edit:not(:disabled), .lineup-card-fold")?.focus();
+  }, [docked]);
   const many = blocks.length > 1;
 
   return (
@@ -195,6 +209,7 @@ export function PhoneLineupPage({
                   open={!shut.has(foldKeyOf(location, shift))}
                   onFold={() => fold(foldKeyOf(location, shift))}
                   edit={publish ? { workspaceId, date } : null}
+                  held={Boolean(publish?.open)}
                   stacked={Boolean(previous) && !line}
                 />
               ) : (
@@ -209,7 +224,7 @@ export function PhoneLineupPage({
       {/* Room under the last row: while Publish shows, what it covers (44 px, 10 px over the bar) and a little air,
           so the last row clears it once scrolled (lineup-phone.css); otherwise only the air. */}
       <div className={`lineup-phone-end${dock ? " has-dock" : ""}`} aria-hidden />
-      {dock ? <PublishDock publish={dock} /> : null}
+      {dock ? <PublishDock publish={dock} onFocusChange={(on) => (dockHadFocus.current = on)} /> : null}
     </section>
   );
 }
@@ -228,6 +243,7 @@ function LocationLineup({
   open,
   onFold,
   edit,
+  held,
   stacked,
 }: {
   readonly location: LineupLocation;
@@ -238,6 +254,8 @@ function LocationLineup({
   readonly open: boolean;
   readonly onFold: () => void;
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
+  /** The Publish sheet is open over it. */
+  readonly held: boolean;
   /** Right under a folded card: a small gap, no line. */
   readonly stacked: boolean;
 }) {
@@ -267,6 +285,7 @@ function LocationLineup({
         joined={joined}
         onFold={onFold}
         edit={edit}
+        held={held}
         panel={panel}
         cardRef={swipe.tabs}
       >
@@ -302,6 +321,7 @@ function LineupCard({
   joined,
   onFold,
   edit,
+  held,
   panel,
   cardRef,
   children,
@@ -317,6 +337,8 @@ function LineupCard({
   readonly onFold: () => void;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
+  /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
+  readonly held: boolean;
   /** The id of the pane the card's tabs and chevron control. */
   readonly panel: string;
   readonly cardRef: Ref<HTMLElement>;
@@ -327,13 +349,8 @@ function LineupCard({
   // Notice A (Mert 2026-10-17 ~1:15 PM): no notice. Edit has taken it back: the card's Draft lights up once; it has
   // gone out (Publish, or anyone's publish while the card is on screen): Live and "Published at" light up once.
   const [flash, setFlash] = useState(false);
-  const lit = flash ? " is-flash" : "";
-  const seen = useRef({ key: `${location.id}:${shift.key}`, live });
-  useEffect(() => {
-    const key = `${location.id}:${shift.key}`;
-    if (seen.current.key === key && !seen.current.live && live) setFlash(true);
-    seen.current = { key, live };
-  }, [location.id, shift.key, live]);
+  const [out, unlight] = useGoneOutLight(`${location.id}:${shift.key}`, live, held);
+  const lit = flash || out ? " is-flash" : "";
   const span = lineupShiftSpan(shift);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   // On the location's clock, the one the started lock reads.
@@ -365,7 +382,10 @@ function LineupCard({
         </p>
         <p className="lineup-card-date">{dateLabel}</p>
         <div className="lineup-card-state">
-          <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}${lit}`} onAnimationEnd={() => setFlash(false)}>
+          <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}${lit}`} onAnimationEnd={() => {
+              setFlash(false);
+              unlight();
+            }}>
             <i aria-hidden />
             {live ? "Live" : "Draft"}
           </p>
@@ -689,16 +709,31 @@ function PhoneLineupOutline() {
  * Publish, as wide as its words, over the bottom bar, its right edge where More ends (D1, D3). Its window opens as a sheet
  * from the bottom (the window takes focus in and gives it back).
  */
-function PublishDock({ publish }: { readonly publish: PhonePublish }) {
+function PublishDock({
+  publish,
+  onFocusChange,
+}: {
+  readonly publish: PhonePublish;
+  /** Whether the dock's button holds focus (it may go once Published is over). */
+  readonly onFocusChange: (on: boolean) => void;
+}) {
   const dock = useRef<HTMLDivElement | null>(null);
   useDockPlace(dock);
   return (
     <>
-      <div className="lineup-phone-dock" ref={dock}>
+      <div
+        className="lineup-phone-dock"
+        ref={dock}
+        onFocus={() => onFocusChange(true)}
+        onBlur={(event) => {
+          if (event.relatedTarget) onFocusChange(false);
+        }}
+      >
         <LineupPublishButton
           waiting={publish.waiting}
           anyPublished={publish.anyPublished}
           open={publish.open}
+          published={publish.published}
           onToggle={publish.onToggle}
           className="lineup-phone-publish"
         />
