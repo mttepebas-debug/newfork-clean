@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 514, last: 20261018231000_core_reads_two_slots.sql
--- fingerprint: sha256:af97b999164dbbf2b0f6cabb444c186f5784d58c64391b8bf561866e1307ee1e
+-- fingerprint: sha256:5165dee27dad5e6f5cc24fb393b103fad5e6254b98b39fc55a145edede4a4bda
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4791,7 +4791,7 @@ begin
   if not exists (
     select 1 from public.jobs j
     where j.workspace_id = target_workspace_id and j.department_id = management
-      and j.archived_at is null and j.system_key is null
+      and j.system_key is null
   ) then
     insert into public.jobs (workspace_id, name, department_id)
     values (target_workspace_id, 'General Manager', management),

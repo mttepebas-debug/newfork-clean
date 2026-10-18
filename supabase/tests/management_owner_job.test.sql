@@ -7,7 +7,8 @@ select plan(56);
 -- archives them; they can be renamed. The Owner job belongs to the owner
 -- alone and moves with ownership. The owner is put on the Owner job and on
 -- every location (now and later), and on no other job by itself. EMP-001:
--- setup also makes a Manager job under Management, an ordinary job; setup's
+-- setup also makes General Manager and Assistant Manager under Management (ROL-CIFT, design §4.13),
+-- ordinary jobs; setup's
 -- "at least one department and one job" means a department of the owner's own
 -- and a job outside Management; every job can be primary but Owner.
 
@@ -46,14 +47,14 @@ create function pg_temp.locations_of(employee uuid) returns uuid[] language sql 
   from public.employee_location_assignments a
   where a.employee_id = employee and a.ended_at is null
 $$;
--- The Manager job setup made (a test world names it; elsewhere it is found by
+-- The General Manager job setup made (a test world names it; elsewhere it is found by
 -- its name), and the names of the jobs under Management.
 create function pg_temp.manager_job(w text) returns uuid language sql as $$
   select coalesce(
-    (select i.id from tests.ids i where i.label = w || ':job:manager'),
+    (select i.id from tests.ids i where i.label = w || ':job:general manager'),
     (select j.id from public.jobs j
      where j.workspace_id = tests.id(w) and j.department_id = pg_temp.management(w)
-       and to_jsonb(j) ->> 'system_key' is null and j.name = 'Manager' and j.deleted_at is null))
+       and to_jsonb(j) ->> 'system_key' is null and j.name = 'General Manager' and j.deleted_at is null))
 $$;
 create function pg_temp.management_jobs(w text) returns text[] language sql as $$
   select coalesce(array_agg(j.name || case when to_jsonb(j) ->> 'system_key' is null then '' else '=' || j.system_key end order by j.name), '{}')
@@ -97,8 +98,8 @@ select is(
   'Owner|true',
   'and an Owner job under it'
 );
-select is(pg_temp.management_jobs('fr'), array['Manager', 'Owner=owner'],
-  'and a Manager job next to it, an ordinary job with no system key');
+select is(pg_temp.management_jobs('fr'), array['Assistant Manager', 'General Manager', 'Owner=owner'],
+  'and General Manager and Assistant Manager next to it, ordinary jobs with no system key');
 select is(
   (select count(*)::integer from public.departments d
    where d.workspace_id = tests.id('fr') and to_jsonb(d) ->> 'system_key' is not null),
@@ -107,7 +108,7 @@ select is(
 );
 
 -- 2. Setup asks for a department of the owner's own and a job outside Management ------
--- K2: nothing under Management counts, neither the Manager job setup made nor
+-- K2: nothing under Management counts, neither the jobs setup made there nor
 -- a job the owner adds there.
 
 select tests.as_browser(tests.user('fr:owner'), format(
@@ -125,7 +126,7 @@ create function pg_temp.finish_setup() returns text language sql as $$
 $$;
 
 select is(pg_temp.finish_setup(), '23514',
-  'Management with Owner and Manager alone does not finish setup');
+  'Management with Owner, General Manager and Assistant Manager alone does not finish setup');
 insert into public.departments (id, workspace_id, name)
 values (tests.remember('fr:kitchen', gen_random_uuid()), tests.id('fr'), 'Kitchen');
 insert into public.jobs (workspace_id, name, department_id)
@@ -133,14 +134,14 @@ values (tests.id('fr'), 'Supervisor', pg_temp.management('fr'));
 select is(pg_temp.finish_setup(), '23514',
   'nor does a department of the owner''s own while every job sits under Management');
 
--- The owner deletes Manager in the Jobs step; a later save does not bring it back.
+-- The owner deletes General Manager in the Jobs step; a later save does not bring it back.
 select is(
   pg_temp.refusal(format(
     'select public.delete_job_with_assignments_service(%L, %L, %L)',
     tests.user('fr:owner'), tests.id('fr'), pg_temp.manager_job('fr')
   )),
   'allowed',
-  'the owner deletes Manager like any job'
+  'the owner deletes General Manager like any job'
 );
 select is(
   pg_temp.refusal(format(
@@ -152,15 +153,15 @@ select is(
   'allowed',
   'setup is saved again'
 );
-select is(pg_temp.management_jobs('fr'), array['Owner=owner', 'Supervisor'],
-  'and that save does not bring Manager back');
+select is(pg_temp.management_jobs('fr'), array['Assistant Manager', 'Owner=owner', 'Supervisor'],
+  'and that save does not bring General Manager back');
 
 insert into public.jobs (workspace_id, name, department_id)
 values (tests.id('fr'), 'Cook', tests.id('fr:kitchen'));
 select is(pg_temp.finish_setup(), 'allowed',
   'a job outside Management finishes it');
-select is(pg_temp.management_jobs('fr'), array['Owner=owner', 'Supervisor'],
-  'and Manager is still gone once setup is finished');
+select is(pg_temp.management_jobs('fr'), array['Assistant Manager', 'Owner=owner', 'Supervisor'],
+  'and General Manager is still gone once setup is finished');
 
 -- 3. The owner is on the Owner job and every location, and nothing else ---------------
 
@@ -169,10 +170,10 @@ select tests.world('mo');
 select is(
   (select array_agg(j.name order by j.name)
    from tests.ids i join public.jobs j on j.id = i.id
-   where i.label in ('mo:job:owner', 'mo:job:manager')
+   where i.label in ('mo:job:owner', 'mo:job:general manager')
      and j.department_id = (select m.id from tests.ids m where m.label = 'mo:management')),
-  array['Manager', 'Owner'],
-  'the test world carries Management with its Owner and Manager jobs'
+  array['General Manager', 'Owner'],
+  'the test world carries Management with its Owner and General Manager jobs'
 );
 select is(
   pg_temp.jobs_of(tests.id('mo:owner')),

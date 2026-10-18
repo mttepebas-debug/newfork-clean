@@ -365,9 +365,10 @@ end;
 $$;
 
 -- Setup's catalog: Management with Owner, General Manager and Assistant Manager (design §4.13; it made
--- Manager before). Every management access holds a Management job (KARARLAR S-168), so Management
--- always keeps a job a manager or admin can hold: when it has none, General Manager and Assistant
--- Manager come back. The one way the catalog gets them: setup and the move below both call this.
+-- Manager before). Only a Management with no job of its own yet gets them (a new workspace, or one the
+-- move below finds without any): an archived or deleted one does not come back (2026-10-02 "Manager
+-- silinirse geri gelmez"); keeping the last one from being archived is ROL-CIFT 1.3. The one way the
+-- catalog gets them: setup and the move below both call this.
 create or replace function app_private.ensure_management_and_owner(target_workspace_id uuid)
 returns void
 language plpgsql
@@ -386,7 +387,7 @@ begin
   if not exists (
     select 1 from public.jobs j
     where j.workspace_id = target_workspace_id and j.department_id = management
-      and j.archived_at is null and j.system_key is null
+      and j.system_key is null
   ) then
     insert into public.jobs (workspace_id, name, department_id)
     values (target_workspace_id, 'General Manager', management),

@@ -235,12 +235,13 @@ select is(
   'a workspace without Management gets it with Owner, General Manager and Assistant Manager'
 );
 update public.jobs set archived_at = now()
-where workspace_id = 'c1100000-0000-4000-8000-000000000102' and name = 'Assistant Manager';
+where workspace_id = 'c1100000-0000-4000-8000-000000000102' and name in ('General Manager', 'Assistant Manager');
 select app_private.ensure_management_and_owner('c1100000-0000-4000-8000-000000000102');
 select is(
-  (select count(*)::int from public.jobs j where j.workspace_id = 'c1100000-0000-4000-8000-000000000102' and j.archived_at is null),
-  2,
-  'while Management keeps a job a manager can hold, setup adds nothing'
+  (select array_agg(j.name order by j.name) from public.jobs j
+   where j.workspace_id = 'c1100000-0000-4000-8000-000000000102' and j.archived_at is null),
+  array['Owner'],
+  'archived General Manager and Assistant Manager do not come back on the next save (2026-10-02)'
 );
 set local session_replication_role = origin;
 
