@@ -99,6 +99,38 @@
 .employee-lineup-acked { display: flex; align-items: center; justify-content: center; gap: 8px; margin: 20px 0 4px; color: var(--theme-accent-deep); font-size: 16px; font-weight: 700; }
 .employee-lineup-ack > .field-note { margin: 8px 0 0; }
 
+/* Acknowledge works in place (Mert 2026-10-17 ~1:45–1:50 PM; mockup v-e.css e-spin, e-pop, e-slide): a spinner and
+   "Acknowledging…", then "Acknowledged." slides in where the button was and its check pops in. No notice. Less
+   motion: the words change, nothing moves. */
+.employee-lineup-ack .nf-button.is-working,
+.employee-lineup-ack .nf-button.is-working:disabled { gap: 9px; opacity: 1; cursor: default; }
+.employee-lineup-spin { width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: employee-lineup-spin 0.7s linear infinite; }
+@keyframes employee-lineup-spin { to { transform: rotate(360deg); } }
+.employee-lineup-acked.is-in { animation: employee-lineup-slide 0.35s ease-out 0.1s both; }
+.employee-lineup-acked.is-in svg { animation: employee-lineup-pop 0.45s cubic-bezier(0.2, 0.8, 0.3, 1.2) both; }
+@keyframes employee-lineup-slide { from { opacity: 0; transform: translateX(-8px); } }
+@keyframes employee-lineup-pop { 0% { opacity: 0; transform: scale(0.3); } 60% { opacity: 1; transform: scale(1.18); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) {
+  .employee-lineup-spin { display: none; }
+  .employee-lineup-acked.is-in,
+  .employee-lineup-acked.is-in svg { animation: none; }
+}
+
+/* A tap on the ticket folds Team · Notes (Mert 2026-10-17 ~9:10 AM; mockup v-e.css .e-tog): the chevron in its top
+   right corner is the same control for keyboards and screen readers. */
+.employee-lineup-ticket { cursor: pointer; }
+.employee-lineup-ticket .employee-lineup-ticket-body { padding-right: 40px; }
+.employee-lineup-fold { position: absolute; top: 4px; right: 4px; display: inline-grid; width: 36px; height: 36px; place-items: center; padding: 0; border: 0; border-radius: 8px; background: none; color: var(--theme-text-secondary); cursor: pointer; }
+.employee-lineup-fold:hover { background: var(--theme-accent-soft); }
+.employee-lineup-fold svg { transition: transform 0.18s ease-out; }
+.employee-lineup-fold[aria-expanded="false"] svg { transform: rotate(-90deg); }
+@media (prefers-reduced-motion: reduce) { .employee-lineup-fold svg { transition: none; } }
+
+/* All locations (Mert 2026-10-17 ~9:10 AM): her lineups of the shift at every place, one under the other, a line
+   between (mockup v-e.css .e-lsep). */
+.employee-lineup-sep { height: 0; margin: 28px -4px 24px; border: 0; border-top: 1px solid var(--theme-border-strong); }
+.employee-lineup-sep + .employee-lineup-view > .employee-lineup-ticket { margin-top: 0; }
+
 .employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin-top: 16px; padding: 26px 18px; border: 1px solid var(--theme-list-frame); border-radius: 12px; background: var(--theme-surface); text-align: center; }
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
 .employee-lineup-calm b { color: var(--theme-text); font-size: 16px; }

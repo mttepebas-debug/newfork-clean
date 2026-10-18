@@ -235,6 +235,51 @@ describe("EmployeeLineup", () => {
     expect(acknowledged).toEqual([versionId]);
   });
 
+  // Mert 2026-10-17 (~1:45–1:50 PM): the button says what it does, a spinner and "Acknowledging…", then
+  // "Acknowledged." comes in where it was, its check popping in; no notice. Even a quick answer holds a moment.
+  it("works inside the Acknowledge button, then slides Acknowledged. in where it was", async () => {
+    renderLineup();
+    fireEvent.click(await screen.findByRole("button", { name: "Acknowledge" }));
+    const working = screen.getByRole("button", { name: "Acknowledging…" }) as HTMLButtonElement;
+    expect(working.disabled).toBe(true);
+    expect(working.querySelector(".employee-lineup-spin")?.getAttribute("aria-hidden")).toBe("true");
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.queryByRole("status")).toBeNull();
+    const done = await screen.findByRole("status");
+    expect(done.textContent).toBe("Acknowledged.");
+    expect(done.classList.contains("is-in")).toBe(true);
+  });
+
+  it("gives Acknowledge back with a line under it when it didn't go through", async () => {
+    const real = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/acknowledge")) throw new Error("offline");
+      return real(client, path, init);
+    });
+    renderLineup();
+    fireEvent.click(await screen.findByRole("button", { name: "Acknowledge" }));
+    expect(await screen.findByText("It didn't go through. Check your connection, then try again.")).toBeTruthy();
+    expect((screen.getByRole("button", { name: "Acknowledge" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // Mert 2026-10-17 (~9:10 AM): a tap on the ticket folds that lineup's Team · Notes; the ticket and Acknowledge stay.
+  it("folds Team · Notes from a tap on the ticket or its chevron; the ticket and Acknowledge stay", async () => {
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    const chevron = within(view).getByRole("button", { name: "Hide team and notes" });
+    expect(chevron.getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(view.querySelector(".employee-lineup-time")!);
+    expect(within(view).queryByRole("tablist")).toBeNull();
+    expect(within(view).queryByRole("tabpanel")).toBeNull();
+    expect(view.querySelector(".employee-lineup-ticket")).toBeTruthy();
+    expect(within(view).getByRole("button", { name: "Acknowledge" })).toBeTruthy();
+    const show = within(view).getByRole("button", { name: "Show team and notes" });
+    expect(show.getAttribute("aria-expanded")).toBe("false");
+    fireEvent.click(show);
+    expect(within(view).getByRole("tablist")).toBeTruthy();
+    expect(within(view).getByRole("button", { name: "Hide team and notes" })).toBeTruthy();
+  });
+
   it("has no Acknowledge when staff were not asked, or once she has", async () => {
     answer = mine({ ask_ack: false });
     renderLineup();
@@ -329,6 +374,75 @@ describe("EmployeeLineup", () => {
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
   });
 
+  // Mert 2026-10-17 (~9:10 AM): with lineups at more than one place, the list starts with All locations, the
+  // default: the shift tab stands for that shift at every place, each lineup one under the other.
+  it("opens on All locations: her lineups of the shift at every place, one under the other", async () => {
+    const [dinnerLineup] = mine().lineups;
+    answer = {
+      ...mine(),
+      lineups: [
+        dinnerLineup!,
+        {
+          ...dinnerLineup!,
+          id: "91000000-0000-4000-8000-000000000002",
+          version_id: "90000000-0000-4000-8000-000000000002",
+          location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
+          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+        },
+      ],
+    };
+    renderLineup();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    expect([...select.options].map((option) => option.textContent)).toEqual(["All locations", "Uptown", "Downtown"]);
+    expect(select.value).toBe("");
+    const views = await screen.findAllByRole("region", { name: /^Dinner lineup/ });
+    expect(views.map((view) => view.getAttribute("aria-label"))).toEqual(["Dinner lineup, Uptown", "Dinner lineup, Downtown"]);
+    expect(views.map((view) => view.querySelector(".employee-lineup-place")!.textContent)).toEqual(["Uptown", "Downtown"]);
+    expect(within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 4 people" }).getAttribute("aria-pressed")).toBe("true");
+    // Each has its own tabs.
+    const tabs = screen.getAllByRole("tab", { name: /^Team/ });
+    expect(new Set(tabs.map((tab) => tab.id)).size).toBe(2);
+    fireEvent.click(within(views[1]!).getByRole("tab", { name: /^Notes/ }));
+    expect(within(views[1]!).getByRole("tabpanel").textContent).toContain("Halibut");
+    expect(within(views[0]!).getByRole("tab", { name: /^Team/ }).getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("separator")).toBeTruthy();
+    // One place picked: that one alone.
+    fireEvent.change(select, { target: { value: downtown } });
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
+    expect(screen.queryByRole("separator")).toBeNull();
+  });
+
+  it("says she isn't on that shift at a place she picked, and points to All locations", async () => {
+    const [dinnerLineup] = mine().lineups;
+    answer = {
+      ...mine(),
+      lineups: [
+        dinnerLineup!,
+        {
+          ...dinnerLineup!,
+          id: "91000000-0000-4000-8000-000000000002",
+          version_id: "90000000-0000-4000-8000-000000000002",
+          location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
+          shift_type_id: lunch,
+          shift_type_name: "Lunch",
+          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+        },
+      ],
+    };
+    renderLineup();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    // All locations: Lunch first (it starts first), Dinner pressable too.
+    expect(await screen.findByRole("region", { name: "Lunch lineup" })).toBeTruthy();
+    fireEvent.click(within(screen.getByRole("group", { name: "Shifts" })).getByRole("button", { name: "Dinner, 2 people" }));
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
+    fireEvent.change(select, { target: { value: uptown } });
+    expect(await screen.findByText("You're not on a Dinner lineup at Uptown")).toBeTruthy();
+    expect(screen.getByText("Pick All locations to see yours.")).toBeTruthy();
+    expect(screen.queryByRole("region", { name: /lineup$/ })).toBeNull();
+    fireEvent.change(select, { target: { value: "" } });
+    expect(await screen.findByRole("region", { name: "Dinner lineup" })).toBeTruthy();
+  });
+
   it("lists her lineups' locations; choosing one shows its lineup", async () => {
     const [dinnerLineup] = mine().lineups;
     answer = {
@@ -348,7 +462,8 @@ describe("EmployeeLineup", () => {
     };
     renderLineup();
     const select = await screen.findByRole("combobox", { name: "Location" });
-    expect([...(select as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["Uptown", "Downtown"]);
+    expect([...(select as HTMLSelectElement).options].map((option) => option.textContent)).toEqual(["All locations", "Uptown", "Downtown"]);
+    fireEvent.change(select, { target: { value: uptown } });
     expect(await screen.findByRole("region", { name: "Lunch lineup" })).toBeTruthy();
     // One lineup at each location: that tab opens, the other type is grey.
     expect(within(screen.getByRole("group", { name: "Shifts" })).getAllByRole("button").map((b) => b.getAttribute("aria-label"))).toEqual([
