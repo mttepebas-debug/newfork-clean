@@ -1,9 +1,12 @@
 import { execSync } from "node:child_process";
 import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
+import { deflateSync } from "node:zlib";
 import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
-import { psql } from "../global-setup";
-import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
+import { password, psql } from "../global-setup";
+import { lastLine, ownJob, tag } from "../fixtures/documents";
+import { draftName, roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // UI-FIELDMSG-2 (Mert 2026-10-18 ~1:00 AM PT): a field's short error goes right under it, a window's own
 // error in its band; nothing keeps room while there is nothing to say; side-by-side fields grow as one row;
@@ -226,5 +229,238 @@ for (const screen of screens) {
       });
       expect(without.bare).toEqual(without.kept);
     });
+
+    test("Settings → Schedule rules → Availability: the band is on screen and Discard and reload works", async ({ browser }) => {
+      const page = await open(browser, "zeynep", screen, "/app/settings/scheduling");
+      const refusal = "These availability settings couldn't be saved right now. Discard your changes and load the latest settings.";
+      await page.route("**/weekly/settings", (route) =>
+        route.request().method() === "POST"
+          ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: refusal, reason: "weekly.test_refusal" }) })
+          : route.fallback(),
+      );
+      const section = page.getByRole("region", { name: "Availability settings" });
+      const required = section.getByRole("switch", { name: "Availability required during onboarding" });
+      const was = await required.isChecked();
+      // By keyboard, the same on a desktop and a phone.
+      await required.focus();
+      await required.press("Space");
+      await expect(required).toBeChecked({ checked: !was });
+      await section.getByRole("button", { name: "Save", exact: true }).click();
+      const band = section.locator(".window-alert[role='alert']");
+      await expect(band).toContainText(refusal);
+      const cut = await band.evaluate((element) => element.scrollHeight > element.clientHeight + 1);
+      expect(cut, "the band says all of it").toBe(false);
+      // It hangs from its own footer, right above Save, not from the page.
+      const footer = section.locator(".weekly-preferences-footer");
+      await footer.scrollIntoViewIfNeeded();
+      const [bandBox, footerBox] = [await band.boundingBox(), await footer.boundingBox()];
+      expect(Math.abs(bandBox!.y + bandBox!.height - footerBox!.y)).toBeLessThan(1.5);
+      await expect(band).toBeInViewport();
+      await shot(page, `weekly-settings-${screen.name}-shown`);
+      const reload = band.getByRole("button", { name: "Discard and reload" });
+      await reachable(reload);
+      await reload.click();
+      await expect(band).toHaveCount(0);
+      await expect(required).toBeChecked({ checked: was });
+    });
+
+    test("Account → Profile → Crop profile photo: Vertical position stays reachable under the window's error", async ({ browser }) => {
+      const page = await open(browser, "ayse", screen, "/account/profile");
+      // The browser can't make the cropped picture: the window says so in its band.
+      await page.evaluate(() => {
+        HTMLCanvasElement.prototype.toBlob = function (callback) {
+          callback(null);
+        };
+      });
+      await page.getByLabel("Choose profile photo").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: pixel });
+      const window = page.getByRole("dialog", { name: "Crop profile photo" });
+      await expect(window).toBeVisible();
+      await window.getByRole("button", { name: "Use photo" }).click();
+      await bandSays(window, "Photo could not be cropped");
+      await shot(page, `avatar-crop-${screen.name}-shown`);
+      const vertical = window.getByRole("slider", { name: "Vertical position" });
+      await reachable(vertical);
+      await vertical.focus();
+      await vertical.press("ArrowUp");
+      await expect(vertical).toHaveValue("51");
+    });
+
+    test("Shift Hub → Cancel this swap request: the reason stays reachable under the window's error", async ({ browser }) => {
+      const week = roundWeek(700 + screen.week);
+      const ali = roundLabel(`ali-k-hub-fieldmsg-${screen.name}`);
+      const deniz = roundLabel(`deniz-b-hub-fieldmsg-${screen.name}`);
+      const caseId = sql(`
+        select tests.publish_week('${run}', ${week}, '[
+          {"label": "${ali}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+          {"label": "${deniz}", "person": "deniz", "loc": "B", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+        ]');
+        select public.shift_exchanges_command_service(tests.user('${run}:ali'), tests.id('${run}'),
+          jsonb_build_object('action', 'create', 'kind', 'swap',
+            'shift_id', tests.id('${run}:shift:${ali}'), 'requested_shift_id', tests.id('${run}:shift:${deniz}')),
+          gen_random_uuid()) ->> 'case_id';`).split(/\r?\n/).at(-1)!;
+      const day = sql(`select tests.week(${week}) + 1;`);
+      const page = await open(browser, "ali", screen, `/app/employee-hub/shift-hub?hub_view=requests&from=${day}&to=${day}&case=${caseId}`);
+      const refusal =
+        "This swap request changed while you were writing. Close this window and open the request again to see where it stands now.";
+      await page.route("**/v1/workspaces/*/shift-exchanges", (route) =>
+        route.request().method() === "POST"
+          ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: refusal, reason: "exchange.test_refusal" }) })
+          : route.fallback(),
+      );
+      await page.getByRole("button", { name: "Cancel swap request" }).click();
+      const window = page.getByRole("dialog", { name: "Cancel this swap request" });
+      const reason = window.getByRole("textbox", { name: "Reason shared with affected employees" });
+      await reason.fill("I found someone to cover it");
+      await window.getByRole("button", { name: "Cancel request", exact: true }).click();
+      await window.getByRole("button", { name: "Confirm cancel", exact: true }).click();
+      await bandSays(window, refusal);
+      await shot(page, `shift-hub-cancel-${screen.name}-shown`);
+      await reachable(reason);
+      await reason.click();
+      await reason.press("End");
+      await reason.pressSequentially(".");
+      await expect(reason).toHaveValue("I found someone to cover it.");
+    });
+
+    test("Employee onboarding → emergency contact: Email (optional) stays reachable under the step's error", async ({ browser }) => {
+      const key = `fm${tag()}`;
+      const firstName = `Fm${tag()}`;
+      const name = `${firstName} Invitee`;
+      const jobId = ownJob(key, `Barista ${key}`);
+      sql(`
+        select public.create_employee_command_service(
+          tests.user('${run}:owner'), tests.id('${run}'), gen_random_uuid(),
+          jsonb_build_object(
+            'first_name', '${firstName}', 'middle_name', '', 'last_name', 'Invitee', 'preferred_name', '',
+            'invitation_email', '', 'start_date', '', 'internal_note', '',
+            'location_ids', jsonb_build_array(tests.id('${run}:K')),
+            'primary_location_id', tests.id('${run}:K'),
+            'job_ids', jsonb_build_array('${jobId}'::uuid),
+            'primary_job_id', '${jobId}'::uuid,
+            'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
+          null);`);
+      const email = lastLine(sql(`select tests.new_user('${run}:${key}', '${name}'); select tests.password('${run}:${key}', '${password}');`));
+      const ayse = await open(browser, "ayse", screens[0], "/app/employees");
+      await ayse.getByRole("row", { name: new RegExp(name) }).getByText(name, { exact: true }).click();
+      const drawer = ayse.getByRole("dialog", { name });
+      await drawer.getByLabel("E-mail").fill(email);
+      await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
+      await drawer.getByRole("button", { name: "Invite", exact: true }).click();
+      const link = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
+
+      const invitee = await (await browser.newContext(screen.options)).newPage();
+      await invitee.goto(link!);
+      await invitee.getByRole("button", { name: "I already have an account", exact: true }).click();
+      await invitee.getByLabel("Email").fill(email);
+      await invitee.getByLabel("Password").fill(password);
+      await invitee.getByRole("button", { name: "Sign in", exact: true }).click();
+      await invitee.getByRole("button", { name: "Accept invitation", exact: true }).click();
+      await invitee.getByRole("button", { name: "Start onboarding", exact: true }).click();
+      await invitee.getByRole("button", { name: "Begin" }).click();
+      await expect(invitee.getByRole("heading", { name: "Your details" })).toBeVisible();
+      await invitee.getByLabel("Legal first name", { exact: true }).fill(firstName);
+      await invitee.getByLabel("Legal last name", { exact: true }).fill("Invitee");
+      await invitee.getByLabel("Phone", { exact: true }).fill(`415555${Math.floor(1000 + Math.random() * 8999)}`);
+      await invitee.getByLabel("Date of birth", { exact: true }).fill("1996-04-12");
+      await invitee.getByLabel("Street address", { exact: true }).fill("12 Moda Cd");
+      await invitee.getByLabel("City", { exact: true }).fill("Istanbul");
+      await invitee.getByLabel("State", { exact: true }).fill("Istanbul");
+      await invitee.getByLabel("ZIP code", { exact: true }).fill("34710");
+      await invitee.getByRole("button", { name: "Continue" }).click();
+      await expect(invitee.getByRole("heading", { name: "Who we call in an emergency" })).toBeVisible();
+      await invitee.getByLabel("Full name", { exact: true }).fill("Deniz Contact");
+      await invitee.getByLabel("Relationship", { exact: true }).selectOption("Friend");
+      await invitee.getByLabel("Phone", { exact: true }).fill("4155550100");
+      const refusal = "Your details changed in another tab. Reload this page to see the latest version, then save again.";
+      await invitee.route("**/me/**profile*", (route) =>
+        route.request().method() === "PATCH"
+          ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: refusal, reason: "onboarding.test_refusal" }) })
+          : route.fallback(),
+      );
+      await invitee.getByRole("button", { name: "Save and continue" }).click();
+      await bandSays(invitee.locator("body"), refusal);
+      const optional = invitee.getByLabel("Email (optional)");
+      await reachable(optional);
+      await optional.fill("deniz@example.com");
+      await expect(optional).toHaveValue("deniz@example.com");
+    });
   });
 }
+
+// A plain 8×8 green PNG, made here so the spec carries no binary.
+const pixel = (() => {
+  const crc = (bytes: Buffer) => {
+    let c = ~0;
+    for (const byte of bytes) {
+      c ^= byte;
+      for (let k = 0; k < 8; k += 1) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+    }
+    return ~c >>> 0;
+  };
+  const chunk = (type: string, data: Buffer) => {
+    const body = Buffer.concat([Buffer.from(type, "ascii"), data]);
+    const length = Buffer.alloc(4);
+    length.writeUInt32BE(data.length);
+    const sum = Buffer.alloc(4);
+    sum.writeUInt32BE(crc(body));
+    return Buffer.concat([length, body, sum]);
+  };
+  const header = Buffer.alloc(13);
+  header.writeUInt32BE(8, 0);
+  header.writeUInt32BE(8, 4);
+  header.set([8, 2, 0, 0, 0], 8);
+  const rows = Buffer.concat(Array.from({ length: 8 }, () => Buffer.from([0, ...Array.from({ length: 8 }, () => [40, 120, 80]).flat()])));
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    chunk("IHDR", header),
+    chunk("IDAT", deflateSync(rows)),
+    chunk("IEND", Buffer.alloc(0)),
+  ]);
+})();
+
+/** Pictures for the report, only when asked for (UI_FIELDMSG_SHOTS=1); a normal run takes none. */
+async function shot(page: Page, name: string) {
+  if (!process.env.UI_FIELDMSG_SHOTS) return;
+  await page.screenshot({ path: fileURLToPath(new URL(`../../artifacts/ui-fieldmsg-2/${name}.png`, import.meta.url)) });
+}
+
+test("New Schedule → Templates → Save template: Remove employee names stays reachable under the window's error", async ({
+  browser,
+}) => {
+  const week = roundWeek(710);
+  sql(`
+    select tests.publish_week('${run}', ${week}, '[
+      {"label": "${roundLabel("window-fieldmsg")}", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+    ]');`);
+  const monday = sql(`select tests.week(${week});`);
+  const plan = draftName("Fieldmsg plan");
+  const page = await open(browser, "ayse", screens[0], `/app/schedule?date=${monday}`);
+  await page.getByRole("button", { name: /^Draft selector:/ }).click();
+  const windowRoot = page.getByRole("dialog", { name: /^Schedules for / });
+  await windowRoot.getByRole("button", { name: "Edit live schedule", exact: true }).click();
+  await expect(page).toHaveURL(/mode=edit/);
+  await page.getByRole("button", { name: /^(?:Save draft|Publish)$/ }).click();
+  await page.getByLabel("Draft name").fill(plan);
+  await page.getByRole("button", { name: "Save As", exact: true }).click();
+  await expect(page).not.toHaveURL(/mode=edit/);
+
+  const refusal = "A template with this name was saved a moment ago. Choose another name, or open Templates to use the one already there.";
+  await page.route("**/schedule/templates", (route) =>
+    route.request().method() === "POST"
+      ? route.fulfill({ status: 409, contentType: "application/json", body: JSON.stringify({ error: refusal, reason: "template.test_refusal" }) })
+      : route.fallback(),
+  );
+  await page.getByRole("button", { name: /^Draft selector:/ }).click();
+  await windowRoot.getByRole("tab", { name: /^Templates/ }).click();
+  await windowRoot.getByRole("button", { name: "Save template", exact: true }).click();
+  const form = windowRoot.getByRole("region", { name: "Save a draft as a template" });
+  await form.getByLabel("Draft").selectOption({ label: plan });
+  await form.getByLabel("Template name").fill(draftName("Fieldmsg week"));
+  await form.getByRole("button", { name: "Save template", exact: true }).click();
+  await bandSays(windowRoot, refusal);
+  await shot(page, "templates-desktop-shown");
+  const strip = form.getByRole("checkbox", { name: "Remove employee names (save as open shifts)" });
+  await reachable(strip);
+  await strip.click();
+  await expect(strip).toBeChecked();
+});
