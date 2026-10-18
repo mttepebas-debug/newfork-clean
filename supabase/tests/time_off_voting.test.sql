@@ -13,6 +13,8 @@ select * from no_plan();
 -- started yet; a cancellation is voted on like a request.
 
 select tests.world('tv');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('tv', 'owner');
 -- A third location nobody manages.
 select tests.as_browser(tests.user('tv:owner'), format(
   $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
@@ -370,6 +372,8 @@ select ok(
 -- A document everybody must hand in; Bora's and Hande's deadlines passed.
 -- ponytail: nothing in the product moves the clock; the deadlines are set by hand.
 select tests.world('tr');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('tr', 'owner');
 select tests.person('tr', 'hande', 'manager', array['K'], array['cook']);
 select tests.person('tr', 'bora', 'employee', array['K'], array['cook']);
 select tests.person('tr', 'cem', 'employee', array['K'], array['cook']);

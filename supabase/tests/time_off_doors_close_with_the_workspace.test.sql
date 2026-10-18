@@ -7,6 +7,8 @@ select plan(5);
 -- blame a shift change.
 
 select tests.world('tc');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('tc', 'owner');
 select tests.person('tc', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('tc', 'zeynep', 'admin', array['K'], array['cook']);
 

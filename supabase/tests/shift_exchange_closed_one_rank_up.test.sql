@@ -9,6 +9,8 @@ select no_plan();
 -- document; Zeynep and Kaan are admins. Besiktas has Bora, its manager, and Veli.
 
 select tests.world('xc');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('xc', 'owner');
 select tests.person('xc', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('xc', 'can', 'manager', array['K'], array['cook']);
 select tests.person('xc', 'aydan', 'manager', array['K'], array['server']);

@@ -8,6 +8,8 @@ select plan(4);
 -- set up the workspace (workspace.setup refuses a document-blocked owner).
 
 select tests.world('od');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('od', 'owner');
 
 -- A document everybody must hand in; the owner's copy is not excused and its
 -- deadline has passed.

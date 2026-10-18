@@ -17,6 +17,8 @@ select plan(21);
 -- cancellation of their own leave.
 
 select tests.world('to');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('to', 'owner');
 select tests.person('to', 'ali', 'manager', array['K'], array['cook']);
 select tests.person('to', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('to', 'mehmet', 'manager', array['B'], array['cook']);

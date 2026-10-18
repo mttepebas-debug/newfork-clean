@@ -16,7 +16,11 @@ select no_plan();
 --   (f) the two helpers that find recipients ask the core, not role names.
 
 select tests.world('nt');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('nt', 'owner');
 select tests.world('nx');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('nx', 'owner');
 -- Kadikoy (K) has a manager; Besiktas (B) has none.
 select tests.person('nt', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('nt', 'zeynep', 'admin', array['K'], array['server']);

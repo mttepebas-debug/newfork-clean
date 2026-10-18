@@ -8,6 +8,8 @@ select no_plan();
 -- document; Besiktas has no manager. Zeynep is an admin.
 
 select tests.world('ru');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('ru', 'owner');
 select tests.person('ru', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('ru', 'can', 'manager', array['K'], array['cook']);
 select tests.person('ru', 'aydan', 'manager', array['K'], array['server']);

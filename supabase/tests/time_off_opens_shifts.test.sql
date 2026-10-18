@@ -7,6 +7,8 @@ select plan(9);
 -- still waits for its reviewers.
 
 select tests.world('ot');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('ot', 'owner');
 select tests.person('ot', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('ot', 'mert', 'manager', array['K'], array['cook']);
 select tests.person('ot', 'can', 'manager', array['B'], array['cook']);

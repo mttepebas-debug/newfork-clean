@@ -219,7 +219,7 @@ as $$
 declare
   workspace_state public.workspace_lifecycle_status;
   transfer_bypass boolean := coalesce(current_setting('app.owner_transfer', true), '') = 'on';
-  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = old.workspace_id and r.system_key = 'owner');
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = old.workspace_id and r.access_class = 'owner');
 begin
   if old.role_id is distinct from owner_role or old.status <> 'active' then
     return case when tg_op = 'DELETE' then old else new end;
@@ -264,7 +264,7 @@ security definer
 set search_path = ''
 as $$
 declare
-  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = new.workspace_id and r.system_key = 'owner');
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = new.workspace_id and r.access_class = 'owner');
 begin
   if new.role_id = owner_role
      and new.status = 'active'::public.membership_status

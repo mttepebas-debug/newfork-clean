@@ -12,6 +12,8 @@ select * from no_plan();
 -- Ali and Emre cook at Kadıköy.
 
 select tests.world('ud');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('ud', 'owner');
 select tests.person('ud', 'ayse', 'manager', array['K'], array['cook']);
 select tests.person('ud', 'zeynep', 'manager', array['K'], array['cook']);
 select tests.person('ud', 'can', 'manager', array['K', 'B'], array['cook']);
@@ -275,6 +277,8 @@ select tests.works_at((select m.id from public.workspace_memberships m
 
 -- An edit of another workspace is not found from this one.
 select tests.world('ux');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('ux', 'owner');
 select tests.remember('ux:e1', (public.acquire_schedule_edit_session_service(tests.user('ux:owner'), tests.id('ux'),
   tests.week(1), 'blank', null) -> 'session' ->> 'id')::uuid);
 select is(pg_temp.refusal(format('select public.undo_schedule_edit_session_step_service(%L, %L, %L, %s)',

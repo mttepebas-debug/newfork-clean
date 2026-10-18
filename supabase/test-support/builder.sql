@@ -793,6 +793,19 @@ end;
 $$;
 
 revoke all on all functions in schema tests from public;
+-- The employee slot for somebody of the test world who holds a management
+-- access (ROL-CIFT): they work too, so they offer and take shifts, ask time off
+-- and enter availability. 'owner' is the world's owner.
+create or replace function tests.employee_slot(w text, person_label text)
+returns void
+language sql
+set search_path = ''
+as $$
+  update public.workspace_memberships m
+  set employee_role_id = (select r.id from public.workspace_roles r where r.workspace_id = tests.id(w) and r.system_key = 'employee')
+  where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label) and m.employee_role_id is null;
+$$;
+
 -- Manages (ROL-CIFT): the locations a manager of the test world manages, set
 -- apart from where they work. Labels as tests.person's; locs are location keys.
 -- ponytail: a later change to their location assignments resets Manages to

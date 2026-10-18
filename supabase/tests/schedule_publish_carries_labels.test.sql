@@ -10,6 +10,8 @@ select plan(12);
 -- week and another location's manager on the ghost card.
 
 select tests.world('lb');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('lb', 'owner');
 select tests.person('lb', 'ada', 'employee', array['K'], array['cook']);
 select tests.person('lb', 'bob', 'employee', array['K'], array['cook']);
 select tests.person('lb', 'mia', 'manager', array['K'], array['cook']);

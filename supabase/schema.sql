@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:99c3bb63b93b8a39b6bd4353330f3325871df341139a8535a81ad5266fc1583b
+-- fingerprint: sha256:a12adad9c400ee2f08b477e34c9ae9df13467775d1e1847620e12af689341b73
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -11557,7 +11557,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-      and m.status = 'active' and r.system_key = 'owner'
+      and m.status = 'active' and r.access_class = 'owner'
   ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   select * into transfer_row from public.workspace_ownership_transfers t
     where t.id = transfer_id and t.workspace_id = target_workspace_id for update;
@@ -12291,7 +12291,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.system_key = 'owner'
+      and r.access_class = 'owner'
   ) and exists (
     select 1
     from public.employee_invitations invitation
@@ -12315,7 +12315,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.system_key = 'owner'
+      and r.access_class = 'owner'
       and app_private.workspace_allows_interactive_access(m.workspace_id)
   ) then
     raise exception 'workspace owner access required' using errcode = '42501';
@@ -19317,7 +19317,7 @@ CREATE OR REPLACE FUNCTION "public"."prevent_last_workspace_owner_removal"() RET
 declare
   workspace_state public.workspace_lifecycle_status;
   transfer_bypass boolean := coalesce(current_setting('app.owner_transfer', true), '') = 'on';
-  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = old.workspace_id and r.system_key = 'owner');
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = old.workspace_id and r.access_class = 'owner');
 begin
   if old.role_id is distinct from owner_role or old.status <> 'active' then
     return case when tg_op = 'DELETE' then old else new end;
@@ -22573,7 +22573,7 @@ begin
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
     where m.id = transfer_row.target_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = actor_user_id and m.status = 'active' and r.system_key = 'admin'
+      and m.user_id = actor_user_id and m.status = 'active' and r.access_class = 'admin'
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.membership_id = m.id and c.workspace_id = m.workspace_id and c.status <> 'approved')
       -- The owner works the Owner job on their own record (BL-252), so only
@@ -22585,7 +22585,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.id = transfer_row.previous_owner_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = transfer_row.initiated_by and m.status = 'active' and r.system_key = 'owner'
+      and m.user_id = transfer_row.initiated_by and m.status = 'active' and r.access_class = 'owner'
   ) then raise exception 'ownership transfer participants are no longer eligible' using errcode = '42501', hint = 'transfer.participants_ineligible'; end if;
 
   select id into owner_role_id
@@ -25276,7 +25276,7 @@ begin
       select 1 from public.workspace_memberships m
       left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
       where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-        and m.status = 'active' and r.system_key = 'owner'
+        and m.status = 'active' and r.access_class = 'owner'
     ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
     raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
@@ -25289,7 +25289,7 @@ begin
     left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
     left join public.user_profiles p on p.user_id = m.user_id
     where m.workspace_id = target_workspace_id and m.status = 'active'
-      and m.user_id <> actor_user_id and r.system_key = 'admin'
+      and m.user_id <> actor_user_id and r.access_class = 'admin'
       -- Active legacy memberships without an onboarding case are already complete.
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
@@ -26288,7 +26288,11 @@ begin
  if idempotency_key is null then raise exception 'Idempotency key required'; end if;
  -- The core says who may act (FB-6.4 A2): one's own offer and application,
  -- never while restricted (D4); a decision on a case is asked below, per case.
- perform app_private.authorize(actor,w,case when action in('apply','pass','accept','decline','withdraw') then 'exchange.apply_own' else 'exchange.offer_own' end);
+ -- Offering and applying are the employee side's (ROL-CIFT, design §4.4); a
+ -- manager's decision (approve, reject, close) is not, so a management access
+ -- alone still decides: it only passes the membership gate here.
+ perform app_private.authorize(actor,w,case when action in('apply','pass','accept','decline','withdraw') then 'exchange.apply_own'
+   when action in('approve','reject','close') then 'workspace.read' else 'exchange.offer_own' end);
  perform pg_advisory_xact_lock(hashtextextended(w::text,921));
  select * into old_cmd from public.shift_exchange_commands q where q.workspace_id=w and q.actor_user_id=actor and q.idempotency_key=shift_exchanges_command_service.idempotency_key;
  if old_cmd.idempotency_key is not null then
@@ -27168,7 +27172,7 @@ CREATE OR REPLACE FUNCTION "public"."sync_workspace_entitlement_billing_owner"()
     SET "search_path" TO ''
     AS $$
 declare
-  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = new.workspace_id and r.system_key = 'owner');
+  owner_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = new.workspace_id and r.access_class = 'owner');
 begin
   if new.role_id = owner_role
      and new.status = 'active'::public.membership_status

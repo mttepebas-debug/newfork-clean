@@ -44,13 +44,12 @@ select cmp_ok(
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
 -- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26),
 -- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21),
--- BILDIRIM-06 the old notification system (21 -> 20). ROL-CIFT 1.4 (20 -> 11): the membership role and
--- all_locations are gone; "is the owner" reads the management slot through app_private.role_class() or
--- the owner role's system key, which this pattern does not count.
+-- BILDIRIM-06 the old notification system (21 -> 20). ROL-CIFT 1.4: app_private.role_class() is the
+-- two-slot model's way to ask a role's kind, so the pattern counts it too.
 select cmp_ok(
   (select count(*)::integer from core_function
-   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)'),
-  '<=', 11, 'functions with their own scope or rank logic only go down'
+   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('),
+  '<=', 20, 'functions with their own scope or rank logic only go down'
 );
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4

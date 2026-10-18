@@ -11,7 +11,11 @@ select plan(8);
 -- editing, after an approved swap) comes in with its note, "hide time" and tags.
 
 select tests.world('lc');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('lc', 'owner');
 select tests.world('lx');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('lx', 'owner');
 select tests.person('lc', 'ada', 'employee', array['K'], array['cook']);
 select tests.person('lc', 'bob', 'employee', array['K'], array['cook']);
 select tests.person('lc', 'max', 'manager', array['K'], array['cook']);

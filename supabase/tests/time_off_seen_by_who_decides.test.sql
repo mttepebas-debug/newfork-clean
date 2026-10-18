@@ -10,6 +10,8 @@ select * from no_plan();
 -- way. The person reads their own on Employee hub, not in the decision queue.
 
 select tests.world('sd');
+-- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
+select tests.employee_slot('sd', 'owner');
 select tests.person('sd', 'zeynep', 'admin', array['K'], array['cook']);
 select tests.person('sd', 'kaan', 'admin', array['B'], array['cook']);
 select tests.person('sd', 'ayse', 'manager', array['K'], array['cook']);
