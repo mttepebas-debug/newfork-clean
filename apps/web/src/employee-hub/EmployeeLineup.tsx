@@ -286,15 +286,28 @@ function LineupView({
   const [fresh, setFresh] = useState(false);
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
+  // While it works the button is aria-disabled, not disabled, so it keeps the keyboard's focus (D2); when it goes,
+  // focus moves to the ticket's fold rather than falling to the page.
+  const ackBox = useRef<HTMLDivElement | null>(null);
+  const foldButton = useRef<HTMLButtonElement | null>(null);
+  const [focusFold, setFocusFold] = useState(false);
+  useEffect(() => {
+    if (!focusFold) return;
+    foldButton.current?.focus();
+    setFocusFold(false);
+  }, [focusFold]);
   const ack = () => {
+    if (working) return;
     const since = Date.now();
     setWorking(true);
     acknowledge.mutate(lineup.version_id, {
       onSuccess: () => {
         timer.current = window.setTimeout(() => {
+          const focused = Boolean(ackBox.current?.contains(document.activeElement));
           setWorking(false);
           setAcked(true);
           setFresh(true);
+          if (focused) setFocusFold(true);
         }, Math.max(0, LINEUP_BUSY_MS - (Date.now() - since)));
       },
       onError: () => setWorking(false),
@@ -323,6 +336,7 @@ function LineupView({
       <div className="employee-lineup-ticket" onClick={fold}>
         <button
           type="button"
+          ref={foldButton}
           className="employee-lineup-fold"
           aria-expanded={open}
           aria-controls={open ? `${ids}panel` : undefined}
@@ -411,8 +425,13 @@ function LineupView({
             Acknowledged.
           </p>
         ) : (
-          <div className="employee-lineup-ack">
-            <Button className={working ? "is-working" : undefined} disabled={working} onClick={ack}>
+          <div className="employee-lineup-ack" ref={ackBox}>
+            <Button
+              className={working ? "is-working" : undefined}
+              aria-disabled={working || undefined}
+              aria-busy={working || undefined}
+              onClick={ack}
+            >
               {working ? (
                 <>
                   <span className="employee-lineup-spin" aria-hidden />

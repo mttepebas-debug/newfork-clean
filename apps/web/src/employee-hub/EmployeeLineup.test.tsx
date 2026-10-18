@@ -240,16 +240,27 @@ describe("EmployeeLineup", () => {
   // "Acknowledged." comes in where it was, its check popping in; no notice. Even a quick answer holds a moment.
   it("works inside the Acknowledge button, then slides Acknowledged. in where it was", async () => {
     renderLineup();
-    fireEvent.click(await screen.findByRole("button", { name: "Acknowledge" }));
+    const button = await screen.findByRole("button", { name: "Acknowledge" });
+    button.focus();
+    fireEvent.click(button);
     const pressed = Date.now();
     const working = screen.getByRole("button", { name: "Acknowledging…" }) as HTMLButtonElement;
-    expect(working.disabled).toBe(true);
+    // Off while it works, but it keeps the keyboard's focus: aria-disabled and busy, not disabled.
+    expect(working).toBe(button);
+    expect(working.getAttribute("aria-disabled")).toBe("true");
+    expect(working.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(working);
     expect(working.querySelector(".employee-lineup-spin")?.getAttribute("aria-hidden")).toBe("true");
+    // A second press while it works sends nothing more.
+    fireEvent.click(working);
     const done = await screen.findByRole("status");
     // The answer is quick here; the button still holds LINEUP_BUSY_MS so its words can be read.
     expect(Date.now() - pressed).toBeGreaterThanOrEqual(LINEUP_BUSY_MS - 20);
     expect(done.textContent).toBe("Acknowledged.");
     expect(done.classList.contains("is-in")).toBe(true);
+    expect(acknowledged).toEqual([versionId]);
+    // The button went: focus waits on the ticket's fold, not on the page.
+    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Hide team and notes" }));
   });
 
   it("gives Acknowledge back with a line under it when it didn't go through", async () => {

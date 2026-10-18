@@ -102,8 +102,9 @@
 /* Acknowledge works in place (Mert 2026-10-17 ~1:45–1:50 PM; mockup v-e.css e-spin, e-pop, e-slide): a spinner and
    "Acknowledging…", then "Acknowledged." slides in where the button was and its check pops in. No notice. Less
    motion: the words change, nothing moves. */
+/* Off while it works (aria-disabled, so it keeps the keyboard's focus), still green. */
 .employee-lineup-ack .nf-button.is-working,
-.employee-lineup-ack .nf-button.is-working:disabled { gap: 9px; opacity: 1; cursor: default; }
+.employee-lineup-ack .nf-button.is-working:hover { gap: 9px; background: var(--theme-accent); opacity: 1; cursor: default; }
 .employee-lineup-spin { width: 16px; height: 16px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: employee-lineup-spin 0.7s linear infinite; }
 @keyframes employee-lineup-spin { to { transform: rotate(360deg); } }
 .employee-lineup-acked.is-in { animation: employee-lineup-slide 0.35s ease-out 0.1s both; }
