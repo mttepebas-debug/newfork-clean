@@ -6,7 +6,7 @@
 .nf-button.lineup-publish-trigger:disabled { opacity: .45; cursor: not-allowed; }
 .lineup-publish-badge { display: inline-grid; min-width: 20px; height: 20px; place-items: center; padding: 0 6px; border-radius: 10px; background: rgb(255 255 255 / 22%); font-size: 12px; font-weight: 750; font-variant-numeric: tabular-nums; }
 
-.lineup-publish-window { position: absolute; top: calc(100% + 6px); right: 0; z-index: 90; display: flex; flex-direction: column; width: min(340px, calc(100vw - 24px)); overflow: hidden; border-radius: 10px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%); color: var(--theme-text); font-size: 13px; text-align: left; }
+.lineup-publish-window { position: absolute; top: calc(100% + 6px); right: 0; z-index: 90; display: flex; flex-direction: column; width: min(372px, calc(100vw - 24px)); overflow: hidden; border-radius: 10px; background: var(--theme-surface); box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%); color: var(--theme-text); font-size: 13px; text-align: left; }
 .lineup-publish-window :is(button) { font: inherit; }
 .lineup-publish-window :is(button, [tabindex]):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: -2px; }
 .lineup-publish-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 14px 16px 6px; }
