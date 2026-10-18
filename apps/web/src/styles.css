@@ -7024,6 +7024,17 @@ button.workspace-switcher-item:hover:not(:disabled) {
   padding: 8px 14px;
   font-size: 13px;
 }
+/* An answer that works in place (ConfirmDialog busyLabel): both buttons are off while it works but keep the
+   keyboard's focus (aria-disabled, not disabled), so they get the off look here; only busyLabel sets it. */
+.app-confirm footer .nf-button[aria-disabled="true"] {
+  cursor: default;
+}
+.app-confirm footer .secondary-button[aria-disabled="true"] {
+  opacity: 0.55;
+}
+.app-confirm footer .nf-button[aria-busy="true"] {
+  gap: 8px;
+}
 .schedule-discard-layer {
   position: fixed;
   z-index: 170;

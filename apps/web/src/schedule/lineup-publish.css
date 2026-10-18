@@ -70,11 +70,7 @@ div.lineup-publish-pick { cursor: default; }
 .lineup-edit-text b { color: var(--theme-text); font-size: 14px; font-weight: 700; line-height: 1.35; }
 .lineup-edit-text span { color: var(--theme-text-secondary); font-size: 13px; line-height: 1.4; }
 /* Its green Edit works in place (Mert 2026-10-17 ~1:45 PM): while it takes the lineup back it spins and says
-   "Unpublishing…"; it and Cancel are off (aria-disabled) but keep the keyboard's focus (D2). */
-.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-disabled="true"] { cursor: default; }
-.app-confirm:has(.lineup-edit-points) footer .secondary-button[aria-disabled="true"] { opacity: .55; }
-.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"] { gap: 8px; }
-.app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]:hover { background: var(--theme-accent); }
+   "Unpublishing…". The off look of it and Cancel while it works is the app window's own (styles.css .app-confirm). */
 .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
 
 /* No motion: the words change, no spinner, nothing pops. */
