@@ -84,6 +84,7 @@ supabase/tests/schedule_time_source.test.sql
 supabase/tests/schedule_week_availability.test.sql
 supabase/tests/security_audit_events.test.sql
 supabase/tests/settings_reads_ask_the_core.test.sql
+supabase/tests/shift_exchange_closed_one_rank_up.test.sql
 supabase/tests/shift_exchange_range_read.test.sql
 supabase/tests/shift_exchange_requested_publication.test.sql
 supabase/tests/shift_exchange_swap_gives_up_its_own_shift.test.sql
