@@ -8,7 +8,9 @@ import {
   lineupReadLists,
   lineupShiftSpan,
   lineupWeek,
+  phoneLineupKey,
   phoneLineupShift,
+  phoneShiftTabs,
   unpublishedCount,
   type LineupFilters,
 } from "./lineup";
@@ -193,6 +195,61 @@ describe("phoneLineupShift", () => {
 
   it("falls back when the chosen shift is not at this location", () => {
     expect(phoneLineupShift(shifts, "nope", null)?.name).toBe("Lunch");
+  });
+});
+
+// All locations (Mert 2026-10-17 ~9:10 AM): a shift tab stands for that shift at every location shown.
+describe("phoneShiftTabs", () => {
+  it("lists each shift once over the locations, its count the people at all of them", () => {
+    const locations = view(
+      model([
+        shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+        shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00", location: uptown }),
+        shift({ employee: chloe, job: server, type: dinner, start: "16:00", end: "22:00", location: uptown }),
+      ]),
+      day,
+    );
+    expect(phoneShiftTabs(locations).map((tab) => [tab.key, tab.name, tab.count])).toEqual([
+      [lunch, "Lunch", 2],
+      [dinner, "Dinner", 1],
+    ]);
+    expect(phoneShiftTabs(locations.slice(0, 1)).map((tab) => [tab.name, tab.count])).toEqual([["Lunch", 1], ["Dinner", 0]]);
+  });
+
+  it("adds a shift only one location has after the others, and skips a closed location", () => {
+    const locations = view(
+      model([
+        shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+        shift({ employee: hannah, job: server, type: null, start: "18:00", end: "23:00", location: uptown }),
+      ]),
+      day,
+    );
+    expect(phoneShiftTabs(locations).map((tab) => [tab.name, tab.count])).toEqual([["Lunch", 1], ["Dinner", 0], ["No shift type", 1]]);
+    expect(phoneShiftTabs([{ ...locations[0]!, closed: { title: "Holiday" }, shifts: [] }])).toEqual([]);
+  });
+});
+
+describe("phoneLineupKey", () => {
+  const locations = view(
+    model([
+      shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "23:00" }),
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", location: uptown }),
+    ]),
+    day,
+  );
+  const never = () => null;
+
+  it("keeps the chosen shift when any location shown has it", () => {
+    expect(phoneLineupKey(locations, dinner, never)).toBe(dinner);
+  });
+
+  it("otherwise opens where the first location with people would, on its own clock", () => {
+    expect(phoneLineupKey(locations, "", never)).toBe(dinner);
+    expect(phoneLineupKey(locations.slice(1), "", never)).toBe(lunch);
+    // Downtown's clock says 23:30: everyone has left, its last shift with people.
+    expect(phoneLineupKey(locations, "nope", (location) => (location.id === downtown ? "23:30" : null))).toBe(dinner);
+    expect(phoneLineupKey(view(model([]), day), "", never)).toBe(lunch);
+    expect(phoneLineupKey([], "", never)).toBeNull();
   });
 });
 

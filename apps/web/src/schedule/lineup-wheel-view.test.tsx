@@ -119,4 +119,30 @@ describe("LineupLocationSelect", () => {
     rerender(<LineupLocationSelect loading={false} locations={[]} value="" onChange={() => undefined} />);
     expect(screen.queryByRole("combobox")).toBeNull();
   });
+
+  // Mert 2026-10-17 (~9:10 AM): with more than one location the list starts with All locations, its value "".
+  it("starts with All locations when there is more than one, and gives it back as an empty value", () => {
+    const picked: string[] = [];
+    const places = [{ id: "a", name: "Downtown" }, { id: "b", name: "Uptown" }];
+    const { rerender } = render(
+      <LineupLocationSelect loading={false} locations={places} value="" allLabel="All locations" onChange={(id) => picked.push(id)} />,
+    );
+    const select = screen.getByRole("combobox", { name: "Location" }) as HTMLSelectElement;
+    expect([...select.options].map((option) => [option.value, option.text])).toEqual([["", "All locations"], ["a", "Downtown"], ["b", "Uptown"]]);
+    expect(select.value).toBe("");
+    fireEvent.change(select, { target: { value: "b" } });
+    fireEvent.change(select, { target: { value: "" } });
+    expect(picked).toEqual(["b", ""]);
+    // One location: no All locations.
+    rerender(<LineupLocationSelect loading={false} locations={places.slice(0, 1)} value="a" allLabel="All locations" onChange={() => undefined} />);
+    expect([...(screen.getByRole("combobox", { name: "Location" }) as HTMLSelectElement).options].map((option) => option.text)).toEqual(["Downtown"]);
+  });
+
+  // The select is not the desktop's location card: its text sits in the middle of the box (no card padding).
+  it("is its own control, not a location card", () => {
+    render(<LineupLocationSelect loading={false} locations={[{ id: "a", name: "Downtown" }]} value="a" onChange={() => undefined} />);
+    const select = screen.getByRole("combobox", { name: "Location" });
+    expect(select.classList.contains("lineup-location")).toBe(false);
+    expect(select.classList.contains("lineup-location-select")).toBe(true);
+  });
 });

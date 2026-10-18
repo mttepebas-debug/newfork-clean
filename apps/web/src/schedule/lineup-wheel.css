@@ -54,7 +54,7 @@
 
 /* The location beside the date takes the rest of the row; at 390 px it stays on the date's row even when the
    date carries a year ("Wed, Feb 27, 2041"), so the rows under it keep the same height on every page. */
-.lineup-toolbar .lineup-location {
+.lineup-toolbar .lineup-location-select {
   min-width: 0;
   flex: 1 1 120px;
 }

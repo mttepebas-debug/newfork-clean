@@ -246,27 +246,34 @@ export function LineupShiftTabs({
   );
 }
 
-/** The location beside the date: a skeleton while the day loads, nothing when there is no location. */
+/**
+ * The location beside the date: a skeleton while the day loads, nothing when there is no location. With `allLabel`
+ * and more than one location, the list starts with All locations (Mert 2026-10-17 ~9:10 AM), its value "".
+ */
 export function LineupLocationSelect({
   loading,
   locations,
   value,
+  allLabel,
   onChange,
 }: {
   readonly loading: boolean;
   readonly locations: readonly { readonly id: string; readonly name: string }[];
   readonly value: string;
+  readonly allLabel?: string;
   readonly onChange: (id: string) => void;
 }) {
-  if (loading) return <Skeleton width="auto" height={34} className="on-page lineup-location" />;
+  if (loading) return <Skeleton width="auto" height={34} className="on-page lineup-location-select" />;
   if (!locations.length) return null;
+  const all = allLabel && locations.length > 1 ? allLabel : null;
   return (
     <select
-      className="toolbar-filter-select lineup-location"
-      value={value}
+      className="toolbar-filter-select lineup-location-select"
+      value={all ? value : value || locations[0]!.id}
       aria-label="Location"
       onChange={(event) => onChange(event.target.value)}
     >
+      {all ? <option value="">{all}</option> : null}
       {locations.map((item) => (
         <option key={item.id} value={item.id}>
           {item.name}

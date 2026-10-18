@@ -277,6 +277,43 @@ export function phoneLineupShift(
   return staffed[0] ?? shifts[0] ?? null;
 }
 
+/** One shift tab over the locations shown: its people at all of them. */
+export interface PhoneShiftTab {
+  readonly key: string;
+  readonly name: string;
+  readonly color: string | null;
+  readonly count: number;
+}
+
+/**
+ * The phone's shift tabs (All locations, Mert 2026-10-17 ~9:10 AM): a tab stands for that shift at every location
+ * shown; the first location's order, then any shift only a later one has; its count adds every location's people.
+ */
+export function phoneShiftTabs(locations: readonly LineupLocation[]): PhoneShiftTab[] {
+  const tabs = new Map<string, { key: string; name: string; color: string | null; count: number }>();
+  for (const location of locations)
+    for (const shift of location.shifts) {
+      const tab = tabs.get(shift.key);
+      if (tab) tab.count += shift.count;
+      else tabs.set(shift.key, { key: shift.key, name: shift.name, color: shift.color, count: shift.count });
+    }
+  return [...tabs.values()];
+}
+
+/**
+ * The shift the phone opens on over the locations shown: the chosen one when any of them has it; otherwise where
+ * the first location with people would open (phoneLineupShift, on that location's own clock); else the first's.
+ */
+export function phoneLineupKey(
+  locations: readonly LineupLocation[],
+  chosen: string,
+  nowAt: (location: LineupLocation) => string | null,
+): string | null {
+  if (chosen && locations.some((location) => location.shifts.some((shift) => shift.key === chosen))) return chosen;
+  const first = locations.find((location) => location.shifts.some((shift) => shift.count > 0)) ?? locations.find((location) => location.shifts.length);
+  return first ? phoneLineupShift(first.shifts, "", nowAt(first))?.key ?? null : null;
+}
+
 /**
  * The phone card's state (E, card 1; Mert 2026-10-17): live (staff see it) or a draft, and whether the shift has
  * started: the day is over, or today (`now` is HH:MM on the location's clock) its first person is in. A started
