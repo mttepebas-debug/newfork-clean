@@ -145,8 +145,10 @@ export default function GeneralSettingsPage() {
             <LetterRuleNote value={name} id="organization-name" />
           </div>
         </div>
-        {/* The form's own error keeps its line, so it moves nothing (UI-FIELDMSG). */}
-        <FieldNote id="organization-form" error={error ?? logoError} lines={2} />
+        {/* The form's own error above Save, said whole (UI-FIELDMSG-2). */}
+        {/* Both when both hold: the form's and the logo's (UI-FIELDMSG-2). */}
+        <FieldNote id="organization-form" error={error} />
+        <FieldNote id="organization-logo" error={logoError} />
         {saved ? (
           <p className="form-success" role="status">
             Workspace settings saved.

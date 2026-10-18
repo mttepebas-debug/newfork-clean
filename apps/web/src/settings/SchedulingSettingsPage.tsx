@@ -254,11 +254,9 @@ export default function SchedulingSettingsPage() {
                 />
                 <span className="setting-unit">hours</span>
               </SettingsChoiceRow>
-              <FieldNote
-                id="scheduling-settings"
-                lines={2}
-                error={validationError || (mutation.error ? errorText(mutation.error) : null)}
-              />
+              {/* Both when both hold: the form's own check and the server's (UI-FIELDMSG-2). */}
+              <FieldNote id="scheduling-settings-check" error={validationError} />
+              <FieldNote id="scheduling-settings" error={mutation.error ? errorText(mutation.error) : null} />
               {saved ? (
                 <p className="form-success" role="status">
                   Scheduling rules saved.

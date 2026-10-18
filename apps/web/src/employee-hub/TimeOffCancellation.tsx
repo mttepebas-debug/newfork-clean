@@ -99,16 +99,20 @@ export function TimeOffCancellation({ request, workspaceId, timeFormat, onChange
           }}>Add another time range</button>
         </div>)}
         <label>Cancellation note<textarea maxLength={1000} value={reason} onChange={event => setReason(event.target.value)} /></label>
-        {/* Why it can't be sent, in one kept place above the buttons (UI-FIELDMSG). */}
+        {/* Why it can't be sent, above the buttons: every reason that holds, each
+            whole, none dropped, nothing while all is well (UI-FIELDMSG-2). */}
+        <FieldNote
+          id={`time-off-cancellation-stale-${request.id}`}
+          error={stale || isStaleTimeOff(mutation.error) ? "The approved leave changed. Close this form and review the current hours before continuing." : null}
+        />
+        <FieldNote id={`time-off-cancellation-selection-${request.id}`} error={selectionError} />
+        <FieldNote
+          id={`time-off-cancellation-unfinished-${request.id}`}
+          help={unfinished ? "Apply or discard the hours being edited before sending." : null}
+        />
         <FieldNote
           id={`time-off-cancellation-${request.id}`}
-          lines={2}
-          help={unfinished ? "Apply or discard the hours being edited before sending." : null}
-          error={
-            stale || isStaleTimeOff(mutation.error)
-              ? "The approved leave changed. Close this form and review the current hours before continuing."
-              : selectionError || (mutation.error ? mutation.error.message : null)
-          }
+          error={mutation.error && !isStaleTimeOff(mutation.error) ? mutation.error.message : null}
         />
         <button type="submit" disabled={stale || Boolean(selectionError) || unfinished}>Send cancellation request</button>
         <button type="button" onClick={() => { returnToLaunch.current = true; setDraft(null); }}>Keep approved leave</button>

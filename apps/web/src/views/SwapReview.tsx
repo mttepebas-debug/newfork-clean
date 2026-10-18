@@ -153,9 +153,11 @@ export function SwapReview({ item, workspace, timeFormat, onClose, onDone }: {
   ];
   const blocked = reasons.length > 0;
   const decideBy = timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat);
+  // Both when both hold, each whole (UI-FIELDMSG-2): the decision's refusal and the check's.
   const windowError =
-    decide.error?.message ||
-    (preview.isError ? "Eligibility could not be checked. Close and try again." : null);
+    [decide.error?.message, preview.isError ? "Eligibility could not be checked. Close and try again." : null]
+      .filter(Boolean)
+      .join(" ") || null;
   const places = [...new Set([item.shift.location_name, item.requested_shift?.location_name].filter(Boolean))].join(" or ");
   return (
     // Esc in the decline step goes back to the shifts and keeps the reason (P26).

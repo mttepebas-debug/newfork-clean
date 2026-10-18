@@ -1442,7 +1442,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             </div>
           ) : null}
           {/* The drawer's error, or why Save is held, lies over the body's
-              bottom edge above the footer: nothing moves (UI-FIELDMSG). */}
+              bottom edge above the footer; the body gets room under it (UI-FIELDMSG-2). */}
           <WindowAlert
             between
             message={error}
@@ -1744,6 +1744,9 @@ function EmployeeTerminationDialog({
   // BL-765) the server takes any valid zone: the workspace's are offered.
   const ownZones = zonesOf(locations);
   const timezoneOptions = ownZones.length ? ownZones : zonesOf(workspaceLocations);
+  const timezoneMissing = timezoneOptions.length
+    ? null
+    : "An active employee location with a timezone is required.";
   const primaryTimezone =
     locations.find((location) => location.id === primaryLocationId)?.timezone ??
     timezoneOptions[0] ??
@@ -1892,6 +1895,8 @@ function EmployeeTerminationDialog({
                 setEffectiveLocal(localDateTimeValue(new Date(), nextTimezone));
               }}
               aria-required
+              aria-invalid={timezoneOptions.length ? undefined : true}
+              aria-describedby={fieldNoteId(`${fieldId}-timezone`, timezoneMissing)}
             >
               {timezoneOptions.map((option) => (
                 <option key={option} value={option}>
@@ -1899,6 +1904,8 @@ function EmployeeTerminationDialog({
                 </option>
               ))}
             </select>
+            {/* The field's own reason, under it; the server's in the band (UI-FIELDMSG-2). */}
+            <FieldNote id={`${fieldId}-timezone`} error={timezoneMissing} />
           </label>
           <label>
             Reason
@@ -1925,14 +1932,7 @@ function EmployeeTerminationDialog({
           </p>
           <footer>
             {/* Over the warning's bottom edge, above the buttons (UI-FIELDMSG). */}
-            <WindowAlert
-              message={
-                error ||
-                (!timezoneOptions.length
-                  ? "An active employee location with a timezone is required."
-                  : null)
-              }
-            />
+            <WindowAlert message={error} />
             <Button
               type="button"
               className="secondary-button"
@@ -3237,7 +3237,6 @@ function Field({
   required = false,
   optional = false,
   refusal,
-  reserve,
 }: {
   label: string;
   value: string;
@@ -3253,10 +3252,8 @@ function Field({
   required?: boolean;
   /** Says so beside the label, rather than leaving it to be inferred. */
   optional?: boolean;
-  /** Said under the field as it is typed, in a line whose room is kept (TEL-2). */
+  /** Said under the field as it is typed (TEL-2). */
   refusal?: string | null;
-  /** The longest refusal the field can say. */
-  reserve?: string;
 }) {
   const [touched, setTouched] = useState(false);
   const id = useId();
@@ -3277,10 +3274,12 @@ function Field({
   // The US letter rule (BL-503), said as it is typed, not on leaving the field.
   const lettersBroken =
     type === "text" && !readOnly && !disabled && hasTurkishOnlyLetters(value);
-  // One note line under the field (TEL-2, UI-FIELDMSG): the server's refusal,
-  // else the field's own check, else the letter rule; its room is kept.
+  // The note under the field (TEL-2, UI-FIELDMSG-2): every check that fails,
+  // each said whole, none dropped; nothing while all pass.
   const note =
-    refusal || (invalid ? validationMessage : lettersBroken ? usLettersMessage : null);
+    [refusal, invalid ? validationMessage : null, lettersBroken ? usLettersMessage : null]
+      .filter(Boolean)
+      .join(" ") || null;
   const describedBy = [
     fieldNoteId(id, note),
     lockedReason ? `${id}-reason` : null,
@@ -3355,7 +3354,7 @@ function Field({
           </span>
         ) : null}
       </span>
-      <FieldNote id={id} error={note} reserve={reserve} className="employee-field-helper" />
+      <FieldNote id={id} error={note} className="employee-field-helper" />
       {lockedReason ? (
         <span id={`${id}-reason`} className="sr-only">
           {lockedReason}
@@ -3780,7 +3779,6 @@ function OwnEmergencyContact({ control }: { readonly control: OwnContactControl 
         disabled={disabled}
         onChange={(phone) => onChange({ ...value, phone })}
         refusal={isOwnPhone ? emergencyIsOwnPhoneMessage : null}
-        reserve={emergencyIsOwnPhoneMessage}
       />
     </>
   );

@@ -72,16 +72,19 @@ export function TimeOffShorten({ request, workspaceId, timeFormat, onDone }: {
           onEditing={active => setEditing(current => active ? [...new Set([...current, period.key])] : current.filter(key => key !== period.key))} />
       </div>)}
       <label>Note for {request.employee_name}<textarea maxLength={1000} value={note} onChange={event => setNote(event.target.value)} /></label>
-      {/* Why it can't be sent, in one kept place above the buttons (UI-FIELDMSG). */}
+      {/* Why it can't be sent, above the buttons: every reason that holds, each
+          whole, none dropped, nothing while all is well (UI-FIELDMSG-2). */}
+      <FieldNote id={`time-off-shorten-selection-${request.id}`} error={choices.length ? selectionError : null} />
+      <FieldNote
+        id={`time-off-shorten-unfinished-${request.id}`}
+        help={unfinished ? "Apply or discard the hours being edited first." : null}
+      />
       <FieldNote
         id={`time-off-shorten-${request.id}`}
-        lines={2}
-        help={unfinished ? "Apply or discard the hours being edited first." : null}
         error={
-          (choices.length && selectionError) ||
-          (mutation.error
+          mutation.error
             ? isStaleTimeOff(mutation.error) ? "This request changed. Review it again." : mutation.error.message
-            : null)
+            : null
         }
       />
       <button type="submit" disabled={!choices.length || Boolean(selectionError) || unfinished}>Give back these hours</button>
