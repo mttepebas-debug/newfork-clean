@@ -76,6 +76,8 @@ const pageCopy: Record<
     description: "Set your weekly preferences and request time off.",
   },
 };
+// The swipe is a phone's, and a phone has My shifts · Lineup only: Team schedule is a desktop tab (S-153), so it
+// is not a swipe stop (its address on a phone opens My shifts).
 const SCHEDULE_PAGES = ["schedule", "schedule/lineup"] as const;
 const AVAILABILITY_TABS = ["availability", "time-off"] as const;
 const fallbackCopy = {
