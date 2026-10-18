@@ -368,10 +368,11 @@ Kaynak: kullanıcı kararı 2026-09 eski cevaplar, onay 2026-10-01 (KARAR-001); 
   - Önceden yer ayrılmaz: mesaj yokken alanın altında boş satır, pencerede boş şerit yoktur. Alanın yardım metni varsa hata onun yerini alır.
   - Mesaj çıkınca altındakiler aşağı kayabilir. Aynı satırdaki her şey birlikte ve aynı miktarda kayar. Yan yana iki alandan yalnız biri kayamaz; buna hiçbir zaman izin yoktur.
   - "…" yoktur: her mesaj tam gösterilir, en az satırda, penceresinden asla taşmaz.
+  - Pencere gövdesindeki tek bir denetimden (alan değil, ör. bir düğme ya da liste) gelen kısa hata da o denetimin hemen altında kalır ("HATA EGER KI KUCUK BIR PARCADAN KAYNAKLANIYORSA … ALTINA YAZ"). Örnek: Schedule → Default hours → Review; New Schedule şablon listesi; Settings → imza şablonu çekmecesi → Apply; Shift Hub istek paneli.
   - Pencere şeridi gövdenin alt kenarına, alt düğme satırının üstüne biner. Şerit görünürken gövdeye şerit yüksekliği kadar alt boşluk ve scroll-padding verilir; hiçbir denetim gizli ya da tıklanamaz kalmaz. Kaymayan kısa pencere o yükseklik kadar uzar.
   - Reddedilen: A, önceden ayrılmış şerit (hata yokken boş yer); B, alt düğme satırının metninde; "More" ile kırpma ve baloncuk; her alanın altında tek satırlık sabit yuva (bu maddenin ilk sürümü). Neden: hata yokken boş yer görünümü bozuyordu; bindirme son denetimi gizliyordu (nf-guvenlik RET @ddb3ff3bc).
   - Ortak parça `apps/web/src/shell/FieldNote.tsx`. `LetterRuleError` (`shell/us-text.tsx`), Announcements `FieldError` ve koşullu `.form-error` `<small>`'lar ona taşınır.
-  - Kurala uymayan ekranlar (nf-okur taraması, origin/main c310665a): Employees kişi çekmecesi, owner onboarding lokasyon formu, employee onboarding, Announcements çekmecesi, Lineup Publish penceresi, Schedule vardiya penceresi (bilgi satırı boşken), New Schedule / Default hours / Export pencereleri, giriş ve parola ekranları, Account Profile / Preferences / Security, Settings General, çalışan talep pencereleri ve onay pencereleri (Exchange / Swap / Time off). Düzeltme için Mert'in onayı bekleniyor (CLAUDE.md §3.A.7).
+  - Kurala uymayan ekranlar (UI-FIELDMSG sonrası, task/ui-fieldmsg-3@5c686051, 2026-10-18): düğme taşıyan hata satırları (WorkspaceHubPage, PreBiz, WorkspacesPage, CatalogDeleteAction, JobsSettingsPage, DocumentReviewDrawer; BL-1130), "Saved" gibi role=status satırları (BL-1131), telefonda Employees çekmecesinin alt çubuğu (BL-1132). İlk taramadaki öteki ekranlar UI-FIELDMSG ile düzeldi.
 
 ### 1.4 MVP sınırı
 
