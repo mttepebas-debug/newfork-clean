@@ -128,10 +128,14 @@ for (const screen of screens) {
         day: "numeric",
         year: new Date(`${day}T12:00:00`).getFullYear() === new Date().getFullYear() ? undefined : "numeric",
       }).format(new Date(`${day}T12:00:00`));
-      await ayse.getByRole("row", { name: new RegExp(`^Ali Person, Swap, ${when}`) }).first().click();
+      // A table row on a desktop, a card button on a phone.
+      await ayse
+        .getByRole(screen.name === "phone" ? "button" : "row", { name: new RegExp(`^Ali Person, Swap, ${when}`) })
+        .first()
+        .click();
       const window = ayse.getByRole("dialog", { name: "Swap request" });
       await window.getByRole("button", { name: "Decline", exact: true }).click();
-      const reason = window.getByRole("textbox", { name: "Reason for Deniz Person" });
+      const reason = window.getByRole("textbox", { name: /^Reason for Deniz/ });
       await reason.fill("Kitchen is short that day");
       await window.getByRole("button", { name: "Decline swap", exact: true }).click();
       await window.getByRole("button", { name: "Confirm decline", exact: true }).click();
@@ -157,9 +161,14 @@ for (const screen of screens) {
           const top = (node: Element | null | undefined) => node?.getBoundingClientRect().top ?? Number.NaN;
           const names = element.querySelector(".employee-name-grid");
           const inputs = [...(names?.querySelectorAll("input") ?? [])].map(top);
-          const below = [...(names?.parentElement?.children ?? [])]
-            .filter((child) => child !== names && (names!.compareDocumentPosition(child) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0)
-            .slice(0, 2)
+          // Every box after the name row, in every column: they all move by one amount.
+          const below = [...element.querySelectorAll("input, select, textarea")]
+            .filter(
+              (box) =>
+                !names?.contains(box) &&
+                (names!.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING) !== 0 &&
+                box.getBoundingClientRect().height > 0,
+            )
             .map(top);
           const notes = element.querySelectorAll(".field-note").length;
           const slots = [...element.ownerDocument.querySelectorAll(".window-alert-slot")].reduce(
