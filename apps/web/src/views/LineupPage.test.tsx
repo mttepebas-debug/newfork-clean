@@ -489,7 +489,8 @@ describe("LineupPage publishing", () => {
     expect(done).toBe(trigger);
     expect(done.getAttribute("aria-live")).toBe("polite");
     expect(done.getAttribute("aria-disabled")).toBe("true");
-    expect(document.activeElement).toBe(done);
+    // Focus returns in the closing window's effect: wait for it (a busy machine may run the check first).
+    await waitFor(() => expect(document.activeElement).toBe(done));
     // A press on Published doesn't open the window again.
     fireEvent.click(done);
     expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
@@ -1398,7 +1399,7 @@ describe("LineupPage on a phone, E", () => {
     expect(within(card).getByText(/^Published at /).classList.contains("is-flash")).toBe(true);
     const said = screen.getByRole("button", { name: "Published" });
     expect(said).toBe(dock);
-    expect(document.activeElement).toBe(dock);
+    await waitFor(() => expect(document.activeElement).toBe(dock));
     // Then it goes: nothing left to publish on this shift; focus waits on the card's Edit.
     await waitFor(() => expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull(), { timeout: 3000 });
     expect(document.querySelector(".lineup-phone-dock")).toBeNull();
