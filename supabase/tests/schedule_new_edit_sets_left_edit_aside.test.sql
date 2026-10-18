@@ -13,8 +13,9 @@ create temp table left_edit as select
   null::uuid first_edit, null::uuid second_edit, null::jsonb result, 0 drafts_before;
 insert into auth.users(id, email) select actor, actor::text || '@example.test' from left_edit;
 insert into public.workspaces(id, name, created_by) select w, 'Left edit', actor from left_edit;
-insert into public.workspace_memberships(workspace_id, user_id, role, all_locations)
-select w, actor, 'owner'::public.workspace_role, true from left_edit;
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w, actor, 'owner'::public.workspace_role, true from left_edit) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from left_edit on conflict do nothing;
 insert into public.locations(short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
 select 'T00121', loc, w, 'Left edit location', '1 Test Street', 'Test City', 'CA', '90001', 'America/Los_Angeles' from left_edit;

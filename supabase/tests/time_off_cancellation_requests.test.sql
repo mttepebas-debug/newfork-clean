@@ -8,7 +8,9 @@ create temp table tc as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
  (select jsonb_agg(to_jsonb(ps) order by ps.id) from public.schedule_published_shifts ps) published;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-cancel@example.test','','{}','{}',now(),now() from tc;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tc;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,actor,'employee','active',true from tc) as legacy(workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-994900','Cancel','Tester',manager from tc;
 insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
@@ -18,7 +20,9 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 -- somebody else's leave is refused the same way wherever the suite runs.
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values('af9c0000-0000-4000-8000-000000000004','00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-cancel-other@example.test','','{}','{}',now(),now());
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,'af9c0000-0000-4000-8000-000000000004','employee','active',true from tc;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,'af9c0000-0000-4000-8000-000000000004','employee','active',true from tc) as legacy(workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select 'af9c0000-0000-4000-8000-000000000005',w,'af9c0000-0000-4000-8000-000000000004','E-994901','Other','Tester',manager from tc;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,'af9c0000-0000-4000-8000-000000000005',loc,manager from tc;

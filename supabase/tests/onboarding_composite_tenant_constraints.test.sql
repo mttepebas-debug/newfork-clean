@@ -13,11 +13,12 @@ values
   ('20000000-0000-4000-8000-000000000171', 'Composite Tenant A', '10000000-0000-4000-8000-000000000171'),
   ('20000000-0000-4000-8000-000000000172', 'Composite Tenant B', '10000000-0000-4000-8000-000000000172');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('30000000-0000-4000-8000-000000000171', '20000000-0000-4000-8000-000000000171', '10000000-0000-4000-8000-000000000171', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000172', '20000000-0000-4000-8000-000000000172', '10000000-0000-4000-8000-000000000172', 'owner', 'active'),
-  ('30000000-0000-4000-8000-000000000173', '20000000-0000-4000-8000-000000000172', '10000000-0000-4000-8000-000000000173', 'employee', 'active');
+  ('30000000-0000-4000-8000-000000000173', '20000000-0000-4000-8000-000000000172', '10000000-0000-4000-8000-000000000173', 'employee', 'active')) as legacy(id, workspace_id, user_id, role, status);
 
 insert into public.employee_profiles (id, workspace_id, employee_code, first_name, last_name, created_by)
 values

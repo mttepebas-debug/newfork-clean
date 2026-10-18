@@ -7,8 +7,9 @@ create function pg_temp.actor(n integer) returns uuid language sql as $$select (
 create function pg_temp.emp(n integer) returns uuid language sql as $$select ('15000000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid$$;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select pg_temp.actor(n),'00000000-0000-0000-0000-000000000000','authenticated','authenticated','exchange-'||n||'@example.test','','{}','{}',now(),now() from generate_series(1,6)n;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-select pg_temp.w(),pg_temp.actor(n),'employee','active',true from generate_series(1,4)n;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select pg_temp.w(),pg_temp.actor(n),'employee','active',true from generate_series(1,4)n) as legacy(workspace_id, user_id, role, status, all_locations);
 update public.employee_profiles set user_id=pg_temp.actor(right(id::text,1)::int) where id in(pg_temp.emp(1),pg_temp.emp(2),pg_temp.emp(3));
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,created_by)
 values(pg_temp.emp(4),pg_temp.w(),pg_temp.actor(4),'E-9804','Drew','Test','',pg_temp.manager());
@@ -104,8 +105,9 @@ update sx_state set result=public.shift_exchanges_command_service(pg_temp.manage
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(2)),pg_temp.emp(2),'swap first assignment transfers');
 select is((select employee_id from public.schedule_published_shifts where id=pg_temp.shift(3)),pg_temp.emp(1),'swap second assignment transfers');
 -- Cross-location approval: each scoped manager votes; only the second commits.
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-select pg_temp.w(),pg_temp.actor(n),'manager', 'active',false from generate_series(5,6)n;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select pg_temp.w(),pg_temp.actor(n),'manager', 'active',false from generate_series(5,6)n) as legacy(workspace_id, user_id, role, status, all_locations);
 select tests.works_at(id, case when user_id=pg_temp.actor(5) then '11000000-0000-4000-8000-000000000001'::uuid else '11000000-0000-4000-8000-000000000002'::uuid end) from public.workspace_memberships where workspace_id=pg_temp.w() and user_id in(pg_temp.actor(5),pg_temp.actor(6));
 insert into public.schedule_location_publications(id,workspace_id,location_id,week_start,version_number,published_by)
 values('98010000-0000-4000-8000-000000000002',pg_temp.w(),'11000000-0000-4000-8000-000000000002','2030-01-07',1,pg_temp.manager());

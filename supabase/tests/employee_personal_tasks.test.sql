@@ -4,9 +4,11 @@ select plan(14);
 insert into auth.users(id, instance_id, aud, role, email, raw_app_meta_data, raw_user_meta_data, created_at, updated_at) values
 ('b7100000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hub-task-one@example.test','{}','{}',now(),now()),
 ('b7100000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','hub-task-two@example.test','{}','{}',now(),now());
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('b7200000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','b7100000-0000-4000-8000-000000000001','employee','active',true),
-('b7200000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','b7100000-0000-4000-8000-000000000002','employee','active',true);
+('b7200000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','b7100000-0000-4000-8000-000000000002','employee','active',true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by) values
 ('b7300000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','b7100000-0000-4000-8000-000000000001','E-9791','Task','One','','hub-task-one@example.test','b7100000-0000-4000-8000-000000000001'),
 ('b7300000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','b7100000-0000-4000-8000-000000000002','E-9792','Task','Two','','hub-task-two@example.test','b7100000-0000-4000-8000-000000000002');

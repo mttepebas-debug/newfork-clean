@@ -120,8 +120,9 @@ select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-0000000
 insert into public.employee_profiles (id, workspace_id, employee_code, first_name, last_name, created_by)
 values ('13000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), 'E-9001', 'Lif', 'Cycle', '11000000-0000-4000-8000-000000000001');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status, last_used_at, employee_id)
-values ('12000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), '11000000-0000-4000-8000-000000000002', 'employee', 'active', now(), '13000000-0000-4000-8000-000000000001');
+insert into public.workspace_memberships (id, workspace_id, user_id, status, last_used_at, employee_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.last_used_at::timestamptz, legacy.employee_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('12000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), '11000000-0000-4000-8000-000000000002', 'employee', 'active', now(), '13000000-0000-4000-8000-000000000001')) as legacy(id, workspace_id, user_id, role, status, last_used_at, employee_id);
 
 select set_config('request.jwt.claims', '', true);
 

@@ -16,14 +16,15 @@ values
   ('20000000-0000-4000-8000-000000000002', 'Second Test Workspace', '10000000-0000-4000-8000-000000000003'),
   ('20000000-0000-4000-8000-000000000003', 'Foreign Test Workspace', '10000000-0000-4000-8000-000000000003');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('30000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000001', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', '10000000-0000-4000-8000-000000000003', 'admin', 'active'),
   ('30000000-0000-4000-8000-000000000003', '20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000003', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000004', '20000000-0000-4000-8000-000000000002', '10000000-0000-4000-8000-000000000001', 'employee', 'active'),
   ('30000000-0000-4000-8000-000000000005', '20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000003', 'owner', 'active'),
-  ('30000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'employee', 'suspended');
+  ('30000000-0000-4000-8000-000000000006', '20000000-0000-4000-8000-000000000003', '10000000-0000-4000-8000-000000000001', 'employee', 'suspended')) as legacy(id, workspace_id, user_id, role, status);
 
 -- The owner membership above opened the account row (KK-179 (2)); this names it.
 insert into public.user_profiles (user_id, display_name)
@@ -1182,10 +1183,11 @@ values (
   'Transfer Test Workspace',
   '10000000-0000-4000-8000-000000000001'
 );
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('30000000-0000-4000-8000-000000000007', '20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000001', 'owner', 'active'),
-  ('30000000-0000-4000-8000-000000000008', '20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000003', 'admin', 'active');
+  ('30000000-0000-4000-8000-000000000008', '20000000-0000-4000-8000-000000000004', '10000000-0000-4000-8000-000000000003', 'admin', 'active')) as legacy(id, workspace_id, user_id, role, status);
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, created_by
 ) values (

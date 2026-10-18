@@ -15,10 +15,11 @@ insert into auth.users(id,email) select owner_id,'weekly-quiet-owner@example.tes
  union all select actor,'weekly-quiet-employee@example.test' from wq_fixture
  union all select manager,'weekly-quiet-manager@example.test' from wq_fixture;
 insert into public.workspaces(id,name,created_by) select w,'Weekly quiet save test',owner_id from wq_fixture;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select w,owner_id,'owner'::public.workspace_role,true from wq_fixture
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,owner_id,'owner'::public.workspace_role,true from wq_fixture
  union all select w,actor,'employee'::public.workspace_role,false from wq_fixture
- union all select w,manager,'manager'::public.workspace_role,false from wq_fixture;
+ union all select w,manager,'manager'::public.workspace_role,false from wq_fixture) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from wq_fixture on conflict do nothing;
 insert into public.locations(short_name,id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00091',loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wq_fixture;

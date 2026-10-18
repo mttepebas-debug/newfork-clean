@@ -13,12 +13,13 @@ values
   ('20000000-0000-4000-8000-000000000091', 'Tab Context A', '10000000-0000-4000-8000-000000000092'),
   ('20000000-0000-4000-8000-000000000092', 'Tab Context B', '10000000-0000-4000-8000-000000000093');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('30000000-0000-4000-8000-000000000091', '20000000-0000-4000-8000-000000000091', '10000000-0000-4000-8000-000000000092', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000092', '20000000-0000-4000-8000-000000000092', '10000000-0000-4000-8000-000000000093', 'owner', 'active'),
   ('30000000-0000-4000-8000-000000000093', '20000000-0000-4000-8000-000000000091', '10000000-0000-4000-8000-000000000091', 'admin', 'active'),
-  ('30000000-0000-4000-8000-000000000094', '20000000-0000-4000-8000-000000000092', '10000000-0000-4000-8000-000000000091', 'employee', 'active');
+  ('30000000-0000-4000-8000-000000000094', '20000000-0000-4000-8000-000000000092', '10000000-0000-4000-8000-000000000091', 'employee', 'active')) as legacy(id, workspace_id, user_id, role, status);
 
 insert into public.workspace_onboarding (workspace_id, status, current_step, completed_at, updated_by)
 values

@@ -15,11 +15,12 @@ values
   ('2a000000-0000-4000-8000-000000000001', 'Termination Workspace', '1a000000-0000-4000-8000-000000000001'),
   ('2a000000-0000-4000-8000-000000000002', 'Outside Workspace', '1a000000-0000-4000-8000-000000000003');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, all_locations)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('3a000000-0000-4000-8000-000000000001', '2a000000-0000-4000-8000-000000000001', '1a000000-0000-4000-8000-000000000001', 'owner', true),
   ('3a000000-0000-4000-8000-000000000002', '2a000000-0000-4000-8000-000000000001', '1a000000-0000-4000-8000-000000000002', 'employee', false),
-  ('3a000000-0000-4000-8000-000000000003', '2a000000-0000-4000-8000-000000000002', '1a000000-0000-4000-8000-000000000003', 'owner', true);
+  ('3a000000-0000-4000-8000-000000000003', '2a000000-0000-4000-8000-000000000002', '1a000000-0000-4000-8000-000000000003', 'owner', true)) as legacy(id, workspace_id, user_id, role, all_locations);
 
 insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, timezone

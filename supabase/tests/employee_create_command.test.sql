@@ -10,8 +10,9 @@ values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}
 update auth.users set email_confirmed_at = now() where id::text like '19000000-%' and email_confirmed_at is null;
 insert into public.workspaces (id, name, created_by)
 values ('29000000-0000-4000-8000-000000000001', 'Create command test', '19000000-0000-4000-8000-000000000001');
-insert into public.workspace_memberships (workspace_id, user_id, role, all_locations)
-values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000001', 'owner', true);
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000001', 'owner', true)) as legacy(workspace_id, user_id, role, all_locations);
 
 create temporary table create_fixture (employee jsonb, employee_role uuid, owner_role uuid, result jsonb);
 insert into create_fixture
@@ -110,8 +111,9 @@ values ('19000000-0000-4000-8000-000000000004', 'create-manager-actor@example.te
        ('19000000-0000-4000-8000-000000000005', 'create-manager-invite@example.test', '{}', '{}');
 -- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
 update auth.users set email_confirmed_at = now() where id::text like '19000000-%' and email_confirmed_at is null;
-insert into public.workspace_memberships (workspace_id, user_id, role, all_locations)
-values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000004', 'manager', false);
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000004', 'manager', false)) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_roles (id, workspace_id, name, access_class)
 values ('59000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001', 'Custom Lead', 'manager');
 create temporary table role_results (label text, result jsonb);

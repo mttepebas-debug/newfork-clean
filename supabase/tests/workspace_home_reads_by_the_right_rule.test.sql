@@ -107,8 +107,9 @@ select is((select p.display_name from public.user_profiles p where p.user_id = t
 select tests.person('h', 'nora', 'employee', array['K'], array['cook'], 'pending');
 delete from public.user_profiles where user_id = tests.user('h:nora');
 update public.employee_profiles set user_id = tests.user('h:nora') where id = tests.id('h:nora');
-insert into public.workspace_memberships (workspace_id, user_id, role, status, all_locations)
-values (tests.id('h'), tests.user('h:nora'), 'employee', 'suspended', false);
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values (tests.id('h'), tests.user('h:nora'), 'employee', 'suspended', false)) as legacy(workspace_id, user_id, role, status, all_locations);
 update public.workspace_memberships set status = 'removed' where workspace_id = tests.id('h') and user_id = tests.user('h:nora');
 select is((select count(*)::integer from public.user_profiles p where p.user_id = tests.user('h:nora')), 0,
   'a suspended or removed membership opens no account row');

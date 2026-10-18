@@ -8,8 +8,9 @@ values ('16100000-0000-4000-8000-000000000001', '00000000-0000-0000-0000-0000000
 insert into public.workspaces (id, name, created_by)
 values ('26100000-0000-4000-8000-000000000001', 'Employee Counter Workspace', '16100000-0000-4000-8000-000000000001');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, all_locations)
-values ('36100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', '16100000-0000-4000-8000-000000000001', 'owner', true);
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('36100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', '16100000-0000-4000-8000-000000000001', 'owner', true)) as legacy(id, workspace_id, user_id, role, all_locations);
 
 insert into public.locations (short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
 values ('T00011','46100000-0000-4000-8000-000000000001', '26100000-0000-4000-8000-000000000001', 'Counter Location', '1 Counter St', 'Los Angeles', 'CA', '90001', 'America/Los_Angeles');

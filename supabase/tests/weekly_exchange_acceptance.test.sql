@@ -15,10 +15,11 @@ insert into auth.users(id,email) select manager,'weekly-exchange-manager@example
  union all select first_user,'weekly-exchange-first@example.test' from ws
  union all select second_user,'weekly-exchange-second@example.test' from ws;
 insert into public.workspaces(id,name,created_by) select w,'Weekly exchange',manager from ws;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select w,manager,'owner'::public.workspace_role,true from ws
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,manager,'owner'::public.workspace_role,true from ws
  union all select w,first_user,'employee'::public.workspace_role,true from ws
- union all select w,second_user,'employee'::public.workspace_role,true from ws;
+ union all select w,second_user,'employee'::public.workspace_role,true from ws) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00052', loc,w,'Exchange site','1 Test Street','Test City','CA','90001','UTC' from ws;

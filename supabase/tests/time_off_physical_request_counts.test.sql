@@ -10,7 +10,9 @@ create temp table cq as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uuid w,
 select public.availability_lock_workspace(w) from cq;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select id,'00000000-0000-0000-0000-000000000000','authenticated','authenticated',id::text||'@counts.test','','{}','{}',now(),now() from cq cross join lateral(values(actor),(reviewer)) u(id);
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from cq;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,actor,'employee','active',true from cq) as legacy(workspace_id, user_id, role, status, all_locations);
 insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)
 select 'T00044', a,w,'Counts 24001 UTC','UTC','1 Test St','Test','CA','94000' from cq union all
 select 'T00045', b,w,'Counts 24001 Hidden LA','America/Los_Angeles','2 Test St','Test','CA','94000' from cq;
@@ -24,8 +26,9 @@ insert into public.shift_types(id,workspace_id,name,default_start_time,default_e
 insert into public.workspace_roles(id,workspace_id,name,access_class) select 'afa10000-0000-4000-8000-000000000001',w,'Counts 24001 scoped reviewer','manager' from cq;
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
 select w,'afa10000-0000-4000-8000-000000000001',p from cq,unnest(array['workspace.read','schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.publish'])p;
-insert into public.workspace_memberships(id,workspace_id,user_id,role,role_id,status,all_locations)
-select 'afa10000-0000-4000-8000-000000000002',w,reviewer,'manager','afa10000-0000-4000-8000-000000000001','active',false from cq;
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select 'afa10000-0000-4000-8000-000000000002',w,reviewer,'manager','afa10000-0000-4000-8000-000000000001','active',false from cq) as legacy(id, workspace_id, user_id, role, role_id, status, all_locations);
 select tests.works_at('afa10000-0000-4000-8000-000000000002', a) from cq;
 create temp table cq_publications as select n,('afa20000-0000-4000-8000-'||lpad(n::text,12,'0'))::uuid id,
  case when n=2 then b else a end location,case when n=3 then '2035-01-08'::date else '2035-01-15'::date end week from cq,generate_series(1,3)n;

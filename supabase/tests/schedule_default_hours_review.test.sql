@@ -11,7 +11,9 @@ insert into public.locations(short_name, id,workspace_id,name,timezone,street_ad
 insert into public.jobs(id,workspace_id,name) select job,w,'Default review job' from dhr;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select employee_actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','default-review-employee@example.test','','{}','{}',now(),now() from dhr;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,employee_actor,'employee','active',true from dhr;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,employee_actor,'employee','active',true from dhr) as legacy(workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by) select emp,w,employee_actor,'E-995701','Default review','Employee',actor from dhr;
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by) select w,emp,loc,actor from dhr;
 insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by) select w,emp,job,actor from dhr;

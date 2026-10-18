@@ -6,8 +6,10 @@ insert into auth.users(id,email) values
 ('18000000-0000-4000-8000-000000000092','catalog-outsider@example.test');
 insert into public.workspaces(id,name,created_by) values
 ('28000000-0000-4000-8000-000000000091','Catalog deletion','18000000-0000-4000-8000-000000000091');
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations) values
-('28000000-0000-4000-8000-000000000091','18000000-0000-4000-8000-000000000091','owner',true);
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
+('28000000-0000-4000-8000-000000000091','18000000-0000-4000-8000-000000000091','owner',true)) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.departments(id,workspace_id,name) values
 ('38000000-0000-4000-8000-000000000091','28000000-0000-4000-8000-000000000091','Keep jobs'),
 ('38000000-0000-4000-8000-000000000092','28000000-0000-4000-8000-000000000091','Delete jobs');

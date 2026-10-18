@@ -25,10 +25,12 @@ insert into public.user_profiles(user_id,display_name) values
  ('a8000000-0000-4000-8000-000000000001','Scoped Manager'),
  ('a8000000-0000-4000-8000-000000000002','Employee One'),
  ('a8000000-0000-4000-8000-000000000003','Employee Two');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
  ('a8100000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000001','manager','active',false),
  ('a8100000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000002','employee','active',false),
- ('a8100000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000003','employee','active',false);
+ ('a8100000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000003','employee','active',false)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 select tests.works_at('a8100000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001');
 select tests.works_at('a8100000-0000-4000-8000-000000000003', '11000000-0000-4000-8000-000000000002');
 update public.employee_profiles set user_id='a8000000-0000-4000-8000-000000000002' where id='15000000-0000-4000-8000-000000000001';
@@ -154,8 +156,10 @@ update public.locations set timezone='Pacific/Kiritimati' where id='11000000-000
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values
  ('a8000000-0000-4000-8000-000000000005','00000000-0000-0000-0000-000000000000','authenticated','authenticated','comms-placeless-manager@example.test','','{}','{}',now(),now());
 insert into public.user_profiles(user_id,display_name) values ('a8000000-0000-4000-8000-000000000005','Placeless Manager');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations) values
- ('a8100000-0000-4000-8000-000000000005','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000005','manager','active',false);
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
+ ('a8100000-0000-4000-8000-000000000005','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd','a8000000-0000-4000-8000-000000000005','manager','active',false)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 create temp table today_before as select
   public.get_workspace_dashboard_service('a8000000-0000-4000-8000-000000000001','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics' manager,
   public.get_workspace_dashboard_service('d9f43e62-e099-48e1-bc6f-a5aabe8e87d5','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd')->'metrics' owner;

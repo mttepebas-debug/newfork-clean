@@ -14,7 +14,9 @@ create temp table tp_state as select '6ea5d512-bc7f-4cf3-aad4-2f0815de00fd'::uui
  null::uuid request,null::uuid segment,null::jsonb result;
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 select actor,'00000000-0000-0000-0000-000000000000','authenticated','authenticated','timeoff-periods@example.test','','{}','{}',now(),now() from tp_state;
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations) select w,actor,'employee','active',true from tp_state;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,actor,'employee','active',true from tp_state) as legacy(workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
 select emp,w,actor,'E-994800','Period','Tester',manager from tp_state;
 insert into public.locations(short_name, id,workspace_id,name,timezone,street_address,city,region,postal_code)

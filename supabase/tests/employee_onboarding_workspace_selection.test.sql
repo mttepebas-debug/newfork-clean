@@ -11,9 +11,11 @@ insert into public.workspaces(id, name, created_by) values
 ('a6600000-0000-4000-8000-000000000101', 'Multi One', 'a6600000-0000-4000-8000-000000000001'),
 ('a6600000-0000-4000-8000-000000000102', 'Multi Two', 'a6600000-0000-4000-8000-000000000001'),
 ('a6600000-0000-4000-8000-000000000103', 'Multi Three', 'a6600000-0000-4000-8000-000000000001');
-insert into public.workspace_memberships(id, workspace_id, user_id, role, status, created_at) values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, created_at, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.created_at::timestamptz, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('a6600000-0000-4000-8000-000000000201', 'a6600000-0000-4000-8000-000000000101', 'a6600000-0000-4000-8000-000000000002', 'employee', 'active', now() - interval '2 days'),
-('a6600000-0000-4000-8000-000000000202', 'a6600000-0000-4000-8000-000000000102', 'a6600000-0000-4000-8000-000000000002', 'employee', 'pending_activation', now() - interval '1 day');
+('a6600000-0000-4000-8000-000000000202', 'a6600000-0000-4000-8000-000000000102', 'a6600000-0000-4000-8000-000000000002', 'employee', 'pending_activation', now() - interval '1 day')) as legacy(id, workspace_id, user_id, role, status, created_at);
 insert into public.employee_profiles(id, workspace_id, user_id, employee_code, first_name, last_name, created_by) values
 ('a6600000-0000-4000-8000-000000000301', 'a6600000-0000-4000-8000-000000000101', 'a6600000-0000-4000-8000-000000000002', 'E-6601', 'Multi', 'Employee', 'a6600000-0000-4000-8000-000000000001'),
 ('a6600000-0000-4000-8000-000000000302', 'a6600000-0000-4000-8000-000000000102', 'a6600000-0000-4000-8000-000000000002', 'E-6602', 'Multi', 'Employee', 'a6600000-0000-4000-8000-000000000001');

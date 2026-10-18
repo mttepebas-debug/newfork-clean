@@ -9,14 +9,16 @@ select is((select count(*)::int from public.account_organization_history where u
 
 insert into public.workspaces(id,name,created_by)
 values ('a5051000-0000-4000-8000-000000000001','AUTH005 Owned','a5050000-0000-4000-8000-000000000001');
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-values ('a5051000-0000-4000-8000-000000000001','a5050000-0000-4000-8000-000000000001','owner','active',true);
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('a5051000-0000-4000-8000-000000000001','a5050000-0000-4000-8000-000000000001','owner','active',true)) as legacy(workspace_id, user_id, role, status, all_locations);
 
 select is((select count(*)::int from public.account_organization_history where user_id='a5050000-0000-4000-8000-000000000001'),1,'creating the first membership marks the account');
 
 -- A half-finished employee onboarding counts the same as a completed one.
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-values ('a5051000-0000-4000-8000-000000000001','a5050000-0000-4000-8000-000000000002','employee','pending_activation',true);
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('a5051000-0000-4000-8000-000000000001','a5050000-0000-4000-8000-000000000002','employee','pending_activation',true)) as legacy(workspace_id, user_id, role, status, all_locations);
 select is((select count(*)::int from public.account_organization_history where user_id='a5050000-0000-4000-8000-000000000002'),1,'a pending activation membership also marks the account');
 
 create temp table first_mark as
@@ -24,8 +26,9 @@ select first_linked_at from public.account_organization_history where user_id='a
 
 insert into public.workspaces(id,name,created_by)
 values ('a5051000-0000-4000-8000-000000000002','AUTH005 Second','a5050000-0000-4000-8000-000000000001');
-insert into public.workspace_memberships(workspace_id,user_id,role,status,all_locations)
-values ('a5051000-0000-4000-8000-000000000002','a5050000-0000-4000-8000-000000000001','owner','active',true);
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('a5051000-0000-4000-8000-000000000002','a5050000-0000-4000-8000-000000000001','owner','active',true)) as legacy(workspace_id, user_id, role, status, all_locations);
 
 select is((select count(*)::int from public.account_organization_history where user_id='a5050000-0000-4000-8000-000000000001'),1,'a second membership does not add a second row');
 select is((select first_linked_at from public.account_organization_history where user_id='a5050000-0000-4000-8000-000000000001'),(select first_linked_at from first_mark),'the first link timestamp is never rewritten');

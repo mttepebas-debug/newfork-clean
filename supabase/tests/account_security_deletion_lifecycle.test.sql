@@ -51,9 +51,9 @@ insert into public.workspaces (
 );
 select public.initialize_workspace_roles('72000000-0000-4000-8000-000000000101');
 
-insert into public.workspace_memberships (
-  id, workspace_id, user_id, role, status, role_id
-) values (
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values (
   '72000000-0000-4000-8000-000000000201',
   '72000000-0000-4000-8000-000000000101',
   '72000000-0000-4000-8000-000000000001',
@@ -61,7 +61,7 @@ insert into public.workspace_memberships (
   (select id from public.workspace_roles
    where workspace_id = '72000000-0000-4000-8000-000000000101'
      and system_key = 'owner')
-);
+)) as legacy(id, workspace_id, user_id, role, status, role_id);
 
 insert into public.employee_profiles (
   id, workspace_id, employee_code, first_name, last_name,

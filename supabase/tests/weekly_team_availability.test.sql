@@ -19,10 +19,11 @@ insert into auth.users(id,email) select owner_id,'weekly-team-owner@example.test
  union all select actor,'weekly-team-employee@example.test' from wt_fixture
  union all select manager,'weekly-team-manager@example.test' from wt_fixture;
 insert into public.workspaces(id,name,created_by) select w,'Weekly team test',owner_id from wt_fixture;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select w,owner_id,'owner'::public.workspace_role,true from wt_fixture
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,owner_id,'owner'::public.workspace_role,true from wt_fixture
  union all select w,actor,'employee'::public.workspace_role,false from wt_fixture
- union all select w,manager,'manager'::public.workspace_role,false from wt_fixture;
+ union all select w,manager,'manager'::public.workspace_role,false from wt_fixture) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from wt_fixture on conflict do nothing;
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00078', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wt_fixture
@@ -70,8 +71,9 @@ select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,und
 -- An admin with an employee record at West is not listed either; a person not yet
 -- joined (no account, so no role above employee) still is.
 insert into auth.users(id,email) select gen_random_uuid(),'weekly-team-admin@example.test';
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select f.w,u.id,'admin'::public.workspace_role,true from wt_fixture f,auth.users u where u.email='weekly-team-admin@example.test';
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select f.w,u.id,'admin'::public.workspace_role,true from wt_fixture f,auth.users u where u.email='weekly-team-admin@example.test') as legacy(workspace_id, user_id, role, all_locations);
 select tests.works_at(m.id,f.loc) from wt_fixture f join public.workspace_memberships m on m.workspace_id=f.w
  join auth.users u on u.id=m.user_id and u.email='weekly-team-admin@example.test';
 select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared),'an admin working at West is not listed') from wt_fixture;

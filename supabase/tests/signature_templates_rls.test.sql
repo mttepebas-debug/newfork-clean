@@ -14,12 +14,13 @@ values
   ('25000000-0000-4000-8000-000000000001', 'Signature Workspace', '15000000-0000-4000-8000-000000000001'),
   ('25000000-0000-4000-8000-000000000002', 'Other Signature Workspace', '15000000-0000-4000-8000-000000000004');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('35000000-0000-4000-8000-000000000001', '25000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000001', 'owner'),
   ('35000000-0000-4000-8000-000000000002', '25000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000002', 'admin'),
   ('35000000-0000-4000-8000-000000000003', '25000000-0000-4000-8000-000000000001', '15000000-0000-4000-8000-000000000003', 'manager'),
-  ('35000000-0000-4000-8000-000000000004', '25000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000004', 'owner');
+  ('35000000-0000-4000-8000-000000000004', '25000000-0000-4000-8000-000000000002', '15000000-0000-4000-8000-000000000004', 'owner')) as legacy(id, workspace_id, user_id, role);
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000001', true);

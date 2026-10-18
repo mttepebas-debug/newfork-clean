@@ -15,12 +15,13 @@ values
   ('b1051002-0000-4000-8000-000000000001', 'Roles Workspace', 'b1051001-0000-4000-8000-000000000001'),
   ('b1051002-0000-4000-8000-000000000002', 'Other Roles Workspace', 'b1051001-0000-4000-8000-000000000004');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('b1051003-0000-4000-8000-000000000001', 'b1051002-0000-4000-8000-000000000001', 'b1051001-0000-4000-8000-000000000001', 'owner'),
   ('b1051003-0000-4000-8000-000000000002', 'b1051002-0000-4000-8000-000000000001', 'b1051001-0000-4000-8000-000000000002', 'admin'),
   ('b1051003-0000-4000-8000-000000000003', 'b1051002-0000-4000-8000-000000000001', 'b1051001-0000-4000-8000-000000000003', 'manager'),
-  ('b1051003-0000-4000-8000-000000000004', 'b1051002-0000-4000-8000-000000000002', 'b1051001-0000-4000-8000-000000000004', 'owner');
+  ('b1051003-0000-4000-8000-000000000004', 'b1051002-0000-4000-8000-000000000002', 'b1051001-0000-4000-8000-000000000004', 'owner')) as legacy(id, workspace_id, user_id, role);
 
 
 create temporary table role_test_state as select
@@ -90,7 +91,9 @@ insert into public.jobs(id,workspace_id,name) values('b1051007-0000-4000-8000-00
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values('b1051001-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','roles-employee@example.test','','{}','{}',now(),now());
 -- These accounts have confirmed their address; accepting an invitation asks for it (SEC-003).
 update auth.users set email_confirmed_at = now() where id::text like 'b1051001-%' and email_confirmed_at is null;
-insert into public.workspace_memberships(workspace_id,user_id,role) values('b1051002-0000-4000-8000-000000000001','b1051001-0000-4000-8000-000000000006','employee');
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values('b1051002-0000-4000-8000-000000000001','b1051001-0000-4000-8000-000000000006','employee')) as legacy(workspace_id, user_id, role);
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,user_id,created_by) values
 ('b1051004-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','E-0002','Manager','Test','b1051001-0000-4000-8000-000000000003','b1051001-0000-4000-8000-000000000001'),
 ('b1051004-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','E-0003','Common','Record','b1051001-0000-4000-8000-000000000006','b1051001-0000-4000-8000-000000000001'),

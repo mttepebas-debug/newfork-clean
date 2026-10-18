@@ -15,13 +15,14 @@ values
   ('21000000-0000-4000-8000-000000000001', 'Organization One', '11000000-0000-4000-8000-000000000001'),
   ('21000000-0000-4000-8000-000000000002', 'Organization Two', '11000000-0000-4000-8000-000000000001');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, all_locations)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('31000000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000001', 'owner', true),
   ('31000000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000002', 'admin', true),
   ('31000000-0000-4000-8000-000000000003', '21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000003', 'manager', true),
   ('31000000-0000-4000-8000-000000000004', '21000000-0000-4000-8000-000000000001', '11000000-0000-4000-8000-000000000004', 'employee', false),
-  ('31000000-0000-4000-8000-000000000005', '21000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000001', 'owner', true);
+  ('31000000-0000-4000-8000-000000000005', '21000000-0000-4000-8000-000000000002', '11000000-0000-4000-8000-000000000001', 'owner', true)) as legacy(id, workspace_id, user_id, role, all_locations);
 
 insert into public.locations (short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
 values

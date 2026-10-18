@@ -7,9 +7,11 @@ insert into auth.users(id,email) values
 ('18000000-0000-4000-8000-000000000083','job-bulk-manager@example.test');
 insert into public.workspaces(id,name,created_by) values
 ('28000000-0000-4000-8000-000000000081','Job bulk test','18000000-0000-4000-8000-000000000081');
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations) values
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('28000000-0000-4000-8000-000000000081','18000000-0000-4000-8000-000000000081','owner',true),
-('28000000-0000-4000-8000-000000000081','18000000-0000-4000-8000-000000000083','manager',false);
+('28000000-0000-4000-8000-000000000081','18000000-0000-4000-8000-000000000083','manager',false)) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by)
 select ('78000000-0000-4000-8000-'||lpad(i::text,12,'0'))::uuid,'28000000-0000-4000-8000-000000000081',
 'E-'||lpad(i::text,4,'0'),'Employee',lpad(i::text,3,'0'),'18000000-0000-4000-8000-000000000081'

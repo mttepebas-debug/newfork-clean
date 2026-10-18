@@ -54,8 +54,9 @@ values (
   '1a000000-0000-4000-8000-000000000001'
 );
 
-insert into public.workspace_memberships (workspace_id, user_id, role, role_id, status, employee_id)
-select
+insert into public.workspace_memberships (workspace_id, user_id, status, employee_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.employee_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select
   (select workspace_id from own_record_target),
   '1a000000-0000-4000-8000-000000000002',
   'employee'::public.workspace_role,
@@ -63,7 +64,7 @@ select
    where workspace_id = (select workspace_id from own_record_target)
      and system_key = 'employee'),
   'active'::public.membership_status,
-  '1b000000-0000-4000-8000-000000000001';
+  '1b000000-0000-4000-8000-000000000001') as legacy(workspace_id, user_id, role, role_id, status, employee_id);
 
 -- What onboarding left: the legal name the employee gave and the contact they
 -- named then. The account area corrects the contact; the legal name is

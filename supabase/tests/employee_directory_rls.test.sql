@@ -22,12 +22,13 @@ values
   ('26000000-0000-4000-8000-000000000001', 'Employee Workspace', '16000000-0000-4000-8000-000000000001'),
   ('26000000-0000-4000-8000-000000000002', 'Other Employee Workspace', '16000000-0000-4000-8000-000000000003');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, all_locations)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('36000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001', '16000000-0000-4000-8000-000000000001', 'owner', true),
   ('36000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001', '16000000-0000-4000-8000-000000000002', 'manager', false),
   ('36000000-0000-4000-8000-000000000003', '26000000-0000-4000-8000-000000000002', '16000000-0000-4000-8000-000000000003', 'owner', true),
-  ('36000000-0000-4000-8000-000000000004', '26000000-0000-4000-8000-000000000001', '16000000-0000-4000-8000-000000000004', 'owner', true);
+  ('36000000-0000-4000-8000-000000000004', '26000000-0000-4000-8000-000000000001', '16000000-0000-4000-8000-000000000004', 'owner', true)) as legacy(id, workspace_id, user_id, role, all_locations);
 
 insert into public.locations (short_name, id, workspace_id, name, street_address, city, region, postal_code, timezone)
 values
@@ -773,16 +774,16 @@ select throws_ok(
 
 set local role postgres;
 select set_config('request.jwt.claim.sub', '', true);
-insert into public.workspace_memberships (
-  id, workspace_id, user_id, role, role_id, all_locations
-) values (
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values (
   '36000000-0000-4000-8000-000000000010',
   '26000000-0000-4000-8000-000000000001',
   '16000000-0000-4000-8000-000000000010',
   'employee',
   (select id from directory_role_ids where label = 'employee'),
   false
-);
+)) as legacy(id, workspace_id, user_id, role, role_id, all_locations);
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
   invitation_email, created_by

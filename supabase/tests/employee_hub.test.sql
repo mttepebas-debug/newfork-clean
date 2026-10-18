@@ -14,13 +14,15 @@ select tests.person('eh', 'sam', 'employee', array['B'], array['cook']);
 -- Daylight Home's "Manager on the floor" (S-163, rol-cift design 4.13): a shift in a Management job.
 select tests.person('eh', 'mina', 'manager', array['K'], array['cook', 'manager']);
 select tests.new_user('eh:noprofile', 'No Profile');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations)
-values (gen_random_uuid(), tests.id('eh'), tests.user('eh:noprofile'), 'employee', 'active', true);
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values (gen_random_uuid(), tests.id('eh'), tests.user('eh:noprofile'), 'employee', 'active', true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 
 insert into public.workspaces(id,name,created_by)
 values ('99000000-0000-4000-8000-000000000001','Second Hub Workspace',tests.user('eh:alex'));
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations)
-values ('98100000-0000-4000-8000-000000000004','99000000-0000-4000-8000-000000000001',tests.user('eh:alex'),'employee','active',true);
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('98100000-0000-4000-8000-000000000004','99000000-0000-4000-8000-000000000001',tests.user('eh:alex'),'employee','active',true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,preferred_name,invitation_email,created_by)
 values (
   '99000000-0000-4000-8000-000000000002',

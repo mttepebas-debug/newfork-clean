@@ -18,12 +18,13 @@ insert into auth.users(id,email) select owner_id,'terms-owner@example.test' from
  union all select first_user,'terms-first@example.test' from ws union all select second_user,'terms-second@example.test' from ws
  union all select manager_a,'terms-manager-a@example.test' from ws union all select manager_b,'terms-manager-b@example.test' from ws;
 insert into public.workspaces(id,name,created_by) select w,'Changed terms',owner_id from ws;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select w,owner_id,'owner'::public.workspace_role,true from ws
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,owner_id,'owner'::public.workspace_role,true from ws
  union all select w,first_user,'employee'::public.workspace_role,true from ws
  union all select w,second_user,'employee'::public.workspace_role,true from ws
  union all select w,manager_a,'manager'::public.workspace_role,false from ws
- union all select w,manager_b,'manager'::public.workspace_role,false from ws;
+ union all select w,manager_b,'manager'::public.workspace_role,false from ws) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from ws on conflict do nothing;
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00053', loc,w,'Original site','1 Test Street','Test City','CA','90001','UTC' from ws

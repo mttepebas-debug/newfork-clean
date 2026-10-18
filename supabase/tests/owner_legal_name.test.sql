@@ -278,11 +278,12 @@ select is(
 select tests.new_user('ln:nameless', 'Nameless Admin');
 -- Written as the test's own setup, not as whoever a service call last named.
 select set_config('request.jwt.claim.sub', '', true), set_config('request.jwt.claims', '', true);
-insert into public.workspace_memberships (workspace_id, user_id, role, role_id, status)
-select tests.id('ln'), tests.user('ln:nameless'), 'admin'::public.workspace_role, role.id,
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select tests.id('ln'), tests.user('ln:nameless'), 'admin'::public.workspace_role, role.id,
   'active'::public.membership_status
 from public.workspace_roles role
-where role.workspace_id = tests.id('ln') and role.system_key = 'admin';
+where role.workspace_id = tests.id('ln') and role.system_key = 'admin') as legacy(workspace_id, user_id, role, role_id, status);
 
 create function pg_temp.transfer(target_label text) returns text language sql as $$
   select pg_temp.refusal(format(

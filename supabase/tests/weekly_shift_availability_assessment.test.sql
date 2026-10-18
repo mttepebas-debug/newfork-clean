@@ -16,10 +16,11 @@ insert into auth.users(id,email) select owner_id,'weekly-owner@example.test' fro
  union all select actor,'weekly-employee@example.test' from wp_fixture
  union all select manager,'weekly-manager@example.test' from wp_fixture;
 insert into public.workspaces(id,name,created_by) select w,'Weekly preferences test',owner_id from wp_fixture;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations)
- select w,owner_id,'owner'::public.workspace_role,true from wp_fixture
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,owner_id,'owner'::public.workspace_role,true from wp_fixture
  union all select w,actor,'employee'::public.workspace_role,false from wp_fixture
- union all select w,manager,'manager'::public.workspace_role,false from wp_fixture;
+ union all select w,manager,'manager'::public.workspace_role,false from wp_fixture) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.workspace_scheduling_settings(workspace_id) select w from wp_fixture on conflict do nothing;
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00076', loc,w,'West','1 Test Street','Test City','CA','90001','America/Los_Angeles' from wp_fixture

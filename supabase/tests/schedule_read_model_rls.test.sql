@@ -39,13 +39,14 @@ values
   ('32000000-0000-4000-8000-000000000001', 'Schedule Workspace', '31000000-0000-4000-8000-000000000001'),
   ('32000000-0000-4000-8000-000000000002', 'Outside Workspace', '31000000-0000-4000-8000-000000000004');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status, all_locations)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('33000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000001', 'owner', 'active', true),
   ('33000000-0000-4000-8000-000000000002', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000002', 'manager', 'active', false),
   ('33000000-0000-4000-8000-000000000003', '32000000-0000-4000-8000-000000000001', '31000000-0000-4000-8000-000000000003', 'employee', 'active', true),
   ('33000000-0000-4000-8000-000000000004', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000004', 'owner', 'active', true),
-  ('33000000-0000-4000-8000-000000000005', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000002', 'employee', 'active', true);
+  ('33000000-0000-4000-8000-000000000005', '32000000-0000-4000-8000-000000000002', '31000000-0000-4000-8000-000000000002', 'employee', 'active', true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 
 insert into public.locations (short_name,
   id, workspace_id, name, street_address, city, region, postal_code, country_code, timezone, sort_order

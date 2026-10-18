@@ -11,7 +11,9 @@ insert into auth.users(id, email, email_confirmed_at) values
 ('a5500000-0000-4000-8000-000000000007', 'gate2-7@example.test', now()),
 ('a5500000-0000-4000-8000-000000000008', 'gate2-8@example.test', now());
 insert into public.workspaces(id,name,created_by) values ('a5500000-0000-4000-8000-000000000101','Gate2 Workspace','a5500000-0000-4000-8000-000000000001'),('a5500000-0000-4000-8000-000000000102','Foreign Workspace','a5500000-0000-4000-8000-000000000008');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status) values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('a5500000-0000-4000-8000-000000000201','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000001','owner','active'),
 ('a5500000-0000-4000-8000-000000000202','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000002','admin','active'),
 ('a5500000-0000-4000-8000-000000000203','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000003','manager','active'),
@@ -19,7 +21,7 @@ insert into public.workspace_memberships(id,workspace_id,user_id,role,status) va
 ('a5500000-0000-4000-8000-000000000205','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000005','admin','active'),
 ('a5500000-0000-4000-8000-000000000206','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000006','admin','active'),
 ('a5500000-0000-4000-8000-000000000207','a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000007','admin','suspended'),
-('a5500000-0000-4000-8000-000000000208','a5500000-0000-4000-8000-000000000102','a5500000-0000-4000-8000-000000000008','owner','active');
+('a5500000-0000-4000-8000-000000000208','a5500000-0000-4000-8000-000000000102','a5500000-0000-4000-8000-000000000008','owner','active')) as legacy(id, workspace_id, user_id, role, status);
 -- The memberships above opened the account rows (KK-179 (2)); these name two of them.
 insert into public.user_profiles(user_id, display_name) values ('a5500000-0000-4000-8000-000000000002','Eligible Admin'),('a5500000-0000-4000-8000-000000000005','Incomplete Admin')
 on conflict (user_id) do update set display_name = excluded.display_name;
@@ -120,7 +122,9 @@ insert into auth.users(id,email,email_confirmed_at) values
 ('a5500000-0000-4000-8000-000000000409','bounded-admin-9@example.test',now()),
 ('a5500000-0000-4000-8000-000000000410','bounded-admin-10@example.test',now()),
 ('a5500000-0000-4000-8000-000000000411','bounded-admin-11@example.test',now());
-insert into public.workspace_memberships(workspace_id,user_id,role,status) values
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000400','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000401','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000402','admin','active'),
@@ -132,7 +136,7 @@ insert into public.workspace_memberships(workspace_id,user_id,role,status) value
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000408','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000409','admin','active'),
 ('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000410','admin','active'),
-('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000411','admin','active');
+('a5500000-0000-4000-8000-000000000101','a5500000-0000-4000-8000-000000000411','admin','active')) as legacy(workspace_id, user_id, role, status);
 -- Each has a legal name on file, or none of them would be a candidate (BL-080).
 with filed as (
   insert into public.employee_profiles(workspace_id,user_id,employee_code,first_name,last_name,created_by)
@@ -157,7 +161,9 @@ insert into auth.users(id,email,email_confirmed_at) values
 ('a5500000-0000-4000-8000-000000000013','expired-invitee-gate2@example.test',now()),
 ('a5500000-0000-4000-8000-000000000014','owner-invitee-gate2@example.test',now());
 insert into public.workspaces(id,name,created_by) values ('a5500000-0000-4000-8000-000000000103','Invitee Own Workspace','a5500000-0000-4000-8000-000000000014');
-insert into public.workspace_memberships(workspace_id,user_id,role,status) values ('a5500000-0000-4000-8000-000000000103','a5500000-0000-4000-8000-000000000014','owner','active');
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('a5500000-0000-4000-8000-000000000103','a5500000-0000-4000-8000-000000000014','owner','active')) as legacy(workspace_id, user_id, role, status);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by) values
 ('a5500000-0000-4000-8000-000000000312','a5500000-0000-4000-8000-000000000102',null,'E-9912','Pending','Invitee','a5500000-0000-4000-8000-000000000008'),
 ('a5500000-0000-4000-8000-000000000313','a5500000-0000-4000-8000-000000000102',null,'E-9913','Expired','Invitee','a5500000-0000-4000-8000-000000000008'),
@@ -190,11 +196,13 @@ insert into public.workspaces(id,name,created_by) values
 ('a5500000-0000-4000-8000-000000000104','Close Later Co','a5500000-0000-4000-8000-000000000015'),
 ('a5500000-0000-4000-8000-000000000105','Not Yet Co','a5500000-0000-4000-8000-000000000017'),
 ('a5500000-0000-4000-8000-000000000106','Broken Close Co','a5500000-0000-4000-8000-000000000018');
-insert into public.workspace_memberships(workspace_id,user_id,role,status) values
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
 ('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000015','owner','active'),
 ('a5500000-0000-4000-8000-000000000104','a5500000-0000-4000-8000-000000000016','admin','active'),
 ('a5500000-0000-4000-8000-000000000105','a5500000-0000-4000-8000-000000000017','owner','active'),
-('a5500000-0000-4000-8000-000000000106','a5500000-0000-4000-8000-000000000018','owner','active');
+('a5500000-0000-4000-8000-000000000106','a5500000-0000-4000-8000-000000000018','owner','active')) as legacy(workspace_id, user_id, role, status);
 insert into public.locations(short_name,id,workspace_id,name,street_address,city,region,postal_code,timezone)
 values ('CLC1','a5500000-0000-4000-8000-000000000604','a5500000-0000-4000-8000-000000000104','Close Later Main','1 Main St','Los Angeles','CA','90001','America/Los_Angeles');
 set local role service_role;

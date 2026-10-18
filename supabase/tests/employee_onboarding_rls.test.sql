@@ -23,15 +23,16 @@ values
   ('27000000-0000-4000-8000-000000000001', 'Onboarding Workspace', '17000000-0000-4000-8000-000000000001'),
   ('27000000-0000-4000-8000-000000000002', 'Outside Workspace', '17000000-0000-4000-8000-000000000004');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role, status, all_locations)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('37000000-0000-4000-8000-000000000001', '27000000-0000-4000-8000-000000000001', '17000000-0000-4000-8000-000000000001', 'owner', 'active', true),
   ('37000000-0000-4000-8000-000000000002', '27000000-0000-4000-8000-000000000001', '17000000-0000-4000-8000-000000000002', 'manager', 'active', true),
   ('37000000-0000-4000-8000-000000000003', '27000000-0000-4000-8000-000000000001', '17000000-0000-4000-8000-000000000003', 'employee', 'pending_activation', true),
   ('37000000-0000-4000-8000-000000000004', '27000000-0000-4000-8000-000000000002', '17000000-0000-4000-8000-000000000004', 'owner', 'active', true),
   ('37000000-0000-4000-8000-000000000005', '27000000-0000-4000-8000-000000000001', '17000000-0000-4000-8000-000000000005', 'employee', 'pending_activation', true),
   ('37000000-0000-4000-8000-000000000006', '27000000-0000-4000-8000-000000000002', '17000000-0000-4000-8000-000000000006', 'employee', 'pending_activation', true),
-  ('37000000-0000-4000-8000-000000000007', '27000000-0000-4000-8000-000000000002', '17000000-0000-4000-8000-000000000007', 'employee', 'pending_activation', true);
+  ('37000000-0000-4000-8000-000000000007', '27000000-0000-4000-8000-000000000002', '17000000-0000-4000-8000-000000000007', 'employee', 'pending_activation', true)) as legacy(id, workspace_id, user_id, role, status, all_locations);
 
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,

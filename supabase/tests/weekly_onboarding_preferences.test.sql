@@ -9,9 +9,10 @@ create temp table wo_fixture as select
 insert into auth.users(id,email) select owner_id,'weekly-onboarding-owner@example.test' from wo_fixture
  union all select actor,'weekly-onboarding-employee@example.test' from wo_fixture;
 insert into public.workspaces(id,name,created_by) select w,'Weekly onboarding test',owner_id from wo_fixture;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations,status)
- select w,owner_id,'owner'::public.workspace_role,true,'active'::public.membership_status from wo_fixture
- union all select w,actor,'employee'::public.workspace_role,false,'pending_activation'::public.membership_status from wo_fixture;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,owner_id,'owner'::public.workspace_role,true,'active'::public.membership_status from wo_fixture
+ union all select w,actor,'employee'::public.workspace_role,false,'pending_activation'::public.membership_status from wo_fixture) as legacy(workspace_id, user_id, role, all_locations, status);
 insert into public.workspace_scheduling_settings(workspace_id) select w from wo_fixture on conflict do nothing;
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select emp,w,actor,'E-993437','Weekly','Onboarding',owner_id from wo_fixture;
@@ -50,8 +51,9 @@ select ok(not has_function_privilege('authenticated','public.sync_weekly_onboard
 select ok(not has_function_privilege('service_role','public.guard_weekly_onboarding_requirement()','EXECUTE'),'trigger helper is not a service endpoint');
 update public.workspace_scheduling_settings set availability_onboarding_required=true where workspace_id=(select w from wo_fixture);
 insert into auth.users(id,email) values('ad437000-0000-4000-8000-000000000005','weekly-onboarding-second@example.test');
-insert into public.workspace_memberships(workspace_id,user_id,role,status)
- select w,'ad437000-0000-4000-8000-000000000005','employee','pending_activation' from wo_fixture;
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,'ad437000-0000-4000-8000-000000000005','employee','pending_activation' from wo_fixture) as legacy(workspace_id, user_id, role, status);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,created_by)
  select 'ad437000-0000-4000-8000-000000000006',w,'ad437000-0000-4000-8000-000000000005','E-993438','Next','Employee',owner_id from wo_fixture;
 select lives_ok($$select public.initialize_employee_onboarding_service('ad437000-0000-4000-8000-000000000005')$$,'new onboarding initializes under the required policy');

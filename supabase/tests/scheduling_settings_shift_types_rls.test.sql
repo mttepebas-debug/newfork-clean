@@ -14,12 +14,13 @@ values
   ('22000000-0000-4000-8000-000000000001', 'Schedule Workspace', '12000000-0000-4000-8000-000000000001'),
   ('22000000-0000-4000-8000-000000000002', 'Other Schedule Workspace', '12000000-0000-4000-8000-000000000004');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, role)
-values
+insert into public.workspace_memberships (id, workspace_id, user_id, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
   ('32000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000001', '12000000-0000-4000-8000-000000000001', 'owner'),
   ('32000000-0000-4000-8000-000000000002', '22000000-0000-4000-8000-000000000001', '12000000-0000-4000-8000-000000000002', 'admin'),
   ('32000000-0000-4000-8000-000000000003', '22000000-0000-4000-8000-000000000001', '12000000-0000-4000-8000-000000000003', 'manager'),
-  ('32000000-0000-4000-8000-000000000004', '22000000-0000-4000-8000-000000000002', '12000000-0000-4000-8000-000000000004', 'owner');
+  ('32000000-0000-4000-8000-000000000004', '22000000-0000-4000-8000-000000000002', '12000000-0000-4000-8000-000000000004', 'owner')) as legacy(id, workspace_id, user_id, role);
 
 select is(
   (select count(*)::integer from public.workspace_scheduling_settings where workspace_id in ('22000000-0000-4000-8000-000000000001', '22000000-0000-4000-8000-000000000002')),

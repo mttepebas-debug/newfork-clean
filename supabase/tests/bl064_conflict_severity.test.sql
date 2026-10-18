@@ -11,7 +11,9 @@ create temp table f as select
  'b1640000-0000-4000-8000-000000000007'::uuid shift;
 insert into auth.users(id,email) select actor,'bl064@example.test' from f;
 insert into public.workspaces(id,name,created_by) select w,'BL064 SQL fixture',actor from f;
-insert into public.workspace_memberships(workspace_id,user_id,role,all_locations) select w,actor,'owner',true from f;
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,actor,'owner',true from f) as legacy(workspace_id, user_id, role, all_locations);
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone)
  select 'T00007', loc,w,'Test','1 Test','Test','CA','90001','America/Los_Angeles' from f;
 insert into public.jobs(id,workspace_id,name) select job,w,'Test' from f;
@@ -59,8 +61,9 @@ insert into public.workspace_roles(id,workspace_id,name,access_class,sort_order)
  select 'b1640000-0000-4000-8000-000000000011',w,'Limited schedule manager','manager',100 from f;
 insert into public.workspace_role_permissions(workspace_id,role_id,permission_key)
  select w,'b1640000-0000-4000-8000-000000000011',unnest(array['schedule.manage','settings.schedule_rules.read','settings.schedule_rules.manage']) from f;
-insert into public.workspace_memberships(workspace_id,user_id,role,role_id,all_locations)
- select w,'b1640000-0000-4000-8000-000000000010','manager','b1640000-0000-4000-8000-000000000011',true from f;
+insert into public.workspace_memberships (workspace_id, user_id, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (select w,'b1640000-0000-4000-8000-000000000010','manager','b1640000-0000-4000-8000-000000000011',true from f) as legacy(workspace_id, user_id, role, role_id, all_locations);
 select throws_ok($$select public.update_scheduling_settings_service('b1640000-0000-4000-8000-000000000010',w,'{"minimum_rest_minutes":90,"conflict_rules_revision":1}') from f$$,'42501',null,'general settings management does not grant conflict management');
 select throws_ok($$select public.update_scheduling_settings_service(actor,w,'{"minimum_rest_minutes":90}') from f$$,'PT409',null,'missing conflict revision is rejected');
 select throws_ok($$select public.update_scheduling_settings_service(actor,w,'{"minimum_rest_minutes":90,"conflict_rules_revision":999}') from f$$,'PT409',null,'stale conflict revision is rejected');

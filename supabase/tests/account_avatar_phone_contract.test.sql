@@ -7,8 +7,10 @@ values ('75000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-00000000
 insert into public.workspaces(id,name,created_by) values
  ('75000000-0000-4000-8000-000000000101','Avatar contract','75000000-0000-4000-8000-000000000001');
 select public.initialize_workspace_roles('75000000-0000-4000-8000-000000000101');
-insert into public.workspace_memberships(id,workspace_id,user_id,role,status) values
- ('75000000-0000-4000-8000-000000000201','75000000-0000-4000-8000-000000000101','75000000-0000-4000-8000-000000000001','owner','active');
+insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values
+ ('75000000-0000-4000-8000-000000000201','75000000-0000-4000-8000-000000000101','75000000-0000-4000-8000-000000000001','owner','active')) as legacy(id, workspace_id, user_id, role, status);
 insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first_name,last_name,invitation_email,created_by) values
  ('75000000-0000-4000-8000-000000000301','75000000-0000-4000-8000-000000000101','75000000-0000-4000-8000-000000000001','E-7501','Test','Person','avatar-self@example.test','75000000-0000-4000-8000-000000000001');
 -- The owner membership above opened the account row (KK-179 (2)); this names it.
