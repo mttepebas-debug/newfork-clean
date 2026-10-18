@@ -8,6 +8,7 @@ import { isObligationClosed } from "../documents/document-rules";
 import { EmployeeDocumentsList } from "../documents/EmployeeDocumentsList";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
+import { useTabSwipe } from "../shell/useTabSwipe";
 import { AccountPageHeader } from "./components";
 import { onTabListKeyDown } from "../lib/tab-list-keys";
 
@@ -30,6 +31,8 @@ export function waitingOnYou(
   ).length;
 }
 
+const DOCUMENT_TABS = ["document", "acknowledgement"] as const;
+
 export default function AccountDocumentsPage() {
   const { account } = useAuth();
   const [params] = useSearchParams();
@@ -41,9 +44,11 @@ export default function AccountDocumentsPage() {
     },
     enabled: Boolean(account),
   });
-  const [tab, setTab] = useState<"document" | "acknowledgement">(
+  const [tab, setTab] = useState<(typeof DOCUMENT_TABS)[number]>(
     params.get("kind") === "acknowledgement" ? "acknowledgement" : "document",
   );
+  // On a phone a swipe sideways moves between the two tabs (KARARLAR §1.5).
+  const swipe = useTabSwipe({ tabs: DOCUMENT_TABS, active: tab, onSelect: setTab });
   // Somebody in three workspaces had to find the right one in a dropdown before
   // they could see what any of them were asking for. All of them are here.
   const linked = (workspaces.data ?? []).filter(
@@ -52,7 +57,7 @@ export default function AccountDocumentsPage() {
   const requestedWorkspace = params.get("workspace");
 
   return (
-    <section className="account-page" aria-labelledby="account-documents-title">
+    <section className="account-page" aria-labelledby="account-documents-title" ref={swipe.root}>
       <AccountPageHeader
         title="Documents"
         titleId="account-documents-title"
@@ -63,6 +68,7 @@ export default function AccountDocumentsPage() {
         role="tablist"
         aria-label="Your documents"
         onKeyDown={onTabListKeyDown}
+        ref={swipe.tabs}
       >
         <button
           type="button"

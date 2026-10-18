@@ -29,7 +29,7 @@ vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 // published lineup isn't drawn as started in the afternoon.
 vi.mock("../lib/today", async (original) => ({ ...(await original<object>()), todayIn: () => "2026-10-13", clockIn: () => "09:00" }));
 let phone = false;
-vi.mock("../lib/usePhoneWidth", () => ({ usePhoneWidth: () => phone }));
+vi.mock("../lib/usePhoneWidth", () => ({ usePhoneWidth: () => phone, useListPhoneWidth: () => phone }));
 vi.mock("../schedule/hooks/useScheduleRealtime", () => ({ useScheduleRealtime: () => undefined }));
 vi.mock("../schedule/schedule-data", async (original) => ({
   ...(await original<object>()),
@@ -487,6 +487,29 @@ describe("LineupPage on a phone, E", () => {
     expect(within(panel).getByText("Patio opens at 5")).toBeTruthy();
     expect(within(panel).queryByRole("textbox")).toBeNull();
     expect(within(panel).queryByRole("button")).toBeNull();
+  });
+
+  // KARARLAR §1.5: a swipe sideways moves between Team, Notes and Read; the day wheel and the shift tabs keep
+  // their own (a swipe never changes the shift).
+  it("moves between Team, Notes and Read on a swipe, never the shift", async () => {
+    renderPage();
+    const swipe = (target: Element, dx: number) => {
+      fireEvent.touchStart(target, { touches: [{ clientX: 200, clientY: 500 }] });
+      fireEvent.touchEnd(target, { touches: [], changedTouches: [{ clientX: 200 + dx, clientY: 505 }] });
+    };
+    const selected = () => screen.getAllByRole("tab").find((tab) => tab.getAttribute("aria-selected") === "true")!.textContent;
+    swipe(await screen.findByRole("tabpanel"), -120);
+    expect(selected()).toMatch(/^Notes/);
+    swipe(screen.getByRole("tabpanel"), -120);
+    expect(selected()).toMatch(/^Read/);
+    swipe(screen.getByRole("tabpanel"), -120);
+    expect(selected()).toMatch(/^Read/);
+    const pressed = () => screen.getByRole("group", { name: "Shifts" }).querySelector('[aria-pressed="true"]')!.textContent;
+    const shiftBefore = pressed();
+    swipe(screen.getByRole("group", { name: "Shifts" }), 120);
+    swipe(screen.getByRole("group", { name: /^Day. Swipe/ }), 120);
+    expect(pressed()).toBe(shiftBefore);
+    expect(selected()).toMatch(/^Read/);
   });
 
   it("lists who read it once published, who hasn't, and who has no app", async () => {

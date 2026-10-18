@@ -2,7 +2,7 @@ import type { MyLineup } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, Clock, MapPin } from "lucide-react";
-import { useState, type CSSProperties, type JSX } from "react";
+import { useState, type CSSProperties, type JSX, type Ref } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { todayIn } from "../lib/today";
@@ -38,18 +38,22 @@ function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("");
 }
 
+/** Where Schedule or Lineup opens, on the day the address has. */
+export function employeeSchedulePath(page: "schedule" | "schedule/lineup", search: string): string {
+  const date = new URLSearchParams(search).get("date");
+  return `/app/employee-hub/${page}${date ? `?date=${date}` : ""}`;
+}
+
 /** Schedule and Lineup, the two pages under the employee's Schedule. */
-export function EmployeeScheduleTabs(): JSX.Element {
+export function EmployeeScheduleTabs({ tabsRef }: { readonly tabsRef?: Ref<HTMLElement> }): JSX.Element {
   const location = useLocation();
   const onLineup = location.pathname.endsWith("/schedule/lineup");
-  const date = new URLSearchParams(location.search).get("date");
-  const search = date ? `?date=${date}` : "";
   return (
-    <nav className="employee-schedule-tabs" aria-label="Schedule pages">
-      <Link to={`/app/employee-hub/schedule${search}`} aria-current={onLineup ? undefined : "page"}>
+    <nav className="employee-schedule-tabs" aria-label="Schedule pages" ref={tabsRef}>
+      <Link to={employeeSchedulePath("schedule", location.search)} aria-current={onLineup ? undefined : "page"}>
         Schedule
       </Link>
-      <Link to={`/app/employee-hub/schedule/lineup${search}`} aria-current={onLineup ? "page" : undefined}>
+      <Link to={employeeSchedulePath("schedule/lineup", location.search)} aria-current={onLineup ? "page" : undefined}>
         Lineup
       </Link>
     </nav>

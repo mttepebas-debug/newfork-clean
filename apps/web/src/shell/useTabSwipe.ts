@@ -1,0 +1,153 @@
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type RefCallback } from "react";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
+
+// KARARLAR §1.5 (Mert 2026-10-17, "Telefonda sekmeli sayfalarda yana kaydırma"): on a phone, a sideways
+// swipe on a tabbed page's content moves to the next tab (finger to the left) or the previous one, and
+// stops at the ends. The new tab slides in from the side it came from. What moves sideways on its own keeps
+// its swipe: the tab row, fields, a control group (Lineup's day wheel, its shift tabs), a sheet, a strip
+// that scrolls sideways. The browser's swipe back from the screen's edge is off while such a page is open.
+// One hook for every tabbed page (Employee Schedule · Lineup, Shift Hub, My Availability, Account →
+// Documents, the manager's phone Lineup).
+
+/** The swipe the studio tried (Newfork mobile studio, "Telefonda sekmeler: tek stil"). */
+const MIN_DISTANCE = 56;
+const MAX_SLOPE = 1.6;
+const MAX_MS = 900;
+/** The screen-edge band where a touch would start iOS Safari's swipe back, px. */
+export const EDGE_BAND = 16;
+/** The slide-in: 26 px from the side, from a third of its strength, 0.22 s. */
+const SLIDE_PX = 26;
+const SLIDE_MS = 220;
+
+const OWN_SWIPE =
+  'input, textarea, select, [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], [aria-modal="true"], nav';
+const CONTROL = 'a, button, input, select, textarea, label, summary, [role="button"], [role="tab"], [contenteditable=""], [contenteditable="true"]';
+
+/** 1: the next tab (the finger went left), -1: the previous one, 0: not a swipe. */
+export function swipeStep(dx: number, dy: number, ms: number): -1 | 0 | 1 {
+  if (ms > MAX_MS || Math.abs(dx) < MIN_DISTANCE || Math.abs(dx) < Math.abs(dy) * MAX_SLOPE) return 0;
+  return dx < 0 ? 1 : -1;
+}
+
+/** Whether a touch on `target` belongs to something under it that moves sideways itself. */
+function ownsSwipe(target: Element, root: Element): boolean {
+  if (target.closest(OWN_SWIPE)) return true;
+  for (let element: Element | null = target; element && element !== root; element = element.parentElement) {
+    if (element.scrollWidth > element.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(element).overflowX)) return true;
+  }
+  return false;
+}
+
+// More than one tabbed page can be up at once (a page and the tabs on it); the edge stays off until the last goes.
+let edgeHolders = 0;
+function holdEdge(): () => void {
+  const onStart = (event: TouchEvent) => {
+    const touch = event.touches[0];
+    if (event.touches.length !== 1 || !touch) return;
+    if (touch.clientX > EDGE_BAND && touch.clientX < window.innerWidth - EDGE_BAND) return;
+    if (event.target instanceof Element && event.target.closest(CONTROL)) return;
+    event.preventDefault();
+  };
+  const root = document.documentElement;
+  if (edgeHolders++ === 0) root.style.overscrollBehaviorX = "none";
+  document.addEventListener("touchstart", onStart, { capture: true, passive: false });
+  return () => {
+    document.removeEventListener("touchstart", onStart, { capture: true });
+    if (--edgeHolders === 0) root.style.overscrollBehaviorX = "";
+  };
+}
+
+export interface TabSwipe {
+  /** The page: swipes on it move between the tabs. */
+  readonly root: RefCallback<HTMLElement>;
+  /** The tab row: what comes after it slides in when the tab changes. */
+  readonly tabs: RefCallback<HTMLElement>;
+}
+
+export function useTabSwipe<T extends string>({
+  tabs,
+  active,
+  onSelect,
+  enabled = true,
+}: {
+  readonly tabs: readonly T[];
+  /** The tab shown; one the list doesn't have (an unknown address) moves nowhere. */
+  readonly active: string;
+  readonly onSelect: (tab: T) => void;
+  /** Off while the page shows something else over its tabs (an opened request). */
+  readonly enabled?: boolean;
+}): TabSwipe {
+  const phone = useListPhoneWidth();
+  const on = phone && enabled;
+  const [root, setRoot] = useState<HTMLElement | null>(null);
+  const tabRow = useRef<HTMLElement | null>(null);
+  const latest = useRef({ tabs, active, onSelect });
+  latest.current = { tabs, active, onSelect };
+
+  useEffect(() => {
+    if (!on || !root) return;
+    let start: { x: number; y: number; at: number } | null = null;
+    const onStart = (event: TouchEvent) => {
+      const touch = event.touches[0];
+      start =
+        event.touches.length === 1 && touch && event.target instanceof Element && !ownsSwipe(event.target, root)
+          ? { x: touch.clientX, y: touch.clientY, at: Date.now() }
+          : null;
+    };
+    const onMove = (event: TouchEvent) => {
+      if (event.touches.length > 1) start = null;
+    };
+    const onEnd = (event: TouchEvent) => {
+      const touch = event.changedTouches[0];
+      if (!start || !touch || event.touches.length) return void (start = null);
+      const step = swipeStep(touch.clientX - start.x, touch.clientY - start.y, Date.now() - start.at);
+      start = null;
+      const { tabs: list, active: current, onSelect: select } = latest.current;
+      const at = (list as readonly string[]).indexOf(current);
+      const next = list[at + step];
+      if (step && at >= 0 && next !== undefined) select(next);
+    };
+    const onCancel = () => void (start = null);
+    root.addEventListener("touchstart", onStart, { passive: true });
+    root.addEventListener("touchmove", onMove, { passive: true });
+    root.addEventListener("touchend", onEnd);
+    root.addEventListener("touchcancel", onCancel);
+    const releaseEdge = holdEdge();
+    return () => {
+      root.removeEventListener("touchstart", onStart);
+      root.removeEventListener("touchmove", onMove);
+      root.removeEventListener("touchend", onEnd);
+      root.removeEventListener("touchcancel", onCancel);
+      releaseEdge();
+    };
+  }, [on, root]);
+
+  // The new tab comes in from the side it is on: from the right going forward, from the left going back.
+  const shown = useRef(active);
+  useLayoutEffect(() => {
+    const order: readonly string[] = tabs;
+    const before = order.indexOf(shown.current);
+    shown.current = active;
+    const after = order.indexOf(active);
+    const row = tabRow.current;
+    if (!phone || before < 0 || after < 0 || before === after || !row?.parentElement) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const from = after > before ? SLIDE_PX : -SLIDE_PX;
+    for (let element = row.nextElementSibling; element; element = element.nextElementSibling) {
+      if (!(element instanceof HTMLElement) || typeof element.animate !== "function") continue;
+      if (element.getAttribute("aria-hidden") === "true" || getComputedStyle(element).position === "fixed") continue;
+      element.animate(
+        [
+          { transform: `translateX(${from}px)`, opacity: 0.35 },
+          { transform: "none", opacity: 1 },
+        ],
+        { duration: SLIDE_MS, easing: "ease-out" },
+      );
+    }
+  }, [active, phone, tabs]);
+
+  const setTabs = useCallback<RefCallback<HTMLElement>>((element) => {
+    tabRow.current = element;
+  }, []);
+  return { root: setRoot, tabs: setTabs };
+}

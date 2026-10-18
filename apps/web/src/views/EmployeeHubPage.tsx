@@ -13,6 +13,7 @@ import { Navigate, useLocation, useNavigate } from "react-router";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { AvailabilityDraftScope, timeOffNavigationLabels, useAvailabilityNavigationGuard } from "../availability/availability-navigation";
 import { requestAppNavigation } from "../shell/leave-guard";
+import { useTabSwipe } from "../shell/useTabSwipe";
 import { loadWeeklyPreferences } from "../availability/availability-data";
 import { TimeOffHourFields, defaultTimeOffHours, type TimeOffHours } from "../employee-hub/TimeOffHourFields";
 import { TimeOffDateFields, type TimeOffDateDraft, type TimeOffDateDrafts } from "../employee-hub/TimeOffDateFields";
@@ -30,7 +31,7 @@ import {
 
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
-import { EmployeeLineup, EmployeeScheduleTabs } from "../employee-hub/EmployeeLineup";
+import { EmployeeLineup, EmployeeScheduleTabs, employeeSchedulePath } from "../employee-hub/EmployeeLineup";
 import { useHubClock } from "../employee-hub/useHubClock";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
@@ -68,6 +69,8 @@ const pageCopy: Record<
     description: "Set your weekly preferences and request time off.",
   },
 };
+const SCHEDULE_PAGES = ["schedule", "schedule/lineup"] as const;
+const AVAILABILITY_TABS = ["availability", "time-off"] as const;
 const fallbackCopy = {
   title: "Employee Hub",
   eyebrow: "YOUR WORKSPACE.",
@@ -84,6 +87,15 @@ export function EmployeeHubPage() {
   const knownPage =
     path === "" || path === "schedule" || path === "schedule/lineup" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
   const now = useHubClock();
+  const navigate = useNavigate();
+  // Schedule and Lineup on a phone: a swipe sideways moves between them (KARARLAR §1.5, "the main tab first":
+  // Lineup's own Team · Notes changes by its tabs only).
+  const scheduleSwipe = useTabSwipe({
+    tabs: SCHEDULE_PAGES,
+    active: path,
+    enabled: path === "schedule" || path === "schedule/lineup",
+    onSelect: (page) => navigate(employeeSchedulePath(page, location.search)),
+  });
   // The hub's date range is asked before its locations load: the device's calendar.
   const today = todayIn(undefined, now);
   const selectedScheduleDate = path === "schedule"
@@ -155,7 +167,7 @@ export function EmployeeHubPage() {
       </section>
     );
   return (
-    <section className="employee-hub-page" aria-labelledby="employee-hub-title">
+    <section className="employee-hub-page" aria-labelledby="employee-hub-title" ref={scheduleSwipe.root}>
       {path === "schedule/lineup" ? (
         // Lineup: only the page header stays put, at its full size, as on the manager's phone Lineup (Mert
         // 2026-10-17 ~8:30 AM); the shell's frozen top leaves it alone (data-frozen-own).
@@ -178,7 +190,7 @@ export function EmployeeHubPage() {
       ) : null}
       {path === "schedule" ? (
         <>
-          <EmployeeScheduleTabs />
+          <EmployeeScheduleTabs tabsRef={scheduleSwipe.tabs} />
           <EmployeeScheduleBoard
             key={`${workspaceId}:${context?.userId}`}
             workspaceId={workspaceId}
@@ -188,7 +200,7 @@ export function EmployeeHubPage() {
         </>
       ) : path === "schedule/lineup" ? (
         <>
-          <EmployeeScheduleTabs />
+          <EmployeeScheduleTabs tabsRef={scheduleSwipe.tabs} />
           <EmployeeLineup
             key={`${workspaceId}:${context?.userId}`}
             workspaceId={workspaceId}
@@ -217,6 +229,7 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
     { id: "time-off", label: "Time Off Requests", icon: CalendarOff },
   ] as const;
   const active = timeOff ? "time-off" : "availability";
+  const swipe = useTabSwipe({ tabs: AVAILABILITY_TABS, active, onSelect: select });
   function select(id: typeof active) {
     if (id === active) return;
     requestAppNavigation(() => {
@@ -228,8 +241,8 @@ function AvailabilityView({ model, refresh }: HubMutationProps) {
     });
   }
   return (
-    <div className="employee-weekly-workspace">
-      <div className="weekly-preferences-tabs" role="tablist" aria-label="My availability">
+    <div className="employee-weekly-workspace" ref={swipe.root}>
+      <div className="weekly-preferences-tabs" role="tablist" aria-label="My availability" ref={swipe.tabs}>
         {choices.map(({ id, label, icon: Icon }, index) => (
           <button key={id} type="button" role="tab" id={`my-${id}-tab`}
             aria-controls={`my-${id}-panel`} aria-selected={active === id}

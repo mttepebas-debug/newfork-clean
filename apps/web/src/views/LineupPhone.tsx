@@ -6,6 +6,7 @@ import {
   type CSSProperties,
   type KeyboardEvent as ReactKeyboardEvent,
   type ReactNode,
+  type Ref,
   type RefObject,
 } from "react";
 
@@ -24,6 +25,7 @@ import { dockPlace } from "../schedule/lineup-wheel";
 import { LineupDayHead, LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
+import { useTabSwipe } from "../shell/useTabSwipe";
 import "./lineup-phone.css";
 
 // The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3):
@@ -40,7 +42,8 @@ export interface PhonePublish {
   readonly window: ReactNode;
 }
 
-type Seg = "team" | "notes" | "read";
+const SEGS = ["team", "notes", "read"] as const;
+type Seg = (typeof SEGS)[number];
 
 function initials(name: string): string {
   return name
@@ -93,9 +96,12 @@ export function PhoneLineupPage({
 
   const ready = !loading && !error && location && !location.closed;
   const shift = ready ? phoneLineupShift(location.shifts, chosen, now) : null;
+  // A swipe sideways moves between Team, Notes and Read (KARARLAR §1.5); the day wheel and the shift tabs keep
+  // their own, so a swipe never changes the shift (it is chosen by its tab).
+  const swipe = useTabSwipe({ tabs: SEGS, active: seg, enabled: Boolean(shift), onSelect: setSeg });
 
   return (
-    <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title">
+    <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title" ref={swipe.root}>
       {/* The one fixed piece, at its full size: the shell's frozen top leaves it alone (data-frozen-own). */}
       <div className="lineup-phone-head" data-frozen-own="">
         {header}
@@ -130,7 +136,7 @@ export function PhoneLineupPage({
             </p>
           ) : null}
           <PhoneSummary shift={shift} now={now} timeFormat={timeFormat} />
-          <Segments shift={shift} seg={seg} onSeg={setSeg} />
+          <Segments shift={shift} seg={seg} onSeg={setSeg} tabsRef={swipe.tabs} />
         </>
       ) : null}
       <div
@@ -206,7 +212,17 @@ function PhoneSummary({
 }
 
 /** Team · Notes · Read (C's tabs). Read carries its count once the lineup is out and staff were asked. */
-function Segments({ shift, seg, onSeg }: { readonly shift: LineupShift; readonly seg: Seg; readonly onSeg: (seg: Seg) => void }) {
+function Segments({
+  shift,
+  seg,
+  onSeg,
+  tabsRef,
+}: {
+  readonly shift: LineupShift;
+  readonly seg: Seg;
+  readonly onSeg: (seg: Seg) => void;
+  readonly tabsRef: Ref<HTMLDivElement>;
+}) {
   const { publish } = shift;
   const notes = lineupNoteCount(publish.notes);
   const items: [Seg, string, string][] = [
@@ -223,7 +239,7 @@ function Segments({ shift, seg, onSeg }: { readonly shift: LineupShift; readonly
     document.getElementById(`lineup-phone-seg-${next}`)?.focus();
   };
   return (
-    <div className="lineup-phone-segs" role="tablist" aria-label="Lineup" onKeyDown={keys}>
+    <div className="lineup-phone-segs" role="tablist" aria-label="Lineup" onKeyDown={keys} ref={tabsRef}>
       {items.map(([key, label, count]) => (
         <button
           key={key}

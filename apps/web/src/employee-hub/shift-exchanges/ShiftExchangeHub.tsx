@@ -32,6 +32,7 @@ import { ConfirmButton } from "@newfork/ui";
 import { createPortal } from "react-dom";
 import { Link, useSearchParams } from "react-router";
 import { useAuth } from "../../auth/AuthContext";
+import { useTabSwipe } from "../../shell/useTabSwipe";
 import { addDays } from "../../schedule/lib/scheduleDateTime";
 import {
   changeExchange,
@@ -302,6 +303,8 @@ function useExchangeAction(workspace: string) {
   return { mutation, notice, setNotice };
 }
 
+const HUB_VIEWS = ["available", "requests", "history"] as const;
+
 export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
   const { context } = useAuth();
   const [params, setParams] = useSearchParams();
@@ -380,6 +383,21 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       return next;
     });
   }
+  const selected = query.data?.cases.find((item) => item.id === params.get("case"));
+  const view =
+    params.get("hub_view") ??
+    (selected
+      ? selected.status !== "open"
+        ? "history"
+        : "requests"
+      : "available");
+  // On a phone a swipe sideways moves between the three views (KARARLAR §1.5); an opened request stays put.
+  const swipe = useTabSwipe({
+    tabs: HUB_VIEWS,
+    active: view,
+    enabled: !selected,
+    onSelect: (key) => navigate({ hub_view: key, case: null }),
+  });
   if (query.isLoading)
     return (
       <div
@@ -407,22 +425,14 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       </div>
     );
   const model = query.data;
-  const selected = model.cases.find((item) => item.id === params.get("case"));
   // A confirmation describes one command result. Once that request changes,
   // the current detail must not compete with a stale success message.
   const currentNotice =
     notice && !noticeStale && (!selectedId || selectedId === notice.caseId)
       ? notice.text
       : null;
-  const view =
-    params.get("hub_view") ??
-    (selected
-      ? selected.status !== "open"
-        ? "history"
-        : "requests"
-      : "available");
   const offering = params.has("offer");
-  const tabs: [string, string][] = [
+  const tabs: [(typeof HUB_VIEWS)[number], string][] = [
     ["available", "Available Shifts"],
     ["requests", "My requests"],
     ["history", "History"],
@@ -495,6 +505,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
   return (
     <div
       className={`sx-root ${selected ? "sx-reading-detail" : ""}`}
+      ref={swipe.root}
     >
       {/* The employee page title comes from the shared catalog header. */}
       {!online && (
@@ -525,6 +536,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       <nav
         className="sx-tabs"
         aria-label="Shift Hub views"
+        ref={swipe.tabs}
       >
         {tabs.map(([key, label]) => {
           const count =
