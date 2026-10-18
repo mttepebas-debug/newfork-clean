@@ -1069,6 +1069,19 @@ describe("EmployeeHubPage", () => {
     expect(vi.mocked(submitTimeOff).mock.calls[0]![1]).not.toHaveProperty("location_id");
     expect((await screen.findByRole("status")).textContent).toBe("Request sent.");
   });
+  // UI-FIELDMSG-2 (Mert 2026-10-18): two reasons that hold at once are both said, none dropped.
+  it("says both that the range is over 31 days and that the time off has already started", async () => {
+    renderPage("/app/employee-hub/my-availability?section=time-off");
+    const today = todayIn("America/Los_Angeles");
+    fireEvent.change(await screen.findByLabelText("Start"), { target: { value: today } });
+    const later = new Date(`${today}T12:00:00Z`);
+    later.setUTCDate(later.getUTCDate() + 40);
+    fireEvent.change(screen.getByLabelText("End"), { target: { value: later.toISOString().slice(0, 10) } });
+    const note = document.getElementById("time-off-check-error")!;
+    expect(note.textContent).toContain("Choose a date range of at most 31 calendar days. No dates will be silently omitted.");
+    expect(note.textContent).toContain("This time off has already started. Talk to your manager directly.");
+    expect(screen.getByRole("button", { name: "Submit request" })).toHaveProperty("disabled", true);
+  });
   it("does not send time off that has already started (rule 19)", async () => {
     renderPage("/app/employee-hub/my-availability?section=time-off");
     fireEvent.change(await screen.findByLabelText("Start"), { target: { value: todayIn("America/Los_Angeles") } });

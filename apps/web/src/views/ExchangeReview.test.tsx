@@ -306,6 +306,27 @@ describe("ExchangeReview", () => {
     expect(within(band()).queryByRole("alert")).toBeNull();
   });
 
+  // UI-FIELDMSG-2 (Mert 2026-10-18): two messages that hold at once are both said, none dropped.
+  it("says both the failed give and the failed eligibility check", async () => {
+    vi.mocked(changeExchange).mockRejectedValue(new Error("This request changed. Review the latest details"));
+    vi.mocked(getExchangePreview).mockResolvedValueOnce(preview()).mockRejectedValue(new Error("Network down"));
+    renderReview();
+    fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
+    const give = await screen.findByRole("button", { name: "Give to Emma" });
+    await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
+    fireEvent.click(give);
+    const band = () => footer().previousElementSibling as HTMLElement;
+    await waitFor(() =>
+      expect(within(band()).getByRole("alert").textContent).toBe("This request changed. Review the latest details"),
+    );
+    fireEvent.click(screen.getByRole("radio", { name: /Sophie Martin/ }));
+    await waitFor(() =>
+      expect(within(band()).getByRole("alert").textContent).toBe(
+        "This request changed. Review the latest details Eligibility could not be checked. Close and try again.",
+      ),
+    );
+  });
+
   it("says why the core refuses the person", async () => {
     vi.mocked(getExchangePreview).mockResolvedValue(preview({ allowed: false,
       reasons: ["The receiving employee is not eligible for the full shift"],
