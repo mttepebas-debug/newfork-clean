@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 513, last: 20261018230000_membership_two_access_slots.sql
--- fingerprint: sha256:c3d9f65c9c8e1241b6189febbe08f6b2dd8575b09ab88d89f5e3c9b7681c7712
+-- migrations: 514, last: 20261018231000_core_reads_two_slots.sql
+-- fingerprint: sha256:af97b999164dbbf2b0f6cabb444c186f5784d58c64391b8bf561866e1307ee1e
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -68,7 +68,9 @@ CREATE TYPE "app_private"."actor_state" AS (
 	"employee_id" "uuid",
 	"works" "uuid"[],
 	"manages" "uuid"[],
-	"permissions" "text"[]
+	"permissions" "text"[],
+	"has_employee" boolean,
+	"own_permissions" "text"[]
 );
 
 
@@ -811,23 +813,28 @@ CREATE OR REPLACE FUNCTION "app_private"."actor"("actor" "uuid", "w" "uuid") RET
     AS $$
 declare
   state app_private.actor_state;
-  held_role uuid;
+  management_role uuid;
+  employee_role uuid;
 begin
   state.user_id := actor;
   state.workspace_id := w;
   state.works := '{}';
   state.manages := '{}';
   state.permissions := '{}';
+  state.own_permissions := '{}';
+  state.has_employee := false;
 
-  select membership.id, membership.status, role.access_class, role.id
-    into state.membership_id, state.status, state.class, held_role
+  select membership.id, membership.status, coalesce(role.access_class, 'employee'::public.workspace_role),
+         membership.role_id, membership.employee_role_id
+    into state.membership_id, state.status, state.class, management_role, employee_role
   from public.workspace_memberships membership
-  join public.workspace_roles role
+  left join public.workspace_roles role
     on role.id = membership.role_id and role.workspace_id = membership.workspace_id
   where membership.workspace_id = w and membership.user_id = actor;
   if state.membership_id is null then
     return state;
   end if;
+  state.has_employee := employee_role is not null;
 
   state.workspace_open := app_private.workspace_open_to_actor(w, actor);
   state.document_blocked := coalesce(app_private.document_actor_blocked(actor, w), false);
@@ -836,35 +843,53 @@ begin
   from public.employee_profiles profile
   where profile.workspace_id = w and profile.user_id = actor and profile.archived_at is null;
 
-  state.works := coalesce((
-    select array_agg(distinct assignment.location_id order by assignment.location_id)
-    from public.employee_location_assignments assignment
-    join public.locations location on location.id = assignment.location_id
-    where assignment.workspace_id = w
-      and assignment.employee_id = state.employee_id
-      and assignment.ended_at is null
-      and app_private.location_is_live(location)
-  ), '{}');
+  -- Works at belongs to the employee slot.
+  if state.has_employee then
+    state.works := coalesce((
+      select array_agg(distinct assignment.location_id order by assignment.location_id)
+      from public.employee_location_assignments assignment
+      join public.locations location on location.id = assignment.location_id
+      where assignment.workspace_id = w
+        and assignment.employee_id = state.employee_id
+        and assignment.ended_at is null
+        and app_private.location_is_live(location)
+    ), '{}');
+  end if;
 
-  -- A manager manages where they are assigned, and nowhere else (EMP-001).
+  -- A manager manages their Manages; admins and the owner manage every live location (design §4.2).
   state.manages := case
     when state.class in ('owner', 'admin') then coalesce((
       select array_agg(location.id order by location.id)
       from public.locations location
       where location.workspace_id = w and app_private.location_is_live(location)
     ), '{}')
-    when state.class = 'manager' then state.works
+    when state.class = 'manager' then coalesce((
+      select array_agg(location.id order by location.id)
+      from public.membership_managed_locations managed
+      join public.locations location on location.id = managed.location_id
+      where managed.membership_id = state.membership_id and app_private.location_is_live(location)
+    ), '{}')
     else '{}'::uuid[]
   end;
 
-  state.permissions := coalesce((
-    select array_agg(grant_row.permission_key order by grant_row.permission_key)
-    from public.workspace_role_permissions grant_row
-    join public.permissions permission on permission.key = grant_row.permission_key
-    where grant_row.workspace_id = w
-      and grant_row.role_id = held_role
-      and (state.class <> 'employee' or permission.employee_eligible)
-  ), '{}');
+  if employee_role is not null then
+    state.own_permissions := coalesce((
+      select array_agg(grant_row.permission_key order by grant_row.permission_key)
+      from public.workspace_role_permissions grant_row
+      join public.permissions permission on permission.key = grant_row.permission_key
+      where grant_row.workspace_id = w and grant_row.role_id = employee_role and permission.employee_eligible
+    ), '{}');
+  end if;
+  if management_role is not null then
+    state.permissions := coalesce((
+      select array_agg(grant_row.permission_key order by grant_row.permission_key)
+      from public.workspace_role_permissions grant_row
+      where grant_row.workspace_id = w and grant_row.role_id = management_role
+    ), '{}');
+  else
+    -- Somebody who only works reads with their employee role, as before.
+    state.permissions := state.own_permissions;
+  end if;
 
   return state;
 end;
@@ -3121,10 +3146,16 @@ begin
   end if;
 
   if rule_row.scope_class = 'own' then
-    -- One's own availability is an employee's (M13): a manager, an admin or
-    -- the owner has no own record of that kind.
-    if rule_row.employee_target and state.class <> 'employee' then
+    -- What one does for oneself as an employee (availability, offering or
+    -- taking a shift, time off) needs the employee slot (ROL-CIFT, design
+    -- §4.4, §4.10, §4.11); a management access alone has no such record.
+    if rule_row.employee_target and not coalesce(state.has_employee, false) then
       return 'rank';
+    end if;
+    -- A permission for oneself comes from the employee slot's role.
+    if rule_row.permission_key is not null
+       and not rule_row.permission_key = any (coalesce(state.own_permissions, '{}')) then
+      return 'missing_permission';
     end if;
     if (person is null and whose is null) or target_is_self then
       return null;
@@ -3167,10 +3198,10 @@ begin
     end if;
   end if;
 
-  -- Some actions are about employees only: never a manager, an admin or the
-  -- owner, whoever asks, themselves included (the Manager note, 2026-09-26).
+  -- Some actions are about employees only: about somebody's employee slot,
+  -- whoever asks, themselves included (the Manager note, 2026-09-26; ROL-CIFT).
   if rule_row.employee_target and (person is not null or whose is not null)
-     and not app_private.ranks_as_employee(state.workspace_id, whose) then
+     and not app_private.has_employee_access(state.workspace_id, whose) then
     return 'rank';
   end if;
 
@@ -3288,7 +3319,7 @@ CREATE OR REPLACE FUNCTION "app_private"."availability_follows_role"() RETURNS "
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare employee uuid; is_employee boolean := app_private.ranks_as_employee(new.workspace_id, new.user_id);
+declare employee uuid; is_employee boolean := app_private.has_employee_access(new.workspace_id, new.user_id);
 begin
   select e.id into employee from public.employee_profiles e where e.workspace_id = new.workspace_id and e.user_id = new.user_id;
   if employee is null then return null; end if;
@@ -3342,7 +3373,14 @@ CREATE OR REPLACE FUNCTION "app_private"."can_access_location"("target_workspace
       and membership.status = 'active'
       and app_private.workspace_open_to_actor(target_workspace_id, (select auth.uid()))
       and (
-        membership.all_locations
+        exists (
+          select 1 from public.workspace_roles role
+          where role.id = membership.role_id and role.access_class in ('owner', 'admin')
+        )
+        or exists (
+          select 1 from public.membership_managed_locations managed
+          where managed.membership_id = membership.id and managed.location_id = target_location_id
+        )
         or exists (
           select 1
           from public.membership_location_scopes scope
@@ -4684,7 +4722,8 @@ CREATE OR REPLACE FUNCTION "app_private"."employee_record_is_workspace_owner"("t
     where employee.id = target_employee_id
       and employee.workspace_id = target_workspace_id
       and employee.user_id is not null
-      and membership.role = 'owner'::public.workspace_role
+      and exists (select 1 from public.workspace_roles role
+                  where role.id = membership.role_id and role.access_class = 'owner')
   );
 $$;
 
@@ -5143,6 +5182,21 @@ end; $$;
 ALTER FUNCTION "app_private"."guard_job_deletion_state"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."has_employee_access"("w" "uuid", "account" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select coalesce((
+    select membership.employee_role_id is not null
+    from public.workspace_memberships membership
+    where membership.workspace_id = w and membership.user_id = account
+  ), true);
+$$;
+
+
+ALTER FUNCTION "app_private"."has_employee_access"("w" "uuid", "account" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."held_role_keeps_its_class"() RETURNS "trigger"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -5464,10 +5518,17 @@ begin
     if holder.class is distinct from 'manager' or holder.status not in ('active', 'pending_activation') then
       return;
     end if;
+    if cardinality(holder.manages) = 0 then
+      raise exception 'a manager needs a location to manage'
+        using errcode = '22023', hint = 'employee.manager_location_required';
+    end if;
+    return;
   elsif becoming <> 'manager' then
     return;
   end if;
 
+  -- ponytail: somebody becoming a manager (an invitation) is checked on the locations the invitation
+  -- gives, Manages' first rows, until the invitation fills Manages itself (ROL-CIFT slice 5).
   if not exists (
     select 1 from public.employee_location_assignments assignment
     where assignment.employee_id = record.id and assignment.ended_at is null
@@ -7158,23 +7219,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."push_shows_body"("target_type" "text", "target_subject" "text") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-  select coalesce((
-    select app_private.authz_rank(role.access_class) = app_private.authz_rank('employee')
-    from public.workspace_memberships membership
-    join public.workspace_roles role
-      on role.id = membership.role_id and role.workspace_id = membership.workspace_id
-    where membership.workspace_id = workspace and membership.user_id = account
-  ), true);
-$$;
-
-
-ALTER FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."record_schedule_edit_undo_step"() RETURNS "trigger"
@@ -9351,11 +9395,13 @@ CREATE OR REPLACE FUNCTION "app_private"."workspace_open_to_actor"("target_works
       from public.workspaces workspace
       join public.workspace_memberships membership
         on membership.workspace_id = workspace.id
+      join public.workspace_roles role
+        on role.id = membership.role_id and role.workspace_id = membership.workspace_id
       where workspace.id = target_workspace_id
         and workspace.lifecycle_status = 'draft'
         and membership.user_id = actor_user_id
         and membership.status = 'active'
-        and membership.role = 'owner'
+        and role.access_class = 'owner'
     );
 $$;
 
@@ -9367,8 +9413,11 @@ CREATE OR REPLACE FUNCTION "app_private"."workspace_role_for"("target_workspace_
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select membership.role
+  -- The management slot's class, else employee (ROL-CIFT).
+  select coalesce(role.access_class, 'employee'::public.workspace_role)
   from public.workspace_memberships membership
+  left join public.workspace_roles role
+    on role.id = membership.role_id and role.workspace_id = membership.workspace_id
   where membership.workspace_id = target_workspace_id
     and membership.user_id = (select auth.uid())
     and membership.status = 'active'
@@ -15910,7 +15959,7 @@ CREATE OR REPLACE FUNCTION "public"."guard_weekly_onboarding_requirement"() RETU
     AS $$
 declare declared_at timestamptz;
 begin
- if tg_op='INSERT' and new.kind='availability' and not app_private.ranks_as_employee(new.workspace_id,
+ if tg_op='INSERT' and new.kind='availability' and not app_private.has_employee_access(new.workspace_id,
   (select e.user_id from public.employee_profiles e where e.workspace_id=new.workspace_id and e.id=new.employee_id)) then
   return null;
  end if;
@@ -25025,8 +25074,9 @@ CREATE OR REPLACE FUNCTION "public"."service_actor_has_permission"("actor_user_i
  select not app_private.document_actor_blocked(actor_user_id,target_workspace_id) and exists(select 1 from public.workspace_memberships m
  where m.user_id=actor_user_id and m.workspace_id=target_workspace_id and m.status='active'
  and (target_permission in ('workspace.read','notifications.read','notifications.read_own','notifications.preferences.write_own')
-   or exists(select 1 from public.workspace_role_permissions g where g.role_id=m.role_id and g.workspace_id=m.workspace_id and g.permission_key=target_permission))
- and (m.role<>'employee' or exists(select 1 from public.permissions p where p.key=target_permission and p.employee_eligible)));
+ or exists(select 1 from public.workspace_role_permissions g where g.role_id=m.role_id and g.workspace_id=m.workspace_id and g.permission_key=target_permission)
+ or exists(select 1 from public.workspace_role_permissions g join public.permissions p on p.key=g.permission_key and p.employee_eligible
+   where g.role_id=m.employee_role_id and g.workspace_id=m.workspace_id and g.permission_key=target_permission)));
 $$;
 
 
@@ -28559,7 +28609,7 @@ begin
   -- employee's note they may not see; left out when there is no note at all
   -- (the person is not an employee).
   || case when can_view_manager then jsonb_build_object('manager',manager_record)
-     when app_private.ranks_as_employee(w,employee.user_id) then jsonb_build_object('manager',null)
+     when app_private.has_employee_access(w,employee.user_id) then jsonb_build_object('manager',null)
      else '{}'::jsonb end;
 end; $$;
 
@@ -28779,7 +28829,7 @@ begin
   -- Only an employee enters availability (M13): nobody ranking above one is
   -- listed, nor counted as a week not submitted (KK-178). Somebody not joined
   -- yet has no account to rank by: the role they were last invited with says.
-  where e.workspace_id=w and e.archived_at is null and app_private.ranks_as_employee(w,e.user_id)
+  where e.workspace_id=w and e.archived_at is null and app_private.has_employee_access(w,e.user_id)
    and (e.user_id is not null or coalesce((select app_private.authz_rank(r.access_class)=app_private.authz_rank('employee')
     from public.employee_invitations i join public.workspace_roles r on r.id=i.role_id and r.workspace_id=i.workspace_id
     where i.workspace_id=w and i.employee_id=e.id order by i.created_at desc,i.id desc limit 1),true)) and (
@@ -35608,6 +35658,10 @@ REVOKE ALL ON FUNCTION "app_private"."guard_job_deletion_state"() FROM PUBLIC;
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."has_employee_access"("w" "uuid", "account" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."held_role_keeps_its_class"() FROM PUBLIC;
 
 
@@ -35917,10 +35971,6 @@ REVOKE ALL ON FUNCTION "app_private"."push_fallback_email"("target_notice" "uuid
 
 
 REVOKE ALL ON FUNCTION "app_private"."push_shows_body"("target_type" "text", "target_subject" "text") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."ranks_as_employee"("workspace" "uuid", "account" "uuid") FROM PUBLIC;
 
 
 

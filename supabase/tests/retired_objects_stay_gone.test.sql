@@ -543,7 +543,9 @@ insert into retired (kind, name, step) values
   ('trigger', 'workspace_memberships.a_sync_membership_role_reference_trigger', 'ROL-CIFT'),
   ('trigger', 'workspace_memberships.b_enforce_role_location_scope', 'ROL-CIFT'),
   ('function', 'sync_membership_role_reference', 'ROL-CIFT'),
-  ('function', 'enforce_role_location_scope', 'ROL-CIFT');
+  ('function', 'enforce_role_location_scope', 'ROL-CIFT'),
+  -- 1.2: who holds the employee slot, not who ranks as an employee.
+  ('function', 'ranks_as_employee', 'ROL-CIFT');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
