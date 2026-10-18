@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(25);
+select plan(31);
 
 -- ROL-CIFT 1.1 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.13, §5.1): a membership holds two
 -- access slots. role_id is the management slot (a manager, admin or owner class role), employee_role_id
@@ -58,6 +58,8 @@ insert into public.jobs (id, workspace_id, department_id, name, system_key) valu
   ('c1100000-0000-4000-8000-000000000401', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Owner', 'owner'),
   ('c1100000-0000-4000-8000-000000000402', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'General Manager', null),
   ('c1100000-0000-4000-8000-000000000403', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000302', 'Cook', null);
+insert into public.jobs (id, workspace_id, department_id, name, archived_at) values
+  ('c1100000-0000-4000-8000-000000000404', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Floor Manager', now());
 
 set local session_replication_role = origin;
 
@@ -163,6 +165,69 @@ select throws_ok(
              'c1100000-0000-4000-8000-000000000401', 'c1100000-0000-4000-8000-000000000001')$q$,
   '23514', 'the Owner job belongs to the owner',
   'a manager does not hold the Owner job'
+);
+select throws_ok(
+  $q$insert into public.membership_management_jobs (workspace_id, membership_id, job_id, created_by)
+     values ('c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000503',
+             'c1100000-0000-4000-8000-000000000404', 'c1100000-0000-4000-8000-000000000001')$q$,
+  '23514', 'an archived or deleted job is no management job',
+  'an archived Management job is not handed out'
+);
+
+-- A slot changes only when a service asked the core ---------------------------------------------------
+-- The database owner working directly passes the membership guard (enforce_membership_role_change), so
+-- the change runs as the API does: as service_role, through a definer helper standing in for a service.
+create function pg_temp.set_slots(target uuid, management uuid, employee uuid, asked_the_core boolean)
+returns void
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  if asked_the_core then
+    perform set_config('app.membership_change', target::text, true);
+  end if;
+  update public.workspace_memberships set role_id = management, employee_role_id = employee where id = target;
+  perform set_config('app.membership_change', '', true);
+end;
+$$;
+grant execute on function pg_temp.set_slots(uuid, uuid, uuid, boolean) to service_role;
+create temporary table slot_ids as select key, id from slot_role;
+grant select on slot_ids to service_role;
+
+set local role service_role;
+select throws_ok(
+  $q$select pg_temp.set_slots('c1100000-0000-4000-8000-000000000502',
+       (select id from slot_ids where key = 'manager'), (select id from slot_ids where key = 'employee'), false)$q$,
+  '42501', 'membership change is not permitted',
+  'Mona does not gain the employee slot without the core'
+);
+select throws_ok(
+  $q$select pg_temp.set_slots('c1100000-0000-4000-8000-000000000503',
+       (select id from slot_ids where key = 'manager'), null, false)$q$,
+  '42501', 'membership change is not permitted',
+  'Dora does not lose the employee slot without the core'
+);
+select lives_ok(
+  $q$select pg_temp.set_slots('c1100000-0000-4000-8000-000000000502',
+       (select id from slot_ids where key = 'manager'), (select id from slot_ids where key = 'employee'), true)$q$,
+  'a service that asked the core gives Mona the employee slot'
+);
+reset role;
+select is(
+  (select employee_role_id from public.workspace_memberships where id = 'c1100000-0000-4000-8000-000000000502'),
+  (select id from slot_role where key = 'employee'),
+  'and Mona holds it'
+);
+
+-- What the move promises holds across the database (design §5.1, KARARLAR S-168) ------------------
+select is(
+  (select count(*)::int from public.workspace_memberships m join public.workspaces w on w.id = m.workspace_id
+   where m.role_id is not null
+     and not exists (select 1 from public.membership_management_jobs x where x.membership_id = m.id)
+     and m.workspace_id <> 'c1100000-0000-4000-8000-000000000101'),
+  0,
+  'every management access outside this test holds a Management job'
 );
 
 -- The rows follow the management slot ----------------------------------------------------------------

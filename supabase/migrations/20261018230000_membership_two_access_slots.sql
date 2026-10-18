@@ -56,6 +56,8 @@ comment on table public.membership_management_jobs is
   'The Management department jobs of a management access (General Manager, Owner ...): the position document rules read (ROL-CIFT, design §4.13).';
 
 -- Row level security on, nothing granted to the browser: the services read and write both tables.
+-- Plandan sapma (deviation from the plan): the plan read both through an rls_can('employee.read')
+-- policy; here the browser does not read them at all, only the services do (no grant, no policy).
 alter table public.membership_managed_locations enable row level security;
 alter table public.membership_management_jobs enable row level security;
 revoke all on table public.membership_managed_locations from public, anon, authenticated;
@@ -161,6 +163,10 @@ begin
   ) then
     raise exception 'a management job is a job of the Management department'
       using errcode = '23514', hint = 'membership.management_job_department';
+  end if;
+  if job.archived_at is not null or job.deleted_at is not null then
+    raise exception 'an archived or deleted job is no management job'
+      using errcode = '23514', hint = 'membership.management_job_archived';
   end if;
   if job.system_key = 'owner' and slot_class <> 'owner' then
     raise exception 'the Owner job belongs to the owner'
@@ -395,6 +401,7 @@ begin
         and j.deleted_at is null and d.system_key is distinct from 'management'
     ) as works
   from public.workspace_memberships m
+  join public.workspaces workspace on workspace.id = m.workspace_id -- a row left by a deleted workspace has nobody to move
   left join public.employee_profiles p
     on p.workspace_id = m.workspace_id and p.user_id = m.user_id and p.archived_at is null;
 
@@ -415,7 +422,7 @@ begin
   from rol_cift_people person
   join public.employee_location_assignments a
     on a.workspace_id = person.workspace_id and a.employee_id = person.employee_id and a.ended_at is null
-  join public.locations l on l.id = a.location_id and l.archived_at is null
+  join public.locations l on l.id = a.location_id and app_private.location_is_live(l)
   where person.class = 'manager'
   on conflict (membership_id, location_id) do nothing;
 
@@ -430,6 +437,36 @@ begin
   join public.departments d on d.id = j.department_id and d.system_key = 'management'
   where person.class <> 'employee' and (j.system_key is distinct from 'owner' or person.class = 'owner')
   on conflict (membership_id, job_id) do nothing;
+
+  -- Every management access holds a Management job (KARARLAR S-168, design §4.13). A workspace with
+  -- nobody to take one from gets what setup makes (design §4.13): the Management department, the Owner
+  -- job, and General Manager and Assistant Manager when a manager or admin has none to take. A same
+  -- named catalog record already there is left alone; the checks below then stop the move.
+  insert into public.departments (workspace_id, name, system_key)
+  select distinct person.workspace_id, 'Management', 'management'
+  from rol_cift_people person
+  where person.class <> 'employee'
+    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
+  on conflict do nothing;
+  insert into public.jobs (workspace_id, name, department_id, system_key)
+  select distinct person.workspace_id, 'Owner', d.id, 'owner'
+  from rol_cift_people person
+  join public.departments d on d.workspace_id = person.workspace_id and d.system_key = 'management'
+  where person.class = 'owner'
+    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
+  on conflict do nothing;
+  insert into public.jobs (workspace_id, name, department_id)
+  select distinct person.workspace_id, made.name, d.id
+  from rol_cift_people person
+  join public.departments d on d.workspace_id = person.workspace_id and d.system_key = 'management'
+  cross join (values ('General Manager'), ('Assistant Manager')) made(name)
+  where person.class in ('manager', 'admin')
+    and not exists (select 1 from public.membership_management_jobs mj where mj.membership_id = person.membership_id)
+    and not exists (
+      select 1 from public.jobs j
+      where j.workspace_id = person.workspace_id and j.department_id = d.id
+        and j.archived_at is null and j.system_key is null)
+  on conflict do nothing;
 
   insert into public.membership_management_jobs (workspace_id, membership_id, job_id, created_by)
   select person.workspace_id, person.membership_id, fallback.id, null
@@ -522,6 +559,42 @@ begin
     left join public.workspace_roles r on r.id = m.role_id);
   if after_counts is distinct from before_counts then
     raise exception 'ROL-CIFT 1.1: the move changed who holds what: before %, after %', before_counts, after_counts;
+  end if;
+
+  -- And each moved as §5.1 says; any miss stops the move.
+  -- (1) Somebody who works keeps the employee slot.
+  if exists (
+    select 1 from rol_cift_people person
+    join public.workspace_memberships m on m.id = person.membership_id
+    where person.works and m.employee_role_id is null
+  ) then
+    raise exception 'ROL-CIFT 1.1: % people who work lost the employee slot', (
+      select count(*) from rol_cift_people person
+      join public.workspace_memberships m on m.id = person.membership_id
+      where person.works and m.employee_role_id is null);
+  end if;
+  -- (2) A manager assigned to a live location manages it.
+  if exists (
+    select 1 from rol_cift_people person
+    join public.employee_location_assignments a
+      on a.workspace_id = person.workspace_id and a.employee_id = person.employee_id and a.ended_at is null
+    join public.locations l on l.id = a.location_id and app_private.location_is_live(l)
+    where person.class = 'manager'
+      and not exists (select 1 from public.membership_managed_locations x
+                      where x.membership_id = person.membership_id and x.location_id = a.location_id)
+  ) then
+    raise exception 'ROL-CIFT 1.1: a manager does not manage a live location they were assigned to';
+  end if;
+  -- (3) Every management access holds a Management job.
+  if exists (
+    select 1 from public.workspace_memberships m join public.workspaces w on w.id = m.workspace_id
+    where m.role_id is not null
+      and not exists (select 1 from public.membership_management_jobs x where x.membership_id = m.id)
+  ) then
+    raise exception 'ROL-CIFT 1.1: % management accesses have no Management job', (
+      select count(*) from public.workspace_memberships m join public.workspaces w on w.id = m.workspace_id
+      where m.role_id is not null
+        and not exists (select 1 from public.membership_management_jobs x where x.membership_id = m.id));
   end if;
 end;
 $$;

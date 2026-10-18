@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 513, last: 20261018230000_membership_two_access_slots.sql
--- fingerprint: sha256:4eccdee588d208bd6b73b5441296ec7bab74c0ed3ad0d27c764fff6e12f22b47
+-- fingerprint: sha256:0a04a3379be827d5a4a65672372a0472f014f1217300f451a336d6129ede9fba
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5918,6 +5918,10 @@ begin
   ) then
     raise exception 'a management job is a job of the Management department'
       using errcode = '23514', hint = 'membership.management_job_department';
+  end if;
+  if job.archived_at is not null or job.deleted_at is not null then
+    raise exception 'an archived or deleted job is no management job'
+      using errcode = '23514', hint = 'membership.management_job_archived';
   end if;
   if job.system_key = 'owner' and slot_class <> 'owner' then
     raise exception 'the Owner job belongs to the owner'
