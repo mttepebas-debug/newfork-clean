@@ -766,20 +766,24 @@ describe("EmployeeHubPage", () => {
     }
   });
 
-  it("submits open shift pickup from Shift Hub", async () => {
-    vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [{ case_id: null, eligibility: { status: "eligible", reasons: [] }, shift: {
-      ...ownShift, id: "22000000-0000-4000-8000-000000000005", source_id: "22000000-0000-4000-8000-000000000005", employee_id: null, employee_name: null,
+  // TAKAS-RELEASE: only a teammate's released shift is in the pool.
+  it("asks for a teammate's released shift from Shift Hub", async () => {
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [{
+      case_id: "98200000-0000-4000-8000-000000000001", note: "", eligibility: { status: "eligible", reasons: [] }, shift: {
+      ...ownShift, id: "22000000-0000-4000-8000-000000000005", source_id: "22000000-0000-4000-8000-000000000005",
+      employee_id: "51000000-0000-4000-8000-000000000009", employee_name: "Maria Lopez",
       job_id: "13000000-0000-4000-8000-000000000001", scheduled_date: "2030-01-01", timezone: "America/Los_Angeles", starts_at: "2030-01-01T17:00:00Z", ends_at: "2030-01-02T01:00:00Z",
     } }] });
     vi.mocked(changeExchange).mockResolvedValue({ case_id: "98200000-0000-4000-8000-000000000001", status: "open", revision: 2 });
     renderPage("/app/employee-hub/shift-hub?from=2030-01-01&to=2030-01-01");
     fireEvent.click(
-      await screen.findByRole("button", { name: "Request to pick up" }),
+      await screen.findByRole("button", { name: "I’ll take it" }),
     );
     await waitFor(() =>
       expect(changeExchange).toHaveBeenCalledWith(workspaceId, {
         action: "apply",
         shift_id: "22000000-0000-4000-8000-000000000005",
+        case_id: "98200000-0000-4000-8000-000000000001",
       }, expect.any(String)),
     );
   });

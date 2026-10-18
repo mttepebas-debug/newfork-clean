@@ -34,12 +34,6 @@
   background: var(--job-bg);
   overflow: hidden;
 }
-.requests-catalog-page .request-conflict-count {
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  font-size: 12px;
-}
 .requests-catalog-page .requests-empty {
   min-height: 130px;
   padding: 28px 16px;
@@ -179,69 +173,96 @@
 .requests-table tbody tr {
   cursor: pointer;
 }
-.request-person {
-  display: flex;
-  min-width: 0;
-  align-items: center;
-  gap: 10px;
+/* TAKAS-RELEASE: thin rows, one sentence each (Mert, 2026-10-14; time off too,
+   2026-10-17). The kind's icon on a 40 px rounded tile; Expires red in its last
+   12 hours. */
+.requests-table td {
+  vertical-align: top;
+  padding-top: 12px;
+  padding-bottom: 12px;
 }
-.request-person-mark {
-  display: inline-grid;
-  width: 30px;
-  height: 30px;
-  flex: 0 0 30px;
+.requests-table td.request-kind-cell {
+  padding-top: 10px;
+  padding-right: 4px;
+}
+.requests-table td:nth-child(3) {
+  padding-top: 21px;
+  white-space: nowrap;
+}
+.requests-table td:nth-child(4) {
+  padding-top: 13px;
+  white-space: nowrap;
+}
+.request-kind {
+  display: grid;
+  flex: none;
   place-items: center;
-  border: 1px solid var(--theme-border-strong);
-  border-radius: 50%;
   background: var(--theme-surface-muted);
-  color: var(--theme-text-secondary);
-  font-size: 12px;
-  font-weight: 600;
+  color: var(--theme-accent-strong);
 }
-/* An open shift has nobody yet: an empty-shift mark, not a person (KK-173). */
-.request-person-mark--open {
-  border-style: dashed;
-  background: var(--theme-surface);
+.request-kind--40 {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
 }
-.request-person-text {
-  display: grid;
-  min-width: 0;
+.request-kind--28 {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
 }
-.request-person-name {
-  overflow: hidden;
+.request-sentence {
+  display: block;
+  max-width: 640px;
   color: var(--theme-text);
+  font-size: 13.5px;
+  line-height: 1.45;
+  white-space: normal;
+}
+.request-sentence b {
   font-weight: 600;
-  text-overflow: ellipsis;
-  white-space: nowrap;
 }
-.request-person-text small {
-  overflow: hidden;
-  color: var(--theme-text-secondary);
-  font-size: 12px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-.request-type {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  color: var(--theme-list-cell-text);
-}
-.request-review-cell {
-  color: var(--theme-muted);
-  text-align: right;
-}
-/* Decide by: the time, then the zone's name on its own line (KARARLAR:133),
-   set like Employee's two lines so every row keeps one height. */
-.request-deadline {
+.request-expires {
   display: grid;
+  color: var(--theme-text);
+  font-variant-numeric: tabular-nums;
 }
-.request-deadline small {
+.request-expires small {
   color: var(--theme-text-secondary);
   font-size: 12px;
-  white-space: nowrap;
+  font-weight: 400;
 }
-
+.request-card .request-expires {
+  display: inline;
+}
+.request-expires--none {
+  color: var(--theme-muted);
+}
+.request-expires--soon {
+  color: var(--theme-danger-strong);
+  font-weight: 600;
+}
+/* The phone: the icon, the sentence, then the status and Expires. */
+.list-card.request-card {
+  grid-template-columns: 40px minmax(0, 1fr);
+  align-items: start;
+  gap: 5px 12px;
+  padding: 12px;
+}
+.request-card .request-kind {
+  grid-row: 1 / span 2;
+}
+.request-card .request-sentence {
+  font-size: 14px;
+  line-height: 1.4;
+}
+.request-card-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+  color: var(--theme-muted);
+  font-size: 12px;
+}
 /* EKRAN-02 #67: the phone (KARARLAR Genel, telefonda kart satırı). Cards stand
    in for the table; every touch target is 44 high. Five type tabs do not fit:
    the row scrolls and fades at the edge where more tabs wait. */

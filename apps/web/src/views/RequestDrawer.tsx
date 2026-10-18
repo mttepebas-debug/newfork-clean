@@ -26,7 +26,8 @@ export function RequestDrawer<Key extends string>({
   children,
 }: {
   title: string;
-  type: string;
+  /** A second word after the title (time off names its type); left out when the title says it. */
+  type?: string;
   status: { label: string; tone: DrawerTone };
   sub?: ReactNode;
   scheduleHref?: string;
@@ -44,7 +45,14 @@ export function RequestDrawer<Key extends string>({
       <header className="rd-head">
         <div className="rd-head-row">
           <h2>
-            {title} <span className="rd-type">{type}</span> <span className={`rd-chip ${status.tone}`}>{status.label}</span>
+            {title}
+            {type ? (
+              <>
+                {" "}
+                <span className="rd-type">{type}</span>
+              </>
+            ) : null}{" "}
+            <span className={`rd-chip ${status.tone}`}>{status.label}</span>
           </h2>
           <button type="button" className="rd-close" aria-label="Close details" onClick={onClose}>
             <X size={18} aria-hidden />

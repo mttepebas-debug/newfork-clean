@@ -18,7 +18,6 @@ export function ListCards({ label, children }: { readonly label: string; readonl
 export function ListCard({
   label,
   mark,
-  markDashed = false,
   title,
   status,
   lines,
@@ -27,8 +26,6 @@ export function ListCard({
   /** What a screen reader says for the whole card. */
   readonly label: string;
   readonly mark: ReactNode;
-  /** An empty mark: nobody yet (an open shift). */
-  readonly markDashed?: boolean;
   readonly title: ReactNode;
   readonly status: ReactNode;
   /** Lines under the title; an empty one is left out. */
@@ -40,7 +37,7 @@ export function ListCard({
     <li>
       <button type="button" className="list-card" aria-label={label} onClick={onOpen}>
         <span
-          className={markDashed ? "list-card-mark list-card-mark--dashed" : "list-card-mark"}
+          className="list-card-mark"
           style={{ gridRow: `1 / span ${1 + shown.length}` }}
           aria-hidden
         >

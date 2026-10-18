@@ -54,10 +54,6 @@
   font-size: 13px;
   font-weight: 600;
 }
-.list-card-mark--dashed {
-  border-style: dashed;
-  background: var(--theme-surface);
-}
 .list-card-title {
   display: flex;
   min-width: 0;

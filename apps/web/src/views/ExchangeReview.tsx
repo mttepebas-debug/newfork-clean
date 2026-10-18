@@ -4,10 +4,10 @@ import { ConfirmButton } from "@newfork/ui";
 import { Lock } from "lucide-react";
 import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
-import { formatTimeOffDay, timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
-import { candidateChecks, shiftLength } from "./exchange-review";
+import { Hand, ShiftTicket } from "../employee-hub/shift-exchanges/ShiftTicket";
+import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { candidateChecks } from "./exchange-review";
 import { DrawerField, DrawerSection, RequestDrawer, type DrawerTone } from "./RequestDrawer";
-import { clockRange } from "./RequestsTable";
 import { blockerLines } from "./swap-review";
 
 type Tab = "details" | "activity";
@@ -25,11 +25,11 @@ const endings: Partial<Record<ExchangeCase["status"], string>> = {
 };
 
 /**
- * Requests → a cover or open shift row (Mert, 2026-10-11): the shift, who
- * keeps it until the decision, and who asked to take it, each with the core's
- * checks. The manager picks one and gives the shift in one step, or declines
- * one person (BL-910: the reason reaches only them); Close asks the reason the
- * people involved read (the core requires both reasons).
+ * Requests → a pickup or cover row (Mert, 2026-10-11; TAKAS-RELEASE, plan
+ * 2026-10-13/14): the shift card, who keeps it until the decision, and who asked
+ * to take it, each with the core's checks. The manager picks one and gives the
+ * shift in one step, or declines one person (BL-910: only they read the reason);
+ * Close ends the request. Both reasons are optional (plan 05:03; Mert, 2026-10-16).
  */
 export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, onHold }: {
   readonly item: ExchangeCase;
@@ -45,6 +45,8 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   const open = item.status === "open";
   const decides = open && item.can_manage;
   const owner = item.owner_name ? firstName(item.owner_name) : null;
+  // A release (a cover asked of everyone eligible) is a pickup on the manager's side.
+  const pickup = item.audience === "eligible_pool";
   // The manager decides among those who asked and are waiting for a decision.
   const asked = item.applications.filter((application) => (open ? application.status === "pending_manager" : true));
   const checks = new Map(asked.map((application) => [application.id, candidateChecks(application.eligibility)]));
@@ -108,16 +110,12 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
     setStep({ kind: "decide" });
   }
 
-  const hours = item.shift.start_time && item.shift.end_time
-    ? clockRange(item.shift.start_time, item.shift.end_time, timeFormat, { spaced: true })
-    : "Hours not set";
-  const day = formatTimeOffDay(item.shift.scheduled_date);
   const refusals = preview.data && !preview.data.allowed && picked
     ? [...new Set(blockerLines(preview.data.reasons, { receiver: preview.data.receiver, giver: preview.data.giver }, { owner, other: firstName(picked.employee_name) }))]
     : [];
   const warned = picked ? checks.get(picked.id)!.warned : false;
   const giveLabel = picked
-    ? `Give shift to ${firstName(picked.employee_name)}${warned ? " anyway" : ""}`
+    ? `Give to ${firstName(picked.employee_name)}${warned ? " anyway" : ""}`
     : asked.length ? "Pick someone" : "Nobody to approve";
 
   let footer: ReactNode;
@@ -134,7 +132,8 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
       <div className="rd-step" onKeyDown={backOnEscape}>
         <label className="rd-field">
           <span className="rd-label">
-            {declined ? `Reason for ${first}` : owner ? `Reason for ${owner} and the people who asked` : "Reason for the people who asked"}
+            {declined ? `Reason for ${first}` : owner ? `Reason for ${owner} and the people who asked` : "Reason for the people who asked"}{" "}
+            <small>Optional</small>
           </span>
           <textarea
             className="rd-textarea"
@@ -164,7 +163,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
             <ConfirmButton
               className="danger-button"
               confirmLabel={declined ? "Confirm decline" : "Confirm close"}
-              disabled={decide.isPending || !reason.trim()}
+              disabled={decide.isPending}
               onConfirm={() => decide.mutate(declined ? { action: "reject", person: declined, others: asked.length > 1 } : { action: "close" })}
             >
               {decide.isPending ? "Saving..." : declined ? `Decline ${first}` : "Close request"}
@@ -206,12 +205,14 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
 
   return (
     <RequestDrawer
-      title={`${day} · ${hours}`}
-      type={item.kind === "open_pickup" ? "Open shift" : "Cover"}
+      title={pickup ? "Shift pickup" : "Cover request"}
       status={statusChip(item, asked.length)}
-      sub={open
-        ? `Decide by ${timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat)} ${timeOffZoneName(item.shift.timezone)}`
-        : `Asked ${timeOffDeadlineAt(item.created_at, item.shift.timezone, timeFormat)}`}
+      sub={
+        <>
+          Shift owner: <b>{item.owner_name ?? "A teammate"}</b> · {item.shift.location_name}
+          {open ? ` · Expires ${timeOffDeadlineAt(item.expires_at, item.shift.timezone, timeFormat)} ${timeOffZoneName(item.shift.timezone)}` : ""}
+        </>
+      }
       scheduleHref={`/app/schedule?date=${item.shift.scheduled_date}&view=day&locations=${item.shift.location_id}`}
       tabs={[{ key: "details", label: "Details" }, { key: "activity", label: "Activity" }]}
       tab={tab}
@@ -222,13 +223,26 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
       {tab === "details" ? (
         <>
           <DrawerSection>
-            <div className="rd-shift" role="group" aria-label="Shift">
-              <span className="rd-shift-day">{day}</span>
-              <span className="rd-shift-time">{hours}</span>
-              <span className="rd-shift-meta">
-                {[item.shift.location_name, item.shift.job_name, shiftLength(item.shift.start_time, item.shift.end_time, item.shift.unpaid_break_minutes)].filter(Boolean).join(" · ")}
-              </span>
-            </div>
+            <ShiftTicket
+              shift={item.shift}
+              hand={
+                <Hand
+                  from={owner ?? "A teammate"}
+                  to={
+                    picked
+                      ? firstName(picked.employee_name)
+                      : item.status === "completed"
+                        ? firstName(item.applications.find((application) => application.status === "approved")?.employee_name)
+                        : <em>?</em>
+                  }
+                />
+              }
+            />
+            {item.teammate_note ? (
+              <p className="sx-q">
+                <b>{owner ?? "Note"}</b>“{item.teammate_note}”
+              </p>
+            ) : null}
             {open ? (
               <p className="rd-info">
                 {owner ? `${owner} stays on this shift until you approve.` : "Nobody is on this shift yet. It stays open until you approve someone."}
@@ -242,10 +256,14 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
             ) : null}
           </DrawerSection>
           <DrawerSection
-            title={open ? "Who can take it" : "Who asked"}
-            aside={<span>{asked.length} {asked.length === 1 ? "person" : "people"}</span>}
+            title={pickup ? "Who wants it" : "Who accepted"}
+            aside={
+              <span className="rd-chip warn">
+                {asked.length} {pickup ? (asked.length === 1 ? "wants it" : "want it") : "accepted"}
+              </span>
+            }
           >
-            <div className="rd-group" role="radiogroup" aria-label={open ? "Who can take it" : "Who asked"}>
+            <div className="rd-group" role="radiogroup" aria-label={pickup ? "Who wants it" : "Who accepted"}>
               {asked.length ? asked.map((application) => {
                 const check = checks.get(application.id)!;
                 const disabled = !decides || check.blocked || decide.isPending;
@@ -282,7 +300,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
                   </div>
                 );
               }) : (
-                <p className="rd-empty">Nobody has asked yet. The shift stays open on the Schedule.</p>
+                <p className="rd-empty">Nobody has asked yet. {owner ?? "The owner"} keeps the shift until you approve someone.</p>
               )}
             </div>
             {refusals.length ? (
@@ -316,10 +334,12 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   );
 }
 
+// The same short words as the Requests row (schedule/request-sentences.ts).
 function statusChip(item: ExchangeCase, asked: number): { label: string; tone: DrawerTone } {
   if (item.status === "completed") return { label: "Approved", tone: "ok" };
-  if (item.status === "cancelled") return { label: "Closed", tone: "grey" };
-  if (item.status !== "open") return { label: item.status === "expired" ? "Expired" : "Ended", tone: "grey" };
-  if (item.stage === "awaiting_other_manager") return { label: "In progress", tone: "grey" };
-  return asked && item.can_manage ? { label: "Needs review", tone: "warn" } : { label: "Open", tone: "grey" };
+  if (item.status === "expired") return { label: "Expired", tone: "grey" };
+  if (item.status !== "open") return { label: "Closed", tone: "grey" };
+  if (asked && item.can_manage) return { label: "Needs decision", tone: "warn" };
+  if (item.applications.some((application) => application.status === "rejected_by_manager")) return { label: "Declined", tone: "red" };
+  return { label: "Waiting for teammates", tone: "grey" };
 }

@@ -1,0 +1,659 @@
+/* TAKAS-RELEASE: the shift change plan's parts (Mert, 2026-10-13/14), from the
+   approved mockup: the shift card, one window language, the swipe deck, the
+   request path. Sizes and colour roles as in the mockup. */
+
+/* The shift card: date tile, time, job and length, place; who it goes to below. */
+.sx-tk {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 0 14px;
+  align-items: center;
+  padding: 14px 14px 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-surface);
+  box-shadow: 0 1px 2px #10221a0d;
+  font-variant-numeric: tabular-nums;
+  text-align: left;
+}
+.sx-tk-date {
+  display: grid;
+  justify-items: center;
+  align-content: center;
+  gap: 1px;
+  width: 58px;
+  height: 66px;
+  border-radius: 10px;
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+  line-height: 1.05;
+}
+.sx-tk-date small {
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.sx-tk-date b {
+  font-size: 24px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.sx-tk-main {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+.sx-tk-time {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+.sx-tk-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.sx-tk-row svg {
+  width: 13px;
+  height: 13px;
+  flex: none;
+  color: var(--theme-muted);
+}
+.sx-tk-row i {
+  width: 3px;
+  height: 3px;
+  margin: 0 4px;
+  border-radius: 50%;
+  background: var(--theme-border-strong);
+}
+.sx-tk-foot {
+  grid-column: 1 / -1;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  margin: 12px -14px 0;
+  padding: 9px 14px;
+  border-top: 1px solid var(--theme-border-subtle);
+  color: var(--theme-muted);
+  font-size: 12px;
+}
+.sx-tk-hand {
+  min-width: 0;
+  color: var(--theme-text);
+  font-weight: 600;
+}
+.sx-tk-hand i,
+.sx-tk-hand em {
+  color: var(--theme-muted);
+  font-style: normal;
+  font-weight: 500;
+}
+.sx-tk-soon > span:last-child {
+  color: var(--theme-warning);
+  font-weight: 600;
+}
+
+/* One window language: a small centred eyebrow, the names, the body, a grey foot. */
+.sx-w {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-surface);
+  overflow: hidden;
+}
+.sx-w-head {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) 44px;
+  grid-auto-rows: 44px;
+  align-items: center;
+  padding: 6px 6px 0;
+}
+.sx-w-head h2,
+.sx-w-head h3 {
+  grid-column: 2;
+  margin: 0;
+  color: var(--theme-text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-align: center;
+  text-transform: uppercase;
+}
+.sx-root .sx-w-head .sx-w-icon {
+  display: grid;
+  place-items: center;
+  width: 44px;
+  min-height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-muted);
+}
+.sx-root .sx-w-head .sx-w-icon:hover:not(:disabled) {
+  background: var(--theme-surface-soft);
+  color: var(--theme-text);
+}
+.sx-w-head .sx-w-icon[data-end] {
+  grid-column: 3;
+}
+.sx-w-names {
+  margin: -8px 0 12px;
+  padding: 0 16px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: center;
+}
+.sx-w-names i {
+  color: var(--theme-muted);
+  font-style: normal;
+  font-weight: 500;
+}
+.sx-w-body {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  min-height: 0;
+  padding: 0 14px 14px;
+  font-variant-numeric: tabular-nums;
+}
+.sx-w-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 9px 14px;
+  border-top: 1px solid var(--theme-border);
+  background: var(--theme-surface-soft);
+}
+.sx-w-meta {
+  flex: 1 1 160px;
+  min-width: 0;
+  margin: 0 auto 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  line-height: 1.4;
+}
+.sx-w-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 2px 0 -4px;
+  color: var(--theme-text-secondary);
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.sx-chip {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-warning-soft);
+  color: var(--theme-warning);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0;
+  line-height: 1.4;
+  text-transform: none;
+  white-space: nowrap;
+}
+
+/* A window opened over the page; a bottom sheet on the phone (.sx-dialog). */
+.sx-root.sx-plan-dialog {
+  width: min(440px, calc(100vw - 32px));
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.sx-plan-dialog > .sx-w {
+  max-height: calc(100dvh - 32px);
+  border: 0;
+  border-radius: 0;
+}
+.sx-plan-dialog .sx-w-body {
+  overflow-y: auto;
+}
+.sx-root .sx-w-foot .sx-primary {
+  min-height: 44px;
+}
+@media (max-width: 760px) {
+  .sx-root.sx-plan-dialog {
+    width: 100%;
+    max-width: 100vw;
+    margin: auto 0 0;
+    padding: 0 0 env(safe-area-inset-bottom);
+    border-radius: 20px 20px 0 0;
+  }
+  .sx-plan-dialog .sx-w-foot .sx-primary {
+    flex: 1 1 0;
+  }
+}
+
+/* A teammate's note. */
+.sx-q {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: 8px;
+  background: var(--theme-surface-soft);
+  color: var(--theme-text-body);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.sx-q b {
+  display: block;
+  margin-bottom: 1px;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+/* Green and amber boxes: what fits, what to look at. */
+.sx-cks {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 6px;
+}
+.sx-cks[data-one] {
+  grid-template-columns: minmax(0, 1fr);
+}
+.sx-ck {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-height: 44px;
+  padding: 4px 28px;
+  border-radius: 6px;
+  background: var(--theme-warning-soft);
+  line-height: 1.3;
+}
+.sx-ck svg {
+  position: absolute;
+  top: 50%;
+  left: 10px;
+  width: 14px;
+  height: 14px;
+  color: var(--theme-warning);
+  stroke-width: 2.2;
+  transform: translateY(-50%);
+}
+.sx-ck > span {
+  display: grid;
+  text-align: center;
+}
+.sx-ck strong {
+  color: var(--theme-warning);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.sx-ck small {
+  color: var(--theme-warning-text);
+  font-size: 11px;
+}
+.sx-ck[data-tone="ok"] {
+  background: var(--theme-success-soft);
+}
+.sx-ck[data-tone="ok"] svg,
+.sx-ck[data-tone="ok"] strong {
+  color: var(--theme-success);
+}
+.sx-ck[data-tone="ok"] small {
+  color: var(--theme-text-secondary);
+}
+
+/* Where a request is now: Released → 2 want it → Manager picks. */
+.sx-path {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+}
+.sx-path li {
+  position: relative;
+  display: grid;
+  justify-items: center;
+  gap: 6px;
+  color: var(--theme-muted);
+  font-size: 11.5px;
+  line-height: 1.3;
+  text-align: center;
+}
+.sx-path li::before {
+  content: "";
+  position: absolute;
+  top: 7px;
+  left: -50%;
+  width: 100%;
+  height: 2px;
+  background: var(--theme-border);
+}
+.sx-path li:first-child::before {
+  display: none;
+}
+.sx-path li[data-state="done"]::before,
+.sx-path li[data-state="now"]::before {
+  background: var(--theme-accent);
+}
+.sx-path-dot {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--theme-border-strong);
+  border-radius: 50%;
+  background: var(--theme-surface);
+  color: var(--theme-on-accent);
+}
+.sx-path-dot svg {
+  width: 10px;
+  height: 10px;
+  stroke-width: 3.5;
+}
+.sx-path li[data-state="done"] .sx-path-dot {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+}
+.sx-path li[data-state="now"] .sx-path-dot {
+  border-color: var(--theme-accent);
+  box-shadow: 0 0 0 4px var(--theme-selected);
+}
+.sx-path li[data-state="done"],
+.sx-path li[data-state="now"] {
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+/* A person in a list: initials, name, a second line, a state on the right. */
+.sx-pr {
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr) auto;
+  gap: 0 10px;
+  align-items: center;
+  padding: 9px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  text-align: left;
+}
+.sx-pr-av {
+  grid-row: 1 / span 2;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: var(--theme-selected);
+  color: var(--theme-accent-strong);
+  font-size: 12px;
+  font-weight: 700;
+}
+.sx-pr-name {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 13.5px;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.sx-pr-sub {
+  grid-column: 2;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+}
+.sx-pr-state {
+  grid-column: 3;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+.sx-st {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sx-st::before {
+  content: "";
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--theme-border-strong);
+}
+.sx-st[data-tone="ok"] {
+  color: var(--theme-success);
+}
+.sx-st[data-tone="ok"]::before {
+  background: var(--theme-success);
+}
+.sx-st[data-tone="warn"] {
+  color: var(--theme-warning);
+}
+.sx-st[data-tone="warn"]::before {
+  background: var(--theme-warning);
+}
+
+/* A note field in a window. */
+.sx-note-field {
+  display: grid;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.sx-note-field small {
+  color: var(--theme-muted);
+  font-weight: 400;
+}
+.sx-note-field textarea {
+  min-height: 72px;
+  padding: 10px 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  background: var(--theme-surface);
+  font-size: 14px;
+  font-weight: 400;
+  resize: vertical;
+}
+
+/* Available Shifts: one card at a time. Right takes it, left passes. */
+.sx-deck {
+  position: relative;
+  width: 100%;
+  max-width: 420px;
+  height: 430px;
+  margin: 0 auto;
+  touch-action: pan-y;
+  user-select: none;
+}
+.sx-dcard {
+  position: absolute;
+  inset: 0;
+  border-radius: 16px;
+  box-shadow: 0 12px 32px #10221a14;
+  cursor: grab;
+  transition:
+    transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 0.3s,
+    border-color 0.2s;
+  will-change: transform;
+}
+.sx-dcard:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 3px;
+}
+.sx-dcard[data-dragging] {
+  cursor: grabbing;
+  transition: border-color 0.2s;
+}
+.sx-dcard[data-depth="1"] {
+  transform: translateY(10px) scale(0.96);
+  opacity: 0.85;
+  pointer-events: none;
+}
+.sx-dcard[data-depth="2"] {
+  transform: translateY(20px) scale(0.92);
+  opacity: 0.6;
+  pointer-events: none;
+}
+.sx-dcard .sx-w-body {
+  overflow: hidden;
+}
+.sx-dcard-foot {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.sx-verdict {
+  position: absolute;
+  top: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  color: var(--theme-on-accent);
+  font-size: 12px;
+  font-weight: 700;
+  opacity: 0;
+  pointer-events: none;
+}
+.sx-verdict svg {
+  width: 13px;
+  height: 13px;
+}
+.sx-verdict[data-verdict="take"] {
+  left: 12px;
+  background: var(--theme-accent);
+}
+.sx-verdict[data-verdict="pass"] {
+  right: 12px;
+  background: var(--theme-danger-strong);
+}
+.sx-deck-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+}
+.sx-deck-hint {
+  margin: -4px 0 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  text-align: center;
+}
+.sx-deck-empty {
+  display: grid;
+  gap: 4px;
+  justify-items: center;
+  align-content: center;
+  height: 100%;
+  padding: 28px 16px;
+  border: 1px dashed var(--theme-border-strong);
+  border-radius: 16px;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+.sx-deck-empty b {
+  color: var(--theme-text);
+  font-size: 14px;
+}
+.sx-section-title {
+  margin: 8px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.sx-asked {
+  display: grid;
+  gap: 8px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-dcard {
+    transition: none;
+  }
+}
+
+/* "Your shift": three named options. */
+.sx-opts {
+  display: grid;
+  gap: 8px;
+}
+.sx-opt {
+  display: grid;
+  grid-template-columns: 36px minmax(0, 1fr) 16px;
+  gap: 12px;
+  align-items: center;
+  width: 100%;
+  min-height: 60px;
+  padding: 11px 12px;
+  border: 1px solid var(--theme-border);
+  border-radius: 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  text-align: left;
+  text-decoration: none;
+}
+a.sx-opt:hover {
+  border-color: var(--theme-border-hover);
+}
+a.sx-opt:focus-visible {
+  outline: 2px solid var(--theme-accent);
+  outline-offset: 2px;
+}
+.sx-opt[aria-disabled="true"] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+.sx-opt-icon {
+  display: grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: var(--theme-selected);
+  color: var(--theme-accent);
+}
+.sx-opt-icon svg {
+  width: 18px;
+  height: 18px;
+}
+.sx-opt b {
+  display: block;
+  font-size: 14px;
+  font-weight: 600;
+}
+.sx-opt span span {
+  display: block;
+  margin-top: 1px;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+}
+.sx-opt > svg {
+  width: 16px;
+  height: 16px;
+  color: var(--theme-muted);
+}

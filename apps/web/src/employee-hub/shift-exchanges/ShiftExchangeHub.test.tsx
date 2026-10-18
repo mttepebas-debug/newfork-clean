@@ -65,6 +65,7 @@ const item: ExchangeCase = {
   candidate_count: 3,
   can_manage: true,
   is_owner: true,
+  teammate_note: "",
   history: [],
   applications: ["Blake", "Casey", "Drew"].map((name) => ({
     id: name,
@@ -132,13 +133,15 @@ beforeEach(() => {
   });
 });
 describe("Shift Hub outcome contracts", () => {
-  it("shows an own-availability warning and sends its token only on Request anyway", async () => {
+  it("shows an own-availability warning and sends its token only on Take it anyway", async () => {
     const fingerprint = "a".repeat(64);
+    model.employee_id = "blake";
     model.cases = [];
     model.opportunities = [
       {
-        case_id: null,
-        shift: { ...shift, employee_id: null, employee_name: null },
+        case_id: "released",
+        shift,
+        note: "",
         eligibility: {
           status: "eligible",
           reasons: [],
@@ -147,18 +150,19 @@ describe("Shift Hub outcome contracts", () => {
       },
     ];
     mount("/app/employee-hub/shift-hub?hub_view=available");
-    const request = await screen.findByRole("button", {
-      name: "Request anyway",
+    const take = await screen.findByRole("button", {
+      name: "Take it anyway",
     });
-    expect(screen.getByText(/Conflicts with your availability/)).toBeTruthy();
+    expect(screen.getByText("Outside your availability")).toBeTruthy();
     expect(changeExchange).not.toHaveBeenCalled();
-    fireEvent.click(request);
+    fireEvent.click(take);
     await waitFor(() =>
       expect(changeExchange).toHaveBeenCalledWith(
         "workspace",
         {
           action: "apply",
           shift_id: "shift",
+          case_id: "released",
           availability_fingerprint: fingerprint,
         },
         expect.any(String),
@@ -167,11 +171,13 @@ describe("Shift Hub outcome contracts", () => {
   });
 
   it("shows a shift their approved time off blocks as not open, and where to ask for the hours (BL-995)", async () => {
+    model.employee_id = "blake";
     model.cases = [];
     model.opportunities = [
       {
-        case_id: null,
-        shift: { ...shift, employee_id: null, employee_name: null },
+        case_id: "released",
+        shift,
+        note: "",
         eligibility: {
           status: "ineligible",
           reasons: ["Approved time off overlaps this shift"],
@@ -242,12 +248,9 @@ describe("Shift Hub outcome contracts", () => {
         },
       ],
     });
-    mount("/app/employee-hub/shift-hub?offer=shift");
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=swap");
     await screen.findByText(
       "You remain responsible until a manager approves the transfer.",
-    );
-    fireEvent.click(
-      screen.getByRole("radio", { name: /Swap shifts/, hidden: true }),
     );
     const select = (await screen.findByLabelText(
       "Eligible teammate shift",
@@ -490,30 +493,24 @@ describe("Shift Hub outcome contracts", () => {
   });
 
   it("uses the selected dates for available opportunities too", async () => {
+    model.employee_id = "blake";
     model.opportunities = ["2030-01-09", "2030-01-10", "2030-01-11"].map(
       (date) => ({
-        case_id: null,
+        case_id: `case-${date}`,
         shift: {
           ...shift,
           id: date,
           source_id: date,
-          employee_id: null,
           scheduled_date: date,
         },
+        note: "",
         eligibility: { status: "eligible", reasons: [] },
       }),
     );
     mount("/app/employee-hub/shift-hub?from=2030-01-10&to=2030-01-10");
     await screen.findByRole("navigation", { name: "Shift Hub views" });
-    expect(document.querySelector(".sx-list")?.textContent).toContain(
-      "Thu, Jan 10",
-    );
-    expect(document.querySelector(".sx-list")?.textContent).not.toContain(
-      "Wed, Jan 9",
-    );
-    expect(document.querySelector(".sx-list")?.textContent).not.toContain(
-      "Fri, Jan 11",
-    );
+    const cards = [...document.querySelectorAll(".sx-dcard .sx-tk")].map((card) => card.getAttribute("aria-label"));
+    expect(cards).toEqual([expect.stringContaining("Thursday, January 10")]);
   });
 
   it("names the first view Available Shifts and marks the open view", async () => {
@@ -563,9 +560,10 @@ describe("Shift Hub outcome contracts", () => {
   it("counts the open shifts I can take on the Available Shifts tab", async () => {
     model.employee_id = "blake";
     model.cases[0]!.is_owner = false;
-    const open = (id: string, date: string, caseId: string | null = null) => ({
+    const open = (id: string, date: string, caseId = `case-${id}`) => ({
       case_id: caseId,
-      shift: { ...shift, id, scheduled_date: date, employee_id: null, employee_name: null },
+      shift: { ...shift, id, scheduled_date: date },
+      note: "",
       eligibility: { status: "eligible" as const, reasons: [] },
     });
     model.opportunities = [
@@ -603,19 +601,13 @@ describe("Shift Hub outcome contracts", () => {
     expect(views.querySelector(".sx-tab-count")).toBeNull();
   });
 
-  it.each(["direct", "swap"] as const)(
+  it.each(["cover", "swap"] as const)(
     "keeps the note and blocks a %s request when the selected match disappears",
     async (mode) => {
       model.cases = [];
-      const { client } = mount("/app/employee-hub/shift-hub?offer=shift");
+      const { client } = mount(`/app/employee-hub/shift-hub?offer=shift&mode=${mode}`);
       await screen.findByText(
         "You remain responsible until a manager approves the transfer.",
-      );
-      fireEvent.click(
-        screen.getByRole("radio", {
-          name: mode === "swap" ? /Swap shifts/ : "Ask a teammate",
-          hidden: true,
-        }),
       );
       await waitFor(() => expect(getExchangeCandidates).toHaveBeenCalled());
       const select = screen.getByLabelText(
@@ -650,19 +642,13 @@ describe("Shift Hub outcome contracts", () => {
       expect(changeExchange).not.toHaveBeenCalled();
     },
   );
-  it.each(["direct", "swap"] as const)(
+  it.each(["cover", "swap"] as const)(
     "offers an in-place retry and preserves %s selections after eligibility lookup fails",
     async (mode) => {
       model.cases = [];
-      const { client } = mount("/app/employee-hub/shift-hub?offer=shift");
+      const { client } = mount(`/app/employee-hub/shift-hub?offer=shift&mode=${mode}`);
       await screen.findByText(
         "You remain responsible until a manager approves the transfer.",
-      );
-      fireEvent.click(
-        screen.getByRole("radio", {
-          name: mode === "swap" ? /Swap shifts/ : "Ask a teammate",
-          hidden: true,
-        }),
       );
       const select = screen.getByLabelText(
         mode === "swap" ? "Eligible teammate shift" : "Eligible teammate",
@@ -705,40 +691,20 @@ describe("Shift Hub outcome contracts", () => {
       expect(changeExchange).not.toHaveBeenCalled();
     },
   );
-  it("can return from an empty swap search to the cover pool without losing its note", async () => {
+  it("offers to release the shift to everyone when no swap fits", async () => {
     model.cases = [];
     vi.mocked(getExchangeCandidates).mockResolvedValue({
       employees: [],
       shifts: [],
     });
-    mount("/app/employee-hub/shift-hub?offer=shift");
-    await screen.findByText(
-      "You remain responsible until a manager approves the transfer.",
-    );
-    fireEvent.click(
-      screen.getByRole("radio", { name: /Swap shifts/, hidden: true }),
-    );
-    fireEvent.change(screen.getByRole("textbox", { hidden: true }), {
-      target: { value: "Please find cover" },
-    });
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=swap");
     fireEvent.click(
       await screen.findByRole("button", {
-        name: "Start a cover search instead",
+        name: "Release it to everyone instead",
         hidden: true,
       }),
     );
-    expect(
-      (screen.getByRole("textbox", { hidden: true }) as HTMLTextAreaElement)
-        .value,
-    ).toBe("Please find cover");
-    expect(
-      (
-        screen.getByRole("radio", {
-          name: "Offer to eligible teammates",
-          hidden: true,
-        }) as HTMLInputElement
-      ).checked,
-    ).toBe(true);
+    expect(await screen.findByText(/Note for teammates/)).toBeTruthy();
     expect(changeExchange).not.toHaveBeenCalled();
   });
   it("does not move focus away from a note edited while eligibility retries", async () => {
@@ -746,12 +712,9 @@ describe("Shift Hub outcome contracts", () => {
     vi.mocked(getExchangeCandidates).mockRejectedValueOnce(
       new Error("Offline"),
     );
-    mount("/app/employee-hub/shift-hub?offer=shift");
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=cover");
     await screen.findByText(
       "You remain responsible until a manager approves the transfer.",
-    );
-    fireEvent.click(
-      screen.getByRole("radio", { name: "Ask a teammate", hidden: true }),
     );
     await screen.findByText(/We couldn’t check eligible matches/);
     let resolve!: (
@@ -783,6 +746,7 @@ describe("Shift Hub outcome contracts", () => {
     );
   });
   it("shows a manager's result and keeps the owner's draft reason in an open close review", async () => {
+    model.cases[0]!.audience = "direct";
     const { client } = mount("/app/employee-hub/shift-hub?case=case");
     const trigger = await screen.findByRole("button", {
       name: "Close cover search",
@@ -840,11 +804,12 @@ describe("Shift Hub outcome contracts", () => {
     );
     await waitFor(() =>
       expect(document.activeElement).toBe(
-        screen.getByRole("heading", { name: "Cover request" }),
+        screen.getByRole("heading", { name: "Cover for Alex Morgan" }),
       ),
     );
   });
   it("closes the owner's cover search with the reason it shares", async () => {
+    model.cases[0]!.audience = "direct";
     mount("/app/employee-hub/shift-hub?case=case");
     fireEvent.click(
       await screen.findByRole("button", { name: "Close cover search" }),
@@ -860,9 +825,10 @@ describe("Shift Hub outcome contracts", () => {
       name: "Close search",
       hidden: true,
     }) as HTMLButtonElement;
-    expect(close.disabled).toBe(true);
+    // TAKAS-RELEASE: the reason is optional.
+    expect(close.disabled).toBe(false);
     fireEvent.change(
-      within(dialog).getByLabelText("Reason shared with affected employees"),
+      within(dialog).getByLabelText(/Reason shared with affected employees/),
       { target: { value: "Shift covered internally" } },
     );
     // BL-748: closing takes the search away, so it is red and asks twice.
@@ -922,7 +888,7 @@ describe("Shift Hub outcome contracts", () => {
     ).toBeTruthy();
     expect(within(dialog).queryByText(/search|applications/)).toBeNull();
     fireEvent.change(
-      within(dialog).getByLabelText("Reason shared with affected employees"),
+      within(dialog).getByLabelText(/Reason shared with affected employees/),
       { target: { value: "Plans changed" } },
     );
     const cancel = within(dialog).getByRole("button", {
@@ -947,6 +913,7 @@ describe("Shift Hub outcome contracts", () => {
     [1, "The 1 active application will close. The current owner remains responsible."],
     [2, "All 2 active applications will close. The current owner remains responsible."],
   ])("counts %i application(s) in a sentence that reads right", async (count, sentence) => {
+    model.cases[0]!.audience = "direct";
     model.cases[0]!.candidate_count = count;
     mount("/app/employee-hub/shift-hub?case=case");
     fireEvent.click(
@@ -960,6 +927,7 @@ describe("Shift Hub outcome contracts", () => {
   it.each(["cancelled", "expired", "invalidated"] as const)(
     "explains a %s request without claiming a transfer or inferring an unpublished owner",
     async (status) => {
+      model.cases[0]!.audience = "direct";
       const { client } = mount("/app/employee-hub/shift-hub?case=case");
       fireEvent.click(
         await screen.findByRole("button", { name: "Close cover search" }),
@@ -1004,7 +972,7 @@ describe("Shift Hub outcome contracts", () => {
   });
   it("opens an employee case deep link in My requests and keeps that queue on back", async () => {
     mount("/app/employee-hub/shift-hub?case=case");
-    await screen.findByText("Still your shift");
+    await screen.findByText("Who wants it");
     expect(
       screen
         .getByRole("button", { name: "My requests" })
@@ -1017,7 +985,7 @@ describe("Shift Hub outcome contracts", () => {
         "aria-current",
       ),
     ).toBe("page");
-    expect(screen.queryByText("Still your shift")).toBeNull();
+    expect(screen.queryByText("Who wants it")).toBeNull();
   });
   it("opens a closed case deep link in History", async () => {
     model.employee_id = null;
@@ -1034,7 +1002,7 @@ describe("Shift Hub outcome contracts", () => {
   });
   it("keeps ownership prominent and lists volunteers without owner veto", async () => {
     mount("/app/employee-hub/shift-hub?hub_view=requests&case=case");
-    expect(await screen.findByText("Still your shift")).toBeTruthy();
+    expect(await screen.findByText(/Until then it is your shift/)).toBeTruthy();
     expect(screen.getByText("Casey")).toBeTruthy();
     expect(
       screen.queryByRole("button", { name: /Approve transfer/ }),
@@ -1064,7 +1032,7 @@ describe("Shift Hub outcome contracts", () => {
   });
   it("keeps a private note when closing the unfinished form is cancelled", async () => {
     model.cases = [];
-    mount("/app/employee-hub/shift-hub?offer=shift");
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=cover");
     await screen.findByText(
       "You remain responsible until a manager approves the transfer.",
     );
@@ -1104,9 +1072,8 @@ describe("Shift Hub outcome contracts", () => {
     fireEvent.click(
       screen.getByRole("button", { name: "Start a new cover or swap request" }),
     );
-    await screen.findByText(
-      "You remain responsible until a manager approves the transfer.",
-    );
+    // A release renews as a release (TAKAS-RELEASE).
+    expect(await screen.findByText(/Note for teammates/)).toBeTruthy();
     expect(changeExchange).not.toHaveBeenCalled();
   });
   it("shows both current owners of a pending swap, including the recipient's own responsibility", async () => {
@@ -1207,6 +1174,7 @@ describe("Shift Hub outcome contracts", () => {
     expect(rows[1]?.textContent).not.toContain("Blake");
   });
   it("requires a positive publication flag before claiming an assignee is current", async () => {
+    model.cases[0]!.audience = "direct";
     model.cases[0]!.current_published = undefined;
     mount("/app/employee-hub/shift-hub?case=case");
     await screen.findByText("Check current assignments");
@@ -1218,20 +1186,140 @@ describe("Shift Hub outcome contracts", () => {
     );
     expect(within(details).queryByText("Still your shift")).toBeNull();
   });
-  it("labels an open pickup without inventing an assigned owner", async () => {
-    model.cases[0] = {
-      ...model.cases[0]!,
-      kind: "open_pickup",
-      owner_id: null,
-      owner_name: null,
-      shift: { ...shift, employee_id: null, employee_name: null },
-    };
+  it("names a teammate's released shift by who released it", async () => {
+    model.employee_id = "casey";
+    model.cases[0]!.is_owner = false;
     mount("/app/employee-hub/shift-hub?case=case");
-    await screen.findByRole("heading", { name: "Open shift pickup" });
+    await screen.findByRole("heading", { name: "Released by Alex Morgan" });
     const row = screen
       .getByRole("complementary", { name: "Request details" })
       .querySelector(".sx-assignment");
-    expect(row?.textContent).toContain("Open shift · No assigned employee");
-    expect(row?.textContent).not.toContain("Currently responsible");
+    expect(row?.textContent).toContain("Alex Morgan");
+  });
+});
+
+// TAKAS-RELEASE (Mert, 2026-10-13/14): release, the deck, Take back, the three options.
+describe("Shift Hub release", () => {
+  const released = (id: string, date = "2030-01-10") => ({
+    case_id: id,
+    shift: { ...shift, id: `shift-${id}`, source_id: `source-${id}`, scheduled_date: date },
+    note: "Family dinner came up. Section 4 is usually busy, thanks!",
+    eligibility: { status: "eligible" as const, reasons: [] },
+  });
+
+  it("shows one released shift at a time, with the owner's note", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [released("one"), released("two", "2030-01-11")];
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    const top = await screen.findByRole("article", { name: /Alex Morgan can’t make this shift/ });
+    expect(within(top).getByText(/Family dinner came up/)).toBeTruthy();
+    expect(within(top).getByText("Your manager picks who gets it.")).toBeTruthy();
+    expect(screen.getByText("Swipe right to take · left to pass · 2 left")).toBeTruthy();
+  });
+
+  it("passes on a card with Not for me", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [released("one")];
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    fireEvent.click(await screen.findByRole("button", { name: "Not for me" }));
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        { action: "pass", shift_id: "shift-one", case_id: "one" },
+        expect.any(String),
+      ),
+    );
+  });
+
+  it("takes a card with the right arrow key and passes with the left", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [released("one")];
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    const top = await screen.findByRole("article", { name: /Alex Morgan can’t make this shift/ });
+    fireEvent.keyDown(top, { key: "ArrowRight" });
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        { action: "apply", shift_id: "shift-one", case_id: "one" },
+        expect.any(String),
+      ),
+    );
+  });
+
+  it("puts a card back when the choice is refused", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [released("one")];
+    vi.mocked(changeExchange).mockRejectedValueOnce(new Error("This request closed 4 hours before the shift"));
+    mount("/app/employee-hub/shift-hub?hub_view=available");
+    fireEvent.click(await screen.findByRole("button", { name: "I’ll take it" }));
+    expect(await screen.findByText(/This request closed 4 hours before the shift/)).toBeTruthy();
+    expect(await screen.findByRole("article", { name: /Alex Morgan can’t make this shift/ })).toBeTruthy();
+  });
+
+  it("releases a shift with a note for teammates", async () => {
+    model.cases = [];
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=release");
+    const note = await screen.findByLabelText(/Note for teammates/);
+    fireEvent.change(note, { target: { value: " Family dinner came up. " } });
+    fireEvent.click(screen.getByRole("button", { name: "Release shift", hidden: true }));
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        { action: "create", kind: "cover", shift_id: "shift", note: "", teammate_note: "Family dinner came up." },
+        expect.any(String),
+      ),
+    );
+  });
+
+  it("offers the three named options for a shift opened without one", async () => {
+    model.cases = [];
+    mount("/app/employee-hub/shift-hub?offer=shift");
+    const release = await screen.findByRole("link", { name: /Release shift/, hidden: true });
+    expect(release.getAttribute("href")).toContain("mode=release");
+    expect(screen.getByRole("link", { name: /Ask someone to cover/, hidden: true }).getAttribute("href")).toContain("mode=cover");
+    expect(screen.getByRole("link", { name: /Swap/, hidden: true }).getAttribute("href")).toContain("mode=swap");
+  });
+
+  it("closes the options in the last 4 hours before the shift", async () => {
+    model.cases = [];
+    const soon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
+    model.own_shifts = [{ ...shift, starts_at: soon }];
+    mount("/app/employee-hub/shift-hub?offer=shift");
+    expect(await screen.findByText("Changes are closed")).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /Release shift/, hidden: true })).toBeNull();
+  });
+
+  it("sends a shift with an open request to that request", async () => {
+    mount("/app/employee-hub/shift-hub?offer=shift&mode=release");
+    expect(await screen.findByText(/already has an open request/)).toBeTruthy();
+    expect(screen.queryByLabelText(/Note for teammates/)).toBeNull();
+  });
+
+  it("shows the owner where the release stands and who wants it", async () => {
+    mount("/app/employee-hub/shift-hub?case=case");
+    const card = await screen.findByRole("region", { name: "Released shift" });
+    expect(within(card).getByText("3 want it")).toBeTruthy();
+    expect(within(card).getByText("Manager picks")).toBeTruthy();
+    expect(within(card).getAllByText("Wants it")).toHaveLength(3);
+  });
+
+  it("takes the shift back in two clicks, without a reason", async () => {
+    mount("/app/employee-hub/shift-hub?case=case");
+    const back = await screen.findByRole("button", { name: "Take back shift" });
+    expect(back.className).toBe("sx-danger");
+    fireEvent.click(back);
+    expect(changeExchange).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm take back" }));
+    await waitFor(() =>
+      expect(changeExchange).toHaveBeenCalledWith(
+        "workspace",
+        { action: "close", case_id: "case", expected_revision: 4, reason: "", private_note: "" },
+        expect.any(String),
+      ),
+    );
   });
 });

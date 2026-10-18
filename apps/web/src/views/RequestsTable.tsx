@@ -1,29 +1,99 @@
-import { timeOffOpenedShiftCount, type ExchangeCase } from "@newfork/shared";
+import { timeOffOpenedShiftCount } from "@newfork/shared";
+import { ArrowLeftRight, CalendarOff, Hand } from "lucide-react";
+import type { ReactNode } from "react";
+import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { ListCards } from "./ListCards";
+import type { RequestRow } from "../schedule/requests-list";
 import {
-  AlertTriangle,
-  ArrowLeftRight,
-  CalendarOff,
-  ChevronRight,
-  CircleDashed,
-  UserRoundSearch,
-  type LucideIcon,
-} from "lucide-react";
-import { formatTimeOffDeadline, timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
-import { ListCard, ListCards } from "./ListCards";
-import { requestTypeLabels, type RequestRow, type RequestType } from "../schedule/requests-list";
+  exchangeSentence,
+  rowExpires,
+  rowKind,
+  rowKindLabels,
+  rowStatus,
+  sentenceText,
+  timeOffSentence,
+  type Part,
+  type RowKind,
+} from "../schedule/request-sentences";
 
-// EKRAN-02 C1 (KARARLAR Schedule → Requests, K-S8 – K-S10, KK-173): one table
-// for time off and every shift change. Employee carries a second line that
-// depends on the type; When is one date form, the year only when it is not
-// this year; an Open shift row has an empty-shift mark instead of a person.
-// Status tells an open request (Needs review, In progress) from a closed one.
+// Schedule → Requests as one table of thin rows (TAKAS-RELEASE; shift changes:
+// Mert, 2026-10-14; time off in the same form: Mert, 2026-10-17): the kind's
+// icon on a rounded tile, one sentence, a short status, and Expires (when the
+// request closes on its own; red in its last 12 hours). The detail is in the
+// drawer. The phone draws the same as cards.
 
-const typeIcons: Record<RequestType, LucideIcon> = {
-  time_off: CalendarOff,
-  swap: ArrowLeftRight,
-  cover: UserRoundSearch,
-  open_pickup: CircleDashed,
-};
+/** Steps in (Mert, 2026-10-14 00:28): a person and an arrow coming in. */
+function StepsIn({ size = 22 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+      <circle cx="9" cy="8" r="4" />
+      <path d="M2 20a7 7 0 0 1 11.5-5.4" />
+      <path d="M22 17h-7" />
+      <path d="m18 13.5-3.5 3.5 3.5 3.5" />
+    </svg>
+  );
+}
+
+export function KindIcon({ kind, size = 40 }: { kind: RowKind; size?: 28 | 40 }) {
+  const icon = size === 40 ? 22 : 16;
+  return (
+    <span className={`request-kind request-kind--${size}`} data-kind={kind} aria-hidden>
+      {kind === "time_off" ? (
+        <CalendarOff size={icon} />
+      ) : kind === "swap" ? (
+        <ArrowLeftRight size={icon} />
+      ) : kind === "pickup" ? (
+        <Hand size={icon} />
+      ) : (
+        <StepsIn size={icon} />
+      )}
+    </span>
+  );
+}
+
+function Sentence({ parts }: { parts: readonly Part[] }): ReactNode {
+  return parts.map((part, index) => (typeof part === "string" ? part : <b key={index}>{part.strong}</b>));
+}
+
+function sentenceOf(row: RequestRow, timeFormat: "12h" | "24h") {
+  if (row.source === "time_off") {
+    const opens = row.request.progress ? timeOffOpenedShiftCount(row.request.progress) : 0;
+    return timeOffSentence(row.request, opens);
+  }
+  return exchangeSentence(row.request, timeFormat);
+}
+
+function rowZone(row: RequestRow) {
+  return row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
+}
+
+function Expires({ row, timeFormat, phone = false }: { row: RequestRow; timeFormat: "12h" | "24h"; phone?: boolean }) {
+  const expires = rowExpires(row);
+  const zone = rowZone(row);
+  if (!expires || !zone)
+    return phone ? null : (
+      <>
+        <span className="request-expires request-expires--none" aria-hidden>
+          —
+        </span>
+        <span className="sr-only">No expiry</span>
+      </>
+    );
+  const at = timeOffDeadlineAt(expires.at, zone, timeFormat);
+  // A deadline names its zone on any device (FB-6.3.8d): the time, then the zone below it.
+  if (phone)
+    return (
+      <span className={`request-expires${expires.soon ? " request-expires--soon" : ""}`}>
+        Expires {at} {timeOffZoneName(zone)}
+      </span>
+    );
+  return (
+    <span className={`request-expires${expires.soon ? " request-expires--soon" : ""}`}>
+      <span>{at}</span>
+      <small>{timeOffZoneName(zone)}</small>
+    </span>
+  );
+}
 
 export function RequestsTable({
   rows,
@@ -37,22 +107,19 @@ export function RequestsTable({
   return (
     <table className="employee-table requests-table">
       <colgroup>
-        <col style={{ width: "25%" }} />
-        <col style={{ width: "12%" }} />
-        <col style={{ width: "24%" }} />
-        {/* "Dec 24, 12:00 AM" fits whole at the phone's 780 px table, too. */}
-        <col style={{ width: "18%" }} />
-        <col style={{ width: "13%" }} />
-        <col style={{ width: "8%" }} />
+        <col style={{ width: "64px" }} />
+        <col />
+        <col style={{ width: "1%" }} />
+        <col style={{ width: "1%" }} />
       </colgroup>
       <thead>
         <tr>
-          <th scope="col">Employee</th>
-          <th scope="col">Type</th>
-          <th scope="col">When</th>
-          <th scope="col">Decide by</th>
+          <th scope="col">
+            <span className="sr-only">Type</span>
+          </th>
+          <th scope="col">Request</th>
           <th scope="col">Status</th>
-          <th scope="col">Review</th>
+          <th scope="col">Expires</th>
         </tr>
       </thead>
       <tbody>
@@ -64,23 +131,14 @@ export function RequestsTable({
   );
 }
 
-function RequestRowView({
-  row,
-  timeFormat,
-  onOpen,
-}: {
-  row: RequestRow;
-  timeFormat: "12h" | "24h";
-  onOpen: () => void;
-}) {
-  const Icon = typeIcons[row.type];
-  const person = rowPerson(row);
-  const opens = row.source === "time_off" && row.request.progress ? timeOffOpenedShiftCount(row.request.progress) : 0;
+function RequestRowView({ row, timeFormat, onOpen }: { row: RequestRow; timeFormat: "12h" | "24h"; onOpen: () => void }) {
+  const kind = rowKind(row);
+  const parts = sentenceOf(row, timeFormat);
   const status = rowStatus(row);
   return (
     <tr
       tabIndex={0}
-      aria-label={`${person.name}, ${requestTypeLabels[row.type]}, ${rowWhen(row, timeFormat)}`}
+      aria-label={`${rowKindLabels[kind]}: ${sentenceText(parts)} ${status.label}`}
       onClick={onOpen}
       onKeyDown={(event) => {
         if (event.target !== event.currentTarget) return;
@@ -88,47 +146,22 @@ function RequestRowView({
         if (event.key === "Enter" || event.key === " ") onOpen();
       }}
     >
+      <td className="request-kind-cell">
+        <KindIcon kind={kind} />
+        <span className="sr-only">{rowKindLabels[kind]}</span>
+      </td>
       <td>
-        <span className="request-person">
-          {row.type === "open_pickup" ? (
-            <span className="request-person-mark request-person-mark--open" aria-hidden>
-              <CircleDashed size={16} />
-            </span>
-          ) : (
-            <span className="request-person-mark" aria-hidden>
-              {person.name.charAt(0).toUpperCase()}
-            </span>
-          )}
-          <span className="request-person-text">
-            <span className="request-person-name">{person.name}</span>
-            {person.detail ? <small>{person.detail}</small> : null}
-          </span>
+        <span className="request-sentence">
+          <Sentence parts={parts} />
         </span>
       </td>
       <td>
-        <span className="request-type" data-type={row.type}>
-          <Icon size={14} aria-hidden />
-          {requestTypeLabels[row.type]}
+        <span className="list-chip" data-tone={status.tone}>
+          {status.label}
         </span>
       </td>
-      <td>{rowWhen(row, timeFormat)}</td>
       <td>
-        <RowDecideBy row={row} timeFormat={timeFormat} />
-      </td>
-      <td>
-        <span className="list-chip" data-tone={statusTone(status)}>
-          {statusText(status)}
-        </span>
-      </td>
-      <td className="request-review-cell">
-        {opens ? (
-          <span className="request-conflict-count" title="Shifts that become open">
-            <AlertTriangle size={14} aria-hidden />
-            {opens}
-          </span>
-        ) : (
-          <ChevronRight size={15} aria-hidden />
-        )}
+        <Expires row={row} timeFormat={timeFormat} />
       </td>
     </tr>
   );
@@ -147,59 +180,33 @@ export function RequestCards({
   return (
     <ListCards label="Requests">
       {rows.map((row) => {
-        const Icon = typeIcons[row.type];
-        const person = rowPerson(row);
-        const status = statusText(rowStatus(row));
-        const when = rowWhen(row, timeFormat);
-        const deadline = rowDeadline(row, timeFormat);
+        const kind = rowKind(row);
+        const parts = sentenceOf(row, timeFormat);
+        const status = rowStatus(row);
         return (
-          <ListCard
-            key={`${row.source}:${row.id}`}
-            label={`${person.name}, ${requestTypeLabels[row.type]}, ${when}, ${status}`}
-            // The type's mark leads the card, so the name keeps the width it needs.
-            mark={<Icon size={16} />}
-            markDashed={row.type === "open_pickup"}
-            title={<span>{person.name}</span>}
-            status={
-              <span className="list-chip" data-tone={statusTone(rowStatus(row))}>
-                {status}
+          <li key={`${row.source}:${row.id}`}>
+            <button
+              type="button"
+              className="list-card request-card"
+              aria-label={`${rowKindLabels[kind]}: ${sentenceText(parts)} ${status.label}`}
+              onClick={() => onOpen(row)}
+            >
+              <KindIcon kind={kind} />
+              <span className="request-sentence">
+                <Sentence parts={parts} />
               </span>
-            }
-            // "By …" fits a phone with the zone's name ("Los Angeles time" too);
-            // "Decide by …" did not (KARARLAR:133 names the zone).
-            lines={[when, deadline ? `By ${deadline}` : null]}
-            onOpen={() => onOpen(row)}
-          />
+              <span className="request-card-foot">
+                <span className="list-chip" data-tone={status.tone}>
+                  {status.label}
+                </span>
+                <Expires row={row} timeFormat={timeFormat} phone />
+              </span>
+            </button>
+          </li>
         );
       })}
     </ListCards>
   );
-}
-
-function rowPerson(row: RequestRow): { name: string; detail: string } {
-  if (row.source === "time_off") {
-    const request = row.request;
-    if (request.request_type === "time_off_cancellation") return { name: request.employee_name, detail: "Cancels approved time off" };
-    const opens = request.progress ? timeOffOpenedShiftCount(request.progress) : 0;
-    return { name: request.employee_name, detail: opens ? `${opens} ${opens === 1 ? "shift becomes" : "shifts become"} open` : "" };
-  }
-  const item = row.request;
-  if (item.kind === "open_pickup") {
-    const applicants = item.applications.length;
-    return {
-      name: "Open shift",
-      detail: [item.shift.location_name, item.shift.job_name, applicants ? `${applicants} ${applicants === 1 ? "applicant" : "applicants"}` : ""]
-        .filter(Boolean)
-        .join(" · "),
-    };
-  }
-  const name = item.owner_name ?? item.shift.employee_name ?? "Unknown employee";
-  if (item.kind === "swap" && item.requested_shift) {
-    const other = item.requested_shift.employee_name;
-    return { name, detail: `${other ? `for ${other}'s` : "for"} ${shortDate(item.requested_shift.scheduled_date, { weekday: true })}` };
-  }
-  const candidates = item.candidate_count;
-  return { name, detail: candidates ? `${candidates} ${candidates === 1 ? "candidate" : "candidates"}` : "Looking for cover" };
 }
 
 /** K-S10: one date form; the year only when it is not this year. A shift
@@ -239,51 +246,4 @@ export function clockRange(start: string, end: string, timeFormat: "12h" | "24h"
 
 function toDate(value: string) {
   return new Date(value.length === 10 ? `${value}T12:00:00` : value);
-}
-
-function rowWhen(row: RequestRow, timeFormat: "12h" | "24h") {
-  if (row.source === "time_off") {
-    const { start_date: start, end_date: end } = row.request;
-    return dateRange(start, end);
-  }
-  const shift = row.request.shift;
-  const hours = shift.start_time && shift.end_time ? ` · ${clockRange(shift.start_time, shift.end_time, timeFormat)}` : "";
-  return `${shortDate(shift.scheduled_date, { weekday: true })}${hours}`;
-}
-
-function rowZone(row: RequestRow) {
-  return row.source === "time_off" ? row.request.segments[0]?.time_timezone : row.request.shift.timezone;
-}
-
-function rowDeadline(row: RequestRow, timeFormat: "12h" | "24h") {
-  const zone = rowZone(row);
-  return row.decideBy && zone ? formatTimeOffDeadline(row.decideBy, zone, timeFormat) : null;
-}
-
-// KARARLAR:133 names the zone; it gets its own line so it is never cut.
-function RowDecideBy({ row, timeFormat }: { row: RequestRow; timeFormat: "12h" | "24h" }) {
-  const zone = rowZone(row);
-  if (!row.decideBy || !zone) return null;
-  return (
-    <span className="request-deadline">
-      <span>{timeOffDeadlineAt(row.decideBy, zone, timeFormat)}</span>
-      <small>{timeOffZoneName(zone)}</small>
-    </span>
-  );
-}
-
-function rowStatus(row: RequestRow): string {
-  if (row.state !== "closed") return row.state;
-  return row.source === "time_off" ? row.request.status : (row.request as ExchangeCase).status;
-}
-
-function statusTone(status: string) {
-  if (status === "needs_review") return "amber";
-  if (status === "approved" || status === "completed") return "green";
-  if (status === "denied" || status === "invalidated") return "red";
-  return "gray";
-}
-
-function statusText(status: string) {
-  return status.replaceAll("_", " ").replace(/^\w/, (letter) => letter.toUpperCase());
 }

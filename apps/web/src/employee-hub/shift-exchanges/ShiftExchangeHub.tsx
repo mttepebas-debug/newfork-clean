@@ -43,6 +43,11 @@ import {
 } from "./exchange-data";
 import "./shift-exchanges.css";
 import { ExchangeShiftCard, shiftHours } from "./ExchangeShiftCard";
+import { ChangeOptions, CLOSE_BEFORE_MS, type ChangeMode } from "./ChangeOptions";
+import { PlanDialog } from "./PlanDialog";
+import { ReleaseCard, ReleaseDialog, firstName } from "./Release";
+import { ReleaseDeck } from "./ReleaseDeck";
+import { ShiftTicket } from "./ShiftTicket";
 export { ExchangeShiftCard } from "./ExchangeShiftCard";
 
 const stageLabels: Record<ExchangeCase["stage"], string> = {
@@ -73,6 +78,13 @@ const caseStatusLabels: Record<ExchangeCase["status"], string> = {
 };
 const activeApplication = (a: ExchangeApplication) =>
   a.status === "invited" || a.status === "pending_manager";
+// TAKAS-RELEASE: a release is a cover asked of everyone eligible.
+const isRelease = (item: ExchangeCase) => item.kind === "cover" && item.audience === "eligible_pool";
+function caseTitle(item: ExchangeCase) {
+  if (item.kind === "swap") return "Shift swap";
+  if (isRelease(item)) return item.is_owner ? "Released shift" : `Released by ${item.owner_name ?? "a teammate"}`;
+  return `Cover for ${item.owner_name ?? "a teammate"}`;
+}
 
 
 function availabilityMessage(verb: "Requesting" | "Accepting") {
@@ -94,20 +106,14 @@ function TimeOffBlockedCard({ opportunity }: { opportunity: ExchangeOpportunity 
   return (
     <article className="sx-card sx-card-time-off">
       <div className="sx-card-top">
-        <span className="sx-pill">
-          {opportunity.shift.employee_id ? "Cover" : "Open shift"}
-        </span>
+        <span className="sx-pill">Released shift</span>
         <span className="sx-time-off">
           <CalendarX size={14} />
           On time off
         </span>
       </div>
       <ExchangeShiftCard shift={opportunity.shift} />
-      <p>
-        {opportunity.shift.employee_name
-          ? `Cover for ${opportunity.shift.employee_name}`
-          : "No assigned employee"}
-      </p>
+      <p>Released by {opportunity.shift.employee_name ?? "a teammate"}</p>
       <p className="sx-help">
         You have approved time off during this shift. To take it, ask to cancel
         those hours first.
@@ -288,7 +294,13 @@ function useExchangeAction(workspace: string) {
                   ? "Request closed. No transfer was made. Check your current schedule for your assignment."
                   : command.action === "accept"
                     ? "Request accepted. Waiting for final manager approval."
-                    : "Request updated. Assignment changes require final manager approval.",
+                    : command.action === "apply"
+                      ? "You asked for this shift. Your manager picks who gets it."
+                      : command.action === "pass"
+                        ? "Hidden from your Available Shifts."
+                        : command.action === "create" && command.kind === "cover" && !command.employee_id
+                          ? "Shift released. It stays yours until your manager approves someone."
+                          : "Request updated. Assignment changes require final manager approval.",
       });
       await refreshExchangeSurfaces(client, workspace);
     },
@@ -432,6 +444,13 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       ? notice.text
       : null;
   const offering = params.has("offer");
+  const offerMode = params.get("mode") as ChangeMode | null;
+  const offerShift = model.own_shifts.find(
+    (s) => s.id === params.get("offer") || s.source_id === params.get("offer"),
+  );
+  const offerActive = offerShift
+    ? model.cases.find((c) => c.status === "open" && c.shift.source_id === offerShift.source_id)
+    : undefined;
   const tabs: [(typeof HUB_VIEWS)[number], string][] = [
     ["available", "Available Shifts"],
     ["requests", "My requests"],
@@ -596,110 +615,88 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
         <div className="sx-list">
           {view === "available" ? (
             <>
-              {visibleOpportunities.map((opportunity) => {
-                  if (blockedByTimeOff(opportunity.eligibility))
-                    return (
+              {/* One released shift at a time (TAKAS-RELEASE, plan 06:43). */}
+              <ReleaseDeck
+                cards={visibleOpportunities.filter(
+                  (o) => !blockedByTimeOff(o.eligibility) && !myApplication(o),
+                )}
+                disabled={!canWrite}
+                onChoose={(card, choice) =>
+                  mutation.mutateAsync(
+                    choice === "take"
+                      ? {
+                          action: "apply",
+                          shift_id: card.shift.id,
+                          case_id: card.case_id,
+                          ...(card.eligibility.availability_warning
+                            ? {
+                                availability_fingerprint:
+                                  card.eligibility.availability_warning
+                                    .fingerprint,
+                              }
+                            : {}),
+                        }
+                      : { action: "pass", shift_id: card.shift.id, case_id: card.case_id },
+                  )
+                }
+              />
+              {visibleOpportunities.some((o) => myApplication(o)) && (
+                <>
+                  <h3 className="sx-section-title">You asked for</h3>
+                  <div className="sx-asked">
+                    {visibleOpportunities
+                      .filter((o) => myApplication(o))
+                      .map((opportunity) => (
+                        <button
+                          type="button"
+                          key={opportunity.case_id}
+                          className="sx-pr"
+                          onClick={() =>
+                            navigate({
+                              case: opportunity.case_id,
+                              hub_view: "requests",
+                            })
+                          }
+                        >
+                          <span className="sx-pr-av" aria-hidden>
+                            {Number(opportunity.shift.scheduled_date.slice(8, 10))}
+                          </span>
+                          <span className="sx-pr-name">
+                            {new Intl.DateTimeFormat("en-US", {
+                              weekday: "short",
+                              month: "short",
+                              day: "numeric",
+                              timeZone: "UTC",
+                            }).format(
+                              new Date(`${opportunity.shift.scheduled_date}T12:00:00Z`),
+                            )}{" "}
+                            · Released by {firstName(opportunity.shift.employee_name)}
+                          </span>
+                          <span className="sx-pr-sub">
+                            {opportunity.shift.location_name} · {opportunity.shift.job_name}
+                          </span>
+                          <span className="sx-pr-state">
+                            <span className="sx-st" data-tone="warn">
+                              Manager picks
+                            </span>
+                          </span>
+                        </button>
+                      ))}
+                  </div>
+                </>
+              )}
+              {visibleOpportunities.some((o) => blockedByTimeOff(o.eligibility)) && (
+                <>
+                  <h3 className="sx-section-title">During your time off</h3>
+                  {visibleOpportunities
+                    .filter((o) => blockedByTimeOff(o.eligibility))
+                    .map((opportunity) => (
                       <TimeOffBlockedCard
                         key={opportunity.shift.id}
                         opportunity={opportunity}
                       />
-                    );
-                  const application = myApplication(opportunity);
-                  return (
-                    <article className="sx-card" key={opportunity.shift.id}>
-                      <div className="sx-card-top">
-                        <span className="sx-pill">
-                          {opportunity.shift.employee_id
-                            ? "Cover"
-                            : "Open shift"}
-                        </span>
-                        <span
-                          className={
-                            opportunity.eligibility.availability_warning
-                              ? "sx-pending"
-                              : "sx-eligible"
-                          }
-                        >
-                          {opportunity.eligibility.availability_warning ? (
-                            <AlertTriangle size={14} />
-                          ) : (
-                            <Check size={14} />
-                          )}
-                          {opportunity.eligibility.availability_warning
-                            ? "Availability conflict"
-                            : "Eligible"}
-                        </span>
-                      </div>
-                      <ExchangeShiftCard shift={opportunity.shift} />
-                      <p>
-                        {opportunity.shift.employee_name
-                          ? `Cover for ${opportunity.shift.employee_name}`
-                          : "No assigned employee"}
-                      </p>
-                      <p className="sx-help">
-                        {opportunity.eligibility.availability_warning
-                          ? availabilityMessage("Requesting")
-                          : "Job and location match · No assignment blockers"}
-                      </p>
-                      {application ? (
-                        <>
-                          <p className="sx-pending">
-                            Awaiting manager · Not added to your schedule yet
-                          </p>
-                          <button
-                            onClick={() =>
-                              navigate({
-                                case: opportunity.case_id,
-                                hub_view: "requests",
-                              })
-                            }
-                          >
-                            View request <ChevronRight size={16} />
-                          </button>
-                        </>
-                      ) : (
-                        <button
-                          className="sx-primary"
-                          disabled={!canWrite}
-                          onClick={() =>
-                            mutation.mutate(
-                              {
-                                action: "apply",
-                                shift_id: opportunity.shift.id,
-                                ...(opportunity.eligibility.availability_warning
-                                  ? {
-                                      availability_fingerprint:
-                                        opportunity.eligibility
-                                          .availability_warning.fingerprint,
-                                    }
-                                  : {}),
-                                ...(opportunity.case_id
-                                  ? { case_id: opportunity.case_id }
-                                  : {}),
-                              },
-                              {
-                                onSuccess: (result) =>
-                                  navigate({
-                                    case: result.case_id,
-                                    hub_view: "requests",
-                                  }),
-                              },
-                            )
-                          }
-                        >
-                          {opportunity.eligibility.availability_warning
-                            ? "Request anyway"
-                            : `Request to ${opportunity.shift.employee_id ? "cover" : "pick up"}`}
-                        </button>
-                      )}
-                    </article>
-                  );
-                })}
-              {!visibleOpportunities.length && (
-                <EmptyState
-                  title="No eligible shifts right now"
-                  text="No shifts match your position, locations and current assignment requirements."
-                />
+                    ))}
+                </>
               )}
             </>
           ) : (
@@ -729,13 +726,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
                       matches(item.shift) ? undefined : "Requested in return"
                     }
                   />
-                  <span>
-                    {item.kind === "swap"
-                      ? "Shift swap"
-                      : item.owner_name
-                        ? `Cover for ${item.owner_name}`
-                        : "Open shift pickup"}
-                  </span>
+                  <span>{caseTitle(item)}</span>
                   <span className="sx-case-footer">
                     <span>
                       <Users size={15} />
@@ -798,7 +789,11 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
               canWrite={canWrite}
               run={(command) => mutation.mutateAsync(command)}
               onRenew={() =>
-                navigate({ offer: selected.shift.id, case: null })
+                navigate({
+                  offer: selected.shift.id,
+                  mode: isRelease(selected) ? "release" : selected.kind,
+                  case: null,
+                })
               }
             />
           </aside>
@@ -815,19 +810,72 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
           </aside>
         )}
       </div>
-      {offering && (
-        <CreateExchange
-          model={model}
-          workspace={workspaceId}
-          initialShift={params.get("offer") ?? ""}
-          canWrite={canWrite}
-          run={(command) => mutation.mutateAsync(command)}
-          onClose={() => navigate({ offer: null })}
-          onCreated={(id) =>
-            navigate({ offer: null, case: id, hub_view: "requests" })
-          }
-        />
-      )}
+      {offering &&
+        (offerMode === "cover" || offerMode === "swap" ? (
+          <CreateExchange
+            model={model}
+            workspace={workspaceId}
+            mode={offerMode}
+            initialShift={params.get("offer") ?? ""}
+            canWrite={canWrite}
+            run={(command) => mutation.mutateAsync(command)}
+            onClose={() => navigate({ offer: null, mode: null })}
+            onRelease={() => navigate({ mode: "release" })}
+            onCreated={(id) =>
+              navigate({ offer: null, mode: null, case: id, hub_view: "requests" })
+            }
+          />
+        ) : offerShift && offerActive ? (
+          <PlanDialog
+            eyebrow="Your shift"
+            onClose={() => navigate({ offer: null, mode: null })}
+            foot={
+              <button
+                type="button"
+                className="sx-primary"
+                onClick={() =>
+                  navigate({ offer: null, mode: null, case: offerActive.id, hub_view: "requests" })
+                }
+              >
+                View request
+              </button>
+            }
+          >
+            <ShiftTicket shift={offerShift} />
+            <p className="sx-help">
+              This shift already has an open request. Take it back to start a different one.
+            </p>
+          </PlanDialog>
+        ) : offerShift && offerMode === "release" ? (
+          <ReleaseDialog
+            shift={offerShift}
+            ownerName={offerShift.employee_name ?? "You"}
+            canWrite={canWrite}
+            run={(command) => mutation.mutateAsync(command)}
+            onBack={() => navigate({ mode: null })}
+            onClose={() => navigate({ offer: null, mode: null })}
+            onReleased={(id) =>
+              navigate({ offer: null, mode: null, case: id, hub_view: "requests" })
+            }
+          />
+        ) : offerShift ? (
+          <PlanDialog eyebrow="Your shift" onClose={() => navigate({ offer: null, mode: null })}>
+            <ShiftTicket shift={offerShift} />
+            <ChangeOptions
+              hrefFor={(mode) => `?offer=${offerShift.id}&mode=${mode}`}
+              closed={
+                Boolean(offerShift.starts_at) &&
+                Date.parse(offerShift.starts_at!) - CLOSE_BEFORE_MS <= Date.now()
+              }
+            />
+          </PlanDialog>
+        ) : (
+          <PlanDialog eyebrow="Your shift" onClose={() => navigate({ offer: null, mode: null })}>
+            <p className="sx-help">
+              This shift is no longer on your upcoming schedule. Check your current schedule.
+            </p>
+          </PlanDialog>
+        ))}
     </div>
   );
 }
@@ -882,15 +930,39 @@ function CaseDetail({
       setWorking(false);
     }
   };
+  const history = (
+    <>
+      <details className="sx-history">
+        <summary>Request history</summary>
+        <ol>
+          {item.history.map((event) => (
+            <li key={event.id}>
+              <p>{event.message}</p>
+              <time dateTime={event.created_at}>
+                {new Date(event.created_at).toLocaleString()}
+              </time>
+            </li>
+          ))}
+        </ol>
+      </details>
+      <Link className="sx-text-link" to="/app/employee-hub/schedule">
+        View current schedule <ChevronRight size={15} />
+      </Link>
+    </>
+  );
+  // TAKAS-RELEASE: the owner's open release reads as one card (mockup moment 6).
+  if (isRelease(item) && item.is_owner && item.status === "open")
+    return (
+      <>
+        <ReleaseCard item={item} canWrite={canWrite} run={run} />
+        {history}
+      </>
+    );
   return (
     <>
       <div className="sx-detail-heading">
         <h3 ref={detailHeading} tabIndex={-1}>
-          {item.kind === "swap"
-            ? "Shift swap"
-            : item.kind === "open_pickup"
-              ? "Open shift pickup"
-              : "Cover request"}
+          {caseTitle(item)}
         </h3>
         <span
           className={`sx-pill ${item.status === "completed" ? "sx-done" : ""}`}
@@ -1142,22 +1214,7 @@ function CaseDetail({
           {error}
         </p>
       )}
-      <details className="sx-history">
-        <summary>Request history</summary>
-        <ol>
-          {item.history.map((event) => (
-            <li key={event.id}>
-              <p>{event.message}</p>
-              <time dateTime={event.created_at}>
-                {new Date(event.created_at).toLocaleString()}
-              </time>
-            </li>
-          ))}
-        </ol>
-      </details>
-      <Link className="sx-text-link" to="/app/employee-hub/schedule">
-        View current schedule <ChevronRight size={15} />
-      </Link>
+      {history}
       {closing && (
         <ExchangeDialog
           title={
@@ -1225,7 +1282,8 @@ function CaseDetail({
             </p>
           )}
           <label className="sx-field">
-            Reason shared with affected employees
+            Reason shared with affected employees{" "}
+            <span className="sx-help">Optional</span>
             <textarea
               value={reason}
               onChange={(e) => setReason(e.target.value)}
@@ -1253,7 +1311,7 @@ function CaseDetail({
                 className="sx-danger"
                 aria-describedby={decisionDescriptionId}
                 confirmLabel={swap ? "Confirm cancel" : "Confirm close"}
-                disabled={working || !actionable || !reason.trim()}
+                disabled={working || !actionable}
                 onConfirm={() =>
                   void command({
                     action: "close",
@@ -1274,28 +1332,33 @@ function CaseDetail({
   );
 }
 
+// Ask someone to cover, or swap (TAKAS-RELEASE: three named options; a release
+// to everyone eligible has its own window, ReleaseDialog).
 function CreateExchange({
   model,
   workspace,
+  mode,
   initialShift,
   canWrite,
   run,
   onClose,
+  onRelease,
   onCreated,
 }: {
   model: ExchangeReadModel;
   workspace: string;
+  mode: "cover" | "swap";
   initialShift: string;
   canWrite: boolean;
   run: (command: ExchangeCommand) => Promise<{ case_id: string }>;
   onClose: () => void;
+  onRelease: () => void;
   onCreated: (id: string) => void;
 }) {
   const [shiftId, setShiftId] = useState(
     initialShift !== "new" ? initialShift : "",
   );
-  const [kind, setKind] = useState<"cover" | "swap">("cover");
-  const [audience, setAudience] = useState("pool");
+  const kind = mode;
   const [target, setTarget] = useState("");
   const [note, setNote] = useState("");
   const [discard, setDiscard] = useState(false);
@@ -1306,7 +1369,7 @@ function CreateExchange({
   const active = model.cases.find(
     (c) => c.status === "open" && c.shift.source_id === shift?.source_id,
   );
-  const needsCandidate = kind === "swap" || audience === "direct";
+  const needsCandidate = true;
   const matchSelect = useRef<HTMLSelectElement>(null);
   const retryButton = useRef<HTMLButtonElement>(null);
   const restoreMatchFocus = useRef(false);
@@ -1355,7 +1418,7 @@ function CreateExchange({
   ]);
   const close = () => (note || target ? setDiscard(true) : onClose());
   return (
-    <ExchangeDialog title="Find cover or swap" onClose={close}>
+    <ExchangeDialog title={kind === "swap" ? "Swap shifts" : "Ask someone to cover"} onClose={close}>
       {discard ? (
         <>
           <p>You have an unfinished request. Keep editing or discard it.</p>
@@ -1388,9 +1451,7 @@ function CreateExchange({
                           }
                         : {}),
                     }
-                  : audience === "direct"
-                    ? { employee_id: target }
-                    : {}),
+                  : { employee_id: target }),
               });
               onCreated(result.case_id);
             } catch (err) {
@@ -1430,58 +1491,6 @@ function CreateExchange({
             </div>
           ) : (
             <>
-              <fieldset className="sx-options">
-                <legend>What would help?</legend>
-                {(["cover", "swap"] as const).map((value) => (
-                  <label key={value}>
-                    <input
-                      type="radio"
-                      name="exchange-kind"
-                      checked={kind === value}
-                      onChange={() => {
-                        setKind(value);
-                        setTarget("");
-                      }}
-                    />
-                    <span>
-                      <strong>
-                        {value === "cover" ? "Find cover" : "Swap shifts"}
-                      </strong>
-                      <small>
-                        {value === "cover"
-                          ? "A teammate takes this shift"
-                          : "Exchange two complete shifts"}
-                      </small>
-                    </span>
-                  </label>
-                ))}
-              </fieldset>
-              {kind === "cover" && (
-                <fieldset className="sx-options">
-                  <legend>Who can help?</legend>
-                  <label>
-                    <input
-                      type="radio"
-                      name="audience"
-                      checked={audience === "pool"}
-                      onChange={() => {
-                        setAudience("pool");
-                        setTarget("");
-                      }}
-                    />
-                    <span>Offer to eligible teammates</span>
-                  </label>
-                  <label>
-                    <input
-                      type="radio"
-                      name="audience"
-                      checked={audience === "direct"}
-                      onChange={() => setAudience("direct")}
-                    />
-                    <span>Ask a teammate</span>
-                  </label>
-                </fieldset>
-              )}
               {needsCandidate && (
                 <section className="sx-match-selector">
                   <label className="sx-field">
@@ -1561,7 +1570,7 @@ function CreateExchange({
                     ) : (
                       <p className="sx-help">
                         {matchCount === 0
-                          ? "No eligible matches for this shift. Choose another shift or start a cover search."
+                          ? "No eligible matches for this shift. Choose another shift or release it to everyone eligible."
                           : kind === "swap"
                             ? "Matches are checked for both employees’ position, location and schedule."
                             : "Teammates must meet the position, location and schedule requirements."}
@@ -1572,15 +1581,8 @@ function CreateExchange({
                     !candidates.isFetching &&
                     !candidates.isError &&
                     matchCount === 0 && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setKind("cover");
-                          setAudience("pool");
-                          setTarget("");
-                        }}
-                      >
-                        Start a cover search instead
+                      <button type="button" onClick={onRelease}>
+                        Release it to everyone instead
                       </button>
                     )}
                 </section>
@@ -1633,9 +1635,7 @@ function CreateExchange({
                     ? targetShift?.availability_warning
                       ? "Request swap anyway"
                       : "Send swap request"
-                    : audience === "direct"
-                      ? "Send cover request"
-                      : "Offer shift"}
+                    : "Send cover request"}
                 </button>
               </footer>
             </>

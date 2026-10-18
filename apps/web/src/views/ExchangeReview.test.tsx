@@ -44,8 +44,8 @@ const cover = {
   candidate_count: 3, can_manage: true, is_owner: false,
   history: [{ id: "98000000-0000-4000-8000-000000000001", action: "created", created_at: "2026-10-10T21:14:00Z", message: "Noah Garcia asked for cover" }],
 } as unknown as ExchangeCase;
-const open = { ...cover, kind: "open_pickup", owner_id: null, owner_name: null, private_note: undefined,
-  shift: { ...cover.shift, employee_id: null, employee_name: null }, applications: [], candidate_count: 0 } as unknown as ExchangeCase;
+// Noah's release nobody has asked for yet (TAKAS-RELEASE: only a release reaches the pool).
+const quiet = { ...cover, private_note: undefined, applications: [], candidate_count: 0 } as unknown as ExchangeCase;
 function preview(change: Partial<ExchangePreview> = {}): ExchangePreview {
   return {
     allowed: true, fingerprint: "fp-1", reasons: [], requires_other_manager: false, other_applications: 1,
@@ -76,29 +76,32 @@ beforeEach(() => {
   vi.mocked(refreshExchangeSurfaces).mockResolvedValue(undefined);
 });
 
-// Mert, 2026-10-11: cover and open shift requests open a drawer in the
-// Important Dates drawer's language; the manager gives the shift in one step.
+// Mert, 2026-10-11: pickup and cover requests open a drawer in the Important
+// Dates drawer's language; the manager gives the shift in one step. TAKAS-RELEASE
+// (plan 2026-10-13/14): the plan's shift card, the owner in the header, optional reasons.
 describe("ExchangeReview", () => {
-  it("heads the drawer with the shift, the type, the status and the deadline", () => {
+  it("heads the drawer with the kind, the status, the owner and when it expires", () => {
     renderReview();
-    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Sun, Oct 11 · 4:00 PM – 10:00 PM Cover Needs review");
-    expect(document.querySelector(".rd-sub")!.textContent).toContain("Decide by Oct 11, 4:00 PM New York time");
+    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Shift pickup Needs decision");
+    expect(document.querySelector(".rd-sub")!.textContent).toContain(
+      "Shift owner: Noah Garcia · Harbor & Vine Uptown · Expires Oct 11, 4:00 PM New York time");
     expect(screen.getByRole("link", { name: /Open in Schedule/ }).getAttribute("href"))
       .toBe(`/app/schedule?date=2026-10-11&view=day&locations=${uptown}`);
     expect(screen.getAllByRole("tab").map((tab) => tab.textContent)).toEqual(["Details", "Activity"]);
   });
 
-  it("draws the shift, who keeps it until the decision, and the owner's private note", () => {
+  it("draws the shift card, who keeps it until the decision, and the owner's private note", () => {
     renderReview();
-    const card = screen.getByRole("group", { name: "Shift" });
-    expect(text(card)).toBe("Sun, Oct 114:00 PM – 10:00 PMHarbor & Vine Uptown · Server · 5.5 h, 30 min unpaid break");
+    const card = screen.getByRole("group", { name: /Sunday, October 11/ });
+    expect(text(card)).toBe("SUN11OCT4:00 PM – 10:00 PMServer5.5 hHarbor & Vine UptownNoah → ?Today".replace("SUN", "Sun").replace("OCT", "Oct").replace("Today", card.querySelector(".sx-tk-foot span:last-child")!.textContent!));
     expect(screen.getByText("Noah stays on this shift until you approve.")).toBeTruthy();
     expect(screen.getByText("Private note from Noah").parentElement!.textContent).toContain("Final exams week.Only managers see this.");
   });
 
   it("lists who asked with their checks; a person on time off cannot be picked", () => {
     renderReview();
-    const people = within(screen.getByRole("radiogroup", { name: "Who can take it" })).getAllByRole("radio") as HTMLInputElement[];
+    expect(screen.getByText("3 want it")).toBeTruthy();
+    const people = within(screen.getByRole("radiogroup", { name: "Who wants it" })).getAllByRole("radio") as HTMLInputElement[];
     expect(people.map((radio) => radio.closest("label")!.textContent)).toEqual([
       expect.stringMatching(/^EWEmma Wilson.*Available12 h of rest$/),
       expect.stringMatching(/^SMSophie Martin.*8 h of rest · 10 h needed$/),
@@ -111,9 +114,10 @@ describe("ExchangeReview", () => {
   it("gives the shift to the picked person in one step", async () => {
     renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
-    const give = await screen.findByRole("button", { name: "Give shift to Emma" });
+    const give = await screen.findByRole("button", { name: "Give to Emma" });
     await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
     expect(getExchangePreview).toHaveBeenCalledWith(workspace, caseId, emma);
+    expect(text(screen.getByRole("group", { name: /Sunday, October 11/ }))).toContain("Noah → Emma");
     fireEvent.click(give);
     await waitFor(() => expect(onDone).toHaveBeenCalledWith("Emma has the shift now. Noah is off it."));
     expect(vi.mocked(changeExchange).mock.calls[0]![1]).toEqual({
@@ -124,13 +128,13 @@ describe("ExchangeReview", () => {
   it("says anyway on the button when the picked person carries a warning", async () => {
     renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Sophie Martin/ }));
-    expect(await screen.findByRole("button", { name: "Give shift to Sophie anyway" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Give to Sophie anyway" })).toBeTruthy();
   });
 
   it("names the button plainly when the picked person only chose to work unavailable hours", async () => {
     const consenting = { ...cover, applications: [application(sophie, "Sophie Martin", { status: "eligible", reasons: [], approval_flags: [{ code: "availability_consent" }] })] } as unknown as ExchangeCase;
     renderReview(consenting);
-    expect(await screen.findByRole("button", { name: "Give shift to Sophie" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Give to Sophie" })).toBeTruthy();
     expect(screen.getByText("Unavailable · chose to take it")).toBeTruthy();
   });
 
@@ -139,7 +143,7 @@ describe("ExchangeReview", () => {
     renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
     expect((await screen.findByRole("alert")).textContent).toContain("Overlaps another shift.");
-    expect((screen.getByRole("button", { name: "Give shift to Emma" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Give to Emma" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   // Covered in the old manager Shift Hub until it went (BL-1024): a failed
@@ -149,7 +153,7 @@ describe("ExchangeReview", () => {
     renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
     expect((await screen.findByRole("alert")).textContent).toBe("Eligibility could not be checked. Close and try again.");
-    expect((screen.getByRole("button", { name: "Give shift to Emma" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("button", { name: "Give to Emma" }) as HTMLButtonElement).disabled).toBe(true);
     expect(changeExchange).not.toHaveBeenCalled();
   });
   // The person picked withdraws while the drawer is open: the give goes off
@@ -157,7 +161,7 @@ describe("ExchangeReview", () => {
   it("turns the give off when the picked person withdraws during the review", async () => {
     const { rerender } = renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
-    const give = await screen.findByRole("button", { name: "Give shift to Emma" });
+    const give = await screen.findByRole("button", { name: "Give to Emma" });
     await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
     const withdrawn = {
       ...cover, revision: 5,
@@ -178,9 +182,10 @@ describe("ExchangeReview", () => {
     vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "cancelled" } as never);
     renderReview();
     fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
-    const reason = screen.getByLabelText("Reason for Noah and the people who asked");
+    const reason = screen.getByLabelText(/Reason for Noah and the people who asked/);
     const send = within(footer()).getByRole("button", { name: "Close request" }) as HTMLButtonElement;
-    expect(send.disabled).toBe(true);
+    // The reason is optional (plan 05:03).
+    expect(send.disabled).toBe(false);
     // BILDIRIM-05 (KARARLAR S-96): no notification goes out, so none is promised.
     expect(screen.getByText("Noah keeps the shift.")).toBeTruthy();
     expect(screen.queryByText(/told/)).toBeNull();
@@ -195,18 +200,30 @@ describe("ExchangeReview", () => {
     });
   });
 
-  it("says an open shift with nobody asking stays open", () => {
-    renderReview(open);
-    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Sun, Oct 11 · 4:00 PM – 10:00 PM Open shift Open");
-    expect(screen.getByText("Nobody is on this shift yet. It stays open until you approve someone.")).toBeTruthy();
-    expect(screen.getByText("Nobody has asked yet. The shift stays open on the Schedule.")).toBeTruthy();
+  it("says a release nobody asked for stays with its owner", () => {
+    renderReview(quiet);
+    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Shift pickup Waiting for teammates");
+    expect(screen.getByText("Noah stays on this shift until you approve.")).toBeTruthy();
+    expect(screen.getByText("Nobody has asked yet. Noah keeps the shift until you approve someone.")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Nobody to approve" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
+  it("calls a direct cover a cover request, with who accepted", () => {
+    renderReview({ ...cover, audience: "direct" } as ExchangeCase);
+    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Cover request Needs decision");
+    expect(screen.getByRole("radiogroup", { name: "Who accepted" })).toBeTruthy();
+    expect(screen.getByText("3 accepted")).toBeTruthy();
+  });
+
+  it("reads the owner's note for teammates on the card", () => {
+    renderReview({ ...cover, teammate_note: "Family dinner came up." } as ExchangeCase);
+    expect(screen.getByText(/Family dinner came up\./).closest(".sx-q")!.textContent).toBe("Noah“Family dinner came up.”");
+  });
+
   it("preselects the only person who can take it", async () => {
-    renderReview({ ...open, applications: [cover.applications[0]!], candidate_count: 1 } as ExchangeCase);
+    renderReview({ ...quiet, applications: [cover.applications[0]!], candidate_count: 1 } as ExchangeCase);
     expect((screen.getByRole("radio", { name: /Emma Wilson/ }) as HTMLInputElement).checked).toBe(true);
-    expect(await screen.findByRole("button", { name: "Give shift to Emma" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Give to Emma" })).toBeTruthy();
   });
 
   it("shows a manager who cannot decide the buttons faded, with who decides under them (KARARLAR G1)", () => {
@@ -222,10 +239,11 @@ describe("ExchangeReview", () => {
     vi.mocked(changeExchange).mockResolvedValue({ case_id: caseId, revision: 5, status: "open" } as never);
     renderReview();
     fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
-    const reason = screen.getByLabelText("Reason for Diego");
+    const reason = screen.getByLabelText(/Reason for Diego/);
     expect(reason.getAttribute("placeholder")).toBe("Only Diego reads this.");
     const send = within(footer()).getByRole("button", { name: "Decline Diego" }) as HTMLButtonElement;
-    expect(send.disabled).toBe(true);
+    // The reason is optional (plan 05:03; Mert, 2026-10-16).
+    expect(send.disabled).toBe(false);
     fireEvent.change(reason, { target: { value: "You are off that day" } });
     fireEvent.click(send);
     fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
@@ -252,7 +270,7 @@ describe("ExchangeReview", () => {
     const two = { ...cover, applications: cover.applications.filter((item) => item.id !== sophie) } as ExchangeCase;
     const { rerender } = render(view(two));
     fireEvent.click(screen.getByRole("button", { name: "Decline Diego Morales" }));
-    fireEvent.change(screen.getByLabelText("Reason for Diego"), { target: { value: "You are off that day" } });
+    fireEvent.change(screen.getByLabelText(/Reason for Diego/), { target: { value: "You are off that day" } });
     fireEvent.click(within(footer()).getByRole("button", { name: "Decline Diego" }));
     fireEvent.click(within(footer()).getByRole("button", { name: "Confirm decline" }));
     rerender(view({ ...two, revision: 5, applications: two.applications.filter((item) => item.id !== diego) } as ExchangeCase));
@@ -264,21 +282,21 @@ describe("ExchangeReview", () => {
   it("goes back from a reason on Escape and keeps what was typed", () => {
     renderReview();
     fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
-    const reason = screen.getByLabelText("Reason for Noah and the people who asked");
+    const reason = screen.getByLabelText(/Reason for Noah and the people who asked/);
     fireEvent.change(reason, { target: { value: "We are closed Sunday" } });
     expect(onHold).toHaveBeenLastCalledWith(true);
     fireEvent.keyDown(reason, { key: "Escape" });
-    expect(screen.queryByLabelText("Reason for Noah and the people who asked")).toBeNull();
+    expect(screen.queryByLabelText(/Reason for Noah and the people who asked/)).toBeNull();
     expect(onHold).toHaveBeenLastCalledWith(false);
     fireEvent.click(within(footer()).getByRole("button", { name: "Close request" }));
-    expect((screen.getByLabelText("Reason for Noah and the people who asked") as HTMLTextAreaElement).value).toBe("We are closed Sunday");
+    expect((screen.getByLabelText(/Reason for Noah and the people who asked/) as HTMLTextAreaElement).value).toBe("We are closed Sunday");
   });
 
   it("does not carry a failed give into the close step", async () => {
     vi.mocked(changeExchange).mockRejectedValue(new Error("This request changed. Review the latest details"));
     renderReview();
     fireEvent.click(screen.getByRole("radio", { name: /Emma Wilson/ }));
-    const give = await screen.findByRole("button", { name: "Give shift to Emma" });
+    const give = await screen.findByRole("button", { name: "Give to Emma" });
     await waitFor(() => expect((give as HTMLButtonElement).disabled).toBe(false));
     fireEvent.click(give);
     expect((await within(footer()).findByRole("alert")).textContent).toBe("This request changed. Review the latest details");
@@ -286,12 +304,12 @@ describe("ExchangeReview", () => {
     expect(within(footer()).queryByRole("alert")).toBeNull();
   });
 
-  it("says an open shift when the core refuses the person", async () => {
+  it("says why the core refuses the person", async () => {
     vi.mocked(getExchangePreview).mockResolvedValue(preview({ allowed: false,
       reasons: ["The receiving employee is not eligible for the full shift"],
       receiver: { status: "ineligible", reasons: ["Required document is expired."], approval_flags: [], measures } }));
-    renderReview({ ...open, applications: [cover.applications[0]!], candidate_count: 1 } as ExchangeCase);
-    expect((await screen.findByRole("alert")).textContent).toBe("Emma can't take this open shift: Required document is expired.");
+    renderReview({ ...quiet, applications: [cover.applications[0]!], candidate_count: 1 } as ExchangeCase);
+    expect((await screen.findByRole("alert")).textContent).toContain("Required document is expired.");
   });
 
   it("says how a closed request ended", () => {

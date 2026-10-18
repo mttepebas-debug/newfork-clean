@@ -250,15 +250,15 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     renderPage();
     const closed = await screen.findByRole("row", { name: /Deniz Acar/ });
     const rows = screen.getAllByRole("row").slice(1);
-    expect(rows.map((row) => row.getAttribute("aria-label")?.split(",")[0])).toEqual(["Alex Kim", "Deniz Acar"]);
+    expect(rows.map((row) => row.getAttribute("aria-label")?.match(/^Time off: (\S+ \S+)/)?.[1])).toEqual(["Alex Kim", "Deniz Acar"]);
     expect(within(closed).getByText("Approved")).toBeTruthy();
-    expect(within(rows[0]!).getByText("Needs review")).toBeTruthy();
+    expect(within(rows[0]!).getByText("Needs decision")).toBeTruthy();
     expect(fetchRequests.mock.calls.some(([path]) => path.includes("time_off_queue=closed"))).toBe(true);
   });
-  // EKRAN-02 #67 (KARARLAR Genel, telefonda kart satırı): the phone shows a
-  // card per request: the type's mark and the name, When under it, Status on
-  // the right, and Decide by ("By …") only while the request is open.
-  it("gives each request a phone card: name and type, When, Status, Decide by only while open", async () => {
+  // EKRAN-02 #67 (KARARLAR Genel, telefonda kart satırı); TAKAS-RELEASE (Mert,
+  // 2026-10-17): the phone shows a card per request: the kind's icon, the
+  // sentence, then Status and Expires, Expires only while the request is open.
+  it("gives each request a phone card: the sentence, Status, Expires only while open", async () => {
     const approved: TimeOffRequest = {
       ...pending, id: "97200000-0000-4000-8000-000000000002", employee_name: "Deniz Acar", status: "approved", progress: null,
       events: [{ id: "97400000-0000-4000-8000-000000000001", action: "approved", actor_name: "Ayşe Yılmaz", note: "", created_at: "2035-01-10T09:00:00Z" }],
@@ -266,15 +266,12 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     read = { ...fixture, time_off_requests: [pending, approved] };
     renderPage();
     const cards = await screen.findByRole("list", { name: "Requests" });
-    const open = await within(cards).findByRole("button", { name: /^Alex Kim, Time off/ });
-    expect(open.getAttribute("aria-label")).toContain("Needs review");
-    expect([...open.querySelectorAll(".list-card-line")].map((line) => plain(line.textContent))).toEqual([
-      "Jan 15 – Jan 16, 2035",
-      "By Jan 14, 9:00 AM UTC time",
-    ]);
-    const closed = within(cards).getByRole("button", { name: /^Deniz Acar, Time off/ });
-    expect([...closed.querySelectorAll(".list-card-line")].map((line) => line.textContent)).toEqual(["Jan 15 – Jan 16, 2035"]);
-    expect(closed.querySelector(".list-chip")?.textContent).toBe("Approved");
+    const open = await within(cards).findByRole("button", { name: /^Time off: Alex Kim/ });
+    expect(open.getAttribute("aria-label")).toContain("Needs decision");
+    expect(plain(open.querySelector(".request-sentence")!.textContent)).toBe("Alex Kim asked for time off Mon, Jan 15 – Tue, Jan 16. 1 shift becomes open.");
+    expect(plain(open.querySelector(".request-card-foot")!.textContent)).toBe("Needs decisionExpires Jan 14, 9:00 AM UTC time");
+    const closed = within(cards).getByRole("button", { name: /^Time off: Deniz Acar/ });
+    expect(closed.querySelector(".request-card-foot")!.textContent).toBe("Approved");
     fireEvent.click(open);
     expect(await screen.findByRole("dialog", { name: "Review request" })).toBeTruthy();
   });
@@ -282,7 +279,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("fades the tab row's edge where more tabs wait, and brings the chosen tab into view", async () => {
     const shown: string[] = [];
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.textContent ?? ""); };
-    renderPage("/app/schedule/requests?type=open_pickup");
+    renderPage("/app/schedule/requests?type=cover");
     const tabs = await screen.findByRole("group", { name: "Request type" });
     await waitFor(() => expect(shown).toContain("Shift changes"));
     const row = tabs.parentElement!;
@@ -321,10 +318,10 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     };
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, cases: [closedSwap], opportunities: [], own_shifts: [] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage();
-    const swap = await screen.findByRole("row", { name: /Emre Person, Swap/ });
+    const swap = await screen.findByRole("row", { name: /^Shift swap: Emre Person/ });
     const rows = screen.getAllByRole("row").slice(1);
     expect(rows.indexOf(swap)).toBe(1);
-    expect(within(swap).getByText("Completed")).toBeTruthy();
+    expect(within(swap).getByText("Approved")).toBeTruthy();
   });
   // Opening a shift change is a step the browser's Back undoes.
   it("goes back from a shift change to the list with the browser's Back", async () => {
@@ -335,7 +332,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       shift, requested_shift: null, applications: [], candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage(undefined, undefined, ["/app/workspace"]);
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift pickup: .*Emre Person/ }));
     expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${caseId}`);
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests");
@@ -349,9 +346,9 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("opens a cover in its drawer over the list, and closes it", async () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage();
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift pickup: .*Emre Person/ }));
     const drawer = await screen.findByRole("dialog", { name: "Review shift change" });
-    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Cover");
+    expect(within(drawer).getByRole("heading", { level: 2 }).textContent).toContain("Shift pickup");
     expect(screen.getByLabelText("Current URL").textContent).toContain(`case=${coverCase.id}`);
     fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review shift change" })).toBeNull());
@@ -360,7 +357,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("leaves no extra history step behind a closed cover drawer", async () => {
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [coverCase] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage("/app/schedule/requests", undefined, ["/app/workspace"]);
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift pickup: .*Emre Person/ }));
     const drawer = await screen.findByRole("dialog", { name: "Review shift change" });
     fireEvent.click(within(drawer).getByRole("button", { name: "Close details" }));
     await waitFor(() => expect(screen.getByLabelText("Current URL").textContent).toBe("/app/schedule/requests"));
@@ -403,7 +400,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage();
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Swap/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift swap: Emre Person/ }));
     const review = await screen.findByRole("dialog", { name: "Swap request" });
     expect(review.textContent).toContain("Emre Person ⇄ Deniz Acar");
     expect(screen.getByLabelText("Current URL").textContent).not.toContain("case=");
@@ -424,11 +421,11 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     renderPage(undefined, client);
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Swap/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift swap: Emre Person/ }));
     await screen.findByRole("dialog", { name: "Swap request" });
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [] });
     await client.invalidateQueries({ queryKey: ["shift-exchanges"] });
-    await waitFor(() => expect(screen.queryByRole("row", { name: /Emre Person, Swap/ })).toBeNull());
+    await waitFor(() => expect(screen.queryByRole("row", { name: /^Shift swap: Emre Person/ })).toBeNull());
     expect(screen.getByRole("dialog", { name: "Swap request" }).textContent).toContain("Emre Person ⇄ Deniz Acar");
   });
   // BL-1024: the old Shift Hub manager screen is gone; a stray ?offer= is
@@ -527,7 +524,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     vi.mocked(getExchanges).mockImplementation(async (_workspace, _manager, range) =>
       ({ employee_id: null, opportunities: [], own_shifts: [], cases: range?.caseId ? [] : [coverCase] }) as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage("/app/schedule/requests", undefined, ["/app/workspace"]);
-    fireEvent.click(await screen.findByRole("row", { name: /Emre Person, Cover/ }));
+    fireEvent.click(await screen.findByRole("row", { name: /^Shift pickup: .*Emre Person/ }));
     await screen.findByRole("dialog", { name: "Review shift change" });
     fireEvent.click(screen.getByRole("button", { name: "Browser back" }));
     await waitFor(() => expect(screen.queryByRole("dialog", { name: "Review shift change" })).toBeNull());
@@ -660,13 +657,13 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(fetchRequests).not.toHaveBeenCalled();
   });
 
-  it("lists a request with no location by its decide-by time and the shifts it would open", async () => {
+  it("lists a request with no location by when it expires and the shifts it would open", async () => {
     renderPage();
     const row = await screen.findByRole("row", { name: /Alex Kim/ });
-    expect(screen.getByRole("columnheader", { name: /Decide by/ })).toBeTruthy();
+    expect(screen.getByRole("columnheader", { name: /Expires/ })).toBeTruthy();
     expect(screen.queryByRole("columnheader", { name: /Location/ })).toBeNull();
     expect(row.textContent).toContain("Jan 14");
-    expect(within(row).getByTitle("Shifts that become open").textContent).toBe("1");
+    expect(row.textContent).toContain("1 shift becomes open.");
   });
 
   // Mert, 2026-10-11: the drawer speaks the Important Dates drawer's language:

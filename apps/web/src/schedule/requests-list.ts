@@ -11,19 +11,19 @@ import { getTimeOffQueue, timeOffKeys } from "./requests-data";
 // Decide by on top; closed ones follow, the newest decision on top. The tabs are
 // request types and count what is still open. The screen draws what this returns.
 
-export const requestTypes = ["time_off", "swap", "cover", "open_pickup"] as const;
+// TAKAS-RELEASE: only a release reaches the pool; the open shift kind is gone.
+export const requestTypes = ["time_off", "swap", "cover"] as const;
 export type RequestType = (typeof requestTypes)[number];
 export const requestTypeLabels: Record<RequestType, string> = {
   time_off: "Time off",
   swap: "Swap",
   cover: "Cover",
-  open_pickup: "Open shift",
 };
 // Two tabs (Mert, 2026-10-11): Time off, and every shift change (swap, cover,
-// open shift) together; the Type column still names each row's kind. All
-// stays first when the reader has both.
+// pickup) together; each row's icon names its kind. All stays first when the
+// reader has both.
 export type RequestTypeTab = "all" | "time_off" | "shift_changes";
-export const shiftChangeTypes: readonly RequestType[] = ["swap", "cover", "open_pickup"];
+export const shiftChangeTypes: readonly RequestType[] = ["swap", "cover"];
 export const tabOf = (type: RequestType): Exclude<RequestTypeTab, "all"> => (type === "time_off" ? "time_off" : "shift_changes");
 export const requestTabLabels: Record<RequestTypeTab, string> = { all: "All", time_off: "Time off", shift_changes: "Shift changes" };
 

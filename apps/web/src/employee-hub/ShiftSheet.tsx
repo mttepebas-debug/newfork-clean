@@ -4,7 +4,8 @@ import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { X, MapPin, ArrowUpRight } from "lucide-react";
 import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
-import { shiftDate, shiftZone } from "./dashboard-model";
+import { shiftDate, shiftInstant, shiftZone } from "./dashboard-model";
+import { CLOSE_BEFORE_MS, ChangeOptions } from "./shift-exchanges/ChangeOptions";
 import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
 const base = "/app/employee-hub";
 function Sheet({
@@ -108,13 +109,11 @@ export function ShiftSheet({
           <p>{shift.note}</p>
         </div>
       )}
-      <Link
-        className="eh-primary"
-        to={`${base}/shift-hub?offer=${shift.id}`}
-      >
-        Find cover or swap
-        <ArrowUpRight size={17} />
-      </Link>
+      {/* Three named ways to change it (TAKAS-RELEASE, plan 04:01); closed in the last 4 hours. */}
+      <ChangeOptions
+        hrefFor={(mode) => `${base}/shift-hub?offer=${shift.id}&mode=${mode}`}
+        closed={shiftInstant(shift, model) - CLOSE_BEFORE_MS <= Date.now()}
+      />
       <Link
         className="eh-sheet-link"
         to={`${base}/schedule?date=${shift.scheduled_date}&shift=${shift.id}#shift-${shift.id}`}
