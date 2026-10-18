@@ -106,9 +106,12 @@ export function EmployeeHubPage() {
   const phoneBars = useListPhoneWidth();
   // The hub's date range is asked before its locations load: the device's calendar.
   const today = todayIn(undefined, now);
+  // My shifts asks for its own two weeks; the page itself needs only today's answer there.
   const selectedScheduleDate = path === "schedule/team"
     ? scheduleDateFromSearch(location.search)
-    : null;
+    : path === "schedule"
+      ? today
+      : null;
   const from = selectedScheduleDate ?? addDays(today, -2);
   const end = selectedScheduleDate ?? addDays(today, 42);
   const query = useQuery({

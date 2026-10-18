@@ -3,11 +3,12 @@ import type { Browser, Locator, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
 import { signIn, type Person } from "../fixtures/world";
 
-// CALISAN-SCHEDULE-LISTE (Mert 2026-10-17): Employee → Schedule opens on My shifts, the Home lab's "Zaman
-// çizgisi" week list: This week · Next week, one card per day. The week changes only from the switch; a finger
-// swiped sideways over the list leaves it alone (that swipe belongs to the page tabs). Team schedule is the
-// published board, on a desktop only. The world has no shifts in the current two weeks (its weeks are far
-// ahead), so the hub's answer for them gets three of Emre's own days added (route.fetch, then changed).
+// CALISAN-SCHEDULE-LISTE (Mert 2026-10-17, S-153): Employee → Schedule opens on My shifts, the Home lab's
+// "Zaman çizgisi" week list: This week · Next week, one card per day. The week changes only from the switch; a
+// finger swiped sideways over the list moves to the next page tab (Lineup), as on every tabbed page (S-146), and
+// the week is where it was on the way back. Team schedule is the published board, on a desktop only. The world
+// has no shifts in the current two weeks (its weeks are far ahead), so the hub's answer for them gets three of
+// Emre's own days added (route.fetch, then changed).
 
 const PHONE = { width: 390, height: 844 };
 const DESKTOP = { width: 1440, height: 900 };
@@ -19,28 +20,39 @@ const addDays = (iso: string, n: number) => {
   d.setUTCDate(d.getUTCDate() + n);
   return d.toISOString().slice(0, 10);
 };
+/** This week's Monday on the world's clock (Pacific, as CI and this machine run). */
+const thisMonday = () => {
+  const today = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Los_Angeles" }).format(new Date());
+  return addDays(today, -((new Date(`${today}T12:00:00Z`).getUTCDay() + 6) % 7));
+};
 const uuid = (n: number) => `c4150000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 
 async function open(browser: Browser, person: Person, size: typeof PHONE, path: string): Promise<Page> {
   const phone = size === PHONE;
   const page = await (await browser.newContext({ viewport: size, hasTouch: phone, isMobile: phone })).newPage();
-  // The two weeks My shifts asks for: from its Monday (or Sunday) to the Sunday after next.
+  // My shifts asks for each of its two weeks on its own (Monday to Sunday: the world's week starts Monday).
+  // This week's Tuesday gets a shift and Thursday approved time off; next week's Tuesday a shift.
+  const start = thisMonday();
   await page.route(
-    (url) => url.pathname.endsWith("/employee-hub") && url.searchParams.has("from") && addDays(url.searchParams.get("from")!, 13) === url.searchParams.get("to"),
+    (url) => url.pathname.endsWith("/employee-hub") && url.searchParams.has("from") && addDays(url.searchParams.get("from")!, 6) === url.searchParams.get("to"),
     async (route) => {
       const response = await route.fetch();
       const body = await response.json();
-      const start = new URL(route.request().url()).searchParams.get("from")!;
+      const from = new URL(route.request().url()).searchParams.get("from")!;
+      const inWeek = (date: string) => date >= from && date <= addDays(from, 6);
       const where = { location_id: body.locations[0].id, location_name: body.locations[0].name, job_name: "Cook", note: "", employee_id: body.employee.id };
       body.shifts.push(
-        { ...where, id: uuid(1), scheduled_date: addDays(start, 1), start_time: "09:00", end_time: "17:00" },
-        { ...where, id: uuid(2), scheduled_date: addDays(start, 8), start_time: "16:00", end_time: "22:00" },
+        ...[
+          { ...where, id: uuid(1), scheduled_date: addDays(start, 1), start_time: "09:00", end_time: "17:00" },
+          { ...where, id: uuid(2), scheduled_date: addDays(start, 8), start_time: "16:00", end_time: "22:00" },
+        ].filter((item) => inWeek(item.scheduled_date)),
       );
-      body.requests.push({
-        id: uuid(3), kind: "time_off", status: "approved", title: "Time off", detail: "", revision: 1,
-        created_at: new Date().toISOString(), can_cancel: false,
-        periods: [{ id: uuid(4), segment_date: addDays(start, 3), start_time: null, end_time: null, status: "approved" }],
-      });
+      if (inWeek(addDays(start, 3)))
+        body.requests.push({
+          id: uuid(3), kind: "time_off", status: "approved", title: "Time off", detail: "", revision: 1,
+          created_at: new Date().toISOString(), can_cancel: false,
+          periods: [{ id: uuid(4), segment_date: addDays(start, 3), start_time: null, end_time: null, status: "approved" }],
+        });
       await route.fulfill({ response, json: body });
     },
   );
@@ -74,6 +86,7 @@ test("desktop: My shifts first, the week from the switch, Team schedule is the b
   const thisWeek = emre.getByRole("tabpanel", { name: "This week" });
   await expect(thisWeek.locator(".ems-day")).toHaveCount(7);
   const start = (await thisWeek.locator(".ems-day").first().getAttribute("data-day"))!;
+  expect(start).toBe(thisMonday());
   await expect(thisWeek.locator(`[data-day="${addDays(start, 1)}"]`)).toContainText("9:00 AM – 5:00 PM");
   await expect(thisWeek.locator(`[data-day="${addDays(start, 1)}"]`)).toContainText("· Cook");
   await expect(thisWeek.locator(`[data-day="${addDays(start, 3)}"]`)).toContainText("Time off · Approved");
@@ -90,11 +103,18 @@ test("desktop: My shifts first, the week from the switch, Team schedule is the b
   await pages.getByRole("link", { name: "Team schedule" }).click();
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/team/);
   await expect(emre.locator(".employee-schedule-board")).toBeVisible();
+  // A notification about a week further on opens that week, under its dates, beside This week.
+  const far = addDays(start, 21);
+  await emre.goto(`/app/employee-hub/schedule?date=${far}`);
+  const farTab = emre.getByRole("tab", { selected: true });
+  await expect(farTab).toHaveText(/^[A-Z][a-z]{2} \d{1,2} – [A-Z][a-z]{2} \d{1,2}$/);
+  await expect(emre.getByRole("tabpanel", { name: await farTab.innerText() }).locator(`[data-day="${far}"]`)).toHaveCount(1);
+  await emre.goto("/app/employee-hub/schedule/team");
   // The side menu has the page under Schedule, before Lineup.
   await expect(emre.locator("a.nav-item-child")).toContainText(["Team schedule", "Lineup"]);
 });
 
-test("phone: My shifts · Lineup, a sideways swipe leaves the week, a tap opens the shift", async ({ browser }) => {
+test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a tap opens the shift", async ({ browser }) => {
   const emre = await open(browser, "emre", PHONE, "/app/employee-hub/schedule");
   const pages = emre.getByRole("navigation", { name: "Schedule pages" });
   await expect(pages.getByRole("link")).toHaveText(["My shifts", "Lineup"]);
@@ -102,10 +122,12 @@ test("phone: My shifts · Lineup, a sideways swipe leaves the week, a tap opens 
   await expect(thisTab).toHaveAttribute("aria-selected", "true");
   await emre.screenshot({ path: `${shots}my-shifts-390.png` });
 
-  // The finger does not move the week.
+  // The finger moves the page tab, never the week: over the list it goes to Lineup, and back.
   await swipe(emre, emre.getByRole("tabpanel", { name: "This week" }), -160);
-  await emre.waitForTimeout(400);
-  await expect(thisTab).toHaveAttribute("aria-selected", "true");
+  await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/lineup/);
+  await swipe(emre, emre.locator(".employee-hub-page h1"), 160);
+  await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule(\?|$)/);
+  await expect(emre.getByRole("tab", { name: "This week" })).toHaveAttribute("aria-selected", "true");
   expect(await emre.locator(".ems-pager").evaluate((el) => el.scrollLeft)).toBe(0);
 
   await emre.getByRole("tab", { name: "Next week" }).tap();

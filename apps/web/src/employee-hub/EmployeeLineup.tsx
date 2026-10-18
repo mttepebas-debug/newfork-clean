@@ -51,11 +51,11 @@ export function EmployeeScheduleTabs({ tabsRef }: { readonly tabsRef?: Ref<HTMLE
   const location = useLocation();
   const phone = useListPhoneWidth();
   const page = location.pathname.endsWith("/schedule/lineup") ? "schedule/lineup" : location.pathname.endsWith("/schedule/team") ? "schedule/team" : "schedule";
-  const tabs = [
+  const tabs: { id: "schedule" | "schedule/team" | "schedule/lineup"; label: string }[] = [
     { id: "schedule", label: "My shifts" },
-    ...(phone ? [] : [{ id: "schedule/team", label: "Team schedule" }]),
+    ...(phone ? [] : [{ id: "schedule/team" as const, label: "Team schedule" }]),
     { id: "schedule/lineup", label: "Lineup" },
-  ] as const;
+  ];
   return (
     <nav className="employee-schedule-tabs" aria-label="Schedule pages" ref={tabsRef}>
       {tabs.map((tab) => (

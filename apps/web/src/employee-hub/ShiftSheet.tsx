@@ -117,7 +117,7 @@ export function ShiftSheet({
       </Link>
       <Link
         className="eh-sheet-link"
-        to={`${base}/schedule?shift=${shift.id}#shift-${shift.id}`}
+        to={`${base}/schedule?date=${shift.scheduled_date}&shift=${shift.id}#shift-${shift.id}`}
       >
         Open in my schedule
         <ArrowUpRight size={17} />

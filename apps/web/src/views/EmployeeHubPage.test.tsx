@@ -578,7 +578,9 @@ describe("EmployeeHubPage", () => {
       "/app/employee-hub/shift-hub?hub_view=available&from=2026-08-28&to=2026-08-28",
     );
     expect(thisWeek.querySelector('[data-day="2026-08-30"]')?.textContent).toContain("Day off");
-    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-24", "2026-09-06");
+    // Each week on its own: the hub takes 62 days at most, and a far week stands beside This week.
+    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-24", "2026-08-30");
+    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-31", "2026-09-06");
 
     const next = screen.getByRole("tab", { name: "Next week" });
     expect(next.getAttribute("aria-selected")).toBe("false");

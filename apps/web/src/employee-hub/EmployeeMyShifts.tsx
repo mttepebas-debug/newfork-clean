@@ -1,5 +1,5 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
 import { CalendarX2 } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Link, useSearchParams } from "react-router";
@@ -19,6 +19,7 @@ import "./employee-my-shifts.css";
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()]!;
 const dayOfMonth = (iso: string) => Number(iso.slice(8, 10));
+const longDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
 
 type Model = EmployeeHubReadModel;
 
@@ -46,6 +47,30 @@ export function weekDays(model: Model, start: string) {
   });
 }
 
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const monthDay = (iso: string) => `${MONTHS[Number(iso.slice(5, 7)) - 1]} ${dayOfMonth(iso)}`;
+/** "Oct 26 – Nov 1": a week that is neither this one nor the next. */
+export const weekRange = (start: string) => `${monthDay(start)} – ${monthDay(addDays(start, 6))}`;
+const isDay = (value: string | null): value is string => Boolean(value && /^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(Date.parse(`${value}T12:00:00Z`)));
+
+/** The two weeks the switch shows. This week and Next week; an address with a day in another week (a
+ *  notification about a week further on, or back) puts that week in the switch's place beside This week. */
+export function switchWeeks(thisStart: string, target: string | null, weekStartDay: "monday" | "sunday") {
+  const next = addDays(thisStart, 7);
+  const t = isDay(target) ? currentWeekStart(target, weekStartDay) : thisStart;
+  if (t < thisStart) return { starts: [t, thisStart] as const, labels: [weekRange(t), "This week"] as const, open: 0 as const };
+  if (t > next) return { starts: [thisStart, t] as const, labels: ["This week", weekRange(t)] as const, open: 1 as const };
+  return { starts: [thisStart, next] as const, labels: ["This week", "Next week"] as const, open: (t === next ? 1 : 0) as 0 | 1 };
+}
+
+/** Two weeks' answers as one model (each week is asked on its own: the hub takes 62 days at most). */
+function merged(parts: (Model | undefined)[]): Model | undefined {
+  const [a, b] = parts;
+  if (!a || !b) return undefined;
+  const byId = <T extends { id: string }>(items: T[]) => [...new Map(items.map((item) => [item.id, item])).values()];
+  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), open_shifts: byId([...a.open_shifts, ...b.open_shifts]), requests: byId([...a.requests, ...b.requests]) };
+}
+
 export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string }) {
   const [search, setSearch] = useSearchParams();
   const now = useHubClock();
@@ -58,13 +83,24 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
     staleTime: 60_000,
   });
   const start = board.data ? currentWeekStart(today, board.data.week_start_day) : null;
-  const hub = useQuery({
-    queryKey: ["employee-hub", workspaceId, "my-shifts", start],
-    queryFn: () => getEmployeeHub(workspaceId, start!, addDays(start!, 13)),
-    enabled: Boolean(workspaceId && start),
-    refetchInterval: 60_000,
+  const shiftId = search.get("shift");
+  const target = search.get("date");
+  const weeks = start && board.data ? switchWeeks(start, target, board.data.week_start_day) : null;
+  const parts = useQueries({
+    queries: [0, 1].map((i) => ({
+      queryKey: ["employee-hub", workspaceId, "my-shifts", weeks?.starts[i] ?? null],
+      queryFn: () => getEmployeeHub(workspaceId, weeks!.starts[i]!, addDays(weeks!.starts[i]!, 6)),
+      enabled: Boolean(workspaceId && weeks),
+      refetchInterval: 60_000,
+    })),
   });
-  const model = hub.data;
+  const model = merged(parts.map((part) => part.data));
+  const hub = {
+    isLoading: parts.some((part) => part.isLoading),
+    isError: parts.some((part) => part.isError),
+    isFetching: parts.some((part) => part.isFetching),
+    refetch: () => Promise.all(parts.map((part) => part.refetch())),
+  };
   const ownWeek = useQuery({
     queryKey: ["weekly-preferences", workspaceId, "workspace", "self"],
     queryFn: () => loadWeeklyPreferences(workspaceId),
@@ -72,20 +108,19 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
     enabled: Boolean(model),
   });
 
-  // The page opens on the week of ?date= or of the shift it was sent to; This week otherwise.
-  const shiftId = search.get("shift");
-  const target = search.get("date") ?? model?.shifts.find((shift) => shift.id === shiftId)?.scheduled_date ?? null;
+  // The page opens on the week of ?date= (a notification, a shift's "Open in my schedule"); This week otherwise.
+  // A new ?date= while the page is open moves it too.
   const [page, setPage] = useState<0 | 1>(0);
   const pager = useRef<HTMLDivElement>(null);
   const seg = useRef<HTMLDivElement>(null);
-  const placed = useRef(false);
+  const placedFor = useRef<string | null>(null);
+  const place = weeks ? `${weeks.starts.join()}|${weeks.open}` : null;
   useEffect(() => {
-    if (!start || !pager.current || placed.current) return;
-    placed.current = true;
-    const next = target && target >= addDays(start, 7) && target <= addDays(start, 13) ? 1 : 0;
-    setPage(next);
-    pager.current.scrollLeft = next * pager.current.clientWidth;
-  }, [start, target, model]);
+    if (!weeks || !pager.current || placedFor.current === place) return;
+    placedFor.current = place;
+    setPage(weeks.open);
+    pager.current.scrollLeft = weeks.open * pager.current.clientWidth;
+  }, [place, weeks, model]);
   // The white pill follows the pager while it slides, as in the lab page.
   useEffect(() => {
     const el = pager.current;
@@ -106,9 +141,9 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
     else el.scrollLeft = next * el.clientWidth;
   };
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
-    if (event.key !== "ArrowLeft" && event.key !== "ArrowRight") return;
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
-    const next = event.key === "ArrowRight" ? 1 : 0;
+    const next = event.key === "ArrowRight" || event.key === "End" ? 1 : 0;
     go(next);
     seg.current?.querySelectorAll<HTMLButtonElement>("[role=tab]")[next]?.focus();
   };
@@ -122,7 +157,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
         ))}
       </LoadingOutline>
     );
-  if (!model || !start)
+  if (!model || !weeks)
     return (
       <LoadError
         title="We couldn't load your shifts"
@@ -139,7 +174,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
     params.delete("shift");
     setSearch(params, { replace: true });
   };
-  const weeks = [weekDays(model, start), weekDays(model, addDays(start, 7))];
+  const pages = [weekDays(model, weeks.starts[0]), weekDays(model, weeks.starts[1])];
   const timeFormat = model.settings.time_format;
   return (
     <div className="ems">
@@ -151,7 +186,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
         />
       ) : null}
       <div className="ems-seg" role="tablist" aria-label="Week" ref={seg} style={{ "--pos": page } as CSSProperties}>
-        {(["This week", "Next week"] as const).map((label, i) => (
+        {weeks.labels.map((label, i) => (
           <button
             key={label}
             type="button"
@@ -169,7 +204,7 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
         <i className="ems-seg-i" aria-hidden="true" />
       </div>
       <div className="ems-pager" ref={pager}>
-        {weeks.map((days, i) => (
+        {pages.map((days, i) => (
           <div
             key={i}
             className="ems-week"
@@ -185,16 +220,17 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
                   <b>{dayOfMonth(day.date)}</b>
                 </div>
                 <div className="ems-body">
-                  <span className="ems-sr">{new Date(`${day.date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}</span>
+                  {day.shifts.length ? null : <span className="ems-sr">{longDay(day.date)}</span>}
                   {day.shifts.length ? (
                     day.shifts.map((shift) => (
                       <Link
                         key={shift.id}
                         id={`shift-${shift.id}`}
                         className={`ems-shift${shift.id === shiftId ? " flash" : ""}`}
-                        to={`?shift=${shift.id}`}
+                        to={`?date=${day.date}&shift=${shift.id}`}
                         replace
                       >
+                        <span className="ems-sr">{longDay(day.date)}, </span>
                         <b>{formatTime(shift.start_time, timeFormat, "long")} – {formatTime(shift.end_time, timeFormat, "long")}</b>
                         <span>{shift.location_name} · {shift.job_name}</span>
                       </Link>

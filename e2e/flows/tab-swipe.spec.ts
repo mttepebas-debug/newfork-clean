@@ -62,10 +62,11 @@ test("My Availability: a swipe moves between Availability and Time Off Requests,
   await expect(tabs).toHaveText("Availability");
 });
 
-test("the employee's Schedule and Lineup: a swipe moves between the two pages; the day wheel keeps its own", async ({ browser }) => {
+test("the employee's My shifts and Lineup: a swipe moves between the two pages; the day wheel keeps its own", async ({ browser }) => {
   const emre = await phone(browser, "emre", "/app/employee-hub/schedule");
   const pages = emre.getByRole("navigation", { name: "Schedule pages" });
-  await expect(pages.getByRole("link", { name: "Schedule" })).toHaveAttribute("aria-current", "page");
+  // CALISAN-SCHEDULE-LISTE (S-153): Schedule opens on My shifts; on a phone the tabs are My shifts · Lineup.
+  await expect(pages.getByRole("link", { name: "My shifts" })).toHaveAttribute("aria-current", "page");
   await swipe(emre, emre.locator(".employee-hub-page"), -160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/lineup/);
   await expect(pages.getByRole("link", { name: "Lineup" })).toHaveAttribute("aria-current", "page");
@@ -74,7 +75,7 @@ test("the employee's Schedule and Lineup: a swipe moves between the two pages; t
   await expect(wheel).toBeVisible();
   await swipe(emre, wheel, 160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule\/lineup/);
-  // The page under the wheel goes back to Schedule.
+  // The page under the wheel goes back to My shifts.
   await swipe(emre, emre.locator(".employee-hub-page h1"), 160);
   await expect(emre).toHaveURL(/\/app\/employee-hub\/schedule(\?|$)/);
 });
