@@ -117,8 +117,10 @@ test("the manager's phone Lineup: a swipe moves through Team, Notes and Read, ne
   const ayse = await phone(browser, "ayse", `/app/schedule/lineup?date=${day}`);
   const segs = chosen(ayse, "Lineup");
   await expect(segs).toContainText("Team");
-  // Read opens once the lineup is published (Mert 2026-10-17): a draft's swipe stops at Notes.
+  // Read opens once the lineup is published (Mert 2026-10-17): a draft's swipe stops at Notes. Each swipe is
+  // checked on its own, so a lost first swipe can't hide behind the second.
   await swipe(ayse, ayse.getByRole("tabpanel"), -160);
+  await expect(segs).toContainText("Notes");
   await swipe(ayse, ayse.getByRole("tabpanel"), -160);
   await expect(segs).toContainText("Notes");
   await swipe(ayse, ayse.getByRole("tabpanel"), 160);
