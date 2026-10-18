@@ -396,7 +396,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000005", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000003", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
-        status: "invited", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
+        status: "pending_manager", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
       candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     renderPage();
@@ -416,7 +416,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
       created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000006", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000004", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
-        status: "invited", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
+        status: "pending_manager", created_at: "2035-01-02T10:00:00Z", reason: "", eligibility: null }],
       candidate_count: 1, can_manage: true, is_owner: false, history: [],
     }] } as unknown as Awaited<ReturnType<typeof getExchanges>>);
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
