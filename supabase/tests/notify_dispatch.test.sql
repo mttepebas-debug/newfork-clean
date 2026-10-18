@@ -221,11 +221,20 @@ select ok(pg_temp.plan($$select 1 from public.notification_deliveries d
                            and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)$$)
           !~ 'delivery_due',
   '(e) the guard''s due check is inlined, not called for every delivery');
-select ok(pg_temp.plan($$select 1 from public.notification_deliveries d
-                         where d.channel = any (app_private.dispatched_channels())
-                           and app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)$$)
-          ~ 'notification_deliveries_due' ,
-  '(e) and it can use the partial index of waiting deliveries');
+-- Which index the planner picks hangs on the statistics, and autovacuum refreshes them whenever it likes: on a
+-- handful of rows the (notification_id, channel) key, read whole for the channel, can come out cheaper than
+-- the partial indexes. So the due check is asked on its own, with only bitmap scans allowed: a bitmap scan
+-- needs an index condition, and only the two partial indexes have one, so the plan cannot hang on the
+-- statistics. The guard's channel condition only filters what they return.
+set local enable_indexscan = off;
+set local enable_indexonlyscan = off;
+select ok((select p ~ 'Bitmap Index Scan on notification_deliveries_due'
+                  and p ~ 'Bitmap Index Scan on notification_deliveries_leased' and p !~ 'Seq Scan'
+           from pg_temp.plan($$select 1 from public.notification_deliveries d
+                               where app_private.delivery_due(d.status, d.next_attempt_at, d.lease_expires_at)$$) p),
+  '(e) and it can use the partial indexes of waiting and leased deliveries');
+reset enable_indexonlyscan;
+reset enable_indexscan;
 reset enable_seqscan;
 
 select * from finish();
