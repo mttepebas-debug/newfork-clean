@@ -45,8 +45,8 @@ export function WindowAlert({
 /** Room above the band's anchor for as long as the band shows; returns the undo. */
 function keepRoomUnder(band: HTMLElement): () => void {
   const anchor = band.parentElement;
-  const room = anchor?.previousElementSibling;
-  if (!anchor || !(room instanceof HTMLElement)) return () => {};
+  const room = anchor ? bodyAbove(anchor) : null;
+  if (!anchor || !room) return () => {};
   const view = room.ownerDocument.defaultView;
   const scrolls = scrollsItself(room);
   const side = scrolls ? "paddingBottom" : "marginBottom";
@@ -80,6 +80,21 @@ function keepRoomUnder(band: HTMLElement): () => void {
     if (scrolls) room.style.scrollPaddingBottom = before.scrollPaddingBottom;
     if (outer) outer.style.scrollPaddingBottom = outerBefore;
   };
+}
+
+/**
+ * What lies right above the band: its anchor's previous sibling, or, when the
+ * anchor opens its footer (a slot as a footer's first child), the footer's.
+ */
+function bodyAbove(anchor: HTMLElement): HTMLElement | null {
+  let at: HTMLElement | null = anchor;
+  for (let climbs = 0; at && climbs < 3; climbs += 1) {
+    const above = at.previousElementSibling;
+    if (above instanceof HTMLElement) return above;
+    if (at.matches("[role='dialog'], [role='alertdialog'], dialog, body")) return null;
+    at = at.parentElement;
+  }
+  return null;
 }
 
 function scrollsItself(element: HTMLElement): boolean {

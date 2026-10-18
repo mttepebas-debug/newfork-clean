@@ -17,7 +17,7 @@ import "./document-settings-editor.css";
 
 import { isNoAccess } from "../lib/no-access";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
-import { FieldNote } from "../shell/FieldNote";
+import { WindowAlert } from "../shell/WindowAlert";
 
 export function DocumentPublicationDialog({
   workspaceId,
@@ -272,12 +272,6 @@ export function DocumentPublicationDialog({
             </>
           )}
 
-          <FieldNote
-            id="document-publication"
-            lines={2}
-            error={mutation.error ? errorText(mutation.error) : null}
-          />
-
           {mutation.error && (
             <button
               type="button"
@@ -293,6 +287,8 @@ export function DocumentPublicationDialog({
           )}
         </div>
 
+        {/* The server's sentence in the drawer's band, above the footer (UI-FIELDMSG-2). */}
+        <WindowAlert between message={mutation.error ? errorText(mutation.error) : null} />
         <div className="job-editor-footer">
           <div className="job-editor-actions">
             <button

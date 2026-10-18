@@ -43,7 +43,6 @@ import {
 import { ListOutline, LoadError } from "../shell/LoadState";
 import { NoAccessRoute, NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
-import { FieldNote } from "../shell/FieldNote";
 type Act = { request: TimeOffRequest; kind: "approve" | "deny" | "revoke" };
 
 export function ScheduleRequestsPage() {
@@ -668,6 +667,8 @@ function ActDialog({
       confirmDisabled={kind === "revoke" && !text.trim()}
       onCancel={onCancel}
       onConfirm={onConfirm}
+      // The server's answer in the box's band, above the buttons (UI-FIELDMSG-2).
+      error={error}
     >
       {copy.field ? (
         <label className="app-confirm-field">
@@ -682,8 +683,6 @@ function ActDialog({
           />
         </label>
       ) : null}
-      {/* Kept room above the buttons, so they never move (UI-FIELDMSG). */}
-      <FieldNote id="request-confirm" error={error} lines={2} />
     </ConfirmDialog>
   );
 }

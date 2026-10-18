@@ -157,4 +157,23 @@ describe("WindowAlert", () => {
     rerender(window(null));
     expect(last.style.marginBottom).toBe("4px");
   });
+
+  it("finds the body above a footer it opens", () => {
+    bandHeight(24);
+    const window = (message: string | null) => (
+      <section role="dialog">
+        <div data-testid="body" style={{ overflowY: "scroll" }}>
+          Days
+        </div>
+        <footer>
+          <WindowAlert between message={message} />
+          <button type="button">Save</button>
+        </footer>
+      </section>
+    );
+    const { rerender, getByTestId } = render(window("Couldn't save."));
+    expect(getByTestId("body").style.paddingBottom).toBe("24px");
+    rerender(window(null));
+    expect(getByTestId("body").style.paddingBottom).toBe("");
+  });
 });

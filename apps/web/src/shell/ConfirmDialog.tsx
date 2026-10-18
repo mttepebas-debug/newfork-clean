@@ -9,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { createPortal } from "react-dom";
+import { WindowAlert } from "./WindowAlert";
 
 // The app's own confirm box, used instead of the browser's confirm/prompt.
 // Cancel is white, a destructive answer red, any other answer green (REUSE UI-09).
@@ -26,6 +27,8 @@ export type ConfirmDialogProps = {
   readonly onCancel: () => void;
   /** Extra fields, e.g. a reason box; give the first one autoFocus. */
   readonly children?: ReactNode;
+  /** Why the answer didn't go through: the box's band, over the text above the buttons. */
+  readonly error?: ReactNode;
 };
 
 export function ConfirmDialog({
@@ -40,6 +43,7 @@ export function ConfirmDialog({
   onConfirm,
   onCancel,
   children,
+  error,
 }: ConfirmDialogProps) {
   const titleId = useId();
   const descriptionId = useId();
@@ -125,6 +129,7 @@ export function ConfirmDialog({
           </div>
         </header>
         <footer>
+          <WindowAlert message={error} />
           <Button
             className="secondary-button"
             disabled={busy}
