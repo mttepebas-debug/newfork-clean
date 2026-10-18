@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 515, last: 20261018232000_management_job_rules.sql
--- fingerprint: sha256:e92e01f456d1a83a19174320d118e41b78f329ad28d973d806fae99a4abbcd00
+-- fingerprint: sha256:df838fef19187a5c3c9a31a6c3b6f28bfc4cbfbc0c44620fafdbfd5ec8f5e54b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22165,6 +22165,17 @@ begin
   end if;
   if onboarding_status = 'complete'::public.onboarding_status then
     raise exception 'completed owner onboarding cannot be reset' using errcode = '22023';
+  end if;
+  -- The reset deletes every job; a Management job somebody other than the owner holds would go with it
+  -- and leave them without one (KARARLAR S-168, ROL-CIFT 1.3).
+  if exists (
+    select 1 from public.membership_management_jobs held
+    join public.workspace_memberships membership on membership.id = held.membership_id
+    join public.workspace_roles role on role.id = membership.role_id
+    where held.workspace_id = target_workspace_id and role.access_class <> 'owner'
+  ) then
+    raise exception 'somebody besides the owner holds a Management job; setup cannot start over'
+      using errcode = '22023', hint = 'onboarding.reset_management_jobs_held';
   end if;
 
   delete from public.employee_profiles
