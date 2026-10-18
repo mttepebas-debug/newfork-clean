@@ -41,8 +41,10 @@ test("a released shift reaches teammates' decks, and its owner takes it back", a
   await emre.getByRole("link", { name: /Release shift/ }).click();
   await emre.getByLabel(/Note for teammates/).fill("Dentist appointment, thanks!");
   await emre.getByRole("button", { name: "Release shift", exact: true }).click();
-  const caseOf = () => sql(`select coalesce(max(id::text), '') from public.shift_exchange_cases
-    where offered_source_id = tests.id('${run}:shift:${label}') and status = 'open';`);
+  // A case keeps the shift's source (the draft shift it was published from), not the published row's id.
+  const caseOf = () => sql(`select coalesce(max(c.id::text), '') from public.shift_exchange_cases c
+    join public.schedule_published_shifts p on coalesce(p.source_shift_id, p.id) = c.offered_source_id
+    where p.id = tests.id('${run}:shift:${label}') and c.status = 'open';`);
   await expect.poll(caseOf, { timeout: 30_000 }).not.toBe("");
   const caseId = caseOf();
   expect(sql(`select teammate_note from public.shift_exchange_cases where id = '${caseId}';`)).toBe("Dentist appointment, thanks!");
