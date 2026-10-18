@@ -197,7 +197,10 @@ select is(pg_temp.preview_said('tr:owner', tests.id('tr:s5'), tests.id('tr:templ
 
 -- (c) A shift under way this very hour, in the edited week, stays.
 create temporary table tr_now as
-  select (now() at time zone 'Europe/Istanbul') - interval '1 hour' as started_at;
+-- An hour ago, but never before this week began: in the first hour of Monday in
+-- Istanbul an hour ago is last week, which the edit lock calls past (CI, Sunday 21:20 UTC).
+  select greatest((now() at time zone 'Europe/Istanbul') - interval '1 hour',
+    date_trunc('week', now() at time zone 'Europe/Istanbul')) as started_at;
 select tests.remember('tr:s_now', (public.acquire_schedule_edit_session_service(tests.user('tr:owner'), tests.id('tr'),
   (select date_trunc('week', started_at)::date from tr_now), 'blank', null) -> 'session' ->> 'id')::uuid);
 -- ponytail: written directly; the screen adds a started shift only through the
@@ -210,7 +213,7 @@ select tests.remember('tr:running', gen_random_uuid()), tests.id('tr'), tests.id
 from tr_now;
 select pg_temp.replace(tests.id('tr:s_now'));
 select ok(exists (select 1 from public.schedule_edit_session_shifts where id = tests.id('tr:running')),
-  'a shift that began an hour ago in the edited week stays');
+  'a shift under way in the edited week stays');
 
 -- (d) Who else gets no answer.
 select tests.world('tr2');
