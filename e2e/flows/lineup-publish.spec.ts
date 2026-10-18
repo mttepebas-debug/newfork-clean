@@ -39,9 +39,16 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   const window = ayse.getByRole("dialog", { name: "Publish lineups" });
   const box = window.getByRole("region", { name: "Kadikoy" }).getByRole("checkbox").first();
   await expect(box).toHaveAttribute("aria-checked", "true");
-  await window.getByRole("button", { name: /^Publish \d+$/ }).click();
-  await expect(window.getByText(/^Published \d+ lineups? · \d+ (person|people) notified$/)).toBeVisible();
-  await window.getByRole("button", { name: "Done", exact: true }).click();
+  // Publish works in its own button (Mert 2026-10-17, notice A): Publishing…, then Published, then Done; no green
+  // line in the window. It keeps the keyboard's focus all the way.
+  const go = window.getByRole("button", { name: /^Publish \d+$/ });
+  await go.focus();
+  await ayse.keyboard.press("Enter");
+  await expect(window.getByRole("button", { name: "Published", exact: true })).toBeFocused();
+  await expect(window.getByText(/notified/)).toHaveCount(0);
+  const done = window.getByRole("button", { name: "Done", exact: true });
+  await expect(done).toBeFocused();
+  await done.click();
   await expect(kadikoy.getByText(/^Read 0\/\d+$/)).toBeVisible();
 
   const emre = await openPage(browser, "emre", `/app/employee-hub/schedule/lineup?date=${day}`);
@@ -75,14 +82,31 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   await ayse.keyboard.press("Escape");
   await expect(readers).toHaveCount(0);
 
-  // Take it back: two clicks on the red Unpublish.
+  // Take it back with the green Edit (S-162): the phone's Edit window, in the middle of the page.
   await ayse.getByRole("button", { name: /^Publish/ }).click();
   const again = ayse.getByRole("dialog", { name: "Publish lineups" });
   const row = again.getByRole("region", { name: "Kadikoy" }).getByRole("listitem").first();
-  await row.hover();
-  await row.getByRole("button", { name: /^Unpublish / }).click();
-  await row.getByRole("button", { name: /^Unpublish .*\? Click again to confirm\.$/ }).click();
-  await expect(again.getByText(/^Unpublished\. Staff can't see .+ until you publish it again\.$/)).toBeVisible();
+  await expect(again.getByRole("button", { name: /Unpublish/ })).toHaveCount(0);
+  await row.getByRole("button", { name: /^Edit .+ lineup$/ }).click();
+  const ask = ayse.getByRole("alertdialog", { name: /^Edit .+ lineup\?$/ });
+  await expect(ask).toContainText("Back to draft");
+  await expect(ask).toContainText("Everyone gets the new version");
+  const said = ask.getByText(/^Kadikoy · Published at \d{1,2}:\d{2} [AP]M$/);
+  await expect(said).toBeVisible();
+  const middle = (await ask.boundingBox())!;
+  expect(Math.abs(middle.x + middle.width / 2 - ayse.viewportSize()!.width / 2)).toBeLessThanOrEqual(2);
+  await ask.getByRole("button", { name: "Edit", exact: true }).focus();
+  await ayse.keyboard.press("Enter");
+  // While it works: Unpublishing…, still focused, and the window still says when it went out (D1, D2).
+  const working = ask.getByRole("button", { name: "Unpublishing…" });
+  await expect(working).toBeFocused();
+  await expect(working).toHaveAttribute("aria-busy", "true");
+  await expect(said).toBeVisible();
+  await expect(ask).toHaveCount(0);
+  // Back to draft, ticked to go out again, its box holding the focus; the Publish window stays open.
+  const draft = again.getByRole("region", { name: "Kadikoy" }).getByRole("checkbox").first();
+  await expect(draft).toHaveAttribute("aria-checked", "true");
+  await expect(draft).toBeFocused();
 
   await emre.reload();
   await expect(emre.getByText(/lineup isn't published yet$/)).toBeVisible();
@@ -157,7 +181,8 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
   await expect(sheet).toHaveClass(/is-sheet/);
   await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
-  await expect(sheet.getByText(/^Published \d+ lineups? · \d+ (person|people) notified$/)).toBeVisible();
+  await expect(sheet.getByRole("button", { name: "Published", exact: true })).toBeVisible();
+  await expect(sheet.getByText(/notified/)).toHaveCount(0);
   await sheet.getByRole("button", { name: "Done", exact: true }).tap();
   await expect(sheet).toHaveCount(0);
 
