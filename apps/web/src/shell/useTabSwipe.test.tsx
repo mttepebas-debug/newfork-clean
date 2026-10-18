@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from "@testing-library/react";
+import { createEvent, fireEvent, render, screen } from "@testing-library/react";
 import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EDGE_BAND, swipeStep, useTabSwipe } from "./useTabSwipe";
@@ -39,12 +39,21 @@ function Page({ onSelect }: { onSelect?: (tab: string) => void }) {
   );
 }
 
+// Two clocks: when the finger moved (an event's timeStamp, which never jumps) and the wall clock (Date.now,
+// which a clock correction can move by seconds in the middle of a swipe).
 let now = 0;
-function swipe(target: Element, from: [number, number], to: [number, number], ms = 200) {
-  fireEvent.touchStart(target, { touches: [{ clientX: from[0], clientY: from[1] }] });
-  fireEvent.touchMove(target, { touches: [{ clientX: to[0], clientY: to[1] }] });
+let wall = 0;
+function touch(kind: "touchStart" | "touchMove" | "touchEnd", target: Element, init: object) {
+  const event = createEvent[kind](target, init);
+  Object.defineProperty(event, "timeStamp", { value: now });
+  fireEvent(target, event);
+}
+function swipe(target: Element, from: [number, number], to: [number, number], ms = 200, clockJump = 0) {
+  touch("touchStart", target, { touches: [{ clientX: from[0], clientY: from[1] }] });
+  touch("touchMove", target, { touches: [{ clientX: to[0], clientY: to[1] }] });
   now += ms;
-  fireEvent.touchEnd(target, { touches: [], changedTouches: [{ clientX: to[0], clientY: to[1] }] });
+  wall += ms + clockJump;
+  touch("touchEnd", target, { touches: [], changedTouches: [{ clientX: to[0], clientY: to[1] }] });
 }
 const selected = () => screen.getAllByRole("tab").find((tab) => tab.getAttribute("aria-selected") === "true")!.textContent;
 
@@ -67,7 +76,8 @@ describe("a tabbed page on a phone", () => {
     }));
   beforeEach(() => {
     now = 0;
-    vi.spyOn(Date, "now").mockImplementation(() => now);
+    wall = 0;
+    vi.spyOn(Date, "now").mockImplementation(() => wall);
     phone(true);
   });
   afterEach(() => {
@@ -99,6 +109,12 @@ describe("a tabbed page on a phone", () => {
     swipe(screen.getByTestId("text"), [300, 400], [200, 400], 1200);
     swipe(screen.getByTestId("text"), [300, 400], [270, 400]);
     expect(selected()).toBe("one");
+  });
+
+  it("times the swipe by the finger, not the wall clock, which can jump mid-swipe (BL-1136)", () => {
+    render(<Page />);
+    swipe(screen.getByTestId("text"), [300, 400], [200, 410], 200, 2300);
+    expect(selected()).toBe("two");
   });
 
   it("leaves what moves sideways on its own: the tabs, a text box, a group like the day wheel, a sheet", () => {

@@ -93,7 +93,7 @@ export function useTabSwipe<T extends string>({
       const touch = event.touches[0];
       start =
         event.touches.length === 1 && touch && event.target instanceof Element && !ownsSwipe(event.target, root)
-          ? { x: touch.clientX, y: touch.clientY, at: Date.now() }
+          ? { x: touch.clientX, y: touch.clientY, at: event.timeStamp }
           : null;
     };
     const onMove = (event: TouchEvent) => {
@@ -102,7 +102,9 @@ export function useTabSwipe<T extends string>({
     const onEnd = (event: TouchEvent) => {
       const touch = event.changedTouches[0];
       if (!start || !touch || event.touches.length) return void (start = null);
-      const step = swipeStep(touch.clientX - start.x, touch.clientY - start.y, Date.now() - start.at);
+      // The finger's own time (the events' timeStamp), never the wall clock: a clock correction can move
+      // Date.now by seconds in the middle of a quick swipe, which then reads as a slow drag (BL-1136).
+      const step = swipeStep(touch.clientX - start.x, touch.clientY - start.y, event.timeStamp - start.at);
       start = null;
       const { tabs: list, active: current, onSelect: select } = latest.current;
       const at = (list as readonly string[]).indexOf(current);
