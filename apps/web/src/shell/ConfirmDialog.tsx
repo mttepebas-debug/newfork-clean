@@ -23,6 +23,12 @@ export type ConfirmDialogProps = {
   readonly destructive?: boolean;
   readonly confirmDisabled?: boolean;
   readonly busy?: boolean;
+  /**
+   * The answer works in place (LINEUP-E-DESKTOP-EDIT): while busy it reads these words and stays focusable,
+   * aria-disabled and aria-busy, so the keyboard's focus doesn't fall to the page; presses wait until it is done.
+   * Without it, busy turns both buttons off as before.
+   */
+  readonly busyLabel?: string;
   readonly onConfirm: () => void;
   readonly onCancel: () => void;
   /** Extra fields, e.g. a reason box; give the first one autoFocus. */
@@ -40,11 +46,14 @@ export function ConfirmDialog({
   destructive = false,
   confirmDisabled = false,
   busy = false,
+  busyLabel,
   onConfirm,
   onCancel,
   children,
   error,
 }: ConfirmDialogProps) {
+  // With busy words the buttons hold focus while busy (aria-disabled); without them they turn off.
+  const holding = busy && busyLabel !== undefined;
   const titleId = useId();
   const descriptionId = useId();
   const dialog = useRef<HTMLElement>(null);
@@ -132,17 +141,21 @@ export function ConfirmDialog({
           <WindowAlert message={error} />
           <Button
             className="secondary-button"
-            disabled={busy}
-            onClick={onCancel}
+            {...(holding ? { "aria-disabled": true } : { disabled: busy })}
+            onClick={() => {
+              if (!busy) onCancel();
+            }}
           >
             {cancelLabel}
           </Button>
           <Button
             className={destructive ? "danger-button" : undefined}
-            disabled={busy || confirmDisabled}
-            onClick={onConfirm}
+            {...(holding ? { "aria-disabled": true, "aria-busy": true, disabled: confirmDisabled } : { disabled: busy || confirmDisabled })}
+            onClick={() => {
+              if (!busy && !confirmDisabled) onConfirm();
+            }}
           >
-            {confirmLabel}
+            {holding ? busyLabel : confirmLabel}
           </Button>
         </footer>
       </section>

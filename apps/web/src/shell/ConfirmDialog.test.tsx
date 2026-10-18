@@ -104,4 +104,45 @@ describe("ConfirmDialog", () => {
     expect(screen.getByRole("button", { name: "Request changes" })).toHaveProperty("disabled", true);
     expect(document.activeElement).toBe(screen.getByLabelText("Note"));
   });
+
+  it("turns both buttons off while busy, as it always has, when no busy words are given", () => {
+    render(<ConfirmDialog open busy title="Delete Week 40?" confirmLabel="Delete" onConfirm={vi.fn()} onCancel={vi.fn()} />);
+    expect(screen.getByRole("button", { name: "Delete" })).toHaveProperty("disabled", true);
+    expect(screen.getByRole("button", { name: "Cancel" })).toHaveProperty("disabled", true);
+  });
+
+  // LINEUP-E-DESKTOP-EDIT (D2): a box whose answer works in place says so in its button and keeps the keyboard's
+  // focus there; a second press, Cancel and Escape do nothing until it is done.
+  it("works in its answer with busy words, keeping focus, and ignores presses until it is done", () => {
+    const onConfirm = vi.fn();
+    const onCancel = vi.fn();
+    const { rerender } = render(
+      <ConfirmDialog open title="Edit Lunch lineup?" confirmLabel="Edit" busyLabel="Unpublishing…" onConfirm={onConfirm} onCancel={onCancel} />,
+    );
+    const answer = screen.getByRole("button", { name: "Edit" });
+    answer.focus();
+    rerender(
+      <ConfirmDialog open busy title="Edit Lunch lineup?" confirmLabel="Edit" busyLabel="Unpublishing…" onConfirm={onConfirm} onCancel={onCancel} />,
+    );
+    const working = screen.getByRole("button", { name: "Unpublishing…" });
+    expect(working).toBe(answer);
+    expect(working).toHaveProperty("disabled", false);
+    expect(working.getAttribute("aria-disabled")).toBe("true");
+    expect(working.getAttribute("aria-busy")).toBe("true");
+    expect(document.activeElement).toBe(working);
+    const cancel = screen.getByRole("button", { name: "Cancel" });
+    expect(cancel.getAttribute("aria-disabled")).toBe("true");
+    fireEvent.click(working);
+    fireEvent.click(cancel);
+    fireEvent.keyDown(working, { key: "Escape" });
+    expect(onConfirm).not.toHaveBeenCalled();
+    expect(onCancel).not.toHaveBeenCalled();
+    rerender(
+      <ConfirmDialog open title="Edit Lunch lineup?" confirmLabel="Edit" busyLabel="Unpublishing…" onConfirm={onConfirm} onCancel={onCancel} />,
+    );
+    expect(working.getAttribute("aria-disabled")).toBeNull();
+    expect(working.getAttribute("aria-busy")).toBeNull();
+    fireEvent.click(working);
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+  });
 });
