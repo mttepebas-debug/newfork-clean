@@ -182,3 +182,72 @@ describe("a tabbed page on a phone", () => {
     delete (HTMLElement.prototype as { animate?: unknown }).animate;
   });
 });
+
+// S-152 (Mert 2026-10-17, D): the open tab's line slides to the tab opened. The hook puts where it is on the
+// tab row (--tab-line-x, --tab-line-w, data-tab-line); phone-page-tabs.css draws it on a page's own strips.
+describe("the open tab's line", () => {
+  const BOXES: Record<string, { left: number; width: number }> = { one: { left: 16, width: 60 }, two: { left: 76, width: 50 }, three: { left: 126, width: 70 } };
+  beforeEach(() => {
+    vi.stubGlobal("matchMedia", (query: string) => ({
+      matches: query.includes("max-width"),
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    }));
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(function (this: HTMLElement) {
+      const box = this.getAttribute("role") === "tab" ? BOXES[this.textContent ?? ""] : undefined;
+      return { left: box?.left ?? 4, width: box?.width ?? 382, top: 0, height: 44, right: 0, bottom: 44, x: 0, y: 0, toJSON: () => ({}) } as DOMRect;
+    });
+  });
+  afterEach(() => {
+    vi.restoreAllMocks();
+    vi.unstubAllGlobals();
+  });
+  const row = () => screen.getByRole("tablist");
+
+  it("sits under the open tab and moves with it", () => {
+    render(<Page />);
+    expect(row().dataset.tabLine).toBe("");
+    expect(row().style.getPropertyValue("--tab-line-x")).toBe("12px");
+    expect(row().style.getPropertyValue("--tab-line-w")).toBe("60px");
+    fireEvent.click(screen.getByRole("tab", { name: "three" }));
+    expect(row().style.getPropertyValue("--tab-line-x")).toBe("122px");
+    expect(row().style.getPropertyValue("--tab-line-w")).toBe("70px");
+  });
+
+  it("starts a new tab row's line where the last row's was, so it slides across (Schedule → Lineup)", () => {
+    function Rows() {
+      const [tab, setTab] = useState<(typeof TABS)[number]>("one");
+      const swipe = useTabSwipe({ tabs: TABS, active: tab, onSelect: setTab });
+      return (
+        <section ref={swipe.root}>
+          <div key={tab} role="tablist" aria-label="Pages" ref={swipe.tabs}>
+            {TABS.map((key) => (
+              <button key={key} type="button" role="tab" aria-selected={tab === key} onClick={() => setTab(key)}>
+                {key}
+              </button>
+            ))}
+          </div>
+        </section>
+      );
+    }
+    const xs = new Map<CSSStyleDeclaration, string[]>();
+    const set = CSSStyleDeclaration.prototype.setProperty;
+    vi.spyOn(CSSStyleDeclaration.prototype, "setProperty").mockImplementation(function (this: CSSStyleDeclaration, name, value, priority) {
+      if (name === "--tab-line-x") xs.set(this, [...(xs.get(this) ?? []), String(value)]);
+      return set.call(this, name, value, priority);
+    });
+    render(<Rows />);
+    const first = row();
+    fireEvent.click(screen.getByRole("tab", { name: "two" }));
+    expect(row()).not.toBe(first);
+    // the new row's line first stands where the old one was, then goes to the open tab
+    expect(xs.get(row().style)?.slice(0, 2)).toEqual(["12px", "72px"]);
+    expect(row().style.getPropertyValue("--tab-line-x")).toBe("72px");
+  });
+
+  it("leaves a computer's tab row alone", () => {
+    vi.stubGlobal("matchMedia", () => ({ matches: false, addEventListener: () => undefined, removeEventListener: () => undefined }));
+    render(<Page />);
+    expect(row().dataset.tabLine).toBeUndefined();
+  });
+});

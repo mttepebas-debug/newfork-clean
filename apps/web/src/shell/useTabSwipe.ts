@@ -148,6 +148,40 @@ export function useTabSwipe<T extends string>({
     }
   }, [active, phone, tabs]);
 
+  // The open tab's line (S-152, Mert 2026-10-17, D): the tab row learns where the open tab is, and
+  // phone-page-tabs.css draws the line there on a page's own tab strips and slides it when the tab
+  // changes. A page that draws a new tab row for the new tab (Schedule → Lineup) starts its line where
+  // the last row's was, so it slides across too.
+  const line = useRef<{ x: number; w: number } | null>(null);
+  useLayoutEffect(() => {
+    const row = tabRow.current;
+    if (!phone || !row) return;
+    const place = () => {
+      const open = row.querySelector<HTMLElement>(':scope > [aria-current="page"], :scope > [aria-selected="true"]');
+      if (!open) return void delete row.dataset.tabLine;
+      const box = row.getBoundingClientRect();
+      const tab = open.getBoundingClientRect();
+      const next = { x: Math.round(tab.left - box.left + row.scrollLeft - row.clientLeft), w: Math.round(tab.width) };
+      const set = ({ x, w }: { x: number; w: number }) => {
+        row.style.setProperty("--tab-line-x", `${x}px`);
+        row.style.setProperty("--tab-line-w", `${w}px`);
+      };
+      if (row.dataset.tabLine === undefined && line.current) {
+        set(line.current);
+        row.dataset.tabLine = "";
+        getComputedStyle(row, "::after").getPropertyValue("transform");
+      }
+      set(next);
+      row.dataset.tabLine = "";
+      line.current = next;
+    };
+    place();
+    if (typeof ResizeObserver !== "function") return;
+    const resized = new ResizeObserver(place);
+    resized.observe(row);
+    return () => resized.disconnect();
+  }, [active, phone]);
+
   const setTabs = useCallback<RefCallback<HTMLElement>>((element) => {
     tabRow.current = element;
   }, []);
