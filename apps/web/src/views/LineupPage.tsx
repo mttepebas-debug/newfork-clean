@@ -110,10 +110,13 @@ export function LineupPage() {
   // It went out (notice A, mockup v-e.js .d-pub): the window closes and the Publish that opened it says
   // "Published" for PUBLISH_DONE_MS, then is as it was.
   const [justPublished, setJustPublished] = useState(false);
+  // Which lineups went out last ("<location id>:<shift key>"): the phone gives focus to the first one's card.
+  const [sent, setSent] = useState<readonly string[]>([]);
   const publishedTimer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(publishedTimer.current), []);
-  const published = useCallback(() => {
+  const published = useCallback((keys: readonly string[]) => {
     setPublishOpen(false);
+    setSent(keys);
     setJustPublished(true);
     window.clearTimeout(publishedTimer.current);
     publishedTimer.current = window.setTimeout(() => setJustPublished(false), PUBLISH_DONE_MS);
@@ -219,6 +222,7 @@ export function LineupPage() {
                 anyPublished,
                 open: publishOpen,
                 published: justPublished,
+                sent,
                 onToggle: () => setPublishOpen(!publishOpen),
                 window: (
                   <LineupPublishWindow
@@ -439,7 +443,7 @@ function LocationLineup({
             location.shifts.map((shift) => (
               <ShiftLineup
                 key={shift.key}
-                lightKey={`${location.id}:${shift.key}`}
+                lightKey={`${date}:${location.id}:${shift.key}`}
                 shift={shift}
                 timeFormat={timeFormat}
                 timezone={location.timezone}

@@ -308,6 +308,108 @@ describe("LineupPage publishing", () => {
     expect(edit.title).toBe("This shift has started");
   });
 
+  // LINEUP-E-POLISH 4: a day that is over says so, not "started".
+  it("says the day is over on the locked Edit of a past day", async () => {
+    published = {
+      [lunch]: { status: "past", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    renderPage();
+    await screen.findByRole("article", { name: "Downtown" });
+    fireEvent.click(screen.getByRole("button", { name: /^Publish/ }));
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    const edit = within(within(window).getByRole("region", { name: "Downtown" })).getByRole("button", { name: "Edit Lunch lineup" });
+    expect((edit as HTMLButtonElement).disabled).toBe(true);
+    expect(edit.title).toBe("This day is over");
+  });
+
+  // LINEUP-E-POLISH 1: while Publishing… works, Escape and a click outside leave the window open, so a refusal
+  // still shows in its band.
+  it("keeps the window open through Escape and a click outside while it publishes, and shows a refusal", async () => {
+    let refuse: ((reason: unknown) => void) | null = null;
+    api.mockImplementation(async (_client, path) => {
+      if (path.endsWith("/lineups/commands")) return new Promise((_resolve, reject) => (refuse = reject));
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      return readers(dayRead(world, dayPath![1]!, published));
+    });
+    renderPage();
+    fireEvent.click(await screen.findByRole("button", { name: "Publish, 2 lineups waiting" }));
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    fireEvent.click(within(window).getByRole("button", { name: "Publish 2" }));
+    const working = within(window).getByRole("button", { name: "Publishing…" });
+    fireEvent.keyDown(working, { key: "Escape" });
+    fireEvent.pointerDown(document.body);
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(window);
+    await waitFor(() => expect(refuse).not.toBeNull());
+    refuse!(new RequestError("No", "lineup.one_day", undefined, 400));
+    expect((await within(window).findByRole("alert")).textContent).toBe("Publish one day's lineups at a time.");
+    // Once it is back, Escape closes it again.
+    fireEvent.keyDown(within(window).getByRole("button", { name: "Publish 2" }), { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Publish lineups" })).toBeNull();
+  });
+
+  // LINEUP-E-POLISH 5: the Edit window opened from the Publish window says why it didn't go through in its band.
+  it("says in the Edit window's band why Edit didn't go through, from the Publish window", async () => {
+    published = {
+      [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/commands")) throw new RequestError("No", "lineup.past_day", undefined, 400);
+      return realRead(client, path, init);
+    });
+    renderPage();
+    await screen.findByRole("article", { name: "Downtown" });
+    fireEvent.click(screen.getByRole("button", { name: /^Publish/ }));
+    const window = screen.getByRole("dialog", { name: "Publish lineups" });
+    fireEvent.click(within(within(window).getByRole("region", { name: "Downtown" })).getByRole("button", { name: "Edit Lunch lineup" }));
+    const ask = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
+    fireEvent.click(within(ask).getByRole("button", { name: "Edit" }));
+    expect((await within(ask).findByRole("alert")).textContent).toBe("This day is over. Its lineups can't change.");
+    const edit = within(ask).getByRole("button", { name: "Edit" });
+    expect(edit.getAttribute("aria-disabled")).toBeNull();
+    expect(screen.getByRole("dialog", { name: "Publish lineups" })).toBe(window);
+  });
+
+  // LINEUP-E-POLISH 2: "light up once" is per day: moving to a day whose lineup is already out lights nothing.
+  it("lights nothing when the next day's lineup is already out", async () => {
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", date: "2026-10-14" }),
+    ]);
+    api.mockImplementation(async (_client, path) => {
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      if (!dayPath) throw new Error(`unexpected ${path}`);
+      const out: Record<string, Partial<LineupDayLineup>> = dayPath[1] === "2026-10-14"
+        ? { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 0, with_app: 1 } }
+        : {};
+      return readers(dayRead(world, dayPath[1]!, out));
+    });
+    renderPage();
+    const first = await screen.findByRole("article", { name: "Downtown" });
+    expect(within(within(first).getByRole("region", { name: "Lunch" })).queryByText(/^Published /)).toBeNull();
+    // Both days come into the cache, then back and forth between them.
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => within(within(screen.getByRole("article", { name: "Downtown" })).getByRole("region", { name: "Lunch" })).getByText(/^Published /));
+    fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
+    await waitFor(() => expect(within(within(screen.getByRole("article", { name: "Downtown" })).getByRole("region", { name: "Lunch" })).queryByText(/^Published /)).toBeNull());
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    const lunchShift = await waitFor(() => {
+      const region = within(screen.getByRole("article", { name: "Downtown" })).getByRole("region", { name: "Lunch" });
+      within(region).getByText(/^Published /);
+      return region;
+    });
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(lunchShift).getByText(/^Published /).classList.contains("is-flash")).toBe(false);
+  });
+
+  // LINEUP-E-POLISH 6: the Cancel that waits while an answer works looks off in every app window, not only Lineup's.
+  it("keeps the waiting Cancel's look in the app window's own styles", () => {
+    const shared = readFileSync("src/styles.css", "utf8");
+    expect(shared).toMatch(/\.app-confirm footer \.secondary-button\[aria-disabled="true"\]\s*\{[^}]*opacity:\s*0?\.55/);
+    const lineup = readFileSync("src/schedule/lineup-publish.css", "utf8");
+    expect(lineup).not.toMatch(/secondary-button\[aria-disabled="true"\]/);
+  });
+
   // Mert 2026-10-17 (notice A; mockup v-e.js .d-pub): the window's Publish spins and says "Publishing…"; then the
   // window closes, the Publish that opened it says "Published" (2.6 s in all) with focus on it, then is as it was,
   // and the shift's "Published" lights up once; no green line, no notice.
@@ -851,9 +953,80 @@ describe("LineupPage on a phone, E", () => {
     renderPage();
     const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
     fireEvent.click(editOf(card));
-    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }));
-    expect(await screen.findByText("This day is over. Its lineups can't change.")).toBeTruthy();
-    expect((within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(false);
+    const ask = screen.getByRole("alertdialog");
+    fireEvent.click(within(ask).getByRole("button", { name: "Edit" }));
+    // In the window's band (S-139), not a line in the text.
+    expect((await within(ask).findByRole("alert")).textContent).toBe("This day is over. Its lineups can't change.");
+    const edit = within(ask).getByRole("button", { name: "Edit" }) as HTMLButtonElement;
+    expect(edit.disabled).toBe(false);
+    expect(edit.getAttribute("aria-disabled")).toBeNull();
+  });
+
+  // LINEUP-E-POLISH 4: the card's lock says the day is over on a past day, "started" only while it runs.
+  it("says the day is over on a past day's locked Edit", async () => {
+    published = { [lunch]: { ...live, status: "past" } };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(editOf(card).disabled).toBe(true);
+    expect(editOf(card).title).toBe("This day is over");
+  });
+
+  // LINEUP-E-POLISH 2: moving to a day whose lineup is already out lights nothing on the card.
+  it("lights nothing on the card when the next day's lineup is already out", async () => {
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", date: "2026-10-14" }),
+    ]);
+    api.mockImplementation(async (_client, path) => {
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      if (!dayPath) throw new Error(`unexpected ${path}`);
+      return readers(dayRead(world, dayPath[1]!, dayPath[1] === "2026-10-14" ? { [lunch]: live } : {}));
+    });
+    renderPage();
+    await within(await screen.findByRole("region", { name: "Downtown, Lunch" })).findByText("Draft");
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await within(await screen.findByRole("region", { name: "Downtown, Lunch" })).findByText("Live");
+    // Both days are in the cache now: back and forth between them.
+    fireEvent.click(screen.getByRole("button", { name: "Previous day" }));
+    await within(await screen.findByRole("region", { name: "Downtown, Lunch" })).findByText("Draft");
+    fireEvent.click(screen.getByRole("button", { name: "Next day" }));
+    await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("?date=2026-10-14"));
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    await within(card).findByText("Live");
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(within(card).getByText("Live").classList.contains("is-flash")).toBe(false);
+  });
+
+  // LINEUP-E-POLISH 3: All locations, the second location's lineup goes out: focus goes to its card's Edit, not
+  // the first card's.
+  it("gives focus to the published card's Edit when Publish goes, not the first card's", async () => {
+    only = null;
+    let sent = false;
+    api.mockImplementation(async (_client, path, init) => {
+      const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
+      if (dayPath) {
+        const out = readers(dayRead(world, dayPath[1]!, { [lunch]: live }));
+        if (!sent) {
+          // Uptown's lunch still waits; Downtown's is out.
+          const draft = readers(dayRead(world, dayPath[1]!, {}));
+          out.locations = out.locations.map((location) =>
+            location.id === uptown ? draft.locations.find((each) => each.id === uptown)! : location);
+        }
+        return out;
+      }
+      const body = JSON.parse(String(init?.body)) as { command_id: string; kind: string };
+      commands.push(body);
+      sent = true;
+      return { command_id: body.command_id, kind: body.kind, lineups: [] };
+    });
+    renderPage();
+    const dock = await screen.findByRole("button", { name: "Publish, 1 lineup waiting" });
+    dock.focus();
+    fireEvent.click(dock);
+    fireEvent.click(within(screen.getByRole("dialog", { name: "Publish lineups" })).getByRole("button", { name: "Publish 1" }));
+    await waitFor(() => expect(document.querySelector(".lineup-phone-dock")).toBeNull(), { timeout: 4000 });
+    const uptownCard = screen.getByRole("region", { name: "Uptown, Lunch" });
+    expect(document.activeElement).toBe(within(uptownCard).getByRole("button", { name: "Edit" }));
   });
 
   // Read times are the location's clock's too: 21:40 UTC is 5:40 PM in New York.

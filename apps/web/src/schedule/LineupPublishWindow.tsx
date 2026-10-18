@@ -134,9 +134,10 @@ export function LineupPublishWindow({
   readonly onClose: () => void;
   /**
    * It went out and "Publishing…" has shown PUBLISH_WORK_MS: the page closes the window and its Publish says
-   * "Published" (focus goes back to that button as the window closes).
+   * "Published" (focus goes back to that button as the window closes). `keys`: the lineups that went out,
+   * "<location id>:<shift key>".
    */
-  readonly onPublished: () => void;
+  readonly onPublished: (keys: readonly string[]) => void;
   readonly className?: string;
 }): JSX.Element {
   const ref = useRef<HTMLElement | null>(null);
@@ -154,8 +155,12 @@ export function LineupPublishWindow({
   useEffect(() => () => window.clearTimeout(timer.current), []);
   // The lineup the Edit window is open on, and the lineup whose box takes focus once Edit has taken it back.
   const [editing, setEditing] = useState<{ readonly location: LineupLocation; readonly shift: LineupShift } | null>(null);
+  // Read at event time: the Edit window over this one answers its own Escape and clicks, and while Publish works
+  // the window stays, so a refusal still shows in its band (as the Edit window does while busy).
   const editingNow = useRef(false);
   editingNow.current = editing !== null;
+  const workingNow = useRef(false);
+  workingNow.current = working;
   const [focusKey, setFocusKey] = useState<string | null>(null);
 
   // Focus goes into the window when it opens and back to what opened it (or the Publish button) when it closes.
@@ -171,16 +176,19 @@ export function LineupPublishWindow({
   }, []);
 
   useEffect(() => {
-    // The Edit window over this one answers its own Escape and clicks.
     const escape = (event: KeyboardEvent) => {
       if (event.key !== "Escape" || editingNow.current) return;
       event.preventDefault();
+      if (workingNow.current) {
+        event.stopPropagation();
+        return;
+      }
       event.stopPropagation();
       onClose();
     };
     const outside = (event: PointerEvent) => {
       const target = event.target as Element | null;
-      if (editingNow.current) return;
+      if (editingNow.current || workingNow.current) return;
       if (!target || ref.current?.contains(target) || target.closest?.(".lineup-publish-trigger")) return;
       onClose();
     };
@@ -223,13 +231,15 @@ export function LineupPublishWindow({
     // One command per press: a press while it works does nothing.
     if (working || !chosen.length) return;
     const since = Date.now();
+    const sent = listed.flatMap(({ location, shifts }) =>
+      shifts.filter((s) => canPublish(s) && picked.has(keyOf(location, s))).map((s) => keyOf(location, s)));
     setWorking(true);
     setRefusal(null);
     command.mutate(
       { kind: "share", lineups: chosen.map((s) => s.publish.target), askAck },
       {
         onSuccess: () => {
-          timer.current = window.setTimeout(onPublished, Math.max(0, PUBLISH_WORK_MS - (Date.now() - since)));
+          timer.current = window.setTimeout(() => onPublished(sent), Math.max(0, PUBLISH_WORK_MS - (Date.now() - since)));
         },
         // The window stays: the button as it was, why in the window's band (S-139).
         onError: (error) => {
@@ -416,7 +426,7 @@ function PublishRow({
           className="lineup-publish-edit"
           aria-label={`Edit ${shift.name} lineup`}
           disabled={started}
-          title={started ? "This shift has started" : undefined}
+          title={started ? lockedWhy(shift) : undefined}
           onClick={onEdit}
         >
           {started ? <Lock aria-hidden /> : <Pencil aria-hidden />}
@@ -425,6 +435,11 @@ function PublishRow({
       ) : null}
     </li>
   );
+}
+
+/** Why a published lineup's Edit is locked: its day is over, or its shift has begun (phone card and this window). */
+export function lockedWhy(shift: LineupShift): string {
+  return shift.publish.status === "past" ? "This day is over" : "This shift has started";
 }
 
 /**

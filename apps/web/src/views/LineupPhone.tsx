@@ -25,7 +25,13 @@ import {
   type LineupRow,
   type LineupShift,
 } from "../schedule/lineup";
-import { LineupEditWindow, LineupPublishButton, publishedAt, useGoneOutLight } from "../schedule/LineupPublishWindow";
+import {
+  LineupEditWindow,
+  LineupPublishButton,
+  lockedWhy,
+  publishedAt,
+  useGoneOutLight,
+} from "../schedule/LineupPublishWindow";
 import { LineupReadPhone } from "../schedule/LineupReadList";
 import { dockPlace } from "../schedule/lineup-wheel";
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
@@ -47,6 +53,8 @@ export interface PhonePublish {
   readonly open: boolean;
   /** It has just published: the dock stays and says "Published" (notice A), then goes if nothing is left. */
   readonly published: boolean;
+  /** The lineups that went out last, "<location id>:<shift key>": focus goes to the first one's card. */
+  readonly sent: readonly string[];
   readonly onToggle: () => void;
   /** The Publish window, drawn as a sheet while open. */
   readonly window: ReactNode;
@@ -140,16 +148,23 @@ export function PhoneLineupPage({
   // ~1:40 PM); an open sheet stays until it is closed.
   const dock =
     publish && (publish.open || publish.published || blocks.some(({ shift }) => shift && canPublish(shift))) ? publish : null;
-  // Publish goes once nothing is left to publish on screen: focus that was on it moves to the card's Edit (the
-  // lineup just published), else its chevron, never to the page.
+  // Publish goes once nothing is left to publish on screen: focus that was on it moves to the Edit of the card just
+  // published (by its key), else that card's chevron, never to the page.
   const dockHadFocus = useRef(false);
   const docked = Boolean(dock);
+  const sent = publish?.sent ?? [];
+  const target = blocks.find(({ location, shift }) => shift && sent.includes(foldKeyOf(location, shift)));
+  const targetKey = target?.shift ? foldKeyOf(target.location, target.shift) : null;
+  const focusTarget = useRef(targetKey);
+  focusTarget.current = targetKey;
   useEffect(() => {
     if (docked || !dockHadFocus.current) return;
     dockHadFocus.current = false;
     const active = document.activeElement;
     if (active && active !== document.body && active.isConnected) return;
-    document.querySelector<HTMLElement>(".lineup-card-edit:not(:disabled), .lineup-card-fold")?.focus();
+    const cards = [...document.querySelectorAll<HTMLElement>("[data-lineup-card]")];
+    const card = cards.find((element) => element.dataset.lineupCard === focusTarget.current) ?? cards[0];
+    card?.querySelector<HTMLElement>(".lineup-card-edit:not(:disabled), .lineup-card-fold")?.focus();
   }, [docked]);
   const many = blocks.length > 1;
 
@@ -210,6 +225,7 @@ export function PhoneLineupPage({
                   onFold={() => fold(foldKeyOf(location, shift))}
                   edit={publish ? { workspaceId, date } : null}
                   held={Boolean(publish?.open)}
+                  day={date}
                   stacked={Boolean(previous) && !line}
                 />
               ) : (
@@ -244,6 +260,7 @@ function LocationLineup({
   onFold,
   edit,
   held,
+  day,
   stacked,
 }: {
   readonly location: LineupLocation;
@@ -256,6 +273,8 @@ function LocationLineup({
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it. */
   readonly held: boolean;
+  /** The day shown: a lineup lights up once per day it goes out on. */
+  readonly day: string;
   /** Right under a folded card: a small gap, no line. */
   readonly stacked: boolean;
 }) {
@@ -286,6 +305,7 @@ function LocationLineup({
         onFold={onFold}
         edit={edit}
         held={held}
+        day={day}
         panel={panel}
         cardRef={swipe.tabs}
       >
@@ -322,6 +342,7 @@ function LineupCard({
   onFold,
   edit,
   held,
+  day,
   panel,
   cardRef,
   children,
@@ -339,6 +360,8 @@ function LineupCard({
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
   readonly held: boolean;
+  /** The day shown: a lineup lights up once per day it goes out on. */
+  readonly day: string;
   /** The id of the pane the card's tabs and chevron control. */
   readonly panel: string;
   readonly cardRef: Ref<HTMLElement>;
@@ -349,7 +372,7 @@ function LineupCard({
   // Notice A (Mert 2026-10-17 ~1:15 PM): no notice. Edit has taken it back: the card's Draft lights up once; it has
   // gone out (Publish, or anyone's publish while the card is on screen): Live and "Published at" light up once.
   const [flash, setFlash] = useState(false);
-  const [out, unlight] = useGoneOutLight(`${location.id}:${shift.key}`, live, held);
+  const [out, unlight] = useGoneOutLight(`${day}:${location.id}:${shift.key}`, live, held);
   const lit = flash || out ? " is-flash" : "";
   const span = lineupShiftSpan(shift);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
@@ -371,6 +394,7 @@ function LineupCard({
     <section
       ref={cardRef}
       className={`lineup-card${open ? " is-open" : ""}${joined ? " is-joined" : ""}`}
+      data-lineup-card={`${location.id}:${shift.key}`}
       style={style}
       aria-label={`${location.name}, ${shift.name}`}
       onClick={tap}
@@ -394,7 +418,7 @@ function LineupCard({
               type="button"
               className="lineup-card-edit"
               disabled={!live || started}
-              title={started ? "This shift has started" : live ? undefined : "Publish first"}
+              title={started ? lockedWhy(shift) : live ? undefined : "Publish first"}
               onClick={() => setEditing(true)}
             >
               {started ? <Lock aria-hidden /> : <Pencil aria-hidden />}
