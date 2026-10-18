@@ -32,7 +32,7 @@ Mert'in modeli: bir hesap, iki ayrı arayüz ve erişim. Kişi yalnız çalışa
 
 **Anti-hedefler (çalışsa bile başarısızlık sayılır)**
 - Yeni ayar ya da anahtar eklemek (CLAUDE.md §1). "Exclude from schedule" dışında ızgaraya girişi yöneten ikinci bir işaret olmaz; ızgaraya giriş Employee rolünden gelir.
-- İki kişiymiş gibi davranırken yetkinin gevşemesi: kişi kendi talebine ya da taraf olduğu işe hiçbir arayüzden karar veremez.
+- İki kişiymiş gibi davranırken yetkinin gevşemesi: kişi kendi talebine ya da taraf olduğu işe hiçbir arayüzden karar veremez (tek istisna, madde 8.1: başka karar verecek kimse yokken owner).
 - Yönetim arayüzünde çalışan tarafının bildirimi, ya da çalışan arayüzünde yönetim bilgisi görünmesi.
 - İkiz sistem: eski "çalışan kaydı var mı" kapısı ve "yöneticinin lokasyonu = çalıştığı lokasyon" kuralı yenisi gelince silinir (CLAUDE.md §3.A.4).
 
