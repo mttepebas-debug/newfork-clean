@@ -326,7 +326,7 @@ select lives_ok(
 );
 set local role postgres;
 select is(
-  (select role::text from public.workspace_memberships where user_id = '16000000-0000-4000-8000-000000000002' and workspace_id = '26000000-0000-4000-8000-000000000001'),
+  (select coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee') from public.workspace_memberships where user_id = '16000000-0000-4000-8000-000000000002' and workspace_id = '26000000-0000-4000-8000-000000000001'),
   'admin',
   'role update applies immediately to the workspace membership'
 );
@@ -361,8 +361,7 @@ select throws_ok(
 set local role postgres;
 select set_config('request.jwt.claim.sub', '', true);
 update public.workspace_memberships
-set role_id = (select id from directory_role_ids where label = 'manager'),
-    all_locations = false
+set role_id = (select id from directory_role_ids where label = 'manager')
 where workspace_id = '26000000-0000-4000-8000-000000000001'
   and user_id = '16000000-0000-4000-8000-000000000002';
 set local role service_role;

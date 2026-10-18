@@ -102,7 +102,7 @@ select is(
     select count(*)::integer
     from public.workspace_memberships
     where user_id = '10000000-0000-4000-8000-000000000004'
-      and role = 'owner'
+      and coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee') = 'owner'
   ),
   1,
   'owner workspace creation does not create duplicate owner drafts'
@@ -869,7 +869,7 @@ select throws_ok(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '10000000-0000-4000-8000-000000000003', true);
 select throws_ok(
-  $$update public.workspace_memberships set role = 'owner' where id = '30000000-0000-4000-8000-000000000002'$$,
+  $$update public.workspace_memberships set role_id = role_id where id = '30000000-0000-4000-8000-000000000002'$$,
   '42501',
   null,
   'admin cannot promote itself to owner from the browser'
@@ -1414,20 +1414,20 @@ select lives_ok(
 reset role;
 select is(
   (
-    select role
+    select coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee')
     from public.workspace_memberships
     where id = '30000000-0000-4000-8000-000000000008'
   ),
-  'owner'::public.workspace_role,
+  'owner',
   'accepted ownership transfer promotes target admin to owner'
 );
 select is(
   (
-    select role
+    select coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee')
     from public.workspace_memberships
     where id = '30000000-0000-4000-8000-000000000007'
   ),
-  'admin'::public.workspace_role,
+  'admin',
   'accepted ownership transfer demotes previous owner to admin'
 );
 select is(
@@ -1435,7 +1435,7 @@ select is(
     select count(*)::integer
     from public.workspace_memberships
     where workspace_id = '20000000-0000-4000-8000-000000000004'
-      and role = 'owner'
+      and coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee') = 'owner'
       and status = 'active'
   ),
   1,

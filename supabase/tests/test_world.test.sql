@@ -33,7 +33,7 @@ select is(
 select isnt(tests.id('tw'), tests.id('other'), 'two worlds are two workspaces');
 
 create temporary table world_membership as
-select i.label, m.role::text as role, m.status::text as status,
+select i.label, coalesce((select r.access_class::text from public.workspace_roles r where r.id = m.role_id), 'employee') as role, m.status::text as status,
   array(
     select s.location_id from public.membership_location_scopes s
     where s.membership_id = m.id order by s.location_id

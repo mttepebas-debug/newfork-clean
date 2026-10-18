@@ -88,8 +88,7 @@ $f$;
 grant execute on function pg_temp.listed(uuid) to service_role;
 select isnt(pg_temp.listed('a8000000-0000-4000-8000-000000000002'),null,'target employee sees the published announcement');
 select is(pg_temp.listed('a8000000-0000-4000-8000-000000000003'),null,'employee at another location cannot see the announcement');
-update public.workspace_memberships set all_locations=true where id='a8100000-0000-4000-8000-000000000003';
-select is(pg_temp.listed('a8000000-0000-4000-8000-000000000003'),null,'all-location employee membership without a matching location assignment cannot see the announcement');
+-- (ROL-CIFT: no membership reaches every location by a flag any more; an employee reaches where they work.)
 select is(pg_temp.refusal($$select public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000003','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))$$),'42501 authz.out_of_scope','employee cannot acknowledge an announcement outside their assignments: out of scope, as an unknown one');
 select isnt((public.acknowledge_announcement_service('a8000000-0000-4000-8000-000000000002','6ea5d512-bc7f-4cf3-aad4-2f0815de00fd',(select announcement_id from communication_state))->>'acknowledged_at'),null,'target employee can acknowledge the announcement');
 select isnt(pg_temp.listed('a8000000-0000-4000-8000-000000000002')->>'acknowledged_at',null,'acknowledged announcement stays listed with its acknowledgement');

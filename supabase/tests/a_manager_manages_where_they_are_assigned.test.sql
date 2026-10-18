@@ -58,14 +58,9 @@ create function pg_temp.works_at(person text) returns text[] language sql as $$
   where a.employee_id = tests.id('e:' || person) and a.ended_at is null
 $$;
 
--- 1. Nothing of "manages without working there" is left -------------------------------
--- The names are split so this file does not name what it says is gone.
-
-select is(
-  (select count(*)::integer from pg_proc p
-   where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace, 'tests'::regnamespace)
-     and p.prosrc ~ ('membership_managed' || '_locations|manages_without' || '_working|set_managed' || '_locations')),
-  0, 'no function reads or writes what was removed');
+-- 1. (Gone: "nothing of manages without working there is left". KARARLAR S-167 brings Manages back
+-- apart from Works at, in the two-slot model; until the drawer writes it (ROL-CIFT slice 6.3) a manager's
+-- Manages follows where they are assigned, which is what this file checks.)
 
 -- 2. A manager reaches where they are assigned, excluded or not -----------------------
 
@@ -159,7 +154,7 @@ create function pg_temp.role_as(person text, role_key text) returns text languag
     (select r.id from public.workspace_roles r where r.workspace_id = tests.id('e') and r.system_key::text = role_key)))
 $$;
 create function pg_temp.role_of(person text) returns text language sql as $$
-  select r.system_key::text from public.workspace_memberships m join public.workspace_roles r on r.id = m.role_id
+  select r.system_key::text from public.workspace_memberships m join public.workspace_roles r on r.id = coalesce(m.role_id, m.employee_role_id)
   where m.workspace_id = tests.id('e') and m.user_id = tests.user('e:' || person)
 $$;
 select is(pg_temp.role_as('mert', 'manager'), '22023 employee.manager_location_required',

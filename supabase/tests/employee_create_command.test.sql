@@ -142,7 +142,8 @@ select is((select all_locations from public.employee_invitations where id = (sel
 set local role service_role;
 select lives_ok($$select public.accept_employee_invitation_service('19000000-0000-4000-8000-000000000005', encode(extensions.digest(result->>'token', 'sha256'), 'hex')) from role_results where label='manager'$$, 'manager accepts empty location scope');
 set local role postgres;
-select is((select all_locations from public.workspace_memberships where user_id='19000000-0000-4000-8000-000000000005'), false, 'acceptance preserves empty managed scope');
+select is((select count(*)::integer from public.membership_managed_locations x join public.workspace_memberships m on m.id = x.membership_id
+  where m.user_id='19000000-0000-4000-8000-000000000005'), 0, 'acceptance preserves empty managed scope');
 set local role service_role;
 -- A record with no location is in nobody's reach but admin and owner (M2), so
 -- a manager does not open one (FB-6.2.4, review D6).

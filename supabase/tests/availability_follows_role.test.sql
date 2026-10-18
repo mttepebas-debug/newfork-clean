@@ -26,8 +26,11 @@ create function pg_temp.revision(person text) returns integer language sql as $$
   select c.revision from public.employee_onboarding_cases c where c.employee_id = tests.id('ao:' || person)
 $$;
 create function pg_temp.role_to(person text, access text) returns void language sql as $$
+  -- ROL-CIFT: an employee role is the employee slot alone; a management role is the management slot
+  -- alone (they stop working).
   update public.workspace_memberships m
-  set role = r.access_class, role_id = r.id
+  set role_id = case when r.access_class = 'employee' then null else r.id end,
+      employee_role_id = case when r.access_class = 'employee' then r.id end
   from public.workspace_roles r
   where m.workspace_id = tests.id('ao') and m.user_id = tests.user('ao:' || person) and r.workspace_id = m.workspace_id
     and (r.system_key::text = access or r.id = (select i.id from tests.ids i where i.label = 'ao:role:' || access))

@@ -86,8 +86,8 @@ update auth.users set email_confirmed_at = now() where id='a5500000-0000-4000-80
 set local role service_role;
 select lives_ok($q$select public.respond_workspace_ownership_transfer_service('a5500000-0000-4000-8000-000000000002','a5500000-0000-4000-8000-000000000101',(select id from public.workspace_ownership_transfers where workspace_id='a5500000-0000-4000-8000-000000000101' and status='pending'),'accept')$q$,'target accepts');
 reset role;
-select is((select role::text from public.workspace_memberships where id='a5500000-0000-4000-8000-000000000202'),'owner','target promoted');
-select is((select role::text from public.workspace_memberships where id='a5500000-0000-4000-8000-000000000201'),'admin','sender demoted');
+select is((select coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee') from public.workspace_memberships where id='a5500000-0000-4000-8000-000000000202'),'owner','target promoted');
+select is((select coalesce((select r.access_class::text from public.workspace_roles r where r.id = role_id), 'employee') from public.workspace_memberships where id='a5500000-0000-4000-8000-000000000201'),'admin','sender demoted');
 select ok(not has_function_privilege('anon','public.search_workspace_ownership_candidates_service(uuid,uuid,text)','EXECUTE'),'anon cannot call search RPC');
 select ok(not has_function_privilege('anon','public.cancel_workspace_ownership_transfer_service(uuid,uuid,uuid)','EXECUTE'),'anon cannot call cancel RPC');
 select ok(not has_function_privilege('anon','public.create_owner_workspace_service(uuid,text)','EXECUTE'),'anon cannot call create RPC');

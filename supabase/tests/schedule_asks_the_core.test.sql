@@ -51,6 +51,9 @@ select tests.role('sc', 'no templates', 'manager', array(
 ));
 select tests.person('sc', 'tina', 'no templates', array['K'], array['cook']);
 select tests.person('sc', 'zafer', 'admin', array['B'], array['server']);
+-- The managers and admins here only manage (ROL-CIFT): the Manager note and one's own availability
+-- are about the employee side, which they do not hold.
+select tests.no_employee_slot('sc', p) from unnest(array['zeynep', 'ayse', 'can', 'zafer']) p;
 -- A workspace whose every location is closed.
 select tests.world('sn');
 

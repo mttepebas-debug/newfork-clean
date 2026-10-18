@@ -74,20 +74,21 @@ select is(app_private.scope_set(tests.user('m:selin'), tests.id('m'), 'schedule.
 select is(app_private.scope_set(tests.user('m:ayse'), tests.id('m'), 'schedule.edit'), array[tests.id('m:K')],
   'and no other location');
 
--- An employee's membership never reaches every location (FB-6.2, Done when 5).
+-- An employee's membership never reaches every location (FB-6.2, Done when 5). ROL-CIFT: only a
+-- management slot reaches further than where somebody works; an employee has no Manages.
 select is(
   (select count(*)::integer from public.workspace_memberships m
-   where m.workspace_id = tests.id('m') and m.role = 'employee' and m.all_locations),
+   join public.membership_managed_locations x on x.membership_id = m.id
+   where m.workspace_id = tests.id('m') and m.role_id is null),
   0, 'no employee membership reaches every location'
 );
-update public.workspace_memberships set all_locations = true
-where workspace_id = tests.id('m') and user_id = tests.user('m:emre');
-select is(
-  (select m.all_locations from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:emre')),
-  false, 'an employee membership set to every location stays at its own'
+select throws_ok(
+  format('insert into public.membership_managed_locations (workspace_id, membership_id, location_id) select %L, m.id, %L from public.workspace_memberships m where m.workspace_id = %L and m.user_id = %L',
+    tests.id('m'), tests.id('m:B'), tests.id('m'), tests.user('m:emre')),
+  '23514', null, 'an employee membership given another location stays at its own'
 );
 select ok(
-  exists (select 1 from pg_constraint where conname = 'workspace_memberships_employee_not_all_locations'),
+  exists (select 1 from pg_trigger where tgname = 'managed_location_needs_manager'),
   'the rule is a check on the table'
 );
 
@@ -282,7 +283,7 @@ select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L,
     tests.user('m:owner'), tests.id('m'), tests.id('m:ece'))),
   'allowed', 'as the API: and brings it back with its access');
 select is(
-  (select m.status::text || ' ' || m.role::text from public.workspace_memberships m
+  (select m.status::text || ' ' || coalesce((select r.access_class::text from public.workspace_roles r where r.id = m.role_id), 'employee') from public.workspace_memberships m
    where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:ece')),
   'active manager', 'the restored account has its role back');
 
@@ -313,7 +314,7 @@ select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L,
     tests.user('m:zeynep'), tests.id('m'), tests.id('m:kaan'))), '22023 ',
   'but cannot reopen an account the record is no longer linked to');
 select is(
-  (select m.status::text || ' ' || m.role::text from public.workspace_memberships m
+  (select m.status::text || ' ' || coalesce((select r.access_class::text from public.workspace_roles r where r.id = m.role_id), 'employee') from public.workspace_memberships m
    where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:kaan')),
   'suspended admin', 'the admin''s account stays closed');
 

@@ -40,7 +40,7 @@ create function pg_temp.primary_of(person text) returns text language sql as $$
   where a.employee_id = tests.id(person) and a.ended_at is null and a.is_primary
 $$;
 create function pg_temp.jobs_a_to_z() returns text[] language sql as $$
-  select array['bartender', 'Cook', 'Line Cook', 'Manager', 'Owner', 'prep cook', 'Server', 'Zest']
+  select array['Assistant Manager', 'bartender', 'Cook', 'General Manager', 'Line Cook', 'Owner', 'prep cook', 'Server', 'Zest']
 $$;
 create function pg_temp.departments_a_to_z() returns text[] language sql as $$
   select array['bakery', 'Kitchen', 'Management']

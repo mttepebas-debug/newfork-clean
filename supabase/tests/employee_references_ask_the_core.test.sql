@@ -81,7 +81,7 @@ select is(pg_temp.keys(pg_temp.read('r:owner') -> 'invite_roles' -> 0), array['a
 
 select is(pg_temp.names(pg_temp.read('r:owner'), 'locations'), array['Besiktas', 'Kadikoy'],
   'the owner reads every live location: neither the archived one (G8a, KK-13) nor the deleted one');
-select is(pg_temp.names(pg_temp.read('r:owner'), 'jobs'), array['Cook', 'Manager', 'Old', 'Owner', 'Server'],
+select is(pg_temp.names(pg_temp.read('r:owner'), 'jobs'), array['Assistant Manager', 'Cook', 'General Manager', 'Old', 'Owner', 'Server'],
   'and every job, the archived one included, the deleted one not');
 select is(pg_temp.invite_classes('r:owner'), array['admin', 'employee', 'manager', 'manager'],
   'the owner invites with every role but owner');
@@ -92,7 +92,7 @@ select is(pg_temp.invite_classes('r:zeynep'), array['employee', 'manager', 'mana
   'an admin invites with manager and employee roles, not admin');
 select is(pg_temp.names(pg_temp.read('r:ayse'), 'locations'), array['Kadikoy'],
   'a manager reads the locations they work at');
-select is(pg_temp.names(pg_temp.read('r:ayse'), 'jobs'), array['Cook', 'Manager', 'Old', 'Owner', 'Server'],
+select is(pg_temp.names(pg_temp.read('r:ayse'), 'jobs'), array['Assistant Manager', 'Cook', 'General Manager', 'Old', 'Owner', 'Server'],
   'and every job');
 -- A manager invites to their own location with employee roles only; granting
 -- access is no longer asked (FB-6.2.5, BL-242).

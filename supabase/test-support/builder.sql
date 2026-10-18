@@ -806,6 +806,18 @@ as $$
   where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label) and m.employee_role_id is null;
 $$;
 
+-- Somebody of the test world who only manages (ROL-CIFT): their management
+-- access without the employee slot, whatever jobs they were filed with.
+create or replace function tests.no_employee_slot(w text, person_label text)
+returns void
+language sql
+set search_path = ''
+as $$
+  update public.workspace_memberships m
+  set employee_role_id = null
+  where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label) and m.role_id is not null;
+$$;
+
 -- Manages (ROL-CIFT): the locations a manager of the test world manages, set
 -- apart from where they work. Labels as tests.person's; locs are location keys.
 -- ponytail: a later change to their location assignments resets Manages to
