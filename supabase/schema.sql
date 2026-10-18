@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:b2681847dcbb38b100c0dc36fd2cbce7d588d15a8f4775f9259c14475a3edcbe
+-- fingerprint: sha256:99c3bb63b93b8a39b6bd4353330f3325871df341139a8535a81ad5266fc1583b
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2704,7 +2704,7 @@ begin
     from public.workspace_memberships membership
     where membership.workspace_id = target_workspace_id
       and membership.user_id = actor_user_id
-      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+      and app_private.role_class(membership.role_id) = 'owner'
       and membership.status = 'active'
   ) then
     raise exception 'owner access required' using errcode = '42501';
@@ -4804,9 +4804,8 @@ begin
   insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
   select target_workspace_id, m.id, j.id
   from public.workspace_memberships m
-  join public.workspace_roles r on r.id = m.role_id and r.access_class = 'owner'
   join public.jobs j on j.workspace_id = m.workspace_id and j.system_key = 'owner'
-  where m.workspace_id = target_workspace_id
+  where m.workspace_id = target_workspace_id and app_private.role_class(m.role_id) = 'owner'
   on conflict (membership_id, job_id) do nothing;
 end;
 $$;
@@ -4831,7 +4830,7 @@ begin
     from public.workspace_memberships membership
     where membership.workspace_id = target_workspace_id
       and membership.user_id = owner_user_id
-      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+      and app_private.role_class(membership.role_id) = 'owner'
       and membership.status = 'active'::public.membership_status
   ) then
     raise exception 'active owner membership required' using errcode = '42501';
@@ -5949,11 +5948,8 @@ CREATE OR REPLACE FUNCTION "app_private"."managed_location_needs_manager"() RETU
     SET "search_path" TO ''
     AS $$
 begin
-  if not exists (
-    select 1 from public.workspace_memberships m
-    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-    where m.id = new.membership_id and m.workspace_id = new.workspace_id and r.access_class = 'manager'
-  ) then
+  if (select app_private.role_class(m.role_id) from public.workspace_memberships m
+      where m.id = new.membership_id and m.workspace_id = new.workspace_id) is distinct from 'manager' then
     raise exception 'only a manager has Manages; admins and owners manage every location'
       using errcode = '23514', hint = 'membership.manages_needs_manager';
   end if;
@@ -6065,9 +6061,7 @@ declare
   profile_id uuid;
 begin
   select * into member from public.workspace_memberships m where m.id = target_membership;
-  if member.id is null or not exists (
-    select 1 from public.workspace_roles r where r.id = member.role_id and r.access_class = 'manager'
-  ) then
+  if member.id is null or app_private.role_class(member.role_id) is distinct from 'manager' then
     return;
   end if;
   select p.id into profile_id from public.employee_profiles p
@@ -6130,16 +6124,16 @@ CREATE OR REPLACE FUNCTION "app_private"."membership_access_slots_hold"() RETURN
     SET "search_path" TO ''
     AS $$
 begin
-  if new.role_id is not null and not exists (
-    select 1 from public.workspace_roles r
-    where r.id = new.role_id and r.workspace_id = new.workspace_id and r.access_class in ('manager', 'admin', 'owner')
+  if new.role_id is not null and (
+    not exists (select 1 from public.workspace_roles r where r.id = new.role_id and r.workspace_id = new.workspace_id)
+    or app_private.role_class(new.role_id) = 'employee'
   ) then
     raise exception 'the management slot holds a manager, admin or owner class role'
       using errcode = '23514', hint = 'membership.management_slot';
   end if;
-  if new.employee_role_id is not null and not exists (
-    select 1 from public.workspace_roles r
-    where r.id = new.employee_role_id and r.workspace_id = new.workspace_id and r.access_class = 'employee'
+  if new.employee_role_id is not null and (
+    not exists (select 1 from public.workspace_roles r where r.id = new.employee_role_id and r.workspace_id = new.workspace_id)
+    or app_private.role_class(new.employee_role_id) is distinct from 'employee'
   ) then
     raise exception 'the employee slot holds an employee class role'
       using errcode = '23514', hint = 'membership.employee_slot';
@@ -6845,7 +6839,7 @@ begin
      and membership.user_id = employee.user_id
     where employee.workspace_id = new.workspace_id
       and employee.archived_at is null
-      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+      and app_private.role_class(membership.role_id) = 'owner'
       and membership.status = 'active'::public.membership_status
   loop
     perform app_private.open_owner_record_to_everything(
@@ -7580,6 +7574,17 @@ $$;
 
 
 ALTER FUNCTION "app_private"."rls_can"("w" "uuid", "action" "text", "target_locations" "uuid"[], "target_person" "uuid", "target_user" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."role_class"("target_role" "uuid") RETURNS "public"."workspace_role"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select r.access_class from public.workspace_roles r where r.id = target_role;
+$$;
+
+
+ALTER FUNCTION "app_private"."role_class"("target_role" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."role_default_permissions"("role_class" "public"."workspace_role") RETURNS "text"[]
@@ -11552,7 +11557,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-      and m.status = 'active' and r.access_class = 'owner'
+      and m.status = 'active' and r.system_key = 'owner'
   ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   select * into transfer_row from public.workspace_ownership_transfers t
     where t.id = transfer_id and t.workspace_id = target_workspace_id for update;
@@ -12223,7 +12228,7 @@ begin
   join public.workspace_memberships membership
     on membership.workspace_id = workspace.id
    and membership.user_id = actor_id
-   and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+   and app_private.role_class(membership.role_id) = 'owner'
    and membership.status = 'active'::public.membership_status
   join public.workspace_onboarding onboarding
     on onboarding.workspace_id = workspace.id
@@ -12286,7 +12291,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.access_class = 'owner'
+      and r.system_key = 'owner'
   ) and exists (
     select 1
     from public.employee_invitations invitation
@@ -12310,7 +12315,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.access_class = 'owner'
+      and r.system_key = 'owner'
       and app_private.workspace_allows_interactive_access(m.workspace_id)
   ) then
     raise exception 'workspace owner access required' using errcode = '42501';
@@ -19367,7 +19372,7 @@ begin
       from public.workspace_memberships membership
       where membership.workspace_id = old.workspace_id
         and membership.user_id = old.user_id
-        and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+        and app_private.role_class(membership.role_id) = 'owner'
     ) then
     raise exception 'owner employee record cannot be archived through ordinary lifecycle'
       using errcode = '42501';
@@ -22568,7 +22573,7 @@ begin
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
     where m.id = transfer_row.target_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = actor_user_id and m.status = 'active' and r.access_class = 'admin'
+      and m.user_id = actor_user_id and m.status = 'active' and r.system_key = 'admin'
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.membership_id = m.id and c.workspace_id = m.workspace_id and c.status <> 'approved')
       -- The owner works the Owner job on their own record (BL-252), so only
@@ -22580,7 +22585,7 @@ begin
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.id = transfer_row.previous_owner_membership_id and m.workspace_id = target_workspace_id
-      and m.user_id = transfer_row.initiated_by and m.status = 'active' and r.access_class = 'owner'
+      and m.user_id = transfer_row.initiated_by and m.status = 'active' and r.system_key = 'owner'
   ) then raise exception 'ownership transfer participants are no longer eligible' using errcode = '42501', hint = 'transfer.participants_ineligible'; end if;
 
   select id into owner_role_id
@@ -25271,7 +25276,7 @@ begin
       select 1 from public.workspace_memberships m
       left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
       where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-        and m.status = 'active' and r.access_class = 'owner'
+        and m.status = 'active' and r.system_key = 'owner'
     ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
     raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
@@ -25284,7 +25289,7 @@ begin
     left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
     left join public.user_profiles p on p.user_id = m.user_id
     where m.workspace_id = target_workspace_id and m.status = 'active'
-      and m.user_id <> actor_user_id and r.access_class = 'admin'
+      and m.user_id <> actor_user_id and r.system_key = 'admin'
       -- Active legacy memberships without an onboarding case are already complete.
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
@@ -25373,7 +25378,7 @@ begin
       on workspace.id = membership.workspace_id
     where membership.workspace_id = new.workspace_id
       and membership.user_id = new.updated_by
-      and exists (select 1 from public.workspace_roles owner_check where owner_check.id = membership.role_id and owner_check.access_class = 'owner')
+      and app_private.role_class(membership.role_id) = 'owner'
       and membership.status = 'active'::public.membership_status
       and workspace.lifecycle_status = 'active'::public.workspace_lifecycle_status
   ) then
@@ -36253,6 +36258,10 @@ REVOKE ALL ON FUNCTION "app_private"."reset_employee_onboarding_for_rehire"("tar
 
 REVOKE ALL ON FUNCTION "app_private"."rls_can"("w" "uuid", "action" "text", "target_locations" "uuid"[], "target_person" "uuid", "target_user" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "app_private"."rls_can"("w" "uuid", "action" "text", "target_locations" "uuid"[], "target_person" "uuid", "target_user" "uuid") TO "authenticated";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."role_class"("target_role" "uuid") FROM PUBLIC;
 
 
 

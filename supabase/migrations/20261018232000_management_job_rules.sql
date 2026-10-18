@@ -132,9 +132,8 @@ begin
   insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
   select target_workspace_id, m.id, j.id
   from public.workspace_memberships m
-  join public.workspace_roles r on r.id = m.role_id and r.access_class = 'owner'
   join public.jobs j on j.workspace_id = m.workspace_id and j.system_key = 'owner'
-  where m.workspace_id = target_workspace_id
+  where m.workspace_id = target_workspace_id and app_private.role_class(m.role_id) = 'owner'
   on conflict (membership_id, job_id) do nothing;
 end;
 $$;

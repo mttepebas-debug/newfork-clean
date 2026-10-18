@@ -65,6 +65,19 @@ revoke all on table public.membership_management_jobs from public, anon, authent
 
 -- The rules the rows keep -----------------------------------------------------------------------------
 
+-- A role's kind (manager, admin, owner or employee), for the slot rules below: which slot a role fits,
+-- not what anybody may do.
+create function app_private.role_class(target_role uuid)
+returns public.workspace_role
+language sql
+stable
+security definer
+set search_path = ''
+as $$
+  select r.access_class from public.workspace_roles r where r.id = target_role;
+$$;
+revoke all on function app_private.role_class(uuid) from public, anon, authenticated;
+
 -- Each slot holds its kind of role.
 create function app_private.membership_access_slots_hold()
 returns trigger
@@ -72,16 +85,16 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if new.role_id is not null and not exists (
-    select 1 from public.workspace_roles r
-    where r.id = new.role_id and r.workspace_id = new.workspace_id and r.access_class in ('manager', 'admin', 'owner')
+  if new.role_id is not null and (
+    not exists (select 1 from public.workspace_roles r where r.id = new.role_id and r.workspace_id = new.workspace_id)
+    or app_private.role_class(new.role_id) = 'employee'
   ) then
     raise exception 'the management slot holds a manager, admin or owner class role'
       using errcode = '23514', hint = 'membership.management_slot';
   end if;
-  if new.employee_role_id is not null and not exists (
-    select 1 from public.workspace_roles r
-    where r.id = new.employee_role_id and r.workspace_id = new.workspace_id and r.access_class = 'employee'
+  if new.employee_role_id is not null and (
+    not exists (select 1 from public.workspace_roles r where r.id = new.employee_role_id and r.workspace_id = new.workspace_id)
+    or app_private.role_class(new.employee_role_id) is distinct from 'employee'
   ) then
     raise exception 'the employee slot holds an employee class role'
       using errcode = '23514', hint = 'membership.employee_slot';
@@ -124,11 +137,8 @@ language plpgsql
 set search_path = ''
 as $$
 begin
-  if not exists (
-    select 1 from public.workspace_memberships m
-    join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-    where m.id = new.membership_id and m.workspace_id = new.workspace_id and r.access_class = 'manager'
-  ) then
+  if (select app_private.role_class(m.role_id) from public.workspace_memberships m
+      where m.id = new.membership_id and m.workspace_id = new.workspace_id) is distinct from 'manager' then
     raise exception 'only a manager has Manages; admins and owners manage every location'
       using errcode = '23514', hint = 'membership.manages_needs_manager';
   end if;
