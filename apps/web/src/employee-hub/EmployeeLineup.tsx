@@ -6,6 +6,7 @@ import { useState, type CSSProperties, type JSX, type Ref } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { todayIn } from "../lib/today";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { lineupKeys, useAcknowledgeLineup, useMyLineups } from "../schedule/lineup-data";
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs, type LineupShiftTab } from "../schedule/lineup-wheel-view";
@@ -38,24 +39,30 @@ function initials(name: string): string {
   return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("");
 }
 
-/** Where Schedule or Lineup opens, on the day the address has. */
-export function employeeSchedulePath(page: "schedule" | "schedule/lineup", search: string): string {
+/** Where a page under Schedule opens, on the day the address has. */
+export function employeeSchedulePath(page: "schedule" | "schedule/team" | "schedule/lineup", search: string): string {
   const date = new URLSearchParams(search).get("date");
   return `/app/employee-hub/${page}${date ? `?date=${date}` : ""}`;
 }
 
-/** Schedule and Lineup, the two pages under the employee's Schedule. */
+/** The pages under the employee's Schedule (Mert 2026-10-17, "My shifts önce"): My shifts, Team schedule
+ *  (the published board, not on a phone) and Lineup. */
 export function EmployeeScheduleTabs({ tabsRef }: { readonly tabsRef?: Ref<HTMLElement> }): JSX.Element {
   const location = useLocation();
-  const onLineup = location.pathname.endsWith("/schedule/lineup");
+  const phone = useListPhoneWidth();
+  const page = location.pathname.endsWith("/schedule/lineup") ? "schedule/lineup" : location.pathname.endsWith("/schedule/team") ? "schedule/team" : "schedule";
+  const tabs = [
+    { id: "schedule", label: "My shifts" },
+    ...(phone ? [] : [{ id: "schedule/team", label: "Team schedule" }]),
+    { id: "schedule/lineup", label: "Lineup" },
+  ] as const;
   return (
     <nav className="employee-schedule-tabs" aria-label="Schedule pages" ref={tabsRef}>
-      <Link to={employeeSchedulePath("schedule", location.search)} aria-current={onLineup ? undefined : "page"}>
-        Schedule
-      </Link>
-      <Link to={employeeSchedulePath("schedule/lineup", location.search)} aria-current={onLineup ? "page" : undefined}>
-        Lineup
-      </Link>
+      {tabs.map((tab) => (
+        <Link key={tab.id} to={employeeSchedulePath(tab.id, location.search)} aria-current={page === tab.id ? "page" : undefined}>
+          {tab.label}
+        </Link>
+      ))}
     </nav>
   );
 }

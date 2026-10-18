@@ -74,7 +74,7 @@ test("a manager publishes a week and the employee sees the shift with its tag", 
   await expect(ayse.getByRole("dialog")).toHaveCount(0);
   await expect(ayse.getByRole("button", { name: "Published", exact: true })).toBeVisible();
 
-  const emre = await openPage(browser, "emre", `/app/employee-hub/schedule?date=${monday}`);
+  const emre = await openPage(browser, "emre", `/app/employee-hub/schedule/team?date=${monday}`);
   const shiftBadge = emre.getByRole("button", { name: /On call/ });
   await expect(shiftBadge).toBeVisible();
   await expect(shiftBadge).toHaveAccessibleName(/9:00 AM - 5:00 PM/);

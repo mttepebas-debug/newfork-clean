@@ -32,6 +32,8 @@ import {
 import { EmployeeDashboard } from "../employee-hub/EmployeeDashboard";
 import { EmployeeScheduleBoard } from "../employee-hub/EmployeeScheduleBoard";
 import { EmployeeLineup, EmployeeScheduleTabs, employeeSchedulePath } from "../employee-hub/EmployeeLineup";
+import { EmployeeMyShifts } from "../employee-hub/EmployeeMyShifts";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { useHubClock } from "../employee-hub/useHubClock";
 import { ShiftExchangeHub } from "../employee-hub/shift-exchanges/ShiftExchangeHub";
 import { CatalogPageHeader } from "./CatalogPageHeader";
@@ -51,6 +53,11 @@ const pageCopy: Record<
     eyebrow: "YOUR WEEK, WITHOUT SURPRISES.",
     description:
       "Your published shifts, with the hours, location and position for each one.",
+  },
+  "schedule/team": {
+    title: "Team schedule",
+    eyebrow: "YOUR TEAM'S WEEK.",
+    description: "The published schedule for everyone at your locations.",
   },
   "schedule/lineup": {
     title: "Lineup",
@@ -85,10 +92,10 @@ export function EmployeeHubPage() {
   // More is a sheet over the page (CALISAN-MORE): the old More page's address,
   // and any other the hub does not know, opens Home.
   const knownPage =
-    path === "" || path === "schedule" || path === "schedule/lineup" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
+    path === "" || path === "schedule" || path === "schedule/team" || path === "schedule/lineup" || path === "my-availability" || path === "shift-hub" || path.startsWith("shift-hub/");
   const now = useHubClock();
   const navigate = useNavigate();
-  // Schedule and Lineup on a phone: a swipe sideways moves between them (KARARLAR §1.5, "the main tab first":
+  // My shifts and Lineup on a phone: a swipe sideways moves between them (KARARLAR §1.5, "the main tab first":
   // Lineup's own Team · Notes changes by its tabs only).
   const scheduleSwipe = useTabSwipe({
     tabs: SCHEDULE_PAGES,
@@ -96,9 +103,10 @@ export function EmployeeHubPage() {
     enabled: path === "schedule" || path === "schedule/lineup",
     onSelect: (page) => navigate(employeeSchedulePath(page, location.search)),
   });
+  const phoneBars = useListPhoneWidth();
   // The hub's date range is asked before its locations load: the device's calendar.
   const today = todayIn(undefined, now);
-  const selectedScheduleDate = path === "schedule"
+  const selectedScheduleDate = path === "schedule/team"
     ? scheduleDateFromSearch(location.search)
     : null;
   const from = selectedScheduleDate ?? addDays(today, -2);
@@ -191,6 +199,15 @@ export function EmployeeHubPage() {
       {path === "schedule" ? (
         <>
           <EmployeeScheduleTabs tabsRef={scheduleSwipe.tabs} />
+          <EmployeeMyShifts key={`${workspaceId}:${context?.userId}`} workspaceId={workspaceId} />
+        </>
+      ) : path === "schedule/team" ? (
+        // The team's board is a desktop page (Mert 2026-10-17): a phone opens My shifts.
+        phoneBars ? (
+          <Navigate to={`/app/employee-hub/schedule${location.search}`} replace />
+        ) : (
+        <>
+          <EmployeeScheduleTabs />
           <EmployeeScheduleBoard
             key={`${workspaceId}:${context?.userId}`}
             workspaceId={workspaceId}
@@ -198,6 +215,7 @@ export function EmployeeHubPage() {
             organizationName={context?.workspace.name ?? ""}
           />
         </>
+        )
       ) : path === "schedule/lineup" ? (
         <>
           <EmployeeScheduleTabs tabsRef={scheduleSwipe.tabs} />

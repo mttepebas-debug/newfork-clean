@@ -553,9 +553,56 @@ describe("EmployeeHubPage", () => {
     ).toBeTruthy();
     expect(screen.getByRole("link", { name: /My schedule/ })).toBeTruthy();
   });
+  // CALISAN-SCHEDULE-LISTE (Mert 2026-10-17): Schedule opens on My shifts, the lab's "Zaman çizgisi" week list.
+  it("opens Schedule on My shifts: one card per day, time off, open shifts, and the week from the switch", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    const approved = {
+      ...fixture.requests[0]!,
+      id: "98200000-0000-4000-8000-000000000009",
+      status: "approved",
+      periods: [{ id: "98210000-0000-4000-8000-000000000009", segment_date: "2026-08-27", start_time: null, end_time: null, status: "approved" as const }],
+    };
+    renderPageWithFixture({ ...fixture, requests: [approved] }, "/app/employee-hub/schedule");
+
+    const tabs = await screen.findByRole("navigation", { name: "Schedule pages" });
+    expect(within(tabs).getAllByRole("link").map((link) => link.textContent)).toEqual(["My shifts", "Team schedule", "Lineup"]);
+    expect(within(tabs).getByRole("link", { name: "My shifts" }).getAttribute("aria-current")).toBe("page");
+
+    const thisWeek = await screen.findByRole("tabpanel", { name: "This week" });
+    expect(within(thisWeek).getByRole("link", { name: /9:00 AM – 5:00 PM/ })?.textContent).toContain("Main Dining · Server");
+    expect(thisWeek.querySelector('[data-day="2026-08-26"]')?.classList.contains("today")).toBe(true);
+    expect(thisWeek.querySelector('[data-day="2026-08-27"]')?.textContent).toContain("Time off · Approved");
+    expect(within(thisWeek).getByRole("link", { name: "1 open shift to pick up" }).getAttribute("href")).toBe(
+      "/app/employee-hub/shift-hub?hub_view=available&from=2026-08-28&to=2026-08-28",
+    );
+    expect(thisWeek.querySelector('[data-day="2026-08-30"]')?.textContent).toContain("Day off");
+    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-24", "2026-09-06");
+
+    const next = screen.getByRole("tab", { name: "Next week" });
+    expect(next.getAttribute("aria-selected")).toBe("false");
+    fireEvent.click(next);
+    expect(next.getAttribute("aria-selected")).toBe("true");
+    expect(screen.getByRole("tabpanel", { name: "Next week", hidden: true }).querySelector('[data-day="2026-08-31"]')).not.toBeNull();
+    vi.useRealTimers();
+  });
+
+  it("opens Your shift from a day card", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule");
+    fireEvent.click(await screen.findByRole("link", { name: /9:00 AM – 5:00 PM/ }));
+    // jsdom has no showModal: the sheet is in the page, not "open".
+    await waitFor(() => expect(document.querySelector("dialog.eh-sheet h2")?.textContent).toBe("Your shift"));
+    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Main Dining · Server");
+    vi.useRealTimers();
+  });
+
   it("shows the published team board and narrows it to My Schedule", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
-    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+    renderPage("/app/employee-hub/schedule/team?date=2026-08-24");
 
     const rowNames = () =>
       Array.from(
@@ -574,7 +621,7 @@ describe("EmployeeHubPage", () => {
   it("peels board layers in order: filters, then day view", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
     renderPage(
-      "/app/employee-hub/schedule?date=2026-08-25&view=day&employees=15000000-0000-4000-8000-000000000001",
+      "/app/employee-hub/schedule/team?date=2026-08-25&view=day&employees=15000000-0000-4000-8000-000000000001",
     );
     const rowNames = () =>
       Array.from(
@@ -603,7 +650,7 @@ describe("EmployeeHubPage", () => {
   it("takes the most recently changed board filter off first", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
     renderPage(
-      "/app/employee-hub/schedule?date=2026-08-24&employees=15000000-0000-4000-8000-000000000001,15000000-0000-4000-8000-000000000002&locations=11000000-0000-4000-8000-000000000001",
+      "/app/employee-hub/schedule/team?date=2026-08-24&employees=15000000-0000-4000-8000-000000000001,15000000-0000-4000-8000-000000000002&locations=11000000-0000-4000-8000-000000000001",
     );
     const rowNames = () =>
       Array.from(
@@ -627,7 +674,7 @@ describe("EmployeeHubPage", () => {
 
   it("opens the picked calendar day even from week view", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
-    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+    renderPage("/app/employee-hub/schedule/team?date=2026-08-24");
 
     fireEvent.click(
       await screen.findByRole("button", { name: "Open schedule calendar" }),
@@ -643,7 +690,7 @@ describe("EmployeeHubPage", () => {
 
   it("only toggles the calendar from its icon, even in day view", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
-    renderPage("/app/employee-hub/schedule?date=2026-08-25&view=day");
+    renderPage("/app/employee-hub/schedule/team?date=2026-08-25&view=day");
 
     const trigger = await screen.findByRole("button", {
       name: "Open schedule calendar",
@@ -659,7 +706,7 @@ describe("EmployeeHubPage", () => {
 
   it("keeps the employee board free of scheduling tools", async () => {
     vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
-    renderPage("/app/employee-hub/schedule?date=2026-08-24");
+    renderPage("/app/employee-hub/schedule/team?date=2026-08-24");
 
     await waitFor(() =>
       expect(

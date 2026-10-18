@@ -134,6 +134,16 @@ const navItems: readonly NavItem[] = [
     roles: ["employee"],
     exact: true,
   },
+  // Employee → Schedule → Team schedule (CALISAN-SCHEDULE-LISTE): the published board; Schedule itself is My shifts.
+  {
+    to: "/app/employee-hub/schedule/team",
+    label: "Team schedule",
+    icon: CalendarDays,
+    anyOf: ["workspace.read"],
+    section: "employee",
+    parentTo: "/app/employee-hub/schedule",
+    roles: ["employee"],
+  },
   // Employee → Schedule → Lineup (LINEUP-PUBLISH-WEB): the published lineups she is on.
   {
     to: "/app/employee-hub/schedule/lineup",
