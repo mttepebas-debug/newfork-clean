@@ -944,8 +944,9 @@ describe("EmployeeDrawer", () => {
     });
 
     const phone = await screen.findByLabelText("Emergency phone");
-    const slot = phone.closest(".employee-field")?.querySelector(".field-note");
-    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    // No room is kept before the refusal (UI-FIELDMSG-2, Mert 2026-10-18).
+    expect(phone.closest(".employee-field")?.querySelector(".field-note")).toBeNull();
+    expect(phone.closest(".employee-field")?.textContent).not.toContain(emergencyIsOwnPhoneMessage);
     fireEvent.change(phone, { target: { value: "3105559999" } });
     expect(phone.getAttribute("aria-invalid")).toBe("true");
     expect(
@@ -3220,6 +3221,33 @@ describe("EmployeeDrawer termination window (EKRAN-03)", () => {
         (within(dialog).getByLabelText("Effective date and time") as HTMLInputElement).value.slice(0, 13),
       ).toBe(`${day}T${hour}`);
     });
+  });
+
+  // UI-FIELDMSG-2 (Mert 2026-10-18): the missing zone is said under its own field,
+  // so a server refusal in the band never hides it.
+  it("says under the timezone field while no zone is known, then nothing", async () => {
+    let answer: (value: Awaited<ReturnType<typeof loadEmployeeReferenceData>>) => void = () => undefined;
+    vi.mocked(loadEmployeeReferenceData).mockReturnValueOnce(
+      new Promise((resolve) => {
+        answer = resolve;
+      }),
+    );
+    const dialog = await openTermination();
+    const zone = within(dialog).getByLabelText("Worksite timezone");
+    const missing = "An active employee location with a timezone is required.";
+    expect((zone as HTMLSelectElement).options).toHaveLength(0);
+    expect(document.getElementById(zone.getAttribute("aria-describedby") ?? "")?.textContent).toBe(missing);
+    expect(zone.closest("label")?.querySelector(".field-note")?.textContent).toBe(missing);
+    expect(dialog.querySelector(".window-alert")).toBeNull();
+    answer({
+      locations: detail.locations.map((location) => ({ ...location, timezone: "Pacific/Honolulu" })),
+      departments: [],
+      jobs: [],
+      inviteRoles: [],
+    });
+    await waitFor(() => expect((zone as HTMLSelectElement).value).toBe("Pacific/Honolulu"));
+    expect(zone.getAttribute("aria-describedby")).toBeNull();
+    expect(within(dialog).queryByText(missing)).toBeNull();
   });
 
   it("keeps a time already typed when the zones arrive late", async () => {

@@ -1888,6 +1888,8 @@ function EmployeeTerminationDialog({
           <label>
             Worksite timezone
             <select
+              // Named here: the note under it sits inside the label.
+              aria-label="Worksite timezone"
               value={timezone}
               onChange={(event) => {
                 const nextTimezone = event.target.value;

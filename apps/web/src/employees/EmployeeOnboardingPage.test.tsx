@@ -697,8 +697,9 @@ describe("EmployeeOnboardingPage", () => {
     await fillPersonal();
     const own = screen.getByLabelText(/^Phone/);
     const slot = own.closest(".onboarding-field")?.querySelector(".field-note");
-    // The slot is as tall as the error before the error is there.
-    expect(slot?.textContent).toContain(phoneInUseMessage);
+    // Before the error only the help is there; no room is kept for the error (UI-FIELDMSG-2).
+    expect(slot?.textContent).toBe("The number this workspace can reach you on.");
+    expect(own.closest(".onboarding-field")?.textContent).not.toContain(phoneInUseMessage);
     expect(own.getAttribute("aria-invalid")).toBeNull();
 
     fireEvent.change(own, { target: { value: "4155550135" } });
@@ -745,8 +746,9 @@ describe("EmployeeOnboardingPage", () => {
     fireEvent.change(await screen.findByLabelText("Full name"), { target: { value: "Morgan Reed" } });
     fireEvent.change(screen.getByLabelText("Relationship"), { target: { value: "Friend" } });
     const contact = screen.getByLabelText("Phone");
-    const slot = contact.closest(".onboarding-field")?.querySelector(".field-note");
-    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    // No room is kept before the refusal (UI-FIELDMSG-2, Mert 2026-10-18).
+    expect(contact.closest(".onboarding-field")?.querySelector(".field-note")).toBeNull();
+    expect(contact.closest(".onboarding-field")?.textContent).not.toContain(emergencyIsOwnPhoneMessage);
     expect(contact.getAttribute("aria-invalid")).toBeNull();
 
     fireEvent.change(contact, { target: { value: "4155550135" } });

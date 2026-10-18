@@ -745,13 +745,14 @@ describe("ProfilePage US form rules", () => {
   });
 
   // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
-  it("refuses the account's own number as the contact's until one digit differs, moving nothing", async () => {
+  it("refuses the account's own number as the contact's until one digit differs", async () => {
     ownerWithContact();
     renderProfile();
     await screen.findByDisplayValue("Morgan");
     const contact = screen.getByLabelText("Contact phone");
-    const slot = contact.closest(".account-field")?.querySelector(".field-note");
-    expect(slot?.textContent).toContain(emergencyIsOwnPhoneMessage);
+    // No room is kept before the refusal (UI-FIELDMSG-2, Mert 2026-10-18).
+    expect(contact.closest(".account-field")?.querySelector(".field-note")).toBeNull();
+    expect(contact.closest(".account-field")?.textContent).not.toContain(emergencyIsOwnPhoneMessage);
     expect(contact.getAttribute("aria-invalid")).toBeNull();
 
     fireEvent.change(contact, { target: { value: "4155550142" } });
