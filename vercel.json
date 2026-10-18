@@ -32,8 +32,8 @@
       "destination": "/api?__path=/shifts"
     },
     {
-      "source": "/shifts/:path+",
-      "destination": "/api?__path=/shifts/:path+"
+      "source": "/shifts/:path*",
+      "destination": "/api?__path=/shifts/:path*"
     },
     {
       "source": "/health",

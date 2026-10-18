@@ -37,6 +37,21 @@ test("vercel: no other branch deploys, flat or nested", () => {
   }
 });
 
+// Vercel compiles a rewrite destination with path-to-regexp, and a "+" after a parameter there is
+// written out as "%20": "/shifts/:path+" handed the API "/shifts/batch ", so POST /shifts/batch,
+// /shifts/bulk-delete and PATCH /shifts/:id/restore answered 404 "Not found" on live (2026-10-18,
+// measured with the vercel CLI's own routing-utils). ":path*" keeps the path as it came.
+test("vercel: no rewrite destination puts a modifier after a parameter but *", () => {
+  for (const { source, destination } of config.rewrites) {
+    assert.doesNotMatch(destination, /:\w+[+?]/, `${source} -> ${destination}`);
+  }
+});
+
+test("vercel: every API path under /shifts reaches the function", () => {
+  const rule = config.rewrites.find(({ source }) => source.startsWith("/shifts/"));
+  assert.deepEqual(rule, { source: "/shifts/:path*", destination: "/api?__path=/shifts/:path*" });
+});
+
 test("vercel: the build ends with the Sentry source map step, after both bundles exist", () => {
   const steps = config.buildCommand.split("&&").map((step) => step.trim());
   assert.equal(steps.at(-1), "node scripts/sentry-sourcemaps.mjs");
