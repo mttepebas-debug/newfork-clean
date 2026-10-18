@@ -79,7 +79,8 @@ export function ReleaseDeck({
   let depth = 0;
   return (
     <div className="sx-deck-area">
-      <div className="sx-deck">
+      {/* A group, so a phone's tab swipe (useTabSwipe) leaves the deck its own sideways swipe. */}
+      <div className="sx-deck" role="group" aria-label="Released shifts">
         {left === 0 && !leaving ? (
           <div className="sx-deck-empty">
             <b>You’re all caught up</b>

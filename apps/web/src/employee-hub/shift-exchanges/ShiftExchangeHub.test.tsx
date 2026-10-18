@@ -1307,6 +1307,38 @@ describe("Shift Hub release", () => {
     expect(within(card).getAllByText("Wants it")).toHaveLength(3);
   });
 
+  // SEKME-KAYDIR (KARARLAR §1.5) on a phone: a sideways swipe moves between the views, but the deck
+  // keeps its own swipe, so taking or passing on a card never changes the tab.
+  it("keeps a swipe on the deck for the card, and a swipe beside it for the tabs", async () => {
+    model.employee_id = "blake";
+    model.cases = [];
+    model.opportunities = [released("one")];
+    const media = window.matchMedia;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("max-width"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    try {
+      mount("/app/employee-hub/shift-hub?hub_view=available");
+      const card = await screen.findByRole("article", { name: /Alex Morgan can’t make this shift/ });
+      const swipeLeft = (target: Element) => {
+        fireEvent.touchStart(target, { touches: [{ clientX: 300, clientY: 400 }] });
+        fireEvent.touchEnd(target, { touches: [], changedTouches: [{ clientX: 120, clientY: 405 }] });
+      };
+      swipeLeft(card.querySelector(".sx-w-names")!);
+      const views = screen.getByRole("navigation", { name: "Shift Hub views" });
+      expect(within(views).getByRole("button", { name: /Available Shifts/ }).getAttribute("aria-current")).toBe("page");
+      swipeLeft(screen.getByText(/Swipe right to take/));
+      await waitFor(() =>
+        expect(within(views).getByRole("button", { name: /My requests/ }).getAttribute("aria-current")).toBe("page"),
+      );
+    } finally {
+      window.matchMedia = media;
+    }
+  });
+
   it("takes the shift back in two clicks, without a reason", async () => {
     mount("/app/employee-hub/shift-hub?case=case");
     const back = await screen.findByRole("button", { name: "Take back shift" });
