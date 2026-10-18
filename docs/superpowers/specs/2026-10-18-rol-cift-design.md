@@ -166,7 +166,8 @@ Canlıdaki veri test verisidir (§3.A.5), ama taşıma yetki modelini değiştir
 Migration'dan önce canlıda ve yerelde her satırın sayısı çıkarılır; taşımadan sonra aynı sayılar tutmalı (doğrulama SELECT'i kontrol listesinde).
 
 ### 5.2 "Takas talebini kapatmada rütbe kontrolü" işiyle ilişki
-- O iş (dal `task/exchange-close-rank`) bugünkü modelde, bu tasarımdan önce main'e girer: talebi kapatma ve görme kapısı, karar kapısıyla aynı yetki çekirdeği eylemine (`exchange.approve`, hedef çalışanla) bağlanır.
+- O iş (dal `task/exchange-close-rank`) bugünkü modelde, bu tasarımdan önce main'e girer: talebi kapatma kapısını karar kapısının yardımcısına (`exchange_decision_reason`) bağlar.
+- Bu tasarımın onay sırası (madde 4.5) ve owner istisnası (madde 8.1) o yardımcının içinde kodlanır; close, approve ve reject aynı yardımcıyı izler, ayrı bir yardımcı açılmaz (ana oturum, 2026-10-18).
 - Bu tasarım sonra o tek kapının kuralını değiştirir (madde 4.5: çalışan tarafında rütbe sayılmaz, kişinin kendisi dışındaki lokasyon müdürü, tek müdürse üst rütbe; `no_self` her zaman). Karar, kapatma ve görme aynı çekirdek kuralından okur; ikinci bir rütbe ya da lokasyon yolu yazılmaz.
 - Lokasyon kontrolü de aynı yerde değişir: yönetim kapsamı "Manages"tan gelir (madde 4.2). O işin testleri bu tasarımın testlerine taşınır; eş müdür örneği madde 4.5'e göre yeniden yazılır (çift rollü kişinin çalışan tarafındaki talebinde eş müdür artık karar verir ve kapatır; yalnız yönetim tarafındaki işlerde vermez).
 
