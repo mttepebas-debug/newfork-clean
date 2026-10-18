@@ -201,11 +201,11 @@
 .shift-window-value { display: grid; gap: 4px; min-width: 0; padding-block: 0; }
 .shift-window-row + .shift-window-row { padding-top: 2px; }
 .shift-window-help { color: var(--theme-muted); font-size: 11.5px; display: flex; flex-wrap: wrap; gap: 4px; }
-/* One line, always: the full text is the tooltip. */
-.shift-window-facts { display: block; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* Said whole, wrapping between facts (UI-FIELDMSG-2). */
+.shift-window-facts { display: block; }
 .shift-window-facts > span, .shift-window-facts > i { margin-right: 4px; }
 .shift-window-help [data-tone="warn"], .shift-window-help[data-tone="warn"] { color: var(--theme-warning); font-weight: 600; }
-/* The time row's note line (UI-FIELDMSG): a block, so its one line cuts with an ellipsis. */
+/* The time row's note (UI-FIELDMSG-2): a block under both times. */
 .field-note > .shift-window-help { display: block; }
 .field-note > .shift-window-help.field-note-error { color: var(--theme-danger); font-weight: 600; }
 .shift-window-muted { color: var(--theme-muted); }

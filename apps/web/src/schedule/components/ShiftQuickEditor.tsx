@@ -350,16 +350,15 @@ function TimeRow({ editor, model, timeFormat, startRef, changes }: LayoutProps &
         />
         <span className="shift-window-span" data-empty={!span || undefined}>{span ? formatHourTotal(span.e - span.s) : "–"}</span>
       </div>
-      {/* One line, always kept, even with nothing to say, so it never moves the
-          window (UI-FIELDMSG); the error takes the facts' place; the full text
-          is the tooltip. */}
+      {/* Under both times, one note for the row (UI-FIELDMSG-2): the error in
+          the facts' place, said whole; nothing while there is neither. */}
       <FieldNote
         id="shift-window-time"
         className="shift-window-help"
         error={editor.timeValidationMessage}
         help={
           facts.length ? (
-            <span className="shift-window-facts" title={facts.join(" · ")}>
+            <span className="shift-window-facts">
               {facts.flatMap((fact, index) => [
                 ...(index ? [<i key={`dot-${index}`} aria-hidden>·</i>] : []),
                 <span key={fact} data-tone={warnings.has(fact) ? "warn" : undefined}>{fact}</span>,

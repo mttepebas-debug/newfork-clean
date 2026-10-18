@@ -10033,7 +10033,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .ob-job-panel {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-  align-items: end;
+  /* Both boxes keep one top line; a name's note grows the row under both (UI-FIELDMSG-2). */
+  align-items: start;
   gap: 12px;
   border: 1px solid var(--theme-border);
   border-radius: 8px;
