@@ -82,7 +82,7 @@ Sunucu kapısı rolden okunur: çalışan arayüzünün okuma servisleri (bugün
 
 ### 4.5 Onay (Mert, S-164)
 - Çift rollü kişinin çalışan tarafındaki talebine (takas, cover, release başvurusu, izin) o lokasyonun **kendisi dışındaki** bir müdürü karar verir, çalışan gibi.
-- Kişi o lokasyonun tek müdürüyse karar bir üst rütbeye gider (admin, owner).
+- Kişi o lokasyonun tek müdürüyse karar bir üst rütbeye gider. Sıra her talepte aynı: lokasyon müdürü → yoksa admin → yoksa owner; cevaplanmazsa 4 saat kala kapanır, vardiya ilk sahibinde kalır (madde 8.1).
 - Rütbe çalışan tarafında sayılmaz: Zeynep Admin olsa da Kadıköy'deki takasını Kadıköy müdürü Ayşe onaylar. Owner + Employee için de aynı.
 - Kişi kendi talebine ya da taraf olduğu takasa hiçbir arayüzden karar veremez (bugünkü `no_self` ve önizleme kontrolü kalır).
 - Çok lokasyonlu izin oylamasında her lokasyonun oyu için aynı kural: o lokasyonun kendisi dışındaki müdürü; kişi oranın tek müdürüyse admin / owner (Claude'un kararı, S-164'ün lokasyon başına uygulaması).
@@ -179,8 +179,8 @@ Yetki çekirdeği ve üyelik modeli; davet (Employees → Add employee, Access);
 - **Bu işte:** "Employee view" düğmesi çalışan kaydı olmayan yöneticide görünüyor (madde 4.1 ile kalkar).
 - **Karar defteri tutarsızlığı:** "owner'ın talebi onaysız kaydolur" yazıyor, kod owner'ın takasını onaya gönderiyor. Madde 4.5 çalışan tarafı için kuralı koyuyor; izin için bugünkü onaysız kayıt kuralı yalnız yönetim tarafında anlamsızlaşır (owner'ın izni Employee rolüyle verilir). Açık soru 8.1.
 
-## 8. Açık sorular ve builder kontrolünde verilen cevaplar
-**8.1 Açık (Mert):** owner + Employee kişi lokasyonun tek yöneticisiyse ve workspace'te admin yoksa çalışan tarafındaki takasına ya da iznine kim karar verir? Öneri: lokasyonda başka müdür varsa o; yoksa herhangi bir admin; o da yoksa talep onaysız geçerli olur ve müdürlere / adminlere bilgi bildirimi gider (bugünkü "owner'ın talebi onaysız kaydolur" kuralıyla aynı yön). Reddedilecek alternatif: talep hiç açılamasın. Cevap gelene kadar bu durum için kod yazılmaz.
+## 8. Kapanan sorular ve builder kontrolünde verilen cevaplar
+**8.1 Kapandı (Mert, 2026-10-18 ~12:40 PT, ROL-CIFT oturumu, serbest cevap: "B- managerin son karar verdiği requestler aynı sırayı izler. lokasyonun müdürü yoksa admin yoksa owner"):** son kararı müdürün verdiği her talep aynı sırayı izler: lokasyonun (kişinin kendisi dışındaki) müdürü → yoksa admin → yoksa owner. Kimse kendi talebine karar veremez; sıranın kalanında karar verecek kimse yoksa ya da kimse cevaplamazsa talep vardiyadan 4 saat önce kapanır ve vardiya ilk sahibinde kalır (bugünkü kapanış kuralı). Örnek: tek owner'lı, müdürsüz ve adminsiz işletmede owner'ın çalışan tarafındaki takası cevaplanmaz, 4 saat kala kapanır, vardiya owner'da kalır; değiştirmek isterse bilgisayardan Schedule'da kendisi değiştirir. Ekran talebi açarken "No one else can approve this. It closes 4 hours before the shift." der (Claude'un kararı). Reddedilen: kimse yoksa onaysız geçsin (Claude'un önerisi). İzin talebinde de aynı sıra; owner'ın izninin bugünkü onaysız kaydı yalnız çalışan tarafı olmayan durumda anlamsızlaştığı için (S-166) bu kural onun yerine geçer (Claude'un yorumu, Mert okurken bakar).
 
 **Builder kontrolünde Claude'un verdiği cevaplar (Mert okurken bakar):**
 - **Özel roller:** hesapta iki rol yuvası olur: çalışan yuvası (yok ya da employee sınıfından bir rol: Employee ya da "Trainee" gibi özel rol) ve yönetim yuvası (yok, manager sınıfından bir rol, Admin ya da Owner). Kişinin kendi işlerine ait izinler (`exchange.offer_own`, `availability.own` gibi) yalnız çalışan yuvasındaki rolden okunur; yönetim rollerinin izin listesinden bu izinler kalkar. Settings → Roles ekranı değişmez.
