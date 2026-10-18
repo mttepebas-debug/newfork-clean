@@ -118,7 +118,13 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   const team = ayse.getByRole("list", { name: "Cook" });
   await expect(team).toContainText("Emre Person");
   await expect(team.getByRole("button")).toHaveCount(0);
-  await expect(ayse.getByText("Draft · staff can't see it", { exact: true })).toBeVisible();
+  // The card (Mert 2026-10-17, card 1): the place and day; Draft over "Not published yet"; Edit off; Read off.
+  const card = ayse.locator(".lineup-card");
+  await expect(card.locator(".lineup-card-loc")).toHaveText("Kadikoy");
+  await expect(card.getByText("Draft", { exact: true })).toBeVisible();
+  await expect(card.getByText("Not published yet", { exact: true })).toBeVisible();
+  await expect(card.getByRole("button", { name: "Edit", exact: true })).toBeDisabled();
+  await expect(card.getByRole("tab", { name: "Read" })).toBeDisabled();
 
   // Only the page header stays put, at its full size; the date row, the wheel and the shift tabs scroll away.
   const header = ayse.locator(".lineup-phone-head .catalog-page-header");
@@ -155,9 +161,22 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await sheet.getByRole("button", { name: "Done", exact: true }).tap();
   await expect(sheet).toHaveCount(0);
 
-  await expect(ayse.getByText(/^Published \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
+  // Live now, and nothing left to publish on this shift: Publish goes.
+  await expect(card.getByText("Live", { exact: true })).toBeVisible();
+  await expect(card.getByText(/^Published at \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
+  await expect(ayse.locator(".lineup-phone-dock")).toHaveCount(0);
   await ayse.getByRole("tab", { name: /^Read \d+\/\d+$/ }).tap();
-  await expect(ayse.getByRole("tabpanel")).toContainText(/of \d+ read/);
+  await expect(ayse.getByRole("tabpanel").getByRole("progressbar", { name: /^0 of \d+ read$/ })).toBeVisible();
+  await expect(ayse.getByRole("tabpanel").getByRole("region", { name: "Not read yet" })).toContainText("Emre Person");
+
+  // Edit takes it back to draft after the app's own window (A).
+  await card.getByRole("button", { name: "Edit", exact: true }).tap();
+  const ask = ayse.getByRole("alertdialog", { name: /^Edit .+ lineup\?$/ });
+  await expect(ask).toContainText("Everyone reads it again");
+  await ask.getByRole("button", { name: "Edit", exact: true }).tap();
+  await expect(ask).toHaveCount(0);
+  await expect(card.getByText("Draft", { exact: true })).toBeVisible();
+  await expect(ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ })).toBeVisible();
   await context.close();
 });
 
@@ -203,7 +222,9 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
         head: top(under) - toolbar,
       };
     }, under);
-  const manager = await rows(ayse, ".lineup-day-head");
+  // The manager's lineup card sits where the employee's ticket does (Mert 2026-10-17 ~9:10 AM: the place and day
+  // went into the card).
+  const manager = await rows(ayse, ".lineup-card");
   const employee = await rows(emre, ".employee-lineup-ticket");
   expect(Math.abs(manager.line - 18)).toBeLessThanOrEqual(0.5);
   for (const key of ["wheel", "tabs", "head"] as const) expect(Math.abs(manager[key] - employee[key])).toBeLessThanOrEqual(0.5);

@@ -116,6 +116,18 @@ test("the manager's phone Lineup: a swipe moves through Team, Notes and Read, ne
   const ayse = await phone(browser, "ayse", `/app/schedule/lineup?date=${day}`);
   const segs = chosen(ayse, "Lineup");
   await expect(segs).toContainText("Team");
+  // Read opens once the lineup is published (Mert 2026-10-17): a draft's swipe stops at Notes.
+  await swipe(ayse, ayse.getByRole("tabpanel"), -160);
+  await swipe(ayse, ayse.getByRole("tabpanel"), -160);
+  await expect(segs).toContainText("Notes");
+  await swipe(ayse, ayse.getByRole("tabpanel"), 160);
+  await expect(segs).toContainText("Team");
+  await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
+  const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
+  await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
+  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  await expect(sheet).toHaveCount(0);
+  await expect(ayse.locator(".lineup-card")).toContainText("Live");
   const shifts = ayse.getByRole("group", { name: "Shifts" });
   const shift = await shifts.locator('[aria-pressed="true"]').textContent();
   await swipe(ayse, ayse.getByRole("tabpanel"), -160);
