@@ -15,6 +15,7 @@ import type {
   ExchangeShift,
 } from "@newfork/shared";
 import { ShiftExchangeHub } from "./ShiftExchangeHub";
+import { ReleaseCard } from "./Release";
 import {
   changeExchange,
   getExchangeCandidates,
@@ -1396,6 +1397,22 @@ describe("Shift Hub release", () => {
     expect(alert.textContent).toBe("Your manager already gave this shift to someone.");
     expect(alert.classList.contains("window-alert")).toBe(true);
     expect(alert.parentElement?.classList.contains("sx-w-foot")).toBe(true);
+  });
+
+  it("says a take back refusal without an empty footer once the release has closed", async () => {
+    const run = vi.fn().mockRejectedValueOnce(new Error("Your manager already gave this shift to someone."));
+    const { rerender } = render(<ReleaseCard item={structuredClone(item)} canWrite run={run} />);
+    fireEvent.click(screen.getByRole("button", { name: "Take back shift" }));
+    fireEvent.click(screen.getByRole("button", { name: "Confirm take back" }));
+    await screen.findByRole("alert");
+    // The release closed meanwhile: the card has nothing left to do, only the refusal to say.
+    rerender(<ReleaseCard item={{ ...structuredClone(item), status: "completed" }} canWrite run={run} />);
+    const card = screen.getByRole("region", { name: "Released shift" });
+    const alert = within(card).getByRole("alert");
+    expect(alert.textContent).toBe("Your manager already gave this shift to someone.");
+    expect(within(card).queryByRole("button", { name: "Take back shift" })).toBeNull();
+    expect(card.querySelector(".sx-w-foot")).toBeNull();
+    expect(alert.parentElement?.classList.contains("window-alert-slot")).toBe(true);
   });
 
   it("takes the shift back in two clicks, without a reason", async () => {

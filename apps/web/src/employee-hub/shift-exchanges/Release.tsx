@@ -186,27 +186,26 @@ export function ReleaseCard({
           </>
         ) : null}
       </div>
-      {(open && item.is_owner) || error ? (
+      {open && item.is_owner ? (
         <footer className="sx-w-foot">
           {/* Its refusal in the band over the body's bottom edge (UI-FIELDMSG-2). */}
           <WindowAlert message={error} />
-          {open && item.is_owner ? (
-            <>
-              <p className="sx-w-meta">Your manager picks who gets it. Until then it is your shift.</p>
-              {/* Taking the shift back ends the release for everyone who asked: red, two clicks (BL-748). */}
-              <ConfirmButton
-                unstyled
-                className="sx-danger"
-                confirmLabel="Confirm take back"
-                disabled={!canWrite || working}
-                onConfirm={() => void takeBack()}
-              >
-                Take back shift
-              </ConfirmButton>
-            </>
-          ) : null}
+          <p className="sx-w-meta">Your manager picks who gets it. Until then it is your shift.</p>
+          {/* Taking the shift back ends the release for everyone who asked: red, two clicks (BL-748). */}
+          <ConfirmButton
+            unstyled
+            className="sx-danger"
+            confirmLabel="Confirm take back"
+            disabled={!canWrite || working}
+            onConfirm={() => void takeBack()}
+          >
+            Take back shift
+          </ConfirmButton>
         </footer>
-      ) : null}
+      ) : (
+        // No footer left to hang from: the band lies over the body's bottom edge, no empty bar.
+        <WindowAlert between message={error} />
+      )}
     </section>
   );
 }
