@@ -128,8 +128,9 @@ test("the manager's phone Lineup: a swipe moves through Team, Notes and Read, ne
   await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).tap();
   const sheet = ayse.getByRole("dialog", { name: "Publish lineups" });
   await sheet.getByRole("button", { name: /^Publish \d+$/ }).tap();
-  await sheet.getByRole("button", { name: "Done", exact: true }).tap();
+  // The sheet closes by itself once the lineup is out (no Done); the floating Publish says Published.
   await expect(sheet).toHaveCount(0);
+  await expect(ayse.locator(".lineup-phone-dock").getByRole("button", { name: "Published", exact: true })).toBeVisible();
   await expect(ayse.locator(".lineup-card")).toContainText("Live");
   const shifts = ayse.getByRole("group", { name: "Shifts" });
   const shift = await shifts.locator('[aria-pressed="true"]').textContent();
