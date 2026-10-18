@@ -2,6 +2,7 @@ import { Button, ConfirmButton } from "@newfork/ui";
 import { Check, Send } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type JSX } from "react";
 
+import { validZone } from "../lib/today";
 import { canPublish, type LineupLocation, type LineupShift } from "./lineup";
 import { lineupCommandMessage, useLineupCommand } from "./lineup-data";
 import { formatTime, type ScheduleTimeFormat } from "./lib/scheduleDateTime";
@@ -21,11 +22,16 @@ function people(shifts: readonly LineupShift[]): number {
   ).size;
 }
 
-/** "2:10 PM" in the location's own clock is the Schedule's format; the browser's clock is close enough here. */
-export function publishedAt(sharedAt: string | null, timeFormat: ScheduleTimeFormat): string {
+/**
+ * "2:10 PM" in the Schedule's format: on the location's clock when `zone` is given (the phone card, whose started
+ * lock reads that clock too), else on the browser's.
+ */
+export function publishedAt(sharedAt: string | null, timeFormat: ScheduleTimeFormat, zone?: string): string {
   if (!sharedAt) return "";
   const at = new Date(sharedAt);
-  const hhmm = `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
+  const hhmm = zone
+    ? new Intl.DateTimeFormat("en-GB", { timeZone: validZone(zone), hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).format(at)
+    : `${String(at.getHours()).padStart(2, "0")}:${String(at.getMinutes()).padStart(2, "0")}`;
   return formatTime(hhmm, timeFormat, "long");
 }
 

@@ -1,5 +1,6 @@
 import { Ban, ChevronDown, Eye, EyeOff, Lock, MapPin, MessageSquareText, Pencil, RotateCw, Sparkles, Users } from "lucide-react";
 import {
+  useEffect,
   useLayoutEffect,
   useRef,
   useState,
@@ -244,7 +245,14 @@ function LineupCard({
   const { live, started } = lineupCardState(shift, now);
   const span = lineupShiftSpan(shift);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
-  const at = publishedAt(shift.publish.sharedAt, timeFormat);
+  // On the location's clock, the one the started lock reads.
+  const at = publishedAt(shift.publish.sharedAt, timeFormat, location.timezone);
+  // After Edit has taken the lineup back, its button goes off: focus waits on the chevron instead.
+  const foldButton = useRef<HTMLButtonElement | null>(null);
+  const [backToFold, setBackToFold] = useState(0);
+  useEffect(() => {
+    if (backToFold) foldButton.current?.focus();
+  }, [backToFold]);
   const tap = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target as Element;
     // Only a tap on the card itself: not its buttons or tabs, nor the Edit window (a portal, its events bubble here).
@@ -288,6 +296,7 @@ function LineupCard({
         </p>
         <button
           type="button"
+          ref={foldButton}
           className="lineup-card-fold"
           aria-expanded={open}
           aria-controls={open ? "lineup-phone-panel" : undefined}
@@ -328,6 +337,10 @@ function LineupCard({
           shift={shift}
           at={at}
           onClose={() => setEditing(false)}
+          onDone={() => {
+            setEditing(false);
+            setBackToFold((count) => count + 1);
+          }}
         />
       ) : null}
     </section>
@@ -345,6 +358,7 @@ function EditLineup({
   shift,
   at,
   onClose,
+  onDone,
 }: {
   readonly workspaceId: string | null;
   readonly date: string;
@@ -352,6 +366,8 @@ function EditLineup({
   readonly shift: LineupShift;
   readonly at: string;
   readonly onClose: () => void;
+  /** The lineup is back in draft. */
+  readonly onDone: () => void;
 }) {
   const command = useLineupCommand(workspaceId, date);
   const [refused, setRefused] = useState<string | null>(null);
@@ -366,7 +382,7 @@ function EditLineup({
       onConfirm={() =>
         command.mutate(
           { kind: "unpublish", lineups: [shift.publish.target] },
-          { onSuccess: onClose, onError: (reason) => setRefused(lineupCommandMessage(reason)) },
+          { onSuccess: onDone, onError: (reason) => setRefused(lineupCommandMessage(reason)) },
         )
       }
     >
@@ -385,8 +401,8 @@ function EditLineup({
             <RotateCw />
           </span>
           <span className="lineup-edit-text">
-            <b>Everyone reads it again</b>
-            <span>When you publish again, everyone is asked to acknowledge.</span>
+            <b>Everyone gets the new version</b>
+            <span>When you publish again, everyone sees the new version; their earlier read doesn't carry over.</span>
           </span>
         </li>
       </ul>

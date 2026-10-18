@@ -172,7 +172,7 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   // Edit takes it back to draft after the app's own window (A).
   await card.getByRole("button", { name: "Edit", exact: true }).tap();
   const ask = ayse.getByRole("alertdialog", { name: /^Edit .+ lineup\?$/ });
-  await expect(ask).toContainText("Everyone reads it again");
+  await expect(ask).toContainText("Everyone gets the new version");
   await ask.getByRole("button", { name: "Edit", exact: true }).tap();
   await expect(ask).toHaveCount(0);
   await expect(card.getByText("Draft", { exact: true })).toBeVisible();

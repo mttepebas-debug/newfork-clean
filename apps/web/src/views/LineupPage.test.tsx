@@ -512,8 +512,10 @@ describe("LineupPage on a phone, E", () => {
     expect(within(ask).getByText(/^Downtown · Published at \d{1,2}:\d{2} [AP]M$/)).toBeTruthy();
     expect(within(ask).getByText("Back to draft")).toBeTruthy();
     expect(within(ask).getByText("Staff don't see it until you publish again.")).toBeTruthy();
-    expect(within(ask).getByText("Everyone reads it again")).toBeTruthy();
-    expect(within(ask).getByText("When you publish again, everyone is asked to acknowledge.")).toBeTruthy();
+    // True whether or not the next publish asks staff to acknowledge.
+    expect(within(ask).getByText("Everyone gets the new version")).toBeTruthy();
+    expect(within(ask).getByText("When you publish again, everyone sees the new version; their earlier read doesn't carry over.")).toBeTruthy();
+    expect(ask.textContent).not.toMatch(/acknowledge/i);
     expect(ask.textContent).not.toMatch(/only|change/i);
     // The card doesn't fold under the window.
     expect(within(card).getByRole("button", { name: "Hide list" })).toBeTruthy();
@@ -524,6 +526,46 @@ describe("LineupPage on a phone, E", () => {
     fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }));
     await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
     expect(commands[0]).toMatchObject({ kind: "unpublish", lineups: [{ location_id: downtown, service_date: day, shift_type_id: lunch }] });
+    // Edit goes off once the lineup is a draft: focus waits on the card's chevron, not on the page's top.
+    expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Hide list" }));
+  });
+
+  // "Published at" reads the location's clock, as the lock does: 21:10 UTC is 5:10 PM in New York.
+  it("tells when a lineup went out on the location's clock", async () => {
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      const answer = await realRead(client, path, init);
+      if (/\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path))
+        for (const location of (answer as ReturnType<typeof dayRead>).locations) location.timezone = "America/New_York";
+      return answer;
+    });
+    published = { [lunch]: live };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(within(card).getByText("Published at 5:10 PM")).toBeTruthy();
+    fireEvent.click(editOf(card));
+    expect(within(screen.getByRole("alertdialog")).getByText("Downtown · Published at 5:10 PM")).toBeTruthy();
+  });
+
+  // Nobody on it has the app: nothing to count, so no "0/0" bar.
+  it("draws no progress bar when nobody on the lineup has the app", async () => {
+    world = model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" })]);
+    reads = { [maria]: "no app" };
+    published = { [lunch]: { ...live, acknowledged: 0, with_app: 0, people: 1 } };
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 0/0" }));
+    const panel = screen.getByRole("tabpanel");
+    expect(within(panel).queryByRole("progressbar")).toBeNull();
+    expect(within(panel).getAllByRole("region").map((region) => region.getAttribute("aria-label"))).toEqual(["No app"]);
+    // Nor when the count says nobody while a row is still listed unread: no "0/0", no bar with a maximum of 0.
+    cleanup();
+    reads = {};
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 0/0" }));
+    const again = screen.getByRole("tabpanel");
+    expect(within(again).getByRole("region", { name: "Not read yet" })).toBeTruthy();
+    expect(within(again).queryByRole("progressbar")).toBeNull();
+    expect(within(again).queryByText("0/0")).toBeNull();
   });
 
   // Mert 2026-10-17 (~8 AM): only the page header stays fixed, at full size; everything under it scrolls.

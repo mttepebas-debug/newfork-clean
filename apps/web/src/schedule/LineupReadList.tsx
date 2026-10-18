@@ -103,11 +103,13 @@ export function LineupReadPhone({
       </span>
     </span>
   );
+  // Nobody with the app: nothing to count, so no "0/0" and no bar (its headings keep their counts).
+  const lead = withApp > 0 ? bar : undefined;
   const onRead = lists.read.length > 0;
   return (
     <div className="lineup-read is-phone">
-      <Group title="Read" people={lists.read} when={readWhen(timeFormat)} lead={onRead ? bar : undefined} />
-      <Group title="Not read yet" people={lists.unread} when={unreadWhen} lead={onRead ? undefined : bar} />
+      <Group title="Read" people={lists.read} when={readWhen(timeFormat)} lead={onRead ? lead : undefined} />
+      <Group title="Not read yet" people={lists.unread} when={unreadWhen} lead={onRead ? undefined : lead} />
       <Group title="No app" people={lists.noApp} when={noAppWhen} />
     </div>
   );
