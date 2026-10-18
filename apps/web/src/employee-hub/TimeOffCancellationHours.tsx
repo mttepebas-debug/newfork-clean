@@ -64,7 +64,7 @@ export function TimeOffCancellationHours({ period, index, timeFormat, onChange, 
           </select></label>
         </div>;
       })}
-      <FieldNote id={`time-off-hours-${index}`} lines={2} error={error} />
+      <FieldNote id={`time-off-hours-${index}`} error={error} />
       <button type="button" aria-label={`Apply hours for period ${index + 1}`} onClick={apply}>Apply hours</button>
       <button type="button" aria-label={`Discard these edits for period ${index + 1}`} onClick={() => { setEditing(false); onEditing(false); setError(""); }}>Discard these edits</button>
     </fieldset>}

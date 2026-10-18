@@ -618,7 +618,7 @@ function RoleEditor({
             : "You can view this role. Only an authorized higher role can change it."}
         </p>
       )}
-      <FieldNote id="role-permissions" error={error} lines={2} />
+      <FieldNote id="role-permissions" error={error} />
       {saved && !dirty && (
         <p className="form-success" role="status">
           Role saved.

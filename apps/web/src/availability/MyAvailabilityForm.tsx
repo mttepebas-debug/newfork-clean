@@ -172,7 +172,7 @@ function Form({ model, onSave, wizard = false, extraAction, onReload }: Props) {
     setFlash(sheetChanges);
   }
 
-  // Over the body's bottom edge, above the buttons; nothing moves (UI-FIELDMSG).
+  // Over the body's bottom edge, above the buttons; the body gets room under it (UI-FIELDMSG-2).
   const error_ = (
     <WindowAlert
       between

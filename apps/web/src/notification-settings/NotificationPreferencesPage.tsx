@@ -165,7 +165,6 @@ export default function NotificationPreferencesPage() {
           </p>
           <FieldNote
             id="notification-preferences"
-            lines={2}
             error={mutation.error ? "Your notification choices weren\u2019t saved. Try again." : null}
           />
           {saved ? (

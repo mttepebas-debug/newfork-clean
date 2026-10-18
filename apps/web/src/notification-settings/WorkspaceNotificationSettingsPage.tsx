@@ -206,7 +206,6 @@ export default function WorkspaceNotificationSettingsPage() {
 
           <FieldNote
             id="workspace-notification-settings"
-            lines={2}
             error={mutation.error ? "Notification settings weren\u2019t saved. Try again." : null}
           />
           {saved ? (

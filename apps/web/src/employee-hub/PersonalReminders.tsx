@@ -179,7 +179,6 @@ export function PersonalTasks({
       )}
       <FieldNote
         id="personal-reminders"
-        lines={2}
         error={mutation.isError ? `${mutation.error.message} Your change hasn’t been confirmed.` : null}
       />
       <span className="sr-only" role="status">

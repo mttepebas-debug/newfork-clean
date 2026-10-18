@@ -74,8 +74,8 @@ export function CreateOrganizationButton({
         <Building2 size={16} aria-hidden />
         {busy ? "Starting" : "Create your workspace"}
       </Button>
-      {/* Kept room under the button, so nothing below moves (UI-FIELDMSG). */}
-      <FieldNote id="create-workspace" error={error} lines={2} />
+      {/* Under the button only while there is an error (UI-FIELDMSG-2). */}
+      <FieldNote id="create-workspace" error={error} />
     </>
   );
 }

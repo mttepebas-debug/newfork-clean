@@ -718,7 +718,6 @@ function ProfileStep({
               setProfile({ ...profile, emergency_contact_phone: value })
             }
             error={emergencyIsOwn ? emergencyIsOwnPhoneMessage : null}
-            reserve={emergencyIsOwnPhoneMessage}
           />
           <TextField
             label="Email (optional)"
@@ -804,7 +803,6 @@ function ProfileStep({
             )
           }
           error={phoneInUse ? phoneInUseNote : null}
-          reserve={phoneInUseNote}
         />
         <TextField
           label="Date of birth"
@@ -1131,7 +1129,6 @@ function PhoneField({
   readOnly = false,
   help,
   error,
-  reserve,
 }: {
   readonly label: string;
   readonly value: string;
@@ -1140,8 +1137,6 @@ function PhoneField({
   readonly help?: ReactNode;
   /** Said in red in the help line's place; the field turns red with it. */
   readonly error?: ReactNode;
-  /** The longest error the field can show, whose room is always kept. */
-  readonly reserve?: ReactNode;
 }) {
   const id = useId();
   return (
@@ -1156,7 +1151,7 @@ function PhoneField({
         aria-describedby={fieldNoteId(id, error, help)}
         onChange={onChange}
       />
-      <FieldNote id={id} help={help} error={error} reserve={reserve} />
+      <FieldNote id={id} help={help} error={error} />
     </div>
   );
 }

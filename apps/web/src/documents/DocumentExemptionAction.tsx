@@ -100,7 +100,6 @@ export function DocumentExemptionAction({
             </label>
             <FieldNote
               id="document-exemption"
-              lines={2}
               error={mutation.error ? errorText(mutation.error) : null}
             />
           </div>

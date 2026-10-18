@@ -109,7 +109,6 @@ export function DocumentDefinitionApply({
       {apply.isSuccess && <p role="status">Changes applied</p>}
       <FieldNote
         id={`document-apply-${id}`}
-        lines={2}
         error={preview.error || apply.error ? errorText(preview.error || apply.error) : null}
       />
     </section>

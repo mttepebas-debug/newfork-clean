@@ -58,8 +58,8 @@ export default function ForgotPasswordPage() {
               required
             />
           </div>
-          {/* Kept room: the error moves nothing (UI-FIELDMSG). */}
-          <FieldNote id="forgot-password-form" error={error} lines={2} />
+          {/* The form's own error, said whole (UI-FIELDMSG-2). */}
+          <FieldNote id="forgot-password-form" error={error} />
           <div className="pb-stack">
             <button
               type="submit"

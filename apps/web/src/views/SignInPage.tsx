@@ -149,8 +149,8 @@ export function SignInPage() {
               </Link>
             )}
           </div>
-          {/* Kept room: the error moves nothing (UI-FIELDMSG). */}
-          <FieldNote id="sign-in-form" error={error} lines={2} />
+          {/* The form's own error, said whole (UI-FIELDMSG-2). */}
+          <FieldNote id="sign-in-form" error={error} />
           <div className="pb-stack">
             <button
               type="submit"

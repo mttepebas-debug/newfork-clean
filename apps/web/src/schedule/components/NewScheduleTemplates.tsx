@@ -207,8 +207,8 @@ function TemplateRows(props: NewScheduleTemplatesProps): JSX.Element {
           </li>
         ))}
       </ul>
-      {/* The list's own error keeps its room under the list (UI-FIELDMSG). */}
-      <FieldNote id="new-schedule-templates" error={error} lines={2} />
+      {/* The list's own error under the list, said whole (UI-FIELDMSG-2). */}
+      <FieldNote id="new-schedule-templates" error={error} />
       {loadError}
     </>
   );

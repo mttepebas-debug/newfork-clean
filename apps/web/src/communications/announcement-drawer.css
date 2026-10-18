@@ -344,8 +344,8 @@
   font-size: 10.5px;
   font-weight: 800;
 }
-/* In the field's note line (UI-FIELDMSG) the line is one block, so a long
-   message is cut with an ellipsis; the "!" stays in front of it. */
+/* In the field's note line (UI-FIELDMSG-2) the "!" sits in front of the
+   first line and a long message wraps whole under it. */
 .announcement-drawer .field-note > .annc-error {
   display: block;
 }
@@ -965,14 +965,10 @@
   color: var(--theme-muted);
   font-size: 13px;
 }
-/* Kept above the list whether or not it says something, so the list never
-   moves (UI-FIELDMSG); tinted only while it does. */
+/* Above the list only while it says something (UI-FIELDMSG-2). */
 .announcement-drawer .annc-pane-error {
-  padding: 6px 10px;
-  border-bottom: 1px solid transparent;
-}
-.announcement-drawer .annc-pane-error[data-said="true"] {
-  border-bottom-color: var(--theme-danger-soft);
+  padding: 10px;
+  border-bottom: 1px solid var(--theme-danger-soft);
   background: var(--theme-danger-surface);
 }
 .announcement-drawer .annc-pick-foot {

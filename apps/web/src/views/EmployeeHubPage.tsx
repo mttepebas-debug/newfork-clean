@@ -437,7 +437,6 @@ function TimeOffView({ model, refresh }: HubMutationProps) {
           {/* Why it can't be sent, in one kept place above Submit (UI-FIELDMSG). */}
           <FieldNote
             id="time-off-check"
-            lines={2}
             error={
               rangeTooLong
                 ? "Choose a date range of at most 31 calendar days. No dates will be silently omitted."
@@ -564,12 +563,11 @@ function HubSection({
 function Empty({ text }: { text: string }) {
   return <p className="muted empty-inline">{text}</p>;
 }
-/** A section's own error in its kept place, so nothing below it moves (UI-FIELDMSG). */
+/** A section's own error, said whole, only while there is one (UI-FIELDMSG-2). */
 function InlineError({ id, error }: { id: string; error: unknown }) {
   return (
     <FieldNote
       id={id}
-      lines={2}
       error={error ? (error instanceof Error ? error.message : "Operation failed") : null}
     />
   );

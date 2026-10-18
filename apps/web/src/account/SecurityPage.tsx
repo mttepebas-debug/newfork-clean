@@ -225,7 +225,6 @@ export default function SecurityPage() {
       {/* The three password forms answer beside their own button; the rest here. */}
       <FieldNote
         id="security-page"
-        lines={2}
         error={failure && !["password", "sessions", "delete"].includes(failure.key) ? failure.message : null}
       />
       {status ? <p className="form-success" role="status">{status}</p> : null}
@@ -239,7 +238,7 @@ const passwordRefusals: Readonly<Record<string, string>> = {
   "session.password_required": "Type your account password to continue.",
 };
 
-/** A form's own refusal in its kept line (UI-FIELDMSG); scrolled into view so a button at the fold still shows it. */
+/** A form's own refusal above its button, said whole (UI-FIELDMSG-2); scrolled into view so a button at the fold still shows it. */
 function FormAlert({ id, message }: { readonly id: string; readonly message: string | null }) {
   const ref = useRef<HTMLDivElement>(null);
   useEffect(() => {
@@ -247,7 +246,7 @@ function FormAlert({ id, message }: { readonly id: string; readonly message: str
   }, [message]);
   return (
     <div ref={ref}>
-      <FieldNote id={id} error={message} lines={2} />
+      <FieldNote id={id} error={message} />
     </div>
   );
 }

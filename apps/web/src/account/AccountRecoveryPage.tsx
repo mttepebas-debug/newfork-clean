@@ -39,8 +39,8 @@ export default function AccountRecoveryPage() {
           : "This link works once, and only while the 14-day window is open."
       }
     >
-      {/* Kept room above the buttons, so they never move (UI-FIELDMSG). */}
-      <FieldNote id="account-recovery" error={error} lines={2} />
+      {/* The form's own error above the buttons, said whole (UI-FIELDMSG-2). */}
+      <FieldNote id="account-recovery" error={error} />
       <div className="pb-footer">
         {restored ? (
           <button

@@ -351,7 +351,6 @@ function LineupView({
             </Button>
             <FieldNote
               id={`employee-lineup-ack-${lineup.version_id}`}
-              lines={2}
               error={acknowledge.isError ? "It didn't go through. Check your connection, then try again." : null}
             />
           </div>

@@ -632,7 +632,6 @@ export default function ProfilePage() {
                   <FieldNote
                     id="account-contact-phone"
                     error={contactIsOwn ? emergencyIsOwnPhoneMessage : null}
-                    reserve={emergencyIsOwnPhoneMessage}
                   />
                 </label>
               </div>
@@ -669,7 +668,7 @@ export default function ProfilePage() {
         ) : null}
 
         {/* The form's own error keeps one line of room, so it moves nothing. */}
-        <FieldNote id="profile-form" error={error} lines={2} />
+        <FieldNote id="profile-form" error={error} />
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
         {/* Why Save is off: the missing fields, by name. */}
         {missing.length > 0 && !photoOnly ? (

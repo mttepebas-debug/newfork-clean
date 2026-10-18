@@ -346,7 +346,7 @@ function ManagerNotes({
     );
   };
 
-  // Over the body's bottom edge, above the buttons; nothing moves (UI-FIELDMSG).
+  // Over the body's bottom edge, above the buttons; the body gets room under it (UI-FIELDMSG-2).
   const errorLine = (
     <WindowAlert
       message={

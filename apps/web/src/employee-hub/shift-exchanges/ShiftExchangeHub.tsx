@@ -549,7 +549,6 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       )}
       <FieldNote
         id="shift-exchange-hub"
-        lines={2}
         error={
           mutation.error
             ? mutation.error.message +
@@ -1222,7 +1221,7 @@ function CaseDetail({
             : "Close cover search"}
         </button>
       )}
-      <FieldNote id={`shift-exchange-${item.id}`} lines={2} error={error} />
+      <FieldNote id={`shift-exchange-${item.id}`} error={error} />
       {history}
       {closing && (
         <ExchangeDialog

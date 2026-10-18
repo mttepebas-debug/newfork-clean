@@ -37,8 +37,8 @@ export type ProblemAt = (field: string) => string | undefined;
 type Update = (change: (draft: AnnouncementDraft) => AnnouncementDraft) => void;
 
 /**
- * The field's note line (UI-FIELDMSG): always there, the error in it while
- * there is one, so nothing below moves. Its error is `${id}-error`.
+ * The field's note line (UI-FIELDMSG-2): there only while it has an error,
+ * said whole. Its error is `${id}-error`.
  */
 export function FieldError({ id, message }: { id: string; message?: string }) {
   return <FieldNote id={id} error={message} className="annc-error" />;
@@ -608,9 +608,8 @@ function LocationsTable({
               <span role="cell" className="annc-loc-impact" data-tone={impact.tone}>
                 {impact.text}
               </span>
-              {/* A checked place keeps its note line: hours taken there are said
-                  in it without moving the rows below (UI-FIELDMSG). */}
-              {(row || error) && (
+              {/* Hours taken there are said under the place's row (UI-FIELDMSG-2). */}
+              {error && (
                 <span className="annc-loc-error">
                   <FieldError id={`annc-location-${location.id}`} message={error} />
                 </span>
@@ -924,9 +923,11 @@ export function AudienceTab({
                 </span>
               </div>
             )}
-            <div className="annc-pane-error" data-said={Boolean(problem)}>
-              <FieldError id="annc-people" message={problem} />
-            </div>
+            {problem && (
+              <div className="annc-pane-error">
+                <FieldError id="annc-people" message={problem} />
+              </div>
+            )}
             {checkedLocations.length > 0 && (
               <>
                 <div className="annc-group">From locations</div>

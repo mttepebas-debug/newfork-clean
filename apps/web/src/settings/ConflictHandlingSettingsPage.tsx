@@ -249,7 +249,6 @@ export default function ConflictHandlingSettingsPage() {
             ))}
             <FieldNote
               id="conflict-handling"
-              lines={2}
               error={
                 validation ??
                 (mutation.error

@@ -163,7 +163,7 @@ export function ExchangeScheduleRecovery({
           </button>
         </>
       )}
-      <FieldNote id="exchange-schedule-recovery" lines={2} error={error} />
+      <FieldNote id="exchange-schedule-recovery" error={error} />
       {!model && error && (
         <button type="button" onClick={() => setRefresh((value) => value + 1)}>
           Reload comparison
