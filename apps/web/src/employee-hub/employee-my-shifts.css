@@ -10,10 +10,12 @@
 .ems-seg-i { position: absolute; top: 4px; bottom: 4px; left: 4px; width: calc(50% - 4px); border-radius: 10px; background: var(--theme-surface); box-shadow: 0 1px 3px rgba(0, 0, 0, .12); transform: translateX(calc(var(--pos, 0) * 100%)); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
 /* The week moves only from the switch: the two weeks are one track that slides under a transform, never a
    scroll (a scrolled pager pushed the app's scroll area sideways on a phone); touch-action pan-y leaves a
-   sideways swipe to the page tabs. The pill slides with it, as in the lab page. */
-.ems-pager { overflow: hidden; touch-action: pan-y; }
+   sideways swipe to the page tabs. The pill slides with it, as in the lab page. Clip, not hidden: a hidden box
+   is still a scroll box, and the page's scroll to a #shift- address slid it under the transform (the list showed
+   empty). The 6px each side is room for a tapped shift's halo. */
+.ems-pager { overflow-x: clip; margin: 0 -6px; touch-action: pan-y; }
 .ems-track { display: grid; grid-template-columns: 1fr 1fr; align-items: start; width: 200%; transform: translateX(calc(var(--pos, 0) * -50%)); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
-.ems-week { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.ems-week { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0 6px; }
 .ems-day { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; border-radius: 16px; background: var(--theme-surface); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); }
 .ems-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 54px; border-radius: 12px; background: var(--theme-surface-muted); }
 .ems-date span { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--theme-muted); }

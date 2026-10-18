@@ -145,6 +145,23 @@ test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a t
   await emre.getByRole("tabpanel", { name: "This week" }).getByRole("link", { name: /9:00 AM – 5:00 PM/ }).tap();
   await expect(emre.getByRole("dialog", { name: "Your shift" })).toBeVisible();
   await emre.screenshot({ path: `${shots}my-shifts-sheet-390.png` });
+  await emre.keyboard.press("Escape");
+  await expect(emre.getByRole("dialog", { name: "Your shift" })).toBeHidden();
+
+  // "Open in my schedule" (a shift's sheet on Home) lands on next week's shift by its #shift- address while the
+  // weeks are already loaded: the page's scroll to it must not move the list's frame under the slide.
+  const next = addDays(thisMonday(), 8);
+  await emre.evaluate((url) => {
+    history.pushState(null, "", url);
+    dispatchEvent(new PopStateEvent("popstate"));
+  }, `/app/employee-hub/schedule?date=${next}&shift=${uuid(2)}#shift-${uuid(2)}`);
+  await expect(emre.getByRole("tab", { name: "Next week" })).toHaveAttribute("aria-selected", "true");
+  await expect(emre.getByRole("dialog", { name: "Your shift" })).toBeVisible();
+  await expect.poll(() => offset("Next week")).toBe(0);
+  expect(await emre.locator(".ems-pager").evaluate((pager) => pager.scrollLeft)).toBe(0);
+  await emre.keyboard.press("Escape");
+  await emre.getByRole("tab", { name: "This week" }).tap();
+  await expect.poll(() => offset("This week")).toBe(0);
 
   // The team's board is not a phone page: its address opens My shifts.
   await emre.goto("/app/employee-hub/schedule/team");
