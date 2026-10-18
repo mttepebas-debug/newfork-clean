@@ -277,6 +277,12 @@ export function phoneLineupShift(
   return staffed[0] ?? shifts[0] ?? null;
 }
 
+/**
+ * The least time a button that works in place (the Edit window's Edit, Acknowledge) shows its spinner, so a quick
+ * answer still reads (Mert 2026-10-17 ~1:45 PM; mockup v-e.js 0.8 s).
+ */
+export const LINEUP_BUSY_MS = 800;
+
 /** One shift tab over the locations shown: its people at all of them. */
 export interface PhoneShiftTab {
   readonly key: string;

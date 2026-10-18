@@ -9,7 +9,8 @@ import "./lineup-read.css";
 // Who read a published lineup (Mert 2026-10-17, "Acknowledge edenleri listelemesi şart"; mockup v-c.js readTab):
 // "7 of 11 read" and its bar, then Not read yet, Read (with the time) and No app (not counted) on the desktop's Read
 // panel. The phone's Read tab (Mert 2026-10-17 ~12:30 PM, ~1 PM) has the same lists without the summary: Read first,
-// then Not read yet and No app, and one thin bar on the first heading.
+// then Not read yet and No app, and one thin bar on the first heading. Every time is on the location's clock, as
+// the card's "Published at" is, not the phone's.
 
 function initials(name: string): string {
   return name
@@ -66,11 +67,11 @@ function Group({
 
 const unreadWhen = () => <span className="lineup-read-when">—</span>;
 const noAppWhen = () => <span className="lineup-read-when">Not counted</span>;
-function readWhen(timeFormat: ScheduleTimeFormat) {
+function readWhen(timeFormat: ScheduleTimeFormat, timezone: string | undefined) {
   return (person: LineupReader) => (
     <span className="lineup-read-when is-read">
       <Check size={14} aria-hidden />
-      {publishedAt(person.acknowledgedAt, timeFormat)}
+      {publishedAt(person.acknowledgedAt, timeFormat, timezone)}
     </span>
   );
 }
@@ -79,9 +80,12 @@ function readWhen(timeFormat: ScheduleTimeFormat) {
 export function LineupReadPhone({
   shift,
   timeFormat,
+  timezone,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
+  /** The location's IANA zone. */
+  readonly timezone?: string;
 }): JSX.Element {
   const { acknowledged, withApp } = shift.publish;
   const lists = lineupReadLists(shift);
@@ -108,7 +112,7 @@ export function LineupReadPhone({
   const onRead = lists.read.length > 0;
   return (
     <div className="lineup-read is-phone">
-      <Group title="Read" people={lists.read} when={readWhen(timeFormat)} lead={onRead ? lead : undefined} />
+      <Group title="Read" people={lists.read} when={readWhen(timeFormat, timezone)} lead={onRead ? lead : undefined} />
       <Group title="Not read yet" people={lists.unread} when={unreadWhen} lead={onRead ? undefined : lead} />
       <Group title="No app" people={lists.noApp} when={noAppWhen} />
     </div>
@@ -118,9 +122,12 @@ export function LineupReadPhone({
 export function LineupReadLists({
   shift,
   timeFormat,
+  timezone,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
+  /** The location's IANA zone. */
+  readonly timezone?: string;
 }): JSX.Element {
   const { publish } = shift;
   const lists = lineupReadLists(shift);
@@ -135,10 +142,10 @@ export function LineupReadLists({
         <i className="lineup-read-progress" role="img" aria-label={`${percent}% read`}>
           <i style={{ width: `${percent}%` }} />
         </i>
-        <p>Published {publishedAt(publish.sharedAt, timeFormat)}. People who open the app later see it too.</p>
+        <p>Published {publishedAt(publish.sharedAt, timeFormat, timezone)}. People who open the app later see it too.</p>
       </div>
       <Group title="Not read yet" people={lists.unread} when={unreadWhen} />
-      <Group title="Read" people={lists.read} when={readWhen(timeFormat)} />
+      <Group title="Read" people={lists.read} when={readWhen(timeFormat, timezone)} />
       <Group title="No app" people={lists.noApp} when={noAppWhen} />
     </div>
   );
@@ -151,11 +158,14 @@ export function LineupReadLists({
 export function LineupReadPanel({
   shift,
   timeFormat,
+  timezone,
   onClose,
   returnFocus,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
+  /** The location's IANA zone. */
+  readonly timezone?: string;
   readonly onClose: () => void;
   /** Where focus goes back when it closes (the count that opened it). */
   readonly returnFocus: () => void;
@@ -190,7 +200,7 @@ export function LineupReadPanel({
       aria-label={`Who read ${shift.name}`}
       tabIndex={-1}
     >
-      <LineupReadLists shift={shift} timeFormat={timeFormat} />
+      <LineupReadLists shift={shift} timeFormat={timeFormat} timezone={timezone} />
     </section>
   );
 }

@@ -111,8 +111,6 @@ export function LineupPage() {
     () => (day.data ? lineupDay(day.data, model ?? null, phone ? {} : { locationId, shiftTypeId }) : []),
     [day.data, model, locationId, shiftTypeId, phone],
   );
-  // A phone shows one location: the chosen one, else the first.
-  const phoneLocation = phone ? lineups.find((location) => location.id === locationId) ?? lineups[0] ?? null : null;
 
   function setParam(key: string, value: string) {
     setParams(
@@ -186,12 +184,12 @@ export function LineupPage() {
           ) : null
         }
         locations={lineups}
-        location={phoneLocation}
+        locationId={locationId}
         onLocation={(id) => setParam("location", id)}
         chosen={shiftTypeId}
         onShift={(key) => setParam("shift", key)}
-        // Whether a shift has started is told by the location's clock, not the phone's.
-        now={phoneLocation && date === todayIn(phoneLocation.timezone) ? clockIn(phoneLocation.timezone) : null}
+        // Whether a shift has started is told by each location's clock, not the phone's.
+        nowAt={(location) => (date === todayIn(location.timezone) ? clockIn(location.timezone) : null)}
         timeFormat={timeFormat}
         publish={
           canShare && day.data
@@ -411,7 +409,9 @@ function LocationLineup({
             </p>
           ) : null}
           {location.shifts.length ? (
-            location.shifts.map((shift) => <ShiftLineup key={shift.key} shift={shift} timeFormat={timeFormat} />)
+            location.shifts.map((shift) => (
+              <ShiftLineup key={shift.key} shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
+            ))
           ) : (
             <p className="lineup-empty-shift">No shifts for this filter.</p>
           )}
@@ -421,7 +421,16 @@ function LocationLineup({
   );
 }
 
-function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
+function ShiftLineup({
+  shift,
+  timeFormat,
+  timezone,
+}: {
+  readonly shift: LineupShift;
+  readonly timeFormat: ScheduleTimeFormat;
+  /** The location's IANA zone: when it went out and who read it when, on its clock. */
+  readonly timezone: string;
+}) {
   const [open, setOpen] = useState(true);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   if (!shift.count) {
@@ -448,7 +457,7 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
         />
         <span className="lineup-shift-title">
           <h3>{shift.name}</h3>
-          <ShiftStatus shift={shift} timeFormat={timeFormat} />
+          <ShiftStatus shift={shift} timeFormat={timeFormat} timezone={timezone} />
         </span>
         <span className="lineup-shift-meta">
           {shift.count} {shift.count === 1 ? "person" : "people"}
@@ -501,7 +510,15 @@ function ShiftLineup({ shift, timeFormat }: { readonly shift: LineupShift; reado
 }
 
 /** Under the shift's name (Mert 2026-10-13): green "Published 2:10 PM" and, when staff were asked, "Read 7/11". */
-function ShiftStatus({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
+function ShiftStatus({
+  shift,
+  timeFormat,
+  timezone,
+}: {
+  readonly shift: LineupShift;
+  readonly timeFormat: ScheduleTimeFormat;
+  readonly timezone: string;
+}) {
   const { publish } = shift;
   const [reading, setReading] = useState(false);
   const close = useCallback(() => setReading(false), []);
@@ -510,7 +527,7 @@ function ShiftStatus({ shift, timeFormat }: { readonly shift: LineupShift; reado
   if (!publish.published) return null;
   return (
     <span className="lineup-shift-status">
-      <span className="lineup-shift-published">Published {publishedAt(publish.sharedAt, timeFormat)}</span>
+      <span className="lineup-shift-published">Published {publishedAt(publish.sharedAt, timeFormat, timezone)}</span>
       {publish.askAck ? (
         // Mert 2026-10-17: the count opens who read it and who hasn't.
         <span className="lineup-shift-read-anchor">
@@ -525,7 +542,9 @@ function ShiftStatus({ shift, timeFormat }: { readonly shift: LineupShift; reado
           >
             Read {publish.acknowledged}/{publish.withApp}
           </button>
-          {reading ? <LineupReadPanel shift={shift} timeFormat={timeFormat} onClose={close} returnFocus={backToCount} /> : null}
+          {reading ? (
+            <LineupReadPanel shift={shift} timeFormat={timeFormat} timezone={timezone} onClose={close} returnFocus={backToCount} />
+          ) : null}
         </span>
       ) : null}
     </span>

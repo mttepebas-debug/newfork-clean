@@ -720,9 +720,76 @@
   gap: 6px;
 }
 
-/* Room under the last row for the Publish dock (44 px + 10 px) and a little air. */
+/* Room under the last row. While Publish shows (44 px, 10 px over the bar), as much as it covers and a little air,
+   so the last row clears it once scrolled; a row brought into view by the keyboard clears it too (scroll-padding on
+   the area that scrolls). Without Publish, only the air. */
 .lineup-phone-end {
-  height: 70px;
+  height: 24px;
+}
+.lineup-phone-end.has-dock {
+  height: 74px;
+}
+.app-main:has(.lineup-phone-end.has-dock) {
+  scroll-padding-bottom: 74px;
+}
+
+/* All locations (Mert 2026-10-17 ~9:10 AM; mockup v-e.css .e-lsep, .e-lblock): every location's card and list,
+   one under the other; a line only where an open list ends and the next card begins, folded cards simply stack. */
+.lineup-phone-page .lineup-phone-sep {
+  height: 0;
+  margin: 28px -4px 24px;
+  border: 0;
+  border-top: 1px solid var(--theme-border-strong);
+}
+.lineup-phone-page .lineup-phone-sep + .lineup-phone-block > .lineup-card,
+.lineup-phone-page .lineup-phone-sep + .lineup-phone-block > .lineup-phone-short {
+  margin-top: 0;
+}
+.lineup-phone-page .lineup-phone-block.is-stacked > .lineup-card {
+  margin-top: 10px;
+}
+
+/* Edit has taken the lineup back (notice A, Mert 2026-10-17 ~1:15 PM): no notice; Draft and "Not published yet"
+   light up once on the card (mockup v-e.css e-flash-draft). */
+.lineup-card-status.is-flash,
+.lineup-card-at.is-flash {
+  border-radius: 6px;
+  animation: lineup-flash-draft 1.8s ease-out;
+}
+@keyframes lineup-flash-draft {
+  0%,
+  35% {
+    background: var(--theme-warning-soft);
+    box-shadow: 0 0 0 4px var(--theme-warning-soft);
+  }
+  100% {
+    background: transparent;
+    box-shadow: 0 0 0 4px transparent;
+  }
+}
+
+/* The Edit window's green Edit works in place (Mert 2026-10-17 ~1:45 PM): while it takes the lineup back it spins
+   and says "Unpublishing…" (the window is shell/ConfirmDialog; its points mark it as the Edit window). */
+.app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled {
+  gap: 8px;
+  opacity: 1;
+  cursor: default;
+}
+.app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled::before {
+  content: "";
+  width: 14px;
+  height: 14px;
+  flex: none;
+  box-sizing: border-box;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: lineup-spin 0.7s linear infinite;
+}
+@keyframes lineup-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 /* Publish (D1, D3): as wide as its words, 44 px, 14 px text, 12 px corners, a light shadow; its right edge on
@@ -821,7 +888,13 @@
     transition: none;
   }
   .lineup-wheel.is-bump .lineup-wheel-track,
-  .lineup-publish-window.is-sheet {
+  .lineup-publish-window.is-sheet,
+  .lineup-card-status.is-flash,
+  .lineup-card-at.is-flash {
     animation: none;
+  }
+  /* No motion: the words change, no spinner. */
+  .app-confirm:has(.lineup-edit-points) footer .nf-button:not(.secondary-button):disabled::before {
+    content: none;
   }
 }

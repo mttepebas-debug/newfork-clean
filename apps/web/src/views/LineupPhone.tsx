@@ -1,6 +1,8 @@
 import { Ban, ChevronDown, Eye, EyeOff, Lock, MapPin, MessageSquareText, Pencil, RotateCw, Sparkles, Users } from "lucide-react";
 import {
+  Fragment,
   useEffect,
+  useId,
   useLayoutEffect,
   useRef,
   useState,
@@ -17,7 +19,9 @@ import {
   lineupCardState,
   lineupNoteCount,
   lineupShiftSpan,
-  phoneLineupShift,
+  LINEUP_BUSY_MS as BUSY_MS,
+  phoneLineupKey,
+  phoneShiftTabs,
   type LineupLocation,
   type LineupRow,
   type LineupShift,
@@ -76,11 +80,11 @@ export function PhoneLineupPage({
   loading,
   error,
   locations,
-  location,
+  locationId,
   onLocation,
   chosen,
   onShift,
-  now,
+  nowAt,
   timeFormat,
   publish,
 }: {
@@ -95,51 +99,64 @@ export function PhoneLineupPage({
   /** The load-error card, when the day didn't load. */
   readonly error: ReactNode | null;
   readonly locations: readonly LineupLocation[];
-  readonly location: LineupLocation | null;
+  /** The location picked; "" is All locations (one location: that one). */
+  readonly locationId: string;
   readonly onLocation: (id: string) => void;
   readonly chosen: string;
   readonly onShift: (key: string) => void;
-  /** HH:MM on the location's clock when the day is today there. */
-  readonly now: string | null;
+  /** HH:MM on a location's clock when the day is today there: its lock reads it. */
+  readonly nowAt: (location: LineupLocation) => string | null;
   readonly timeFormat: ScheduleTimeFormat;
   /** Publishing, and taking a lineup back to draft (Edit), for someone who may. */
   readonly publish: PhonePublish | null;
 }) {
-  const [picked, setSeg] = useState<Seg>("team");
   // Folded cards, by location and shift (Mert 2026-10-17 ~9:10 AM: a tap on a card folds that place's list).
   const [shut, setShut] = useState<ReadonlySet<string>>(() => new Set());
 
-  const ready = !loading && !error && location && !location.closed;
-  const shift = ready ? phoneLineupShift(location.shifts, chosen, now) : null;
-  const live = Boolean(shift?.publish.published);
-  // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
-  const seg: Seg = picked === "read" && !live ? "team" : picked;
-  const foldKey = shift && location ? `${location.id}:${shift.key}` : "";
-  const open = Boolean(shift) && !shut.has(foldKey);
-  // A swipe sideways moves between Team, Notes and Read (KARARLAR §1.5); the day wheel and the shift tabs keep
-  // their own, so a swipe never changes the shift (it is chosen by its tab).
-  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg });
-  const fold = () =>
+  // All locations (Mert 2026-10-17 ~9:10 AM): with more than one, the list starts with it and it is the default;
+  // every location shown has its own card and list, one under the other.
+  const picked = locations.find((item) => item.id === locationId) ?? null;
+  const shown = picked ? [picked] : locations.length > 1 ? locations : locations.slice(0, 1);
+  const ready = !loading && !error;
+  const open = ready ? shown.filter((item) => !item.closed) : [];
+  const key = ready ? phoneLineupKey(open, chosen, nowAt) : null;
+  const tabs = phoneShiftTabs(open);
+  type Block = { readonly location: LineupLocation; readonly shift: LineupShift | null };
+  const blocks: Block[] = ready
+    ? shown.flatMap((location): Block[] => {
+        if (location.closed) return [{ location, shift: null }];
+        const shift = location.shifts.find((item) => item.key === key);
+        return shift ? [{ location, shift }] : [];
+      })
+    : [];
+  const foldKeyOf = (location: LineupLocation, shift: LineupShift | null) => (shift ? `${location.id}:${shift.key}` : location.id);
+  const fold = (foldKey: string) =>
     setShut((current) => {
       const next = new Set(current);
       if (next.has(foldKey)) next.delete(foldKey);
       else next.add(foldKey);
       return next;
     });
-  // Publish only while this shift, at this place, has a draft that can go out (Mert 2026-10-17 ~1:40 PM); an open
-  // sheet stays until it is closed.
-  const dock = publish && (publish.open || (shift && canPublish(shift))) ? publish : null;
-  const joined = open && seg === "team" && shift?.count === 0;
+  // Publish only while the shift on screen, at a location shown, has a draft that can go out (Mert 2026-10-17
+  // ~1:40 PM); an open sheet stays until it is closed.
+  const dock = publish && (publish.open || blocks.some(({ shift }) => shift && canPublish(shift))) ? publish : null;
+  const many = blocks.length > 1;
 
   return (
-    <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title" ref={swipe.root}>
+    <section className="lineup-page list-page lineup-phone-page" aria-labelledby="lineup-title">
       {/* The one fixed piece, at its full size: the shell's frozen top leaves it alone (data-frozen-own). */}
       <div className="lineup-phone-head" data-frozen-own="">
         {header}
       </div>
       <div className="lineup-phone-top">
         <LineupDayPicker date={date} today={today} onDate={onDate}>
-          <LineupLocationSelect loading={loading} locations={locations} value={location?.id ?? ""} onChange={onLocation} />
+          <LineupLocationSelect
+            loading={loading}
+            locations={locations}
+            value={picked?.id ?? ""}
+            allLabel="All locations"
+            onChange={onLocation}
+          />
         </LineupDayPicker>
         <div className="lineup-phone-tabs-slot">
           {loading ? (
@@ -148,64 +165,128 @@ export function PhoneLineupPage({
               <Skeleton width={70} height={12} className="on-page" />
               <Skeleton width={56} height={12} className="on-page" />
             </div>
-          ) : ready && location.shifts.length ? (
-            <LineupShiftTabs shifts={location.shifts} chosen={shift?.key ?? null} onChoose={onShift} />
+          ) : tabs.length ? (
+            <LineupShiftTabs shifts={tabs} chosen={key} onChoose={onShift} />
           ) : null}
         </div>
       </div>
 
       {loading ? (
         <PhoneLineupOutline />
-      ) : shift && location ? (
-        <>
-          {location.shortHours?.opens && location.shortHours.closes ? (
-            <p className="lineup-short lineup-phone-short" role="note">
-              Short hours today: open {range(location.shortHours.opens, location.shortHours.closes, timeFormat)} (
-              {location.shortHours.title}).
-            </p>
-          ) : null}
-          <LineupCard
-            location={location}
-            shift={shift}
-            dateLabel={dateLabel}
-            now={now}
-            timeFormat={timeFormat}
-            open={open}
-            joined={joined}
-            onFold={fold}
-            edit={publish ? { workspaceId, date } : null}
-            cardRef={swipe.tabs}
-          >
-            <Segments shift={shift} seg={seg} onSeg={setSeg} />
-          </LineupCard>
-        </>
+      ) : error ? (
+        <div className="lineup-phone-pane">{error}</div>
+      ) : !locations.length ? (
+        <p className="lineup-phone-empty">No locations to show.</p>
+      ) : !blocks.length ? (
+        <p className="lineup-phone-empty">No shifts this day.</p>
+      ) : (
+        blocks.map(({ location, shift }, index) => {
+          const previous = blocks[index - 1];
+          // A line only where an open lineup's list ends and the next card begins (Mert 2026-10-17 ~11:20 AM);
+          // folded cards simply stack.
+          const line = Boolean(previous && !shut.has(foldKeyOf(previous.location, previous.shift)));
+          return (
+            <Fragment key={location.id}>
+              {line ? <hr className="lineup-phone-sep" /> : null}
+              {shift ? (
+                <LocationLineup
+                  location={location}
+                  shift={shift}
+                  dateLabel={dateLabel}
+                  now={nowAt(location)}
+                  timeFormat={timeFormat}
+                  open={!shut.has(foldKeyOf(location, shift))}
+                  onFold={() => fold(foldKeyOf(location, shift))}
+                  edit={publish ? { workspaceId, date } : null}
+                  stacked={Boolean(previous) && !line}
+                />
+              ) : (
+                <p className="lineup-phone-empty">
+                  {many ? `${location.name} · ` : ""}Closed today · {location.closed!.title}
+                </p>
+              )}
+            </Fragment>
+          );
+        })
+      )}
+      {/* Room under the last row: while Publish shows, what it covers (44 px, 10 px over the bar) and a little air,
+          so the last row clears it once scrolled (lineup-phone.css); otherwise only the air. */}
+      <div className={`lineup-phone-end${dock ? " has-dock" : ""}`} aria-hidden />
+      {dock ? <PublishDock publish={dock} /> : null}
+    </section>
+  );
+}
+
+/**
+ * One location's lineup on the phone: its short hours, its card (Team · Notes · Read inside) and its pane. Each
+ * location keeps its own tab; a sideways swipe on it moves between that location's tabs (KARARLAR §1.5), never
+ * the shift (it is chosen by its tab).
+ */
+function LocationLineup({
+  location,
+  shift,
+  dateLabel,
+  now,
+  timeFormat,
+  open,
+  onFold,
+  edit,
+  stacked,
+}: {
+  readonly location: LineupLocation;
+  readonly shift: LineupShift;
+  readonly dateLabel: string;
+  readonly now: string | null;
+  readonly timeFormat: ScheduleTimeFormat;
+  readonly open: boolean;
+  readonly onFold: () => void;
+  readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
+  /** Right under a folded card: a small gap, no line. */
+  readonly stacked: boolean;
+}) {
+  const [picked, setSeg] = useState<Seg>("team");
+  const ids = useId();
+  const live = shift.publish.published;
+  // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
+  const seg: Seg = picked === "read" && !live ? "team" : picked;
+  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg });
+  const joined = open && seg === "team" && shift.count === 0;
+  const panel = `${ids}panel`;
+  return (
+    <div className={`lineup-phone-block${stacked ? " is-stacked" : ""}`} ref={swipe.root}>
+      {location.shortHours?.opens && location.shortHours.closes ? (
+        <p className="lineup-short lineup-phone-short" role="note">
+          Short hours today: open {range(location.shortHours.opens, location.shortHours.closes, timeFormat)} (
+          {location.shortHours.title}).
+        </p>
       ) : null}
-      {loading || (shift && !open) ? null : (
-        <div
-          className="lineup-phone-pane"
-          {...(shift ? { role: "tabpanel", id: "lineup-phone-panel", "aria-labelledby": `lineup-phone-seg-${seg}` } : {})}
-        >
-          {error ? (
-            error
-          ) : !location ? (
-            <p className="lineup-phone-empty">No locations to show.</p>
-          ) : location.closed ? (
-            <p className="lineup-phone-empty">Closed today · {location.closed.title}</p>
-          ) : !shift ? (
-            <p className="lineup-phone-empty">No shifts this day.</p>
-          ) : seg === "notes" ? (
+      <LineupCard
+        location={location}
+        shift={shift}
+        dateLabel={dateLabel}
+        now={now}
+        timeFormat={timeFormat}
+        open={open}
+        joined={joined}
+        onFold={onFold}
+        edit={edit}
+        panel={panel}
+        cardRef={swipe.tabs}
+      >
+        <Segments shift={shift} seg={seg} onSeg={setSeg} ids={ids} panel={panel} />
+      </LineupCard>
+      {open ? (
+        <div className="lineup-phone-pane" role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
+          {seg === "notes" ? (
             <NotesPane shift={shift} />
           ) : seg === "read" ? (
-            <ReadPane shift={shift} timeFormat={timeFormat} />
+            <ReadPane shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
           ) : (
             <TeamPane location={location} shift={shift} timeFormat={timeFormat} />
           )}
         </div>
-      )}
-      {/* Room under the last row for the Publish dock (44 px + 10 px) and a little air. */}
-      <div className="lineup-phone-end" aria-hidden />
-      {dock ? <PublishDock publish={dock} /> : null}
-    </section>
+      ) : null}
+    </div>
   );
 }
 
@@ -224,6 +305,7 @@ function LineupCard({
   joined,
   onFold,
   edit,
+  panel,
   cardRef,
   children,
 }: {
@@ -238,11 +320,16 @@ function LineupCard({
   readonly onFold: () => void;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
+  /** The id of the pane the card's tabs and chevron control. */
+  readonly panel: string;
   readonly cardRef: Ref<HTMLElement>;
   readonly children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
   const { live, started } = lineupCardState(shift, now);
+  // Edit has taken it back (Mert 2026-10-17 ~1:15 PM, notice A): no notice; the card's Draft lights up once.
+  const [flash, setFlash] = useState(false);
+  const lit = flash && !live ? " is-flash" : "";
   const span = lineupShiftSpan(shift);
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   // On the location's clock, the one the started lock reads.
@@ -274,7 +361,7 @@ function LineupCard({
         </p>
         <p className="lineup-card-date">{dateLabel}</p>
         <div className="lineup-card-state">
-          <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}`}>
+          <p className={`lineup-card-status ${live ? "is-live" : "is-draft"}${lit}`} onAnimationEnd={() => setFlash(false)}>
             <i aria-hidden />
             {live ? "Live" : "Draft"}
           </p>
@@ -291,7 +378,7 @@ function LineupCard({
             </button>
           ) : null}
         </div>
-        <p className={`lineup-card-at${live ? "" : " is-off"}`}>
+        <p className={`lineup-card-at${live ? "" : " is-off"}${lit}`}>
           {live ? `Published at ${at}` : started ? "Not published" : "Not published yet"}
         </p>
         <button
@@ -299,7 +386,7 @@ function LineupCard({
           ref={foldButton}
           className="lineup-card-fold"
           aria-expanded={open}
-          aria-controls={open ? "lineup-phone-panel" : undefined}
+          aria-controls={open ? panel : undefined}
           aria-label={open ? "Hide list" : "Show list"}
           onClick={onFold}
         >
@@ -339,6 +426,7 @@ function LineupCard({
           onClose={() => setEditing(false)}
           onDone={() => {
             setEditing(false);
+            setFlash(true);
             setBackToFold((count) => count + 1);
           }}
         />
@@ -371,20 +459,37 @@ function EditLineup({
 }) {
   const command = useLineupCommand(workspaceId, date);
   const [refused, setRefused] = useState<string | null>(null);
+  // The green Edit says what it does (Mert 2026-10-17 ~1:45 PM): a spinner and "Unpublishing…" for at least
+  // BUSY_MS, so a quick answer still reads; then the window closes on the draft.
+  const [working, setWorking] = useState(false);
+  const timer = useRef<number | undefined>(undefined);
+  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const busy = working || command.isPending;
   return (
     <ConfirmDialog
       open
       title={`Edit ${shift.name} lineup?`}
       description={`${location.name} · Published at ${at}`}
-      confirmLabel="Edit"
-      busy={command.isPending}
+      confirmLabel={busy ? "Unpublishing…" : "Edit"}
+      busy={busy}
       onCancel={onClose}
-      onConfirm={() =>
+      onConfirm={() => {
+        const since = Date.now();
+        setWorking(true);
+        setRefused(null);
         command.mutate(
           { kind: "unpublish", lineups: [shift.publish.target] },
-          { onSuccess: onDone, onError: (reason) => setRefused(lineupCommandMessage(reason)) },
-        )
-      }
+          {
+            onSuccess: () => {
+              timer.current = window.setTimeout(onDone, Math.max(0, BUSY_MS - (Date.now() - since)));
+            },
+            onError: (reason) => {
+              setWorking(false);
+              setRefused(lineupCommandMessage(reason));
+            },
+          },
+        );
+      }}
     >
       <ul className="lineup-edit-points">
         <li>
@@ -420,10 +525,15 @@ function Segments({
   shift,
   seg,
   onSeg,
+  ids,
+  panel,
 }: {
   readonly shift: LineupShift;
   readonly seg: Seg;
   readonly onSeg: (seg: Seg) => void;
+  /** The location's own id prefix: every location shown has its tabs. */
+  readonly ids: string;
+  readonly panel: string;
 }) {
   const { publish } = shift;
   const notes = lineupNoteCount(publish.notes);
@@ -439,18 +549,18 @@ function Segments({
     const at = on.findIndex(([key]) => key === seg);
     const next = on[(at + (event.key === "ArrowRight" ? 1 : on.length - 1)) % on.length]![0];
     onSeg(next);
-    document.getElementById(`lineup-phone-seg-${next}`)?.focus();
+    document.getElementById(`${ids}seg-${next}`)?.focus();
   };
   return (
     <div className="lineup-phone-segs" role="tablist" aria-label="Lineup" onKeyDown={keys}>
       {items.map(([key, label, count, enabled]) => (
         <button
           key={key}
-          id={`lineup-phone-seg-${key}`}
+          id={`${ids}seg-${key}`}
           type="button"
           role="tab"
           aria-selected={seg === key}
-          aria-controls="lineup-phone-panel"
+          aria-controls={panel}
           tabIndex={seg === key ? 0 : -1}
           disabled={!enabled}
           title={enabled ? undefined : "After you publish"}
@@ -600,7 +710,16 @@ function NotesPane({ shift }: { readonly shift: LineupShift }) {
 }
 
 /** Who read the lineup staff see: one bar on the first heading, then Read, Not read yet and No app. */
-function ReadPane({ shift, timeFormat }: { readonly shift: LineupShift; readonly timeFormat: ScheduleTimeFormat }) {
+function ReadPane({
+  shift,
+  timeFormat,
+  timezone,
+}: {
+  readonly shift: LineupShift;
+  readonly timeFormat: ScheduleTimeFormat;
+  /** The location's: read times are its clock's, as "Published at" is. */
+  readonly timezone: string;
+}) {
   if (!shift.publish.askAck)
     return (
       <div className="lineup-phone-calm">
@@ -609,7 +728,7 @@ function ReadPane({ shift, timeFormat }: { readonly shift: LineupShift; readonly
         <span>Staff were notified without being asked to acknowledge.</span>
       </div>
     );
-  return <LineupReadPhone shift={shift} timeFormat={timeFormat} />;
+  return <LineupReadPhone shift={shift} timeFormat={timeFormat} timezone={timezone} />;
 }
 
 function PhoneLineupOutline() {

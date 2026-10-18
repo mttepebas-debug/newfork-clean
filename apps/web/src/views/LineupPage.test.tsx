@@ -56,7 +56,13 @@ let published: Record<string, Partial<LineupDayLineup>> = {};
 const commands: unknown[] = [];
 // Who read a lineup: per employee, when she acknowledged, or "no app".
 let reads: Record<string, string | "no app"> = {};
+// The locations the day read answers for (null: all of the model's): a manager who runs one place sees one.
+let only: string | null = null;
+// A location's time zone the day read gives, by location id (the model's otherwise).
+let zones: Record<string, string> = {};
 function readers(read: ReturnType<typeof dayRead>) {
+  if (only) read.locations = read.locations.filter((location) => location.id === only);
+  for (const location of read.locations) location.timezone = zones[location.id] ?? location.timezone;
   for (const location of read.locations)
     for (const lineup of location.lineups)
       for (const row of lineup.rows) {
@@ -98,6 +104,8 @@ beforeEach(() => {
   published = {};
   reads = {};
   clocks = {};
+  only = null;
+  zones = {};
   commands.length = 0;
   world = model([
     shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] }),
@@ -277,6 +285,23 @@ describe("LineupPage publishing", () => {
     expect(document.activeElement).toBe(count);
   });
 
+  // Read times and "Published" are the location's clock's, as on the phone: 21:10 / 21:40 UTC are 5:10 / 5:40 PM
+  // in New York.
+  it("tells when it went out and who read it when on the location's clock", async () => {
+    zones = { [downtown]: "America/New_York" };
+    reads = { [maria]: "2026-10-13T21:40:00Z" };
+    published = {
+      [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    renderPage();
+    const downtownCard = await screen.findByRole("article", { name: "Downtown" });
+    expect(within(downtownCard).getByText("Published 5:10 PM")).toBeTruthy();
+    fireEvent.click(within(downtownCard).getByRole("button", { name: "Read by 1 of 1 with the app" }));
+    const panel = screen.getByRole("dialog", { name: "Who read Lunch" });
+    expect(within(panel).getByText(/^Published 5:10 PM\./)).toBeTruthy();
+    expect(within(within(panel).getByRole("region", { name: "Read" })).getByRole("listitem").textContent).toBe("MLMaria LopezServer5:40 PM");
+  });
+
   it("says what a refused publish means, never the server's sentence", async () => {
     api.mockImplementation(async (_client, path) => {
       if (path.endsWith("/lineups/commands")) throw new RequestError("raw sentence", "lineup.one_day", undefined, 400);
@@ -344,11 +369,11 @@ describe("LineupPage on a phone", () => {
     expect(screen.queryByRole("navigation", { name: "Days of the week" })).toBeNull();
     expect(screen.queryByRole("combobox", { name: "Filter by shift" })).toBeNull();
     const location = screen.getByRole("combobox", { name: "Location" }) as HTMLSelectElement;
-    expect([...location.options].map((option) => option.text)).toEqual(["Downtown", "Uptown"]);
+    expect([...location.options].map((option) => option.text)).toEqual(["All locations", "Downtown", "Uptown"]);
   });
 
   it("opens on the shift with people and reads it like a card", async () => {
-    renderPage();
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
     const lunchTab = await screen.findByRole("button", { name: "Lunch, 1 person" });
     expect(lunchTab.getAttribute("aria-pressed")).toBe("true");
     // Card 1 (Mert 2026-10-17): under the torn edge, Shift · People · Hours.
@@ -368,8 +393,10 @@ describe("LineupPage on a phone", () => {
     fireEvent.click(await screen.findByRole("button", { name: "Dinner, no one" }));
     expect(screen.getByTestId("where").textContent).toBe(`?shift=${dinner}`);
     expect(screen.getByText("No one is scheduled for Dinner at Downtown")).toBeTruthy();
+    expect(screen.getByText("No one is scheduled for Dinner at Uptown")).toBeTruthy();
     fireEvent.change(screen.getByRole("combobox", { name: "Location" }), { target: { value: uptown } });
     expect(screen.getByTestId("where").textContent).toContain(`location=${uptown}`);
+    expect(screen.queryByText("No one is scheduled for Dinner at Downtown")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
     expect(within(screen.getByRole("list", { name: "Server" })).getByText("Hannah Lee")).toBeTruthy();
   });
@@ -379,6 +406,127 @@ describe("LineupPage on a phone", () => {
     renderPage();
     const loading = screen.getByText("Loading lineups").closest("[role=status]") as HTMLElement;
     expect(loading.classList.contains("lineup-phone-outline")).toBe(true);
+  });
+});
+
+// All locations (Mert 2026-10-17 ~9:10 AM): a manager with more than one location opens on all of them, each with
+// its own card and list, one under the other; the shift tabs stand for that shift at every location.
+describe("LineupPage on a phone, All locations", () => {
+  const reduce = window.matchMedia;
+  beforeEach(() => {
+    phone = true;
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = reduce;
+  });
+  const live = { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 0, with_app: 1 } as const;
+
+  it("opens on All locations: each location's card and list, one under the other, a line between", async () => {
+    renderPage();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    expect(select.value).toBe("");
+    expect(select.selectedOptions[0]!.text).toBe("All locations");
+    const cards = await screen.findAllByRole("region", { name: /, Lunch$/ });
+    expect(cards.map((card) => card.getAttribute("aria-label"))).toEqual(["Downtown, Lunch", "Uptown, Lunch"]);
+    // The tab stands for Lunch at both: its count adds them.
+    expect(screen.getByRole("button", { name: "Lunch, 2 people" }).getAttribute("aria-pressed")).toBe("true");
+    const lists = screen.getAllByRole("list", { name: "Server" });
+    expect(lists.map((list) => list.textContent)).toEqual([expect.stringContaining("Maria Lopez"), expect.stringContaining("Hannah Lee")]);
+    const panels = screen.getAllByRole("tabpanel");
+    expect(panels).toHaveLength(2);
+    expect(new Set(panels.map((panel) => panel.id)).size).toBe(2);
+    const line = screen.getByRole("separator");
+    const after = (a: Node, b: Node) => Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+    expect(after(panels[0]!, line) && after(line, cards[1]!)).toBe(true);
+  });
+
+  it("shows one location once picked, and all of them again from All locations", async () => {
+    renderPage();
+    const select = (await screen.findByRole("combobox", { name: "Location" })) as HTMLSelectElement;
+    fireEvent.change(select, { target: { value: uptown } });
+    expect(screen.getByTestId("where").textContent).toBe(`?location=${uptown}`);
+    expect(await screen.findByRole("region", { name: "Uptown, Lunch" })).toBeTruthy();
+    expect(screen.queryByRole("region", { name: "Downtown, Lunch" })).toBeNull();
+    expect(screen.getByRole("button", { name: "Lunch, 1 person" })).toBeTruthy();
+    expect(screen.queryByRole("separator")).toBeNull();
+    fireEvent.change(select, { target: { value: "" } });
+    expect(screen.getByTestId("where").textContent).toBe("");
+    expect(await screen.findAllByRole("region", { name: /, Lunch$/ })).toHaveLength(2);
+  });
+
+  it("has no All locations for a manager of one location", async () => {
+    only = downtown;
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const select = screen.getByRole("combobox", { name: "Location" }) as HTMLSelectElement;
+    expect([...select.options].map((option) => option.text)).toEqual(["Downtown"]);
+  });
+
+  it("folds each location's card on its own; folded cards stack with no line", async () => {
+    renderPage();
+    const [first, second] = await screen.findAllByRole("region", { name: /, Lunch$/ });
+    fireEvent.click(within(first!).getByRole("button", { name: "Hide list" }));
+    expect(within(first!).getByRole("button", { name: "Show list" })).toBeTruthy();
+    expect(within(second!).getByRole("button", { name: "Hide list" })).toBeTruthy();
+    expect(screen.getAllByRole("tabpanel")).toHaveLength(1);
+    expect(screen.queryByRole("separator")).toBeNull();
+    expect(second!.parentElement!.classList.contains("is-stacked")).toBe(true);
+  });
+
+  it("keeps each location's own tab", async () => {
+    renderPage();
+    const [first, second] = await screen.findAllByRole("region", { name: /, Lunch$/ });
+    fireEvent.click(within(second!).getByRole("tab", { name: "Notes" }));
+    expect(within(second!).getByRole("tab", { name: "Notes" }).getAttribute("aria-selected")).toBe("true");
+    expect(within(first!).getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
+  });
+
+  it("shows Publish while any location shown has a draft on that shift", async () => {
+    published = { [lunch]: live };
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: dinner, start: "16:00", end: "22:00", location: uptown }),
+    ]);
+    renderPage();
+    // Lunch: Downtown's is out, Uptown's is empty: nothing to publish.
+    await screen.findByRole("region", { name: "Uptown, Lunch" });
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    // Dinner: Uptown's waits.
+    fireEvent.click(screen.getByRole("button", { name: "Dinner, 1 person" }));
+    await screen.findByRole("region", { name: "Uptown, Dinner" });
+    expect(screen.getByRole("button", { name: "Publish, 1 lineup waiting" })).toBeTruthy();
+  });
+
+  // Each location's lock and "Published at" read its own clock: at 9 AM in Los Angeles it is noon in New York.
+  it("locks and times each location on its own clock", async () => {
+    zones = { [uptown]: "America/New_York" };
+    clocks = { "America/New_York": "12:00" };
+    published = { [lunch]: live };
+    renderPage();
+    const downtownCard = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const uptownCard = screen.getByRole("region", { name: "Uptown, Lunch" });
+    expect((within(downtownCard).getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(false);
+    expect((within(uptownCard).getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(true);
+    expect(within(uptownCard).getByRole("button", { name: "Edit" }).getAttribute("title")).toBe("This shift has started");
+    expect(within(downtownCard).getByText(/^Published at /).textContent).not.toBe(within(uptownCard).getByText(/^Published at /).textContent);
+    expect(within(uptownCard).getByText("Published at 5:10 PM")).toBeTruthy();
+  });
+
+  it("says when a location is closed, by name, and draws the others", async () => {
+    world = model(
+      [shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" })],
+      [{ id: "80000000-0000-4000-8000-000000000001", location_id: uptown, closed_date: day, title: "Holiday", is_all_day: true, kind: "closed", opens: null, closes: null }],
+    );
+    renderPage();
+    expect(await screen.findByText("Uptown · Closed today · Holiday")).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Downtown, Lunch" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Lunch, 1 person" })).toBeTruthy();
   });
 });
 
@@ -396,6 +544,8 @@ describe("LineupPage on a phone, E", () => {
       removeEventListener: () => undefined,
     })) as unknown as typeof window.matchMedia;
     published = {};
+    // The card's own behaviours are told for a manager of one place; All locations has its own tests below.
+    only = downtown;
   });
   afterEach(() => {
     window.matchMedia = reduce;
@@ -530,6 +680,76 @@ describe("LineupPage on a phone, E", () => {
     expect(document.activeElement).toBe(within(card).getByRole("button", { name: "Hide list" }));
   });
 
+  // Mert 2026-10-17 (~1:45 PM, notice A): the green Edit spins and says "Unpublishing…" while it works, then the
+  // window closes and the card's Draft lights up once; no notice comes up from the bottom.
+  it("works in the Edit window's green Edit, then lights the card's Draft once, with no notice", async () => {
+    published = { [lunch]: live };
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    fireEvent.click(editOf(card));
+    const ask = screen.getByRole("alertdialog", { name: "Edit Lunch lineup?" });
+    // The day read answers with the draft from now on.
+    published = {};
+    fireEvent.click(within(ask).getByRole("button", { name: "Edit" }));
+    const working = within(ask).getByRole("button", { name: "Unpublishing…" }) as HTMLButtonElement;
+    expect(working.disabled).toBe(true);
+    expect((within(ask).getByRole("button", { name: "Cancel" }) as HTMLButtonElement).disabled).toBe(true);
+    // It holds a moment even when the answer is quick, so the words can be read.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(screen.getByRole("alertdialog")).toBeTruthy();
+    await waitFor(() => expect(screen.queryByRole("alertdialog")).toBeNull());
+    const status = within(card).getByText("Draft");
+    expect(status.classList.contains("is-flash")).toBe(true);
+    expect(within(card).getByText("Not published yet").classList.contains("is-flash")).toBe(true);
+    fireEvent.animationEnd(status);
+    expect(within(card).getByText("Draft").classList.contains("is-flash")).toBe(false);
+    // No notice (the test's own address readout is an <output>, a status too).
+    expect(screen.queryAllByRole("status").filter((element) => element.getAttribute("data-testid") !== "where")).toEqual([]);
+  });
+
+  it("says why Edit didn't go through, and the green Edit comes back", async () => {
+    published = { [lunch]: live };
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/commands")) throw new RequestError("No", "lineup.past_day", undefined, 400);
+      return realRead(client, path, init);
+    });
+    renderPage();
+    const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+    fireEvent.click(editOf(card));
+    fireEvent.click(within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }));
+    expect(await screen.findByText("This day is over. Its lineups can't change.")).toBeTruthy();
+    expect((within(screen.getByRole("alertdialog")).getByRole("button", { name: "Edit" }) as HTMLButtonElement).disabled).toBe(false);
+  });
+
+  // Read times are the location's clock's too: 21:40 UTC is 5:40 PM in New York.
+  it("lists who read it when on the location's clock", async () => {
+    zones = { [downtown]: "America/New_York" };
+    reads = { [maria]: "2026-10-13T21:40:00Z" };
+    published = { [lunch]: live };
+    renderPage();
+    fireEvent.click(await screen.findByRole("tab", { name: "Read 1/1" }));
+    const read = within(within(screen.getByRole("tabpanel")).getByRole("region", { name: "Read" })).getByRole("listitem");
+    expect(read.textContent).toBe("MLMaria LopezServer5:40 PM");
+  });
+
+  // Mert 2026-10-18 (screenshots): Publish covered the last row. While it shows, the list ends with room for it.
+  it("leaves room under the last row while Publish shows, and only a little air otherwise", async () => {
+    renderPage();
+    await screen.findByRole("button", { name: /^Publish, \d+ lineups? waiting$/ });
+    const end = document.querySelector(".lineup-phone-end")!;
+    expect(end.classList.contains("has-dock")).toBe(true);
+    cleanup();
+    published = { [lunch]: live };
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
+    expect(document.querySelector(".lineup-phone-end")!.classList.contains("has-dock")).toBe(false);
+    const css = readFileSync("src/views/lineup-phone.css", "utf8");
+    expect(css).toMatch(/\.lineup-phone-end\.has-dock\s*\{\s*height:\s*74px;/);
+    expect(css).toMatch(/\.app-main:has\(\.lineup-phone-end\.has-dock\)\s*\{\s*scroll-padding-bottom:\s*74px;/);
+  });
+
   // "Published at" reads the location's clock, as the lock does: 21:10 UTC is 5:10 PM in New York.
   it("tells when a lineup went out on the location's clock", async () => {
     const realRead = api.getMockImplementation()!;
@@ -593,7 +813,7 @@ describe("LineupPage on a phone, E", () => {
     expect(card.querySelector(".lineup-card-loc")?.textContent).toBe("Downtown");
     expect(card.querySelector(".lineup-card-date")?.textContent).toBe("Tue, Oct 13");
     expect(document.querySelector(".lineup-day-head")).toBeNull();
-    expect(card.previousElementSibling?.classList.contains("lineup-phone-top")).toBe(true);
+    expect(card.parentElement?.previousElementSibling?.classList.contains("lineup-phone-top")).toBe(true);
     // Team · Notes · Read sit inside the card.
     expect(card.contains(screen.getByRole("tablist", { name: "Lineup" }))).toBe(true);
   });
@@ -731,6 +951,7 @@ describe("LineupPage on a phone, E", () => {
   });
 
   it("keeps Publish at the bottom with the waiting count, and opens the window as a sheet", async () => {
+    only = null;
     renderPage();
     const dock = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
     expect(dock.closest(".lineup-phone-dock")).toBeTruthy();
@@ -748,6 +969,7 @@ describe("LineupPage on a phone, E", () => {
     const more = document.createElement("button");
     bar.append(document.createElement("a"), more);
     document.body.append(bar);
+    only = null;
     bar.getBoundingClientRect = () => ({ top: 782, height: 62 }) as DOMRect;
     more.getBoundingClientRect = () => ({ left: 306, right: window.innerWidth - 10 }) as DOMRect;
     try {
@@ -775,13 +997,14 @@ describe("LineupPage on a phone, E", () => {
   });
 
   it("draws Publish on a shift with a draft, not on a published or an empty one", async () => {
+    only = null;
     world = model([
       shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
       shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00", location: uptown }),
       shift({ employee: hannah, job: server, type: dinner, start: "17:00", end: "22:00", location: uptown }),
     ]);
     published = { [lunch]: live };
-    renderPage();
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
     await screen.findByRole("region", { name: "Downtown, Lunch" });
     // Uptown's dinner still waits, but Downtown's lunch is out: nothing to publish here.
     expect(screen.queryByRole("button", { name: /^Publish/ })).toBeNull();
@@ -794,6 +1017,7 @@ describe("LineupPage on a phone, E", () => {
   });
 
   it("keeps the sheet open after publishing until Done, though nothing is left to publish", async () => {
+    only = null;
     api.mockImplementation(async (_client, path, init) => {
       const dayPath = /\/lineups\/(\d{4}-\d{2}-\d{2})$/.exec(path);
       if (dayPath) return readers(dayRead(world, dayPath[1]!, published));
