@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(16);
 
 -- BL-237: this file used to read whatever the real seeded Meyhouse workspace
 -- already had published for "the current week" -- current_date's week only
@@ -11,6 +11,8 @@ select tests.world('eh');
 select tests.person('eh', 'alex', 'employee', array['K'], array['cook']);
 select tests.person('eh', 'jordan', 'employee', array['K'], array['cook']);
 select tests.person('eh', 'sam', 'employee', array['B'], array['cook']);
+-- Daylight Home's "Manager on the floor" (S-163, rol-cift design 4.13): a shift in a Management job.
+select tests.person('eh', 'mina', 'manager', array['K'], array['cook', 'manager']);
 select tests.new_user('eh:noprofile', 'No Profile');
 insert into public.workspace_memberships(id,workspace_id,user_id,role,status,all_locations)
 values (gen_random_uuid(), tests.id('eh'), tests.user('eh:noprofile'), 'employee', 'active', true);
@@ -34,7 +36,9 @@ values (
 
 select tests.publish_week('eh', 1, '[
   {"label": "alex-mon", "person": "alex", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"},
-  {"label": "alex-tue", "person": "alex", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"}
+  {"label": "alex-tue", "person": "alex", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"},
+  {"label": "mina-mon", "person": "mina", "loc": "K", "job": "manager", "day": 1, "start": "08:00", "end": "16:00"},
+  {"label": "jordan-mon", "person": "jordan", "loc": "K", "job": "cook", "day": 1, "start": "10:00", "end": "18:00"}
 ]');
 -- An open (unassigned) shift at Alex's own location: not built through
 -- tests.add_shift (it always names an employee), so this row goes straight in.
@@ -60,11 +64,21 @@ reset role;
 
 select throws_ok(format($$select public.get_employee_hub_service(%L,%L,current_date,current_date+14)$$,noprofile,w),'42501','employee profile required','active membership without employee profile fails closed') from eh_ids;
 
+-- Daylight Home (CALISAN-HOME-GUNISIGI): a shift says its shift type, the card's "Brunch" when no lineup section.
+insert into public.shift_types(id,workspace_id,name,color,sort_order,default_start_time,default_end_time)
+values ('99000000-0000-4000-8000-000000000031',tests.id('eh'),'Dinner','#176954',1,'17:00','23:00');
+update public.schedule_published_shifts set shift_type_id='99000000-0000-4000-8000-000000000031'
+where workspace_id=tests.id('eh') and scheduled_date=tests.week(1)+1 and employee_id=tests.id('eh:alex');
+
 create temp table hub_state(model jsonb,result jsonb,request_id uuid);
 insert into hub_state(model) values(public.get_employee_hub_service(tests.user('eh:alex'),tests.id('eh'),tests.week(1),tests.week(1)+42));
 select is(model->'employee'->>'id',tests.id('eh:alex')::text,'read model resolves actor employee server-side') from hub_state;
 select is(jsonb_array_length(model->'shifts'),2,'read model returns only actor published shifts') from hub_state;
 select is(jsonb_array_length(model->'open_shifts'),1,'read model exposes open shifts at assigned locations') from hub_state;
+select is(model->'shifts'->0->>'shift_type_name','Dinner','a shift with a shift type says its name') from hub_state;
+select is((select (t->>'is_management')::boolean from jsonb_array_elements(model->'team_shifts') t where t->>'employee_name'='Mina Person'),true,'a teammate''s shift in a Management job says so') from hub_state;
+select is((select (t->>'is_management')::boolean from jsonb_array_elements(model->'team_shifts') t where t->>'employee_name'='Jordan Person'),false,'a teammate''s other shift does not') from hub_state;
+select ok(model->'shifts'->1 ? 'shift_type_name' and model->'shifts'->1->'shift_type_name' = 'null'::jsonb,'a shift without one says null') from hub_state;
 select is((select count(*)::integer from jsonb_array_elements(model->'team') teammate where teammate->>'display_name'='Jordan Person'),1,'team includes employees at shared locations') from hub_state;
 select is((select count(*)::integer from jsonb_array_elements(model->'team') teammate where teammate->>'display_name'='Sam Person'),0,'team excludes employees only at other locations') from hub_state;
 

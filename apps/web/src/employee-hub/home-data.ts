@@ -1,7 +1,7 @@
 // What the Daylight Home reads besides the hub's own model: open requests that
 // wait on the person, the documents they still owe, the last few things that
 // happened to them, and today's lineup (its section and shift type).
-import type { EmployeeHubReadModel, NotificationItem } from "@newfork/shared";
+import type { DocumentObligation, EmployeeHubReadModel, EmployeeHubShift, NotificationItem } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
@@ -34,6 +34,17 @@ export function ago(at: string, now: Date): string {
   if (minutes < 24 * 60) return `${Math.floor(minutes / 60)}h ago`;
   const days = Math.floor(minutes / (24 * 60));
   return days === 1 ? "Yesterday" : `${days} days ago`;
+}
+
+const shortDate = (date: string) => new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" });
+
+/**
+ * A document waits on the person: missing, rejected, expired, or approved but
+ * running out soon (the server's word, the manager's to-do rule).
+ */
+export function documentNeedsYou(item: Pick<DocumentObligation, "kind" | "status" | "expiring_soon">): boolean {
+  if (item.kind !== "document" || item.status === "pending_review" || isObligationClosed(item.status)) return false;
+  return item.status !== "completed" || item.expiring_soon === true;
 }
 
 export function useHomeData(model: EmployeeHubReadModel, today: string) {
@@ -71,13 +82,7 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
       item.status === "open" &&
       item.applications.some((a) => a.employee_id === model.employee.id && a.status === "invited"),
   );
-  const docs = (documents.data ?? []).filter(
-    (item) =>
-      item.kind === "document" &&
-      item.status !== "completed" &&
-      item.status !== "pending_review" &&
-      !isObligationClosed(item.status),
-  );
+  const docs = (documents.data ?? []).filter((item) => documentNeedsYou(item));
   const needs: HomeNeed[] = [
     ...invited.map((item) => ({
       id: item.id,
@@ -91,11 +96,14 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
       id: item.id,
       kind: "doc" as const,
       title: item.status === "rejected" ? `Upload your ${item.title} again` : item.status === "expired" ? `Your ${item.title} expired` : `Upload your ${item.title}`,
-      detail: item.status === "rejected" && item.rejection_reason
-        ? item.rejection_reason
-        : item.deadline_at
-          ? `Due ${new Date(item.deadline_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
-          : "Your manager asked for it",
+      detail:
+        item.status === "completed" && item.expiry_date
+          ? `Your current one expires ${shortDate(item.expiry_date)}`
+          : item.status === "rejected" && item.rejection_reason
+            ? item.rejection_reason
+            : item.deadline_at
+              ? `Due ${new Date(item.deadline_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
+              : "Your manager asked for it",
       cta: "Open Documents",
       href: `/account/documents?workspace=${workspaceId}&kind=document&requirement=${item.id}`,
     })),
@@ -111,13 +119,11 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
       at: item.created_at,
       href: item.url,
     }));
-  // Today's published lineup: the section (Patio) or else its shift type (Dinner).
+  // The shift card's area: today's lineup section (Patio), else the lineup's or the shift's type (Dinner).
   const todayLineup = lineups.data?.lineups ?? [];
-  const areaFor = (shiftDateIso: string, locationId: string) => {
-    if (shiftDateIso !== today) return null;
-    const lineup = todayLineup.find((item) => item.location.id === locationId);
-    if (!lineup) return null;
-    return lineup.mine.find((row) => row.section_name)?.section_name ?? lineup.shift_type_name ?? null;
+  const areaFor = (shift: EmployeeHubShift) => {
+    const lineup = shift.scheduled_date === today ? todayLineup.find((item) => item.location.id === shift.location_id) : undefined;
+    return lineup?.mine.find((row) => row.section_name)?.section_name ?? lineup?.shift_type_name ?? shift.shift_type_name ?? null;
   };
   return {
     needs,

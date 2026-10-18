@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ago, updateKind } from "./home-data";
+import { ago, documentNeedsYou, updateKind } from "./home-data";
 
 describe("home updates", () => {
   it("draws a published week as a calendar, a decision as a tick or a cross", () => {
@@ -16,5 +16,22 @@ describe("home updates", () => {
     expect(ago("2026-10-16T18:00:00Z", now)).toBe("2h ago");
     expect(ago("2026-10-15T18:00:00Z", now)).toBe("Yesterday");
     expect(ago("2026-10-13T18:00:00Z", now)).toBe("3 days ago");
+  });
+});
+
+describe("documents on Home", () => {
+  it("asks for a missing, rejected or expired one, never one in review or closed", () => {
+    expect(documentNeedsYou({ kind: "document", status: "missing" })).toBe(true);
+    expect(documentNeedsYou({ kind: "document", status: "rejected" })).toBe(true);
+    expect(documentNeedsYou({ kind: "document", status: "expired" })).toBe(true);
+    expect(documentNeedsYou({ kind: "document", status: "pending_review" })).toBe(false);
+    expect(documentNeedsYou({ kind: "document", status: "exempt" })).toBe(false);
+    expect(documentNeedsYou({ kind: "acknowledgement", status: "missing" })).toBe(false);
+  });
+
+  it("asks for the next one when the server says the approved one runs out soon", () => {
+    expect(documentNeedsYou({ kind: "document", status: "completed", expiring_soon: true })).toBe(true);
+    expect(documentNeedsYou({ kind: "document", status: "completed", expiring_soon: false })).toBe(false);
+    expect(documentNeedsYou({ kind: "document", status: "completed" })).toBe(false);
   });
 });

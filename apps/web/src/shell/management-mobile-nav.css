@@ -61,10 +61,8 @@
     transform: translateY(-8px);
   }
   .mm-top-workspace {
-    transition: opacity 0.2s, transform 0.25s;
-  }
-  .mm-top-workspace {
     display: flex;
+    transition: opacity 0.2s, transform 0.25s;
     min-width: 0;
     min-height: 44px;
     align-items: center;

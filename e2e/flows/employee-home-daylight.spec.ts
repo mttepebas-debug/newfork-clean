@@ -82,4 +82,12 @@ test("phone: the bar's slot takes no room on a manager's page (zeynep)", async (
   await expect(slot).toHaveCSS("position", "absolute");
   // Out of the row, the slot leaves the workspace name its full width.
   await expect(slot).toBeEmpty();
+  // The workspace name runs up to the bell with the row's one gap, so a long name is cut no earlier than before.
+  const room = await page.evaluate(() => {
+    const name = document.querySelector(".mm-top-workspace")!.getBoundingClientRect();
+    const tools = document.querySelector(".mm-top-tools")!.getBoundingClientRect();
+    const text = document.querySelector<HTMLElement>(".mm-top-name")!;
+    return { gap: Math.round(tools.left - name.right), fits: text.scrollWidth <= text.clientWidth };
+  });
+  expect(room.fits || room.gap <= 12).toBe(true);
 });

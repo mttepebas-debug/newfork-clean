@@ -366,6 +366,18 @@ a.dl-shift:active {
   border-radius: inherit;
   background: var(--dl-ok);
 }
+/* Manager on the floor: one quiet line, only when there is one. */
+.dl-mof {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--dl-tx2);
+  font-size: 13.5px;
+}
+.dl-mof b {
+  color: var(--theme-text);
+  font-weight: 600;
+}
 .dl-shift.is-empty {
   gap: 8px;
 }

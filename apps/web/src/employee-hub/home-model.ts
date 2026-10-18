@@ -127,3 +127,27 @@ export function homeSubline(model: EmployeeHubReadModel, now: Date): string {
   if (todayOff) return `Enjoy your day off. Next shift: ${relDay(shift.scheduled_date, today)} at ${at}.`;
   return `Next shift: ${relDay(shift.scheduled_date, today)} at ${at}.`;
 }
+
+/**
+ * "Manager on the floor" (Mert 2026-10-18, S-163 (7)): someone whose shift in a
+ * Management job runs at the same place, on the same day, at the same time;
+ * the earliest such shift. None, and Home shows nothing.
+ */
+export type FloorManager = { id: string; name: string; job: string };
+export function managerOnFloor(model: EmployeeHubReadModel, shift: EmployeeHubShift): FloorManager | null {
+  const span = (item: EmployeeHubShift) => {
+    const start = minutesOf(item.start_time);
+    const end = minutesOf(item.end_time);
+    return [start, end <= start ? end + 1440 : end] as const;
+  };
+  const [start, end] = span(shift);
+  const found = model.team_shifts
+    .filter((item) => item.is_management === true && item.employee_name && item.employee_id !== model.employee.id)
+    .filter((item) => item.id !== shift.id && item.scheduled_date === shift.scheduled_date && item.location_id === shift.location_id)
+    .filter((item) => {
+      const [s, e] = span(item);
+      return s < end && e > start;
+    })
+    .sort((a, b) => a.start_time.localeCompare(b.start_time))[0];
+  return found ? { id: found.id, name: found.employee_name!, job: found.job_name } : null;
+}

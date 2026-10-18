@@ -4,6 +4,7 @@ import {
   arcPoint,
   arcSegments,
   countdown,
+  managerOnFloor,
   daySlot,
   homeSubline,
   homeWeek,
@@ -22,6 +23,13 @@ const base: EmployeeHubShift = {
   start_time: "16:00",
   end_time: "23:00",
 };
+const mate = (name: string, patch: Partial<EmployeeHubShift> = {}): EmployeeHubShift => ({
+  ...base,
+  id: `40000000-0000-4000-8000-${String(name.length).padStart(12, "0")}${name}`.slice(0, 36),
+  employee_id: null,
+  employee_name: name,
+  ...patch,
+});
 const model = (patch: Partial<EmployeeHubReadModel> = {}): EmployeeHubReadModel => ({
   workspace_id: "50000000-0000-4000-8000-000000000001",
   employee: { id: base.employee_id!, display_name: "Ali Rivera" },
@@ -67,6 +75,20 @@ describe("home model", () => {
     expect(x0).toBeCloseTo(12);
     expect(xm).toBeCloseTo(179);
     expect(ym).toBeLessThan(y0);
+  });
+
+  it("names a manager on the floor only when one works the same place and time", () => {
+    const team = [
+      mate("Mina Park", { start_time: "15:00", end_time: "23:00", job_name: "Manager", is_management: true }),
+      mate("Priya Shah"),
+    ];
+    expect(managerOnFloor(model({ team_shifts: team }), base)?.name).toBe("Mina Park");
+    expect(managerOnFloor(model({ team_shifts: [team[1]!] }), base)).toBeNull();
+    const morning = mate("Tom Becker", { start_time: "07:00", end_time: "12:00", is_management: true });
+    expect(managerOnFloor(model({ team_shifts: [morning] }), base)).toBeNull();
+    // Her earlier shift that day is not a Management one; her Management shift still counts.
+    const two = [mate("Mina Park", { start_time: "12:00", end_time: "17:00" }), { ...team[0]!, id: "40000000-0000-4000-8000-000000000099" }];
+    expect(managerOnFloor(model({ team_shifts: two }), base)?.name).toBe("Mina Park");
   });
 
   it("builds seven days from today with hours, time off and open shifts", () => {

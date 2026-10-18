@@ -747,6 +747,33 @@ describe("EmployeeHubPage", () => {
     }
   });
 
+  // S-163 (7): a Management shift at the same place and time shows as "Manager on the floor"; none, no line.
+  it("names the manager on the floor only when one works alongside", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      const manager = {
+        ...ownShift,
+        id: "22000000-0000-4000-8000-000000000009",
+        job_name: "General Manager",
+        start_time: "08:00",
+        end_time: "16:00",
+        employee_id: "15000000-0000-4000-8000-000000000009",
+        employee_name: "Mina Park",
+        is_management: true,
+      };
+      renderPageWithFixture({ ...fixture, team_shifts: [...fixture.team_shifts, manager] } as EmployeeHubReadModel);
+      const card = await screen.findByRole("link", { name: /^Open details for your today shift/ });
+      expect(card.textContent).toContain("Mina Park · Manager on the floor");
+      cleanup();
+      renderPageWithFixture({ ...fixture, team_shifts: [...fixture.team_shifts, { ...manager, is_management: false }] } as EmployeeHubReadModel);
+      const plain = await screen.findByRole("link", { name: /^Open details for your today shift/ });
+      expect(plain.textContent).not.toContain("Manager on the floor");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   // Spec "Kurallar" 5 (AVAIL-GUN-1): a shift on hours the employee marked carries a small note.
   it("marks a coming shift on hours the employee said they prefer not to work, and only that one", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

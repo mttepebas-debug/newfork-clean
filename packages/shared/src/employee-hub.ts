@@ -19,6 +19,10 @@ export const employeeHubShiftSchema = z.object({
   note: z.string(),
   employee_id: z.string().uuid().nullable(),
   employee_name: z.string().nullable().optional(),
+  /** The shift's type ("Brunch", "Dinner"); only on the person's own shifts (Daylight Home). */
+  shift_type_name: z.string().nullable().optional(),
+  /** A teammate's shift in a Management department job: Home's "Manager on the floor". */
+  is_management: z.boolean().optional(),
 });
 export type EmployeeHubShift = z.infer<typeof employeeHubShiftSchema>;
 

@@ -38,10 +38,28 @@ select ('c5200000-0000-4000-8000-00000000000'||n)::uuid,('b5200000-0000-4000-800
 update public.employee_onboarding_requirements set approved_document_id='c5200000-0000-4000-8000-000000000001',submitted_document_id='c5200000-0000-4000-8000-000000000002',paused_remaining_seconds=129600 where id='65200000-0000-4000-8000-000000000001';
 select is((select app_private.document_obligation_json(r)->>'status' from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'pending_review','renewal is visible in review queue despite a valid prior version');
 select is((select app_private.document_obligation_state(r,now()) from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'completed','review queue visibility does not revoke valid prior eligibility');
+-- Daylight Home (CALISAN-HOME-GUNISIGI): the list says when the approved version runs out.
+select is((select app_private.document_obligation_json(r)->>'expiry_date' from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),
+  (select expiry_date::text from public.employee_document_submissions where id='c5200000-0000-4000-8000-000000000001'),'an obligation says when its approved version expires');
 select lives_ok($$select public.review_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',1,'c5200000-0000-4000-8000-000000000002','reject','Needs correction','remaining','[{"id":"b5200000-0000-4000-8000-000000000002","decision":"keep"}]')$$,'reviewer may grant the actually paused remaining interval');
 select is((select deadline_at from public.employee_onboarding_requirements where id='65200000-0000-4000-8000-000000000001'),now()+interval '36 hours','remaining correction uses the original seconds, not full configured days');
 update public.employee_document_submissions set state='pending_review' where id='c5200000-0000-4000-8000-000000000002';
 update public.employee_onboarding_requirements set paused_remaining_seconds=0 where id='65200000-0000-4000-8000-000000000001';
 select throws_ok($$select public.review_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','65200000-0000-4000-8000-000000000001',2,'c5200000-0000-4000-8000-000000000002','reject','Needs correction','remaining','[{"id":"b5200000-0000-4000-8000-000000000002","decision":"keep"}]')$$,'22023','no correction time remains','server refuses an exhausted remaining interval');
 select is((select state from public.employee_document_submissions where id='c5200000-0000-4000-8000-000000000002'),'pending_review','invalid correction attempt does not partially reject the submission');
+-- Daylight Home (CALISAN-HOME-VERI): "expires soon" is the manager's to-do rule, read from the type.
+insert into public.document_types(id,workspace_id,title,tracks_expiry,expiry_warning_days,publication_status,published_at,created_by) values
+ ('d5200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001','Certification',true,30,'published',now(),'15200000-0000-4000-8000-000000000001'),
+ ('d5200000-0000-4000-8000-000000000002','25200000-0000-4000-8000-000000000001','Certification (10 days)',true,10,'published',now(),'15200000-0000-4000-8000-000000000001'),
+ ('d5200000-0000-4000-8000-000000000003','25200000-0000-4000-8000-000000000001','Certification (untracked)',false,30,'published',now(),'15200000-0000-4000-8000-000000000001');
+update public.employee_onboarding_requirements set source_id='d5200000-0000-4000-8000-000000000001' where id='65200000-0000-4000-8000-000000000001';
+select is((select (app_private.document_obligation_json(r)->>'expiring_soon')::boolean from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),true,'an approved version within its type''s warning days expires soon');
+select is((select (o->>'expiry_date') from jsonb_array_elements(public.list_employee_document_lifecycle_service('15200000-0000-4000-8000-000000000001','25200000-0000-4000-8000-000000000001',false)) o where o->>'id'='65200000-0000-4000-8000-000000000001'),
+  (current_date+30)::text,'the manager''s list says the same expiry');
+update public.employee_onboarding_requirements set source_id='d5200000-0000-4000-8000-000000000002' where id='65200000-0000-4000-8000-000000000001';
+select is((select (app_private.document_obligation_json(r)->>'expiring_soon')::boolean from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),false,'outside the warning days it does not');
+update public.employee_onboarding_requirements set source_id='d5200000-0000-4000-8000-000000000003' where id='65200000-0000-4000-8000-000000000001';
+select is((select (app_private.document_obligation_json(r)->>'expiring_soon')::boolean from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),false,'a type that does not track expiry never expires soon');
+update public.employee_onboarding_requirements set approved_document_id=null where id='65200000-0000-4000-8000-000000000001';
+select is((select app_private.document_obligation_json(r)->'expiry_date' from public.employee_onboarding_requirements r where id='65200000-0000-4000-8000-000000000001'),'null'::jsonb,'without an approved version there is no expiry');
 select * from finish();rollback;

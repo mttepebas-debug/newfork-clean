@@ -29,6 +29,9 @@ import {
   daySlot,
   homeSubline,
   homeWeek,
+  initials,
+  managerOnFloor,
+  type FloorManager,
   minutesOf,
 } from "./home-model";
 import { ago, useHomeData, type HomeNeed, type HomeUpdate } from "./home-data";
@@ -206,7 +209,8 @@ export function EmployeeDashboard({
             state={state}
             startsIn={startsIn}
             endsIn={endsIn}
-            area={shift ? data.areaFor(shift.scheduled_date, shift.location_id) : null}
+            area={shift ? data.areaFor(shift) : null}
+            manager={shift ? managerOnFloor(model, shift) : null}
             openCount={model.open_shifts.length}
           />
           <div className="dl-wh">
@@ -401,6 +405,7 @@ function HeroCard({
   startsIn,
   endsIn,
   area,
+  manager,
   openCount,
 }: {
   shift: EmployeeHubShift | null;
@@ -410,6 +415,7 @@ function HeroCard({
   startsIn: number;
   endsIn: number;
   area: string | null;
+  manager: FloorManager | null;
   openCount: number;
 }) {
   const format = model.settings.time_format;
@@ -468,6 +474,16 @@ function HeroCard({
         {area ? <span>{area}</span> : null}
         {minutesOf(shift.end_time) <= minutesOf(shift.start_time) ? <span>Ends next day</span> : null}
       </span>
+      {manager ? (
+        <span className="dl-mof">
+          <span className="dl-av dl-av-sm" aria-hidden>
+            {initials(manager.name)}
+          </span>
+          <span>
+            <b>{manager.name}</b> · Manager on the floor
+          </span>
+        </span>
+      ) : null}
       {on ? (
         <span className="dl-prog" style={{ "--f": progress.toFixed(3) } as CSSProperties}>
           <i />

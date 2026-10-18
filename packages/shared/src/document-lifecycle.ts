@@ -139,6 +139,10 @@ export const documentObligationSchema = z.object({
   settings: documentLifecycleSettingsSchema,
   accepted_formats: z.array(z.enum(["pdf", "jpeg", "png", "webp"])),
   tracks_expiry: z.boolean(),
+  /** When the approved version runs out; null without one or without an expiry (Daylight Home). */
+  expiry_date: z.string().date().nullable().optional(),
+  /** The approved version runs out within its type's warning days (the manager's to-do rule). */
+  expiring_soon: z.boolean().optional(),
 });
 export type DocumentObligation = z.infer<typeof documentObligationSchema>;
 export const documentSubmissionFileSchema = z.object({
