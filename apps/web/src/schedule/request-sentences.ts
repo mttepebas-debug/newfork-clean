@@ -91,33 +91,44 @@ export function timeOffSentence(request: TimeOffRequest, opens: number): Part[] 
 export const sentenceText = (parts: readonly Part[]) =>
   parts.map((part) => (typeof part === "string" ? part : part.strong)).join("");
 
-/** One short status (Mert, 2026-10-14 08:32): Needs decision, Approved, Declined, Expired; a few close otherwise. */
-export function rowStatus(row: RequestRow): { label: string; tone: Tone } {
-  if (row.source === "time_off") {
-    const request = row.request;
-    if (row.state === "needs_review") return { label: "Needs decision", tone: "amber" };
-    if (row.state === "in_progress") return { label: "Waiting for others", tone: "gray" };
-    if (request.status === "approved") return { label: "Approved", tone: "green" };
-    if (request.status === "denied")
-      return request.events.some((event) => event.action === "expired")
-        ? { label: "Expired", tone: "gray" }
-        : { label: "Declined", tone: "red" };
-    return { label: "Revoked", tone: "gray" };
-  }
-  const item = row.request;
+/** Somebody waits on a manager: the request is the manager's to decide. */
+export const awaitsDecision = (item: ExchangeCase) =>
+  item.status === "open" &&
+  (item.stage === "ready_for_manager" ||
+    item.stage === "awaiting_other_manager" ||
+    item.applications.some((application) => application.status === "pending_manager"));
+
+/**
+ * A shift change's word (Mert, 2026-10-14 08:32 and 2026-10-18): Needs decision,
+ * Approved, Declined, Expired. Somebody waiting is Needs decision whoever votes
+ * first; the details say who else approves. A release nobody waits on is an open
+ * shift, off the Requests table. A request that closed without a decision (the
+ * owner took it back, the shift changed) has no word and leaves the table.
+ */
+export function exchangeStatus(item: ExchangeCase): { label: string; tone: Tone } | null {
   if (item.status === "completed") return { label: "Approved", tone: "green" };
   if (item.status === "expired") return { label: "Expired", tone: "gray" };
-  if (item.status !== "open") return { label: "Closed", tone: "gray" };
+  if (item.status !== "open") {
+    // A direct request ends when its manager turns the one person down.
+    const refused = item.audience === "direct" && item.applications.some((application) => application.status === "rejected_by_manager");
+    return refused ? { label: "Declined", tone: "red" } : null;
+  }
   // A swap one location approved waits for the other (Mert, 2026-10-14 10:34).
   if (item.stage === "awaiting_other_manager") {
     const other = item.requested_shift && item.requested_shift.location_id !== item.shift.location_id ? item.requested_shift.location_name : null;
     return { label: other ? `Waiting for ${other}` : "Waiting for the other manager", tone: "amber" };
   }
-  if (row.state === "needs_review") return { label: "Needs decision", tone: "amber" };
-  const declined = item.applications.some((application) => application.status === "rejected_by_manager");
-  if (declined && !item.applications.some((application) => application.status === "pending_manager"))
-    return { label: "Declined", tone: "red" };
-  return { label: "Waiting for teammates", tone: "gray" };
+  return awaitsDecision(item) ? { label: "Needs decision", tone: "amber" } : { label: "Open", tone: "gray" };
+}
+
+/** A row's word. Another approver voting first is still Needs decision; revoked leave ends Declined (Mert, 2026-10-18). */
+export function rowStatus(row: RequestRow): { label: string; tone: Tone } {
+  if (row.source === "exchange") return exchangeStatus(row.request) ?? { label: "Open", tone: "gray" };
+  const request = row.request;
+  if (row.state !== "closed") return { label: "Needs decision", tone: "amber" };
+  if (request.status === "approved") return { label: "Approved", tone: "green" };
+  if (request.status === "denied" && request.events.some((event) => event.action === "expired")) return { label: "Expired", tone: "gray" };
+  return { label: "Declined", tone: "red" };
 }
 
 /** Expires: an open request's last moment; red in its last 12 hours. A decided one has none. */

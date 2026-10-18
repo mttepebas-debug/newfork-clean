@@ -1,6 +1,6 @@
 import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { exchangeSentence, rowExpires, rowKind, rowStatus, sentenceText, timeOffSentence } from "./request-sentences";
+import { exchangeSentence, exchangeStatus, rowExpires, rowKind, rowStatus, sentenceText, timeOffSentence } from "./request-sentences";
 import type { RequestRow } from "./requests-list";
 
 // TAKAS-RELEASE: one sentence per row, as the approved mockup writes them
@@ -84,7 +84,29 @@ describe("rowKind and rowStatus", () => {
     expect(rowStatus(row(release([person("Jake Miller")])))).toEqual({ label: "Needs decision", tone: "amber" });
     expect(rowStatus(row(release([], { status: "completed" }), "closed"))).toEqual({ label: "Approved", tone: "green" });
     expect(rowStatus(row(release([], { status: "expired" }), "closed"))).toEqual({ label: "Expired", tone: "gray" });
-    expect(rowStatus(row(release([person("Jake Miller", "rejected_by_manager")]), "in_progress"))).toEqual({ label: "Declined", tone: "red" });
+  });
+
+  // Mert, 2026-10-18: four words only. Somebody waiting on a manager is Needs
+  // decision, whoever votes first; the details say who else has to approve.
+  it("calls every open request somebody asked for Needs decision", () => {
+    expect(rowStatus(row(release([person("Jake Miller")], { can_manage: false }), "in_progress"))).toEqual({ label: "Needs decision", tone: "amber" });
+  });
+
+  it("closes a request without a decision quietly, with no word", () => {
+    expect(exchangeStatus(release([person("Jake Miller", "rejected_by_manager")], { status: "cancelled", stage: "closed" }))).toBeNull();
+    expect(exchangeStatus(release([], { status: "invalidated", stage: "closed" }))).toBeNull();
+  });
+
+  it("calls a direct request the manager turned down Declined", () => {
+    expect(exchangeStatus(release([person("Leo Park", "rejected_by_manager")], { audience: "direct", status: "cancelled", stage: "closed" }))).toEqual({
+      label: "Declined", tone: "red",
+    });
+  });
+
+  it("calls a release nobody waits on an open shift", () => {
+    expect(exchangeStatus(release([]))).toEqual({ label: "Open", tone: "gray" });
+    expect(exchangeStatus(release([person("Jake Miller", "withdrawn")], { stage: "seeking_candidates" }))).toEqual({ label: "Open", tone: "gray" });
+    expect(exchangeStatus(release([person("Jake Miller", "rejected_by_manager")], { stage: "seeking_candidates" }))).toEqual({ label: "Open", tone: "gray" });
   });
 
   it("says which location a half-approved swap waits for", () => {
@@ -93,6 +115,20 @@ describe("rowKind and rowStatus", () => {
       requested_shift: { ...shift, location_id: "11000000-0000-4000-8000-000000000002", location_name: "Midtown" },
     });
     expect(rowStatus(row(swap, "needs_review"))).toEqual({ label: "Waiting for Midtown", tone: "amber" });
+  });
+});
+
+describe("time off status", () => {
+  const request = (change: Partial<TimeOffRequest>) =>
+    ({ id: "t", employee_name: "Maria Lopez", request_type: "time_off", status: "pending", start_date: "2026-10-19", end_date: "2026-10-19", events: [], ...change }) as TimeOffRequest;
+  const timeOffRow = (item: TimeOffRequest, state: RequestRow["state"]): RequestRow => ({
+    source: "time_off", id: item.id, type: "time_off", state, decideBy: null, closedAt: null, request: item,
+  });
+
+  // Mert, 2026-10-18: another approver voting first is still Needs decision; revoked leave ends Declined.
+  it("calls a request another approver votes on first Needs decision, and revoked leave Declined", () => {
+    expect(rowStatus(timeOffRow(request({}), "in_progress"))).toEqual({ label: "Needs decision", tone: "amber" });
+    expect(rowStatus(timeOffRow(request({ status: "revoked" }), "closed"))).toEqual({ label: "Declined", tone: "red" });
   });
 });
 

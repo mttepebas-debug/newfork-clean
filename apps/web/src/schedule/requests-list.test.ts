@@ -58,8 +58,6 @@ describe("requestRows", () => {
       ],
       [
         exchange("x-ready", "swap", "ready_for_manager", "2026-10-09T12:00:00Z"),
-        exchange("x-finding", "cover", "seeking_candidates", "2026-10-12T12:00:00Z"),
-        exchange("x-peer", "swap", "awaiting_peer", "2026-10-13T12:00:00Z"),
         exchange("x-not-mine", "cover", "ready_for_manager", "2026-10-14T12:00:00Z", { can_manage: false }),
       ],
       all,
@@ -68,8 +66,6 @@ describe("requestRows", () => {
       ["x-ready", "needs_review"],
       ["t-mine", "needs_review"],
       ["t-voted", "in_progress"],
-      ["x-finding", "in_progress"],
-      ["x-peer", "in_progress"],
       ["x-not-mine", "in_progress"],
     ]);
   });
@@ -135,6 +131,32 @@ describe("requestRows", () => {
     expect(rows.map((row) => row.id)).toEqual(["s", "o", "s-done"]);
   });
 
+  // Mert, 2026-10-18: a shift change reaches the table only when somebody wants
+  // the shift and a manager has to decide. A release nobody asks for (nobody yet,
+  // the only asker withdrew, or the manager declined them) stays an open shift
+  // off the table; a request that closed without a decision leaves quietly.
+  it("lists a shift change only while somebody waits for a decision, and how it ended", () => {
+    const person = (status: string) => ({ id: `a-${status}`, employee_id: "e", employee_name: "Ali Person", status, created_at: "2026-10-01T10:00:00Z", reason: "", eligibility: null });
+    const rows = requestRows(
+      [],
+      [
+        exchange("asked", "cover", "ready_for_manager", "2026-10-10T12:00:00Z", { applications: [person("pending_manager")] as ExchangeCase["applications"] }),
+        exchange("nobody", "cover", "seeking_candidates", "2026-10-10T12:00:00Z"),
+        exchange("withdrew", "cover", "seeking_candidates", "2026-10-10T12:00:00Z", { applications: [person("withdrawn")] as ExchangeCase["applications"] }),
+        exchange("declined-one", "cover", "seeking_candidates", "2026-10-10T12:00:00Z", { applications: [person("rejected_by_manager")] as ExchangeCase["applications"] }),
+        exchange("peer", "swap", "awaiting_peer", "2026-10-10T12:00:00Z", { audience: "direct" }),
+        exchange("half", "swap", "awaiting_other_manager", "2026-10-10T12:00:00Z", { audience: "direct" }),
+        exchange("taken-back", "cover", "closed", "2026-10-08T12:00:00Z", { status: "cancelled", applications: [person("rejected_by_manager")] as ExchangeCase["applications"] }),
+        exchange("changed", "cover", "closed", "2026-10-08T12:00:00Z", { status: "invalidated" }),
+        exchange("refused", "cover", "closed", "2026-10-08T12:00:00Z", { status: "cancelled", audience: "direct", applications: [person("rejected_by_manager")] as ExchangeCase["applications"] }),
+        exchange("ran-out", "cover", "closed", "2026-10-08T12:00:00Z", { status: "expired" }),
+        exchange("done", "cover", "closed", "2026-10-08T12:00:00Z"),
+      ],
+      all,
+    );
+    expect(rows.map((row) => row.id).sort()).toEqual(["asked", "done", "half", "ran-out", "refused"]);
+  });
+
   it("filters shift changes by location, either side of a swap, and by a name", () => {
     const cases = [
       exchange("k", "cover", "ready_for_manager", "2026-10-10T12:00:00Z"),
@@ -158,7 +180,7 @@ describe("openCounts", () => {
     const rows = requestRows(
       [timeOff("t", "2026-10-10T12:00:00Z", { can_vote: true }), closedTimeOff("t-done", "approved", "2026-10-02T09:00:00Z")],
       [
-        exchange("s", "swap", "awaiting_peer", "2026-10-10T12:00:00Z"),
+        exchange("s", "swap", "ready_for_manager", "2026-10-10T12:00:00Z"),
         exchange("c", "cover", "ready_for_manager", "2026-10-11T12:00:00Z"),
         exchange("c-done", "cover", "closed", "2026-10-01T12:00:00Z"),
       ],

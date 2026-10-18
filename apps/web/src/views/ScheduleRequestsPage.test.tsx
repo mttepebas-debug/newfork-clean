@@ -392,7 +392,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("opens a swap in its review window over the list", async () => {
     const swapId = "97500000-0000-4000-8000-000000000003";
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
-      id: swapId, kind: "swap", audience: "direct", status: "open", stage: "awaiting_peer", revision: 1,
+      id: swapId, kind: "swap", audience: "direct", status: "open", stage: "ready_for_manager", revision: 1,
       created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000005", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000003", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",
@@ -412,7 +412,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
   it("keeps a swap's review window open when a refresh no longer lists the swap", async () => {
     const swapId = "97500000-0000-4000-8000-000000000004";
     vi.mocked(getExchanges).mockResolvedValue({ employee_id: null, opportunities: [], own_shifts: [], cases: [{
-      id: swapId, kind: "swap", audience: "direct", status: "open", stage: "awaiting_peer", revision: 1,
+      id: swapId, kind: "swap", audience: "direct", status: "open", stage: "ready_for_manager", revision: 1,
       created_at: "2035-01-02T09:00:00Z", expires_at: "2035-01-12T09:00:00Z", owner_id: null, owner_name: "Emre Person",
       shift, requested_shift: { ...shift, id: "22000000-0000-4000-8000-000000000006", employee_name: "Deniz Acar" },
       applications: [{ id: "97600000-0000-4000-8000-000000000004", employee_id: "15000000-0000-4000-8000-000000000003", employee_name: "Deniz Acar",

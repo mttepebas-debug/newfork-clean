@@ -45,7 +45,7 @@ const cover = {
   history: [{ id: "98000000-0000-4000-8000-000000000001", action: "created", created_at: "2026-10-10T21:14:00Z", message: "Noah Garcia asked for cover" }],
 } as unknown as ExchangeCase;
 // Noah's release nobody has asked for yet (TAKAS-RELEASE: only a release reaches the pool).
-const quiet = { ...cover, private_note: undefined, applications: [], candidate_count: 0 } as unknown as ExchangeCase;
+const quiet = { ...cover, stage: "seeking_candidates", private_note: undefined, applications: [], candidate_count: 0 } as unknown as ExchangeCase;
 function preview(change: Partial<ExchangePreview> = {}): ExchangePreview {
   return {
     allowed: true, fingerprint: "fp-1", reasons: [], requires_other_manager: false, other_applications: 1,
@@ -202,7 +202,7 @@ describe("ExchangeReview", () => {
 
   it("says a release nobody asked for stays with its owner", () => {
     renderReview(quiet);
-    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Shift pickup Waiting for teammates");
+    expect(text(screen.getByRole("heading", { level: 2 }))).toBe("Shift pickup Open");
     expect(screen.getByText("Noah stays on this shift until you approve.")).toBeTruthy();
     expect(screen.getByText("Nobody has asked yet. Noah keeps the shift until you approve someone.")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Nobody to approve" }) as HTMLButtonElement).disabled).toBe(true);

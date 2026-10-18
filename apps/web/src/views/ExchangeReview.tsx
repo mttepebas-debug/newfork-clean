@@ -6,6 +6,7 @@ import { useEffect, useRef, useState, type KeyboardEvent, type ReactNode } from 
 import { changeExchange, getExchangePreview, refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { Hand, ShiftTicket } from "../employee-hub/shift-exchanges/ShiftTicket";
 import { timeOffDeadlineAt, timeOffZoneName } from "../employee-hub/time-off-split";
+import { exchangeStatus } from "../schedule/request-sentences";
 import { candidateChecks } from "./exchange-review";
 import { DrawerField, DrawerSection, RequestDrawer, type DrawerTone } from "./RequestDrawer";
 import { blockerLines } from "./swap-review";
@@ -206,7 +207,7 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   return (
     <RequestDrawer
       title={pickup ? "Shift pickup" : "Cover request"}
-      status={statusChip(item, asked.length)}
+      status={statusChip(item)}
       sub={
         <>
           Shift owner: <b>{item.owner_name ?? "A teammate"}</b> · {item.shift.location_name}
@@ -334,12 +335,9 @@ export function ExchangeReview({ item, workspace, timeFormat, onClose, onDone, o
   );
 }
 
-// The same short words as the Requests row (schedule/request-sentences.ts).
-function statusChip(item: ExchangeCase, asked: number): { label: string; tone: DrawerTone } {
-  if (item.status === "completed") return { label: "Approved", tone: "ok" };
-  if (item.status === "expired") return { label: "Expired", tone: "grey" };
-  if (item.status !== "open") return { label: "Closed", tone: "grey" };
-  if (asked && item.can_manage) return { label: "Needs decision", tone: "warn" };
-  if (item.applications.some((application) => application.status === "rejected_by_manager")) return { label: "Declined", tone: "red" };
-  return { label: "Waiting for teammates", tone: "grey" };
+// The same short words as the Requests row; a quietly closed request has none.
+const drawerTones = { amber: "warn", green: "ok", red: "red", gray: "grey" } as const satisfies Record<string, DrawerTone>;
+function statusChip(item: ExchangeCase): { label: string; tone: DrawerTone } | undefined {
+  const status = exchangeStatus(item);
+  return status ? { label: status.label, tone: drawerTones[status.tone] } : undefined;
 }

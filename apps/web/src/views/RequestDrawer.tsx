@@ -28,7 +28,8 @@ export function RequestDrawer<Key extends string>({
   title: string;
   /** A second word after the title (time off names its type); left out when the title says it. */
   type?: string;
-  status: { label: string; tone: DrawerTone };
+  /** Left out for a request that closed without a decision. */
+  status?: { label: string; tone: DrawerTone };
   sub?: ReactNode;
   scheduleHref?: string;
   tabs: DrawerTab<Key>[];
@@ -52,7 +53,7 @@ export function RequestDrawer<Key extends string>({
                 <span className="rd-type">{type}</span>
               </>
             ) : null}{" "}
-            <span className={`rd-chip ${status.tone}`}>{status.label}</span>
+            {status ? <span className={`rd-chip ${status.tone}`}>{status.label}</span> : null}
           </h2>
           <button type="button" className="rd-close" aria-label="Close details" onClick={onClose}>
             <X size={18} aria-hidden />

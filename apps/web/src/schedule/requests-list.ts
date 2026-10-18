@@ -2,6 +2,7 @@ import type { ExchangeCase, TimeOffRequest } from "@newfork/shared";
 import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
+import { awaitsDecision, exchangeStatus } from "./request-sentences";
 import { isNoAccess } from "../lib/no-access";
 import { RequestError } from "../lib/request-error";
 import { getTimeOffQueue, timeOffKeys } from "./requests-data";
@@ -124,6 +125,8 @@ export function requestRows(
   }
   for (const request of exchanges) {
     if ((filters.type !== "all" && filters.type !== tabOf(request.kind)) || !exchangeMatches(request, filters)) continue;
+    // Mert, 2026-10-18: only what waits on a manager, or ended with a decision or the deadline.
+    if (request.status === "open" ? !awaitsDecision(request) : exchangeStatus(request) === null) continue;
     const state = exchangeState(request);
     rows.push({
       source: "exchange",
