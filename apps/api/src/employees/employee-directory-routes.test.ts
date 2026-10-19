@@ -608,9 +608,18 @@ describe("employee directory routes", () => {
       reason: "Seasonal role ended",
       idempotencyKey: "a6200000-0000-4000-8000-000000000001",
     };
+    const accessChange = {
+      employee_role_id: null,
+      management_role_id: "26000000-0000-4000-8000-000000000002",
+      managed_location_ids: [locationId],
+      management_job_ids: ["26000000-0000-4000-8000-000000000021"],
+      expected_impact: { shifts_opened: 3, requests_closed: 1, applications_closed: 1, time_off_withdrawn: 1, availability_deleted: true },
+    };
     const writes = [
       ["save", "save_employee_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}`, employeeInput],
       ["role change", "update_employee_membership_role_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/role`, { role_id: "26000000-0000-4000-8000-000000000002" }],
+      ["access change preview", "preview_employee_access_change_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access/preview`, { employee_role_id: null, management_role_id: "26000000-0000-4000-8000-000000000002" }],
+      ["access change", "change_employee_access_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, accessChange],
       ["archive", "set_employee_archived_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/archive`, { archived: true, restoreAccess: false }],
       ["termination", "terminate_employee_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/termination`, termination],
       ["access removal", "remove_employee_access_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, undefined],
@@ -632,6 +641,76 @@ describe("employee directory routes", () => {
       expect(rpc).toHaveBeenCalledWith(rpcName, expect.objectContaining({ actor_user_id: userId, target_workspace_id: workspaceId, target_employee_id: employeeId }));
       expect(response.statusCode).toBe(403);
       expect(response.json()).toMatchObject({ reason: "authz.rank" });
+      await app.close();
+    });
+
+    // ROL-CIFT 4.1: the access change sends both slots, the places and jobs
+    // of the management access, and the impact the reader was shown; the
+    // preview asks what giving the employee access up would do.
+    it("changes somebody's access and previews what it does", async () => {
+      const impact = accessChange.expected_impact;
+      const rpc = vi.fn(async (name: string) => ({
+        data: name === "preview_employee_access_change_service" ? impact
+          : { membership_id: "26000000-0000-4000-8000-000000000031", employee_role_id: null,
+              management_role_id: accessChange.management_role_id, impact },
+        error: null,
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const preview = await app.inject({
+        method: "POST",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/access/preview`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { employee_role_id: null, management_role_id: accessChange.management_role_id },
+      });
+      expect(preview.statusCode, preview.body).toBe(200);
+      expect(preview.json()).toEqual(impact);
+      expect(rpc).toHaveBeenCalledWith("preview_employee_access_change_service", {
+        actor_user_id: userId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+        next_employee_role_id: null,
+        next_management_role_id: accessChange.management_role_id,
+      });
+      const change = await app.inject({
+        method: "PATCH",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: { ...spoofedIdentity, ...accessChange },
+      });
+      expect(change.statusCode, change.body).toBe(200);
+      expect(change.json()).toMatchObject({ management_role_id: accessChange.management_role_id, impact });
+      expect(rpc).toHaveBeenCalledWith("change_employee_access_service", {
+        actor_user_id: userId,
+        target_workspace_id: workspaceId,
+        target_employee_id: employeeId,
+        next_employee_role_id: null,
+        next_management_role_id: accessChange.management_role_id,
+        managed_location_ids: accessChange.managed_location_ids,
+        management_job_ids: accessChange.management_job_ids,
+        expected_impact: impact,
+      });
+      await app.close();
+    });
+
+    it("answers 409 when what the change does moved since the preview, and 400 without the impact", async () => {
+      const rpc = vi.fn(async () => ({
+        data: null,
+        error: { code: "PT409", message: "What this change does has changed. Review it again.", hint: "access.impact_changed", details: "{}" },
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const url = `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`;
+      const stale = await app.inject({ method: "PATCH", url, headers: { authorization: "Bearer valid-token" }, payload: accessChange });
+      expect(stale.statusCode, stale.body).toBe(409);
+      const { expected_impact: _shown, ...unshown } = accessChange;
+      const bare = await app.inject({ method: "PATCH", url, headers: { authorization: "Bearer valid-token" }, payload: unshown });
+      expect(bare.statusCode).toBe(400);
+      expect(rpc).toHaveBeenCalledTimes(1);
       await app.close();
     });
 

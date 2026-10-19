@@ -56,7 +56,7 @@ create temporary table slot_rule (name text primary key);
 insert into slot_rule values
   ('membership_access_slots_hold'), ('managed_location_needs_manager'), ('management_job_holds'),
   ('ensure_management_and_owner'),
-  -- ponytail: these two go in ROL-CIFT slices 4 and 6 (6 -> 4)
+  -- ponytail: these two go in ROL-CIFT 6.3, with the drawer's own Manages (6 -> 4)
   ('place_single_role'), ('manages_follow_works');
 select cmp_ok(
   (select count(*)::integer from core_function

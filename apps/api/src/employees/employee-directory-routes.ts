@@ -2,6 +2,8 @@ import {
   employeeInputSchema,
   employeeCreateCommandSchema,
   employeeRoleUpdateInputSchema,
+  employeeAccessChangeInputSchema,
+  employeeAccessPreviewInputSchema,
   usPhoneSchema,
   usText,
 } from "@newfork/shared";
@@ -491,6 +493,68 @@ export function registerEmployeeDirectoryRoutes(
         role: body.data,
       });
       return reply.status(204).send();
+    },
+  );
+
+  // ROL-CIFT 4.1 (design §4.8): what changing somebody's access does, then the
+  // change itself, sent with the impact the reader was shown (409 when it moved).
+  app.post(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/access/preview",
+    async (request, reply) => {
+      const params = employeeParams.safeParse(request.params);
+      const body = employeeAccessPreviewInputSchema.safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "Valid employee access required" });
+      // No gate here: the service asks the core (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      return reply.send(
+        await options.service.previewAccessChange({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          access: body.data,
+        }),
+      );
+    },
+  );
+
+  app.patch(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/access",
+    async (request, reply) => {
+      const params = employeeParams.safeParse(request.params);
+      const body = employeeAccessChangeInputSchema.safeParse(request.body);
+      if (!params.success || !body.success)
+        return reply
+          .status(400)
+          .send({ error: "Valid employee access required" });
+      // No gate here: the service asks the core (FB-6.2 .4, KK-31).
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        options.contextResolver,
+      );
+      if (!options.service)
+        return reply
+          .status(503)
+          .send({ error: "Employee directory service is not configured" });
+      return reply.send(
+        await options.service.changeAccess({
+          actorUserId: context.userId,
+          workspaceId: params.data.workspaceId,
+          employeeId: params.data.employeeId,
+          access: body.data,
+        }),
+      );
     },
   );
 

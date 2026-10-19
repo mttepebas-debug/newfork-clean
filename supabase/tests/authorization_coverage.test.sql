@@ -40,6 +40,8 @@ insert into service_class values
   ('claim_password_reset_send_service', 'account.self'),
   ('cancel_workspace_closure_service', 'workspace.close'),
   ('cancel_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
+  -- ROL-CIFT 4.1: one rank above the person's highest access; the owner gives themselves the employee access
+  ('change_employee_access_service', 'employee.change_role'),
   ('claim_account_deletion_work_service', 'exempt:worker'),
   ('complete_account_deletion_work_service', 'exempt:worker'),
   ('count_account_attention_service', 'account.self'),
@@ -149,6 +151,7 @@ insert into service_class values
   ('preview_announcement_service', 'announcement.write'),
   ('preview_document_publication_service', 'settings.documents.write'),
   -- also schedule.edit where the closed day opens shifts (FB-6.7 C, K13)
+  ('preview_employee_access_change_service', 'employee.change_role'),
   ('preview_employee_document_assignments_service', 'employee.save'),
   ('preview_employee_invitation_service', 'exempt:token'),
   ('preview_policy_definition_apply_service', 'settings.documents.write'),

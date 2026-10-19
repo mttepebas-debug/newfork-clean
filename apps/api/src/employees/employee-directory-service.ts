@@ -1,4 +1,12 @@
 import {
+  employeeAccessChangeInputSchema,
+  employeeAccessChangeResultSchema,
+  employeeAccessImpactSchema,
+  employeeAccessPreviewInputSchema,
+  type EmployeeAccessChangeInput,
+  type EmployeeAccessChangeResult,
+  type EmployeeAccessImpact,
+  type EmployeeAccessPreviewInput,
   employeeDetailSchema,
   employeeInputSchema,
   employeeLocationRemovalSchema,
@@ -66,6 +74,18 @@ export interface EmployeeDirectoryService {
     readonly employeeId: string;
     readonly role: EmployeeRoleUpdateInput;
   }): Promise<void>;
+  previewAccessChange(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly access: EmployeeAccessPreviewInput;
+  }): Promise<EmployeeAccessImpact>;
+  changeAccess(input: {
+    readonly actorUserId: string;
+    readonly workspaceId: string;
+    readonly employeeId: string;
+    readonly access: EmployeeAccessChangeInput;
+  }): Promise<EmployeeAccessChangeResult>;
   setArchived(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -266,6 +286,33 @@ export function createEmployeeDirectoryServiceWithClient(
         target_employee_id: input.employeeId,
         target_role_id: value.role_id,
       });
+    },
+    async previewAccessChange(input) {
+      const value = employeeAccessPreviewInputSchema.parse(input.access);
+      return employeeAccessImpactSchema.parse(
+        await rpc("preview_employee_access_change_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+          next_employee_role_id: value.employee_role_id,
+          next_management_role_id: value.management_role_id,
+        }),
+      );
+    },
+    async changeAccess(input) {
+      const value = employeeAccessChangeInputSchema.parse(input.access);
+      return employeeAccessChangeResultSchema.parse(
+        await rpc("change_employee_access_service", {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+          next_employee_role_id: value.employee_role_id,
+          next_management_role_id: value.management_role_id,
+          managed_location_ids: value.managed_location_ids,
+          management_job_ids: value.management_job_ids,
+          expected_impact: value.expected_impact,
+        }),
+      );
     },
     async setArchived(input) {
       await rpc("set_employee_archived_service", {

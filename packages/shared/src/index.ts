@@ -2625,6 +2625,45 @@ export type EmployeeRoleUpdateInput = z.infer<
 >;
 
 /**
+ * ROL-CIFT 4.1 (design §4.8): changing somebody's two access slots. Giving the
+ * employee access up closes their employee side; what it does is shown first
+ * and sent back, so a change made since refuses the save (PT409).
+ */
+export const employeeAccessImpactSchema = z.object({
+  shifts_opened: z.number().int().nonnegative(),
+  requests_closed: z.number().int().nonnegative(),
+  applications_closed: z.number().int().nonnegative(),
+  time_off_withdrawn: z.number().int().nonnegative(),
+  availability_deleted: z.boolean(),
+});
+export type EmployeeAccessImpact = z.infer<typeof employeeAccessImpactSchema>;
+export const employeeAccessPreviewInputSchema = z.object({
+  employee_role_id: z.string().uuid().nullable(),
+  management_role_id: z.string().uuid().nullable(),
+});
+export type EmployeeAccessPreviewInput = z.infer<
+  typeof employeeAccessPreviewInputSchema
+>;
+export const employeeAccessChangeInputSchema =
+  employeeAccessPreviewInputSchema.extend({
+    managed_location_ids: z.array(z.string().uuid()).max(500),
+    management_job_ids: z.array(z.string().uuid()).max(100),
+    expected_impact: employeeAccessImpactSchema,
+  });
+export type EmployeeAccessChangeInput = z.infer<
+  typeof employeeAccessChangeInputSchema
+>;
+export const employeeAccessChangeResultSchema = z.object({
+  membership_id: z.string().uuid(),
+  employee_role_id: z.string().uuid().nullable(),
+  management_role_id: z.string().uuid().nullable(),
+  impact: employeeAccessImpactSchema,
+});
+export type EmployeeAccessChangeResult = z.infer<
+  typeof employeeAccessChangeResultSchema
+>;
+
+/**
  * Taking somebody off one location (FB-6.2 S1): their shifts there from now on
  * are left open and the record stays, with no location if it was the only one.
  */
