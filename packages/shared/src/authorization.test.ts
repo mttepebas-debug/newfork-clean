@@ -212,12 +212,15 @@ describe("expected() outside the matrix", () => {
   });
 
   // D3: a manager's own case goes one rank up; an admin's to the owner.
-  it("sends a manager's case to admin or owner and an admin's to the owner", () => {
+  it("lets the location's manager decide a manager's or an admin's case: rank is not counted (S-164, S-169)", () => {
     const managersCase = { person: { role: "manager" as const, isSelf: false }, locations: ["K"] };
-    expect(expected(boss, "exchange.approve", managersCase)).toBe(false);
+    expect(expected(boss, "exchange.approve", managersCase)).toBe(true);
     expect(expected(admin, "exchange.approve", managersCase)).toBe(true);
     const adminsCase = { person: { role: "admin" as const, isSelf: false }, locations: ["K"] };
-    expect(expected(admin, "exchange.approve", adminsCase)).toBe(false);
+    expect(expected(boss, "exchange.approve", adminsCase)).toBe(true);
+    expect(expected(admin, "exchange.approve", adminsCase)).toBe(true);
     expect(expected(owner, "exchange.approve", adminsCase)).toBe(true);
+    expect(expected(boss, "exchange.approve", { ...managersCase, locations: ["B"] })).toBe(false);
+    expect(expected(boss, "exchange.approve", { person: { role: "manager" as const, isSelf: true }, locations: ["K"] })).toBe(false);
   });
 });
