@@ -267,9 +267,12 @@ export function AppShell() {
   const isEmployee = membershipClass(context.membership) === "employee";
   // Owner, admin and manager who also hold the employee access switch to the
   // employee view, which opens in the employee's own frame (FB-6.2.8; ROL-CIFT
-  // 6.2, design §4.1: both accesses, never one of them).
+  // 6.2, design §4.1: both accesses, never one of them), when the core opens
+  // it (employee_hub.read): never a row that leads to a no-access card.
   const canSwitchView =
-    hasEmployeeAccess(context.membership) && hasManagementAccess(context.membership);
+    hasEmployeeAccess(context.membership) &&
+    hasManagementAccess(context.membership) &&
+    can(context, "employee_hub.read");
   const inEmployeeView = canSwitchView && isEmployeeViewPath(location.pathname);
   const employeeShell = isEmployee || inEmployeeView;
   const shellRole = employeeShell ? "employee" : membershipClass(context.membership);

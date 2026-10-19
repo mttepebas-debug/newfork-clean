@@ -79,6 +79,12 @@ describe("employee view switch (FB-6.2.8)", () => {
     expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });
 
+  it("is not offered to somebody with both accesses the core does not let into the hub", () => {
+    current = { ...owner, actions: [] };
+    renderAt("/app/workspace");
+    expect(sidebar().queryByText("Employee view")).toBeNull();
+  });
+
   it("offers it to a manager who also works shifts", () => {
     current = { ...owner, membership: { ...owner.membership, access: { employee: true, management: "manager" } } };
     renderAt("/app/schedule");
