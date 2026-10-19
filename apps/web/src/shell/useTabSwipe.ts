@@ -22,7 +22,7 @@ const SLIDE_MS = 220;
 // Text boxes keep a finger's sideways move for the caret and the selection (a date, a time, a choice box and a
 // checkbox have none: a swipe across them still changes the tab).
 const OWN_SWIPE =
-  'textarea, input:not([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"], [type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"]), [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], [aria-modal="true"], nav';
+  'textarea, input:not([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"], [type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"]), [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], dialog, [aria-modal="true"], nav';
 /**
  * Where a page's swipe can start: the whole area the page sits in (the app's, or the account's), not only as far
  * down as its content reaches. A tab with little on it ends under its first box while its page goes on down the

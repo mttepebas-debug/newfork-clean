@@ -209,9 +209,11 @@ describe("a tabbed page on a phone", () => {
       <main className="app-main">
         <Page />
         <nav aria-label="Phone bar" data-testid="bar" />
+        <dialog open data-testid="native-sheet" />
       </main>,
     );
     swipe(screen.getByTestId("bar"), [300, 780], [150, 780]);
+    swipe(screen.getByTestId("native-sheet"), [300, 500], [150, 500]);
     expect(selected()).toBe("one");
   });
 
