@@ -18,14 +18,23 @@ async function phone(browser: Browser, person: "zeynep" | "emre"): Promise<{ pag
   return { page, cdp: await context.newCDPSession(page) };
 }
 
-/** A finger from (x, y) straight down by `distance` px, released at the end. */
-async function pullFrom(cdp: CDPSession, x: number, y: number, distance: number) {
+/** A finger from (x, y) straight down by `distance` px, released at the end; `held` runs before the release. */
+async function pullFrom(cdp: CDPSession, x: number, y: number, distance: number, held?: () => Promise<void>) {
   const touch = (type: "touchStart" | "touchMove" | "touchEnd", at: number) =>
     cdp.send("Input.dispatchTouchEvent", { type, touchPoints: type === "touchEnd" ? [] : [{ x, y: at }] });
   await touch("touchStart", y);
   for (let step = 1; step <= 12; step++) await touch("touchMove", y + (distance * step) / 12);
+  await held?.();
   await touch("touchEnd", y + distance);
 }
+
+/** The mark is the topmost thing where it is drawn: no frozen heading covers it. */
+const markOnTop = (page: Page) =>
+  page.evaluate(() => {
+    const mark = document.querySelector(".app-main > .pull-mark")!;
+    const box = mark.getBoundingClientRect();
+    return Boolean(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest(".pull-mark"));
+  });
 
 const centre = async (page: Page, selector: string) => {
   const box = (await page.locator(selector).filter({ visible: true }).first().boundingBox())!;
@@ -78,7 +87,10 @@ test("phone: a manager's Lineup keeps its day wheel, and Employees refreshes fro
   await expect(page.locator("h1").filter({ visible: true }).first()).toBeVisible();
   const people = countReads(page, /\/employees/);
   const heading = await centre(page, "h1");
-  await pullFrom(cdp, heading.x, heading.y, 260);
+  // Employees freezes its heading; the mark still shows over it while the finger holds.
+  await pullFrom(cdp, heading.x, heading.y, 260, async () => {
+    expect(await markOnTop(page)).toBe(true);
+  });
   await expect.poll(people).toBeGreaterThan(0);
 });
 

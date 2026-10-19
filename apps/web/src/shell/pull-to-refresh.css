@@ -2,7 +2,9 @@
    finger down from the top of the page and turns; the page stays put. */
 .pull-mark {
   position: absolute;
-  z-index: 6;
+  /* Over a page's frozen heading and tabs (frozen-top.css, 6), under the
+     phone's top bar (30), its bottom bar and any window. */
+  z-index: 20;
   top: 8px;
   left: 50%;
   display: grid;
