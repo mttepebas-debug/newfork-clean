@@ -23,6 +23,7 @@ export const authzActionKeys = [
   "employee_hub.read",
   "employee_hub.self",
   "employee.archive",
+  "employee.change_own_access",
   "employee.change_role",
   "employee.create",
   "employee.decide_preferred_name",
@@ -123,6 +124,8 @@ export const targetedAuthzActions = {
   "documents.review": { person: true, permission: "employee_documents.review" },
   "documents.self": { person: true, permission: null, own: true, restrictedOk: true },
   "employee.archive": { person: true, permission: "employees.archive" },
+  // ROL-CIFT 4.1: the owner, with nobody above, on their own record (KARARLAR S-165).
+  "employee.change_own_access": { person: true, permission: null, ownerOnly: true },
   "employee.change_role": { person: true, permission: "employees.manage" },
   "employee.create": { permission: "employees.manage" },
   "employee.decide_preferred_name": { person: true, permission: "employees.manage" },
@@ -334,6 +337,9 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "employee.make_admin":
       return !isSelf && person?.role !== "owner";
+
+    case "employee.change_own_access":
+      return isSelf;
 
     case "employee.change_role":
       if (isSelf || person?.role === "owner") return false;

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(38);
+select plan(44);
 
 -- ROL-CIFT slice 4.1 (design §4.7, §4.8; KARARLAR S-165, S-167, S-168). Changing somebody's access
 -- closes what giving the employee access up leaves open, the way a termination does, and shows it
@@ -109,10 +109,12 @@ select is((select array_agg(l.location_id) from public.membership_managed_locati
   array[tests.id('ca:K')], 'she manages Kadikoy');
 select is((select array_agg(j.job_id) from public.membership_management_jobs j where j.membership_id = (pg_temp.member('dora')).id),
   array[tests.id('ca:job:general manager')], 'as a General Manager');
+select is((select n.title from public.person_notifications n where n.type_key = 'people.role_changed'
+  and n.user_id = pg_temp.who('dora') order by n.created_at desc limit 1), 'Your access changed', 'and she is told');
 
 -- rank_above_management: Can is a manager like Can; the admin is above him.
 select is(pg_temp.said(pg_temp.change('can', 'can', null, pg_temp.role('manager'), array['K'], array['general manager'],
-  pg_temp.nothing())), '42501 authz.rank', 'Can may not change his own access');
+  pg_temp.nothing())), '42501 authz.owner_only', 'Can may not change his own access: only the owner does, on theirs');
 select is(pg_temp.said(format('select public.preview_employee_access_change_service(%L, %L, %L, null, %L)',
   pg_temp.who('can'), tests.id('ca'), tests.id('ca:ada'), pg_temp.role('admin'))), '42501 authz.rank',
   'nor Ada''s, an admin');
@@ -133,7 +135,13 @@ select is(pg_temp.said(pg_temp.change('owner', 'owner', pg_temp.role('employee')
   array['general manager'], pg_temp.nothing())), '42501 authz.rank', 'the owner stays the owner on their own record');
 select tests.no_employee_slot('ca', 'ada');
 select is(pg_temp.said(pg_temp.change('ada', 'ada', pg_temp.role('employee'), pg_temp.role('admin'), '{}',
-  array['general manager'], pg_temp.nothing())), '42501 authz.rank', 'Ada may not give herself the employee access');
+  array['general manager'], pg_temp.nothing())), '42501 authz.owner_only', 'Ada may not give herself the employee access');
+
+-- The owner access comes by a transfer alone; only the owner makes an admin.
+select is(pg_temp.said(pg_temp.change('owner', 'can', null, pg_temp.role('owner'), '{}', '{}', pg_temp.nothing())),
+  '42501 authz.rank', 'nobody is made the owner by an access change');
+select is(pg_temp.said(pg_temp.change('ada', 'ece', pg_temp.role('employee'), pg_temp.role('admin'), '{}',
+  array['general manager'], pg_temp.nothing())), '42501 authz.owner_only', 'Ada makes nobody an admin');
 
 -- management_job_required (S-168): a management access is opened with a Management job.
 select is(pg_temp.said(pg_temp.change('ada', 'ece', pg_temp.role('employee'), pg_temp.role('manager'), array['K'], '{}',
@@ -146,6 +154,22 @@ select is(pg_temp.said(pg_temp.change('ada', 'ece', pg_temp.role('employee'), pg
   array['general manager'], pg_temp.nothing())), 'ok', 'with General Manager and Kadikoy she does');
 select ok(exists (select 1 from public.membership_management_jobs j where j.membership_id = (pg_temp.member('ece')).id
   and j.job_id = tests.id('ca:job:general manager')), 'and holds General Manager');
+
+-- A cover Emir asks of Ece alone closes with her employee access, and the Manager note about her goes.
+select tests.publish_week('ca', 5, '[
+  {"label": "emir-7", "person": "emir", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+]');
+select public.shift_exchanges_command_service(pg_temp.who('emir'), tests.id('ca'), jsonb_build_object('action', 'create',
+  'kind', 'cover', 'shift_id', tests.id('ca:shift:emir-7'), 'employee_id', tests.id('ca:ece')), gen_random_uuid());
+select tests.settle();
+insert into public.manager_weekly_reminders (workspace_id, employee_id, preference, enabled, revision, updated_by)
+values (tests.id('ca'), tests.id('ca:ece'), public.empty_weekly_preference(), true, 1, pg_temp.who('can'));
+select is(pg_temp.said(pg_temp.change('owner', 'ece', null, pg_temp.role('manager'), array['K'], array['general manager'],
+  pg_temp.preview('owner', 'ece', null, pg_temp.role('manager')))), 'ok', 'the owner gives Ece''s employee access up');
+select is((select c.status from public.shift_exchange_cases c where c.owner_id = tests.id('ca:emir') and c.audience = 'direct'),
+  'cancelled', 'the cover asked of her alone is closed');
+select ok(not exists (select 1 from public.manager_weekly_reminders m where m.employee_id = tests.id('ca:ece')),
+  'the Manager note about her is gone');
 select is(pg_temp.said(pg_temp.change('ada', 'ece', null, null, '{}', '{}', pg_temp.nothing())),
   '22023 access.role_required', 'nobody is left with no access');
 

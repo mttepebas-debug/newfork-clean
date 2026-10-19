@@ -142,7 +142,8 @@ select is(
   array[
     'account.self', 'announcement.acknowledge', 'announcement.read', 'announcement.write', 'announcement.write_wide', 'audit.read',
     'availability.note_read', 'availability.own', 'availability.team_read', 'availability.team_write',
-    'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_role',
+    'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_own_access',
+    'employee.change_role',
     'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',
     'employee.make_admin', 'employee.read', 'employee.references.read', 'employee.remove_access',
     'employee.remove_from_location', 'employee.request_preferred_name', 'employee.save',

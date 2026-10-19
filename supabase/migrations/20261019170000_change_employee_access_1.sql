@@ -82,7 +82,8 @@ begin
     where case_id = closed.id and status in ('invited', 'pending_manager');
     delete from public.shift_exchange_votes where case_id = closed.id;
     perform public.shift_exchange_emit(actor, w, closed.id, null, 'case_closed',
-      why || ' This request was closed. The owner keeps this shift.');
+      why || case when reason = 'access_removed' then ' This request was closed. The owner keeps this shift.'
+        else ' This request was closed. The shift is open for someone else to pick up.' end);
   end loop;
 
   -- What they answered on somebody else's request; a request made to them alone closes with it.
@@ -125,20 +126,16 @@ create function app_private.access_change_target(actor uuid, w uuid, emp uuid, n
   next_management_role uuid) returns public.workspace_memberships
 language plpgsql security definer set search_path = '' as $$
 declare
-  me app_private.actor_state := app_private.actor(actor, w);
   record public.employee_profiles;
   member public.workspace_memberships;
   own_record boolean;
 begin
   select * into record from public.employee_profiles p where p.id = emp and p.workspace_id = w;
   own_record := record.user_id is not null and record.user_id = actor;
-  -- One rank above the person's highest access (design §4.8); the owner and an admin keep their own
-  -- record, the core says (employee.save), and of the two only the owner has nobody above.
-  if own_record and me.class = 'owner' then
-    perform app_private.authorize(actor, w, 'employee.save', target_person => emp);
-  else
-    perform app_private.authorize(actor, w, 'employee.change_role', target_person => emp);
-  end if;
+  -- One rank above the person's highest access (design §4.8); on one's own record, the owner alone,
+  -- who has nobody above (employee.change_own_access).
+  perform app_private.authorize(actor, w,
+    case when own_record then 'employee.change_own_access' else 'employee.change_role' end, target_person => emp);
 
   if record.archived_at is not null then
     raise exception 'employee not found' using errcode = 'P0002';
@@ -159,7 +156,7 @@ begin
   end if;
   -- Which slot a role fits is the membership's own rule (membership_access_slots_hold).
 
-  if own_record and me.class = 'owner' then
+  if own_record then
     -- The owner's own record: the employee access alone; the owner stays the owner.
     if next_management_role is distinct from member.role_id then
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.change_role';
@@ -242,6 +239,9 @@ begin
           and j.system_key is null and j.archived_at is null and j.deleted_at is null)) then
       raise exception 'choose a Management job' using errcode = '22023', hint = 'access.management_job_invalid';
     end if;
+  elsif management_class = 'owner' and cardinality(jobs) > 0 then
+    raise exception 'the owner''s Owner job comes with ownership'
+      using errcode = '22023', hint = 'access.management_job_invalid';
   elsif management_class is null and cardinality(jobs) > 0 then
     raise exception 'a Management job goes with a management access'
       using errcode = '22023', hint = 'access.management_job_invalid';

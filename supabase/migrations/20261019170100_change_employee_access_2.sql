@@ -196,6 +196,8 @@ declare
   membership public.workspace_memberships%rowtype;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.remove_access', target_person => target_employee_id);
+  -- The workspace lock first, as every access change takes it, then the rows (close_employee_side).
+  perform public.availability_lock_workspace(target_workspace_id);
 
   select * into employee
   from public.employee_profiles

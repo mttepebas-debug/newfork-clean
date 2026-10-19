@@ -370,6 +370,17 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
   ('employee.make_employee', 'person', 'employees.manage', false, false,
    $$select public.update_employee_membership_role_service($1, $2, $3,
        (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee')) is not null$$),
+  -- ROL-CIFT 4.1: an access change on somebody else's record, previewed with the slots they hold;
+  -- on one's own record the owner alone (change_own_access). Each reaches only its own records.
+  ('employee.change_access', 'person', 'employees.manage', false, true,
+   $$select case when exists (select 1 from public.employee_profiles e where e.id = $3 and e.user_id = $1) then false
+     else (select public.preview_employee_access_change_service($1, $2, $3, m.employee_role_id, m.role_id) is not null
+       from public.employee_profiles e join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+       where e.id = $3) end$$),
+  ('employee.change_own_access', 'person', null, true, true,
+   $$select case when not exists (select 1 from public.employee_profiles e where e.id = $3 and e.user_id = $1) then false
+     else (select public.preview_employee_access_change_service($1, $2, $3, m.employee_role_id, m.role_id) is not null
+       from public.workspace_memberships m where m.workspace_id = $2 and m.user_id = $1) end$$),
   ('employee.create', 'location', 'employees.manage', false, false,
    $$select public.create_employee_command_service($1, $2, gen_random_uuid(),
        jsonb_build_object('first_name', 'Probe', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
@@ -603,6 +614,8 @@ insert into core_action (key, core_key, blank) values
   ('employee.remove_access', 'employee.remove_access', 'null'),
   ('employee.make_admin', 'employee.make_admin', 'null'),
   ('employee.make_employee', 'employee.change_role', 'null'),
+  ('employee.change_access', 'employee.change_role', 'null'),
+  ('employee.change_own_access', 'employee.change_own_access', 'null'),
   ('employee.create', 'employee.create', 'org'),
   ('schedule.read', 'schedule.read', 'null'),
   ('lineup.read', 'lineup.read', 'null'),
@@ -832,7 +845,12 @@ begin
     -- Owner only (checked above); nobody changes their own role.
     return case when is_self or t.class = 'owner' then 'deny' else 'allow' end;
 
-  when 'employee.make_employee' then
+  when 'employee.change_own_access' then
+    -- The owner, with nobody above, on their own record alone (ROL-CIFT 4.1, KARARLAR S-165).
+    return case when is_self then 'allow' else 'deny' end;
+
+  -- An access change goes one rank above the person's highest access (ROL-CIFT 4.1), as a role change.
+  when 'employee.make_employee', 'employee.change_access' then
     if is_self or t.class = 'owner' then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class = 'admin' then 'deny' else 'allow' end; end if;
