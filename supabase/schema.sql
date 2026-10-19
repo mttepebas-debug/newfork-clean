@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 529, last: 20261019124310_lineup_art_archive.sql
--- fingerprint: sha256:a7dba353f201e4f45179491ff3bb7a0f07570e7e3cadef971bdd43f9dacf653e
+-- migrations: 533, last: 20261019160300_one_decision_chain_4.sql
+-- fingerprint: sha256:5c0489850abf201013a0a059bb4188aca3ad07a080f41b6207664fed3519dfb6
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3060,7 +3060,7 @@ COMMENT ON COLUMN "app_private"."authz_actions"."outranked_no" IS 'No when targe
 
 
 
-COMMENT ON COLUMN "app_private"."authz_actions"."owner_target_ok" IS 'With rank_below: a request of the owner''s own is decided like a lower rank''s, by whoever may decide the place; never by the owner (EKRAN-02 K-S1).';
+COMMENT ON COLUMN "app_private"."authz_actions"."owner_target_ok" IS 'With rank_below: a request of the owner''s own is decided like a lower rank''s, by whoever may decide the place. No action sets it since the decision chain (KARARLAR S-169).';
 
 
 
@@ -3681,6 +3681,34 @@ $$;
 
 
 ALTER FUNCTION "app_private"."complete_due_workspace_closures"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid" DEFAULT NULL::"uuid", "action" "text" DEFAULT 'exchange.approve'::"text") RETURNS "text"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  with side as (
+    select e.user_id from public.employee_profiles e
+    where e.workspace_id = decision_tier.w and e.id in (decision_tier.requester, decision_tier.other) and e.user_id is not null
+  ), decider as (
+    -- Who holds a management access and may decide there; the class as the core holds it.
+    select (app_private.actor(m.user_id, decision_tier.w)).class
+    from public.workspace_memberships m
+    where m.workspace_id = decision_tier.w and m.status = 'active' and m.role_id is not null
+      and not exists (select 1 from side s where s.user_id = m.user_id)
+      and app_private.authz_reason(m.user_id, decision_tier.w, decision_tier.action,
+        case when decision_tier.loc is null then null else array[decision_tier.loc] end) is null
+  )
+  select case
+    when exists (select 1 from decider d where d.class = 'manager') then 'location_manager'
+    when exists (select 1 from decider d where d.class = 'admin') then 'admin'
+    when exists (select 1 from decider d where d.class = 'owner') then 'owner'
+    -- The owner holds every permission, so only an owner who is a side of it leaves nobody.
+    else 'self_only' end;
+$$;
+
+
+ALTER FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid", "action" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."default_closure_period"() RETURNS interval
@@ -4943,10 +4971,15 @@ CREATE OR REPLACE FUNCTION "app_private"."exchange_decision_reason"("actor" "uui
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-  select coalesce(
-    case when giver is not null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc], giver) end,
-    case when receiver is not null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc], receiver) end,
-    case when giver is null and receiver is null then app_private.authz_reason(actor, w, 'exchange.approve', array[loc]) end);
+  select case
+    when not exists (select 1 from public.employee_profiles e
+                     where e.workspace_id = exchange_decision_reason.w
+                       and e.id in (exchange_decision_reason.giver, exchange_decision_reason.receiver)
+                       and e.user_id = exchange_decision_reason.actor)
+      then app_private.authz_reason(actor, w, 'exchange.approve', array[loc])
+    when (app_private.actor(actor, w)).class = 'owner' and app_private.decision_tier(w, giver, loc, receiver) = 'self_only'
+      then app_private.authz_reason(actor, w, 'exchange.approve', array[loc])
+    else 'rank' end;
 $$;
 
 
@@ -6499,11 +6532,15 @@ CREATE OR REPLACE FUNCTION "app_private"."notify_deciders"("target_workspace" "u
     AS $$
 declare
   wide uuid[] := app_private.notify_holders(target_workspace, target_wide_action, null, target_person);
+  up uuid[] := array(select u from unnest(wide) u where (app_private.actor(u, target_workspace)).class = 'admin');
   found uuid[] := '{}';
   here uuid[];
   place uuid;
   short boolean := coalesce(cardinality(target_places), 0) = 0;
 begin
+  if cardinality(up) = 0 then
+    up := wide;
+  end if;
   foreach place in array coalesce(target_places, '{}'::uuid[]) loop
     here := array(select u from unnest(app_private.notify_holders(target_workspace, target_action, array[place], target_person)) u
                   where u <> all (wide));
@@ -6513,7 +6550,7 @@ begin
     found := found || here;
   end loop;
   if short then
-    found := found || wide;
+    found := found || up;
   end if;
   return array(select distinct u from unnest(found) u order by u);
 end;
@@ -9045,6 +9082,7 @@ CREATE OR REPLACE FUNCTION "app_private"."time_off_reason"("actor" "uuid", "w" "
 declare
   state app_private.actor_state := app_private.actor(actor, w);
   rule_row app_private.authz_actions;
+  why text;
 begin
   select * into rule_row from app_private.authz_actions a where a.key = action;
   if not found then
@@ -9054,7 +9092,18 @@ begin
   if state.class = 'owner' or documents_aside then
     state.document_blocked := false;
   end if;
-  return app_private.authz_check(state, rule_row, case when place is null then null else array[place] end, person, null);
+  why := app_private.authz_check(state, rule_row, case when place is null then null else array[place] end, person, null);
+  if why = 'rank' and action in ('time_off.decide_alone', 'requests.read') and state.class = 'owner'
+     and exists (select 1 from public.employee_profiles e where e.id = person and e.workspace_id = w and e.user_id = actor)
+     and app_private.decision_tier(w, person, null, null, 'time_off.decide_alone') = 'self_only'
+     and not exists (select 1 from public.employee_location_assignments a
+                     join public.locations l on l.id = a.location_id and l.workspace_id = a.workspace_id
+                     where a.workspace_id = w and a.employee_id = person and a.ended_at is null
+                       and app_private.location_is_live(l)
+                       and app_private.decision_tier(w, person, a.location_id, null, 'time_off.decide') <> 'self_only') then
+    return null;
+  end if;
+  return why;
 end;
 $$;
 
@@ -9140,7 +9189,8 @@ begin
   select * into person from public.employee_profiles e where e.id = r.employee_id and e.workspace_id = target_workspace;
   name := btrim(coalesce(nullif(person.preferred_name, ''), person.first_name) || ' ' || person.last_name);
   zone := coalesce(app_private.time_off_timezone(target_workspace, r.employee_id), 'UTC');
-  alone := app_private.notify_holders(target_workspace, 'time_off.decide_alone', null, r.employee_id);
+  -- Past the managers, the admins; the owner only without one (KARARLAR S-169).
+  alone := app_private.notify_deciders(target_workspace, 'time_off.decide', '{}', r.employee_id, 'time_off.decide_alone');
 
   if fallback_due then
     sent := sent + app_private.notify(
@@ -9385,7 +9435,7 @@ begin
   is_cancel := r.request_type = 'time_off_cancellation';
 
   if what = 'requested' then
-    -- The owner's own is recorded approved at once: nobody is asked.
+    -- A request settled before its notice asks nobody.
     if r.status <> 'pending' then
       return 0;
     end if;
@@ -15793,6 +15843,14 @@ begin
         or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id
          and (a.status <> 'declined_by_employee' or c.audience = 'direct'))
         or coalesce(app_private.shift_exchange_reached_managers(target_workspace_id, c.id), false))
+   -- Requests holds what its reader answers: not their own (design §4.6), but for the owner whom
+   -- nobody else can answer (KARARLAR S-169).
+   and (not (coalesce(c.owner_id = emp_id, false)
+             or exists (select 1 from public.shift_exchange_applications a where a.case_id = c.id and a.employee_id = emp_id))
+        or exists (select 1 from unnest(array_remove(array[(c.offered_snapshot ->> 'location_id')::uuid,
+                     (c.requested_snapshot ->> 'location_id')::uuid], null)) x
+                   where app_private.exchange_decision_reason(actor_user_id, target_workspace_id, c.owner_id,
+                     case when c.owner_id = emp_id then null else emp_id end, x) is null))
    and (target_location_id is null or target_location_id in
         ((c.offered_snapshot ->> 'location_id')::uuid, (c.requested_snapshot ->> 'location_id')::uuid))
    and (needle = '' or concat_ws(' ', c.offered_snapshot ->> 'employee_name', c.requested_snapshot ->> 'employee_name',
@@ -16869,7 +16927,7 @@ $$;
 ALTER FUNCTION "public"."list_employee_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "self_only" boolean) OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "locations" "jsonb", "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "role_name" "text", "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
+CREATE OR REPLACE FUNCTION "public"."list_employees_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "include_archived" boolean DEFAULT false, "search_text" "text" DEFAULT ''::"text", "status_filter" "text" DEFAULT 'all'::"text", "page_limit" integer DEFAULT 100, "page_offset" integer DEFAULT 0) RETURNS TABLE("id" "uuid", "workspace_id" "uuid", "employee_code" "text", "first_name" "text", "last_name" "text", "preferred_name" "text", "display_name" "text", "invitation_email" "text", "start_date" "date", "locations" "jsonb", "primary_job_id" "uuid", "primary_job_name" "text", "job_count" bigint, "management_access" boolean, "employee_access" boolean, "display_status" "text", "archived_at" timestamp with time zone, "revision" integer)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -16904,7 +16962,10 @@ begin
       ), '[]'::jsonb) as locations,
       primary_job.job_id as primary_job_id, app_private.listed_job_name(employee.id) as primary_job_name,
       (select count(*) from public.employee_job_assignments a where a.employee_id = employee.id and a.ended_at is null) as job_count,
-      role.name as role_name,
+      -- The two access slots apart (KARARLAR S-179): which app the person reaches, not a rank.
+      membership.role_id is not null as management_access,
+      -- No membership (not joined yet, no account) reaches neither app: No access.
+      membership.employee_role_id is not null as employee_access,
       case
         when employee.archived_at is not null then 'archived'
         when membership.status = 'active' then 'active'
@@ -16917,7 +16978,6 @@ begin
     from public.employee_profiles employee
     left join public.employee_job_assignments primary_job on primary_job.employee_id = employee.id and primary_job.ended_at is null and primary_job.is_primary
     left join public.workspace_memberships membership on membership.workspace_id = employee.workspace_id and membership.user_id = employee.user_id
-    left join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id)
     left join public.employee_onboarding_cases onboarding on onboarding.employee_id = employee.id
     left join lateral (
       select candidate.status, candidate.expires_at
@@ -22165,9 +22225,6 @@ begin
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, note, metadata)
   values (w, rid, 'submitted', actor, btrim(coalesce(reason, '')),
     jsonb_build_object('parent_request_id', parent.id, 'parent_revision', parent.revision, 'operation_id', request_time_off_cancellation_service.operation_id));
-  if public.time_off_is_the_owners_own(actor, w, rid) then
-    perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
-  end if;
   perform app_private.time_off_tell(w, rid, 'requested', actor);
   select jsonb_build_object('status', r.status, 'request_id', r.id, 'revision', r.revision, 'decide_by', r.decide_by) into result
   from public.schedule_time_off_requests r where r.id = rid;
@@ -26159,11 +26216,10 @@ begin
  if fp is distinct from c.consent_fingerprint or fp is distinct from a.consent_fingerprint then problems:=array_append(problems,'Shift conditions changed. New employee consent is required'); end if;
  if c.expires_at<=clock_timestamp() then problems:=array_append(problems,'This request closed 4 hours before the shift');
  elsif (s->>'starts_at')::timestamptz<=clock_timestamp() or (t->>'starts_at')::timestamptz<=clock_timestamp() then problems:=array_append(problems,'This shift has already started'); end if;
- if exists(select 1 from public.employee_profiles where workspace_id=w and user_id=actor and id in(c.owner_id,a.employee_id)) then problems:=array_append(problems,'A separate manager must approve your own exchange');
- -- D3: a peer manager reads the case and cannot decide it.
- elsif not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+ -- Nobody decides their own, but the owner whom nobody else can answer (KARARLAR S-164, S-169).
+ if not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
   where app_private.exchange_decision_reason(actor,w,c.owner_id,a.employee_id,x) is null) then
-  problems:=array_append(problems,'Someone with a higher role must approve this exchange'); end if;
+  problems:=array_append(problems,'A separate manager must approve your own exchange'); end if;
  if s is not null then r:=app_private.eligibility(w,a.employee_id,s,jsonb_build_object('operation',case when c.kind='swap' then 'swap' when c.audience='direct' then 'cover_accept' else 'release_pickup' end,'excluded',to_jsonb(array_remove(array[(s->>'id')::uuid,(t->>'id')::uuid],null)),'with_measures',true)); end if;
  if r is null then r:='{"status":"ineligible","reasons":["Published shift unavailable"]}'; end if;
  if r->>'status'<>'eligible' then problems:=array_append(problems,'The receiving employee is not eligible for the full shift'); end if;
@@ -26482,7 +26538,7 @@ begin
    -- P07: a peer reads the case (G1) and does not close it; the reason comes from the core.
    if not coalesce(owns,false) and not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
     where app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) is null) then
-    raise exception 'Only the owner or someone with a higher role can close this request' using errcode='42501',detail='exchange.approve',hint='authz.'||coalesce((select r from
+    raise exception 'Only the person who asked or someone who decides this request can close it' using errcode='42501',detail='exchange.approve',hint='authz.'||coalesce((select r from
      unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x,
      app_private.exchange_decision_reason(actor,w,c.owner_id,null,x) r where r<>'out_of_scope' limit 1),'out_of_scope');
    end if;
@@ -26630,7 +26686,7 @@ CREATE OR REPLACE FUNCTION "public"."shift_exchanges_read_service"("actor" "uuid
     AS $$
 declare emp public.employee_profiles%rowtype; c public.shift_exchange_cases%rowtype; s jsonb; t jsonb; allowed boolean; mine boolean;
  case_items jsonb[]:='{}'; opportunities jsonb:='[]'; own_shifts jsonb:='[]'; chk jsonb; shift_row record; live_status text; published_cache jsonb:='{}'; source_key text;
- read_scope uuid[]:='{}';
+ read_scope uuid[]:='{}'; tiers jsonb:='{}';
 begin
  if to_date<from_date or to_date>from_date+62 then raise exception 'Choose a date range up to 62 days'; end if;
  if not manager_view then perform app_private.authorize(actor,w,'employee_hub.read'); end if;
@@ -26661,6 +26717,12 @@ begin
    and not exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id and (a.status<>'declined_by_employee' or c.audience='direct'))
    and not coalesce(app_private.shift_exchange_reached_managers(w,c.id),false)
    then continue; end if;
+  -- Requests holds what its reader answers: their own request is not there (design §4.6), but for
+  -- the owner whom nobody else can answer (KARARLAR S-169).
+  if manager_view and (mine or exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id))
+   and not exists(select 1 from unnest(array_remove(array[(c.offered_snapshot->>'location_id')::uuid,(c.requested_snapshot->>'location_id')::uuid],null)) x
+    where app_private.exchange_decision_reason(actor,w,c.owner_id,case when mine then null else emp.id end,x) is null)
+   then continue; end if;
   -- Repeated historical requests refer to the same published source. Resolve
   -- each source once in this read only; no cache survives the function call.
   foreach source_key in array array_remove(array[c.offered_source_id::text,c.requested_source_id::text],null) loop
@@ -26685,7 +26747,13 @@ begin
    where p.workspace_id=w and p.scheduled_date between from_date and to_date order by p.scheduled_date,p.start_time loop
    s:=public.shift_exchange_shift(w,shift_row.id);
    if (s->>'starts_at')::timestamptz<=clock_timestamp() then continue; end if;
-   if (s->>'employee_id')::uuid=emp.id then own_shifts:=own_shifts||jsonb_build_array(s); continue; end if;
+   if (s->>'employee_id')::uuid=emp.id then
+    -- Who a request for it would go to (KARARLAR S-169): 'self_only' tells the owner nobody else can approve it.
+    if not tiers ? (s->>'location_id') then
+     tiers:=tiers||jsonb_build_object(s->>'location_id',app_private.decision_tier(w,emp.id,(s->>'location_id')::uuid));
+    end if;
+    own_shifts:=own_shifts||jsonb_build_array(s||jsonb_build_object('decision_tier',tiers->(s->>'location_id'))); continue;
+   end if;
    -- Only a release is in the pool (plan 07:08), and not one this person passed on (04:52).
    select * into c from public.shift_exchange_cases where workspace_id=w and offered_source_id=(s->>'source_id')::uuid and status='open' and expires_at>clock_timestamp() and audience='eligible_pool' and kind<>'swap';
    if c.id is null or exists(select 1 from public.shift_exchange_applications a where a.case_id=c.id and a.employee_id=emp.id and a.status='declined_by_employee') then continue; end if;
@@ -27006,10 +27074,6 @@ begin
   select rid, w, place from unnest(app_private.time_off_deciding_locations(w, employee.id)) place;
   insert into public.schedule_time_off_events(workspace_id, request_id, action, actor_user_id, metadata)
   values (w, rid, 'submitted', actor, jsonb_build_object('periods', asked, 'operation_id', submit_time_off_service.operation_id));
-  -- The owner's own time off is recorded approved (K12, BL-221).
-  if public.time_off_is_the_owners_own(actor, w, rid) then
-    perform app_private.time_off_finalize(w, rid, 'approve', actor, '', true);
-  end if;
   perform app_private.time_off_tell(w, rid, 'requested', actor);
   select jsonb_build_object('status', r.status, 'request_id', r.id, 'revision', r.revision, 'decide_by', r.decide_by) into result
   from public.schedule_time_off_requests r where r.id = rid;
@@ -27586,20 +27650,6 @@ $$;
 
 
 ALTER FUNCTION "public"."time_off_event_released_assignments"("actor" "uuid", "w" "uuid", "event_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."time_off_is_the_owners_own"("actor" "uuid", "w" "uuid", "rid" "uuid") RETURNS boolean
-    LANGUAGE "sql" STABLE
-    SET "search_path" TO ''
-    AS $$
- select (app_private.actor(actor, w)).class = 'owner'
-  and exists (select 1 from public.schedule_time_off_requests r
-   join public.employee_profiles e on e.id = r.employee_id and e.workspace_id = r.workspace_id
-   where r.id = rid and r.workspace_id = w and e.user_id = actor);
-$$;
-
-
-ALTER FUNCTION "public"."time_off_is_the_owners_own"("actor" "uuid", "w" "uuid", "rid" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."time_off_period_span"("segment_id" "uuid") RETURNS "tstzrange"
@@ -35822,6 +35872,10 @@ REVOKE ALL ON FUNCTION "app_private"."complete_due_workspace_closures"() FROM PU
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid", "action" "text") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."default_closure_period"() FROM PUBLIC;
 
 
@@ -38249,10 +38303,6 @@ REVOKE ALL ON FUNCTION "public"."time_off_event_is_shortening"("w" "uuid", "rid"
 
 
 REVOKE ALL ON FUNCTION "public"."time_off_event_released_assignments"("actor" "uuid", "w" "uuid", "event_id" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "public"."time_off_is_the_owners_own"("actor" "uuid", "w" "uuid", "rid" "uuid") FROM PUBLIC;
 
 
 
