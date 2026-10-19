@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 542, last: 20261019204217_employee_side_needs_employee_access.sql
--- fingerprint: sha256:952d1f40ea717f27c4318e8814f10661db0c2159cbd82c83f4c566e79ffcaa72
+-- migrations: 543, last: 20261019214000_document_timezone_follows_time_off.sql
+-- fingerprint: sha256:39970250a5be1fa21e25517c2adf8a479a5da72b0b7bca544ab1ee5c4cd2a313
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4304,12 +4304,12 @@ CREATE OR REPLACE FUNCTION "app_private"."document_employee_timezone"("w" "uuid"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $_$
-declare zone text; has_primary boolean;
+declare zone text;
 begin
- select l.timezone,true into zone,has_primary from public.employee_location_assignments a
- join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id and l.archived_at is null
- where a.workspace_id=w and a.employee_id=e and a.ended_at is null and a.is_primary;
- if not coalesce(has_primary,false) then
+ -- One rule with time off: the primary location, else the earliest live location;
+ -- only a person with no live location falls back to the admin's document timezone.
+ zone := app_private.time_off_timezone(w, e);
+ if zone is null then
   select document_timezone into zone from public.employee_profiles where workspace_id=w and id=e and (is_remote or is_excluded_from_schedule);
  end if;
  if zone is not null and (zone='UTC' or zone~'^[A-Za-z_]+/[A-Za-z0-9_+/-]+$') and app_private.timezone_name_valid(zone) then return zone; end if;
@@ -14736,7 +14736,7 @@ begin
   and (self_only or not exists(select 1 from public.employee_document_submissions s
    where s.id::text=ev.metadata->>'submission_id'
     and not app_private.document_submission_visible(get_employee_document_lifecycle_service.actor_user_id,r,s.state)));
- return jsonb_build_object('obligation',app_private.document_obligation_json(app_private.document_view(actor_user_id,r)),'submissions',submissions,'history',history,'policy',case when r.kind='acknowledgement' then jsonb_build_object('content_text',r.source_snapshot->>'content_text','content_digest',r.source_snapshot->>'content_digest','intent_statement',r.source_snapshot->>'intent_statement','can_withdraw',self_only and exists(select 1 from public.employee_onboarding_cases c join public.workspace_memberships m on m.id=c.membership_id where c.id=r.case_id and c.submitted_at is null and c.status='in_progress' and m.status='pending_activation' and r.lifecycle_retired_at is null),'history',coalesce((select jsonb_agg(jsonb_build_object('typed_name',a.typed_name,'executed_at',a.executed_at,'withdrawn_at',a.withdrawn_at,'content_digest',a.content_digest) order by a.executed_at,a.id) from public.employee_acknowledgement_envelopes a where a.requirement_id=r.id and (not self_only or a.user_id=actor_user_id)),'[]'::jsonb),'evidence',(select jsonb_build_object('typed_name',a.typed_name,'executed_at',a.executed_at,'content_digest',a.content_digest,'intent_statement',a.intent_statement) from public.employee_acknowledgement_envelopes a where a.requirement_id=r.id and a.withdrawn_at is null and (not self_only or a.user_id=actor_user_id))) end,'initial_deferral',jsonb_build_object('reason',r.conditional_reason,'allowed',self_only and r.kind='document' and r.lifecycle_settings->>'mode'='conditional' and r.submitted_document_id is null and not r.lifecycle_exempt and r.lifecycle_closed_at is null and not exists(select 1 from public.employee_document_submissions s where s.requirement_id=r.id and s.state<>'draft') and exists(select 1 from public.employee_onboarding_cases c join public.workspace_memberships m on m.id=c.membership_id where c.id=r.case_id and m.status='pending_activation')),'timezone_settings',(select jsonb_build_object('value',app_private.document_employee_timezone(r.workspace_id,r.employee_id),'configured_value',p.document_timezone,'employee_revision',p.revision,'can_manage',not self_only and (p.is_remote or p.is_excluded_from_schedule) and app_private.document_timezone_admin(actor_user_id,r.workspace_id,r.employee_id) and not exists(select 1 from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id and l.archived_at is null where a.workspace_id=r.workspace_id and a.employee_id=r.employee_id and a.ended_at is null and a.is_primary)) from public.employee_profiles p where p.id=r.employee_id));
+ return jsonb_build_object('obligation',app_private.document_obligation_json(app_private.document_view(actor_user_id,r)),'submissions',submissions,'history',history,'policy',case when r.kind='acknowledgement' then jsonb_build_object('content_text',r.source_snapshot->>'content_text','content_digest',r.source_snapshot->>'content_digest','intent_statement',r.source_snapshot->>'intent_statement','can_withdraw',self_only and exists(select 1 from public.employee_onboarding_cases c join public.workspace_memberships m on m.id=c.membership_id where c.id=r.case_id and c.submitted_at is null and c.status='in_progress' and m.status='pending_activation' and r.lifecycle_retired_at is null),'history',coalesce((select jsonb_agg(jsonb_build_object('typed_name',a.typed_name,'executed_at',a.executed_at,'withdrawn_at',a.withdrawn_at,'content_digest',a.content_digest) order by a.executed_at,a.id) from public.employee_acknowledgement_envelopes a where a.requirement_id=r.id and (not self_only or a.user_id=actor_user_id)),'[]'::jsonb),'evidence',(select jsonb_build_object('typed_name',a.typed_name,'executed_at',a.executed_at,'content_digest',a.content_digest,'intent_statement',a.intent_statement) from public.employee_acknowledgement_envelopes a where a.requirement_id=r.id and a.withdrawn_at is null and (not self_only or a.user_id=actor_user_id))) end,'initial_deferral',jsonb_build_object('reason',r.conditional_reason,'allowed',self_only and r.kind='document' and r.lifecycle_settings->>'mode'='conditional' and r.submitted_document_id is null and not r.lifecycle_exempt and r.lifecycle_closed_at is null and not exists(select 1 from public.employee_document_submissions s where s.requirement_id=r.id and s.state<>'draft') and exists(select 1 from public.employee_onboarding_cases c join public.workspace_memberships m on m.id=c.membership_id where c.id=r.case_id and m.status='pending_activation')),'timezone_settings',(select jsonb_build_object('value',app_private.document_employee_timezone(r.workspace_id,r.employee_id),'configured_value',p.document_timezone,'employee_revision',p.revision,'can_manage',not self_only and (p.is_remote or p.is_excluded_from_schedule) and app_private.document_timezone_admin(actor_user_id,r.workspace_id,r.employee_id) and app_private.time_off_timezone(r.workspace_id,r.employee_id) is null) from public.employee_profiles p where p.id=r.employee_id));
 end;
 $$;
 
@@ -26271,8 +26271,8 @@ begin
  if r.id is null then raise exception 'document unavailable' using errcode='P0002'; end if;
  select * into e from public.employee_profiles where id=r.employee_id and workspace_id=r.workspace_id for update;
  if e.revision is distinct from expected_employee_revision then raise exception 'employee changed; refresh required' using errcode='PT409',hint='employee.revision_conflict'; end if;
- if not (e.is_remote or e.is_excluded_from_schedule) or exists(select 1 from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id and l.archived_at is null where a.workspace_id=e.workspace_id and a.employee_id=e.id and a.ended_at is null and a.is_primary)
- then raise exception 'the active primary location controls the document timezone' using errcode='22023'; end if;
+ if not (e.is_remote or e.is_excluded_from_schedule) or app_private.time_off_timezone(e.workspace_id,e.id) is not null
+ then raise exception 'an active location controls the document timezone' using errcode='22023'; end if;
  if reference_timezone is null or not (reference_timezone='UTC' or reference_timezone~'^[A-Za-z_]+/[A-Za-z0-9_+/-]+$') or not exists(select 1 from pg_catalog.pg_timezone_names where name=reference_timezone)
  then raise exception 'valid IANA timezone required' using errcode='22023'; end if;
  if e.document_timezone=reference_timezone then return e.revision; end if;

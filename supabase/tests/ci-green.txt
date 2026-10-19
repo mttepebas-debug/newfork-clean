@@ -22,6 +22,7 @@ supabase/tests/bl052_document_timezone.test.sql
 supabase/tests/bl052_policy_lifecycle.test.sql
 supabase/tests/bl052_policy_withdrawal.test.sql
 supabase/tests/bl064_conflict_severity.test.sql
+supabase/tests/bl559_document_timezone_without_primary.test.sql
 supabase/tests/browser_privileges.test.sql
 supabase/tests/catalog_entity_deletion.test.sql
 supabase/tests/change_employee_access.test.sql
