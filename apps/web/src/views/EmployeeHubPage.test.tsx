@@ -746,6 +746,33 @@ describe("EmployeeHubPage", () => {
     }
   });
 
+  // CALISAN-HOME-HIZA (Mert 2026-10-19): Updates, Your week and Pick up a shift
+  // stay on Home with nothing in them, each with one quiet line.
+  it("keeps Updates, Your week and Pick up a shift with a quiet line when they are empty", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      renderPageWithFixture({ ...fixture, shifts: [], open_shifts: [], requests: [] } as unknown as EmployeeHubReadModel);
+      expect(await screen.findByRole("heading", { name: "Updates" })).toBeTruthy();
+      expect(screen.getByText("Nothing new yet.")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Your week" })).toBeTruthy();
+      expect(screen.getByText("scheduled in the next 7 days")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Pick up a shift" })).toBeTruthy();
+      expect(screen.getByText("No open shifts right now.")).toBeTruthy();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  // CALISAN-HOME-HIZA (Mert 2026-10-19): the desktop bar holds only the bell and the profile;
+  // the workspace's name lives at the top of the menu.
+  it("keeps the workspace name and the private-space note out of Home's bar", async () => {
+    renderPage();
+    expect(await screen.findByRole("link", { name: "Your profile" })).toBeTruthy();
+    expect(screen.queryByText("Your personal space")).toBeNull();
+    expect(document.querySelector(".eh-workspace-link")).toBeNull();
+  });
+
   // S-163 (7): a Management shift at the same place and time shows as "Manager on the floor"; none, no line.
   it("names the manager on the floor only when one works alongside", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });

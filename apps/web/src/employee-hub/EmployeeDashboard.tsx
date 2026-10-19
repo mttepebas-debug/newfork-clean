@@ -10,7 +10,6 @@ import {
   CircleX,
   FileText,
   MapPin,
-  ShieldCheck,
   ArrowLeftRight,
 } from "lucide-react";
 import { Link, useSearchParams } from "react-router";
@@ -116,7 +115,6 @@ export function EmployeeDashboard({
   const todayShifts = week[0]!.shifts;
   const endedToday = todayShifts.filter((item) => shiftState(item, now, zone).state === "finished");
   const arcShifts = shift?.scheduled_date === today ? todayShifts : endedToday.length ? endedToday : [];
-  const weekShifts = week.reduce((sum, day) => sum + day.shifts.length, 0);
   const open = model.open_shifts
     .filter((item) => shiftState(item, now, shiftZone(model, item)).state === "upcoming")
     .sort((a, b) => shiftInstant(a, model) - shiftInstant(b, model))
@@ -158,17 +156,12 @@ export function EmployeeDashboard({
     <div className={`eh-dashboard dl-home${far ? " is-far" : ""}`} data-slot={daySlot(minute)} ref={root}>
       <div className="dl-sky" aria-hidden />
       {phoneSlot && pill ? createPortal(pill, phoneSlot) : null}
+      {/* The desktop bar runs from the menu to the screen's edge: the next shift's
+          pill in the middle, the bell and the profile at the right; the workspace's
+          name is at the top of the menu (Mert 2026-10-19, CALISAN-HOME-HIZA). */}
       <div className="eh-context-bar">
-        <Link to="/account/workspaces" className="eh-workspace-link">
-          <span className="eh-workspace-mark">{context?.workspace.name?.slice(0, 1) || "N"}</span>
-          <span>{context?.workspace.name ?? "Your workspace"}</span>
-          <ChevronRight size={14} />
-        </Link>
         <div className="dl-desk-pill">{pill}</div>
         <div className="eh-context-actions">
-          <span className="eh-private">
-            <ShieldCheck size={14} /> Your personal space
-          </span>
           {can(context, "notifications.read_own") ? <NotificationBell workspaceId={model.workspace_id} className="eh-icon-button" /> : null}
           <Link className="eh-icon-button" to="/account/profile" aria-label="Your profile">
             <span className="eh-avatar">{firstName.slice(0, 1)}</span>
@@ -235,39 +228,37 @@ export function EmployeeDashboard({
           <Section name="needs" title="Needs you" count={data.needs.length}>
             <NeedsList needs={data.needs} unknown={data.needsUnknown} />
           </Section>
-          {data.updates.length ? (
-            <Section name="updates" title="Updates">
-              <UpdatesList updates={data.updates} now={now} />
-            </Section>
-          ) : null}
+          {/* Updates, Your week and Pick up a shift stay with nothing in them, each with
+              one quiet line (Mert 2026-10-19, CALISAN-HOME-HIZA). */}
+          <Section name="updates" title="Updates">
+            <UpdatesList updates={data.updates} now={now} />
+          </Section>
           {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); in the list since Daylight (Mert 2026-10-18). */}
           <Section name="alerts" bare>
             <PhoneAlertsHome audience="employee" />
           </Section>
-          {weekShifts ? (
-            <Section
-              name="week"
-              title="Your week"
-              link={
-                <Link className="dl-lnk" to={`${base}/schedule`}>
-                  Schedule <ChevronRight size={16} />
-                </Link>
-              }
-            >
-              <WeekSummary week={week} today={today} />
-            </Section>
-          ) : null}
-          {open.length ? (
-            <Section
-              name="open"
-              title="Pick up a shift"
-              count={open.length}
-              link={
-                <Link className="dl-lnk" to={`${base}/shift-hub?hub_view=available`} aria-label="All open shifts">
-                  All <ChevronRight size={16} />
-                </Link>
-              }
-            >
+          <Section
+            name="week"
+            title="Your week"
+            link={
+              <Link className="dl-lnk" to={`${base}/schedule`}>
+                Schedule <ChevronRight size={16} />
+              </Link>
+            }
+          >
+            <WeekSummary week={week} today={today} />
+          </Section>
+          <Section
+            name="open"
+            title="Pick up a shift"
+            count={open.length}
+            link={
+              <Link className="dl-lnk" to={`${base}/shift-hub?hub_view=available`} aria-label="All open shifts">
+                All <ChevronRight size={16} />
+              </Link>
+            }
+          >
+            {open.length ? (
               <div className="dl-open" role="list" data-own-drag="">
                 {open.map((item) => (
                   <Link role="listitem" className="dl-oc" key={item.id} to={`${base}/shift-hub?hub_view=available`}>
@@ -282,8 +273,10 @@ export function EmployeeDashboard({
                   </Link>
                 ))}
               </div>
-            </Section>
-          ) : null}
+            ) : (
+              <p className="dl-empty">No open shifts right now.</p>
+            )}
+          </Section>
           {readsPosts ? <Notices workspaceId={model.workspace_id} now={now} /> : null}
           {readsPosts ? (
             <Section name="dates" title="Coming up" hideEmpty>
@@ -521,6 +514,7 @@ function NeedsList({ needs, unknown }: { needs: HomeNeed[]; unknown: boolean }) 
 }
 
 function UpdatesList({ updates, now }: { updates: HomeUpdate[]; now: Date }) {
+  if (!updates.length) return <p className="dl-empty">Nothing new yet.</p>;
   return (
     <ul className="dl-rows">
       {updates.map((update) => {
