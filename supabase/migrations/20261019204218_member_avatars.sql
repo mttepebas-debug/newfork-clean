@@ -1,6 +1,6 @@
 -- AVATAR-IKON 3.1: one avatar per workspace membership and a last avatar that points at its source
 -- (design §4.3-4.5, §4.7). This part only adds and replaces, so the web and API served today keep
--- working; the old avatar fields, services and policies go in 20261019144602_retire_old_avatar_paths.sql,
+-- working; the old avatar fields, services and policies go in 20261019204219_retire_old_avatar_paths.sql,
 -- live only after the new web and API are served (design §6 "Silinecekler").
 --
 -- A person's avatar belongs to their membership, not to an employee record: somebody who only manages

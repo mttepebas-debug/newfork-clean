@@ -1,7 +1,7 @@
 -- AVATAR-IKON 3.1, second part: the old avatar fields and services go (design §6 "Silinecekler").
 -- Live only after Vercel serves the web and API that no longer read them: today's web reads
 -- user_profiles.avatar_object_path whenever it loads a signed-in profile. What replaces them is in
--- 20261019144601_member_avatars.sql.
+-- 20261019204218_member_avatars.sql.
 --
 -- The account-profile-photos bucket and its objects stay: deleting live objects is a separate step on
 -- the product owner's yes. Only the browser's four write policies on it go here.
