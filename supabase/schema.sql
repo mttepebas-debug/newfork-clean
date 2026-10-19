@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 517, last: 20261018234000_context_reads_access.sql
--- fingerprint: sha256:8b4d2da86a65572309d10fc53bdb54a9b8acba92d39a06673bafac288f412a4d
+-- migrations: 518, last: 20261018234000_context_reads_access.sql
+-- fingerprint: sha256:d90bb3455fa65c212ec0c6dd4bd8fd3cedd5525e975ec4765c4898a1131bdf0e
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4161,7 +4161,12 @@ CREATE OR REPLACE FUNCTION "app_private"."document_obligation_json"("r" "public"
   'location_ids',coalesce((select jsonb_agg(l.id order by l.name) from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id where a.employee_id=r.employee_id and a.workspace_id=r.workspace_id and a.ended_at is null),'[]'),
   'location_names',coalesce((select jsonb_agg(l.name order by l.name) from public.employee_location_assignments a join public.locations l on l.id=a.location_id and l.workspace_id=a.workspace_id where a.employee_id=r.employee_id and a.workspace_id=r.workspace_id and a.ended_at is null),'[]'),
   'timezone',app_private.document_employee_timezone(r.workspace_id,r.employee_id),'settings',r.lifecycle_settings,
-  'accepted_formats',coalesce(r.source_snapshot->'accepted_formats','[]'), 'tracks_expiry',coalesce((r.source_snapshot->>'tracks_expiry')::boolean,false))
+  'accepted_formats',coalesce(r.source_snapshot->'accepted_formats','[]'), 'tracks_expiry',coalesce((r.source_snapshot->>'tracks_expiry')::boolean,false),
+  'expiry_date',(select s.expiry_date from public.employee_document_submissions s where s.id=r.approved_document_id and s.requirement_id=r.id),
+  'expiring_soon',coalesce((select s.expiry_date<=current_date+t.expiry_warning_days
+    from public.employee_document_submissions s
+    join public.document_types t on t.id=r.source_id and t.workspace_id=r.workspace_id and t.tracks_expiry and t.archived_at is null
+    where s.id=r.approved_document_id and s.requirement_id=r.id and s.expiry_date is not null),false))
  from public.employee_profiles e where e.id=r.employee_id and e.workspace_id=r.workspace_id;
 $$;
 
@@ -14284,12 +14289,14 @@ begin
       select jsonb_agg(jsonb_build_object(
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
         'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
-        'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',shift.employee_id
+        'end_time',to_char(shift.end_time,'HH24:MI'),'note',shift.note,'employee_id',shift.employee_id,
+        'shift_type_name',shift_type.name
       ) order by shift.scheduled_date,shift.start_time)
       from public.schedule_published_shifts shift
       join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
       join public.locations location on location.id=shift.location_id
       join public.jobs job on job.id=shift.job_id
+      left join public.shift_types shift_type on shift_type.id=shift.shift_type_id and shift_type.workspace_id=shift.workspace_id
       where shift.workspace_id=target_workspace_id and shift.employee_id=employee.id
         and shift.scheduled_date between target_from and target_to
     ),'[]'::jsonb),
@@ -14313,7 +14320,9 @@ begin
         'id',shift.id,'location_id',shift.location_id,'location_name',location.name,'job_name',job.name,
         'scheduled_date',shift.scheduled_date,'time_basis',shift.time_basis,'time_snapshot',shift.time_snapshot,'time_timezone',shift.time_timezone,'start_time',to_char(shift.start_time,'HH24:MI'),
         'end_time',to_char(shift.end_time,'HH24:MI'),'note','','employee_id',shift.employee_id,
-        'employee_name',concat_ws(' ',coalesce(nullif(teammate.preferred_name,''),teammate.first_name),teammate.last_name)
+        'employee_name',concat_ws(' ',coalesce(nullif(teammate.preferred_name,''),teammate.first_name),teammate.last_name),
+        'is_management',coalesce((select department.system_key='management' from public.departments department
+          where department.id=job.department_id and department.workspace_id=shift.workspace_id),false)
       ) order by shift.scheduled_date,shift.start_time)
       from public.schedule_published_shifts shift
       join public.schedule_location_publications publication on publication.id=shift.publication_id and publication.status='current'
