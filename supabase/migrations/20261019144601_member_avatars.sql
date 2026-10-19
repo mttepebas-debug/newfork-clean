@@ -315,17 +315,20 @@ grant execute on function public.remove_member_photo_service(uuid, uuid, uuid) t
 
 -- Account deletion --------------------------------------------------------------------------------------
 
--- The account deletion worker, under its lease, reads where the person's avatar photos are in every
--- workspace, deletes those objects from storage, and only then purges the account (below), which forgets
--- the avatars. A failed storage delete stops the purge, so no photo is left that nothing points at.
-create function public.list_account_deletion_avatar_photos_service(target_request_id uuid, target_lease_id uuid)
-returns text[]
+-- The account deletion worker, under its lease, reads where the person's avatar photos are and the folder
+-- of every membership they had (<workspace>/<membership>/, whatever its status) in employee-profile-photos,
+-- deletes those photos and everything else in those folders (an upload never confirmed, a delete that
+-- failed), and only then purges the account (below), which forgets the avatars. A failed storage step stops
+-- the purge, so no photo is left that nothing points at.
+create function public.list_account_deletion_avatar_objects_service(target_request_id uuid, target_lease_id uuid)
+returns jsonb
 language plpgsql
 security definer
 set search_path = ''
 as $$
 declare
   photos text[];
+  folders text[];
 begin
   perform public.renew_account_deletion_work_service(target_request_id, target_lease_id);
 
@@ -335,12 +338,20 @@ begin
   join public.member_avatars a on a.membership_id = m.id
   where request.id = target_request_id and a.photo_path is not null;
 
-  return photos;
+  select coalesce(array_agg(place.folder order by place.folder), '{}') into folders
+  from (
+    select m.workspace_id::text || '/' || m.id::text || '/' as folder
+    from public.account_deletion_requests request
+    join public.workspace_memberships m on m.user_id = request.user_id
+    where request.id = target_request_id
+  ) place;
+
+  return jsonb_build_object('photos', to_jsonb(photos), 'folders', to_jsonb(folders));
 end;
 $$;
 
-revoke all on function public.list_account_deletion_avatar_photos_service(uuid, uuid) from public, anon, authenticated;
-grant execute on function public.list_account_deletion_avatar_photos_service(uuid, uuid) to service_role;
+revoke all on function public.list_account_deletion_avatar_objects_service(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.list_account_deletion_avatar_objects_service(uuid, uuid) to service_role;
 
 -- The purge also forgets the person's avatars in every workspace and their last avatar; the memberships
 -- themselves stay, as before. Everything else is the body of 20260914130000 unchanged.

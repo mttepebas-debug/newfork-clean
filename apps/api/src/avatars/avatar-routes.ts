@@ -8,9 +8,9 @@ const workspaceParams = z.object({ workspaceId: z.string().uuid() });
 
 /**
  * AVATAR-IKON (design §4.3-4.4): a person's own avatar in one workspace, also while onboarding there.
- * No gate here but the upload's: the services ask the core (avatar.self), whose "no" reaches the screen as
- * 404 for a stranger and 403 otherwise. The upload asks the same core's list first, because it reaches
- * storage before the database is asked anything; the place it names comes from the resolved membership.
+ * The reads and the removal have no gate here: the services ask the core (avatar.self), whose "no" reaches
+ * the screen as 404 for a stranger and 403 otherwise. The upload and the save ask the same core's list first,
+ * because they reach storage before the database is asked anything; the place comes from the resolved membership.
  */
 export function registerAvatarRoutes(
   app: FastifyInstance,
@@ -59,6 +59,8 @@ export function registerAvatarRoutes(
     const params = workspaceParams.safeParse(request.params);
     if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
     const actor = await actorFor(request.headers.authorization, params.data.workspaceId);
+    // A photo is read back, and maybe deleted, before the database is asked: the core's list first.
+    authorize(actor.context, "avatar.self");
     const body = avatarChoiceSchema.safeParse(request.body);
     if (!body.success)
       return reply.status(400).send({ error: "Choose a drawing, an uploaded photo or your last avatar" });

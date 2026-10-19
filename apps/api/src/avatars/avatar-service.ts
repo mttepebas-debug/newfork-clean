@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import {
+  avatarReasons,
   avatarUploadResponseSchema,
   buildMemberAvatarPhotoPath,
   employeeProfilePhotoBucket,
@@ -43,7 +44,8 @@ export interface AvatarService {
 }
 
 type RpcError = { message: string; code?: string; hint?: string | null; details?: string | null };
-type StorageResult<T> = PromiseLike<{ data: T | null; error: { message: string } | null }>;
+type StorageError = { message: string; status?: number; statusCode?: string; code?: string };
+type StorageResult<T> = PromiseLike<{ data: T | null; error: StorageError | null }>;
 interface AvatarBucket {
   createSignedUrl(path: string, expiresIn: number): StorageResult<{ signedUrl: string }>;
   createSignedUploadUrl(path: string): StorageResult<{ token: string }>;
@@ -93,6 +95,11 @@ function photoBytesMatch(bytes: Uint8Array, type: EmployeeProfilePhotoMimeType):
   return text(0, 4) === "RIFF" && text(8, 12) === "WEBP";
 }
 
+/** Storage says the object is not there (the API answers 400 with a 404 status code inside, or 404). */
+function notFound(error: StorageError): boolean {
+  return error.status === 404 || error.statusCode === "404" || error.code === "NoSuchKey" || error.code === "not_found";
+}
+
 function outOfOwnPlace(): HttpError {
   // The same answer the database gives a path outside one's own place (save_own_avatar_service).
   return new HttpError("Not allowed", 403, { reason: "authz.out_of_scope", detail: "avatar.self" });
@@ -126,8 +133,10 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
   async function checkUploadedPhoto(path: string) {
     const type = memberAvatarPhotoContentType(path);
     const { data, error } = await bucket().download(path);
+    // Storage that cannot answer is not the photo's fault: nothing is deleted and the person may try again.
+    if (error && !notFound(error)) throw new HttpError("Private storage is unavailable", 503);
     if (error || !data || !type)
-      throw new HttpError("Uploaded photo could not be verified", 400, { reason: "avatar.photo_invalid" });
+      throw new HttpError("Uploaded photo could not be verified", 400, { reason: avatarReasons.photoInvalid });
     const fits =
       data.size >= 1 &&
       data.size <= employeeProfilePhotoMaxBytes &&
@@ -136,8 +145,22 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
     if (!fits) {
       await bucket().remove([path]);
       throw new HttpError("A photo must be a JPG, PNG or WebP image of at most 5 MB", 400, {
-        reason: "avatar.photo_invalid",
+        reason: avatarReasons.photoInvalid,
       });
+    }
+  }
+
+  /**
+   * A just-checked upload whose save was refused is deleted, unless it is the avatar already saved (a person
+   * may send their current photo again). When that cannot be read, the object stays: the account deletion
+   * sweep of the person's folders takes it at the latest.
+   */
+  async function deleteUnsaved(input: Actor, path: string) {
+    try {
+      const current = ownRead.parse(await rpc("get_own_avatar_service", actorArgs(input))).photo_path;
+      if (current !== path) await bucket().remove([path]);
+    } catch {
+      // keep it; see above
     }
   }
 
@@ -190,7 +213,14 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
         // Never read or delete an object outside one's own place, whatever the client sent.
         if (!isMemberAvatarPhotoPath(choice.photo_path, input)) throw outOfOwnPlace();
         await checkUploadedPhoto(choice.photo_path);
-        return deleteReplaced(await saveChoice(input, { photo_path: choice.photo_path }));
+        let replacedPhoto: string | null;
+        try {
+          replacedPhoto = await saveChoice(input, { photo_path: choice.photo_path });
+        } catch (error) {
+          await deleteUnsaved(input, choice.photo_path);
+          throw error;
+        }
+        return deleteReplaced(replacedPhoto);
       }
 
       // The last avatar: a drawing by its key; a photo copied from where it is into this workspace's place.
@@ -198,7 +228,7 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
       if (last?.kind === "art" && last.art_key) return deleteReplaced(await saveChoice(input, { art_key: last.art_key }));
       const type = last?.source_photo_path ? memberAvatarPhotoContentType(last.source_photo_path) : null;
       if (!last?.source_photo_path || !type)
-        throw new HttpError("There is no last avatar to use", 409, { reason: "avatar.no_last_avatar" });
+        throw new HttpError("There is no last avatar to use", 409, { reason: avatarReasons.noLastAvatar });
       const copy = buildMemberAvatarPhotoPath({
         workspaceId: input.workspaceId,
         membershipId: input.membershipId,

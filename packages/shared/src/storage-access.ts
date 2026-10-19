@@ -60,7 +60,7 @@ export function isMemberAvatarPhotoPath(
   const prefix = `${owner.workspaceId}/${owner.membershipId}/`;
   return (
     path.startsWith(prefix) &&
-    new RegExp(`^${uuidPattern}/${uuidPattern}/${uuidPattern}\.(jpg|png|webp)$`).test(path)
+    new RegExp(`^${uuidPattern}/${uuidPattern}/${uuidPattern}\\.(jpg|png|webp)$`).test(path)
   );
 }
 

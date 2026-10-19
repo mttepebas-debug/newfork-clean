@@ -343,6 +343,17 @@ export const lastAvatarResponseSchema = z.object({
 });
 export type LastAvatarResponse = z.infer<typeof lastAvatarResponseSchema>;
 
+/** The machine keys of the avatar refusals, for the screens to tell them apart. */
+export const avatarReasons = {
+  /** The uploaded photo is not a JPG, PNG or WebP of at most 5 MB, or is not in storage (400). */
+  photoInvalid: "avatar.photo_invalid",
+  /** "Use my last avatar" with none to use (409). */
+  noLastAvatar: "avatar.no_last_avatar",
+  /** A manager removes only an uploaded photo, not a drawing or nothing (409, the database's PT409). */
+  notPhoto: "avatar.not_photo",
+} as const;
+export type AvatarReason = (typeof avatarReasons)[keyof typeof avatarReasons];
+
 /** A photo upload is asked for by its image type; the API names the place. */
 export const avatarUploadRequestSchema = z.object({ content_type: z.enum(employeeProfilePhotoMimeTypes) });
 export type AvatarUploadRequest = z.infer<typeof avatarUploadRequestSchema>;

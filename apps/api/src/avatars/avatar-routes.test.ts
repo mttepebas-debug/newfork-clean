@@ -1,4 +1,4 @@
-import { authzActionKeys, type ActiveWorkspaceContext } from "@newfork/shared";
+import { authzActionKeys, avatarReasons, type ActiveWorkspaceContext } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
 import { createEmployeeDirectoryServiceWithClient } from "../employees/employee-directory-service";
@@ -49,6 +49,7 @@ function world(options: {
   download?: Blob | null;
   context?: ActiveWorkspaceContext | null;
   uploadError?: boolean;
+  downloadError?: { message: string; status?: number; statusCode?: string };
 } = {}) {
   const rpc = vi.fn(async (name: string, args: Record<string, unknown>) => {
     const answer = options.rpc?.[name];
@@ -65,7 +66,9 @@ function world(options: {
       : { data: { signedUrl: `https://storage.test/upload/${path}`, token: "upload-token", path }, error: null },
   );
   const download = vi.fn(async (_path: string) =>
-    options.download ? { data: options.download, error: null } : { data: null, error: { message: "Object not found" } },
+    options.download
+      ? { data: options.download, error: null }
+      : { data: null, error: options.downloadError ?? { message: "Object not found", status: 400, statusCode: "404" } },
   );
   const remove = vi.fn(async (_paths: string[]) => ({ data: [], error: null }));
   const copy = vi.fn(async (_from: string, to: string) => ({ data: { path: to }, error: null }));
@@ -241,7 +244,7 @@ describe("PUT /me/avatar", () => {
     const w = world({ download: new Blob([big], { type: "image/png" }) });
     const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toMatchObject({ reason: "avatar.photo_invalid" });
+    expect(response.json()).toMatchObject({ reason: avatarReasons.photoInvalid });
     expect(w.remove).toHaveBeenCalledWith([ownPhoto]);
     expect(w.rpc).not.toHaveBeenCalled();
   });
@@ -265,6 +268,67 @@ describe("PUT /me/avatar", () => {
     const w = world({ download: null });
     const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
     expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ reason: avatarReasons.photoInvalid });
+    expect(w.rpc).not.toHaveBeenCalled();
+  });
+
+  it("answers 503 when storage cannot be read, deleting nothing", async () => {
+    const w = world({ download: null, downloadError: { message: "upstream timeout", status: 504, statusCode: "504" } });
+    const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
+    expect(response.statusCode).toBe(503);
+    expect(w.remove).not.toHaveBeenCalled();
+    expect(w.rpc).not.toHaveBeenCalled();
+  });
+
+  it("deletes the uploaded photo when the save is refused", async () => {
+    const w = world({
+      rpc: {
+        save_own_avatar_service: refusal("authz.not_active"),
+        get_own_avatar_service: ownRead({ kind: "photo", art_key: null, photo_path: previousPhoto }),
+      },
+      download: new Blob([png], { type: "image/png" }),
+    });
+    const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
+    expect(response.statusCode).toBe(403);
+    expect(w.remove).toHaveBeenCalledWith([ownPhoto]);
+    expect(w.remove).not.toHaveBeenCalledWith([previousPhoto]);
+  });
+
+  it("keeps the photo when the refused save named the avatar already there", async () => {
+    const w = world({
+      rpc: {
+        save_own_avatar_service: refusal("authz.out_of_scope"),
+        get_own_avatar_service: ownRead({ kind: "photo", art_key: null, photo_path: ownPhoto }),
+      },
+      download: new Blob([png], { type: "image/png" }),
+    });
+    const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
+    expect(response.statusCode).toBe(403);
+    expect(w.remove).not.toHaveBeenCalled();
+  });
+
+  it("keeps the photo when it cannot tell whether it is the avatar already there", async () => {
+    const w = world({
+      rpc: { save_own_avatar_service: refusal("authz.not_active"), get_own_avatar_service: refusal("authz.not_active") },
+      download: new Blob([png], { type: "image/png" }),
+    });
+    const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { photo_path: ownPhoto } });
+    expect(response.statusCode).toBe(403);
+    expect(w.remove).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ["a drawing", { art_key: "003-bartender" }],
+    ["a photo", { photo_path: ownPhoto }],
+    ["the last avatar", { use_last: true }],
+  ])("refuses %s from somebody the core does not let change their avatar here, before storage or the database", async (_name, payload) => {
+    const w = world({ context: { ...context, actions: [] }, download: new Blob([png], { type: "image/png" }) });
+    const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload });
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ reason: "authz.out_of_scope", detail: "avatar.self" });
+    expect(w.download).not.toHaveBeenCalled();
+    expect(w.remove).not.toHaveBeenCalled();
+    expect(w.copy).not.toHaveBeenCalled();
     expect(w.rpc).not.toHaveBeenCalled();
   });
 
@@ -340,7 +404,7 @@ describe("PUT /me/avatar", () => {
     const w = world({ rpc: { get_last_avatar_service: { data: null, error: null } } });
     const response = await w.app.inject({ method: "PUT", url: me, headers: auth, payload: { use_last: true } });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ reason: "avatar.no_last_avatar" });
+    expect(response.json()).toMatchObject({ reason: avatarReasons.noLastAvatar });
     expect(w.rpc).not.toHaveBeenCalledWith("save_own_avatar_service", expect.anything());
   });
 
@@ -467,7 +531,7 @@ describe("the manager's photo read and removal keep their paths and shape", () =
     const w = world({ rpc: { remove_member_photo_service: { data: null, error: { code: "PT409", message: "Not a photo", hint: "avatar.not_photo" } } } });
     const response = await w.app.inject({ method: "DELETE", url: photo, headers: auth });
     expect(response.statusCode).toBe(409);
-    expect(response.json()).toMatchObject({ reason: "avatar.not_photo" });
+    expect(response.json()).toMatchObject({ reason: avatarReasons.notPhoto });
     expect(w.remove).not.toHaveBeenCalled();
   });
 });

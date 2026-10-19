@@ -355,7 +355,7 @@ export function createEmployeeDirectoryServiceWithClient(
       };
     },
     async removeAvatar(input) {
-      // AVATAR-IKON: a manager removes only a photo (PT409 avatar.not_photo otherwise), never a drawing.
+      // AVATAR-IKON: a manager removes only a photo (PT409 avatarReasons.notPhoto otherwise), never a drawing.
       const path = await rpc("remove_member_photo_service", {
         actor_user_id: input.actorUserId,
         target_workspace_id: input.workspaceId,

@@ -110,7 +110,7 @@ insert into service_class values
   ('initialize_employee_onboarding_service', 'onboarding.self'),
   ('initiate_workspace_ownership_transfer_service', 'workspace.transfer_ownership'),
   ('leave_employee_onboarding_service', 'onboarding.self'),
-  ('list_account_deletion_avatar_photos_service', 'exempt:worker'),
+  ('list_account_deletion_avatar_objects_service', 'exempt:worker'),
   ('list_employee_document_lifecycle_service', 'documents.read'),
   ('list_employees_service', 'employee.list'),
   ('list_my_workspace_identities_service', 'account.self'),

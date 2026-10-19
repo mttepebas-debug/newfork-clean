@@ -17,6 +17,15 @@ const workItemSchema = z.object({
   lease_id: z.string().uuid(),
 });
 
+const uuid = "[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}";
+// Only ever a membership's own place, <workspace>/<membership>/: never the bucket's root or a workspace's.
+const avatarObjectsSchema = z.object({
+  photos: z.array(z.string().regex(new RegExp(`^${uuid}/${uuid}/[^/]+$`))),
+  folders: z.array(z.string().regex(new RegExp(`^${uuid}/${uuid}/$`))),
+});
+const folderPage = 100;
+const removeBatch = 1000;
+
 interface AccountDeletionWorkerClient {
   rpc(
     functionName: string,
@@ -24,6 +33,10 @@ interface AccountDeletionWorkerClient {
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   storage: {
     from(bucket: typeof employeeProfilePhotoBucket): {
+      list(
+        path: string,
+        options: { limit: number; offset: number },
+      ): PromiseLike<{ data: Array<{ name: string; id?: string | null }> | null; error: { message: string } | null }>;
       remove(paths: string[]): PromiseLike<{ error: { message: string } | null }>;
     };
   };
@@ -96,15 +109,29 @@ export function createAccountDeletionWorkerWithClient(
     return response.data;
   }
 
-  // AVATAR-IKON: the person's avatar photos in every workspace they uploaded one in. The database names
-  // them (under this lease) before the purge forgets them; a failed delete stops the purge for a retry.
+  // AVATAR-IKON: the person's avatar photos, and everything else in the folder of every membership they had in
+  // the private bucket (an upload never confirmed, a delete that failed). The database names them under this
+  // lease before the purge forgets them; any failed listing or delete stops the purge for a retry.
   async function removeAvatarObjects(lease: { target_request_id: string; target_lease_id: string }) {
-    const paths = z.array(z.string()).parse(
-      (await rpc("list_account_deletion_avatar_photos_service", lease)) ?? [],
-    );
-    if (paths.length === 0) return;
-    const removed = await client.storage.from(employeeProfilePhotoBucket).remove(paths);
-    if (removed.error) throw new Error(removed.error.message);
+    const found = avatarObjectsSchema.parse(await rpc("list_account_deletion_avatar_objects_service", lease));
+    const bucket = client.storage.from(employeeProfilePhotoBucket);
+    const paths = new Set(found.photos);
+    for (const folder of found.folders) {
+      const prefix = folder.slice(0, -1);
+      for (let offset = 0; ; offset += folderPage) {
+        const listed = await bucket.list(prefix, { limit: folderPage, offset });
+        if (listed.error) throw new Error(listed.error.message);
+        const page = listed.data ?? [];
+        // A sub-folder lists with a null id; the API never makes one under a membership's place.
+        for (const object of page) if (object.id !== null) paths.add(`${prefix}/${object.name}`);
+        if (page.length < folderPage) break;
+      }
+    }
+    const all = [...paths];
+    for (let start = 0; start < all.length; start += removeBatch) {
+      const removed = await bucket.remove(all.slice(start, start + removeBatch));
+      if (removed.error) throw new Error(removed.error.message);
+    }
   }
 
   async function sendReminder(

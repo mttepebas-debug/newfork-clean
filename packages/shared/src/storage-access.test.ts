@@ -79,6 +79,7 @@ describe("private employee storage contract", () => {
     expect(isMemberAvatarPhotoPath(`${workspaceId}/${employeeId}/extra/${objectId}.jpg`, own)).toBe(false);
     expect(isMemberAvatarPhotoPath(`${workspaceId}/${employeeId}/${objectId}.gif`, own)).toBe(false);
     expect(isMemberAvatarPhotoPath(`${workspaceId}/${employeeId}/photo.jpg`, own)).toBe(false);
+    expect(isMemberAvatarPhotoPath(`${workspaceId}/${employeeId}/${objectId}Xjpg`, own)).toBe(false);
   });
 
   it("reads an avatar photo's image type from its extension", () => {

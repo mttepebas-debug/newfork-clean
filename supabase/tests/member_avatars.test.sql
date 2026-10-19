@@ -379,13 +379,16 @@ insert into public.account_deletion_requests (
 create temporary table deletion_work as select * from public.claim_account_deletion_work_service(100);
 select is((select action from deletion_work where request_id = '79000000-0000-4000-8000-000000000501'), 'finalize',
   'ali''s account deletion is due');
-select throws_ok($$select public.list_account_deletion_avatar_photos_service('79000000-0000-4000-8000-000000000501', gen_random_uuid())$$,
-  'P0001', 'account deletion lease unavailable', 'only the worker holding the lease reads the photos');
+select throws_ok($$select public.list_account_deletion_avatar_objects_service('79000000-0000-4000-8000-000000000501', gen_random_uuid())$$,
+  'P0001', 'account deletion lease unavailable', 'only the worker holding the lease reads where the photos are');
 select is(
-  public.list_account_deletion_avatar_photos_service('79000000-0000-4000-8000-000000000501',
+  public.list_account_deletion_avatar_objects_service('79000000-0000-4000-8000-000000000501',
     (select lease_id from deletion_work where request_id = '79000000-0000-4000-8000-000000000501')),
-  array(select x from unnest(array[pg_temp.p('ali-2'), pg_temp.p('ali-b')]) x order by x),
-  'the worker reads the person''s photos in every workspace');
+  jsonb_build_object(
+    'photos', to_jsonb(array(select x from unnest(array[pg_temp.p('ali-2'), pg_temp.p('ali-b')]) x order by x)),
+    'folders', to_jsonb(array(select x from unnest(array[
+      tests.id('a') || '/' || pg_temp.m('ali@a') || '/', tests.id('b') || '/' || pg_temp.m('ali@b') || '/']) x order by x))),
+  'the worker reads the person''s photos and their own folder in every workspace');
 select is(
   public.finalize_claimed_account_deletion_service('79000000-0000-4000-8000-000000000501',
     (select lease_id from deletion_work where request_id = '79000000-0000-4000-8000-000000000501')) ->> 'status',
@@ -395,9 +398,9 @@ select is((select count(*)::integer from public.member_avatars where membership_
 select is((select count(*)::integer from app_private.last_avatars where user_id = pg_temp.u('ali@a')), 0,
   'and their last avatar');
 select ok(
-  not has_function_privilege('authenticated', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE')
-  and not has_function_privilege('anon', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE')
-  and has_function_privilege('service_role', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE'),
+  not has_function_privilege('authenticated', 'public.list_account_deletion_avatar_objects_service(uuid, uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.list_account_deletion_avatar_objects_service(uuid, uuid)', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.list_account_deletion_avatar_objects_service(uuid, uuid)', 'EXECUTE'),
   'only the worker reads them');
 
 -- A closed workspace -------------------------------------------------------------------------------

@@ -8,6 +8,7 @@ import {
   accountProfileSchema,
   accountPendingInvitationSchema,
   avatarChoiceSchema,
+  avatarReasons,
   avatarSchema,
   avatarUploadRequestSchema,
   lastAvatarResponseSchema,
@@ -159,6 +160,14 @@ describe("avatar schemas (AVATAR-IKON)", () => {
     expect(
       lastAvatarResponseSchema.parse({ avatar: { kind: "art", art_key: "001-server" }, from_workspace_name: "Meyhouse" }),
     ).toEqual({ avatar: { kind: "art", art_key: "001-server" }, from_workspace_name: "Meyhouse" });
+  });
+
+  it("names the avatar refusals by the keys the screens read", () => {
+    expect(avatarReasons).toEqual({
+      photoInvalid: "avatar.photo_invalid",
+      noLastAvatar: "avatar.no_last_avatar",
+      notPhoto: "avatar.not_photo",
+    });
   });
 
   it("uploads only JPG, PNG or WebP", () => {
