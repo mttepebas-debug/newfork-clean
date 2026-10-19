@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(36);
+select plan(42);
 
 -- LINEUP-EDIT L2a (KARARLAR S-178 and its addenda; Mert 2026-10-19): a manager changes a lineup's row (position,
 -- label, In and Out, section) and its notes, in the lineup only: the Schedule never changes. Only a draft that
@@ -28,11 +28,13 @@ values (tests.remember('e:section:patio', gen_random_uuid()), tests.id('e'), tes
 
 select tests.publish_week('e', 0, jsonb_build_array(
   jsonb_build_object('label', 'eli-mon', 'person', 'eli', 'loc', 'K', 'job', 'cook', 'day', 0, 'start', '09:00', 'end', '15:00'),
-  jsonb_build_object('label', 'ana-mon', 'person', 'ana', 'loc', 'K', 'job', 'cook', 'day', 0, 'start', '10:00', 'end', '15:00')
+  jsonb_build_object('label', 'ana-mon', 'person', 'ana', 'loc', 'K', 'job', 'cook', 'day', 0, 'start', '10:00', 'end', '15:00'),
+  -- An open shift before anyone: nobody's, it starts nothing (the web reads people only).
+  jsonb_build_object('label', 'open-mon', 'loc', 'K', 'job', 'cook', 'day', 0, 'start', '08:00', 'end', '15:00')
 ));
 -- ponytail: the test editor has no shift type field; the published rows get theirs here.
 update public.schedule_published_shifts set shift_type_id = tests.id('e:type:lunch')
-where id in (tests.id('e:shift:eli-mon'), tests.id('e:shift:ana-mon'));
+where id in (tests.id('e:shift:eli-mon'), tests.id('e:shift:ana-mon'), tests.id('e:shift:open-mon'));
 
 create temporary table fixture (key text primary key, value uuid);
 insert into fixture values
@@ -79,7 +81,7 @@ $$;
 select is(
   app_private.lineup_started(tests.id('e'), tests.id('e:K'), tests.week(0), tests.id('e:type:lunch'),
     (tests.week(0) + time '08:59') at time zone (select timezone from public.locations where id = tests.id('e:K'))),
-  false, 'a minute before the first person is in, the lineup has not started'
+  false, 'a minute before the first person is in, the lineup has not started (the 8:00 open shift is nobody''s)'
 );
 select is(
   app_private.lineup_started(tests.id('e'), tests.id('e:K'), tests.week(0), tests.id('e:type:lunch'),
@@ -169,6 +171,37 @@ select is(
   '42501:authz.out_of_scope', 'a row that is not on this lineup is out of reach'
 );
 
+-- Positions and labels: this workspace's and in use only (another workspace's, or archived, are refused).
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'set_row', 'row',
+    jsonb_build_object('source_shift_id', %L, 'job_id', %L)))$$,
+    tests.user('e:mia'), (select value from fixture where key = 'eli_source'), tests.id('ex:job:cook'))),
+  '22023:lineup.invalid_job', 'another workspace''s position is refused'
+);
+update public.jobs set archived_at = now() where id = tests.id('e:job:server');
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'set_row', 'row',
+    jsonb_build_object('source_shift_id', %L, 'job_id', %L)))$$,
+    tests.user('e:mia'), (select value from fixture where key = 'eli_source'), tests.id('e:job:server'))),
+  '22023:lineup.invalid_job', 'an archived position is refused'
+);
+insert into public.shift_labels (id, workspace_id, name)
+values (tests.remember('ex:label:lead', gen_random_uuid()), tests.id('ex'), 'Lead'),
+  (tests.remember('e:label:old', gen_random_uuid()), tests.id('e'), 'Old');
+update public.shift_labels set archived_at = now() where id = tests.id('e:label:old');
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'set_row', 'row',
+    jsonb_build_object('source_shift_id', %L, 'label_ids', jsonb_build_array(%L))))$$,
+    tests.user('e:mia'), (select value from fixture where key = 'eli_source'), tests.id('ex:label:lead'))),
+  '22023:lineup.invalid_label', 'another workspace''s label is refused'
+);
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'set_row', 'row',
+    jsonb_build_object('source_shift_id', %L, 'label_ids', jsonb_build_array(%L))))$$,
+    tests.user('e:mia'), (select value from fixture where key = 'eli_source'), tests.id('e:label:old'))),
+  '22023:lineup.invalid_label', 'an archived label is refused'
+);
+
 -- 4. Notes.
 select lives_ok(
   format($$select pg_temp.edit(%L, jsonb_build_object('action', 'set_notes', 'notes',
@@ -254,6 +287,16 @@ select is(
   '22023:lineup.past_day', 'a day that is over is locked'
 );
 
+select tests.closed_day(tests.id('e'), array[tests.id('e:K')], tests.week(0) + 3, tests.week(0) + 3, tests.user('e:owner'),
+  null, 'Deep clean');
+select is(
+  pg_temp.refusal(format($$select public.lineup_edit_service(%L, %L, gen_random_uuid(), jsonb_build_object(
+      'action', 'set_notes', 'location_id', %L, 'service_date', %L, 'shift_type_id', %L,
+      'notes', jsonb_build_object('n86', 'x')))$$,
+    tests.user('e:mia'), tests.id('e'), tests.id('e:K'), tests.week(0) + 3, tests.id('e:type:lunch'))),
+  '22023:lineup.closed_day', 'a closed day is locked'
+);
+
 -- 8. L1's findings. Zed takes Ana's place; Eli and Ana acknowledged the version staff saw.
 insert into public.daily_lineup_rows (id, workspace_id, lineup_id, location_id, service_date, employee_id, job_id, starts, ends)
 select tests.remember('e:row:zed', gen_random_uuid()), tests.id('e'), d.id, tests.id('e:K'), tests.week(0),
@@ -320,6 +363,24 @@ select is(
   pg_temp.refused_by(format('update public.daily_lineup_rows set replaced_by_row_id = %L where id = %L',
     tests.id('e:row:ana'), tests.id('e:row:zed'))),
   '23514 daily_lineup_rows_replaced_by_loop', 'two rows never replace each other'
+);
+
+-- 9. A started shift, through the service: today at Kadikoy, Zed is on the Lunch lineup from midnight (a person
+-- added in the lineup; the Schedule isn't touched).
+create temporary table today_k as
+select (now() at time zone (select timezone from public.locations where id = tests.id('e:K')))::date as day;
+insert into public.daily_lineups (id, workspace_id, location_id, service_date, shift_type_id)
+values (tests.remember('e:lineup:today', gen_random_uuid()), tests.id('e'), tests.id('e:K'), (select day from today_k),
+  tests.id('e:type:lunch'));
+insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, employee_id, job_id, starts, ends)
+values (tests.id('e'), tests.id('e:lineup:today'), tests.id('e:K'), (select day from today_k), tests.id('e:zed'),
+  tests.id('e:job:cook'), '00:00', '23:59');
+select is(
+  pg_temp.refusal(format($$select public.lineup_edit_service(%L, %L, gen_random_uuid(), jsonb_build_object(
+      'action', 'set_notes', 'location_id', %L, 'service_date', %L, 'shift_type_id', %L,
+      'notes', jsonb_build_object('n86', 'x')))$$,
+    tests.user('e:mia'), tests.id('e'), tests.id('e:K'), (select day from today_k), tests.id('e:type:lunch'))),
+  '22023:lineup.started', 'a shift whose first person is in is locked, through the service'
 );
 
 select * from finish();

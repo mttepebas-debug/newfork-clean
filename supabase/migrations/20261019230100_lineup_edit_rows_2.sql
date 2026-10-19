@@ -63,7 +63,9 @@ begin
   select min(r ->> 'start_time') into first_in
   from jsonb_array_elements(app_private.lineup_day(target_workspace_id, target_date, array[target_location_id]) -> 'locations') l,
     jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
-  where (x ->> 'shift_type_id')::uuid is not distinct from target_shift_type_id;
+  where (x ->> 'shift_type_id')::uuid is not distinct from target_shift_type_id
+    -- People only, as the web reads it: an open shift is nobody's and starts nothing.
+    and r ->> 'employee_id' is not null;
   return first_in is not null and to_char(local_now, 'HH24:MI') >= first_in;
 end;
 $$;
@@ -172,7 +174,7 @@ begin
     if edit ? 'job_id' and (edit ->> 'job_id' is null and (target -> 'lineup_only')::boolean
         or edit ->> 'job_id' is not null and ((edit ->> 'job_id') !~* uuid_shape or not exists (
           select 1 from public.jobs j where j.id = (edit ->> 'job_id')::uuid and j.workspace_id = target_workspace_id
-            and j.deleted_at is null))) then
+            and j.archived_at is null))) then
       raise exception 'Choose a position' using errcode = '22023', hint = 'lineup.invalid_job';
     end if;
     if edit ? 'label_ids' then
@@ -181,7 +183,7 @@ begin
       end if;
       for label in select (value #>> '{}')::uuid from jsonb_array_elements(coalesce(nullif(edit -> 'label_ids', 'null'::jsonb), '[]')) loop
         if not exists (select 1 from public.shift_labels s where s.id = label and s.workspace_id = target_workspace_id
-                         and s.deleted_at is null) then
+                         and s.archived_at is null and s.deleted_at is null) then
           raise exception 'Choose labels' using errcode = '22023', hint = 'lineup.invalid_label';
         end if;
       end loop;
