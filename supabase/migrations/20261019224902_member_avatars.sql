@@ -92,7 +92,7 @@ $$;
 alter function app_private.clear_member_avatar(uuid) owner to postgres;
 revoke all on function app_private.clear_member_avatar(uuid) from public, anon, authenticated, service_role;
 comment on function app_private.clear_member_avatar(uuid) is
-  'Deletes a membership''s avatar (public.member_avatars) and every app_private.last_avatars row whose source is that membership; returns the removed photo_path, null for a drawing or no avatar (AVATAR-IKON, S-187). Does not authorize: the caller authorizes first. Callers: remove_own_avatar_service, remove_member_photo_service and, when a person''s access to a workspace is removed, public.remove_employee_access_service (ROL-CIFT). The caller must delete the returned object from the employee-profile-photos bucket.';
+  'Deletes a membership''s avatar (public.member_avatars) and every app_private.last_avatars row whose source is that membership; returns the removed photo_path, null for a drawing or no avatar (AVATAR-IKON, S-187). Does not authorize: the caller authorizes first. Callers: remove_own_avatar_service and remove_member_photo_service. Access removal (public.remove_employee_access_service, decision S-187) will call it when a person''s access to a workspace is removed; that call is not wired yet. The caller must delete the returned object from the employee-profile-photos bucket.';
 
 -- The services --------------------------------------------------------------------------------------
 
