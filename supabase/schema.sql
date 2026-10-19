@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 544, last: 20261019224901_document_archive_stops_publication.sql
--- fingerprint: sha256:16f2fa1608758bf127781ec960f92e6ed059d53a980d9ec5fa91fb31ada44b7a
+-- migrations: 545, last: 20261019224901_document_archive_stops_publication.sql
+-- fingerprint: sha256:57062338dcf74ae7ae5d116ad22bc376bcbd462f35ecafb94eeb2d4f1a21d4bc
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -8746,6 +8746,63 @@ $$;
 ALTER FUNCTION "app_private"."shift_time_range"("d" "date", "s" time without time zone, "e" time without time zone, "tz" "text") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."shift_types_time_options"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $_$
+declare
+  item jsonb;
+  start_at time;
+  end_at time;
+  pair text;
+  seen text[] := '{}';
+  normalized jsonb := '[]'::jsonb;
+  valid boolean := true;
+begin
+  if jsonb_typeof(new.time_options) is distinct from 'array' or jsonb_array_length(new.time_options) > 8 then
+    valid := false;
+  end if;
+  if valid and new.default_start_time is not null then
+    seen := array[to_char(new.default_start_time, 'HH24:MI') || '-' || to_char(new.default_end_time, 'HH24:MI')];
+  elsif valid and jsonb_array_length(new.time_options) > 0 then
+    valid := false;
+  end if;
+  if valid then
+    for item in select value from jsonb_array_elements(new.time_options) loop
+      if jsonb_typeof(item) is distinct from 'object'
+        or (select count(*) from jsonb_object_keys(item)) <> 2
+        or jsonb_typeof(item->'start_time') is distinct from 'string'
+        or jsonb_typeof(item->'end_time') is distinct from 'string'
+        or (item->>'start_time') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:00)?$'
+        or (item->>'end_time') !~ '^([01][0-9]|2[0-3]):[0-5][0-9](:00)?$' then
+        valid := false;
+        exit;
+      end if;
+      start_at := (item->>'start_time')::time;
+      end_at := (item->>'end_time')::time;
+      pair := to_char(start_at, 'HH24:MI') || '-' || to_char(end_at, 'HH24:MI');
+      if start_at = end_at or pair = any (seen) then
+        valid := false;
+        exit;
+      end if;
+      seen := seen || pair;
+      normalized := normalized || jsonb_build_array(jsonb_build_object(
+        'start_time', to_char(start_at, 'HH24:MI'), 'end_time', to_char(end_at, 'HH24:MI')));
+    end loop;
+  end if;
+  if not valid then
+    raise exception 'Each time needs a start and an end that differ, appears once, and differs from the primary time; up to 8 more times'
+      using errcode = '22023', hint = 'shift_type.time_options_invalid';
+  end if;
+  new.time_options := normalized;
+  return new;
+end;
+$_$;
+
+
+ALTER FUNCTION "app_private"."shift_types_time_options"() OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."shorten_time_off"("actor" "uuid", "w" "uuid", "emp" "uuid", "cut" "tstzmultirange", "note" "text", "source" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql"
     SET "search_path" TO ''
@@ -15968,7 +16025,8 @@ begin
         'id', shift_type.id, 'name', shift_type.name, 'color', shift_type.color,
         'sort_order', shift_type.sort_order,
         'default_revision',shift_type.default_revision,'default_start_time', case when shift_type.default_start_time is null then null else to_char(shift_type.default_start_time, 'HH24:MI') end,
-        'default_end_time', case when shift_type.default_end_time is null then null else to_char(shift_type.default_end_time, 'HH24:MI') end
+        'default_end_time', case when shift_type.default_end_time is null then null else to_char(shift_type.default_end_time, 'HH24:MI') end,
+        'time_options', shift_type.time_options
       ) order by shift_type.sort_order, shift_type.name)
       from public.shift_types shift_type
       where shift_type.workspace_id = target_workspace_id and shift_type.archived_at is null
@@ -18481,7 +18539,7 @@ begin
       select shift_type.id, shift_type.workspace_id, shift_type.name, shift_type.color,
         to_char(shift_type.default_start_time, 'HH24:MI') as default_start_time,
         to_char(shift_type.default_end_time, 'HH24:MI') as default_end_time,
-        shift_type.default_revision, shift_type.crosses_midnight, shift_type.sort_order, shift_type.archived_at
+        shift_type.default_revision, shift_type.crosses_midnight, shift_type.sort_order, shift_type.archived_at, shift_type.time_options
       from public.shift_types shift_type
       where shift_type.workspace_id = target_workspace_id and shift_type.deleted_at is null
     ) t
@@ -31470,6 +31528,7 @@ CREATE TABLE IF NOT EXISTS "public"."shift_types" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "default_revision" integer DEFAULT 1 NOT NULL,
     "deleted_at" timestamp with time zone,
+    "time_options" "jsonb" DEFAULT '[]'::"jsonb" NOT NULL,
     CONSTRAINT "shift_types_check" CHECK (((("default_start_time" IS NULL) AND ("default_end_time" IS NULL)) OR (("default_start_time" IS NOT NULL) AND ("default_end_time" IS NOT NULL) AND ("default_start_time" <> "default_end_time")))),
     CONSTRAINT "shift_types_color_check" CHECK (("color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
     CONSTRAINT "shift_types_default_revision_check" CHECK (("default_revision" > 0)),
@@ -31479,6 +31538,10 @@ CREATE TABLE IF NOT EXISTS "public"."shift_types" (
 
 
 ALTER TABLE "public"."shift_types" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."shift_types"."time_options" IS 'More start-end pairs beside the primary hours, in order: [{"start_time":"HH:MM","end_time":"HH:MM"}], at most 8, no repeats, none equal to the primary (PRESET-SAAT, KARARLAR S-183). Checked and normalized by trigger shift_types_time_options.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."signature_retention_policies" (
@@ -33807,6 +33870,10 @@ CREATE OR REPLACE TRIGGER "shift_type_time_revision" BEFORE INSERT OR UPDATE ON 
 
 
 CREATE OR REPLACE TRIGGER "shift_types_audit_trigger" AFTER INSERT OR UPDATE ON "public"."shift_types" FOR EACH ROW EXECUTE FUNCTION "public"."audit_organization_setting_change"();
+
+
+
+CREATE OR REPLACE TRIGGER "shift_types_time_options" BEFORE INSERT OR UPDATE OF "time_options", "default_start_time", "default_end_time" ON "public"."shift_types" FOR EACH ROW EXECUTE FUNCTION "app_private"."shift_types_time_options"();
 
 
 
@@ -36987,6 +37054,10 @@ REVOKE ALL ON FUNCTION "app_private"."shift_time_range"("d" "date", "s" time wit
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."shift_types_time_options"() FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."shorten_time_off"("actor" "uuid", "w" "uuid", "emp" "uuid", "cut" "tstzmultirange", "note" "text", "source" "jsonb") FROM PUBLIC;
 
 
@@ -39299,6 +39370,10 @@ GRANT UPDATE("archived_at") ON TABLE "public"."shift_types" TO "authenticated";
 
 
 GRANT UPDATE("updated_at") ON TABLE "public"."shift_types" TO "authenticated";
+
+
+
+GRANT UPDATE("time_options") ON TABLE "public"."shift_types" TO "authenticated";
 
 
 
