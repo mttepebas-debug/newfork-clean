@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 543, last: 20261019224830_document_timezone_follows_time_off.sql
--- fingerprint: sha256:afa5e90a0158c9fb67d97f258536666c01ba373d50d1bd4446daa65f19212cc8
+-- migrations: 544, last: 20261019224830_document_timezone_follows_time_off.sql
+-- fingerprint: sha256:07f8f1e54316f088549ec30c263bd16dd0ca5582236bbbb1d37ca0dbe3edff01
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4274,6 +4274,7 @@ CREATE TABLE IF NOT EXISTS "public"."document_types" (
     "publication_revision" integer DEFAULT 1 NOT NULL,
     "published_at" timestamp with time zone,
     CONSTRAINT "document_types_accepted_formats_check" CHECK ((("cardinality"("accepted_formats") > 0) AND ("accepted_formats" <@ ARRAY['pdf'::"text", 'jpeg'::"text", 'png'::"text", 'webp'::"text"]))),
+    CONSTRAINT "document_types_archived_not_published" CHECK ((("archived_at" IS NULL) OR ("publication_status" <> 'published'::"text"))),
     CONSTRAINT "document_types_description_check" CHECK (("char_length"("description") <= 240)),
     CONSTRAINT "document_types_expiry_block_requires_required" CHECK ((("expiry_schedule_impact" <> 'block'::"public"."document_expiry_schedule_impact") OR "required_at_onboarding")),
     CONSTRAINT "document_types_expiry_policy_version_check" CHECK (("expiry_policy_version" > 0)),
@@ -26097,20 +26098,32 @@ CREATE OR REPLACE FUNCTION "public"."set_document_type_archived_service"("actor_
     AS $$
 declare
   actor_id uuid := actor_user_id;
-  target_title text;
+  d public.document_types%rowtype;
+  preview jsonb;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.documents.write');
+  -- Same tenant lock and row order as set_document_publication_service.
+  perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text, 52001));
+  select * into d from public.document_types
+  where id = target_document_type_id and workspace_id = target_workspace_id
+  for update;
+  if d.id is null then
+    raise exception 'document type not found' using errcode = 'P0002';
+  end if;
+
+  if should_archive and d.archived_at is null and d.publication_status = 'published' then
+    preview := public.preview_document_publication_service(actor_user_id, target_workspace_id, d.id);
+    perform public.set_document_publication_service(
+      actor_user_id, target_workspace_id, d.id,
+      d.lifecycle_revision, d.publication_revision, preview->>'preview_token',
+      'Archived', 'draft'
+    );
+  end if;
 
   update public.document_types
   set archived_at = case when should_archive then now() else null end,
       updated_at = now()
-  where id = target_document_type_id
-    and workspace_id = target_workspace_id
-  returning title into target_title;
-
-  if target_title is null then
-    raise exception 'document type not found' using errcode = 'P0002';
-  end if;
+  where id = d.id;
 
   insert into public.audit_events (
     workspace_id, actor_user_id, action, target_type, target_id, metadata
@@ -26119,8 +26132,8 @@ begin
     actor_id,
     case when should_archive then 'document_type.archived' else 'document_type.restored' end,
     'document_type',
-    target_document_type_id::text,
-    jsonb_build_object('title', target_title)
+    d.id::text,
+    jsonb_build_object('title', d.title)
   );
 end;
 $$;
