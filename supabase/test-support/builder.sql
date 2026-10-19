@@ -278,6 +278,7 @@ declare
   employee uuid;
   role_key text := split_part(access, '+', 1);
   also_works boolean := access like '%+employee';
+  invited_account uuid;
 begin
   if status not in ('active', 'onboarding', 'pending', 'suspended', 'removed') then
     raise exception 'tests.person: unknown status %', status;
@@ -312,11 +313,12 @@ begin
 
   if status <> 'pending' then
     perform public.accept_employee_invitation_by_id_service(user_id, (created ->> 'invitation_id')::uuid);
-    -- ponytail: the product names the employee slot apart from 2026-10 slice 6 (the invitation).
+    -- ponytail: the invitation names the employee slot itself from ROL-CIFT slice 6 on.
+    invited_account := user_id;
     if also_works then
       update public.workspace_memberships m
       set employee_role_id = (select r.id from public.workspace_roles r where r.workspace_id = workspace and r.system_key = 'employee')
-      where m.workspace_id = workspace and m.user_id = person.user_id and m.employee_role_id is null;
+      where m.workspace_id = workspace and m.user_id = invited_account and m.employee_role_id is null;
     end if;
   end if;
   perform tests.settle();

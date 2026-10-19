@@ -101,7 +101,7 @@ interface TargetedRule {
   readonly restrictedOk?: boolean;
   /** Asked of one person's record, request or shift: without the person, no. */
   readonly person?: boolean;
-  /** Only somebody in the employee role, for their own record (M13). */
+  /** The employee side's: only somebody who holds the employee slot (M13; ROL-CIFT). */
   readonly employeeTarget?: boolean;
 }
 
@@ -136,7 +136,7 @@ export const targetedAuthzActions = {
   "employee.save_own_contact": { person: true, permission: null, own: true, restrictedOk: true },
   "employee.terminate": { person: true, permission: "employees.archive" },
   "exchange.approve": { person: true, permission: "schedule.shift_change_requests.manage" },
-  "exchange.offer_own": { person: true, permission: null, own: true },
+  "exchange.offer_own": { person: true, permission: null, own: true, employeeTarget: true },
   "important_date.write": { permission: "important_dates.manage" },
   "important_date.write_wide": { permission: "important_dates.manage" },
   "lineup.read": { permission: "schedule.read" },
@@ -169,7 +169,7 @@ export const targetedAuthzActions = {
   "settings.signature_templates.read": { permission: "documents.read" },
   "time_off.decide": { person: true, permission: "schedule.time_off_requests.manage" },
   "time_off.decide_alone": { person: true, permission: "schedule.time_off_requests.manage" },
-  "time_off.request_own": { permission: null, own: true },
+  "time_off.request_own": { permission: null, own: true, employeeTarget: true },
   "time_off.revoke": { person: true, permission: "schedule.time_off_requests.manage" },
   "workspace.close": { permission: null, ownerOnly: true },
   "workspace.transfer_ownership": { permission: null, ownerOnly: true },
@@ -195,12 +195,19 @@ export interface AuthzActor {
    * none is not a member at all.
    */
   readonly status: "active" | "restricted" | "suspended" | "invited" | "removed" | "none";
-  /**
-   * Where they are assigned. A manager's reach; an empty list reaches
-   * nowhere.
-   */
+  /** Where they work. */
   readonly locationIds: readonly string[];
   readonly permissions: readonly string[];
+  /**
+   * They hold the employee slot (ROL-CIFT). Left out: somebody in the employee
+   * role does, nobody else (the membership's two slots reach the web in 1.5).
+   */
+  readonly hasEmployee?: boolean;
+  /**
+   * A manager's Manages: their reach; an empty list reaches nowhere. Left out:
+   * where they work.
+   */
+  readonly managedLocationIds?: readonly string[];
 }
 
 /** What they act on. Leave it out for an action on the workspace as a whole. */
@@ -213,7 +220,12 @@ export interface AuthzTarget {
    */
   readonly locations?: readonly string[] | "organization";
   /** Whose it is, when it belongs to a person (their record, request, shift). */
-  readonly person?: { readonly role: WorkspaceRole; readonly isSelf: boolean };
+  readonly person?: {
+    readonly role: WorkspaceRole;
+    readonly isSelf: boolean;
+    /** They hold the employee slot. Left out: somebody in the employee role does. */
+    readonly hasEmployee?: boolean;
+  };
 }
 
 const rankOf: Record<WorkspaceRole, number> = { owner: 4, admin: 3, manager: 2, employee: 1 };
@@ -245,8 +257,9 @@ export function expected<A extends TargetedAuthzAction>(
   if (action === "membership.read" && isSelf) return actor.status !== "invited";
   // One's own action is never done on somebody else's, in whatever state.
   if (rule.own && person !== undefined && !isSelf) return false;
-  // M13: a manager, admin or owner has no availability week of their own.
-  if (rule.employeeTarget && actor.role !== "employee") return false;
+  // The employee side (M13; ROL-CIFT design §4.4, §4.10, §4.11): availability,
+  // offering a shift and asking time off need the employee slot.
+  if (rule.employeeTarget && !(actor.hasEmployee ?? actor.role === "employee")) return false;
   if (actor.status === "restricted" && rule.restrictedOk) return true;
   if (actor.status !== "active") return false;
   if (rule.own) return person === undefined || isSelf;
@@ -257,10 +270,10 @@ export function expected<A extends TargetedAuthzAction>(
   const high = actor.role === "owner" || actor.role === "admin";
   const places = target?.locations;
   const listed = Array.isArray(places) ? (places as readonly string[]) : null;
-  // A manager's reach: where they are assigned.
-  const shares = listed !== null && listed.some((id) => actor.locationIds.includes(id));
-  const covers =
-    listed !== null && listed.length > 0 && listed.every((id) => actor.locationIds.includes(id));
+  // A manager's reach: their Manages (KARARLAR S-167).
+  const reach = actor.managedLocationIds ?? actor.locationIds;
+  const shares = listed !== null && listed.some((id) => reach.includes(id));
+  const covers = listed !== null && listed.length > 0 && listed.every((id) => reach.includes(id));
   const targetRank = person ? rankOf[person.role] : 0;
 
   // One location, some locations or the whole organization: admin and owner
@@ -291,9 +304,9 @@ export function expected<A extends TargetedAuthzAction>(
 
     case "availability.team_write":
     case "availability.note_read":
-      // The Manager note is about employees only, never a manager, an admin
-      // or the owner, themselves included.
-      if (person?.role !== "employee") return false;
+      // The Manager note is about the employee side: about whoever holds the
+      // employee slot, never about oneself (ROL-CIFT design §4.6, §4.11).
+      if (!(person?.hasEmployee ?? person?.role === "employee") || isSelf) return false;
       return high || shares;
 
     case "employee.terminate":

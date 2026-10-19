@@ -9,7 +9,9 @@
 --                           outside Management; a manager manages where they work; Management jobs
 --                           from their jobs, else Manager / General Manager / the Owner job.
 -- And until the drawer writes Manages (slice 6.3), a manager's Manages follows their location
--- assignments, as a manager's reach did before (manages_follow_works). Both go when those slices land.
+-- assignments, as a manager's reach did before (manages_follow_works). Both are deleted in slices 4 and 6
+-- (dilim 4 ve 6'da silinir: place_single_role with 4.1 and 6.1, manages_follow_works with 6.3) and join
+-- retired_objects_stay_gone there.
 --
 -- Where a screen shows one role (employees list, detail, account, roles in use) it shows the management
 -- slot's, else the employee slot's.
@@ -2844,3 +2846,8 @@ begin
  insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata) values(target_workspace_id,actor_user_id,case when target_role_id is null then 'role.created' else 'role.updated' end,'workspace_role',saved::text,jsonb_build_object('permissions',normalized));
  return saved;
 end; $$;
+
+-- Nobody reads or writes management information about themselves (design §4.6): the Manager note and a
+-- manager's write of somebody's week are about others, now that a manager who works holds them too.
+update app_private.authz_actions set no_self = true
+where key in ('availability.team_write', 'availability.note_read');

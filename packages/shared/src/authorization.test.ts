@@ -46,16 +46,19 @@ const everyPermission = [
 ];
 
 // Every cell is asked in workspace m; a persona from another workspace is not
-// a member there.
+// a member there. Oya (ROL-CIFT) owns workspace o and acts there.
 const asked = "m";
+const homeOf = (p: Persona) => (p.tenant === "o" ? "o" : asked);
 
 function actorOf(p: Persona): AuthzActor {
   return {
-    workspaceId: asked,
+    workspaceId: homeOf(p),
     role: p.class as WorkspaceRole,
-    status: p.tenant === asked ? (p.status as AuthzActor["status"]) : "none",
+    status: p.tenant === homeOf(p) ? (p.status as AuthzActor["status"]) : "none",
     locationIds: p.locs,
     permissions: everyPermission.filter((key) => !p.permissionsRemoved.includes(key)),
+    hasEmployee: p.employee,
+    managedLocationIds: p.manages,
   };
 }
 
@@ -66,9 +69,9 @@ function targetOf(
 ): AuthzTarget | undefined {
   if (label === "self") {
     return {
-      workspaceId: asked,
+      workspaceId: homeOf(p),
       locations: p.locs,
-      person: { role: p.class as WorkspaceRole, isSelf: true },
+      person: { role: p.class as WorkspaceRole, isSelf: true, hasEmployee: p.employee },
     };
   }
   const t = targets.get(label) as MatrixTarget;
@@ -79,7 +82,7 @@ function targetOf(
     workspaceId: t.tenant,
     locations,
     person: t.holder
-      ? { role: t.class as WorkspaceRole, isSelf: t.holder === p.label }
+      ? { role: t.class as WorkspaceRole, isSelf: t.holder === p.label, hasEmployee: t.employee ?? undefined }
       : undefined,
   };
 }

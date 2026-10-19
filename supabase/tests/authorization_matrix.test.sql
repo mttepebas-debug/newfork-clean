@@ -57,6 +57,16 @@ select tests.person('m', 'pelin', 'employee', array['K'], array['cook'], 'pendin
 select tests.person('m', 'remzi', 'employee', array['B'], array['cook'], 'removed');
 select tests.person('m', 'aydan', 'manager', array['K'], array['cook'], 'onboarding');
 select tests.person('x', 'xena', 'employee', array['K'], array['cook']);
+-- ROL-CIFT (design §3, §4.2): the two access slots. Dora manages Kadikoy and works there; Ersin manages
+-- Kadikoy and works only at Besiktas; Mona manages Kadikoy and works nowhere (a Management job only);
+-- Ada is an admin who works at Kadikoy. Oya, in a small world of her own, owns it and works there.
+select tests.person('m', 'dora', 'manager', array['K'], array['cook']);
+select tests.person('m', 'ersin', 'manager+employee', array['B'], array['cook']);
+select tests.manages('m', 'ersin', array['K']);
+select tests.person('m', 'mona', 'manager', array['K'], array['general manager']);
+select tests.person('m', 'ada', 'admin', array['K'], array['cook']);
+select tests.world('o');
+select tests.employee_slot('o', 'owner');
 -- Aydan has typed her legal name and not finished onboarding: the emergency
 -- contact form asks for one on file.
 select public.save_employee_onboarding_profile_service(
@@ -71,8 +81,9 @@ select public.save_employee_onboarding_profile_service(
 -- in week 3 that a manager, an admin or the owner might revoke (FB-6.3).
 select tests.remember('m:' || h || ':leave', tests.leave('m', h))
 from unnest(array['emre', 'veli', 'ali', 'ayse', 'zeynep']) h;
-select tests.remember('m:lv:' || h, tests.leave('m', case h when 'olcay' then 'owner' else h end, 3))
-from unnest(array['emre', 'ali', 'ayse', 'zeynep', 'olcay']) h;
+-- Olcay, the owner, only manages: no time off of her own (ROL-CIFT, design §4.10).
+select tests.remember('m:lv:' || h, tests.leave('m', h, 3))
+from unnest(array['emre', 'ali', 'ayse', 'zeynep']) h;
 select public.decide_time_off_service(tests.user('m:owner'), tests.id('m'), tests.id('m:lv:' || h), 'approve', '',
   app_private.time_off_impact(tests.id('m'), tests.id('m:lv:' || h)) ->> 'fingerprint')
 from unnest(array['emre', 'ali', 'ayse', 'zeynep']) h;
@@ -154,8 +165,10 @@ create function pg_temp.badge(person uuid) returns uuid language sql stable as $
   where r.employee_id = person and r.source_id = (select id from matrix_badge) and r.lifecycle_retired_at is null$$;
 
 -- 2. Who they are, written down independently of the app ------------------------
--- class: owner | admin | manager | employee. status: active | suspended |
--- invited (no membership yet) | removed | restricted (onboarding not finished).
+-- class: owner | admin | manager | employee (the management slot's, else employee). status: active |
+-- suspended | invited (no membership yet) | removed | restricted (onboarding not finished).
+-- locs: where they work. employee: they hold the employee slot. manages: a manager's Manages (owners
+-- and admins reach every location by class).
 
 create temporary table persona (
   label text primary key,
@@ -163,26 +176,34 @@ create temporary table persona (
   class text not null,
   status text not null,
   locs text[] not null,
-  permissions_removed text[] not null default '{}'
+  permissions_removed text[] not null default '{}',
+  employee boolean not null default true,
+  manages text[] not null default '{}'
 );
+-- A manager filed with a job outside Management also holds the employee slot (design §5.1).
 insert into persona values
-  ('olcay',  'm', 'owner',    'active',     '{K,B}', '{}'),
-  ('zeynep', 'm', 'admin',    'active',     '{K}',   '{}'),
-  ('kaan',   'm', 'admin',    'active',     '{B}',   '{}'),
-  ('derya',  'm', 'manager',  'active',     '{B}',   '{}'),
-  ('ayse',   'm', 'manager',  'active',     '{K}',   '{}'),
-  ('mehmet', 'm', 'manager',  'active',     '{B}',   '{}'),
-  ('can',    'm', 'manager',  'active',     '{K,B}', '{}'),
-  ('nur',    'm', 'manager',  'active',     '{}',    '{}'),
-  ('nil',    'm', 'manager',  'active',     '{K}',   '{employees.manage,schedule.publish}'),
-  ('ali',    'm', 'employee', 'active',     '{K,B}', '{}'),
-  ('emre',   'm', 'employee', 'active',     '{K}',   '{}'),
-  ('veli',   'm', 'employee', 'active',     '{B}',   '{}'),
-  ('sami',   'm', 'manager',  'suspended',  '{K}',   '{}'),
-  ('pelin',  'm', 'employee', 'invited',    '{K}',   '{}'),
-  ('remzi',  'm', 'employee', 'removed',    '{B}',   '{}'),
-  ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}'),
-  ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}');
+  ('olcay',  'm', 'owner',    'active',     '{K,B}', '{}', false, '{}'),
+  ('zeynep', 'm', 'admin',    'active',     '{K}',   '{}', true,  '{}'),
+  ('kaan',   'm', 'admin',    'active',     '{B}',   '{}', true,  '{}'),
+  ('ada',    'm', 'admin',    'active',     '{K}',   '{}', true,  '{}'),
+  ('derya',  'm', 'manager',  'active',     '{B}',   '{}', true,  '{B}'),
+  ('ayse',   'm', 'manager',  'active',     '{K}',   '{}', true,  '{K}'),
+  ('dora',   'm', 'manager',  'active',     '{K}',   '{}', true,  '{K}'),
+  ('ersin',  'm', 'manager',  'active',     '{B}',   '{}', true,  '{K}'),
+  ('mona',   'm', 'manager',  'active',     '{K}',   '{}', false, '{K}'),
+  ('mehmet', 'm', 'manager',  'active',     '{B}',   '{}', true,  '{B}'),
+  ('can',    'm', 'manager',  'active',     '{K,B}', '{}', true,  '{K,B}'),
+  ('nur',    'm', 'manager',  'active',     '{}',    '{}', false, '{}'),
+  ('nil',    'm', 'manager',  'active',     '{K}',   '{employees.manage,schedule.publish}', true, '{K}'),
+  ('ali',    'm', 'employee', 'active',     '{K,B}', '{}', true,  '{}'),
+  ('emre',   'm', 'employee', 'active',     '{K}',   '{}', true,  '{}'),
+  ('veli',   'm', 'employee', 'active',     '{B}',   '{}', true,  '{}'),
+  ('sami',   'm', 'manager',  'suspended',  '{K}',   '{}', true,  '{K}'),
+  ('pelin',  'm', 'employee', 'invited',    '{K}',   '{}', true,  '{}'),
+  ('remzi',  'm', 'employee', 'removed',    '{B}',   '{}', true,  '{}'),
+  ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}', true,  '{K}'),
+  ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}', false, '{}'),
+  ('oya',    'o', 'owner',    'active',     '{K,B}', '{}', true,  '{}');
 -- The manager role an owner starts with holds none of the Settings read
 -- permissions below (important_dates.read aside); an owner may grant them to a
 -- manager-type role (settings_reads_ask_the_core.test.sql), all but
@@ -197,9 +218,10 @@ where class = 'manager';
 create temporary table actor as
 select p.label,
   case p.label when 'olcay' then tests.user('m:owner') when 'xavier' then tests.user('x:owner')
-    else tests.user('m:' || p.label) end as user_id,
+    when 'oya' then tests.user('o:owner') else tests.user('m:' || p.label) end as user_id,
   case p.label when 'olcay' then tests.id('m:owner') when 'xavier' then tests.id('x:owner')
-    else tests.id('m:' || p.label) end as employee_id
+    when 'oya' then tests.id('o:owner') else tests.id('m:' || p.label) end as employee_id,
+  case p.tenant when 'o' then tests.id('o') else tests.id('m') end as workspace_id
 from persona p;
 
 -- 3. What they act on -------------------------------------------------------------
@@ -211,7 +233,8 @@ create temporary table target (
   locs text[],                 -- person: where they work; location: itself (null: none);
                                -- time_off, leave: where the person it belongs to works
   class text,                  -- person, time_off, leave: the rank of the person it belongs to
-  holder text                  -- person, time_off, leave: whose it is
+  holder text,                 -- person, time_off, leave: whose it is
+  employee boolean             -- person: they hold the employee slot (ROL-CIFT)
 );
 insert into target values
   ('emre',       'person',    'm', '{K}',   'employee', 'emre'),
@@ -220,6 +243,9 @@ insert into target values
   ('ayse',       'person',    'm', '{K}',   'manager',  'ayse'),
   ('zeynep',     'person',    'm', '{K}',   'admin',    'zeynep'),
   ('kaan',       'person',    'm', '{B}',   'admin',    'kaan'),
+  -- a manager who works at Besiktas and manages Kadikoy, and one who only manages
+  ('ersin',      'person',    'm', '{B}',   'manager',  'ersin'),
+  ('mona',       'person',    'm', '{K}',   'manager',  'mona'),
   -- a manager kept off the Schedule is reached where they are assigned, like anybody
   ('derya',      'person',    'm', '{B}',   'manager',  'derya'),
   ('olcay',      'person',    'm', '{K,B}', 'owner',    'olcay'),
@@ -258,7 +284,6 @@ insert into target values
   ('lv:ali',     'leave',     'm', '{K,B}', 'employee', 'ali'),
   ('lv:ayse',    'leave',     'm', '{K}',   'manager',  'ayse'),
   ('lv:zeynep',  'leave',     'm', '{K}',   'admin',    'zeynep'),
-  ('lv:olcay',   'leave',     'm', '{K,B}', 'owner',    'olcay'),
   ('site:K',     'site',      'm', '{K}',   null,       null),
   ('site:B',     'site',      'm', '{B}',   null,       null),
   ('sh:ali-k',   'shift',     'm', '{K}',   'employee', 'ali'),
@@ -274,6 +299,8 @@ insert into target values
   ('tpl:KB',     'template',  'm', '{K,B}', null,       null),
   -- shifts at K and a deleted location, which counts nowhere (Q-C, BL-188)
   ('tpl:KD',     'template',  'm', '{K}',   null,       null);
+-- Who holds the employee slot among the people targets (ROL-CIFT): everybody but the owner and Mona.
+update target set employee = (holder not in ('olcay', 'mona')) where kind = 'person';
 
 create temporary table target_id as
 select t.label,
@@ -667,7 +694,7 @@ begin
   select * into p from persona where label = actor_label;
   select * into a from action where key = action_key;
   if target_label = 'self' then
-    t := row('self', 'person', p.tenant, p.locs, p.class, actor_label)::target;
+    t := row('self', 'person', p.tenant, p.locs, p.class, actor_label, p.employee)::target;
   else
     select * into t from target where label = target_label;
   end if;
@@ -675,15 +702,19 @@ begin
 
   -- Nobody reaches into another workspace, and only active members act at all;
   -- somebody who has not finished onboarding only finishes it.
-  if p.tenant <> 'm' or t.tenant <> 'm' then return 'deny'; end if;
+  -- Oya acts in her own world, on her own record only.
+  if t.tenant <> p.tenant or p.tenant = 'x' then return 'deny'; end if;
   -- Whoever has a membership, in whatever state, can read their own row.
   if action_key = 'read.membership' and is_self then
     return case when p.status = 'invited' then 'deny' else 'allow' end;
   end if;
   -- One's own action is never done on somebody else's, in whatever state.
   if a.member and t.holder is not null and not is_self then return 'deny'; end if;
-  -- Availability is entered by employees only (KARARLAR M13).
-  if action_key = 'availability.own' and p.class <> 'employee' then return 'deny'; end if;
+  -- Availability, offering a shift and asking time off are the employee side's: they need the employee
+  -- slot, whatever the management slot (KARARLAR M13; ROL-CIFT, design §4.4, §4.10, §4.11).
+  if action_key in ('availability.own', 'exchange.offer_own', 'time_off.request_own') and not p.employee then
+    return 'deny';
+  end if;
   if p.status = 'restricted' and a.restricted_ok then return 'allow'; end if;
   if p.status <> 'active' then return 'deny'; end if;
   if a.member then return 'allow'; end if;
@@ -691,9 +722,9 @@ begin
   if a.owner_only and p.class <> 'owner' then return 'deny'; end if;
   if p.class = 'employee' then return 'deny'; end if;
 
-  -- A manager's reach: the locations they are assigned to, and nothing else
-  -- (EMP-001). An empty list reaches nowhere.
-  reach := p.locs;
+  -- A manager's reach: their Manages, and nothing else (KARARLAR S-167, design §4.2; it was where they
+  -- work, EMP-001). An empty list reaches nowhere.
+  reach := p.manages;
   shares := t.locs is not null and t.locs && reach;
   covers := t.locs is not null and cardinality(t.locs) > 0 and t.locs <@ reach;
 
@@ -717,11 +748,11 @@ begin
     return 'allow';
 
   when 'availability.team_write', 'availability.note_read' then
-    -- The Manager note is about employees only (user decision 2026-09-26,
-    -- REUSE "Müsaitlik notu yalnız çalışan için"): nobody writes or reads one
-    -- about a manager, an admin or the owner, themselves included. Owner and
-    -- admins for every employee, a manager for those at their locations.
-    if t.class <> 'employee' then return 'deny'; end if;
+    -- The Manager note is about the employee side (user decision 2026-09-26): about everybody who holds
+    -- the employee slot, a manager or an admin who works too included, and about nobody else (ROL-CIFT,
+    -- design §4.11). Nobody reads or writes one about themselves (design §4.6). Owner and admins for
+    -- every such person, a manager for those at the locations they manage.
+    if not coalesce(t.employee, false) or is_self then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when shares then 'allow' else 'deny' end;
 
@@ -982,7 +1013,8 @@ begin
 end;
 $$;
 
-create function pg_temp.core_answer(user_id uuid, own_employee uuid, action_key text, target_label text, target_uuid uuid)
+create function pg_temp.core_answer(user_id uuid, own_employee uuid, action_key text, target_label text, target_uuid uuid,
+  w uuid)
 returns text
 language plpgsql
 as $$
@@ -1046,7 +1078,7 @@ begin
       end if;
     end case;
   end if;
-  reason := app_private.authz_reason(user_id, tests.id('m'), m.core_key, places, person, account);
+  reason := app_private.authz_reason(user_id, w, m.core_key, places, person, account);
   return case when reason is null then 'allow' else 'deny:' || reason end;
 end;
 $$;
@@ -1065,7 +1097,7 @@ declare
   core text;
 begin
   for c in
-    select p.label as actor, ac.user_id, ac.employee_id as own_employee, a.key, a.template, a.empty_is_no,
+    select p.label as actor, ac.user_id, ac.employee_id as own_employee, ac.workspace_id, a.key, a.template, a.empty_is_no,
       t.label as target,
       case when t.label = 'self' then ac.employee_id else ti.id end as target_id
     from persona p
@@ -1073,9 +1105,11 @@ begin
     cross join action a
     join (select label, kind from target union all select 'self', 'person') t on t.kind = a.target_kind
     left join target_id ti on ti.label = t.label
+    -- Oya acts on her own record in her own world; the matrix badge is world m's, so not on documents.
+    where p.tenant <> 'o' or (t.label = 'self' and a.key not like 'documents.%')
     order by a.key, p.label, t.label
   loop
-    actual := pg_temp.probe(c.template, c.user_id, tests.id('m'),
+    actual := pg_temp.probe(c.template, c.user_id, c.workspace_id,
       case when c.target = 'none' then null else c.target_id end, c.empty_is_no);
     verdict := case when actual = 'allow' then 'allow' when actual like 'deny:%' then 'deny' else actual end;
     wanted := pg_temp.expected(c.actor, c.key, c.target);
@@ -1093,7 +1127,7 @@ begin
       return next is(verdict, wanted, cell_label || ' (today: ' || actual || ')');
     end if;
 
-    core := pg_temp.core_answer(c.user_id, c.own_employee, c.key, c.target, c.target_id);
+    core := pg_temp.core_answer(c.user_id, c.own_employee, c.key, c.target, c.target_id, c.workspace_id);
     if wanted like 'decide:%' then
       perform todo(wanted, 1);
     end if;
