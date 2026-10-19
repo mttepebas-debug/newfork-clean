@@ -26,7 +26,6 @@ import {
   type ShiftLabel,
   type ShiftLabelInput,
   type ShiftType,
-  type ShiftTypeInput,
   type ShiftTypeInputDraft,
 } from "@newfork/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";

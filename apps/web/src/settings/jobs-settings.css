@@ -775,7 +775,12 @@
 }
 @media (max-width: 520px) {
   .shift-type-time-row {
-    grid-template-columns: 16px minmax(0, 1fr) 10px minmax(0, 1fr) 28px;
+    grid-template-columns: 16px minmax(0, 1fr) 8px minmax(0, 1fr) 28px;
+    gap: 6px;
+    padding-left: 8px;
+  }
+  .job-catalog-editor .shift-type-time-row input[type="time"] {
+    padding-inline: 6px;
   }
   .shift-type-time-length,
   .shift-type-time-primary {
