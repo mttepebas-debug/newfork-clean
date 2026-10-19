@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(119);
+select plan(118);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -200,57 +200,37 @@ select is(
   'owner sees onboarding address fields in the drawer detail projection'
 );
 select isnt(
-  has_function_privilege('authenticated', 'public.get_employee_avatar_path_service(uuid, uuid, uuid)', 'execute'),
+  has_function_privilege('authenticated', 'public.get_member_avatar_service(uuid, uuid, uuid)', 'execute'),
   true,
   'authenticated users cannot execute the avatar lookup service function directly'
 );
 select isnt(
-  has_function_privilege('authenticated', 'public.remove_employee_avatar_service(uuid, uuid, uuid)', 'execute'),
+  has_function_privilege('authenticated', 'public.remove_member_photo_service(uuid, uuid, uuid)', 'execute'),
   true,
-  'authenticated users cannot execute the avatar removal service function directly'
+  'authenticated users cannot execute the photo removal service function directly'
 );
-set local role postgres;
-update public.employee_private_profiles
-set avatar_object_path = concat(
-  workspace_id,
-  '/',
-  employee_id,
-  '/87000000-0000-4000-8000-000000000001.webp'
-)
-where employee_id = (select id from employee_ids where label = 'downtown');
+-- Downtown has no account yet, so no avatar: the record reads no photo and has none to remove
+-- (the avatar itself is member_avatars.test.sql's, AVATAR-IKON).
 set local role service_role;
 select is(
-  public.get_employee_avatar_path_service(
+  public.get_member_avatar_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'downtown')
   ),
-  concat(
-    '26000000-0000-4000-8000-000000000001/',
-    (select id from employee_ids where label = 'downtown'),
-    '/87000000-0000-4000-8000-000000000001.webp'
-  ),
-  'owner can load the workspace avatar path through the service boundary'
+  null,
+  'owner reads no photo for somebody without an avatar through the service boundary'
 );
-select is(
-  public.remove_employee_avatar_service(
+select throws_ok(
+  format($$select public.remove_member_photo_service(%L, %L, %L)$$,
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'downtown')
-  ),
-  concat(
-    '26000000-0000-4000-8000-000000000001/',
-    (select id from employee_ids where label = 'downtown'),
-    '/87000000-0000-4000-8000-000000000001.webp'
-  ),
-  'owner can remove the workspace avatar through the service boundary'
+    (select id from employee_ids where label = 'downtown')),
+  'PT409',
+  null,
+  'there is no photo to remove'
 );
 set local role postgres;
-select is(
-  (select avatar_object_path from public.employee_private_profiles where employee_id = (select id from employee_ids where label = 'downtown')),
-  null,
-  'avatar removal clears the workspace-scoped object path'
-);
 select is(
   (
     select count(*)::integer
@@ -258,8 +238,8 @@ select is(
     where employee_id = (select id from employee_ids where label = 'downtown')
       and action = 'employee.avatar_removed'
   ),
-  1,
-  'avatar removal creates an employee audit event'
+  0,
+  'a removal that removed nothing is not in the record''s history'
 );
 set local role service_role;
 select lives_ok(

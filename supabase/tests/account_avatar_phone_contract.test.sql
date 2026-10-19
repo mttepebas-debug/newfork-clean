@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(28);
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at)
 values ('75000000-0000-4000-8000-000000000001','00000000-0000-0000-0000-000000000000','authenticated','authenticated','avatar-self@example.test','','{}','{}',now(),now()),
  ('75000000-0000-4000-8000-000000000002','00000000-0000-0000-0000-000000000000','authenticated','authenticated','avatar-other@example.test','','{}','{}',now(),now());
@@ -59,17 +59,6 @@ select lives_ok($$select public.save_own_employment_contact_service('75000000-00
  '75000000-0000-4000-8000-000000000301','Example','Friend','+13105550101')$$,'and takes the number the API sends');
 update public.user_profiles set phone_e164='+13105550123' where user_id='75000000-0000-4000-8000-000000000001';
 select is((select phone from public.employee_private_profiles where employee_id='75000000-0000-4000-8000-000000000301'),'+13105550123','a later account phone edit reaches the record');
-update public.employee_private_profiles set avatar_object_path='75000000-0000-4000-8000-000000000101/75000000-0000-4000-8000-000000000301/75000000-0000-4000-8000-000000000401.png' where employee_id='75000000-0000-4000-8000-000000000301';
-select is(public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000101'),
- '75000000-0000-4000-8000-000000000101/75000000-0000-4000-8000-000000000301/75000000-0000-4000-8000-000000000401.png','self photo projection returns only own tenant path');
-select throws_ok($$select public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000002','75000000-0000-4000-8000-000000000101')$$,'P0002','workspace unavailable','outsider cannot read avatar');
-select ok(not has_function_privilege('authenticated','public.get_own_employee_avatar_path_service(uuid,uuid)','EXECUTE'),'client cannot spoof actor');
-select ok(not has_function_privilege('anon','public.get_own_employee_avatar_path_service(uuid,uuid)','EXECUTE'),'anonymous cannot call service');
-update public.employee_private_profiles set avatar_object_path='75000000-0000-4000-8000-000000000102/75000000-0000-4000-8000-000000000301/75000000-0000-4000-8000-000000000401.png' where employee_id='75000000-0000-4000-8000-000000000301';
-select is(public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000101'),null,'mismatched tenant path is never signed');
-update public.employee_private_profiles set avatar_object_path=null where employee_id='75000000-0000-4000-8000-000000000301';
-select is(public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000101'),null,'removed workspace photo allows global fallback');
-update public.workspaces set lifecycle_status='deleted', closed_at=now(), closed_by='75000000-0000-4000-8000-000000000001' where id='75000000-0000-4000-8000-000000000101';
-select throws_ok($$select public.get_own_employee_avatar_path_service('75000000-0000-4000-8000-000000000001','75000000-0000-4000-8000-000000000101')$$,'P0002','workspace unavailable','closed workspace does not expose avatar');
+-- The workspace avatar moved to member_avatars (AVATAR-IKON); member_avatars.test.sql reads and writes it.
 select * from finish();
 rollback;

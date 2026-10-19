@@ -87,7 +87,6 @@ insert into service_class values
   ('get_lineup_day_service', 'lineup.read'),
   ('get_notification_preferences_service', 'notifications.read_own'),
   ('get_notification_workspace_settings_service', 'settings.organization.write'),
-  ('get_employee_avatar_path_service', 'employee.read'),
   ('get_employee_detail_service', 'employee.read'),
   ('get_employee_document_access_service', 'documents.self'),
   ('get_employee_document_lifecycle_path_service', 'documents.read'),
@@ -96,7 +95,6 @@ insert into service_class values
   ('get_employee_onboarding_review_service', 'onboarding.review'),
   ('get_employee_onboarding_service', 'onboarding.self'),
   ('get_employee_schedule_board_service', 'employee_hub.read'),
-  ('get_own_employee_avatar_path_service', 'account.self'),
   ('get_own_legal_name_service', 'workspace.setup'),
   ('get_owner_setup_checklist_progress_service', 'workspace.setup'),
   ('get_schedule_edit_session_service', 'schedule.edit'),
@@ -176,7 +174,6 @@ insert into service_class values
   ('record_schedule_export_schedule_success_service', 'exempt:worker'),
   ('release_notification_emails_service', 'exempt:worker'),
   ('remove_employee_access_service', 'employee.remove_access'),
-  ('remove_employee_avatar_service', 'employee.save'),
   ('remove_employee_document_draft_file_service', 'documents.self'),
   ('remove_employee_from_location_service', 'employee.remove_from_location'),
   ('remove_schedule_pending_op_service', 'schedule.edit'),
@@ -277,7 +274,14 @@ insert into service_class values
   ('begin_notification_dispatch_service', 'exempt:worker'),
   ('end_notification_dispatch_service', 'exempt:worker'),
   ('notification_dispatch_alerts_service', 'exempt:worker'),
-  ('raise_notification_alerts_service', 'exempt:worker');
+  ('raise_notification_alerts_service', 'exempt:worker'),
+  -- One avatar per workspace membership (AVATAR-IKON): one's own, and a manager's read and photo removal.
+  ('get_own_avatar_service', 'avatar.self'),
+  ('save_own_avatar_service', 'avatar.self'),
+  ('remove_own_avatar_service', 'avatar.self'),
+  ('get_last_avatar_service', 'avatar.self'),
+  ('get_member_avatar_service', 'employee.read'),
+  ('remove_member_photo_service', 'employee.save');
 
 select is(
   array(

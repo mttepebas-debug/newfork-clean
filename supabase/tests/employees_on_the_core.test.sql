@@ -130,7 +130,7 @@ select is(
   '42501 authz.out_of_scope', 'somebody unknown gets the same answer'
 );
 select is(
-  pg_temp.refusal(format('select public.get_employee_avatar_path_service(%L, %L, %L)', tests.user('m:ayse'), tests.id('m'), tests.id('m:veli'))),
+  pg_temp.refusal(format('select public.get_member_avatar_service(%L, %L, %L)', tests.user('m:ayse'), tests.id('m'), tests.id('m:veli'))),
   '42501 authz.out_of_scope', 'a photo is read by the same rule'
 );
 select is(

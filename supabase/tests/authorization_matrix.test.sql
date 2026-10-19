@@ -163,6 +163,19 @@ where workspace_id = tests.id('m') and kind = 'profile';
 create function pg_temp.badge(person uuid) returns uuid language sql stable as $$
   select r.id from public.employee_onboarding_requirements r
   where r.employee_id = person and r.source_id = (select id from matrix_badge) and r.lifecycle_retired_at is null$$;
+-- A photo the person uploaded (AVATAR-IKON): nobody in the world has one, so the removal probe gives
+-- the target one first; the probe's sentinel undoes both.
+create function pg_temp.photo_then_remove(actor uuid, w uuid, person uuid) returns text language plpgsql as $$
+begin
+  insert into public.member_avatars (membership_id, workspace_id, photo_path)
+  select m.id, m.workspace_id, m.workspace_id || '/' || m.id || '/' || gen_random_uuid() || '.jpg'
+  from public.employee_profiles e
+  join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+  where e.id = person
+  on conflict (membership_id) do update set photo_path = excluded.photo_path, art_key = null;
+  return public.remove_member_photo_service(actor, w, person);
+end;
+$$;
 
 -- 2. Who they are, written down independently of the app ------------------------
 -- class: owner | admin | manager | employee (the management slot's, else employee). status: active |
@@ -339,9 +352,12 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.get_employee_detail_service($1, $2, $3) is not null$$),
   ('employee.list', 'person', 'employees.read', false, true,
    $$select exists (select 1 from public.list_employees_service($1, $2, false, '', 'all', 500, 0) e where e.id = $3)$$),
-  -- the path of their photo; nobody in the world has one, so an answer is the path or null
+  -- the path of their photo; nobody in the world has one, so an answer is the path or null (AVATAR-IKON)
   ('employee.avatar', 'person', 'employees.read', false, false,
-   $$select coalesce(public.get_employee_avatar_path_service($1, $2, $3), 'none')$$),
+   $$select coalesce(public.get_member_avatar_service($1, $2, $3), 'none')$$),
+  -- removing the photo they uploaded, by whoever saves their record (AVATAR-IKON)
+  ('employee.avatar_remove', 'person', 'employees.manage', false, false,
+   $$select pg_temp.photo_then_remove($1, $2, $3) is not null$$),
   ('employee.save', 'person', 'employees.manage', false, false,
    $$select public.save_employee_service($1, $2, $3,
        e.first_name, e.middle_name, e.last_name, e.preferred_name, e.invitation_email, e.start_date, e.internal_note,
@@ -562,6 +578,9 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.get_employee_document_lifecycle_service($1, $2, pg_temp.badge($3), true) is not null$$, true, true),
   ('onboarding.self', 'workspace', null, false, true,
    $$select public.get_employee_onboarding_service($1, $2) is not null$$, true, true),
+  -- One's own avatar in this workspace (AVATAR-IKON), also while onboarding is not finished.
+  ('avatar.self', 'workspace', null, false, true,
+   $$select public.get_own_avatar_service($1, $2) is not null$$, true, true),
   -- One's own notification list (BILDIRIM-07), also while onboarding is not finished.
   ('notifications.read_own', 'workspace', null, false, false,
    $$select public.get_notification_feed_service($1, $2) is not null$$, true, true),
@@ -604,6 +623,7 @@ insert into core_action (key, core_key, blank) values
   ('employee.read', 'employee.read', 'null'),
   ('employee.list', 'employee.list', 'null'),
   ('employee.avatar', 'employee.read', 'null'),
+  ('employee.avatar_remove', 'employee.save', 'null'),
   ('employee.save', 'employee.save', 'null'),
   ('availability.team_write', 'availability.team_write', 'null'),
   ('availability.team_read', 'availability.team_read', 'null'),
@@ -665,6 +685,7 @@ insert into core_action (key, core_key, blank) values
   ('onboarding.review', 'onboarding.review', 'null'),
   ('onboarding.legal_name', 'onboarding.legal_name', 'null'),
   ('onboarding.self', 'onboarding.self', 'null'),
+  ('avatar.self', 'avatar.self', 'null'),
   ('exchange.offer_own', 'exchange.offer_own', 'null'),
   ('time_off.request_own', 'time_off.request_own', 'null'),
   ('employee.save_own_contact', 'employee.save_own_contact', 'null'),
@@ -745,7 +766,7 @@ begin
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when shares then 'allow' else 'deny' end;
 
-  when 'employee.save' then
+  when 'employee.save', 'employee.avatar_remove' then
     -- User decisions 2026-09-24 (1A-4A): an admin does not edit the owner's
     -- record; a manager edits neither their own record (it goes one level up)
     -- nor a peer's or a senior's, and edits the whole record of somebody who

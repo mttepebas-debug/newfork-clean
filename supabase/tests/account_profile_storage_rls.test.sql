@@ -1,6 +1,10 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(9);
+
+-- The account photo bucket outlives the account avatar (AVATAR-IKON): a person's avatar is one per
+-- workspace membership (member_avatars.test.sql), so the browser no longer reads or writes this bucket.
+-- The bucket and what is in it stay until the product owner says to delete them.
 
 select is(
   (select public from storage.buckets where id = 'account-profile-photos'),
@@ -23,12 +27,12 @@ select is(
     from information_schema.columns
     where table_schema = 'public'
       and (
-        (table_name = 'user_profiles' and column_name in ('phone_e164', 'avatar_object_path'))
+        (table_name = 'user_profiles' and column_name = 'phone_e164')
         or (table_name = 'user_preferences' and column_name in ('time_format', 'date_format'))
       )
   ),
-  4,
-  'account profile and display preference columns are present'
+  3,
+  'account profile phone and display preference columns are present'
 );
 
 insert into auth.users (
@@ -58,93 +62,46 @@ select is(
   'existing account preference writes default personal date format to System'
 );
 
-select lives_ok(
-  $$update public.user_profiles
-    set avatar_object_path = '71000000-0000-4000-8000-000000000001/profile/71000000-0000-4000-8000-000000000011.jpg'
-    where user_id = '71000000-0000-4000-8000-000000000001'$$,
-  'account can reference its own profile avatar path'
-);
-select throws_ok(
-  $$update public.user_profiles
-    set avatar_object_path = '71000000-0000-4000-8000-000000000002/profile/71000000-0000-4000-8000-000000000012.jpg'
-    where user_id = '71000000-0000-4000-8000-000000000001'$$,
-  '23514',
-  null,
-  'account profile rejects an avatar path owned by another user'
-);
 select is(
   (
     select count(*)::integer
     from pg_policies
     where schemaname = 'storage'
       and tablename = 'objects'
-      and policyname in (
-        'account_profile_photos_select_own',
-        'account_profile_photos_insert_own',
-        'account_profile_photos_update_own',
-        'account_profile_photos_delete_own'
-      )
-      and roles::text like '%authenticated%'
+      and (coalesce(qual, '') like '%account-profile-photos%' or coalesce(with_check, '') like '%account-profile-photos%')
   ),
-  4,
-  'private account profile bucket exposes only four own-user policies'
+  0,
+  'the account photo bucket has no storage object policy left'
 );
 
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '71000000-0000-4000-8000-000000000001', true);
-select lives_ok(
+select throws_ok(
   $$insert into storage.objects (bucket_id, name, owner_id)
     values (
       'account-profile-photos',
       '71000000-0000-4000-8000-000000000001/profile/71000000-0000-4000-8000-000000000011.jpg',
       '71000000-0000-4000-8000-000000000001'
     )$$,
-  'account can insert metadata for its own private avatar path'
-);
-select throws_ok(
-  $$insert into storage.objects (bucket_id, name, owner_id)
-    values (
-      'account-profile-photos',
-      '71000000-0000-4000-8000-000000000002/profile/71000000-0000-4000-8000-000000000012.jpg',
-      '71000000-0000-4000-8000-000000000001'
-    )$$,
   '42501',
   null,
-  'account cannot insert an avatar under another user path'
+  'an account no longer uploads to its own account photo path'
 );
-select is(
-  (
-    select count(*)::integer
-    from storage.objects
-    where bucket_id = 'account-profile-photos'
-  ),
-  1,
-  'account can read its own private avatar metadata'
+reset role;
+insert into storage.objects (bucket_id, name, owner_id)
+values (
+  'account-profile-photos',
+  '71000000-0000-4000-8000-000000000001/profile/71000000-0000-4000-8000-000000000011.jpg',
+  '71000000-0000-4000-8000-000000000001'
 );
-
-select set_config('request.jwt.claim.sub', '71000000-0000-4000-8000-000000000002', true);
+set local role authenticated;
 select is(
-  (
-    select count(*)::integer
-    from storage.objects
-    where bucket_id = 'account-profile-photos'
-  ),
+  (select count(*)::integer from storage.objects where bucket_id = 'account-profile-photos'
+     and name like '71000000-0000-4000-8000-000000000001/%'),
   0,
-  'another account cannot read private avatar metadata'
+  'nor reads what is already there'
 );
-
-select set_config('request.jwt.claim.sub', '71000000-0000-4000-8000-000000000001', true);
-select throws_ok(
-  $$insert into storage.objects (bucket_id, name, owner_id)
-    values (
-      'account-profile-photos',
-      '71000000-0000-4000-8000-000000000001/profile/71000000-0000-4000-8000-000000000013.gif',
-      '71000000-0000-4000-8000-000000000001'
-    )$$,
-  '42501',
-  null,
-  'account cannot insert an unsupported avatar extension'
-);
+reset role;
 
 select * from finish();
 rollback;

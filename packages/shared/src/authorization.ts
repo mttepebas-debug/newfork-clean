@@ -17,6 +17,8 @@ export const authzActionKeys = [
   "availability.own",
   "availability.team_read",
   "availability.team_write",
+  // One's own avatar in a workspace (AVATAR-IKON).
+  "avatar.self",
   "documents.read",
   "documents.review",
   "documents.self",
@@ -120,6 +122,7 @@ export const targetedAuthzActions = {
   "availability.own": { person: true, permission: null, own: true, restrictedOk: true, employeeTarget: true },
   "availability.team_read": { person: true, permission: "availability.read" },
   "availability.team_write": { person: true, permission: "availability.manage" },
+  "avatar.self": { permission: null, own: true, restrictedOk: true },
   "documents.read": { person: true, permission: "employee_documents.read" },
   "documents.review": { person: true, permission: "employee_documents.review" },
   "documents.self": { person: true, permission: null, own: true, restrictedOk: true },
@@ -452,6 +455,7 @@ export function expected<A extends TargetedAuthzAction>(
     case "exchange.offer_own":
     case "notifications.read_own":
     case "notifications.write_own":
+    case "avatar.self":
     case "time_off.request_own":
       return true; // own actions, answered above
   }

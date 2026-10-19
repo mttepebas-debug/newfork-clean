@@ -142,6 +142,7 @@ select is(
   array[
     'account.self', 'announcement.acknowledge', 'announcement.read', 'announcement.write', 'announcement.write_wide', 'audit.read',
     'availability.note_read', 'availability.own', 'availability.team_read', 'availability.team_write',
+    'avatar.self',
     'documents.read', 'documents.review', 'documents.self', 'employee.archive', 'employee.change_own_access',
     'employee.change_role',
     'employee.create', 'employee.decide_preferred_name', 'employee.invite', 'employee.list',

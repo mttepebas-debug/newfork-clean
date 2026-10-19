@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(24);
+select plan(25);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -550,6 +550,23 @@ insert into retired (kind, name, step) values
   ('function', 'time_off_is_the_owners_own', 'ROL-CIFT'),
   -- 4.1 (BL-1157): the core's owner_target_ok switch, set by no action since the decision chain.
   ('private_column', 'authz_actions.owner_target_ok', 'ROL-CIFT');
+-- One avatar per workspace membership (AVATAR-IKON): the two old avatar fields, the three services
+-- that read and cleared them, and the browser's own writes to the account photo bucket.
+insert into retired (kind, name, step) values
+  ('function_signature', 'public.get_employee_avatar_path_service(uuid, uuid, uuid)', 'AVATAR-IKON'),
+  ('function_signature', 'public.get_own_employee_avatar_path_service(uuid, uuid)', 'AVATAR-IKON'),
+  ('function_signature', 'public.remove_employee_avatar_service(uuid, uuid, uuid)', 'AVATAR-IKON'),
+  ('function', 'get_employee_avatar_path_service', 'AVATAR-IKON'),
+  ('function', 'get_own_employee_avatar_path_service', 'AVATAR-IKON'),
+  ('function', 'remove_employee_avatar_service', 'AVATAR-IKON'),
+  ('column', 'user_profiles.avatar_object_path', 'AVATAR-IKON'),
+  ('column', 'employee_private_profiles.avatar_object_path', 'AVATAR-IKON'),
+  ('constraint', 'user_profiles_avatar_object_path_check', 'AVATAR-IKON'),
+  ('constraint', 'employee_private_profiles_avatar_path_check', 'AVATAR-IKON'),
+  ('storage_policy', 'account_profile_photos_select_own', 'AVATAR-IKON'),
+  ('storage_policy', 'account_profile_photos_insert_own', 'AVATAR-IKON'),
+  ('storage_policy', 'account_profile_photos_update_own', 'AVATAR-IKON'),
+  ('storage_policy', 'account_profile_photos_delete_own', 'AVATAR-IKON');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -567,6 +584,12 @@ select is(
     order by 1
   ),
   '{}'::text[], 'retired policies stay gone'
+);
+select is(
+  array(select r.name from retired r join pg_policies p on p.schemaname = 'storage' and p.tablename = 'objects'
+          and p.policyname = r.name
+        where r.kind = 'storage_policy' order by 1),
+  '{}'::text[], 'retired storage policies stay gone'
 );
 select is(
   array(select r.name from retired r where r.kind = 'type' and to_regtype('public.' || r.name) is not null order by 1),
