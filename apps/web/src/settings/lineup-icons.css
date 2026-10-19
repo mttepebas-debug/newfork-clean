@@ -7,7 +7,6 @@
   gap: 10px;
   min-width: 0;
   padding: 16px;
-  border-top: 1px solid var(--theme-border-subtle);
 }
 
 .lineup-icons-head {
@@ -40,8 +39,10 @@
   line-height: 1.45;
 }
 
+/* Desktop: three rows of tiles at most, so Details, the icons and the employee list's head share a
+   laptop window (fix round 1). */
 .lineup-icons-section .lineup-art-tiles {
-  max-height: min(320px, 40dvh);
+  max-height: min(240px, 30dvh);
 }
 
 /* ---------- phone: the chosen tiles and the sheet ---------- */
@@ -199,6 +200,10 @@
 
 .lineup-icons-sheet .lineup-art-tiles {
   flex: 1 1 auto;
+}
+
+.lineup-icons-sheet .lineup-icons-note {
+  flex: none;
 }
 
 .lineup-icons-sheet-foot {

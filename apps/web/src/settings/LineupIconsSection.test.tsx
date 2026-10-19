@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { cleanup, fireEvent, render, screen, within } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { lineupArtByKey, suggestLineupArt } from "@newfork/shared";
+import { lineupArt, lineupArtByKey, suggestLineupArt } from "@newfork/shared";
 import { LineupIconsSection, sameLineupIcons } from "./LineupIconsSection";
 import { stubPhoneWidth } from "../lib/phone-width.test-util";
 
@@ -92,6 +92,28 @@ describe("LineupIconsSection", () => {
     expect(icons()).toBe("001-server,005-host");
     fireEvent.click(screen.getByRole("button", { name: `Remove ${name("005-host")}` }));
     expect(icons()).toBe("001-server");
+  });
+
+  it("on a phone the sheet says so when the icons reach the most a job can have", () => {
+    stubPhoneWidth();
+    const keys = lineupArt.map((item) => item.key);
+    render(<Drawer initial={keys.slice(0, 23)} initialName="Server" />);
+    fireEvent.click(screen.getByRole("button", { name: "Choose icons" }));
+    const sheet = screen.getByRole("dialog", { name: "Lineup icons" });
+    expect(within(sheet).queryByText("A job can have up to 24 icons.")).toBeNull();
+    fireEvent.click(within(sheet).getByRole("button", { name: "All" }));
+    fireEvent.click(within(sheet).getByRole("checkbox", { name: name(keys[30]!) }));
+    expect(within(sheet).getByText("24 selected")).toBeTruthy();
+    expect(within(sheet).getByText("A job can have up to 24 icons.")).toBeTruthy();
+  });
+
+  it("on a phone names each chosen tile once", () => {
+    stubPhoneWidth();
+    render(<Drawer initial={["001-server"]} initialName="Server" />);
+    const tile = screen.getByRole("listitem", { name: name("001-server") });
+    // No title: it would be read again as the tile's description.
+    expect(tile.getAttribute("title")).toBeNull();
+    expect(tile.querySelector(".lineup-art")?.getAttribute("aria-hidden")).toBe("true");
   });
 
   it("says what happens when a job has no icons", () => {

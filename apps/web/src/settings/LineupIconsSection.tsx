@@ -17,6 +17,7 @@ export function sameLineupIcons(a: readonly string[], b: readonly string[]): boo
 
 const help = "Each person on this job gets one of these on the Lineup, unless they picked their own avatar.";
 const empty = "No icons. People here get a team member icon on the Lineup.";
+const full = `A job can have up to ${maxJobLineupIcons} icons.`;
 
 function iconName(key: string): string {
   return lineupArtByKey.get(key)?.name ?? key;
@@ -57,7 +58,7 @@ export function LineupIconsSection({
   const note = !value.length
     ? empty
     : value.length >= maxJobLineupIcons
-      ? `A job can have up to ${maxJobLineupIcons} icons.`
+      ? full
       : following && name
         ? `Suggested for "${name}". Change them any time.`
         : null;
@@ -74,7 +75,7 @@ export function LineupIconsSection({
           {value.length > 0 && (
             <ul className="lineup-icons-tiles">
               {value.map((key) => (
-                <li key={key} className="lineup-icons-tile" aria-label={iconName(key)} title={iconName(key)}>
+                <li key={key} className="lineup-icons-tile" aria-label={iconName(key)}>
                   <LineupArt artKey={key} name={iconName(key)} size={48} className="lineup-icons-tile-art" />
                   <button
                     type="button"
@@ -188,6 +189,7 @@ function LineupIconsSheet({
             <X size={18} aria-hidden />
           </button>
         </div>
+        {draft.length >= maxJobLineupIcons && <p className="lineup-icons-note">{full}</p>}
         <LineupArtGrid mode="multi" selected={draft} suggested={suggested} max={maxJobLineupIcons} onToggle={onToggle} />
         <footer className="lineup-icons-sheet-foot">
           <span className="lineup-icons-count">{draft.length} selected</span>

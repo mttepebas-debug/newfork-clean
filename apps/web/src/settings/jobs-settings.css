@@ -1862,8 +1862,14 @@
   overflow-y: auto;
   scrollbar-gutter: auto;
 }
+/* The list's head (168 px) and three 56 px rows; a phone keeps the taller list (fix round 1). */
 .catalog-drawer.job-assignment-drawer .job-drawer-employees {
-  min-height: min(440px, 70dvh);
+  min-height: min(340px, 60dvh);
+}
+@media (max-width: 720px) {
+  .catalog-drawer.job-assignment-drawer .job-drawer-employees {
+    min-height: min(440px, 70dvh);
+  }
 }
 .catalog-drawer.job-assignment-drawer
   .catalog-drawer-body
