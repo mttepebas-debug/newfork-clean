@@ -100,7 +100,7 @@ select set_eq(
     'locations.phone', 'locations.archived_at', 'locations.updated_at',
     'shift_labels.name', 'shift_labels.color', 'shift_labels.archived_at', 'shift_labels.updated_at',
     'shift_types.name', 'shift_types.color', 'shift_types.default_start_time',
-    'shift_types.default_end_time', 'shift_types.archived_at', 'shift_types.updated_at'
+    'shift_types.default_end_time', 'shift_types.time_options', 'shift_types.archived_at', 'shift_types.updated_at'
   ],
   'the browser updates only the catalog columns the Settings forms send'
 );
