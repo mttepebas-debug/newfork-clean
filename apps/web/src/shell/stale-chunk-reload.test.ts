@@ -78,7 +78,7 @@ describe("installStaleChunkReload", () => {
     expect(second.defaultPrevented).toBe(false);
   });
 
-  it("lets the error through after a reload less than 10 s ago, so it reaches Sentry", () => {
+  it("does not reload again within 10 s of the last reload, so it cannot loop", () => {
     const storage = memoryStorage();
     storage.setItem(STALE_CHUNK_RELOAD_KEY, String(1_000_000 - (STALE_CHUNK_RELOAD_WINDOW_MS - 1)));
     const { target, reload } = setup(() => storage);

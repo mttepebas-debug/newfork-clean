@@ -30,8 +30,11 @@ class Boundary extends Component<BoundaryProps, BoundaryState> {
     return { failed: true };
   }
 
-  override componentDidUpdate(previous: BoundaryProps): void {
-    if (this.state.failed && previous.resetKey !== this.props.resetKey)
+  // Only a card already on screen clears: the update that caught the error
+  // also sees a new resetKey (the move onto the broken page), and clearing
+  // there would draw the page again and report the crash twice.
+  override componentDidUpdate(previous: BoundaryProps, previousState: BoundaryState): void {
+    if (previousState.failed && this.state.failed && previous.resetKey !== this.props.resetKey)
       this.setState({ failed: false });
   }
 

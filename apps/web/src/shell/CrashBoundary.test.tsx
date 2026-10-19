@@ -23,7 +23,7 @@ function Page({ name }: { readonly name: string }) {
   );
 }
 
-function renderShell(start: string, reload = vi.fn()) {
+function renderShell(start: string, reload = vi.fn(), onCaughtError = vi.fn()) {
   render(
     <MemoryRouter initialEntries={[start]}>
       <nav aria-label="Menu">
@@ -36,6 +36,7 @@ function renderShell(start: string, reload = vi.fn()) {
         </Routes>
       </PageCrashBoundary>
     </MemoryRouter>,
+    { onCaughtError },
   );
   return reload;
 }
@@ -76,6 +77,18 @@ describe("PageCrashBoundary", () => {
     fireEvent.click(button);
 
     expect(reload).toHaveBeenCalledTimes(1);
+  });
+
+  // nf-guvenlik, BL-1075: the reset must not fire on the update that caught the
+  // error, or the page draws twice and Sentry hears the crash twice.
+  it("reports a crash once when the person moves onto the broken page", () => {
+    const onCaughtError = vi.fn();
+    renderShell("/app/home", vi.fn(), onCaughtError);
+
+    fireEvent.click(screen.getByRole("link", { name: "Open broken" }));
+
+    expect(screen.getByRole("heading", { name: "Something went wrong" })).toBeTruthy();
+    expect(onCaughtError).toHaveBeenCalledTimes(1);
   });
 
   it("leaves the card once the person moves to another page", () => {
