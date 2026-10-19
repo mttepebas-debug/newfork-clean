@@ -1,0 +1,36 @@
+/* AVATAR-IKON: a Lineup circle. The initials look as the Lineup circles do today
+   (views/lineup-phone.css .lineup-phone-avatar: 12px on 38px), scaled with the size. */
+.lineup-art {
+  --lineup-art-size: 38px;
+  display: inline-flex;
+  width: var(--lineup-art-size);
+  height: var(--lineup-art-size);
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border-radius: 50%;
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-body);
+  font-size: calc(var(--lineup-art-size) * 12 / 38);
+  font-weight: 750;
+  line-height: 1;
+}
+
+/* Line icons draw with currentColor; colour drawings carry their own fills. */
+.lineup-art--drawing {
+  padding: calc(var(--lineup-art-size) * 0.08);
+  color: var(--theme-text);
+}
+
+.lineup-art-svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.lineup-art-svg > svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}

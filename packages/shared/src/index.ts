@@ -39,6 +39,7 @@ export * from "./storage-access";
 export * from "./notification-settings";
 export * from "./push-alerts";
 export * from "./lineup";
+export * from "./lineup-art";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
