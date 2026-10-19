@@ -80,6 +80,8 @@ Mert'in modeli şöyle:
   - İşin adı, her parçanın "önerilen işler" listesiyle büyük-küçük harf gözetmeden karşılaştırılır.
   - Tam eşleşme ve içerme sayılır. Örnek: "Line Cook" ile "line cook" eşleşir.
   - En çok 8 parça önerilir; renkli çizimler önce gelir.
+  - "Önerilen işler" verisi arşiv tablosundadır. Kuralın tek sahibi veritabanıdır: ikon listesi verilmeden açılan **her** iş, açılış yolundan bağımsız olarak önerilen ikonlarla doğar. Açılış yolları: workspace kurulumunun General Manager, Assistant Manager ve Owner işleri; departmanla toplu iş açma; API.
+  - Web'deki "New job" önizlemesi aynı veriyi paylaşılan listeden okur ve aynı kuralı uygular. İki tarafın aynı sonucu verdiği bir eşlik testiyle korunur (ad → anahtarlar).
 - **Bugünkü işler:** migration, bugünkü her işe aynı kuralla önerilen ikonları yazar. Böylece demo ve test workspace'leri boş başlamaz.
   - Gerekçe: eski veri korunmaz, canlıda gerçek müşteri yok. (Claude'un kararı.)
 - **Owner işi** (`system_key = 'owner'`) da ikon alabilir (Claude'un kararı).
@@ -107,10 +109,11 @@ Mert'in modeli şöyle:
 - **Yazma yolu:** avatar API üzerinden yazılır.
   - Fotoğraf, workspace'in özel deposuna API ile yüklenir.
   - Hesap fotoğrafının tarayıcıdan doğrudan storage'a yazma istisnası silinir (`apps/web/CLAUDE.md` istisna listesinden de çıkar).
-- **Son avatar:** her kayıtta API, kişinin hesabındaki "son avatar"ı da günceller.
-  - Fotoğrafsa, fotoğrafın hesap deposundaki kopyası.
-  - Hazır çizimse, anahtarı.
-- **Kaldırma:** avatarı kaldırınca o workspace'te avatar olmaz. "Son avatar" değişmez (Claude'un kararı).
+- **Son avatar** (Claude'un kararı, builder kontrolünden sonra): her kayıtta API, kişinin hesabındaki "son avatar"ı günceller.
+  - Hazır çizimse anahtarı yazar.
+  - Fotoğrafsa kopya tutulmaz; "hangi workspace'teki avatar" bilgisi tutulur. Onboarding'de kişi öneriyi kullanırsa fotoğraf o kaynaktan yeni workspace'in deposuna kopyalanır.
+  - Gerekçe: müdürün uygunsuz diye kaldırdığı fotoğraf, kişinin bir sonraki onboarding'inde yeniden önerilmez. Müdür de başka bir workspace'in ya da hesabın verisine yazmaz; workspace sınırı korunur.
+- **Kaldırma:** avatarı kaldırınca o workspace'te avatar olmaz. "Son avatar" o avatarı gösteriyorsa öneri de kalmaz; bir sonraki onboarding avatarsız başlar. Kaldıran kişi ya da müdür olsun, sonuç aynıdır.
 - **Uygulama kabuğu:** sağ üst ve kenar çubuğundaki kişi dairesi (`CurrentUserAvatar`) bu workspace'in avatarını gösterir.
   - Fotoğrafsa fotoğraf, çizimse çizim, hiçbiri değilse baş harf.
   - Account → Profile'ın sol üstündeki daire de aynı.
@@ -129,6 +132,7 @@ Mert'in modeli şöyle:
 ### 4.5 Müdür (Employees → kişi → Access → "Profile photo")
 - Müdür kişinin fotoğrafını yükleyemez. Bugün de yükleme yolu yok, böyle kalır (Mert, 2-A).
 - Müdür yalnız kişinin **kendi yüklediği fotoğrafı** kaldırabilir: "Remove photo", iki tık, kırmızı.
+- Müdür kaldırmadan önce fotoğrafı küçük hâliyle görür; bugün de görüyor (Claude'un kararı). Bu okuma yeni avatar okumasına geçer, yetkisi bugünkü gibi `employee.read`.
   - Kişinin hazır çizimi kaldırılamaz. Hazır çizimde ya da avatar yokken satır görünmez (Claude'un kararı).
 - **Yetki:** bugünkü `employee.save` ve kapsamı.
 - **Bildirim yok** (Mert, A). Kişi Profile'a girince avatarının kalktığını görür; Lineup zaten iş ikonunu gösterir.
@@ -143,6 +147,8 @@ Her lineup satırında, kişinin solunda tek bir çizim vardır. Sıra (Mert):
 2. Yoksa: kişinin o lineup'taki **işinin ikonlarından** biri. Kişi fotoğraf yüklemiş olsa da bu adıma geçilir.
 3. O işin ikonu yoksa: **çalışan ikonlarından** biri.
 
+**Satır başına** (Claude'un kararı, builder kontrolünden sonra): bir kişinin aynı lineup'ta iki işi olabilir. Örnek: Server 11–3, Bartender 5–10. Çizim satır başınadır: her satır kendi işinin ikonlarından alır. Saklama da (lineup, kişi, iş) başınadır. Dengeli dağıtım iş başına sayılır. Kişinin hazır çizimi varsa iki satırda da o görünür.
+
 **Dağıtım** (Mert):
 - Aynı işteki kişiler o işin ikonları arasından rastgele ama dengeli dağıtılır: kimse ikinci kez aynı ikonu almadan önce bütün ikonlar birer kez kullanılır.
 - İkon kişiden azsa tekrar olur. Çalışan ikonları da aynı yolla, o lineup'taki bütün "ikonsuz" kişiler arasında dağıtılır.
@@ -154,7 +160,7 @@ Her lineup satırında, kişinin solunda tek bir çizim vardır. Sıra (Mert):
 - Lineup'ın kimliği (lokasyon, gün, vardiya türü) üçlüsüdür. Kayıt ilk yayında `daily_lineups.id` ile doğar ve unpublish/republish'te değişmez.
 
 **Saklama** (Claude'un kararı):
-- **Yayın öncesi (taslak):** dağıtım, üçlüden türeyen sabit bir tohumla (seed) hesaplanır. Müdür taslakta da çizimleri görür, sayfa yenilense de aynıdır.
+- **Yayın öncesi (taslak):** lineup kaydı ilk yayında doğar (`lineup_command_service`, tek `insert` share dalında; ana oturum doğruladı). Taslakta dağıtım, üçlüden türeyen sabit bir tohumla (seed) o anki kadroya göre hesaplanır. Müdür taslakta da çizimleri görür, sayfa yenilense de aynıdır. Taslakta kadro ya da işin ikonları değişirse dağıtım da değişebilir. Sabitlik sözü (Mert) ilk yayından sonrasına aittir; taslağı yalnız müdür görür.
 - **İlk yayında:** o anki dağıtım lineup'a yazılır. Taslakta görülen ile yayında görülen aynıdır.
 - **Yayından sonra** lineup'a eklenen kişi, işinin ikonları arasında o lineup'ta en az kullanılanı alır ve o da yazılır.
 - **Sonradan yapılan değişiklikler** (işin ikon listesi, kişinin işi) yazılmış çizimleri değiştirmez.
@@ -220,7 +226,7 @@ Masaüstü Lineup tablosunda bugün daire yok. Masaüstünün yeni tasarımı ma
   - `LineupPhone.tsx`, `EmployeeLineup.tsx`, `LineupReadList.tsx`;
   - uygulama kabuğundaki kişi dairesi;
   - `apps/web/CLAUDE.md` istisna listesi.
-- **Silinecekler:** hesap fotoğrafının tarayıcıdan doğrudan yazma yolu ve istisnası; Account → Profile'ın bugünkü "Upload" düzeni; `get_own_employee_avatar_path_service` ve `get_employee_avatar_path_service` (yenisi gelince yerleri değişir; silinenler `retired_objects_stay_gone`'a eklenir).
+- **Silinecekler:** hesap fotoğrafının tarayıcıdan doğrudan yazma yolu ve istisnası; hesap fotoğrafı deposunun (`account-profile-photos`) kişi yazma policy'leri, son avatar artık kopya tutmadığı için; Account → Profile'ın bugünkü "Upload" düzeni; `get_own_employee_avatar_path_service` ve `get_employee_avatar_path_service`. Bu ikisinin yerine yeni avatar okuması gelir; müdürün küçük fotoğraf görmesi o okumayla sürer. Silinenler `retired_objects_stay_gone`'a eklenir.
 
 ## 7. Yolda bulunanlar
 - **İki avatar alanı (BL-072):** bu işle anlamları ayrılır. Hesaptaki alan "son avatar" olur, workspace'teki alan "avatar". Madde bu işle kapanır.
@@ -242,6 +248,13 @@ Masaüstü Lineup tablosunda bugün daire yok. Masaüstünün yeni tasarımı ma
 - **Kaldırınca bildirim yok** (19 Eki, A).
 - **Görsel seçim** (19 Eki, 00:19): iş çekmecesi masaüstü B, telefon A. Avatar penceresi B, Profile'da ve onboarding'de, masaüstünde ve telefonda. "Try with a sample photo" yok.
 - **İkon paketi** (19 Eki): 173 parçanın hepsi şimdilik kalır.
+
+**Builder kontrolünde Claude'un verdiği cevaplar (Mert okurken bakar):**
+- **Aynı lineup'ta iki işi olan kişi:** çizim satır başına, her satır kendi işinden (4.6).
+- **Çekmece dışından açılan işler:** workspace kurulumu, toplu iş açma ve API dahil, ikon listesi verilmeyen her iş önerilen ikonlarla doğar. Kuralın sahibi veritabanıdır (4.2).
+- **Taslakta sabitlik:** sabitlik ilk yayından sonrası içindir; taslakta kadro değişirse dağıtım değişebilir (4.6).
+- **Müdürün kaldırdığı fotoğraf:** bir sonraki onboarding'de önerilmez. "Son avatar" kopya değil kaynak gösterir (4.3).
+- **Müdür fotoğrafı görür mü:** evet, kaldırmadan önce küçük hâliyle (4.5).
 
 ## 9. Yapana bırakılanlar
 - **Veri modelinin biçimi:**
