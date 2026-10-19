@@ -148,8 +148,11 @@ test("the owner's own drawer keeps the Owner job and every location locked", asy
     .filter({ has: owner.getByRole("checkbox", { name: "Owner", exact: true }) });
   await expect(ownerJobRow).toHaveCount(1);
   await expect(ownerJobRow.getByRole("radio")).toHaveCount(0);
-  // Manager, the other job under Management, is an ordinary one.
-  await expect(jobs.getByRole("checkbox", { name: "Manager", exact: true })).toBeEnabled();
+  // General Manager and Assistant Manager, the other jobs setup makes under
+  // Management (ROL-CIFT, design §4.13), are ordinary ones.
+  for (const job of ["General Manager", "Assistant Manager"]) {
+    await expect(jobs.getByRole("checkbox", { name: job, exact: true })).toBeEnabled();
+  }
 
   // Every location: checked, locked, and none marked primary.
   const locations = own.getByRole("group", { name: /^Locations/ });
