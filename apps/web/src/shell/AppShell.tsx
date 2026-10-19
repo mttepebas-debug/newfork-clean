@@ -82,7 +82,6 @@ const navItems: readonly NavItem[] = [
       "schedule.shift_change_requests.read",
     ],
     section: "management",
-    parentTo: "/app/schedule",
     roles: ["owner", "admin", "manager"],
   },
   {
@@ -215,6 +214,17 @@ export function AppShell() {
     () => new Set(["/app/schedule", "/app/employees", "/app/announcements", "/app/employee-hub/schedule"]),
   );
   const location = useLocation();
+  // A closed group opens again when one of its child pages is reached; while
+  // that page stays open its toggle still closes it (SIDEBAR-TREE, Mert 2026-10-19).
+  const [seenPath, setSeenPath] = useState(location.pathname);
+  if (seenPath !== location.pathname) {
+    setSeenPath(location.pathname);
+    const parentTo = navItems.find(
+      (item) => item.parentTo && isRailItemActive(location.pathname, item.to),
+    )?.parentTo;
+    if (parentTo && !expandedNavGroups.has(parentTo))
+      setExpandedNavGroups(new Set(expandedNavGroups).add(parentTo));
+  }
   const navigate = useNavigate();
   usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
   // Account's "Back to workspace" returns here, in this view (ACCOUNT-BACK).
@@ -263,12 +273,12 @@ export function AppShell() {
       !(phone && item.to === "/app/schedule") &&
       item.anyOf.some((permission) => permissions.has(permission)),
   );
-  const visibleSidebarItems = visibleNavItems.filter(
+  // The desktop menu is a tree: a child page hangs under its parent's row
+  // whatever its place in the phone bar's order.
+  const topSidebarItems = visibleNavItems.filter(
     (item) =>
       !item.parentTo ||
-      !visibleNavItems.some((parent) => parent.to === item.parentTo) ||
-      isRailItemActive(location.pathname, item.parentTo) ||
-      expandedNavGroups.has(item.parentTo),
+      !visibleNavItems.some((parent) => parent.to === item.parentTo),
   );
   const canViewSettings =
     !employeeShell &&
@@ -313,61 +323,72 @@ export function AppShell() {
         </div>
 
         <nav className="sidebar-nav" aria-label="Primary">
-          {visibleSidebarItems.map((item, index) => {
-            const Icon = item.icon;
-            const previous = visibleSidebarItems[index - 1];
+          {topSidebarItems.map((item, index) => {
+            const previous = topSidebarItems[index - 1];
             const startsEmployeeSection =
               item.section === "employee" && previous?.section === "management";
             const children = visibleNavItems.filter(
               (candidate) => candidate.parentTo === item.to,
             );
             const hasChildren = children.length > 0;
-            // A parent whose child page is open is not the open page itself.
             const childActive = children.some((child) =>
               isRailItemActive(location.pathname, child.to),
             );
-            const isExpanded =
-              hasChildren &&
-              (expandedNavGroups.has(item.to) ||
-                isRailItemActive(location.pathname, item.to));
-            return (
-              <div
-                className={`sidebar-nav-entry${
-                  startsEmployeeSection ? " sidebar-nav-section-start" : ""
-                }`}
-                key={item.to}
-              >
+            const isExpanded = hasChildren && expandedNavGroups.has(item.to);
+            // A parent whose child page is open is not the open page itself,
+            // unless its group is closed: then it stands in for the hidden child.
+            const standsIn = childActive && !isExpanded;
+            const groupId = `nav-group-${item.to.replaceAll("/", "-")}`;
+            const renderLink = (link: NavItem, child: boolean) => {
+              const LinkIcon = link.icon;
+              return (
                 <NavLink
+                  key={link.to}
                   className={({ isActive }) =>
-                    `nav-item${isActive ? " active" : ""}${
+                    `nav-item${isActive || (!child && standsIn) ? " active" : ""}${
                       collapsed ? " rail-peek-item" : ""
-                    }${item.parentTo && visibleNavItems.some((parent) => parent.to === item.parentTo) ? " nav-item-child" : ""}${
-                      hasChildren ? " nav-item-has-children" : ""
+                    }${child ? " nav-item-child" : ""}${
+                      !child && hasChildren ? " nav-item-has-children" : ""
                     }`
                   }
-                  to={item.to}
-                  end={item.exact || childActive}
-                  aria-label={collapsed ? item.label : undefined}
+                  to={link.to}
+                  end={link.exact || (!child && childActive)}
+                  aria-label={collapsed ? link.label : undefined}
                   data-rail-peek={collapsed ? "" : undefined}
                   data-rail-active={
-                    collapsed && !childActive && isNavItemActive(location.pathname, item)
+                    collapsed &&
+                    (!child && childActive
+                      ? standsIn
+                      : isNavItemActive(location.pathname, link))
                       ? "true"
                       : undefined
                   }
                 >
                   <span className="nav-icon-frame">
-                    <Icon size={18} aria-hidden />
+                    <LinkIcon size={18} aria-hidden />
                   </span>
                   <span className={collapsed ? "rail-flyout" : undefined}>
-                    {item.label}
+                    {link.label}
                   </span>
                 </NavLink>
+              );
+            };
+            return (
+              <div
+                className={`sidebar-nav-entry${
+                  startsEmployeeSection ? " sidebar-nav-section-start" : ""
+                }`}
+                data-group-open={hasChildren ? isExpanded : undefined}
+                key={item.to}
+              >
+                {renderLink(item, false)}
                 {hasChildren && !collapsed ? (
                   <button
                     className="nav-group-toggle"
                     type="button"
                     aria-label={`${isExpanded ? "Collapse" : "Expand"} ${item.label}`}
                     aria-expanded={isExpanded}
+                    aria-controls={groupId}
                     onClick={() =>
                       setExpandedNavGroups((current) => {
                         const next = new Set(current);
@@ -380,12 +401,22 @@ export function AppShell() {
                       })
                     }
                   >
-                    <ChevronDown
-                      className={isExpanded ? "rotate" : ""}
-                      size={16}
-                      aria-hidden
-                    />
+                    <ChevronDown size={16} aria-hidden />
                   </button>
+                ) : null}
+                {hasChildren ? (
+                  // Kept in the page while closed so it can slide shut; inert
+                  // takes its links out of the tab order and the reader.
+                  <div
+                    className="nav-children"
+                    id={groupId}
+                    data-open={isExpanded}
+                    inert={!isExpanded}
+                  >
+                    <div className="nav-children-inner">
+                      {children.map((child) => renderLink(child, true))}
+                    </div>
+                  </div>
                 ) : null}
               </div>
             );

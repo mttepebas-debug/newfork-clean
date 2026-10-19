@@ -3463,9 +3463,60 @@ button.workspace-switcher-item:hover:not(:disabled) {
   background: #eef2ef;
   color: var(--theme-accent-strong);
 }
+/* The chevron points down while the group is open and turns right as it closes. */
+.nav-group-toggle svg {
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.nav-group-toggle[aria-expanded="false"] svg {
+  transform: rotate(-90deg);
+}
+/* A group slides open and shut (SIDEBAR-TREE, Mert 2026-10-19): the closed
+   group stays in the page, inert, with a row of no height. */
+.nav-children {
+  display: grid;
+  grid-template-rows: 1fr;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease;
+}
+.nav-children[data-open="false"] {
+  grid-template-rows: 0fr;
+  opacity: 0;
+}
+.nav-children-inner {
+  min-height: 0;
+  overflow: hidden;
+}
+/* Once open, the focus ring and the narrow rail's names may reach past the
+   group; the clip comes off only after the slide has ended. */
+.nav-children[data-open="true"] > .nav-children-inner {
+  overflow: visible;
+  transition: overflow 0s linear 220ms allow-discrete;
+}
+/* The tree line: from under the parent's icon down, then right into the
+   child's row, whose label lines up with the parent's (Schedule └─ Lineup). */
+.nav-item-has-children {
+  position: relative;
+}
+.nav-item-has-children::after {
+  position: absolute;
+  top: 31px;
+  bottom: -4px;
+  left: 20px;
+  border-left: 1px solid var(--theme-border-hover);
+  content: "";
+  transform-origin: top;
+  transition: transform 220ms cubic-bezier(0.2, 0, 0, 1);
+}
+.sidebar-nav-entry[data-group-open="false"] > .nav-item-has-children::after {
+  transform: scaleY(0);
+}
 .nav-item-child {
+  position: relative;
+  width: calc(100% - 30px);
   min-height: 34px;
-  padding-left: 30px;
+  margin-left: 30px;
+  padding-left: 9px;
   font-size: 13px;
   font-weight: 650;
 }
@@ -3473,18 +3524,47 @@ button.workspace-switcher-item:hover:not(:disabled) {
   display: none;
 }
 .nav-item-child::before {
-  content: "|";
-  color: #8d9691;
-  font-weight: 800;
+  position: absolute;
+  top: -4px;
+  left: -10px;
+  width: 7px;
+  height: 21px;
+  border-bottom: 1px solid var(--theme-border-hover);
+  border-left: 1px solid var(--theme-border-hover);
+  border-bottom-left-radius: 7px;
+  content: "";
+}
+/* A child with a sibling under it carries the line on down to it. */
+.nav-item-child:not(:last-child)::after {
+  position: absolute;
+  top: 50%;
+  bottom: -4px;
+  left: -10px;
+  border-left: 1px solid var(--theme-border-hover);
+  content: "";
+}
+@media (prefers-reduced-motion: reduce) {
+  .nav-group-toggle svg,
+  .nav-children,
+  .nav-children > .nav-children-inner,
+  .nav-item-has-children::after {
+    transition: none;
+  }
 }
 .app-shell[data-sidebar-collapsed="true"] .nav-item {
   justify-content: center;
   padding: 0;
 }
+.app-shell[data-sidebar-collapsed="true"] .nav-item-child {
+  width: 100%;
+  margin-left: 0;
+}
 .app-shell[data-sidebar-collapsed="true"] .nav-item-child .nav-icon-frame {
   display: inline-flex;
 }
-.app-shell[data-sidebar-collapsed="true"] .nav-item-child::before {
+.app-shell[data-sidebar-collapsed="true"] .nav-item-child::before,
+.app-shell[data-sidebar-collapsed="true"] .nav-item-child::after,
+.app-shell[data-sidebar-collapsed="true"] .nav-item-has-children::after {
   content: none;
 }
 .app-shell[data-sidebar-collapsed="true"] .sidebar-footer {
