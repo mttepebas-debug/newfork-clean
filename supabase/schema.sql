@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 528, last: 20261019094743_grid_and_eligibility_need_employee_4.sql
--- fingerprint: sha256:dbe6de49ae6346465bbfe3bba080fe867a8375e9119a9811aa52213dbd9dc376
+-- migrations: 529, last: 20261019122405_lineup_art_archive.sql
+-- fingerprint: sha256:12881deffc2b246ae23cbdbd60dab6ac081766a1c6eb986d5fe16e95da180b4f
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5629,6 +5629,26 @@ $$;
 ALTER FUNCTION "app_private"."keep_system_catalog_records"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select lineup_art_keys_valid.keys is not null
+    and array_position(lineup_art_keys_valid.keys, null) is null
+    and cardinality(lineup_art_keys_valid.keys) = (
+      select count(distinct given.key) from unnest(lineup_art_keys_valid.keys) as given(key)
+    )
+    and not exists (
+      select 1
+      from unnest(lineup_art_keys_valid.keys) as given(key)
+      where not exists (select 1 from app_private.lineup_art art where art.key = given.key)
+    );
+$$;
+
+
+ALTER FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE
     SET "search_path" TO ''
@@ -8636,6 +8656,42 @@ $$;
 
 
 ALTER FUNCTION "app_private"."stored_primary_job"("target_employee_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."suggest_lineup_art"("job_name" "text") RETURNS "text"[]
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  with normalized as (
+    select btrim(
+      regexp_replace(
+        lower(coalesce(suggest_lineup_art.job_name, '') collate "und-x-icu") collate "default",
+        '[\t\n\v\f\r \u00a0\u1680\u2000-\u200a\u2028\u2029\u202f\u205f\u3000\ufeff]+',
+        ' ',
+        'g'
+      ),
+      ' '
+    ) as name
+  )
+  select array(
+    select art.key
+    from app_private.lineup_art art, normalized
+    where normalized.name <> ''
+      and art.kind <> 'team'
+      and exists (
+        select 1
+        from unnest(art.jobs) as term(job)
+        where term.job = normalized.name
+          or strpos(normalized.name, term.job) > 0
+          or (char_length(normalized.name) >= 3 and strpos(term.job, normalized.name) > 0)
+      )
+    order by art.style = 'color' desc, art.no
+    limit 8
+  );
+$$;
+
+
+ALTER FUNCTION "app_private"."suggest_lineup_art"("job_name" "text") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."sync_workspace_lifecycle_with_onboarding"() RETURNS "trigger"
@@ -29289,6 +29345,24 @@ UNION ALL
 ALTER VIEW "app_private"."lifecycle_definition" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."lineup_art" (
+    "key" "text" NOT NULL,
+    "no" integer NOT NULL,
+    "kind" "text" NOT NULL,
+    "style" "text" NOT NULL,
+    "jobs" "text"[] DEFAULT '{}'::"text"[] NOT NULL,
+    CONSTRAINT "lineup_art_kind_check" CHECK (("kind" = ANY (ARRAY['person'::"text", 'object'::"text", 'team'::"text"]))),
+    CONSTRAINT "lineup_art_style_check" CHECK (("style" = ANY (ARRAY['line'::"text", 'color'::"text"])))
+);
+
+
+ALTER TABLE "app_private"."lineup_art" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "app_private"."lineup_art" IS 'The Lineup drawing archive''s keys (AVATAR-IKON), filled from scripts/lineup-art/archive.json by scripts/lineup-art/gen.mjs. Read through app_private.lineup_art_keys_valid() and app_private.suggest_lineup_art().';
+
+
+
 CREATE TABLE IF NOT EXISTS "app_private"."notification_alerts" (
     "kind" "text" NOT NULL,
     "channel" "text" NOT NULL,
@@ -31383,6 +31457,16 @@ ALTER TABLE ONLY "app_private"."authz_scope_rules"
 
 ALTER TABLE ONLY "app_private"."authz_settings"
     ADD CONSTRAINT "authz_settings_pkey" PRIMARY KEY ("singleton");
+
+
+
+ALTER TABLE ONLY "app_private"."lineup_art"
+    ADD CONSTRAINT "lineup_art_no_key" UNIQUE ("no");
+
+
+
+ALTER TABLE ONLY "app_private"."lineup_art"
+    ADD CONSTRAINT "lineup_art_pkey" PRIMARY KEY ("key");
 
 
 
@@ -34903,6 +34987,9 @@ ALTER TABLE ONLY "public"."workspaces"
 
 
 
+ALTER TABLE "app_private"."lineup_art" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "app_private"."notification_alerts" ENABLE ROW LEVEL SECURITY;
 
 
@@ -35998,6 +36085,10 @@ REVOKE ALL ON FUNCTION "app_private"."keep_system_catalog_records"() FROM PUBLIC
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) FROM PUBLIC;
 
 
@@ -36438,6 +36529,10 @@ REVOKE ALL ON FUNCTION "app_private"."start_document_activation_periods"() FROM 
 
 
 REVOKE ALL ON FUNCTION "app_private"."stored_primary_job"("target_employee_id" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."suggest_lineup_art"("job_name" "text") FROM PUBLIC;
 
 
 

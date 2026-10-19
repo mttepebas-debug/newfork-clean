@@ -44,6 +44,8 @@ supabase/tests/grid_and_candidates_need_employee.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql
+supabase/tests/lineup_art_archive.test.sql
+supabase/tests/lineup_art_parity.test.sql
 supabase/tests/lineup_foundation.test.sql
 supabase/tests/live_updates_are_private.test.sql
 supabase/tests/location_short_names.test.sql
