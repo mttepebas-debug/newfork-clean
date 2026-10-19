@@ -56,13 +56,31 @@ test("a dropped preset offers its type's times and the picked one shows on the c
   await zeynep.getByRole("menuitemradio", { name: "Job/Position" }).click();
   await zeynep.keyboard.press("Escape");
 
-  const chip = zeynep.getByRole("button", { name: `${dinner}-Cook` }).first();
+  // The grid is taller and wider than the window (every spec's people share the
+  // world), so the chip is taken in the Kadikoy section and Emre's row, further
+  // down, is scrolled in while the chip is held, as a manager's wheel would.
+  // The drop finds its cell under the pointer, so it must be on screen and not
+  // under the pinned rows (headers, Unassigned) at the top: it is scrolled to
+  // the bottom right of the grid.
+  const chip = zeynep
+    .locator(`.schedule-preset-cell[data-display-location-id="${kadikoyId}"]`)
+    .getByRole("button", { name: `${dinner}-Cook`, exact: true });
   const target = cell(zeynep, kadikoyId, emreId, wednesday);
+  await chip.scrollIntoViewIfNeeded();
   const from = (await chip.boundingBox())!;
-  const to = (await target.boundingBox())!;
   await zeynep.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
   await zeynep.mouse.down();
-  await zeynep.mouse.move(to.x + to.width / 2, to.y + to.height / 2, { steps: 12 });
+  await zeynep.mouse.move(from.x + from.width / 2 + 16, from.y + from.height / 2 + 16, { steps: 4 });
+  await target.evaluate((element) => element.scrollIntoView({ block: "end", inline: "end" }));
+  const to = (await target.boundingBox())!;
+  const drop = { x: to.x + to.width / 2, y: to.y + to.height / 2 };
+  expect(
+    await zeynep.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest(".schedule-cell")?.getAttribute("data-employee-id"),
+      drop,
+    ),
+  ).toBe(emreId);
+  await zeynep.mouse.move(drop.x, drop.y, { steps: 12 });
   await zeynep.mouse.up();
 
   // The list: the primary first, then the other time.
