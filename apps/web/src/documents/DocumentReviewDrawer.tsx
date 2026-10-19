@@ -501,8 +501,8 @@ function DocumentDetailContent({
             <fieldset disabled={busy}>
               <legend>Document time zone</legend>
               <p>
-                This employee has no active primary location. This time zone is
-                used only for their document dates and reminders.
+                This employee has no active location. This time zone is used
+                only for their document dates and reminders.
               </p>
               <TimezoneSelect
                 value={referenceTimezone}
