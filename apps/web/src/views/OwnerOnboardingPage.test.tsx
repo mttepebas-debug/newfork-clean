@@ -138,6 +138,7 @@ const job = {
   
   archived_at: null,
   system_key: null,
+  lineup_icons: ["001-server"],
 } satisfies Job;
 
 function contextForStep(currentStep: 1 | 2 | 3 | 4): ActiveWorkspaceContext {

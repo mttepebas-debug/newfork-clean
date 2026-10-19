@@ -39,16 +39,19 @@ describe("Settings reads (FB-6.1.9)", () => {
     await built.close();
   });
 
-  it("hands Settings → Jobs the system key that marks Management and the Owner job (BL-218)", async () => {
+  it("hands Settings → Jobs the system key that marks Management and the Owner job (BL-218) and each job's Lineup drawings (AVATAR-IKON)", async () => {
     const management = {
       id: "30000000-0000-4000-8000-000000000001", workspace_id: workspaceId, name: "Leadership",
       color: "#4478A8", archived_at: null, system_key: "management",
     };
     const owner = {
       ...management, id: "40000000-0000-4000-8000-000000000001", department_id: management.id,
-      name: "Owner", system_key: "owner",
+      name: "Owner", system_key: "owner", lineup_icons: ["007-gm"],
     };
-    const cook = { ...owner, id: "40000000-0000-4000-8000-000000000002", department_id: null, name: "Cook", system_key: null };
+    const cook = {
+      ...owner, id: "40000000-0000-4000-8000-000000000002", department_id: null, name: "Cook", system_key: null,
+      lineup_icons: ["003-bartender", "001-server"],
+    };
     const rpc = vi.fn(async () => ({ data: { departments: [management], jobs: [owner, cook] }, error: null }));
     const built = app(settingsReadsService({ rpc }));
     const response = await get(built, `${workspaceId}/settings/jobs`);

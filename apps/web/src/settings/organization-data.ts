@@ -410,22 +410,23 @@ export async function saveJob(
   id?: string,
 ): Promise<Job> {
   const values = jobInputSchema.parse(input);
+  // AVATAR-IKON: a new job may come with its drawings (left out, the database suggests them), but the
+  // browser has no grant to change them later; the job drawer's save does that through the API.
+  const { lineup_icons: _drawings, ...details } = values;
+  const columns =
+    "id,workspace_id,department_id,name,color,archived_at,system_key,lineup_icons";
   const query = id
     ? client()
         .from("jobs")
-        .update({ ...values, updated_at: new Date().toISOString() })
+        .update({ ...details, updated_at: new Date().toISOString() })
         .eq("id", id)
         .eq("workspace_id", workspaceId)
-        .select(
-          "id,workspace_id,department_id,name,color,archived_at,system_key",
-        )
+        .select(columns)
         .single()
     : client()
         .from("jobs")
         .insert({ ...values, workspace_id: workspaceId })
-        .select(
-          "id,workspace_id,department_id,name,color,archived_at,system_key",
-        )
+        .select(columns)
         .single();
   const { data, error } = await query;
   message(error);

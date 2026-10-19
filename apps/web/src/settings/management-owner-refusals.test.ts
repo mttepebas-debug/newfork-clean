@@ -17,6 +17,7 @@ const ownerJob = {
   color: "#4478A8",
   archived_at: null,
   system_key: "owner",
+  lineup_icons: ["007-gm"],
 };
 const kept = {
   code: "23514",
@@ -57,9 +58,21 @@ describe("Settings → Jobs writes the database refuses (BL-218)", () => {
     expect((failure as RequestError).reason).toBeUndefined();
   });
 
-  it("reads the saved job back with its system key", async () => {
+  it("reads the saved job back with its system key and its Lineup drawings (AVATAR-IKON)", async () => {
     answer = { data: ownerJob, error: null };
     expect(await saveJob(workspaceId, { name: "Owner", color: "#4478A8", department_id: ownerJob.department_id }, ownerJob.id)).toEqual(ownerJob);
     expect(chain.select).toHaveBeenCalledWith(expect.stringContaining("system_key"));
+    expect(chain.select).toHaveBeenCalledWith(expect.stringContaining("lineup_icons"));
+  });
+
+  // AVATAR-IKON: the browser may give a new job its drawings, but has no grant to change them later;
+  // the job drawer's save changes them through the API.
+  it("never writes the drawings of a job it renames", async () => {
+    answer = { data: ownerJob, error: null };
+    const details = { name: "Owner", color: "#4478A8", department_id: ownerJob.department_id };
+    await saveJob(workspaceId, { ...details, lineup_icons: ["001-server"] }, ownerJob.id);
+    expect(chain.update).toHaveBeenCalledWith({ ...details, updated_at: expect.any(String) });
+    await saveJob(workspaceId, { ...details, lineup_icons: ["001-server"] });
+    expect(chain.insert).toHaveBeenCalledWith({ ...details, lineup_icons: ["001-server"], workspace_id: workspaceId });
   });
 });

@@ -40,6 +40,7 @@ export * from "./notification-settings";
 export * from "./push-alerts";
 export * from "./lineup";
 export * from "./lineup-art";
+import { lineupArtKeySchema } from "./lineup-art";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
@@ -859,6 +860,8 @@ export const jobSchema = z.object({
   archived_at: z.string().datetime({ offset: true }).nullable(),
   // Set by workspace setup on the one job that is Owner (BL-218).
   system_key: z.enum(["owner"]).nullable(),
+  // AVATAR-IKON: the job's Lineup drawings, archive keys in order (the database suggests them at birth).
+  lineup_icons: z.array(lineupArtKeySchema),
 });
 export type Job = z.infer<typeof jobSchema>;
 
@@ -938,16 +941,27 @@ export const departmentInputSchema = departmentSchema.pick({
 });
 export type DepartmentInput = z.infer<typeof departmentInputSchema>;
 
-export const jobInputSchema = jobSchema.pick({
-  name: true,
-  color: true,
-  department_id: true,
-});
+/** At most this many Lineup drawings on one job (the database's limit too). */
+export const maxJobLineupIcons = 24;
+
+// AVATAR-IKON: left out, a new job takes the database's suggestion and a save keeps the job's list.
+export const jobInputSchema = jobSchema
+  .pick({
+    name: true,
+    color: true,
+    department_id: true,
+  })
+  .extend({
+    lineup_icons: z.array(lineupArtKeySchema).max(maxJobLineupIcons).optional(),
+  });
 export type JobInput = z.infer<typeof jobInputSchema>;
+
+// A department's new jobs are born with the database's suggested drawings (AVATAR-IKON).
+const departmentJobInputSchema = jobInputSchema.omit({ department_id: true, lineup_icons: true });
 
 export const departmentWithJobsInputSchema = z.object({
   department: departmentInputSchema,
-  jobs: z.array(jobInputSchema.omit({ department_id: true })).max(500),
+  jobs: z.array(departmentJobInputSchema).max(500),
 });
 export type DepartmentWithJobsInput = z.infer<
   typeof departmentWithJobsInputSchema
@@ -956,7 +970,7 @@ export const jobDeletionResultSchema = z.object({
   removed_count: z.number().int().nonnegative(),
 });
 export const departmentJobsInputSchema = z.object({
-  jobs: jobInputSchema.omit({ department_id: true }).array().min(1).max(500),
+  jobs: departmentJobInputSchema.array().min(1).max(500),
 });
 export const departmentWithJobsResultSchema = z.object({
   department: departmentSchema,

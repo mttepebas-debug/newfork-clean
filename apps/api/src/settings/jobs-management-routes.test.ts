@@ -264,6 +264,126 @@ describe("jobs management HTTP boundary", () => {
       },
     );
   });
+  // AVATAR-IKON: a job's Lineup drawings ride its details on create and save.
+  const savedJob = {
+    id: jobId,
+    workspace_id: workspaceId,
+    department_id: null,
+    name: "Line Cook",
+    color: "#123456",
+    archived_at: null,
+    system_key: null,
+    lineup_icons: ["003-bartender", "001-server"],
+  };
+  it("hands a new job's chosen Lineup drawings to the database in order (AVATAR-IKON)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: { changed_count: 0, unchanged_count: 0, job: savedJob }, error: null });
+    const job = { name: "Line Cook", color: "#123456", department_id: null, lineup_icons: ["003-bartender", "001-server"] };
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job, changes: [] },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(response.json().job.lineup_icons).toEqual(["003-bartender", "001-server"]);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("create_job_with_assignments_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
+      job_input: job,
+      assignment_changes: [],
+    });
+  });
+  it("leaves the drawings out of a new job sent without them, so the database suggests them (AVATAR-IKON)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: { changed_count: 0, unchanged_count: 0, job: savedJob }, error: null });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job: { name: "Line Cook", color: "#123456", department_id: null } },
+    });
+    expect(response.statusCode).toBe(201);
+    const jobInput = (rpc.mock.calls[0]?.[1] as { job_input: Record<string, unknown> }).job_input;
+    expect(jobInput).toEqual({ name: "Line Cook", color: "#123456", department_id: null });
+    expect(Object.hasOwn(jobInput, "lineup_icons")).toBe(false);
+  });
+  it.each([
+    ["an unknown drawing", ["999-unicorn"]],
+    ["more than 24 drawings", Array.from({ length: 25 }, () => "001-server")],
+    ["something that is not a list", "001-server"],
+  ])("refuses %s on a new job or a save before the database (AVATAR-IKON)", async (_label, lineup_icons) => {
+    const { app, rpc } = setup();
+    const job = { name: "Line Cook", color: "#123456", department_id: null, lineup_icons };
+    const created = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job },
+    });
+    const saved = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs/${jobId}`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job, expected_job: { name: "Line Cook", color: "#123456", department_id: null, lineup_icons: [] } },
+    });
+    expect([created.statusCode, saved.statusCode]).toEqual([400, 400]);
+    expect(rpc).not.toHaveBeenCalled();
+  });
+  it("saves a job's drawings with the drawings it was read with as the original (AVATAR-IKON)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: { changed_count: 0, unchanged_count: 0, job: savedJob }, error: null });
+    const job = { name: "Line Cook", color: "#123456", department_id: null, lineup_icons: ["003-bartender", "001-server"] };
+    const expected_job = { name: "Line Cook", color: "#123456", department_id: null, lineup_icons: ["001-server"] };
+    const response = await app.inject({
+      method: "PATCH",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs/${jobId}`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job, expected_job },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json().job.lineup_icons).toEqual(["003-bartender", "001-server"]);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("update_job_details_and_assignments_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
+      target_job_id: jobId,
+      job_input: job,
+      expected_job,
+      assignment_changes: [],
+    });
+  });
+  it("answers the database's job.lineup_icons_invalid with 400 and its key (AVATAR-IKON)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({
+      data: null,
+      error: { code: "22023", message: "Choose up to 24 different drawings from the archive", hint: "job.lineup_icons_invalid" },
+    });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/organization/jobs`,
+      headers: { authorization: "Bearer verified" },
+      payload: { job: { name: "Line Cook", color: "#123456", department_id: null, lineup_icons: ["001-server", "001-server"] } },
+    });
+    expect(response.statusCode).toBe(400);
+    expect(response.json()).toMatchObject({ reason: "job.lineup_icons_invalid" });
+  });
+  it("does not take drawings for a department's new jobs: they are born with the database's suggestion (AVATAR-IKON)", async () => {
+    const { app, rpc } = setup();
+    rpc.mockResolvedValue({ data: [savedJob], error: null });
+    const response = await app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId}/organization/departments/${jobId}/jobs`,
+      headers: { authorization: "Bearer verified" },
+      payload: { jobs: [{ name: "Chef", color: "#123456", lineup_icons: ["001-server"] }] },
+    });
+    expect(response.statusCode).toBe(201);
+    expect(rpc).toHaveBeenCalledExactlyOnceWith("create_department_jobs_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
+      target_department_id: jobId,
+      jobs_input: [{ name: "Chef", color: "#123456" }],
+    });
+  });
   it("saves multiple jobs to an existing department in one command", async () => {
     const { app, rpc } = setup();
     rpc.mockResolvedValue({ data: [], error: null });

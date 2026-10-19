@@ -29,6 +29,9 @@ import {
   jobDetailsChangesSchema,
   jobInputSchema,
   jobSchema,
+  maxJobLineupIcons,
+  departmentJobsInputSchema,
+  departmentWithJobsInputSchema,
   locationInputSchema,
   locationSchema,
   ownerLegalNameResponseSchema,
@@ -1964,7 +1967,7 @@ describe("organization basics schemas", () => {
     const scheduleJob = { ...scheduleDepartment, department_id: id };
     const base = { ...scheduleDepartment, workspace_id: workspaceId, archived_at: null, sort_order: 3 };
     expect(departmentSchema.parse({ ...base, system_key: null })).not.toHaveProperty("sort_order");
-    expect(jobSchema.parse({ ...base, department_id: null, system_key: null })).not.toHaveProperty("sort_order");
+    expect(jobSchema.parse({ ...base, department_id: null, system_key: null, lineup_icons: [] })).not.toHaveProperty("sort_order");
     expect(scheduleDepartmentSchema.parse({ ...scheduleDepartment, sort_order: 3, system_key: null })).not.toHaveProperty("sort_order");
     expect(scheduleJobSchema.parse({ ...scheduleJob, sort_order: 3, system_key: null })).not.toHaveProperty("sort_order");
     // Shift types and labels keep the order a manager sets by hand.
@@ -1980,7 +1983,10 @@ describe("organization basics schemas", () => {
       color: "#4478A8",
       archived_at: null,
     };
-    const job = { ...department, id: "20000000-0000-4000-8000-000000000001", department_id: department.id, name: "Owner" };
+    const job = {
+      ...department, id: "20000000-0000-4000-8000-000000000001", department_id: department.id, name: "Owner",
+      lineup_icons: ["007-gm"],
+    };
     expect(departmentSchema.parse({ ...department, system_key: "management" }).system_key).toBe("management");
     expect(jobSchema.parse({ ...job, system_key: "owner" }).system_key).toBe("owner");
     expect(jobSchema.parse({ ...job, system_key: null }).system_key).toBeNull();
@@ -1988,6 +1994,51 @@ describe("organization basics schemas", () => {
     expect(() => departmentSchema.parse(department)).toThrow();
     expect(() => jobSchema.parse(job)).toThrow();
     expect(() => jobSchema.parse({ ...job, system_key: "management" })).toThrow();
+  });
+});
+
+describe("job Lineup drawings (AVATAR-IKON)", () => {
+  const job = {
+    id: "20000000-0000-4000-8000-000000000002",
+    workspace_id: workspaceId,
+    department_id: null,
+    name: "Server",
+    color: "#4478A8",
+    archived_at: null,
+    system_key: null,
+  };
+
+  it("reads every job with its drawings, archive keys in order", () => {
+    expect(jobSchema.parse({ ...job, lineup_icons: ["003-bartender", "001-server"] }).lineup_icons)
+      .toEqual(["003-bartender", "001-server"]);
+    expect(jobSchema.parse({ ...job, lineup_icons: [] }).lineup_icons).toEqual([]);
+    // A read that drops the list would leave the Lineup with nothing to draw.
+    expect(jobSchema.safeParse(job).success).toBe(false);
+    expect(jobSchema.safeParse({ ...job, lineup_icons: ["999-unicorn"] }).success).toBe(false);
+  });
+
+  it("takes up to 24 archive drawings on a job's details, or none to leave the list to the database", () => {
+    const details = { name: "Server", color: "#4478A8", department_id: null };
+    expect(jobInputSchema.parse(details)).not.toHaveProperty("lineup_icons");
+    expect(jobInputSchema.parse({ ...details, lineup_icons: ["001-server"] }).lineup_icons).toEqual(["001-server"]);
+    expect(maxJobLineupIcons).toBe(24);
+    expect(jobInputSchema.safeParse({ ...details, lineup_icons: Array(24).fill("001-server") }).success).toBe(true);
+    expect(jobInputSchema.safeParse({ ...details, lineup_icons: Array(25).fill("001-server") }).success).toBe(false);
+    expect(jobInputSchema.safeParse({ ...details, lineup_icons: ["999-unicorn"] }).success).toBe(false);
+    expect(
+      jobDetailsChangesSchema.parse({
+        job: { ...details, lineup_icons: ["001-server"] },
+        expected_job: { ...details, lineup_icons: [] },
+      }).expected_job?.lineup_icons,
+    ).toEqual([]);
+  });
+
+  it("leaves a department's new jobs to the database's suggestion", () => {
+    const jobs = [{ name: "Server", color: "#4478A8", lineup_icons: ["001-server"] }];
+    expect(departmentJobsInputSchema.parse({ jobs }).jobs[0]).not.toHaveProperty("lineup_icons");
+    expect(
+      departmentWithJobsInputSchema.parse({ department: { name: "Floor", color: "#4478A8" }, jobs }).jobs[0],
+    ).not.toHaveProperty("lineup_icons");
   });
 });
 

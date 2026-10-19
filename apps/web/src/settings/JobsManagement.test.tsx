@@ -93,6 +93,8 @@ const job = {
   name: "Server",
   department_id: department.id,
   color: "#4478A8",
+  system_key: null,
+  lineup_icons: ["001-server"],
 } as Job;
 function employee(index: number, assigned = false): JobAssignmentEmployee {
   return {
@@ -525,6 +527,22 @@ describe("job assignment drawer", () => {
       }),
     );
     expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+  // AVATAR-IKON: the database compares the drawings too, so the original the drawer sends carries them.
+  it("saves a renamed job with the drawings it was read with as part of the original", async () => {
+    drawer();
+    fireEvent.change(await screen.findByLabelText("Job name"), {
+      target: { value: "Head Server" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const details = { color: "#4478A8", department_id: department.id, lineup_icons: ["001-server"] };
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
+        job: { name: "Head Server", ...details },
+        expected_job: { name: "Server", ...details },
+        changes: [],
+      }),
+    );
   });
   it("filter changes keep pending removals visible until save, and conflict keeps the draft", async () => {
     vi.mocked(api.saveJobDetails).mockRejectedValue(
