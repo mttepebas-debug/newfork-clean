@@ -23,6 +23,7 @@ describe("employee detail private contact", () => {
     job_count: 0,
     role_name: "Owner",
     is_workspace_owner: true,
+    access: { employee: false, management: "owner" },
     display_status: "active",
     archived_at: null,
     revision: 1,
@@ -123,6 +124,7 @@ describe("employee detail allowed actions", () => {
     job_count: 0,
     role_name: "Employee",
     is_workspace_owner: false,
+    access: { employee: true, management: null },
     display_status: "active",
     archived_at: null,
     revision: 1,
@@ -170,6 +172,16 @@ describe("employee detail allowed actions", () => {
     expect(() => employeeDetailSchema.parse(withoutOwner)).toThrow();
     expect(base.is_workspace_owner).toBe(false);
   });
+
+  // ROL-CIFT 2.2: the record's two access slots are the server's answer; the
+  // drawer offers "Exclude from schedule" from it.
+  it("carries the record's two access slots and refuses a detail without them", () => {
+    expect(employeeDetailSchema.parse({ ...base, access: { employee: false, management: "manager" } }).access)
+      .toEqual({ employee: false, management: "manager" });
+    const { access: _access, ...withoutAccess } = base;
+    expect(() => employeeDetailSchema.parse(withoutAccess)).toThrow();
+    expect(() => employeeDetailSchema.parse({ ...base, access: { employee: false, management: null } })).toThrow();
+  });
 });
 
 // FB-6.2 .7b (KK-35): where the reader may take somebody off comes from the
@@ -196,6 +208,7 @@ describe("employee detail locations", () => {
     job_count: 0,
     role_name: "Manager",
     is_workspace_owner: false,
+    access: { employee: true, management: "manager" },
     display_status: "active",
     archived_at: null,
     revision: 1,

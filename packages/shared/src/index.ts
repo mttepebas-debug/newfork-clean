@@ -2494,6 +2494,9 @@ export const employeeDetailSchema = employeeSummarySchema.extend({
   is_remote: z.boolean().optional(),
   is_excluded_from_schedule: z.boolean().optional(),
   role_id: z.string().uuid().nullable().optional(),
+  // The record's two access slots (ROL-CIFT 2.2): somebody with no account yet
+  // holds the employee one, as the server's has_employee_access reads it.
+  access: workspaceAccessSchema,
   private_contact: z
     .object({
       // Names, addresses and phones under the US form rules the data keeps

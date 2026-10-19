@@ -908,6 +908,44 @@ describe("ShiftQuickEditor", () => {
     );
   });
 
+  // ROL-CIFT 2.2: who can be scheduled is the server's answer (the grid lists
+  // only people with the employee access); the picker adds no role filter of
+  // its own, so a manager who also works is offered like anyone else.
+  it("offers every qualified person the server lists, a working manager included", () => {
+    const editorModel: ScheduleReadModel = {
+      ...model,
+      employees: [
+        model.employees[0]!,
+        {
+          ...model.employees[0]!,
+          id: "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb",
+          employee_code: "NF-002",
+          display_name: "Dora Manager",
+        },
+      ],
+    };
+    render(
+      <ShiftQuickEditor
+        model={editorModel}
+        state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: null, date: model.week_start, x: 24, y: 32 }}
+        timeFormat="12h"
+        formatTime={(value) => value}
+        addDays={(iso) => iso}
+        scheduleClosureCoversDate={() => false}
+        onClose={vi.fn()}
+        onReload={vi.fn()}
+        onDelete={vi.fn()}
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    fireEvent.click(screen.getByRole("combobox", { name: "Employee" }));
+    expect(screen.getAllByRole("option")).toHaveLength(3);
+    expect(screen.getByRole("option", { name: /Alex Rivera/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Dora Manager/ })).toBeTruthy();
+    expect(screen.getByRole("option", { name: /Open/ })).toBeTruthy();
+  });
+
   it("reports whether the manager changed anything", async () => {
     const onDirtyChange = vi.fn();
 

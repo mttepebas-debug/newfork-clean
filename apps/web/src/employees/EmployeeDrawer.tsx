@@ -2542,23 +2542,28 @@ function EmploymentSection({
           />
           <span>Remote</span>
         </label>
-        <label
-          className="employee-work-mode off-schedule"
-          data-selected={draft.is_excluded_from_schedule ? "true" : "false"}
-        >
-          <input
-            type="checkbox"
-            checked={draft.is_excluded_from_schedule ?? false}
-            disabled={readOnly}
-            onChange={(event) =>
-              setDraft((current) => ({
-                ...current,
-                is_excluded_from_schedule: event.target.checked,
-              }))
-            }
-          />
-          <span>Exclude from schedule</span>
-        </label>
+        {/* ROL-CIFT 2.2: only somebody with the employee access is ever
+            scheduled, so only their record offers to keep them off it. A new
+            record has no access yet: it is offered there as before. */}
+        {creating || detail?.access.employee === true ? (
+          <label
+            className="employee-work-mode off-schedule"
+            data-selected={draft.is_excluded_from_schedule ? "true" : "false"}
+          >
+            <input
+              type="checkbox"
+              checked={draft.is_excluded_from_schedule ?? false}
+              disabled={readOnly}
+              onChange={(event) =>
+                setDraft((current) => ({
+                  ...current,
+                  is_excluded_from_schedule: event.target.checked,
+                }))
+              }
+            />
+            <span>Exclude from schedule</span>
+          </label>
+        ) : null}
       </div>
       <AssignmentPicker
         label="Locations"

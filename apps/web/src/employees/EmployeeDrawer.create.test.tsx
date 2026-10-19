@@ -145,6 +145,7 @@ describe("employee create flow", () => {
         job_count: 1,
         role_name: null,
         is_workspace_owner: false,
+        access: { employee: true, management: null },
         private_contact: null,
         allowed: {
           save: true,

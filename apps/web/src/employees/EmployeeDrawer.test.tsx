@@ -164,6 +164,7 @@ const detail = {
   role_name: null,
   is_workspace_owner: false,
   role_id: null,
+  access: { employee: true, management: null },
   display_status: "not_invited",
   archived_at: null,
   revision: 1,
@@ -1734,6 +1735,29 @@ describe("EmployeeDrawer", () => {
     const workStatus = screen.getByLabelText("Work status");
     expect(within(workStatus).getByText("Remote")).toBeTruthy();
     expect(within(workStatus).getByText("Off schedule")).toBeTruthy();
+  });
+
+  // ROL-CIFT 2.2: only somebody with the employee access is ever scheduled, so
+  // only their record offers to keep them off the schedule.
+  it("offers Exclude from schedule only on a record with the employee access", async () => {
+    const { unmount } = renderDrawer("employment", {
+      ...detail,
+      role_id: managerRoleId,
+      role_name: "Manager",
+      access: { employee: false, management: "manager" },
+    });
+
+    await screen.findByLabelText("Remote");
+    expect(screen.queryByRole("checkbox", { name: "Exclude from schedule" })).toBeNull();
+    unmount();
+
+    renderDrawer("employment", {
+      ...detail,
+      role_id: managerRoleId,
+      role_name: "Manager",
+      access: { employee: true, management: "manager" },
+    });
+    expect(await screen.findByRole("checkbox", { name: "Exclude from schedule" })).toBeTruthy();
   });
 
   it("marks normal employee assignments as required in edit mode", async () => {
