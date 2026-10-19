@@ -20,6 +20,18 @@
     width: 100%;
   }
 }
+/* On a desktop Home is not held in the 1320 px page box: it runs from the
+   menu to the screen's edge at every width, so the sky and the bar fill the
+   whole area and the column sits in its middle (Mert 2026-10-19, the Employee
+   Home variants page, A; CALISAN-HOME-HIZA). */
+@media (min-width: 721px) {
+  .app-shell[data-content-held="true"] > .app-main > .employee-hub-page:has(> .dl-home) {
+    --app-page-gutter-start: 0px;
+    --app-page-gutter-end: 0px;
+    width: 100%;
+    margin-left: 0;
+  }
+}
 .dl-home {
   --dl-g: 16px;
   --dl-r: 22px;
@@ -90,13 +102,15 @@
 }
 
 /* Desktop bar; on a phone the shell's top bar takes its place. */
+/* The bar spans the area: the pill in its middle, the bell and the profile
+   at its right edge, 32 px in like a held page's side (S-174). */
 .dl-home .eh-context-bar {
   position: sticky;
   z-index: 5;
   top: 0;
-  max-width: 748px;
-  margin: 0 auto;
-  padding: 10px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  padding: 10px 32px;
   border-bottom: 1px solid transparent;
   transition: background-color 0.2s, border-color 0.2s;
 }
@@ -108,9 +122,13 @@
 }
 .dl-desk-pill {
   display: flex;
-  flex: 1;
+  grid-column: 2;
   justify-content: center;
   min-width: 0;
+}
+.dl-home .eh-context-actions {
+  grid-column: 3;
+  justify-self: end;
 }
 
 /* Next shift pill: in the bar once the greeting is gone. */

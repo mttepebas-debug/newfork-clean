@@ -93,11 +93,13 @@ test("phone: the bar's slot takes no room on a manager's page (zeynep)", async (
   expect(room.fits || room.gap <= 12).toBe(true);
 });
 
-// S-172 (Mert 2026-10-18, 2026-10-19): the page box starts 32 px right of the
-// open 240 px menu (x=272) and
-// holds still when it folds. Home draws no ground of its own, and its sky runs
-// past the box to the scrolling area's edges, so there is no seam on either
-// side, menu open or folded, and nothing scrolls sideways.
+// S-172 (Mert 2026-10-18, 2026-10-19): Home holds still when the menu folds.
+// Unlike the other held pages it is not kept in the 1320 px box: it runs from
+// the open 240 px menu (x=240) to the screen's edge, its column sits in the
+// middle of that area and the bell and the profile stand 32 px from its right
+// edge (Mert 2026-10-19, CALISAN-HOME-HIZA). Home draws no ground of its own,
+// so there is no seam on either side, menu open or folded, and nothing
+// scrolls sideways.
 test("desktop: Home's sky and ground meet the menu and the right edge with no seam (emre)", async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: DESKTOP })).newPage();
   await signIn(page, "emre");
@@ -114,6 +116,11 @@ test("desktop: Home's sky and ground meet the menu and the right edge with no se
         skyLeft: Math.round(sky.left - area.left),
         skyRight: Math.round(area.left + main.clientWidth - sky.right),
         boxLeft: Math.round(box.getBoundingClientRect().left),
+        columnOffCentre: (() => {
+          const column = document.querySelector(".dl-body")!.getBoundingClientRect();
+          return column.left + column.width / 2 - (area.left + main.clientWidth / 2);
+        })(),
+        profileRight: Math.round(area.left + main.clientWidth - document.querySelector('.eh-context-bar a[aria-label="Your profile"]')!.getBoundingClientRect().right),
         boxGround: getComputedStyle(box).backgroundColor,
         shellGround: getComputedStyle(document.querySelector(".app-shell")!).backgroundColor,
         mainGround: getComputedStyle(main).backgroundColor,
@@ -121,9 +128,10 @@ test("desktop: Home's sky and ground meet the menu and the right edge with no se
       };
     });
   const open = await measure();
-  expect(open).toMatchObject({ skyLeft: 0, skyRight: 0, boxLeft: 272, boxGround: "rgba(0, 0, 0, 0)", sideways: false });
+  expect(open).toMatchObject({ skyLeft: 0, skyRight: 0, boxLeft: 240, profileRight: 32, boxGround: "rgba(0, 0, 0, 0)", sideways: false });
+  expect(Math.abs(open.columnOffCentre)).toBeLessThanOrEqual(1);
   await page.getByRole("button", { name: "Collapse menu" }).click();
-  await expect.poll(async () => (await measure()).boxLeft).toBe(272);
+  await expect.poll(async () => (await measure()).boxLeft).toBe(240);
   const folded = await measure();
   expect(folded).toMatchObject({ skyLeft: 0, skyRight: 0, sideways: false });
   // The band the folded menu leaves is the same ground as the page under Home.
