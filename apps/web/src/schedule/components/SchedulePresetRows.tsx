@@ -2,10 +2,11 @@ import type {
   ScheduleLocation,
   ScheduleReadModel,
 } from "@newfork/shared/schedule";
-import type {
-  CSSProperties,
-  MouseEvent,
-  PointerEvent as ReactPointerEvent,
+import {
+  useRef,
+  type CSSProperties,
+  type MouseEvent,
+  type PointerEvent as ReactPointerEvent,
 } from "react";
 
 import type { PresetCreateInput } from "../lib/shiftEditorState";
@@ -110,6 +111,9 @@ export function SchedulePresetRows({
     event: MouseEvent<HTMLButtonElement>,
   ) => void;
 }) {
+  // Where the last press on a chip began: a press that ends far away was a
+  // drag, already dropped on its own day, not a click on the chip (PRESET-SAAT).
+  const pressAt = useRef<{ x: number; y: number } | null>(null);
   if (!shiftTypes.length) return null;
   return (
     <>
@@ -179,6 +183,9 @@ export function SchedulePresetRows({
                     event.preventDefault();
                     event.stopPropagation();
                     if (!editing) return;
+                    const press = pressAt.current;
+                    pressAt.current = null;
+                    if (press && Math.hypot(event.clientX - press.x, event.clientY - press.y) > 4) return;
                     onPresetCreate({
                       locationId: interactionLocationId,
                       employeeId: null,
@@ -192,7 +199,8 @@ export function SchedulePresetRows({
                       },
                     });
                   }}
-                  onPointerDown={(event) =>
+                  onPointerDown={(event) => {
+                    pressAt.current = { x: event.clientX, y: event.clientY };
                     onPresetPointerDown?.(
                       {
                         jobId: job.id,
@@ -203,8 +211,8 @@ export function SchedulePresetRows({
                         endTime: shiftType.default_end_time,
                       },
                       event,
-                    )
-                  }
+                    );
+                  }}
                   onMouseDown={(event) =>
                     onPresetMouseDown?.(
                       {

@@ -21,7 +21,7 @@ import {
 import { scheduleJobName } from "../lib/scheduleCatalogNames";
 import { formatTime } from "../lib/scheduleDateTime";
 import { toScheduleShiftMutation } from "../lib/scheduleShiftMutation";
-import { validatePresetCreateTarget } from "../lib/schedulePresetTargets";
+import { validatePresetDrop } from "../lib/schedulePresetTargets";
 import {
   useSingleShiftPointerDrag,
   type ShiftDropEvaluation,
@@ -222,27 +222,22 @@ export function evaluateScheduleShiftGroupDropTarget({
 export function evaluateSchedulePresetDropTarget({
   model,
   target,
-  useDefaultTimesForScheduling,
 }: {
   readonly model: ScheduleReadModel;
   readonly target: PresetDropTarget;
-  readonly useDefaultTimesForScheduling: boolean;
 }): PresetDropEvaluation {
-  const validation = validatePresetCreateTarget(
-    model,
-    {
-      locationId: target.locationId,
-      employeeId: target.employeeId,
-      date: target.date,
-      preset: {
-        jobId: target.jobId,
-        shiftTypeId: target.shiftTypeId,
-        startTime: target.startTime,
-        endTime: target.endTime,
-      },
+  // A type with several times is droppable where any of them fits (PRESET-SAAT, S-183).
+  const validation = validatePresetDrop(model, {
+    locationId: target.locationId,
+    employeeId: target.employeeId,
+    date: target.date,
+    preset: {
+      jobId: target.jobId,
+      shiftTypeId: target.shiftTypeId,
+      startTime: target.startTime,
+      endTime: target.endTime,
     },
-    useDefaultTimesForScheduling,
-  );
+  });
   return validation.allowed
     ? { allowed: true, targetStatus: validation.warning || missingTargetEvidence(model, target).length ? "warning" : "allowed", ...(validation.warning ? { reason: validation.warning } : {}) }
     : {
@@ -258,7 +253,6 @@ export function useScheduleGridDragControllers({
   filtered,
   model,
   showShiftTypePresets,
-  useDefaultTimesForScheduling,
   onMove,
   onCopyMove,
   onPresetCreate,
@@ -267,7 +261,6 @@ export function useScheduleGridDragControllers({
   readonly filtered: ScheduleReadModel;
   readonly model: ScheduleReadModel;
   readonly showShiftTypePresets: boolean;
-  readonly useDefaultTimesForScheduling: boolean;
   readonly onMove: (
     shift: ScheduleEditableShift,
     locationId: string,
@@ -331,7 +324,6 @@ export function useScheduleGridDragControllers({
       evaluateSchedulePresetDropTarget({
         model,
         target,
-        useDefaultTimesForScheduling,
       }),
     onDropAttempt: (target) => {
       setDragOverCell(target?.targetKey ?? null);

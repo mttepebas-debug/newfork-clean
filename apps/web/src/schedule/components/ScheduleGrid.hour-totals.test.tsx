@@ -159,7 +159,6 @@ function renderGrid(
       showJobColorDot
       showRoleSeparators
       showPresetShiftBadges
-      useDefaultTimesForScheduling={false}
       employeeSortMode="byJob"
       session={session(readModel)}
       focusedShiftId={null}

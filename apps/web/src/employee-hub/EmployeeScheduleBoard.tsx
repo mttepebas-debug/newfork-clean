@@ -322,7 +322,6 @@ export function EmployeeScheduleBoard({
         publishWarnings={false}
         showRoleSeparators={showRoleSeparators}
         showPresetShiftBadges={false}
-        useDefaultTimesForScheduling={false}
         employeeSortMode={employeeSortMode}
         session={null}
         onOpenPost={(announcementId) =>

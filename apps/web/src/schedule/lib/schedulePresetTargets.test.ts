@@ -6,7 +6,9 @@ import {
   buildCellPresetMenuItems,
   formatPresetCreateContext,
   validatePresetCreateTarget,
+  validatePresetDrop,
 } from "./schedulePresetTargets";
+import { withPresetHours } from "./presetTimes";
 
 const model = {
   settings: { time_format: "12h" },
@@ -53,6 +55,25 @@ const target = {
 };
 
 describe("schedulePresetTargets", () => {
+  // PRESET-SAAT (S-183): Alex already works 3–6 PM. Dinner's primary 4–10 PM
+  // overlaps it; its other time 6–11 PM does not. The drop is allowed (a time
+  // fits) and each picked time is checked with its own hours.
+  it("checks a drop against every saved time and a pick against its own hours", () => {
+    const busy = {
+      ...model,
+      shift_types: [{ ...model.shift_types[0]!, time_options: [{ start_time: "18:00", end_time: "23:00" }] }],
+      shifts: [{
+        id: "shift-1", employee_id: "emp-1", location_id: "loc-1", job_id: "job-1", shift_type_id: null,
+        scheduled_date: "2026-08-17", start_time: "15:00", end_time: "18:00", crosses_midnight: false,
+        unpaid_break_minutes: 0, hide_time_on_badge: false, label_ids: [], label_names: [], note: "", warning_codes: [], revision: 1,
+      }],
+    } as unknown as ScheduleReadModel;
+    expect(validatePresetDrop(busy, target).allowed).toBe(true);
+    expect(validatePresetCreateTarget(busy, withPresetHours(target, { start: "16:00", end: "22:00" })).allowed).toBe(false);
+    expect(validatePresetCreateTarget(busy, withPresetHours(target, { start: "18:00", end: "23:00" })).allowed).toBe(true);
+    expect(validatePresetDrop({ ...busy, shift_types: [model.shift_types[0]!] } as ScheduleReadModel, target).allowed).toBe(false);
+  });
+
   it("formats preset create context labels", () => {
     expect(formatPresetCreateContext(model, target)).toBe(
       "Dinner-Server / Alex Rivera / Main Dining / 2026-08-17",
@@ -77,7 +98,7 @@ describe("schedulePresetTargets", () => {
       ],
     } as unknown as ScheduleReadModel;
 
-    expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
+    expect(validatePresetCreateTarget(closedModel, target)).toEqual({
       allowed: true,
       warning: "Location is closed all day. Requested: Dinner / Server at Main Dining.",
     });
@@ -99,7 +120,7 @@ describe("schedulePresetTargets", () => {
       ],
     } as unknown as ScheduleReadModel;
 
-    expect(validatePresetCreateTarget(closedModel, target, true)).toEqual({
+    expect(validatePresetCreateTarget(closedModel, target)).toEqual({
       allowed: true,
       warning: "Location has short hours for Inventory: open 9a–3p only. Requested: Dinner / Server at Main Dining.",
     });
@@ -107,7 +128,6 @@ describe("schedulePresetTargets", () => {
       validatePresetCreateTarget(
         closedModel,
         { ...target, preset: { ...target.preset, startTime: "09:00", endTime: "15:00" } },
-        true,
       ),
     ).toEqual({ allowed: true });
   });
@@ -124,7 +144,6 @@ describe("schedulePresetTargets", () => {
             endTime: "11:00",
           },
         },
-        true,
       ),
     ).toEqual({
       allowed: false,
@@ -155,7 +174,6 @@ describe("schedulePresetTargets", () => {
             endTime: null,
           },
         },
-        false,
       ),
     ).toEqual({
       allowed: false,
@@ -183,7 +201,6 @@ describe("schedulePresetTargets", () => {
             endTime: null,
           },
         },
-        false,
       ),
     ).toEqual({
       allowed: false,
@@ -202,7 +219,7 @@ describe("schedulePresetTargets", () => {
       y: 20,
     };
 
-    expect(buildCellPresetMenuItems(model, menuTarget, true)).toEqual([
+    expect(buildCellPresetMenuItems(model, menuTarget)).toEqual([
       {
         id: "type-1",
         label: "Dinner-Server",

@@ -67,7 +67,6 @@ export function ScheduleGrid({
   showJobColorDot,
   showRoleSeparators,
   showPresetShiftBadges,
-  useDefaultTimesForScheduling,
   showAvailability = true,
   employeeSortMode,
   session,
@@ -117,7 +116,6 @@ export function ScheduleGrid({
   readonly showJobColorDot: boolean;
   readonly showRoleSeparators: boolean;
   readonly showPresetShiftBadges: boolean;
-  readonly useDefaultTimesForScheduling: boolean;
   /** Off hides the orange availability marks only (M10); time off stays. */
   readonly showAvailability?: boolean;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
@@ -252,7 +250,6 @@ export function ScheduleGrid({
     filtered,
     model,
     showShiftTypePresets,
-    useDefaultTimesForScheduling,
     onMove,
     onCopyMove,
     onPresetCreate,

@@ -2837,20 +2837,11 @@ describe("App", () => {
       JSON.parse(window.localStorage.getItem("organizer-schedule-ui")!).state
         .showRoleSeparators,
     ).toBe(true);
-    fireEvent.click(
-      app.getByRole("button", { name: "Use default times for scheduling" }),
-    );
+    // PRESET-SAAT (S-183): a preset always writes its picked time, shown on
+    // the card, so the switch that hid it is gone.
     expect(
-      JSON.parse(window.localStorage.getItem("organizer-schedule-ui")!).state
-        .useDefaultTimesForScheduling,
-    ).toBe(true);
-    fireEvent.click(
-      app.getByRole("button", { name: "Use default times for scheduling" }),
-    );
-    expect(
-      JSON.parse(window.localStorage.getItem("organizer-schedule-ui")!).state
-        .useDefaultTimesForScheduling,
-    ).toBe(false);
+      app.queryByRole("button", { name: "Use default times for scheduling" }),
+    ).toBeNull();
     fireEvent.click(app.getByRole("menuitemradio", { name: "A-Z" }));
     expect(employeeOrder()).toEqual([
       "Aaron Primary Server",
@@ -2985,7 +2976,9 @@ describe("App", () => {
         start_time: "16:00",
         end_time: "22:00",
         unpaid_break_minutes: 30,
-        hide_time_on_badge: true,
+        // PRESET-SAAT (S-183): a preset's time shows on its card.
+        hide_time_on_badge: false,
+        time_basis: "type_default",
       }),
     );
     expect(app.queryByRole("dialog", { name: "Add shift" })).toBeNull();

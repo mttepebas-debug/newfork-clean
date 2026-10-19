@@ -70,8 +70,6 @@ function buildTopBarProps(
     onToggleRoleSeparators: vi.fn(),
     showPresetShiftBadges: true,
     onTogglePresetShiftBadges: vi.fn(),
-    useDefaultTimesForScheduling: false,
-    onToggleUseDefaultTimesForScheduling: vi.fn(),
     employeeSortMode: "alphabetical" as const,
     onEmployeeSortModeChange: vi.fn(),
     locations: [location],

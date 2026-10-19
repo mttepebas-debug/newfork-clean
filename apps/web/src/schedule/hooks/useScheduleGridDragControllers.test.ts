@@ -101,7 +101,7 @@ const unavailable: ScheduleReadModel = { ...model, employees: model.employees.ma
 
 describe("useScheduleGridDragControllers helpers", () => {
   it("keeps an unavailable preset selectable and colors its drop orange", () => {
-    expect(evaluateSchedulePresetDropTarget({ model: unavailable, useDefaultTimesForScheduling: true,
+    expect(evaluateSchedulePresetDropTarget({ model: unavailable,
       target: { locationId, employeeId, jobId, shiftTypeId, label: "Dinner", color: "#2563eb", date: "2026-08-18", startTime: "16:00", endTime: "22:00" },
     })).toMatchObject({ allowed: true, targetStatus: "warning" });
   });
@@ -350,7 +350,6 @@ describe("useScheduleGridDragControllers helpers", () => {
           locationId,
           date: "2026-08-19",
         },
-        useDefaultTimesForScheduling: true,
       }),
     ).toEqual({
       allowed: false,
@@ -380,7 +379,7 @@ describe("drop colours with the conflict rules in the read (DRAG)", () => {
   });
 
   it.each(cells)("dropping a preset on a %s cell", (_name, date, status) => {
-    expect(evaluateSchedulePresetDropTarget({ model: ruled, useDefaultTimesForScheduling: true,
+    expect(evaluateSchedulePresetDropTarget({ model: ruled,
       target: { locationId, employeeId, jobId, shiftTypeId, label: "Dinner", color: "#2563eb", date, startTime: "16:00", endTime: "22:00" },
     }).targetStatus).toBe(status);
   });

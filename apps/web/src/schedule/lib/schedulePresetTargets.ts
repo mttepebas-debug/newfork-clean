@@ -12,6 +12,7 @@ import {
   scheduleConflictSeverity,
   scheduleConflictShortLabel,
 } from "../schedule-conflicts";
+import { presetHoursOfType, withPresetHours } from "./presetTimes";
 
 
 function employeeName(
@@ -53,14 +54,13 @@ export function formatPresetCreateContext(
 export function validatePresetCreateTarget(
   model: ScheduleReadModel,
   target: PresetCreateTarget,
-  useDefaultTimesForScheduling: boolean,
 ): { readonly allowed: true; readonly warning?: string } | { readonly allowed: false; readonly reason: string; readonly shortReason: string } {
   const hasHours = Boolean(target.preset.startTime && target.preset.endTime);
   const conflicts = evaluateScheduleShiftConflicts(model, model.shifts, {
     location_id: target.locationId, employee_id: target.employeeId, job_id: target.preset.jobId,
     shift_type_id: target.preset.shiftTypeId, scheduled_date: target.date,
     start_time: target.preset.startTime ?? "", end_time: target.preset.endTime ?? "",
-    unpaid_break_minutes: 30, hide_time_on_badge: !useDefaultTimesForScheduling,
+    unpaid_break_minutes: 30, hide_time_on_badge: false,
     time_basis: hasHours ? "type_default" : "explicit", label_ids: [], note: "",
   });
   const blockers = conflicts.filter(reason => scheduleConflictSeverity(reason) === "block");
@@ -68,16 +68,26 @@ export function validatePresetCreateTarget(
   return conflicts.length ? { allowed: true, warning: formatScheduleConflictMessages(conflicts).join(" ") } : { allowed: true };
 }
 
+/** Whether a preset may drop here: a type with several times fits where any of them does (PRESET-SAAT, S-183). */
+export function validatePresetDrop(
+  model: ScheduleReadModel,
+  target: PresetCreateTarget,
+): ReturnType<typeof validatePresetCreateTarget> {
+  const hours = presetHoursOfType(model.shift_types.find((type) => type.id === target.preset.shiftTypeId));
+  if (hours.length <= 1) return validatePresetCreateTarget(model, hours[0] ? withPresetHours(target, hours[0]) : target);
+  const results = hours.map((item) => validatePresetCreateTarget(model, withPresetHours(target, item)));
+  return results.find((result) => result.allowed) ?? results[0]!;
+}
+
 export function buildCellPresetMenuItems(
   model: ScheduleReadModel,
   target: CellContextMenuTarget | null,
-  useDefaultTimesForScheduling: boolean,
 ): readonly CellPresetMenuItem[] {
   if (!target?.employeeId || !target.jobId) return [];
   const job = model.jobs.find((item) => item.id === target.jobId);
   if (!job) return [];
   return model.shift_types.map((shiftType) => {
-    const validation = validatePresetCreateTarget(
+    const validation = validatePresetDrop(
       model,
       {
         locationId: target.locationId,
@@ -91,7 +101,6 @@ export function buildCellPresetMenuItems(
         },
         point: { x: target.x, y: target.y },
       },
-      useDefaultTimesForScheduling,
     );
     return {
       id: shiftType.id,

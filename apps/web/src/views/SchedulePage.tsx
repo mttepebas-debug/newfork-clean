@@ -128,6 +128,8 @@ import { EDIT_ENDED_AWAY, EDIT_NOT_RECONNECTED, useScheduleEditSession } from ".
 import { useScheduleLeaveGuard } from "../schedule/hooks/useScheduleLeaveGuard";
 import { useEffectiveShifts } from "../schedule/hooks/useEffectiveShifts";
 import { createOptimisticPendingOp } from "../schedule/hooks/optimisticScheduleCache";
+import { PresetTimePicker, presetPickCellAt, type PresetPickCell } from "../schedule/components/PresetTimePicker";
+import { presetDropInput, presetPickName, presetPickWhere, presetTimeOptions, withPresetHours, type PresetHours } from "../schedule/lib/presetTimes";
 import { useRetroactiveEditPrompt } from "../schedule/hooks/useRetroactiveEditPrompt";
 import { usePendingOpsQuery } from "../schedule/hooks/usePendingOpsQuery";
 import { useScheduleDrafts } from "../schedule/hooks/useScheduleDrafts";
@@ -344,6 +346,9 @@ export function SchedulePage({
   const [defaultHoursOpen, setDefaultHoursOpen] = useState(false);
   useEffect(() => setDefaultHoursOpen(false), [context?.workspace.id, session?.id]);
   const [editor, setEditor] = useState<ScheduleShiftEditorState | null>(null);
+  // The time list a preset drop opened (PRESET-SAAT, S-183); null while none is open.
+  const [presetPick, setPresetPick] = useState<{ readonly target: PresetCreateTarget; readonly cell: PresetPickCell } | null>(null);
+  const closePresetPick = useCallback(() => setPresetPick(null), []);
   const [, setEditorDirty] = useState(false);
   const [saveOpen, setSaveOpen] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
@@ -556,8 +561,6 @@ export function SchedulePage({
     usePersistentScheduleUiBoolean("showRoleSeparators", true);
   const [showPresetShiftBadges, setShowPresetShiftBadges] =
     usePersistentScheduleUiBoolean("showPresetShiftBadges", true);
-  const [useDefaultTimesForScheduling, setUseDefaultTimesForScheduling] =
-    usePersistentScheduleUiBoolean("useDefaultTimesForScheduling", false);
   // Hides the orange marks only; approved time off, the rule box and Pre-flight stay (M10, S1).
   const [showAvailability, setShowAvailability] =
     usePersistentScheduleUiBoolean("showAvailability", true);
@@ -603,6 +606,9 @@ export function SchedulePage({
     session && query.data && session.week_start === query.data.week_start
       ? session
       : null;
+  useEffect(() => {
+    if (!gridEditSession) setPresetPick(null);
+  }, [gridEditSession]);
   const pendingOpsLocationIds = useMemo(() => {
     const data = query.data;
     if (!data) return [];
@@ -2319,14 +2325,14 @@ export function SchedulePage({
     employeeSortMode === "byJob" &&
     showRoleSeparators &&
     showPresetShiftBadges
-      ? buildCellPresetMenuItems(model, cellMenu, useDefaultTimesForScheduling)
+      ? buildCellPresetMenuItems(model, cellMenu)
       : [];
-  const openPresetCreateTarget = (target: PresetCreateTarget): void => {
-    const validation = validatePresetCreateTarget(
-      model,
-      target,
-      useDefaultTimesForScheduling,
-    );
+  // PRESET-SAAT (KARARLAR S-183, variant A): a preset writes one of its shift
+  // type's saved times and the card shows it. One time: placed at once.
+  // Several: a small list beside the cell; the picked time is written.
+  const placePresetShift = (target: PresetCreateTarget, hours: PresetHours): void => {
+    // Checked with the hours being written, not the type's primary ones.
+    const validation = validatePresetCreateTarget(model, withPresetHours(target, hours));
     if (!validation.allowed) {
       toast.error("Preset shift is unavailable", {
         dedupeKey: "schedule-preset-shift-unavailable",
@@ -2338,52 +2344,39 @@ export function SchedulePage({
       });
       return;
     }
-    if (
-      context &&
-      gridEditSession &&
-      target.preset.startTime &&
-      target.preset.endTime
-    ) {
-      dropReview.start({
-        input: {
-          location_id: target.locationId,
-          employee_id: target.employeeId,
-          job_id: target.preset.jobId,
-          shift_type_id: target.preset.shiftTypeId,
-          scheduled_date: target.date,
-          start_time: target.preset.startTime!,
-          end_time: target.preset.endTime!,
-          unpaid_break_minutes: 30,
-          hide_time_on_badge: !useDefaultTimesForScheduling,
-          time_basis: "type_default",
-          time_snapshot: {
-            shift_type_id: target.preset.shiftTypeId,
-            default_revision: model.shift_types.find((type) => type.id === target.preset.shiftTypeId)?.default_revision ?? 1,
-            start_time: target.preset.startTime!, end_time: target.preset.endTime!,
-            timezone: model.locations.find((location) => location.id === target.locationId)?.timezone ?? "UTC",
-          },
-          time_timezone: model.locations.find((location) => location.id === target.locationId)?.timezone ?? "UTC",
-          label_ids: [],
-          label_names: [],
-          note: "",
-        },
-        save: async input => {
-          const next = await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, input));
-          announceAssignment([input], "add", next);
-          return Boolean(next);
-        },
+    if (!context || !gridEditSession) return;
+    const input = presetDropInput(model, target, hours);
+    dropReview.start({
+      input,
+      // The card shows the moment it lands; the save follows, as a copied shift's does.
+      optimisticOp: createOptimisticPendingOp({ locationId: target.locationId, weekStart: gridEditSession.week_start, opType: "create", targetShiftId: null,
+        draftId: gridEditSession.source_draft_id, payload: input, actorUserId: gridEditSession.holder_user_id }),
+      save: async (next) => {
+        const saved = await mutate(() => createScheduleShift(context.workspace.id, gridEditSession, next), undefined, true);
+        announceAssignment([next], "add", saved);
+        return Boolean(saved);
+      },
+    });
+  };
+  const openPresetCreateTarget = (target: PresetCreateTarget): void => {
+    const options = presetTimeOptions(model, target);
+    if (!context || !gridEditSession || !options.length) {
+      setEditor({
+        mode: "create",
+        locationId: target.locationId,
+        employeeId: target.employeeId,
+        date: target.date,
+        preset: target.preset,
+        x: target.point?.x,
+        y: target.point?.y,
       });
       return;
     }
-    setEditor({
-      mode: "create",
-      locationId: target.locationId,
-      employeeId: target.employeeId,
-      date: target.date,
-      preset: target.preset,
-      x: target.point?.x,
-      y: target.point?.y,
-    });
+    if (options.length === 1) {
+      placePresetShift(target, options[0]!);
+      return;
+    }
+    setPresetPick({ target, cell: presetPickCellAt(target.point) });
   };
   const templatesTab: NewScheduleWindowProps["templates"] = gates.templatesRead && context ? {
     templates,
@@ -2714,10 +2707,6 @@ export function SchedulePage({
         onTogglePresetShiftBadges={() =>
           setShowPresetShiftBadges((current) => !current)
         }
-        useDefaultTimesForScheduling={useDefaultTimesForScheduling}
-        onToggleUseDefaultTimesForScheduling={() =>
-          setUseDefaultTimesForScheduling((current) => !current)
-        }
         showAvailability={showAvailability}
         onToggleAvailability={() => setShowAvailability((current) => !current)}
         employeeSortMode={employeeSortMode}
@@ -2870,7 +2859,6 @@ export function SchedulePage({
         showJobColorDot={false}
         showRoleSeparators={showRoleSeparators}
         showPresetShiftBadges={showPresetShiftBadges}
-        useDefaultTimesForScheduling={useDefaultTimesForScheduling}
         showAvailability={showAvailability}
         employeeSortMode={employeeSortMode}
         session={gridEditSession}
@@ -3136,6 +3124,22 @@ export function SchedulePage({
             setSaveOpen(true);
           }}
           onContinue={keepEditing}
+        />
+      ) : null}
+      {presetPick && gridEditSession ? (
+        <PresetTimePicker
+          key={`${presetPick.target.employeeId}|${presetPick.target.date}|${presetPick.target.preset.shiftTypeId}`}
+          name={presetPickName(model, presetPick.target)}
+          color={model.shift_types.find((type) => type.id === presetPick.target.preset.shiftTypeId)?.color ?? "var(--theme-muted)"}
+          where={presetPickWhere(model, presetPick.target)}
+          options={presetTimeOptions(model, presetPick.target)}
+          cell={presetPick.cell}
+          onPick={(hours) => {
+            const { target } = presetPick;
+            setPresetPick(null);
+            placePresetShift(target, hours);
+          }}
+          onCancel={closePresetPick}
         />
       ) : null}
       {editor && gridEditSession && context ? (

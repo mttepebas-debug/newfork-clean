@@ -73,8 +73,6 @@ interface ScheduleTopBarProps {
   readonly onToggleRoleSeparators: () => void;
   readonly showPresetShiftBadges?: boolean;
   readonly onTogglePresetShiftBadges?: () => void;
-  readonly useDefaultTimesForScheduling?: boolean;
-  readonly onToggleUseDefaultTimesForScheduling?: () => void;
   readonly showAvailability?: boolean;
   readonly onToggleAvailability?: () => void;
   readonly employeeSortMode: ScheduleEmployeeSortMode;
@@ -132,8 +130,6 @@ export function ScheduleTopBar({
   onToggleRoleSeparators,
   showPresetShiftBadges,
   onTogglePresetShiftBadges,
-  useDefaultTimesForScheduling,
-  onToggleUseDefaultTimesForScheduling,
   showAvailability,
   onToggleAvailability,
   employeeSortMode,
@@ -295,7 +291,6 @@ export function ScheduleTopBar({
               showRoleSeparators={showRoleSeparators}
               showUnassignedShifts={showUnassignedShifts}
               unassignedFrozen={unassignedFrozen}
-              useDefaultTimesForScheduling={useDefaultTimesForScheduling}
               onEmployeeSortModeChange={onEmployeeSortModeChange}
               onToggleShiftType={onToggleShiftType}
               onToggleShiftLabels={onToggleShiftLabels}
@@ -306,9 +301,6 @@ export function ScheduleTopBar({
               onToggleUnassignedShifts={onToggleUnassignedShifts}
               onToggleUnassignedFrozen={onToggleUnassignedFrozen}
               unassignedRowSettingsDisabled={unassignedRowSettingsDisabled}
-              onToggleUseDefaultTimesForScheduling={
-                onToggleUseDefaultTimesForScheduling
-              }
               showAvailability={showAvailability}
               onToggleAvailability={onToggleAvailability}
             />
@@ -543,7 +535,6 @@ function SettingsMenuPanel({
   showRoleSeparators,
   showUnassignedShifts,
   unassignedFrozen,
-  useDefaultTimesForScheduling,
   onEmployeeSortModeChange,
   onToggleShiftType,
   onToggleShiftLabels,
@@ -554,7 +545,6 @@ function SettingsMenuPanel({
   onToggleUnassignedShifts,
   onToggleUnassignedFrozen,
   unassignedRowSettingsDisabled,
-  onToggleUseDefaultTimesForScheduling,
   showAvailability,
   onToggleAvailability,
 }: {
@@ -567,7 +557,6 @@ function SettingsMenuPanel({
   readonly showRoleSeparators: boolean;
   readonly showUnassignedShifts?: boolean;
   readonly unassignedFrozen?: boolean;
-  readonly useDefaultTimesForScheduling?: boolean;
   readonly onEmployeeSortModeChange: (mode: ScheduleEmployeeSortMode) => void;
   readonly onToggleShiftType: () => void;
   readonly onToggleShiftLabels: () => void;
@@ -578,7 +567,6 @@ function SettingsMenuPanel({
   readonly onToggleUnassignedShifts?: () => void;
   readonly onToggleUnassignedFrozen?: () => void;
   readonly unassignedRowSettingsDisabled: boolean;
-  readonly onToggleUseDefaultTimesForScheduling?: () => void;
   readonly showAvailability?: boolean;
   readonly onToggleAvailability?: () => void;
 }) {
@@ -666,20 +654,6 @@ function SettingsMenuPanel({
           label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
           onClick={onToggleUnassignedFrozen}
           disabled={unassignedRowSettingsDisabled}
-        />
-      ) : null}
-      {onToggleUseDefaultTimesForScheduling ? (
-        <SettingsToggleRow
-          pressed={Boolean(useDefaultTimesForScheduling)}
-          icon={
-            useDefaultTimesForScheduling ? (
-              <Clock3 size={15} />
-            ) : (
-              <EyeOff size={15} />
-            )
-          }
-          label="Use default times for scheduling"
-          onClick={onToggleUseDefaultTimesForScheduling}
         />
       ) : null}
       {onToggleAvailability ? (

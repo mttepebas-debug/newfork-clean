@@ -416,7 +416,6 @@ export default function ScheduleShiftDesignPage() {
           showJobColorDot
           showRoleSeparators
           showPresetShiftBadges
-          useDefaultTimesForScheduling={false}
           employeeSortMode="byJob"
           session={session}
           activeEditorTarget={

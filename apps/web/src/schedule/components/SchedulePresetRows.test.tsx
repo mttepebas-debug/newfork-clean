@@ -194,6 +194,40 @@ describe("SchedulePresetRows", () => {
     expect(document.querySelector(".schedule-preset-total-cell")).toBeTruthy();
   });
 
+  // PRESET-SAAT (S-183): dragging a chip to another day drops it there; the
+  // click the browser sends when the press ends is not a second create on the
+  // chip's own day.
+  it("does not create on the chip's day when a press ends far away after a drag", () => {
+    const onPresetCreate = vi.fn();
+    render(
+      <div role="grid">
+        <SchedulePresetRows
+          job={job}
+          shiftTypes={shiftTypes.slice(0, 1)}
+          locations={locations}
+          days={["2026-08-17"]}
+          editing
+          showTotalHours={false}
+          onPresetCreate={onPresetCreate}
+          onPresetPointerDown={vi.fn()}
+        />
+      </div>,
+    );
+    const dinner = screen.getByRole("button", { name: "Dinner-Server" });
+    // jsdom has no PointerEvent: the press carries its point by hand.
+    const press = (x: number, y: number) => {
+      const event = new Event("pointerdown", { bubbles: true, cancelable: true });
+      Object.defineProperties(event, { clientX: { value: x }, clientY: { value: y }, button: { value: 0 }, pointerId: { value: 1 } });
+      fireEvent(dinner, event);
+    };
+    press(20, 20);
+    fireEvent.click(dinner, { clientX: 340, clientY: 220 });
+    expect(onPresetCreate).not.toHaveBeenCalled();
+    press(20, 20);
+    fireEvent.click(dinner, { clientX: 22, clientY: 21 });
+    expect(onPresetCreate).toHaveBeenCalledTimes(1);
+  });
+
   it("disables preset chips outside editing mode", () => {
     const onPresetCreate = vi.fn();
 
