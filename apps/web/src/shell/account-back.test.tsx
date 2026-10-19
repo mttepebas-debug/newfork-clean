@@ -13,7 +13,7 @@ import { AppShell } from "./AppShell";
 let context: {
   workspace: { id: string; name: string };
   userId: string;
-  membership: { role: string };
+  membership: { access: { employee: boolean; management: string | null } };
   permissions: string[];
   actions: string[];
 };
@@ -38,7 +38,7 @@ vi.mock("../employee-hub/shift-exchanges/useExchangeRealtime", () => ({
 const dualRole = {
   workspace: { id: "w", name: "Meyhouse" },
   userId: "u",
-  membership: { role: "manager" },
+  membership: { access: { employee: false, management: "manager" } },
   permissions: ["workspace.read", "schedule.read", "employees.read"],
   actions: ["workspace.read", "schedule.read", "employee_hub.read"],
 };
