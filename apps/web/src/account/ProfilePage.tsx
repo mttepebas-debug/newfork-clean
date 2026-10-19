@@ -418,9 +418,8 @@ export default function ProfilePage() {
       <AccountPageHeader
         title="Profile"
         titleId="profile-title"
-        description="Your name, photo and phone, and who to call in an emergency."
+        description="Your name, avatar and phone, and who to call in an emergency."
       />
-      {/* Save itself says what is missing; the browser's own check would stop a photo saved alone. */}
       <form className="account-profile-form" aria-label="Profile" noValidate onSubmit={submit}>
         <div className="account-profile-head">
           {context ? (
@@ -620,10 +619,16 @@ function ProfileAvatar({
   const remove = useRemoveAvatar(workspaceId);
   const [picking, setPicking] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const actions = useRef<HTMLDivElement>(null);
   const avatar = own.data?.avatar ?? null;
+  // A read that failed with nothing read before: whether there is an avatar is not known, so
+  // nothing is offered as if there were none. A later refresh that fails keeps what was read.
+  const unknown = own.isError && own.data === undefined;
   const waiting = own.isPending || remove.isPending;
   const choose = () => {
     setError(null);
+    // The window gives focus back to what had it: the named button, never the hidden circle.
+    actions.current?.querySelector<HTMLButtonElement>("button")?.focus({ preventScroll: true });
     setPicking(true);
   };
   return (
@@ -634,7 +639,7 @@ function ProfileAvatar({
         className="account-avatar-button"
         tabIndex={-1}
         aria-hidden="true"
-        disabled={waiting}
+        disabled={waiting || unknown}
         onClick={choose}
       >
         <MemberAvatar avatar={avatar} name={name} size={phone ? 80 : 104} className="account-profile-avatar" />
@@ -643,11 +648,16 @@ function ProfileAvatar({
         </span>
       </button>
       <ProfileIdentity name={name} email={email}>
-        <div className="account-photo-actions">
-          <Button type="button" disabled={waiting} onClick={choose}>
-            {avatar ? "Change avatar" : "Add avatar"}
-          </Button>
-          {avatar ? (
+        {unknown ? (
+          <p className="account-avatar-unread" role="status">
+            Your avatar couldn't be loaded. Try again in a moment.
+          </p>
+        ) : (
+          <div ref={actions} className="account-photo-actions">
+            <Button type="button" disabled={waiting} onClick={choose}>
+              {avatar ? "Change avatar" : "Add avatar"}
+            </Button>
+            {avatar ? (
             <ConfirmButton
               className="danger-button"
               confirmLabel="Confirm remove"
@@ -659,8 +669,9 @@ function ProfileAvatar({
             >
               <Trash2 size={15} aria-hidden /> Remove
             </ConfirmButton>
-          ) : null}
-        </div>
+            ) : null}
+          </div>
+        )}
         <FieldNote id="profile-avatar" error={error} />
         <small className="account-avatar-note">
           Your avatar in {workspaceName}. Other workspaces keep their own. Lineups show an avatar, never a photo.

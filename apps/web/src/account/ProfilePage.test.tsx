@@ -218,6 +218,30 @@ describe("ProfilePage", () => {
     await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.anything(), avatarPath, { method: "DELETE" }));
   });
 
+  it("says the avatar could not be loaded and offers nothing as if there were none", async () => {
+    vi.mocked(apiRequest).mockRejectedValue(new Error("down"));
+    const view = renderProfile();
+    expect(await screen.findByText("Your avatar couldn't be loaded. Try again in a moment.")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add avatar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Change avatar" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+    expect(view.container.querySelector(".account-profile-avatar")?.textContent).toBe("OU");
+    expect(view.container.querySelector<HTMLButtonElement>(".account-avatar-button")?.disabled).toBe(true);
+  });
+
+  it("gives focus back to the named button when the window opened from the circle closes", async () => {
+    const view = renderProfile();
+    const named = await screen.findByRole("button", { name: "Add avatar" });
+    await waitFor(() => expect(named).toHaveProperty("disabled", false));
+    const circle = view.container.querySelector<HTMLButtonElement>(".account-avatar-button")!;
+    circle.focus();
+    fireEvent.click(circle);
+    const picker = screen.getByRole("dialog", { name: "Your avatar" });
+    fireEvent.click(within(picker).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Your avatar" })).toBeNull());
+    expect(document.activeElement).toBe(named);
+  });
+
   it("shows no avatar area outside a workspace, and still the name and e-mail", () => {
     context = null;
     renderProfile();

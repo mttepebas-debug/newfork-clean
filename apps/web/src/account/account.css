@@ -280,6 +280,14 @@
   box-sizing: border-box;
 }
 
+/* The avatar could not be read: said where the buttons would be. */
+.account-avatar-unread {
+  margin: 10px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
 .account-avatar-note {
   display: block;
   max-width: 44ch;
