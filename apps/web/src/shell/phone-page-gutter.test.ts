@@ -27,4 +27,18 @@ describe("phone page gutter", () => {
     },
   );
 
+  // Every phone page has the same 16 px gutter (Mert 2026-10-19, S-186): the
+  // employee's pages read theirs from one variable, never narrowed below it.
+  it("gives the employee's pages the 16 px gutter at every phone width", () => {
+    const set = [...css.matchAll(/--eh-gutter\s*:\s*([^;]+);/g)].map(([, value]) => value!.trim());
+    expect(set).toEqual(["16px"]);
+    const hub = rules
+      .filter(({ head }) => head.includes(".employee-hub-page"))
+      .map(({ body }) => body)
+      .join(";");
+    expect(hub).toMatch(/padding\s*:\s*16px var\(--eh-gutter\) 34px/);
+    // A full-width strip bleeds by the gutter; its fallback is the same 16.
+    const lineup = strip(readFileSync("src/employee-hub/employee-lineup.css", "utf8"));
+    expect([...lineup.matchAll(/var\(--eh-gutter,\s*([^)]+)\)/g)].map(([, value]) => value)).not.toContain("14px");
+  });
 });

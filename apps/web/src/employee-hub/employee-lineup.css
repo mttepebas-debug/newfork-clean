@@ -9,14 +9,14 @@
 .employee-schedule-tabs a:focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; border-radius: 2px; }
 
 /* The day: the manager's date row and wheel (schedule/lineup-wheel.css), as wide as the lineup under it; on a
-   phone the wheel runs edge to edge like the manager's (the hub page's side padding is 14 px there). */
+   phone the wheel runs edge to edge like the manager's (the hub page's side padding is 16 px there). */
 .employee-lineup-day { display: grid; gap: 14px; max-width: 560px; }
 .employee-lineup-day .lineup-wheel { margin: 0; }
 @media (max-width: 720px) {
   .employee-lineup-day { max-width: none; }
   /* The wheel runs to the screen's edges: as far as the page's gutter, never further (a 14 px bleed against
      a 12 px gutter left the page 2 px wider than the screen, and it moved sideways under a finger). */
-  .employee-lineup-day .lineup-wheel { margin: 0 calc(-1 * var(--eh-gutter, 14px)); }
+  .employee-lineup-day .lineup-wheel { margin: 0 calc(-1 * var(--eh-gutter, 16px)); }
 }
 
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
@@ -144,7 +144,7 @@
    2026-10-19), so the header starts at the top itself; a phone reaches over its 16 px (below). */
 .employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; background: inherit; }
 @media (max-width: 720px) {
-  .employee-hub-page > .employee-lineup-pin { margin: -16px calc(-1 * var(--eh-gutter, 14px)) 0; padding: 16px var(--eh-gutter, 14px) 0; }
+  .employee-hub-page > .employee-lineup-pin { margin: -16px calc(-1 * var(--eh-gutter, 16px)) 0; padding: 16px var(--eh-gutter, 16px) 0; }
 }
 
 /* A phone's list frame (views/list-page-frozen.css, Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL): the header and
@@ -153,8 +153,8 @@
    over the page's gutter so the wheel's full width stays inside it (nothing is wider than the screen). */
 @media (max-width: 720px) and (min-height: 560px) {
   .employee-hub-page > .employee-lineup-page {
-    margin: 0 calc(-1 * var(--eh-gutter, 14px));
-    padding: 0 var(--eh-gutter, 14px) 24px;
+    margin: 0 calc(-1 * var(--eh-gutter, 16px));
+    padding: 0 var(--eh-gutter, 16px) 24px;
     background: inherit;
   }
   .employee-lineup-page > .employee-lineup,

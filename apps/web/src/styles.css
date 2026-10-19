@@ -12125,8 +12125,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 @media (max-width: 720px) {
   .employee-hub-page {
-    /* The page's side gutter: what a full-width strip (Lineup's heading and wheel) bleeds into. */
-    --eh-gutter: 14px;
+    /* The page's side gutter, 16 px like every phone page (Mert 2026-10-19,
+       S-186): what a full-width strip (Lineup's heading and wheel) bleeds into. */
+    --eh-gutter: 16px;
     width: 100%;
     padding: 16px var(--eh-gutter) 34px;
   }
@@ -12265,7 +12266,6 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 @media (max-width: 620px) {
   .employee-hub-page {
-    --eh-gutter: 12px;
     padding: 18px var(--eh-gutter) 36px;
   }
   .hub-panel {
