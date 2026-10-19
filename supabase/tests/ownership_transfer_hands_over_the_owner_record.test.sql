@@ -1,13 +1,14 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(33);
+select plan(40);
 
 -- BL-252/BL-246 (user, 2026-09-28). Accepting an ownership transfer hands
 -- over what being the owner means: the new owner works the Owner job and the
 -- old owner no longer does; the new owner is asked for no document, like any
 -- owner, so what they still owed is excused and a document block lifts.
--- Only somebody with a live employee record here can accept. A transfer that
--- is rejected, cancelled or refused changes nothing.
+-- A transfer that is rejected, cancelled or refused changes nothing. It swaps
+-- the two management slots and leaves the employee access alone (ROL-CIFT,
+-- design §4.12).
 
 -- What one statement answers: 'allowed', or the refusal as '<sqlstate> <hint>'.
 create function pg_temp.refusal(statement text) returns text
@@ -151,12 +152,11 @@ select ok((pg_temp.req('ot:owner', pg_temp.card())).lifecycle_exempt
     and (pg_temp.req('ot:owner', pg_temp.handbook())).owner_excused,
   'and stays excused from the documents and the handbook');
 
--- 2. Only somebody with a live employee record here takes ownership ------------------
+-- 2. Only an active admin is offered the workspace ----------------------------------
 -- Archiving a record or removing its access, the product's two ways to part a
 -- person from their record, both suspend the membership, and neither runs
 -- while a transfer is pending. So such an admin is never offered the
--- workspace. (The acceptance also asks for a live record itself; no product
--- path reaches that check alone.)
+-- workspace.
 
 create function pg_temp.offer_answer(person text) returns text language sql as $$
   select pg_temp.refusal(format('select public.initiate_workspace_ownership_transfer_service(%L, %L, %L)',
@@ -278,6 +278,43 @@ select is((pg_temp.req('ot:owner', tests.id('ot:permit'))).lifecycle_exempt, fal
   'and loses it when the document is put back up');
 select is((pg_temp.req('ot:deniz', tests.id('ot:permit'))).lifecycle_exempt, true,
   'while the new owner stays excused from it');
+
+-- 6. The management slots swap; the employee access stays (ROL-CIFT 4.2) -----------
+-- Ula only manages and the owner also works shifts. Ula's record is archived
+-- by hand after the offer (ponytail: no product path parts them while a
+-- transfer is pending); taking ownership asks for no employee record.
+
+select tests.world('ou');
+select tests.person('ou', 'ula', 'admin', array['K'], array['cook']);
+select tests.no_employee_slot('ou', 'ula');
+select tests.employee_slot('ou', 'owner');
+select public.initiate_workspace_ownership_transfer_service(tests.user('ou:owner'), tests.id('ou'), tests.user('ou:ula'));
+update public.employee_profiles set archived_at = now() where id = tests.id('ou:ula');
+create function pg_temp.slots(person text) returns text language sql as $$
+  select concat_ws(' + ', r.system_key::text, case when m.employee_role_id is not null then 'employee' end)
+  from public.workspace_memberships m left join public.workspace_roles r on r.id = m.role_id
+  where m.workspace_id = tests.id('ou') and m.user_id = tests.user(person)
+$$;
+create function pg_temp.management_jobs(person text) returns text[] language sql as $$
+  select array_agg(lower(j.name) order by j.name)
+  from public.membership_management_jobs held
+  join public.workspace_memberships m on m.id = held.membership_id
+  join public.jobs j on j.id = held.job_id
+  where m.workspace_id = tests.id('ou') and m.user_id = tests.user(person)
+$$;
+select is(pg_temp.refusal(format('select public.respond_workspace_ownership_transfer_service(%L, %L, %L, ''accept'')',
+    tests.user('ou:ula'), tests.id('ou'),
+    (select id from public.workspace_ownership_transfers where workspace_id = tests.id('ou') and status = 'pending'))),
+  'allowed', 'Ula accepts with no employee record');
+select is(pg_temp.slots('ou:ula'), 'owner', 'Ula is the owner and still only manages');
+select is(pg_temp.management_jobs('ou:ula'), array['general manager', 'owner'], 'with the Owner job beside the Management job they held');
+select is(pg_temp.slots('ou:owner'), 'admin + employee', 'the old owner is an admin and keeps the employee access');
+select is(pg_temp.management_jobs('ou:owner'), array['general manager'], 'with a Management job of an admin');
+select is((select count(*)::integer from public.workspace_ownership_transfers
+  where workspace_id = tests.id('ou') and status = 'accepted'), 1, 'one transfer was accepted there');
+select ok(app_private.has_employee_access(tests.id('ou'), tests.user('ou:owner'))
+    and not app_private.has_employee_access(tests.id('ou'), tests.user('ou:ula')),
+  'the employee side moved for nobody');
 
 select * from finish();
 rollback;
