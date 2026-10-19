@@ -14,6 +14,9 @@ export interface LineupRow {
   readonly startTime: string;
   readonly endTime: string;
   readonly crossesMidnight: boolean;
+  /** The Schedule's In and Out for this row, when it comes from the Schedule. */
+  readonly scheduleStartTime: string | null;
+  readonly scheduleEndTime: string | null;
   readonly labels: readonly string[];
   /** Where on the floor (the lineup's own), if set. */
   readonly sectionName: string | null;
@@ -141,6 +144,8 @@ export function lineupDay(
               startTime: row.start_time,
               endTime: row.end_time,
               crossesMidnight: row.crosses_midnight,
+              scheduleStartTime: row.schedule_start_time,
+              scheduleEndTime: row.schedule_end_time,
               labels: row.label_names ?? [],
               sectionName: row.section_name,
               lineupOnly: row.lineup_only,
@@ -220,6 +225,22 @@ function minutes(time: string): number {
 
 function shiftRows(shift: LineupShift): LineupRow[] {
   return shift.departments.flatMap((department) => department.jobs.flatMap((job) => job.rows));
+}
+
+/** Minutes worked from `start` to `end`; an end at or before the start is the next day. */
+function worked(start: string, end: string): number {
+  const span = minutes(end) - minutes(start);
+  return span > 0 ? span : span + 24 * 60;
+}
+
+/**
+ * How much longer (+) or shorter (−) the row's shift is than the Schedule's, in minutes of the TOTAL worked (Mert
+ * 2026-10-19 ~5:30 AM; S-178 Ek 2): Schedule 4:00 PM–10:30 PM, lineup 3:00 PM–11:00 PM is +90. 0 when the same or
+ * when the row has no Schedule times (added on the lineup). Managers only.
+ */
+export function lineupHoursChange(row: LineupRow): number {
+  if (!row.scheduleStartTime || !row.scheduleEndTime) return 0;
+  return worked(row.startTime, row.endTime) - worked(row.scheduleStartTime, row.scheduleEndTime);
 }
 
 /** Minutes after the day's midnight the row ends; past midnight runs over 24 h. */

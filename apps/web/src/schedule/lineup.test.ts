@@ -5,6 +5,7 @@ import {
   lineupDay,
   lineupNoteCount,
   lineupCardState,
+  lineupHoursChange,
   lineupReadLists,
   lineupShiftSpan,
   phoneLineupKey,
@@ -328,5 +329,24 @@ describe("the phone's lineup parts", () => {
   it("counts the notes staff will see", () => {
     expect(lineupNoteCount({ specials: "Halibut", n86: "", shift_notes: "  " })).toBe(1);
     expect(lineupNoteCount({ specials: "", n86: "", shift_notes: "" })).toBe(0);
+  });
+});
+
+// Mert 2026-10-19 ~5:30 AM (S-178 Ek 2): red / green is the TOTAL hours worked against the Schedule.
+describe("lineupHoursChange", () => {
+  const row = (start: string, end: string, scheduleStart: string | null, scheduleEnd: string | null) =>
+    ({ startTime: start, endTime: end, scheduleStartTime: scheduleStart, scheduleEndTime: scheduleEnd }) as Parameters<
+      typeof lineupHoursChange
+    >[0];
+  it("counts the whole shift: earlier in and later out add up", () => {
+    expect(lineupHoursChange(row("15:00", "23:00", "16:00", "22:30"))).toBe(90);
+  });
+  it("is negative when the shift got shorter, zero when the total is the same", () => {
+    expect(lineupHoursChange(row("16:00", "21:30", "16:00", "22:30"))).toBe(-60);
+    expect(lineupHoursChange(row("15:00", "21:30", "16:00", "22:30"))).toBe(0);
+  });
+  it("runs past midnight, and says nothing for a row with no Schedule times", () => {
+    expect(lineupHoursChange(row("21:00", "01:00", "21:00", "00:30"))).toBe(30);
+    expect(lineupHoursChange(row("16:00", "22:00", null, null))).toBe(0);
   });
 });

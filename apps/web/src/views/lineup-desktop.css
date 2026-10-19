@@ -3,9 +3,9 @@
    Light theme, --theme-* tokens. */
 
 .lineup-desk-page {
-  /* One grid for the column headings and every row: circle, person, position, label, in – out, section, and the
-     row's own end (Call off comes there with editing). */
-  --lineup-desk-cols: 38px minmax(0, 1fr) 150px 128px 206px 158px 92px;
+  /* One grid for the column headings and every row: circle, person, position, label, in – out, section; Section is
+     the last column, by the list's right edge (Mert 2026-10-19 ~5:30 AM; Call off joins after it with editing). */
+  --lineup-desk-cols: 38px minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(206px, 1.1fr) minmax(0, 1fr);
   display: grid;
   box-sizing: border-box;
   width: min(100% - 64px, 1320px);
@@ -126,7 +126,12 @@
   font-size: 11.5px;
   font-weight: 800;
   letter-spacing: 0.06em;
+  text-align: center;
   text-transform: uppercase;
+}
+/* Each heading centred on its column's content (Mert 2026-10-19 ~5:30 AM); Employee starts where the names do. */
+.lineup-desk-cols > :nth-child(2) {
+  text-align: left;
 }
 .lineup-desk-page .lineup-phone-dept:first-of-type {
   margin-top: 6px;
@@ -158,13 +163,39 @@
   font-size: 13.5px;
   font-variant-numeric: tabular-nums;
   line-height: 20px;
+  text-align: center;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* In – Out on one line, the difference in hours worked under it. */
 .lineup-desk-cell.lineup-desk-time {
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  display: grid;
+  justify-items: center;
+  gap: 1px;
+}
+/* The orange dot hangs beside the time, so the time itself stays centred under its heading. */
+.lineup-desk-hours {
+  position: relative;
+  display: inline-block;
+}
+.lineup-desk-hours > .lineup-phone-changed {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  margin-left: 6px;
+  transform: translateY(-50%);
+}
+.lineup-desk-change {
+  font-size: 11.5px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 14px;
+}
+.lineup-desk-change.is-longer {
+  color: var(--theme-danger);
+}
+.lineup-desk-change.is-shorter {
+  color: var(--theme-success);
 }
 .lineup-desk-none {
   color: var(--theme-text-faint);

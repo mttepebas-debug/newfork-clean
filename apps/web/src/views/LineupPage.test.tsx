@@ -153,9 +153,10 @@ describe("LineupPage", () => {
     // The ticket doesn't fold on the desktop.
     expect(within(ticket).queryByRole("button", { name: "Hide list" })).toBeNull();
     const heads = document.querySelector(".lineup-desk-cols")!;
-    expect([...heads.children].map((cell) => cell.textContent)).toEqual(["", "Employee", "Position", "Label", "In – Out", "Section", ""]);
+    // Section is the last column, by the list's right edge (Mert 2026-10-19 ~5:30 AM).
+    expect([...heads.children].map((cell) => cell.textContent)).toEqual(["", "Employee", "Position", "Label", "In – Out", "Section"]);
     const row = within(screen.getByRole("list", { name: "Server" })).getByRole("listitem");
-    expect([...row.children].map((cell) => cell.textContent)).toEqual(["ML", "Maria Lopez", "Server", "Training", "11:00 AM – 4:00 PM", "—", ""]);
+    expect([...row.children].map((cell) => cell.textContent)).toEqual(["ML", "Maria Lopez", "Server", "Training", "11:00 AM – 4:00 PM", "—"]);
     expect(within(row).getByLabelText("No section")).toBeTruthy();
     // One list: the person's circle comes from the one place that draws it (LineupPersonCircle).
     expect(row.querySelector(".lineup-phone-avatar")?.getAttribute("aria-hidden")).toBe("true");
@@ -207,13 +208,51 @@ describe("LineupPage", () => {
     expect(wheel).toMatch(/\.lineup-wheel-track \{[^}]*width: calc\(100% \/ var\(--lineup-wheel-visible, 7\) \* var\(--lineup-wheel-days\)\);/);
   });
 
+  // Mert 2026-10-19 ~5:30 AM (S-178 Ek 2): under In – Out, the difference in the total hours worked, managers only.
+  it("says under In – Out how much longer or shorter the shift is than the Schedule's", async () => {
+    world = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: chloe, job: server, type: lunch, start: "11:00", end: "16:00" }),
+    ]);
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      const answer = (await realRead(client, path, init)) as ReturnType<typeof dayRead>;
+      if (!/\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path)) return answer;
+      const rows = answer.locations[0]!.lineups[0]!.rows;
+      const at = (name: string) => rows.find((row) => row.employee_id === name)!;
+      // Maria in at 10:00, out at 5:30 PM: +2 h 30 min. Hannah out at 3:00 PM: −1 h. Chloe 10:00 – 3:00 PM: the same 5 h.
+      Object.assign(at(maria), { start_time: "10:00", end_time: "17:30", changed: ["start_time", "end_time"] });
+      Object.assign(at(hannah), { end_time: "15:00", changed: ["end_time"] });
+      Object.assign(at(chloe), { start_time: "10:00", end_time: "15:00", changed: ["start_time", "end_time"] });
+      return answer;
+    });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const list = await screen.findByRole("list", { name: "Server" });
+    const timeOf = (name: string) => within(list).getByText(name).closest("li")!.querySelector(".lineup-desk-time")!;
+    const longer = timeOf("Maria Lopez").querySelector(".lineup-desk-change")!;
+    expect(longer.textContent).toBe("+2 h 30 min");
+    expect(longer.classList.contains("is-longer")).toBe(true);
+    expect(longer.getAttribute("title")).toBe("Schedule 11:00 AM – 4:00 PM");
+    const shorter = timeOf("Hannah Lee").querySelector(".lineup-desk-change")!;
+    expect(shorter.textContent).toBe("\u22121 h");
+    expect(shorter.classList.contains("is-shorter")).toBe(true);
+    expect(timeOf("Chloe Davis").querySelector(".lineup-desk-change")).toBeNull();
+    // The orange dot still says the time changed.
+    expect(timeOf("Chloe Davis").querySelector(".lineup-phone-changed")).toBeTruthy();
+  });
+
   it("keeps the page still: only the list under the ticket scrolls, its column headings pinned", () => {
     const frozen = readFileSync("src/views/list-page-frozen.css", "utf8");
     expect(frozen).toMatch(/\.lineup-page\.list-page\.list-page > \.lineup-desk \{\s*flex: 1 1 auto;/);
     const desk = readFileSync("src/views/lineup-desktop.css", "utf8");
     expect(desk).toMatch(/\.lineup-desk-scroll \{[^}]*min-height: 0;[^}]*overflow-y: auto;/);
     expect(desk).toMatch(/\.lineup-desk-cols \{\s*position: sticky;\s*top: 0;/);
-    expect(desk).toMatch(/--lineup-desk-cols: 38px minmax\(0, 1fr\) 150px 128px 206px 158px 92px;/);
+    expect(desk).toMatch(/--lineup-desk-cols: 38px minmax\(0, 1\.25fr\) minmax\(0, 1fr\) minmax\(0, 0\.8fr\) minmax\(206px, 1\.1fr\) minmax\(0, 1fr\);/);
+    // Headings centred on their columns' content; Employee starts where the names do.
+    expect(desk).toMatch(/\.lineup-desk-cols \{[^}]*text-align: center;/);
+    expect(desk).toMatch(/\.lineup-desk-cols > :nth-child\(2\) \{\s*text-align: left;/);
+    expect(desk).toMatch(/\.lineup-desk-cell \{[^}]*text-align: center;/);
   });
 
   it("reads the notes and, once published, who read it in the ticket's tabs", async () => {

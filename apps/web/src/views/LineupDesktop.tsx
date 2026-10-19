@@ -2,6 +2,7 @@ import { ChevronLeft, ChevronRight, Users } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import {
+  lineupHoursChange,
   phoneLineupKey,
   phoneShiftTabs,
   type LineupLocation,
@@ -18,12 +19,20 @@ import "./lineup-desktop.css";
 // The desktop Lineup, F (Mert 2026-10-19 ~2:45 AM, "f harika"; mockup yapim/masaustu/desk.js): the phone's day
 // picker over the page (the date and location, a 15-day wheel, the shift tabs), then one location's ticket in the
 // middle between two arrows as tall as it (none with one location), Team · Notes · Read in its foot. Only the list
-// under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section.
-// Read-only (LINEUP-EDIT W1); editing in the row comes with W2.
+// under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
+// each heading centred on its column's content and Section the last column, by the list's right edge (Mert
+// 2026-10-19 ~5:30 AM). Read-only (LINEUP-EDIT W1); editing in the row (and its Call off column) comes with W2.
 
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
   return `${formatTime(start, format, "long")} – ${formatTime(end, format, "long")}`;
+}
+
+/** "1 h 30 min", "45 min", "2 h". */
+function span(minutes: number): string {
+  const hours = Math.floor(minutes / 60);
+  const rest = minutes % 60;
+  return [hours ? `${hours} h` : "", rest ? `${rest} min` : ""].filter(Boolean).join(" ");
 }
 
 export function DesktopLineupPage({
@@ -291,7 +300,6 @@ function DesktopTeam({
         <span>Label</span>
         <span>In – Out</span>
         <span>Section</span>
-        <span />
       </div>
       {shift.departments.map((department) => (
         <section className="lineup-phone-dept" key={department.id ?? "other"} aria-label={department.name}>
@@ -332,19 +340,39 @@ function DesktopRow({ row, timeFormat }: { readonly row: LineupRow; readonly tim
       <span className="lineup-desk-cell">{row.jobName}</span>
       <span className="lineup-desk-cell">{row.labels.join(", ") || <None label="No label" />}</span>
       <span className="lineup-desk-cell lineup-desk-time">
-        {range(row.startTime, row.endTime, timeFormat)}
-        {row.changed.length ? (
-          <i
-            className="lineup-phone-changed"
-            role="img"
-            aria-label="Changed in this lineup only"
-            title="Changed in this lineup only. The Schedule doesn't change."
-          />
-        ) : null}
+        <span className="lineup-desk-hours">
+          {range(row.startTime, row.endTime, timeFormat)}
+          {row.changed.length ? (
+            <i
+              className="lineup-phone-changed"
+              role="img"
+              aria-label="Changed in this lineup only"
+              title="Changed in this lineup only. The Schedule doesn't change."
+            />
+          ) : null}
+        </span>
+        <HoursChange row={row} timeFormat={timeFormat} />
       </span>
       <span className="lineup-desk-cell">{row.sectionName || <None label="No section" />}</span>
-      <span className="lineup-desk-end" />
     </li>
+  );
+}
+
+/** Under In – Out, managers only: red "+1 h 30 min" when the shift is longer than the Schedule's, green "−1 h" when
+ * shorter, nothing when the total is the same (S-178 Ek 2). */
+function HoursChange({ row, timeFormat }: { readonly row: LineupRow; readonly timeFormat: ScheduleTimeFormat }) {
+  const change = lineupHoursChange(row);
+  if (!change || !row.scheduleStartTime || !row.scheduleEndTime) return null;
+  const longer = change > 0;
+  const said = `${longer ? "+" : "\u2212"}${span(Math.abs(change))}`;
+  return (
+    <em
+      className={`lineup-desk-change ${longer ? "is-longer" : "is-shorter"}`}
+      title={`Schedule ${range(row.scheduleStartTime, row.scheduleEndTime, timeFormat)}`}
+      aria-label={`${span(Math.abs(change))} ${longer ? "longer" : "shorter"} than the Schedule`}
+    >
+      {said}
+    </em>
   );
 }
 
