@@ -7,6 +7,7 @@ import DocumentsSettingsPage from "./DocumentsSettingsPage";
 import { stubPhoneWidth } from "../lib/phone-width.test-util";
 import {
   listDocumentTypes,
+  previewDocumentPublication,
   saveDocumentType,
   setDocumentTypeArchived,
 } from "./documents-data";
@@ -28,6 +29,7 @@ vi.mock("./documents-data", () => ({
   saveDocumentType: vi.fn(),
   reorderDocumentTypes: vi.fn(),
   setDocumentTypeArchived: vi.fn(),
+  previewDocumentPublication: vi.fn(),
 }));
 vi.mock("../documents/EmployeeDocumentsList", () => ({
   EmployeeDocumentsList: () => null,
@@ -308,4 +310,47 @@ it("keeps the last list and says so when a refresh fails", async () => {
   ).toBeTruthy();
   expect(catalog.isConnected).toBe(true);
   expect(screen.queryByText("catalog down")).toBeNull();
+});
+// BL-821: archiving a published document stops it for the people asked; the
+// confirming click says how many before it goes.
+it("says how many people archiving a published document stops it for", async () => {
+  const published = { ...record, publication_status: "published" as const };
+  vi.mocked(listDocumentTypes).mockResolvedValue([published]);
+  vi.mocked(previewDocumentPublication).mockResolvedValue({
+    employees: [{ action: "pause" }, { action: "pause" }, { action: "unchanged" }],
+  } as unknown as Awaited<ReturnType<typeof previewDocumentPublication>>);
+  vi.mocked(setDocumentTypeArchived).mockResolvedValue();
+  mount();
+  const row = (await screen.findByTitle("Safety certificate")).closest(
+    ".job-catalog-row",
+  ) as HTMLElement;
+  fireEvent.click(within(row).getByRole("button", { name: "Archive" }));
+  expect(
+    await within(row).findByRole("button", {
+      name: "Confirm archive: stops it for 2 people",
+    }),
+  ).toBeTruthy();
+  expect(previewDocumentPublication).toHaveBeenCalledWith(
+    "00000000-0000-4000-8000-000000000001",
+    published.id,
+  );
+  fireEvent.click(
+    within(row).getByRole("button", { name: "Confirm archive: stops it for 2 people" }),
+  );
+  await vi.waitFor(() =>
+    expect(setDocumentTypeArchived).toHaveBeenCalledWith(
+      "00000000-0000-4000-8000-000000000001",
+      published.id,
+      true,
+    ),
+  );
+});
+it("archives a draft document without asking who it stops for", async () => {
+  mount();
+  const row = (await screen.findByTitle("Safety certificate")).closest(
+    ".job-catalog-row",
+  ) as HTMLElement;
+  fireEvent.click(within(row).getByRole("button", { name: "Archive" }));
+  expect(within(row).getByRole("button", { name: "Confirm archive" })).toBeTruthy();
+  expect(previewDocumentPublication).not.toHaveBeenCalled();
 });

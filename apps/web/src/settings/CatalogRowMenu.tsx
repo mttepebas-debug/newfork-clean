@@ -107,6 +107,8 @@ export function CatalogArchiveButton({
   name,
   disabled = false,
   title,
+  confirmLabel = "Confirm archive",
+  onArmedChange,
   onToggle,
 }: {
   archived: boolean;
@@ -114,9 +116,13 @@ export function CatalogArchiveButton({
   name?: string;
   disabled?: boolean;
   title?: string;
+  /** The confirming click's words, e.g. what archiving stops (BL-821). */
+  confirmLabel?: string;
+  onArmedChange?: (armed: boolean) => void;
   onToggle: () => void;
 }) {
   const { armed, confirmProps } = useConfirmClick(onToggle);
+  useEffect(() => onArmedChange?.(armed), [armed, onArmedChange]);
   const named = (label: string) => (name ? `${label} ${name}` : undefined);
   if (archived) {
     return (
@@ -131,7 +137,7 @@ export function CatalogArchiveButton({
       </button>
     );
   }
-  const label = armed ? "Confirm archive" : "Archive";
+  const label = armed ? confirmLabel : "Archive";
   return (
     <>
       <button
@@ -151,7 +157,7 @@ export function CatalogArchiveButton({
         {label}
       </button>
       <span className="sr-only" role="status">
-        {armed ? "Confirm archive" : ""}
+        {armed ? confirmLabel : ""}
       </span>
     </>
   );

@@ -21,6 +21,7 @@ import {
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import {
   listDocumentTypes,
+  previewDocumentPublication,
   reorderDocumentTypes,
   saveDocumentType,
   setDocumentTypeArchived,
@@ -116,7 +117,11 @@ export default function DocumentsSettingsPage() {
   const archiveMutation = useMutation({
     mutationFn: ({ id, archived }: { id: string; archived: boolean }) =>
       setDocumentTypeArchived(workspaceId, id, archived),
-    onSuccess: refresh,
+    // Archiving a published document pauses what people are asked for (BL-821).
+    onSuccess: async () => {
+      await refresh();
+      await queryClient.invalidateQueries({ queryKey: ["document-lifecycle"] });
+    },
     onError: (error) => setFormError(errorText(error)),
   });
   const reorderMutation = useMutation({
@@ -527,8 +532,9 @@ export default function DocumentsSettingsPage() {
                           </button>
                         </>
                       )}
-                      <CatalogArchiveButton
-                        archived={Boolean(item.archived_at)}
+                      <DocumentArchiveButton
+                        workspaceId={workspaceId}
+                        item={item}
                         disabled={archiveMutation.isPending}
                         onToggle={() =>
                           archiveMutation.mutate({
@@ -548,6 +554,44 @@ export default function DocumentsSettingsPage() {
         </>
       ) : null}
     </section>
+  );
+}
+
+// Archiving a published document does what Unpublish does (BL-821, Mert
+// 2026-10-19): the confirming click says how many people stop being asked.
+function DocumentArchiveButton({
+  workspaceId,
+  item,
+  disabled,
+  onToggle,
+}: {
+  workspaceId: string;
+  item: DocumentType;
+  disabled: boolean;
+  onToggle: () => void;
+}) {
+  const [armed, setArmed] = useState(false);
+  const published = !item.archived_at && item.publication_status === "published";
+  const impact = useQuery({
+    queryKey: ["document-types", workspaceId, "archive-impact", item.id],
+    queryFn: () => previewDocumentPublication(workspaceId, item.id),
+    enabled: armed && published,
+    staleTime: 0,
+  });
+  const stopped =
+    impact.data?.employees.filter((person) => person.action === "pause").length ?? 0;
+  return (
+    <CatalogArchiveButton
+      archived={Boolean(item.archived_at)}
+      disabled={disabled}
+      confirmLabel={
+        published && stopped > 0
+          ? `Confirm archive: stops it for ${stopped} ${stopped === 1 ? "person" : "people"}`
+          : undefined
+      }
+      onArmedChange={setArmed}
+      onToggle={onToggle}
+    />
   );
 }
 
