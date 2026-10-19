@@ -64,6 +64,36 @@ comment on table app_private.last_avatars is
 insert into app_private.authz_actions (key, scope_class, effect, restricted_ok)
 values ('avatar.self', 'own', 'write', true);
 
+-- Clearing one membership's avatar: the one place that deletes it ------------------------------------
+
+-- Deletes the membership's avatar and every last avatar that points at that membership, and hands back
+-- the photo's path (null for a drawing or no avatar) for the caller to delete from storage. It asks
+-- nobody: its callers authorize first. Not callable by any API role, only by other postgres-owned
+-- SECURITY DEFINER functions (S-187: removing a person's access to a workspace deletes that avatar).
+create function app_private.clear_member_avatar(target_membership_id uuid)
+returns text
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  removed_photo text;
+begin
+  delete from public.member_avatars a
+  where a.membership_id = target_membership_id
+  returning a.photo_path into removed_photo;
+
+  delete from app_private.last_avatars l where l.source_membership_id = target_membership_id;
+
+  return removed_photo;
+end;
+$$;
+
+alter function app_private.clear_member_avatar(uuid) owner to postgres;
+revoke all on function app_private.clear_member_avatar(uuid) from public, anon, authenticated, service_role;
+comment on function app_private.clear_member_avatar(uuid) is
+  'Deletes a membership''s avatar (public.member_avatars) and every app_private.last_avatars row whose source is that membership; returns the removed photo_path, null for a drawing or no avatar (AVATAR-IKON, S-187). Does not authorize: the caller authorizes first. Callers: remove_own_avatar_service, remove_member_photo_service and, when a person''s access to a workspace is removed, public.remove_employee_access_service (ROL-CIFT). The caller must delete the returned object from the employee-profile-photos bucket.';
+
 -- The services --------------------------------------------------------------------------------------
 
 -- One's own avatar here, and the drawings one's jobs here suggest: every job's Lineup icons, the
@@ -178,8 +208,7 @@ begin
   from public.workspace_memberships m
   where m.workspace_id = target_workspace_id and m.user_id = actor_user_id;
 
-  delete from public.member_avatars a where a.membership_id = membership returning a.photo_path into previous;
-  delete from app_private.last_avatars l where l.source_membership_id = membership;
+  previous := app_private.clear_member_avatar(membership);
 
   return jsonb_build_object('previous_photo_path', previous);
 end;
@@ -289,8 +318,7 @@ begin
     raise exception 'Not a photo' using errcode = 'PT409', hint = 'avatar.not_photo';
   end if;
 
-  delete from public.member_avatars a where a.membership_id = membership;
-  delete from app_private.last_avatars l where l.source_membership_id = membership;
+  perform app_private.clear_member_avatar(membership);
 
   insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
   values (target_workspace_id, target_employee_id, actor_user_id, 'employee.avatar_removed', 'Workspace profile photo removed');

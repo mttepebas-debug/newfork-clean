@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(90);
+select plan(99);
 
 -- A person's avatar is one per workspace membership: a photo they uploaded or a drawing from the
 -- Lineup archive, never both (AVATAR-IKON, design §4.3-4.5, §4.7). The account keeps a "last avatar"
@@ -324,6 +324,39 @@ select public.save_own_avatar_service(pg_temp.u('ali@a'), tests.id('a'), jsonb_b
 select is(public.remove_own_avatar_service(pg_temp.u('ali@a'), tests.id('a')), jsonb_build_object('previous_photo_path', pg_temp.p('ali-1')),
   'removing one''s own photo hands it back to delete');
 select is(public.get_own_avatar_service(pg_temp.u('ali@a'), tests.id('a')) -> 'kind', 'null'::jsonb, 'and leaves no avatar');
+
+-- clear_member_avatar: the one internal place that deletes a membership's avatar (S-187) -------------
+-- Removing a person's access calls it; its callers authorize first, so no API role may call it.
+
+select is(
+  (select row(p.prosecdef, p.proowner::regrole::text, p.proconfig)::text from pg_proc p
+   where p.oid = 'app_private.clear_member_avatar(uuid)'::regprocedure),
+  row(true, 'postgres', array['search_path=""'])::text,
+  'clear_member_avatar: SECURITY DEFINER, owned by postgres, with an empty search_path');
+select is(
+  array(select format('%s %s', r, has_function_privilege(r, 'app_private.clear_member_avatar(uuid)', 'EXECUTE'))
+        from unnest(array['anon', 'authenticated', 'service_role']) r),
+  array['anon f', 'authenticated f', 'service_role f'],
+  'clear_member_avatar: neither the browser nor the API can call it');
+insert into photos values ('cem-1', pg_temp.photo('cem@a'));
+select public.save_own_avatar_service(pg_temp.u('cem@a'), tests.id('a'), jsonb_build_object('photo_path', pg_temp.p('cem-1')));
+select is((select source_membership_id from app_private.last_avatars where user_id = pg_temp.u('cem@a')), pg_temp.m('cem@a'),
+  'clear_member_avatar: cem''s photo is his last avatar');
+select is(app_private.clear_member_avatar(pg_temp.m('cem@a')), pg_temp.p('cem-1'),
+  'clear_member_avatar: a photo hands back its path for the caller to delete');
+select is((select count(*)::integer from public.member_avatars where membership_id = pg_temp.m('cem@a')), 0,
+  'clear_member_avatar: the photo avatar is gone');
+select is((select count(*)::integer from app_private.last_avatars where source_membership_id = pg_temp.m('cem@a')), 0,
+  'clear_member_avatar: and the last avatar that pointed at it');
+select public.save_own_avatar_service(pg_temp.u('cem@a'), tests.id('a'), '{"art_key": "015-line-cook"}');
+select is(app_private.clear_member_avatar(pg_temp.m('cem@a')), null,
+  'clear_member_avatar: a drawing hands back no path');
+select is(
+  (select count(*)::integer from public.member_avatars where membership_id = pg_temp.m('cem@a'))
+  + (select count(*)::integer from app_private.last_avatars where source_membership_id = pg_temp.m('cem@a')), 0,
+  'clear_member_avatar: the drawing and the last avatar that pointed at it are gone');
+select is(app_private.clear_member_avatar(pg_temp.m('cem@a')), null,
+  'clear_member_avatar: no avatar hands back nothing');
 
 -- The foreign keys, pinned (a membership row is never deleted today; slice 4 of ROL-CIFT) -----------
 
