@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:6768ead57d437846a29038ac32e76eeb5728aa033db37a9529729822fdb367d8
+-- fingerprint: sha256:53e5297f290ce852863f09f9922ba36637abcdaa301f0e5fa602bbceb92d0fc2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7144,6 +7144,11 @@ begin
   where r.id = chosen_role and r.workspace_id = member.workspace_id;
   if member.id is null or chosen_class is null then
     raise exception 'role must belong to the workspace' using errcode = '23503';
+  end if;
+  -- Nobody becomes the owner this way (an invitation reopening a suspended account, a role change, a
+  -- restored access): only an ownership transfer makes an owner, as the membership guard says.
+  if chosen_class = 'owner' and member.role_id is distinct from chosen_role then
+    raise exception 'membership change is not permitted' using errcode = '42501', hint = 'authz.missing_permission';
   end if;
   select p.id into profile_id from public.employee_profiles p
   where p.workspace_id = member.workspace_id and p.user_id = member.user_id and p.archived_at is null;
@@ -25300,7 +25305,10 @@ begin
     left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
     left join public.user_profiles p on p.user_id = m.user_id
     where m.workspace_id = target_workspace_id and m.status = 'active'
-      and m.user_id <> actor_user_id and (app_private.actor(m.user_id, target_workspace_id)).class = 'admin'
+      and m.user_id <> actor_user_id
+      -- The admin role first, then the core's word for each one left.
+      and m.role_id = (select r.id from public.workspace_roles r where r.workspace_id = target_workspace_id and r.system_key = 'admin')
+      and (app_private.actor(m.user_id, target_workspace_id)).class = 'admin'
       -- Active legacy memberships without an onboarding case are already complete.
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')

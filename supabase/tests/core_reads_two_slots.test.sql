@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(28);
+select plan(29);
 
 -- ROL-CIFT 1.2 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.4, §4.11): the authorization core reads
 -- the two access slots. Managing comes from Manages, not from where somebody works; what somebody may do
@@ -242,6 +242,12 @@ select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000
   '42501', 'Dora, who works in an open workspace she does not own, starts no workspace of her own');
 select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000-0000-4000-8000-000000000001', 'Olcay Two')$q$),
   'allowed', 'the owner starts another');
+
+-- One role placed in the two slots (an invitation reopening a suspended account, a role change, a
+-- restored access) never makes an owner: only an ownership transfer does.
+select is(pg_temp.said($q$select app_private.place_single_role('c1200000-0000-4000-8000-000000000503',
+    (select id from slot_role where key = 'owner'))$q$),
+  '42501 authz.missing_permission', 'Mona is not made the owner by placing a role');
 
 select hasnt_function('app_private', 'ranks_as_employee', 'ranks_as_employee is gone; has_employee_access reads the slot');
 

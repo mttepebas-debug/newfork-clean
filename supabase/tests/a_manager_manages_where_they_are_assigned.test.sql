@@ -58,9 +58,17 @@ create function pg_temp.works_at(person text) returns text[] language sql as $$
   where a.employee_id = tests.id('e:' || person) and a.ended_at is null
 $$;
 
--- 1. (Gone: "nothing of manages without working there is left". KARARLAR S-167 brings Manages back
--- apart from Works at, in the two-slot model; until the drawer writes it (ROL-CIFT slice 6.3) a manager's
--- Manages follows where they are assigned, which is what this file checks.)
+-- 1. Nothing of the old "manages without working there" is left -----------------------
+-- The names are split so this file does not name what it says is gone. KARARLAR S-167 brings Manages
+-- back apart from Works at, in the two-slot model's own table (membership_managed_locations), so that
+-- table is not searched for; the old command and helper stay gone. Until the drawer writes Manages
+-- (ROL-CIFT slice 6.3) a manager's Manages follows where they are assigned, which is what this file checks.
+
+select is(
+  (select count(*)::integer from pg_proc p
+   where p.pronamespace in ('public'::regnamespace, 'app_private'::regnamespace, 'tests'::regnamespace)
+     and p.prosrc ~ ('manages_without' || '_working|set_managed' || '_locations')),
+  0, 'no function reads or writes what was removed');
 
 -- 2. A manager reaches where they are assigned, excluded or not -----------------------
 

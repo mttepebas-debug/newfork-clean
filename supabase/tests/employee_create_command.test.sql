@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(40);
+select plan(42);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}', '{}'),
@@ -103,7 +103,10 @@ select lives_ok($$select public.create_employee_command_service(
   '39000000-0000-4000-8000-000000000004', employee || '{"is_remote":false,"is_excluded_from_schedule":true,"invitation_email":""}', null) from create_fixture$$,
   'excluded employee saves without email or assignments');
 set local role postgres;
-select is((select coalesce(role_id, employee_role_id) from public.workspace_memberships where user_id = '19000000-0000-4000-8000-000000000002'), (select employee_role from create_fixture), 'accepted role matches selection');
+-- ROL-CIFT: an Employee role chosen at the invitation lands in the employee slot, and nothing in the
+-- management slot.
+select is((select (role_id, employee_role_id)::text from public.workspace_memberships where user_id = '19000000-0000-4000-8000-000000000002'),
+  (select (null::uuid, employee_role)::text from create_fixture), 'accepted role matches selection: the employee slot');
 select ok(not has_table_privilege('authenticated', 'public.employee_create_commands', 'select'), 'recovery token state is not client readable');
 select ok(not has_function_privilege('authenticated', 'public.create_employee_command_service(uuid,uuid,uuid,jsonb,uuid)', 'execute'), 'client cannot spoof a service actor');
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
@@ -144,6 +147,11 @@ select lives_ok($$select public.accept_employee_invitation_service('19000000-000
 set local role postgres;
 select is((select count(*)::integer from public.membership_managed_locations x join public.workspace_memberships m on m.id = x.membership_id
   where m.user_id='19000000-0000-4000-8000-000000000005'), 0, 'acceptance preserves empty managed scope');
+-- A management role chosen at the invitation lands in the management slot (ROL-CIFT).
+select is((select role_id from public.workspace_memberships where user_id='19000000-0000-4000-8000-000000000005'),
+  (select id from invite_role_ids where system_key = 'manager'), 'the Manager role lands in the management slot');
+select is((select employee_role_id from public.workspace_memberships where user_id='19000000-0000-4000-8000-000000000005'),
+  null, 'and, with no job outside Management, the employee slot stays empty');
 set local role service_role;
 -- A record with no location is in nobody's reach but admin and owner (M2), so
 -- a manager does not open one (FB-6.2.4, review D6).
