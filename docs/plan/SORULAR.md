@@ -18,7 +18,6 @@ Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan
 - **Bugün:** workspace düzeyinde saat dilimi yok, yalnız her lokasyonun kendi saat dilimi var. Ama iki kayıt (KK-169 K4, BL-765) "workspace saat dilimi" varsayıyor; Employees'te Remote kişinin işten çıkarılması bu yüzden lokasyonların saat dilimine bakıyor.
 - **Örnek:** Bosphorus Kitchen'ın Los Angeles ve Las Vegas lokasyonları var; Remote çalışan Deniz'in işten çıkarma saati hangi dilimde yazılır?
 - **Seçenekler:** (a) salt okunur özet kalsın (lokasyonlardan), (b) gerçek bir "workspace saat dilimi" ayarı açılsın, (c) hiç gösterilmesin. Sohbette konuşulur.
-- **Aynı konuşmada (BL-559, EKRAN-06 S2):** birincil lokasyonu olmayan kişinin (ör. owner Mert) süreli belgesi "Document timezone needs administrator configuration" hatası veriyor; canlıda lokasyonlu 45 kişinin 2'sinde, yerelde 2403'ün 319'unda birincil yok. Öneri (a): birincil yoksa kişinin ilk aktif lokasyonu, o da yoksa workspace'in ilk lokasyonu (2026-09-27 izin saatleri kararıyla aynı yön; P11 sınırında olduğu için soruluyor). Diğerleri: (b) herkese birincil zorunlu (owner dahil; KARARLAR S4'ü değiştirir), (c) belgenin kendi saat dilimi.
 
 ### G4–G7. Giriş ve katılım: dört karar (EKRAN-16)
 - Sorular tam metniyle `docs/plan/ekranlar/16-giris-katilim/OZET.md` §2'de (bugün → örnek → seçenekler, önerilen ilk): **S1** davet varken "Create your workspace" görünürlüğü; **S2** başka workspace'te çalışan kişinin kendi işletmesini açması; **S3** resmî adı onay bekleyen çalışana "In review" (BL-646); **S4** middle name resmî adın parçası mı.
@@ -30,10 +29,6 @@ Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan
 
 ### G9. Bildirim merkezi ve ayar sayfası: varyant seçimi (BILDIRIM)
 - https://claude.ai/artifact/M8yVRt1fWEY8Sg24ze8Wmv — merkez A/B/C, ayar A/B/C.
-
-### G11. Yayındaki belge türü arşivlenince ne olsun? (BL-821, EKRAN-06 S7)
-- **Bugün:** Mert Settings → Documents'ta yayındaki "Alcohol server permit"i arşivler; garson Ali'den belge istenmeye devam eder, süresi geçtiyse Ali kısıtlı kalır ve Schedule'ı açamaz; ertesi gün gelen Bora'dan istenmez. Düzeltmek için Restore → Unpublish → Archive gerekiyor.
-- **(a) (Önerilen)** Archive, Unpublish'in yaptığını yapar: açık zorunluluklar kapanır, kısıt kalkar; önce etki satırı ("12 people are asked for this document. Archiving stops it."), iki tık kırmızı. Dayanak: KARARLAR:599 (Archive iki tık kırmızı), ILKELER P09. **(b)** Yayındaki tür arşivlenemez, önce Unpublish.
 
 ### G13. H2 takas penceresi uygulandı: üç küçük soru (EKRAN-02 C2; görüntüler `newfork-wt/ekran-02/artifacts/ekran-02/c2/h2-{clean,travel,rest,two,timeoff,locked,waiting,decline}-{1440,390}.png`)
 - **(1) Öteki vardiyanın komşusu yoksa yeşil kutu:** dinlenme kuralı Ali'nin vardiyasında tutmuyor; Deniz'in vardiyasının iki gün içinde komşu vardiyası yok. Bugün yeşil kutu "No shift nearby / 10 h needed" yazıyor. **Önerim: böyle kalsın** (senin "boşluk kalmasın" kuralın; doğru veri, P11).
