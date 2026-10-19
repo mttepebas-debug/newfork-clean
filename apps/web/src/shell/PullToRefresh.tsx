@@ -14,6 +14,9 @@ export const rubber = (distance: number) => 128 * (1 - Math.exp(-distance / 190)
 
 export type PullState = "idle" | "pulling" | "ready" | "refreshing";
 
+/** A drawer or a window: it takes its own drags (most drawers are role="dialog" divs inside the page). */
+const DRAWERS = 'dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]';
+
 /**
  * Whether anything between the touched element and the scrolling area is
  * scrolled away from its top: a list that scrolls in its own frame
@@ -24,6 +27,18 @@ export function scrolledAbove(target: Element | null, area: HTMLElement): boolea
     if (node.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) return true;
   }
   return area.scrollTop > 0;
+}
+
+/**
+ * Whether the page's list is away from its top: a page whose list scrolls in its own frame under a heading and
+ * controls that stay put (views/list-page-frozen.css) refreshes only while that list is at its top, wherever the
+ * pull starts (Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL). A drawer's own scroll is the drawer's.
+ */
+export function listScrolled(area: HTMLElement): boolean {
+  for (const node of area.querySelectorAll<HTMLElement>("*")) {
+    if (node.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(node).overflowY) && !node.closest(DRAWERS)) return true;
+  }
+  return false;
 }
 
 /**
@@ -62,7 +77,7 @@ export function usePullToRefresh(anchor: { readonly current: HTMLElement | null 
       const target = event.target as Element;
       // A strip, a deck, a wheel, a field or a drawer takes its own drags (most drawers are
       // role="dialog" divs inside the page, not <dialog>); a list scrolled in its own frame pulls its rows.
-      if (target.closest('[data-own-drag], input, textarea, select, dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]') || scrolledAbove(target, area)) return;
+      if (target.closest(`[data-own-drag], input, textarea, select, ${DRAWERS}`) || scrolledAbove(target, area) || listScrolled(area)) return;
       x0 = event.touches[0]!.clientX;
       y0 = event.touches[0]!.clientY;
       axis = null;

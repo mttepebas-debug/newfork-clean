@@ -104,6 +104,24 @@ describe("pull to refresh", () => {
     expect(onRefresh).not.toHaveBeenCalled();
   });
 
+  it("refreshes only while the page's list is at its top, wherever the pull starts (CALISAN-SCROLL)", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Page onRefresh={onRefresh} />);
+    const frame = screen.getByTestId("frame");
+    // The heading or the week switch stays put above a list that scrolls in its own frame.
+    const fixed = screen.getByTestId("state");
+    frame.scrollTop = 80;
+    touch(fixed, "touchstart", 100);
+    expect(touch(fixed, "touchmove", 400).defaultPrevented).toBe(false);
+    touch(fixed, "touchend", 400);
+    expect(onRefresh).not.toHaveBeenCalled();
+    frame.scrollTop = 0;
+    touch(fixed, "touchstart", 100);
+    expect(touch(fixed, "touchmove", 400).defaultPrevented).toBe(true);
+    touch(fixed, "touchend", 400);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
   it("is a phone's gesture: a wide screen pulls nothing", () => {
     const original = window.matchMedia;
     window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
