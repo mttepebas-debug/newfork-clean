@@ -119,7 +119,7 @@ export default function AccountLayout() {
       <div className="account-layout-grid" ref={setGrid}>
         <aside className="account-sidebar" aria-label="Account navigation">
         <div className="account-identity">
-          <AccountAvatar globalUrl={account?.avatarUrl} name={account?.displayName ?? "Account"} className="account-avatar" />
+          <AccountAvatar className="account-avatar" size={36} />
           <div>
             <strong>{account?.displayName ?? "Account"}</strong>
           </div>

@@ -41,7 +41,7 @@ export function AvatarCropDialog({ file, onCancel, onConfirm }: {
     }}
     onCancel={event => { event.preventDefault(); if (!busy) onCancel(); }}>
     <h2 id="avatar-crop-title">Crop profile photo</h2>
-    <p id="avatar-crop-help">Adjust the square preview. Use the arrow keys on each slider. Your photo is uploaded only when you save your profile.</p>
+    <p id="avatar-crop-help">Adjust the square preview. Use the arrow keys on each slider. Your photo is uploaded only when you save.</p>
     <div className="account-crop-preview" role="img" aria-label="Square photo preview">
       {url ? <img ref={image} src={url} alt="" onError={() => setError("This image could not be decoded. Choose another photo.")}
         onLoad={event => {

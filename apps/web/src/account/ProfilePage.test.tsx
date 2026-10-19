@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
-import type { AccountProfile } from "@newfork/shared";
+import type { AccountProfile, OwnAvatarResponse } from "@newfork/shared";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { MemoryRouter, Route, Routes } from "react-router";
 import ProfilePage from "./ProfilePage";
@@ -14,24 +14,32 @@ import {
 import { emergencyIsOwnPhoneMessage, usLettersMessage } from "@newfork/shared";
 import { RequestError } from "../lib/request-error";
 import { requestAppNavigation } from "../shell/leave-guard";
-import { uploadAccountAvatar, removeAccountAvatar } from "../lib/supabase";
-import { cropAvatar } from "./avatar-crop";
+import { apiRequest } from "../lib/supabase";
 import {
   requestPreferredName,
   saveOwnEmploymentContact,
 } from "../employees/employee-data";
 
-vi.mock("./avatar-crop", async importOriginal => ({
-  ...await importOriginal<typeof import("./avatar-crop")>(),
-  cropAvatar: vi.fn(async () => new File(["cropped"], "profile.png", { type: "image/png" })),
+// The drawings without the real chunk.
+vi.mock("../lineup-art/useLineupArt", () => ({
+  useLineupArtSvgs: () => null,
+  loadLineupArtSvgs: async () => ({}),
 }));
 
 let account: AccountProfile;
 const updateAccount = vi.fn(async () => undefined);
+const currentWorkspace = { id: "51000000-0000-4000-8000-000000000009", name: "Harbor & Vine" };
+let context: { userId: string; workspace: typeof currentWorkspace } | null = null;
+const avatarPath = `/v1/workspaces/${currentWorkspace.id}/me/avatar`;
+/** The API's answer for one's avatar here; a save and a removal answer 204 (null). */
+function ownAvatar(own: OwnAvatarResponse) {
+  vi.mocked(apiRequest).mockImplementation(async (_client, _path, init) => (init?.method ? null : own));
+}
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     account,
+    context,
     updateAccount,
   }),
 }));
@@ -43,8 +51,8 @@ vi.mock("../employees/employee-data", () => ({
 
 vi.mock("../lib/supabase", () => ({
   supabaseClient: {},
-  uploadAccountAvatar: vi.fn(),
-  removeAccountAvatar: vi.fn(async () => undefined),
+  // The avatar goes through the API (AVATAR-IKON).
+  apiRequest: vi.fn(),
   listAccountWorkspaces: vi.fn(async () => []),
   listOwnEmploymentRecords: vi.fn(async () => []),
   getOwnLegalName: vi.fn(async () => null),
@@ -115,7 +123,8 @@ describe("ProfilePage", () => {
     Object.defineProperty(URL, "createObjectURL", { configurable: true, value: vi.fn(() => "blob:preview") });
     Object.defineProperty(URL, "revokeObjectURL", { configurable: true, value: vi.fn() });
     HTMLDialogElement.prototype.showModal = function () { this.setAttribute("open", ""); };
-    vi.mocked(uploadAccountAvatar).mockResolvedValue({ avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" });
+    ownAvatar({ present: false, url: null, avatar: null, suggested: ["001-server"] });
+    context = { userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspace: currentWorkspace };
     // clearAllMocks keeps a test's own answers; each test says which workspaces it has.
     vi.mocked(listAccountWorkspaces).mockResolvedValue([]);
     account = {
@@ -123,7 +132,6 @@ describe("ProfilePage", () => {
       email: "owner@example.test",
       displayName: "Owner User",
       phone: "+14155550142",
-      avatarUrl: null,
       theme: "system",
       timeFormat: "system",
       dateFormat: "system",
@@ -144,7 +152,6 @@ describe("ProfilePage", () => {
         "Owner Updated",
         "system",
         "+14155550142",
-        { avatarObjectPath: null, avatarUrl: null },
       ),
     );
   });
@@ -160,92 +167,64 @@ describe("ProfilePage", () => {
     expect(updateAccount).not.toHaveBeenCalled();
   });
 
-  it("previews a square crop without upload, cancels replacement and removes only on Save", async () => {
-    account = { ...account, avatarUrl: "https://example.test/old.png" };
+  // AVATAR-IKON (design 4.3): the avatar of the workspace the person is in, chosen in one window.
+  it("offers Add avatar with the note, and no Upload button or file field on the page", async () => {
     renderProfile();
-    expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
-    choosePhoto();
-    screen.getByRole("button", { name: "Use photo" }).focus();
-    fireEvent.keyDown(screen.getByRole("button", { name: "Use photo" }), { key: "Tab" });
-    expect(document.activeElement).toBe(screen.getByLabelText("Zoom"));
-    fireEvent.change(screen.getByLabelText("Zoom"), { target: { value: "2" } });
-    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(cropAvatar).toHaveBeenCalledWith(expect.anything(), 2, 50, 50);
-    expect(uploadAccountAvatar).not.toHaveBeenCalled();
-    choosePhoto();
-    screen.getByLabelText("Choose profile photo").focus();
-    fireEvent.click(screen.getByRole("button", { name: "Cancel crop" }));
+    expect(await screen.findByRole("button", { name: "Add avatar" })).toBeTruthy();
+    expect(
+      screen.getByText("Your avatar in Harbor & Vine. Other workspaces keep their own. Lineups show an avatar, never a photo."),
+    ).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Upload" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Replace" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Remove" })).toBeNull();
+    expect(screen.queryByLabelText("Choose profile photo")).toBeNull();
+    expect(screen.queryByText("JPG, PNG or WebP")).toBeNull();
+    expect(apiRequest).toHaveBeenCalledWith(expect.anything(), avatarPath);
+  });
+
+  it("changes the avatar in the window and saves it there, apart from the page's Save", async () => {
+    ownAvatar({
+      present: true,
+      url: null,
+      avatar: { kind: "art", art_key: "001-server" },
+      suggested: ["001-server", "003-bartender"],
+    });
+    renderProfile();
+    fireEvent.click(await screen.findByRole("button", { name: "Change avatar" }));
+    const picker = screen.getByRole("dialog", { name: "Your avatar" });
+    fireEvent.click(within(picker).getByRole("radio", { name: "Shaker" }));
+    fireEvent.click(within(picker).getByRole("button", { name: "Save" }));
     await waitFor(() =>
-      expect(document.activeElement).toBe(
-        screen.getByRole("button", { name: "Replace" }),
-      ),
+      expect(apiRequest).toHaveBeenCalledWith(expect.anything(), avatarPath, {
+        method: "PUT",
+        body: JSON.stringify({ art_key: "003-bartender" }),
+      }),
     );
-    expect(uploadAccountAvatar).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
-    expect(removeAccountAvatar).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
-      { avatarObjectPath: null, avatarUrl: null }));
-    expect(uploadAccountAvatar).not.toHaveBeenCalled();
-  });
-
-  it("uploads the cropped file only on save and keeps the previous avatar on upload failure", async () => {
-    account = { ...account, avatarUrl: "https://example.test/old.png" };
-    renderProfile();
-    choosePhoto();
-    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    vi.mocked(uploadAccountAvatar).mockRejectedValueOnce(new Error("Upload failed"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Upload failed");
-    expect(removeAccountAvatar).not.toHaveBeenCalled();
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: "Your avatar" })).toBeNull());
     expect(updateAccount).not.toHaveBeenCalled();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
-      { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
   });
 
-  // Mert's phone notes 2026-10-17 #10: a new photo alone saves, though a
-  // field elsewhere on the page is still empty; a field edit still waits.
-  it("saves a new photo alone while another required field is still empty", async () => {
-    account = { ...account, phone: null };
+  it("removes the avatar on the second click", async () => {
+    ownAvatar({
+      present: true,
+      url: "https://example.test/me.png",
+      avatar: { kind: "photo", url: "https://example.test/me.png" },
+      suggested: [],
+    });
     renderProfile();
-    expect(screen.getByText(/To save, fill in phone number/)).toBeTruthy();
-    choosePhoto();
-    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    expect(screen.queryByText(/To save, fill in/)).toBeNull();
-    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Owner Updated" } });
-    expect(screen.getByRole("button", { name: "Save" })).toHaveProperty("disabled", true);
-    expect(screen.getByText(/To save, fill in phone number/)).toBeTruthy();
-    fireEvent.change(screen.getByLabelText("Preferred name"), { target: { value: "Owner User" } });
-    const save = screen.getByRole("button", { name: "Save" });
-    expect(save).toHaveProperty("disabled", false);
-    fireEvent.click(save);
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
-      { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
+    fireEvent.click(await screen.findByRole("button", { name: "Remove" }));
+    expect(apiRequest).not.toHaveBeenCalledWith(expect.anything(), avatarPath, { method: "DELETE" });
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+    await waitFor(() => expect(apiRequest).toHaveBeenCalledWith(expect.anything(), avatarPath, { method: "DELETE" }));
   });
 
-  it("rejects unsupported files before opening crop or touching storage", () => {
+  it("shows no avatar area outside a workspace, and still the name and e-mail", () => {
+    context = null;
     renderProfile();
-    fireEvent.change(screen.getByLabelText("Choose profile photo"), { target: { files: [new File(["svg"], "photo.svg", { type: "image/svg+xml" })] } });
-    expect(screen.getByRole("alert").textContent).toMatch(/JPG, PNG or WebP/);
-    expect(screen.queryByRole("dialog")).toBeNull();
-    expect(uploadAccountAvatar).not.toHaveBeenCalled();
-  });
-
-  it("does not delete either photo when the profile save response is uncertain", async () => {
-    account = { ...account, avatarUrl: "https://example.test/old.png" };
-    renderProfile();
-    choosePhoto();
-    fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
-    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
-    updateAccount.mockRejectedValueOnce(new Error("Save response unavailable"));
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    expect(await screen.findByRole("alert")).toHaveProperty("textContent", "Save response unavailable");
-    expect(removeAccountAvatar).not.toHaveBeenCalled();
+    expect(screen.getByText("owner@example.test")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Add avatar" })).toBeNull();
+    expect(screen.queryByText(/Other workspaces keep their own/)).toBeNull();
+    expect(apiRequest).not.toHaveBeenCalled();
   });
 
   it("does not overwrite unsaved profile edits during account refresh", () => {
@@ -482,7 +461,7 @@ describe("ProfilePage", () => {
       expect.objectContaining({ name: "Sam", relationship: "Spouse", phone: "+14155550199" }),
     );
     expect(requestPreferredName).toHaveBeenCalledTimes(2);
-    expect(updateAccount).toHaveBeenCalledWith("Ay", "system", "+14155550142", expect.anything());
+    expect(updateAccount).toHaveBeenCalledWith("Ay", "system", "+14155550142");
     expect(await screen.findByText(/manager needs to approve/)).toBeTruthy();
   });
 
@@ -688,14 +667,6 @@ describe("ProfilePage", () => {
     ).toBe("profile-missing");
   });
 });
-
-function choosePhoto() {
-  fireEvent.change(screen.getByLabelText("Choose profile photo"), { target: { files: [new File(["photo"], "photo.png", { type: "image/png" })] } });
-  const image = screen.getByRole("img", { name: "Square photo preview" }).querySelector("img")!;
-  Object.defineProperty(image, "naturalWidth", { value: 800 });
-  Object.defineProperty(image, "naturalHeight", { value: 400 });
-  fireEvent.load(image);
-}
 
 // BL-503: KARARLAR "Form ve girdi kuralları (ABD)" on Account > Profile.
 describe("ProfilePage US form rules", () => {

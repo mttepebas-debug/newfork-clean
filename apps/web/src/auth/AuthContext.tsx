@@ -54,7 +54,7 @@ interface AuthContextValue {
     changes?: Partial<
       Pick<
         AccountProfile,
-        "avatarUrl" | "timeFormat" | "dateFormat"
+        "timeFormat" | "dateFormat"
       >
     >,
   ) => Promise<void>;
@@ -329,7 +329,7 @@ export function AuthProvider({
       changes: Partial<
         Pick<
           AccountProfile,
-          "avatarUrl" | "timeFormat" | "dateFormat"
+          "timeFormat" | "dateFormat"
         >
       > = {},
     ): Promise<void> => {

@@ -300,8 +300,7 @@ export const accountProfileSchema = z.object({
   displayName: z.string().trim().min(1).max(100),
   // A US number in E.164 (BL-969); a typed one goes through normalizeAccountPhone.
   phone: usPhoneSchema.nullable().default(null),
-  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own (ownAvatarResponseSchema).
-  avatarUrl: z.string().url().nullable().default(null),
+  // AVATAR-IKON: no avatar here; each workspace has the person's own (ownAvatarResponseSchema).
   theme: themePreferenceSchema,
   timeFormat: personalTimeFormatSchema.default("system"),
   dateFormat: personalDateFormatSchema.default("system"),

@@ -8,6 +8,7 @@ import {
 } from "@newfork/shared";
 import { Button, ConfirmButton } from "@newfork/ui";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { createPortal } from "react-dom";
 import { Camera, Trash2 } from "lucide-react";
 import {
   useCallback,
@@ -15,15 +16,11 @@ import {
   useRef,
   useState,
   type FormEvent,
+  type ReactNode,
 } from "react";
 import { Link, useNavigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import {
-  listOwnEmploymentRecords,
-  removeAccountAvatar,
-  supabaseClient,
-  uploadAccountAvatar,
-} from "../lib/supabase";
+import { listOwnEmploymentRecords, supabaseClient } from "../lib/supabase";
 import {
   requestPreferredName,
   saveOwnEmploymentContact,
@@ -38,14 +35,15 @@ import {
   useSaveOwnLegalName,
 } from "./legal-name-data";
 import { useAvailabilityNavigationGuard } from "../availability/availability-navigation";
-import { AvatarCropDialog } from "./AvatarCropDialog";
-import { validateAvatarFile } from "./avatar-crop";
-import { AccountAvatar } from "./AccountAvatar";
+import { AvatarPicker } from "../avatar/AvatarPicker";
+import { MemberAvatar } from "../avatar/MemberAvatar";
+import { avatarErrorText, useOwnAvatar, useRemoveAvatar, useSaveAvatar } from "../avatar/avatar-data";
 import { RequestError } from "../lib/request-error";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { LinesOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import { breaksLetterRule, LetterRuleNote, letterRuleProps } from "../shell/us-text";
+import { useListPhoneWidth } from "../lib/usePhoneWidth";
 
 /**
  * What the page's one Save needs from each legal name form. The legal name is
@@ -95,11 +93,6 @@ function leadingContact(records: readonly EmploymentContactRecord[]): Contact {
   };
 }
 
-/** A phone as typed or on file, comparable however it is written. */
-function normalizedOrRaw(phone: string): string {
-  return toUsPhone(phone) ?? phone.trim();
-}
-
 /**
  * Did the core refuse for good? Access ended there, access taken away while
  * the form was open (no longer a member, a 404), or the workspace is closed.
@@ -115,10 +108,9 @@ function accessEnded(cause: unknown): boolean {
 }
 
 export default function ProfilePage() {
-  const { account, updateAccount } = useAuth();
+  const { account, context, updateAccount } = useAuth();
   const cache = useQueryClient();
   const navigate = useNavigate();
-  const fileInput = useRef<HTMLInputElement>(null);
   const workspaces = useAccountWorkspaces();
   const records = useQuery({
     queryKey: ["account-employment-records"],
@@ -134,14 +126,10 @@ export default function ProfilePage() {
     () => new Set(),
   );
   const [phone, setPhone] = useState(account?.phone ?? "");
-  const [avatarObjectPath, setAvatarObjectPath] = useState<string | null>(null);
-  const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
-  const [cropFile, setCropFile] = useState<File | null>(null);
-  const [draftFile, setDraftFile] = useState<File | null>(null);
   const legalForms = useRef(new Map<string, LegalNameHandle>());
   const [legalState, setLegalState] = useState<
     Record<
@@ -247,34 +235,16 @@ export default function ProfilePage() {
     !(hasContactForm && breaksLetterRule(contact.name, contact.relationship));
   // TEL-2 (Mert, 2026-10-09): the emergency contact is somebody else.
   const contactIsOwn = hasContactForm && sameUsPhone(phone, contact.phone);
-  const complete = missing.length === 0 && lettersOk && !contactIsOwn;
-  // A new or removed photo alone saves though a field elsewhere is still
-  // empty: it is the account's own, apart from those (Mert's phone notes
-  // 2026-10-17 #10). A field edit still waits for everything.
-  const photoOnly =
-    (draftFile !== null || avatarObjectPath !== null) &&
-    normalizedOrRaw(phone) === normalizedOrRaw(account?.phone ?? "") &&
-    !legalDirty &&
-    !preferredDirty &&
-    !contactDirty;
-  const canSave = complete || photoOnly;
-
-  useEffect(() => {
-    if (!draftFile) return;
-    const url = URL.createObjectURL(draftFile);
-    setAvatarUrl(url);
-    return () => URL.revokeObjectURL(url);
-  }, [draftFile]);
+  // The avatar is saved in its own window (AVATAR-IKON), so Save here waits for every field.
+  const canSave = missing.length === 0 && lettersOk && !contactIsOwn;
 
   useEffect(() => {
     if (!account || dirty) return;
     setPhone(account.phone ?? "");
-    setAvatarObjectPath(null);
-    setAvatarUrl(account.avatarUrl);
   }, [account, dirty]);
 
   const navigationDialog = useAvailabilityNavigationGuard({
-    dirty: formDirty, busy: saving || Boolean(cropFile), onDiscard: () => discard(),
+    dirty: formDirty, busy: saving, onDiscard: () => discard(),
     labels: { saving: "Saving profile", discard: "Discard profile changes?", saved: "Profile saved",
       unsaved: "Your unsaved profile changes will be lost." },
   });
@@ -286,21 +256,11 @@ export default function ProfilePage() {
     setSaved(null);
   };
 
-  const closeCropDialog = () => {
-    setCropFile(null);
-    requestAnimationFrame(() =>
-      document.getElementById("profile-photo-upload-trigger")?.focus(),
-    );
-  };
-
   const discard = () => {
-    setDraftFile(null);
     setPreferredDraft(null);
     setPreferredSent(new Set());
     setContactDraft(null);
     setPhone(account.phone ?? "");
-    setAvatarObjectPath(null);
-    setAvatarUrl(account.avatarUrl);
     for (const form of legalForms.current.values()) form.reset();
     setDirty(false);
     setSaved(null);
@@ -309,36 +269,17 @@ export default function ProfilePage() {
 
   /** Saves the account part; returns what went wrong, or null. */
   const saveProfile = async (): Promise<string | null> => {
-    let profileSaved = false;
     try {
-      const normalizedPhone = normalizeAccountPhone(phone);
-      const previousAvatarPath = avatarObjectPath;
-      let nextAvatar = { avatarObjectPath, avatarUrl };
-      if (draftFile) {
-        if (!supabaseClient) throw new Error("Account photo storage is not configured");
-        nextAvatar = await uploadAccountAvatar(supabaseClient, account.userId, draftFile);
-      }
       // Emptying the preferred name leaves the account's own name as it is.
       await updateAccount(
         preferred.trim() || account.displayName,
         account.theme,
-        normalizedPhone,
-        { ...nextAvatar },
+        normalizeAccountPhone(phone),
       );
-      profileSaved = true;
-      setDraftFile(null);
-      setAvatarObjectPath(nextAvatar.avatarObjectPath);
-      setAvatarUrl(nextAvatar.avatarUrl);
       setDirty(false);
-      if (supabaseClient && previousAvatarPath && previousAvatarPath !== nextAvatar.avatarObjectPath) {
-        await removeAccountAvatar(supabaseClient, account.userId, previousAvatarPath);
-      }
       return null;
     } catch (saveError: unknown) {
-      // A failed save response may follow a committed profile write. Do not
-      // delete the new object on that ambiguous outcome and break its reference.
-      return profileSaved ? "Profile saved, but the previous photo could not be removed."
-        : saveError instanceof Error ? saveError.message : "Profile could not be saved";
+      return saveError instanceof Error ? saveError.message : "Profile could not be saved";
     }
   };
 
@@ -466,23 +407,6 @@ export default function ProfilePage() {
     setSaving(false);
   };
 
-  const selectAvatar = (file: File | undefined) => {
-    if (!file) return;
-    if (!supabaseClient) {
-      setError("Account photo storage is not configured");
-      return;
-    }
-    setError(null);
-    try {
-      validateAvatarFile(file);
-      setCropFile(file);
-    } catch (uploadError: unknown) {
-      setError(uploadError instanceof Error ? uploadError.message : "Photo could not be uploaded");
-    } finally {
-      if (fileInput.current) fileInput.current.value = "";
-    }
-  };
-
   const editContact = (part: keyof Contact, value: string) => {
     setSaved(null);
     setContactDraft({ ...contact, [part]: value });
@@ -491,9 +415,6 @@ export default function ProfilePage() {
   return (
     <section className="account-page" aria-labelledby="profile-title">
       {navigationDialog}
-      {cropFile ? <AvatarCropDialog file={cropFile} onCancel={closeCropDialog} onConfirm={file => {
-        setDraftFile(file); closeCropDialog(); markDirty();
-      }} /> : null}
       <AccountPageHeader
         title="Profile"
         titleId="profile-title"
@@ -502,44 +423,16 @@ export default function ProfilePage() {
       {/* Save itself says what is missing; the browser's own check would stop a photo saved alone. */}
       <form className="account-profile-form" aria-label="Profile" noValidate onSubmit={submit}>
         <div className="account-profile-head">
-          <div className="account-photo">
-            <AccountAvatar globalUrl={avatarUrl} className="account-avatar-large" name={account.displayName} />
-            <span className="field-help account-photo-formats">
-              <span>JPG, PNG or WebP</span>
-              <span>up to 5 MB</span>
-            </span>
-          </div>
-          <div className="account-profile-identity">
-            <strong>{account.displayName}</strong>
-            <span>{account.email}</span>
-            <div className="account-photo-actions">
-              <Button id="profile-photo-upload-trigger" type="button" disabled={saving} onClick={() => fileInput.current?.click()}>
-                <Camera size={15} aria-hidden /> {avatarUrl ? "Replace" : "Upload"}
-              </Button>
-              {avatarObjectPath || draftFile ? <ConfirmButton
-                className="danger-button"
-                disabled={saving}
-                confirmLabel="Confirm remove"
-                onConfirm={() => {
-                  setDraftFile(null);
-                  setAvatarObjectPath(null);
-                  setAvatarUrl(null);
-                  markDirty();
-                }}
-              >
-                <Trash2 size={15} aria-hidden /> Remove
-              </ConfirmButton> : null}
-            </div>
-          </div>
-          <input
-            ref={fileInput}
-            className="visually-hidden"
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            aria-label="Choose profile photo"
-            disabled={saving}
-            onChange={(event) => selectAvatar(event.target.files?.[0])}
-          />
+          {context ? (
+            <ProfileAvatar
+              workspaceId={context.workspace.id}
+              workspaceName={context.workspace.name}
+              name={account.displayName}
+              email={account.email}
+            />
+          ) : (
+            <ProfileIdentity name={account.displayName} email={account.email} />
+          )}
         </div>
 
         <OwnerLegalNames register={registerLegalName} onEdit={() => setSaved(null)} />
@@ -671,7 +564,7 @@ export default function ProfilePage() {
         <FieldNote id="profile-form" error={error} />
         {saved ? <p className="form-success" role="status">{saved}</p> : null}
         {/* Why Save is off: the missing fields, by name. */}
-        {missing.length > 0 && !photoOnly ? (
+        {missing.length > 0 ? (
           <p className="account-form-missing" id="profile-missing">
             To save, fill in {listWords(missing)}.
           </p>
@@ -685,13 +578,117 @@ export default function ProfilePage() {
           <Button
             type="submit"
             disabled={!formDirty || saving || !canSave}
-            aria-describedby={missing.length > 0 && !photoOnly ? "profile-missing" : undefined}
+            aria-describedby={missing.length > 0 ? "profile-missing" : undefined}
           >
             {saving ? "Saving" : "Save"}
           </Button>
         </div>
       </form>
     </section>
+  );
+}
+
+/** Who this is, without an avatar: outside a workspace there is no avatar to show or change. */
+function ProfileIdentity({ name, email, children }: { readonly name: string; readonly email: string; readonly children?: ReactNode }) {
+  return (
+    <div className="account-profile-identity">
+      <strong>{name}</strong>
+      <span>{email}</span>
+      {children}
+    </div>
+  );
+}
+
+/**
+ * AVATAR-IKON (design 4.3): the person's avatar in the workspace they are in (the one "Back to
+ * workspace" returns to), changed in its own window and saved there, apart from the page's Save.
+ */
+function ProfileAvatar({
+  workspaceId,
+  workspaceName,
+  name,
+  email,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string;
+  readonly name: string;
+  readonly email: string;
+}) {
+  const phone = useListPhoneWidth();
+  const own = useOwnAvatar(workspaceId);
+  const save = useSaveAvatar(workspaceId);
+  const remove = useRemoveAvatar(workspaceId);
+  const [picking, setPicking] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const avatar = own.data?.avatar ?? null;
+  const waiting = own.isPending || remove.isPending;
+  const choose = () => {
+    setError(null);
+    setPicking(true);
+  };
+  return (
+    <>
+      {/* The circle opens the window too, for a pointer; the named button is the one to tab to. */}
+      <button
+        type="button"
+        className="account-avatar-button"
+        tabIndex={-1}
+        aria-hidden="true"
+        disabled={waiting}
+        onClick={choose}
+      >
+        <MemberAvatar avatar={avatar} name={name} size={phone ? 80 : 104} className="account-profile-avatar" />
+        <span className="account-avatar-camera">
+          <Camera size={15} />
+        </span>
+      </button>
+      <ProfileIdentity name={name} email={email}>
+        <div className="account-photo-actions">
+          <Button type="button" disabled={waiting} onClick={choose}>
+            {avatar ? "Change avatar" : "Add avatar"}
+          </Button>
+          {avatar ? (
+            <ConfirmButton
+              className="danger-button"
+              confirmLabel="Confirm remove"
+              disabled={waiting}
+              onConfirm={() => {
+                setError(null);
+                remove.mutateAsync().catch((failure: unknown) => setError(avatarErrorText(failure)));
+              }}
+            >
+              <Trash2 size={15} aria-hidden /> Remove
+            </ConfirmButton>
+          ) : null}
+        </div>
+        <FieldNote id="profile-avatar" error={error} />
+        <small className="account-avatar-note">
+          Your avatar in {workspaceName}. Other workspaces keep their own. Lineups show an avatar, never a photo.
+        </small>
+      </ProfileIdentity>
+      {createPortal(
+        <AvatarPicker
+          open={picking}
+          workspaceId={workspaceId}
+          workspaceName={workspaceName}
+          personName={name}
+          initial={avatar}
+          suggested={own.data?.suggested ?? []}
+          onSave={async (choice) => {
+            await save.mutateAsync(choice);
+          }}
+          onRemove={
+            avatar
+              ? async () => {
+                  await remove.mutateAsync();
+                }
+              : undefined
+          }
+          onClose={() => setPicking(false)}
+        />,
+        document.body,
+      )}
+    </>
   );
 }
 

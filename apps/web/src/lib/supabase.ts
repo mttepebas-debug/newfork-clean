@@ -28,7 +28,6 @@ const apiUrl =
   import.meta.env.VITE_API_URL ??
   (import.meta.env.DEV ? "http://localhost:9999" : "");
 export const newforkApiUrl = apiUrl;
-export const accountProfileAvatarBucket = "account-profile-photos";
 
 // BL-137: set while a reset link's session is open and no new password is
 // saved yet. If the tab closed in that window, drop the stored session here,
@@ -192,13 +191,12 @@ export async function loadAccountProfile(
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name
       : "Account owner";
-  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own (GET /me/avatar).
+  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own (avatar/avatar-data.ts).
   return accountProfileSchema.parse({
     userId: user.id,
     email: user.email,
     displayName: profileResult.data?.display_name ?? metadataName,
     phone: profileResult.data?.phone_e164 ?? null,
-    avatarUrl: null,
     theme: preferenceResult.data?.theme ?? "system",
     timeFormat: preferenceResult.data?.time_format ?? "system",
     dateFormat: preferenceResult.data?.date_format ?? "system",
@@ -230,60 +228,6 @@ export async function saveAccountProfile(
     throw new Error("This number is your emergency contact's in a workspace. Change that contact first.");
   if (profileResult.error) throw new Error(profileResult.error.message);
   if (preferenceResult.error) throw new Error(preferenceResult.error.message);
-}
-
-export async function uploadAccountAvatar(
-  client: SupabaseClient,
-  userId: string,
-  file: File,
-): Promise<{ avatarObjectPath: string; avatarUrl: string }> {
-  const extension =
-    file.type === "image/jpeg"
-      ? "jpg"
-      : file.type === "image/png"
-        ? "png"
-        : file.type === "image/webp"
-          ? "webp"
-          : null;
-  if (!extension) throw new Error("JPG, PNG or WebP image required");
-  if (file.size < 1 || file.size > 5 * 1024 * 1024) {
-    throw new Error("Account photo must be 5 MB or smaller");
-  }
-
-  const avatarObjectPath = `${userId}/profile/${crypto.randomUUID()}.${extension}`;
-  const bucket = client.storage.from(accountProfileAvatarBucket);
-  const upload = await bucket.upload(avatarObjectPath, file, {
-    cacheControl: "3600",
-    contentType: file.type,
-    upsert: false,
-  });
-  if (upload.error) throw new Error(upload.error.message);
-
-  const signedAvatar = await bucket.createSignedUrl(avatarObjectPath, 3600);
-  if (signedAvatar.error) {
-    await bucket.remove([avatarObjectPath]);
-    throw new Error(signedAvatar.error.message);
-  }
-  return { avatarObjectPath, avatarUrl: signedAvatar.data.signedUrl };
-}
-
-export async function removeAccountAvatar(
-  client: SupabaseClient,
-  userId: string,
-  avatarObjectPath: string,
-): Promise<void> {
-  if (!avatarObjectPath.startsWith(`${userId}/profile/`)) {
-    throw new Error("Account avatar path must belong to the account");
-  }
-  const result = await client.storage
-    .from(accountProfileAvatarBucket)
-    .remove([avatarObjectPath]);
-  if (result.error) throw new Error(result.error.message);
-}
-
-export async function getCurrentUserWorkspaceAvatar(workspaceId: string): Promise<{ url: string | null }> {
-  if (!supabaseClient) return { url: null };
-  return await apiRequest(supabaseClient, `/v1/workspaces/${workspaceId}/me/avatar`) as { url: string | null };
 }
 
 /** What each part of the account area is waiting for from this person. */

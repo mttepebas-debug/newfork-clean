@@ -18,6 +18,9 @@ describe("tenant query cache", () => {
       true,
     );
     expect(isTenantScopedQueryKey(["my-onboarding-phone", "org-a", "+14155550100"])).toBe(true);
+    // AVATAR-IKON: one's avatar belongs to a workspace.
+    expect(isTenantScopedQueryKey(["own-avatar", "org-a"])).toBe(true);
+    expect(isTenantScopedQueryKey(["last-avatar", "org-a"])).toBe(true);
     expect(isTenantScopedQueryKey(["account-profile"])).toBe(false);
     expect(isTenantScopedQueryKey(["account-workspaces"])).toBe(false);
     expect(isTenantScopedQueryKey(["account-pending-invitations"])).toBe(false);

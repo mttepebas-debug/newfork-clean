@@ -1,26 +1,26 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "../auth/AuthContext";
-import { getCurrentUserWorkspaceAvatar } from "../lib/supabase";
+import { MemberAvatar } from "../avatar/MemberAvatar";
+import { useOwnAvatar } from "../avatar/avatar-data";
 
-export function AccountAvatar({ workspaceUrl, globalUrl, name, className }: {
-  workspaceUrl?: string | null; globalUrl?: string | null; name: string; className: string;
-}) {
-  const [failed, setFailed] = useState<string[]>([]);
-  const url = [workspaceUrl, globalUrl].find(value => value && !failed.includes(value));
-  return url ? <img className={className} src={url} alt="" onError={() => setFailed(values => [...values, url])} />
-    : <span className={className} aria-hidden>{name.trim().split(/\s+/).slice(0, 2).map(part => part[0]?.toUpperCase()).join("") || "A"}</span>;
+/**
+ * AVATAR-IKON (design 4.3): the signed-in person's avatar in the workspace they are in, a photo,
+ * a drawing or the initials. Outside a workspace there is no avatar to read: the initials.
+ */
+export function AccountAvatar({ className, size }: { readonly className: string; readonly size: number }) {
+  const { account, context } = useAuth();
+  const own = useOwnAvatar(context?.workspace.id);
+  return (
+    <MemberAvatar
+      key={context?.workspace.id ?? "none"}
+      avatar={own.data?.avatar ?? null}
+      name={account?.displayName ?? "Account"}
+      size={size}
+      className={className}
+    />
+  );
 }
 
-// Only the signed-in user's workspace photo is read; never a directory-wide fallback.
+/** The app shell's person circle (rail, phone bars, phone menus). */
 export function CurrentUserAvatar() {
-  const { account, context } = useAuth();
-  const workspaceId = context?.workspace.id;
-  const photo = useQuery({
-    queryKey: ["current-user-avatar", workspaceId, context?.userId],
-    queryFn: () => getCurrentUserWorkspaceAvatar(workspaceId!), enabled: Boolean(workspaceId),
-    retry: false, staleTime: 240_000, refetchInterval: 240_000,
-  });
-  return <AccountAvatar key={`${workspaceId}:${context?.userId}`} workspaceUrl={photo.data?.url}
-    globalUrl={account?.avatarUrl} name={account?.displayName ?? "Account"} className="current-user-avatar" />;
+  return <AccountAvatar className="current-user-avatar" size={24} />;
 }

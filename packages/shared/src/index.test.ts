@@ -99,23 +99,25 @@ describe("account schemas", () => {
       }),
     ).toMatchObject({
       phone: "+13105550100",
-      avatarUrl: null,
       timeFormat: "system",
       dateFormat: "system",
     });
   });
 
-  // AVATAR-IKON: the account keeps no avatar path; a person's avatar belongs to each workspace.
-  it("keeps no avatar path on the account", () => {
+  // AVATAR-IKON: the account keeps no avatar, neither a path nor an address; a person's avatar
+  // belongs to each workspace.
+  it("keeps no avatar on the account", () => {
     const parsed = accountProfileSchema.parse({
       userId,
       email: "alex@example.test",
       displayName: "Alex Kim",
       phone: "+13105550100",
       avatarObjectPath: `${userId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`,
+      avatarUrl: "https://example.test/signed-avatar",
       theme: "system",
     });
     expect(parsed).not.toHaveProperty("avatarObjectPath");
+    expect(parsed).not.toHaveProperty("avatarUrl");
   });
 });
 

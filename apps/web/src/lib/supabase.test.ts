@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { accountProfileSchema } from "@newfork/shared";
+import * as supabaseModule from "./supabase";
 import {
-  accountProfileAvatarBucket,
   apiRequest,
   clearTabWorkspaceId,
   ensureSessionAlive,
@@ -10,7 +10,6 @@ import {
   initiateWorkspaceOwnershipTransfer,
   loadAccountProfile,
   loadAccountDeletionBlockers,
-  removeAccountAvatar,
   requestAccountEmailChange,
   requestWorkspaceClosure,
   resolveWorkspaceContext,
@@ -20,7 +19,6 @@ import {
   selectActiveWorkspace,
   setTabWorkspaceId,
   tabWorkspaceIdStorageKey,
-  uploadAccountAvatar,
 } from "./supabase";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -223,10 +221,10 @@ describe("account profile persistence", () => {
 
     expect(profile).toMatchObject({
       phone: "+13105550100",
-      avatarUrl: null,
       timeFormat: "24h",
       dateFormat: "YYYY-MM-DD",
     });
+    expect(profile).not.toHaveProperty("avatarUrl");
     expect(storageFrom).not.toHaveBeenCalled();
     // The account keeps one phone column (BL-969).
     expect(select).toHaveBeenCalledWith("display_name,phone_e164");
@@ -240,7 +238,6 @@ describe("account profile persistence", () => {
       email: "alex@example.test",
       displayName: "Alex Kim",
       phone: "+13105550100",
-      avatarUrl: "https://storage.example.test/signed-avatar",
       theme: "dark",
       timeFormat: "24h",
       dateFormat: "YYYY-MM-DD",
@@ -279,7 +276,6 @@ describe("account profile persistence", () => {
       email: "alex@example.test",
       displayName: "Alex Kim",
       phone: "+13105550100",
-      avatarUrl: null,
       theme: "system",
       timeFormat: "12h",
       dateFormat: "system",
@@ -290,41 +286,16 @@ describe("account profile persistence", () => {
     );
   });
 
-  it("uploads only supported private avatars and rejects cross-account removal", async () => {
-    vi.spyOn(crypto, "randomUUID").mockReturnValue(
-      "fe201916-aa0e-480b-9144-1e1c8da20a31",
-    );
-    const upload = vi.fn(async () => ({ data: {}, error: null }));
-    const createSignedUrl = vi.fn(async () => ({
-      data: { signedUrl: "https://storage.example.test/signed-avatar" },
-      error: null,
-    }));
-    const remove = vi.fn(async () => ({ data: {}, error: null }));
-    const storageFrom = vi.fn(() => ({ upload, createSignedUrl, remove }));
-    const storageClient = {
-      storage: { from: storageFrom },
-    } as unknown as SupabaseClient;
-
-    await expect(
-      uploadAccountAvatar(
-        storageClient,
-        workspaceId,
-        new File(["avatar"], "avatar.png", { type: "image/png" }),
-      ),
-    ).resolves.toEqual({
-      avatarObjectPath: `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.png`,
-      avatarUrl: "https://storage.example.test/signed-avatar",
-    });
-    expect(storageFrom).toHaveBeenCalledWith(accountProfileAvatarBucket);
-
-    await expect(
-      removeAccountAvatar(
-        storageClient,
-        workspaceId,
-        "fe201916-aa0e-480b-9144-1e1c8da20a31/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.png",
-      ),
-    ).rejects.toThrow("must belong to the account");
-    expect(remove).not.toHaveBeenCalled();
+  // AVATAR-IKON: the browser no longer writes an account photo to storage; the avatar goes
+  // through the API per workspace (src/avatar/avatar-data.ts).
+  it("keeps no account photo helpers", () => {
+    for (const gone of [
+      "uploadAccountAvatar",
+      "removeAccountAvatar",
+      "accountProfileAvatarBucket",
+      "getCurrentUserWorkspaceAvatar",
+    ])
+      expect(supabaseModule).not.toHaveProperty(gone);
   });
 });
 

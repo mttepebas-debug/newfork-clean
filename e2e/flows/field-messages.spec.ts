@@ -265,7 +265,7 @@ for (const screen of screens) {
       await expect(required).toBeChecked({ checked: was });
     });
 
-    test("Account → Profile → Crop profile photo: Vertical position stays reachable under the window's error", async ({ browser }) => {
+    test("Account → Profile → Your avatar → Upload photo → Crop profile photo: Vertical position stays reachable under the window's error", async ({ browser }) => {
       const page = await open(browser, "ayse", screen, "/account/profile");
       // The browser can't make the cropped picture: the window says so in its band.
       await page.evaluate(() => {
@@ -273,7 +273,12 @@ for (const screen of screens) {
           callback(null);
         };
       });
-      await page.getByLabel("Choose profile photo").setInputFiles({ name: "me.png", mimeType: "image/png", buffer: pixel });
+      // AVATAR-IKON: the photo is chosen in the avatar window, its first tile.
+      await page.getByRole("button", { name: /^(Add|Change) avatar$/ }).click();
+      const avatar = page.getByRole("dialog", { name: "Your avatar" });
+      const chooser = page.waitForEvent("filechooser");
+      await avatar.getByRole("button", { name: "Upload photo" }).click();
+      await (await chooser).setFiles({ name: "me.png", mimeType: "image/png", buffer: pixel });
       const window = page.getByRole("dialog", { name: "Crop profile photo" });
       await expect(window).toBeVisible();
       await window.getByRole("button", { name: "Use photo" }).click();

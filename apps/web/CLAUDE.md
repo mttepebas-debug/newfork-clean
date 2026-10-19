@@ -4,7 +4,7 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 
 ## Veri ve yetki katmanı
 - İstek `apiRequest` (`src/lib/supabase.ts`) ile gider; hata `RequestError` (`src/lib/request-error.ts`). Ekran `reason`'a bakar, status'a değil: DB'nin 23514/22023/P0001'i API'de hep 400'dür.
-- İstisna: Settings katalog yazmaları (`src/settings/organization-data.ts`: lokasyon, departman, job, shift type, label, logo) ve hesap profili (`lib/supabase.ts`) tarayıcıdan doğrudan supabase-js + RLS ile gider; DB reddi API'den geçmez, web'de çevrilir (`message()`).
+- İstisna: Settings katalog yazmaları (`src/settings/organization-data.ts`: lokasyon, departman, job, shift type, label, logo) ve hesap profili satırı (`lib/supabase.ts`: ad, telefon, tercihler) tarayıcıdan doğrudan supabase-js + RLS ile gider; DB reddi API'den geçmez, web'de çevrilir (`message()`). Hesap fotoğrafı bu istisnada değil: kişinin avatarı workspace başına API'den okunur ve yazılır (`src/avatar/avatar-data.ts`, AVATAR-IKON).
 - Workspace'e bağlı her sorgunun anahtarının ilk öğesi `src/auth/tenant-query-cache.ts` listesinde olmalı; yoksa workspace değişince eski workspace'in verisi önbellekte kalır.
 - Realtime kanalı hep `{ config: { private: true } }`, kapanışta `removeChannel`. Reddedilen katılım ~5 sn sürer ve aynı soketteki öteki katılımları bekletir (ölçüm 2026-09-26).
 - `notifications:<user>` (`notifications/useNotificationsRealtime.ts`): içeriksiz sinyal; veri API'den. Kişi yalnız kendi kanalına katılır (account.self), katılım reddedilmez (BILDIRIM-10).

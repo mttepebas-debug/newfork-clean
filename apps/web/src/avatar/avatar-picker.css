@@ -1,0 +1,258 @@
+/* AVATAR-IKON (design 4.3; Mert, 19 Oct: B): the window to choose one's avatar in (AvatarPicker), one
+   window, one list, "Upload photo" first; a sheet from the bottom on a phone. */
+
+/* ---------- the window ---------- */
+.avatar-picker {
+  width: min(560px, calc(100vw - 32px));
+  max-width: none;
+  max-height: calc(100dvh - 32px);
+  margin: auto;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  box-shadow: 0 24px 60px color-mix(in srgb, var(--theme-text) 24%, transparent);
+  font-family: var(--theme-font-sans);
+}
+
+.avatar-picker[open] {
+  display: flex;
+}
+
+.avatar-picker::backdrop {
+  background: color-mix(in srgb, var(--theme-action) 40%, transparent);
+}
+
+.avatar-picker * {
+  box-sizing: border-box;
+}
+
+.avatar-picker-inner {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
+  max-height: calc(100dvh - 32px);
+}
+
+.avatar-picker-head {
+  display: flex;
+  flex: none;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 22px 12px;
+}
+
+.avatar-picker-head h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 19px;
+  font-weight: 750;
+  letter-spacing: -0.01em;
+}
+
+.avatar-picker-head h2:focus:not(:focus-visible) {
+  outline: 0;
+}
+
+.avatar-picker-head p {
+  margin: 4px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.avatar-picker-close {
+  display: grid;
+  flex: none;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  margin: -6px -8px 0 0;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+}
+
+.avatar-picker-close:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text);
+}
+
+.avatar-picker-body {
+  display: flex;
+  flex: 1 1 auto;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 0;
+  padding: 4px 22px 16px;
+  overflow: hidden;
+}
+
+/* The preview: what Save will keep. */
+.avatar-picker-preview {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
+  padding: 12px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 14px;
+  background: var(--theme-surface-soft);
+}
+
+.avatar-picker-preview-text {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.avatar-picker-preview-text strong {
+  overflow: hidden;
+  color: var(--theme-text);
+  font-size: 15px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.avatar-picker-chosen {
+  color: var(--theme-text-secondary);
+  font-size: 13.5px;
+}
+
+.avatar-picker-preview-text small {
+  color: var(--theme-muted);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+
+.avatar-picker .lineup-art-picker {
+  flex: 1 1 auto;
+}
+
+.avatar-picker .lineup-art-tiles {
+  flex: 1 1 auto;
+  max-height: 300px;
+}
+
+/* The grid's first tile: a button, the same square as a drawing's tile. */
+.avatar-picker .avatar-upload-tile {
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  border-style: dashed;
+  color: var(--theme-accent-strong);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.15;
+  text-align: center;
+}
+
+.avatar-picker-foot {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 22px 16px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+
+.avatar-picker-foot .avatar-picker-remove {
+  margin-right: auto;
+}
+
+/* Cancel and Save keep to the right when there is nothing to remove. */
+.avatar-picker-foot > .avatar-picker-cancel:first-of-type {
+  margin-left: auto;
+}
+
+.avatar-picker-foot .nf-button {
+  min-height: 40px;
+}
+
+.avatar-picker :is(button, h2):focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* ---------- a phone: the same window as a sheet from the bottom (as lineup-icons-sheet) ---------- */
+.avatar-picker.avatar-picker--sheet {
+  position: fixed;
+  inset: auto 0 0;
+  width: 100%;
+  max-height: 92dvh;
+  margin: 0;
+  border-radius: 18px 18px 0 0;
+  box-shadow: 0 -12px 40px color-mix(in srgb, var(--theme-text) 18%, transparent);
+  animation: avatar-picker-up 0.22s ease-out;
+}
+
+.avatar-picker--sheet .avatar-picker-inner {
+  max-height: 92dvh;
+}
+
+/* The grab handle the app's other sheets carry. */
+.avatar-picker--sheet .avatar-picker-inner::before {
+  content: "";
+  display: block;
+  flex: none;
+  width: 38px;
+  height: 5px;
+  margin: 8px auto 0;
+  border-radius: 3px;
+  background: var(--theme-border-strong);
+}
+
+.avatar-picker--sheet .avatar-picker-head {
+  padding: 8px 16px 8px;
+}
+
+.avatar-picker--sheet .avatar-picker-close {
+  width: 44px;
+  height: 44px;
+}
+
+.avatar-picker--sheet .avatar-picker-body {
+  padding: 4px 16px 12px;
+}
+
+.avatar-picker--sheet .avatar-picker-preview {
+  gap: 12px;
+  padding: 10px;
+}
+
+.avatar-picker--sheet .lineup-art-tiles {
+  max-height: none;
+}
+
+.avatar-picker--sheet .avatar-picker-foot {
+  gap: 8px;
+  padding: 12px 16px max(16px, env(safe-area-inset-bottom));
+}
+
+.avatar-picker--sheet .avatar-picker-foot .nf-button {
+  min-height: 44px;
+}
+
+@keyframes avatar-picker-up {
+  from {
+    transform: translateY(100%);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .avatar-picker.avatar-picker--sheet {
+    animation: none;
+  }
+}

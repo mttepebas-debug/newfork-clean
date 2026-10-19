@@ -13,7 +13,6 @@ vi.mock("../auth/AuthContext", () => ({
       userId: "user-1",
       email: "owner@example.test",
       displayName: "Owner User",
-      avatarUrl: null,
     },
     context: null,
     signOut,

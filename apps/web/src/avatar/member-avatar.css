@@ -1,0 +1,42 @@
+/* AVATAR-IKON (design 4.3): a person's avatar in a circle (MemberAvatar). It is in the app shell,
+   so it stays small; the window's rules are in avatar-picker.css, with the window. */
+
+/* ---------- the circle ---------- */
+.member-avatar {
+  --member-avatar-size: 36px;
+  display: inline-grid;
+  width: var(--member-avatar-size);
+  height: var(--member-avatar-size);
+  flex: none;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 50%;
+  box-sizing: border-box;
+  font-size: calc(var(--member-avatar-size) * 0.3);
+  font-weight: 750;
+  line-height: 1;
+}
+
+/* Two classes: a screen's own circle rule (.current-user-avatar, .account-avatar) keeps its size,
+   but not its look for a photo or a drawing. */
+.member-avatar.member-avatar--initials {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+
+.member-avatar.member-avatar--photo,
+.member-avatar.member-avatar--art {
+  background: var(--theme-surface-muted);
+}
+
+.member-avatar > img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.member-avatar > .member-avatar-art {
+  width: 100%;
+  height: 100%;
+}
