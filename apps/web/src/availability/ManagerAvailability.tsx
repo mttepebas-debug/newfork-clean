@@ -1,6 +1,6 @@
 import { useEffect, useId, useRef, useState } from "react";
 import { Button } from "@newfork/ui";
-import { ChevronRight, Copy, EyeOff, Pencil, Plus, Trash2 } from "lucide-react";
+import { ChevronRight, Copy, EyeOff, StickyNote, Trash2 } from "lucide-react";
 import {
   emptyWeeklyPreference,
   preferenceIsEmpty,
@@ -33,7 +33,8 @@ import { WindowAlert } from "../shell/WindowAlert";
 // week, read only (M2: only they change it), and the manager's own notes. The
 // notes keep today's four parts (Mert 2026-10-16, "işlev aynen"): the
 // manager's own hours, On / Off, copying the employee's week and a note a day
-// up to 1000 characters; one Save writes them. A person who is not an employee
+// up to 1000 characters; one Save writes them. One Mon–Sun list holds the
+// hours and the note of each day (Mert 2026-10-19, S-185). A person who is not an employee
 // has no notes (KARARLAR "Müsaitlik notu yalnız çalışan için"). The drawer
 // never asks before leaving (K7).
 
@@ -134,8 +135,70 @@ function Tabs({ model, onSave, onReload, short = false }: Props) {
   );
 }
 
-type Sheet = { weekday: number; base: WeeklyPreference; draft: WeeklyPreference; copies: Copies };
+// A sheet edits a copy of the week and of the notes; Done hands both back.
+type Sheet = {
+  weekday: number;
+  base: WeeklyPreference;
+  draft: WeeklyPreference;
+  copies: Copies;
+  baseNotes: string[];
+  notes: string[];
+  noteBefore: NoteBefore;
+};
+type NoteBefore = Readonly<Record<number, string>>;
 const blankNotes = () => Array<string>(7).fill("");
+
+// Mert 2026-10-19 (S-185, "A · Gün sayfasında saat + not"): "Copy <day> to"
+// copies the day with its note; pressed again, the other day's note is back.
+function followCopies(notes: string[], weekday: number, before: Copies, after: Copies, kept: NoteBefore) {
+  const next = [...notes];
+  const keep: Record<number, string> = { ...kept };
+  after.days.filter((day) => !before.days.includes(day)).forEach((day) => {
+    keep[day] = notes[day] ?? "";
+    next[day] = notes[weekday] ?? "";
+  });
+  before.days.filter((day) => !after.days.includes(day)).forEach((day) => {
+    next[day] = keep[day] ?? "";
+    delete keep[day];
+  });
+  return { notes: next, noteBefore: keep };
+}
+/** The note goes to the edited day and to the days it was copied to. */
+const writeNote = (notes: string[], weekday: number, copies: Copies, text: string) =>
+  notes.map((note, day) => (day === weekday || copies.days.includes(day) ? text : note));
+
+function NoteField({
+  weekday,
+  value,
+  disabled,
+  onChange,
+}: {
+  weekday: number;
+  value: string;
+  disabled: boolean;
+  onChange: (text: string) => void;
+}) {
+  const id = useId();
+  const name = WEEKDAY_NAMES[weekday]!;
+  return (
+    <div className="avm-note-field">
+      <label htmlFor={id}>
+        <span>Note</span>
+        <span className="avm-note-count">{value.length} / 1000</span>
+      </label>
+      <textarea
+        id={id}
+        aria-label={`${name} note`}
+        maxLength={1000}
+        rows={3}
+        placeholder="e.g. Prefers closing shifts"
+        value={value}
+        disabled={disabled}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
 
 function ManagerNotes({
   model,
@@ -153,8 +216,8 @@ function ManagerNotes({
   const [copyRevision, setCopyRevision] = useState<number>();
   const [selected, setSelected] = useState(1);
   const [copies, setCopies] = useState<Copies>(noCopies);
+  const [noteBefore, setNoteBefore] = useState<NoteBefore>({});
   const [sheet, setSheet] = useState<Sheet | null>(null);
-  const [editing, setEditing] = useState<{ weekday: number; text: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState("");
@@ -180,7 +243,7 @@ function ManagerNotes({
     setDirty(false);
     setCopyRevision(undefined);
     setCopies(noCopies);
-    setEditing(null);
+    setNoteBefore({});
     setError("");
     setConflict(false);
   }
@@ -196,6 +259,11 @@ function ManagerNotes({
     if (week) setCopyRevision(undefined);
     setSaved(false);
     setError("");
+  }
+  function pick(weekday: number) {
+    setSelected(weekday);
+    setCopies(noCopies);
+    setNoteBefore({});
   }
 
   async function save() {
@@ -240,6 +308,10 @@ function ManagerNotes({
   }
 
   const sheetChanges = sheet ? changedDays(sheet.base, sheet.draft) : [];
+  const sheetNotesChanged = sheet ? sheet.notes.some((note, day) => note !== sheet.baseNotes[day]) : false;
+  function openSheet(weekday: number) {
+    setSheet({ weekday, base: preference, draft: preference, copies: noCopies, baseNotes: notes, notes, noteBefore: {} });
+  }
   function closeSheet(keep: boolean) {
     if (sheet && keep && sheetChanges.length) {
       setPreference({
@@ -248,14 +320,16 @@ function ManagerNotes({
           sheetChanges.includes(day.day) ? sheet.draft.days.find((item) => item.day === day.day)! : day,
         ),
       });
-      changed(true);
     }
+    if (sheet && keep && sheetNotesChanged) setNotes(sheet.notes);
+    if (sheet && keep && (sheetChanges.length || sheetNotesChanged)) changed(sheetChanges.length > 0);
     setSheet(null);
   }
 
   const row = (weekday: number, onClick: () => void, currentDay?: boolean) => {
     const day = preference.days.find((item) => item.day === weekday)!;
     const tone = dayTone(day, timeFormat);
+    const note = (notes[weekday] ?? "").trim();
     return (
       <button
         key={weekday}
@@ -270,6 +344,12 @@ function ManagerNotes({
         <span className="dav-row-text">
           <b>{WEEKDAY_NAMES[weekday]}</b>
           <small>{tone.label}</small>
+          {note && (
+            <small className="avm-row-note">
+              <StickyNote size={12} aria-hidden />
+              <span>{note}</span>
+            </small>
+          )}
         </span>
         <ChevronRight size={phone ? 16 : 15} aria-hidden />
       </button>
@@ -277,74 +357,6 @@ function ManagerNotes({
   };
 
   const copyAllowed = model.employee.submitted;
-  const noteLine = (weekday: number) => {
-    const text = notes[weekday] ?? "";
-    const name = WEEKDAY_NAMES[weekday]!;
-    if (editing?.weekday === weekday)
-      return (
-        <li key={weekday} className="avm-note is-editing">
-          <b>{name}</b>
-          <div className="avm-note-edit">
-            <textarea
-              aria-label={`${name} note`}
-              maxLength={1000}
-              rows={3}
-              autoFocus
-              placeholder="e.g. Prefers closing shifts"
-              value={editing.text}
-              onChange={(event) => setEditing({ weekday, text: event.target.value })}
-            />
-            <div className="avm-note-actions">
-              <span className="avm-note-count">{editing.text.length} / 1000</span>
-              {text && (
-                <button
-                  type="button"
-                  className="avm-link"
-                  onClick={() => {
-                    setNotes(notes.map((note, index) => (index === weekday ? "" : note)));
-                    setEditing(null);
-                    changed();
-                  }}
-                >
-                  Delete note
-                </button>
-              )}
-              <Button className="secondary-button" onClick={() => setEditing(null)}>
-                Cancel
-              </Button>
-              <Button
-                onClick={() => {
-                  const next = editing.text.trim();
-                  if (next !== text) {
-                    setNotes(notes.map((note, index) => (index === weekday ? next : note)));
-                    changed();
-                  }
-                  setEditing(null);
-                }}
-              >
-                Done
-              </Button>
-            </div>
-          </div>
-        </li>
-      );
-    return (
-      <li key={weekday} className="avm-note">
-        <b>{name}</b>
-        {text ? <p>{text}</p> : <span className="avm-note-empty">No note</span>}
-        <button
-          type="button"
-          className="avm-note-button"
-          aria-label={`${text ? "Edit" : "Add"} ${name} note`}
-          disabled={locked || editing !== null}
-          onClick={() => setEditing({ weekday, text })}
-        >
-          {text ? <Pencil size={13} aria-hidden /> : <Plus size={13} aria-hidden />}
-          {text ? "Edit" : "Add"}
-        </button>
-      </li>
-    );
-  };
 
   // Over the body's bottom edge, above the buttons; the body gets room under it (UI-FIELDMSG-2).
   const errorLine = (
@@ -403,7 +415,6 @@ function ManagerNotes({
               disabled={saving || !canEdit}
               onChange={(event) => {
                 setEnabled(event.target.checked);
-                setEditing(null);
                 changed();
               }}
             />
@@ -411,9 +422,10 @@ function ManagerNotes({
         </div>
         {!enabled && <p className="avm-notice">Manager notes are off. Saved hours and notes are kept.</p>}
 
+        {/* One Mon–Sun list (S-185): a day holds the hours to keep in mind and its note. */}
         <section className="avm-section" aria-labelledby={`${model.employee_id}-hours`}>
           <header className="avm-section-head">
-            <h3 id={`${model.employee_id}-hours`}>Hours to keep in mind</h3>
+            <h3 id={`${model.employee_id}-hours`}>Hours and notes</h3>
             <button
               type="button"
               className="avm-tool"
@@ -422,6 +434,7 @@ function ManagerNotes({
               onClick={() => {
                 setPreference(structuredClone(model.employee.preference));
                 setCopies(noCopies);
+                setNoteBefore({});
                 changed(true);
                 setCopyRevision(model.employee.revision);
               }}
@@ -438,6 +451,7 @@ function ManagerNotes({
               onClick={() => {
                 setPreference(emptyWeeklyPreference());
                 setCopies(noCopies);
+                setNoteBefore({});
                 changed(true);
               }}
             >
@@ -445,24 +459,11 @@ function ManagerNotes({
             </button>
           </header>
           {phone ? (
-            <div className="dav-list avm-week">
-              {DISPLAY_DAYS.map((weekday) =>
-                row(weekday, () => setSheet({ weekday, base: preference, draft: preference, copies: noCopies })),
-              )}
-            </div>
+            <div className="dav-list avm-week">{DISPLAY_DAYS.map((weekday) => row(weekday, () => openSheet(weekday)))}</div>
           ) : (
             <div className="dav-week avm-week">
               <nav className="dav-days" aria-label="Days">
-                {DISPLAY_DAYS.map((weekday) =>
-                  row(
-                    weekday,
-                    () => {
-                      setSelected(weekday);
-                      setCopies(noCopies);
-                    },
-                    weekday === selected,
-                  ),
-                )}
+                {DISPLAY_DAYS.map((weekday) => row(weekday, () => pick(weekday), weekday === selected))}
               </nav>
               <section className="dav-detail" aria-labelledby={`${model.employee_id}-day`}>
                 <h4 id={`${model.employee_id}-day`}>{WEEKDAY_NAMES[selected]}</h4>
@@ -471,6 +472,9 @@ function ManagerNotes({
                   weekday={selected}
                   copies={copies}
                   onChange={(next, nextCopies) => {
+                    const followed = followCopies(notes, selected, copies, nextCopies, noteBefore);
+                    setNotes(followed.notes);
+                    setNoteBefore(followed.noteBefore);
                     setPreference(next);
                     setCopies(nextCopies);
                     changed(true);
@@ -479,19 +483,20 @@ function ManagerNotes({
                   disabled={locked}
                   // The drawer's column is narrow: the cards stand one under the other.
                   phone
-                />
+                >
+                  <NoteField
+                    weekday={selected}
+                    value={notes[selected] ?? ""}
+                    disabled={locked}
+                    onChange={(text) => {
+                      setNotes(writeNote(notes, selected, copies, text));
+                      changed();
+                    }}
+                  />
+                </DayEditor>
               </section>
             </div>
           )}
-        </section>
-
-        <section className="avm-section" aria-labelledby={`${model.employee_id}-notes`}>
-          <header className="avm-section-head">
-            <h3 id={`${model.employee_id}-notes`}>Day notes</h3>
-          </header>
-          <ul className="avm-note-list" aria-label="Day notes">
-            {DISPLAY_DAYS.map(noteLine)}
-          </ul>
         </section>
       </div>
       <footer className="avm-footer">
@@ -523,7 +528,7 @@ function ManagerNotes({
               <Button className="secondary-button" onClick={() => closeSheet(false)}>
                 Cancel
               </Button>
-              <Button disabled={!sheetChanges.length} onClick={() => closeSheet(true)}>
+              <Button disabled={!sheetChanges.length && !sheetNotesChanged} onClick={() => closeSheet(true)}>
                 Done
               </Button>
             </div>
@@ -533,10 +538,20 @@ function ManagerNotes({
             week={sheet.draft}
             weekday={sheet.weekday}
             copies={sheet.copies}
-            onChange={(draft, nextCopies) => setSheet({ ...sheet, draft, copies: nextCopies })}
+            onChange={(draft, nextCopies) => {
+              const followed = followCopies(sheet.notes, sheet.weekday, sheet.copies, nextCopies, sheet.noteBefore);
+              setSheet({ ...sheet, draft, copies: nextCopies, notes: followed.notes, noteBefore: followed.noteBefore });
+            }}
             timeFormat={timeFormat}
             phone
-          />
+          >
+            <NoteField
+              weekday={sheet.weekday}
+              value={sheet.notes[sheet.weekday] ?? ""}
+              disabled={false}
+              onChange={(text) => setSheet({ ...sheet, notes: writeNote(sheet.notes, sheet.weekday, sheet.copies, text) })}
+            />
+          </DayEditor>
         </DaySheet>
       )}
     </div>

@@ -54,15 +54,19 @@ test("desktop: Availability lists the person, shows their week, and the drawer r
 
   await page.getByRole("tab", { name: "Manager notes" }).click();
   await expect(page.getByText(`Only managers see these notes. ${person.first} doesn't.`)).toBeVisible();
-  await page.getByRole("button", { name: "Add Tuesday note" }).click();
+  // One Mon–Sun list (S-185): the day's note sits under its hours, no second list.
+  await expect(page.getByRole("heading", { name: "Hours and notes" })).toBeVisible();
+  await expect(page.getByRole("list", { name: "Day notes" })).toHaveCount(0);
+  const days = page.getByRole("navigation", { name: "Days" });
+  await days.getByRole("button", { name: /^Tuesday/ }).click();
   await page.getByRole("textbox", { name: "Tuesday note" }).fill("Leaves early for class");
-  await page.getByRole("button", { name: "Done" }).click();
+  await expect(days.getByRole("button", { name: /^Tuesday/ })).toContainText("Leaves early for class");
   await page.getByRole("button", { name: "Save", exact: true }).click();
   await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
   expect(managerNotes(person.label)?.[2]).toBe("Leaves early for class");
 });
 
-test("phone: a tap opens the person's page with the week and the manager's notes", async ({ browser }) => {
+test("phone: a tap opens the person's page with the week, and a day's sheet keeps its note", async ({ browser }) => {
   const person = freshEmployee("mgrphone");
   const page = await open(browser, { width: 390, height: 844 }, person.name);
   // No status tabs on a phone (Mert, 2026-10-17): the list is everyone.
@@ -75,7 +79,17 @@ test("phone: a tap opens the person's page with the week and the manager's notes
   await expect(page.getByText(`Read only. Only ${person.first} can change this.`)).toHaveCount(0);
   await expect(page.locator(".avr-sum")).toHaveCount(0);
   await page.getByRole("tab", { name: "Manager notes" }).tap();
-  await expect(page.getByRole("list", { name: "Day notes" }).getByRole("listitem")).toHaveCount(7);
+  // One Mon–Sun list (S-185): a day opens in a sheet with its hours and its note.
+  await expect(page.getByRole("list", { name: "Day notes" })).toHaveCount(0);
+  await expect(page.locator(".avm-week .dav-row")).toHaveCount(7);
+  await page.locator('.avm-week [data-weekday="2"]').tap();
+  const sheet = page.getByRole("dialog", { name: "Tuesday" });
+  await sheet.getByRole("textbox", { name: "Tuesday note" }).fill("Closes on Tuesdays");
+  await sheet.getByRole("button", { name: "Done" }).tap();
+  await expect(page.locator('.avm-week [data-weekday="2"]')).toContainText("Closes on Tuesdays");
+  await page.getByRole("button", { name: "Save", exact: true }).tap();
+  await expect(page.getByRole("status").filter({ hasText: "Saved" })).toBeVisible();
+  expect(managerNotes(person.label)?.[2]).toBe("Closes on Tuesdays");
   await page.getByRole("button", { name: "Availability" }).tap();
   await expect(page.getByRole("navigation", { name: "Employees" })).toBeVisible();
 });

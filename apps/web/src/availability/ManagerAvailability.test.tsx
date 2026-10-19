@@ -129,29 +129,30 @@ describe("Employees drawer, Availability: the employee's week", () => {
   });
 });
 
-describe("Employees drawer, Availability: Manager notes (the same four parts, Mert 2026-10-16)", () => {
-  it("says only managers see the notes and lists a note line for every day", () => {
+describe("Employees drawer, Availability: Manager notes (the same four parts, Mert 2026-10-16; one list, S-185)", () => {
+  // Mert 2026-10-19 (S-185, "A · Gün sayfasında saat + not"): one Mon–Sun list; a day holds its hours and its note.
+  it("lists the week once: each day says its hours and the first line of its note, and no second list", () => {
     setup();
     expect(screen.getByText("Only managers see these notes. Ada doesn't.")).toBeTruthy();
-    const notes = within(screen.getByRole("list", { name: "Day notes" })).getAllByRole("listitem");
-    expect(notes).toHaveLength(7);
-    expect(notes[0]!.textContent).toContain("Monday");
-    expect(notes[0]!.textContent).toContain("Keep this note");
-    expect(notes[1]!.textContent).toContain("No note");
-    expect(screen.getByRole("button", { name: "Edit Monday note" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Add Tuesday note" })).toBeTruthy();
+    expect(screen.getByRole("heading", { name: "Hours and notes" })).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "Day notes" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Day notes" })).toBeNull();
+    expect(screen.queryByRole("button", { name: /^(Add|Edit) \w+ note$/ })).toBeNull();
+    expect(days()).toHaveLength(7);
+    expect(days()[0]!.textContent).toBe("MondayAvailable all dayKeep this note");
+    expect(days()[1]!.textContent).toBe("TuesdayAvailable all day");
     expect((screen.getByRole("switch", { name: "Manager notes" }) as HTMLInputElement).checked).toBe(true);
   });
 
-  it("adds a day note, at most 1000 characters, and saves it with the hours", async () => {
+  it("writes a day's note under its hours, at most 1000 characters, and saves it with the hours", async () => {
     const { onSave } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Add Tuesday note" }));
+    fireEvent.click(days()[1]!);
     const box = screen.getByRole("textbox", { name: "Tuesday note" }) as HTMLTextAreaElement;
     expect(box.maxLength).toBe(1000);
+    expect(box.value).toBe("");
     fireEvent.change(box, { target: { value: "Prefers closing on Tuesdays" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(screen.queryByRole("textbox", { name: "Tuesday note" })).toBeNull();
-    expect(screen.getByText("Prefers closing on Tuesdays")).toBeTruthy();
+    expect(screen.getByText("27 / 1000")).toBeTruthy();
+    expect(days()[1]!.textContent).toBe("TuesdayAvailable all dayPrefers closing on Tuesdays");
     expect(screen.getByRole("status").textContent).toBe("Unsaved changes");
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
@@ -165,25 +166,42 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     await screen.findByText("Saved");
   });
 
-  it("edits a note, cancels an edit, and deletes a note", async () => {
+  it("empties a note, and Discard brings it back", async () => {
     const { onSave } = setup();
-    fireEvent.click(screen.getByRole("button", { name: "Edit Monday note" }));
-    fireEvent.change(screen.getByRole("textbox", { name: "Monday note" }), { target: { value: "Changed" } });
-    fireEvent.click(screen.getByRole("button", { name: "Cancel" }));
-    expect(screen.getByText("Keep this note")).toBeTruthy();
+    const box = () => screen.getByRole("textbox", { name: "Monday note" }) as HTMLTextAreaElement;
+    expect(box().value).toBe("Keep this note");
+    fireEvent.change(box(), { target: { value: "" } });
+    expect(days()[0]!.textContent).toBe("MondayAvailable all day");
+    fireEvent.click(screen.getByRole("button", { name: "Discard" }));
+    expect(box().value).toBe("Keep this note");
     expect(save().disabled).toBe(true);
-    fireEvent.click(screen.getByRole("button", { name: "Edit Monday note" }));
-    fireEvent.click(screen.getByRole("button", { name: "Delete note" }));
-    expect(screen.queryByText("Keep this note")).toBeNull();
+    fireEvent.change(box(), { target: { value: "" } });
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].notes).toEqual(["", "", "", "", "", "", ""]);
   });
 
+  it("copies a day with its note; pressed again, the other day is as it was", async () => {
+    const { onSave } = setup();
+    fireEvent.click(screen.getByRole("radio", { name: /^Unavailable/ }));
+    const tuesday = () => screen.getByRole("button", { name: /^Tuesday,/ });
+    fireEvent.click(tuesday());
+    expect(days()[1]!.textContent).toBe("TuesdayUnavailable all dayKeep this note");
+    fireEvent.change(screen.getByRole("textbox", { name: "Monday note" }), { target: { value: "School" } });
+    expect(days()[1]!.textContent).toBe("TuesdayUnavailable all daySchool");
+    fireEvent.click(tuesday());
+    expect(days()[1]!.textContent).toBe("TuesdayAvailable all day");
+    fireEvent.click(tuesday());
+    fireEvent.click(save());
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0]![0].notes).toEqual(["", "School", "School", "", "", "", ""]);
+    expect(onSave.mock.calls[0]![0].preference.days[2]).toEqual({ day: 2, all_day: true, ranges: [] });
+  });
+
   it("marks the manager's own hours day by day, the same editor the employee has", async () => {
     const { onSave } = setup();
     expect(days().map((day) => day.textContent)).toEqual([
-      "MondayAvailable all day",
+      "MondayAvailable all dayKeep this note",
       "TuesdayAvailable all day",
       "WednesdayAvailable all day",
       "ThursdayAvailable all day",
@@ -206,9 +224,9 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     data.employee.preference.days[2]!.all_day = true;
     data.manager!.preference.days[1]!.ranges = evening;
     const { onSave } = setup(data);
-    expect(days()[0]!.textContent).toBe("MondayUnavailable 17:00 – 23:00");
+    expect(days()[0]!.textContent).toBe("MondayUnavailable 17:00 – 23:00Keep this note");
     fireEvent.click(screen.getByRole("button", { name: "Use employee preferences" }));
-    expect(days()[0]!.textContent).toBe("MondayAvailable all day");
+    expect(days()[0]!.textContent).toBe("MondayAvailable all dayKeep this note");
     expect(days()[1]!.textContent).toBe("TuesdayUnavailable all day");
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
@@ -239,7 +257,7 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     data.manager!.preference.days[1]!.ranges = evening;
     const { onSave } = setup(data);
     fireEvent.click(screen.getByRole("button", { name: "Clear all hours" }));
-    expect(days()[0]!.textContent).toBe("MondayAvailable all day");
+    expect(days()[0]!.textContent).toBe("MondayAvailable all dayKeep this note");
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].preference).toEqual(emptyWeeklyPreference());
@@ -253,7 +271,7 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     fireEvent.click(screen.getByRole("switch", { name: "Manager notes" }));
     expect(screen.getByText("Manager notes are off. Saved hours and notes are kept.")).toBeTruthy();
     expect((screen.getByRole("button", { name: "Use employee preferences" }) as HTMLButtonElement).disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Edit Monday note" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("textbox", { name: "Monday note" }) as HTMLTextAreaElement).disabled).toBe(true);
     expect((screen.getAllByRole("radio")[0] as HTMLButtonElement).disabled).toBe(true);
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
@@ -278,44 +296,39 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     setup({ ...model(), can_manage: false });
     expect(screen.getByRole("switch", { name: "Manager notes" }).hasAttribute("disabled")).toBe(true);
     expect(save().disabled).toBe(true);
-    expect((screen.getByRole("button", { name: "Edit Monday note" }) as HTMLButtonElement).disabled).toBe(true);
+    expect((screen.getByRole("textbox", { name: "Monday note" }) as HTMLTextAreaElement).disabled).toBe(true);
   });
 
   it("drops a notes draft when moving between the two tabs", () => {
     setup();
-    fireEvent.click(screen.getByRole("button", { name: "Edit Monday note" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Monday note" }), { target: { value: "Changed" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(screen.getByRole("tab", { name: "Employee availability" }));
     expect(screen.queryByRole("button", { name: "Save" })).toBeNull();
     fireEvent.keyDown(screen.getByRole("tab", { name: "Employee availability" }), { key: "ArrowRight" });
-    expect(screen.getByText("Keep this note")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Monday note" }) as HTMLTextAreaElement).value).toBe("Keep this note");
   });
 
   it("never carries a draft into another employee's drawer", () => {
     const data = model();
     const { rerender, onSave } = setup(data);
-    fireEvent.click(screen.getByRole("button", { name: "Edit Monday note" }));
     fireEvent.change(screen.getByRole("textbox", { name: "Monday note" }), { target: { value: "Changed" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     rerender(
       <ManagerAvailability model={{ ...data, employee_id: "ab910000-0000-4000-8000-000000000002" }} onSave={onSave} />,
     );
     expect(screen.getByRole("tab", { name: "Employee availability" }).getAttribute("aria-selected")).toBe("true");
     fireEvent.click(screen.getByRole("tab", { name: /^Manager notes/ }));
-    expect(screen.getByText("Keep this note")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Monday note" }) as HTMLTextAreaElement).value).toBe("Keep this note");
   });
 
   it("keeps a dirty draft and its first revision when the model refreshes", async () => {
     const data = model();
     const { rerender, onSave } = setup(data);
-    fireEvent.click(screen.getByRole("button", { name: "Add Tuesday note" }));
+    fireEvent.click(days()[1]!);
     fireEvent.change(screen.getByRole("textbox", { name: "Tuesday note" }), { target: { value: "Late" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     const refreshed = structuredClone(data);
     refreshed.manager!.revision = 5;
     rerender(<ManagerAvailability model={refreshed} onSave={onSave} />);
-    expect(screen.getByText("Late")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Tuesday note" }) as HTMLTextAreaElement).value).toBe("Late");
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].expected_revision).toBe(4);
@@ -325,16 +338,15 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     let fail!: (error: Error) => void;
     const onSave = vi.fn(() => new Promise<WeeklyPreferenceRead>((_resolve, reject) => (fail = reject)));
     setup(model(), onSave);
-    fireEvent.click(screen.getByRole("button", { name: "Add Tuesday note" }));
+    fireEvent.click(days()[1]!);
     fireEvent.change(screen.getByRole("textbox", { name: "Tuesday note" }), { target: { value: "Late" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(save());
     fireEvent.click(save());
     expect(onSave).toHaveBeenCalledOnce();
     expect(screen.getByRole("status").textContent).toBe("Saving...");
     await act(async () => fail(new Error("Changes could not be saved. Your draft is still here.")));
     expect(screen.getByRole("alert").textContent).toContain("Changes could not be saved.");
-    expect(screen.getByText("Late")).toBeTruthy();
+    expect((screen.getByRole("textbox", { name: "Tuesday note" }) as HTMLTextAreaElement).value).toBe("Late");
   });
 
   it("offers Reload when someone saved first, and takes their notes", async () => {
@@ -348,16 +360,15 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
     const onReload = vi.fn(async () => latest);
     render(<ManagerAvailability model={data} onSave={onSave} onReload={onReload} />);
     fireEvent.click(screen.getByRole("tab", { name: /^Manager notes/ }));
-    fireEvent.click(screen.getByRole("button", { name: "Add Tuesday note" }));
+    fireEvent.click(days()[1]!);
     fireEvent.change(screen.getByRole("textbox", { name: "Tuesday note" }), { target: { value: "Mine" } });
-    fireEvent.click(screen.getByRole("button", { name: "Done" }));
     fireEvent.click(save());
     const alert = await screen.findByRole("alert");
     expect(alert.textContent).toContain("Availability changed.");
     fireEvent.click(within(alert).getByRole("button", { name: "Reload" }));
-    await screen.findByText("Their note");
+    await waitFor(() => expect(days()[0]!.textContent).toContain("Their note"));
     expect(onReload).toHaveBeenCalledOnce();
-    expect(screen.queryByText("Mine")).toBeNull();
+    expect((screen.getByRole("textbox", { name: "Tuesday note" }) as HTMLTextAreaElement).value).toBe("");
     expect(screen.queryByRole("alert")).toBeNull();
   });
 });
@@ -365,19 +376,37 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
 describe("Manager notes on a phone (720 px and below)", () => {
   beforeEach(() => stubPhoneWidth());
 
-  it("opens a day of the manager's hours in a sheet; Done keeps it in the draft for Save", async () => {
+  it("opens a day in a sheet with its hours and its note; Done keeps both in the draft for Save", async () => {
     const { onSave } = setup();
     expect(screen.queryByRole("navigation", { name: "Days" })).toBeNull();
+    expect(screen.queryByRole("list", { name: "Day notes" })).toBeNull();
+    expect(screen.queryByRole("textbox")).toBeNull();
     fireEvent.click(document.querySelector<HTMLElement>('.avm-week [data-weekday="5"]')!);
     const sheet = screen.getByRole("dialog", { name: "Friday" });
     fireEvent.click(within(sheet).getByRole("radio", { name: /^Unavailable/ }));
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Friday note" }), { target: { value: "Class until 6" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog")).toBeNull();
-    expect(document.querySelector('.avm-week [data-weekday="5"]')!.textContent).toBe("FridayUnavailable all day");
+    expect(document.querySelector('.avm-week [data-weekday="5"]')!.textContent).toBe("FridayUnavailable all dayClass until 6");
     expect(onSave).not.toHaveBeenCalled();
     fireEvent.click(save());
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].preference.days[5]!.all_day).toBe(true);
+    expect(onSave.mock.calls[0]![0].notes![5]).toBe("Class until 6");
+  });
+
+  it("copies the day with its note from the sheet", () => {
+    setup();
+    fireEvent.click(document.querySelector<HTMLElement>('.avm-week [data-weekday="1"]')!);
+    const sheet = screen.getByRole("dialog", { name: "Monday" });
+    const done = within(sheet).getByRole("button", { name: "Done" }) as HTMLButtonElement;
+    expect(done.disabled).toBe(true);
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Monday note" }), { target: { value: "Keep this note too" } });
+    expect(done.disabled).toBe(false);
+    fireEvent.click(within(sheet).getByRole("button", { name: /^Wednesday,/ }));
+    fireEvent.click(done);
+    expect(document.querySelector('.avm-week [data-weekday="1"]')!.textContent).toBe("MondayAvailable all dayKeep this note too");
+    expect(document.querySelector('.avm-week [data-weekday="3"]')!.textContent).toBe("WednesdayAvailable all dayKeep this note too");
   });
 
   it("leaves the week as it was when the sheet is cancelled", () => {
@@ -385,6 +414,7 @@ describe("Manager notes on a phone (720 px and below)", () => {
     fireEvent.click(document.querySelector<HTMLElement>('.avm-week [data-weekday="5"]')!);
     const sheet = screen.getByRole("dialog", { name: "Friday" });
     fireEvent.click(within(sheet).getByRole("radio", { name: /^Unavailable/ }));
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Friday note" }), { target: { value: "Gone" } });
     fireEvent.click(within(sheet).getByRole("button", { name: "Cancel" }));
     expect(document.querySelector('.avm-week [data-weekday="5"]')!.textContent).toBe("FridayAvailable all day");
     expect(save().disabled).toBe(true);

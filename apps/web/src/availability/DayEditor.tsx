@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent } from "react";
+import { useLayoutEffect, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from "react";
 import { Ban, Check, ChevronDown, CircleCheck, Clock } from "lucide-react";
 import type { WeeklyPreference, WeeklyPreferenceDay } from "@newfork/shared";
 import {
@@ -42,6 +42,8 @@ type Props = {
   /** The phone's sheet: tighter cards and taller fields. */
   phone?: boolean;
   disabled?: boolean;
+  /** Drawn under From / Until, above "Copy <day> to": the manager's note for the day (S-185). */
+  children?: ReactNode;
 };
 
 export function DayEditor({
@@ -52,6 +54,7 @@ export function DayEditor({
   timeFormat,
   phone = false,
   disabled = false,
+  children,
 }: Props) {
   const day = week.days.find((item) => item.day === weekday)!;
   const name = WEEKDAY_NAMES[weekday]!;
@@ -115,6 +118,7 @@ export function DayEditor({
           onCommit={(range) => put(withRange(day, range))}
         />
       </div>
+      {children}
       <div className="dav-copy">
         <span className="dav-copy-heading" id={`dav-copy-${weekday}-${phone ? "p" : "d"}`}>
           Copy {name} to
