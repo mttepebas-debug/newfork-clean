@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select no_plan();
+select plan(17);
 
 -- BL-177, then the decision chain (KARARLAR S-164, S-169; ROL-CIFT design §4.5, §8.1):
 -- a time-off request goes to the managers of the person's locations other than the
