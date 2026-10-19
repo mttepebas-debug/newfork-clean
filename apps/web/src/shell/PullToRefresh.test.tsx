@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PULL_READY, PullToRefreshMark, rubber, usePullToRefresh } from "./PullToRefresh";
+import { PULL_READY, PullToRefreshMark, rubber, scrolledAbove, usePullToRefresh } from "./PullToRefresh";
 
 function Page({ onRefresh }: { onRefresh: () => Promise<unknown> }) {
   const anchor = useRef<HTMLDivElement>(null);
@@ -12,6 +12,9 @@ function Page({ onRefresh }: { onRefresh: () => Promise<unknown> }) {
         <PullToRefreshMark state={state} pull={pull} />
         <p data-testid="state">{state}</p>
         <div data-own-drag="" data-testid="strip" />
+        <div data-testid="frame" style={{ overflowY: "auto", height: 50 }}>
+          <div data-testid="row" style={{ height: 400 }} />
+        </div>
       </div>
     </main>
   );
@@ -81,5 +84,36 @@ describe("pull to refresh", () => {
     expect(touch(strip, "touchmove", 400).defaultPrevented).toBe(false);
     touch(strip, "touchend", 400);
     expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("leaves a list scrolled in its own frame to pull its own rows", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Page onRefresh={onRefresh} />);
+    const area = screen.getByTestId("area");
+    const frame = screen.getByTestId("frame");
+    const row = screen.getByTestId("row");
+    expect(scrolledAbove(row, area)).toBe(false);
+    frame.scrollTop = 80;
+    expect(scrolledAbove(row, area)).toBe(true);
+    touch(row, "touchstart", 100);
+    expect(touch(row, "touchmove", 400).defaultPrevented).toBe(false);
+    touch(row, "touchend", 400);
+    expect(onRefresh).not.toHaveBeenCalled();
+  });
+
+  it("is a phone's gesture: a wide screen pulls nothing", () => {
+    const original = window.matchMedia;
+    window.matchMedia = (() => ({ matches: false })) as unknown as typeof window.matchMedia;
+    try {
+      const onRefresh = vi.fn(() => Promise.resolve());
+      render(<Page onRefresh={onRefresh} />);
+      const area = screen.getByTestId("area");
+      touch(area, "touchstart", 100);
+      expect(touch(area, "touchmove", 400).defaultPrevented).toBe(false);
+      touch(area, "touchend", 400);
+      expect(onRefresh).not.toHaveBeenCalled();
+    } finally {
+      window.matchMedia = original;
+    }
   });
 });

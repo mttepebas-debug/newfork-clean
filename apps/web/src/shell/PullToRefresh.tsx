@@ -2,17 +2,29 @@ import { RefreshCw } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import "./pull-to-refresh.css";
 
-// Pull to refresh on an employee page (Mert 2026-10-18, KARARLAR S-163): the
-// page itself never stretches (S-143); at the very top a pull down brings a
-// turning mark that follows the finger, and past 74 px a release refreshes
-// that page's data. The browser's own pull (which reloads the page) is held
-// back while ours runs. Home first; the other employee pages follow.
+// Pull to refresh on every page of a phone (Mert 2026-10-18, KARARLAR S-163
+// (4) and (9)): the page itself never stretches (S-143); at the very top a
+// pull down brings a turning mark that follows the finger, and past 74 px a
+// release refreshes that page's data. The browser's own pull (which reloads
+// the page) is held back while ours runs. The shell holds the one instance.
 
 export const PULL_READY = 74;
 /** How far the mark travels for a pull of `distance` px: it slows down, it never runs away. */
 export const rubber = (distance: number) => 128 * (1 - Math.exp(-distance / 190));
 
 export type PullState = "idle" | "pulling" | "ready" | "refreshing";
+
+/**
+ * Whether anything between the touched element and the scrolling area is
+ * scrolled away from its top: a list that scrolls in its own frame
+ * (list-page-frozen) pulls down its own rows, not the page.
+ */
+export function scrolledAbove(target: Element | null, area: HTMLElement): boolean {
+  for (let node = target instanceof HTMLElement ? target : target?.parentElement ?? null; node && node !== area; node = node.parentElement) {
+    if (node.scrollTop > 0 && /(auto|scroll)/.test(getComputedStyle(node).overflowY)) return true;
+  }
+  return area.scrollTop > 0;
+}
 
 /**
  * Listens on the scrolling area (`main.app-main`) around `anchor` and calls
@@ -26,6 +38,8 @@ export function usePullToRefresh(anchor: { readonly current: HTMLElement | null 
   useEffect(() => {
     const area = anchor.current?.closest<HTMLElement>(".app-main") ?? null;
     if (!area) return;
+    // A phone's gesture (Mert 2026-10-18: every main page on a phone).
+    const phone = () => typeof window.matchMedia !== "function" || window.matchMedia("(max-width: 720px)").matches;
     let x0 = 0;
     let y0 = 0;
     let axis: "y" | "n" | null = null;
@@ -44,9 +58,10 @@ export function usePullToRefresh(anchor: { readonly current: HTMLElement | null 
     };
     const start = (event: TouchEvent) => {
       active = false;
-      if (busy || event.touches.length !== 1 || area.scrollTop > 0) return;
-      // A strip, a deck or a field takes its own drags.
-      if ((event.target as Element).closest("[data-own-drag], input, textarea, select, dialog")) return;
+      if (busy || event.touches.length !== 1 || !phone()) return;
+      const target = event.target as Element;
+      // A strip, a deck, a wheel or a field takes its own drags; a list scrolled in its own frame pulls its rows.
+      if (target.closest("[data-own-drag], input, textarea, select, dialog") || scrolledAbove(target, area)) return;
       x0 = event.touches[0]!.clientX;
       y0 = event.touches[0]!.clientY;
       axis = null;

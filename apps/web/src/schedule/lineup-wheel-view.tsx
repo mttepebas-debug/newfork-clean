@@ -186,7 +186,7 @@ function DayWheel({
   }, [date]);
 
   return (
-    <div className="lineup-wheel" role="group" aria-label="Day. Swipe or use the arrow keys." ref={boxRef}>
+    <div className="lineup-wheel" role="group" aria-label="Day. Swipe or use the arrow keys." ref={boxRef} data-own-drag="">
       <div className="lineup-wheel-track" ref={track} style={{ "--lineup-wheel-days": 2 * span + 1 } as CSSProperties}>
         {cells}
       </div>

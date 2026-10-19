@@ -130,6 +130,5 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
     needsUnknown: exchanges.isError && !exchanges.data,
     updates,
     areaFor,
-    refetch: () => Promise.all([exchanges.refetch(), documents.refetch(), feed.refetch(), lineups.refetch()]),
   };
 }

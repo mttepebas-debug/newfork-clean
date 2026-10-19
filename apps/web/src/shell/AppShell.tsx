@@ -15,8 +15,9 @@ import {
   Settings,
   Users,
 } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState, type ComponentType } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { PullToRefreshMark, usePullToRefresh } from "./PullToRefresh";
 import { useFrozenTop } from "./useFrozenTop";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
 import { ManagementMobileNav } from "./ManagementMobileNav";
@@ -225,6 +226,12 @@ export function AppShell() {
   const phone = usePhoneWidth();
   // The bottom bar's width (720 px and below): the management top bar comes with it.
   const phoneBars = useListPhoneWidth();
+  // Pull to refresh on every page of a phone (Mert 2026-10-18, S-163 (9)): the
+  // page holds still, a turning mark follows the finger, and the release asks
+  // again for whatever the page on screen is showing.
+  const queryClient = useQueryClient();
+  const pullArea = useMemo(() => ({ current: main }), [main]);
+  const pull = usePullToRefresh(pullArea, () => queryClient.refetchQueries({ type: "active" }));
   const permissions = new Set(context?.permissions ?? []);
   // What the account area is waiting for, totalled. The same query the account
   // nav runs, so opening the account costs no second fetch.
@@ -476,6 +483,7 @@ export function AppShell() {
       </aside>
       {phoneBars ? <ManagerPhoneBar /> : null}
       <main className="app-main" ref={setMain}>
+        {phoneBars ? <PullToRefreshMark state={pull.state} pull={pull.pull} /> : null}
         <Outlet />
       </main>
       {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); the employee's Home shows it in its own list (Daylight, Mert 2026-10-18). */}

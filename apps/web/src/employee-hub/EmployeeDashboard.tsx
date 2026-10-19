@@ -36,7 +36,6 @@ import {
 } from "./home-model";
 import { ago, useHomeData, type HomeNeed, type HomeUpdate } from "./home-data";
 import { useHomeScroll } from "./home-motion";
-import { PullToRefreshMark, usePullToRefresh } from "../shell/PullToRefresh";
 import { HomeWeekStrip } from "./HomeWeekStrip";
 import { HomeNoticeDeck } from "./HomeNoticeDeck";
 import { ComingUpDates, useHubAnnouncements } from "./DashboardCommunications";
@@ -94,7 +93,6 @@ export function EmployeeDashboard({
   const week = homeWeek(model, today);
   const data = useHomeData(model, today);
   const far = useHomeScroll(root);
-  const pull = usePullToRefresh(root, () => Promise.all([Promise.resolve(onRefresh()), data.refetch()]));
   const selected = model.shifts.find((item) => item.id === search.get("shift"));
   // The employee's own week, read where My Availability reads it: a shift on
   // hours they marked carries a small note (spec "Kurallar" 5). No week, no note.
@@ -159,7 +157,6 @@ export function EmployeeDashboard({
   return (
     <div className={`eh-dashboard dl-home${far ? " is-far" : ""}`} data-slot={daySlot(minute)} ref={root}>
       <div className="dl-sky" aria-hidden />
-      <PullToRefreshMark state={pull.state} pull={pull.pull} />
       {phoneSlot && pill ? createPortal(pill, phoneSlot) : null}
       <div className="eh-context-bar">
         <Link to="/account/workspaces" className="eh-workspace-link">

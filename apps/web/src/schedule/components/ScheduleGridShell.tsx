@@ -599,6 +599,7 @@ function ScheduleHorizontalNavigation({
       role="navigation"
       aria-label="Schedule horizontal navigation"
       className="schedule-horizontal-nav"
+      data-own-drag=""
     >
       <div
         ref={trackRef}

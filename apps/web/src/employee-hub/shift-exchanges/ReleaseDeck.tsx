@@ -81,7 +81,7 @@ export function ReleaseDeck({
     <div className="sx-deck-area">
       {/* While it holds cards the deck is a group, so a phone's tab swipe (useTabSwipe) leaves it its own
           sideways swipe; an empty deck has none, and a swipe on it changes the tab. */}
-      <div className="sx-deck" {...(visible.length ? { role: "group", "aria-label": "Released shifts" } : {})}>
+      <div className="sx-deck" data-own-drag="" {...(visible.length ? { role: "group", "aria-label": "Released shifts" } : {})}>
         {left === 0 && !leaving ? (
           <div className="sx-deck-empty">
             <b>You’re all caught up</b>
