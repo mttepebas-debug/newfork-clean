@@ -1,109 +1,243 @@
 -- ROL-CIFT 2.1 (KARARLAR S-164 ... S-169; design §4.4): only somebody with the employee access is
--- scheduled. The exchange engine says why a person without it may not take a shift
--- (no_employee_access); every exchange list (cover candidates, swap targets, the release pool) reads
--- that engine, so it filters them too. The Schedule grid lists only people with the employee access.
--- The employee detail names the record's two access slots, so the Employees drawer shows
--- "Exclude from schedule" only to somebody who can be scheduled (2.2).
+-- scheduled. The one assessment every assignment goes through (assess_weekly_shift_availability:
+-- the check before saving, every save through the zz_availability_assignment trigger, publishing)
+-- blocks a shift for somebody without it (no_employee_access); the exchange engine
+-- (app_private.eligibility) reads that assessment, so cover candidates, swap targets and the release
+-- pool leave them out too. The Schedule grid and the Employee Hub team board list only people with
+-- the employee access. The employee detail names the record's two access slots, so the Employees
+-- drawer shows "Exclude from schedule" only to somebody who can be scheduled (2.2).
 --
--- Riskli canlı migration: three existing SECURITY DEFINER functions change their bodies
--- (CREATE OR REPLACE); app_private.eligibility, get_schedule_read_model_service and
--- get_employee_detail_service keep their signatures.
+-- Riskli canlı migration: four existing SECURITY DEFINER functions change their bodies
+-- (CREATE OR REPLACE): assess_weekly_shift_availability, get_schedule_read_model_service,
+-- get_employee_schedule_board_service and get_employee_detail_service keep their signatures.
 
-CREATE OR REPLACE FUNCTION "app_private"."eligibility"("w" "uuid", "emp" "uuid", "shift" "jsonb", "ctx" "jsonb" DEFAULT '{}'::"jsonb") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."assess_weekly_shift_availability"("w" "uuid", "emp" "uuid", "shift" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare
- op text:=ctx->>'operation';
- excluded uuid[]:=array(select value::uuid from jsonb_array_elements_text(
-  case when jsonb_typeof(ctx->'excluded')='array' then ctx->'excluded' else '[]'::jsonb end) where value is not null);
- loc uuid:=(shift->>'location_id')::uuid; d date:=(shift->>'date')::date;
- tz text; span tstzrange; a jsonb; settings public.workspace_scheduling_settings%rowtype;
- blockers jsonb:='[]'; acks jsonb:='[]'; flags jsonb:='[]'; r jsonb;
- travel numeric; rest numeric; gap numeric; n record; near numeric; near_travel numeric;
+declare loc uuid:=(shift->>'location_id')::uuid; day date:=coalesce(shift->>'scheduled_date',shift->>'date')::date;
+ zone_name text; preference_zone text; basis text:=coalesce(shift->>'time_basis','explicit'); start_clock time; end_clock time;
+ local_start timestamp; local_end timestamp; start_at timestamptz; end_at timestamptz; span tstzrange; day_span tstzrange;
+ capacity jsonb; remaining tstzmultirange; unavailable tstzmultirange:='{}'; leave_ranges tstzmultirange:='{}';
+ leave_evidence jsonb:='[]'; reasons jsonb:='[]'; settings public.workspace_scheduling_settings%rowtype;
+ leave_row record; leave_span tstzrange; coverage text; operation text; fingerprint_payload jsonb;
+ conflict_severity text; rule_severity text; rule jsonb; annotated jsonb:='[]'; availability_fingerprint text;
+ neighbor record; neighbor_span tstzrange; gap_minutes numeric; schedule_week date; schedule_locations uuid[];
+ edit_id uuid:=nullif(shift->>'session_id','')::uuid; context_draft_id uuid:=nullif(shift->>'draft_id','')::uuid;
+ exclude_id uuid:=coalesce(nullif(shift->>'_exclude_shift_id',''),shift->>'source_shift_id',shift->>'id')::uuid;
+ -- BL-092: shifts this person gives up in the same operation (the other side
+ -- of a swap) are not theirs any more when this one becomes theirs.
+ given_up uuid[]:=array(select value::uuid from jsonb_array_elements_text(
+  case when jsonb_typeof(shift->'_exclude_shift_ids')='array' then shift->'_exclude_shift_ids' else '[]'::jsonb end)
+  where value is not null);
+ missing_time boolean; invalid_clock boolean:=false; ambiguous_clock boolean:=false;
 begin
- if op is null or op not in ('swap','release_pickup','cover_accept') then
-  raise exception 'Unknown exchange operation' using errcode='22023'; end if;
- if nullif(shift->>'start_time','') is null or nullif(shift->>'end_time','') is null then
-  return jsonb_build_object('employee_id',emp,'operation',op,'eligible',false,'status','verification_required',
-   'blockers',jsonb_build_array(jsonb_build_object('code','hours_unconfirmed','message','A manager must confirm the shift hours before a full-shift exchange')),
-   'acknowledgements','[]'::jsonb,'approval_flags','[]'::jsonb,'approvals_required',jsonb_build_array(loc),
-   'reasons',jsonb_build_array('A manager must confirm the shift hours before a full-shift exchange'));
- end if;
- select coalesce(nullif(shift->>'time_timezone',''),nullif(shift->'time_snapshot'->>'timezone',''),l.timezone) into tz
-  from public.locations l where l.id=loc and l.workspace_id=w and l.archived_at is null;
- if tz is null then raise exception 'location not found'; end if;
+ select l.timezone,coalesce(nullif(shift->>'time_timezone',''),nullif(shift->'time_snapshot'->>'timezone',''),l.timezone)
+  into preference_zone,zone_name from public.locations l where l.workspace_id=w and l.id=loc;
+ if day is null or not isfinite(day) or zone_name is null or preference_zone is null
+  or not app_private.timezone_name_valid(zone_name)
+  or not app_private.timezone_name_valid(preference_zone) then
+  raise exception 'A valid location, date and timezone are required for availability assessment' using errcode='22023'; end if;
  select * into settings from public.workspace_scheduling_settings where workspace_id=w;
- span:=app_private.shift_time_range(d,(shift->>'start_time')::time,(shift->>'end_time')::time,tz);
-
- if not exists(select 1 from public.employee_profiles e join public.workspace_memberships m
-  on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active' where e.workspace_id=w and e.id=emp) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','workspace_access','message','Active workspace access is required')); end if;
- -- ROL-CIFT 2.1: a shift is somebody's to take only with the employee access; who only manages is
- -- never scheduled.
- if not app_private.has_employee_access(w,(select e.user_id from public.employee_profiles e where e.workspace_id=w and e.id=emp)) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','no_employee_access','message','Employee access is required')); end if;
- if not exists(select 1 from public.employee_location_assignments x where x.workspace_id=w and x.employee_id=emp and x.location_id=loc
-  and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','location_assignment','message','Not assigned to this location')); end if;
- if not exists(select 1 from public.employee_job_assignments x where x.workspace_id=w and x.employee_id=emp and x.job_id=(shift->>'job_id')::uuid
-  and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','job_assignment','message','Not eligible for this position')); end if;
- -- Documents stay as they are today (out of scope 2): an expired blocking document,
- -- and any document rule the conflict settings raise, below.
- if public.employee_has_hard_document_schedule_conflict_service(w,emp,d) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','document_expired','message','Required document is expired')); end if;
-
- -- The assessment reads the shift the way Schedule does; '_shift_exchange'
- -- keeps travel and rest out of it, they are flags here (D7).
- a:=public.assess_weekly_shift_availability(w,emp,shift||jsonb_build_object('scheduled_date',d,
-  '_exclude_shift_ids',to_jsonb(excluded),'_shift_exchange',true));
- for r in select value from jsonb_array_elements(a->'reasons') loop
-  if r->>'code' not in ('availability','note') and not blockers @> jsonb_build_array(jsonb_build_object('code',r->>'code')) then
-   blockers:=blockers||jsonb_build_array(jsonb_build_object('code',r->>'code','message',r->>'message')); end if;
- end loop;
- -- Approved time off is a blocker like the reasons above, even by a minute
- -- and for the person themselves (KARARLAR §1.1, 2026-10-09; BL-995).
- if coalesce((a->>'has_availability_conflict')::boolean,false) and jsonb_array_length(coalesce(a->'employee_intervals','[]'))>0 then
-  acks:=acks||jsonb_build_array(jsonb_build_object('code','availability','intervals',a->'employee_intervals'));
-  flags:=flags||jsonb_build_array(jsonb_build_object('code','availability_consent'));
+ if settings.workspace_id is null then raise exception 'Scheduling settings unavailable' using errcode='P0002'; end if;
+ if basis not in ('explicit','type_default') then
+  raise exception 'Unknown shift time source' using errcode='22023'; end if;
+ if basis='type_default' then
+  start_clock:=nullif(shift->'time_snapshot'->>'start_time','')::time;
+  end_clock:=nullif(shift->'time_snapshot'->>'end_time','')::time;
+  if (start_clock,end_clock) is distinct from (nullif(shift->>'start_time','')::time,nullif(shift->>'end_time','')::time) then
+   raise exception 'Saved reference hours and their snapshot must agree' using errcode='22023'; end if;
+ elsif basis='explicit' then
+  start_clock:=nullif(shift->>'start_time','')::time; end_clock:=nullif(shift->>'end_time','')::time;
  end if;
- if jsonb_array_length(coalesce(a->'manager_intervals','[]'))>0 then
-  flags:=flags||jsonb_build_array(jsonb_build_object('code','manager_note')); end if;
-
- -- Travel and rest, measured against the person's other published shifts (D7).
- for n in select p.location_id,app_private.shift_time_range(p.scheduled_date,p.start_time,p.end_time,coalesce(p.time_timezone,l.timezone)) r
-  from public.schedule_published_shifts p join public.schedule_location_publications pub on pub.id=p.publication_id and pub.status='current'
-  join public.locations l on l.id=p.location_id
-  where p.workspace_id=w and p.employee_id=emp and p.scheduled_date between d-2 and d+2
-   and not p.id=any(excluded) and not coalesce(p.source_shift_id,p.id)=any(excluded)
- loop
-  if n.r && span then continue; end if;
-  gap:=extract(epoch from greatest(lower(span)-upper(n.r),lower(n.r)-upper(span)))/60;
-  near:=least(coalesce(near,gap),gap);
-  if n.location_id<>loc then near_travel:=least(coalesce(near_travel,gap),gap); end if;
-  if n.location_id<>loc and gap<settings.minimum_travel_minutes then travel:=least(coalesce(travel,gap),gap); end if;
-  if gap<settings.minimum_rest_minutes then rest:=least(coalesce(rest,gap),gap); end if;
+ invalid_clock:=start_clock is not null and start_clock=end_clock;
+ missing_time:=start_clock is null or end_clock is null or start_clock=end_clock;
+ day_span:=tstzrange(day::timestamp at time zone zone_name,(day+1)::timestamp at time zone zone_name,'[)');
+ if not missing_time then
+  local_start:=day+start_clock;
+  local_end:=day+end_clock+case when end_clock<start_clock then interval '1 day' else interval '0' end;
+  start_at:=local_start at time zone zone_name; end_at:=local_end at time zone zone_name;
+  invalid_clock:=(start_at at time zone zone_name)<>local_start or (end_at at time zone zone_name)<>local_end or end_at<=start_at;
+  if not invalid_clock then
+   span:=tstzrange(start_at,end_at,'[)');
+   ambiguous_clock:=exists(select 1 from (values(start_at,local_start),(end_at,local_end)) endpoint(instant,wall)
+    cross join (values(interval '-1 day'),(interval '1 day')) probe(delta)
+    cross join lateral (select (endpoint.wall at time zone 'UTC')-make_interval(secs=>public.availability_utc_offset(endpoint.instant+probe.delta,zone_name)) alternate) alt
+    where alt.alternate<>endpoint.instant and (alt.alternate at time zone zone_name)=endpoint.wall);
+  end if;
+ end if;
+ -- Assignment snapshots locate the actual instants; recurring rules are always
+ -- interpreted in the target location's current local timezone.
+ capacity:=case when emp is null then jsonb_build_object('unavailable_intervals','[]'::jsonb,'employee_intervals','[]'::jsonb,'manager_intervals','[]'::jsonb)
+  else public.weekly_preference_capacity(w,emp,coalesce(span,day_span),preference_zone) end;
+ -- Only the employee's own marks are unavailable hours; the note is not (M12).
+ select coalesce(range_agg(tstzrange((x->>'start_at')::timestamptz,(x->>'end_at')::timestamptz,'[)')),'{}') into unavailable
+  from jsonb_array_elements(capacity->'employee_intervals') x;
+ for leave_row in select seg.id,seg.request_id,req.revision,approved_piece.span
+  from public.schedule_time_off_segments seg
+  join public.schedule_time_off_requests req on req.id=seg.request_id and req.workspace_id=seg.workspace_id
+  cross join lateral unnest(public.time_off_effective_ranges(seg.id)) approved_piece(span)
+  where req.workspace_id=w and req.employee_id=emp and req.request_type='time_off'
+   and req.status = 'approved' and seg.status='approved'
+   and seg.segment_date between day-3 and day+3 order by seg.id,lower(approved_piece.span) loop
+  leave_span:=leave_row.span*coalesce(span,day_span);
+  if not isempty(leave_span) then
+   leave_ranges:=leave_ranges+tstzmultirange(leave_span);
+   leave_evidence:=leave_evidence||jsonb_build_array(jsonb_build_object('segment_id',leave_row.id,'request_id',leave_row.request_id,
+    'request_revision',leave_row.revision,'intervals',public.availability_ranges_json(tstzmultirange(leave_span))));
+  end if;
  end loop;
- if travel is not null then flags:=flags||jsonb_build_array(jsonb_build_object('code','minimum_travel',
-  'gap_minutes',travel::integer,'rule_minutes',settings.minimum_travel_minutes)); end if;
- if rest is not null then flags:=flags||jsonb_build_array(jsonb_build_object('code','minimum_rest',
-  'gap_minutes',rest::integer,'rule_minutes',settings.minimum_rest_minutes)); end if;
-
- return jsonb_build_object('employee_id',emp,'operation',op,'eligible',jsonb_array_length(blockers)=0,
-  'status',case when jsonb_array_length(blockers)=0 then 'eligible' else 'ineligible' end,
-  'blockers',blockers,'acknowledgements',acks,'approval_flags',flags,'approvals_required',jsonb_build_array(loc),
-  'reasons',case when jsonb_array_length(blockers)=0 then '["Position and location match","No assignment blockers"]'::jsonb
-   else (select jsonb_agg(b->>'message') from jsonb_array_elements(blockers) b) end)
-  ||case when coalesce((ctx->>'with_assessment')::boolean,false) then jsonb_build_object('assessment',a) else '{}'::jsonb end
-  -- C2: the swap review names the rule that holds too ("12 h of rest / 10 h needed").
-  ||case when coalesce((ctx->>'with_measures')::boolean,false) then jsonb_build_object('measures',jsonb_build_object(
-   'rest_gap_minutes',near::integer,'travel_gap_minutes',near_travel::integer,
-   'rest_rule_minutes',settings.minimum_rest_minutes,'travel_rule_minutes',settings.minimum_travel_minutes)) else '{}'::jsonb end;
-end;
-$$;
-
-
+ remaining:=tstzmultirange(coalesce(span,day_span))-(unavailable+leave_ranges);
+ coverage:=case when span is null then 'unknown' when isempty(remaining) then 'none' when remaining @> span then 'full' else 'partial' end;
+ if not isempty(leave_ranges) then reasons:=reasons||jsonb_build_array(jsonb_build_object('code','approved_time_off',
+  'message','Approved time off overlaps this assignment. Resolve the leave or assignment before assigning.',
+  'intervals',public.availability_ranges_json(leave_ranges),'definite',span is not null or leave_ranges @> day_span)); end if;
+ -- The employee's own mark is always only a warning (M8); a manager's note is
+ -- a reminder shown while writing, nothing more (M12).
+ if span is not null and jsonb_array_length(capacity->'employee_intervals')>0 then reasons:=reasons||jsonb_build_array(jsonb_build_object('code','availability',
+  'message','The assignment overlaps unavailable hours.','intervals',capacity->'employee_intervals','definite',true)); end if;
+ if span is not null and jsonb_array_length(capacity->'manager_intervals')>0 then reasons:=reasons||jsonb_build_array(jsonb_build_object('code','note',
+  'message','The assignment overlaps hours a manager noted for this person.','intervals',capacity->'manager_intervals','definite',true)); end if;
+ if missing_time then reasons:=reasons||jsonb_build_array(jsonb_build_object('code','time_source_unresolved',
+  'message','Confirm shift hours before assigning or publishing.','definite',false)); end if;
+ if invalid_clock then reasons:=reasons||jsonb_build_array(jsonb_build_object('code','invalid_local_time',
+  'message','These hours do not exist on this date in the selected timezone. Choose valid hours.','definite',true)); end if;
+ -- Required schedule references are hard constraints. Availability-only callers
+ -- without a job descriptor retain their existing contract.
+ if shift ? 'job_id' then
+  if not exists(select 1 from public.locations where workspace_id=w and id=loc and archived_at is null)
+   or not exists(select 1 from public.jobs where workspace_id=w and id=(shift->>'job_id')::uuid and archived_at is null)
+   or (nullif(shift->>'shift_type_id','') is not null and not exists(select 1 from public.shift_types where workspace_id=w and id=(shift->>'shift_type_id')::uuid and archived_at is null)) then
+   reasons:=reasons||jsonb_build_array(jsonb_build_object('code','invalid_reference','message','A location, job or shift type is no longer available.','definite',true));
+  end if;
+  if emp is not null then
+   -- Excluded from Schedule keeps a person out of new shifts only (BL-218): a
+   -- shift already published with them stays theirs through edits and republishing.
+   if not exists(select 1 from public.employee_profiles where workspace_id=w and id=emp and archived_at is null and (start_date is null or start_date<=day)
+     and (not is_excluded_from_schedule or exists(select 1 from public.schedule_published_shifts published
+       where published.workspace_id=w and published.employee_id=emp
+         and published.source_shift_id=coalesce(nullif(shift->>'source_shift_id',''),shift->>'id')::uuid))) then
+    reasons:=reasons||jsonb_build_array(jsonb_build_object('code','employee_inactive','message','Employee is not active in Schedule.','definite',true));
+   end if;
+   if not exists(select 1 from public.employee_location_assignments where workspace_id=w and employee_id=emp and location_id=loc and ended_at is null)
+    or not exists(select 1 from public.employee_job_assignments where workspace_id=w and employee_id=emp and job_id=(shift->>'job_id')::uuid and ended_at is null) then
+    reasons:=reasons||jsonb_build_array(jsonb_build_object('code','assignment_missing','message','Employee needs an active location and job assignment.','definite',true));
+   end if;
+   -- ROL-CIFT 2.1: a shift is somebody's only with the employee access; who only manages is never
+   -- scheduled. Every save, the check before it and the exchange engine read this one reason.
+   if not app_private.has_employee_access(w,(select e.user_id from public.employee_profiles e where e.workspace_id=w and e.id=emp)) then
+    reasons:=reasons||jsonb_build_array(jsonb_build_object('code','no_employee_access','message','Employee access is required to be scheduled.','definite',true));
+   end if;
+  end if;
+  if exists(select 1 from public.schedule_closures c where c.workspace_id=w and c.location_id=loc
+   and c.closed_date=day and app_private.closure_covers(c.kind,c.opens,c.closes,start_clock,end_clock)) then
+   reasons:=reasons||jsonb_build_array(jsonb_build_object('code','closed_location','message','Location is closed or has short hours at this time.','definite',true));
+  end if;
+ end if;
+ -- The edit session replaces its week; a saved draft replaces its week. Other
+ -- current publications remain relevant across locations and week boundaries.
+ select week_start,location_ids into schedule_week,schedule_locations from public.schedule_edit_sessions where workspace_id=w and id=edit_id;
+ if schedule_week is null then select week_start,location_ids into schedule_week,schedule_locations from public.schedule_drafts where workspace_id=w and id=context_draft_id; end if;
+ if span is not null and emp is not null and shift ? 'job_id' then
+  for neighbor in
+   select s.id,s.location_id,s.scheduled_date,s.start_time,s.end_time,s.time_basis,coalesce(s.time_timezone,l.timezone) zone
+    from public.schedule_edit_session_shifts s join public.locations l on l.id=s.location_id and l.workspace_id=w
+    where s.workspace_id=w and s.session_id=edit_id and s.employee_id=emp and s.pending_op_type is distinct from 'delete'
+     and s.id is distinct from exclude_id and not s.id=any(given_up) and s.scheduled_date between day-2 and day+2
+     and (not (shift ? '_publish_locations') or (s.location_id in (select value::uuid from jsonb_array_elements_text(shift->'_publish_locations'))
+      and public.schedule_shift_in_department_scope_service(s.job_id,
+       case when jsonb_typeof(shift->'_publish_departments')='array' then array(select value::uuid from jsonb_array_elements_text(shift->'_publish_departments')) end,
+       coalesce((shift->>'_publish_no_department')::boolean,true))))
+   union all
+   select s.id,s.location_id,s.scheduled_date,s.start_time,s.end_time,s.time_basis,coalesce(s.time_timezone,l.timezone)
+    from public.schedule_draft_shifts s join public.locations l on l.id=s.location_id and l.workspace_id=w
+    where edit_id is null and s.workspace_id=w and s.draft_id=context_draft_id and s.employee_id=emp
+     and s.id is distinct from exclude_id and not s.id=any(given_up) and s.scheduled_date between day-2 and day+2
+     and (not (shift ? '_publish_locations') or (s.location_id in (select value::uuid from jsonb_array_elements_text(shift->'_publish_locations'))
+      and public.schedule_shift_in_department_scope_service(s.job_id,
+       case when jsonb_typeof(shift->'_publish_departments')='array' then array(select value::uuid from jsonb_array_elements_text(shift->'_publish_departments')) end,
+       coalesce((shift->>'_publish_no_department')::boolean,true))))
+   union all
+   select s.id,s.location_id,s.scheduled_date,s.start_time,s.end_time,s.time_basis,coalesce(s.time_timezone,l.timezone)
+    from public.schedule_published_shifts s join public.schedule_location_publications p on p.id=s.publication_id and p.status='current'
+    join public.locations l on l.id=s.location_id and l.workspace_id=w
+    where s.workspace_id=w and s.employee_id=emp and (shift ? '_publish_locations' or (s.id is distinct from exclude_id and s.source_shift_id is distinct from exclude_id
+     and not s.id=any(given_up) and not coalesce(s.source_shift_id,s.id)=any(given_up)))
+     and s.scheduled_date between day-2 and day+2
+     and (schedule_week is null or s.scheduled_date not between schedule_week and schedule_week+6
+      or not s.location_id = any(coalesce(schedule_locations, '{}'))
+      or (shift ? '_publish_locations' and not (s.location_id in (select value::uuid from jsonb_array_elements_text(shift->'_publish_locations'))
+       and public.schedule_shift_in_department_scope_service(s.job_id,
+        case when jsonb_typeof(shift->'_publish_departments')='array' then array(select value::uuid from jsonb_array_elements_text(shift->'_publish_departments')) end,
+        coalesce((shift->>'_publish_no_department')::boolean,true)))))
+   order by 1
+  loop
+   neighbor_span:=app_private.shift_time_range(neighbor.scheduled_date,neighbor.start_time,neighbor.end_time,neighbor.zone);
+   if span && neighbor_span then
+    reasons:=reasons||jsonb_build_array(jsonb_build_object('code','time_overlap','message','Employee already has an overlapping shift.','definite',true,
+     'intervals',public.availability_ranges_json(tstzmultirange(span*neighbor_span))));
+   else
+    gap_minutes:=extract(epoch from greatest(lower(span)-upper(neighbor_span),lower(neighbor_span)-upper(span)))/60;
+    if neighbor.location_id<>loc and gap_minutes<settings.minimum_travel_minutes then
+     reasons:=reasons||jsonb_build_array(jsonb_build_object('code','minimum_travel','message','There is not enough travel time between locations.','definite',true));
+    end if;
+    if gap_minutes<settings.minimum_rest_minutes then
+     reasons:=reasons||jsonb_build_array(jsonb_build_object('code','minimum_rest','message','There is not enough rest time between shifts.','definite',true));
+    end if;
+   end if;
+  end loop;
+ end if;
+ reasons:=reasons||app_private.document_shift_reasons(w,emp,day,coalesce(start_at,lower(day_span))); conflict_severity:='allow';
+ for rule in select value from jsonb_array_elements(reasons) loop
+  rule_severity:=case rule->>'code'
+   when 'availability' then 'warn'
+   when 'note' then 'warn'
+   when 'approved_time_off' then settings.conflict_rules->>'approved_time_off'
+   -- K17: "confirm once" asks like "confirm"; its answer holds for the editing session.
+   when 'closed_location' then case settings.conflict_rules->>'closed_location' when 'confirm_once' then 'confirm' else settings.conflict_rules->>'closed_location' end
+   when 'minimum_travel' then case when shift ? '_shift_exchange' then 'allow' else settings.conflict_rules->>'minimum_travel' end
+   when 'minimum_rest' then case when shift ? '_shift_exchange' then 'allow' else settings.conflict_rules->>'minimum_rest' end when 'document_required' then settings.conflict_rules->>'document_required' when 'document_conditional_grace' then settings.conflict_rules->>'document_conditional_grace' when 'document_conditional_overdue' then settings.conflict_rules->>'document_conditional_overdue'
+   when 'time_source_unresolved' then 'confirm'
+   else 'block' end;
+  if rule->>'code' not in ('availability','note') and array_position(array['allow','warn','confirm','block'],rule_severity)>array_position(array['allow','warn','confirm','block'],conflict_severity) then conflict_severity:=rule_severity; end if;
+  if rule_severity<>'allow' then annotated:=annotated||jsonb_build_array(rule||jsonb_build_object('severity',rule_severity)
+   ||case when rule->>'code'='closed_location' and settings.conflict_rules->>'closed_location'='confirm_once'
+    then jsonb_build_object('confirm_scope','edit_session') else '{}'::jsonb end); end if;
+ end loop;
+ reasons:=annotated;
+ operation:=case conflict_severity when 'block' then 'blocked' when 'allow' then 'allowed' else 'warning_requires_override' end;
+ -- Revision counters, manager notes and unrelated weekdays/settings are not
+ -- conflict identity. The adapters use warning_policy to decide warn/confirm.
+ -- Availability is not a conflict: it has its own fingerprint below, which
+ -- changes with the person, the shift, its hours or the overlapping marks.
+ if span is not null and not isempty(unavailable) then
+  availability_fingerprint:=encode(extensions.digest(convert_to(jsonb_build_object('workspace_id',w,'employee_id',emp,
+   'assignment',coalesce(shift->>'source_shift_id',shift->>'id'),'location_id',loc,'date',day,
+   'intervals',public.availability_ranges_json(tstzmultirange(span)),
+   'employee_intervals',capacity->'employee_intervals')::text,'UTF8'),'sha256'),'hex');
+ end if;
+ fingerprint_payload:=jsonb_build_object('workspace_id',w,'employee_id',emp,
+  'assignment',jsonb_build_object('id',coalesce(shift->>'source_shift_id',shift->>'id'),'location_id',loc,'date',day),
+  'intervals',public.availability_ranges_json(case when span is null then '{}'::tstzmultirange else tstzmultirange(span) end),
+  'leave',public.availability_ranges_json(leave_ranges),
+  'warning_policy',case when conflict_severity='confirm' then 'confirm' else 'warn' end,'operation',operation,
+  'conflict_rules',settings.conflict_rules,'minimum_travel_minutes',settings.minimum_travel_minutes,'minimum_rest_minutes',settings.minimum_rest_minutes,
+  'reasons',(select coalesce(jsonb_agg(r),'[]') from jsonb_array_elements(reasons) r where r->>'code' not in ('availability','note')));
+ return jsonb_build_object('coverage',coverage,'operation',operation,'time_basis',basis,'timezone',zone_name,'preference_timezone',preference_zone,
+  'assessment_scope',case when span is null then 'calendar_day' else 'shift_interval' end,
+  'intervals',public.availability_ranges_json(case when span is null then '{}'::tstzmultirange else tstzmultirange(span) end),
+  'available_intervals',case when span is null then '[]'::jsonb else public.availability_ranges_json(remaining) end,
+  'unavailable_intervals',public.availability_ranges_json(unavailable+leave_ranges),
+  'unknown_intervals',case when span is null then public.availability_ranges_json(tstzmultirange(day_span)) else '[]'::jsonb end,
+  'employee_intervals',capacity->'employee_intervals','manager_intervals',capacity->'manager_intervals',
+  'has_availability_conflict',span is not null and not isempty(unavailable),'availability_fingerprint',availability_fingerprint,'conflict_severity',conflict_severity,
+  'warning_policy',case when conflict_severity='confirm' then 'confirm' else 'warn' end,
+  'leave',leave_evidence,'reasons',reasons,
+  'policy_revision',settings.availability_preferences_revision,
+  'fold_resolution',case when ambiguous_clock then 'post_transition_offset' else null end,
+  'assessment_minutes',case when span is null then null else extract(epoch from upper(span)-lower(span))/60 end,
+  'fingerprint',encode(extensions.digest(convert_to(fingerprint_payload::text,'UTF8'),'sha256'),'hex'));
+end; $$;
 
 CREATE OR REPLACE FUNCTION "public"."get_schedule_read_model_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
@@ -417,6 +551,222 @@ end;
 $$;
 
 
+CREATE OR REPLACE FUNCTION "public"."get_employee_schedule_board_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  actor public.employee_profiles%rowtype;
+  settings public.workspace_scheduling_settings%rowtype;
+  resolved_week_start date;
+  result jsonb;
+begin
+  actor := public.employee_hub_actor_service(actor_user_id, target_workspace_id);
+
+  select * into settings
+  from public.workspace_scheduling_settings
+  where workspace_id = target_workspace_id;
+  if settings.workspace_id is null then
+    raise exception 'scheduling settings are unavailable' using errcode = 'P0002';
+  end if;
+
+  resolved_week_start := case settings.week_start_day
+    when 'sunday' then target_date - extract(dow from target_date)::integer
+    else target_date - (extract(isodow from target_date)::integer - 1)
+  end;
+
+  with allowed_locations as (
+    select location.*
+    from public.locations location
+    where location.workspace_id = target_workspace_id
+      and location.archived_at is null
+      and exists (
+        select 1
+        from public.employee_location_assignments assignment
+        where assignment.employee_id = actor.id
+          and assignment.location_id = location.id
+          and assignment.ended_at is null
+      )
+  ), current_publications as (
+    select publication.*
+    from public.schedule_location_publications publication
+    join allowed_locations location on location.id = publication.location_id
+    where publication.week_start = resolved_week_start
+      and publication.status = 'current'
+  ), visible_employees as (
+    select distinct employee.*
+    from public.employee_profiles employee
+    where employee.workspace_id = target_workspace_id
+      and employee.archived_at is null
+      and exists (
+        select 1
+        from public.employee_location_assignments assignment
+        join allowed_locations location on location.id = assignment.location_id
+        where assignment.employee_id = employee.id and assignment.ended_at is null
+      )
+      -- ROL-CIFT 2.1: the team is the people who can be scheduled; who only manages is not on it.
+      and app_private.has_employee_access(target_workspace_id, employee.user_id)
+  ), current_shifts as (
+    select shift.*
+    from public.schedule_published_shifts shift
+    join current_publications publication on publication.id = shift.publication_id
+    where shift.scheduled_date between resolved_week_start and resolved_week_start + 6
+  ), own_availability as materialized (
+    -- The employee's own marks; the manager's private reminder never reaches here.
+    select * from app_private.schedule_week_availability(
+      target_workspace_id, resolved_week_start, array[actor.id],
+      (select coalesce(array_agg(location.id), '{}') from allowed_locations location), false)
+  )
+  select jsonb_build_object(
+    'workspace_id', target_workspace_id,
+    'week_start', resolved_week_start,
+    'week_start_day', settings.week_start_day,
+    'settings', jsonb_build_object(
+      'time_format', coalesce(settings.time_format, '12h')
+    ),
+    'locations', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', location.id,
+        'name', location.name,
+        'timezone', location.timezone,
+        'sort_order', location.sort_order,
+        'publication_status', case when publication.id is null then 'unpublished' else 'published' end,
+        'published_at', publication.published_at
+      ) order by location.sort_order, location.name)
+      from allowed_locations location
+      left join current_publications publication on publication.location_id = location.id
+    ), '[]'::jsonb),
+    'shift_types', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', shift_type.id, 'name', shift_type.name, 'color', shift_type.color,
+        'sort_order', shift_type.sort_order,
+        'default_revision', shift_type.default_revision,
+        'default_start_time', case when shift_type.default_start_time is null then null else to_char(shift_type.default_start_time, 'HH24:MI') end,
+        'default_end_time', case when shift_type.default_end_time is null then null else to_char(shift_type.default_end_time, 'HH24:MI') end
+      ) order by shift_type.sort_order, shift_type.name)
+      from public.shift_types shift_type
+      where shift_type.workspace_id = target_workspace_id and shift_type.archived_at is null
+    ), '[]'::jsonb),
+    'shift_labels', '[]'::jsonb,
+    'employees', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', employee.id,
+        'employee_code', employee.employee_code,
+        'display_name', coalesce(nullif(employee.preferred_name, ''), employee.first_name) || ' ' || employee.last_name,
+        'location_ids', coalesce((select jsonb_agg(assignment.location_id order by assignment.location_id)
+          from public.employee_location_assignments assignment
+          join allowed_locations location on location.id = assignment.location_id
+          where assignment.employee_id = employee.id and assignment.ended_at is null), '[]'::jsonb),
+        'job_ids', coalesce((select jsonb_agg(assignment.job_id order by assignment.job_id)
+          from public.employee_job_assignments assignment
+          where assignment.employee_id = employee.id and assignment.ended_at is null), '[]'::jsonb),
+        'primary_job_id', app_private.stored_primary_job(employee.id)
+      ) || case when employee.id = actor.id then jsonb_build_object('weekly_availability', coalesce((
+          select jsonb_agg(own.projection order by own.location_id)
+          from own_availability own
+          where exists (select 1 from public.employee_location_assignments assignment
+            where assignment.employee_id = actor.id and assignment.location_id = own.location_id
+              and assignment.ended_at is null)), '[]'::jsonb))
+        else '{}'::jsonb end
+      order by employee.last_name, employee.first_name, employee.id)
+      from visible_employees employee
+    ), '[]'::jsonb),
+    'shifts', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', shift.id,
+        'location_id', shift.location_id,
+        'employee_id', shift.employee_id,
+        'job_id', shift.job_id,
+        'shift_type_id', shift.shift_type_id,
+        'scheduled_date', shift.scheduled_date,
+        'time_basis', shift.time_basis,
+        'time_snapshot', shift.time_snapshot,
+        'time_timezone', shift.time_timezone,
+        'start_time', to_char(shift.start_time, 'HH24:MI'),
+        'end_time', to_char(shift.end_time, 'HH24:MI'),
+        'crosses_midnight', shift.crosses_midnight,
+        'unpaid_break_minutes', coalesce(shift.unpaid_break_minutes, 0),
+        'hide_time_on_badge', coalesce(shift.hide_time_on_badge, false),
+        'note', case when shift.employee_id is null or shift.employee_id = actor.id then shift.note else '' end,
+        'label_ids', to_jsonb(coalesce(shift.label_ids, '{}'::uuid[])),
+        'label_names', to_jsonb(coalesce(shift.label_names, '{}'::text[])),
+        'warning_codes', to_jsonb(array_remove(array[
+          case when exists (
+            select 1 from public.schedule_closures closure
+            where closure.location_id = shift.location_id
+              and closure.closed_date = shift.scheduled_date and closure.status <> 'scheduled'
+              and app_private.closure_covers(closure.kind, closure.opens, closure.closes, shift.start_time, shift.end_time)
+          ) then 'closed_location' end,
+          -- Only a conflict with the employee's own marks, as accepted at publishing.
+          case when shift.employee_id = actor.id
+            and coalesce((shift.availability_snapshot -> 'assessment' ->> 'has_availability_conflict')::boolean, false)
+            and jsonb_array_length(coalesce(shift.availability_snapshot -> 'assessment' -> 'employee_intervals', '[]'::jsonb)) > 0
+          then 'availability' end,
+          case when shift.employee_id is not null and exists (
+            select 1 from current_shifts other
+            where other.employee_id = shift.employee_id
+              and other.scheduled_date = shift.scheduled_date
+              and other.id <> shift.id
+              and not shift.crosses_midnight and not other.crosses_midnight
+              and shift.start_time < other.end_time and shift.end_time > other.start_time
+          ) then 'overlap' end
+        ]::text[], null))
+      ) order by shift.scheduled_date, shift.start_time, shift.id)
+      from current_shifts shift
+    ), '[]'::jsonb),
+    'closures', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', closure.id, 'location_id', closure.location_id,
+        'closed_date', closure.closed_date, 'title', closure.title,
+        'is_all_day', closure.is_all_day, 'kind', closure.kind,
+        'opens', to_char(closure.opens, 'HH24:MI'), 'closes', to_char(closure.closes, 'HH24:MI'),
+        'announcement_id', closure.announcement_id
+      ) order by closure.closed_date, closure.title)
+      from public.schedule_closures closure
+      join allowed_locations location on location.id = closure.location_id
+      where closure.closed_date between resolved_week_start and resolved_week_start + 6
+        and closure.status <> 'scheduled'
+    ), '[]'::jsonb),
+    -- Records on the Schedule that are out to the employee and touch the week,
+    -- one row per their checked location; a record for no location is theirs
+    -- wherever they work. A yearly record's next year is its own record.
+    'important_dates', coalesce((
+      select jsonb_agg(jsonb_build_object(
+        'id', item.id, 'location_id', place.location_id, 'title', item.title,
+        'category', item.category, 'category_other', item.category_other,
+        'starts_on', item.starts_on, 'ends_on', coalesce(item.ends_on, item.starts_on),
+        'status', item.status, 'publish_at', item.publish_at, 'day', place.day,
+        'opens', to_char(place.opens, 'HH24:MI'), 'closes', to_char(place.closes, 'HH24:MI'),
+        'event_from', to_char(item.event_from, 'HH24:MI'), 'event_until', to_char(item.event_until, 'HH24:MI')
+      ) order by item.starts_on, item.title, place.location_id)
+      from public.announcements item
+      cross join lateral (
+        select target.location_id, target.day, target.opens, target.closes
+        from public.announcement_locations target
+        join allowed_locations location on location.id = target.location_id
+        where target.announcement_id = item.id
+        union all
+        select null::uuid, 'open', null::time, null::time
+        where not exists (
+          select 1 from public.announcement_locations target
+          join public.locations location on location.id = target.location_id and location.archived_at is null
+          where target.announcement_id = item.id)
+      ) place
+      where item.workspace_id = target_workspace_id and item.status = 'published' and item.archived_at is null
+        and item.on_schedule and item.starts_on is not null
+        and item.starts_on <= resolved_week_start + 6 and resolved_week_start <= coalesce(item.ends_on, item.starts_on)
+        and app_private.announcement_reaches(item, actor_user_id)
+    ), '[]'::jsonb)
+  ) || app_private.schedule_departments_and_jobs(target_workspace_id)
+    || app_private.schedule_referenced_catalog(target_workspace_id,
+      array(select shift.job_id from current_shifts shift),
+      array(select shift.shift_type_id from current_shifts shift))
+  into result;
+
+  return result;
+end;
+$$;
+
 
 CREATE OR REPLACE FUNCTION "public"."get_employee_detail_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -659,4 +1009,3 @@ begin
   return answer;
 end;
 $$;
-

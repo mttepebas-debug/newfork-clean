@@ -8,8 +8,9 @@ select * from no_plan();
 --   step and finishes onboarding; an open onboarding gains or loses the step
 --   with the person's role.
 -- * A promotion above employee deletes the person's own week and its history
---   (Mert 2026-10-04, "Terfide silinsin"): no warning, no orange, Auto-fill
---   picks them again. A change between employee roles keeps the week.
+--   (Mert 2026-10-04, "Terfide silinsin"): no warning, no orange; who only
+--   manages is not scheduled at all (ROL-CIFT 2.1), so Auto-fill does not offer
+--   them. A change between employee roles keeps the week.
 
 select tests.world('ao');
 update public.workspace_scheduling_settings set availability_onboarding_required = true where workspace_id = tests.id('ao');
@@ -128,7 +129,8 @@ select is(pg_temp.kept('emre'), '{"week": false, "history": false, "commands": f
 select is(public.assess_schedule_shift_service(tests.user('ao:owner'), tests.id('ao'), pg_temp.monday_evening('emre'), null, tests.id('ao:session'))
   -> 'has_availability_conflict', 'false'::jsonb, 'Schedule warns of nothing on his Monday evening');
 select is(pg_temp.orange('emre'), 0, 'and the grid shows no orange for him');
-select ok(pg_temp.auto_fill() @> jsonb_build_array(tests.id('ao:emre')), 'Auto-fill picks him again');
+-- ROL-CIFT 2.1: who only manages is not scheduled, so Auto-fill does not offer him at all.
+select ok(not pg_temp.auto_fill() @> jsonb_build_array(tests.id('ao:emre')), 'Auto-fill does not offer him, who only manages now');
 
 -- Back to employee: he starts empty.
 select pg_temp.role_to('emre', 'employee');

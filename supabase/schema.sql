@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 525, last: 20261019150000_grid_and_eligibility_need_employee.sql
--- fingerprint: sha256:69c17b8c808245a4e31f6fdb6a2f354fa7d7a916596bf069c42b9742fb639250
+-- fingerprint: sha256:34c17b74e3bd27776eaf167fb92a13ede7e6358100f7795ae54f375e46b2c8b2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4613,10 +4613,6 @@ begin
  if not exists(select 1 from public.employee_profiles e join public.workspace_memberships m
   on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active' where e.workspace_id=w and e.id=emp) then
   blockers:=blockers||jsonb_build_array(jsonb_build_object('code','workspace_access','message','Active workspace access is required')); end if;
- -- ROL-CIFT 2.1: a shift is somebody's to take only with the employee access; who only manages is
- -- never scheduled.
- if not app_private.has_employee_access(w,(select e.user_id from public.employee_profiles e where e.workspace_id=w and e.id=emp)) then
-  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','no_employee_access','message','Employee access is required')); end if;
  if not exists(select 1 from public.employee_location_assignments x where x.workspace_id=w and x.employee_id=emp and x.location_id=loc
   and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
   blockers:=blockers||jsonb_build_array(jsonb_build_object('code','location_assignment','message','Not assigned to this location')); end if;
@@ -10839,6 +10835,11 @@ begin
     or not exists(select 1 from public.employee_job_assignments where workspace_id=w and employee_id=emp and job_id=(shift->>'job_id')::uuid and ended_at is null) then
     reasons:=reasons||jsonb_build_array(jsonb_build_object('code','assignment_missing','message','Employee needs an active location and job assignment.','definite',true));
    end if;
+   -- ROL-CIFT 2.1: a shift is somebody's only with the employee access; who only manages is never
+   -- scheduled. Every save, the check before it and the exchange engine read this one reason.
+   if not app_private.has_employee_access(w,(select e.user_id from public.employee_profiles e where e.workspace_id=w and e.id=emp)) then
+    reasons:=reasons||jsonb_build_array(jsonb_build_object('code','no_employee_access','message','Employee access is required to be scheduled.','definite',true));
+   end if;
   end if;
   if exists(select 1 from public.schedule_closures c where c.workspace_id=w and c.location_id=loc
    and c.closed_date=day and app_private.closure_covers(c.kind,c.opens,c.closes,start_clock,end_clock)) then
@@ -14585,6 +14586,8 @@ begin
         join allowed_locations location on location.id = assignment.location_id
         where assignment.employee_id = employee.id and assignment.ended_at is null
       )
+      -- ROL-CIFT 2.1: the team is the people who can be scheduled; who only manages is not on it.
+      and app_private.has_employee_access(target_workspace_id, employee.user_id)
   ), current_shifts as (
     select shift.*
     from public.schedule_published_shifts shift

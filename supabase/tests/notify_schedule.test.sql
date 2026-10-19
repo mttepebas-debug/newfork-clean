@@ -160,6 +160,8 @@ select is(pg_temp.told('schedule.published'), array['nu:ali', 'nu:ali', 'nu:deni
 -- The owner works the Owner job only until somebody assigns another (BL-218).
 insert into public.employee_job_assignments (workspace_id, employee_id, job_id, created_by)
 values (tests.id('nu'), tests.id('nu:owner'), tests.id('nu:job:cook'), tests.user('nu:owner'));
+-- The owner works here too: scheduled with the employee access (ROL-CIFT 2.1).
+select tests.employee_slot('nu', 'owner');
 create temp table week_four as select (public.acquire_schedule_edit_session_service(tests.user('nu:owner'), tests.id('nu'),
   tests.week(4), 'blank', null) -> 'session' ->> 'id')::uuid session;
 select tests.add_shift(tests.user('nu:owner'), 'nu', (select session from week_four), 4,
