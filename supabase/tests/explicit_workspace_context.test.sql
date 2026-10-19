@@ -47,8 +47,8 @@ select is(
 );
 
 select is(
-  (select workspace_role from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000091', '20000000-0000-4000-8000-000000000092')),
-  'employee'::public.workspace_role,
+  (select (management_access, employee_access)::text from public.resolve_workspace_context_service('10000000-0000-4000-8000-000000000091', '20000000-0000-4000-8000-000000000092')),
+  '(,t)',
   'explicit context keeps the role scoped to the selected workspace'
 );
 

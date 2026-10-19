@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:a9562e2542806004891c0270cc63525e6ea1c2dcd45c564f7ec758e7d0b90034
+-- migrations: 517, last: 20261018234000_context_reads_access.sql
+-- fingerprint: sha256:8b4d2da86a65572309d10fc53bdb54a9b8acba92d39a06673bafac288f412a4d
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -22344,7 +22344,7 @@ $$;
 ALTER FUNCTION "public"."reset_owner_onboarding_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."resolve_workspace_context_service"("actor_user_id" "uuid", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "workspace_id" "uuid", "workspace_name" "text", "workspace_logo_storage_path" "text", "workspace_logo_file_name" "text", "workspace_logo_updated_at" timestamp with time zone, "schedule_logo_scale" numeric, "schedule_logo_offset_x" numeric, "schedule_logo_offset_y" numeric, "membership_id" "uuid", "workspace_role" "public"."workspace_role", "membership_role_id" "uuid", "membership_role_name" "text", "permission_keys" "text"[], "all_locations" boolean, "onboarding_status" "public"."onboarding_status", "onboarding_current_step" smallint, "onboarding_revision" integer, "actions" "text"[], "location_ids" "uuid"[], "document_restricted" boolean)
+CREATE OR REPLACE FUNCTION "public"."resolve_workspace_context_service"("actor_user_id" "uuid", "target_workspace_id" "uuid" DEFAULT NULL::"uuid") RETURNS TABLE("user_id" "uuid", "workspace_id" "uuid", "workspace_name" "text", "workspace_logo_storage_path" "text", "workspace_logo_file_name" "text", "workspace_logo_updated_at" timestamp with time zone, "schedule_logo_scale" numeric, "schedule_logo_offset_x" numeric, "schedule_logo_offset_y" numeric, "membership_id" "uuid", "management_access" "public"."workspace_role", "employee_access" boolean, "membership_role_id" "uuid", "membership_role_name" "text", "permission_keys" "text"[], "all_locations" boolean, "onboarding_status" "public"."onboarding_status", "onboarding_current_step" smallint, "onboarding_revision" integer, "actions" "text"[], "location_ids" "uuid"[], "document_restricted" boolean)
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -22392,7 +22392,9 @@ begin
     workspace.schedule_logo_offset_x,
     workspace.schedule_logo_offset_y,
     membership.id,
-    role.access_class,
+    -- The two slots (ROL-CIFT 1.5): the management slot's class, or none; whether the employee slot is held.
+    (select management.access_class from public.workspace_roles management where management.id = membership.role_id),
+    membership.employee_role_id is not null,
     role.id,
     role.name,
     coalesce(
@@ -22439,6 +22441,8 @@ begin
     workspace.schedule_logo_offset_x,
     workspace.schedule_logo_offset_y,
     membership.id,
+    membership.role_id,
+    membership.employee_role_id,
     role.access_class,
     role.id,
     role.name,

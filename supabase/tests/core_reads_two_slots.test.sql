@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(35);
+select plan(38);
 
 -- ROL-CIFT 1.2 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.4, §4.11): the authorization core reads
 -- the two access slots. Managing comes from Manages, not from where somebody works; what somebody may do
@@ -20,6 +20,8 @@ insert into auth.users (id, email, created_at) values
   ('c1200000-0000-4000-8000-000000000007', 'core2-ada@example.test', now());
 insert into public.workspaces (id, name, created_by, lifecycle_status)
 values ('c1200000-0000-4000-8000-000000000101', 'Core Two', 'c1200000-0000-4000-8000-000000000001', 'active');
+insert into public.workspace_onboarding (workspace_id, status, current_step, completed_at, updated_by)
+values ('c1200000-0000-4000-8000-000000000101', 'complete', 4, now(), 'c1200000-0000-4000-8000-000000000001');
 
 create temporary table slot_role (key text primary key, id uuid not null);
 insert into slot_role
@@ -263,6 +265,20 @@ select is(pg_temp.said($q$select public.initiate_workspace_ownership_transfer_se
 select isnt(pg_temp.said($q$select public.initiate_workspace_ownership_transfer_service('c1200000-0000-4000-8000-000000000001',
     'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000007')$q$),
   '23514 transfer.target_not_admin', 'Ada, an admin who also works, passes the admin check');
+
+-- The workspace context the API reads names both slots (ROL-CIFT 1.5).
+select is(
+  (select (c.management_access, c.employee_access)::text
+   from public.resolve_workspace_context_service('c1200000-0000-4000-8000-000000000004', 'c1200000-0000-4000-8000-000000000101') c),
+  '(manager,t)', 'Dora''s context: a manager who works');
+select is(
+  (select (c.management_access, c.employee_access)::text
+   from public.resolve_workspace_context_service('c1200000-0000-4000-8000-000000000003', 'c1200000-0000-4000-8000-000000000101') c),
+  '(manager,f)', 'Mona''s context: a manager only');
+select is(
+  (select (c.management_access, c.employee_access)::text
+   from public.resolve_workspace_context_service('c1200000-0000-4000-8000-000000000005', 'c1200000-0000-4000-8000-000000000101') c),
+  '(,t)', 'Ece''s context: an employee only');
 
 -- One role placed in the two slots (an invitation reopening a suspended account, a role change, a
 -- restored access) never makes an owner: only an ownership transfer does.
