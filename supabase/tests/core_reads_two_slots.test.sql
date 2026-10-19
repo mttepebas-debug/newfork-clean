@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(29);
+select plan(35);
 
 -- ROL-CIFT 1.2 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.4, §4.11): the authorization core reads
 -- the two access slots. Managing comes from Manages, not from where somebody works; what somebody may do
@@ -242,6 +242,27 @@ select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000
   '42501', 'Dora, who works in an open workspace she does not own, starts no workspace of her own');
 select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000-0000-4000-8000-000000000001', 'Olcay Two')$q$),
   'allowed', 'the owner starts another');
+
+-- Closing the workspace and starting a handover ask the core too (ROL-CIFT 1.4): only the owner closes
+-- or cancels a closing, and only an admin is handed the workspace.
+select is(pg_temp.said($q$select public.request_workspace_closure_service('c1200000-0000-4000-8000-000000000007',
+    'c1200000-0000-4000-8000-000000000101', 'scheduled_end_period', null, true, now() + interval '3 days')$q$),
+  '42501 workspace.owner_required', 'Ada, an admin who works, does not close the workspace');
+select is(pg_temp.said($q$select public.request_workspace_closure_service('c1200000-0000-4000-8000-000000000001',
+    'c1200000-0000-4000-8000-000000000101', 'scheduled_end_period', null, true, now() + interval '3 days')$q$),
+  'allowed', 'the owner closes it later');
+select is(pg_temp.said($q$select public.cancel_workspace_closure_service('c1200000-0000-4000-8000-000000000004',
+    'c1200000-0000-4000-8000-000000000101')$q$),
+  '42501 workspace.owner_required', 'Dora, a manager who works, does not cancel the closing');
+select is(pg_temp.said($q$select public.cancel_workspace_closure_service('c1200000-0000-4000-8000-000000000001',
+    'c1200000-0000-4000-8000-000000000101')$q$),
+  'allowed', 'the owner cancels it');
+select is(pg_temp.said($q$select public.initiate_workspace_ownership_transfer_service('c1200000-0000-4000-8000-000000000001',
+    'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000003')$q$),
+  '23514 transfer.target_not_admin', 'the workspace is not handed to Mona, a manager');
+select isnt(pg_temp.said($q$select public.initiate_workspace_ownership_transfer_service('c1200000-0000-4000-8000-000000000001',
+    'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000007')$q$),
+  '23514 transfer.target_not_admin', 'Ada, an admin who also works, passes the admin check');
 
 -- One role placed in the two slots (an invitation reopening a suspended account, a role change, a
 -- restored access) never makes an owner: only an ownership transfer does.

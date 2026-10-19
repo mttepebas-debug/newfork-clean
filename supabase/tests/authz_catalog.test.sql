@@ -46,8 +46,9 @@ select cmp_ok(
 -- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21),
 -- BILDIRIM-06 the old notification system (21 -> 20). ROL-CIFT 1.4 (20 -> 18): the membership's role
 -- and all_locations went with enforce_role_location_scope and service_actor_has_permission's own role
--- reading; ownership transfer and a new workspace ask the core who owns. app_private.role_class() is
--- the two-slot model's way to ask a role's kind, so the pattern counts it too.
+-- reading; ownership transfer, closing the workspace and a new workspace ask the core who owns.
+-- app_private.role_class() is the two-slot model's way to ask a role's kind, and "coalesce(x.access_class,
+-- ...) into" a way that escaped the pattern, so it counts both.
 -- The two-slot model's data rules (which slot a role fits, Manages only for a manager, a Management job
 -- for a management access) read a role's kind for integrity, not for a permission: they are named and
 -- counted apart below, and leave this count.
@@ -59,14 +60,14 @@ insert into slot_rule values
   ('place_single_role'), ('manages_follow_works');
 select cmp_ok(
   (select count(*)::integer from core_function
-   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('
+   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\(|coalesce\(\s*[a-z_]+\.access_class[^)]*\)\s*into'
      and name not in (select name from slot_rule)),
   '<=', 18, 'functions with their own scope or rank logic only go down'
 );
 -- The slot rules: only these, and they only go down too.
 select is(
   array(select name from core_function
-        where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('
+        where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\(|coalesce\(\s*[a-z_]+\.access_class[^)]*\)\s*into'
           and name in (select name from slot_rule) order by 1),
   array(select name from slot_rule order by 1),
   'the two-slot data rules read a role''s kind, and nothing else is let off the count'

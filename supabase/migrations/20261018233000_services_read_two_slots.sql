@@ -638,15 +638,10 @@ begin
     raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
   end if;
 
-  select coalesce(role.access_class, 'employee'::public.workspace_role) into actor_role
-  from public.workspace_memberships membership
-  left join public.workspace_roles role
-    on role.id = membership.role_id
-   and role.workspace_id = membership.workspace_id
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active'
-  limit 1;
+  -- The core says who the actor is here (ROL-CIFT 1.4).
+  select state.class into actor_role
+  from app_private.actor(actor_user_id, target_workspace_id) state
+  where state.status = 'active';
 
   if actor_role is distinct from 'owner'::public.workspace_role then
     raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required';
@@ -756,15 +751,10 @@ begin
   limit 1
   for update;
 
-  select coalesce(role.access_class, 'employee'::public.workspace_role) into target_access
-  from public.workspace_memberships membership
-  left join public.workspace_roles role
-    on role.id = membership.role_id
-   and role.workspace_id = membership.workspace_id
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = target_user_id
-    and membership.status = 'active'
-  limit 1;
+  -- The core says who the target is here (ROL-CIFT 1.4).
+  select state.class into target_access
+  from app_private.actor(target_user_id, target_workspace_id) state
+  where state.status = 'active';
 
   if target_membership.id is null or target_access is distinct from 'admin'::public.workspace_role then
     raise exception 'ownership transfer target must be an active admin' using errcode = '23514', hint = 'transfer.target_not_admin';
@@ -882,15 +872,10 @@ begin
     raise exception 'workspace not found' using errcode = '02000', hint = 'workspace.not_found';
   end if;
 
-  select coalesce(role.access_class, 'employee'::public.workspace_role) into actor_role
-  from public.workspace_memberships membership
-  left join public.workspace_roles role
-    on role.id = membership.role_id
-   and role.workspace_id = membership.workspace_id
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = actor_user_id
-    and membership.status = 'active'
-  limit 1;
+  -- The core says who the actor is here (ROL-CIFT 1.4).
+  select state.class into actor_role
+  from app_private.actor(actor_user_id, target_workspace_id) state
+  where state.status = 'active';
 
   if actor_role is distinct from 'owner'::public.workspace_role then
     raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required';
