@@ -56,7 +56,8 @@ const employees = [
     primary_job_id: "22000000-0000-4000-8000-000000000001",
     primary_job_name: "Server",
     job_count: 1,
-    role_name: "Employee",
+    management_access: false,
+    employee_access: true,
     display_status: "active",
     archived_at: null,
     revision: 1,
@@ -75,7 +76,8 @@ const employees = [
     primary_job_id: "22000000-0000-4000-8000-000000000002",
     primary_job_name: "Host",
     job_count: 1,
-    role_name: null,
+    management_access: false,
+    employee_access: false,
     display_status: "invited",
     archived_at: null,
     revision: 1,
@@ -109,6 +111,26 @@ function renderPage(initialEntry = "/app/employees", data: EmployeeSummary[] = e
 }
 
 describe("EmployeesPage", () => {
+  // KARARLAR S-179: the Access column names the app a person reaches, not their rank.
+  it("names the app each person reaches in the Access column", async () => {
+    const alex: EmployeeSummary = employees[0]!;
+    const blair: EmployeeSummary = employees[1]!;
+    renderPage("/app/employees", [
+      { ...alex, id: "15000000-0000-4000-8000-000000000003", display_name: "Cam Lee", management_access: true, employee_access: true },
+      { ...alex, id: "15000000-0000-4000-8000-000000000004", display_name: "Dee Ross", management_access: true, employee_access: false },
+      alex,
+      blair,
+    ]);
+    expect(await inTable().findByText("Cam Lee")).toBeTruthy();
+    const access = (name: string) =>
+      within(inTable().getByText(name).closest("tr")!).getAllByRole("cell").map((cell) => cell.textContent);
+    expect(access("Cam Lee")).toContain("Management + Employee");
+    expect(access("Dee Ross")).toContain("Management");
+    expect(access("Alex Kim")).toContain("Employee");
+    expect(access("Blair Patel")).toContain("No access");
+    expect(screen.queryByText("No app access")).toBeNull();
+  });
+
   it("lets managers personalize table columns without losing the directory row", async () => {
     renderPage();
 
@@ -120,7 +142,7 @@ describe("EmployeesPage", () => {
     ).toBeNull();
     expect(within(table).getByText("Main Dining")).toBeTruthy();
     expect(within(table).getByText("Server")).toBeTruthy();
-    expect(within(table).getByText("No app access")).toBeTruthy();
+    expect(within(table).getByText("No access")).toBeTruthy();
 
     fireEvent.click(
       screen.getByRole("button", { name: "Table column settings" }),

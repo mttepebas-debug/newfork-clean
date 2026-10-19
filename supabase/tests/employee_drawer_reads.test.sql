@@ -59,11 +59,21 @@ select is(
   (select array(select k from jsonb_object_keys(to_jsonb(e)) k order by k)
    from public.list_employees_service(tests.user('d:owner'), tests.id('d'), false, '', 'all', 200, 0) e
    where e.id = tests.id('d:selin')),
-  array['archived_at', 'display_name', 'display_status', 'employee_code', 'first_name', 'id',
-    'invitation_email', 'job_count', 'last_name', 'locations', 'preferred_name',
+  array['archived_at', 'display_name', 'display_status', 'employee_access', 'employee_code', 'first_name', 'id',
+    'invitation_email', 'job_count', 'last_name', 'locations', 'management_access', 'preferred_name',
     'primary_job_id', 'primary_job_name',
-    'revision', 'role_name', 'start_date', 'workspace_id'],
+    'revision', 'start_date', 'workspace_id'],
   'a list row carries exactly these columns');
+-- KARARLAR S-179: a list row names the two access slots apart, not a role, so the Access column
+-- says which app the person reaches: Management + Employee, Management, Employee or No access.
+select tests.person('d', 'mona', 'manager', array['K'], array['cook']);
+select tests.no_employee_slot('d', 'mona');
+select is(
+  (select array_agg(e.first_name || '=' || e.management_access || '/' || e.employee_access order by e.first_name)
+   from public.list_employees_service(tests.user('d:owner'), tests.id('d'), false, '', 'all', 200, 0) e
+   where e.id in (tests.id('d:selin'), tests.id('d:mona'), tests.id('d:emre'), tests.id('d:pia'))),
+  array['Emre=false/true', 'Mona=true/false', 'Pia=false/false', 'Selin=true/true'],
+  'Selin manages and works, Mona only manages, Emre only works, Pia has no account yet');
 
 -- 2. Whether they may be taken off a location -------------------------------------
 

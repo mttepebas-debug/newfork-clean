@@ -468,7 +468,7 @@ describe("employee directory routes", () => {
       id: `00000000-0000-4000-8000-${String(index).padStart(12, "0")}`,
       workspace_id: workspaceId, employee_code: `E-${String(1000 + index)}`,
       first_name: "Person", last_name: `No ${index}`, preferred_name: "", display_name: `Person No ${index}`,
-      invitation_email: null, start_date: null, locations: [], primary_job_id: null, primary_job_name: null, job_count: 0, role_name: null,
+      invitation_email: null, start_date: null, locations: [], primary_job_id: null, primary_job_name: null, job_count: 0, management_access: false, employee_access: false,
       display_status: "active", archived_at: null, revision: 1,
     }));
     const rpc = vi.fn(async (_name: string, args: { page_limit: number; page_offset: number; search_text: string }) => ({

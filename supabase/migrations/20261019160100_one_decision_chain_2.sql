@@ -1,5 +1,5 @@
--- ROL-CIFT 3.1, part 2 of 3 of one_decision_chain: split at function boundaries to go live in pieces;
--- runs after part 1, part 3 after it.
+-- ROL-CIFT 3.1, part 2 of 4 of one_decision_chain: split at function boundaries to go live in pieces;
+-- runs after part 1, parts 3-4 after it.
 -- The Requests reads and the approval preview follow the one decision helper (part 1). A reader's own
 -- request is not in their Requests, open or closed (design §4.6): Dora, a manager who works at Kadikoy,
 -- follows her own cover in the employee view and Can decides it; the owner whom nobody else can answer

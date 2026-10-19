@@ -1,5 +1,5 @@
--- ROL-CIFT 3.1, part 3 of 3 of one_decision_chain: split at function boundaries to go live in pieces;
--- runs after part 2.
+-- ROL-CIFT 3.1, part 3 of 4 of one_decision_chain: split at function boundaries to go live in pieces;
+-- runs after part 2, part 4 after it.
 -- The owner's own time off follows the decision chain too (KARARLAR S-169; design §8.1): it waits for
 -- the managers of the owner's locations or an admin like anybody's, and the owner decides it alone in
 -- Requests only when nobody else can (part 1). Nothing records it approved at once any more, nor a

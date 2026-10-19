@@ -1,5 +1,5 @@
--- ROL-CIFT 3.1, part 1 of 3 of one_decision_chain: split at function boundaries to go live in pieces;
--- parts 2-3 run after it.
+-- ROL-CIFT 3.1, part 1 of 4 of one_decision_chain: split at function boundaries to go live in pieces;
+-- parts 2-4 run after it.
 -- ROL-CIFT 3.1 (KARARLAR S-164, S-169 and its addition; design §4.5, §8.1): every request a manager
 -- decides last (a cover, a swap, a release application, time off) follows one chain: the location's
 -- manager other than the person who asked, else an admin, else the owner. Rank is not counted on the

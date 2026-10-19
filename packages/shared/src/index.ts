@@ -2461,7 +2461,12 @@ export const employeeSummarySchema = z.object({
   primary_job_id: z.string().uuid().nullable(),
   primary_job_name: z.string().nullable(),
   job_count: z.coerce.number().int().nonnegative(),
-  role_name: z.string().nullable(),
+  /**
+   * The two access slots apart (KARARLAR S-179): whether they reach the
+   * management app and the employee app. Neither: no account (No access).
+   */
+  management_access: z.boolean(),
+  employee_access: z.boolean(),
   display_status: employeeDisplayStatusSchema,
   archived_at: z.string().datetime({ offset: true }).nullable(),
   revision: z.coerce.number().int().positive(),
@@ -2494,7 +2499,9 @@ export const employeeEventSchema = z.object({
 });
 export type EmployeeEvent = z.infer<typeof employeeEventSchema>;
 
-export const employeeDetailSchema = employeeSummarySchema.extend({
+// The drawer names the role itself (the rank, KARARLAR S-179); the list names the two slots.
+export const employeeDetailSchema = employeeSummarySchema.omit({ management_access: true, employee_access: true }).extend({
+  role_name: z.string().nullable(),
   primary_location_id: z.string().uuid().nullable(),
   primary_location_name: z.string().nullable(),
   location_count: z.coerce.number().int().nonnegative(),

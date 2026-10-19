@@ -251,10 +251,11 @@ describe("employee detail locations", () => {
   it("lists a row as the database sends it", () => {
     const {
       locations: _l, jobs: _j, invitation: _i, onboarding: _o, events: _e, allowed: _a, user_id: _u, internal_note: _n,
-      primary_location_id: _pl, primary_location_name: _pn, location_count: _lc, ...rest
+      primary_location_id: _pl, primary_location_name: _pn, location_count: _lc, role_name: _r, ...rest
     } = record;
-    // BL-436: a list row names every location, the primary first.
-    const row = { ...rest, locations: [{ id: kadikoy, name: "Kadikoy", primary: true }] };
+    // BL-436: a list row names every location, the primary first; S-179: the two access slots, not a role.
+    const row = { ...rest, management_access: true, employee_access: true,
+      locations: [{ id: kadikoy, name: "Kadikoy", primary: true }] };
     expect(employeeSummarySchema.parse(row).display_name).toBe("Derya Ak");
     expect(employeeSummarySchema.parse(row).locations).toEqual(row.locations);
   });

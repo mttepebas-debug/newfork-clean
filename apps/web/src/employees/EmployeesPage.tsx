@@ -802,7 +802,7 @@ function renderEmployeeCell(
     );
   }
   if (key === "access") {
-    return <td key={key}>{employee.role_name ?? "No app access"}</td>;
+    return <td key={key}>{accessLabel(employee)}</td>;
   }
   if (key === "email") {
     return <td key={key}>{employee.invitation_email ?? "No invite email"}</td>;
@@ -834,6 +834,17 @@ function columnWidth(key: EmployeeColumnKey): string {
   }
 }
 
+/**
+ * The app a person reaches (KARARLAR S-179); their rank stays in the drawer.
+ * The column sorts by these words, A to Z.
+ */
+function accessLabel(employee: EmployeeSummary): string {
+  if (employee.management_access && employee.employee_access) return "Management + Employee";
+  if (employee.management_access) return "Management";
+  if (employee.employee_access) return "Employee";
+  return "No access";
+}
+
 function employeeSortValue(
   employee: EmployeeSummary,
   key: EmployeeColumnKey,
@@ -841,7 +852,7 @@ function employeeSortValue(
   if (key === "status") return filterLabel(employee.display_status);
   if (key === "location") return employee.locations[0]?.name ?? "Unassigned";
   if (key === "job") return employee.primary_job_name ?? "Unassigned";
-  if (key === "access") return employee.role_name ?? "No app access";
+  if (key === "access") return accessLabel(employee);
   if (key === "start") return employee.start_date ?? "";
   if (key === "email") return employee.invitation_email ?? "";
   return employee.display_name;
