@@ -4,13 +4,13 @@ select no_plan();
 
 -- BILDIRIM-U2 (KARARLAR S-123, S-95, P07; docs/plan/research/BILDIRIM-URETICILER.md §2.3): time off writes its
 -- own notices into the new core.
---   (a) a request reaches who decides it: the location's manager; an admin and the owner only where no
---       manager can; the owner's own time off asks nobody;
+--   (a) a request reaches who decides it: the location's manager; an admin only where no manager can,
+--       and the owner only without an admin (KARARLAR S-169); the owner's own time off asks the same;
 --   (b) a decision tells the person who asked once, with the outcome; the first decision closes every
 --       decider's card ("Approved by ..."); the one who decided hears nothing;
 --   (c) withdrawing closes the deciders' cards and writes nothing new;
 --   (d) twelve hours before the deadline the managers who have not decided are reminded, once; where no
---       manager can decide, an admin and the owner are told once instead;
+--       manager can decide, the admins (the owner only without one) are told once instead;
 --   (e) shortening tells the person and whoever approved it, never the one who shortened it; revoking
 --       tells the person;
 --   (f) the two helpers that find recipients ask the core, not role names.
@@ -69,11 +69,11 @@ select is(app_private.notify_holders(tests.id('nt'), 'time_off.decide_alone', nu
 select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', array[tests.id('nt:K')], tests.id('nt:emre'), 'time_off.decide_alone'),
   array[tests.user('nt:ayse')], '(f) at Kadikoy the manager decides');
 select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', array[tests.id('nt:B')], tests.id('nt:deniz'), 'time_off.decide_alone'),
-  array(select tests.user(x) from unnest(array['nt:owner', 'nt:zeynep']) x order by 1),
-  '(f) at Besiktas, with no manager, the admin and the owner');
+  array[tests.user('nt:zeynep')], '(f) at Besiktas, with no manager, the admin: the owner only without one (S-169)');
 select is(app_private.notify_deciders(tests.id('nt'), 'time_off.decide', '{}', tests.id('nt:emre'), 'time_off.decide_alone'),
-  array(select tests.user(x) from unnest(array['nt:owner', 'nt:zeynep']) x order by 1),
-  '(f) with no location, the admin and the owner');
+  array[tests.user('nt:zeynep')], '(f) with no location, the admin');
+select is(app_private.notify_deciders(tests.id('nx'), 'time_off.decide', '{}', tests.id('nx:xena'), 'time_off.decide_alone'),
+  array[tests.user('nx:owner')], '(f) and the owner where there is no admin');
 
 -- (a) A request ---------------------------------------------------------------------------------------
 
@@ -87,13 +87,13 @@ select is(pg_temp.told('time_off.requested', tests.id('nt:emre:2')) || pg_temp.t
   array['nt:ayse'], '(a) one notice; Emre is not told of his own request');
 
 select tests.remember('nt:deniz:2', tests.leave('nt', 'deniz', 2));
-select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:owner', 'nt:zeynep'],
-  '(a) Besiktas has no manager: the admin and the owner decide Deniz''s');
+select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:zeynep'],
+  '(a) Besiktas has no manager: the admin is asked about Deniz''s, not the owner');
 
 select tests.remember('nt:owner:2', tests.leave('nt', 'owner', 2));
-select is(pg_temp.status(tests.id('nt:owner:2')), 'approved', '(a) the owner''s own time off is recorded approved');
+select is(pg_temp.status(tests.id('nt:owner:2')), 'pending', '(a) the owner''s own time off waits like anybody''s');
 select is(pg_temp.told('time_off.requested', tests.id('nt:owner:2')) || pg_temp.told('time_off.decided', tests.id('nt:owner:2')),
-  '{}'::text[], '(a) and asks nobody, tells nobody');
+  array['nt:ayse'], '(a) and asks Kadikoy''s manager');
 
 -- (b) A decision --------------------------------------------------------------------------------------
 
@@ -109,9 +109,8 @@ select pg_temp.decide('zeynep', tests.id('nt:deniz:2'), 'deny', 'Short-staffed')
 select is(pg_temp.told('time_off.decided', tests.id('nt:deniz:2')), array['nt:deniz'], '(b) a decline tells Deniz once');
 select ok((select title like 'Your time off % is declined' from public.person_notifications
            where type_key = 'time_off.decided' and subject_id = tests.id('nt:deniz:2')), '(b) and says so');
-select is(pg_temp.card('owner', tests.id('nt:deniz:2')), 'declined by nt:zeynep',
-  '(b) the owner''s card says the admin declined it; no new notice for the owner');
-select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:owner', 'nt:zeynep'], '(b) nothing more was written');
+select is(pg_temp.card('zeynep', tests.id('nt:deniz:2')), 'declined by nt:zeynep', '(b) the admin''s card closes as declined');
+select is(pg_temp.told('time_off.requested', tests.id('nt:deniz:2')), array['nt:zeynep'], '(b) nothing more was written');
 
 -- Besiktas gets a manager: Ali, who works at both, is decided at both.
 select tests.person('nt', 'mehmet', 'manager', array['B'], array['cook']);
@@ -174,8 +173,8 @@ select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:emre:5')), arr
   '(d) twelve hours before the deadline the manager who has not decided is reminded, once over two passes');
 select ok((select title like 'Decide by %: Emre Person''s time off' from public.person_notifications
            where type_key = 'time_off.decision_reminder' and subject_id = tests.id('nt:emre:5')), '(d) naming the day and the person');
-select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:deniz:5')), array['nt:owner', 'nt:zeynep'],
-  '(d) no manager can decide Deniz''s now: the admin and the owner are told once, not twice');
+select is(pg_temp.told('time_off.decision_reminder', tests.id('nt:deniz:5')), array['nt:zeynep'],
+  '(d) no manager can decide Deniz''s now: the admin is told once, not twice; the owner, with an admin there, not at all');
 select ok((select bool_and(title = 'Deniz Person''s time off waits for an admin') from public.person_notifications
            where type_key = 'time_off.decision_reminder' and subject_id = tests.id('nt:deniz:5')),
   '(d) saying no manager can decide it');

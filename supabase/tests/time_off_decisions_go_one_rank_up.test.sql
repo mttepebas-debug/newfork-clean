@@ -1,20 +1,17 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select no_plan();
 
--- BL-177: a time-off request goes one rank up (REUSE "Rütbe"). A manager
--- decides an employee's request at their location, never another manager's;
--- an admin decides a manager's, never the owner's; the owner decides an
--- admin's; nobody decides their own. A vote (decide_time_off_service) and a
--- revoke (revoke_time_off_service) ask the core, app_private.authorize(...,
--- 'time_off.decide' / 'time_off.revoke', target_person => requester), and a no
--- is 42501 with an authz.* hint. FB-6.3.7: no partial decision, one entry
--- point for a vote.
---
--- The owner's own request needs no approval: it is recorded approved when
--- filed, through the same approval step (decision event by the owner,
--- published shifts on those hours released), and so is the owner's
--- cancellation of their own leave.
+-- BL-177, then the decision chain (KARARLAR S-164, S-169; ROL-CIFT design §4.5, §8.1):
+-- a time-off request goes to the managers of the person's locations other than the
+-- person, else an admin, else the owner; rank is not counted on the employee side, so
+-- a manager votes on a peer manager's or an admin's request, and an admin decides a
+-- peer admin's. An admin and the owner decide alone at every step. Nobody decides
+-- their own; the owner's own waits like anybody's (it was recorded approved at once).
+-- A vote (decide_time_off_service) and a revoke (revoke_time_off_service) ask the
+-- core, and a no is 42501 with an authz.* hint. Revoking approved leave is
+-- management's and keeps the rank (one rank up). FB-6.3.7: no partial decision, one
+-- entry point for a vote.
 
 select tests.world('to');
 -- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
@@ -72,63 +69,44 @@ as $$
   from public.schedule_time_off_requests r where r.id = tests.id('to:' || holder || ':time_off')
 $$;
 
--- 1. The owner's request is recorded approved when filed.
+-- 1. The owner's request waits like anybody's: Kadikoy has managers and there are admins.
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off')),
-  'approved', 'the owner''s request is approved as soon as it is filed'
-);
-select is(
-  (select array_agg(e.action || ' by ' || case when e.actor_user_id = tests.user('to:owner') then 'owner' else 'someone else' end order by e.action)
-   from public.schedule_time_off_events e where e.request_id = tests.id('to:owner:time_off')),
-  array['approved by owner', 'submitted by owner'],
-  'its history reads: filed by the owner, approved by the owner'
+  'pending', 'the owner''s request waits for a decision'
 );
 select is(
   (select p.employee_id from public.schedule_published_shifts p where p.id = tests.id('to:shift:owner-wed')),
-  null::uuid, 'the owner''s published Wednesday shift is released, as with any approval'
-);
-select is(
-  (select count(*)::integer from public.time_off_assignment_releases x
-   where x.request_id = tests.id('to:owner:time_off') and x.published_shift_id = tests.id('to:shift:owner-wed')),
-  1, 'and the release is on record'
-);
--- Approving on filing is only for the owner's own request.
-select is(
-  (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:emre:time_off')),
-  'pending', 'Emre''s request is still pending'
+  tests.id('to:owner'), 'the owner''s published Wednesday shift is still theirs'
 );
 
 -- 2. Nobody decides their own request.
+select is(pg_temp.resolve('owner', 'owner'), '42501 authz.rank', 'the owner cannot approve their own request');
 select is(pg_temp.resolve('ayse', 'ayse'), '42501 authz.rank', 'Ayse cannot approve her own request');
-select is(pg_temp.resolve('owner', 'owner', 'revoke'), '42501 authz.rank', 'the owner cannot revoke their own leave');
 select is(pg_temp.resolve('zeynep', 'zeynep'), '42501 authz.rank', 'Zeynep (admin) cannot approve her own request');
 
--- 3. A manager decides an employee's request, not another manager's.
-select is(pg_temp.resolve('ali', 'ayse'), '42501 authz.rank', 'Ali (manager, Kadikoy) cannot approve Ayse''s request (manager, Kadikoy)');
-select is(pg_temp.resolve('ali', 'zeynep'), '42501 authz.rank', 'Ali (manager) cannot approve Zeynep''s request (admin)');
+-- 3. Kadikoy's managers vote whatever the rank of whom it is about.
 select is(pg_temp.resolve('mehmet', 'emre'), '42501 authz.out_of_scope', 'Mehmet (manager, Besiktas) cannot decide Emre''s Kadikoy request');
 select is(pg_temp.resolve('ali', 'emre'), 'allowed', 'Ali approves Emre''s request (employee, Kadikoy)');
+select is(pg_temp.resolve('ali', 'ayse'), 'allowed', 'Ali approves his peer Ayse''s request (manager, Kadikoy)');
+select is(pg_temp.resolve('ali', 'zeynep'), 'allowed', 'Ali approves Zeynep''s request (admin, works at Kadikoy)');
 
--- 4. An admin decides a manager's request, never the owner's.
-select is(pg_temp.resolve('zeynep', 'owner', 'revoke'), '42501 authz.rank', 'Zeynep (admin) cannot revoke the owner''s leave');
-select is(pg_temp.resolve('zeynep', 'zafer'), '42501 authz.rank', 'Zeynep (admin) cannot approve Zafer''s request (admin)');
-select is(pg_temp.resolve('zeynep', 'ayse'), 'allowed', 'Zeynep (admin) approves Ayse''s request (manager)');
-
--- 5. The owner decides an admin's request.
-select is(pg_temp.resolve('owner', 'zeynep'), 'allowed', 'the owner approves Zeynep''s request (admin)');
-
--- 6. What the refusals left behind: nothing.
-select is(
-  (select count(*)::integer from public.schedule_time_off_events e
-   where e.request_id = tests.id('to:ayse:time_off') and e.actor_user_id = tests.user('to:ali')),
-  0, 'Ali left no decision on Ayse''s request'
-);
+-- 4. An admin decides at every step, a peer admin's request too.
+select is(pg_temp.resolve('zeynep', 'zafer'), 'allowed', 'Zeynep (admin) approves Zafer''s request (admin)');
+select is(pg_temp.resolve('zeynep', 'owner'), 'allowed', 'Zeynep (admin) approves the owner''s request');
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off')),
-  'approved', 'the owner''s leave is still approved'
+  'approved', 'the owner''s request is approved'
+);
+select is(
+  (select p.employee_id from public.schedule_published_shifts p where p.id = tests.id('to:shift:owner-wed')),
+  null::uuid, 'and the owner''s published Wednesday shift is released, as with any approval'
 );
 
--- 7. The owner's cancellation of their own leave is recorded approved too.
+-- 5. Revoking approved leave keeps the rank: one rank up, never one's own.
+select is(pg_temp.resolve('owner', 'owner', 'revoke'), '42501 authz.rank', 'the owner cannot revoke their own leave');
+select is(pg_temp.resolve('zeynep', 'owner', 'revoke'), '42501 authz.rank', 'Zeynep (admin) cannot revoke the owner''s leave');
+
+-- 6. The owner's cancellation of their own leave waits too.
 create temporary table owner_cancel as
 select public.request_time_off_cancellation_service(
   tests.user('to:owner'), tests.id('to'), r.id, r.revision,
@@ -138,14 +116,10 @@ select public.request_time_off_cancellation_service(
   'plans changed', gen_random_uuid()
 ) as result
 from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off');
-select is((select result ->> 'status' from owner_cancel), 'approved', 'the owner''s cancellation is approved as soon as it is filed');
+select is((select result ->> 'status' from owner_cancel), 'pending', 'the owner''s cancellation waits for a decision');
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('to:owner:time_off')),
-  'revoked', 'and the cancelled leave is no longer in effect'
-);
-select is(
-  (select p.employee_id from public.schedule_published_shifts p where p.id = tests.id('to:shift:owner-wed')),
-  null::uuid, 'the released shift stays released, as with any cancellation'
+  'approved', 'and the leave stays in effect until then'
 );
 
 select * from finish();

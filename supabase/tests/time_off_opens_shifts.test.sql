@@ -1,10 +1,10 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(9);
+select plan(11);
 
--- BL-183, FB-6.3.7: the owner's time off is recorded without review, approved
--- at once, and leaves the owner's shifts in it open. An employee's request
--- still waits for its reviewers.
+-- BL-183, FB-6.3.7: approved time off leaves the shifts in it open. The owner's
+-- own waits for a decision like anybody's (KARARLAR S-169): here the admin
+-- decides it. An employee's request waits for its reviewers too.
 
 select tests.world('ot');
 -- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
@@ -30,10 +30,15 @@ select tests.publish_week('ot', 1, '[
 create function pg_temp.status(request uuid) returns text language sql as $$
   select r.status::text from public.schedule_time_off_requests r where r.id = request
 $$;
+create function pg_temp.admin_approves(request uuid) returns text language sql as $$
+  select public.decide_time_off_service(tests.user('ot:zeynep'), tests.id('ot'), request, 'approve', '',
+    app_private.time_off_impact(tests.id('ot'), request) ->> 'fingerprint') ->> 'status'
+$$;
 
 -- 1. Olcay takes Wednesday off (tests.leave asks for the Wednesday of the week).
 select tests.leave('ot', 'owner', 1);
-select is(pg_temp.status(tests.id('ot:owner:time_off')), 'approved', 'the owner''s time off needs no review');
+select is(pg_temp.status(tests.id('ot:owner:time_off')), 'pending', 'the owner''s time off waits for a decision');
+select is(pg_temp.admin_approves(tests.id('ot:owner:time_off')), 'approved', 'the admin approves it');
 select is((select employee_id from public.schedule_published_shifts where id = tests.id('ot:shift:olcay-k')), null::uuid,
   'the Wednesday Kadikoy shift is left open');
 select is((select count(*)::integer from public.schedule_published_shifts
@@ -51,13 +56,14 @@ set local role authenticated;
 select throws_ok($$select * from public.time_off_assignment_releases$$, '42501', null, 'and a signed-in browser cannot read it');
 reset role;
 
--- 2. Time off that leaves no shift open is approved the same way.
+-- 2. Time off that leaves no shift open is decided the same way.
 select tests.leave('ot', 'owner', 2);
 -- ponytail: one transaction has one now(), so tests.leave may remember the
 -- first request; the week-2 one is found by its day.
 select tests.remember('ot:owner:time_off:2', (select s.request_id from public.schedule_time_off_segments s
   where s.workspace_id = tests.id('ot') and s.segment_date = tests.week(2) + 2));
-select is(pg_temp.status(tests.id('ot:owner:time_off:2')), 'approved', 'the owner''s time off with no shift in it is approved too');
+select is(pg_temp.status(tests.id('ot:owner:time_off:2')), 'pending', 'the owner''s time off with no shift in it waits too');
+select is(pg_temp.admin_approves(tests.id('ot:owner:time_off:2')), 'approved', 'and is approved the same way');
 
 -- 3. An employee's request still waits for review.
 select tests.leave('ot', 'ali', 1);

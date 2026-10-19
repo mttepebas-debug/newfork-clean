@@ -26,6 +26,7 @@ supabase/tests/browser_privileges.test.sql
 supabase/tests/catalog_entity_deletion.test.sql
 supabase/tests/communication_operations.test.sql
 supabase/tests/core_reads_two_slots.test.sql
+supabase/tests/decision_chain.test.sql
 supabase/tests/deleted_location_counts_nowhere.test.sql
 supabase/tests/department_archive_takes_its_jobs.test.sql
 supabase/tests/document_publication.test.sql

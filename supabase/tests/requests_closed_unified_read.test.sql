@@ -165,8 +165,9 @@ select is(pg_temp.refusal(format('select pg_temp.closed(%L, loc => %L)', 'ayse',
 
 -- (c) a peer manager does not read what she cannot decide; its owner does --------
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('ayse', array['time_off'], size => 100) -> 'rows') i
-  where i ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 1)), 0, 'Ayse does not read Hande''s closed time off');
-select is((pg_temp.closed('ayse', array['time_off']) ->> 'total')::integer, 58, 'Ayse reads the 58 of Kadikoy''s employees');
+  where i ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 1)), 1,
+  'Ayse reads her peer Hande''s closed time off: she decides it (KARARLAR S-164, S-169)');
+select is((pg_temp.closed('ayse', array['time_off']) ->> 'total')::integer, 59, 'Ayse reads the 59 of Kadikoy''s people');
 -- Its owner reads it on Employee hub, not in Requests (time_off_seen_by_who_decides).
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('hande', array['time_off'], size => 100) -> 'rows') i
   where i ->> 'id' = (select id::text from rc_seed where kind = 'time_off' and n = 1)), 0, 'nor does Hande in Requests');
@@ -177,12 +178,12 @@ select is((pg_temp.closed('ayse', array['swap', 'cover']) ->> 'total')::integer,
 
 -- (d) no exchange.read: no shift-change row and no count of them ------------------
 select is((pg_temp.closed('tolga', array['swap', 'cover']) ->> 'total')::integer, 0, 'Tolga: no shift changes');
-select is((pg_temp.closed('tolga') ->> 'total')::integer, 58, 'Tolga''s whole list is the time off he reads');
+select is((pg_temp.closed('tolga') ->> 'total')::integer, 59, 'Tolga''s whole list is the time off he reads');
 select is((select count(*)::integer from jsonb_array_elements(pg_temp.closed('tolga', size => 100) -> 'rows') i
   where i ->> 'kind' <> 'time_off'), 0, 'and every row is time off');
 
--- A manager who owns or applied to a shift change elsewhere reads it, as the shift
--- changes list shows it: no decision, nobody else's application or note.
+-- A manager who owns or applied to a shift change elsewhere follows it in the employee
+-- view, not in Requests: Requests holds what its reader decides (ROL-CIFT design §4.6).
 update public.shift_exchange_cases set owner_id = tests.id('rc:mehmet'), private_note = 'Owner note'
 where id = (select id from rc_seed where kind = 'cover' and n = 24);
 update public.shift_exchange_cases set private_note = 'Owner note' where id = (select id from rc_seed where kind = 'cover' and n = 21);
@@ -193,14 +194,10 @@ create function pg_temp.case_of(who text, n integer) returns jsonb language sql 
   select i -> 'exchange' from jsonb_array_elements(pg_temp.closed(who, array['cover'], size => 100) -> 'rows') i
   where i ->> 'id' = (select id::text from rc_seed where kind = 'cover' and rc_seed.n = case_of.n)
 $$;
-select is((pg_temp.closed('mehmet', array['swap', 'cover']) ->> 'total')::integer, 5,
-  'Mehmet reads Besiktas''s three, the Kadikoy cover he owns and the one he applied to');
-select is(pg_temp.case_of('mehmet', 24) ->> 'can_manage', 'false', 'he does not decide his own');
-select is(pg_temp.case_of('mehmet', 24) ->> 'private_note', 'Owner note', 'and reads its note as its owner');
-select is(pg_temp.case_of('mehmet', 21) ->> 'can_manage', 'false', 'nor the one he applied to');
-select is(pg_temp.case_of('mehmet', 21) ->> 'private_note', '', 'whose note is not his');
-select is((select array_agg(a ->> 'employee_name') from jsonb_array_elements(pg_temp.case_of('mehmet', 21) -> 'applications') a),
-  array['Mehmet Person'], 'and only his own application');
+select is((pg_temp.closed('mehmet', array['swap', 'cover']) ->> 'total')::integer, 3,
+  'Mehmet reads Besiktas''s three');
+select is(pg_temp.case_of('mehmet', 24), null, 'not the Kadikoy cover he owns');
+select is(pg_temp.case_of('mehmet', 21), null, 'nor the one he applied to');
 select is((pg_temp.closed('mehmet', q => 'veli') ->> 'total')::integer, 0, 'a search does not find an application he cannot see');
 select is((pg_temp.closed('owner', array['cover'], q => 'mehmet') ->> 'total')::integer, 1, 'the owner finds the cover by its applicant');
 
@@ -224,7 +221,7 @@ update public.employee_onboarding_requirements
 set lifecycle_exempt = false, deadline_at = now() - interval '1 day'
 where source_id = (select id from required_document) and lifecycle_user_id = tests.user('rc:nur');
 select ok(app_private.document_actor_blocked(tests.user('rc:nur'), tests.id('rc')), 'Nur, a Kadikoy manager, misses the document');
-select is((pg_temp.closed('nur') ->> 'total')::integer, 58 + 57, 'Nur reads Kadikoy''s closed time off and shift changes');
+select is((pg_temp.closed('nur') ->> 'total')::integer, 59 + 57, 'Nur reads Kadikoy''s closed time off and shift changes');
 
 -- BL-839: an open shift change nine weeks out is in the list ---------------------
 select tests.publish_week('rc', 9, '[

@@ -2,10 +2,11 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(4);
 
--- BL-221 (user, K12): the owner's own leave is recorded approved when filed,
--- with no exception, also when the owner misses a required document. "Is this
--- the owner's own request?" asks who the owner is, not whether the owner may
--- set up the workspace (workspace.setup refuses a document-blocked owner).
+-- BL-221, then the decision chain (KARARLAR S-169): the owner's own leave waits like
+-- anybody's, and the owner whom nobody else can answer decides it alone, also when
+-- the owner misses a required document. "Is this the owner's own request?" asks who
+-- the owner is, not whether the owner may set up the workspace (workspace.setup
+-- refuses a document-blocked owner).
 
 select tests.world('od');
 -- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
@@ -40,20 +41,20 @@ select tests.leave('od', 'owner', 1);
 
 select is(
   (select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('od:owner:time_off')),
+  'pending',
+  'the owner''s request waits for a decision'
+);
+select is(
+  (public.decide_time_off_service(tests.user('od:owner'), tests.id('od'), tests.id('od:owner:time_off'), 'approve', '',
+    app_private.time_off_impact(tests.id('od'), tests.id('od:owner:time_off')) ->> 'fingerprint')) ->> 'status',
   'approved',
-  'the owner''s request is approved as soon as it is filed'
+  'nobody else can answer it, so the owner approves it, missing document and all'
 );
 select is(
   (select array_agg(e.action order by e.action) from public.schedule_time_off_events e
    where e.request_id = tests.id('od:owner:time_off') and e.actor_user_id = tests.user('od:owner')),
   array['approved', 'submitted'],
   'filed and approved by the owner'
-);
-select is(
-  (select count(*)::integer from public.schedule_time_off_requests r
-   where r.workspace_id = tests.id('od') and r.status = 'pending'),
-  0,
-  'no manager is asked to review it: nothing waits'
 );
 
 select * from finish();

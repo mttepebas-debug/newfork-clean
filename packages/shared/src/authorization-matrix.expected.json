@@ -1,5 +1,5 @@
 {
- "sourceSha256": "a5012db1708624ff566e2397c0bda9967428a66b9a78bf9934133c05238c3b32",
+ "sourceSha256": "3701c9655da949dd259006a3082821c6c5bce1e2e486698b51010ab47ac03131",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -32728,7 +32728,7 @@
    "exchange.approve",
    "can",
    "case:ayse-k2",
-   "deny"
+   "allow"
   ],
   [
    "exchange.approve",
@@ -32764,7 +32764,7 @@
    "exchange.approve",
    "dora",
    "case:ayse-k2",
-   "deny"
+   "allow"
   ],
   [
    "exchange.approve",
@@ -32800,7 +32800,7 @@
    "exchange.approve",
    "ersin",
    "case:ayse-k2",
-   "deny"
+   "allow"
   ],
   [
    "exchange.approve",
@@ -32854,7 +32854,7 @@
    "exchange.approve",
    "mona",
    "case:ayse-k2",
-   "deny"
+   "allow"
   ],
   [
    "exchange.approve",
@@ -32872,7 +32872,7 @@
    "exchange.approve",
    "nil",
    "case:ayse-k2",
-   "deny"
+   "allow"
   ],
   [
    "exchange.approve",
@@ -40204,7 +40204,7 @@
    "requests.read",
    "ada",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40294,7 +40294,7 @@
    "requests.read",
    "ayse",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40306,7 +40306,7 @@
    "requests.read",
    "can",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40324,7 +40324,7 @@
    "requests.read",
    "can",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40366,17 +40366,17 @@
    "requests.read",
    "dora",
    "to:ayse",
-   "deny"
-  ],
-  [
-   "requests.read",
-   "dora",
-   "to:emre",
    "allow"
   ],
   [
    "requests.read",
    "dora",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "dora",
    "to:veli",
    "deny"
   ],
@@ -40384,7 +40384,7 @@
    "requests.read",
    "dora",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40426,17 +40426,17 @@
    "requests.read",
    "ersin",
    "to:ayse",
-   "deny"
-  ],
-  [
-   "requests.read",
-   "ersin",
-   "to:emre",
    "allow"
   ],
   [
    "requests.read",
    "ersin",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "requests.read",
+   "ersin",
    "to:veli",
    "deny"
   ],
@@ -40444,7 +40444,7 @@
    "requests.read",
    "ersin",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40474,7 +40474,7 @@
    "requests.read",
    "kaan",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40516,7 +40516,7 @@
    "requests.read",
    "mona",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40534,7 +40534,7 @@
    "requests.read",
    "mona",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40546,7 +40546,7 @@
    "requests.read",
    "nil",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -40564,7 +40564,7 @@
    "requests.read",
    "nil",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "requests.read",
@@ -46012,7 +46012,7 @@
    "time_off.decide",
    "ada",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46102,7 +46102,7 @@
    "time_off.decide",
    "ayse",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46114,7 +46114,7 @@
    "time_off.decide",
    "can",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46132,7 +46132,7 @@
    "time_off.decide",
    "can",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46174,17 +46174,17 @@
    "time_off.decide",
    "dora",
    "to:ayse",
-   "deny"
-  ],
-  [
-   "time_off.decide",
-   "dora",
-   "to:emre",
    "allow"
   ],
   [
    "time_off.decide",
    "dora",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "dora",
    "to:veli",
    "deny"
   ],
@@ -46192,7 +46192,7 @@
    "time_off.decide",
    "dora",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46234,17 +46234,17 @@
    "time_off.decide",
    "ersin",
    "to:ayse",
-   "deny"
-  ],
-  [
-   "time_off.decide",
-   "ersin",
-   "to:emre",
    "allow"
   ],
   [
    "time_off.decide",
    "ersin",
+   "to:emre",
+   "allow"
+  ],
+  [
+   "time_off.decide",
+   "ersin",
    "to:veli",
    "deny"
   ],
@@ -46252,7 +46252,7 @@
    "time_off.decide",
    "ersin",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46282,7 +46282,7 @@
    "time_off.decide",
    "kaan",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46324,7 +46324,7 @@
    "time_off.decide",
    "mona",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46342,7 +46342,7 @@
    "time_off.decide",
    "mona",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46354,7 +46354,7 @@
    "time_off.decide",
    "nil",
    "to:ayse",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46372,7 +46372,7 @@
    "time_off.decide",
    "nil",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide",
@@ -46672,7 +46672,7 @@
    "time_off.decide_alone",
    "ada",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide_alone",
@@ -46942,7 +46942,7 @@
    "time_off.decide_alone",
    "kaan",
    "to:zeynep",
-   "deny"
+   "allow"
   ],
   [
    "time_off.decide_alone",

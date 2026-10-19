@@ -545,7 +545,9 @@ insert into retired (kind, name, step) values
   ('function', 'sync_membership_role_reference', 'ROL-CIFT'),
   ('function', 'enforce_role_location_scope', 'ROL-CIFT'),
   -- 1.2: who holds the employee slot, not who ranks as an employee.
-  ('function', 'ranks_as_employee', 'ROL-CIFT');
+  ('function', 'ranks_as_employee', 'ROL-CIFT'),
+  -- 3.1: the owner's own time off follows the decision chain; nothing records it approved at once.
+  ('function', 'time_off_is_the_owners_own', 'ROL-CIFT');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

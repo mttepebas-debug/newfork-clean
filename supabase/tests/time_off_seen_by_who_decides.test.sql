@@ -4,10 +4,12 @@ select * from no_plan();
 
 -- FB-6.3.8c (user decisions 2026-10-01, KARARLAR "İzin"): a time-off request,
 -- waiting or closed, is read in Requests and counted on Workspace home only by
--- the people who decide it: one rank up, nobody their own. A manager does not
--- see a peer manager's or an admin's request; an admin does not see another
--- admin's; the owner sees everybody's. A cancellation request is read the same
--- way. The person reads their own on Employee hub, not in the decision queue.
+-- the people who decide it, nobody their own. The decision chain (KARARLAR
+-- S-164, S-169): rank is not counted on the employee side, so a manager reads a
+-- peer manager's and an admin's request at their locations, and an admin reads
+-- another admin's; the owner reads everybody's. A cancellation request is read
+-- the same way. The person reads their own on Employee hub, not in the decision
+-- queue.
 
 select tests.world('sd');
 -- The owner works here too (ROL-CIFT: the employee side needs the employee slot).
@@ -58,20 +60,20 @@ select tests.remember('sd:kaan:1', tests.leave('sd', 'kaan', 1));
 
 -- 1. Waiting requests -----------------------------------------------------------
 
-select is(pg_temp.queue('ayse', 'needs_review'), array['Ali'],
-  'Ayse (manager, Kadikoy) reads only Ali''s request: not her peer Hande''s, not the admin''s');
-select is(pg_temp.tab_count('ayse'), 1, 'and the Time off tab counts one');
-select is(pg_temp.home('ayse'), 1, 'and Workspace home counts one');
-select is(pg_temp.queue('hande', 'needs_review'), array['Ali'],
-  'Hande reads Ali''s, not her own (it waits on Employee hub) and not the admin''s');
-select is(pg_temp.home('hande'), 1, 'and Workspace home counts one for Hande');
-select is(pg_temp.queue('mehmet', 'needs_review'), array['Veli'],
-  'Mehmet (Besiktas) reads Veli''s only: Ali works at Kadikoy alone');
-select is(pg_temp.queue('zeynep', 'needs_review'), array['Ali', 'Hande', 'Veli'],
-  'an admin reads the employees'' and the managers'' requests, not her own nor another admin''s');
-select is(pg_temp.queue('kaan', 'needs_review'), array['Ali', 'Hande', 'Veli'],
-  'so does the admin of Besiktas: an admin decides anywhere, one rank up');
-select is(pg_temp.home('zeynep'), 3, 'Workspace home counts the same three for the admin');
+select is(pg_temp.queue('ayse', 'needs_review'), array['Ali', 'Hande', 'Zeynep'],
+  'Ayse (manager, Kadikoy) reads every Kadikoy request but her own: Ali''s, her peer Hande''s, the admin Zeynep''s');
+select is(pg_temp.tab_count('ayse'), 3, 'and the Time off tab counts three');
+select is(pg_temp.home('ayse'), 3, 'and Workspace home counts three');
+select is(pg_temp.queue('hande', 'needs_review'), array['Ali', 'Zeynep'],
+  'Hande reads Ali''s and Zeynep''s, not her own (it waits on Employee hub)');
+select is(pg_temp.home('hande'), 2, 'and Workspace home counts two for Hande');
+select is(pg_temp.queue('mehmet', 'needs_review'), array['Kaan', 'Veli'],
+  'Mehmet (Besiktas) reads Veli''s and the admin Kaan''s: Ali works at Kadikoy alone');
+select is(pg_temp.queue('zeynep', 'needs_review'), array['Ali', 'Hande', 'Kaan', 'Veli'],
+  'an admin reads everybody''s but her own, another admin''s too');
+select is(pg_temp.queue('kaan', 'needs_review'), array['Ali', 'Hande', 'Veli', 'Zeynep'],
+  'so does the admin of Besiktas: an admin decides anywhere');
+select is(pg_temp.home('zeynep'), 4, 'Workspace home counts the same four for the admin');
 select is(pg_temp.queue('owner', 'needs_review'), array['Ali', 'Hande', 'Kaan', 'Veli', 'Zeynep'],
   'the owner reads everybody''s, the admins'' too');
 select is(pg_temp.tab_count('owner'), 5, 'and counts five');
@@ -83,8 +85,8 @@ select is(pg_temp.decide('zeynep', tests.id('sd:hande:1'), 'deny', 'Short staffe
   'the admin declines Hande''s request');
 select is(pg_temp.decide('ayse', tests.id('sd:ali:1'), 'approve') ->> 'status', 'approved',
   'Ayse approves Ali''s; Kadikoy was the only vote');
-select is(pg_temp.queue('ayse', 'closed'), array['Ali'],
-  'Ayse''s closed list holds Ali''s request and not Hande''s declined one');
+select is(pg_temp.queue('ayse', 'closed'), array['Ali', 'Hande'],
+  'Ayse''s closed list holds Ali''s request and her peer Hande''s declined one');
 select is(pg_temp.queue('hande', 'closed'), array['Ali'], 'Hande''s closed list does not hold her own either');
 select is(pg_temp.queue('owner', 'closed'), array['Ali', 'Hande'], 'the owner''s holds both');
 select is(pg_temp.queue('zeynep', 'closed'), array['Ali', 'Hande'], 'so does the admin''s');
@@ -95,13 +97,13 @@ select tests.remember('sd:hande:2', tests.leave('sd', 'hande', 2));
 select is(pg_temp.decide('zeynep', tests.id('sd:hande:2'), 'approve') ->> 'status', 'approved',
   'the admin approves Hande''s second request alone');
 select tests.remember('sd:hande:2:cancel', pg_temp.cancel('hande', tests.id('sd:hande:2')));
-select ok(not pg_temp.lists('ayse', tests.id('sd:hande:2:cancel')),
-  'Ayse does not read Hande''s request to cancel approved time off');
+select ok(pg_temp.lists('ayse', tests.id('sd:hande:2:cancel')),
+  'Ayse reads her peer Hande''s request to cancel approved time off');
 select ok(pg_temp.lists('zeynep', tests.id('sd:hande:2:cancel')), 'the admin, who decides it, does');
 select tests.remember('sd:ali:1:cancel', pg_temp.cancel('ali', tests.id('sd:ali:1')));
 select ok(pg_temp.lists('ayse', tests.id('sd:ali:1:cancel')), 'Ayse reads Ali''s request to cancel: she decides it');
 select ok(not pg_temp.lists('mehmet', tests.id('sd:ali:1:cancel')), 'the manager of another location does not');
-select is(pg_temp.home('ayse'), 1, 'Workspace home counts Ali''s cancellation for Ayse and not Hande''s');
+select is(pg_temp.home('ayse'), 3, 'Workspace home counts both cancellations and Zeynep''s request for Ayse');
 
 -- 4. Reading follows where the person works today; the vote does not --------------
 -- (user decision 2026-10-01 ~19:05Z, FB-6.3.8c review): Ali asks while he works
@@ -125,17 +127,14 @@ end $$;
 select is(pg_temp.refusal(format('select pg_temp.decide(%L, %L, %L)', 'mehmet', tests.id('sd:ali:3'), 'approve')), '42501',
   'but his vote is turned away: Besiktas was not one of the locations that decide it');
 
--- 5. The owner's own time off is read on the Schedule, not in Requests -----------
+-- 5. The owner's own time off waits for who decides it (KARARLAR S-169) ----------
 
 select tests.remember('sd:owner:1', tests.leave('sd', 'owner', 4));
-select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('sd:owner:1')), 'approved',
-  'the owner''s own time off stands at once');
-select ok(not exists (
-    select 1 from unnest(array['owner', 'zeynep', 'kaan', 'ayse', 'hande']) who,
-      jsonb_array_elements(public.get_schedule_requests_service(tests.user('sd:' || who), tests.id('sd'), 'closed', null, '', null, 100)
-        -> 'time_off_requests') t
-    where (t ->> 'id')::uuid = tests.id('sd:owner:1')),
-  'nobody reads it in Requests: not the owner, not an admin''s closed list, not a manager''s');
+select is((select r.status::text from public.schedule_time_off_requests r where r.id = tests.id('sd:owner:1')), 'pending',
+  'the owner''s own time off waits like anybody''s');
+select ok(not pg_temp.lists('owner', tests.id('sd:owner:1')), 'the owner does not read it in Requests: there are admins');
+select ok(pg_temp.lists('zeynep', tests.id('sd:owner:1')), 'the admin does');
+select is(pg_temp.decide('zeynep', tests.id('sd:owner:1'), 'approve') ->> 'status', 'approved', 'and approves it alone');
 select ok(jsonb_path_exists(
     public.get_schedule_read_model_service(tests.user('sd:zeynep'), tests.id('sd'), tests.week(4))
       -> 'employees',

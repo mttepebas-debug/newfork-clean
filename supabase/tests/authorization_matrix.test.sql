@@ -885,23 +885,28 @@ begin
   when 'workspace.close', 'workspace.transfer_ownership' then
     return 'allow';  -- owner only, checked above
 
-  when 'time_off.decide', 'time_off.revoke', 'requests.read' then
-    -- Requests go one rank up and nobody decides their own. The managers of
-    -- every location the person works at vote; admin and owner decide alone
-    -- (FB-6.3, KARARLAR "İzin"). Any of those managers, or an admin or the
-    -- owner, revokes approved time off alone, by the same rank. The Requests
-    -- queue reads only what its reader decides (FB-6.3.8c): a peer's request
-    -- is not theirs to read, and one's own waits on Employee hub.
+  when 'time_off.decide', 'requests.read' then
+    -- One decision chain (KARARLAR S-164, S-169; ROL-CIFT design §4.5): the managers of every location
+    -- the person works at vote, the person aside; rank is not counted on the employee side, so a peer
+    -- manager votes on a manager's and an admin's request too. An admin and the owner decide at every
+    -- step (FB-6.3). The Requests queue reads only what its reader decides (FB-6.3.8c); one's own
+    -- waits on Employee hub (the owner whom nobody else answers is world o's, not this one's).
+    if is_self then return 'deny'; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
+    return case when shares then 'allow' else 'deny' end;
+
+  when 'time_off.revoke' then
+    -- Taking approved time off back is management's, by rank: any manager of a location the person
+    -- works at, or an admin or the owner, one rank up; nobody their own.
     if is_self then return 'deny'; end if;
     if p.class = 'owner' then return 'allow'; end if;
     if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
     return case when t.class = 'employee' and shares then 'allow' else 'deny' end;
 
   when 'time_off.decide_alone' then
-    -- At once and final: an admin or the owner, one rank up.
+    -- At once and final: an admin or the owner, whatever the person's rank (S-169), never their own.
     if is_self then return 'deny'; end if;
-    if p.class = 'owner' then return 'allow'; end if;
-    if p.class = 'admin' then return case when t.class in ('admin', 'owner') then 'deny' else 'allow' end; end if;
+    if p.class in ('owner', 'admin') then return 'allow'; end if;
     return 'deny';
 
   -- A lineup is published by whoever publishes the Schedule there (LINEUP-PUBLISH).
@@ -918,11 +923,10 @@ begin
     return case when covers then 'allow' else 'deny' end;
 
   when 'exchange.approve' then
-    -- A pickup or cover is approved at the shift's location only, one rank
-    -- above the person it is about; nobody decides their own (D3, P07). The
-    -- owner's own goes to whoever decides the place (EKRAN-02 K-S1).
+    -- A pickup or cover is approved at the shift's location only, by its manager, an admin or the
+    -- owner, whatever the rank of the person it is about (KARARLAR S-164, S-169); nobody decides
+    -- their own (D3, P07).
     if is_self then return 'deny'; end if;
-    if t.class <> 'owner' and pg_temp.rank(t.class) >= pg_temp.rank(p.class) then return 'deny'; end if;
     if p.class in ('owner', 'admin') then return 'allow'; end if;
     return case when covers then 'allow' else 'deny' end;
 

@@ -5,8 +5,8 @@ select * from no_plan();
 -- FB-6.3 (user decisions 2026-09-30, KARARLAR "İzin"): time off belongs to the
 -- person who asks. The managers of every location they work at vote; one
 -- approval per location settles it, one denial closes it, a manager of two
--- locations votes for both, an admin or the owner decides alone. Requests go
--- one rank up. An approval stands on the published shifts it would open at
+-- locations votes for both, an admin or the owner decides alone. Requests follow
+-- one decision chain (S-164, S-169). An approval stands on the published shifts it would open at
 -- the voter's locations when it was given; when those change, the vote no
 -- longer counts. The last approval opens every published shift of the leave
 -- that has not started; drafts are left alone. Revoke cuts what has not
@@ -156,20 +156,19 @@ select tests.remember('tv:ali:6', tests.leave('tv', 'ali', 6));
 select is((pg_temp.decide('owner', tests.id('tv:ali:6'), 'deny', 'Inventory week') ->> 'status'), 'denied',
   'so does the owner, a denial too');
 
--- Rank: a manager's request goes to an admin or the owner, an admin's to the
--- owner; nobody decides their own.
+-- The decision chain (KARARLAR S-164, S-169): a manager's request goes to the other
+-- managers of their locations, rank not counted; an admin and the owner decide alone
+-- at every step, a peer admin's too; nobody decides their own.
 select tests.remember('tv:ayse:1', tests.leave('tv', 'ayse', 1));
-select is(pg_temp.refusal(format($$select pg_temp.decide('can', %L, 'approve')$$, tests.id('tv:ayse:1'))),
-  '42501 authz.rank', 'not to another manager');
 select is(pg_temp.refusal(format($$select pg_temp.decide('ayse', %L, 'approve')$$, tests.id('tv:ayse:1'))),
-  '42501 authz.rank', 'nor to herself');
-select is((pg_temp.decide('kaan', tests.id('tv:ayse:1'), 'approve') ->> 'status'), 'approved',
-  'an admin decides it');
+  '42501 authz.rank', 'not to herself');
+select is((pg_temp.decide('can', tests.id('tv:ayse:1'), 'approve') ->> 'status'), 'approved',
+  'Can, Kadikoy''s other manager, decides it');
 select tests.remember('tv:zeynep:1', tests.leave('tv', 'zeynep', 1));
-select is(pg_temp.refusal(format($$select pg_temp.decide('kaan', %L, 'approve')$$, tests.id('tv:zeynep:1'))),
-  '42501 authz.rank', 'an admin''s request is not for another admin');
-select is((pg_temp.decide('owner', tests.id('tv:zeynep:1'), 'approve') ->> 'status'), 'approved',
-  'the owner decides it');
+select is(pg_temp.refusal(format($$select pg_temp.decide('zeynep', %L, 'approve')$$, tests.id('tv:zeynep:1'))),
+  '42501 authz.rank', 'an admin''s request is not for herself');
+select is((pg_temp.decide('kaan', tests.id('tv:zeynep:1'), 'approve') ->> 'status'), 'approved',
+  'another admin decides it alone');
 select tests.remember('tv:emre:3', tests.leave('tv', 'emre', 3));
 select is(pg_temp.refusal(format($$select pg_temp.decide('emre', %L, 'approve')$$, tests.id('tv:emre:3'))),
   '42501 authz.missing_permission', 'an employee decides nothing, their own request included');
@@ -180,7 +179,7 @@ select is(pg_temp.refusal(format($$select public.decide_time_off_service(%L, %L,
   '42501 authz.out_of_scope', 'a request that does not exist is answered like one out of reach');
 
 select tests.remember('tv:owner:1', tests.leave('tv', 'owner', 1));
-select is(pg_temp.status(tests.id('tv:owner:1')), 'approved', 'the owner''s own time off is recorded approved');
+select is(pg_temp.status(tests.id('tv:owner:1')), 'pending', 'the owner''s own time off waits like anybody''s');
 
 -- 3. What an approval does to the schedule ------------------------------------
 

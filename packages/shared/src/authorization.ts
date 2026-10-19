@@ -402,36 +402,42 @@ export function expected<A extends TargetedAuthzAction>(
       return true; // owner only, checked above
 
     case "time_off.decide":
-    case "time_off.revoke":
     case "requests.read":
+      // One decision chain (KARARLAR S-164, S-169): the managers of every
+      // location the person works at vote, the person aside, whatever the
+      // person's rank; an admin and the owner decide at every step (FB-6.3).
+      // Only they read it in the Requests queue (FB-6.3.8c).
+      if (isSelf) return false;
+      return high || shares;
+
+    case "time_off.revoke":
     case "documents.review":
     case "onboarding.review":
-      // Requests go one rank up and nobody decides their own. The managers of
-      // every location the person works at vote; admin and owner decide alone
-      // (FB-6.3). The same people revoke approved time off, by the same rank,
-      // and only they read it in the Requests queue (FB-6.3.8c).
+      // Management's, one rank up, nobody their own: the managers of every
+      // location the person works at, an admin, the owner.
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       if (actor.role === "admin") return targetRank < rankOf.admin;
       return person?.role === "employee" && shares;
 
     case "time_off.decide_alone":
+      // At once and final: an admin or the owner, whatever the person's rank
+      // (S-169); never their own.
+      if (isSelf) return false;
+      return high;
+
     case "onboarding.legal_name":
-      // At once and final: an admin or the owner, one rank up. A legal name
-      // typed in onboarding the same; a manager never (FB-6.6 S1).
+      // An admin or the owner, one rank up; a manager never (FB-6.6 S1).
       if (isSelf) return false;
       if (actor.role === "owner") return true;
       return actor.role === "admin" && targetRank < rankOf.admin;
 
     case "exchange.approve":
-      // A pickup or cover is approved at the shift's location only, one rank
-      // up from whoever's case it is (D3); nobody approves their own. The
-      // owner's own case goes to that location's manager or an admin (K-S1).
+      // A pickup or cover is approved at the shift's location only, by its
+      // manager, an admin or the owner, whatever the rank of whoever's case it
+      // is (KARARLAR S-164, S-169); nobody approves their own (D3).
       if (isSelf) return false;
-      if (person?.role === "owner") return high || covers;
-      if (actor.role === "owner") return true;
-      if (actor.role === "admin") return targetRank < rankOf.admin;
-      return targetRank < rankOf.manager && covers;
+      return high || covers;
 
     case "employee.save_own_contact":
     case "documents.self":

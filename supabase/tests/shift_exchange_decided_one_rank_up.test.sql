@@ -3,7 +3,7 @@ create extension if not exists pgtap with schema extensions;
 select no_plan();
 
 -- Who decides a shift change (FB-6.4 A2, EKRAN-02 A2; ILKELER P07, KARARLAR
--- "Takas… uygunluk", "Schedule → Requests" K-S1, K-S2, K-S4, K-S5).
+-- "Takas… uygunluk", "Schedule → Requests" K-S1, K-S2, K-S4, K-S5; the decision chain, S-164, S-169).
 -- Kadikoy has two managers, Ayse and Can, and Aydan, who misses a required
 -- document; Besiktas has no manager. Zeynep is an admin.
 
@@ -96,23 +96,22 @@ select is((select e -> 'eligibility' -> 'acknowledgements' from jsonb_array_elem
   tests.user('ru:emre'), tests.id('ru'), tests.id('ru:shift:emre-k')) -> 'employees') e where e ->> 'id' = tests.id('ru:deniz')::text),
   '[{"code": "availability"}]'::jsonb, 'Emre sees that Deniz is unavailable, not when');
 
--- 2. D3, P07: decided one rank up; the reason comes from the core.
-select is(pg_temp.said($$select pg_temp.decide('can', 'ayse-k2', 'approve')$$), '42501 authz.rank', 'Can cannot approve his peer Ayse''s cover');
+-- 2. One decision chain (KARARLAR S-164, S-169): Kadikoy's manager decides a request at
+-- Kadikoy, whatever the rank of whom it is about; nobody decides their own (D3, P07);
+-- the reason comes from the core.
 select is(pg_temp.said($$select pg_temp.decide('ayse', 'ayse-k2', 'approve')$$), '42501 authz.rank', 'Ayse cannot approve her own');
 select is(pg_temp.said($$select pg_temp.decide('ayse', 'ayse-k2', 'reject')$$), '42501 authz.rank', 'nor reject it (BL-726)');
+select is(public.shift_exchange_preview(tests.user('ru:ayse'), tests.id('ru'), tests.id('ru:case:ayse-k2'), tests.id('ru:application:ayse-k2')) -> 'reasons',
+  '["A separate manager must approve your own exchange"]'::jsonb, 'Ayse''s preview says why she cannot');
 select is(pg_temp.said($$select pg_temp.decide('ayse', 'veli-b', 'approve')$$), '42501 authz.out_of_scope', 'Ayse does not decide at Besiktas');
 select is(pg_temp.said($$select pg_temp.decide('deniz', 'emre-k', 'approve')$$), '42501 authz.missing_permission', 'an employee decides nothing');
 select is(pg_temp.said($$select pg_temp.decide('aydan', 'emre-k', 'approve')$$), '42501 authz.document_blocked', 'K-S2: Aydan, missing a document, cannot approve');
-select is(public.shift_exchange_preview(tests.user('ru:can'), tests.id('ru'), tests.id('ru:case:ayse-k2'), tests.id('ru:application:ayse-k2')) -> 'reasons',
-  '["Someone with a higher role must approve this exchange"]'::jsonb, 'Can''s preview says why he cannot');
-select is(pg_temp.decide('zeynep', 'ayse-k2', 'approve') ->> 'status', 'completed', 'the admin approves Ayse''s cover');
+select is(pg_temp.decide('can', 'ayse-k2', 'approve') ->> 'status', 'completed', 'Can approves his peer Ayse''s cover');
 select is(pg_temp.decide('can', 'emre-k', 'approve') ->> 'status', 'completed', 'Can approves Emre''s cover');
 
--- The admin's own cover goes to the owner.
-select is(pg_temp.said($$select pg_temp.decide('ayse', 'zeynep-k', 'approve')$$), '42501 authz.rank', 'Ayse cannot approve the admin''s cover');
-select is(pg_temp.said($$select pg_temp.decide('ayse', 'zeynep-k', 'reject')$$), '42501 authz.rank', 'nor reject it');
-select is(pg_temp.said($$select pg_temp.decide('zeynep', 'zeynep-k', 'approve')$$), '42501 authz.rank', 'nor can Zeynep approve her own');
-select is(pg_temp.decide('owner', 'zeynep-k', 'approve') ->> 'status', 'completed', 'the owner approves it');
+-- The admin's own cover goes to Kadikoy's manager: rank is not counted on the employee side.
+select is(pg_temp.said($$select pg_temp.decide('zeynep', 'zeynep-k', 'approve')$$), '42501 authz.rank', 'Zeynep cannot approve her own');
+select is(pg_temp.decide('ayse', 'zeynep-k', 'approve') ->> 'status', 'completed', 'Ayse approves the admin''s cover');
 
 -- 3. K-S1: the owner's own cover goes to the location's manager or an admin.
 select is(pg_temp.said($$select pg_temp.decide('owner', 'olcay-k', 'approve')$$), '42501 authz.rank', 'the owner cannot approve their own');
@@ -136,7 +135,8 @@ create function pg_temp.note_seen(person text, manager_view boolean) returns boo
     where c ->> 'id' = tests.id('ru:case:ayse-k')::text and h ->> 'private_note' = 'Ali was late twice')
 $$;
 select ok(pg_temp.note_seen('zeynep', true), 'Zeynep, who decides it, reads the private note');
-select ok(not pg_temp.note_seen('can', true), 'Can reads the case, not its private note');
+select ok(pg_temp.note_seen('can', true), 'so does Can, Kadikoy''s other manager, who decides it too');
+select ok(not pg_temp.note_seen('aydan', true), 'Aydan, missing a document, does not');
 select ok(not pg_temp.note_seen('ali', false), 'nor does Ali');
 select ok(not pg_temp.note_seen('ayse', false), 'nor does Ayse, whose case it is');
 

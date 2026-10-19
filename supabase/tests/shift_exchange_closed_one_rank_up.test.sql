@@ -2,9 +2,10 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
--- Who may close a shift change (EXCHANGE-CLOSE-RANK; ILKELER P07, KARARLAR G1, K-S1):
--- its owner takes it back, or someone who outranks the owner where it is
--- closes it; a peer reads the case (G1) and closes nothing.
+-- Who may close a shift change (EXCHANGE-CLOSE-RANK; ILKELER P07, KARARLAR G1, K-S1;
+-- the decision chain, S-164, S-169): its owner takes it back, or whoever decides it
+-- where it is closes it: the location's manager, an admin or the owner, whatever the
+-- rank of its owner.
 -- Kadikoy has two managers, Ayse and Can, and Aydan, who misses a required
 -- document; Zeynep and Kaan are admins. Besiktas has Bora, its manager, and Veli.
 
@@ -87,20 +88,17 @@ create function pg_temp.status(label text) returns text language sql as $$
   select status from public.shift_exchange_cases where id = tests.id('xc:case:' || label)
 $$;
 
--- 1. A peer manager reads the manager's case (G1) and cannot close it.
+-- 1. One decision chain (KARARLAR S-164, S-169): who decides a request closes it, whatever the
+-- rank of its owner; a peer manager decides a manager's.
 select is((select c ->> 'can_manage' from jsonb_array_elements(public.shift_exchanges_read_service(tests.user('xc:can'), tests.id('xc'),
   true, tests.week(1), tests.week(1) + 6, tests.id('xc:case:ayse-k')) -> 'cases') c where c ->> 'id' = tests.id('xc:case:ayse-k')::text),
-  'false', 'Can reads Ayse''s cover, without its buttons');
-select is(pg_temp.said($$select pg_temp.close('can', 'ayse-k')$$), '42501 authz.rank', 'Can cannot close his peer Ayse''s cover');
+  'true', 'Can reads Ayse''s cover with its buttons');
+select is(pg_temp.said($$select pg_temp.close('ali', 'ayse-k')$$), '42501 authz.missing_permission', 'Ali, who asked for it, cannot close it');
 select is(pg_temp.status('ayse-k'), 'open', 'it stays open');
-select is(pg_temp.said($$select pg_temp.close('ali', 'ayse-k')$$), '42501 authz.missing_permission', 'nor can Ali, who asked for it');
-select is(pg_temp.close('zeynep', 'ayse-k') ->> 'status', 'cancelled', 'the admin closes it');
+select is(pg_temp.close('can', 'ayse-k') ->> 'status', 'cancelled', 'Can, her peer, closes it');
 
--- 2. An admin's cover: a peer admin and a manager close nothing; the owner does.
-select is(pg_temp.said($$select pg_temp.close('kaan', 'zeynep-k')$$), '42501 authz.rank', 'Kaan cannot close his peer Zeynep''s cover');
-select is(pg_temp.said($$select pg_temp.close('ayse', 'zeynep-k')$$), '42501 authz.rank', 'nor can Ayse, below her');
-select is(pg_temp.status('zeynep-k'), 'open', 'it stays open');
-select is(pg_temp.close('owner', 'zeynep-k') ->> 'status', 'cancelled', 'the owner closes it');
+-- 2. An admin's cover: Kadikoy's manager closes it.
+select is(pg_temp.close('ayse', 'zeynep-k') ->> 'status', 'cancelled', 'Ayse closes the admin Zeynep''s cover');
 
 -- 3. An employee's cover: their manager closes it; the owner of a cover takes it back.
 select is(pg_temp.said($$select pg_temp.close('aydan', 'emre-k')$$), '42501 authz.document_blocked', 'K-S2: Aydan, missing a document, closes nothing');
