@@ -107,7 +107,7 @@ select ok(public.workspace_has_permission('27000000-0000-4000-8000-000000000001'
 select ok(public.workspace_has_permission('27000000-0000-4000-8000-000000000001', 'employee_documents.review'), 'owner receives document review');
 select set_config('request.jwt.claim.sub', '17000000-0000-4000-8000-000000000002', true);
 select ok(public.workspace_has_permission('27000000-0000-4000-8000-000000000001', 'employee_onboarding.review'), 'manager receives onboarding review');
-select isnt(public.workspace_has_permission('27000000-0000-4000-8000-000000000001', 'employee_documents.review'), true, 'manager does not receive private document review');
+select ok(public.workspace_has_permission('27000000-0000-4000-8000-000000000001', 'employee_documents.review'), 'manager receives document review (BL-560)');
 
 select throws_ok(
   $$select * from public.employee_private_profiles$$,

@@ -167,6 +167,9 @@ const rolePermissions = {
     "employees.read",
     "employees.manage",
     "employee_onboarding.review",
+    // BL-560: the documents of the people where they manage, as app_private.role_default_permissions.
+    "employee_documents.read",
+    "employee_documents.review",
     "announcements.read",
     "announcements.manage",
     "notifications.read",

@@ -1,5 +1,5 @@
 {
- "sourceSha256": "4f0cdd304c62879886e9683a886a35d01c1a8ec4c505f54a0e7b5fcea10b90fd",
+ "sourceSha256": "f4fa09dd923c37a72def49565c6cd20279aa67243e7bfea1387fe44d7e685eb3",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -122,9 +122,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -144,9 +142,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -167,9 +163,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -190,9 +184,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -212,9 +204,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -246,9 +236,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -280,9 +268,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -302,9 +288,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": false,
    "manages": [
@@ -326,9 +310,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -346,9 +328,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": false,
    "manages": []
@@ -416,9 +396,7 @@
     "settings.jobs.read",
     "settings.shift_catalog.read",
     "roles.read",
-    "documents.read",
-    "employee_documents.read",
-    "employee_documents.review"
+    "documents.read"
    ],
    "employee": true,
    "manages": [
@@ -8731,13 +8709,13 @@
    "documents.read",
    "ayse",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "ayse",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8749,7 +8727,7 @@
    "documents.read",
    "ayse",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8767,19 +8745,19 @@
    "documents.read",
    "ayse",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "ayse",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "ayse",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8797,67 +8775,67 @@
    "documents.read",
    "ayse",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "derya",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "ersin",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "kaan",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "can",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8869,13 +8847,13 @@
    "documents.read",
    "can",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "derya",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8887,7 +8865,7 @@
    "documents.read",
    "derya",
    "derya",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8899,13 +8877,13 @@
    "documents.read",
    "derya",
    "ersin",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "derya",
    "kaan",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8917,19 +8895,19 @@
    "documents.read",
    "derya",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "derya",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "derya",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8947,13 +8925,13 @@
    "documents.read",
    "dora",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "dora",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8965,7 +8943,7 @@
    "documents.read",
    "dora",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -8983,19 +8961,19 @@
    "documents.read",
    "dora",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "dora",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "dora",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9013,7 +8991,7 @@
    "documents.read",
    "dora",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9091,13 +9069,13 @@
    "documents.read",
    "ersin",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "ersin",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9109,7 +9087,7 @@
    "documents.read",
    "ersin",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9127,13 +9105,13 @@
    "documents.read",
    "ersin",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "ersin",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9157,7 +9135,7 @@
    "documents.read",
    "ersin",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9235,7 +9213,7 @@
    "documents.read",
    "mehmet",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9247,7 +9225,7 @@
    "documents.read",
    "mehmet",
    "derya",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9259,13 +9237,13 @@
    "documents.read",
    "mehmet",
    "ersin",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mehmet",
    "kaan",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9277,19 +9255,19 @@
    "documents.read",
    "mehmet",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mehmet",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mehmet",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9307,13 +9285,13 @@
    "documents.read",
    "mona",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mona",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9325,7 +9303,7 @@
    "documents.read",
    "mona",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9343,19 +9321,19 @@
    "documents.read",
    "mona",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mona",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "mona",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9373,19 +9351,19 @@
    "documents.read",
    "mona",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "nil",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "nil",
    "ayse",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9397,7 +9375,7 @@
    "documents.read",
    "nil",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9415,19 +9393,19 @@
    "documents.read",
    "nil",
    "mona",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "nil",
    "olcay",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
    "nil",
    "self",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -9445,7 +9423,7 @@
    "documents.read",
    "nil",
    "zeynep",
-   "deny"
+   "allow"
   ],
   [
    "documents.read",
@@ -10315,7 +10293,7 @@
    "documents.review",
    "ayse",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10333,7 +10311,7 @@
    "documents.review",
    "ayse",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10387,7 +10365,7 @@
    "documents.review",
    "can",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10405,7 +10383,7 @@
    "documents.review",
    "can",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10441,7 +10419,7 @@
    "documents.review",
    "can",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10459,7 +10437,7 @@
    "documents.review",
    "derya",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10513,7 +10491,7 @@
    "documents.review",
    "derya",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10531,7 +10509,7 @@
    "documents.review",
    "dora",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10549,7 +10527,7 @@
    "documents.review",
    "dora",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10675,7 +10653,7 @@
    "documents.review",
    "ersin",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10693,7 +10671,7 @@
    "documents.review",
    "ersin",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10819,7 +10797,7 @@
    "documents.review",
    "mehmet",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10873,7 +10851,7 @@
    "documents.review",
    "mehmet",
    "veli",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10891,7 +10869,7 @@
    "documents.review",
    "mona",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10909,7 +10887,7 @@
    "documents.review",
    "mona",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10963,7 +10941,7 @@
    "documents.review",
    "nil",
    "ali",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",
@@ -10981,7 +10959,7 @@
    "documents.review",
    "nil",
    "emre",
-   "deny"
+   "allow"
   ],
   [
    "documents.review",

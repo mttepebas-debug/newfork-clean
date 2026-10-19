@@ -19,7 +19,11 @@ select no_plan();
 select tests.world('dc');
 select tests.world('dx');
 select tests.person('dc', 'zeynep', 'admin', array['K'], array['server']);
-select tests.person('dc', 'ayse', 'manager', array['K'], array['cook']);
+-- A manager's role without documents: the built-in Manager reads and reviews them since BL-560.
+select tests.role('dc', 'no docs manager', 'manager', array(
+  select rp.permission_key from public.workspace_role_permissions rp join public.workspace_roles r on r.id = rp.role_id
+  where r.workspace_id = tests.id('dc') and r.system_key = 'manager' and rp.permission_key not like 'employee_documents.%'));
+select tests.person('dc', 'ayse', 'no docs manager', array['K'], array['cook']);
 select tests.person('dc', 'ali', 'employee', array['K'], array['cook']);
 select tests.person('dc', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('dc', 'dmo', 'admin', array['K'], array['server']);
@@ -29,8 +33,8 @@ select tests.role('dc', 'reviewing manager', 'manager', array(
   where r.workspace_id = tests.id('dc') and r.system_key = 'manager'
   union select 'employee_documents.review' union select 'employee_documents.read'));
 select tests.person('dc', 'rev', 'reviewing manager', array['K', 'B'], array['cook']);
--- A manager's own role has no document review (custom roles are manager or employee class).
-select tests.person('dc', 'lim', 'manager', array['K'], array['cook']);
+-- A manager's role without document review (custom roles are manager or employee class).
+select tests.person('dc', 'lim', 'no docs manager', array['K'], array['cook']);
 select tests.person('dc', 'blk', 'admin', array['K'], array['server']);
 select tests.person('dc', 'gon', 'admin', array['K'], array['server']);
 -- Ext's access comes back when his last block's date is moved out, in (h).
@@ -98,7 +102,7 @@ select ok((select bool_and(n.url like '/account/documents?workspace=%') from pub
 
 -- The five come to lose the right to review.
 select public.update_employee_membership_role_service(tests.user('dc:owner'), tests.id('dc'), tests.id('dc:dmo'),
-  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('dc') and r.system_key = 'manager'));
+  tests.id('dc:role:no docs manager'));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('dc') and m.user_id = tests.user('dc:rev')), tests.id('dc:K'));
 -- ponytail: Blk's deadline is moved into the past by hand; nothing in the product moves the clock.

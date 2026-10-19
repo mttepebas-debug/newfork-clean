@@ -210,9 +210,8 @@ insert into persona values
 -- settings.locations.read, which stays with owners and admins (BL-176).
 update persona set permissions_removed = permissions_removed || array[
   'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-  'roles.read', 'documents.read',
-  -- nor anybody's documents (FB-6.6): an owner grants these to a manager-type role
-  'employee_documents.read', 'employee_documents.review']
+  'roles.read', 'documents.read']
+-- It reads and decides the documents of the people where it manages (BL-560).
 where class = 'manager';
 
 create temporary table actor as

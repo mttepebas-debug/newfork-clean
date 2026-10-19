@@ -18,7 +18,7 @@ select * from no_plan();
 
 select tests.world('m');
 select tests.world('x');
--- Managers who read and review documents: the default manager role does not.
+-- Managers who read and review documents, as the default manager role does (BL-560), and more.
 select tests.role('m', 'doc manager', 'manager', array(
   select rp.permission_key
   from public.workspace_role_permissions rp
@@ -34,6 +34,7 @@ select tests.role('m', 'doc reader', 'manager', array(
   from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('m') and r.system_key = 'manager'
+    and rp.permission_key <> 'employee_documents.review'
   union select unnest(array['documents.read', 'employee_documents.read'])
 ));
 select tests.person('m', 'zeynep', 'admin', array['K'], array['server']);

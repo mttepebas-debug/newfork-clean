@@ -5,8 +5,8 @@ select * from no_plan();
 -- Workspace home (get_workspace_dashboard_service), KK-179 (2) and (5).
 --
 -- (5) BL-807: a document-expiry to-do is read with the documents rule, the
--- same rule that picks who gets its notification. Ayse (built-in Manager, no
--- document access) no longer sees "Expired employee document · Emre Person";
+-- same rule that picks who gets its notification. Ayse (a manager role without
+-- document access; the built-in Manager has it since BL-560) no longer sees "Expired employee document · Emre Person";
 -- Sena (a manager role with document access) and the owner do. A to-do about
 -- Emre that is not about a document still follows the employee rule.
 --
@@ -15,7 +15,13 @@ select * from no_plan();
 -- the dashboard and the API answered 500. Now the membership opens the row.
 
 select tests.world('h');
-select tests.person('h', 'ayse', 'manager', array['K'], array['cook']);
+select tests.role('h', 'no docs manager', 'manager', array(
+  select g.permission_key from public.workspace_role_permissions g
+  join public.workspace_roles r on r.id = g.role_id
+  where r.workspace_id = tests.id('h') and r.system_key::text = 'manager'
+    and g.permission_key not like 'employee_documents.%'
+));
+select tests.person('h', 'ayse', 'no docs manager', array['K'], array['cook']);
 select tests.person('h', 'emre', 'employee', array['K'], array['cook']);
 select tests.role('h', 'docs manager', 'manager', array(
   select g.permission_key from public.workspace_role_permissions g
