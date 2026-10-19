@@ -1,11 +1,12 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(8);
+select plan(10);
 
 -- ROL-CIFT slice 5.2 (design §4.6): nobody sees management's view of themselves. Dora manages Kadikoy
 -- and works there; what Can, the other manager, writes about her reaches Can, never Dora, from any read.
 -- Ada is an admin who works shifts too: her document waiting for review is in the owner's documents to
--- review (an admin's goes to the owner), never in hers. Her own side still shows her own document.
+-- review (an admin's goes to the owner), never in hers. Her own side still shows it, and her other
+-- documents stay in her list as on anybody's record.
 
 select tests.world('nm');
 select tests.person('nm', 'dora', 'manager', array['K'], array['cook']);
@@ -78,6 +79,30 @@ select ok((select s.state = 'pending_review' from public.employee_document_submi
 select ok(pg_temp.listed('owner', false), 'it is in the owner''s documents to review');
 select ok(not pg_temp.listed('ada', false), 'it is not in Ada''s documents to review');
 select ok(pg_temp.listed('ada', true), 'Ada follows it in her own documents');
+
+-- A second document Ada has not handed in yet stays in her list.
+create temporary table training (id uuid, preview jsonb);
+insert into training (id)
+select public.save_document_type_lifecycle_service(tests.user('nm:owner'), tests.id('nm'), null, null, jsonb_build_object(
+  'title', 'Allergen training', 'description', 'Training', 'requires_review', true, 'accepted_formats', array['pdf'],
+  'tracks_expiry', false, 'expiry_warning_days', 30,
+  'lifecycle_settings', jsonb_build_object('mode', 'conditional', 'assignment_scope', 'all_active',
+    'target', jsonb_build_object('operator', 'and', 'location_ids', '[]'::jsonb, 'department_ids', '[]'::jsonb,
+      'job_ids', '[]'::jsonb, 'employee_ids', '[]'::jsonb),
+    'period_days', 7, 'suspend_on_overdue', true, 'extra_fields', '[]'::jsonb)));
+update training set preview = public.preview_document_publication_service(tests.user('nm:owner'), tests.id('nm'), id);
+select public.set_document_publication_service(tests.user('nm:owner'), tests.id('nm'), id,
+  (preview ->> 'revision')::integer, (preview ->> 'publication_revision')::integer, preview ->> 'preview_token', 'Publish', 'published')
+from training;
+select tests.settle();
+select ok(exists (select 1 from jsonb_array_elements(public.list_employee_document_lifecycle_service(pg_temp.who('ada'),
+    tests.id('nm'), false)) d
+  where (d ->> 'id')::uuid = (select r.id from public.employee_onboarding_requirements r
+    where r.source_id = (select id from training) and r.employee_id = tests.id('nm:ada'))),
+  'Ada''s training, not handed in, is in her list as on anybody''s record');
+select ok(not exists (select 1 from jsonb_array_elements(public.list_employee_document_lifecycle_service(pg_temp.who('ada'),
+    tests.id('nm'), false)) d where (d ->> 'id')::uuid = (pg_temp.req()).id),
+  'while her card waiting for review is still not');
 
 select * from finish();
 rollback;
