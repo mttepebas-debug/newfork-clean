@@ -3,6 +3,7 @@ import { useNavigate } from "react-router";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
+import { hubPath } from "./resolveLanding";
 
 /** Shown to a non-owner member while the owner has not finished business setup. */
 export function WorkspaceSetupPending() {
@@ -34,7 +35,7 @@ export function WorkspaceSetupPending() {
           <button
             className="pb-btn pb-btn-secondary"
             type="button"
-            onClick={() => navigate("/organization-switcher")}
+            onClick={() => navigate(hubPath)}
           >
             Choose a workspace
           </button>

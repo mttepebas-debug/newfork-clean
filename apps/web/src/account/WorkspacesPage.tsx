@@ -29,7 +29,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { membershipClass } from "../auth/access";
-import { appLandingPath, workspaceLandingPathForRole } from "../auth/resolveLanding";
+import { appLandingPath, hubPath, workspaceLandingPathForRole } from "../auth/resolveLanding";
 
 export default function WorkspacesPage() {
   const { account, context, refresh } = useAuth();
@@ -302,7 +302,7 @@ export default function WorkspacesPage() {
         const next = remaining.find(workspace => workspace.isActive) ?? remaining[0];
         if (next) await selectActiveWorkspace(supabaseClient, next.id);
         const resolved = await refresh();
-        navigate(next && resolved ? appLandingPath(resolved) : "/organization-switcher", { replace: true });
+        navigate(next && resolved ? appLandingPath(resolved) : hubPath, { replace: true });
       } else {
         await refresh();
         await reloadWorkspaces();

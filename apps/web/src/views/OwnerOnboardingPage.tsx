@@ -878,7 +878,7 @@ export default function OwnerOnboardingPage() {
             <button
               type="button"
               className="pb-btn pb-btn-secondary"
-              onClick={() => navigate("/organization-switcher")}
+              onClick={() => navigate(hubPath)}
             >
               <Building2 size={15} aria-hidden /> Switch workspace
             </button>

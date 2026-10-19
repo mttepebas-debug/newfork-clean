@@ -36,7 +36,7 @@ function renderPanel() {
       <MemoryRouter initialEntries={["/app/employee-hub"]}>
         <Routes>
           <Route path="/app/employee-hub" element={<WorkspaceSetupPending />} />
-          <Route path="/organization-switcher" element={<p>Switcher</p>} />
+          <Route path="/workspaces" element={<p>Switcher</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,

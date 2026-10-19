@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Navigate } from "react-router";
 import { useAuth } from "../auth/AuthContext";
-import { appLandingPath } from "../auth/resolveLanding";
+import { appLandingPath, hubPath } from "../auth/resolveLanding";
 import { listAccountWorkspaces, supabaseClient } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 
@@ -22,6 +22,6 @@ export default function WelcomeRedirect() {
   if (onboarding.length === 1)
     return <Navigate to={`/welcome/${onboarding[0]!.id}`} replace />;
   if (onboarding.length > 1)
-    return <Navigate to="/organization-switcher" replace />;
+    return <Navigate to={hubPath} replace />;
   return <Navigate to={appLandingPath(context)} replace />;
 }

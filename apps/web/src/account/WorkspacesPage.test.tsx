@@ -178,7 +178,7 @@ function renderPage(
           <Route path="/app/workspace" element={<LocationProbe />} />
           <Route path="/app/employee-hub" element={<LocationProbe />} />
           <Route path="/onboarding" element={<LocationProbe />} />
-          <Route path="/organization-switcher" element={<LocationProbe />} />
+          <Route path="/workspaces" element={<LocationProbe />} />
           <Route path="/welcome/:workspaceId" element={<LocationProbe />} />
         </Routes>
       </MemoryRouter>
@@ -420,7 +420,7 @@ describe("WorkspacesPage", () => {
     fireEvent.change(screen.getByLabelText("Account password"), { target: { value: "fresh-password" } });
     fireEvent.click(screen.getByLabelText(/I understand everyone loses access/));
     fireEvent.click(screen.getByRole("button", { name: "Close immediately" }));
-    await waitFor(() => expect(screen.getByLabelText("Current path").textContent).toBe(another ? "/app/employee-hub" : "/organization-switcher"));
+    await waitFor(() => expect(screen.getByLabelText("Current path").textContent).toBe(another ? "/app/employee-hub" : "/workspaces"));
     expect(clearTabWorkspaceId).toHaveBeenCalled();
     if (another) expect(selectActiveWorkspace).toHaveBeenCalledWith(supabaseClientMock, secondWorkspaceId);
   });
