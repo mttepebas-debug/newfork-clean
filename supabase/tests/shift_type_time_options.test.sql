@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(23);
 
 -- A shift type's time options (PRESET-SAAT, KARARLAR S-183). Besides its
 -- primary hours (default_start_time / default_end_time, unchanged) a type keeps
@@ -91,6 +91,23 @@ select is(pg_temp.browser_refusal((select owner from ids), $$update public.shift
   'allowed', 'an option becomes primary and the old primary an option in one update');
 select is((select default_revision from public.shift_types where id = '7a000000-0000-4000-8000-000000000001'), 2,
   'the new primary hours raise the default revision');
+
+-- Moving only the primary hours onto an option is refused too, and a new type
+-- may be opened with its options, checked the same way.
+select is(pg_temp.browser_refusal((select owner from ids), $$update public.shift_types
+    set default_start_time = '18:00', default_end_time = '23:30'
+    where id = '7a000000-0000-4000-8000-000000000001'$$),
+  '22023 shift_type.time_options_invalid', 'primary hours moved onto an existing option are refused');
+select is(pg_temp.browser_refusal((select owner from ids), $$insert into public.shift_types (workspace_id, name, color, default_start_time, default_end_time, time_options)
+    select workspace_id, 'Brunch', '#d97706', '10:00', '14:00', '[{"start_time":"11:00:00","end_time":"15:00"}]'::jsonb
+    from public.shift_types where id = '7a000000-0000-4000-8000-000000000001'$$),
+  'allowed', 'a new type is opened with its options');
+select is((select time_options from public.shift_types where name = 'Brunch' and workspace_id = (select ws from ids)),
+  '[{"start_time":"11:00","end_time":"15:00"}]'::jsonb, 'a new type''s options are stored as HH:MM');
+select is(pg_temp.browser_refusal((select owner from ids), $$insert into public.shift_types (workspace_id, name, color, default_start_time, default_end_time, time_options)
+    select workspace_id, 'Late Brunch', '#d97706', '10:00', '14:00', '[{"start_time":"10:00","end_time":"14:00"}]'::jsonb
+    from public.shift_types where id = '7a000000-0000-4000-8000-000000000001'$$),
+  '22023 shift_type.time_options_invalid', 'a new type whose option repeats its primary is refused');
 
 -- A manager without catalog rights changes nothing; another workspace sees nothing.
 select is(tests.as_browser((select mona from ids), $$update public.shift_types set time_options = '[]'
