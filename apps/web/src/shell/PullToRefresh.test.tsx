@@ -1,7 +1,7 @@
 import { act, cleanup, render, screen } from "@testing-library/react";
 import { useRef } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { PULL_READY, PullToRefreshMark, rubber, scrolledAbove, usePullToRefresh } from "./PullToRefresh";
+import { listScrolled, PULL_READY, PullToRefreshMark, rubber, scrolledAbove, usePullToRefresh } from "./PullToRefresh";
 
 function Page({ onRefresh }: { onRefresh: () => Promise<unknown> }) {
   const anchor = useRef<HTMLDivElement>(null);
@@ -119,6 +119,20 @@ describe("pull to refresh", () => {
     touch(fixed, "touchstart", 100);
     expect(touch(fixed, "touchmove", 400).defaultPrevented).toBe(true);
     touch(fixed, "touchend", 400);
+    expect(onRefresh).toHaveBeenCalledTimes(1);
+  });
+
+  it("leaves a drawer's own scroll out of whether the page's list is at its top", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Page onRefresh={onRefresh} />);
+    const area = screen.getByTestId("area");
+    const drawer = screen.getByTestId("drawer");
+    drawer.style.overflowY = "auto";
+    drawer.scrollTop = 80;
+    expect(listScrolled(area)).toBe(false);
+    touch(area, "touchstart", 100);
+    expect(touch(area, "touchmove", 400).defaultPrevented).toBe(true);
+    touch(area, "touchend", 400);
     expect(onRefresh).toHaveBeenCalledTimes(1);
   });
 

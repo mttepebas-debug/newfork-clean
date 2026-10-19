@@ -186,6 +186,15 @@ test("phone: My shifts · Lineup, a sideways swipe moves to Lineup and back, a t
   await expect(emre.getByRole("dialog", { name: "Your shift" })).toBeVisible();
   await expect.poll(() => offset("Next week")).toBe(0);
   expect(await emre.locator(".ems-pager").evaluate((pager) => pager.scrollLeft)).toBe(0);
+  // The list scrolls in its own frame (CALISAN-SCROLL): the shift's day lands whole under the week switch, its
+  // halo too, not cut by the frame's top.
+  const landed = await emre.locator(`[id="shift-${uuid(2)}"]`).evaluate((link) => {
+    const day = link.closest(".ems-day")!.getBoundingClientRect();
+    const frame = link.closest(".ems-frame")!;
+    return { day: Math.round(day.top), frame: Math.round(frame.getBoundingClientRect().top), scrolled: frame.scrollTop };
+  });
+  expect(landed.scrolled).toBeGreaterThan(0);
+  expect(landed.day - landed.frame).toBeGreaterThanOrEqual(6);
   await emre.keyboard.press("Escape");
   await emre.getByRole("tab", { name: "This week" }).tap();
   await expect.poll(() => offset("This week")).toBe(0);

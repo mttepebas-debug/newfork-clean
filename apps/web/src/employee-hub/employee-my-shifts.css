@@ -20,8 +20,10 @@
    pager clips both ways (a clipped box is no scroll box, so neither the hidden week nor its slide can widen or
    lengthen the frame) and keeps 6 px above and below for the halo too; the week out of view leaves the flow and
    sits in its own column. */
-.ems-frame { margin: 0 -6px; padding: 0 6px; }
 @media (max-width: 720px) and (min-height: 560px) {
+  .ems-frame { margin: 0 -6px; padding: 0 6px; }
+  /* A shift reached by its #shift- address lands with its day's 10 px and halo's 6 px above it, under the switch. */
+  .ems-shift { scroll-margin-top: 16px; }
   .ems-pager { overflow: clip; margin: -6px -6px; padding: 6px 0; }
   .ems-track { position: relative; }
   .ems-week[inert] { position: absolute; top: 0; grid-row: 1; width: 100%; }
