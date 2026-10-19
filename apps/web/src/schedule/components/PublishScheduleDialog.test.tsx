@@ -502,7 +502,8 @@ describe("PublishScheduleDialog", () => {
     await waitFor(() =>
       expect(onPreview).toHaveBeenCalledWith(draft.id, [location.id], {}),
     );
-    expect(screen.getByText("Live · 2 shifts")).toBeTruthy();
+    // The preview's answer draws a step after the call (BL-1158: a busy runner checked in between).
+    expect(await screen.findByText("Live · 2 shifts")).toBeTruthy();
     expect(screen.getByText("1 new")).toBeTruthy();
     expect(screen.getByText("1 updated")).toBeTruthy();
     expect(screen.getByText("1 removed")).toBeTruthy();

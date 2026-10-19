@@ -310,6 +310,20 @@ describe("LineupPage", () => {
 
 // LINEUP-PUBLISH-WEB: the Publish button and its window (Mert 2026-10-13, PLAN §3).
 describe("LineupPage publishing", () => {
+  // The day wheel jumps instead of spinning (reduced motion), as in the other Lineup tests: a day change here is the
+  // wheel's stop, not its animation frames, which a busy runner spaces out past a check's wait (BL-1158).
+  const reduce = window.matchMedia;
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+  });
+  afterEach(() => {
+    window.matchMedia = reduce;
+  });
   it("counts the lineups waiting on the Publish button", async () => {
     renderPage();
     const button = await screen.findByRole("button", { name: "Publish, 2 lineups waiting" });
