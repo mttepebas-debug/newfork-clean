@@ -49,9 +49,9 @@ const WEB_OUT = "apps/web/src/lineup-art/art-svgs.generated.ts";
 const PARITY_OUT = "supabase/tests/lineup_art_parity.test.sql";
 const RULE = "packages/shared/src/lineup-art-rule.ts";
 /** The migration that fills app_private.lineup_art: it must exist and hold each marker line once. */
-const ARCHIVE_MIGRATION = "supabase/migrations/20261019122405_lineup_art_archive.sql";
+const ARCHIVE_MIGRATION = "supabase/migrations/20261019124310_lineup_art_archive.sql";
 /** Archive migrations already applied to the live database: their block is never rewritten. */
-const APPLIED_ARCHIVE_MIGRATIONS = [];
+const APPLIED_ARCHIVE_MIGRATIONS = ["supabase/migrations/20261019124310_lineup_art_archive.sql"];
 const BEGIN = "-- lineup-art:begin";
 const END = "-- lineup-art:end";
 

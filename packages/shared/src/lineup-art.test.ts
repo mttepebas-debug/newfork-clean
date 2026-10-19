@@ -96,17 +96,17 @@ describe("generated files", () => {
   });
 
   it("refuses to rewrite the archive migration once it is live", () => {
-    // A copy of the generator whose archive migration is listed as applied, in a scratch repository.
-    const migration = "supabase/migrations/20261019122405_lineup_art_archive.sql";
+    // The generator as committed, whose archive migration is live, run in a scratch repository.
+    const migration = "supabase/migrations/20261019124310_lineup_art_archive.sql";
     const scratch = mkdtempSync(join(tmpdir(), "lineup-art-gen-"));
     try {
       for (const rel of [migration, "packages/shared/src/lineup-art-rule.ts", "scripts/lineup-art/archive.json"])
         cpSync(join(root, rel), join(scratch, rel));
       writeFileSync(join(scratch, "package.json"), '{ "type": "module" }\n');
       const gen = readFileSync(join(root, "scripts/lineup-art/gen.mjs"), "utf8");
-      const listed = gen.replace("const APPLIED_ARCHIVE_MIGRATIONS = [];", `const APPLIED_ARCHIVE_MIGRATIONS = ["${migration}"];`);
-      expect(listed).not.toBe(gen);
-      writeFileSync(join(scratch, "scripts/lineup-art/gen.mjs"), listed);
+      expect(gen).toContain(`const ARCHIVE_MIGRATION = "${migration}";`);
+      expect(gen).toMatch(new RegExp(`const APPLIED_ARCHIVE_MIGRATIONS = \\[[^\\]]*"${migration}"`));
+      writeFileSync(join(scratch, "scripts/lineup-art/gen.mjs"), gen);
       const runGen = () => spawnSync(process.execPath, ["scripts/lineup-art/gen.mjs"], { cwd: scratch, encoding: "utf8" });
       const before = readFileSync(join(scratch, migration), "utf8");
 
