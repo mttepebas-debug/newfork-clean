@@ -89,8 +89,11 @@ insert into public.manager_weekly_reminders (workspace_id, employee_id, preferen
 values (tests.id('wr'), tests.id('wr:ayse'),
   pg_temp.mark(public.empty_weekly_preference(), 5, '{"ranges": [{"start": "09:00", "end": "12:00"}]}'),
   true, array['', '', '', '', '', 'About Ayse', ''], 1, tests.user('wr:owner'));
--- ROL-CIFT 2.1: Ayse only manages, so she is not on the grid at all.
-select ok(not (pg_temp.grid()::text like '%About Ayse%'), 'no words about a manager, Ayse herself included');
+-- ROL-CIFT 2.1: only somebody with the employee access is on the grid; Ayse works here for this check.
+select tests.employee_slot('wr', 'ayse');
+select is((select e -> 'weekly_availability' -> 0 -> 'manager_notes' from jsonb_array_elements(pg_temp.grid() -> 'employees') e
+  where e ->> 'id' = tests.id('wr:ayse')::text), 'null'::jsonb, 'no words about a manager, Ayse herself included');
+select tests.no_employee_slot('wr', 'ayse');
 delete from public.manager_weekly_reminders where employee_id = tests.id('wr:ayse');
 -- A note switched off reaches the Schedule not at all, words included.
 update public.manager_weekly_reminders set enabled = false where employee_id = tests.id('wr:ali');

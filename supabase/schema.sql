@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 525, last: 20261019150000_grid_and_eligibility_need_employee.sql
--- fingerprint: sha256:34c17b74e3bd27776eaf167fb92a13ede7e6358100f7795ae54f375e46b2c8b2
+-- fingerprint: sha256:d3ff1b7a9f46c117a82f7faeee1b8ef84e0c1150dad1144aa1c20ef48fae1725
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7166,10 +7166,14 @@ begin
   perform set_config('app.membership_change', member.id::text, true);
   update public.workspace_memberships
   set role_id = case when chosen_class = 'employee' then null else chosen_role end,
+      -- ROL-CIFT 2.1 (KARARLAR S-167): a management role is added beside the employee access, never
+      -- in its place: whoever holds it keeps it. Without it, they get it when they work a job outside
+      -- Management. Giving the employee access up is its own step (slice 4).
       employee_role_id = case
         when chosen_class = 'employee' then chosen_role
-        when works then coalesce(member.employee_role_id, (
-          select r.id from public.workspace_roles r where r.workspace_id = member.workspace_id and r.system_key = 'employee'))
+        when member.employee_role_id is not null then member.employee_role_id
+        when works then (
+          select r.id from public.workspace_roles r where r.workspace_id = member.workspace_id and r.system_key = 'employee')
       end,
       updated_at = now()
   where id = member.id;
@@ -14009,10 +14013,10 @@ begin
     ),
     'role_id', role.id,
     'role_name', role.name,
-    -- ROL-CIFT 2.2: the record's two access slots, as app_private.has_employee_access reads the
-    -- employee one (somebody with no account yet works); the drawer asks here, not the role's name.
+    -- ROL-CIFT 2.2: the record's two access slots (somebody with no account yet works); the drawer
+    -- asks here, not the role's name.
     'access', jsonb_build_object(
-      'employee', membership.id is null or membership.employee_role_id is not null,
+      'employee', app_private.has_employee_access(employee.workspace_id, employee.user_id),
       'management', management_role.access_class),
     'display_status', case
       when employee.archived_at is not null then 'archived'

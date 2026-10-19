@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(26);
 
 -- ROL-CIFT 2.1 (KARARLAR S-164 ... S-169; design §4.4): only somebody with the
 -- employee access is scheduled. Mona only manages Kadikoy: she is on no grid, no
@@ -15,8 +15,12 @@ select tests.person('ge', 'dora', 'manager', array['K'], array['cook']);
 select tests.person('ge', 'emre', 'employee', array['K'], array['cook']);
 select tests.person('ge', 'pia', 'employee', array['K'], array['cook'], 'pending');
 
+-- Gul works the General Manager job only, as an employee.
+select tests.person('ge', 'gul', 'employee', array['K'], array['general manager']);
+
 select tests.publish_week('ge', 1, '[
-  {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"}
+  {"label": "emre-k", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "15:00"},
+  {"label": "gul-k", "person": "gul", "loc": "K", "job": "general manager", "day": 2, "start": "09:00", "end": "15:00"}
 ]');
 
 create function pg_temp.on_grid(person text) returns boolean
@@ -109,6 +113,30 @@ as $$
 $$;
 select is(pg_temp.on_board('mona'), false, 'Emre''s team board does not list Mona');
 select is(pg_temp.on_board('dora'), true, 'it lists Dora');
+
+-- A promotion keeps the employee access (KARARLAR S-167): Gul is made a Manager and still works
+select public.update_employee_membership_role_service(tests.user('ge:owner'), tests.id('ge'), tests.id('ge:gul'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('ge') and r.system_key = 'manager'));
+select is((select (m.role_id is not null, m.employee_role_id is not null)::text from public.workspace_memberships m
+  where m.workspace_id = tests.id('ge') and m.user_id = tests.user('ge:gul')), '(t,t)',
+  'made a Manager, Gul keeps the employee access beside it');
+select is(pg_temp.on_grid('gul'), true, 'she is still on the grid with her shift');
+create temporary table ge_republish as
+select (public.acquire_schedule_edit_session_service(tests.user('ge:owner'), tests.id('ge'), tests.week(1), 'published', null)
+  -> 'session' ->> 'id')::uuid as session, null::uuid as draft, null::jsonb as preview;
+update ge_republish set draft = (public.save_schedule_edit_session_service(tests.user('ge:owner'), tests.id('ge'), session,
+  (select e.revision from public.schedule_edit_sessions e where e.id = session), 'republish', null, null) ->> 'id')::uuid;
+update ge_republish set preview = public.preview_schedule_publication_service(tests.user('ge:owner'), tests.id('ge'), draft,
+  array[tests.id('ge:K')], null, true);
+select lives_ok($$select public.publish_schedule_draft_service(tests.user('ge:owner'), tests.id('ge'), draft, array[tests.id('ge:K')],
+  null, true, (select d.revision from public.schedule_drafts d where d.id = draft), preview ->> 'fingerprint', '[]'::jsonb) from ge_republish$$,
+  'her week is published again');
+select is((select count(*)::integer from public.schedule_published_shifts p
+  join public.schedule_location_publications pub on pub.id = p.publication_id and pub.status = 'current'
+  where p.workspace_id = tests.id('ge') and p.employee_id = tests.id('ge:gul') and p.scheduled_date = tests.week(1) + 2), 1,
+  'with her shift on it');
+select ok(not (pg_temp.take('gul') -> 'blockers' @> '[{"code": "no_employee_access"}]'::jsonb),
+  'and the exchange engine says nothing of her employee access');
 
 -- Open shifts are heard by whoever may apply for them (exchange.apply_own)
 select is(pg_temp.hears_open_shifts('mona'), false, 'Mona does not hear about open shifts');
