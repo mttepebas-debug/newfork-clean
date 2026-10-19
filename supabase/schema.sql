@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 544, last: 20261019224830_document_timezone_follows_time_off.sql
--- fingerprint: sha256:07f8f1e54316f088549ec30c263bd16dd0ca5582236bbbb1d37ca0dbe3edff01
+-- fingerprint: sha256:a69982560e750374c97d0267c262eefc6f7b9b7a57963f0f7bbccfa8092c9c73
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -20003,7 +20003,11 @@ begin
  select * into d from public.document_types where id=target_document_type_id and workspace_id=target_workspace_id;
  if d.id is null then raise exception 'document type not found' using errcode='P0002'; end if;
  if d.archived_at is not null then raise exception 'Archived documents cannot be published; restore first' using errcode='PT409',hint='document.archived'; end if;
- perform app_private.assert_document_definition_target(actor_user_id,target_workspace_id,d.lifecycle_settings->'target');
+ -- Only publishing checks that the target still names live places, jobs and people; Unpublish
+ -- and Archive must work after a target location, job or person is archived (BELGE-ARSIV review).
+ if d.publication_status='draft' then
+  perform app_private.assert_document_definition_target(actor_user_id,target_workspace_id,d.lifecycle_settings->'target');
+ end if;
  result:=app_private.preview_lifecycle_definition(actor_user_id,target_workspace_id,d.id,'document');
  if d.publication_status='published' then
   select coalesce(jsonb_agg(jsonb_build_object('employee_id',r.employee_id,'employee_name',concat_ws(' ',e.first_name,e.last_name),'employee_revision',e.revision,
