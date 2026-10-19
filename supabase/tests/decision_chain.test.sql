@@ -119,6 +119,19 @@ select is(pg_temp.tier('dc', 'ali', 'B'), 'location_manager', 'Ali''s Besiktas r
 -- close_follows_decide: whoever decides closes; a party does not.
 select is(pg_temp.reason('dc', 'can', 'dora-k2', false), null, 'Can may close Dora''s other cover');
 select is(pg_temp.reason('dc', 'emre', 'dora-k2'), 'rank', 'Emre, who applied, may not close it');
+create function pg_temp.refusal_text(statement text) returns text language plpgsql as $$
+begin
+  execute statement;
+  return 'ok';
+exception when others then
+  return sqlerrm;
+end;
+$$;
+select is(pg_temp.refusal_text(format($q$select public.shift_exchanges_command_service(%L, %L, %L::jsonb, gen_random_uuid())$q$,
+  pg_temp.who('dc', 'emre'), tests.id('dc'), jsonb_build_object('action', 'close', 'case_id', tests.id('dc:case:dora-k2'), 'reason', '',
+    'expected_revision', (select revision from public.shift_exchange_cases where id = tests.id('dc:case:dora-k2'))))),
+  'Only the person who asked or someone who decides this request can close it',
+  'Emre, who applied, is told who may close it');
 select is(public.shift_exchanges_command_service(pg_temp.who('dc', 'can'), tests.id('dc'), jsonb_build_object('action', 'close',
   'case_id', tests.id('dc:case:dora-k2'), 'reason', '',
   'expected_revision', (select revision from public.shift_exchange_cases where id = tests.id('dc:case:dora-k2'))), gen_random_uuid()) ->> 'status',
@@ -195,6 +208,17 @@ select is(pg_temp.vote('dc', 'can', 'bea'), '42501 authz.out_of_scope', 'Can doe
 select is(pg_temp.vote('dc', 'ada', 'bea'), 'ok', 'Ada decides Bea''s time off');
 select is(pg_temp.time_off_status('dc', 'bea'), 'approved', 'it is approved');
 select is(pg_temp.vote('dn', 'owner', 'dina'), 'ok', 'the owner decides Dina''s');
+-- Rank is not counted on the employee side: Kadikoy's manager decides the owner's own time off.
+insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
+select tests.id('dc'), tests.id('dc:owner'), tests.id('dc:K'), false, tests.user('dc:owner')
+where not exists (select 1 from public.employee_location_assignments a
+  where a.employee_id = tests.id('dc:owner') and a.location_id = tests.id('dc:K') and a.ended_at is null);
+select tests.leave('dc', 'owner', 2);
+select is(pg_temp.told('dc', 'owner'), pg_temp.users('dc', 'bea', 'can', 'dora'), 'the owner''s time off is told to the managers of the owner''s locations');
+select is(pg_temp.vote('dc', 'owner', 'owner'), '42501 authz.rank', 'the owner may not decide their own here');
+select is(pg_temp.vote('dc', 'dora', 'owner'), 'ok', 'Dora, a manager, votes for Kadikoy');
+select is(pg_temp.vote('dc', 'bea', 'owner'), 'ok', 'Bea, a manager, votes for Besiktas');
+select is(pg_temp.time_off_status('dc', 'owner'), 'approved', 'and the owner''s time off is approved');
 
 -- The owner's own time off follows the chain: it waits, and the owner alone decides it.
 select tests.world('dt');

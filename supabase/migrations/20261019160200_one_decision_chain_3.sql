@@ -5,7 +5,8 @@
 -- Requests only when nobody else can (part 1). Nothing records it approved at once any more, nor a
 -- cancellation of the owner's own leave, so public.time_off_is_the_owners_own goes. The reminder that
 -- no manager can decide a request goes to the admins, and to the owner only without one, as the
--- request itself does (part 1).
+-- request itself does (part 1). Refusing to close a shift change says who may close it under the
+-- chain: the person who asked or someone who decides it, not "someone with a higher role".
 --
 -- The functions change on the definition the database holds (pg_get_functiondef): each anchor must be
 -- found once, or nothing changes.
@@ -55,5 +56,22 @@ $a0$,
 $b0$,
   '1'
 ]);
+
+select pg_temp.patch('app_private.time_off_tell(uuid,uuid,text,uuid,text)', array[
+  $a0$    -- The owner's own is recorded approved at once: nobody is asked.
+$a0$,
+  $b0$    -- A request settled before its notice asks nobody.
+$b0$,
+  '1'
+]);
+
+select pg_temp.patch('public.shift_exchanges_command_service(uuid,uuid,jsonb,uuid)', array[
+  $a0$    raise exception 'Only the owner or someone with a higher role can close this request' using$a0$,
+  $b0$    raise exception 'Only the person who asked or someone who decides this request can close it' using$b0$,
+  '1'
+]);
+
+comment on column app_private.authz_actions.owner_target_ok is
+  'With rank_below: a request of the owner''s own is decided like a lower rank''s, by whoever may decide the place. No action sets it since the decision chain (KARARLAR S-169).';
 
 drop function public.time_off_is_the_owners_own(uuid, uuid, uuid);

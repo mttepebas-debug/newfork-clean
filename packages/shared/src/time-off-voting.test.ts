@@ -39,7 +39,7 @@ describe("asking for time off (FB-6.3.5)", () => {
     expect(timeOffSubmitInputSchema.safeParse({ ...submit, periods: month }).success).toBe(false);
     expect(timeOffSubmitInputSchema.safeParse({ ...submit, periods: month.slice(0, 31) }).success).toBe(true);
   });
-  it("answers with the deadline; the owner's own comes back approved", () => {
+  it("answers with the status and the deadline", () => {
     expect(timeOffSubmitResultSchema.parse({ status: "approved", request_id: id, revision: 2, decide_by: "2035-01-14T05:00:00+00:00" }).decide_by).toBeTruthy();
     expect(timeOffSubmitResultSchema.parse({ status: "pending", request_id: id, revision: 1, decide_by: null }).decide_by).toBeNull();
   });
