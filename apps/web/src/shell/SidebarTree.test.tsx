@@ -44,7 +44,8 @@ function mount(path: string) {
             <Route path="employees" element={<h1>Employees page</h1>} />
             <Route path="employees/documents" element={<h1>Documents page</h1>} />
             <Route path="schedule" element={<h1>Schedule page</h1>} />
-            <Route path="schedule/lineup" element={<h1>Lineup page</h1>} />
+            <Route path="schedule/lineup" element={<Link to="/app/workspace">Leave lineup</Link>} />
+            <Route path="schedule/export" element={<h1>Export page</h1>} />
             <Route path="schedule/requests" element={<Link to="/app/schedule/lineup">Go to lineup</Link>} />
           </Route>
         </Routes>
@@ -146,5 +147,31 @@ describe("the desktop left menu tree", () => {
     expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
     fireEvent.click(link("Schedule"));
     expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+  });
+
+  it("keeps a group open on its parent's own sub-pages, the parent not the open page there", () => {
+    mount("/app/schedule/export");
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+    expect(link("Schedule").className).not.toContain("active");
+    expect(link("Schedule").getAttribute("aria-current")).toBeNull();
+  });
+
+  it("does not open a group on a click that leaves the page where it is", () => {
+    mount("/app/workspace");
+    // A new-tab click: the page stays, so does the group.
+    fireEvent.click(link("Schedule"), { ctrlKey: true });
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+  });
+
+  it("hands the focus to the group's toggle when the group shuts around it", () => {
+    mount("/app/schedule/lineup");
+    link("Lineup").focus();
+    expect(document.activeElement).toBe(link("Lineup"));
+    // Leaving without moving the focus, the way Back does.
+    fireEvent.click(screen.getByRole("link", { name: "Leave lineup" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+    expect(document.activeElement).toBe(
+      within(primary()).getByRole("button", { name: "Expand Schedule" }),
+    );
   });
 });

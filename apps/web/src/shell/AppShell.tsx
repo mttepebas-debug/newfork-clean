@@ -16,7 +16,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState, type ComponentType } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { PullToRefreshMark, usePullToRefresh } from "./PullToRefresh";
 import { useFrozenTop } from "./useFrozenTop";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
@@ -222,6 +222,15 @@ export function AppShell() {
     setSeenPath(location.pathname);
     setExpandedNavGroups(groupsOpenAt(location.pathname));
   }
+  // The group the keyboard focus sits in. When that group shuts around it (Back
+  // out of a child page), the focus goes to the group's toggle, not the body.
+  const focusedGroup = useRef<string | null>(null);
+  useLayoutEffect(() => {
+    const group = focusedGroup.current;
+    if (!group || collapsed || expandedNavGroups.has(group)) return;
+    focusedGroup.current = null;
+    document.getElementById(`${navGroupId(group)}-toggle`)?.focus();
+  }, [expandedNavGroups, collapsed]);
   const navigate = useNavigate();
   usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
   // Account's "Back to workspace" returns here, in this view (ACCOUNT-BACK).
@@ -331,14 +340,14 @@ export function AppShell() {
             const childActive = children.some((child) =>
               isRailItemActive(location.pathname, child.to),
             );
-            // The narrow rail has no toggle: there every group stays open, and
-            // the wide menu gets back the groups as the person left them.
+            // The narrow rail has no toggle: there every group stays open; back
+            // in the wide menu only the open page's group is (S-177).
             const isExpanded =
               hasChildren && (collapsed || expandedNavGroups.has(item.to));
             // A parent whose child page is open is not the open page itself,
             // unless its group is closed: then it stands in for the hidden child.
             const standsIn = childActive && !isExpanded;
-            const groupId = `nav-group-${item.to.replaceAll("/", "-")}`;
+            const groupId = navGroupId(item.to);
             const renderLink = (link: NavItem, child: boolean) => {
               const LinkIcon = link.icon;
               return (
@@ -352,13 +361,23 @@ export function AppShell() {
                     }`
                   }
                   to={link.to}
-                  // Clicking the parent opens its group, its page open or not.
+                  // A route change opens the group; a plain click on the parent
+                  // while its page is already open, which changes no route, does too.
                   onClick={
                     !child && hasChildren && !isExpanded
-                      ? () =>
-                          setExpandedNavGroups((current) =>
-                            new Set(current).add(link.to),
+                      ? (event) => {
+                          if (
+                            event.button === 0 &&
+                            !event.metaKey &&
+                            !event.ctrlKey &&
+                            !event.shiftKey &&
+                            !event.altKey &&
+                            location.pathname === link.to
                           )
+                            setExpandedNavGroups((current) =>
+                              new Set(current).add(link.to),
+                            );
+                        }
                       : undefined
                   }
                   // Standing in, the parent matches its child's path, so the
@@ -397,6 +416,7 @@ export function AppShell() {
                 {hasChildren && !collapsed ? (
                   <button
                     className="nav-group-toggle"
+                    id={`${groupId}-toggle`}
                     type="button"
                     aria-label={`${isExpanded ? "Collapse" : "Expand"} ${item.label}`}
                     aria-expanded={isExpanded}
@@ -424,6 +444,13 @@ export function AppShell() {
                     id={groupId}
                     data-open={isExpanded}
                     inert={!isExpanded}
+                    onFocus={() => {
+                      focusedGroup.current = item.to;
+                    }}
+                    onBlur={(event) => {
+                      if (!event.currentTarget.contains(event.relatedTarget))
+                        focusedGroup.current = null;
+                    }}
                   >
                     <div className="nav-children-inner">
                       {children.map((child) => renderLink(child, true))}
@@ -553,18 +580,24 @@ export function AppShell() {
   );
 }
 
-// The group a page belongs to: its parent's, or its own when it is a parent.
+// The group a page belongs to, read off the menu entry whose path holds it
+// most closely: a child's group, or a parent's own on the parent's page and its
+// sub-pages (Schedule's Export, Employees' Archive). A page with an entry of its
+// own under a parent's path (Requests) belongs to no group.
 function groupsOpenAt(pathname: string): Set<string> {
-  const childOf = navItems.find(
-    (item) => item.parentTo && isRailItemActive(pathname, item.to),
-  )?.parentTo;
-  const parent = navItems.find(
-    (item) =>
-      navItems.some((candidate) => candidate.parentTo === item.to) &&
-      isNavItemActive(pathname, item),
-  )?.to;
-  const open = childOf ?? parent;
+  const owner = navItems
+    .filter((item) => isRailItemActive(pathname, item.to))
+    .sort((a, b) => b.to.length - a.to.length)[0];
+  const open =
+    owner?.parentTo ??
+    (owner && navItems.some((item) => item.parentTo === owner.to)
+      ? owner.to
+      : undefined);
   return new Set(open ? [open] : []);
+}
+
+function navGroupId(parentTo: string): string {
+  return `nav-group-${parentTo.replaceAll("/", "-")}`;
 }
 
 function isRailItemActive(pathname: string, to: string): boolean {

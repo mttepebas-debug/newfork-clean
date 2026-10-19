@@ -71,3 +71,20 @@ test("with reduced motion an opened group drops its clip at once, so the focus r
     .evaluate((element) => getComputedStyle(element).overflow);
   expect(overflow).toBe("visible");
 });
+
+test("Back out of Lineup with the focus on it hands the focus to Schedule's toggle", async ({ page }) => {
+  await page.setViewportSize({ width: 1440, height: 900 });
+  await signIn(page, "ayse");
+  await expect(page).not.toHaveURL(/\/sign-in/);
+  await page.goto("/app/workspace");
+  const primary = page.getByRole("navigation", { name: "Primary" });
+  await primary.getByRole("link", { name: "Schedule", exact: true }).click();
+  await primary.getByRole("link", { name: "Lineup", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/schedule\/lineup$/);
+  await primary.getByRole("link", { name: "Lineup", exact: true }).focus();
+
+  await page.goBack();
+  await page.goBack();
+  await expect(page).toHaveURL(/\/app\/workspace$/);
+  await expect(primary.getByRole("button", { name: "Expand Schedule" })).toBeFocused();
+});
