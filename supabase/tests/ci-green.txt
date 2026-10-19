@@ -31,6 +31,7 @@ supabase/tests/core_reads_two_slots.test.sql
 supabase/tests/decision_chain.test.sql
 supabase/tests/deleted_location_counts_nowhere.test.sql
 supabase/tests/department_archive_takes_its_jobs.test.sql
+supabase/tests/document_archive_stops_publication.test.sql
 supabase/tests/document_publication.test.sql
 supabase/tests/document_types_rls.test.sql
 supabase/tests/employee_code_counter_resync.test.sql
