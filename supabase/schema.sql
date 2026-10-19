@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 534, last: 20261019172618_job_lineup_icons.sql
--- fingerprint: sha256:d9e6e59444b4d180591bca90b3dd311b05e799b06500849635c2ff6076cf7d38
+-- migrations: 535, last: 20261019190000_no_management_view_of_self.sql
+-- fingerprint: sha256:17d36185f1ecb0006ff745c3d4a9e27b13ca066aaf5be66af0d66fcebaa3ff82
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -16938,6 +16938,9 @@ begin
  return (select coalesce(jsonb_agg(app_private.document_obligation_json(app_private.document_view(actor_user_id,r)) order by r.sort_order,r.id),'[]')
  from public.employee_onboarding_requirements r where r.workspace_id=target_workspace_id and r.kind in ('document','acknowledgement')
  and (not self_only or r.lifecycle_user_id=actor_user_id)
+ -- One's own document waiting for review is never in one's list to review (ROL-CIFT 5.2).
+ and (self_only or r.lifecycle_user_id is distinct from actor_user_id or not exists (
+  select 1 from public.employee_document_submissions s where s.id=r.submitted_document_id and s.state='pending_review'))
  and app_private.document_row_readable(actor_user_id,r));
 end;
 $$;
