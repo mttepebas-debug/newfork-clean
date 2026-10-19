@@ -142,7 +142,8 @@ test.describe("phone: the heading keeps its size and stays on top", () => {
 // The phone Lineup holds its own top (E, 2026-10-17): lineup-publish.spec.ts.
 test.describe("lists scroll inside their frame while the heading stays", () => {
   for (const [path, size, frame] of [
-    ["/app/schedule/lineup", DESKTOP, ".lineup-locations"],
+    // The desktop Lineup (F): the list under the location's ticket.
+    ["/app/schedule/lineup", DESKTOP, ".lineup-desk-scroll"],
     ["/app/settings/acknowledgements", DESKTOP, ".acknowledgement-page > .job-catalog"],
     // Availability's people list scrolls in its own frame beside the week (AVAIL-GUN-3).
     ["/app/availability", DESKTOP, ".avt-split > .avt-list"],

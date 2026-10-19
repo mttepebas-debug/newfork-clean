@@ -33,8 +33,10 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   const day = sql(`select tests.week(${week}) + 2;`);
 
   const ayse = await openPage(browser, "ayse", `/app/schedule/lineup?date=${day}`);
-  const kadikoy = ayse.getByRole("article", { name: "Kadikoy" });
-  await expect(kadikoy).toContainText("Emre Person");
+  // The desktop, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it.
+  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  const kadikoy = ayse.getByRole("region", { name: /^Kadikoy, / });
+  await expect(ayse.getByRole("tabpanel")).toContainText("Emre Person");
   const trigger = ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ });
   await trigger.click();
   const window = ayse.getByRole("dialog", { name: "Publish lineups" });
@@ -52,9 +54,10 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   await expect(done).toBeFocused();
   await expect(done).toHaveAttribute("aria-live", "polite");
   await expect(ayse.getByText(/notified/)).toHaveCount(0);
-  await expect(kadikoy.locator(".lineup-shift-published.is-flash")).toHaveCount(1);
+  await expect(kadikoy.locator(".lineup-card-status.is-live.is-flash")).toHaveCount(1);
+  await expect(kadikoy.locator(".lineup-card-at.is-flash")).toHaveCount(1);
   await expect(ayse.getByRole("button", { name: /^Publish(, \d+ lineups? waiting)?$/ })).toBeFocused();
-  await expect(kadikoy.getByText(/^Read 0\/\d+$/)).toBeVisible();
+  await expect(kadikoy.getByRole("tab", { name: /^Read 0\/\d+$/ })).toBeVisible();
 
   const emre = await openPage(browser, "emre", `/app/employee-hub/schedule/lineup?date=${day}`);
   await expect(emre.getByRole("link", { name: "Lineup", exact: true }).first()).toBeVisible();
@@ -78,14 +81,12 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
   await expect(emre.getByRole("button", { name: "Acknowledge", exact: true })).toHaveCount(0);
 
   await ayse.reload();
-  await expect(ayse.getByRole("article", { name: "Kadikoy" }).getByText(/^Read 1\/\d+$/)).toBeVisible();
-  // Who read it (Mert 2026-10-17): the count opens the Read list; Emre is under Read, Ali not yet.
-  await ayse.getByRole("article", { name: "Kadikoy" }).getByRole("button", { name: /^Read by 1 of \d+ with the app$/ }).click();
-  const readers = ayse.getByRole("dialog", { name: /^Who read / });
+  await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+  // Who read it (Mert 2026-10-17): the ticket's Read tab; Emre is under Read, Ali not yet.
+  await ayse.getByRole("region", { name: /^Kadikoy, / }).getByRole("tab", { name: /^Read 1\/\d+$/ }).click();
+  const readers = ayse.getByRole("tabpanel");
   await expect(readers.getByRole("region", { name: "Read", exact: true })).toContainText("Emre Person");
   await expect(readers.getByRole("region", { name: "Not read yet" })).toContainText("Ali Person");
-  await ayse.keyboard.press("Escape");
-  await expect(readers).toHaveCount(0);
 
   // Take it back with the green Edit (S-162): the phone's Edit window, in the middle of the page.
   await ayse.getByRole("button", { name: /^Publish/ }).click();

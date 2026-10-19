@@ -1,51 +1,9 @@
-/* Who read a lineup (Mert 2026-10-17; mockup v-c.css c-rsum, c-dept, c-rr): the phone's Read tab and the
-   desktop's Read panel. Light theme, --theme-* tokens. */
+/* Who read a lineup (Mert 2026-10-17; mockup v-c.css c-rsum, c-dept, c-rr): the Read tab, on the phone and
+   in the desktop's ticket. Light theme, --theme-* tokens. */
 .lineup-read {
   display: grid;
   gap: 16px;
   margin-top: 14px;
-}
-.lineup-read-sum {
-  border: 1px solid var(--theme-list-frame, var(--theme-border));
-  border-radius: 12px;
-  padding: 14px 16px;
-  background: var(--theme-surface);
-}
-.lineup-read-sum > div {
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-}
-.lineup-read-sum b {
-  color: var(--theme-text);
-  font-size: 30px;
-  font-weight: 750;
-  font-variant-numeric: tabular-nums;
-}
-.lineup-read-sum span {
-  color: var(--theme-text-secondary);
-  font-size: 15px;
-  font-weight: 600;
-}
-.lineup-read-sum p {
-  margin: 8px 0 0;
-  color: var(--theme-text-secondary);
-  font-size: 13px;
-}
-.lineup-read-progress {
-  position: relative;
-  display: block;
-  height: 8px;
-  margin-top: 8px;
-  overflow: hidden;
-  border-radius: 4px;
-  background: var(--theme-border-subtle);
-}
-.lineup-read-progress > i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  border-radius: 4px;
-  background: var(--theme-published);
 }
 .lineup-read-group h3 {
   display: flex;
@@ -165,43 +123,4 @@
 .lineup-read-when.is-read {
   color: var(--theme-accent-deep);
   font-weight: 650;
-}
-
-/* The desktop's panel under "Read 7/11": the Publish window's family (white, 10px corners, a soft ring). */
-.lineup-read-panel {
-  position: absolute;
-  top: calc(100% + 6px);
-  left: 0;
-  z-index: 90;
-  width: min(340px, calc(100vw - 24px));
-  max-height: min(480px, 60vh);
-  overflow-y: auto;
-  border-radius: 10px;
-  padding: 2px 12px 12px;
-  background: var(--theme-surface);
-  box-shadow: 0 0 0 1px rgb(15 23 42 / 6%), 0 16px 40px -12px rgb(15 23 42 / 28%);
-  color: var(--theme-text);
-  font-size: 13px;
-  font-weight: 400;
-  text-align: left;
-  cursor: default;
-}
-.lineup-read-panel:focus-visible {
-  outline: 2px solid var(--theme-focus);
-  outline-offset: 2px;
-}
-.lineup-read-panel .lineup-read {
-  gap: 12px;
-  margin-top: 10px;
-}
-.lineup-read-panel .lineup-read-sum {
-  border: 0;
-  padding: 4px 4px 0;
-}
-.lineup-read-panel .lineup-read-sum b {
-  font-size: 24px;
-}
-.lineup-read-panel .lineup-read-row {
-  min-height: 44px;
-  padding: 4px 10px;
 }

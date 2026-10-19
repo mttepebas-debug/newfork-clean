@@ -86,11 +86,6 @@ export interface LineupLocation {
   readonly shifts: readonly LineupShift[];
 }
 
-export interface LineupFilters {
-  readonly locationId?: string | null;
-  readonly shiftTypeId?: string | null;
-}
-
 const NO_SHIFT_TYPE = "none";
 const byName = (a: { name: string }, b: { name: string }) =>
   a.name.localeCompare(b.name, "en-US", { sensitivity: "base" });
@@ -114,22 +109,19 @@ function emptyLineup(typeId: string | null): LineupDayLineup {
 
 /**
  * The day's lineups as the page shows them: the day read's rows grouped by department and job, every active
- * shift type of the catalog in its place (Mert 2026-10-13: an empty shift stays as a short card), filtered.
+ * shift type of the catalog in its place (Mert 2026-10-13: an empty shift stays as a short card).
  */
 export function lineupDay(
   read: LineupDay,
   catalog: Pick<ScheduleReadModel, "shift_types"> | null,
-  filters: LineupFilters = {},
 ): LineupLocation[] {
   const types = catalog?.shift_types ?? [];
   return read.locations
-    .filter((location) => !filters.locationId || location.id === filters.locationId)
     .map((location) => {
       const closed = published(location.closed);
       const byType = new Map(location.lineups.map((lineup) => [lineup.shift_type_id ?? NO_SHIFT_TYPE, lineup]));
       if (!closed) for (const type of types) if (!byType.has(type.id)) byType.set(type.id, emptyLineup(type.id));
       const shifts = closed ? [] : [...byType.entries()]
-        .filter(([key]) => !filters.shiftTypeId || key === filters.shiftTypeId)
         .map(([key, lineup]) => {
           const type = types.find((item) => item.id === key);
           const rows = lineup.rows.filter((row) => row.employee_id !== null);
@@ -219,16 +211,6 @@ export function canPublish(shift: LineupShift): boolean {
 /** Lineups waiting to be published: the Publish button's badge. */
 export function unpublishedCount(locations: readonly LineupLocation[]): number {
   return locations.reduce((sum, location) => sum + location.shifts.filter(canPublish).length, 0);
-}
-
-/** The seven days of the week that holds `weekStart`. */
-export function lineupWeek(weekStart: string): string[] {
-  const start = new Date(`${weekStart}T12:00:00Z`);
-  return Array.from({ length: 7 }, (_, offset) => {
-    const day = new Date(start);
-    day.setUTCDate(start.getUTCDate() + offset);
-    return day.toISOString().slice(0, 10);
-  });
 }
 
 function minutes(time: string): number {

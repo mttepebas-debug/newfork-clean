@@ -38,6 +38,7 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../sched
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
+import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-phone.css";
 
 // The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3; card 1,
@@ -62,17 +63,8 @@ export interface PhonePublish {
   readonly window: ReactNode;
 }
 
-const SEGS = ["team", "notes", "read"] as const;
-type Seg = (typeof SEGS)[number];
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
+export const SEGS = ["team", "notes", "read"] as const;
+export type Seg = (typeof SEGS)[number];
 
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
@@ -331,9 +323,10 @@ function LocationLineup({
 /**
  * The lineup card (card 1, "boarding pass"; Mert 2026-10-17 ~11:45 AM, ~12:30 PM, ~1:10 PM): the place and day on
  * the left, Live or Draft with Edit over when it went out on the right, the chevron; a torn edge; Shift · People ·
- * Hours; Team · Notes · Read inside. A tap anywhere on it but its tabs folds it to its header.
+ * Hours; Team · Notes · Read inside. A tap anywhere on it but its tabs folds it to its header. The desktop's ticket
+ * (F, Mert 2026-10-19) is the same card, always open: no `onFold`, no chevron.
  */
-function LineupCard({
+export function LineupCard({
   location,
   shift,
   dateLabel,
@@ -357,7 +350,8 @@ function LineupCard({
   readonly open: boolean;
   /** An empty shift's box hangs off it (Mert 2026-10-17 ~2 PM). */
   readonly joined: boolean;
-  readonly onFold: () => void;
+  /** Folding it to its header (the phone); the desktop's ticket doesn't fold. */
+  readonly onFold?: () => void;
   /** Taking the lineup back to draft, for someone who may publish. */
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
   /** The Publish sheet is open over it: a lineup that goes out lights up once it closes. */
@@ -366,7 +360,7 @@ function LineupCard({
   readonly day: string;
   /** The id of the pane the card's tabs and chevron control. */
   readonly panel: string;
-  readonly cardRef: Ref<HTMLElement>;
+  readonly cardRef?: Ref<HTMLElement>;
   readonly children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
@@ -380,17 +374,20 @@ function LineupCard({
   const style = { "--lineup-shift": shift.color ?? "var(--theme-border-strong)" } as CSSProperties;
   // On the location's clock, the one the started lock reads.
   const at = publishedAt(shift.publish.sharedAt, timeFormat, location.timezone);
-  // After Edit has taken the lineup back, its button goes off: focus waits on the chevron instead.
+  // After Edit has taken the lineup back, its button goes off: focus waits on the chevron instead (on the desktop's
+  // ticket, which has none, on its tab).
   const foldButton = useRef<HTMLButtonElement | null>(null);
+  const tabs = useRef<HTMLDivElement | null>(null);
   const [backToFold, setBackToFold] = useState(0);
   useEffect(() => {
-    if (backToFold) foldButton.current?.focus();
+    if (backToFold)
+      (foldButton.current ?? tabs.current?.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]'))?.focus();
   }, [backToFold]);
   const tap = (event: ReactMouseEvent<HTMLElement>) => {
     const target = event.target as Element;
     // Only a tap on the card itself: not its buttons or tabs, nor the Edit window (a portal, its events bubble here).
     if (!event.currentTarget.contains(target) || target.closest("button, a, [role='tablist']")) return;
-    onFold();
+    onFold?.();
   };
   return (
     <section
@@ -399,7 +396,7 @@ function LineupCard({
       data-lineup-card={`${location.id}:${shift.key}`}
       style={style}
       aria-label={`${location.name}, ${shift.name}`}
-      onClick={tap}
+      onClick={onFold ? tap : undefined}
     >
       <div className="lineup-card-head">
         <p className="lineup-card-loc">
@@ -431,17 +428,19 @@ function LineupCard({
         <p className={`lineup-card-at${live ? "" : " is-off"}${lit}`}>
           {live ? `Published at ${at}` : started ? "Not published" : "Not published yet"}
         </p>
-        <button
-          type="button"
-          ref={foldButton}
-          className="lineup-card-fold"
-          aria-expanded={open}
-          aria-controls={open ? panel : undefined}
-          aria-label={open ? "Hide list" : "Show list"}
-          onClick={onFold}
-        >
-          <ChevronDown aria-hidden />
-        </button>
+        {onFold ? (
+          <button
+            type="button"
+            ref={foldButton}
+            className="lineup-card-fold"
+            aria-expanded={open}
+            aria-controls={open ? panel : undefined}
+            aria-label={open ? "Hide list" : "Show list"}
+            onClick={onFold}
+          >
+            <ChevronDown aria-hidden />
+          </button>
+        ) : null}
       </div>
       {open ? (
         <>
@@ -463,7 +462,9 @@ function LineupCard({
               <dd>{span ? range(span.firstIn, span.lastOut, timeFormat) : "—"}</dd>
             </div>
           </dl>
-          <div className="lineup-card-band">{children}</div>
+          <div className="lineup-card-band" ref={tabs}>
+            {children}
+          </div>
         </>
       ) : null}
       {editing && edit ? (
@@ -486,7 +487,7 @@ function LineupCard({
 }
 
 /** Team · Notes · Read inside the card. Read is off until the lineup is published; then it carries its count. */
-function Segments({
+export function Segments({
   shift,
   seg,
   onSeg,
@@ -615,10 +616,7 @@ function PersonRow({ row, timeFormat }: { readonly row: LineupRow; readonly time
   const chips = [...row.labels.map((label) => ({ label, warn: false })), ...(row.lineupOnly ? [{ label: "Lineup only", warn: true }] : [])];
   return (
     <li className="lineup-phone-row">
-      {/* No job icons yet: the person's initials. */}
-      <span className="lineup-phone-avatar" aria-hidden>
-        {initials(row.name)}
-      </span>
+      <LineupPersonCircle name={row.name} />
       <span className="lineup-phone-mid">
         <span className="lineup-phone-name">{row.name}</span>
         <span className="lineup-phone-time">
@@ -653,7 +651,7 @@ const NOTES = [
 ] as const;
 
 /** The notes card (Mert 2026-10-17 ~11:30 AM): one white card, a section per note; nothing here edits them. */
-function NotesPane({ shift }: { readonly shift: LineupShift }) {
+export function NotesPane({ shift }: { readonly shift: LineupShift }) {
   const filled = NOTES.filter(([key]) => shift.publish.notes[key].trim());
   return (
     <section className="lineup-notes" aria-label="Notes">
@@ -675,7 +673,7 @@ function NotesPane({ shift }: { readonly shift: LineupShift }) {
 }
 
 /** Who read the lineup staff see: one bar on the first heading, then Read, Not read yet and No app. */
-function ReadPane({
+export function ReadPane({
   shift,
   timeFormat,
   timezone,

@@ -78,13 +78,9 @@ div.lineup-publish-pick { cursor: default; }
 .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: ""; width: 14px; height: 14px; flex: none; box-sizing: border-box; border: 2px solid currentColor; border-top-color: transparent; border-radius: 50%; animation: lineup-publish-spin .7s linear infinite; }
 
 /* No motion: the words change, no spinner, nothing pops. */
-/* It has gone out: on the desktop page the shift's "Published" lights up once (the phone card: lineup-phone.css). */
-.lineup-shift-published.is-flash { border-radius: 6px; animation: lineup-publish-lit 1.8s ease-out; }
-@keyframes lineup-publish-lit { 0%, 35% { background: var(--theme-accent-soft); box-shadow: 0 0 0 4px var(--theme-accent-soft); } 100% { background: transparent; box-shadow: 0 0 0 4px transparent; } }
-
 @media (prefers-reduced-motion: reduce) {
   .lineup-publish-switch, .lineup-publish-switch::after { transition: none; }
   .lineup-publish-spin { display: none; }
-  .lineup-publish-ok, .lineup-shift-published.is-flash { animation: none; }
+  .lineup-publish-ok { animation: none; }
   .app-confirm:has(.lineup-edit-points) footer .nf-button[aria-busy="true"]::before { content: none; }
 }

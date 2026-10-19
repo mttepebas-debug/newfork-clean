@@ -7,16 +7,14 @@ import {
   lineupCardState,
   lineupReadLists,
   lineupShiftSpan,
-  lineupWeek,
   phoneLineupKey,
   phoneLineupShift,
   phoneShiftTabs,
   unpublishedCount,
-  type LineupFilters,
 } from "./lineup";
 import { aisha, chloe, day, dayRead, dinner, downtown, hannah, host, lunch, maria, model, oldJob, server, cook, shift, uptown } from "./lineup.testing";
 
-const view = (m: ReturnType<typeof model>, date: string, filters?: LineupFilters) => lineupDay(dayRead(m, date), m, filters);
+const view = (m: ReturnType<typeof model>, date: string) => lineupDay(dayRead(m, date), m);
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live shifts per
 // location and shift type, grouped by department and job.
@@ -94,12 +92,6 @@ describe("lineupDay", () => {
     expect(none.departments[0]!.jobs[0]!.name).toBe("Barback");
   });
 
-  it("filters by location and shift type", () => {
-    const result = view(model([]), day, { locationId: uptown, shiftTypeId: dinner });
-    expect(result.map((l) => l.name)).toEqual(["Uptown"]);
-    expect(result[0]!.shifts.map((s) => s.name)).toEqual(["Dinner"]);
-  });
-
   it("names a published closed day and short hours, not a scheduled one", () => {
     const closure = (kind: "closed" | "short", location: string, status?: "scheduled") => ({
       id: `80000000-0000-4000-8000-00000000000${kind === "closed" ? 1 : 2}`,
@@ -153,14 +145,6 @@ describe("publish state", () => {
   it("an empty shift type of the catalog stays as a card nobody can publish", () => {
     const shifts = lineupDay(dayRead(model([]), day), m)[1]!.shifts;
     expect(shifts.map((s) => [s.name, s.count, canPublish(s)])).toEqual([["Lunch", 0, false], ["Dinner", 0, false]]);
-  });
-});
-
-describe("lineupWeek", () => {
-  it("lists the seven days from the week start", () => {
-    expect(lineupWeek("2026-10-12")).toEqual([
-      "2026-10-12", "2026-10-13", "2026-10-14", "2026-10-15", "2026-10-16", "2026-10-17", "2026-10-18",
-    ]);
   });
 });
 

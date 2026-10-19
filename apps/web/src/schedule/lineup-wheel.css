@@ -52,6 +52,20 @@
   border-color: var(--theme-border-hover);
 }
 
+/* While the desktop's Publish window publishes, the day waits (aria-disabled, still focusable; the wheel inert): the
+   app's off look (.nf-button:disabled, 0.55), a plain cursor, no hover. */
+.lineup-toolbar :is(.lineup-step, .lineup-date-label)[aria-disabled="true"],
+.lineup-wheel[inert] {
+  cursor: default;
+  opacity: 0.55;
+}
+.lineup-toolbar :is(.lineup-step, .lineup-date-label)[aria-disabled="true"]:hover {
+  border-color: var(--theme-border-control);
+}
+.lineup-toolbar .lineup-date-label[data-other-day="true"][aria-disabled="true"]:hover {
+  border-color: var(--theme-warning-border);
+}
+
 /* The location beside the date takes the rest of the row; at 390 px it stays on the date's row even when the
    date carries a year ("Wed, Feb 27, 2041"), so the rows under it keep the same height on every page. */
 .lineup-toolbar .lineup-location-select {
@@ -81,10 +95,10 @@
 .lineup-wheel:active {
   cursor: grabbing;
 }
-/* Each day is a seventh of the strip: size them off the strip, not the track. */
+/* Each day is a seventh of the strip (a fifteenth on the desktop Lineup): size them off the strip, not the track. */
 .lineup-wheel-track {
   display: flex;
-  width: calc(100% / 7 * var(--lineup-wheel-days));
+  width: calc(100% / var(--lineup-wheel-visible, 7) * var(--lineup-wheel-days));
   height: 100%;
 }
 /* Sharp days (Mert 2026-10-17, "çözünürlüğü düşük gibi"): the strip is its own compositor layer only while it

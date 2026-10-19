@@ -25,6 +25,8 @@ interface Options {
   readonly start: number;
   readonly span: number;
   readonly edges: readonly number[];
+  /** How many days the strip shows at once: 7 on a phone, 15 on the desktop Lineup (F, Mert 2026-10-19). */
+  readonly visible?: number;
   /** The wheel stopped on a day. */
   readonly onStill: (index: number) => void;
   /** The day at the middle changed while it moves. */
@@ -51,7 +53,8 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   const { span, edges, onStill, onMiddle } = options;
   const cells = track.children as HTMLCollectionOf<HTMLElement>;
   const frame = typeof requestAnimationFrame === "function" ? requestAnimationFrame : null;
-  let width = box.clientWidth / 7;
+  const visible = options.visible ?? 7;
+  let width = box.clientWidth / visible;
   let pos = options.start;
   let raf = 0;
   let anim: Anim | null = null;
@@ -297,10 +300,10 @@ export function mountWheel(box: HTMLElement, track: HTMLElement, options: Option
   box.addEventListener("pointercancel", onUp);
   box.addEventListener("click", onClick);
   box.addEventListener("keydown", onKey);
-  // A day stays a seventh of the strip when the window changes (a phone turned, a browser narrowed).
+  // A day stays its share of the strip when the window changes (a phone turned, a browser narrowed).
   const resized = typeof ResizeObserver === "function"
     ? new ResizeObserver(() => {
-        const next = box.clientWidth / 7;
+        const next = box.clientWidth / visible;
         if (next && Math.abs(next - width) > 0.5) {
           width = next;
           show(pos);

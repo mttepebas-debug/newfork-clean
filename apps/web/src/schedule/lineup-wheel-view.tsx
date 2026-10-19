@@ -26,11 +26,18 @@ export function LineupDayPicker({
   onDate,
   barRef,
   wheelRef,
+  days = 7,
+  waiting = false,
   children,
 }: {
   readonly date: string;
   readonly today: string;
   readonly onDate: (iso: string) => void;
+  /** Days the wheel shows at once: 7 on a phone, 15 on the desktop Lineup. */
+  readonly days?: number;
+  /** The day waits (the desktop's Publish window is publishing): ‹ › and the date say so and do nothing; the wheel
+   * is inert. */
+  readonly waiting?: boolean;
   readonly barRef?: RefObject<HTMLDivElement | null>;
   readonly wheelRef?: RefObject<HTMLDivElement | null>;
   /** Beside the date: the location. */
@@ -43,11 +50,29 @@ export function LineupDayPicker({
     <>
       <div className="lineup-toolbar" ref={barRef}>
         <div className="lineup-date" role="group" aria-label="Day">
-          <button type="button" className="lineup-step" aria-label="Previous day" onClick={() => wheel.current?.step(-1)}>
+          <button
+            type="button"
+            className="lineup-step"
+            aria-label="Previous day"
+            aria-disabled={waiting || undefined}
+            onClick={() => !waiting && wheel.current?.step(-1)}
+          >
             <ChevronLeft size={16} aria-hidden />
           </button>
-          <WheelDate date={date} today={today} preview={preview} onToday={() => wheel.current?.seekIso(today)} />
-          <button type="button" className="lineup-step" aria-label="Next day" onClick={() => wheel.current?.step(1)}>
+          <WheelDate
+            date={date}
+            today={today}
+            preview={preview}
+            waiting={waiting}
+            onToday={() => !waiting && wheel.current?.seekIso(today)}
+          />
+          <button
+            type="button"
+            className="lineup-step"
+            aria-label="Next day"
+            aria-disabled={waiting || undefined}
+            onClick={() => !waiting && wheel.current?.step(1)}
+          >
             <ChevronRight size={16} aria-hidden />
           </button>
         </div>
@@ -55,6 +80,8 @@ export function LineupDayPicker({
       </div>
       <DayWheel
         boxRef={wheelRef ?? ownBox}
+        visible={days}
+        waiting={waiting}
         date={date}
         today={today}
         engine={wheel}
@@ -70,11 +97,13 @@ function WheelDate({
   date,
   today,
   preview,
+  waiting,
   onToday,
 }: {
   readonly date: string;
   readonly today: string;
   readonly preview: RefObject<((iso: string) => void) | null>;
+  readonly waiting: boolean;
   readonly onToday: () => void;
 }) {
   const [shown, setShown] = useState(date);
@@ -91,6 +120,7 @@ function WheelDate({
       type="button"
       className="lineup-date-label"
       data-other-day={other ? "true" : undefined}
+      aria-disabled={waiting || undefined}
       title={other ? "Back to today" : undefined}
       onClick={onToday}
     >
@@ -105,6 +135,8 @@ function WheelDate({
  */
 function DayWheel({
   boxRef,
+  visible,
+  waiting,
   date,
   today,
   engine,
@@ -112,6 +144,8 @@ function DayWheel({
   onMiddle,
 }: {
   readonly boxRef: RefObject<HTMLDivElement | null>;
+  readonly visible: number;
+  readonly waiting: boolean;
   readonly date: string;
   readonly today: string;
   readonly engine: RefObject<WheelControl | null>;
@@ -163,6 +197,7 @@ function DayWheel({
     const mounted = mountWheel(box, strip, {
       start: wheelIndex(anchor, latest.current.date),
       span,
+      visible,
       edges: monthEdges(anchor, span),
       onStill: (index) => {
         const iso = wheelIso(anchor, index);
@@ -178,7 +213,7 @@ function DayWheel({
       if (engine.current === control) engine.current = null;
       seekRef.current = null;
     };
-  }, [anchor, cells, span, boxRef, engine]);
+  }, [anchor, cells, span, visible, boxRef, engine]);
 
   // A date from outside: turn the wheel there (it stops on it, so nothing is committed twice).
   useEffect(() => {
@@ -186,8 +221,19 @@ function DayWheel({
   }, [date]);
 
   return (
-    <div className="lineup-wheel" role="group" aria-label="Day. Swipe or use the arrow keys." ref={boxRef} data-own-drag="">
-      <div className="lineup-wheel-track" ref={track} style={{ "--lineup-wheel-days": 2 * span + 1 } as CSSProperties}>
+    <div
+      className="lineup-wheel"
+      role="group"
+      aria-label="Day. Swipe or use the arrow keys."
+      ref={boxRef}
+      data-own-drag=""
+      inert={waiting || undefined}
+    >
+      <div
+        className="lineup-wheel-track"
+        ref={track}
+        style={{ "--lineup-wheel-days": 2 * span + 1, "--lineup-wheel-visible": visible } as CSSProperties}
+      >
         {cells}
       </div>
     </div>

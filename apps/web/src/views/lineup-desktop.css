@@ -1,0 +1,187 @@
+/* The desktop Lineup, F (Mert 2026-10-19 ~2:45 AM; mockup yapim/masaustu/frame.css .dk-e, .dk-f): the phone's
+   pieces on the wide page. The page holds still (list-page-frozen.css); only the list under the ticket scrolls.
+   Light theme, --theme-* tokens. */
+
+.lineup-desk-page {
+  /* One grid for the column headings and every row: circle, person, position, label, in – out, section, and the
+     row's own end (Call off comes there with editing). */
+  --lineup-desk-cols: 38px minmax(0, 1fr) 150px 128px 206px 158px 92px;
+  display: grid;
+  box-sizing: border-box;
+  width: min(100% - 64px, 1320px);
+  gap: 14px;
+  margin: 0 auto;
+  padding: 30px 0 0;
+}
+
+/* The date and location, the 15-day wheel, the shift tabs. */
+.lineup-desk-top {
+  display: grid;
+  gap: 14px;
+  padding-top: 4px;
+}
+.lineup-desk-top .lineup-toolbar {
+  flex-wrap: nowrap;
+}
+.lineup-desk-top .lineup-toolbar .lineup-location-select {
+  flex: 0 0 240px;
+}
+.lineup-desk-top .lineup-wheel,
+.lineup-desk-top .lineup-shift-tabs {
+  margin: 0;
+}
+
+.lineup-desk {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+  padding-top: 4px;
+}
+
+/* The ticket in the middle, between two big arrows as tall as it; with one location, no arrows. */
+.lineup-desk-ticket {
+  display: grid;
+  flex: none;
+  grid-template-columns: 60px minmax(0, 1fr) 60px;
+  align-items: stretch;
+  gap: 12px;
+}
+.lineup-desk-ticket.is-one {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0 72px;
+}
+.lineup-desk-page .lineup-card {
+  position: relative;
+  margin: 0;
+  overflow: hidden;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 16px;
+  background: var(--theme-surface);
+}
+.lineup-desk-arrow {
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 16px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  cursor: pointer;
+}
+.lineup-desk-arrow svg {
+  width: 30px;
+  height: 30px;
+  stroke-width: 2.2;
+}
+.lineup-desk-arrow:hover:not(:disabled) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.lineup-desk-arrow:disabled {
+  background: var(--theme-surface-soft);
+  color: var(--theme-text-faint);
+  cursor: default;
+}
+.lineup-desk-arrow:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+/* Under the ticket, the chosen tab's content: the one part that scrolls. */
+.lineup-desk-scroll {
+  flex: 1 1 auto;
+  min-height: 0;
+  margin-top: 14px;
+  padding: 0 8px 32px 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+}
+.lineup-desk-scroll > .lineup-short {
+  margin: 0 0 10px;
+}
+.lineup-desk-scroll > :is(.lineup-notes, .lineup-read, .lineup-phone-calm, .lineup-phone-noone) {
+  margin-top: 0;
+}
+.lineup-desk-scroll .lineup-read {
+  gap: 16px;
+}
+
+/* The column headings, pinned at the top of the list. */
+.lineup-desk-cols {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  display: grid;
+  grid-template-columns: var(--lineup-desk-cols);
+  align-items: center;
+  column-gap: 14px;
+  min-height: 36px;
+  margin: 0 0 4px;
+  padding: 0 17px;
+  border-bottom: 1px solid var(--theme-border-subtle);
+  background: var(--theme-page);
+  color: var(--theme-text-secondary);
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+.lineup-desk-page .lineup-phone-dept:first-of-type {
+  margin-top: 6px;
+}
+.lineup-desk-page .lineup-phone-job > p {
+  padding-left: 16px;
+}
+
+/* A person's row, spread over the columns. */
+.lineup-phone-row.lineup-desk-row {
+  display: grid;
+  grid-template-columns: var(--lineup-desk-cols);
+  align-items: center;
+  column-gap: 14px;
+  min-height: 54px;
+  padding: 7px 12px;
+}
+.lineup-desk-name {
+  display: flex;
+  min-width: 0;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 8px;
+}
+.lineup-desk-cell {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--theme-text-body);
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+  line-height: 20px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineup-desk-cell.lineup-desk-time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.lineup-desk-none {
+  color: var(--theme-text-faint);
+}
+
+.lineup-desk-empty {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 12px;
+  padding: 18px 16px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  font-size: 14px;
+}
+
+.lineup-desk-outline .lineup-card {
+  cursor: default;
+}

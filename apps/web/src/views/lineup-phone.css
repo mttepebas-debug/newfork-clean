@@ -91,7 +91,16 @@
   }
 }
 
-/* Short hours, over the card. */
+/* Short hours today (the phone's over its card, the desktop's at the top of its list). */
+.lineup-short {
+  margin: 0;
+  border: 1px solid var(--theme-warning-border);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: var(--theme-warning-surface, var(--theme-warning-soft));
+  color: var(--theme-warning-text);
+  font-size: 13px;
+}
 .lineup-phone-page .lineup-phone-short {
   margin: 16px 0 0;
 }

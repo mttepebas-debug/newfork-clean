@@ -96,10 +96,13 @@ describe("frozen list pages", () => {
     }
   });
 
-  it.each([
-    ["lineup-page", "lineup-locations"],
-    ["acknowledgement-page", "job-catalog"],
-  ])("scrolls the list inside its frame (%s > .%s)", (page, frame) => {
+  // The desktop Lineup (F, Mert 2026-10-19): its ticket and list fill what is left; the list under the ticket scrolls
+  // in its own frame (lineup-desktop.css, LineupPage.test.tsx).
+  it("gives the desktop Lineup's ticket and list the rest of the page", () => {
+    expect(bodyOf((head) => head.includes(".lineup-page") && head.includes("> .lineup-desk"))).toMatch(/flex\s*:\s*1 1 auto/);
+  });
+
+  it.each([["acknowledgement-page", "job-catalog"]])("scrolls the list inside its frame (%s > .%s)", (page, frame) => {
     const body = bodyOf((head) => head.includes(`.${page}`) && head.includes(`> .${frame}`) && !head.includes(":focus"));
     expect(body).toMatch(/min-height\s*:\s*0/);
     expect(body).toMatch(/flex\s*:\s*0 1 auto/);

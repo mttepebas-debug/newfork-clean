@@ -135,15 +135,15 @@
   .settings-page.jobs-settings-page.acknowledgement-page > * {
     flex: 0 0 auto;
   }
-  .lineup-page.list-page.list-page > .lineup-locations,
   .settings-page.jobs-settings-page.acknowledgement-page > .job-catalog {
     position: relative;
     min-height: 0;
     flex: 0 1 auto;
     overflow-y: auto;
   }
-  .lineup-page.list-page.list-page > .lineup-locations {
-    padding-bottom: 24px;
+  /* The desktop Lineup (F) fills what is left; its list under the ticket scrolls (lineup-desktop.css). */
+  .lineup-page.list-page.list-page > .lineup-desk {
+    flex: 1 1 auto;
   }
   /* A row reached by Tab or a link lands below the pinned tabs or headings
      (34-48 px headings), not under them. */
