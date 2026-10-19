@@ -1165,11 +1165,21 @@ describe("LineupPage on a phone, E", () => {
     renderPage();
     const dock = await screen.findByRole("button", { name: "Publish, 1 lineup waiting" });
     dock.focus();
+    // Where focus is the moment Publish leaves the page (BL-1158): already on the card's Edit, never on the page
+    // in between. A check that waits for the dock to go runs right then, before anything scheduled after it.
+    let focusWhenGone: Element | null | undefined;
+    const watch = new MutationObserver(() => {
+      if (focusWhenGone === undefined && !document.querySelector(".lineup-phone-dock")) focusWhenGone = document.activeElement;
+    });
+    watch.observe(document.body, { childList: true, subtree: true });
     fireEvent.click(dock);
     fireEvent.click(within(screen.getByRole("dialog", { name: "Publish lineups" })).getByRole("button", { name: "Publish 1" }));
     await waitFor(() => expect(document.querySelector(".lineup-phone-dock")).toBeNull(), { timeout: 4000 });
+    watch.disconnect();
     const uptownCard = screen.getByRole("region", { name: "Uptown, Lunch" });
-    expect(document.activeElement).toBe(within(uptownCard).getByRole("button", { name: "Edit" }));
+    const edit = within(uptownCard).getByRole("button", { name: "Edit" });
+    expect(focusWhenGone).toBe(edit);
+    expect(document.activeElement).toBe(edit);
   });
 
   // Read times are the location's clock's too: 21:40 UTC is 5:40 PM in New York.

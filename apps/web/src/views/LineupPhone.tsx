@@ -151,7 +151,9 @@ export function PhoneLineupPage({
   const targetKey = target?.shift ? foldKeyOf(target.location, target.shift) : null;
   const focusTarget = useRef(targetKey);
   focusTarget.current = targetKey;
-  useEffect(() => {
+  // In the same commit that takes Publish away (a layout effect, not a passive one): focus is never left on the page in
+  // between, for a screen reader or a check that runs the moment the dock goes (BL-1158).
+  useLayoutEffect(() => {
     if (docked || !dockHadFocus.current) return;
     dockHadFocus.current = false;
     const active = document.activeElement;
