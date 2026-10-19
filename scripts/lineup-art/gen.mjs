@@ -22,6 +22,12 @@
  *   node scripts/lineup-art/gen.mjs --check              write nothing; exit 1 naming each stale file
  *   node scripts/lineup-art/gen.mjs --import <icons.js>  rebuild archive.json from the avatar page's
  *                                                        icons.js (window.ICONS=[…]), then write
+ *
+ * After the archive migration goes live it is never rewritten (a live migration stays as applied):
+ * list it in APPLIED_ARCHIVE_MIGRATIONS, and gen exits 2 if the archive would change its block. To
+ * change the archive after that: add a new migration holding the two marker lines, make
+ * migrationBlock() write an upsert (insert … on conflict (key) do update, plus a delete of the keys
+ * the archive no longer has), point ARCHIVE_MIGRATION at the new file, then run gen.
  */
 import fs from "node:fs";
 import path from "node:path";
@@ -44,6 +50,8 @@ const PARITY_OUT = "supabase/tests/lineup_art_parity.test.sql";
 const RULE = "packages/shared/src/lineup-art-rule.ts";
 /** The migration that fills app_private.lineup_art: it must exist and hold each marker line once. */
 const ARCHIVE_MIGRATION = "supabase/migrations/20261019122405_lineup_art_archive.sql";
+/** Archive migrations already applied to the live database: their block is never rewritten. */
+const APPLIED_ARCHIVE_MIGRATIONS = [];
 const BEGIN = "-- lineup-art:begin";
 const END = "-- lineup-art:end";
 
@@ -224,7 +232,13 @@ async function outputs(items) {
   if (ARCHIVE_MIGRATION) {
     const text = read(ARCHIVE_MIGRATION);
     if (text === null) throw new Error(`${ARCHIVE_MIGRATION}: named in gen.mjs but missing`);
-    files.set(ARCHIVE_MIGRATION, withMigrationBlock(text, items));
+    const next = withMigrationBlock(text, items);
+    if (next !== text && APPLIED_ARCHIVE_MIGRATIONS.includes(ARCHIVE_MIGRATION))
+      throw new Error(
+        `archive changed after ${ARCHIVE_MIGRATION} went live: add a new migration with lineup-art markers ` +
+          "(insert … on conflict (key) do update / delete removed keys) and point ARCHIVE_MIGRATION at it",
+      );
+    files.set(ARCHIVE_MIGRATION, next);
   }
   return files;
 }

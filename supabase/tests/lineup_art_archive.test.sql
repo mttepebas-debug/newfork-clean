@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(17);
+select plan(22);
 
 -- AVATAR-IKON: the drawing archive's keys live in app_private.lineup_art, filled by the archive
 -- migration from scripts/lineup-art/archive.json (gen.mjs writes its insert block). The keys a job or
@@ -42,14 +42,14 @@ select is(
   'the suggestion rule reads the archive, so it is stable, not immutable'
 );
 
--- The browser reaches none of it.
-select ok(
-  not has_function_privilege('authenticated', 'app_private.suggest_lineup_art(text)', 'EXECUTE')
-  and not has_function_privilege('anon', 'app_private.suggest_lineup_art(text)', 'EXECUTE')
-  and not has_function_privilege('authenticated', 'app_private.lineup_art_keys_valid(text[])', 'EXECUTE')
-  and not has_function_privilege('anon', 'app_private.lineup_art_keys_valid(text[])', 'EXECUTE'),
-  'the browser cannot call the archive functions'
-);
+-- The browser reaches none of it. Each grant is pinned on its own: the throws_ok below would also pass
+-- if the browser roles merely lacked USAGE on app_private, so it does not prove the table grant alone.
+select ok(not has_table_privilege('authenticated', 'app_private.lineup_art', 'SELECT'), 'a signed-in request has no SELECT on the archive table');
+select ok(not has_table_privilege('anon', 'app_private.lineup_art', 'SELECT'), 'an anonymous request has no SELECT on the archive table');
+select ok(not has_function_privilege('authenticated', 'app_private.suggest_lineup_art(text)', 'EXECUTE'), 'a signed-in request cannot call the suggestion rule');
+select ok(not has_function_privilege('anon', 'app_private.suggest_lineup_art(text)', 'EXECUTE'), 'an anonymous request cannot call the suggestion rule');
+select ok(not has_function_privilege('authenticated', 'app_private.lineup_art_keys_valid(text[])', 'EXECUTE'), 'a signed-in request cannot call the key check');
+select ok(not has_function_privilege('anon', 'app_private.lineup_art_keys_valid(text[])', 'EXECUTE'), 'an anonymous request cannot call the key check');
 
 set local role authenticated;
 select throws_ok($$select key from app_private.lineup_art$$, '42501', null, 'a signed-in request cannot read the archive table');

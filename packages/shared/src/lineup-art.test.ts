@@ -1,5 +1,7 @@
 import { spawnSync } from "node:child_process";
-import { dirname, resolve } from "node:path";
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { lineupArt, lineupArtByKey, lineupArtKeySchema, suggestLineupArt } from "./index";
@@ -91,5 +93,38 @@ describe("generated files", () => {
     const run = spawnSync(process.execPath, ["scripts/lineup-art/gen.mjs", "--check"], { cwd: root, encoding: "utf8" });
     expect(run.stdout + run.stderr).not.toMatch(/stale/i);
     expect(run.status).toBe(0);
+  });
+
+  it("refuses to rewrite the archive migration once it is live", () => {
+    // A copy of the generator whose archive migration is listed as applied, in a scratch repository.
+    const migration = "supabase/migrations/20261019122405_lineup_art_archive.sql";
+    const scratch = mkdtempSync(join(tmpdir(), "lineup-art-gen-"));
+    try {
+      for (const rel of [migration, "packages/shared/src/lineup-art-rule.ts", "scripts/lineup-art/archive.json"])
+        cpSync(join(root, rel), join(scratch, rel));
+      writeFileSync(join(scratch, "package.json"), '{ "type": "module" }\n');
+      const gen = readFileSync(join(root, "scripts/lineup-art/gen.mjs"), "utf8");
+      const listed = gen.replace("const APPLIED_ARCHIVE_MIGRATIONS = [];", `const APPLIED_ARCHIVE_MIGRATIONS = ["${migration}"];`);
+      expect(listed).not.toBe(gen);
+      writeFileSync(join(scratch, "scripts/lineup-art/gen.mjs"), listed);
+      const runGen = () => spawnSync(process.execPath, ["scripts/lineup-art/gen.mjs"], { cwd: scratch, encoding: "utf8" });
+      const before = readFileSync(join(scratch, migration), "utf8");
+
+      // The archive as it went live: nothing to rewrite, so the generator runs.
+      expect(runGen().status).toBe(0);
+      expect(readFileSync(join(scratch, migration), "utf8")).toBe(before);
+
+      // One drawing suits one more job: the live migration's block would change, so it stops.
+      const archivePath = join(scratch, "scripts/lineup-art/archive.json");
+      const archive = JSON.parse(readFileSync(archivePath, "utf8"));
+      archive[0].jobs.push("zz test job");
+      writeFileSync(archivePath, `${JSON.stringify(archive, null, 2)}\n`);
+      const run = runGen();
+      expect(run.status).toBe(2);
+      expect(run.stderr).toContain(`archive changed after ${migration} went live`);
+      expect(readFileSync(join(scratch, migration), "utf8")).toBe(before);
+    } finally {
+      rmSync(scratch, { recursive: true, force: true });
+    }
   });
 });
