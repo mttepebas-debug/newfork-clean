@@ -129,6 +129,21 @@
   justify-content: center;
   text-decoration: none;
 }
+/* The crash card's sentence breaks into even lines, never one word alone. */
+:is(.page-crash, .app-crash) .load-error-copy p {
+  text-wrap: balance;
+}
+/* The app's own crash screen: the screen is the area, so the card keeps the
+   phone edge it has in a page area (12 px), not that plus the screen's. */
+main.app-crash > .load-error {
+  margin: 0;
+}
+/* main.: wins over styles.css's padding whichever file loads last. */
+@media (max-width: 720px) {
+  main.app-crash {
+    padding: 12px;
+  }
+}
 
 @media (max-width: 720px) {
   .load-error:not(.inset) {
