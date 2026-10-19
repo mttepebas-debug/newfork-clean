@@ -18,8 +18,15 @@ const PAGES: [path: string, frame: string, fixed: string[]][] = [
   ["/app/employee-hub/shift-hub?hub_view=requests", ".sx-workbench", ["h1", ".sx-tabs", ".sx-filters"]],
   ["/app/employee-hub/shift-hub?hub_view=history", ".sx-workbench", ["h1", ".sx-tabs", ".sx-filters"]],
   ["/app/employee-hub/my-availability?section=time-off", '.employee-weekly-workspace > [role="tabpanel"]', ["h1", '[role="tablist"]']],
-  ["/app/announcements", ".announcement-reader-list", ["h1", ".catalog-toolbar"]],
 ];
+// Announcements already scrolls its list in the list pages' frame (frozen-header.spec.ts, phone-page-top.spec.ts).
+
+/** A tall block of rows at the end of the list (a frame cannot shrink below its own padding, so not padding). */
+const lengthen = (element: Element) => {
+  const rows = document.createElement("div");
+  rows.style.cssText = "display: block; flex: none; height: 2000px; grid-column: 1 / -1";
+  element.append(rows);
+};
 
 const names = ["Maria Lopez", "Hannah Lee", "Emre Person", "Ali Kaya", "Zeynep Arslan", "Mehmet Demir", "Ayse Yilmaz", "John Park",
   "Lucia Gomez", "Tom Reed", "Sara Kim", "Omar Haddad", "Nina Patel", "Leo Rossi", "Ivy Chen", "Ben Carter", "Mia Brooks", "Kai Tanaka"];
@@ -86,9 +93,7 @@ for (const [path, frame, fixed] of PAGES) {
     expect(open.sideways, "wider than the screen").toBeLessThanOrEqual(0);
     // A long list (room added to the frame) scrolls in its frame; the page still doesn't, and the top stays.
     const before = await Promise.all(fixed.map((selector) => topOf(page, selector)));
-    await list.evaluate((element) => {
-      (element as HTMLElement).style.paddingBottom = "2000px";
-    });
+    await list.evaluate(lengthen);
     const long = await room(page, frame);
     expect(long.page, "the page scrolls with a long list").toBeLessThanOrEqual(0);
     expect(long.list, "the list scrolls").toBeGreaterThan(1000);
@@ -139,9 +144,7 @@ test("phone: a pull refreshes My shifts only while its days are at their top (em
   await page.goto("/app/employee-hub/schedule");
   const frame = page.locator(".ems-frame");
   await expect(frame).toBeVisible({ timeout: 30_000 });
-  await frame.evaluate((element) => {
-    (element as HTMLElement).style.paddingBottom = "2000px";
-  });
+  await frame.evaluate(lengthen);
   await page.evaluate(() => {
     const mark = document.querySelector(".app-main > .pull-mark")!;
     const w = window as unknown as { __refreshes: number };
