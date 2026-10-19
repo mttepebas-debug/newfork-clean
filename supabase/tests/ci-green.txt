@@ -56,6 +56,7 @@ supabase/tests/location_short_names.test.sql
 supabase/tests/management_job_rules.test.sql
 supabase/tests/membership_two_access_slots.test.sql
 supabase/tests/net_access_stays_out_of_reach.test.sql
+supabase/tests/no_management_view_of_self.test.sql
 supabase/tests/onboarding_composite_tenant_constraints.test.sql
 supabase/tests/one_workspace_cannot_see_another.test.sql
 supabase/tests/organization_basics_rls.test.sql
