@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(43);
 
 -- ROL-CIFT slice 4.1 (design §4.7, §4.8; KARARLAR S-165, S-167, S-168). Changing somebody's access
 -- closes what giving the employee access up leaves open, the way a termination does, and shows it
@@ -193,9 +193,6 @@ select is((select c.status from public.shift_exchange_cases c where c.owner_id =
   'Eda''s cover closes when her access is removed');
 select is((select s.employee_id from public.schedule_published_shifts s where s.id = tests.id('ca:shift:eda-1')),
   tests.id('ca:eda'), 'and she keeps the shift, as Remove access says');
-
--- BL-1157: the owner_target_ok switch, set by no action since the decision chain, is gone.
-select hasnt_column('app_private', 'authz_actions', 'owner_target_ok', 'the core has no owner_target_ok switch');
 
 select * from finish();
 rollback;

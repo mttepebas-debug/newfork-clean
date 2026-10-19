@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(23);
+select plan(24);
 
 -- What FOUNDATION-B deletes stays deleted. Each step adds its objects here in
 -- the commit that drops them, so a migration, a restored dump or a copied
@@ -547,7 +547,9 @@ insert into retired (kind, name, step) values
   -- 1.2: who holds the employee slot, not who ranks as an employee.
   ('function', 'ranks_as_employee', 'ROL-CIFT'),
   -- 3.1: the owner's own time off follows the decision chain; nothing records it approved at once.
-  ('function', 'time_off_is_the_owners_own', 'ROL-CIFT');
+  ('function', 'time_off_is_the_owners_own', 'ROL-CIFT'),
+  -- 4.1 (BL-1157): the core's owner_target_ok switch, set by no action since the decision chain.
+  ('private_column', 'authz_actions.owner_target_ok', 'ROL-CIFT');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
@@ -592,6 +594,16 @@ select is(
     order by 1
   ),
   '{}'::text[], 'retired columns stay gone'
+);
+select is(
+  array(
+    select r.name from retired r
+    join information_schema.columns c
+      on c.table_schema = 'app_private' and c.table_name || '.' || c.column_name = r.name
+    where r.kind = 'private_column'
+    order by 1
+  ),
+  '{}'::text[], 'retired private columns stay gone'
 );
 select is(
   array(
