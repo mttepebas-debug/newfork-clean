@@ -12,7 +12,7 @@ const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const context = {
   userId,
   workspace: { id: workspaceId, name: "Meyhouse" },
-  membership: { role: "manager", status: "active" },
+  membership: { access: { employee: false, management: "manager" }, status: "active" },
   permissions: [],
   actions: [],
 } as unknown as ActiveWorkspaceContext;

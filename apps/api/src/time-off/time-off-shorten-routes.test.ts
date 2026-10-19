@@ -10,7 +10,7 @@ const requestId = "98050000-0000-4000-8000-000000000001";
 const context = {
   userId,
   workspace: { id: workspaceId, name: "Meyhouse" },
-  membership: { role: "manager", status: "active" },
+  membership: { access: { employee: false, management: "manager" }, status: "active" },
   permissions: [],
   actions: [],
 } as unknown as ActiveWorkspaceContext;

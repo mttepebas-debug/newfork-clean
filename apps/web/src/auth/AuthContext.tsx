@@ -68,9 +68,8 @@ function contextFingerprint(context: ActiveWorkspaceContext | null): string {
   return JSON.stringify({
     workspaceId: context.workspace.id,
     membershipId: context.membership.id,
-    role: context.membership.role,
+    access: context.membership.access,
     status: context.membership.status,
-    allLocations: context.membership.allLocations,
     locationIds: [...context.locationScope.locationIds].sort(),
     permissions: [...context.permissions].sort(),
   });

@@ -6,6 +6,7 @@ import {
   type AuthzTargetArgs,
   type TargetedAuthzAction,
 } from "@newfork/shared";
+import { membershipClass } from "./access";
 
 /**
  * May the person signed in do this? The one question every gate on screen asks.
@@ -43,7 +44,7 @@ export function can(
   return ask(
     {
       workspaceId: context.workspace.id,
-      role: context.membership.role,
+      role: membershipClass(context.membership),
       // A missing required document holds a person back like unfinished onboarding.
       status: context.documentAccess.restricted ? "restricted" : "active",
       // ponytail: allLocations sends an empty list; that reaches nowhere, which

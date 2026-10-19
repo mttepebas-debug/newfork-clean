@@ -33,9 +33,8 @@ const context: ActiveWorkspaceContext = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: [
     "workspace.read",

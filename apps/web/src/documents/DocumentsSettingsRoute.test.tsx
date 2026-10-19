@@ -15,7 +15,7 @@ vi.mock("../auth/AuthContext", () => ({
     context: {
       permissions: auth.permissions,
       actions: auth.actions,
-      membership: { role: "manager" },
+      membership: { access: { employee: false, management: "manager" } },
     },
   }),
 }));

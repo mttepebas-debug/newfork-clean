@@ -161,9 +161,8 @@ function contextOf(persona: Persona): ActiveWorkspaceContext {
       id: "7c2f3d4e-5a61-4728-9b3a-4c5d6e7f8091",
       userId: "6b1e2c3d-4f50-4617-8a29-3b4c5d6e7f80",
       workspaceId: "w",
-      role: persona.role,
+      access: persona.role === "employee" ? { employee: true, management: null } : { employee: false, management: persona.role },
       status: "active",
-      allLocations: persona.role !== "manager",
     },
     // The role's grants as resolve_workspace_context_service lists them.
     permissions:

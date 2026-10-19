@@ -29,7 +29,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: "b1051002-0000-4000-8000-000000000001" },
-      membership: { role: "owner" },
+      membership: { access: { employee: false, management: "owner" } },
       permissions: ["roles.read", "roles.manage"],
     },
     refresh,

@@ -63,6 +63,7 @@ import {
   setLocationArchived,
 } from "../settings/organization-data";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
+import { membershipClass } from "../auth/access";
 
 type OwnerStep = 1 | 2 | 3 | 4;
 
@@ -271,7 +272,7 @@ export default function OwnerOnboardingPage() {
 
   if (!context) return null;
   if (
-    context.membership.role !== "owner" ||
+    membershipClass(context.membership) !== "owner" ||
     context.onboarding.status === "complete"
   ) {
     return <Navigate to="/app" replace />;

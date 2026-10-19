@@ -292,7 +292,7 @@ export function App() {
                   element={
                     <PermissionRoute
                       anyOf={["workspace.read"]}
-                      roles={["owner", "admin", "manager"]}
+                      management
                     >
                       <WorkspacePage />
                     </PermissionRoute>
@@ -303,7 +303,7 @@ export function App() {
                   element={
                     <PermissionRoute
                       anyOf={["schedule.read"]}
-                      roles={["owner", "admin", "manager"]}
+                      management
                     >
                       <DesktopOnlyRoute message="Schedule is available on a computer.">
                         <SchedulePage />
@@ -316,7 +316,7 @@ export function App() {
                   element={
                     <PermissionRoute
                       anyOf={["schedule.export", "schedule.read"]}
-                      roles={["owner", "admin", "manager"]}
+                      management
                     >
                       <DesktopOnlyRoute message="Schedule is available on a computer.">
                         <SchedulePage />
@@ -329,7 +329,7 @@ export function App() {
                   element={
                     <PermissionRoute
                       anyOf={["schedule.templates.read"]}
-                      roles={["owner", "admin", "manager"]}
+                      management
                     >
                       <DesktopOnlyRoute message="Schedule is available on a computer.">
                         <SchedulePage />
@@ -344,7 +344,7 @@ export function App() {
                       element={
                         <PermissionRoute
                           anyOf={["schedule.read"]}
-                          roles={["owner", "admin", "manager"]}
+                          management
                         >
                           <ScheduleShiftBadgeLabPage />
                         </PermissionRoute>
@@ -355,7 +355,7 @@ export function App() {
                       element={
                         <PermissionRoute
                           anyOf={["schedule.export", "schedule.read"]}
-                          roles={["owner", "admin", "manager"]}
+                          management
                         >
                           <ScheduleShiftBadgeLabPage />
                         </PermissionRoute>
@@ -366,7 +366,7 @@ export function App() {
                       element={
                         <PermissionRoute
                           anyOf={["schedule.templates.read"]}
-                          roles={["owner", "admin", "manager"]}
+                          management
                         >
                           <ScheduleShiftBadgeLabPage />
                         </PermissionRoute>
@@ -391,7 +391,7 @@ export function App() {
                   element={
                     <PermissionRoute
                       anyOf={["availability.read"]}
-                      roles={["owner", "admin", "manager"]}
+                      management
                     >
                       <AvailabilityPage />
                     </PermissionRoute>

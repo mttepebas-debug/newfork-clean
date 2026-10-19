@@ -138,9 +138,8 @@ function context(actions: readonly string[]): ActiveWorkspaceContext {
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       workspaceId: W,
       // Owner with every Schedule permission: only the core's list decides.
-      role: "owner",
+      access: { employee: false, management: "owner" },
       status: "active",
-      allLocations: true,
     },
     actions: [...actions],
     permissions: [

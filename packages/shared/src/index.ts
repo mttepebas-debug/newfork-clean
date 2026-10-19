@@ -210,15 +210,46 @@ export const organizationLogoMimeTypes = [
 ] as const;
 export const organizationLogoMaxBytes = 5 * 1024 * 1024;
 
+/** A management access: Manager, Admin or Owner (ROL-CIFT, design §3). */
+export const managementAccessSchema = z.enum(["manager", "admin", "owner"]);
+export type ManagementAccess = z.infer<typeof managementAccessSchema>;
+
+/**
+ * The two access slots of a membership (ROL-CIFT, KARARLAR S-164 ... S-169):
+ * the employee slot (held or not) and the management slot (none, Manager,
+ * Admin or Owner). At least one is held.
+ */
+export const workspaceAccessSchema = z
+  .object({
+    employee: z.boolean(),
+    management: managementAccessSchema.nullable(),
+  })
+  .refine((access) => access.employee || access.management !== null, {
+    message: "A membership holds the employee access, a management access, or both",
+  });
+export type WorkspaceAccess = z.infer<typeof workspaceAccessSchema>;
+
+/** Rank on the management side; somebody who only works ranks as an employee. */
+export function accessRank(access: WorkspaceAccess): 1 | 2 | 3 | 4 {
+  if (access.management === "owner") return 4;
+  if (access.management === "admin") return 3;
+  if (access.management === "manager") return 2;
+  return 1;
+}
+
+/** The one class a screen shows: the management access's, else employee. */
+export function accessClass(access: WorkspaceAccess): WorkspaceRole {
+  return access.management ?? "employee";
+}
+
 export const workspaceMembershipSchema = z.object({
   id: z.string().uuid(),
   userId: z.string().uuid(),
   workspaceId: z.string().uuid(),
-  role: workspaceRoleSchema,
+  access: workspaceAccessSchema,
   roleId: z.string().uuid().optional(),
   roleName: z.string().trim().min(1).max(64).optional(),
   status: z.literal("active"),
-  allLocations: z.boolean().default(true),
 });
 export type WorkspaceMembership = z.infer<typeof workspaceMembershipSchema>;
 
@@ -663,7 +694,8 @@ export const activeWorkspaceRowSchema = z.object({
   schedule_logo_offset_x: z.coerce.number().min(-100).max(100).default(0),
   schedule_logo_offset_y: z.coerce.number().min(-100).max(100).default(0),
   membership_id: z.string().uuid(),
-  workspace_role: workspaceRoleSchema,
+  management_access: managementAccessSchema.nullable(),
+  employee_access: z.boolean(),
   membership_role_id: z.string().uuid().optional(),
   membership_role_name: z.string().trim().min(1).max(64).optional(),
   permission_keys: z.array(permissionSchema),
@@ -701,17 +733,16 @@ export function activeWorkspaceContextFromRow(
       id: row.membership_id,
       userId: row.user_id,
       workspaceId: row.workspace_id,
-      role: row.workspace_role,
+      access: { employee: row.employee_access, management: row.management_access },
       roleId: row.membership_role_id,
       roleName: row.membership_role_name,
       status: "active",
-      allLocations: row.all_locations,
     },
     permissions: [
       ...new Set([
         ...row.permission_keys.filter(
           (permission) =>
-            row.workspace_role !== "employee" ||
+            row.management_access !== null ||
             employeeEligiblePermissions.includes(permission),
         ),
         ...personalRolePermissions,

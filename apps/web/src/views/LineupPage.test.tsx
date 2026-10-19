@@ -20,7 +20,7 @@ import { LineupPage } from "./LineupPage";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: { id: ws, name: "Harbor & Vine" },
-  membership: { role: "owner", status: "active", allLocations: true },
+  membership: { access: { employee: false, management: "owner" }, status: "active",},
   permissions: ["schedule.read", "schedule.publish"],
   actions: ["schedule.read", "lineup.read", "lineup.share"],
 } as unknown as ActiveWorkspaceContext;

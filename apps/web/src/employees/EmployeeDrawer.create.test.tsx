@@ -37,7 +37,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: "11000000-0000-4000-8000-000000000001" },
-      membership: { role: "owner" },
+      membership: { access: { employee: false, management: "owner" } },
       permissions: ["employees.manage"],
       // The core's answer: inviting is employee.invite, not a permission key.
       actions: ["employee.create", "employee.invite"],

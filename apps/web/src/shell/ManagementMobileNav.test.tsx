@@ -10,7 +10,7 @@ import { AppShell } from "./AppShell";
 let context: {
   workspace: { id: string; name: string };
   userId: string;
-  membership: { role: string };
+  membership: { access: { employee: boolean; management: string | null } };
   permissions: string[];
   actions: string[];
 };
@@ -28,7 +28,7 @@ vi.mock("../employee-hub/shift-exchanges/useExchangeRealtime", () => ({
 const owner = {
   workspace: { id: "w", name: "Meyhouse" },
   userId: "u",
-  membership: { role: "owner" },
+  membership: { access: { employee: false, management: "owner" } },
   permissions: [
     "workspace.read",
     "workspace.manage",
@@ -47,7 +47,7 @@ const owner = {
 // A manager without the dashboard, documents or any settings permission.
 const manager = {
   ...owner,
-  membership: { role: "manager" },
+  membership: { access: { employee: false, management: "manager" } },
   permissions: [
     "schedule.read",
     "schedule.time_off_requests.read",
@@ -128,7 +128,7 @@ describe("ManagementMobileNav in the app shell", () => {
   });
 
   it("employee: no management bar (the Employee Hub bar serves them)", () => {
-    context = { ...owner, membership: { role: "employee" }, permissions: ["workspace.read"] };
+    context = { ...owner, membership: { access: { employee: true, management: null } }, permissions: ["workspace.read"] };
     mount("/app/employee-hub");
     expect(screen.queryByRole("navigation", { name: "Main navigation" })).toBeNull();
   });
@@ -169,7 +169,7 @@ describe("ManagementMobileNav in the app shell", () => {
 describe("the employee view's phone bar", () => {
   const employee = {
     ...owner,
-    membership: { role: "employee" },
+    membership: { access: { employee: true, management: null } },
     permissions: ["workspace.read", "announcements.read"],
   };
   const employeeBar = () => screen.getByRole("navigation", { name: "Employee navigation" });
@@ -272,7 +272,7 @@ describe("the management phone's top bar", () => {
   // Mert 2026-10-17: "çalışan sayfalarına da üst çubuk ekleyelim".
   it("is drawn in the employee's own frame too", () => {
     phoneWidth(true);
-    context = { ...owner, membership: { role: "employee" }, permissions: ["workspace.read"], actions: ["notifications.read_own"] };
+    context = { ...owner, membership: { access: { employee: true, management: null } }, permissions: ["workspace.read"], actions: ["notifications.read_own"] };
     mount("/app/employee-hub");
     const bar = topBar()!;
     expect(within(bar).getByRole("link", { name: "Meyhouse. Switch workspace" })).toBeTruthy();

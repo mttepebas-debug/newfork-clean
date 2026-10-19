@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  accessClass,
+  accessRank,
   activeWorkspaceContextSchema,
+  workspaceMembershipSchema,
   activeWorkspaceContextFromRow,
   accountProfileSchema,
   accountPendingInvitationSchema,
@@ -876,7 +879,7 @@ describe("shared contracts", () => {
         id: membershipId,
         userId,
         workspaceId,
-        role: "manager",
+        access: { employee: false, management: "manager" },
         status: "active",
       },
       permissions: permissionsForRole("manager"),
@@ -900,6 +903,35 @@ describe("shared contracts", () => {
     );
   });
 
+  it("a membership names its two accesses, at least one held (ROL-CIFT)", () => {
+    const base = { id: membershipId, userId, workspaceId, status: "active" as const };
+    expect(workspaceMembershipSchema.safeParse(base).success).toBe(false);
+    expect(
+      workspaceMembershipSchema.safeParse({ ...base, role: "manager" }).success,
+    ).toBe(false);
+    expect(
+      workspaceMembershipSchema.safeParse({
+        ...base,
+        access: { employee: false, management: null },
+      }).success,
+    ).toBe(false);
+    expect(
+      workspaceMembershipSchema.parse({
+        ...base,
+        access: { employee: true, management: "manager" },
+      }).access,
+    ).toEqual({ employee: true, management: "manager" });
+  });
+
+  it("ranks an access by its management side; somebody who only works ranks as an employee", () => {
+    expect(accessRank({ employee: true, management: null })).toBe(1);
+    expect(accessRank({ employee: true, management: "manager" })).toBe(2);
+    expect(accessRank({ employee: false, management: "admin" })).toBe(3);
+    expect(accessRank({ employee: true, management: "owner" })).toBe(4);
+    expect(accessClass({ employee: true, management: null })).toBe("employee");
+    expect(accessClass({ employee: true, management: "owner" })).toBe("owner");
+  });
+
   it("rejects a membership from another workspace", () => {
     expect(() =>
       activeWorkspaceContextSchema.parse({
@@ -909,7 +941,7 @@ describe("shared contracts", () => {
           id: membershipId,
           userId,
           workspaceId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
-          role: "employee",
+          access: { employee: true, management: null },
           status: "active",
         },
         permissions: permissionsForRole("employee"),
@@ -929,7 +961,7 @@ describe("shared contracts", () => {
           id: membershipId,
           userId: "16fe2550-8960-480c-9874-cbc76a8e56a9",
           workspaceId,
-          role: "employee",
+          access: { employee: true, management: null },
           status: "active",
         },
         permissions: permissionsForRole("employee"),
@@ -948,7 +980,7 @@ describe("shared contracts", () => {
         id: membershipId,
         userId,
         workspaceId,
-        role: "manager",
+        access: { employee: false, management: "manager" },
         status: "active",
       },
       permissions: permissionsForRole("manager"),
@@ -975,7 +1007,8 @@ describe("shared contracts", () => {
     workspace_id: workspaceId,
     workspace_name: "Northstar",
     membership_id: membershipId,
-    workspace_role: "owner",
+    management_access: "owner",
+    employee_access: false,
     permission_keys: [],
     all_locations: true,
     onboarding_status: "incomplete",
@@ -1026,7 +1059,8 @@ describe("shared contracts", () => {
         workspace_id: workspaceId,
         workspace_name: "Northstar",
         membership_id: membershipId,
-        workspace_role: "employee",
+        management_access: null,
+    employee_access: true,
         membership_role_id: "49ea9eb6-11dd-4d09-8d9e-296bea0fd0c5",
         membership_role_name: "Host",
         permission_keys: ["workspace.read", "roles.read"],
@@ -1040,7 +1074,7 @@ describe("shared contracts", () => {
       },
     );
 
-    expect(context.membership.role).toBe("employee");
+    expect(context.membership.access).toEqual({ employee: true, management: null });
     expect(context.actions).toEqual(["workspace.read", "employee_hub.read"]);
     expect(context.documentAccess).toEqual({ restricted: true });
     expect(context.membership.roleName).toBe("Host");
@@ -1067,7 +1101,8 @@ describe("shared contracts", () => {
       workspace_id: workspaceId,
       workspace_name: "Northstar",
       membership_id: membershipId,
-      workspace_role: "admin",
+      management_access: "admin",
+    employee_access: false,
       permission_keys: [],
       all_locations: true,
       onboarding_status: "complete",
@@ -1078,7 +1113,7 @@ describe("shared contracts", () => {
       document_restricted: false,
     });
 
-    expect(context.membership.allLocations).toBe(true);
+    expect(context.membership.access).toEqual({ employee: false, management: "admin" });
     expect(context.onboarding.revision).toBe(3);
     expect(context.locationScope).toEqual({
       allLocations: true,
@@ -1093,7 +1128,8 @@ describe("shared contracts", () => {
         workspace_id: workspaceId,
         workspace_name: "Northstar",
         membership_id: membershipId,
-        workspace_role: "employee",
+        management_access: null,
+    employee_access: true,
         permission_keys: ["workspace.read", "workspace.delete"],
         all_locations: true,
         onboarding_status: "complete",
@@ -1110,7 +1146,8 @@ describe("shared contracts", () => {
         workspace_id: workspaceId,
         workspace_name: "Northstar",
         membership_id: membershipId,
-        workspace_role: "employee",
+        management_access: null,
+    employee_access: true,
         all_locations: true,
         onboarding_status: "complete",
         onboarding_current_step: 5,

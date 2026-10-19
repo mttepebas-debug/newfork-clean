@@ -50,7 +50,7 @@ describe("no access (FB-6.1.9)", () => {
     auth.context = {
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", name: "Meyhouse" },
-      membership: { role: "manager" },
+      membership: { access: { employee: false, management: "manager" } },
       actions: ["workspace.read"],
     };
     render(

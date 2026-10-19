@@ -35,9 +35,8 @@ const context = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: [
     "workspace.read",
@@ -167,7 +166,7 @@ function renderPage(
         <Routes>
           <Route path="/app/schedule/requests" element={<ScheduleRequestsPage />} />
           <Route path="/app/availability" element={
-            <PermissionRoute roles={["owner", "admin", "manager"]} anyOf={["schedule.read"]}>
+            <PermissionRoute management anyOf={["schedule.read"]}>
               <h1>Team Availability</h1>
             </PermissionRoute>
           } />
@@ -201,7 +200,7 @@ beforeEach(() => {
 
 describe("Requests > Time off (FB-6.3.6)", () => {
   it.each(["owner", "admin", "manager"] as const)("redirects an old availability link for %s without loading an approval queue", async role => {
-    activeContext = { ...context, membership: { ...context.membership, role }, permissions: ["workspace.read", "schedule.read"] };
+    activeContext = { ...context, membership: { ...context.membership, access: { employee: false, management: role } }, permissions: ["workspace.read", "schedule.read"] };
     renderPage("/app/schedule/requests?tab=availability&request=old&legacy=1&case=old&offer=old");
     await screen.findByRole("heading", { name: "Team Availability" });
     expect(screen.getByLabelText("Current URL").textContent).toBe("/app/availability");
@@ -209,7 +208,7 @@ describe("Requests > Time off (FB-6.3.6)", () => {
     expect(getExchanges).not.toHaveBeenCalled();
   });
   it("preserves team access control for an employee following an old availability link", async () => {
-    activeContext = { ...context, membership: { ...context.membership, role: "employee" }, permissions: ["workspace.read"], actions: ["workspace.read", "employee_hub.read"] };
+    activeContext = { ...context, membership: { ...context.membership, access: { employee: true, management: null } }, permissions: ["workspace.read"], actions: ["workspace.read", "employee_hub.read"] };
     renderPage("/app/schedule/requests?tab=availability");
     // The old link opens team Availability, which shows the card in place,
     // not a silent trip home (Mert 2026-10-14).

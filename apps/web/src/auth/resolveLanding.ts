@@ -4,6 +4,7 @@ import type {
   WorkspaceSummary,
 } from "@newfork/shared";
 import { can } from "./can";
+import { membershipClass } from "./access";
 
 export const hubPath = "/workspaces";
 
@@ -66,10 +67,10 @@ export function appLandingPath(
   context: ActiveWorkspaceContext | null,
 ): string {
   if (!context) return hubPath;
-  if (context.membership.role === "employee")
-    return workspaceLandingPathForRole(context.membership.role);
+  if (membershipClass(context.membership) === "employee")
+    return workspaceLandingPathForRole(membershipClass(context.membership));
   if (can(context, "workspace.read"))
-    return workspaceLandingPathForRole(context.membership.role);
+    return workspaceLandingPathForRole(membershipClass(context.membership));
   if (can(context, "schedule.read")) return "/app/schedule";
   return hubPath;
 }
@@ -86,7 +87,7 @@ export function noAccessHomePath(
   refusedPath: string,
 ): string {
   const home =
-    context?.membership?.role === "employee"
+    (context?.membership ? membershipClass(context.membership) : undefined) === "employee"
       ? can(context, "employee_hub.read")
         ? workspaceLandingPathForRole("employee")
         : hubPath

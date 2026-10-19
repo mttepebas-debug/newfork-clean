@@ -16,9 +16,8 @@ function context(overrides: Partial<ActiveWorkspaceContext> = {}): ActiveWorkspa
       id: "55555555-5555-4555-8555-555555555555",
       userId,
       workspaceId,
-      role: "manager",
+      access: { employee: false, management: "manager" },
       status: "active",
-      allLocations: false,
     },
     documentAccess: { restricted: false },
     permissions: ["schedule.read", "schedule.manage", "schedule.publish"],
@@ -47,7 +46,7 @@ describe("can", () => {
     expect(can(context(), "schedule.publish", { locations: [B] })).toBe(false);
     // A blank location is never everywhere, not even for the owner.
     const owner = context({
-      membership: { ...context().membership, role: "owner" },
+      membership: { ...context().membership, access: { employee: false, management: "owner" } },
       locationScope: { allLocations: true, locationIds: [] },
     });
     expect(can(owner, "schedule.publish", { locations: [B] })).toBe(true);
@@ -66,7 +65,7 @@ describe("can", () => {
 
   it("says no to a person action asked without its person", () => {
     const admin = context({
-      membership: { ...context().membership, role: "admin" },
+      membership: { ...context().membership, access: { employee: false, management: "admin" } },
       permissions: ["employees.manage"],
     });
     // @ts-expect-error a person action must name its person

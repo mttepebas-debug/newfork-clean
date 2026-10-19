@@ -43,6 +43,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { ListOutline, LoadError, RefreshError } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { FieldNote } from "../shell/FieldNote";
+import { membershipClass } from "../auth/access";
 const blankRole = (): WorkspaceRoleInput => ({
   name: "",
   description: "",
@@ -94,7 +95,7 @@ export default function RolesSettingsPage() {
   );
   const canManage = Boolean(
     context?.permissions.includes("roles.manage") &&
-    ["owner", "admin"].includes(context.membership.role),
+    ["owner", "admin"].includes(membershipClass(context.membership)),
   );
   const [customMenuOpen, setCustomMenuOpen] = useState(false);
   const go = (id: string, initial: WorkspaceRoleInput | null = null) =>

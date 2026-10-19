@@ -28,9 +28,8 @@ const context: ActiveWorkspaceContext = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: ["employees.read", "employees.manage", "employees.archive"],
   actions: [],
@@ -90,7 +89,7 @@ describe("employee directory routes", () => {
   describe("creating asks the core", () => {
     const manager = {
       ...context,
-      membership: { ...context.membership, role: "manager" as const, allLocations: false },
+      membership: { ...context.membership, access: { employee: false, management: "manager" },},
       permissions: ["workspace.read", "employees.read"] as ActiveWorkspaceContext["permissions"],
       locationScope: { allLocations: false, locationIds: [] },
     } satisfies ActiveWorkspaceContext;

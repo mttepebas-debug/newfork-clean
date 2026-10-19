@@ -17,7 +17,7 @@ vi.mock("../lib/supabase", () => ({
 const context = {
   userId: me,
   workspace: { id: w, name: "Harbor & Vine" },
-  membership: { role: "manager" },
+  membership: { access: { employee: false, management: "manager" } },
   permissions: [],
   actions: ["notifications.read_own"],
 };

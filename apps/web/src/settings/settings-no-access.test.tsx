@@ -19,7 +19,7 @@ const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: { id: workspaceId, name: "Meyhouse" },
-  membership: { role: "manager", status: "active", allLocations: false },
+  membership: { access: { employee: false, management: "manager" }, status: "active",},
   // Enough to open every page, so only the API's answer decides.
   permissions: [
     "settings.locations.read", "settings.jobs.read", "settings.shift_catalog.read",

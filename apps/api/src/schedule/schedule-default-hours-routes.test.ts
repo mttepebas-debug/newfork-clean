@@ -6,7 +6,7 @@ import type { ScheduleReadService } from "./schedule-service";
 import { rpcFailure } from "../http-error";
 const id = "afa70000-0000-4000-8000-000000000001";
 const actor = "afa70000-0000-4000-8000-000000000002";
-const context = { userId: actor, workspace: { id }, membership: { role: "owner", status: "active" }, permissions: ["schedule.manage"], actions: ["schedule.edit"] } as ActiveWorkspaceContext;
+const context = { userId: actor, workspace: { id }, membership: { access: { employee: false, management: "owner" }, status: "active" }, permissions: ["schedule.manage"], actions: ["schedule.edit"] } as ActiveWorkspaceContext;
 const body = { expected_session_revision: 3, starts_on: "2035-01-15", ends_on: "2035-01-21", shift_ids: [id] };
 function setup(value: ActiveWorkspaceContext | null = context) {
   const app = Fastify();

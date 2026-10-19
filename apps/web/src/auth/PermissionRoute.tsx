@@ -1,13 +1,13 @@
 import type {
   ActiveWorkspaceContext,
   Permission,
-  WorkspaceRole,
 } from "@newfork/shared";
 import type { ReactNode } from "react";
 import { Navigate } from "react-router";
 import { useAuth } from "./AuthContext";
 import { NoAccessRoute } from "../shell/NoAccessState";
 import { appLandingPath } from "./resolveLanding";
+import { hasManagementAccess } from "./access";
 
 /**
  * Does their role list this permission key. Legacy: a new gate asks the core
@@ -25,17 +25,18 @@ export function holdsPermission(
 export function PermissionRoute({
   children,
   anyOf,
-  roles,
+  management = false,
 }: {
   readonly children: ReactNode;
   readonly anyOf: readonly Permission[];
-  readonly roles?: readonly WorkspaceRole[];
+  /** Only for a management access (Manager, Admin or Owner; ROL-CIFT). */
+  readonly management?: boolean;
 }) {
   const { context } = useAuth();
   if (!context) return <Navigate to={appLandingPath(context)} replace />;
   // A refused address shows the no-access card in place (Mert 2026-10-14).
   if (
-    (roles && !roles.includes(context.membership.role)) ||
+    (management && !hasManagementAccess(context.membership)) ||
     !anyOf.some((permission) => holdsPermission(context, permission))
   ) {
     return <NoAccessRoute />;

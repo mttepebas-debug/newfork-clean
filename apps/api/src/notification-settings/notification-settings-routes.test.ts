@@ -26,7 +26,7 @@ function contextWith(actions: readonly AuthzAction[]): ActiveWorkspaceContext {
       logo_updated_at: null,
       schedule_logo_placement: { scale: 1, offset_x: 0, offset_y: 0 },
     },
-    membership: { id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4", userId, workspaceId, role: "owner", status: "active", allLocations: true },
+    membership: { id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4", userId, workspaceId, access: { employee: false, management: "owner" }, status: "active",},
     permissions: [],
     actions: [...actions],
     onboarding: { status: "complete", currentStep: 2 },

@@ -6,7 +6,7 @@ import type { ScheduleReadService } from "./schedule-service";
 import { rpcFailure } from "../http-error";
 const id = "afa80000-0000-4000-8000-000000000001";
 const actor = "afa80000-0000-4000-8000-000000000002";
-const context = { userId: actor, workspace: { id }, membership: { role: "owner", status: "active" }, permissions: ["schedule.manage"], actions: ["schedule.edit"] } as ActiveWorkspaceContext;
+const context = { userId: actor, workspace: { id }, membership: { access: { employee: false, management: "owner" }, status: "active" }, permissions: ["schedule.manage"], actions: ["schedule.edit"] } as ActiveWorkspaceContext;
 const shift = { location_id: id, employee_id: null, job_id: id, shift_type_id: null, scheduled_date: "2035-01-15", start_time: "18:00", end_time: "20:00", unpaid_break_minutes: 30, hide_time_on_badge: false, label_ids: [], note: "" };
 const body = { session_id: id, expected_session_revision: 3, shifts: [shift, shift] };
 const headers = { authorization: "Bearer test", "idempotency-key": actor };

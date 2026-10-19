@@ -32,7 +32,7 @@ const harbor = "11000000-0000-4000-8000-000000000002";
 const context = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: { id: workspaceId, name: "Harbor & Vine" },
-  membership: { role: "owner", status: "active", allLocations: true },
+  membership: { access: { employee: false, management: "owner" }, status: "active",},
   permissions: ["workspace.read", "announcements.read", "announcements.manage"],
   actions: [],
   onboarding: { status: "complete", currentStep: 2 },

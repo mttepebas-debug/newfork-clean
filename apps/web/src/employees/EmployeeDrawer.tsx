@@ -112,6 +112,7 @@ import {
 } from "./EmployeeLocationParts";
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { WindowAlert } from "../shell/WindowAlert";
+import { membershipClass } from "../auth/access";
 
 const sections = [
   ["profile", "Profile", UserRound],
@@ -457,7 +458,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   // A manager who may take them off a location but not end their employment
   // still sees Terminate, switched off, with the reason (FB-6.2.8).
   const managerCannotTerminate =
-    context?.membership.role === "manager" &&
+    (context ? membershipClass(context.membership) : undefined) === "manager" &&
     !props.creating &&
     !archived &&
     Boolean(detail.data) &&
@@ -1310,7 +1311,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       revokeMutation.isPending,
                       () => removeAccessMutation.mutate(),
                       removeAccessMutation.isPending,
-                      context?.membership.role ?? "employee",
+                      (context ? membershipClass(context.membership) : undefined) ?? "employee",
                       allowed,
                       roleNow,
                       setRolePicked,

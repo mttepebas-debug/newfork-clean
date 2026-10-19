@@ -19,6 +19,7 @@ import { RequestError } from "../lib/request-error";
 import { RefreshError } from "../shell/LoadState";
 import { AccountPageHeader } from "./components";
 import { FieldNote } from "../shell/FieldNote";
+import { membershipClass } from "../auth/access";
 
 export default function SecurityPage() {
   const { account, context, signOut } = useAuth();
@@ -56,8 +57,8 @@ export default function SecurityPage() {
               kind: "active_membership",
               workspace_id: context.workspace.id,
               workspace_name: context.workspace.name,
-              role_name: context.membership.role,
-              is_owner: context.membership.role === "owner",
+              role_name: membershipClass(context.membership),
+              is_owner: membershipClass(context.membership) === "owner",
             }]
           : [],
       );

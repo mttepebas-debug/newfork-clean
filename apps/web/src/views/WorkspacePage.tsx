@@ -43,6 +43,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { announcementCategoryLabel } from "../lib/announcementCategories";
+import { membershipClass } from "../auth/access";
 const widgetLabels: Record<WorkspaceWidgetId, string> = {
   operations: "Today",
   pending_requests: "Pending requests",
@@ -68,7 +69,7 @@ export function WorkspacePage() {
   // dashboard and the outline stays until both have answered, so the cards
   // never jump down when it paints (CI run 39023052297: 405 px on a phone).
   const ownerRole =
-    context?.membership.role === "owner" || context?.membership.role === "admin";
+    (context ? membershipClass(context.membership) : undefined) === "owner" || (context ? membershipClass(context.membership) : undefined) === "admin";
   const checklist = useQuery({
     queryKey: ownerSetupChecklistKey(workspaceId),
     queryFn: () => getOwnerSetupChecklistProgress(workspaceId),

@@ -22,9 +22,8 @@ const mismatchedContext = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId: otherWorkspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: ["workspace.read", "announcements.read", "announcements.manage"],
   actions: [],
@@ -374,7 +373,7 @@ describe("communication routes", () => {
   describe("Workspace home asks the core", () => {
     const employee = {
       ...activeContext,
-      membership: { ...activeContext.membership, role: "employee" as const, allLocations: false },
+      membership: { ...activeContext.membership, access: { employee: true, management: null },},
       permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"],
     } satisfies ActiveWorkspaceContext;
     const todoId = "a9700000-0000-4000-8000-000000000011";
@@ -428,7 +427,7 @@ describe("communication routes", () => {
     ] as const;
     const manager = {
       ...activeContext,
-      membership: { ...activeContext.membership, role: "manager" as const, allLocations: false },
+      membership: { ...activeContext.membership, access: { employee: false, management: "manager" },},
       permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"],
     } satisfies ActiveWorkspaceContext;
 

@@ -20,6 +20,7 @@ import {
 } from "../lib/supabase";
 import { requestAppNavigation } from "./leave-guard";
 import { roleLabel } from "./prebiz/PreBiz";
+import { membershipClass } from "../auth/access";
 
 /**
  * Where the account is, and where else it could be: the sidebar row above
@@ -128,7 +129,7 @@ export function WorkspaceSwitcher({
             <span className="workspace-switcher-text">
               <strong>{workspaceName}</strong>
               <span>
-                {context ? roleLabel[context.membership.role] : "Member"}
+                {context ? roleLabel[membershipClass(context.membership)] : "Member"}
               </span>
             </span>
             <Check size={15} aria-hidden />

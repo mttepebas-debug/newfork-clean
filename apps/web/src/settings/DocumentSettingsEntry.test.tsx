@@ -12,7 +12,7 @@ vi.mock("../auth/AuthContext", () => ({
     context: {
       permissions: auth.permissions,
       actions: auth.actions,
-      membership: { role: "admin", status: "active" },
+      membership: { access: { employee: false, management: "admin" }, status: "active" },
     },
   }),
 }));

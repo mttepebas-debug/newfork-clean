@@ -243,9 +243,8 @@ describe("AuthProvider", () => {
           id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
           userId: "new-user",
           workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
-          role: "owner",
+          access: { employee: false, management: "owner" },
           status: "active",
-          allLocations: true,
         },
         permissions: ["workspace.read"],
         onboarding: { status: "complete", currentStep: 2, revision: 1 },
@@ -278,7 +277,7 @@ describe("AuthProvider", () => {
   it("preserves a dirty decision form during same-account SIGNED_IN revalidation", async () => {
     window.localStorage.clear();
     const session = { user: { id: "same-user", email: "same@example.test", user_metadata: {} } };
-    const context = { userId: "same-user", workspace: { id: "org", name: "Team" }, membership: { role: "manager", status: "active", allLocations: true }, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } };
+    const context = { userId: "same-user", workspace: { id: "org", name: "Team" }, membership: { access: { employee: false, management: "manager" }, status: "active",}, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } };
     supabaseMock.getSession.mockResolvedValue({ data: { session }, error: null } as never);
     supabaseMock.resolveWorkspaceContext.mockResolvedValue(context);
     let listener: (event: string, session: unknown) => void = () => {};
@@ -304,7 +303,7 @@ describe("AuthProvider", () => {
 
   // BL-271: a shared tablet must not show the previous person's cached answers.
   describe("drops the previous person's cached answers", () => {
-    const contextFor = (userId: string) => ({ userId, workspace: { id: "org", name: "Team" }, membership: { role: "employee", status: "active", allLocations: true }, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } });
+    const contextFor = (userId: string) => ({ userId, workspace: { id: "org", name: "Team" }, membership: { access: { employee: true, management: null }, status: "active",}, permissions: ["workspace.read"], onboarding: { status: "complete", currentStep: 2, revision: 1 }, documentAccess: { restricted: false }, locationScope: { allLocations: true, locationIds: [] } });
     const sessionFor = (userId: string) => ({ user: { id: userId, email: `${userId}@example.test`, user_metadata: {} } });
 
     function seedCache(): QueryClient {

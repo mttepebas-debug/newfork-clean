@@ -28,7 +28,7 @@ const unfinished = workspace({
 
 const employeeContext = {
   workspace: { id: ready.id, name: ready.name },
-  membership: { role: "employee" },
+  membership: { access: { employee: true, management: null } },
   permissions: [],
 } as unknown as ActiveWorkspaceContext;
 
@@ -142,7 +142,7 @@ describe("noAccessHomePath", () => {
   const managerWith = (actions: string[]) =>
     ({
       workspace: { id: ready.id, name: ready.name },
-      membership: { role: "manager" },
+      membership: { access: { employee: false, management: "manager" } },
       // The permission key alone must not decide it: can() reads actions.
       permissions: ["workspace.read", "schedule.read"],
       actions,
@@ -170,7 +170,7 @@ describe("noAccessHomePath", () => {
   it("sends an employee to Employee Hub, whatever the core opens", () => {
     const employee = {
       ...managerWith(["workspace.read", "employee_hub.read"]),
-      membership: { role: "employee" },
+      membership: { access: { employee: true, management: null } },
     } as unknown as ActiveWorkspaceContext;
     expect(noAccessHomePath(employee, "/app/employees")).toBe("/app/employee-hub");
     expect(noAccessHomePath(employee, "/app/employee-hub")).toBe(hubPath);
@@ -180,7 +180,7 @@ describe("noAccessHomePath", () => {
   it("sends an employee the core holds out of Employee Hub straight to the hub", () => {
     const employee = {
       ...managerWith(["workspace.read"]),
-      membership: { role: "employee" },
+      membership: { access: { employee: true, management: null } },
     } as unknown as ActiveWorkspaceContext;
     expect(noAccessHomePath(employee, "/app/employees")).toBe(hubPath);
   });
@@ -196,7 +196,7 @@ describe("the page inside the workspace", () => {
   const managerDoing = (actions: string[]) =>
     ({
       workspace: { id: ready.id, name: ready.name },
-      membership: { role: "manager" },
+      membership: { access: { employee: false, management: "manager" } },
       permissions: ["workspace.read", "schedule.read"],
       actions,
     }) as unknown as ActiveWorkspaceContext;

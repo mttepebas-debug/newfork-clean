@@ -24,9 +24,8 @@ const owner = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: ["workspace.read", "schedule.read", "employees.read"],
   actions: ["employee_hub.read"],
@@ -68,7 +67,7 @@ describe("employee view switch (FB-6.2.8)", () => {
   });
 
   it("is not offered to an employee, whose only view is the employee view", () => {
-    current = { ...owner, membership: { ...owner.membership, role: "employee" } };
+    current = { ...owner, membership: { ...owner.membership, access: { employee: true, management: null } } };
     renderAt("/app/employee-hub");
     expect(sidebar().queryByText("Employee view")).toBeNull();
     expect(sidebar().queryByText("Management view")).toBeNull();
@@ -80,7 +79,7 @@ describe("employee view switch (FB-6.2.8)", () => {
   });
 
   it("offers it to a manager with an employee record too", () => {
-    current = { ...owner, membership: { ...owner.membership, role: "manager" } };
+    current = { ...owner, membership: { ...owner.membership, access: { employee: false, management: "manager" } } };
     renderAt("/app/schedule");
     expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });

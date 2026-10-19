@@ -116,9 +116,8 @@ const context = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: [
     "employees.read",
@@ -1903,7 +1902,7 @@ describe("EmployeeDrawer", () => {
     it("closes it to a manager, whatever onboarding review they hold", async () => {
       currentContext = {
         ...context,
-        membership: { ...context.membership, role: "manager" },
+        membership: { ...context.membership, access: { employee: false, management: "manager" } },
         locationScope: { allLocations: false, locationIds: detail.locations.map((l) => l.id) },
       };
       const { accept, changes } = await reviewButtons();
@@ -1917,7 +1916,7 @@ describe("EmployeeDrawer", () => {
         .spyOn(HTMLElement.prototype, "getClientRects")
         .mockReturnValue([{}] as unknown as DOMRectList);
       onTestFinished(() => rects.mockRestore());
-      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "admin" } } };
       const { changes } = await reviewButtons();
       fireEvent.click(changes);
       const box = await screen.findByRole("alertdialog");
@@ -1928,14 +1927,14 @@ describe("EmployeeDrawer", () => {
     });
 
     it("opens it to an admin for an employee", async () => {
-      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "admin" } } };
       const { accept, changes } = await reviewButtons();
       expect(accept.disabled).toBe(false);
       expect(changes.disabled).toBe(false);
     });
 
     it("closes it on one's own legal name", async () => {
-      currentContext = { ...context, membership: { ...context.membership, role: "admin" } };
+      currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "admin" } } };
       inviteRolesFixture.push({ id: adminRoleId, name: "Admin", systemKey: "admin", accessClass: "admin" });
       const { accept } = await reviewButtons({ role_id: adminRoleId, user_id: context.userId });
       expect(accept.disabled).toBe(true);
@@ -2374,7 +2373,7 @@ describe("EmployeeDrawer locations and access follow the server", () => {
   });
 
   it("shows a manager Terminate switched off, with the reason under Locations", async () => {
-    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "manager" } } };
     renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
     const terminate = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
     switchedOff(terminate);
@@ -3377,7 +3376,7 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
 
   // Review D2: Escape closes the reason bubble, not the drawer and its draft.
   it("spends Escape on the reason bubble, keeping the drawer", async () => {
-    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "manager" } } };
     const { onClose } = renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
     const terminate = await screen.findByRole("button", { name: "Terminate employee" });
     fireEvent.focus(terminate);
@@ -3390,7 +3389,7 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
   // #46 (BL-429): a manager reaches why Terminate is switched off by keyboard
   // and by tap, in the app's bubble; pressing it opens nothing.
   it("says why Terminate is switched off on focus and on a tap", async () => {
-    currentContext = { ...context, membership: { ...context.membership, role: "manager" } };
+    currentContext = { ...context, membership: { ...context.membership, access: { employee: false, management: "manager" } } };
     renderDrawer("employment", { ...detail, allowed: { ...detail.allowed, terminate: false } });
     const terminate = await screen.findByRole("button", { name: "Terminate employee" });
     fireEvent.focus(terminate);

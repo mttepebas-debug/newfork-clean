@@ -91,9 +91,8 @@ vi.mock("./auth/AuthContext", async () => {
       id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
       userId,
       workspaceId,
-      role,
+      access: role === "employee" ? { employee: true, management: null } : { employee: false, management: role },
       status: "active",
-      allLocations: true,
     },
     permissions: shared.permissionsForRole(role),
     // What the core would list for this role with every location: the

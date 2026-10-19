@@ -11,7 +11,7 @@ const fingerprint = "0123456789abcdef0123456789abcdef";
 const context = {
   userId,
   workspace: { id: workspaceId, name: "Meyhouse" },
-  membership: { role: "manager", status: "active" },
+  membership: { access: { employee: false, management: "manager" }, status: "active" },
   permissions: [],
   actions: [],
 } as unknown as ActiveWorkspaceContext;

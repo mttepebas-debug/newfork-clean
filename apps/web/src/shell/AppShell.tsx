@@ -42,6 +42,7 @@ import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
+import { membershipClass } from "../auth/access";
 
 interface NavItem {
   readonly to: string;
@@ -247,14 +248,14 @@ export function AppShell() {
     (accountAttention.data?.documents ?? 0) +
     (accountAttention.data?.workspaces ?? 0);
   if (!context) return null;
-  const isEmployee = context.membership.role === "employee";
+  const isEmployee = membershipClass(context.membership) === "employee";
   // Owner, admin and manager with an employee record of their own switch to
   // the employee view, which opens in the employee's own frame (FB-6.2.8).
   const canSwitchView = !isEmployee && can(context, "employee_hub.read");
   const inEmployeeView = canSwitchView && isEmployeeViewPath(location.pathname);
   const employeeShell = isEmployee || inEmployeeView;
-  const shellRole = employeeShell ? "employee" : context.membership.role;
-  const managementHome = workspaceLandingPathForRole(context.membership.role);
+  const shellRole = employeeShell ? "employee" : membershipClass(context.membership);
+  const managementHome = workspaceLandingPathForRole(membershipClass(context.membership));
   const visibleNavItems = navItems.filter(
     (item) =>
       (!item.roles || item.roles.includes(shellRole)) &&
@@ -271,8 +272,8 @@ export function AppShell() {
   );
   const canViewSettings =
     !employeeShell &&
-    (context.membership.role === "owner" ||
-      context.membership.role === "admin" ||
+    (membershipClass(context.membership) === "owner" ||
+      membershipClass(context.membership) === "admin" ||
       settingsNavItem.anyOf.some((permission) => permissions.has(permission)));
   const signOutAfterAvailabilityCheck = () =>
     requestAppNavigation(() => {

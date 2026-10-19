@@ -9,7 +9,7 @@ import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 
 const context = {
   workspace: { id: "31000000-0000-4000-8000-000000000001", name: "Meyhouse" },
-  membership: { role: "owner" },
+  membership: { access: { employee: false, management: "owner" } },
 } as never;
 
 vi.mock("../auth/AuthContext", () => ({

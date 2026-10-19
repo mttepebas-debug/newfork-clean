@@ -28,6 +28,7 @@ import {
   setDefaultWorkspace,
   supabaseClient,
 } from "../lib/supabase";
+import { membershipClass } from "../auth/access";
 
 export default function WorkspacesPage() {
   const { account, context, refresh } = useAuth();
@@ -225,7 +226,7 @@ export default function WorkspacesPage() {
         setError("Workspace context could not be loaded");
         return;
       }
-      navigate(workspaceDestinationFromRole(resolvedContext.membership.role), {
+      navigate(workspaceDestinationFromRole(membershipClass(resolvedContext.membership)), {
         replace: true,
       });
     } catch (activationError: unknown) {
@@ -300,7 +301,7 @@ export default function WorkspacesPage() {
         const next = remaining.find(workspace => workspace.isActive) ?? remaining[0];
         if (next) await selectActiveWorkspace(supabaseClient, next.id);
         const resolved = await refresh();
-        navigate(next && resolved ? workspaceDestinationFromRole(resolved.membership.role) : "/organization-switcher", { replace: true });
+        navigate(next && resolved ? workspaceDestinationFromRole(membershipClass(resolved.membership)) : "/organization-switcher", { replace: true });
       } else {
         await refresh();
         await reloadWorkspaces();
@@ -1110,7 +1111,7 @@ function workspaceSummaryFromContext(
   return {
     id: context.workspace.id,
     name: context.workspace.name,
-    role: context.membership.role,
+    role: membershipClass(context.membership),
     status: "active",
     isActive: true,
     onboarding: context.onboarding,

@@ -19,7 +19,7 @@ describe("current user avatar", () => {
     const context = activeWorkspaceContextSchema.parse({ userId,
       workspace: {id:workspaceId,name:"Self avatar"}, permissions:[], locationScope:{allLocations:false,locationIds:[]},
       onboarding:{status:"complete",currentStep:2}, documentAccess:{restricted:false},
-      membership:{id:"75000000-0000-4000-8000-000000000201",userId,workspaceId,role:"employee",status:"active"},
+      membership:{id:"75000000-0000-4000-8000-000000000201",userId,workspaceId,access: { employee: true, management: null },status:"active"},
     });
     const rpc = vi.fn(async () => ({data:null,error:null}));
     const app = Fastify();

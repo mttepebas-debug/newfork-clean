@@ -19,9 +19,8 @@ function contextWith(actions: AuthzAction[]): ActiveWorkspaceContext {
       id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
       userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
       workspaceId,
-      role: "manager",
+      access: { employee: false, management: "manager" },
       status: "active",
-      allLocations: false,
     },
     // Every key the Schedule screen used to ask about: it must no longer matter.
     permissions: [

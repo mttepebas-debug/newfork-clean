@@ -119,7 +119,7 @@ describe("ProtectedRoute", () => {
   it("offers an unfinished owner setup in the hub instead of forcing it", async () => {
     authState.value.error = null;
     authState.value.context = {
-      membership: { role: "owner" },
+      membership: { access: { employee: false, management: "owner" } },
       onboarding: { status: "incomplete", currentStep: 2 },
     } as never;
     renderRoute();
@@ -135,7 +135,7 @@ describe("ProtectedRoute", () => {
       authState.value.error = null;
       authState.value.context = {
         workspace: { name: "Harbor Grill" },
-        membership: { role },
+        membership: { access: role === "employee" ? { employee: true, management: null } : { employee: false, management: role } },
         onboarding: { status: "incomplete", currentStep: 2 },
       } as never;
       renderRoute();
@@ -163,7 +163,7 @@ describe("ProtectedRoute", () => {
     authState.value.error = null;
     authState.value.context = {
       workspace: { name: "Harbor Grill" },
-      membership: { role: "employee" },
+      membership: { access: { employee: true, management: null } },
       onboarding: { status: "incomplete", currentStep: 2 },
     } as never;
     renderRoute("/onboarding");
@@ -177,7 +177,7 @@ describe("ProtectedRoute", () => {
   it("lets the owner into the setup route", async () => {
     authState.value.error = null;
     authState.value.context = {
-      membership: { role: "owner" },
+      membership: { access: { employee: false, management: "owner" } },
       onboarding: { status: "incomplete", currentStep: 2 },
     } as never;
     renderRoute("/onboarding");

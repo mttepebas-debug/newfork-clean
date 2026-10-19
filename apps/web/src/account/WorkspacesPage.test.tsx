@@ -63,9 +63,8 @@ const context = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    role: "manager",
+    access: { employee: false, management: "manager" },
     status: "active",
-    allLocations: true,
   },
   permissions: ["workspace.read"],
   actions: [],
@@ -413,7 +412,7 @@ describe("WorkspacesPage", () => {
 
   it.each([false, true])("leaves a closed active workspace safely; another workspace=%s", async another => {
     vi.mocked(listAccountWorkspaces).mockResolvedValueOnce([ownerWorkspace]).mockResolvedValue(another ? [workspaces[1]!] : []);
-    refreshedContext = another ? { ...context, workspace: { ...context.workspace, id: secondWorkspaceId }, membership: { ...context.membership, role: "employee", workspaceId: secondWorkspaceId } } : null;
+    refreshedContext = another ? { ...context, workspace: { ...context.workspace, id: secondWorkspaceId }, membership: { ...context.membership, access: { employee: true, management: null }, workspaceId: secondWorkspaceId } } : null;
     renderPage();
     await openWorkspaceActions();
     fireEvent.click(screen.getByRole("menuitem", { name: "Close immediately" }));
@@ -579,7 +578,7 @@ describe("WorkspacesPage", () => {
       membership: {
         ...context.membership,
         workspaceId: secondWorkspaceId,
-        role: "employee",
+        access: { employee: true, management: null },
       },
     };
     renderPage();

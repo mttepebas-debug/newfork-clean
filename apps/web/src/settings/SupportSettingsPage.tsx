@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useAuth } from "../auth/AuthContext";
 import { SettingsHeader } from "./GeneralSettingsPage";
 import { FieldNote } from "../shell/FieldNote";
+import { membershipClass } from "../auth/access";
 
 type CopyState = "idle" | "copied" | "failed";
 
@@ -15,7 +16,7 @@ export default function SupportSettingsPage() {
   const configuredEmail = import.meta.env.VITE_SUPPORT_EMAIL?.trim();
   const supportEmail =
     configuredEmail || (import.meta.env.DEV ? "support@newfork.test" : null);
-  const roleName = context.membership.roleName ?? context.membership.role;
+  const roleName = context.membership.roleName ?? membershipClass(context.membership);
   const diagnostics = JSON.stringify(
     {
       workspace_id: context.workspace.id,

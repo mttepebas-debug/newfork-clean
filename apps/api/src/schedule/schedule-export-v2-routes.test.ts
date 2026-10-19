@@ -6,7 +6,7 @@ import { registerScheduleExportV2Routes } from "./schedule-export-v2-routes";
 import type { ScheduleReadService } from "./schedule-service";
 
 const id = (n: number) => `afa70000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-const context = { userId: id(1), workspace: { id: id(2) }, membership: { role: "owner", status: "active" },
+const context = { userId: id(1), workspace: { id: id(2) }, membership: { access: { employee: false, management: "owner" }, status: "active" },
   onboarding: { status: "complete" }, documentAccess: { restricted: false }, permissions: ["schedule.export"],
   actions: ["schedule.export"] } as unknown as ActiveWorkspaceContext;
 const scope: ScheduleExportV2Scope = { week_start: "2026-09-14", dates: ["2026-09-14"], location_ids: [id(3)],
@@ -57,7 +57,7 @@ describe("Export v2 read-only server authorization", () => {
     expect(getReadModel).not.toHaveBeenCalled(); await app.close();
   });
   it("follows the core, not the membership role: an employee the core allows to export is authorized", async () => {
-    const { app, post } = setup({ ...context, membership: { ...context.membership, role: "employee" } } as ActiveWorkspaceContext);
+    const { app, post } = setup({ ...context, membership: { ...context.membership, access: { employee: true, management: null } } } as ActiveWorkspaceContext);
     expect((await post()).statusCode).toBe(200); await app.close();
   });
   it.each([

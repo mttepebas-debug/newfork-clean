@@ -43,9 +43,8 @@ const context = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: ["workspace.read", "workspace.manage"],
   actions: [],
@@ -477,7 +476,7 @@ describe("WorkspacePage setup checklist", () => {
 
     currentContext = {
       ...context,
-      membership: { ...context.membership, role: "employee" },
+      membership: { ...context.membership, access: { employee: true, management: null } },
     };
     rendered.rerender(
       <QueryClientProvider
@@ -669,7 +668,7 @@ describe("WorkspacePage setup checklist", () => {
   it("hides the setup checklist from employee roles", async () => {
     currentContext = {
       ...context,
-      membership: { ...context.membership, role: "employee" },
+      membership: { ...context.membership, access: { employee: true, management: null } },
     };
     renderPage();
 

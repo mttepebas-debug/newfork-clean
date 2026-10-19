@@ -24,9 +24,8 @@ const context = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
     workspaceId,
-    role: "owner",
+    access: { employee: false, management: "owner" },
     status: "active",
-    allLocations: true,
   },
   permissions: [
     "workspace.read",

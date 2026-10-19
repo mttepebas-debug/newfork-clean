@@ -13,7 +13,7 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     context: {
       workspace: { id: workspaceId, name: "Harbor & Vine" },
-      membership: { role: "owner" },
+      membership: { access: { employee: false, management: "owner" } },
       actions: ["settings.organization.write"],
       permissions: [],
     },

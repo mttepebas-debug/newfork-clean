@@ -14,7 +14,7 @@ vi.mock("../lib/supabase", () => ({
 }));
 let actions: string[] = [];
 vi.mock("../auth/AuthContext", () => ({
-  useAuth: () => ({ context: { userId: me, workspace: { id: w, name: "Harbor & Vine" }, membership: { role: "manager" }, permissions: [], actions } }),
+  useAuth: () => ({ context: { userId: me, workspace: { id: w, name: "Harbor & Vine" }, membership: { access: { employee: false, management: "manager" } }, permissions: [], actions } }),
 }));
 const realtime = vi.fn();
 vi.mock("./useNotificationsRealtime", () => ({ useNotificationsRealtime: (...args: unknown[]) => realtime(...args) }));

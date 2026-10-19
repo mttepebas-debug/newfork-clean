@@ -4,6 +4,7 @@ import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
 import { hubPath } from "./resolveLanding";
 import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
+import { membershipClass } from "./access";
 
 type WorkspaceRequirement = "none" | "any" | "complete";
 
@@ -68,7 +69,7 @@ export function ProtectedRoute({
     // Setup belongs to the owner. Other members can be active before it is
     // finished (the owner invites the team in the last step) and wait here,
     // also when they open /onboarding directly.
-    if (context.membership.role !== "owner") return <WorkspaceSetupPending />;
+    if (membershipClass(context.membership) !== "owner") return <WorkspaceSetupPending />;
     if (workspace === "complete") return <Navigate to={hubPath} replace />;
   }
   return children;
