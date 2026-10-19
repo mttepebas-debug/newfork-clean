@@ -27,6 +27,7 @@ import {
   type ShiftLabelInput,
   type ShiftType,
   type ShiftTypeInput,
+  type ShiftTypeInputDraft,
 } from "@newfork/shared";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { supabaseClient } from "../lib/supabase";
@@ -476,7 +477,7 @@ export async function listShiftTypes(
 
 export async function saveShiftType(
   workspaceId: string,
-  input: ShiftTypeInput,
+  input: ShiftTypeInputDraft,
   id?: string,
   expectedDefaultRevision?: number,
 ): Promise<void> {

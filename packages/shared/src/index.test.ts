@@ -64,6 +64,8 @@ import {
   productBoundary,
   schedulingSettingsInputSchema,
   shiftTypeInputSchema,
+  shiftTypeTimesRefusal,
+  scheduleShiftTypeSchema,
   signatureRetentionPolicyInputSchema,
   signatureTemplateDraftInputSchema,
   announcementStateActionSchema,
@@ -2087,6 +2089,47 @@ describe("scheduling settings schemas", () => {
     expect(result.error?.issues.map((issue) => issue.message)).toEqual([
       "Start and end time cannot be the same.",
     ]);
+  });
+  // PRESET-SAAT (S-183): Dinner 4:15–11:30 PM is primary; 5–11 PM and 6–11:30 PM are its options.
+  it("keeps a type's time options beside its primary hours and refuses repeats", () => {
+    const dinner = { name: "Dinner", color: "#7B5EA7", default_start_time: "16:15", default_end_time: "23:30" };
+    expect(shiftTypeInputSchema.parse(dinner).time_options).toEqual([]);
+    expect(
+      shiftTypeInputSchema.parse({
+        ...dinner,
+        time_options: [{ start_time: "17:00", end_time: "23:00" }, { start_time: "18:00", end_time: "23:30" }],
+      }).time_options,
+    ).toHaveLength(2);
+    expect(shiftTypeTimesRefusal({ ...dinner, time_options: [{ start_time: "16:15", end_time: "23:30" }] })).toEqual({
+      index: 0,
+      message: "This time is already in the list.",
+    });
+    expect(
+      shiftTypeTimesRefusal({
+        ...dinner,
+        time_options: [{ start_time: "17:00", end_time: "23:00" }, { start_time: "17:00", end_time: "23:00" }],
+      }),
+    ).toEqual({ index: 1, message: "This time is already in the list." });
+    expect(shiftTypeTimesRefusal({ ...dinner, time_options: [{ start_time: "17:00", end_time: "17:00" }] })?.message).toBe(
+      "Start and end time cannot be the same.",
+    );
+    expect(shiftTypeInputSchema.safeParse({ ...dinner, time_options: [{ start_time: "16:15", end_time: "23:30" }] }).success).toBe(
+      false,
+    );
+    const nine = Array.from({ length: 9 }, (_, n) => ({ start_time: `0${n}:30`, end_time: "12:00" }));
+    expect(shiftTypeInputSchema.safeParse({ ...dinner, time_options: nine }).success).toBe(false);
+  });
+  it("reads a Schedule shift type without time options (an older reply) without failing", () => {
+    expect(
+      scheduleShiftTypeSchema.parse({
+        id: "34000000-0000-4000-8000-000000000001",
+        name: "Dinner",
+        color: "#7B5EA7",
+        sort_order: 0,
+        default_start_time: "16:15",
+        default_end_time: "23:30",
+      }).time_options,
+    ).toBeUndefined();
   });
 });
 

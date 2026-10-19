@@ -1,13 +1,12 @@
 import { CatalogDrawer } from "./CatalogDrawer";
 import {
-  SAME_START_END_TIME_MESSAGE,
   shiftTypeInputSchema,
   type ShiftType,
   type ShiftTypeInput,
 } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Info, X } from "lucide-react";
+import { Info, Plus, X } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useSearchParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -31,11 +30,24 @@ import { NoAccessState } from "../shell/NoAccessState";
 import { noAccessHomePath } from "../auth/resolveLanding";
 import { WindowAlert } from "../shell/WindowAlert";
 import { FieldNote } from "../shell/FieldNote";
+import {
+  SHIFT_TYPE_TIME_ROWS_MAX,
+  addTimeRow,
+  makePrimary,
+  removeTimeRow,
+  timeRowLength,
+  timeRowRefusal,
+  timeRowsOf,
+  updateTimeRow,
+  withTimeRows,
+  type TimeRows,
+} from "./shift-type-times";
 const defaultDraft: ShiftTypeInput = {
   name: "",
   color: "#5B7FA3",
   default_start_time: "09:00",
   default_end_time: "17:00",
+  time_options: [],
 };
 
 function sameJson(left: unknown, right: unknown): boolean {
@@ -63,6 +75,15 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   });
   const [editing, setEditing] = useState<ShiftType | "new" | null>(null);
   const [draft, setDraft] = useState<ShiftTypeInput>(defaultDraft);
+  const [times, setTimes] = useState<TimeRows>(() => timeRowsOf(defaultDraft));
+  const startDraft = (value: ShiftTypeInput): void => {
+    setDraft(value);
+    setTimes(timeRowsOf(value));
+  };
+  const changeTimes = (next: TimeRows): void => {
+    setTimes(next);
+    setDraft((current) => withTimeRows(current, next));
+  };
   const [formError, setFormError] = useState<string | null>(null);
   const [deleteLocked, setDeleteLocked] = useState(false);
   const editorSequence = useRef(0);
@@ -123,7 +144,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     if (deleteLocked || saveMutation.isPending) return;
     editorSequence.current += 1;
     setEditing(item ?? "new");
-    setDraft(item ? shiftTypeInputSchema.parse(item) : defaultDraft);
+    startDraft(item ? shiftTypeInputSchema.parse(item) : defaultDraft);
     setFormError(null);
   };
   const submit = (event: FormEvent): void => {
@@ -159,7 +180,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
     handledTypeLink.current = requestedType;
     editorSequence.current += 1;
     setEditing(requested);
-    setDraft(shiftTypeInputSchema.parse(requested));
+    startDraft(shiftTypeInputSchema.parse(requested));
     setFormError(null);
   }, [requestedType, editing, query.data]);
   const active = items.filter((item) => !item.archived_at);
@@ -178,14 +199,6 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
       savedType.default_end_time !== draft.default_end_time),
   );
   const parsedDraft = shiftTypeInputSchema.safeParse(draft);
-  // The shared schema's own refusal, not a second copy of the rule.
-  const sameHours =
-    !parsedDraft.success &&
-    parsedDraft.error.issues.some(
-      (issue) =>
-        issue.path[0] === "default_end_time" &&
-        issue.message === SAME_START_END_TIME_MESSAGE,
-    );
   const canSave =
     canEdit &&
     !saveMutation.isPending &&
@@ -242,7 +255,7 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                 <h2>
                   {editing === "new" ? "New shift type" : "Edit shift type"}
                 </h2>
-                <p>Default times may cross midnight.</p>
+                <p>Times may cross midnight. A preset dropped on the Schedule offers these times.</p>
               </div>
               <button
                 type="button"
@@ -286,57 +299,11 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
                     />
                   </div>
                 </div>{" "}
-                <div className="job-shift-times">
-                  <div className="job-field">
-                    <span className="shift-default-time-label">
-                      <label htmlFor="shift-catalog-default-start">
-                        Default start
-                      </label>
-                      <DefaultHoursInfo />
-                    </span>
-                    <input
-                      id="shift-catalog-default-start"
-                      type="time"
-                      required
-                      disabled={!canEdit || saveMutation.isPending}
-                      value={draft.default_start_time ?? ""}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          default_start_time: event.target.value || null,
-                        }))
-                      }
-                    />
-                  </div>
-                  <div className="job-field">
-                    <span className="shift-default-time-label">
-                      <label htmlFor="shift-catalog-default-end">
-                        Default end
-                      </label>
-                      <DefaultHoursInfo />
-                    </span>
-                    <input
-                      id="shift-catalog-default-end"
-                      type="time"
-                      required
-                      disabled={!canEdit || saveMutation.isPending}
-                      value={draft.default_end_time ?? ""}
-                      aria-invalid={sameHours || undefined}
-                      aria-describedby={sameHours ? "shift-catalog-time-error" : undefined}
-                      onChange={(event) =>
-                        setDraft((current) => ({
-                          ...current,
-                          default_end_time: event.target.value || null,
-                        }))
-                      }
-                    />
-                    {/* BL-677 (3): the schema's refusal, said where Save went grey. */}
-                    <FieldNote
-                      id="shift-catalog-time"
-                      error={sameHours ? SAME_START_END_TIME_MESSAGE : null}
-                    />
-                  </div>
-                </div>
+                <ShiftTypeTimesField
+                  times={times}
+                  disabled={!canEdit || saveMutation.isPending}
+                  onChange={changeTimes}
+                />
               </fieldset>
               {savedType && defaultsChanged ? (
                 <section
@@ -481,22 +448,110 @@ function ShiftTypesEditor({ workspaceId }: { workspaceId: string }) {
   );
 }
 
+// Variant A (PRESET-SAAT, S-183): one row per time, the round button picks the
+// primary, "Add time" adds a row, × removes one (the last row stays).
+function ShiftTypeTimesField({
+  times,
+  disabled,
+  onChange,
+}: {
+  readonly times: TimeRows;
+  readonly disabled: boolean;
+  readonly onChange: (next: TimeRows) => void;
+}) {
+  const refusal = timeRowRefusal(times);
+  return (
+    <fieldset className="job-field shift-type-times">
+      <legend className="shift-default-time-label">
+        Times
+        <DefaultHoursInfo />
+      </legend>
+      <ol className="shift-type-time-rows">
+        {times.rows.map((row, index) => {
+          const primary = index === times.primary;
+          const invalid = refusal?.row === index;
+          const label = `Time ${index + 1}`;
+          return (
+            <li key={index} className="shift-type-time-row" data-primary={primary || undefined}>
+              <input
+                type="radio"
+                name="shift-type-primary-time"
+                className="shift-type-time-radio"
+                checked={primary}
+                aria-label={`Make time ${index + 1} primary`}
+                disabled={disabled}
+                onChange={() => onChange(makePrimary(times, index))}
+              />
+              <input
+                type="time"
+                aria-label={`${label} start`}
+                required
+                disabled={disabled}
+                value={row.start}
+                aria-invalid={invalid || undefined}
+                aria-describedby={invalid ? "shift-catalog-time-error" : undefined}
+                onChange={(event) => onChange(updateTimeRow(times, index, { start: event.target.value }))}
+              />
+              <span className="shift-type-time-dash" aria-hidden>
+                –
+              </span>
+              <input
+                type="time"
+                aria-label={`${label} end`}
+                required
+                disabled={disabled}
+                value={row.end}
+                aria-invalid={invalid || undefined}
+                aria-describedby={invalid ? "shift-catalog-time-error" : undefined}
+                onChange={(event) => onChange(updateTimeRow(times, index, { end: event.target.value }))}
+              />
+              <span className="shift-type-time-length">{timeRowLength(row) ?? ""}</span>
+              <span className="shift-type-time-primary">{primary ? "Primary" : ""}</span>
+              <button
+                type="button"
+                className="job-icon-button shift-type-time-remove"
+                aria-label={`Remove time ${index + 1}`}
+                title="Remove time"
+                disabled={disabled || times.rows.length === 1}
+                onClick={() => onChange(removeTimeRow(times, index))}
+              >
+                <X size={15} aria-hidden />
+              </button>
+            </li>
+          );
+        })}
+      </ol>
+      {/* BL-677 (3): the refusal, said where Save went grey. */}
+      <FieldNote id="shift-catalog-time" error={refusal?.message ?? null} />
+      <button
+        type="button"
+        className="shift-type-time-add"
+        disabled={disabled || times.rows.length >= SHIFT_TYPE_TIME_ROWS_MAX}
+        onClick={() => onChange(addTimeRow(times))}
+      >
+        <Plus size={14} aria-hidden />
+        Add time
+      </button>
+    </fieldset>
+  );
+}
+
 function DefaultHoursInfo() {
   return (
     <span className="shift-default-info">
       <span
         tabIndex={0}
         className="shift-default-info-trigger"
-        aria-label="Default hours details"
+        aria-label="Times details"
       >
         <Info size={13} aria-hidden />
       </span>
       <span className="shift-default-info-popover" role="tooltip">
-        These hours prefill new Schedule shifts that use this shift type.
-        Managers can still change the actual start and end time before saving.
-        Employee shift-type availability and time-off shortcuts also use these
-        hours as the service reference. Existing saved shifts keep their own
-        hours.
+        A preset dropped on the Schedule offers these times, the primary first;
+        with one time it is placed at once. Managers can still change a
+        shift's start and end before saving. Employee shift-type availability
+        and time-off shortcuts use the primary time as the service reference.
+        Existing saved shifts keep their own hours.
       </span>
     </span>
   );

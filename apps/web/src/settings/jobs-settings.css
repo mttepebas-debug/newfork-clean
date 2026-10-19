@@ -694,6 +694,94 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
+/* Variant A (PRESET-SAAT, S-183): a type's times, one row each, one primary. */
+.job-catalog-editor fieldset.shift-type-times {
+  padding: 0;
+  gap: 8px;
+}
+.shift-type-times > legend {
+  padding: 0;
+  margin-bottom: 7px;
+  font-size: 12px;
+  font-weight: 600;
+}
+.shift-type-time-rows {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.shift-type-time-row {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) 10px minmax(0, 1fr) 52px 58px 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 6px 6px 10px;
+  border: 1px solid var(--job-border);
+  border-radius: 6px;
+  background: var(--job-bg);
+}
+.shift-type-time-row[data-primary] {
+  border-color: color-mix(in srgb, var(--job-accent) 55%, var(--job-border));
+  background: var(--job-soft);
+}
+.shift-type-time-radio {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--job-accent);
+}
+.shift-type-time-dash,
+.shift-type-time-length {
+  color: var(--job-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.shift-type-time-primary {
+  justify-self: start;
+  color: var(--job-accent);
+  font-size: 11px;
+  font-weight: 600;
+}
+.shift-type-time-remove {
+  width: 28px;
+  height: 28px;
+}
+.shift-type-time-add {
+  justify-self: start;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 32px;
+  padding: 0 4px;
+  border: 0;
+  background: none;
+  color: var(--job-accent);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.shift-type-time-add:disabled {
+  color: var(--job-muted);
+  cursor: default;
+}
+.shift-type-time-add:focus-visible,
+.shift-type-time-radio:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+@media (max-width: 520px) {
+  .shift-type-time-row {
+    grid-template-columns: 16px minmax(0, 1fr) 10px minmax(0, 1fr) 28px;
+  }
+  .shift-type-time-length,
+  .shift-type-time-primary {
+    display: none;
+  }
+}
 .shift-default-time-label {
   display: inline-flex !important;
   align-items: center;

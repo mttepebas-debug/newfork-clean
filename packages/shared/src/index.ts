@@ -1141,6 +1141,39 @@ const scheduleUnpaidBreakMinutesSchema = z.union([
   z.literal(45),
   z.literal(60),
 ]);
+// BL-1031: one sentence wherever equal hours are refused (the database says it too).
+export const SAME_START_END_TIME_MESSAGE = "Start and end time cannot be the same.";
+
+// PRESET-SAAT (KARARLAR S-183): the hours a shift type offers besides its
+// primary ones (default_start_time / default_end_time), in order. The database
+// checks the same rules (trigger shift_types_time_options).
+export const SHIFT_TYPE_TIME_OPTIONS_MAX = 8;
+export const shiftTypeTimeOptionSchema = z.object({
+  start_time: timeOfDaySchema,
+  end_time: timeOfDaySchema,
+});
+export type ShiftTypeTimeOption = z.infer<typeof shiftTypeTimeOptionSchema>;
+const shiftTypeTimeOptionsSchema = z.array(shiftTypeTimeOptionSchema).max(SHIFT_TYPE_TIME_OPTIONS_MAX);
+
+/** Why a type's hours cannot be saved, or null: the primary and every option differ and appear once. */
+export function shiftTypeTimesRefusal(value: {
+  readonly default_start_time: string | null;
+  readonly default_end_time: string | null;
+  readonly time_options: readonly ShiftTypeTimeOption[];
+}): { readonly index: number; readonly message: string } | null {
+  const seen = new Set<string>();
+  if (value.default_start_time && value.default_end_time) seen.add(`${value.default_start_time}-${value.default_end_time}`);
+  for (const [index, option] of value.time_options.entries()) {
+    if (option.start_time === option.end_time) return { index, message: SAME_START_END_TIME_MESSAGE };
+    const pair = `${option.start_time}-${option.end_time}`;
+    if (seen.has(pair)) return { index, message: "This time is already in the list." };
+    seen.add(pair);
+  }
+  if (value.time_options.length > SHIFT_TYPE_TIME_OPTIONS_MAX)
+    return { index: SHIFT_TYPE_TIME_OPTIONS_MAX, message: `Keep up to ${SHIFT_TYPE_TIME_OPTIONS_MAX + 1} times.` };
+  return null;
+}
+
 export const shiftTypeSchema = z.object({
   id: z.string().uuid(),
   workspace_id: z.string().uuid(),
@@ -1148,6 +1181,8 @@ export const shiftTypeSchema = z.object({
   color: colorSchema,
   default_start_time: timeOfDaySchema.nullable(),
   default_end_time: timeOfDaySchema.nullable(),
+  /** Missing in an older reply: read as none. */
+  time_options: shiftTypeTimeOptionsSchema.optional(),
   default_revision: z.number().int().positive().optional(),
   crosses_midnight: z.boolean(),
   sort_order: z.number().int().nonnegative(),
@@ -1155,8 +1190,6 @@ export const shiftTypeSchema = z.object({
 });
 export type ShiftType = z.infer<typeof shiftTypeSchema>;
 
-// BL-1031: one sentence wherever equal hours are refused (the database says it too).
-export const SAME_START_END_TIME_MESSAGE = "Start and end time cannot be the same.";
 
 export const shiftTypeInputSchema = shiftTypeSchema
   .pick({
@@ -1165,6 +1198,7 @@ export const shiftTypeInputSchema = shiftTypeSchema
     default_start_time: true,
     default_end_time: true,
   })
+  .extend({ time_options: shiftTypeTimeOptionsSchema.default([]) })
   .refine(
     (value) =>
       Boolean(value.default_start_time) === Boolean(value.default_end_time),
@@ -1181,8 +1215,14 @@ export const shiftTypeInputSchema = shiftTypeSchema
       message: SAME_START_END_TIME_MESSAGE,
       path: ["default_end_time"],
     },
-  );
+  )
+  .refine((value) => !shiftTypeTimesRefusal(value), {
+    message: "Each time needs a different start and end and appears once.",
+    path: ["time_options"],
+  });
 export type ShiftTypeInput = z.infer<typeof shiftTypeInputSchema>;
+/** What a form may send before parsing: time_options may be missing. */
+export type ShiftTypeInputDraft = z.input<typeof shiftTypeInputSchema>;
 
 export const shiftLabelSchema = z.object({
   id: z.string().uuid(),
@@ -1240,6 +1280,8 @@ export const scheduleJobSchema = scheduleReferenceSchema.extend({
 export const scheduleShiftTypeSchema = scheduleOrderedReferenceSchema.extend({
   default_start_time: timeOfDaySchema.nullable(),
   default_end_time: timeOfDaySchema.nullable(),
+  /** Missing in an older reply or a fixture: read as none. */
+  time_options: shiftTypeTimeOptionsSchema.optional(),
   default_revision: z.number().int().positive().optional(),
 });
 

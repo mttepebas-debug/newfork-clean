@@ -14,7 +14,14 @@ type Entry = {
   default_start_time?: string | null;
   default_end_time?: string | null;
   crosses_midnight?: boolean;
+  time_options?: readonly unknown[];
 };
+
+/** "+2 more" when a type keeps times beside its primary one (PRESET-SAAT, S-183). */
+function moreTimes(item: Entry): string {
+  const count = item.time_options?.length ?? 0;
+  return count ? ` · +${count} more` : "";
+}
 type SortKey = "name" | "default_start_time" | "default_end_time";
 
 /** Shift catalog, design A (Mert 2026-10-12): the shared list language with
@@ -189,6 +196,7 @@ export function ShiftCatalogList<T extends Entry>({
                     {time(item.default_end_time)}
                     {item.crosses_midnight ? " · Ends next day" : ""} ·{" "}
                     {lengthText(item.default_start_time, item.default_end_time)}
+                    {moreTimes(item)}
                   </span>
                 )}
               </span>
@@ -205,6 +213,9 @@ export function ShiftCatalogList<T extends Entry>({
                   {time(item.default_end_time)}
                   {item.crosses_midnight ? (
                     <span className="shift-catalog-next"> · Ends next day</span>
+                  ) : null}
+                  {moreTimes(item) ? (
+                    <span className="shift-catalog-next">{moreTimes(item)}</span>
                   ) : null}
                 </span>
               </>

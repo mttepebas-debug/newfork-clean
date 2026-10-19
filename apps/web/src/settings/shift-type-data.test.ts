@@ -27,7 +27,7 @@ describe("shift type clock revision guard", () => {
   });
   it("allows creation without a prior revision and surfaces storage failures", async () => {
     await saveShiftType("workspace", values);
-    expect(chain.insert).toHaveBeenCalledWith({ ...values, workspace_id: "workspace" });
+    expect(chain.insert).toHaveBeenCalledWith({ ...values, time_options: [], workspace_id: "workspace" });
     chain.maybeSingle.mockResolvedValue({ data: null, error: { message: "Access denied" } });
     await expect(saveShiftType("workspace", values, "type", 4)).rejects.toThrow("Access denied");
   });
