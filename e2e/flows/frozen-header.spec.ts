@@ -1,6 +1,9 @@
+import { execSync } from "node:child_process";
+import { readFileSync } from "node:fs";
 import type { Browser, Page } from "@playwright/test";
 import { expect, test } from "../fixtures/test";
-import { signIn, type Person } from "../fixtures/world";
+import { psql } from "../global-setup";
+import { roundLabel, roundWeek, signIn, type Person } from "../fixtures/world";
 
 // Every screen keeps its heading and tabs in place; only the content scrolls
 // (Mert 2026-10-16, "header ve tableri freeze yap bütün ekranlarda"). The
@@ -140,7 +143,20 @@ test.describe("phone: the heading keeps its size and stays on top", () => {
 // has too little to fill them, so a tall block goes into the list (and
 // Acknowledgements, which has no templates yet, gets an empty list first).
 // The phone Lineup holds its own top (E, 2026-10-17): lineup-publish.spec.ts.
+// The desktop Lineup (F) draws its list under a location's ticket, so it gets
+// a day with one published shift first.
 test.describe("lists scroll inside their frame while the heading stays", () => {
+  let lineupDay = "";
+  test.beforeAll(() => {
+    const run: string = JSON.parse(readFileSync(new URL("../.world.json", import.meta.url), "utf8")).run;
+    const sql = (query: string) => execSync(psql, { input: query, encoding: "utf8" }).trim();
+    // A week no other flow publishes.
+    const week = roundWeek(720);
+    sql(`select tests.publish_week('${run}', ${week}, '[
+      {"label": "${roundLabel("emre-k-frozen-lineup")}", "person": "emre", "loc": "K", "job": "cook", "day": 1, "start": "16:00", "end": "22:00"}
+    ]');`);
+    lineupDay = sql(`select tests.week(${week}) + 1;`);
+  });
   for (const [path, size, frame] of [
     // The desktop Lineup (F): the list under the location's ticket.
     ["/app/schedule/lineup", DESKTOP, ".lineup-desk-scroll"],
@@ -150,7 +166,7 @@ test.describe("lists scroll inside their frame while the heading stays", () => {
   ] as const) {
     test(`${path} at ${size.width}`, async ({ browser }) => {
       const page = await open(browser, "zeynep", size);
-      await visit(page, path);
+      await visit(page, path === "/app/schedule/lineup" ? `${path}?date=${lineupDay}` : path);
       await page.evaluate((frame) => {
         if (!document.querySelector(frame)) {
           const list = document.createElement("div");
