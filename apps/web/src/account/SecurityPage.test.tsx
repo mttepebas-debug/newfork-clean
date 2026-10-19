@@ -18,7 +18,6 @@ const account: AccountProfile = {
   email: "owner@example.test",
   displayName: "Owner User",
   phone: null,
-  avatarObjectPath: null,
   avatarUrl: null,
   theme: "system",
   timeFormat: "system",

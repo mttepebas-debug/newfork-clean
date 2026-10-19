@@ -1,5 +1,6 @@
 import { createHmac, randomBytes } from "node:crypto";
 import { createClient } from "@supabase/supabase-js";
+import { employeeProfilePhotoBucket } from "@newfork/shared";
 import { z } from "zod";
 import {
   createRecoveryEmailDelivery,
@@ -22,11 +23,7 @@ interface AccountDeletionWorkerClient {
     args: Record<string, unknown>,
   ): PromiseLike<{ data: unknown; error: { message: string } | null }>;
   storage: {
-    from(bucket: "account-profile-photos"): {
-      list(path: string): PromiseLike<{
-        data: Array<{ name: string }> | null;
-        error: { message: string } | null;
-      }>;
+    from(bucket: typeof employeeProfilePhotoBucket): {
       remove(paths: string[]): PromiseLike<{ error: { message: string } | null }>;
     };
   };
@@ -99,15 +96,14 @@ export function createAccountDeletionWorkerWithClient(
     return response.data;
   }
 
-  async function removeAvatarObjects(userId: string) {
-    const bucket = client.storage.from("account-profile-photos");
-    const listed = await bucket.list(`${userId}/profile`);
-    if (listed.error) throw new Error(listed.error.message);
-    const paths = (listed.data ?? []).map(
-      (object) => `${userId}/profile/${object.name}`,
+  // AVATAR-IKON: the person's avatar photos in every workspace they uploaded one in. The database names
+  // them (under this lease) before the purge forgets them; a failed delete stops the purge for a retry.
+  async function removeAvatarObjects(lease: { target_request_id: string; target_lease_id: string }) {
+    const paths = z.array(z.string()).parse(
+      (await rpc("list_account_deletion_avatar_photos_service", lease)) ?? [],
     );
     if (paths.length === 0) return;
-    const removed = await bucket.remove(paths);
+    const removed = await client.storage.from(employeeProfilePhotoBucket).remove(paths);
     if (removed.error) throw new Error(removed.error.message);
   }
 
@@ -145,7 +141,7 @@ export function createAccountDeletionWorkerWithClient(
     const lease = { target_request_id: item.request_id, target_lease_id: item.lease_id };
     await rpc("renew_account_deletion_work_service", lease);
     stage("remove_avatar");
-    await removeAvatarObjects(item.user_id);
+    await removeAvatarObjects(lease);
     await rpc("renew_account_deletion_work_service", lease);
     const tombstoneEmail = `deleted+${item.request_id}@deleted.invalid`;
     stage("anonymize_auth");

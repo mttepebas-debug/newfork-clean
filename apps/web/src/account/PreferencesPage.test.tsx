@@ -24,7 +24,6 @@ describe("PreferencesPage", () => {
       email: "owner@example.test",
       displayName: "Owner User",
       phone: null,
-      avatarObjectPath: null,
       avatarUrl: null,
       theme: "dark",
       timeFormat: "system",

@@ -63,6 +63,7 @@ function appFailingWith(error: unknown) {
     onboardingService: service,
     notificationsService: service,
     lineupService: service,
+    avatarService: service,
   };
   return buildApp(options);
 }
@@ -86,6 +87,9 @@ const requests: ReadonlyArray<readonly [string, "GET" | "DELETE", string]> = [
   ["employee onboarding phone", "GET", "/v1/me/onboarding/phone-in-use?phone=4155550100"],
   ["lineup", "GET", `${w}/my-lineups/2028-09-11`],
   ["lineup day", "GET", `${w}/lineups/2028-09-11`],
+  ["own avatar", "GET", `${w}/me/avatar`],
+  ["own avatar removal", "DELETE", `${w}/me/avatar`],
+  ["last avatar", "GET", `${w}/me/last-avatar`],
 ];
 
 describe.each(requests)("%s route", (_name, method, url) => {

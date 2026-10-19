@@ -123,7 +123,6 @@ describe("ProfilePage", () => {
       email: "owner@example.test",
       displayName: "Owner User",
       phone: "+14155550142",
-      avatarObjectPath: null,
       avatarUrl: null,
       theme: "system",
       timeFormat: "system",
@@ -162,7 +161,7 @@ describe("ProfilePage", () => {
   });
 
   it("previews a square crop without upload, cancels replacement and removes only on Save", async () => {
-    account = { ...account, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
+    account = { ...account, avatarUrl: "https://example.test/old.png" };
     renderProfile();
     expect(screen.getByRole("button", { name: "Replace" })).toBeTruthy();
     choosePhoto();
@@ -189,12 +188,11 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
       { avatarObjectPath: null, avatarUrl: null }));
-    expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
     expect(uploadAccountAvatar).not.toHaveBeenCalled();
   });
 
   it("uploads the cropped file only on save and keeps the previous avatar on upload failure", async () => {
-    account = { ...account, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
+    account = { ...account, avatarUrl: "https://example.test/old.png" };
     renderProfile();
     choosePhoto();
     fireEvent.click(screen.getByRole("button", { name: "Use photo" }));
@@ -207,7 +205,6 @@ describe("ProfilePage", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", "+14155550142",
       { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
-    expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
   });
 
   // Mert's phone notes 2026-10-17 #10: a new photo alone saves, though a
@@ -231,19 +228,6 @@ describe("ProfilePage", () => {
       { avatarObjectPath: "new-path", avatarUrl: "https://example.test/new.png" }));
   });
 
-  it("saves a removed photo alone while another required field is still empty", async () => {
-    account = { ...account, phone: null, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
-    renderProfile();
-    fireEvent.click(screen.getByRole("button", { name: "Remove" }));
-    fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
-    expect(screen.queryByText(/To save, fill in/)).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Save" }));
-    await waitFor(() => expect(updateAccount).toHaveBeenCalledWith("Owner User", "system", null,
-      { avatarObjectPath: null, avatarUrl: null }));
-    expect(removeAccountAvatar).toHaveBeenCalledWith(expect.anything(), account.userId, "old-path");
-    expect(uploadAccountAvatar).not.toHaveBeenCalled();
-  });
-
   it("rejects unsupported files before opening crop or touching storage", () => {
     renderProfile();
     fireEvent.change(screen.getByLabelText("Choose profile photo"), { target: { files: [new File(["svg"], "photo.svg", { type: "image/svg+xml" })] } });
@@ -253,7 +237,7 @@ describe("ProfilePage", () => {
   });
 
   it("does not delete either photo when the profile save response is uncertain", async () => {
-    account = { ...account, avatarObjectPath: "old-path", avatarUrl: "https://example.test/old.png" };
+    account = { ...account, avatarUrl: "https://example.test/old.png" };
     renderProfile();
     choosePhoto();
     fireEvent.click(screen.getByRole("button", { name: "Use photo" }));

@@ -176,7 +176,7 @@ export async function loadAccountProfile(
   const [profileResult, preferenceResult] = await Promise.all([
     client
       .from("user_profiles")
-      .select("display_name,phone_e164,avatar_object_path")
+      .select("display_name,phone_e164")
       .eq("user_id", user.id)
       .maybeSingle(),
     client
@@ -192,21 +192,13 @@ export async function loadAccountProfile(
     typeof user.user_metadata.display_name === "string"
       ? user.user_metadata.display_name
       : "Account owner";
-  const avatarObjectPath = profileResult.data?.avatar_object_path ?? null;
-  let avatarUrl: string | null = null;
-  if (avatarObjectPath) {
-    const signedAvatar = await client.storage
-      .from(accountProfileAvatarBucket)
-      .createSignedUrl(avatarObjectPath, 3600);
-    avatarUrl = signedAvatar.error ? null : signedAvatar.data.signedUrl;
-  }
+  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own (GET /me/avatar).
   return accountProfileSchema.parse({
     userId: user.id,
     email: user.email,
     displayName: profileResult.data?.display_name ?? metadataName,
     phone: profileResult.data?.phone_e164 ?? null,
-    avatarObjectPath,
-    avatarUrl,
+    avatarUrl: null,
     theme: preferenceResult.data?.theme ?? "system",
     timeFormat: preferenceResult.data?.time_format ?? "system",
     dateFormat: preferenceResult.data?.date_format ?? "system",
@@ -222,7 +214,6 @@ export async function saveAccountProfile(
       user_id: profile.userId,
       display_name: profile.displayName,
       phone_e164: profile.phone,
-      avatar_object_path: profile.avatarObjectPath,
       updated_at: new Date().toISOString(),
     }),
     client.from("user_preferences").upsert({
@@ -245,7 +236,7 @@ export async function uploadAccountAvatar(
   client: SupabaseClient,
   userId: string,
   file: File,
-): Promise<Pick<AccountProfile, "avatarObjectPath" | "avatarUrl">> {
+): Promise<{ avatarObjectPath: string; avatarUrl: string }> {
   const extension =
     file.type === "image/jpeg"
       ? "jpg"

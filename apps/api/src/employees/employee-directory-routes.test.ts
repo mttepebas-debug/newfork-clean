@@ -533,7 +533,7 @@ describe("employee directory routes", () => {
     const reads = [
       ["list", "list_employees_service", `/v1/workspaces/${workspaceId}/employees`],
       ["detail", "get_employee_detail_service", `/v1/workspaces/${workspaceId}/employees/${employeeId}`],
-      ["photo", "get_employee_avatar_path_service", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`],
+      ["photo", "get_member_avatar_service", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`],
     ] as const;
     const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };
 
@@ -623,7 +623,7 @@ describe("employee directory routes", () => {
       ["archive", "set_employee_archived_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/archive`, { archived: true, restoreAccess: false }],
       ["termination", "terminate_employee_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/termination`, termination],
       ["access removal", "remove_employee_access_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, undefined],
-      ["photo removal", "remove_employee_avatar_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`, undefined],
+      ["photo removal", "remove_member_photo_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/avatar`, undefined],
       ["removal from a location", "remove_employee_from_location_service", "DELETE", `/v1/workspaces/${workspaceId}/employees/${employeeId}/locations/${locationId}`, undefined],
     ] as const;
     const noPermissions = { ...context, permissions: ["workspace.read"] as ActiveWorkspaceContext["permissions"] };

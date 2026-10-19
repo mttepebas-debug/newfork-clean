@@ -9,6 +9,8 @@ import {
   type EmployeeAccessPreviewInput,
   employeeDetailSchema,
   employeeInputSchema,
+  employeeProfilePhotoBucket,
+  employeeProfilePhotoSignedUrlTtlSeconds,
   employeeLocationRemovalSchema,
   employeeReferenceDataSchema,
   type EmployeeReferenceDataRecord,
@@ -49,7 +51,6 @@ export interface EmployeeAvatarStatus {
 
 export interface EmployeeDirectoryService {
   references(input: { readonly actorUserId: string; readonly workspaceId: string }): Promise<EmployeeReferenceDataRecord>;
-  getOwnAvatar?(input: { readonly actorUserId: string; readonly workspaceId: string }): Promise<EmployeeAvatarStatus>;
   list(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -336,16 +337,9 @@ export function createEmployeeDirectoryServiceWithClient(
         }),
       );
     },
-    async getOwnAvatar(input) {
-      const path = await rpc("get_own_employee_avatar_path_service", {
-        actor_user_id: input.actorUserId, target_workspace_id: input.workspaceId,
-      });
-      if (typeof path !== "string" || !path) return { present: false, url: null };
-      const signed = await client.storage?.from("employee-profile-photos").createSignedUrl(path, 5 * 60);
-      return { present: true, url: signed?.error ? null : (signed?.data?.signedUrl ?? null) };
-    },
     async getAvatar(input) {
-      const path = await rpc("get_employee_avatar_path_service", {
+      // AVATAR-IKON: only a photo the person uploaded; a drawing or no avatar reads as null.
+      const path = await rpc("get_member_avatar_service", {
         actor_user_id: input.actorUserId,
         target_workspace_id: input.workspaceId,
         target_employee_id: input.employeeId,
@@ -353,21 +347,22 @@ export function createEmployeeDirectoryServiceWithClient(
       if (typeof path !== "string" || !path)
         return { present: false, url: null };
       const signed = await client.storage
-        ?.from("employee-profile-photos")
-        .createSignedUrl(path, 5 * 60);
+        ?.from(employeeProfilePhotoBucket)
+        .createSignedUrl(path, employeeProfilePhotoSignedUrlTtlSeconds);
       return {
         present: true,
         url: signed?.error ? null : (signed?.data?.signedUrl ?? null),
       };
     },
     async removeAvatar(input) {
-      const path = await rpc("remove_employee_avatar_service", {
+      // AVATAR-IKON: a manager removes only a photo (PT409 avatar.not_photo otherwise), never a drawing.
+      const path = await rpc("remove_member_photo_service", {
         actor_user_id: input.actorUserId,
         target_workspace_id: input.workspaceId,
         target_employee_id: input.employeeId,
       });
       if (typeof path === "string" && path) {
-        await client.storage?.from("employee-profile-photos").remove([path]);
+        await client.storage?.from(employeeProfilePhotoBucket).remove([path]);
       }
     },
     async requestPreferredName(input) {

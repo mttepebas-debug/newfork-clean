@@ -187,7 +187,9 @@ end;
 $$;
 
 -- The account's last avatar, offered in this workspace: a drawing by its key, a photo by where it is
--- now. Nothing when it came from here, or when the photo it pointed at is gone.
+-- now. Nothing when it came from here, when the photo it pointed at is gone, or when its source is no
+-- longer live: a membership that is neither active nor still onboarding (suspended, say), or a workspace
+-- that is closed to the person (the same test the authorization core makes, workspace_open_to_actor).
 create function public.get_last_avatar_service(actor_user_id uuid, target_workspace_id uuid)
 returns jsonb
 language plpgsql
@@ -200,6 +202,7 @@ declare
   remembered app_private.last_avatars;
   source_photo text;
   source_name text;
+  source_live boolean;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'avatar.self');
 
@@ -212,11 +215,18 @@ begin
     return null;
   end if;
 
-  select w.name, a.photo_path into source_name, source_photo
+  select w.name, a.photo_path,
+    m.status in ('active', 'pending_activation') and app_private.workspace_open_to_actor(m.workspace_id, actor_user_id)
+    into source_name, source_photo, source_live
   from public.workspace_memberships m
   join public.workspaces w on w.id = m.workspace_id
   left join public.member_avatars a on a.membership_id = m.id
   where m.id = remembered.source_membership_id and m.user_id = actor_user_id;
+
+  -- A drawing whose membership was deleted (source forgotten) is still offered; a known source must be live.
+  if remembered.source_membership_id is not null and source_live is not true then
+    return null;
+  end if;
 
   if remembered.art_key is not null then
     return jsonb_build_object('kind', 'art', 'art_key', remembered.art_key, 'source_photo_path', null,
@@ -302,6 +312,90 @@ grant execute on function public.remove_own_avatar_service(uuid, uuid) to servic
 grant execute on function public.get_last_avatar_service(uuid, uuid) to service_role;
 grant execute on function public.get_member_avatar_service(uuid, uuid, uuid) to service_role;
 grant execute on function public.remove_member_photo_service(uuid, uuid, uuid) to service_role;
+
+-- Account deletion --------------------------------------------------------------------------------------
+
+-- The account deletion worker, under its lease, reads where the person's avatar photos are in every
+-- workspace, deletes those objects from storage, and only then purges the account (below), which forgets
+-- the avatars. A failed storage delete stops the purge, so no photo is left that nothing points at.
+create function public.list_account_deletion_avatar_photos_service(target_request_id uuid, target_lease_id uuid)
+returns text[]
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  photos text[];
+begin
+  perform public.renew_account_deletion_work_service(target_request_id, target_lease_id);
+
+  select coalesce(array_agg(a.photo_path order by a.photo_path), '{}') into photos
+  from public.account_deletion_requests request
+  join public.workspace_memberships m on m.user_id = request.user_id
+  join public.member_avatars a on a.membership_id = m.id
+  where request.id = target_request_id and a.photo_path is not null;
+
+  return photos;
+end;
+$$;
+
+revoke all on function public.list_account_deletion_avatar_photos_service(uuid, uuid) from public, anon, authenticated;
+grant execute on function public.list_account_deletion_avatar_photos_service(uuid, uuid) to service_role;
+
+-- The purge also forgets the person's avatars in every workspace and their last avatar; the memberships
+-- themselves stay, as before. Everything else is the body of 20260914130000 unchanged.
+create or replace function public.finalize_account_deletion_service(target_request_id uuid, target_now timestamp with time zone)
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $$
+declare
+  target_request public.account_deletion_requests%rowtype;
+begin
+  select * into target_request
+  from public.account_deletion_requests request
+  where request.id = target_request_id
+    and request.status = 'pending'
+  for update;
+  if target_request.id is null then
+    return jsonb_build_object('status', 'completed', 'idempotent', true);
+  end if;
+  if target_request.restore_until > target_now then
+    raise exception 'account deletion restore window remains open' using errcode = '23514';
+  end if;
+
+  update public.account_deletion_requests
+  set finalization_started_at = coalesce(finalization_started_at, now()),
+      updated_at = now()
+  where id = target_request.id;
+
+  delete from public.account_deletion_deliveries where request_id = target_request.id;
+  delete from public.user_workspace_preferences where user_id = target_request.user_id;
+  delete from public.user_preferences where user_id = target_request.user_id;
+  delete from public.user_profiles where user_id = target_request.user_id;
+  delete from public.member_avatars a
+  using public.workspace_memberships m
+  where a.membership_id = m.id and m.user_id = target_request.user_id;
+  delete from app_private.last_avatars l where l.user_id = target_request.user_id;
+
+  update public.account_deletion_requests
+  set status = 'completed',
+      typed_email = '<deleted>',
+      recovery_token_digest = null,
+      completed_at = now(),
+      anonymized_at = now(),
+      updated_at = now()
+  where id = target_request.id;
+
+  perform app_private.record_security_audit_event_service(
+    target_request.user_id, null, 'account.deletion_finalized', 'account.security',
+    'account_deletion_request', target_request.id::text, '{}'::jsonb
+  );
+
+  return jsonb_build_object('status', 'completed', 'idempotent', false);
+end;
+$$;
 
 -- What goes --------------------------------------------------------------------------------------------
 

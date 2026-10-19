@@ -134,7 +134,7 @@ export default function ProfilePage() {
     () => new Set(),
   );
   const [phone, setPhone] = useState(account?.phone ?? "");
-  const [avatarObjectPath, setAvatarObjectPath] = useState(account?.avatarObjectPath ?? null);
+  const [avatarObjectPath, setAvatarObjectPath] = useState<string | null>(null);
   const [avatarUrl, setAvatarUrl] = useState(account?.avatarUrl ?? null);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState<string | null>(null);
@@ -252,7 +252,7 @@ export default function ProfilePage() {
   // empty: it is the account's own, apart from those (Mert's phone notes
   // 2026-10-17 #10). A field edit still waits for everything.
   const photoOnly =
-    (draftFile !== null || avatarObjectPath !== (account?.avatarObjectPath ?? null)) &&
+    (draftFile !== null || avatarObjectPath !== null) &&
     normalizedOrRaw(phone) === normalizedOrRaw(account?.phone ?? "") &&
     !legalDirty &&
     !preferredDirty &&
@@ -269,7 +269,7 @@ export default function ProfilePage() {
   useEffect(() => {
     if (!account || dirty) return;
     setPhone(account.phone ?? "");
-    setAvatarObjectPath(account.avatarObjectPath);
+    setAvatarObjectPath(null);
     setAvatarUrl(account.avatarUrl);
   }, [account, dirty]);
 
@@ -299,7 +299,7 @@ export default function ProfilePage() {
     setPreferredSent(new Set());
     setContactDraft(null);
     setPhone(account.phone ?? "");
-    setAvatarObjectPath(account.avatarObjectPath);
+    setAvatarObjectPath(null);
     setAvatarUrl(account.avatarUrl);
     for (const form of legalForms.current.values()) form.reset();
     setDirty(false);
@@ -312,7 +312,7 @@ export default function ProfilePage() {
     let profileSaved = false;
     try {
       const normalizedPhone = normalizeAccountPhone(phone);
-      const previousAvatarPath = account.avatarObjectPath;
+      const previousAvatarPath = avatarObjectPath;
       let nextAvatar = { avatarObjectPath, avatarUrl };
       if (draftFile) {
         if (!supabaseClient) throw new Error("Account photo storage is not configured");

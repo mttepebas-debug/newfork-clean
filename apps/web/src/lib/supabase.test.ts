@@ -180,14 +180,13 @@ describe("tab workspace context", () => {
 });
 
 describe("account profile persistence", () => {
-  it("loads the account phone, personal formats and a signed private avatar", async () => {
-    const avatarPath = `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`;
+  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own.
+  it("loads the account phone and personal formats, and no avatar", async () => {
     const results = {
       user_profiles: {
         data: {
           display_name: "Alex Kim",
           phone_e164: "+13105550100",
-          avatar_object_path: avatarPath,
         },
         error: null,
       },
@@ -209,16 +208,11 @@ describe("account profile persistence", () => {
       };
       return chain;
     });
-    const createSignedUrl = vi.fn(async () => ({
-      data: { signedUrl: "https://storage.example.test/signed-avatar" },
-      error: null,
-    }));
+    const storageFrom = vi.fn();
     const profile = await loadAccountProfile(
       {
         from,
-        storage: {
-          from: vi.fn(() => ({ createSignedUrl })),
-        },
+        storage: { from: storageFrom },
       } as unknown as SupabaseClient,
       {
         id: workspaceId,
@@ -229,17 +223,16 @@ describe("account profile persistence", () => {
 
     expect(profile).toMatchObject({
       phone: "+13105550100",
-      avatarObjectPath: avatarPath,
-      avatarUrl: "https://storage.example.test/signed-avatar",
+      avatarUrl: null,
       timeFormat: "24h",
       dateFormat: "YYYY-MM-DD",
     });
-    expect(createSignedUrl).toHaveBeenCalledWith(avatarPath, 3600);
+    expect(storageFrom).not.toHaveBeenCalled();
     // The account keeps one phone column (BL-969).
-    expect(select).toHaveBeenCalledWith("display_name,phone_e164,avatar_object_path");
+    expect(select).toHaveBeenCalledWith("display_name,phone_e164");
   });
 
-  it("writes the canonical phone, private avatar path and display preferences", async () => {
+  it("writes the canonical phone and display preferences, and no avatar", async () => {
     const upsert = vi.fn(async () => ({ error: null }));
     const from = vi.fn(() => ({ upsert }));
     const profile = accountProfileSchema.parse({
@@ -247,7 +240,6 @@ describe("account profile persistence", () => {
       email: "alex@example.test",
       displayName: "Alex Kim",
       phone: "+13105550100",
-      avatarObjectPath: `${workspaceId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`,
       avatarUrl: "https://storage.example.test/signed-avatar",
       theme: "dark",
       timeFormat: "24h",
@@ -260,7 +252,6 @@ describe("account profile persistence", () => {
       user_id: workspaceId,
       display_name: "Alex Kim",
       phone_e164: "+13105550100",
-      avatar_object_path: profile.avatarObjectPath,
       updated_at: expect.any(String),
     });
     expect(upsert).toHaveBeenCalledWith(
@@ -288,7 +279,6 @@ describe("account profile persistence", () => {
       email: "alex@example.test",
       displayName: "Alex Kim",
       phone: "+13105550100",
-      avatarObjectPath: null,
       avatarUrl: null,
       theme: "system",
       timeFormat: "12h",

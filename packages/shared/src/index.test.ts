@@ -7,6 +7,11 @@ import {
   activeWorkspaceContextFromRow,
   accountProfileSchema,
   accountPendingInvitationSchema,
+  avatarChoiceSchema,
+  avatarSchema,
+  avatarUploadRequestSchema,
+  lastAvatarResponseSchema,
+  ownAvatarResponseSchema,
   announcementListSchema,
   appActionUrlSchema,
   canAccessWorkspace,
@@ -93,25 +98,72 @@ describe("account schemas", () => {
       }),
     ).toMatchObject({
       phone: "+13105550100",
-      avatarObjectPath: null,
       avatarUrl: null,
       timeFormat: "system",
       dateFormat: "system",
     });
   });
 
-  it("rejects legacy phone input and an avatar path owned by another account", () => {
-    expect(() =>
-      accountProfileSchema.parse({
-        userId,
-        email: "alex@example.test",
-        displayName: "Alex Kim",
-        phone: "+13105550100",
-        avatarObjectPath:
-          "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg",
-        theme: "system",
+  // AVATAR-IKON: the account keeps no avatar path; a person's avatar belongs to each workspace.
+  it("keeps no avatar path on the account", () => {
+    const parsed = accountProfileSchema.parse({
+      userId,
+      email: "alex@example.test",
+      displayName: "Alex Kim",
+      phone: "+13105550100",
+      avatarObjectPath: `${userId}/profile/fe201916-aa0e-480b-9144-1e1c8da20a31.jpg`,
+      theme: "system",
+    });
+    expect(parsed).not.toHaveProperty("avatarObjectPath");
+  });
+});
+
+describe("avatar schemas (AVATAR-IKON)", () => {
+  it("reads an avatar as a photo by its signed address or a drawing by its archive key", () => {
+    expect(avatarSchema.parse({ kind: "photo", url: "https://example.test/signed" })).toEqual({
+      kind: "photo",
+      url: "https://example.test/signed",
+    });
+    expect(avatarSchema.parse({ kind: "photo", url: null })).toEqual({ kind: "photo", url: null });
+    expect(avatarSchema.parse({ kind: "art", art_key: "001-server" })).toEqual({ kind: "art", art_key: "001-server" });
+    expect(avatarSchema.safeParse({ kind: "art", art_key: "no-such-drawing" }).success).toBe(false);
+    expect(avatarSchema.safeParse({ kind: "photo", path: "a/b/c.jpg" }).success).toBe(false);
+  });
+
+  it("keeps present and url beside the avatar and its suggestions", () => {
+    expect(
+      ownAvatarResponseSchema.parse({
+        present: true,
+        url: null,
+        avatar: { kind: "art", art_key: "003-bartender" },
+        suggested: ["001-server"],
       }),
-    ).toThrow();
+    ).toEqual({ present: true, url: null, avatar: { kind: "art", art_key: "003-bartender" }, suggested: ["001-server"] });
+    expect(ownAvatarResponseSchema.safeParse({ present: false, url: null, avatar: null, suggested: ["nope"] }).success).toBe(false);
+  });
+
+  it("takes a drawing, an uploaded photo's path or the last avatar as a choice", () => {
+    expect(avatarChoiceSchema.parse({ art_key: "001-server" })).toEqual({ art_key: "001-server" });
+    expect(avatarChoiceSchema.parse({ photo_path: "w/m/p.jpg" })).toEqual({ photo_path: "w/m/p.jpg" });
+    expect(avatarChoiceSchema.parse({ use_last: true })).toEqual({ use_last: true });
+    expect(avatarChoiceSchema.safeParse({ use_last: false }).success).toBe(false);
+    expect(avatarChoiceSchema.safeParse({ art_key: "no-such-drawing" }).success).toBe(false);
+    expect(avatarChoiceSchema.safeParse({}).success).toBe(false);
+  });
+
+  it("names where a last avatar came from", () => {
+    expect(lastAvatarResponseSchema.parse({ avatar: null, from_workspace_name: null })).toEqual({
+      avatar: null,
+      from_workspace_name: null,
+    });
+    expect(
+      lastAvatarResponseSchema.parse({ avatar: { kind: "art", art_key: "001-server" }, from_workspace_name: "Meyhouse" }),
+    ).toEqual({ avatar: { kind: "art", art_key: "001-server" }, from_workspace_name: "Meyhouse" });
+  });
+
+  it("uploads only JPG, PNG or WebP", () => {
+    expect(avatarUploadRequestSchema.parse({ content_type: "image/png" })).toEqual({ content_type: "image/png" });
+    expect(avatarUploadRequestSchema.safeParse({ content_type: "image/gif" }).success).toBe(false);
   });
 });
 

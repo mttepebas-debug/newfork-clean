@@ -15,6 +15,7 @@ import { createShiftExchangesService } from "./shift-exchanges/shift-exchanges-s
 import { createDocumentLifecycleServiceWithClient } from "./employees/document-lifecycle-service";
 import { createNotificationsService } from "./notifications/notifications-service";
 import { createLineupService } from "./lineup/lineup-service";
+import { createAvatarService } from "./avatars/avatar-service";
 
 // BL-134: whatever the database says goes through rpcFailure, so a refusal
 // keeps its status and machine key and Postgres's own sentence never reaches
@@ -76,6 +77,8 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["employee documents", () => createDocumentLifecycleServiceWithClient(documentsClient).list("token", { workspaceId: workspace, selfOnly: false })],
   ["lineup", () => createLineupService(options).myLineups({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
   ["lineup day", () => createLineupService(options).day({ actorUserId: actor, workspaceId: workspace, date: "2028-09-11" })],
+  ["own avatar", () => createAvatarService(options).own(input)],
+  ["last avatar", () => createAvatarService(options).last(input)],
 ];
 
 describe.each(calls)("%s service", (_name, call) => {

@@ -22,6 +22,7 @@ import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "
 import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 import { announcementCategorySchema, announcementDaySchema } from "./communications";
 import { lineupArtKeySchema } from "./lineup-art";
+import { employeeProfilePhotoMimeTypes } from "./storage-access";
 
 export * from "./availability";
 export * from "./availability-assessment";
@@ -293,35 +294,60 @@ export function normalizeAccountPhone(value: string | null | undefined): string 
   return usPhoneSchema.parse(toUsPhone(trimmed) ?? trimmed);
 }
 
-export const accountProfileSchema = z
-  .object({
-    userId: z.string().uuid(),
-    email: z.string().email(),
-    displayName: z.string().trim().min(1).max(100),
-    // A US number in E.164 (BL-969); a typed one goes through normalizeAccountPhone.
-    phone: usPhoneSchema.nullable().default(null),
-    avatarObjectPath: z.string().trim().nullable().default(null),
-    avatarUrl: z.string().url().nullable().default(null),
-    theme: themePreferenceSchema,
-    timeFormat: personalTimeFormatSchema.default("system"),
-    dateFormat: personalDateFormatSchema.default("system"),
-  })
-  .superRefine((profile, context) => {
-    if (
-      profile.avatarObjectPath &&
-      !new RegExp(
-        `^${profile.userId}/profile/[0-9a-f-]{36}\\.(jpg|png|webp)$`,
-        "i",
-      ).test(profile.avatarObjectPath)
-    ) {
-      context.addIssue({
-        code: "custom",
-        path: ["avatarObjectPath"],
-        message: "Account avatar path must belong to the account",
-      });
-    }
-  });
+export const accountProfileSchema = z.object({
+  userId: z.string().uuid(),
+  email: z.string().email(),
+  displayName: z.string().trim().min(1).max(100),
+  // A US number in E.164 (BL-969); a typed one goes through normalizeAccountPhone.
+  phone: usPhoneSchema.nullable().default(null),
+  // AVATAR-IKON: the account keeps no avatar; each workspace has the person's own (ownAvatarResponseSchema).
+  avatarUrl: z.string().url().nullable().default(null),
+  theme: themePreferenceSchema,
+  timeFormat: personalTimeFormatSchema.default("system"),
+  dateFormat: personalDateFormatSchema.default("system"),
+});
 export type AccountProfile = z.infer<typeof accountProfileSchema>;
+
+/**
+ * AVATAR-IKON (design §4.3-4.5): a person's avatar in one workspace, a photo they uploaded or a
+ * drawing from the Lineup archive. A photo travels only as a short-lived signed address, never its path.
+ */
+export const avatarSchema = z.discriminatedUnion("kind", [
+  z.object({ kind: z.literal("photo"), url: z.string().url().nullable() }),
+  z.object({ kind: z.literal("art"), art_key: lineupArtKeySchema }),
+]);
+export type Avatar = z.infer<typeof avatarSchema>;
+
+/** One's own avatar here; present and url stay for the readers that knew only a photo (url only for a photo). */
+export const ownAvatarResponseSchema = z.object({
+  present: z.boolean(),
+  url: z.string().url().nullable(),
+  avatar: avatarSchema.nullable(),
+  // The drawings one's jobs here suggest, the primary job's first.
+  suggested: z.array(lineupArtKeySchema),
+});
+export type OwnAvatarResponse = z.infer<typeof ownAvatarResponseSchema>;
+
+/** What a person saves as their avatar here: a drawing, a photo they uploaded here, or their last avatar. */
+export const avatarChoiceSchema = z.union([
+  z.object({ art_key: lineupArtKeySchema }).strict(),
+  z.object({ photo_path: z.string().min(1).max(300) }).strict(),
+  z.object({ use_last: z.literal(true) }).strict(),
+]);
+export type AvatarChoice = z.infer<typeof avatarChoiceSchema>;
+
+/** The account's last avatar, offered in another workspace, and the workspace it came from. */
+export const lastAvatarResponseSchema = z.object({
+  avatar: avatarSchema.nullable(),
+  from_workspace_name: z.string().nullable(),
+});
+export type LastAvatarResponse = z.infer<typeof lastAvatarResponseSchema>;
+
+/** A photo upload is asked for by its image type; the API names the place. */
+export const avatarUploadRequestSchema = z.object({ content_type: z.enum(employeeProfilePhotoMimeTypes) });
+export type AvatarUploadRequest = z.infer<typeof avatarUploadRequestSchema>;
+export const avatarUploadResponseSchema = z.object({ path: z.string(), token: z.string() });
+export type AvatarUploadResponse = z.infer<typeof avatarUploadResponseSchema>;
 
 /** What a request for a preferred name did: took effect, or is waiting. */
 export const preferredNameOutcomeSchema = z.enum([

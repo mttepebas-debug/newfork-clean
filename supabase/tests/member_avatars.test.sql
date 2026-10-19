@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(76);
+select plan(90);
 
 -- A person's avatar is one per workspace membership: a photo they uploaded or a drawing from the
 -- Lineup archive, never both (AVATAR-IKON, design §4.3-4.5, §4.7). The account keeps a "last avatar"
@@ -162,6 +162,12 @@ select is(pg_temp.refusal(format($$select public.save_own_avatar_service(%L, %L,
 select is(pg_temp.refusal(format($$select public.save_own_avatar_service(%L, %L, %L)$$, pg_temp.u('ali@a'), tests.id('a'),
     jsonb_build_object('photo_path', pg_temp.p('ali-b')))),
   '42501 authz.out_of_scope', 'foreign_prefix_refused: one''s own photo from another workspace');
+select throws_ok(format($$select public.save_own_avatar_service(%L, %L, %L)$$, pg_temp.u('ali@a'), tests.id('a'),
+    jsonb_build_object('photo_path', tests.id('a') || '/' || pg_temp.m('ali@a') || '/../' || pg_temp.m('mo@a') || '/' || gen_random_uuid() || '.jpg')),
+  '23514', null, 'a path that starts in one''s own place but climbs out of it is refused');
+select throws_ok(format($$select public.save_own_avatar_service(%L, %L, %L)$$, pg_temp.u('ali@a'), tests.id('a'),
+    jsonb_build_object('photo_path', tests.id('a') || '/' || pg_temp.m('ali@a') || '/extra/' || gen_random_uuid() || '.jpg')),
+  '23514', null, 'a path with an extra folder in one''s own place is refused');
 select is((select photo_path from public.member_avatars where membership_id = pg_temp.m('ali@a')), pg_temp.p('ali-2'),
   'a refused save changes nothing');
 
@@ -228,11 +234,20 @@ select is(public.get_last_avatar_service(pg_temp.u('ali@b'), tests.id('b')), nul
   'the last avatar is never offered back to the workspace it came from');
 select is((select row(source_membership_id, art_key)::text from app_private.last_avatars where user_id = pg_temp.u('ali@a')),
   row(pg_temp.m('ali@b'), '001-server')::text, 'the last save (in b, a drawing) is the last avatar');
+select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('a')),
+  jsonb_build_object('kind', 'art', 'art_key', '001-server', 'source_photo_path', null, 'from_workspace_name', 'World b'),
+  'a drawing chosen while still onboarding in b is offered in a');
 select is(public.save_own_avatar_service(pg_temp.u('ali@a'), tests.id('a'), '{"art_key": "003-bartender"}'),
   jsonb_build_object('previous_photo_path', pg_temp.p('ali-2')), 'back to a drawing in a hands back the photo');
 select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')),
   jsonb_build_object('kind', 'art', 'art_key', '003-bartender', 'source_photo_path', null, 'from_workspace_name', 'World a'),
   'last_avatar_points_to_source: a drawing chosen in a is offered in b with a''s name');
+-- A source that is no longer live (suspended, or its workspace closed) offers nothing.
+savepoint art_source_suspended;
+update public.workspace_memberships set status = 'suspended' where id = pg_temp.m('ali@a');
+select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')), null::jsonb,
+  'a drawing chosen in a membership since suspended is not offered');
+rollback to savepoint art_source_suspended;
 select is(public.save_own_avatar_service(pg_temp.u('ali@a'), tests.id('a'), jsonb_build_object('photo_path', pg_temp.p('ali-3'))),
   '{"previous_photo_path": null}'::jsonb, 'a photo again in a');
 select is((select row(source_membership_id, art_key)::text from app_private.last_avatars where user_id = pg_temp.u('ali@a')),
@@ -240,6 +255,18 @@ select is((select row(source_membership_id, art_key)::text from app_private.last
 select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')),
   jsonb_build_object('kind', 'photo', 'art_key', null, 'source_photo_path', pg_temp.p('ali-3'), 'from_workspace_name', 'World a'),
   'last_avatar_points_to_source: a photo in a is offered in b by its path in a');
+savepoint photo_source_suspended;
+update public.workspace_memberships set status = 'suspended' where id = pg_temp.m('ali@a');
+select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')), null::jsonb,
+  'a photo in a membership since suspended is not offered');
+rollback to savepoint photo_source_suspended;
+savepoint photo_source_closed;
+update public.workspaces set lifecycle_status = 'deleted', closed_at = now(), closed_by = tests.user('a:owner') where id = tests.id('a');
+select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')), null::jsonb,
+  'a photo in a workspace since closed is not offered');
+rollback to savepoint photo_source_closed;
+select is(public.get_last_avatar_service(pg_temp.u('ali@a'), tests.id('b')) ->> 'source_photo_path', pg_temp.p('ali-3'),
+  'the same photo is offered again once its source is live');
 
 -- member_avatar_read ---------------------------------------------------------------------------------
 
@@ -338,6 +365,40 @@ set local role authenticated;
 select throws_ok(current_setting('nf.try_upload'),
   '42501', null, 'old_paths_gone: a signed-in person cannot write to the account photo bucket');
 reset role;
+
+-- Account deletion: the person's photos in every workspace go, then their avatars -------------------
+
+select public.save_own_avatar_service(pg_temp.u('ali@a'), tests.id('a'), jsonb_build_object('photo_path', pg_temp.p('ali-2')));
+select public.save_own_avatar_service(pg_temp.u('ali@b'), tests.id('b'), jsonb_build_object('photo_path', pg_temp.p('ali-b')));
+insert into public.account_deletion_requests (
+  id, user_id, typed_email, acknowledged, requested_at, restore_until, recovery_token_digest, recovery_token_rotated_at
+) values (
+  '79000000-0000-4000-8000-000000000501', pg_temp.u('ali@a'), 'ali-deletes@example.test', true,
+  now() - interval '31 days', now() - interval '1 second', repeat('7', 64), now()
+);
+create temporary table deletion_work as select * from public.claim_account_deletion_work_service(100);
+select is((select action from deletion_work where request_id = '79000000-0000-4000-8000-000000000501'), 'finalize',
+  'ali''s account deletion is due');
+select throws_ok($$select public.list_account_deletion_avatar_photos_service('79000000-0000-4000-8000-000000000501', gen_random_uuid())$$,
+  'P0001', 'account deletion lease unavailable', 'only the worker holding the lease reads the photos');
+select is(
+  public.list_account_deletion_avatar_photos_service('79000000-0000-4000-8000-000000000501',
+    (select lease_id from deletion_work where request_id = '79000000-0000-4000-8000-000000000501')),
+  array(select x from unnest(array[pg_temp.p('ali-2'), pg_temp.p('ali-b')]) x order by x),
+  'the worker reads the person''s photos in every workspace');
+select is(
+  public.finalize_claimed_account_deletion_service('79000000-0000-4000-8000-000000000501',
+    (select lease_id from deletion_work where request_id = '79000000-0000-4000-8000-000000000501')) ->> 'status',
+  'completed', 'the account is purged');
+select is((select count(*)::integer from public.member_avatars where membership_id in (pg_temp.m('ali@a'), pg_temp.m('ali@b'))), 0,
+  'the purge takes the person''s avatars in every workspace');
+select is((select count(*)::integer from app_private.last_avatars where user_id = pg_temp.u('ali@a')), 0,
+  'and their last avatar');
+select ok(
+  not has_function_privilege('authenticated', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE')
+  and not has_function_privilege('anon', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE')
+  and has_function_privilege('service_role', 'public.list_account_deletion_avatar_photos_service(uuid, uuid)', 'EXECUTE'),
+  'only the worker reads them');
 
 -- A closed workspace -------------------------------------------------------------------------------
 

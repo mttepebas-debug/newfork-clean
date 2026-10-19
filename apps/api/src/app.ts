@@ -127,6 +127,8 @@ import { registerTimeOffVotingRoutes } from "./time-off/time-off-voting-routes";
 import { registerNotificationRoutes } from "./notifications/notifications-routes";
 import type { NotificationsService } from "./notifications/notifications-service";
 import { registerLineupRoutes } from "./lineup/lineup-routes";
+import { registerAvatarRoutes } from "./avatars/avatar-routes";
+import type { AvatarService } from "./avatars/avatar-service";
 import type { LineupService } from "./lineup/lineup-service";
 import {
   createTimeOffVotingService,
@@ -213,6 +215,7 @@ export interface BuildAppOptions {
   readonly timeOffVotingService?: TimeOffVotingService | null;
   readonly notificationsService?: NotificationsService | null;
   readonly lineupService?: LineupService | null;
+  readonly avatarService?: AvatarService | null;
   readonly rolesService?: RolesService | null;
   readonly signatureSettingsService?: SignatureSettingsService | null;
   readonly notificationSettingsService?: NotificationSettingsService | null;
@@ -922,6 +925,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   registerNotificationRoutes(app, { service: options.notificationsService, contextResolver });
   registerLineupRoutes(app, { service: options.lineupService, contextResolver });
+  registerAvatarRoutes(app, { service: options.avatarService, contextResolver });
   registerSettingsReadsRoutes(app, {
     service: settingsReadsService,
     contextResolver,
