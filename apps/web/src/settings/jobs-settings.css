@@ -1853,11 +1853,17 @@
 .catalog-drawer .job-drawer-controls {
   padding: 16px;
 }
+/* AVATAR-IKON: Details and Lineup icons can need more room than a short window has; then the
+   body scrolls as a whole and the employee list keeps room of its own below them. */
 .catalog-drawer.job-assignment-drawer .catalog-drawer-body {
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   scrollbar-gutter: auto;
+}
+.catalog-drawer.job-assignment-drawer .job-drawer-employees {
+  min-height: min(440px, 70dvh);
 }
 .catalog-drawer.job-assignment-drawer
   .catalog-drawer-body

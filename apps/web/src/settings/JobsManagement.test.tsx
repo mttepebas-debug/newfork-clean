@@ -544,6 +544,81 @@ describe("job assignment drawer", () => {
       }),
     );
   });
+  // AVATAR-IKON 2.3: the icons are one of the job's details, saved with the drawer's one Save.
+  it("opens Save when an icon changes and saves the icons with the original it was read with", async () => {
+    drawer();
+    const section = await screen.findByRole("region", { name: "Lineup icons" });
+    const save = screen.getByRole("button", { name: "Save" }) as HTMLButtonElement;
+    expect(save.disabled).toBe(true);
+    fireEvent.click(within(section).getByRole("button", { name: "All" }));
+    fireEvent.click(within(section).getByRole("checkbox", { name: "Shaker" }));
+    expect(save.disabled).toBe(false);
+    expect(screen.getByText("Job details changed")).toBeTruthy();
+    // Picked again, it is the list the job was read with: nothing to save.
+    fireEvent.click(within(section).getByRole("checkbox", { name: "Shaker" }));
+    expect(save.disabled).toBe(true);
+    fireEvent.click(within(section).getByRole("checkbox", { name: "Shaker" }));
+    fireEvent.click(save);
+    const details = { name: "Server", color: "#4478A8", department_id: department.id };
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenCalledWith("workspace", jobId, {
+        job: { ...details, lineup_icons: ["001-server", "003-bartender"] },
+        expected_job: { ...details, lineup_icons: ["001-server"] },
+        changes: [],
+      }),
+    );
+  });
+  it("brings the latest icons back with Reload latest when they were not touched", async () => {
+    vi.mocked(api.saveJobDetails).mockRejectedValueOnce(
+      new RequestError("Someone changed this job.", "job.changed", undefined, 409),
+    );
+    drawer();
+    fireEvent.change(await screen.findByLabelText("Job name"), {
+      target: { value: "Head Server" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("alert");
+    vi.mocked(organization.listJobs).mockResolvedValue([
+      { ...job, lineup_icons: ["005-host", "001-server"] },
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Reload latest" }));
+    const section = screen.getByRole("region", { name: "Lineup icons" });
+    await within(section).findByText("2 selected");
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const details = { color: "#4478A8", department_id: department.id, lineup_icons: ["005-host", "001-server"] };
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenLastCalledWith("workspace", jobId, {
+        job: { name: "Head Server", ...details },
+        expected_job: { name: "Server", ...details },
+        changes: [],
+      }),
+    );
+  });
+  it("keeps the icons the user picked through Reload latest", async () => {
+    vi.mocked(api.saveJobDetails).mockRejectedValueOnce(
+      new RequestError("Someone changed this job.", "job.changed", undefined, 409),
+    );
+    drawer();
+    const section = await screen.findByRole("region", { name: "Lineup icons" });
+    fireEvent.click(within(section).getByRole("button", { name: "All" }));
+    fireEvent.click(within(section).getByRole("checkbox", { name: "Shaker" }));
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await screen.findByRole("alert");
+    vi.mocked(organization.listJobs).mockResolvedValue([
+      { ...job, name: "Lead Server", lineup_icons: ["005-host"] },
+    ]);
+    fireEvent.click(screen.getByRole("button", { name: "Reload latest" }));
+    await screen.findByText(/Latest data loaded/);
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    const details = { color: "#4478A8", department_id: department.id };
+    await waitFor(() =>
+      expect(api.saveJobDetails).toHaveBeenLastCalledWith("workspace", jobId, {
+        job: { name: "Lead Server", ...details, lineup_icons: ["001-server", "003-bartender"] },
+        expected_job: { name: "Lead Server", ...details, lineup_icons: ["005-host"] },
+        changes: [],
+      }),
+    );
+  });
   it("filter changes keep pending removals visible until save, and conflict keeps the draft", async () => {
     vi.mocked(api.saveJobDetails).mockRejectedValue(
       new Error("Employee changed. Reload and review."),
@@ -583,6 +658,18 @@ describe("job assignment drawer", () => {
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     expect((await screen.findByRole("alert")).textContent).toContain("Not saved.");
     expect(screen.queryByRole("button", { name: "Reload latest" }) !== null).toBe(offered);
+  });
+  it("shows the Lineup icons under Details on a phone as tiles with Choose icons", async () => {
+    stubPhoneWidth();
+    try {
+      drawer();
+      const section = await screen.findByRole("region", { name: "Lineup icons" });
+      expect(within(section).getByRole("listitem", { name: "Server" })).toBeTruthy();
+      expect(within(section).getByRole("button", { name: "Choose icons" })).toBeTruthy();
+      expect(within(section).queryByRole("group", { name: "Icons" })).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
   });
   it("protects dirty dismissal and disables protected/archived changes", async () => {
     const close = drawer();

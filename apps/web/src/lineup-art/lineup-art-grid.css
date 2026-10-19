@@ -1,0 +1,196 @@
+/* AVATAR-IKON: the archive's grid (LineupArtGrid). The filters look as the job drawer's
+   All / Assigned / Not assigned tabs do (settings/jobs-settings.css .job-view-control), the search
+   as its employee search (.job-search). The screen around it sets how tall the tiles may grow. */
+.lineup-art-picker {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+  min-height: 0;
+}
+
+.lineup-art-tools {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 12px;
+  min-width: 0;
+}
+
+.lineup-art-filters {
+  display: flex;
+  flex: 0 1 auto;
+  align-items: stretch;
+  gap: 6px;
+  min-width: 0;
+  border-bottom: 1px solid var(--theme-border);
+}
+
+.lineup-art-filters button {
+  height: 40px;
+  margin-bottom: -1px;
+  padding: 8px 12px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  background: none;
+  box-shadow: none;
+  color: var(--theme-muted);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 500;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lineup-art-filters button[aria-pressed="true"] {
+  border-bottom-color: var(--theme-accent);
+  color: var(--theme-text);
+  font-weight: 600;
+}
+
+.lineup-art-filters button:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: -2px;
+}
+
+.lineup-art-search {
+  display: flex;
+  flex: 1 1 180px;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  min-height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-muted);
+  box-sizing: border-box;
+}
+
+.lineup-art-search:focus-within {
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 3px var(--theme-focus-halo);
+}
+
+/* Three classes: the job drawer's field rules (.jobs-settings-page .job-catalog-editor input…)
+   would draw a second frame inside the box. */
+.lineup-art-search.lineup-art-search.lineup-art-search input {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 34px;
+  min-height: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  outline: none;
+  box-shadow: none;
+  background: transparent;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.lineup-art-search.lineup-art-search.lineup-art-search.lineup-art-search input:focus,
+.lineup-art-search.lineup-art-search.lineup-art-search.lineup-art-search input:focus-visible {
+  border: 0;
+  outline: none;
+  box-shadow: none;
+}
+
+.lineup-art-tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  align-content: start;
+  gap: 8px;
+  min-width: 0;
+  min-height: 0;
+  padding: 3px;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.lineup-art-tile {
+  position: relative;
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  min-width: 0;
+  padding: 6px;
+  border: 1px solid var(--theme-border);
+  border-radius: 12px;
+  background: var(--theme-surface);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+
+.lineup-art-tile:hover:not([aria-disabled="true"]) {
+  border-color: var(--theme-border-hover);
+  background: var(--theme-surface-soft);
+}
+
+.lineup-art-tile[aria-checked="true"] {
+  padding: 5px;
+  border: 2px solid var(--theme-accent);
+  background: var(--theme-selected);
+}
+
+.lineup-art-tile[aria-disabled="true"] {
+  cursor: default;
+}
+
+.lineup-art-tile[aria-disabled="true"]:not([aria-checked="true"]) {
+  opacity: 0.45;
+}
+
+.lineup-art-tile:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 2px;
+}
+
+.lineup-art-tile-check {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+
+.lineup-art-empty {
+  grid-column: 1 / -1;
+  margin: 16px 0;
+  color: var(--theme-muted);
+  font-size: 13px;
+  text-align: center;
+}
+
+@media (max-width: 720px) {
+  .lineup-art-tools {
+    display: grid;
+  }
+
+  .lineup-art-filters button {
+    height: 44px;
+    padding: 8px 10px;
+  }
+
+  .lineup-art-search {
+    min-height: 44px;
+  }
+
+  .lineup-art-search.lineup-art-search.lineup-art-search input {
+    height: 42px;
+  }
+
+  .lineup-art-tiles {
+    grid-template-columns: repeat(auto-fill, minmax(56px, 1fr));
+  }
+}

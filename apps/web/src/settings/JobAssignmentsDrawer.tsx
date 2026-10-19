@@ -12,6 +12,7 @@ import type {
   JobAssignmentEmployee,
   JobAssignmentQuery,
   JobAssignmentTarget,
+  LineupArtKey,
 } from "@newfork/shared";
 import { useAuth } from "../auth/AuthContext";
 import {
@@ -26,12 +27,15 @@ import { errorText } from "./GeneralSettingsPage";
 import { CatalogDeleteAction } from "./CatalogDeleteAction";
 import { CatalogDrawer } from "./CatalogDrawer";
 import { JobColorInput } from "./JobCatalogEditor";
-import { jobInputSchema } from "@newfork/shared";
+import { jobInputSchema, lineupArtByKey } from "@newfork/shared";
 import { LetterRuleNote, letterRuleProps } from "../shell/us-text";
 import { listJobs } from "./organization-data";
 import { isChangedMeanwhile } from "../lib/catalog-refusals";
+import { LineupIconsSection, sameLineupIcons } from "./LineupIconsSection";
 
 type Pending = { before: boolean; assigned: boolean; revision: number };
+const isLineupArtKey = (key: string): key is LineupArtKey =>
+  lineupArtByKey.has(key);
 export function JobAssignmentsDrawer({
   workspaceId,
   job,
@@ -58,19 +62,24 @@ export function JobAssignmentsDrawer({
     !job?.archived_at &&
     context?.permissions.includes("employees.manage"),
   );
+  // A new job carries the icon list the drawer shows (its name's suggestion, or the person's pick).
   const initial: JobInput = job
     ? jobInputSchema.parse(job)
-    : (initialJob ?? {
-        name: "",
-        color: "#4478A8",
-        department_id: null,
-      });
+    : {
+        lineup_icons: [],
+        ...(initialJob ?? {
+          name: "",
+          color: "#4478A8",
+          department_id: null,
+        }),
+      };
   const [baseline, setBaseline] = useState<JobInput>(() => initial);
   const [jobDraft, setJobDraft] = useState<JobInput>(() => initial);
   const detailsDirty =
     jobDraft.name.trim() !== baseline.name ||
     jobDraft.color !== baseline.color ||
-    jobDraft.department_id !== baseline.department_id;
+    jobDraft.department_id !== baseline.department_id ||
+    !sameLineupIcons(jobDraft.lineup_icons ?? [], baseline.lineup_icons ?? []);
   const departmentName =
     departments.find((item) => item.id === jobDraft.department_id)?.name ??
     "No department";
@@ -267,6 +276,12 @@ export function JobAssignmentsDrawer({
             current.department_id !== baseline.department_id
               ? current.department_id
               : latest.department_id,
+          lineup_icons: sameLineupIcons(
+            current.lineup_icons ?? [],
+            baseline.lineup_icons ?? [],
+          )
+            ? latest.lineup_icons
+            : current.lineup_icons,
         }));
         setBaseline(latest);
       }
@@ -457,6 +472,19 @@ export function JobAssignmentsDrawer({
               </select>
             </label>
           </fieldset>
+          <LineupIconsSection
+            value={jobDraft.lineup_icons ?? []}
+            onChange={(lineup_icons: string[]) => {
+              setNotice(null);
+              setJobDraft((current) => ({
+                ...current,
+                lineup_icons: lineup_icons.filter(isLineupArtKey),
+              }));
+            }}
+            jobName={jobDraft.name}
+            isNew={createMode}
+            disabled={busy || !canManageJob}
+          />
           {(error || notice) && (
             <div
               className={error ? "job-error" : "job-save-notice"}

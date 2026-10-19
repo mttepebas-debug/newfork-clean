@@ -21,6 +21,7 @@ export * from "./time-off";
 import { shiftAvailabilityAssessmentSchema, scheduleConflictRulesSchema } from "./availability-assessment";
 import { shiftTimeBasisSchema, shiftTimeSnapshotSchema } from "./availability";
 import { announcementCategorySchema, announcementDaySchema } from "./communications";
+import { lineupArtKeySchema } from "./lineup-art";
 
 export * from "./availability";
 export * from "./availability-assessment";
@@ -40,7 +41,6 @@ export * from "./notification-settings";
 export * from "./push-alerts";
 export * from "./lineup";
 export * from "./lineup-art";
-import { lineupArtKeySchema } from "./lineup-art";
 
 export type HealthResponse = z.infer<typeof healthResponseSchema>;
 
