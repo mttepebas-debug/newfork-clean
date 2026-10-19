@@ -3001,13 +3001,14 @@ select:focus-visible {
 .app-shell[data-sidebar-collapsed="true"] .app-sidebar {
   overflow: visible;
 }
-/* A main-menu page starts 4 px (about a millimetre) right of the open menu's
-   edge and holds still when the menu collapses: the menu narrows inside its
-   column and the page keeps its place. Schedule and Settings are not held
-   (AppShell data-content-held; Mert 2026-10-18). */
+/* A main-menu page starts 32 px right of the open menu's edge, the same as
+   its right side, and its heading 32 px from the top (Mert 2026-10-19, drawn
+   on Requests; before: 4 px and 62). It holds still when the menu collapses:
+   the menu narrows inside its column and the page keeps its place. Schedule
+   and Settings are not held (AppShell data-content-held; Mert 2026-10-18). */
 @media (min-width: 721px) {
   .app-shell[data-content-held="true"] {
-    --app-page-gutter-start: 4px;
+    --app-page-gutter-start: 32px;
     --app-page-gutter-end: 32px;
   }
   .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] {
@@ -3034,6 +3035,7 @@ select:focus-visible {
     );
     margin-right: auto;
     margin-left: var(--app-page-gutter-start);
+    padding-top: 0;
   }
 }
 .sidebar-tools {

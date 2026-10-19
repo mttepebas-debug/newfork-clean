@@ -138,9 +138,9 @@
 .employee-lineup-calm span { color: var(--theme-muted); font-size: 14px; line-height: 1.45; }
 
 /* The page header, pinned at the top of the main area at its full size; everything under it scrolls (Mert
-   2026-10-17 ~8:30 AM, as on the manager's phone Lineup). It reaches over the page's top padding so nothing
-   shows above it. */
-.employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; margin-top: -30px; padding-top: 30px; background: inherit; }
+   2026-10-17 ~8:30 AM, as on the manager's phone Lineup). The page has no top room on a desktop (Mert
+   2026-10-19), so the header starts at the top itself; a phone reaches over its 16 px (below). */
+.employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; background: inherit; }
 @media (max-width: 720px) {
   .employee-hub-page > .employee-lineup-pin { margin: -16px -14px 0; padding: 16px 14px 0; }
 }
