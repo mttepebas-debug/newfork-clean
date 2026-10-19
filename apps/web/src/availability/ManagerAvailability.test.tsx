@@ -184,7 +184,7 @@ describe("Employees drawer, Availability: Manager notes (the same four parts, Me
   it("copies a day with its note; pressed again, the other day is as it was", async () => {
     const { onSave } = setup();
     fireEvent.click(screen.getByRole("radio", { name: /^Unavailable/ }));
-    const tuesday = () => screen.getByRole("button", { name: /^Tuesday,/ });
+    const tuesday = () => within(screen.getByRole("group", { name: "Copy Monday to" })).getByRole("button", { name: /^Tuesday,/ });
     fireEvent.click(tuesday());
     expect(days()[1]!.textContent).toBe("TuesdayUnavailable all dayKeep this note");
     fireEvent.change(screen.getByRole("textbox", { name: "Monday note" }), { target: { value: "School" } });
@@ -393,6 +393,37 @@ describe("Manager notes on a phone (720 px and below)", () => {
     await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
     expect(onSave.mock.calls[0]![0].preference.days[5]!.all_day).toBe(true);
     expect(onSave.mock.calls[0]![0].notes![5]).toBe("Class until 6");
+  });
+
+  // nf-guvenlik @4f8de4311: a refresh while the sheet is open must not lose another manager's note.
+  it("writes back only the notes the sheet changed, so a note saved meanwhile stays", async () => {
+    const data = model();
+    const { rerender, onSave } = setup(data);
+    fireEvent.click(document.querySelector<HTMLElement>('.avm-week [data-weekday="5"]')!);
+    const refreshed = structuredClone(data);
+    refreshed.manager!.revision = 5;
+    refreshed.manager!.notes = ["", "Keep this note", "", "Theirs", "", "", ""];
+    rerender(<ManagerAvailability model={refreshed} onSave={onSave} />);
+    const sheet = screen.getByRole("dialog", { name: "Friday" });
+    fireEvent.change(within(sheet).getByRole("textbox", { name: "Friday note" }), { target: { value: "Mine" } });
+    fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
+    expect(document.querySelector('.avm-week [data-weekday="3"]')!.textContent).toBe("WednesdayAvailable all dayTheirs");
+    fireEvent.click(save());
+    await waitFor(() => expect(onSave).toHaveBeenCalledOnce());
+    expect(onSave.mock.calls[0]![0]).toMatchObject({
+      expected_revision: 5,
+      notes: ["", "Keep this note", "", "Theirs", "", "Mine", ""],
+    });
+  });
+
+  it("names a day by its hours and describes it by its note", () => {
+    setup();
+    const monday = document.querySelector<HTMLElement>('.avm-week [data-weekday="1"]')!;
+    expect(monday.getAttribute("aria-label")).toBe("Monday, Available all day");
+    expect(document.getElementById(monday.getAttribute("aria-describedby")!)?.textContent).toBe("Keep this note");
+    fireEvent.click(monday);
+    const box = within(screen.getByRole("dialog", { name: "Monday" })).getByRole("textbox", { name: "Monday note" });
+    expect(document.getElementById(box.getAttribute("aria-describedby")!)?.textContent).toBe("14 / 1000");
   });
 
   it("copies the day with its note from the sheet", () => {

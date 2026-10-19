@@ -180,15 +180,19 @@ function NoteField({
 }) {
   const id = useId();
   const name = WEEKDAY_NAMES[weekday]!;
+  const countId = `${id}-count`;
   return (
     <div className="avm-note-field">
       <label htmlFor={id}>
         <span>Note</span>
-        <span className="avm-note-count">{value.length} / 1000</span>
+        <span className="avm-note-count" id={countId}>
+          {value.length} / 1000
+        </span>
       </label>
       <textarea
         id={id}
         aria-label={`${name} note`}
+        aria-describedby={countId}
         maxLength={1000}
         rows={3}
         placeholder="e.g. Prefers closing shifts"
@@ -207,6 +211,7 @@ function ManagerNotes({
   onBusy,
 }: Omit<Props, "short"> & { onBusy: (busy: boolean) => void }) {
   const phone = useListPhoneWidth();
+  const rowIds = useId();
   const who = firstName(model.employee_name);
   const [baseline, setBaseline] = useState(model);
   const [preference, setPreference] = useState(() => model.manager?.preference ?? emptyWeeklyPreference());
@@ -321,7 +326,9 @@ function ManagerNotes({
         ),
       });
     }
-    if (sheet && keep && sheetNotesChanged) setNotes(sheet.notes);
+    // Only the days the sheet changed: a note another manager saved while it was open stays (nf-guvenlik @4f8de4311).
+    if (sheet && keep && sheetNotesChanged)
+      setNotes(notes.map((note, day) => (sheet.notes[day] !== sheet.baseNotes[day] ? sheet.notes[day]! : note)));
     if (sheet && keep && (sheetChanges.length || sheetNotesChanged)) changed(sheetChanges.length > 0);
     setSheet(null);
   }
@@ -330,6 +337,8 @@ function ManagerNotes({
     const day = preference.days.find((item) => item.day === weekday)!;
     const tone = dayTone(day, timeFormat);
     const note = (notes[weekday] ?? "").trim();
+    // The row is named by its day and hours; the note, shown on one line, is its description.
+    const noteId = `${rowIds}-note-${weekday}`;
     return (
       <button
         key={weekday}
@@ -337,6 +346,8 @@ function ManagerNotes({
         data-weekday={weekday}
         className={`dav-row ${tone.className} is-${dayState(day)}`}
         aria-current={currentDay === undefined ? undefined : currentDay}
+        aria-label={`${WEEKDAY_NAMES[weekday]}, ${tone.label}`}
+        aria-describedby={note ? noteId : undefined}
         disabled={phone && locked}
         onClick={onClick}
       >
@@ -347,7 +358,7 @@ function ManagerNotes({
           {note && (
             <small className="avm-row-note">
               <StickyNote size={12} aria-hidden />
-              <span>{note}</span>
+              <span id={noteId}>{note}</span>
             </small>
           )}
         </span>
