@@ -15,6 +15,19 @@
    empty). The 6px each side is room for a tapped shift's halo. */
 .ems-pager { overflow-x: clip; margin: 0 -6px; touch-action: pan-y; }
 .ems-track { display: grid; grid-template-columns: 1fr 1fr; align-items: start; width: 200%; transform: translateX(calc(var(--pos, 0) * -50%)); transition: transform .32s cubic-bezier(.2, .8, .2, 1); }
+/* A phone's frame (views/list-page-frozen.css, Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL): it scrolls only as far as
+   the open week's days, so a week that fits never moves. The frame reaches 6 px past each side for the halo; the
+   pager clips both ways (a clipped box is no scroll box, so neither the hidden week nor its slide can widen or
+   lengthen the frame) and keeps 6 px above and below for the halo too; the week out of view leaves the flow and
+   sits in its own column. */
+.ems-frame { margin: 0 -6px; padding: 0 6px; }
+@media (max-width: 720px) and (min-height: 560px) {
+  .ems-pager { overflow: clip; margin: -6px -6px; padding: 6px 0; }
+  .ems-track { position: relative; }
+  .ems-week[inert] { position: absolute; top: 0; grid-row: 1; width: 100%; }
+  .ems-week:first-child { grid-column: 1; }
+  .ems-week:last-child { grid-column: 2; }
+}
 .ems-week { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 0 6px; }
 .ems-day { display: grid; grid-template-columns: 54px minmax(0, 1fr); gap: 12px; align-items: start; padding: 10px; border-radius: 16px; background: var(--theme-surface); box-shadow: inset 0 0 0 1px var(--theme-border-subtle); }
 .ems-date { display: flex; flex-direction: column; align-items: center; justify-content: center; height: 54px; border-radius: 12px; background: var(--theme-surface-muted); }

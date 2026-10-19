@@ -333,48 +333,50 @@ function LineupView({
 
   return (
     <section className="employee-lineup-view" style={style} aria-label={`${name} lineup${named ? `, ${lineup.location.name}` : ""}`}>
-      <div className="employee-lineup-ticket" onClick={fold}>
-        <button
-          type="button"
-          ref={foldButton}
-          className="employee-lineup-fold"
-          aria-expanded={open}
-          aria-controls={open ? `${ids}panel` : undefined}
-          aria-label={open ? "Hide team and notes" : "Show team and notes"}
-          onClick={() => setOpen(!open)}
-        >
-          <ChevronDown size={18} aria-hidden />
-        </button>
-        <div className="employee-lineup-stub">
-          <span className="employee-lineup-avatar is-large" style={{ "--job": me.job_color ?? "var(--theme-border-strong)" } as CSSProperties} aria-hidden>
-            {initials(lineup.team.find((row) => row.is_me)?.name ?? "")}
-          </span>
-          <b>{name}</b>
-        </div>
-        <div className="employee-lineup-ticket-body">
-          {me.called_off ? <p className="employee-lineup-called-off">You're called off.</p> : null}
-          <p className="employee-lineup-place">
-            <MapPin size={15} aria-hidden />
-            {lineup.location.name}
-          </p>
-          <p className="employee-lineup-date">{longDate(date)}</p>
-          {was ? (
-            <p className="employee-lineup-time is-changed">
-              <TimeSwap was={was.start_time} now={me.start_time} format={timeFormat} />
-              {" – "}
-              <TimeSwap was={was.end_time} now={me.end_time} format={timeFormat} />
-              <span className="sr-only">{`${range(me, timeFormat)}, changed today, was ${range(was, timeFormat)}`}</span>
+      {/* The ticket and Team · Notes stay at the top of a phone's list while the team passes under them
+          (Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL; employee-lineup.css). */}
+      <div className="employee-lineup-head">
+        <div className="employee-lineup-ticket" onClick={fold}>
+          <button
+            type="button"
+            ref={foldButton}
+            className="employee-lineup-fold"
+            aria-expanded={open}
+            aria-controls={open ? `${ids}panel` : undefined}
+            aria-label={open ? "Hide team and notes" : "Show team and notes"}
+            onClick={() => setOpen(!open)}
+          >
+            <ChevronDown size={18} aria-hidden />
+          </button>
+          <div className="employee-lineup-stub">
+            <span className="employee-lineup-avatar is-large" style={{ "--job": me.job_color ?? "var(--theme-border-strong)" } as CSSProperties} aria-hidden>
+              {initials(lineup.team.find((row) => row.is_me)?.name ?? "")}
+            </span>
+            <b>{name}</b>
+          </div>
+          <div className="employee-lineup-ticket-body">
+            {me.called_off ? <p className="employee-lineup-called-off">You're called off.</p> : null}
+            <p className="employee-lineup-place">
+              <MapPin size={15} aria-hidden />
+              {lineup.location.name}
             </p>
-          ) : (
-            <p className="employee-lineup-time">{range(me, timeFormat)}</p>
-          )}
-          {detail ? <p className="employee-lineup-detail">{detail}</p> : null}
+            <p className="employee-lineup-date">{longDate(date)}</p>
+            {was ? (
+              <p className="employee-lineup-time is-changed">
+                <TimeSwap was={was.start_time} now={me.start_time} format={timeFormat} />
+                {" – "}
+                <TimeSwap was={was.end_time} now={me.end_time} format={timeFormat} />
+                <span className="sr-only">{`${range(me, timeFormat)}, changed today, was ${range(was, timeFormat)}`}</span>
+              </p>
+            ) : (
+              <p className="employee-lineup-time">{range(me, timeFormat)}</p>
+            )}
+            {detail ? <p className="employee-lineup-detail">{detail}</p> : null}
+          </div>
         </div>
-      </div>
 
-      {open ? (
-        <>
-          {/* Tabs: ← → move between them, one tab stop (WAI-ARIA tabs). */}
+        {open ? (
+          /* Tabs: ← → move between them, one tab stop (WAI-ARIA tabs). */
           <div
             className="employee-lineup-tabs"
             role="tablist"
@@ -396,26 +398,28 @@ function LineupView({
               Notes{notes.length ? <span>{notes.length}</span> : null}
             </button>
           </div>
+        ) : null}
+      </div>
 
-          <div role="tabpanel" id={`${ids}panel`} aria-labelledby={`${ids}${tab}-tab`}>
-            {tab === "notes" ? (
-              notes.length ? (
-                <div className="employee-lineup-notes">
-                  {notes.map(([title, text]) => (
-                    <div key={title}>
-                      <b>{title}</b>
-                      <p>{text}</p>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <p className="employee-lineup-none">No notes for this shift.</p>
-              )
+      {open ? (
+        <div role="tabpanel" id={`${ids}panel`} aria-labelledby={`${ids}${tab}-tab`}>
+          {tab === "notes" ? (
+            notes.length ? (
+              <div className="employee-lineup-notes">
+                {notes.map(([title, text]) => (
+                  <div key={title}>
+                    <b>{title}</b>
+                    <p>{text}</p>
+                  </div>
+                ))}
+              </div>
             ) : (
-              <Team rows={lineup.team} timeFormat={timeFormat} />
-            )}
-          </div>
-        </>
+              <p className="employee-lineup-none">No notes for this shift.</p>
+            )
+          ) : (
+            <Team rows={lineup.team} timeFormat={timeFormat} />
+          )}
+        </div>
       ) : null}
 
       {lineup.ask_ack ? (

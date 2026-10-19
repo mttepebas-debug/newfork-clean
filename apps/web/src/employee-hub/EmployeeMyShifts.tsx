@@ -185,62 +185,65 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
         ))}
         <i className="ems-seg-i" aria-hidden="true" />
       </div>
-      <div className="ems-pager">
-        <div className="ems-track">
-        {pages.map((days, i) => (
-          <div
-            key={i}
-            className="ems-week"
-            id={`ems-week-${i}`}
-            role="tabpanel"
-            aria-labelledby={`ems-tab-${i}`}
-            inert={page !== i ? true : undefined}
-          >
-            {days.map((day) => (
-              <div key={day.date} className={`ems-day${day.date === today ? " today" : ""}`} data-day={day.date}>
-                <div className="ems-date" aria-hidden="true">
-                  <span>{day.date === today ? "Today" : weekday(day.date)}</span>
-                  <b>{dayOfMonth(day.date)}</b>
+      {/* The days scroll in their own frame on a phone, under the week switch (views/list-page-frozen.css). */}
+      <div className="ems-frame">
+        <div className="ems-pager">
+          <div className="ems-track">
+          {pages.map((days, i) => (
+            <div
+              key={i}
+              className="ems-week"
+              id={`ems-week-${i}`}
+              role="tabpanel"
+              aria-labelledby={`ems-tab-${i}`}
+              inert={page !== i ? true : undefined}
+            >
+              {days.map((day) => (
+                <div key={day.date} className={`ems-day${day.date === today ? " today" : ""}`} data-day={day.date}>
+                  <div className="ems-date" aria-hidden="true">
+                    <span>{day.date === today ? "Today" : weekday(day.date)}</span>
+                    <b>{dayOfMonth(day.date)}</b>
+                  </div>
+                  <div className="ems-body">
+                    {day.shifts.length ? null : <span className="ems-sr">{longDay(day.date)}</span>}
+                    {day.shifts.length ? (
+                      day.shifts.map((shift) => (
+                        <Link
+                          key={shift.id}
+                          id={`shift-${shift.id}`}
+                          className={`ems-shift${shift.id === shiftId ? " flash" : ""}`}
+                          to={`?date=${day.date}&shift=${shift.id}`}
+                          replace
+                        >
+                          <span className="ems-sr">{longDay(day.date)}, </span>
+                          <b>{formatTime(shift.start_time, timeFormat, "long")} – {formatTime(shift.end_time, timeFormat, "long")}</b>
+                          <span>{shift.location_name} · {shift.job_name}</span>
+                        </Link>
+                      ))
+                    ) : day.timeOff ? (
+                      <div className="ems-to">
+                        <CalendarX2 size={20} strokeWidth={1.8} aria-hidden="true" />
+                        <span>Time off · Approved</span>
+                      </div>
+                    ) : (
+                      <div className="ems-off">
+                        Day off
+                        {day.open && day.date >= today ? (
+                          <>
+                            {" · "}
+                            <Link to={`/app/employee-hub/shift-hub?hub_view=available&from=${day.date}&to=${day.date}`}>
+                              {day.open} open shift{day.open === 1 ? "" : "s"} to pick up
+                            </Link>
+                          </>
+                        ) : null}
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <div className="ems-body">
-                  {day.shifts.length ? null : <span className="ems-sr">{longDay(day.date)}</span>}
-                  {day.shifts.length ? (
-                    day.shifts.map((shift) => (
-                      <Link
-                        key={shift.id}
-                        id={`shift-${shift.id}`}
-                        className={`ems-shift${shift.id === shiftId ? " flash" : ""}`}
-                        to={`?date=${day.date}&shift=${shift.id}`}
-                        replace
-                      >
-                        <span className="ems-sr">{longDay(day.date)}, </span>
-                        <b>{formatTime(shift.start_time, timeFormat, "long")} – {formatTime(shift.end_time, timeFormat, "long")}</b>
-                        <span>{shift.location_name} · {shift.job_name}</span>
-                      </Link>
-                    ))
-                  ) : day.timeOff ? (
-                    <div className="ems-to">
-                      <CalendarX2 size={20} strokeWidth={1.8} aria-hidden="true" />
-                      <span>Time off · Approved</span>
-                    </div>
-                  ) : (
-                    <div className="ems-off">
-                      Day off
-                      {day.open && day.date >= today ? (
-                        <>
-                          {" · "}
-                          <Link to={`/app/employee-hub/shift-hub?hub_view=available&from=${day.date}&to=${day.date}`}>
-                            {day.open} open shift{day.open === 1 ? "" : "s"} to pick up
-                          </Link>
-                        </>
-                      ) : null}
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              ))}
+            </div>
+          ))}
           </div>
-        ))}
         </div>
       </div>
       {selected ? (

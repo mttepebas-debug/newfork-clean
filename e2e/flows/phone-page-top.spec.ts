@@ -108,7 +108,7 @@ const scrollDown = (page: Page) =>
     }
     const frame = [
       ...document.querySelectorAll(
-        ".list-page :is(.employee-table-wrap, .job-catalog, .list-cards, .list-frozen-body, .lineup-phone, .lineup-desk-scroll), .acknowledgement-page > .job-catalog, .employee-schedule-board",
+        ".list-page :is(.employee-table-wrap, .job-catalog, .list-cards, .list-frozen-body, .lineup-phone, .lineup-desk-scroll), .acknowledgement-page > .job-catalog, .employee-schedule-board, .employee-hub-page :is(.ems-frame, .sx-workbench, .employee-lineup-page, .employee-weekly-workspace > [role=\"tabpanel\"])",
       ),
     ].find((item) => item.getBoundingClientRect().height > 0 && /(auto|scroll)/.test(getComputedStyle(item).overflowY));
     const box = frame ?? area ?? document.scrollingElement!;

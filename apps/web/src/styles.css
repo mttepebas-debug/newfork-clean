@@ -12125,8 +12125,10 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 @media (max-width: 720px) {
   .employee-hub-page {
+    /* The page's side gutter: what a full-width strip (Lineup's heading and wheel) bleeds into. */
+    --eh-gutter: 14px;
     width: 100%;
-    padding: 16px 14px 34px;
+    padding: 16px var(--eh-gutter) 34px;
   }
 }
 .panel-heading {
@@ -12263,7 +12265,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 }
 @media (max-width: 620px) {
   .employee-hub-page {
-    padding: 18px 12px 36px;
+    --eh-gutter: 12px;
+    padding: 18px var(--eh-gutter) 36px;
   }
   .hub-panel {
     padding: 16px;

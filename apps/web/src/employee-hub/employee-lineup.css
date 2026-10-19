@@ -14,14 +14,16 @@
 .employee-lineup-day .lineup-wheel { margin: 0; }
 @media (max-width: 720px) {
   .employee-lineup-day { max-width: none; }
-  .employee-lineup-day .lineup-wheel { margin: 0 -14px; }
+  /* The wheel runs to the screen's edges: as far as the page's gutter, never further (a 14 px bleed against
+     a 12 px gutter left the page 2 px wider than the screen, and it moved sideways under a finger). */
+  .employee-lineup-day .lineup-wheel { margin: 0 calc(-1 * var(--eh-gutter, 14px)); }
 }
 
 .employee-lineup { max-width: 560px; padding-bottom: 24px; }
 /* Her shift tabs 14 px under the wheel, as on the manager's page (one rhythm, Mert 2026-10-17 ~8:10 AM). */
 .employee-lineup > .lineup-shift-tabs { margin-top: 14px; }
 /* The ticket 16 px under the shift tabs (Mert 2026-10-17 ~8:30 AM; no heading over it any more). */
-.employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-ticket,
+.employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket,
 .employee-lineup > .lineup-shift-tabs + .employee-lineup-calm { margin-top: 16px; }
 .employee-lineup :is(button, a):focus-visible { outline: 2px solid var(--theme-focus); outline-offset: 2px; }
 
@@ -130,7 +132,7 @@
 /* All locations (Mert 2026-10-17 ~9:10 AM): her lineups of the shift at every place, one under the other, a line
    between (mockup v-e.css .e-lsep). */
 .employee-lineup-sep { height: 0; margin: 28px -4px 24px; border: 0; border-top: 1px solid var(--theme-border-strong); }
-.employee-lineup-sep + .employee-lineup-view > .employee-lineup-ticket { margin-top: 0; }
+.employee-lineup-sep + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
 
 .employee-lineup-calm { display: grid; justify-items: center; gap: 6px; max-width: 560px; margin-top: 16px; padding: 26px 18px; border: 1px solid var(--theme-list-frame); border-radius: 12px; background: var(--theme-surface); text-align: center; }
 .employee-lineup-calm svg { margin-bottom: 4px; color: var(--theme-accent-deep); }
@@ -142,5 +144,24 @@
    2026-10-19), so the header starts at the top itself; a phone reaches over its 16 px (below). */
 .employee-hub-page > .employee-lineup-pin { position: sticky; top: 0; z-index: 5; background: inherit; }
 @media (max-width: 720px) {
-  .employee-hub-page > .employee-lineup-pin { margin: -16px -14px 0; padding: 16px 14px 0; }
+  .employee-hub-page > .employee-lineup-pin { margin: -16px calc(-1 * var(--eh-gutter, 14px)) 0; padding: 16px var(--eh-gutter, 14px) 0; }
+}
+
+/* A phone's list frame (views/list-page-frozen.css, Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL): the header and
+   My shifts · Lineup stay; under them the frame scrolls. The date and the wheel go up with it; the shift tabs, then
+   the ticket with Team · Notes, stop at the top of the frame and the team passes under them. The frame reaches
+   over the page's gutter so the wheel's full width stays inside it (nothing is wider than the screen). */
+@media (max-width: 720px) and (min-height: 560px) {
+  .employee-hub-page > .employee-lineup-page {
+    margin: 0 calc(-1 * var(--eh-gutter, 14px));
+    padding: 0 var(--eh-gutter, 14px) 24px;
+    background: inherit;
+  }
+  .employee-lineup-page > .employee-lineup,
+  .employee-lineup > .employee-lineup-view { padding-bottom: 0; background: inherit; }
+  .employee-lineup > .lineup-shift-tabs { position: sticky; top: 0; z-index: 3; background: inherit; }
+  .employee-lineup-view > .employee-lineup-head { position: sticky; top: var(--elu-shift-tabs, 43px); z-index: 2; background: inherit; }
+  /* The 16 px over the ticket is the head's own, so what passes under it never shows through. */
+  .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head { padding-top: 16px; }
+  .employee-lineup > .lineup-shift-tabs + .employee-lineup-view > .employee-lineup-head > .employee-lineup-ticket { margin-top: 0; }
 }

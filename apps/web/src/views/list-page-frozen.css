@@ -159,3 +159,50 @@
     background: var(--theme-surface);
   }
 }
+
+/* The employee's phone pages (Mert 2026-10-19 ~06:30 AM, CALISAN-SCROLL: "bu sayfada shift listesi scrollable
+   olmalı geri herşey sabit olmalı … eğer ekran boyutundan daha uzun bi shift listesi yoksa hiç scroll olmasın"):
+   the same frame. The top bar, the page header, the page tabs and the page's own controls stay; only the list
+   scrolls, in its frame, no taller than its rows, so a list that fits never moves. A pull at the top of the frame
+   still refreshes (shell/PullToRefresh.tsx). My shifts: its days under the week switch. Lineup: everything under
+   My shifts · Lineup (its shift tabs and ticket stop at the frame's top, employee-lineup.css). Requests: the cards
+   and lists under its tabs and filters. My Availability: what is under Availability · Time Off Requests. */
+@media (max-width: 720px) and (min-height: 560px) {
+  .employee-hub-page:has(> :is(.ems, .employee-lineup-page, .sx-root, .employee-weekly-workspace)) {
+    display: flex;
+    height: 100%;
+    min-height: 0;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+  .employee-hub-page:has(> :is(.ems, .employee-lineup-page, .sx-root, .employee-weekly-workspace)) > *,
+  .employee-hub-page > :is(.ems, .sx-root, .employee-weekly-workspace) > * {
+    flex: 0 0 auto;
+  }
+  .employee-hub-page > :is(.ems, .sx-root, .employee-weekly-workspace) {
+    display: flex;
+    min-height: 0;
+    flex: 0 1 auto;
+    flex-direction: column;
+    padding-bottom: 0;
+  }
+  .employee-hub-page > .ems > .ems-frame,
+  .employee-hub-page > .sx-root > .sx-workbench,
+  .employee-hub-page > .employee-weekly-workspace > [role="tabpanel"],
+  .employee-hub-page > .employee-lineup-page {
+    position: relative;
+    min-height: 0;
+    flex: 0 1 auto;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+  }
+  .employee-hub-page > .ems > .ems-frame,
+  .employee-hub-page > .sx-root > .sx-workbench,
+  .employee-hub-page > .employee-weekly-workspace > [role="tabpanel"] {
+    padding-bottom: 24px;
+  }
+  /* The week of Availability keeps its 16 px under the last day (day-availability.css, Mert 2026-10-16). */
+  .employee-hub-page > .employee-weekly-workspace > [role="tabpanel"]:has(.dav-panel.is-phone) {
+    padding-bottom: 0;
+  }
+}
