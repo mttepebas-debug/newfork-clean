@@ -1000,6 +1000,8 @@ describe("EmployeeOnboardingPage", () => {
   it.each([
     ["only works shifts", { employee: true, management: null }, ["workspace.read", "employee_hub.read"], "/app/employee-hub"],
     ["also manages", { employee: true, management: "manager" }, ["workspace.read", "employee_hub.read"], "/app/workspace"],
+    // ROL-CIFT 6.4 (S-166): somebody who only manages finishes setup and lands on Workspace.
+    ["only manages", { employee: false, management: "manager" }, ["workspace.read"], "/app/workspace"],
   ] as const)("lands somebody who %s, once onboarding is approved, where the accesses open", async (_who, access, actions, landing) => {
     function RouteMarker() {
       return <output aria-label="Current test route">{useLocation().pathname}</output>;

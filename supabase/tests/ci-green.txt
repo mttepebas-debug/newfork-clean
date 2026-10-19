@@ -129,6 +129,7 @@ supabase/tests/weekly_shift_availability_assessment.test.sql
 supabase/tests/weekly_team_availability.test.sql
 supabase/tests/workspace_lifecycle.test.sql
 supabase/tests/workspace_rls.test.sql
+supabase/tests/management_only_onboarding.test.sql
 supabase/tests/management_owner_job.test.sql
 supabase/tests/excluded_person_leaves_new_drafts.test.sql
 supabase/tests/employee_references_ask_the_core.test.sql
