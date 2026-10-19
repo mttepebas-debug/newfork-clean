@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(45);
+select plan(49);
 
 -- A job's Lineup icons (AVATAR-IKON 2.1). Every job is born with the drawings
 -- the archive suggests for its name, whoever opens it: a service, the owner's
@@ -141,6 +141,21 @@ select lives_ok(format(
   (select three from pick), app_private.suggest_lineup_art('Bartender')),
   'the owner saves three icons with the job''s details');
 select is(pg_temp.icons(tests.id('li:job:bartender')), (select three from pick), 'the job holds the three');
+-- A rename whose job_input has no lineup_icons key keeps the list the job holds.
+select lives_ok(format(
+  $$select public.update_job_details_and_assignments_service(%L, %L, %L,
+    jsonb_build_object('name', 'Bar Captain', 'color', '#4478A8', 'department_id', null),
+    jsonb_build_object('name', 'Bar Lead', 'color', '#4478A8', 'department_id', null, 'lineup_icons', to_jsonb(%L::text[])))$$,
+  tests.user('li:owner'), tests.id('li'), tests.id('li:job:bartender'), (select three from pick)),
+  'the owner renames Bar Lead to Bar Captain without sending icons');
+select is(pg_temp.icons(tests.id('li:job:bartender')), (select three from pick),
+  'a job renamed without icons in the request keeps its three');
+select lives_ok(format(
+  $$select public.update_job_details_and_assignments_service(%L, %L, %L,
+    jsonb_build_object('name', 'Bar Lead', 'color', '#4478A8', 'department_id', null),
+    jsonb_build_object('name', 'Bar Captain', 'color', '#4478A8', 'department_id', null, 'lineup_icons', to_jsonb(%L::text[])))$$,
+  tests.user('li:owner'), tests.id('li'), tests.id('li:job:bartender'), (select three from pick)),
+  'and back to Bar Lead the same way');
 
 -- expected_record_includes_icons: the drawer was opened before somebody changed the icons.
 select is(pg_temp.refusal(format(
@@ -183,6 +198,10 @@ select is(pg_temp.browser_refusal(tests.user('li:owner'), format(
   $$insert into public.jobs (workspace_id, name, color, lineup_icons) values (%L, 'Busser', '#123456', '{no-such-drawing}')$$,
   tests.id('li'))),
   '22023 job.lineup_icons_invalid', 'a browser insert with an unknown key is refused');
+select is(pg_temp.browser_refusal(tests.user('li:owner'), format(
+  $$insert into public.jobs (workspace_id, name, color, lineup_icons) values (%L, 'Busser', '#123456', %L::text[])$$,
+  tests.id('li'), format('{{%s,%s}}', (select three[1] from pick), (select three[2] from pick)))),
+  '22023 job.lineup_icons_invalid', 'a nested list of real keys is refused like any invalid one');
 
 -- browser_cannot_update_icons
 select ok(not has_column_privilege('authenticated', 'public.jobs', 'lineup_icons', 'UPDATE'),

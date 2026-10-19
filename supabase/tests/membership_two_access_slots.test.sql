@@ -245,7 +245,6 @@ select is(
   array['Owner'],
   'archived General Manager and Assistant Manager do not come back on the next save (2026-10-02)'
 );
-set local session_replication_role = origin;
 
 -- The rows follow the management slot ----------------------------------------------------------------
 update public.workspace_memberships set role_id = (select id from slot_role where key = 'admin')

@@ -27,11 +27,18 @@ language plpgsql
 security definer
 set search_path = ''
 as $$
+declare
+  valid boolean;
 begin
   if tg_op = 'INSERT' and new.lineup_icons is null then
     new.lineup_icons := app_private.suggest_lineup_art(new.name);
   end if;
-  if not app_private.lineup_art_keys_valid(new.lineup_icons) or cardinality(new.lineup_icons) > 24 then
+  -- A nested list is refused before its keys are read: array_position cannot search one.
+  valid := coalesce(array_ndims(new.lineup_icons), 1) = 1;
+  if valid then
+    valid := app_private.lineup_art_keys_valid(new.lineup_icons) and cardinality(new.lineup_icons) <= 24;
+  end if;
+  if not valid then
     raise exception 'Choose up to 24 different drawings from the archive'
       using errcode = '22023', hint = 'job.lineup_icons_invalid';
   end if;
