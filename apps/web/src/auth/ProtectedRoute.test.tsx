@@ -11,6 +11,7 @@ import { ProtectedRoute } from "./ProtectedRoute";
 
 const authState = vi.hoisted(() => ({
   value: {
+    account: { userId: "ali" } as { userId: string } | null,
     authenticated: true,
     context: null,
     error: "Could not query the database for the schema cache. Retrying." as
@@ -221,12 +222,28 @@ describe("ProtectedRoute", () => {
     authState.value.context = {
       onboarding: { status: "complete", currentStep: 4 },
     } as never;
-    markInvitationPromptAnswered();
+    markInvitationPromptAnswered("ali");
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderRoute();
 
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
     expect(listPendingEmployeeInvitations).not.toHaveBeenCalled();
+  });
+
+  // A tab the browser reopens on a shared device may still hold the last
+  // person's answer; somebody else's invitations are still put first.
+  it("does not take another person's answer for this person's", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      onboarding: { status: "complete", currentStep: 4 },
+    } as never;
+    markInvitationPromptAnswered("ayse");
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderRoute("/app/workspace");
+
+    expect((await screen.findByLabelText("Current path")).textContent).toBe(
+      "/invitations from /app/workspace",
+    );
   });
 
   it("checks once per open: with nothing waiting it shows the page and stops asking", async () => {
@@ -239,7 +256,7 @@ describe("ProtectedRoute", () => {
     expect(
       await screen.findByRole("heading", { name: "Workspace" }),
     ).toBeTruthy();
-    expect(invitationPromptAnswered()).toBe(true);
+    expect(invitationPromptAnswered("ali")).toBe(true);
   });
 
   it("lets the page through when the invitations cannot be read, and asks again later", async () => {
@@ -253,6 +270,6 @@ describe("ProtectedRoute", () => {
     expect(
       await screen.findByRole("heading", { name: "Workspace" }),
     ).toBeTruthy();
-    expect(invitationPromptAnswered()).toBe(false);
+    expect(invitationPromptAnswered("ali")).toBe(false);
   });
 });

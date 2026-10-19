@@ -355,18 +355,18 @@ describe("AuthProvider", () => {
     it("and forgets the invitation answer on sign out", async () => {
       const queryClient = seedCache();
       const { signOut } = await renderSignedIn(queryClient);
-      markInvitationPromptAnswered();
+      markInvitationPromptAnswered("ayse");
       await act(async () => { await signOut(); });
-      expect(invitationPromptAnswered()).toBe(false);
+      expect(invitationPromptAnswered("ayse")).toBe(false);
     });
 
     it("and forgets the invitation answer when a different person signs in", async () => {
       const queryClient = seedCache();
       const { emit } = await renderSignedIn(queryClient);
-      markInvitationPromptAnswered();
+      markInvitationPromptAnswered("ayse");
       supabaseMock.resolveWorkspaceContext.mockImplementation(async () => contextFor("mehmet"));
       await act(async () => { emit("SIGNED_IN", sessionFor("mehmet")); });
-      expect(invitationPromptAnswered()).toBe(false);
+      expect(invitationPromptAnswered("ayse")).toBe(false);
     });
 
     it("but keeps them when the same person's session refreshes", async () => {

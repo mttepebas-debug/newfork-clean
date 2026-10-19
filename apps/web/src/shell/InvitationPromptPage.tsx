@@ -23,7 +23,8 @@ import { PreBizFrame, Section } from "./prebiz/PreBiz";
  * is not offered to somebody with no workspace: the invitation comes first.
  */
 export default function InvitationPromptPage() {
-  const { context } = useAuth();
+  const { account, context } = useAuth();
+  const answer = (): void => markInvitationPromptAnswered(account?.userId);
   const navigate = useNavigate();
   const location = useLocation();
   // The page a link opened, when it was one; a plain open of the app is not.
@@ -54,7 +55,7 @@ export default function InvitationPromptPage() {
     from ??
     (ready.length > 1
       ? hubPath
-      : resolveLanding({ workspaces, context, invitationAnswered: true }).path);
+      : resolveLanding({ workspaces, context }).path);
 
   // The last invitation answered: nothing is left to put first in this open.
   const allAnswered =
@@ -64,7 +65,7 @@ export default function InvitationPromptPage() {
     invitations.length === 0;
   useEffect(() => {
     if (!allAnswered) return;
-    markInvitationPromptAnswered();
+    answer();
     navigate(landing(), { replace: true });
     // `landing` reads the query data this effect already waits for.
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -74,7 +75,7 @@ export default function InvitationPromptPage() {
     return <PreBizFrame titleId="invitations-title" title="Checking your account" />;
 
   const notNow = (): void => {
-    markInvitationPromptAnswered();
+    answer();
     navigate(landing(), { replace: true });
   };
 
@@ -103,7 +104,7 @@ export default function InvitationPromptPage() {
           <InvitationRow
             key={invitation.id}
             invitation={invitation}
-            onAccepted={markInvitationPromptAnswered}
+            onAccepted={answer}
           />
         ))}
       </Section>

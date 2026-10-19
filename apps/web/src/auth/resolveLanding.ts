@@ -12,8 +12,6 @@ export const invitationsPath = "/invitations";
 
 /** Where a sign-in, a sign-up or a membership change puts the account. */
 export type Landing =
-  /** An invitation waits and this open has not put it in front of the account yet. */
-  | { readonly kind: "invitations"; readonly path: typeof invitationsPath }
   /** The account owes a decision, or belongs nowhere yet. The hub says which. */
   | { readonly kind: "hub"; readonly path: typeof hubPath }
   /** One workspace to work in, and the page inside it the role can open. */
@@ -24,10 +22,6 @@ export type Landing =
     };
 
 export type LandingInput = {
-  /** How many invitations are waiting for this email. */
-  readonly pendingInvitationCount?: number;
-  /** This open already showed them: answered, joined, or "Not now". */
-  readonly invitationAnswered?: boolean;
   readonly workspaces?: readonly WorkspaceSummary[];
   /** The workspace already loaded, when there is one; it names the page. */
   readonly context?: ActiveWorkspaceContext | null;
@@ -100,32 +94,15 @@ export function noAccessHomePath(
 }
 
 /**
- * KARARLAR "Girişten sonra yönlendirme": while an invitation waits, it is the
- * first screen of every open of the app, before any workspace (BL-624). The
- * first rule of `resolveLanding`, and the question `ProtectedRoute` asks before
- * it shows any page.
- */
-export function invitationsComeFirst(
-  input: Pick<LandingInput, "pendingInvitationCount" | "invitationAnswered">,
-): boolean {
-  return (input.pendingInvitationCount ?? 0) > 0 && !input.invitationAnswered;
-}
-
-/**
  * Where an account lands: the hub's hand-off, the workspace switcher, the
  * invitation screen's "Not now". A sign-in goes to `/app`, where
- * `ProtectedRoute` asks `invitationsComeFirst` and `appLandingPath` names the
- * page. The first rule that matches wins, so reading it top to bottom is
- * reading the product decision.
+ * `ProtectedRoute` first puts a waiting invitation in front of the account
+ * (BL-624) and `appLandingPath` names the page. The first rule that matches
+ * wins, so reading it top to bottom is reading the product decision.
  */
 export function resolveLanding(input: LandingInput): Landing {
   const workspaces = input.workspaces ?? [];
   const ready = readyWorkspaces(workspaces);
-
-  // A waiting invitation is answered first, with or without a workspace to work
-  // in; "Not now" is offered only to somebody who has one.
-  if (invitationsComeFirst(input))
-    return { kind: "invitations", path: invitationsPath };
 
   // Nowhere to work yet, but a setup to finish: a decision, and the hub is
   // where decisions live.

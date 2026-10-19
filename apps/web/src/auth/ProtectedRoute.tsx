@@ -8,7 +8,7 @@ import {
   invitationPromptAnswered,
   markInvitationPromptAnswered,
 } from "./invitation-prompt";
-import { hubPath, invitationsComeFirst, invitationsPath } from "./resolveLanding";
+import { hubPath, invitationsPath } from "./resolveLanding";
 import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
 import { membershipClass } from "./access";
 
@@ -24,12 +24,12 @@ export function ProtectedRoute({
   /** False on the pages that are themselves the answer to an invitation. */
   readonly askInvitations?: boolean;
 }) {
-  const { authenticated, context, error, ready, refresh } = useAuth();
+  const { account, authenticated, context, error, ready, refresh } = useAuth();
   const location = useLocation();
   // A waiting invitation is the first screen of every open of the app, also
   // for somebody with a workspace to land in (KARARLAR "Girişten sonra
   // yönlendirme", BL-624). Asked once per open; "Not now" there ends it.
-  const answered = invitationPromptAnswered();
+  const answered = invitationPromptAnswered(account?.userId);
   // Only a page this route will show asks; one it hands on lets the next ask.
   const handsOn =
     workspace !== "none" &&
@@ -47,8 +47,8 @@ export function ProtectedRoute({
   const nothingWaiting =
     asking && invitations.isSuccess && invitations.data.length === 0;
   useEffect(() => {
-    if (nothingWaiting) markInvitationPromptAnswered();
-  }, [nothingWaiting]);
+    if (nothingWaiting) markInvitationPromptAnswered(account?.userId);
+  }, [nothingWaiting, account?.userId]);
 
   if (!ready)
     return <main className="auth-loading" aria-label="Loading workspace" />;
@@ -106,10 +106,7 @@ export function ProtectedRoute({
     // A failed read never stands in the way of the page; the next one asks again.
     if (invitations.isPending)
       return <main className="auth-loading" aria-label="Loading workspace" />;
-    if (
-      invitations.isSuccess &&
-      invitationsComeFirst({ pendingInvitationCount: invitations.data.length })
-    )
+    if (invitations.isSuccess && invitations.data.length > 0)
       return (
         <Navigate
           to={invitationsPath}

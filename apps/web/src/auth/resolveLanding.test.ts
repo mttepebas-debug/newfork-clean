@@ -3,7 +3,6 @@ import { describe, expect, it } from "vitest";
 import {
   appLandingPath,
   hubPath,
-  invitationsPath,
   noAccessHomePath,
   resolveLanding,
 } from "./resolveLanding";
@@ -39,30 +38,6 @@ const employeeContext = {
 } as unknown as ActiveWorkspaceContext;
 
 describe("resolveLanding", () => {
-  // KARARLAR "Girişten sonra yönlendirme": a waiting invitation is the first
-  // screen of every app open, even with a workspace to land in (BL-624).
-  it("puts a waiting invitation first, before a workspace it could land in", () => {
-    expect(
-      resolveLanding({ pendingInvitationCount: 2, workspaces: [ready, second] }),
-    ).toEqual({ kind: "invitations", path: invitationsPath });
-  });
-
-  it("puts a waiting invitation first for an account with nowhere to work", () => {
-    expect(
-      resolveLanding({ pendingInvitationCount: 1, workspaces: [] }),
-    ).toEqual({ kind: "invitations", path: invitationsPath });
-  });
-
-  it("lands as usual once the invitation was answered with Not now in this open", () => {
-    expect(
-      resolveLanding({
-        pendingInvitationCount: 1,
-        invitationAnswered: true,
-        workspaces: [ready],
-      }),
-    ).toMatchObject({ kind: "workspace", workspaceId: ready.id });
-  });
-
   it("sends an unfinished setup with nowhere to work to the hub (R3)", () => {
     expect(resolveLanding({ workspaces: [unfinished] })).toEqual({
       kind: "hub",
@@ -110,17 +85,13 @@ describe("resolveLanding", () => {
 
   it("sends an account that belongs nowhere to the hub (R6)", () => {
     expect(
-      resolveLanding({ workspaces: [], pendingInvitationCount: 0 }),
+      resolveLanding({ workspaces: [] }),
     ).toEqual({ kind: "hub", path: hubPath });
   });
 
   it("does not pull an account with somewhere to work into the hub (R7)", () => {
     expect(
-      resolveLanding({
-        pendingInvitationCount: 3,
-        invitationAnswered: true,
-        workspaces: [ready, unfinished],
-      }),
+      resolveLanding({ workspaces: [ready, unfinished] }),
     ).toMatchObject({ kind: "workspace", workspaceId: ready.id });
   });
 

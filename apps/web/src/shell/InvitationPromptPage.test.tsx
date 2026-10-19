@@ -14,7 +14,7 @@ import InvitationPromptPage from "./InvitationPromptPage";
 
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
-    account: { email: "cook@example.test" },
+    account: { userId: "ali", email: "cook@example.test" },
     context: null,
     refresh: vi.fn(),
     signOut: vi.fn(),
@@ -145,7 +145,7 @@ describe("InvitationPromptPage", () => {
         "/app/workspace",
       ),
     );
-    expect(invitationPromptAnswered()).toBe(true);
+    expect(invitationPromptAnswered("ali")).toBe(true);
   });
 
   it("takes Not now to Workspaces when there are several to choose from", async () => {
@@ -208,7 +208,7 @@ describe("InvitationPromptPage", () => {
         `/welcome/${sunset.workspaceId}`,
       ),
     );
-    expect(invitationPromptAnswered()).toBe(true);
+    expect(invitationPromptAnswered("ali")).toBe(true);
   });
 
   it("lands as usual once the last invitation is declined", async () => {
@@ -229,6 +229,6 @@ describe("InvitationPromptPage", () => {
         "/app/workspace",
       ),
     );
-    expect(invitationPromptAnswered()).toBe(true);
+    expect(invitationPromptAnswered("ali")).toBe(true);
   });
 });
