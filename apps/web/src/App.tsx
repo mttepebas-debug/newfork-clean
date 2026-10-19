@@ -16,6 +16,7 @@ import { AppShell } from "./shell/AppShell";
 import { AppCrashBoundary } from "./shell/CrashBoundary";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
+import { OwnDocumentsRedirect, OwnDocumentsRoute } from "./documents/OwnDocumentsRoutes";
 import { SignInPage } from "./views/SignInPage";
 import "./styles.css";
 
@@ -65,9 +66,7 @@ const WorkspaceNotificationSettingsPage = lazy(
 const ProfilePage = lazy(() => import("./account/ProfilePage"));
 const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
-const AccountDocumentsPage = lazy(
-  () => import("./account/AccountDocumentsPage"),
-);
+const MyDocumentsPage = lazy(() => import("./documents/MyDocumentsPage"));
 const WorkspaceHubPage = lazy(() => import("./shell/WorkspaceHubPage"));
 const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
@@ -280,7 +279,8 @@ export function App() {
                   element={<NotificationPreferencesPage />}
                 />
                 <Route path="workspaces" element={<WorkspacesPage />} />
-                <Route path="documents" element={<AccountDocumentsPage />} />
+                {/* Account → Documents moved to the app (MY-DOCUMENTS); its old address still opens it. */}
+                <Route path="documents" element={<OwnDocumentsRedirect />} />
               </Route>
               <Route
                 path="/app"
@@ -422,6 +422,23 @@ export function App() {
                     <PermissionRoute anyOf={["employees.read"]}>
                       <EmployeesPage />
                     </PermissionRoute>
+                  }
+                />
+                {/* One's own documents, a page of its own in either interface (MY-DOCUMENTS, Mert 2026-10-19). */}
+                <Route
+                  path="employee-hub/documents"
+                  element={
+                    <OwnDocumentsRoute view="employee">
+                      <MyDocumentsPage title="Documents" />
+                    </OwnDocumentsRoute>
+                  }
+                />
+                <Route
+                  path="my-documents"
+                  element={
+                    <OwnDocumentsRoute view="management">
+                      <MyDocumentsPage title="My documents" />
+                    </OwnDocumentsRoute>
                   }
                 />
                 <Route

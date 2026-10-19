@@ -133,8 +133,7 @@
     height: 24px;
     place-items: center;
   }
-  .phone-more nav a > span:last-child,
-  .phone-more nav button > span:last-child {
+  .phone-more-label {
     min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;

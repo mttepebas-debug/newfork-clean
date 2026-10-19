@@ -1,7 +1,6 @@
 import {
   ArrowLeft,
   Bell,
-  FileText,
   LogOut,
   Palette,
   ShieldCheck,
@@ -22,7 +21,7 @@ import { AccountAvatar } from "./AccountAvatar";
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
 
 /**
- * `waiting` names which count belongs to a tab. Four of the six ask nothing of
+ * `waiting` names which count belongs to a tab. Four of the five ask nothing of
  * anybody, so they carry no number and never will.
  */
 const accountNav = [
@@ -39,12 +38,6 @@ const accountNav = [
     label: "Workspaces",
     icon: Warehouse,
     waiting: "workspaces",
-  },
-  {
-    to: "/account/documents",
-    label: "Documents",
-    icon: FileText,
-    waiting: "documents",
   },
 ] as const;
 

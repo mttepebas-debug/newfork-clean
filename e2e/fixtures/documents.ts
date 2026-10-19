@@ -147,11 +147,14 @@ export const card = {
 };
 
 /**
- * Account > Documents: the person opens their own request, uploads the card
- * and sends it. Returns once the drawer has nothing left to send.
+ * One's own documents (Documents, or My documents for somebody who manages):
+ * the person opens their own request, uploads the card and sends it. The old
+ * Account address still leads there, in the person's own interface
+ * (MY-DOCUMENTS). Returns once the drawer has nothing left to send.
  */
 export async function sendOwnDocument(page: Page, title: string) {
   await page.goto("/account/documents");
+  await expect(page).toHaveURL(/\/app\/(employee-hub\/documents|my-documents)/);
   await page
     .getByRole("table", { name: "Employee documents" })
     .getByRole("row", { name: new RegExp(title) })

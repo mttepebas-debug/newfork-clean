@@ -106,17 +106,17 @@ test("Shift Hub: a swipe steps through Available Shifts, My requests and History
   await expect(current).toContainText("My requests");
 });
 
-test("Account → Documents: a swipe moves to Policies & Agreements and back", async ({ browser }) => {
-  const emre = await phone(browser, "emre", "/account/documents");
+test("Documents: a swipe moves to Policies & Agreements and back", async ({ browser }) => {
+  const emre = await phone(browser, "emre", "/app/employee-hub/documents");
   const tabs = chosen(emre, "Your documents");
   await expect(tabs).toHaveText("Documents");
-  // On the list under the tabs (Account's own menu above them scrolls sideways and keeps its swipe).
+  // On the list under the tabs.
   const list = emre.locator('[role="tablist"][aria-label="Your documents"] ~ *').first();
   await swipe(emre, list, -160);
   await expect(tabs).toHaveText("Policies & Agreements");
   await swipe(emre, list, 160);
   await expect(tabs).toHaveText("Documents");
-  // And low on the screen, under the short list: the account's page goes on down there.
+  // And low on the screen, under the short list: the page goes on down there.
   await swipeAt(emre, PHONE.width / 2 + 80, PHONE.height - 140, -160);
   await expect(tabs).toHaveText("Policies & Agreements");
 });

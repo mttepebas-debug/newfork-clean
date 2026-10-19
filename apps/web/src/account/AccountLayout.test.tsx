@@ -184,7 +184,8 @@ describe("AccountLayout counts", () => {
     vi.unstubAllGlobals();
   });
 
-  // Six tabs, and until now nothing said which of them wanted anything.
+  // Until now nothing said which tab wanted anything. Documents left Account
+  // for a page of its own (MY-DOCUMENTS, Mert 2026-10-19): no tab for it here.
   it("puts the count on the tab that is waiting, and on no other", async () => {
     vi.mocked(countAccountAttention).mockResolvedValue({
       documents: 2,
@@ -193,11 +194,9 @@ describe("AccountLayout counts", () => {
     renderLayout();
 
     expect(
-      await screen.findByRole("link", { name: "Documents, 2 waiting on you" }),
+      await screen.findByRole("link", { name: "Workspaces, 1 waiting on you" }),
     ).toBeTruthy();
-    expect(
-      screen.getByRole("link", { name: "Workspaces, 1 waiting on you" }),
-    ).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /^Documents/ })).toBeNull();
     // Nothing is ever waiting on a person in these, so they carry no number.
     expect(screen.getByRole("link", { name: "Profile" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Security" })).toBeTruthy();
@@ -210,7 +209,7 @@ describe("AccountLayout counts", () => {
     });
     renderLayout();
 
-    expect(await screen.findByRole("link", { name: "Documents" })).toBeTruthy();
+    expect(await screen.findByRole("link", { name: "Workspaces" })).toBeTruthy();
     expect(screen.queryByRole("link", { name: /waiting on you/ })).toBeNull();
   });
 });

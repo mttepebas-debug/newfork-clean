@@ -9,26 +9,34 @@ import { getDocumentAccess } from "./document-data";
 vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({
     account: { userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5" },
-    context: { workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" } },
+    context: {
+      workspace: { id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" },
+      membership: { access: { employee: true, management: membershipManagement() } },
+    },
   }),
 }));
 vi.mock("./document-data", () => ({ getDocumentAccess: vi.fn() }));
+let management: string | null = null;
+const membershipManagement = () => management;
 
-function renderRoute() {
+function renderRoute(address = "/app/workspace") {
   const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
   const view = render(
     <QueryClientProvider client={client}>
-      <MemoryRouter initialEntries={["/app/workspace"]}>
+      <MemoryRouter initialEntries={[address]}>
         <Routes>
           <Route
-            path="/app/workspace"
+            path="/app/*"
             element={
               <DocumentAccessRoute>
-                <p>The app</p>
+                <Routes>
+                  <Route path="workspace" element={<p>The app</p>} />
+                  <Route path="employee-hub/documents" element={<p>Your documents</p>} />
+                  <Route path="my-documents" element={<p>My documents</p>} />
+                </Routes>
               </DocumentAccessRoute>
             }
           />
-          <Route path="/account/documents" element={<p>Your documents</p>} />
         </Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -37,6 +45,7 @@ function renderRoute() {
 }
 
 beforeEach(() => {
+  management = null;
   vi.mocked(getDocumentAccess).mockReset().mockResolvedValue({ restricted: false } as never);
 });
 
@@ -70,9 +79,25 @@ describe("DocumentAccessRoute", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
-  it("still sends a restricted person to their documents", async () => {
+  // Their documents are a page of the app now (MY-DOCUMENTS): the check lets
+  // that one page through, in the interface that is theirs.
+  it("still sends a restricted person to their documents, and lets that page open", async () => {
     vi.mocked(getDocumentAccess).mockResolvedValue({ restricted: true } as never);
     renderRoute();
     expect(await screen.findByText("Your documents")).toBeTruthy();
+  });
+
+  it("sends a restricted manager to My documents", async () => {
+    management = "manager";
+    vi.mocked(getDocumentAccess).mockResolvedValue({ restricted: true } as never);
+    renderRoute();
+    expect(await screen.findByText("My documents")).toBeTruthy();
+  });
+
+  it("opens the documents page itself while restricted", async () => {
+    vi.mocked(getDocumentAccess).mockResolvedValue({ restricted: true } as never);
+    renderRoute("/app/employee-hub/documents?kind=acknowledgement");
+    expect(await screen.findByText("Your documents")).toBeTruthy();
+    expect(screen.queryByText("The app")).toBeNull();
   });
 });

@@ -93,9 +93,9 @@ test("the employee's page tabs on a phone: label wide, in line with the page, on
   soft(moved.line, "the line moved to Time Off Requests").toEqual({ height: "2px", bottom: "0px", x: now.left, width: now.width });
 
   // A tab strip inside a page's content keeps its own look (Mert: "içerikler için değil").
-  await page.goto("/account/documents");
+  await page.goto("/app/employee-hub/documents");
   const content = await page.locator(".requests-tabs button").first().evaluate((tab) => getComputedStyle(tab).fontSize);
-  soft(content, "Account → Documents keeps its own tabs").toBe("13px");
+  soft(content, "Documents keeps its own tabs").toBe("13px");
 });
 
 test("the desktop keeps the page tabs it had", async ({ browser }) => {

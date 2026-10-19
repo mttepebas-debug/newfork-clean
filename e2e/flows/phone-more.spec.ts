@@ -21,7 +21,7 @@ const shape = (sheet: Locator) =>
   sheet.evaluate((dialog) => {
     const body = dialog.firstElementChild!.getBoundingClientRect();
     const rows = [...dialog.querySelectorAll("nav a, nav button")].map((row) => {
-      const label = row.lastElementChild!.getBoundingClientRect();
+      const label = row.querySelector(".phone-more-label")!.getBoundingClientRect();
       return { height: row.getBoundingClientRect().height, labelLeft: Math.round(label.left) };
     });
     return { bottom: Math.round(body.bottom), left: Math.round(body.left), width: Math.round(body.width), rows };
@@ -39,7 +39,7 @@ test("the employee's More opens the management sheet over the page, and closes",
   await expect(sheet).toBeVisible();
   // Over the same page: the address does not change.
   await expect(emre).toHaveURL(/\/app\/employee-hub$/);
-  await expect(sheet.getByRole("link")).toHaveText(["My availability", "Announcements", /My account/, "Switch workspace"]);
+  await expect(sheet.getByRole("link")).toHaveText(["My availability", "Announcements", /^Documents/, /My account/, "Switch workspace"]);
   await expect(sheet.getByRole("button", { name: "Sign out" })).toBeVisible();
 
   const employeeShape = await shape(sheet);

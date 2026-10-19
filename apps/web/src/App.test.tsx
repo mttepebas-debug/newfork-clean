@@ -7328,6 +7328,24 @@ describe("App", () => {
     expect(screen.queryByRole("heading", { name: /Notifications|Inbox/ })).toBeNull();
   });
 
+  // MY-DOCUMENTS (Mert 2026-10-19): Account → Documents is a page of its own in
+  // the app. Its old address, still in notifications, opens it in the person's
+  // own interface with the same query; My documents is management's address.
+  it.each([
+    ["employee", "/account/documents?workspace=w&kind=acknowledgement", "/app/employee-hub/documents"],
+    ["owner", "/account/documents?workspace=w&kind=acknowledgement", "/app/my-documents"],
+    ["employee", "/app/my-documents?kind=acknowledgement", "/app/employee-hub/documents"],
+  ] as const)("opens a %s's own documents from %s at %s", async (role, address, page) => {
+    window.history.pushState({}, "", address);
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs(role);
+
+    await waitFor(() => expect(window.location.pathname).toBe(page));
+    expect(new URLSearchParams(window.location.search).get("kind")).toBe("acknowledgement");
+    expect(await screen.findByRole("heading", { level: 1, name: /Documents|My documents/ })).toBeTruthy();
+  });
+
   // BILDIRIM-10: /app/notifications is the list's own page, behind notifications.read_own.
   it.each(["owner", "employee"] as const)("opens the notification page for a %s who may read their own list", async (role) => {
     window.history.pushState({}, "", "/app/notifications");

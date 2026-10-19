@@ -11,6 +11,7 @@ import { getNotificationFeed, notificationKeys } from "../notifications/notifica
 import { getMyLineups, lineupKeys } from "../schedule/lineup-data";
 import { getExchanges } from "./shift-exchanges/exchange-data";
 import { shiftDate } from "./dashboard-model";
+import { employeeDocumentsPath } from "../documents/own-documents";
 
 const base = "/app/employee-hub";
 
@@ -105,7 +106,7 @@ export function useHomeData(model: EmployeeHubReadModel, today: string) {
               ? `Due ${new Date(item.deadline_at).toLocaleDateString("en-US", { month: "short", day: "numeric" })}`
               : "Your manager asked for it",
       cta: "Open Documents",
-      href: `/account/documents?workspace=${workspaceId}&kind=document&requirement=${item.id}`,
+      href: `${employeeDocumentsPath}?workspace=${workspaceId}&kind=document&requirement=${item.id}`,
     })),
   ];
   const updates: HomeUpdate[] = (feed.data?.items ?? [])

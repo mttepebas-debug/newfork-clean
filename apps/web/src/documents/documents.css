@@ -6,6 +6,11 @@
 .employee-documents-page > .employee-documents-list {
   display: contents;
 }
+/* One's own documents (MY-DOCUMENTS): the list starts 24 px under the tabs,
+   as it did inside Account, never against them. */
+.my-documents-page > .employee-documents-list {
+  margin-top: 24px;
+}
 .document-file-row {
   display: flex;
   flex-wrap: wrap;

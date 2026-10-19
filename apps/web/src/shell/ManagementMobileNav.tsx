@@ -12,16 +12,23 @@ const barSlots = 4;
  */
 export function ManagementMobileNav({
   links,
+  ownDocuments,
   onSignOut,
 }: {
   readonly links: readonly PhoneNavLink[];
+  /** My documents, only when the workspace asks the person for any (MY-DOCUMENTS). */
+  readonly ownDocuments?: PhoneNavLink | null;
   readonly onSignOut: () => void;
 }) {
   return (
     <PhoneNav
       label="Main navigation"
       bar={links.slice(0, barSlots)}
-      more={[...links.slice(barSlots), { to: "/account/profile", label: "Account", icon: CurrentUserAvatar }]}
+      more={[
+        ...links.slice(barSlots),
+        ...(ownDocuments ? [ownDocuments] : []),
+        { to: "/account/profile", label: "Account", icon: CurrentUserAvatar },
+      ]}
       onSignOut={onSignOut}
     />
   );

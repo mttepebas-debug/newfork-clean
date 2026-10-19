@@ -8,6 +8,8 @@ export interface PhoneNavLink {
   readonly label: string;
   readonly icon: ComponentType<{ size?: number; "aria-hidden"?: boolean }>;
   readonly exact?: boolean;
+  /** What waits on the person there; a number only when something does. */
+  readonly count?: number;
 }
 
 function isActive(pathname: string, link: PhoneNavLink): boolean {
@@ -84,12 +86,24 @@ export function PhoneNav({
             </button>
           </header>
           <nav aria-label="More pages">
-            {more.map(({ to, label: name, icon: Icon, exact }) => (
-              <NavLink key={to} to={to} end={exact} onClick={close} className={activeClass}>
+            {more.map(({ to, label: name, icon: Icon, exact, count }) => (
+              <NavLink
+                key={to}
+                to={to}
+                end={exact}
+                onClick={close}
+                className={activeClass}
+                aria-label={count ? `${name}, ${count} waiting on you` : undefined}
+              >
                 <span className="phone-more-icon">
                   <Icon size={20} aria-hidden />
                 </span>
-                <span>{name}</span>
+                <span className="phone-more-label">{name}</span>
+                {count ? (
+                  <span className="nav-item-count" aria-hidden>
+                    {count}
+                  </span>
+                ) : null}
               </NavLink>
             ))}
             <button
@@ -102,7 +116,7 @@ export function PhoneNav({
               <span className="phone-more-icon">
                 <LogOut size={20} aria-hidden />
               </span>
-              <span>Sign out</span>
+              <span className="phone-more-label">Sign out</span>
             </button>
           </nav>
         </div>

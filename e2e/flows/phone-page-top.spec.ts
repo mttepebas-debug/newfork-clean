@@ -44,7 +44,7 @@ const PAGES: Record<"zeynep" | "emre", string[]> = {
     "/account/preferences",
     "/account/preferences/notifications",
     "/account/workspaces",
-    "/account/documents",
+    "/app/my-documents",
   ],
   // Home is not here, nor the old time-off address that now opens it: Home's greeting folds into
   // the bar instead (Daylight, Mert 2026-10-18, S-163).
@@ -52,6 +52,7 @@ const PAGES: Record<"zeynep" | "emre", string[]> = {
     "/app/employee-hub/schedule",
     "/app/employee-hub/shift-hub",
     "/app/employee-hub/my-availability",
+    "/app/employee-hub/documents",
     "/app/employee-hub/schedule/lineup",
     "/app/notifications",
     "/app/announcements",

@@ -1,12 +1,14 @@
 import { useQuery } from "@tanstack/react-query";
 import type { ReactNode } from "react";
-import { Navigate } from "react-router";
+import { Navigate, useLocation } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { LoadError } from "../shell/LoadState";
 import { getDocumentAccess } from "./document-data";
+import { isOwnDocumentsPath, ownDocumentsPath } from "./own-documents";
 
 export function DocumentAccessRoute({ children }: { children: ReactNode }) {
   const { account, context } = useAuth();
+  const { pathname } = useLocation();
   const workspaceId = context?.workspace.id ?? "";
   const enabled = Boolean(context && account && workspaceId);
   const access = useQuery({
@@ -33,9 +35,11 @@ export function DocumentAccessRoute({ children }: { children: ReactNode }) {
         />
       </main>
     );
-  if (access.data?.restricted)
+  // Restricted, the app is shut but for one's own documents page, in the
+  // interface that is theirs (MY-DOCUMENTS).
+  if (access.data?.restricted && context && !isOwnDocumentsPath(pathname))
     return (
-      <Navigate to={`/account/documents?workspace=${workspaceId}`} replace />
+      <Navigate to={`${ownDocumentsPath(context.membership)}?workspace=${workspaceId}`} replace />
     );
   return children;
 }

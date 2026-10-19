@@ -37,6 +37,7 @@ import {
 } from "./EmployeeViewSwitch";
 
 import { countAccountAttention, supabaseClient } from "../lib/supabase";
+import { employeeDocumentsPath, managementDocumentsPath, useOwnDocuments } from "../documents/own-documents";
 
 import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
@@ -174,6 +175,16 @@ const navItems: readonly NavItem[] = [
     section: "employee",
     roles: ["employee"],
   },
+  // One's own documents, a page of its own (MY-DOCUMENTS, Mert 2026-10-19): no
+  // longer a tab of Account. Management reaches the same page as My documents.
+  {
+    to: employeeDocumentsPath,
+    label: "Documents",
+    icon: FileText,
+    anyOf: ["workspace.read"],
+    section: "employee",
+    roles: ["employee"],
+  },
   {
     to: "/app/announcements",
     label: "Announcements",
@@ -261,9 +272,10 @@ export function AppShell() {
         : { documents: 0, workspaces: 0 },
     enabled: Boolean(account),
   });
-  const accountWaiting =
-    (accountAttention.data?.documents ?? 0) +
-    (accountAttention.data?.workspaces ?? 0);
+  // Documents left Account (MY-DOCUMENTS): what waits there is invitations;
+  // what the open workspace asks of the person waits on Documents.
+  const accountWaiting = accountAttention.data?.workspaces ?? 0;
+  const ownDocuments = useOwnDocuments();
   if (!context) return null;
   const isEmployee = membershipClass(context.membership) === "employee";
   // Owner, admin and manager who also hold the employee access switch to the
@@ -356,6 +368,7 @@ export function AppShell() {
             const groupId = navGroupId(item.to);
             const renderLink = (link: NavItem, child: boolean) => {
               const LinkIcon = link.icon;
+              const waiting = link.to === employeeDocumentsPath ? ownDocuments.waiting : 0;
               return (
                 <NavLink
                   key={link.to}
@@ -390,7 +403,13 @@ export function AppShell() {
                   // reader hears it as where the person is.
                   end={child ? link.exact : !standsIn && (link.exact || childActive)}
                   aria-current={!child && standsIn ? "location" : "page"}
-                  aria-label={collapsed ? link.label : undefined}
+                  aria-label={
+                    waiting > 0
+                      ? `${link.label}, ${waiting} waiting on you`
+                      : collapsed
+                        ? link.label
+                        : undefined
+                  }
                   data-rail-peek={collapsed ? "" : undefined}
                   data-rail-active={
                     collapsed &&
@@ -407,6 +426,11 @@ export function AppShell() {
                   <span className={collapsed ? "rail-flyout" : undefined}>
                     {link.label}
                   </span>
+                  {waiting > 0 ? (
+                    <span className="nav-item-count" aria-hidden>
+                      {waiting}
+                    </span>
+                  ) : null}
                 </NavLink>
               );
             };
@@ -506,6 +530,44 @@ export function AppShell() {
               collapsed={collapsed}
             />
           ) : null}
+          {/* One's own documents, in the management interface only when the
+              workspace asks the person for any (MY-DOCUMENTS, Mert 2026-10-19). */}
+          {!employeeShell && ownDocuments.asked ? (
+            <NavLink
+              className={({ isActive }) =>
+                `nav-item${isActive ? " active" : ""}${
+                  collapsed ? " rail-peek-item" : ""
+                }`
+              }
+              to={managementDocumentsPath}
+              aria-label={
+                ownDocuments.waiting > 0
+                  ? `My documents, ${ownDocuments.waiting} waiting on you`
+                  : collapsed
+                    ? "My documents"
+                    : undefined
+              }
+              data-rail-peek={collapsed ? "" : undefined}
+              data-rail-active={
+                collapsed &&
+                isRailItemActive(location.pathname, managementDocumentsPath)
+                  ? "true"
+                  : undefined
+              }
+            >
+              <span className="nav-icon-frame">
+                <FileText size={18} aria-hidden />
+              </span>
+              <span className={collapsed ? "rail-flyout" : undefined}>
+                My documents
+              </span>
+              {ownDocuments.waiting > 0 ? (
+                <span className="nav-item-count" aria-hidden>
+                  {ownDocuments.waiting}
+                </span>
+              ) : null}
+            </NavLink>
+          ) : null}
           <NavLink
             className={({ isActive }) =>
               `nav-item${isActive ? " active" : ""}${
@@ -571,6 +633,7 @@ export function AppShell() {
         <EmployeeMobileNav
           managementHome={inEmployeeView ? managementHome : null}
           announcements={visibleNavItems.some((item) => item.to === "/app/announcements")}
+          documentsWaiting={ownDocuments.waiting}
           onSignOut={signOutAfterAvailabilityCheck}
         />
       ) : null}
@@ -581,6 +644,11 @@ export function AppShell() {
             ...(canViewSettings ? [settingsNavItem] : []),
             ...(canSwitchView ? [employeeViewMobileLink] : []),
           ]}
+          ownDocuments={
+            ownDocuments.asked
+              ? { to: managementDocumentsPath, label: "My documents", icon: FileText, count: ownDocuments.waiting }
+              : null
+          }
           onSignOut={signOutAfterAvailabilityCheck}
         />
       )}

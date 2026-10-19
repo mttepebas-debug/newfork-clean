@@ -20,6 +20,12 @@ vi.mock("../auth/AuthContext", () => ({
   useAuth: () => ({ context, account: { userId: "u" }, signOut }),
 }));
 vi.mock("../lib/supabase", () => ({ supabaseClient: null }));
+// What the open workspace asks of the person (MY-DOCUMENTS).
+let ownList: { kind: string; status: string }[] = [];
+vi.mock("../documents/document-data", () => ({
+  listDocuments: vi.fn(async () => ownList),
+  documentQueryKey: (audience: { workspaceId: string }, userId: string) => ["documents", audience.workspaceId, userId],
+}));
 vi.mock("../account/AccountAvatar", () => ({ CurrentUserAvatar: () => null }));
 vi.mock("../employee-hub/shift-exchanges/useExchangeRealtime", () => ({
   useExchangeRealtime: vi.fn(),
@@ -94,6 +100,7 @@ beforeEach(() => {
 afterEach(() => {
   cleanup();
   signOut.mockClear();
+  ownList = [];
 });
 
 describe("ManagementMobileNav in the app shell", () => {
@@ -166,6 +173,44 @@ describe("ManagementMobileNav in the app shell", () => {
 
 // CALISAN-MORE (Mert 2026-10-17): the employee view's More opens the very
 // sheet management's More opens, with the employee's own pages in it.
+// One's own documents, a page of its own (MY-DOCUMENTS, Mert 2026-10-19): the
+// employee's More always has Documents; management's has My documents, just
+// above Account, only when the workspace asks the person for any.
+describe("own documents under More", () => {
+  it("shows My documents to somebody who manages only when something is asked of them, with what waits", async () => {
+    context = owner;
+    mount();
+    fireEvent.click(within(bar()).getByRole("button", { name: "More" }));
+    expect(names(morePages())).not.toContain("My documents");
+    cleanup();
+
+    ownList = [
+      { kind: "document", status: "missing" },
+      { kind: "acknowledgement", status: "missing" },
+      { kind: "document", status: "completed" },
+    ];
+    context = owner;
+    mount();
+    fireEvent.click(within(bar()).getByRole("button", { name: "More" }));
+    const row = await within(morePages()).findByRole("link", { name: "My documents, 2 waiting on you", hidden: true });
+    expect(row.getAttribute("href")).toBe("/app/my-documents");
+    const list = names(morePages());
+    expect(list.indexOf("My documents2")).toBe(list.indexOf("Account") - 1);
+  });
+
+  it("takes the employee to Documents in her own interface, with what waits", async () => {
+    ownList = [{ kind: "document", status: "rejected" }];
+    context = {
+      ...owner,
+      membership: { access: { employee: true, management: null } },
+      permissions: ["workspace.read"],
+    };
+    mount("/app/employee-hub");
+    const row = await within(morePages()).findByRole("link", { name: "Documents, 1 waiting on you", hidden: true });
+    expect(row.getAttribute("href")).toBe("/app/employee-hub/documents");
+  });
+});
+
 describe("the employee view's phone bar", () => {
   const employee = {
     ...owner,
@@ -194,6 +239,7 @@ describe("the employee view's phone bar", () => {
     expect(names(morePages())).toEqual([
       "My availability",
       "Announcements",
+      "Documents",
       "My account",
       "Switch workspace",
       "Sign out",
@@ -210,7 +256,7 @@ describe("the employee view's phone bar", () => {
     cleanup();
     context = { ...employee, permissions: ["workspace.read"] };
     mount("/app/employee-hub");
-    expect(names(morePages())).toEqual(["My availability", "My account", "Switch workspace", "Sign out"]);
+    expect(names(morePages())).toEqual(["My availability", "Documents", "My account", "Switch workspace", "Sign out"]);
   });
 
   it("goes to a page and closes, Escape closes, and Sign out signs out", () => {

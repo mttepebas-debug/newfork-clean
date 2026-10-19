@@ -202,7 +202,8 @@ test("an overdue card restricts the person until it is approved, and an overdue 
   const page = await (await browser.newContext()).newPage();
   await signInAs(page, late);
   await page.goto("/app");
-  await expect(page).toHaveURL(/\/account\/documents/);
+  // Her documents are a page of the employee interface now (MY-DOCUMENTS).
+  await expect(page).toHaveURL(/\/app\/employee-hub\/documents/);
   await expect(
     page.getByText(`Workspace access is restricted until these requests are resolved: ${title}.`),
   ).toBeVisible();
