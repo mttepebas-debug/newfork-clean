@@ -11,7 +11,7 @@ import { EmployeeInterfaceRoute } from "./auth/EmployeeInterfaceRoute";
 import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
 import { SettingsPageRoute } from "./settings/SettingsPageRoute";
-import { appLandingPath, hubPath } from "./auth/resolveLanding";
+import { appLandingPath, hubPath, invitationsPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
 import { AppCrashBoundary } from "./shell/CrashBoundary";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
@@ -68,6 +68,7 @@ const SecurityPage = lazy(() => import("./account/SecurityPage"));
 const WorkspacesPage = lazy(() => import("./account/WorkspacesPage"));
 const MyDocumentsPage = lazy(() => import("./documents/MyDocumentsPage"));
 const WorkspaceHubPage = lazy(() => import("./shell/WorkspaceHubPage"));
+const InvitationPromptPage = lazy(() => import("./shell/InvitationPromptPage"));
 const WorkspaceStatusPage = lazy(() => import("./shell/WorkspaceStatusPage"));
 const EmployeeHubPage = lazy(() => import("./views/EmployeeHubPage"));
 const WorkspacePage = lazy(() => import("./views/WorkspacePage"));
@@ -201,6 +202,15 @@ export function App() {
                 element={
                   <ProtectedRoute>
                     <WorkspaceHubPage />
+                  </ProtectedRoute>
+                }
+              />
+              {/* "Active invitation found": the first screen of an open while one waits (BL-624). */}
+              <Route
+                path={invitationsPath}
+                element={
+                  <ProtectedRoute askInvitations={false}>
+                    <InvitationPromptPage />
                   </ProtectedRoute>
                 }
               />

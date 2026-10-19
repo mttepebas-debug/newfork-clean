@@ -1,8 +1,14 @@
-import { type ReactNode } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { type ReactNode, useEffect } from "react";
 import { Navigate, useLocation } from "react-router";
+import { listPendingEmployeeInvitations } from "../employees/employee-data";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { useAuth } from "./AuthContext";
-import { hubPath } from "./resolveLanding";
+import {
+  invitationPromptAnswered,
+  markInvitationPromptAnswered,
+} from "./invitation-prompt";
+import { hubPath, invitationsComeFirst, invitationsPath } from "./resolveLanding";
 import { WorkspaceSetupPending } from "./WorkspaceSetupPending";
 import { membershipClass } from "./access";
 
@@ -11,14 +17,38 @@ type WorkspaceRequirement = "none" | "any" | "complete";
 export function ProtectedRoute({
   children,
   workspace = "none",
+  askInvitations = true,
 }: {
   readonly children: ReactNode;
   readonly workspace?: WorkspaceRequirement;
+  /** False on the pages that are themselves the answer to an invitation. */
+  readonly askInvitations?: boolean;
 }) {
   const { authenticated, context, error, ready, refresh } = useAuth();
   const location = useLocation();
-  // An invitation no longer stands between an account and its work: if there is
-  // somewhere to land, it lands there and the invitation waits in Workspaces.
+  // A waiting invitation is the first screen of every open of the app, also
+  // for somebody with a workspace to land in (KARARLAR "Girişten sonra
+  // yönlendirme", BL-624). Asked once per open; "Not now" there ends it.
+  const answered = invitationPromptAnswered();
+  // Only a page this route will show asks; one it hands on lets the next ask.
+  const handsOn =
+    workspace !== "none" &&
+    (!context ||
+      (context.onboarding.status !== "complete" &&
+        (membershipClass(context.membership) !== "owner" ||
+          workspace === "complete")));
+  const asking =
+    ready && authenticated && askInvitations && !answered && !handsOn;
+  const invitations = useQuery({
+    queryKey: ["account-pending-invitations"],
+    queryFn: listPendingEmployeeInvitations,
+    enabled: asking,
+  });
+  const nothingWaiting =
+    asking && invitations.isSuccess && invitations.data.length === 0;
+  useEffect(() => {
+    if (nothingWaiting) markInvitationPromptAnswered();
+  }, [nothingWaiting]);
 
   if (!ready)
     return <main className="auth-loading" aria-label="Loading workspace" />;
@@ -71,6 +101,22 @@ export function ProtectedRoute({
     // also when they open /onboarding directly.
     if (membershipClass(context.membership) !== "owner") return <WorkspaceSetupPending />;
     if (workspace === "complete") return <Navigate to={hubPath} replace />;
+  }
+  if (asking) {
+    // A failed read never stands in the way of the page; the next one asks again.
+    if (invitations.isPending)
+      return <main className="auth-loading" aria-label="Loading workspace" />;
+    if (
+      invitations.isSuccess &&
+      invitationsComeFirst({ pendingInvitationCount: invitations.data.length })
+    )
+      return (
+        <Navigate
+          to={invitationsPath}
+          replace
+          state={{ from: `${location.pathname}${location.search}` }}
+        />
+      );
   }
   return children;
 }

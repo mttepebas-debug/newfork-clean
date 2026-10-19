@@ -26,6 +26,7 @@ import {
   saveAccountProfile,
   supabaseClient,
 } from "../lib/supabase";
+import { forgetInvitationPrompt } from "./invitation-prompt";
 import { clearTenantQueriesForOrganizationSwitch } from "./tenant-query-cache";
 import { pushServer } from "../phone-alerts/channels-data";
 import { dropPhoneAlertsHere, turnOffPhoneAlerts } from "../phone-alerts/push-client";
@@ -104,6 +105,8 @@ export function AuthProvider({
   // login must not see the previous person's phone, invitations or schedule.
   const clearAccountCache = useCallback((): void => {
     queryClient?.clear();
+    // Whoever comes next is asked about their own invitations (BL-624).
+    forgetInvitationPrompt();
     cacheOwnerRef.current = null;
   }, [queryClient]);
 

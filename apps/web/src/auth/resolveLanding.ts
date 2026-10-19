@@ -7,11 +7,13 @@ import { can } from "./can";
 import { membershipClass } from "./access";
 
 export const hubPath = "/workspaces";
+/** "Active invitation found": the first screen of an open while one waits. */
+export const invitationsPath = "/invitations";
 
 /** Where a sign-in, a sign-up or a membership change puts the account. */
 export type Landing =
-  /** A usable invitation token is in the URL: it is answered before anything else. */
-  | { readonly kind: "invitation"; readonly path: string }
+  /** An invitation waits and this open has not put it in front of the account yet. */
+  | { readonly kind: "invitations"; readonly path: typeof invitationsPath }
   /** The account owes a decision, or belongs nowhere yet. The hub says which. */
   | { readonly kind: "hub"; readonly path: typeof hubPath }
   /** One workspace to work in, and the page inside it the role can open. */
@@ -22,10 +24,10 @@ export type Landing =
     };
 
 export type LandingInput = {
-  /** An invitation token carried by the URL, already validated as present. */
-  readonly inviteToken?: string | null;
   /** How many invitations are waiting for this email. */
   readonly pendingInvitationCount?: number;
+  /** This open already showed them: answered, joined, or "Not now". */
+  readonly invitationAnswered?: boolean;
   readonly workspaces?: readonly WorkspaceSummary[];
   /** The workspace already loaded, when there is one; it names the page. */
   readonly context?: ActiveWorkspaceContext | null;
@@ -98,32 +100,39 @@ export function noAccessHomePath(
 }
 
 /**
- * The one place that decides where an account lands. Every sign-in, sign-up and
- * membership change asks this and nothing else; the first rule that matches
- * wins, so reading it top to bottom is reading the product decision.
+ * KARARLAR "Girişten sonra yönlendirme": while an invitation waits, it is the
+ * first screen of every open of the app, before any workspace (BL-624). The
+ * first rule of `resolveLanding`, and the question `ProtectedRoute` asks before
+ * it shows any page.
+ */
+export function invitationsComeFirst(
+  input: Pick<LandingInput, "pendingInvitationCount" | "invitationAnswered">,
+): boolean {
+  return (input.pendingInvitationCount ?? 0) > 0 && !input.invitationAnswered;
+}
+
+/**
+ * Where an account lands: the hub's hand-off, the workspace switcher, the
+ * invitation screen's "Not now". A sign-in goes to `/app`, where
+ * `ProtectedRoute` asks `invitationsComeFirst` and `appLandingPath` names the
+ * page. The first rule that matches wins, so reading it top to bottom is
+ * reading the product decision.
  */
 export function resolveLanding(input: LandingInput): Landing {
   const workspaces = input.workspaces ?? [];
   const ready = readyWorkspaces(workspaces);
 
-  // An invitation link is the reason this tab is open. It outranks everything,
-  // including a workspace the account could otherwise land in.
-  if (input.inviteToken)
-    return {
-      kind: "invitation",
-      path: `/invite/accept?token=${encodeURIComponent(input.inviteToken)}`,
-    };
+  // A waiting invitation is answered first, with or without a workspace to work
+  // in; "Not now" is offered only to somebody who has one.
+  if (invitationsComeFirst(input))
+    return { kind: "invitations", path: invitationsPath };
 
-  // Nowhere to work yet, but something is waiting: an invitation to answer or a
-  // setup to finish. Both are decisions, and the hub is where decisions live.
-  if (ready.length === 0) {
-    if ((input.pendingInvitationCount ?? 0) > 0) return hub();
-    if (unfinishedWorkspaces(workspaces).length > 0) return hub();
-  }
+  // Nowhere to work yet, but a setup to finish: a decision, and the hub is
+  // where decisions live.
+  if (ready.length === 0 && unfinishedWorkspaces(workspaces).length > 0)
+    return hub();
 
-  // One workspace, so there is nothing to choose. An invitation or an unfinished
-  // setup does not stand in the way here: it waits in the hub and says so in the
-  // app.
+  // Somewhere to work: the one used last. An unfinished setup waits in the hub.
   const recent = mostRecentlyUsed(ready);
   if (recent) return workspaceLanding(recent, input.context);
 

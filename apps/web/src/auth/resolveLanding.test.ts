@@ -1,6 +1,12 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { appLandingPath, hubPath, noAccessHomePath, resolveLanding } from "./resolveLanding";
+import {
+  appLandingPath,
+  hubPath,
+  invitationsPath,
+  noAccessHomePath,
+  resolveLanding,
+} from "./resolveLanding";
 
 function workspace(
   overrides: Partial<WorkspaceSummary> & Pick<WorkspaceSummary, "id" | "name">,
@@ -33,23 +39,28 @@ const employeeContext = {
 } as unknown as ActiveWorkspaceContext;
 
 describe("resolveLanding", () => {
-  it("answers an invitation token before anything else (R1)", () => {
+  // KARARLAR "Girişten sonra yönlendirme": a waiting invitation is the first
+  // screen of every app open, even with a workspace to land in (BL-624).
+  it("puts a waiting invitation first, before a workspace it could land in", () => {
     expect(
-      resolveLanding({
-        inviteToken: "abc 123",
-        pendingInvitationCount: 2,
-        workspaces: [ready, second],
-      }),
-    ).toEqual({
-      kind: "invitation",
-      path: "/invite/accept?token=abc%20123",
-    });
+      resolveLanding({ pendingInvitationCount: 2, workspaces: [ready, second] }),
+    ).toEqual({ kind: "invitations", path: invitationsPath });
   });
 
-  it("sends an account with a waiting invitation and nowhere to work to the hub (R2)", () => {
+  it("puts a waiting invitation first for an account with nowhere to work", () => {
     expect(
       resolveLanding({ pendingInvitationCount: 1, workspaces: [] }),
-    ).toEqual({ kind: "hub", path: hubPath });
+    ).toEqual({ kind: "invitations", path: invitationsPath });
+  });
+
+  it("lands as usual once the invitation was answered with Not now in this open", () => {
+    expect(
+      resolveLanding({
+        pendingInvitationCount: 1,
+        invitationAnswered: true,
+        workspaces: [ready],
+      }),
+    ).toMatchObject({ kind: "workspace", workspaceId: ready.id });
   });
 
   it("sends an unfinished setup with nowhere to work to the hub (R3)", () => {
@@ -107,6 +118,7 @@ describe("resolveLanding", () => {
     expect(
       resolveLanding({
         pendingInvitationCount: 3,
+        invitationAnswered: true,
         workspaces: [ready, unfinished],
       }),
     ).toMatchObject({ kind: "workspace", workspaceId: ready.id });

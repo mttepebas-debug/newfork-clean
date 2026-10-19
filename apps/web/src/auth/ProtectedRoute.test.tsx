@@ -3,6 +3,10 @@ import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { listPendingEmployeeInvitations } from "../employees/employee-data";
+import {
+  invitationPromptAnswered,
+  markInvitationPromptAnswered,
+} from "./invitation-prompt";
 import { ProtectedRoute } from "./ProtectedRoute";
 
 const authState = vi.hoisted(() => ({
@@ -39,6 +43,14 @@ function LocationProbe() {
   return <output aria-label="Current path">{location.pathname}</output>;
 }
 
+function FromProbe() {
+  const location = useLocation();
+  const from = (location.state as { from?: string } | null)?.from ?? "";
+  return (
+    <output aria-label="Current path">{`${location.pathname} from ${from}`}</output>
+  );
+}
+
 function renderRoute(entry = "/app/workspace") {
   const queryClient = new QueryClient({
     defaultOptions: { queries: { retry: false } },
@@ -56,6 +68,7 @@ function renderRoute(entry = "/app/workspace") {
             }
           />
           <Route path="/workspaces" element={<LocationProbe />} />
+          <Route path="/invitations" element={<FromProbe />} />
           <Route
             path="/onboarding"
             element={
@@ -187,16 +200,59 @@ describe("ProtectedRoute", () => {
     );
   });
 
-  it("lands a member with a pending invitation in the app, not on the invitation", async () => {
+  // KARARLAR "Girişten sonra yönlendirme": a waiting invitation is the first
+  // screen of every app open, also for somebody with a workspace (BL-624).
+  it("opens on the waiting invitation before the page, and remembers the page", async () => {
     authState.value.error = null;
     authState.value.context = {
       onboarding: { status: "complete", currentStep: 4 },
     } as never;
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderRoute("/app/workspace");
+
+    expect((await screen.findByLabelText("Current path")).textContent).toBe(
+      "/invitations from /app/workspace",
+    );
+    expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
+  });
+
+  it("does not ask again in an open where the invitation was already answered", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      onboarding: { status: "complete", currentStep: 4 },
+    } as never;
+    markInvitationPromptAnswered();
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderRoute();
 
     expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
-    // The invitation waits in Workspaces; the route never asks for it.
     expect(listPendingEmployeeInvitations).not.toHaveBeenCalled();
+  });
+
+  it("checks once per open: with nothing waiting it shows the page and stops asking", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      onboarding: { status: "complete", currentStep: 4 },
+    } as never;
+    renderRoute();
+
+    expect(
+      await screen.findByRole("heading", { name: "Workspace" }),
+    ).toBeTruthy();
+    expect(invitationPromptAnswered()).toBe(true);
+  });
+
+  it("lets the page through when the invitations cannot be read, and asks again later", async () => {
+    authState.value.error = null;
+    authState.value.context = {
+      onboarding: { status: "complete", currentStep: 4 },
+    } as never;
+    vi.mocked(listPendingEmployeeInvitations).mockRejectedValue(new Error("down"));
+    renderRoute();
+
+    expect(
+      await screen.findByRole("heading", { name: "Workspace" }),
+    ).toBeTruthy();
+    expect(invitationPromptAnswered()).toBe(false);
   });
 });

@@ -11,8 +11,11 @@ import { InvitationError } from "./invitation-error";
 
 export function InvitationRow({
   invitation,
+  onAccepted,
 }: {
   readonly invitation: AccountPendingInvitation;
+  /** Runs before the step to the workspace's welcome. */
+  readonly onAccepted?: () => void;
 }) {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -26,6 +29,7 @@ export function InvitationRow({
   const accept = useMutation({
     mutationFn: acceptPendingEmployeeInvitation,
     onSuccess: (workspaceId) => {
+      onAccepted?.();
       void invalidate();
       navigate(`/welcome/${workspaceId}`, { replace: true });
     },

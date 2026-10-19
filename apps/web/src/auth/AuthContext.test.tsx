@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from "@testing-library/react"
 import { QueryClient } from "@tanstack/react-query";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider, useAuth } from "./AuthContext";
+import { invitationPromptAnswered, markInvitationPromptAnswered } from "./invitation-prompt";
 
 const supabaseMock = vi.hoisted(() => ({
   clearTabWorkspaceId: vi.fn(),
@@ -347,6 +348,25 @@ describe("AuthProvider", () => {
       await act(async () => { emit("SIGNED_IN", sessionFor("mehmet")); });
       expect(queryClient.getQueryData(["account-employment-records"])).toBeUndefined();
       expect(queryClient.getQueryData(["account-workspace-identities"])).toBeUndefined();
+    });
+
+    // BL-624: "Not now" on the invitation screen holds for one person's open;
+    // whoever signs in next on this tab is asked again.
+    it("and forgets the invitation answer on sign out", async () => {
+      const queryClient = seedCache();
+      const { signOut } = await renderSignedIn(queryClient);
+      markInvitationPromptAnswered();
+      await act(async () => { await signOut(); });
+      expect(invitationPromptAnswered()).toBe(false);
+    });
+
+    it("and forgets the invitation answer when a different person signs in", async () => {
+      const queryClient = seedCache();
+      const { emit } = await renderSignedIn(queryClient);
+      markInvitationPromptAnswered();
+      supabaseMock.resolveWorkspaceContext.mockImplementation(async () => contextFor("mehmet"));
+      await act(async () => { emit("SIGNED_IN", sessionFor("mehmet")); });
+      expect(invitationPromptAnswered()).toBe(false);
     });
 
     it("but keeps them when the same person's session refreshes", async () => {
