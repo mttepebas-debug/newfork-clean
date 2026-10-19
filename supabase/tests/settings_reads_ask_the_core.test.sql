@@ -152,7 +152,7 @@ select is(
 select is(
   (select array_agg(k order by k) from jsonb_object_keys(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'jobs' -> 0) k),
-  array['archived_at', 'color', 'department_id', 'id', 'name', 'system_key', 'workspace_id'],
+  array['archived_at', 'color', 'department_id', 'id', 'lineup_icons', 'name', 'system_key', 'workspace_id'],
   'a job carries the columns Settings > Jobs shows'
 );
 select is(

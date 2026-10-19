@@ -54,12 +54,12 @@ values ('c1100000-0000-4000-8000-000000000201', 'c1100000-0000-4000-8000-0000000
 insert into public.departments (id, workspace_id, name, system_key) values
   ('c1100000-0000-4000-8000-000000000301', 'c1100000-0000-4000-8000-000000000101', 'Management', 'management'),
   ('c1100000-0000-4000-8000-000000000302', 'c1100000-0000-4000-8000-000000000101', 'Kitchen', null);
-insert into public.jobs (id, workspace_id, department_id, name, system_key) values
-  ('c1100000-0000-4000-8000-000000000401', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Owner', 'owner'),
-  ('c1100000-0000-4000-8000-000000000402', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'General Manager', null),
-  ('c1100000-0000-4000-8000-000000000403', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000302', 'Cook', null);
-insert into public.jobs (id, workspace_id, department_id, name, archived_at) values
-  ('c1100000-0000-4000-8000-000000000404', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Floor Manager', now());
+insert into public.jobs (id, workspace_id, department_id, name, system_key, lineup_icons) values
+  ('c1100000-0000-4000-8000-000000000401', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Owner', 'owner', '{}'),
+  ('c1100000-0000-4000-8000-000000000402', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'General Manager', null, '{}'),
+  ('c1100000-0000-4000-8000-000000000403', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000302', 'Cook', null, '{}');
+insert into public.jobs (id, workspace_id, department_id, name, archived_at, lineup_icons) values
+  ('c1100000-0000-4000-8000-000000000404', 'c1100000-0000-4000-8000-000000000101', 'c1100000-0000-4000-8000-000000000301', 'Floor Manager', now(), '{}');
 
 set local session_replication_role = origin;
 
@@ -222,10 +222,9 @@ select is(
 
 -- Setup's catalog: Management with Owner, General Manager and Assistant Manager (design §4.13) -----
 -- The one function that makes it, for setup and for the move's workspaces with nothing to take.
--- ponytail: with triggers off, as above: a new job's trigger still reads the dropped membership role.
+-- Triggers on: a new job is born with its Lineup icons only through its trigger (AVATAR-IKON).
 insert into public.workspaces (id, name, created_by)
 values ('c1100000-0000-4000-8000-000000000102', 'Bare Co', 'c1100000-0000-4000-8000-000000000001');
-set local session_replication_role = replica;
 select app_private.ensure_management_and_owner('c1100000-0000-4000-8000-000000000102');
 select is(
   (select array_agg(j.name || coalesce(' [' || j.system_key || ']', '') order by j.name)
@@ -234,8 +233,11 @@ select is(
   array['Assistant Manager', 'General Manager', 'Owner [owner]'],
   'a workspace without Management gets it with Owner, General Manager and Assistant Manager'
 );
+-- ponytail: archived with triggers off: Management would otherwise keep one of its jobs.
+set local session_replication_role = replica;
 update public.jobs set archived_at = now()
 where workspace_id = 'c1100000-0000-4000-8000-000000000102' and name in ('General Manager', 'Assistant Manager');
+set local session_replication_role = origin;
 select app_private.ensure_management_and_owner('c1100000-0000-4000-8000-000000000102');
 select is(
   (select array_agg(j.name order by j.name) from public.jobs j

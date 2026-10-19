@@ -29,10 +29,10 @@ select cmp_ok(
 -- the onboarding activation's (41 -> 36), FB-6.2.5 the four invitation services' (36 -> 32),
 -- FB-6.2.6 Settings > Jobs' six and catalog deletion's (32 -> 26), the onboarding review's (26 -> 25),
 -- BL-475 the department and job reorder command, gone (25 -> 24), FB-6.6 the eleven Settings >
--- Documents and Signature templates bridges (24 -> 13).
+-- Documents and Signature templates bridges (24 -> 13), AVATAR-IKON the five job-writing services (13 -> 8).
 select cmp_ok(
   (select count(*)::integer from core_function where body ~ 'set_config\(\s*''request\.jwt\.claim'),
-  '<=', 13, 'functions that write request.jwt.claim only go down'
+  '<=', 8, 'functions that write request.jwt.claim only go down'
 );
 
 -- Decides scope or rank on its own instead of asking the core. Target 0
@@ -127,11 +127,11 @@ select is(
 -- edit's refusals gave their reason (EKRAN-01 DB-1a; 104 measured before it), 83 after Shift Hub's
 -- (FB-6.4 A2), 82 after Settings > Roles' "not eligible for a lower role" (GUVENLIK-A GA-2), 67 after
 -- Settings > Roles and Notifications asked the core (BL-276), 57 after the old notification system
--- went (BILDIRIM-06). Target 0.
+-- went (BILDIRIM-06), 46 after the five job-writing services asked the core (AVATAR-IKON). Target 0.
 select cmp_ok(
   (select count(*)::integer from core_function, regexp_matches(body, 'raise\s[^;]*;', 'gi') m
    where m[1] ~ '42501' and m[1] !~* 'hint'),
-  '<=', 57, 'refusals without an authz hint only go down'
+  '<=', 46, 'refusals without an authz hint only go down'
 );
 
 -- Every action the core answers for, both ways (BL-130): an action added or
