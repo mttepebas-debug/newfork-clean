@@ -60,8 +60,9 @@ export function usePullToRefresh(anchor: { readonly current: HTMLElement | null 
       active = false;
       if (busy || event.touches.length !== 1 || !phone()) return;
       const target = event.target as Element;
-      // A strip, a deck, a wheel or a field takes its own drags; a list scrolled in its own frame pulls its rows.
-      if (target.closest("[data-own-drag], input, textarea, select, dialog") || scrolledAbove(target, area)) return;
+      // A strip, a deck, a wheel, a field or a drawer takes its own drags (most drawers are
+      // role="dialog" divs inside the page, not <dialog>); a list scrolled in its own frame pulls its rows.
+      if (target.closest('[data-own-drag], input, textarea, select, dialog, [role="dialog"], [role="alertdialog"], [aria-modal="true"]') || scrolledAbove(target, area)) return;
       x0 = event.touches[0]!.clientX;
       y0 = event.touches[0]!.clientY;
       axis = null;

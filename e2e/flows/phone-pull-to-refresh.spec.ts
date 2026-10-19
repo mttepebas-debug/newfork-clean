@@ -28,12 +28,17 @@ async function pullFrom(cdp: CDPSession, x: number, y: number, distance: number,
   await touch("touchEnd", y + distance);
 }
 
-/** The mark is the topmost thing where it is drawn: no frozen heading covers it. */
+/**
+ * The mark draws over every frozen heading or tab of the page (it lets touches
+ * through, so a hit test cannot see it; its layer is compared instead) and is
+ * showing while the finger holds.
+ */
 const markOnTop = (page: Page) =>
   page.evaluate(() => {
-    const mark = document.querySelector(".app-main > .pull-mark")!;
-    const box = mark.getBoundingClientRect();
-    return Boolean(document.elementFromPoint(box.left + box.width / 2, box.top + box.height / 2)?.closest(".pull-mark"));
+    const mark = document.querySelector<HTMLElement>(".app-main > .pull-mark")!;
+    const layer = (element: Element) => Number.parseInt(getComputedStyle(element).zIndex, 10) || 0;
+    const frozen = [...document.querySelectorAll("[data-frozen-piece]")].map(layer);
+    return frozen.length > 0 && layer(mark) > Math.max(...frozen) && Number(getComputedStyle(mark).opacity) > 0.9;
   });
 
 const centre = async (page: Page, selector: string) => {

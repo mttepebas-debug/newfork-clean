@@ -12,6 +12,9 @@ function Page({ onRefresh }: { onRefresh: () => Promise<unknown> }) {
         <PullToRefreshMark state={state} pull={pull} />
         <p data-testid="state">{state}</p>
         <div data-own-drag="" data-testid="strip" />
+        <div role="dialog" aria-label="Edit employee" data-testid="drawer">
+          <p>Drawer</p>
+        </div>
         <div data-testid="frame" style={{ overflowY: "auto", height: 50 }}>
           <div data-testid="row" style={{ height: 400 }} />
         </div>
@@ -115,5 +118,15 @@ describe("pull to refresh", () => {
     } finally {
       window.matchMedia = original;
     }
+  });
+
+  it("leaves a pull that starts in a drawer inside the page to the drawer", () => {
+    const onRefresh = vi.fn(() => Promise.resolve());
+    render(<Page onRefresh={onRefresh} />);
+    const drawer = screen.getByTestId("drawer");
+    touch(drawer, "touchstart", 100);
+    expect(touch(drawer, "touchmove", 400).defaultPrevented).toBe(false);
+    touch(drawer, "touchend", 400);
+    expect(onRefresh).not.toHaveBeenCalled();
   });
 });
