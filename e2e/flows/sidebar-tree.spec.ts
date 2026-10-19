@@ -4,6 +4,8 @@ import { signIn } from "../fixtures/world";
 // The desktop left menu as a tree (SIDEBAR-TREE, S-175): Lineup hangs under
 // Schedule, Requests has its own row, the group closes even on the Lineup page
 // and the parent then stands for it, and the narrow rail keeps every group open.
+// Only the open page's group is open (SIDEBAR-ACCORDION): leaving it closes it,
+// clicking its parent opens it.
 test("a manager closes and opens Schedule's group from the Lineup page, wide and narrow", async ({ page }) => {
   await page.setViewportSize({ width: 1440, height: 900 });
   await signIn(page, "ayse");
@@ -40,6 +42,17 @@ test("a manager closes and opens Schedule's group from the Lineup page, wide and
   await requests.click();
   await expect(page).toHaveURL(/\/app\/schedule\/requests$/);
   await expect(requests).toHaveAttribute("aria-current", "page");
+  // Out of Schedule's group: it closes by itself.
+  await expect(lineup).toBeHidden();
+
+  await schedule.click();
+  await expect(page).toHaveURL(/\/app\/schedule$/);
+  await expect(lineup).toBeVisible();
+  await lineup.click();
+  await expect(lineup).toHaveAttribute("aria-current", "page");
+  await primary.getByRole("link", { name: "Employees", exact: true }).click();
+  await expect(page).toHaveURL(/\/app\/employees$/);
+  await expect(lineup).toBeHidden();
 });
 
 test("with reduced motion an opened group drops its clip at once, so the focus ring shows whole", async ({ page }) => {

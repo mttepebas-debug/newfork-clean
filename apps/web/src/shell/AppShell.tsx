@@ -210,20 +210,17 @@ export function AppShell() {
   const [collapsed, setCollapsed] = useState(false);
   const [main, setMain] = useState<HTMLElement | null>(null);
   useFrozenTop(main);
-  const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
-    () => new Set(["/app/schedule", "/app/employees", "/app/announcements", "/app/employee-hub/schedule"]),
-  );
   const location = useLocation();
-  // A closed group opens again when one of its child pages is reached; while
-  // that page stays open its toggle still closes it (SIDEBAR-TREE, Mert 2026-10-19).
+  // Only the open page's group is open: reaching a group opens it, going to
+  // a page outside it closes it, a group opened by hand included. On the page
+  // itself the toggle still closes it (SIDEBAR-ACCORDION, Mert 2026-10-19).
+  const [expandedNavGroups, setExpandedNavGroups] = useState<Set<string>>(
+    () => groupsOpenAt(location.pathname),
+  );
   const [seenPath, setSeenPath] = useState(location.pathname);
   if (seenPath !== location.pathname) {
     setSeenPath(location.pathname);
-    const parentTo = navItems.find(
-      (item) => item.parentTo && isRailItemActive(location.pathname, item.to),
-    )?.parentTo;
-    if (parentTo && !expandedNavGroups.has(parentTo))
-      setExpandedNavGroups(new Set(expandedNavGroups).add(parentTo));
+    setExpandedNavGroups(groupsOpenAt(location.pathname));
   }
   const navigate = useNavigate();
   usePhoneAlertsShell(account?.userId ?? null, location.pathname, navigate);
@@ -355,6 +352,15 @@ export function AppShell() {
                     }`
                   }
                   to={link.to}
+                  // Clicking the parent opens its group, its page open or not.
+                  onClick={
+                    !child && hasChildren && !isExpanded
+                      ? () =>
+                          setExpandedNavGroups((current) =>
+                            new Set(current).add(link.to),
+                          )
+                      : undefined
+                  }
                   // Standing in, the parent matches its child's path, so the
                   // reader hears it as where the person is.
                   end={child ? link.exact : !standsIn && (link.exact || childActive)}
@@ -545,6 +551,20 @@ export function AppShell() {
       )}
     </div>
   );
+}
+
+// The group a page belongs to: its parent's, or its own when it is a parent.
+function groupsOpenAt(pathname: string): Set<string> {
+  const childOf = navItems.find(
+    (item) => item.parentTo && isRailItemActive(pathname, item.to),
+  )?.parentTo;
+  const parent = navItems.find(
+    (item) =>
+      navItems.some((candidate) => candidate.parentTo === item.to) &&
+      isNavItemActive(pathname, item),
+  )?.to;
+  const open = childOf ?? parent;
+  return new Set(open ? [open] : []);
 }
 
 function isRailItemActive(pathname: string, to: string): boolean {

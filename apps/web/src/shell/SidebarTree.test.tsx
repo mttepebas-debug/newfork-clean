@@ -7,7 +7,9 @@ import { AppShell } from "./AppShell";
 
 // The desktop left menu as a tree (SIDEBAR-TREE, Mert 2026-10-19): Lineup hangs
 // under Schedule, Requests is a page of its own, and a group closes even while
-// its child page is open, the parent then standing in for it.
+// its child page is open, the parent then standing in for it. Only the open
+// page's group is open: reaching a group opens it, leaving it closes it
+// (SIDEBAR-ACCORDION, Mert 2026-10-19).
 const context = {
   workspace: { id: "w", name: "Meyhouse" },
   userId: "u",
@@ -38,6 +40,9 @@ function mount(path: string) {
       <MemoryRouter initialEntries={[path]}>
         <Routes>
           <Route path="/app" element={<AppShell />}>
+            <Route path="workspace" element={<h1>Workspace page</h1>} />
+            <Route path="employees" element={<h1>Employees page</h1>} />
+            <Route path="employees/documents" element={<h1>Documents page</h1>} />
             <Route path="schedule" element={<h1>Schedule page</h1>} />
             <Route path="schedule/lineup" element={<h1>Lineup page</h1>} />
             <Route path="schedule/requests" element={<Link to="/app/schedule/lineup">Go to lineup</Link>} />
@@ -100,13 +105,46 @@ describe("the desktop left menu tree", () => {
 
   it("opens a closed group again when its child page is reached", () => {
     mount("/app/schedule/requests");
-    // Requests is no child of Schedule: Schedule is not the open page there.
+    // Requests is no child of Schedule: Schedule is not the open page there,
+    // and its group stays shut.
     expect(link("Requests").className).toContain("active");
     expect(link("Schedule").className).not.toContain("active");
-    fireEvent.click(within(primary()).getByRole("button", { name: "Collapse Schedule" }));
     expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
     fireEvent.click(screen.getByRole("link", { name: "Go to lineup" }));
     expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
     expect(link("Lineup").className).toContain("active");
+  });
+
+  it("opens only the open page's group, and closes it when another page is reached", () => {
+    mount("/app/workspace");
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+    expect(group("Documents")?.getAttribute("data-open")).toBe("false");
+
+    fireEvent.click(link("Schedule"));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+    expect(group("Documents")?.getAttribute("data-open")).toBe("false");
+
+    fireEvent.click(link("Lineup"));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+
+    fireEvent.click(link("Employees"));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+    expect(group("Documents")?.getAttribute("data-open")).toBe("true");
+  });
+
+  it("closes a group opened by hand once the person goes to another page", () => {
+    mount("/app/workspace");
+    fireEvent.click(within(primary()).getByRole("button", { name: "Expand Schedule" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+    fireEvent.click(link("Requests"));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+  });
+
+  it("opens the group again when its parent is clicked while already open", () => {
+    mount("/app/schedule");
+    fireEvent.click(within(primary()).getByRole("button", { name: "Collapse Schedule" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+    fireEvent.click(link("Schedule"));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
   });
 });
