@@ -33,27 +33,10 @@ export function ownJob(key: string, name: string): string {
   );
 }
 
-/**
- * A manager role that also reads and reviews employee documents, saved the way
- * Settings > Roles saves one; returns its name for personWithPassword. The
- * built-in Manager role reviews onboarding but not documents, so a spec about
- * a manager deciding a card gives its managers this one.
- */
-export function documentManagerRole(key: string): string {
-  const name = `Document manager ${key}`;
-  sql(`
-    select tests.role('${run}', '${name}', 'manager',
-      array(select p.permission_key::text from public.workspace_role_permissions p
-            join public.workspace_roles r on r.id = p.role_id
-            where r.workspace_id = tests.id('${run}') and r.system_key = 'manager')
-      || array['employee_documents.read', 'employee_documents.review']);`);
-  return name;
-}
-
 /** Somebody from the builder who can sign in; returns their email. */
 export function personWithPassword(
   label: string,
-  // A system role (admin, manager, employee) or a role from documentManagerRole.
+  // A system role (admin, manager, employee); the built-in Manager decides documents (BL-560).
   access: string,
   locations: readonly ("K" | "B")[],
   jobKey: string,

@@ -5,7 +5,6 @@ import {
   approveAs,
   assignedTo,
   deadlinePassed,
-  documentManagerRole,
   lastLine,
   ownerWithPassword,
   ownJob,
@@ -31,8 +30,8 @@ import {
 // 2026-10-02).
 //
 // Every test makes its own job and people, so what it publishes reaches only
-// them. The managers who decide cards hold a manager role that also reviews
-// documents: the built-in Manager role does not.
+// them. The managers who decide cards hold the built-in Manager role, which
+// reads and reviews documents where it manages (BL-560).
 
 /** Employees > Documents for one person, searched down to `search`, and the row of `title` in it. */
 async function documentsListOf(browser: Browser, email: string, search: string, title: string) {
@@ -93,7 +92,7 @@ test("a two-location employee's card is seen by both managers, and one approval 
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  const role = documentManagerRole(key);
+  const role = "manager";
   const kadikoyManager = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");
   const besiktasManager = personWithPassword(`${key}-bmgr`, role, ["B"], "cook");
   const ali = personWithPassword(`${key}-ali`, "employee", ["K", "B"], key);
@@ -123,7 +122,7 @@ test("a manager approves neither their own card nor a fellow manager's; an admin
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  const role = documentManagerRole(key);
+  const role = "manager";
   // Two Kadikoy managers who owe the card, a third who doesn't, and an employee.
   const first = personWithPassword(`${key}-m1`, role, ["K"], key);
   const second = personWithPassword(`${key}-m2`, role, ["K"], key);
@@ -157,7 +156,7 @@ test("a fellow manager doesn't see a manager's card while it waits for review, o
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  const role = documentManagerRole(key);
+  const role = "manager";
   // Deniz manages Kadikoy alongside another manager.
   const deniz = personWithPassword(`${key}-deniz`, role, ["K"], key);
   const fellow = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");
@@ -190,7 +189,7 @@ test("an overdue card restricts the person until it is approved, and an overdue 
   const key = `doc${tag()}`;
   const title = `Food handler card ${key}`;
   const jobId = ownJob(key, `Barista ${key}`);
-  const role = documentManagerRole(key);
+  const role = "manager";
   const late = personWithPassword(`${key}-late`, "employee", ["K"], key);
   const hande = personWithPassword(`${key}-hande`, role, ["K"], key);
   const reviewer = personWithPassword(`${key}-kmgr`, role, ["K"], "cook");

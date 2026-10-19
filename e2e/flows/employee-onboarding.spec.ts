@@ -4,7 +4,6 @@ import { password } from "../global-setup";
 import { emailOf, signIn } from "../fixtures/world";
 import {
   card,
-  documentManagerRole,
   lastLine,
   ownJob,
   personWithPassword,
@@ -21,8 +20,8 @@ import {
 // fills their profile, skips availability, sends the required document and
 // the whole onboarding for review. Until it is approved they see only what is
 // still missing (KARARLAR "Kisitli kisi").
-// A Kadikoy manager who reviews documents approves the card (the built-in
-// Manager role does not review documents); access opens and they land in the
+// A Kadikoy manager (the built-in Manager role reviews documents, BL-560)
+// approves the card; access opens and they land in the
 // employee interface. Employee onboarding has no "Start over".
 //
 // A legal name typed differently from the invitation is approved only by an
@@ -40,7 +39,7 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   // A job only this person works, and the document every holder of it owes.
   const jobId = ownJob(key, `Barista ${key}`);
   const documentId = publishedDocument(title, [jobId]);
-  const reviewer = personWithPassword(`${key}-kmgr`, documentManagerRole(key), ["K"], "cook");
+  const reviewer = personWithPassword(`${key}-kmgr`, "manager", ["K"], "cook");
 
   // A Kadikoy record on that job nobody has invited yet, and an account with
   // no workspace for the invitation to land on.
