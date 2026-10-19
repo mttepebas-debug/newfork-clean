@@ -37,8 +37,15 @@ export function ProtectedRoute({
       (context.onboarding.status !== "complete" &&
         (membershipClass(context.membership) !== "owner" ||
           workspace === "complete")));
+  // Without the account's id the answer could not be kept, and "Not now" would
+  // bring the screen straight back: such an open is not asked.
   const asking =
-    ready && authenticated && askInvitations && !answered && !handsOn;
+    ready &&
+    authenticated &&
+    Boolean(account?.userId) &&
+    askInvitations &&
+    !answered &&
+    !handsOn;
   const invitations = useQuery({
     queryKey: ["account-pending-invitations"],
     queryFn: listPendingEmployeeInvitations,

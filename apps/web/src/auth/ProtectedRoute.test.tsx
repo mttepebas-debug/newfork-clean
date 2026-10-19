@@ -88,6 +88,7 @@ describe("ProtectedRoute", () => {
   beforeEach(() => {
     window.sessionStorage.clear();
     authState.value.authenticated = true;
+    authState.value.account = { userId: "ali" };
     authState.value.context = null;
     authState.value.error =
       "Could not query the database for the schema cache. Retrying.";
@@ -223,6 +224,21 @@ describe("ProtectedRoute", () => {
       onboarding: { status: "complete", currentStep: 4 },
     } as never;
     markInvitationPromptAnswered("ali");
+    vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
+    renderRoute();
+
+    expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(listPendingEmployeeInvitations).not.toHaveBeenCalled();
+  });
+
+  // Without the account's id the answer could never be kept, and "Not now"
+  // would bring the screen straight back; such an open is not asked.
+  it("does not ask while the account is not known", async () => {
+    authState.value.error = null;
+    authState.value.account = null;
+    authState.value.context = {
+      onboarding: { status: "complete", currentStep: 4 },
+    } as never;
     vi.mocked(listPendingEmployeeInvitations).mockResolvedValue([invitation]);
     renderRoute();
 
