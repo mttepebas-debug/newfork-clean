@@ -1,6 +1,6 @@
 import type { AnnouncementRecord } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
-import { CalendarDays, ChevronRight, Megaphone, Search } from "lucide-react";
+import { CalendarDays, ChevronRight, CircleCheck, Megaphone, Search } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -465,6 +465,11 @@ function whenText(record: AnnouncementRecord, timeFormat: TimeFormat): string {
   return `Published ${dayText(day, Number(day.slice(0, 4)) !== new Date().getFullYear())}`;
 }
 
+/**
+ * What an employee reads: one feed with no tabs, Current over Earlier (S-181).
+ * Nothing current says so in one line above the earlier posts; no post at all
+ * gives the page's empty state.
+ */
 function ReaderList({
   records,
   onOpen,
@@ -472,95 +477,112 @@ function ReaderList({
   records: AnnouncementRecord[];
   onOpen: (id: string) => void;
 }) {
-  const [tab, setTab] = useState<"current" | "past">("current");
-  const rows = records
-    .filter((record) =>
-      tab === "past" ? record.display_status === "past" : record.display_status === "published",
-    )
-    .sort((a, b) => (b.published_at ?? "").localeCompare(a.published_at ?? ""));
+  const newestFirst = (a: AnnouncementRecord, b: AnnouncementRecord) =>
+    (b.published_at ?? "").localeCompare(a.published_at ?? "");
+  const current = records.filter((record) => record.display_status === "published").sort(newestFirst);
+  const earlier = records.filter((record) => record.display_status === "past").sort(newestFirst);
+  if (!current.length && !earlier.length)
+    return (
+      <div className="announcement-feed-empty">
+        <span className="announcement-feed-empty-icon" aria-hidden>
+          <Megaphone size={28} />
+        </span>
+        <h2>No announcements yet</h2>
+        <p>Updates your managers share with your team will show up here.</p>
+      </div>
+    );
+  return (
+    // The feed scrolls here while the page title stays (list-page-frozen.css).
+    <div className="list-frozen-body announcement-feed">
+      <h2 className="announcement-list-heading">
+        Current <span>{current.length}</span>
+      </h2>
+      {current.length ? (
+        <ReaderRows records={current} section="current" onOpen={onOpen} />
+      ) : (
+        <div className="announcement-caught-up">
+          <span className="announcement-caught-up-mark" aria-hidden>
+            <CircleCheck size={18} />
+          </span>
+          <span>
+            <strong>You're all caught up</strong>
+            <small>No current announcements.</small>
+          </span>
+        </div>
+      )}
+      {earlier.length > 0 && (
+        <>
+          <h2 className="announcement-list-heading">
+            Earlier <span>{earlier.length}</span>
+          </h2>
+          <ReaderRows records={earlier} section="earlier" onOpen={onOpen} />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** One section's rows: a reading row on a desktop, the shared list card on a phone. */
+function ReaderRows({
+  records,
+  section,
+  onOpen,
+}: {
+  records: AnnouncementRecord[];
+  section: "current" | "earlier";
+  onOpen: (id: string) => void;
+}) {
+  const asks = (record: AnnouncementRecord) =>
+    section === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
   return (
     <>
-      <div className="job-catalog-toolbar catalog-toolbar">
-        <div className="announcement-toolbar-controls catalog-toolbar-status-row">
-          <div className="catalog-status-tabs" role="tablist" aria-label="Announcements">
-            {(
-              [
-                ["current", "Current"],
-                ["past", "Past"],
-              ] as const
-            ).map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                role="tab"
-                aria-selected={tab === id}
-                className={tab === id ? "active" : ""}
-                onClick={() => setTab(id)}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-        </div>
+      <div className="announcement-reader-list" data-section={section}>
+        {records.map((record) => (
+          <button key={record.id} type="button" className="announcement-reader-row" onClick={() => onOpen(record.id)}>
+            <span className="announcement-row-icon" aria-hidden>
+              {record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+            </span>
+            <span className="announcement-reader-text">
+              <strong>{record.title}</strong>
+              <small>
+                {[record.starts_on ? rangeText(record.starts_on, record.ends_on) : "", record.body]
+                  .filter(Boolean)
+                  .join(" · ")}
+              </small>
+            </span>
+            {asks(record) ? (
+              <span className="list-chip" data-tone="blue">
+                Acknowledge
+              </span>
+            ) : (
+              <ChevronRight size={16} aria-hidden className="announcement-reader-go" />
+            )}
+          </button>
+        ))}
       </div>
-      <div className="announcement-reader-list">
-        {rows.length ? (
-          rows.map((record) => {
-            const ask = tab === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
-            return (
-              <button key={record.id} type="button" className="announcement-reader-row" onClick={() => onOpen(record.id)}>
-                <span className="announcement-row-icon" aria-hidden>
-                  {record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
-                </span>
-                <span className="announcement-reader-text">
-                  <strong>{record.title}</strong>
-                  <small>
-                    {[record.starts_on ? rangeText(record.starts_on, record.ends_on) : "", record.body]
-                      .filter(Boolean)
-                      .join(" · ")}
-                  </small>
-                </span>
-                {ask ? (
+      <ListCards label={section === "earlier" ? "Earlier announcements" : "Current announcements"}>
+        {records.map((record) => {
+          const ask = asks(record);
+          const when = record.starts_on ? rangeText(record.starts_on, record.ends_on) : null;
+          return (
+            <ListCard
+              key={record.id}
+              label={[record.title, when, ask ? "Acknowledge" : ""].filter(Boolean).join(", ")}
+              mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
+              title={<span>{record.title}</span>}
+              status={
+                ask ? (
                   <span className="list-chip" data-tone="blue">
                     Acknowledge
                   </span>
-                ) : (
-                  <ChevronRight size={16} aria-hidden className="announcement-reader-go" />
-                )}
-              </button>
-            );
-          })
-        ) : (
-          <p className="announcement-list-empty">
-            {tab === "past" ? "Nothing has ended yet." : "No announcements for you right now."}
-          </p>
-        )}
-      </div>
-      {rows.length > 0 && (
-        <ListCards label={tab === "past" ? "Past announcements" : "Current announcements"}>
-          {rows.map((record) => {
-            const ask = tab === "current" && record.asked_to_acknowledge && !record.acknowledged_at;
-            const when = record.starts_on ? rangeText(record.starts_on, record.ends_on) : null;
-            return (
-              <ListCard
-                key={record.id}
-                label={[record.title, when, ask ? "Acknowledge" : ""].filter(Boolean).join(", ")}
-                mark={record.on_important_dates ? <CalendarDays size={16} /> : <Megaphone size={16} />}
-                title={<span>{record.title}</span>}
-                status={
-                  ask ? (
-                    <span className="list-chip" data-tone="blue">
-                      Acknowledge
-                    </span>
-                  ) : null
-                }
-                lines={[when, record.body || null]}
-                onOpen={() => onOpen(record.id)}
-              />
-            );
-          })}
-        </ListCards>
-      )}
+                ) : null
+              }
+              lines={[when, record.body || null]}
+              onOpen={() => onOpen(record.id)}
+            />
+          );
+        })}
+      </ListCards>
     </>
   );
 }

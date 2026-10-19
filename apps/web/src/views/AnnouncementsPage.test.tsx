@@ -973,7 +973,7 @@ describe("Announcement drawer (EKRAN-08)", () => {
 });
 
 describe("What an employee reads (EKRAN-08)", () => {
-  it("lists current posts with Acknowledge only where asked, keeps ended ones under Past, and acknowledges in the reader", async () => {
+  it("lists current posts with Acknowledge only where asked, and ended ones under Earlier in the same list, with no tabs (S-181)", async () => {
     const asked = record({
       id: "a8200000-0000-4000-8000-000000000061",
       title: "Uniform policy",
@@ -1002,19 +1002,60 @@ describe("What an employee reads (EKRAN-08)", () => {
     vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: false, announcements: [asked, plain, ended] }));
     renderList();
     await screen.findByRole("list", { name: "Current announcements" });
-    const desktop = within(document.querySelector<HTMLElement>(".announcement-reader-list")!);
+    expect(screen.queryByRole("tab")).toBeNull();
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Current 2",
+      "Earlier 1",
+    ]);
+    const currentRows = document.querySelector<HTMLElement>('.announcement-reader-list[data-section="current"]')!;
+    const earlierRows = document.querySelector<HTMLElement>('.announcement-reader-list[data-section="earlier"]')!;
+    const desktop = within(currentRows);
     const askedRow = desktop.getByRole("button", { name: /Uniform policy/ });
     expect(within(askedRow).getByText("Acknowledge")).toBeTruthy();
     expect(within(desktop.getByRole("button", { name: /New coffee/ })).queryByText("Acknowledge")).toBeNull();
+    expect(desktop.queryByText("Summer hours")).toBeNull();
+    expect(earlierRows.dataset.section).toBe("earlier");
+    expect(within(earlierRows).getByRole("button", { name: /Summer hours/ })).toBeTruthy();
     // The phone's cards say the same.
     const cards = within(screen.getByRole("list", { name: "Current announcements" }));
     expect(within(cards.getByRole("button", { name: "Uniform policy, Acknowledge" })).getByText("Acknowledge")).toBeTruthy();
     expect(within(cards.getByRole("button", { name: "New coffee" })).queryByText("Acknowledge")).toBeNull();
-    expect(screen.queryByText("Summer hours")).toBeNull();
+    expect(within(screen.getByRole("list", { name: "Earlier announcements" })).getByRole("button", { name: "Summer hours" })).toBeTruthy();
     expect(screen.queryByRole("button", { name: "New" })).toBeNull();
-    fireEvent.click(screen.getByRole("tab", { name: "Past" }));
-    expect(desktop.getByText("Summer hours")).toBeTruthy();
-    expect(screen.getByRole("list", { name: "Past announcements" })).toBeTruthy();
+    expect(screen.queryByText("You're all caught up")).toBeNull();
+  });
+
+  it("says you're all caught up over the earlier posts when nothing is current (S-181)", async () => {
+    const ended = record({
+      id: "a8200000-0000-4000-8000-000000000064",
+      title: "Summer hours",
+      status: "published",
+      display_status: "past",
+      published_at: "2026-06-01T16:00:00.000Z",
+      can_edit: false,
+    });
+    vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: false, announcements: [ended] }));
+    renderList();
+    await screen.findByRole("list", { name: "Earlier announcements" });
+    expect(screen.getAllByRole("heading", { level: 2 }).map((heading) => heading.textContent)).toEqual([
+      "Current 0",
+      "Earlier 1",
+    ]);
+    expect(screen.getByText("You're all caught up")).toBeTruthy();
+    expect(screen.getByText("No current announcements.")).toBeTruthy();
+    expect(screen.queryByRole("list", { name: "Current announcements" })).toBeNull();
+    expect(screen.queryByText("No announcements for you right now.")).toBeNull();
+  });
+
+  it("says there are no announcements yet when there are none at all, with no box and no headings (S-181)", async () => {
+    vi.mocked(getAnnouncements).mockResolvedValue(list({ can_manage: false, announcements: [] }));
+    renderList();
+    expect(await screen.findByRole("heading", { name: "No announcements yet" })).toBeTruthy();
+    expect(screen.getByText("Updates your managers share with your team will show up here.")).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: /^Current/ })).toBeNull();
+    expect(document.querySelector(".announcement-reader-list")).toBeNull();
+    expect(screen.queryByText("No announcements for you right now.")).toBeNull();
+    expect(screen.queryByRole("tab")).toBeNull();
   });
 
   it("acknowledges from the reader drawer", async () => {

@@ -212,6 +212,82 @@
 .announcement-reader-go {
   color: var(--theme-muted);
 }
+/* Earlier posts keep their rows, their mark goes grey (S-181). */
+.announcement-reader-list[data-section="earlier"] .announcement-row-icon {
+  background: var(--theme-surface-muted);
+  color: var(--theme-muted);
+}
+
+/* Nothing current: one line above the earlier posts (S-181). */
+.announcement-caught-up {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 58px;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 1px solid var(--theme-list-frame);
+  border-radius: 7px;
+  background: var(--theme-surface);
+}
+.announcement-caught-up-mark {
+  display: grid;
+  flex: none;
+  width: 34px;
+  height: 34px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent);
+}
+.announcement-caught-up strong {
+  display: block;
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 600;
+  line-height: 20px;
+}
+.announcement-caught-up small {
+  display: block;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  line-height: 18px;
+}
+
+/* No post at all: the page's own empty state, no box (S-181). */
+.announcement-feed-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 72px 20px 40px;
+  text-align: center;
+}
+.announcement-feed-empty-icon {
+  display: grid;
+  width: 64px;
+  height: 64px;
+  margin-bottom: 22px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--theme-accent-soft);
+  box-shadow: 0 0 0 8px var(--theme-selected);
+  color: var(--theme-accent);
+}
+.announcement-feed-empty h2 {
+  margin: 0 0 6px;
+  color: var(--theme-text);
+  font-size: 17px;
+  font-weight: 650;
+  line-height: 24px;
+  letter-spacing: -0.01em;
+}
+.announcement-feed-empty p {
+  max-width: 280px;
+  margin: 0;
+  color: var(--theme-text-secondary);
+  font-size: 14px;
+  line-height: 21px;
+}
 
 /* The status list stands in for the tabs on a phone only. */
 .announcement-status-select {
@@ -239,6 +315,17 @@
   }
   .announcements-page .list-cards {
     margin-bottom: 8px;
+  }
+  .announcements-page .announcement-caught-up {
+    border-color: var(--theme-border);
+    border-radius: 10px;
+  }
+  /* The empty state sits in the middle of what the title leaves, a little
+     above centre; four classes beat the frozen page's `> *` rule. */
+  .announcements-page.list-page.list-page > .announcement-feed-empty {
+    flex: 1 1 auto;
+    justify-content: center;
+    padding: 24px 12px 72px;
   }
   .announcements-page .announcement-toolbar-controls {
     align-items: stretch;
