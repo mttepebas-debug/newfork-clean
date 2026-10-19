@@ -1,14 +1,13 @@
--- AVATAR-IKON 3.1: one avatar per workspace membership, a last avatar that points at its source, and
--- the old avatar fields and services gone (design §4.3-4.5, §4.7, §6 "Silinecekler").
+-- AVATAR-IKON 3.1: one avatar per workspace membership and a last avatar that points at its source
+-- (design §4.3-4.5, §4.7). This part only adds and replaces, so the web and API served today keep
+-- working; the old avatar fields, services and policies go in 20261019144602_retire_old_avatar_paths.sql,
+-- live only after the new web and API are served (design §6 "Silinecekler").
 --
 -- A person's avatar belongs to their membership, not to an employee record: somebody who only manages
 -- has one too. It is a photo they uploaded into the workspace's private employee-profile-photos bucket
 -- or a drawing from the Lineup archive, never both. The account keeps no copy: app_private.last_avatars
 -- names the drawing, or the membership whose photo it was, so a photo a manager removed is never
 -- offered again. Nothing here is for the browser; the API calls the services as service_role.
---
--- The account-profile-photos bucket and its objects stay: deleting live objects is a separate step on
--- the product owner's yes. Only the browser's four write policies on it go here.
 
 -- The avatar ----------------------------------------------------------------------------------------
 
@@ -407,20 +406,3 @@ begin
   return jsonb_build_object('status', 'completed', 'idempotent', false);
 end;
 $$;
-
--- What goes --------------------------------------------------------------------------------------------
-
-drop function public.get_employee_avatar_path_service(uuid, uuid, uuid);
-drop function public.get_own_employee_avatar_path_service(uuid, uuid);
-drop function public.remove_employee_avatar_service(uuid, uuid, uuid);
-
--- The two old fields, with their checks and comments; no old value is kept (CLAUDE.md §3.A.5). The
--- browser's own write to user_profiles (profiles_manage_own) no longer reaches an avatar.
-alter table public.employee_private_profiles drop column avatar_object_path;
-alter table public.user_profiles drop column avatar_object_path;
-
--- The browser no longer writes or reads the account photo bucket; the bucket and its objects stay.
-drop policy account_profile_photos_select_own on storage.objects;
-drop policy account_profile_photos_insert_own on storage.objects;
-drop policy account_profile_photos_update_own on storage.objects;
-drop policy account_profile_photos_delete_own on storage.objects;
