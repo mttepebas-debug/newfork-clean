@@ -70,7 +70,11 @@ insert into public.workspace_memberships (id, workspace_id, user_id, role_id, em
    (select id from slot_role where key = 'manager'), (select id from slot_role where key = 'employee'), 'active'),
   ('c1200000-0000-4000-8000-000000000507', 'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000007',
    (select id from slot_role where key = 'admin'), (select id from slot_role where key = 'employee'), 'active');
--- Manages: Emre, Mona, Dora and Fikret manage Kadikoy.
+-- Manages: Emre, Mona, Dora and Fikret manage Kadikoy, and nothing else.
+-- ponytail: a new manager starts managing where they work until ROL-CIFT 6.3 (manages_follow_works);
+-- Manages is set here apart from Works at.
+delete from public.membership_managed_locations
+where workspace_id = 'c1200000-0000-4000-8000-000000000101';
 insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
 select 'c1200000-0000-4000-8000-000000000101', m, 'c1200000-0000-4000-8000-000000000201'
 from unnest(array['c1200000-0000-4000-8000-000000000502', 'c1200000-0000-4000-8000-000000000503',
