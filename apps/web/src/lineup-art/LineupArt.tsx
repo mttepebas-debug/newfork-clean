@@ -29,7 +29,9 @@ export function LineupArt({
   readonly className?: string;
 }) {
   const svgs = useLineupArtSvgs();
-  const svg = artKey ? svgs?.[artKey] : undefined;
+  // Only the archive's own entries: a key like "constructor" must not find what every object inherits.
+  const own = artKey && svgs && Object.hasOwn(svgs, artKey) ? svgs[artKey] : undefined;
+  const svg = typeof own === "string" ? own : undefined;
   const style = { "--lineup-art-size": `${size}px` } as CSSProperties;
   const classes = ["lineup-art", svg ? "lineup-art--drawing" : "lineup-art--initials", className].filter(Boolean).join(" ");
   return (

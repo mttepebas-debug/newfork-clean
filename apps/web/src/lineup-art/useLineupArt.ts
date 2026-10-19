@@ -9,7 +9,8 @@ type Svgs = Record<string, string>;
 let svgs: Svgs | null = null;
 let loading: Promise<Svgs> | null = null;
 
-function loadLineupArtSvgs(): Promise<Svgs> {
+/** Loads the drawings once per page; tests await it to render with the drawings already there. */
+export function loadLineupArtSvgs(): Promise<Svgs> {
   loading ??= import("./art-svgs.generated").then(
     (module) => (svgs = module.artSvgs),
     (error: unknown) => {
