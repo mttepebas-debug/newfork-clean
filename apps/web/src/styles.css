@@ -3602,16 +3602,26 @@ button.workspace-switcher-item:hover:not(:disabled) {
   opacity: 0;
   pointer-events: none;
   transform: translateX(-6px);
-  transition:
-    opacity 150ms ease-out,
-    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
   white-space: nowrap;
 }
+/* The box fades and slides in only as the pointer or the keyboard reaches an
+   icon; it leaves at once, and the menu narrowing or widening shows none
+   (RAIL-FLYOUT-FADE, Mert 2026-10-19: "ipucu kutuları menü kapanırken anında
+   kaybolsun, yalnız üzerine gelince solarak açılsın"). */
 .rail-peek-item:hover .rail-flyout,
 .rail-peek-item:focus-visible .rail-flyout {
   opacity: 1;
   pointer-events: auto;
   transform: translateX(0);
+  transition:
+    opacity 150ms ease-out,
+    transform 200ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .rail-peek-item:hover .rail-flyout,
+  .rail-peek-item:focus-visible .rail-flyout {
+    transition: none;
+  }
 }
 .rail-peek-item[data-rail-active="true"] .rail-flyout {
   border-color: #e9f2ee;
