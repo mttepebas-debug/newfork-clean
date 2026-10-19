@@ -103,7 +103,7 @@ select lives_ok($$select public.create_employee_command_service(
   '39000000-0000-4000-8000-000000000004', employee || '{"is_remote":false,"is_excluded_from_schedule":true,"invitation_email":""}', null) from create_fixture$$,
   'excluded employee saves without email or assignments');
 set local role postgres;
-select is((select role_id from public.workspace_memberships where user_id = '19000000-0000-4000-8000-000000000002'), (select employee_role from create_fixture), 'accepted role matches selection');
+select is((select coalesce(role_id, employee_role_id) from public.workspace_memberships where user_id = '19000000-0000-4000-8000-000000000002'), (select employee_role from create_fixture), 'accepted role matches selection');
 select ok(not has_table_privilege('authenticated', 'public.employee_create_commands', 'select'), 'recovery token state is not client readable');
 select ok(not has_function_privilege('authenticated', 'public.create_employee_command_service(uuid,uuid,uuid,jsonb,uuid)', 'execute'), 'client cannot spoof a service actor');
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)

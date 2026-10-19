@@ -379,7 +379,7 @@ select ok(not exists (
     where d ->> 'title' = 'Ayse to Rita'),
   'K3: nor finds it on the Schedule');
 -- ponytail: the role changes by hand; the rule under test is the post's, not the role change's.
-update public.workspace_memberships m set role_id = (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'employee')
+update public.workspace_memberships m set role_id = null, employee_role_id = (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'employee')
 where m.workspace_id = tests.id('m') and m.user_id = pg_temp.u('ayse');
 select is(pg_temp.try($$select pg_temp.set_state('ayse', tests.id('m:ann:ayse-to-rita'), 'unpublish')$$),
   '42501 authz.out_of_scope', 'K1: once she is an employee, her own post about no place is not hers to unpublish');

@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:8a6b8457002b9943048e619952b318de47c9e92efda61b26b1e9756b0ed832c2
+-- fingerprint: sha256:3019dbac24611d14b54342b4a4c52c9205a4137165de5f846597acae78d06513
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6083,6 +6083,20 @@ $$;
 
 
 ALTER FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works_for_member"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+begin
+  perform app_private.manages_follow_works(new.id);
+  return null;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."manages_follow_works_for_member"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works_trigger"() RETURNS "trigger"
@@ -33162,6 +33176,10 @@ CREATE OR REPLACE TRIGGER "manages_follow_works" AFTER INSERT OR DELETE OR UPDAT
 
 
 
+CREATE OR REPLACE TRIGGER "manages_follow_works_for_member" AFTER INSERT OR UPDATE OF "role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."manages_follow_works_for_member"();
+
+
+
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
 
 
@@ -36060,6 +36078,10 @@ REVOKE ALL ON FUNCTION "app_private"."management_job_stays_held"() FROM PUBLIC;
 
 
 REVOKE ALL ON FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."manages_follow_works_for_member"() FROM PUBLIC;
 
 
 

@@ -10,6 +10,8 @@ select plan(21);
 
 select tests.world('wr');
 select tests.person('wr', 'ayse', 'manager', array['K'], array['cook']);
+-- Ayse only manages (ROL-CIFT): no employee slot, so no week and no Manager note of her own.
+select tests.no_employee_slot('wr', 'ayse');
 select tests.person('wr', 'ali', 'employee', array['K', 'B'], array['cook']);
 -- A manager whose role reads the Schedule but not availability (G14).
 select tests.role('wr', 'floor lead', 'manager', array(

@@ -19,7 +19,7 @@ $$;
 create function pg_temp.owner_job() returns uuid language sql as $$
   select j.id from public.jobs j where j.workspace_id = tests.id('mk') and j.system_key = 'owner'
 $$;
--- Setup made Manager under Management (mk:job:manager). A Kitchen job and a job
+-- Setup made General Manager and Assistant Manager under Management (mk:job:general manager; ROL-CIFT). A Kitchen job and a job
 -- with no department, as the owner adds them in Settings > Jobs.
 select tests.as_browser(tests.user('mk:owner'), format(
   $sql$insert into public.jobs (id, workspace_id, name, department_id)
@@ -92,7 +92,7 @@ select is(pg_temp.keys(pg_temp.grid() -> 'jobs' -> 0), array['color', 'departmen
   'a Schedule job carries its system key');
 select is(pg_temp.keyed(pg_temp.grid() -> 'departments'), array['Kitchen=null', 'Management=management'],
   'Schedule knows which department is Management');
-select is(pg_temp.keyed(pg_temp.grid() -> 'jobs'), array['Cook=null', 'Dishwasher=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
+select is(pg_temp.keyed(pg_temp.grid() -> 'jobs'), array['Assistant Manager=null', 'Cook=null', 'Dishwasher=null', 'General Manager=null', 'Host=null', 'Owner=owner', 'Server=null'],
   'and which job is Owner');
 select is(pg_temp.dishwasher(pg_temp.grid()), 'null'::jsonb, 'a job with no department reads as such');
 select is(pg_temp.from_mx(pg_temp.grid()), 0,
@@ -112,12 +112,12 @@ select pg_temp.owner_saves_jobs(array[pg_temp.owner_job(), tests.id('mk:job:cook
 select is(pg_temp.primary_of('mk:owner'), tests.id('mk:job:cook'),
   'once they choose Cook, Cook is their primary job');
 
-select tests.person('mk', 'bora', 'employee', array['K'], array['cook', 'manager']);
+select tests.person('mk', 'bora', 'employee', array['K'], array['cook', 'general manager']);
 select is(pg_temp.primary_of('mk:bora'), tests.id('mk:job:cook'),
   'somebody who cooks (primary) and manages: Cook is the primary job');
 -- Cemre cooks, is given Manager in Settings > Jobs, then Cook is taken away.
 select tests.person('mk', 'cemre', 'employee', array['K'], array['cook']);
-select pg_temp.assign('mk:cemre', 'manager', true);
+select pg_temp.assign('mk:cemre', 'general manager', true);
 select pg_temp.assign('mk:cemre', 'cook', false);
 select is(pg_temp.primary_of('mk:cemre'), tests.id('mk:job:manager'),
   'somebody left with Manager alone has Manager as their primary job');
@@ -144,7 +144,7 @@ create temp table mk_board as
   select public.get_employee_schedule_board_service(tests.user('mk:bora'), tests.id('mk'), tests.week(0)) as answer;
 select is(
   pg_temp.primaries((select answer from mk_board), array[tests.id('mk:deniz'), tests.id('mk:cemre')]),
-  array['Cemre Person:Manager', 'Deniz Person:Host'],
+  array['Cemre Person:General Manager', 'Deniz Person:Host'],
   'on the team board Cemre and Deniz have the same primary jobs');
 select is(
   pg_temp.primaries((select answer from mk_board),
@@ -184,7 +184,7 @@ create function pg_temp.listed_job(w text, person text) returns text language sq
   from public.list_employees_service(tests.user(w || ':owner'), tests.id(w), false, '', 'all', 200, 0) l
   where l.id = tests.id(person)
 $$;
-select is(pg_temp.listed_job('mk', 'mk:cemre'), 'Manager', 'the list shows Manager for somebody whose primary job it is');
+select is(pg_temp.listed_job('mk', 'mk:cemre'), 'General Manager', 'the list shows Manager for somebody whose primary job it is');
 select is(pg_temp.listed_job('mk', 'mk:bora'), 'Cook', 'and Cook for somebody who cooks (primary) and manages');
 select is(pg_temp.listed_job('mk', 'mk:deniz'), 'Host', 'and Host, her primary job, though it now sits under Management');
 select is(pg_temp.listed_job('mk', 'mk:emre'), 'Dishwasher',
@@ -206,13 +206,13 @@ select is(pg_temp.keys(pg_temp.references() -> 'departments' -> 0), array['archi
   'a department carries what the grouped Jobs picker shows');
 select is(pg_temp.keyed(pg_temp.references() -> 'departments'), array['Bar=null', 'Kitchen=null', 'Leadership=management'],
   'the departments: Management by key, the archived one included, the deleted one not');
-select is(pg_temp.keyed(pg_temp.references() -> 'jobs'), array['Cook=null', 'Dishwasher=null', 'Host=null', 'Manager=null', 'Owner=owner', 'Server=null'],
+select is(pg_temp.keyed(pg_temp.references() -> 'jobs'), array['Assistant Manager=null', 'Cook=null', 'Dishwasher=null', 'General Manager=null', 'Host=null', 'Owner=owner', 'Server=null'],
   'the drawer knows which job is Owner');
 select is(
   (select array_agg((x ->> 'name') || '@' || coalesce(d.name, 'none') order by x ->> 'name')
    from jsonb_array_elements(pg_temp.references() -> 'jobs') x
    left join public.departments d on d.id = (x ->> 'department_id')::uuid),
-  array['Cook@Kitchen', 'Dishwasher@none', 'Host@Leadership', 'Manager@Leadership', 'Owner@Leadership', 'Server@Kitchen'],
+  array['Assistant Manager@Leadership', 'Cook@Kitchen', 'Dishwasher@none', 'General Manager@Leadership', 'Host@Leadership', 'Owner@Leadership', 'Server@Kitchen'],
   'each job says which department it sits under');
 select is(pg_temp.dishwasher(pg_temp.references()), 'null'::jsonb, 'a job with no department reads as such in the drawer');
 select is(pg_temp.from_mx(pg_temp.references()), 0,

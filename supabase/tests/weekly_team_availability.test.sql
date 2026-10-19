@@ -92,10 +92,10 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
  union all select f.w,i.invited_employee,f.loc,f.owner_id from wt_fixture f,wt_invited i;
 insert into public.employee_invitations(workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by)
  select f.w,i.invited_manager,'weekly-team-invited-manager@example.test',
-  (select m.role_id from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.manager),
+  (select coalesce(m.role_id, m.employee_role_id) from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.manager),
   encode(extensions.digest('weekly-team-invited-manager','sha256'),'hex'),now()+interval '7 days',f.owner_id from wt_fixture f,wt_invited i
  union all select f.w,i.invited_employee,'weekly-team-invited-employee@example.test',
-  (select m.role_id from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.actor),
+  (select coalesce(m.role_id, m.employee_role_id) from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.actor),
   encode(extensions.digest('weekly-team-invited-employee','sha256'),'hex'),now()+interval '7 days',f.owner_id from wt_fixture f,wt_invited i;
 select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared,i.invited_employee),'an invited employee is listed, an invited manager is not') from wt_fixture,wt_invited i;
 select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared,i.invited_employee),'the owner sees the same') from wt_fixture,wt_invited i;

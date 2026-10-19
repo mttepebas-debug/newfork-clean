@@ -72,6 +72,24 @@ create trigger manages_follow_works
   after insert or delete or update of location_id, ended_at on public.employee_location_assignments
   for each row execute function app_private.manages_follow_works_trigger();
 
+-- And when somebody becomes a manager, they manage where they already work.
+create function app_private.manages_follow_works_for_member()
+returns trigger
+language plpgsql
+security definer
+set search_path = ''
+as $$
+begin
+  perform app_private.manages_follow_works(new.id);
+  return null;
+end;
+$$;
+revoke all on function app_private.manages_follow_works_for_member() from public, anon, authenticated;
+
+create trigger manages_follow_works_for_member
+  after insert or update of role_id on public.workspace_memberships
+  for each row execute function app_private.manages_follow_works_for_member();
+
 -- One role handed over by today's flows, placed in the two slots (design §5.1).
 create function app_private.place_single_role(target_membership uuid, chosen_role uuid)
 returns void

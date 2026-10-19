@@ -13,7 +13,8 @@ select * from no_plan();
 
 select tests.world('ao');
 update public.workspace_scheduling_settings set availability_onboarding_required = true where workspace_id = tests.id('ao');
-select tests.person('ao', 'ayse', 'manager', array['K'], array['cook'], 'onboarding');
+-- Ayse only manages (ROL-CIFT): filed with a Management job, she holds no employee slot.
+select tests.person('ao', 'ayse', 'manager', array['K'], array['general manager'], 'onboarding');
 select tests.person('ao', 'ali', 'employee', array['K'], array['cook'], 'onboarding');
 
 create function pg_temp.step(person text) returns jsonb language sql as $$

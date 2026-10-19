@@ -462,6 +462,8 @@ as $$ select count(*)::integer from public.manager_weekly_reminders n where n.em
 select is(pg_temp.save_note('ayse', 'emre'), 'saved', 'Ayşe saves a Manager note about Emre');
 select is(pg_temp.notes_about('emre'), 1, 'Emre has a Manager note');
 select pg_temp.make('emre', 'manager');
+-- A promotion keeps the employee slot (design §4.8); Emre also gives it up, so he stops being an employee.
+select tests.no_employee_slot('sc', 'emre');
 select is(pg_temp.notes_about('emre'), 0, 'made a manager, Emre''s Manager note is deleted');
 select pg_temp.make('emre', 'employee');
 select is(public.weekly_preferences_read_service(tests.user('sc:zeynep'), tests.id('sc'), tests.id('sc:emre')) -> 'manager' ->> 'revision', '0',

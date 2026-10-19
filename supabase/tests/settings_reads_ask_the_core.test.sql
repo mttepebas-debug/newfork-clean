@@ -158,7 +158,7 @@ select is(
 select is(
   array(select (j ->> 'name') || coalesce(':' || (j ->> 'system_key'), '') from jsonb_array_elements(
     public.read_settings_jobs_service(tests.user('s:owner'), tests.id('s')) -> 'jobs') j),
-  array['Cook', 'Manager', 'Owner:owner', 'Server'],
+  array['Assistant Manager', 'Cook', 'General Manager', 'Owner:owner', 'Server'],
   'Settings > Jobs reads the jobs A to Z, the kept Owner job marked as the system''s'
 );
 select is(
