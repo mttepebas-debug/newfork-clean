@@ -16,8 +16,9 @@ select plan(19);
 
 select tests.world('mp');
 -- Read by label, not tests.id, so the file runs (red) before setup makes Manager.
+-- ROL-CIFT: setup's Management job is General Manager now (design §4.13); 'manager' names it.
 create function pg_temp.job(key text) returns uuid language sql as $$
-  select i.id from tests.ids i where i.label = 'mp:job:' || key
+  select i.id from tests.ids i where i.label = 'mp:job:' || case key when 'manager' then 'general manager' else key end
 $$;
 
 -- The SQLSTATE and hint a statement is refused with, or 'allowed'.
@@ -65,7 +66,7 @@ select tests.person('mp', 'ayse', 'employee', array['K'], array['cook']);
 
 select is(pg_temp.save(array['K'], 'K', array['manager'], 'manager'), 'allowed',
   'only Manager, at Kadikoy, Manager primary: the drawer saves her');
-select is(pg_temp.works('ayse'), 'Manager*@Kadikoy', 'and Manager is her stored primary job');
+select is(pg_temp.works('ayse'), 'General Manager*@Kadikoy', 'and Manager is her stored primary job');
 select is(pg_temp.save(array['K'], 'K', array['manager'], null), '22023 employee.primary_job_required',
   'with no primary job she is refused: a job under Management is not primary by itself');
 select is(pg_temp.save(array[]::text[], null, array['manager'], 'manager'), '22023 employee.location_required',
@@ -81,9 +82,9 @@ select is(pg_temp.save(array['K'], 'K', array['manager', 'server'], null), '2202
   'Manager and Server with no primary job: refused');
 select is(pg_temp.save(array['K'], 'K', array['manager', 'server'], 'server'), 'allowed',
   'Manager and Server with Server primary: saved');
-select is(pg_temp.works('ayse'), 'Manager,Server*@Kadikoy', 'Server is her stored primary');
+select is(pg_temp.works('ayse'), 'General Manager,Server*@Kadikoy', 'Server is her stored primary');
 select is(pg_temp.save(array['K'], 'K', array['manager', 'server'], 'manager') || ' ' || pg_temp.works('ayse'),
-  'allowed Manager*,Server@Kadikoy', 'and Manager can be, in its place');
+  'allowed General Manager*,Server@Kadikoy', 'and Manager can be, in its place');
 
 -- 3. Remote and "Exclude from schedule" keep their exemption ---------------------------
 
@@ -127,7 +128,7 @@ create function pg_temp.save_job(job uuid) returns text language sql as $$
 $$;
 select is(
   pg_temp.save_job((select j.id from public.jobs j join public.departments d on d.id = j.department_id
-    where j.workspace_id = tests.id('mq') and d.system_key = 'management' and j.system_key is null)),
+    where j.workspace_id = tests.id('mq') and d.system_key = 'management' and j.system_key is null and j.name = 'General Manager')),
   pg_temp.save_job(gen_random_uuid()),
   'another workspace''s Manager job is refused like a made-up job');
 select isnt(pg_temp.save_job(gen_random_uuid()), 'allowed', 'and a made-up job is refused');
@@ -146,14 +147,14 @@ select public.update_employee_membership_role_service(
   tests.user('mp:owner'), tests.id('mp'), tests.id('mp:cem'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('mp') and r.system_key = 'manager'));
 select is(
-  (select m.role::text from public.workspace_memberships m
+  (select coalesce((select r.access_class::text from public.workspace_roles r where r.id = m.role_id), 'employee') from public.workspace_memberships m
    where m.workspace_id = tests.id('mp') and m.user_id = tests.user('mp:cem')) || ' ' || pg_temp.works('cem'),
   'manager Cook*@Kadikoy',
   'made a manager, Cem keeps his jobs as they were: Manager is not given to him');
 -- Derya is invited as a manager and accepts.
 select tests.person('mp', 'derya', 'manager', array['K'], array['server']);
 select is(
-  (select m.role::text from public.workspace_memberships m
+  (select coalesce((select r.access_class::text from public.workspace_roles r where r.id = m.role_id), 'employee') from public.workspace_memberships m
    where m.workspace_id = tests.id('mp') and m.user_id = tests.user('mp:derya')) || ' ' || pg_temp.works('derya'),
   'manager Server*@Kadikoy',
   'invited as a manager, Derya has the job she was given and no other');

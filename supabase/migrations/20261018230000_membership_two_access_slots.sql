@@ -560,7 +560,7 @@ begin
   create trigger sync_workspace_entitlement_billing_owner_trigger
     after update of role_id, status on public.workspace_memberships
     for each row execute function public.sync_workspace_entitlement_billing_owner();
-  create trigger a_membership_access_slots_hold
+  create trigger membership_access_slots_hold
     before insert or update of workspace_id, role_id, employee_role_id on public.workspace_memberships
     for each row execute function app_private.membership_access_slots_hold();
   create trigger membership_slot_rows_follow

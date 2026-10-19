@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 516, last: 20261018233000_services_read_two_slots.sql
--- fingerprint: sha256:3019dbac24611d14b54342b4a4c52c9205a4137165de5f846597acae78d06513
+-- fingerprint: sha256:fc2610b5a3b911b6046eef54f5bf6572db02040332dd646b1876287fa9b10432
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -32884,10 +32884,6 @@ CREATE OR REPLACE TRIGGER "a_document_requirement_publication" BEFORE INSERT ON 
 
 
 
-CREATE OR REPLACE TRIGGER "a_membership_access_slots_hold" BEFORE INSERT OR UPDATE OF "workspace_id", "role_id", "employee_role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."membership_access_slots_hold"();
-
-
-
 CREATE OR REPLACE TRIGGER "a_owner_job_and_management_primary" BEFORE INSERT OR UPDATE ON "public"."employee_job_assignments" FOR EACH ROW EXECUTE FUNCTION "app_private"."keep_job_assignment_rules"();
 
 
@@ -33181,6 +33177,10 @@ CREATE OR REPLACE TRIGGER "manages_follow_works_for_member" AFTER INSERT OR UPDA
 
 
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
+
+
+
+CREATE OR REPLACE TRIGGER "membership_access_slots_hold" BEFORE INSERT OR UPDATE OF "workspace_id", "role_id", "employee_role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."membership_access_slots_hold"();
 
 
 

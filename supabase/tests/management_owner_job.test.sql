@@ -468,7 +468,11 @@ select is(pg_temp.is_primary('deniz', tests.id('mo:job:host')), true,
 select hasnt_trigger('public', 'jobs', 'jobs_under_management_are_primary',
   'no trigger clears the primary mark of a job under Management');
 
--- Manager is renamed, archived, restored and deleted like any job.
+-- Manager is renamed, archived, restored and deleted like any job. ROL-CIFT 1.3: while it is not
+-- anybody's one Management job; Ada, whose management job it is, holds Assistant Manager too.
+insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
+select tests.id('mo'), m.id, tests.id('mo:job:assistant manager')
+from public.workspace_memberships m where m.workspace_id = tests.id('mo') and m.user_id = tests.user('mo:ada');
 select is(
   tests.as_browser(tests.user('mo:owner'), format(
     'update public.jobs set name = %L where id = %L', 'Shift lead', pg_temp.manager_job('mo'))),

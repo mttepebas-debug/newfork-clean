@@ -119,7 +119,7 @@ select is(pg_temp.primary_of('mk:bora'), tests.id('mk:job:cook'),
 select tests.person('mk', 'cemre', 'employee', array['K'], array['cook']);
 select pg_temp.assign('mk:cemre', 'general manager', true);
 select pg_temp.assign('mk:cemre', 'cook', false);
-select is(pg_temp.primary_of('mk:cemre'), tests.id('mk:job:manager'),
+select is(pg_temp.primary_of('mk:cemre'), tests.id('mk:job:general manager'),
   'somebody left with Manager alone has Manager as their primary job');
 -- Deniz hosts (primary) and cooks; then Host moves under Management.
 select tests.person('mk', 'deniz', 'employee', array['K'], array['host', 'cook']);
@@ -177,7 +177,7 @@ select tests.person('mk', 'emre', 'employee', null, null);
 select public.save_employee_service(
   tests.user('mk:owner'), tests.id('mk'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
   e.invitation_email, e.start_date, e.internal_note, '{}'::uuid[], null,
-  array[tests.id('mk:job:dishwasher'), tests.id('mk:job:manager')], null, true, false, e.revision)
+  array[tests.id('mk:job:dishwasher'), tests.id('mk:job:general manager')], null, true, false, e.revision)
 from public.employee_profiles e where e.id = tests.id('mk:emre');
 create function pg_temp.listed_job(w text, person text) returns text language sql as $$
   select l.primary_job_name
