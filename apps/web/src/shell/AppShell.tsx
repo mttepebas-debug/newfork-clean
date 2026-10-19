@@ -42,7 +42,7 @@ import { requestAppNavigation } from "./leave-guard";
 import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
-import { membershipClass } from "../auth/access";
+import { hasEmployeeAccess, hasManagementAccess, membershipClass } from "../auth/access";
 
 interface NavItem {
   readonly to: string;
@@ -265,9 +265,11 @@ export function AppShell() {
     (accountAttention.data?.workspaces ?? 0);
   if (!context) return null;
   const isEmployee = membershipClass(context.membership) === "employee";
-  // Owner, admin and manager with an employee record of their own switch to
-  // the employee view, which opens in the employee's own frame (FB-6.2.8).
-  const canSwitchView = !isEmployee && can(context, "employee_hub.read");
+  // Owner, admin and manager who also hold the employee access switch to the
+  // employee view, which opens in the employee's own frame (FB-6.2.8; ROL-CIFT
+  // 6.2, design §4.1: both accesses, never one of them).
+  const canSwitchView =
+    hasEmployeeAccess(context.membership) && hasManagementAccess(context.membership);
   const inEmployeeView = canSwitchView && isEmployeeViewPath(location.pathname);
   const employeeShell = isEmployee || inEmployeeView;
   const shellRole = employeeShell ? "employee" : membershipClass(context.membership);

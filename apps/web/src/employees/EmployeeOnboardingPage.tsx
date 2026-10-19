@@ -27,7 +27,7 @@ import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import { requestAppNavigation } from "../shell/leave-guard";
 import { useListPhoneWidth } from "../lib/usePhoneWidth";
 import { useAuth } from "../auth/AuthContext";
-import { hubPath } from "../auth/resolveLanding";
+import { appLandingPath, hubPath } from "../auth/resolveLanding";
 import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-cache";
 import { setTabWorkspaceId } from "../lib/supabase";
 import { RequestError } from "../lib/request-error";
@@ -77,8 +77,10 @@ export default function EmployeeOnboardingPage() {
     void queryClient.invalidateQueries({ queryKey: ["account-workspaces"] });
     // Land in the organization that was just activated, not the default one.
     setTabWorkspaceId(workspaceId);
-    await refresh();
-    navigate("/app/employee-hub", { replace: true });
+    // The page the accesses open: Employee Hub, or Workspace for somebody who
+    // also or only manages (ROL-CIFT 6.2).
+    const next = await refresh();
+    navigate(appLandingPath(next), { replace: true });
   }, [navigate, queryClient, refresh, workspaceId]);
 
   const continueAfterSave = async () => {

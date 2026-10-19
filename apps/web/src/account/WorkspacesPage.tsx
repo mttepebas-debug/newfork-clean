@@ -29,6 +29,7 @@ import {
   supabaseClient,
 } from "../lib/supabase";
 import { membershipClass } from "../auth/access";
+import { appLandingPath, workspaceLandingPathForRole } from "../auth/resolveLanding";
 
 export default function WorkspacesPage() {
   const { account, context, refresh } = useAuth();
@@ -210,7 +211,7 @@ export default function WorkspacesPage() {
   const activate = async (workspace: WorkspaceSummary): Promise<void> => {
     if (!supabaseClient) {
       await clearTenantQueriesForOrganizationSwitch(queryClient);
-      navigate(workspaceDestinationFromRole(workspace.role), {
+      navigate(workspaceLandingPathForRole(workspace.role), {
         replace: true,
       });
       return;
@@ -226,7 +227,7 @@ export default function WorkspacesPage() {
         setError("Workspace context could not be loaded");
         return;
       }
-      navigate(workspaceDestinationFromRole(membershipClass(resolvedContext.membership)), {
+      navigate(appLandingPath(resolvedContext), {
         replace: true,
       });
     } catch (activationError: unknown) {
@@ -301,7 +302,7 @@ export default function WorkspacesPage() {
         const next = remaining.find(workspace => workspace.isActive) ?? remaining[0];
         if (next) await selectActiveWorkspace(supabaseClient, next.id);
         const resolved = await refresh();
-        navigate(next && resolved ? workspaceDestinationFromRole(membershipClass(resolved.membership)) : "/organization-switcher", { replace: true });
+        navigate(next && resolved ? appLandingPath(resolved) : "/organization-switcher", { replace: true });
       } else {
         await refresh();
         await reloadWorkspaces();
@@ -1099,10 +1100,6 @@ function lifecycleMessage(error: unknown, fallback: string): string {
     keyed ??
     (error instanceof Error ? lifecycleSentences[error.message] : undefined);
   return sentence ?? fallback;
-}
-
-function workspaceDestinationFromRole(role: WorkspaceSummary["role"]): string {
-  return role === "employee" ? "/app/employee-hub" : "/app/workspace";
 }
 
 function workspaceSummaryFromContext(

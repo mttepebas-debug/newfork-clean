@@ -995,6 +995,53 @@ describe("EmployeeOnboardingPage", () => {
     await waitFor(() => expect(authMock.refresh).toHaveBeenCalled());
   });
 
+  // ROL-CIFT 6.2: approval lands on the page the accesses open, not always on
+  // Employee Hub: somebody who also manages lands on Workspace.
+  it.each([
+    ["only works shifts", { employee: true, management: null }, ["workspace.read", "employee_hub.read"], "/app/employee-hub"],
+    ["also manages", { employee: true, management: "manager" }, ["workspace.read", "employee_hub.read"], "/app/workspace"],
+  ] as const)("lands somebody who %s, once onboarding is approved, where the accesses open", async (_who, access, actions, landing) => {
+    function RouteMarker() {
+      return <output aria-label="Current test route">{useLocation().pathname}</output>;
+    }
+    const completedProfileRequirement = { ...onboarding.requirements[0]!, status: "completed" as const };
+    vi.mocked(getMyOnboarding)
+      .mockResolvedValueOnce({
+        ...onboarding,
+        case_status: "in_progress",
+        first_actionable_path: "/welcome/review",
+        progress_completed: 1,
+        requirements: [completedProfileRequirement],
+      })
+      .mockResolvedValueOnce({
+        ...onboarding,
+        membership_status: "active",
+        case_status: "approved",
+        first_actionable_path: "/app/employee-hub",
+        progress_completed: 1,
+        requirements: [completedProfileRequirement],
+      });
+    vi.mocked(submitMyOnboarding).mockResolvedValue(2);
+    authMock.refresh.mockResolvedValue({
+      workspace: { id: onboarding.workspace_id, name: "Meyhouse" },
+      membership: { access },
+      permissions: [],
+      actions: [...actions],
+    } as never);
+
+    render(
+      <QueryClientProvider client={new QueryClient({ defaultOptions: { queries: { retry: false } } })}>
+        <MemoryRouter initialEntries={["/welcome/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/review"]}>
+          <OnboardingRoute />
+          <RouteMarker />
+        </MemoryRouter>
+      </QueryClientProvider>,
+    );
+
+    fireEvent.click(await screen.findByRole("button", { name: /send for review/i }));
+    await waitFor(() => expect(screen.getByLabelText("Current test route").textContent).toBe(landing));
+  });
+
   it("loads the onboarding of the workspace in the route and keeps stored paths under it", async () => {
     function RouteMarker() {
       return (

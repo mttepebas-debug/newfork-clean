@@ -5,8 +5,9 @@ import { MemoryRouter, Route, Routes } from "react-router";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { AppShell } from "./AppShell";
 
-// "Switch to employee view": only someone with an employee record of their
-// own (employee_hub.read) gets the switch, and the way back is the same row.
+// "Switch to employee view": only somebody who holds both accesses, a
+// management one and the employee one, gets the switch (ROL-CIFT 6.2, design
+// §4.1), and the way back is the same row.
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
@@ -24,7 +25,7 @@ const owner = {
     id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
     userId,
     workspaceId,
-    access: { employee: false, management: "owner" },
+    access: { employee: true, management: "owner" },
     status: "active",
   },
   permissions: ["workspace.read", "schedule.read", "employees.read"],
@@ -60,8 +61,8 @@ afterEach(() => {
 });
 
 describe("employee view switch (FB-6.2.8)", () => {
-  it("is not offered to someone without an employee record", () => {
-    current = { ...owner, actions: [] };
+  it("is not offered to somebody who only manages", () => {
+    current = { ...owner, membership: { ...owner.membership, access: { employee: false, management: "owner" } } };
     renderAt("/app/workspace");
     expect(sidebar().queryByText("Employee view")).toBeNull();
   });
@@ -78,8 +79,8 @@ describe("employee view switch (FB-6.2.8)", () => {
     expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });
 
-  it("offers it to a manager with an employee record too", () => {
-    current = { ...owner, membership: { ...owner.membership, access: { employee: false, management: "manager" } } };
+  it("offers it to a manager who also works shifts", () => {
+    current = { ...owner, membership: { ...owner.membership, access: { employee: true, management: "manager" } } };
     renderAt("/app/schedule");
     expect(sidebar().getByRole("link", { name: /Employee view/ }).getAttribute("href")).toBe("/app/employee-hub");
   });

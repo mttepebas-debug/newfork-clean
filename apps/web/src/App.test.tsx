@@ -70,6 +70,9 @@ const testAuth = vi.hoisted(() => ({
   timeFormat: "system" as "system" | "12h" | "24h",
   // Actions the core leaves out for this sign-in (a role with a permission removed).
   withoutActions: [] as string[],
+  // ROL-CIFT: a management role that also holds the employee access. Left out:
+  // only the employee role does.
+  employeeAccess: null as boolean | null,
 }));
 
 vi.mock("./auth/AuthContext", async () => {
@@ -91,7 +94,9 @@ vi.mock("./auth/AuthContext", async () => {
       id: "bd6b757b-c9ad-4e47-a47e-0a90a43bc0e4",
       userId,
       workspaceId,
-      access: role === "employee" ? { employee: true, management: null } : { employee: false, management: role },
+      access: role === "employee"
+        ? { employee: true, management: null }
+        : { employee: testAuth.employeeAccess ?? false, management: role },
       status: "active",
     },
     permissions: shared.permissionsForRole(role),
@@ -103,8 +108,9 @@ vi.mock("./auth/AuthContext", async () => {
     actions: shared.authzActionKeys.filter((action) => {
       if (testAuth.withoutActions.includes(action)) return false;
       if (action === "workspace.read") return true;
-      // Every active member's own hub (scope 'own' in the core).
-      if (action === "employee_hub.read" || action === "employee_hub.self") return true;
+      // One's own hub, for whoever holds the employee access (ROL-CIFT 6.2).
+      if (action === "employee_hub.read" || action === "employee_hub.self")
+        return role === "employee" || testAuth.employeeAccess === true;
       const rule = (shared.targetedAuthzActions as Record<string, { person?: boolean }>)[action];
       return rule !== undefined && (shared.expected as (...args: unknown[]) => boolean)(
         {
@@ -278,6 +284,7 @@ beforeEach(() => {
   testAuth.role = null;
   testAuth.nextRole = "owner";
   testAuth.withoutActions = [];
+  testAuth.employeeAccess = null;
   testAuth.timeFormat = "system";
   resetScheduleApiMocks();
   vi.mocked(authorizeScheduleExportV2).mockReset().mockResolvedValue(undefined);
@@ -831,6 +838,8 @@ vi.mock("./communications/communications-data", () => ({
 
 describe("App", () => {
   it("protects workspace routes and opens the authenticated shell", async () => {
+    // An owner who also works shifts: the Employee view row is theirs (ROL-CIFT 6.2).
+    testAuth.employeeAccess = true;
     window.history.pushState({}, "", "/app/schedule?date=2026-08-24");
     const { container } = render(<App />);
 
@@ -7268,9 +7277,10 @@ describe("App", () => {
   });
 
   // FB-6.2 .7b (KK-35 S4): the employee view opens for whoever the core lets
-  // read their own hub, not for one role name; with no employee record of
-  // their own the hub answers with the no-access card.
-  it.each(["owner", "manager"] as const)("opens the employee view for a signed-in %s", async (role) => {
+  // read their own hub, not for one role name: an owner or a manager who also
+  // holds the employee access (ROL-CIFT 6.2).
+  it.each(["owner", "manager"] as const)("opens the employee view for a signed-in %s who also works shifts", async (role) => {
+    testAuth.employeeAccess = true;
     window.history.pushState({}, "", "/app/employee-hub");
     render(<App />);
 
@@ -7284,6 +7294,20 @@ describe("App", () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 50));
     expect(window.location.pathname).toBe("/app/employee-hub");
+  });
+
+  // ROL-CIFT 6.2 (design §4.1): somebody who only manages has no employee
+  // interface. An old link to it takes them to Workspace, never a no-access card,
+  // and the menu offers no Employee view.
+  it.each(["owner", "manager"] as const)("takes a %s who only manages from an employee address to Workspace", async (role) => {
+    window.history.pushState({}, "", "/app/employee-hub/schedule");
+    render(<App />);
+    expect(await screen.findByRole("heading", { name: "Sign in" })).toBeTruthy();
+    await signInAs(role);
+
+    await waitFor(() => expect(window.location.pathname).toBe("/app/workspace"));
+    expect(screen.queryByRole("heading", { name: /You don't have access/ })).toBeNull();
+    expect(screen.queryByText("Employee view")).toBeNull();
   });
 
   // BILDIRIM-02 (KARARLAR S-123, S-96): the old notification screens are gone;

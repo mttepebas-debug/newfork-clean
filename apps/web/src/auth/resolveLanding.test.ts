@@ -1,6 +1,6 @@
 import type { ActiveWorkspaceContext, WorkspaceSummary } from "@newfork/shared";
 import { describe, expect, it } from "vitest";
-import { hubPath, noAccessHomePath, resolveLanding } from "./resolveLanding";
+import { appLandingPath, hubPath, noAccessHomePath, resolveLanding } from "./resolveLanding";
 
 function workspace(
   overrides: Partial<WorkspaceSummary> & Pick<WorkspaceSummary, "id" | "name">,
@@ -224,5 +224,35 @@ describe("the page inside the workspace", () => {
     expect(
       resolveLanding({ workspaces: [managerWorkspace], context: managerDoing([]) }).path,
     ).toBe(hubPath);
+  });
+});
+
+// ROL-CIFT 6.2 (design §4.1, §4.10): the accesses name the landing page. Only
+// managing: Workspace. Only the employee access: Employee Hub. Both: Workspace,
+// with the Employee view a click away.
+describe("the landing page by access", () => {
+  const holding = (access: { employee: boolean; management: string | null }, actions: string[]) =>
+    ({
+      workspace: { id: ready.id, name: ready.name },
+      membership: { access },
+      permissions: [],
+      actions,
+    }) as unknown as ActiveWorkspaceContext;
+
+  it.each([
+    ["only manages", { employee: false, management: "manager" }, ["workspace.read", "schedule.read"], "/app/workspace"],
+    ["only works shifts", { employee: true, management: null }, ["workspace.read", "employee_hub.read"], "/app/employee-hub"],
+    ["does both", { employee: true, management: "admin" }, ["workspace.read", "employee_hub.read"], "/app/workspace"],
+  ] as const)("lands somebody who %s on %s", (_who, access, actions, path) => {
+    expect(appLandingPath(holding(access, [...actions]))).toBe(path);
+  });
+
+  it("lands an owner who also works shifts on Workspace, not on Employee Hub", () => {
+    expect(
+      resolveLanding({
+        workspaces: [ready],
+        context: holding({ employee: true, management: "owner" }, ["workspace.read", "employee_hub.read"]),
+      }).path,
+    ).toBe("/app/workspace");
   });
 });

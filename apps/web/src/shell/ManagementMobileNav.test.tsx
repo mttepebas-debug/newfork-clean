@@ -121,8 +121,8 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(names(morePages())).toEqual(["Availability", "Account", "Sign out"]);
   });
 
-  it("with an employee record of their own, More offers the employee view (FB-6.2.8)", () => {
-    context = { ...manager, actions: ["employee_hub.read"] };
+  it("to a manager who also works shifts, More offers the employee view (FB-6.2.8, ROL-CIFT 6.2)", () => {
+    context = { ...manager, membership: { access: { employee: true, management: "manager" } }, actions: ["employee_hub.read"] };
     mount();
     expect(names(morePages())).toEqual(["Availability", "Employee view", "Account", "Sign out"]);
   });
@@ -201,7 +201,7 @@ describe("the employee view's phone bar", () => {
   });
 
   it("offers the way back to management in a manager's employee view (FB-6.2.8)", () => {
-    context = { ...manager, actions: ["employee_hub.read"] };
+    context = { ...manager, membership: { access: { employee: true, management: "manager" } }, actions: ["employee_hub.read"] };
     mount("/app/employee-hub");
     expect(names(morePages())[0]).toBe("Management view");
     expect(within(morePages()).getByRole("link", { name: "Management view", hidden: true }).getAttribute("href")).toBe(

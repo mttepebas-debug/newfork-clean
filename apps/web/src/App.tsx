@@ -7,6 +7,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router";
 import { AuthProvider, useAuth } from "./auth/AuthContext";
 import { ProtectedRoute } from "./auth/ProtectedRoute";
 import { ActionRoute } from "./auth/ActionRoute";
+import { EmployeeInterfaceRoute } from "./auth/EmployeeInterfaceRoute";
 import { DesktopOnlyRoute } from "./auth/DesktopOnlyRoute";
 import { PermissionRoute } from "./auth/PermissionRoute";
 import { SettingsPageRoute } from "./settings/SettingsPageRoute";
@@ -422,11 +423,11 @@ export function App() {
                   path="employee-hub/*"
                   element={
                     // Whoever the core lets read their own hub, whatever
-                    // their role; no employee record of their own gets the
-                    // hub's no-access card (FB-6.2 .7b, KK-35 S4).
-                    <ActionRoute action="employee_hub.read">
+                    // their role (FB-6.2 .7b, KK-35 S4); somebody who only
+                    // manages goes to their landing page (ROL-CIFT 6.2).
+                    <EmployeeInterfaceRoute>
                       <EmployeeHubPage />
-                    </ActionRoute>
+                    </EmployeeInterfaceRoute>
                   }
                 />
                 <Route path="notifications" element={<ActionRoute action="notifications.read_own"><NotificationsPage /></ActionRoute>} />
