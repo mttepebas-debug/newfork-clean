@@ -81,7 +81,10 @@ for (const screen of screens) {
         await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
         await ayse.locator(".lineup-phone-dock").getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).click();
       } else {
-        await expect(ayse.getByRole("article", { name: "Kadikoy" })).toContainText("Emre Person");
+        // The desktop Lineup, F (Mert 2026-10-19): Kadikoy's ticket, its team in the list under it.
+        await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
+        await expect(ayse.getByRole("region", { name: /^Kadikoy, / })).toBeVisible();
+        await expect(ayse.getByRole("tabpanel")).toContainText("Emre Person");
         await ayse.getByRole("button", { name: /^Publish, \d+ lineups? waiting$/ }).click();
       }
       const window = ayse.getByRole("dialog", { name: "Publish lineups" });
