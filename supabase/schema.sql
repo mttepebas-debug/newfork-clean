@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 535, last: 20261019190000_no_management_view_of_self.sql
--- fingerprint: sha256:17d36185f1ecb0006ff745c3d4a9e27b13ca066aaf5be66af0d66fcebaa3ff82
+-- migrations: 542, last: 20261019200000_employee_side_needs_employee_access.sql
+-- fingerprint: sha256:7539719813c5b34cc29d2b3ecbdd94f8a6bb21a8580a21862b3b849bf7b46ab4
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -570,6 +570,108 @@ $$;
 
 ALTER FUNCTION "app_private"."accept_employee_invitation_for_user"("target_user_id" "uuid", "target_invitation_id" "uuid", "invitation_token_hash" "text") OWNER TO "postgres";
 
+SET default_tablespace = '';
+
+SET default_table_access_method = "heap";
+
+
+CREATE TABLE IF NOT EXISTS "public"."workspace_memberships" (
+    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "user_id" "uuid" NOT NULL,
+    "status" "public"."membership_status" DEFAULT 'active'::"public"."membership_status" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    "role_id" "uuid",
+    "last_used_at" timestamp with time zone,
+    "employee_id" "uuid",
+    "employee_role_id" "uuid",
+    CONSTRAINT "workspace_memberships_holds_an_access" CHECK ((("role_id" IS NOT NULL) OR ("employee_role_id" IS NOT NULL)))
+);
+
+
+ALTER TABLE "public"."workspace_memberships" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."workspace_memberships"."last_used_at" IS 'When this membership was last opened. The landing decision picks the most recent one.';
+
+
+
+COMMENT ON COLUMN "public"."workspace_memberships"."employee_id" IS 'The employee record this membership is. Null while the workspace has no record for the account.';
+
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_change_impact"("w" "uuid", "member" "public"."workspace_memberships", "emp" "uuid", "next_employee_role" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select case when member.employee_role_id is not null and next_employee_role is null
+    then app_private.employee_side_impact(w, emp)
+    else jsonb_build_object('shifts_opened', 0, 'requests_closed', 0, 'applications_closed', 0,
+      'time_off_withdrawn', 0, 'availability_deleted', false) end
+$$;
+
+
+ALTER FUNCTION "app_private"."access_change_impact"("w" "uuid", "member" "public"."workspace_memberships", "emp" "uuid", "next_employee_role" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."access_change_target"("actor" "uuid", "w" "uuid", "emp" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid") RETURNS "public"."workspace_memberships"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  record public.employee_profiles;
+  member public.workspace_memberships;
+  own_record boolean;
+begin
+  select * into record from public.employee_profiles p where p.id = emp and p.workspace_id = w;
+  own_record := record.user_id is not null and record.user_id = actor;
+  -- One rank above the person's highest access (design §4.8); on one's own record, the owner alone,
+  -- who has nobody above (employee.change_own_access).
+  perform app_private.authorize(actor, w,
+    case when own_record then 'employee.change_own_access' else 'employee.change_role' end, target_person => emp);
+
+  if record.archived_at is not null then
+    raise exception 'employee not found' using errcode = 'P0002';
+  end if;
+  if record.user_id is null then
+    raise exception 'employee has no linked workspace account' using errcode = '22023';
+  end if;
+  select m.* into member from public.workspace_memberships m
+  where m.workspace_id = w and m.user_id = record.user_id and m.status = 'active'
+  for update;
+  if member.id is null then
+    raise exception 'active workspace membership not found' using errcode = 'P0002';
+  end if;
+
+  if next_employee_role is null and next_management_role is null then
+    raise exception 'choose an employee access, a management access or both'
+      using errcode = '22023', hint = 'access.role_required';
+  end if;
+  -- Which slot a role fits is the membership's own rule (membership_access_slots_hold).
+
+  if own_record then
+    -- The owner's own record: the employee access alone; the owner stays the owner.
+    if next_management_role is distinct from member.role_id then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.change_role';
+    end if;
+    return member;
+  end if;
+  -- Whatever is given is below the one who gives it, asked the way any role grant is; the owner
+  -- access only comes by a transfer.
+  if next_employee_role is not null and next_employee_role is distinct from member.employee_role_id then
+    perform app_private.authorize_role_grant(actor, w, next_employee_role, target_person => emp);
+  end if;
+  if next_management_role is not null and next_management_role is distinct from member.role_id then
+    perform app_private.authorize_role_grant(actor, w, next_management_role, target_person => emp);
+  end if;
+  return member;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."access_change_target"("actor" "uuid", "w" "uuid", "emp" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid") OWNER TO "postgres";
+
 
 CREATE OR REPLACE FUNCTION "app_private"."access_location_given"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
@@ -975,10 +1077,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."adopt_account_phone"("target_user_id" "uuid", "typed_phone" "text", "fallback_display_name" "text") OWNER TO "postgres";
-
-SET default_tablespace = '';
-
-SET default_table_access_method = "heap";
 
 
 CREATE TABLE IF NOT EXISTS "public"."announcements" (
@@ -3041,7 +3139,6 @@ CREATE TABLE IF NOT EXISTS "app_private"."authz_actions" (
     "rank_below" boolean DEFAULT false NOT NULL,
     "employee_target" boolean DEFAULT false NOT NULL,
     "outranked_no" boolean DEFAULT false NOT NULL,
-    "owner_target_ok" boolean DEFAULT false NOT NULL,
     "documents_ok" boolean DEFAULT false NOT NULL,
     CONSTRAINT "authz_actions_check" CHECK ((("effect" <> 'cross'::"text") OR ("scope_class" = 'person'::"text"))),
     CONSTRAINT "authz_actions_effect_check" CHECK (("effect" = ANY (ARRAY['read'::"text", 'write'::"text", 'cross'::"text"]))),
@@ -3057,10 +3154,6 @@ COMMENT ON TABLE "app_private"."authz_actions" IS 'Every action app_private.auth
 
 
 COMMENT ON COLUMN "app_private"."authz_actions"."outranked_no" IS 'No when target_user (the record''s author) outranks the actor today (FB-6.7 K2, KK-87).';
-
-
-
-COMMENT ON COLUMN "app_private"."authz_actions"."owner_target_ok" IS 'With rank_below: a request of the owner''s own is decided like a lower rank''s, by whoever may decide the place. No action sets it since the decision chain (KARARLAR S-169).';
 
 
 
@@ -3142,6 +3235,12 @@ begin
     return 'document_blocked';
   end if;
 
+  -- Only the owner, whether on their own record or anybody's (ROL-CIFT 4.1: the owner alone gives
+  -- themselves the employee access, employee.change_own_access).
+  if rule_row.owner_only and state.class <> 'owner' then
+    return 'owner_only';
+  end if;
+
   if rule_row.scope_class = 'own' then
     -- What one does for oneself as an employee (availability, offering or
     -- taking a shift, time off) needs the employee slot (ROL-CIFT, design
@@ -3160,9 +3259,6 @@ begin
     return 'out_of_scope';
   end if;
 
-  if rule_row.owner_only and state.class <> 'owner' then
-    return 'owner_only';
-  end if;
   -- The owner holds every permission.
   if state.class <> 'owner'
      and rule_row.permission_key is not null
@@ -3189,8 +3285,7 @@ begin
     where membership.workspace_id = state.workspace_id and membership.user_id = whose;
     -- ponytail: somebody without a membership yet ranks as an employee; use the
     -- invitation's role if a manager ever invites into a higher one.
-    if app_private.authz_rank(coalesce(target_access, 'employee')) >= app_private.authz_rank(state.class)
-       and not (rule_row.owner_target_ok and target_access = 'owner') then
+    if app_private.authz_rank(coalesce(target_access, 'employee')) >= app_private.authz_rank(state.class) then
       return 'rank';
     end if;
   end if;
@@ -3470,6 +3565,96 @@ $$;
 
 
 ALTER FUNCTION "app_private"."channel_room"("target_channel" "text", OUT "room" integer, OUT "opens_at" timestamp with time zone) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."close_employee_side"("w" "uuid", "emp" "uuid", "actor" "uuid", "reason" "text") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  impact jsonb;
+  opened uuid[];
+  closed record;
+  why text := case reason
+    when 'terminated' then 'This person no longer works here.'
+    when 'access_removed' then 'This person no longer has access to the workspace.'
+    else 'This person no longer works shifts here.' end;
+begin
+  if reason is null or reason not in ('access_dropped', 'terminated', 'access_removed') then
+    raise exception 'unknown reason to close the employee side' using errcode = '22023';
+  end if;
+  perform public.availability_lock_workspace(w);
+  impact := app_private.employee_side_impact(w, emp);
+
+  if reason = 'access_dropped' then
+    with released as (
+      update public.schedule_published_shifts shift
+      set employee_id = null
+      from public.schedule_location_publications publication, public.locations location
+      where publication.id = shift.publication_id and publication.workspace_id = shift.workspace_id
+        and publication.location_id = shift.location_id and publication.status = 'current'
+        and location.id = shift.location_id and location.workspace_id = shift.workspace_id
+        and shift.workspace_id = w and shift.employee_id = emp
+        and (shift.scheduled_date + shift.start_time) at time zone location.timezone >= now()
+      returning shift.id)
+    select coalesce(array_agg(id), '{}') into opened from released;
+    perform app_private.schedule_tell_unassigned(w, opened, actor);
+  else
+    impact := impact || jsonb_build_object('shifts_opened', 0, 'availability_deleted', false);
+  end if;
+
+  -- Their own requests: a swap, a cover, a release.
+  for closed in
+    update public.shift_exchange_cases c
+    set status = 'cancelled', revision = c.revision + 1, updated_at = now()
+    where c.workspace_id = w and c.owner_id = emp and c.status = 'open'
+    returning c.id
+  loop
+    update public.shift_exchange_applications
+    set status = 'closed_case_cancelled', updated_at = now()
+    where case_id = closed.id and status in ('invited', 'pending_manager');
+    delete from public.shift_exchange_votes where case_id = closed.id;
+    perform public.shift_exchange_emit(actor, w, closed.id, null, 'case_closed',
+      why || case when reason = 'access_removed' then ' This request was closed. The owner keeps this shift.'
+        else ' This request was closed. The shift is open for someone else to pick up.' end);
+  end loop;
+
+  -- What they answered on somebody else's request; a request made to them alone closes with it.
+  for closed in
+    update public.shift_exchange_applications a
+    set status = 'closed_case_cancelled', updated_at = now()
+    from public.shift_exchange_cases c
+    where c.id = a.case_id and c.workspace_id = a.workspace_id and c.status = 'open'
+      and a.workspace_id = w and a.employee_id = emp and a.status in ('invited', 'pending_manager')
+    returning a.id, a.case_id, c.audience
+  loop
+    delete from public.shift_exchange_votes where case_id = closed.case_id and application_id = closed.id;
+    update public.shift_exchange_cases
+    set status = case when closed.audience = 'direct' then 'cancelled' else status end,
+        revision = revision + 1, updated_at = now()
+    where id = closed.case_id;
+    perform public.shift_exchange_emit(actor, w, closed.case_id, closed.id, 'application_closed',
+      why || ' Their answer was closed. No assignment changed.');
+  end loop;
+
+  -- Their time off waiting for a decision is withdrawn (design §4.8).
+  for closed in
+    update public.schedule_time_off_requests r
+    set status = 'revoked', revision = r.revision + 1, updated_at = now()
+    where r.workspace_id = w and r.employee_id = emp and r.status = 'pending'
+    returning r.id
+  loop
+    insert into public.schedule_time_off_events (workspace_id, request_id, action, actor_user_id, note)
+    values (w, closed.id, 'revoked', actor, why);
+    perform app_private.time_off_tell(w, closed.id, 'withdrawn', actor);
+  end loop;
+
+  return impact;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."close_employee_side"("w" "uuid", "emp" "uuid", "actor" "uuid", "reason" "text") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."schedule_edit_sessions" (
@@ -4761,6 +4946,41 @@ $$;
 ALTER FUNCTION "app_private"."employee_record_is_workspace_owner"("target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."employee_side_impact"("w" "uuid", "emp" "uuid") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+  select jsonb_build_object(
+    'shifts_opened', (
+      select count(*)::integer
+      from public.schedule_published_shifts shift
+      join public.schedule_location_publications publication
+        on publication.id = shift.publication_id and publication.workspace_id = shift.workspace_id
+       and publication.location_id = shift.location_id and publication.status = 'current'
+      join public.locations location on location.id = shift.location_id and location.workspace_id = shift.workspace_id
+      where shift.workspace_id = w and shift.employee_id = emp
+        and (shift.scheduled_date + shift.start_time) at time zone location.timezone >= now()),
+    'requests_closed', (
+      select count(*)::integer from public.shift_exchange_cases c
+      where c.workspace_id = w and c.owner_id = emp and c.status = 'open'),
+    'applications_closed', (
+      select count(*)::integer
+      from public.shift_exchange_applications a
+      join public.shift_exchange_cases c on c.id = a.case_id and c.workspace_id = a.workspace_id
+      where a.workspace_id = w and a.employee_id = emp and a.status in ('invited', 'pending_manager')
+        and c.status = 'open' and c.owner_id <> emp),
+    'time_off_withdrawn', (
+      select count(*)::integer from public.schedule_time_off_requests r
+      where r.workspace_id = w and r.employee_id = emp and r.status = 'pending'),
+    'availability_deleted',
+      exists (select 1 from public.employee_weekly_preferences p where p.workspace_id = w and p.employee_id = emp)
+      or exists (select 1 from public.manager_weekly_reminders m where m.workspace_id = w and m.employee_id = emp))
+$$;
+
+
+ALTER FUNCTION "app_private"."employee_side_impact"("w" "uuid", "emp" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."enqueue_workspace_retention_purge_job"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -5749,7 +5969,8 @@ begin
       coalesce(r.starts, s.start_time) as starts, coalesce(r.ends, s.end_time) as ends,
       s.start_time as schedule_starts, s.end_time as schedule_ends,
       coalesce(r.label_ids, s.label_ids) as label_ids, r.label_ids is not null as own_labels, s.label_names,
-      s.shift_type_id as schedule_type, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, false as lineup_only
+      s.shift_type_id as schedule_type, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, false as lineup_only,
+      r.replaced_by_row_id
     from shifts s
     -- Only a row of this day's lineups: a shift moved here from another day comes as the Schedule has it.
     left join (public.daily_lineup_rows r join headers h on h.id = r.lineup_id)
@@ -5759,7 +5980,8 @@ begin
     -- A person added in the lineup only.
     select r.location_id, h.shift_type_id, r.id, null, null, r.employee_id,
       r.job_id, null, r.starts, r.ends, null, null,
-      coalesce(r.label_ids, '{}'), true, '{}', null, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, true
+      coalesce(r.label_ids, '{}'), true, '{}', null, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, true,
+      r.replaced_by_row_id
     from public.daily_lineup_rows r
     join headers h on h.id = r.lineup_id
     where r.source_shift_id is null
@@ -5772,7 +5994,8 @@ begin
     select h.location_id, h.shift_type_id from headers h
     where target_shift_type_ids is null or h.shift_type_id = any (target_shift_type_ids)
   ), people as materialized (
-    -- Who is on each lineup, and whether they have the app (a membership that can sign in).
+    -- Who is on each lineup, and whether they have the app (a membership that can sign in). A called off or
+    -- replaced person is not on it (LINEUP-EDIT L1, S-178); the rows still read, for their own groups.
     select r.location_id, r.group_type, count(distinct r.employee_id) as people,
       count(distinct r.employee_id) filter (where exists (
         select 1 from public.employee_profiles e
@@ -5780,7 +6003,7 @@ begin
         where e.id = r.employee_id and e.workspace_id = target_workspace_id
           and m.status in ('active', 'pending_activation'))) as with_app
     from rows_wanted r
-    where r.employee_id is not null
+    where r.employee_id is not null and r.called_off_at is null and r.replaced_by_row_id is null
     group by r.location_id, r.group_type
   )
   select jsonb_build_object(
@@ -5849,6 +6072,8 @@ begin
                   'section_id', r.section_id, 'section_name', sec.name,
                   'sort_order', r.sort_order,
                   'called_off_at', r.called_off_at, 'called_off_by', r.called_off_by,
+                  -- LINEUP-EDIT L1: the row of this lineup that took this one's place (S-178 "Replaced").
+                  'replaced_by_row_id', r.replaced_by_row_id,
                   'lineup_only', r.lineup_only,
                   -- The Read list (Mert 2026-10-17): whether the person has the app (what with_app counts) and
                   -- when she acknowledged the version staff see; null for anyone else, and for nobody.
@@ -11739,6 +11964,120 @@ end; $$;
 ALTER FUNCTION "public"."cancel_workspace_ownership_transfer_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "transfer_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."change_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid", "managed_location_ids" "uuid"[], "management_job_ids" "uuid"[], "expected_impact" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  member public.workspace_memberships;
+  management_class text;
+  impact jsonb;
+  places uuid[] := coalesce(managed_location_ids, '{}');
+  jobs uuid[] := coalesce(management_job_ids, '{}');
+begin
+  perform public.availability_lock_workspace(target_workspace_id);
+  member := app_private.access_change_target(actor_user_id, target_workspace_id, target_employee_id,
+    next_employee_role_id, next_management_role_id);
+
+  -- What the reader was shown is what happens (design §4.8).
+  impact := app_private.access_change_impact(target_workspace_id, member, target_employee_id, next_employee_role_id);
+  if impact is distinct from coalesce(expected_impact, jsonb_build_object('shifts_opened', 0,
+      'requests_closed', 0, 'applications_closed', 0, 'time_off_withdrawn', 0, 'availability_deleted', false)) then
+    raise exception 'What this change does has changed. Review it again.'
+      using errcode = 'PT409', hint = 'access.impact_changed', detail = impact::text;
+  end if;
+
+  perform set_config('app.membership_change', member.id::text, true);
+  update public.workspace_memberships
+  set role_id = next_management_role_id, employee_role_id = next_employee_role_id, updated_at = now()
+  where id = member.id;
+  -- The kind of access they now hold, as the core reads it; a refusal below undoes the update.
+  management_class := case when next_management_role_id is null then null
+    else (app_private.actor(member.user_id, target_workspace_id)).class::text end;
+
+  -- Every management access holds a Management job (S-168); a manager manages a place (design §4.2).
+  -- The owner's Owner job comes with ownership, so the owner's jobs and places are not asked.
+  if management_class in ('manager', 'admin') then
+    if cardinality(jobs) = 0 then
+      raise exception 'a management access needs a Management job'
+        using errcode = '22023', hint = 'access.management_job_required';
+    end if;
+    if exists (select 1 from unnest(jobs) given(id) where not exists (
+        select 1 from public.jobs j join public.departments d on d.id = j.department_id
+        where j.id = given.id and j.workspace_id = target_workspace_id and d.system_key = 'management'
+          and j.system_key is null and j.archived_at is null and j.deleted_at is null)) then
+      raise exception 'choose a Management job' using errcode = '22023', hint = 'access.management_job_invalid';
+    end if;
+  elsif management_class = 'owner' and cardinality(jobs) > 0 then
+    raise exception 'the owner''s Owner job comes with ownership'
+      using errcode = '22023', hint = 'access.management_job_invalid';
+  elsif management_class is null and cardinality(jobs) > 0 then
+    raise exception 'a Management job goes with a management access'
+      using errcode = '22023', hint = 'access.management_job_invalid';
+  end if;
+  if management_class = 'manager' then
+    if cardinality(places) = 0 then
+      raise exception 'a manager needs a location to manage'
+        using errcode = '22023', hint = 'access.manages_required';
+    end if;
+    if exists (select 1 from unnest(places) given(id) where not exists (
+        select 1 from public.locations l
+        where l.id = given.id and l.workspace_id = target_workspace_id and app_private.location_is_live(l))) then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'employee.change_role';
+    end if;
+  elsif cardinality(places) > 0 then
+    raise exception 'only a manager manages chosen locations'
+      using errcode = '22023', hint = 'access.manages_only_for_manager';
+  end if;
+
+  if member.employee_role_id is not null and next_employee_role_id is null then
+    perform app_private.close_employee_side(target_workspace_id, target_employee_id, actor_user_id, 'access_dropped');
+  end if;
+
+  if management_class = 'manager' then
+    delete from public.membership_managed_locations managed
+    where managed.membership_id = member.id and not managed.location_id = any (places);
+    insert into public.membership_managed_locations (workspace_id, membership_id, location_id, created_by)
+    select target_workspace_id, member.id, place, actor_user_id from unnest(places) place
+    on conflict (membership_id, location_id) do nothing;
+  end if;
+  if management_class in ('manager', 'admin') then
+    delete from public.membership_management_jobs held
+    where held.membership_id = member.id and not held.job_id = any (jobs);
+    insert into public.membership_management_jobs (workspace_id, membership_id, job_id, created_by)
+    select target_workspace_id, member.id, job, actor_user_id from unnest(jobs) job
+    on conflict (membership_id, job_id) do nothing;
+  end if;
+
+  update public.employee_profiles
+  set revision = revision + 1, updated_at = now()
+  where id = target_employee_id and workspace_id = target_workspace_id;
+  insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
+  values (target_workspace_id, target_employee_id, actor_user_id, 'employee.access_changed', 'Workspace access changed');
+  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
+  values (target_workspace_id, actor_user_id, 'membership.access_changed', 'workspace_membership', member.id::text,
+    jsonb_build_object('employee_id', target_employee_id,
+      'from_employee_role_id', member.employee_role_id, 'to_employee_role_id', next_employee_role_id,
+      'from_management_role_id', member.role_id, 'to_management_role_id', next_management_role_id,
+      'managed_location_ids', to_jsonb(places), 'management_job_ids', to_jsonb(jobs), 'impact', impact));
+
+  if member.employee_role_id is distinct from next_employee_role_id
+     or member.role_id is distinct from next_management_role_id then
+    perform app_private.people_tell('people.role_changed', target_workspace_id, array[member.user_id],
+      'role:' || member.id::text || ':' || txid_current()::text,
+      'Your access changed', null, '/app', actor_user_id, 'workspace_membership', member.id,
+      jsonb_build_object('employee_role_id', next_employee_role_id, 'management_role_id', next_management_role_id));
+  end if;
+
+  return jsonb_build_object('membership_id', member.id, 'employee_role_id', next_employee_role_id,
+    'management_role_id', next_management_role_id, 'impact', impact);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."change_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid", "managed_location_ids" "uuid"[], "management_job_ids" "uuid"[], "expected_impact" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."check_schedule_time_source"() RETURNS "trigger"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -13367,6 +13706,11 @@ begin
   end if;
   if not me.workspace_open then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.workspace_closed';
+  end if;
+  -- The hub is the employee access's (ROL-CIFT 6.2): the core's answer for an employee-side action
+  -- without it. A missing document still opens the hub, as before.
+  if not coalesce(me.has_employee, false) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee_hub.read';
   end if;
   select * into employee from public.employee_profiles profile
   where profile.workspace_id = target_workspace_id
@@ -19698,6 +20042,22 @@ $$;
 ALTER FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."preview_employee_access_change_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  member public.workspace_memberships := app_private.access_change_target(actor_user_id, target_workspace_id,
+    target_employee_id, next_employee_role_id, next_management_role_id);
+begin
+  return app_private.access_change_impact(target_workspace_id, member, target_employee_id, next_employee_role_id);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."preview_employee_access_change_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."preview_employee_document_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "proposed_location_ids" "uuid"[], "proposed_job_ids" "uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -21485,6 +21845,8 @@ declare
   membership public.workspace_memberships%rowtype;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.remove_access', target_person => target_employee_id);
+  -- The workspace lock first, as every access change takes it, then the rows (close_employee_side).
+  perform public.availability_lock_workspace(target_workspace_id);
 
   select * into employee
   from public.employee_profiles
@@ -21508,6 +21870,9 @@ begin
   update public.workspace_memberships
   set status = 'suspended'::public.membership_status, updated_at = now()
   where id = membership.id;
+
+  -- The record and its shifts stay; what they asked for or answered does not wait half done (design §4.8).
+  perform app_private.close_employee_side(target_workspace_id, employee.id, actor_user_id, 'access_removed');
 
   update public.employee_profiles
   set user_id = null, revision = revision + 1, updated_at = now()
@@ -22745,11 +23110,8 @@ begin
       and m.user_id = actor_user_id and m.status = 'active' and r.access_class = 'admin'
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.membership_id = m.id and c.workspace_id = m.workspace_id and c.status <> 'approved')
-      -- The owner works the Owner job on their own record (BL-252), so only
-      -- somebody with a live record here takes ownership.
-      and exists (select 1 from public.employee_profiles employee
-        where employee.workspace_id = m.workspace_id and employee.user_id = m.user_id
-          and employee.archived_at is null)
+      -- The Owner job is the owner's management job (membership_slot_rows_follow), so taking
+      -- ownership asks for no employee record (ROL-CIFT, design §4.12).
   ) or not exists (
     select 1 from public.workspace_memberships m
     left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
@@ -27508,6 +27870,9 @@ begin
     and action.shift_id = shift.id
     and action.workspace_id = shift.workspace_id;
 
+  -- What they asked for or answered, and their time off waiting, closes with them (design §4.8).
+  perform app_private.close_employee_side(target_workspace_id, target_employee_id, actor_user_id, 'terminated');
+
   update public.employee_profiles
   set archived_at = resolved_effective_at, archived_by = actor_user_id,
     revision = revision + 1, updated_at = now()
@@ -29747,9 +30112,11 @@ CREATE TABLE IF NOT EXISTS "public"."daily_lineup_rows" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_by" "uuid",
+    "replaced_by_row_id" "uuid",
     CONSTRAINT "daily_lineup_rows_call_off" CHECK ((("called_off_at" IS NULL) = ("called_off_by" IS NULL))),
     CONSTRAINT "daily_lineup_rows_hours" CHECK (((("starts" IS NULL) = ("ends" IS NULL)) AND (("starts" IS NULL) OR ("starts" <> "ends")))),
     CONSTRAINT "daily_lineup_rows_kind" CHECK (((("source_shift_id" IS NOT NULL) AND ("employee_id" IS NULL)) OR (("source_shift_id" IS NULL) AND ("employee_id" IS NOT NULL) AND ("job_id" IS NOT NULL) AND ("starts" IS NOT NULL) AND ("ends" IS NOT NULL)))),
+    CONSTRAINT "daily_lineup_rows_replaced_by_other" CHECK (("replaced_by_row_id" IS DISTINCT FROM "id")),
     CONSTRAINT "daily_lineup_rows_sort_order_check" CHECK ((("sort_order" IS NULL) OR ("sort_order" >= 0)))
 );
 
@@ -30256,32 +30623,6 @@ CREATE TABLE IF NOT EXISTS "public"."manager_weekly_reminders" (
 
 
 ALTER TABLE "public"."manager_weekly_reminders" OWNER TO "postgres";
-
-
-CREATE TABLE IF NOT EXISTS "public"."workspace_memberships" (
-    "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
-    "workspace_id" "uuid" NOT NULL,
-    "user_id" "uuid" NOT NULL,
-    "status" "public"."membership_status" DEFAULT 'active'::"public"."membership_status" NOT NULL,
-    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    "role_id" "uuid",
-    "last_used_at" timestamp with time zone,
-    "employee_id" "uuid",
-    "employee_role_id" "uuid",
-    CONSTRAINT "workspace_memberships_holds_an_access" CHECK ((("role_id" IS NOT NULL) OR ("employee_role_id" IS NOT NULL)))
-);
-
-
-ALTER TABLE "public"."workspace_memberships" OWNER TO "postgres";
-
-
-COMMENT ON COLUMN "public"."workspace_memberships"."last_used_at" IS 'When this membership was last opened. The landing decision picks the most recent one.';
-
-
-
-COMMENT ON COLUMN "public"."workspace_memberships"."employee_id" IS 'The employee record this membership is. Null while the workspace has no record for the account.';
-
 
 
 CREATE OR REPLACE VIEW "public"."membership_location_scopes" WITH ("security_invoker"='true') AS
@@ -32652,7 +32993,15 @@ CREATE INDEX "daily_lineup_rows_employee_idx" ON "public"."daily_lineup_rows" US
 
 
 
+CREATE UNIQUE INDEX "daily_lineup_rows_id_lineup_workspace_key" ON "public"."daily_lineup_rows" USING "btree" ("id", "lineup_id", "workspace_id");
+
+
+
 CREATE INDEX "daily_lineup_rows_lineup_idx" ON "public"."daily_lineup_rows" USING "btree" ("lineup_id");
+
+
+
+CREATE INDEX "daily_lineup_rows_replaced_by_idx" ON "public"."daily_lineup_rows" USING "btree" ("replaced_by_row_id") WHERE ("replaced_by_row_id" IS NOT NULL);
 
 
 
@@ -33696,6 +34045,11 @@ ALTER TABLE ONLY "public"."daily_lineup_rows"
 
 ALTER TABLE ONLY "public"."daily_lineup_rows"
     ADD CONSTRAINT "daily_lineup_rows_lineup_location_day_workspace_fkey" FOREIGN KEY ("lineup_id", "location_id", "service_date", "workspace_id") REFERENCES "public"."daily_lineups"("id", "location_id", "service_date", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_rows"
+    ADD CONSTRAINT "daily_lineup_rows_replaced_by_fkey" FOREIGN KEY ("replaced_by_row_id", "lineup_id", "workspace_id") REFERENCES "public"."daily_lineup_rows"("id", "lineup_id", "workspace_id") ON DELETE SET NULL ("replaced_by_row_id");
 
 
 
@@ -35625,6 +35979,19 @@ REVOKE ALL ON FUNCTION "app_private"."accept_employee_invitation_for_user"("targ
 
 
 
+GRANT SELECT ON TABLE "public"."workspace_memberships" TO "authenticated";
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."workspace_memberships" TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."access_change_impact"("w" "uuid", "member" "public"."workspace_memberships", "emp" "uuid", "next_employee_role" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."access_change_target"("actor" "uuid", "w" "uuid", "emp" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."access_location_given"() FROM PUBLIC;
 
 
@@ -35885,6 +36252,10 @@ REVOKE ALL ON FUNCTION "app_private"."channel_room"("target_channel" "text", OUT
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."close_employee_side"("w" "uuid", "emp" "uuid", "actor" "uuid", "reason" "text") FROM PUBLIC;
+
+
+
 GRANT SELECT,REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."schedule_edit_sessions" TO "service_role";
 
 
@@ -36062,6 +36433,10 @@ REVOKE ALL ON FUNCTION "app_private"."employee_onboarding_case_id"("target_user_
 
 
 REVOKE ALL ON FUNCTION "app_private"."employee_record_is_workspace_owner"("target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."employee_side_impact"("w" "uuid", "emp" "uuid") FROM PUBLIC;
 
 
 
@@ -36969,6 +37344,11 @@ GRANT ALL ON FUNCTION "public"."cancel_workspace_ownership_transfer_service"("ac
 
 
 
+REVOKE ALL ON FUNCTION "public"."change_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid", "managed_location_ids" "uuid"[], "management_job_ids" "uuid"[], "expected_impact" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."change_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid", "managed_location_ids" "uuid"[], "management_job_ids" "uuid"[], "expected_impact" "jsonb") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."check_schedule_time_source"() FROM PUBLIC;
 
 
@@ -37678,6 +38058,11 @@ GRANT ALL ON FUNCTION "public"."preview_announcement_service"("actor_user_id" "u
 
 REVOKE ALL ON FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."preview_document_publication_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_document_type_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."preview_employee_access_change_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."preview_employee_access_change_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "next_employee_role_id" "uuid", "next_management_role_id" "uuid") TO "service_role";
 
 
 
@@ -38699,11 +39084,6 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."lineup_commands" T
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."location_sections" TO "service_role";
-
-
-
-GRANT SELECT ON TABLE "public"."workspace_memberships" TO "authenticated";
-GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."workspace_memberships" TO "service_role";
 
 
 
