@@ -133,6 +133,8 @@ const lineupDayRowSchema = z.object({
   sort_order: z.number().int().nullable(),
   called_off_at: instant.nullable(),
   called_off_by: id.nullable(),
+  /** LINEUP-EDIT L1 (S-178 "Replaced"): the row of this lineup that took this one's place. */
+  replaced_by_row_id: id.nullable(),
   lineup_only: z.boolean(),
   changed: z.array(z.string()),
   /** The Read list (Mert 2026-10-17): the person has the app, and when she acknowledged the version staff see. */
