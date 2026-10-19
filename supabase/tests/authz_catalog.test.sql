@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(11);
+select plan(13);
 
 -- How far the database is from one authorization core (FOUNDATION-B stage
 -- 2c). Each count is a pattern stage 4 and 6 remove; a ceiling only comes
@@ -44,13 +44,34 @@ select cmp_ok(
 -- trigger's membership scopes (41 -> 40), FB-6.7 the announcement helpers, the old inbox read
 -- and the announcement matchers (40 -> 32), FB-6.6 the document and onboarding helpers (32 -> 26),
 -- FB-6.4 A2 the three Schedule helpers (26 -> 23), BL-276 the notification policy writes (23 -> 21),
--- BILDIRIM-06 the old notification system (21 -> 20). ROL-CIFT 1.4: app_private.role_class() is the
--- two-slot model's way to ask a role's kind, so the pattern counts it too.
+-- BILDIRIM-06 the old notification system (21 -> 20). ROL-CIFT 1.4 (20 -> 18): the membership's role
+-- and all_locations went with enforce_role_location_scope and service_actor_has_permission's own role
+-- reading; ownership transfer and a new workspace ask the core who owns. app_private.role_class() is
+-- the two-slot model's way to ask a role's kind, so the pattern counts it too.
+-- The two-slot model's data rules (which slot a role fits, Manages only for a manager, a Management job
+-- for a management access) read a role's kind for integrity, not for a permission: they are named and
+-- counted apart below, and leave this count.
+create temporary table slot_rule (name text primary key);
+insert into slot_rule values
+  ('membership_access_slots_hold'), ('managed_location_needs_manager'), ('management_job_holds'),
+  ('ensure_management_and_owner'),
+  -- ponytail: these two go in ROL-CIFT slices 4 and 6 (6 -> 4)
+  ('place_single_role'), ('manages_follow_works');
 select cmp_ok(
   (select count(*)::integer from core_function
-   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('),
-  '<=', 20, 'functions with their own scope or rank logic only go down'
+   where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('
+     and name not in (select name from slot_rule)),
+  '<=', 18, 'functions with their own scope or rank logic only go down'
 );
+-- The slot rules: only these, and they only go down too.
+select is(
+  array(select name from core_function
+        where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\('
+          and name in (select name from slot_rule) order by 1),
+  array(select name from slot_rule order by 1),
+  'the two-slot data rules read a role''s kind, and nothing else is let off the count'
+);
+select cmp_ok((select count(*)::integer from slot_rule), '<=', 6, 'the two-slot data rules only go down');
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
 -- folded Schedule's 24 into one function per job (37 -> 13), and with them

@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(22);
+select plan(28);
 
 -- ROL-CIFT 1.2 (KARARLAR S-164 ... S-169; design §3, §4.2, §4.4, §4.11): the authorization core reads
 -- the two access slots. Managing comes from Manages, not from where somebody works; what somebody may do
@@ -213,6 +213,36 @@ select ok(
   not public.service_actor_has_permission('c1200000-0000-4000-8000-000000000005', 'c1200000-0000-4000-8000-000000000101', 'schedule.edit'),
   'and does not edit it'
 );
+-- Ownership transfer and a new workspace ask the core who owns (ROL-CIFT 1.4): the owner, not an admin
+-- who works or a manager, searches for whom to hand over to and cancels a handover; somebody who works
+-- in an open workspace without owning one does not start another.
+create function pg_temp.said(statement text) returns text language plpgsql as $$
+declare code text; hint text;
+begin
+  execute statement;
+  return 'allowed';
+exception when others then
+  get stacked diagnostics code = returned_sqlstate, hint = pg_exception_hint;
+  return code || coalesce(' ' || nullif(hint, ''), '');
+end;
+$$;
+select is(pg_temp.said($q$select count(*) from public.search_workspace_ownership_candidates_service(
+    'c1200000-0000-4000-8000-000000000001', 'c1200000-0000-4000-8000-000000000101', 'Person')$q$),
+  'allowed', 'the owner searches for whom to hand the workspace to');
+select is(pg_temp.said($q$select count(*) from public.search_workspace_ownership_candidates_service(
+    'c1200000-0000-4000-8000-000000000007', 'c1200000-0000-4000-8000-000000000101', 'Person')$q$),
+  '42501 workspace.owner_required', 'Ada, an admin who works, does not');
+select is(pg_temp.said($q$select public.cancel_workspace_ownership_transfer_service(
+    'c1200000-0000-4000-8000-000000000003', 'c1200000-0000-4000-8000-000000000101', gen_random_uuid())$q$),
+  '42501 workspace.owner_required', 'Mona, a manager, cancels no handover');
+select is(pg_temp.said($q$select public.cancel_workspace_ownership_transfer_service(
+    'c1200000-0000-4000-8000-000000000001', 'c1200000-0000-4000-8000-000000000101', gen_random_uuid())$q$),
+  '02000 transfer.not_found', 'the owner passes the owner check and finds no such handover');
+select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000-0000-4000-8000-000000000004', 'Dora Co')$q$),
+  '42501', 'Dora, who works in an open workspace she does not own, starts no workspace of her own');
+select is(pg_temp.said($q$select public.create_owner_workspace_service('c1200000-0000-4000-8000-000000000001', 'Olcay Two')$q$),
+  'allowed', 'the owner starts another');
+
 select hasnt_function('app_private', 'ranks_as_employee', 'ranks_as_employee is gone; has_employee_access reads the slot');
 
 select * from finish();

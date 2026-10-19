@@ -1013,11 +1013,10 @@ declare transfer_row public.workspace_ownership_transfers%rowtype;
 begin
   -- Same workspace -> transfer lock order as initiate/accept, to serialize races.
   perform 1 from public.workspaces where id = target_workspace_id for update;
+  -- The core says who owns (ROL-CIFT 1.4): the active owner.
   if actor_user_id is null or not exists (
-    select 1 from public.workspace_memberships m
-    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-    where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-      and m.status = 'active' and r.access_class = 'owner'
+    select 1 from app_private.actor(actor_user_id, target_workspace_id) s
+    where s.status = 'active' and s.class = 'owner'
   ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   select * into transfer_row from public.workspace_ownership_transfers t
     where t.id = transfer_id and t.workspace_id = target_workspace_id for update;
@@ -1047,11 +1046,11 @@ begin
   perform 1 from auth.users where id = actor_user_id for update;
   if not found then raise exception 'authentication required' using errcode = '42501'; end if;
   -- Same email match and expiry filter as list_pending_employee_invitations_for_account_service.
+  -- The core says who owns (ROL-CIFT 1.4).
   if not exists (
     select 1 from public.workspace_memberships m
-    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.access_class = 'owner'
+      and (app_private.actor(actor_user_id, m.workspace_id)).class = 'owner'
   ) and exists (
     select 1
     from public.employee_invitations invitation
@@ -1073,9 +1072,8 @@ begin
       and app_private.workspace_allows_interactive_access(m.workspace_id)
   ) and not exists (
     select 1 from public.workspace_memberships m
-    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     where m.user_id = actor_user_id and m.status = 'active'
-      and r.access_class = 'owner'
+      and (app_private.actor(actor_user_id, m.workspace_id)).class = 'owner'
       and app_private.workspace_allows_interactive_access(m.workspace_id)
   ) then
     raise exception 'workspace owner access required' using errcode = '42501';
@@ -1090,11 +1088,10 @@ CREATE OR REPLACE FUNCTION "public"."search_workspace_ownership_candidates_servi
     AS $$
 begin
   if actor_user_id is null or not app_private.workspace_allows_interactive_access(target_workspace_id)
+    -- The core says who owns, and below who is an admin (ROL-CIFT 1.4).
     or not exists (
-      select 1 from public.workspace_memberships m
-      left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
-      where m.workspace_id = target_workspace_id and m.user_id = actor_user_id
-        and m.status = 'active' and r.access_class = 'owner'
+      select 1 from app_private.actor(actor_user_id, target_workspace_id) s
+      where s.status = 'active' and s.class = 'owner'
     ) then raise exception 'workspace owner access required' using errcode = '42501', hint = 'workspace.owner_required'; end if;
   if search_text is null or char_length(btrim(search_text)) not between 2 and 80 then
     raise exception 'search must contain 2 to 80 characters' using errcode = '22023', hint = 'search.length_invalid';
@@ -1103,11 +1100,10 @@ begin
     select m.user_id, coalesce(nullif(concat_ws(' ', coalesce(nullif(e.preferred_name, ''), e.first_name), e.last_name), ''), p.display_name, u.email)::text, u.email::text
     from public.workspace_memberships m
     join auth.users u on u.id = m.user_id and u.email_confirmed_at is not null
-    left join public.workspace_roles r on r.id = m.role_id and r.workspace_id = m.workspace_id
     left join public.employee_profiles e on e.workspace_id = m.workspace_id and e.user_id = m.user_id and e.archived_at is null
     left join public.user_profiles p on p.user_id = m.user_id
     where m.workspace_id = target_workspace_id and m.status = 'active'
-      and m.user_id <> actor_user_id and r.access_class = 'admin'
+      and m.user_id <> actor_user_id and (app_private.actor(m.user_id, target_workspace_id)).class = 'admin'
       -- Active legacy memberships without an onboarding case are already complete.
       and not exists (select 1 from public.employee_onboarding_cases c
         where c.workspace_id = target_workspace_id and c.membership_id = m.id and c.status <> 'approved')
