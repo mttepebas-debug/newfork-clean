@@ -271,7 +271,8 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
   expect(Math.abs(manager.tabs - 128)).toBeLessThanOrEqual(0.5);
   expect(Math.abs(manager.head - 187)).toBeLessThanOrEqual(0.5);
 
-  // Scrolled: the page header stays at the top at its full size; the wheel goes away under it.
+  // Scrolled: the page header stays at the top at its full size; the wheel goes away under it. What scrolls is the
+  // box around the wheel: the manager's main area; the employee's list frame under My shifts · Lineup (S-184).
   for (const page of [ayse, emre]) {
     const header = page.locator(".catalog-page-header").first();
     const open = await header.boundingBox();
@@ -279,7 +280,9 @@ test("the manager's and the employee's phone Lineup keep one rhythm", async ({ b
       const tall = document.createElement("div");
       tall.style.height = "1600px";
       document.querySelector(".lineup-phone-pane, .employee-lineup")!.append(tall);
-      document.querySelector(".app-main")!.scrollTop = 600;
+      let box = document.querySelector(".lineup-wheel")!.parentElement;
+      while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+      box!.scrollTop = 600;
     });
     await expect(page.locator("#lineup-title, #employee-hub-title")).toBeInViewport();
     await expect.poll(async () => (await header.boundingBox())?.height).toBe(open?.height);
