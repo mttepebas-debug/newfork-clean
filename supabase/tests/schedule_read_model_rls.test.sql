@@ -111,7 +111,7 @@ select lives_ok(
 );
 select is((public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->>'week_start'), pg_temp.wk(0)::text, 'target date resolves workspace week start');
 select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'locations'), 2, 'owner receives both locations');
-select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'employees'), 3, 'owner receives every assigned employee, the Visible Room manager included');
+select is(jsonb_array_length(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'employees'), 2, 'owner receives every assigned employee; the Visible Room manager, who only manages, is not on the grid (ROL-CIFT 2.1)');
 select is((
   select employee->>'is_excluded_from_schedule'
   from jsonb_array_elements(public.get_schedule_read_model_service('31000000-0000-4000-8000-000000000001', '32000000-0000-4000-8000-000000000001', pg_temp.wk(2))->'employees') employee

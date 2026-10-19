@@ -105,6 +105,8 @@ select is(pg_temp.keyed(pg_temp.grid() -> 'departments'), array['Kitchen=null', 
 
 select is(pg_temp.primary_of('mk:owner'), null::uuid,
   'the owner who works only the Owner job has no primary job');
+-- The owner cooks too: on the grid with the employee access (ROL-CIFT 2.1).
+select tests.employee_slot('mk', 'owner');
 select pg_temp.owner_saves_jobs(array[pg_temp.owner_job(), tests.id('mk:job:cook')], null);
 select is(pg_temp.primary_of('mk:owner'), null::uuid,
   'nor once they also cook without choosing a primary');

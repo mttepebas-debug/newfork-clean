@@ -40,6 +40,7 @@ supabase/tests/employee_private_storage_contract.test.sql
 supabase/tests/employee_termination_offboarding.test.sql
 supabase/tests/every_shift_has_hours.test.sql
 supabase/tests/explicit_workspace_context.test.sql
+supabase/tests/grid_and_candidates_need_employee.test.sql
 supabase/tests/jobs_department_bulk_assignments.test.sql
 supabase/tests/joining_from_two_workspaces.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql

@@ -97,6 +97,18 @@ update public.employee_job_assignments set ended_at=null where workspace_id=(sel
 update public.workspace_memberships set status='suspended' where workspace_id=(select w from ws) and user_id=(select employee_user from ws);
 select is(pg_temp.candidate()->>'status','ineligible','exchanges require active workspace access');
 update public.workspace_memberships set status='active' where workspace_id=(select w from ws);
+-- ROL-CIFT 2.1: somebody who only manages is never scheduled, whatever they are assigned to.
+update public.workspace_memberships m
+ set role_id=(select r.id from public.workspace_roles r where r.workspace_id=m.workspace_id and r.system_key='manager'),
+  employee_role_id=null
+ where m.workspace_id=(select w from ws) and m.user_id=(select employee_user from ws);
+select is(pg_temp.candidate()->>'status','ineligible','exchanges require the employee access');
+select ok(pg_temp.has(pg_temp.candidate(),'blockers','no_employee_access'),'and say so');
+update public.workspace_memberships m
+ set employee_role_id=(select r.id from public.workspace_roles r where r.workspace_id=m.workspace_id and r.system_key='employee'),
+  role_id=null
+ where m.workspace_id=(select w from ws) and m.user_id=(select employee_user from ws);
+select ok(not pg_temp.has(pg_temp.candidate(),'blockers','no_employee_access'),'the employee access back, nothing is said about it');
 update public.employee_profiles set is_excluded_from_schedule=true where workspace_id=(select w from ws);
 select is(pg_temp.candidate()->>'status','ineligible','excluded employee remains ineligible');
 update public.employee_profiles set is_excluded_from_schedule=false where workspace_id=(select w from ws);

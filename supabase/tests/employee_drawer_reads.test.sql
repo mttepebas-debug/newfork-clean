@@ -40,7 +40,7 @@ $$;
 
 select is(
   array(select k from jsonb_object_keys(pg_temp.detail('owner', 'selin')) k order by k),
-  array['account_email', 'allowed', 'archived_at', 'display_name', 'display_status', 'employee_code',
+  array['access', 'account_email', 'allowed', 'archived_at', 'display_name', 'display_status', 'employee_code',
     'events', 'first_name', 'id', 'internal_note', 'invitation', 'invitation_email',
     'is_excluded_from_schedule', 'is_remote', 'is_workspace_owner', 'job_count', 'jobs', 'last_name', 'location_count',
     'locations', 'onboarding', 'preferred_name', 'primary_job_id', 'primary_job_name',

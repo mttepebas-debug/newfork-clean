@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 524, last: 20261019071205_context_reads_access.sql
--- fingerprint: sha256:dbd7ac1eef96572fa4d489bfe39dfd42f1639b08d9f79046ac93dddc3b17712a
+-- migrations: 525, last: 20261019150000_grid_and_eligibility_need_employee.sql
+-- fingerprint: sha256:69c17b8c808245a4e31f6fdb6a2f354fa7d7a916596bf069c42b9742fb639250
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -4613,6 +4613,10 @@ begin
  if not exists(select 1 from public.employee_profiles e join public.workspace_memberships m
   on m.workspace_id=e.workspace_id and m.user_id=e.user_id and m.status='active' where e.workspace_id=w and e.id=emp) then
   blockers:=blockers||jsonb_build_array(jsonb_build_object('code','workspace_access','message','Active workspace access is required')); end if;
+ -- ROL-CIFT 2.1: a shift is somebody's to take only with the employee access; who only manages is
+ -- never scheduled.
+ if not app_private.has_employee_access(w,(select e.user_id from public.employee_profiles e where e.workspace_id=w and e.id=emp)) then
+  blockers:=blockers||jsonb_build_array(jsonb_build_object('code','no_employee_access','message','Employee access is required')); end if;
  if not exists(select 1 from public.employee_location_assignments x where x.workspace_id=w and x.employee_id=emp and x.location_id=loc
   and x.assigned_at<=lower(span) and (x.ended_at is null or x.ended_at>=upper(span))) then
   blockers:=blockers||jsonb_build_array(jsonb_build_object('code','location_assignment','message','Not assigned to this location')); end if;
@@ -14004,6 +14008,11 @@ begin
     ),
     'role_id', role.id,
     'role_name', role.name,
+    -- ROL-CIFT 2.2: the record's two access slots, as app_private.has_employee_access reads the
+    -- employee one (somebody with no account yet works); the drawer asks here, not the role's name.
+    'access', jsonb_build_object(
+      'employee', membership.id is null or membership.employee_role_id is not null,
+      'management', management_role.access_class),
     'display_status', case
       when employee.archived_at is not null then 'archived'
       when membership.status = 'active' then 'active'
@@ -14167,6 +14176,7 @@ begin
     on membership.workspace_id = employee.workspace_id
     and membership.user_id = employee.user_id
   left join public.workspace_roles role on role.id = coalesce(membership.role_id, membership.employee_role_id)
+  left join public.workspace_roles management_role on management_role.id = membership.role_id
   left join lateral (
     select *
     from public.employee_invitations candidate
@@ -15391,6 +15401,8 @@ begin
         join allowed_locations location on location.id = assignment.location_id
         where assignment.employee_id = employee.id and assignment.ended_at is null
       )
+      -- ROL-CIFT 2.1: the grid is the people who can be scheduled; who only manages is not on it.
+      and app_private.has_employee_access(target_workspace_id, employee.user_id)
   ), current_shifts as (
     select shift.*
     from public.schedule_published_shifts shift
