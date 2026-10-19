@@ -12,7 +12,7 @@ select tests.person('eh', 'alex', 'employee', array['K'], array['cook']);
 select tests.person('eh', 'jordan', 'employee', array['K'], array['cook']);
 select tests.person('eh', 'sam', 'employee', array['B'], array['cook']);
 -- Daylight Home's "Manager on the floor" (S-163, rol-cift design 4.13): a shift in a Management job.
-select tests.person('eh', 'mina', 'manager', array['K'], array['cook', 'manager']);
+select tests.person('eh', 'mina', 'manager', array['K'], array['cook', 'general manager']);
 select tests.new_user('eh:noprofile', 'No Profile');
 insert into public.workspace_memberships (id, workspace_id, user_id, status, role_id, employee_role_id)
 select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
@@ -39,7 +39,7 @@ values (
 select tests.publish_week('eh', 1, '[
   {"label": "alex-mon", "person": "alex", "loc": "K", "job": "cook", "day": 1, "start": "09:00", "end": "17:00"},
   {"label": "alex-tue", "person": "alex", "loc": "K", "job": "cook", "day": 2, "start": "09:00", "end": "17:00"},
-  {"label": "mina-mon", "person": "mina", "loc": "K", "job": "manager", "day": 1, "start": "08:00", "end": "16:00"},
+  {"label": "mina-mon", "person": "mina", "loc": "K", "job": "general manager", "day": 1, "start": "08:00", "end": "16:00"},
   {"label": "jordan-mon", "person": "jordan", "loc": "K", "job": "cook", "day": 1, "start": "10:00", "end": "18:00"}
 ]');
 -- An open (unassigned) shift at Alex's own location: not built through
