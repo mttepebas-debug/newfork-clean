@@ -264,6 +264,8 @@ insert into service_class values
   ('withdraw_document_acknowledgement_service', 'documents.self'),
   -- Lineup publishing (LINEUP-PUBLISH): the manager publishes, the employee reads and acknowledges her own.
   ('lineup_command_service', 'lineup.share'),
+  -- Editing a draft lineup's rows and notes (LINEUP-EDIT L2a): who publishes it there.
+  ('lineup_edit_service', 'lineup.share'),
   ('get_my_lineups_service', 'employee_hub.read'),
   ('acknowledge_lineup_service', 'lineup.acknowledge'),
   -- Phone alerts (BILDIRIM-15): a person's own devices; the worker sends.

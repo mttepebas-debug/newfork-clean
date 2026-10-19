@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { lineupService } from "./lineup-service";
-import { acknowledgement, lineupDay, myLineups, shareResult, unpublishResult } from "./lineup-fixtures";
+import { acknowledgement, editResult, lineupDay, myLineups, shareResult, unpublishResult } from "./lineup-fixtures";
 
 const actor = { actorUserId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
 const lineup = {
@@ -25,6 +25,20 @@ describe("lineup service", () => {
       command_id: shareResult.command_id, kind: "share", payload: { lineups: [lineup], ask_ack: true },
     });
     expect(result).toEqual(shareResult);
+  });
+
+  it("sends an edit with its command id apart and the rest as the payload (LINEUP-EDIT L2a)", async () => {
+    const rpc = client(editResult);
+    const edit = {
+      command_id: editResult.command_id, action: "set_row" as const, ...lineup,
+      row: { source_shift_id: "be50320c-52d9-4f54-9684-372461ec9a95", starts: "15:30", ends: "22:00" },
+    };
+    const result = await lineupService(rpc).edit({ ...actor, edit });
+    const { command_id: _command, ...payload } = edit;
+    expect(rpc.rpc).toHaveBeenCalledWith("lineup_edit_service", {
+      actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, command_id: editResult.command_id, payload,
+    });
+    expect(result).toEqual(editResult);
   });
 
   it("sends an unpublish with no ask", async () => {

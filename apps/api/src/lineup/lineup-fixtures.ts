@@ -1,6 +1,14 @@
 // Real answers of the lineup services (a rolled-back run of the LINEUP-PUBLISH migration on the test world:
 // Mia publishes Kadikoy's Dinner, takes it back, publishes it again; Eli acknowledges and reads it).
 
+// lineup_edit_service: Mia moves Eli's In on Kadikoy's Dinner draft (a rolled-back run of LINEUP-EDIT L2a).
+export const editResult = {
+  command_id: "6d8e3c52-0e8f-4f3a-9d3c-1f1f3b0c8a13",
+  kind: "edit",
+  lineup_id: "0a8283c6-3ee5-4888-a252-940ca2200c02",
+  row_id: "3f1d6a77-5d0e-4c8b-9b7a-2b3c4d5e6f70",
+};
+
 export const shareResult = {
   kind: "share",
   lineups: [{
@@ -27,7 +35,7 @@ export const myLineups = {
   lineups: [{
     id: "0a8283c6-3ee5-4888-a252-940ca2200c02",
     mine: [{
-      end_time: "22:00", job_name: "Cook", job_color: "#D39A36", called_off: false, start_time: "16:00",
+      end_time: "22:00", job_name: "Cook", job_color: "#D39A36", called_off: false, replaced: false, start_time: "16:00",
       label_names: [], section_name: null, crosses_midnight: false,
     }],
     team: [{

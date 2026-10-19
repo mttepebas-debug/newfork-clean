@@ -1,7 +1,7 @@
 import { authzActionKeys, permissionSchema, type ActiveWorkspaceContext, type AuthzAction } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
-import { acknowledgement, lineupDay, myLineups, shareResult } from "./lineup-fixtures";
+import { acknowledgement, editResult, lineupDay, myLineups, shareResult } from "./lineup-fixtures";
 import type { LineupService } from "./lineup-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -42,6 +42,7 @@ function memberWith(actions: readonly AuthzAction[]): ActiveWorkspaceContext {
 function serviceMock(): LineupService {
   return {
     command: vi.fn(async () => shareResult as never),
+    edit: vi.fn(async () => editResult as never),
     myLineups: vi.fn(async () => myLineups as never),
     acknowledge: vi.fn(async () => acknowledgement as never),
     day: vi.fn(async () => lineupDay as never),
@@ -56,9 +57,14 @@ const w = `/v1/workspaces/${workspaceId}`;
 const auth = { authorization: "Bearer token" };
 const actor = { actorUserId: userId, workspaceId };
 const share = { command_id: shareResult.command_id, kind: "share", lineups: [lineup], ask_ack: true };
+const setRow = {
+  command_id: editResult.command_id, action: "set_row", ...lineup,
+  row: { source_shift_id: "be50320c-52d9-4f54-9684-372461ec9a95", starts: "15:30", ends: "22:00" },
+};
 
 const routes = [
   ["publish", "POST", `${w}/lineups/commands`, share, "lineup.share"],
+  ["edit", "POST", `${w}/lineups/edit`, setRow, "lineup.share"],
   ["my lineups", "GET", `${w}/my-lineups/2028-09-11`, undefined, "employee_hub.read"],
   ["acknowledge", "POST", `${w}/lineups/versions/${versionId}/acknowledge`, undefined, "lineup.acknowledge"],
   ["day", "GET", `${w}/lineups/2028-09-11`, undefined, "lineup.read"],
@@ -75,6 +81,18 @@ describe("lineup routes", () => {
     const back = { command_id: shareResult.command_id, kind: "unpublish", lineups: [lineup] };
     expect((await app.inject({ method: "POST", url: `${w}/lineups/commands`, headers: auth, payload: back })).statusCode).toBe(200);
     expect(service.command).toHaveBeenLastCalledWith({ ...actor, command: back });
+  });
+
+  it("changes a draft lineup's row or its notes (LINEUP-EDIT L2a)", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({ method: "POST", url: `${w}/lineups/edit`, headers: auth, payload: setRow });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(editResult);
+    expect(service.edit).toHaveBeenCalledWith({ ...actor, edit: setRow });
+    const notes = { command_id: editResult.command_id, action: "set_notes", ...lineup, notes: { n86: "Oysters" } };
+    expect((await app.inject({ method: "POST", url: `${w}/lineups/edit`, headers: auth, payload: notes })).statusCode).toBe(200);
+    expect(service.edit).toHaveBeenLastCalledWith({ ...actor, edit: notes });
   });
 
   it("reads the employee's published lineups of a day", async () => {
@@ -120,6 +138,13 @@ describe("lineup routes", () => {
     ["POST", `${w}/lineups/commands`, { ...share, kind: "rename" }],
     ["POST", `${w}/lineups/commands`, { ...share, command_id: "not-a-uuid" }],
     ["POST", `${w}/lineups/commands`, { ...share, lineups: [{ ...lineup, service_date: "tomorrow" }] }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "call_off" }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { starts: "15:30", ends: "22:00" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, row_id: editResult.row_id } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { source_shift_id: setRow.row.source_shift_id, starts: "15:30" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, starts: "3:30 PM" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, called_off: true } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "set_notes", row: undefined, notes: { specials: "x".repeat(501) } }],
     ["GET", `${w}/my-lineups/yesterday`, undefined],
     ["POST", `${w}/lineups/versions/not-a-uuid/acknowledge`, undefined],
     ["GET", "/v1/workspaces/not-a-uuid/my-lineups/2028-09-11", undefined],
@@ -131,6 +156,7 @@ describe("lineup routes", () => {
     const response = await appWith(service).inject({ method, url, headers: auth, payload });
     expect(response.statusCode).toBe(400);
     expect(service.command).not.toHaveBeenCalled();
+    expect(service.edit).not.toHaveBeenCalled();
     expect(service.myLineups).not.toHaveBeenCalled();
     expect(service.acknowledge).not.toHaveBeenCalled();
     expect(service.day).not.toHaveBeenCalled();

@@ -3,11 +3,14 @@ import {
   lineupAcknowledgementSchema,
   lineupCommandResultSchema,
   lineupDaySchema,
+  lineupEditResultSchema,
   myLineupsSchema,
   type LineupAcknowledgement,
   type LineupCommandInput,
   type LineupCommandResult,
   type LineupDay,
+  type LineupEditInput,
+  type LineupEditResult,
   type MyLineups,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
@@ -20,6 +23,8 @@ interface Actor {
 /** LINEUP-PUBLISH: publishing a lineup and the employee's side of it. */
 export interface LineupService {
   command(input: Actor & { readonly command: LineupCommandInput }): Promise<LineupCommandResult>;
+  /** LINEUP-EDIT L2a: a change to a draft lineup's row or notes (lineup.share there). */
+  edit(input: Actor & { readonly edit: LineupEditInput }): Promise<LineupEditResult>;
   myLineups(input: Actor & { readonly date: string }): Promise<MyLineups>;
   acknowledge(input: Actor & { readonly versionId: string }): Promise<LineupAcknowledgement>;
   /** The manager's day: every location she reads, unless she chose some (lineup.read). */
@@ -65,6 +70,15 @@ export function lineupService(client: RpcClient): LineupService {
         target_workspace_id: actor.workspaceId,
         command_id,
         kind,
+        payload,
+      }));
+    },
+    async edit({ edit, ...actor }) {
+      const { command_id, ...payload } = edit;
+      return lineupEditResultSchema.parse(await rpc("lineup_edit_service", {
+        actor_user_id: actor.actorUserId,
+        target_workspace_id: actor.workspaceId,
+        command_id,
         payload,
       }));
     },

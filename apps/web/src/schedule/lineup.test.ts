@@ -301,6 +301,20 @@ describe("the phone's lineup parts", () => {
     expect(lineupCardState(lineupDay(dayRead(model([]), day), m)[0]!.shifts[0]!, "12:00")).toEqual({ live: false, started: false });
   });
 
+  // LINEUP-EDIT L2a: the server locks edits with the same rule (app_private.lineup_started,
+  // supabase/tests/lineup_edit.test.sql). Same fixture on both sides: Eli in at 9:00, Ana at 10:00.
+  it("starts with its first person in, the rule the server locks edits by", () => {
+    const shifts = (extra: Parameters<typeof dayRead>[2] = {}) =>
+      lineupDay(dayRead(model([
+        shift({ employee: hannah, job: cook, type: lunch, start: "09:00", end: "15:00" }),
+        shift({ employee: maria, job: cook, type: lunch, start: "10:00", end: "15:00" }),
+      ]), day, extra), model([]))[0]!.shifts.find((each) => each.key === lunch)!;
+    expect(lineupCardState(shifts(), "08:59").started).toBe(false);
+    expect(lineupCardState(shifts(), "09:00").started).toBe(true);
+    expect(lineupCardState(shifts(), null).started).toBe(false);
+    expect(lineupCardState(shifts({ [lunch]: { status: "past" } }), null).started).toBe(true);
+  });
+
   it("sorts the people on it into not read yet, read (earliest first) and no app, once each", () => {
     const people = model([
       shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" }),

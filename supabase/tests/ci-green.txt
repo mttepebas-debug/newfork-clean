@@ -52,6 +52,7 @@ supabase/tests/joining_from_two_workspaces.test.sql
 supabase/tests/lifecycle_refusals_carry_keys.test.sql
 supabase/tests/lineup_art_archive.test.sql
 supabase/tests/lineup_art_parity.test.sql
+supabase/tests/lineup_edit.test.sql
 supabase/tests/lineup_foundation.test.sql
 supabase/tests/lineup_replaced.test.sql
 supabase/tests/live_updates_are_private.test.sql

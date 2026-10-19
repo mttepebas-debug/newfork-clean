@@ -43,7 +43,7 @@ function mine(overrides: Partial<MyLineups["lineups"][number]> = {}): MyLineups 
       ask_ack: true,
       acknowledged_at: null,
       notes: { specials: "Halibut", n86: "", shift_notes: "" },
-      mine: [row],
+      mine: [{ ...row, replaced: false }],
       team: [
         { ...row, employee_id: maria, name: "Maria Lopez", department_name: "Front of House", is_me: true },
         { ...row, section_name: null, label_names: [], employee_id: hannah, name: "Hannah Lee", department_name: "Front of House", is_me: false },
@@ -143,7 +143,7 @@ describe("EmployeeLineup", () => {
           // A type the catalog no longer has: its tab still shows, by her start.
           shift_type_id: "30000000-0000-4000-8000-000000000009",
           shift_type_name: "Brunch",
-          mine: [{ ...row, start_time: "09:00", end_time: "13:00" }],
+          mine: [{ ...row, replaced: false, start_time: "09:00", end_time: "13:00" }],
         },
       ],
     };
@@ -177,7 +177,7 @@ describe("EmployeeLineup", () => {
       lineups: [
         {
           ...dinnerLineup!,
-          mine: [{ ...row, called_off: true }],
+          mine: [{ ...row, replaced: false, called_off: true }],
           team: dinnerLineup!.team.map((member) => (member.is_me ? { ...member, called_off: true } : member)),
         },
       ],
@@ -339,7 +339,7 @@ describe("EmployeeLineup", () => {
   // Mert 2026-10-17 (~8:30 AM): a time changed since the Schedule loops old → new on the changed end only; a
   // screen reader hears one sentence instead.
   it("shows a time changed since the Schedule, the changed end animated and one sentence for screen readers", async () => {
-    answer = mine({ mine: [{ ...row, start_time: "16:30" }] });
+    answer = mine({ mine: [{ ...row, replaced: false, start_time: "16:30" }] });
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();
     const view = await screen.findByRole("region", { name: "Dinner lineup" });
@@ -400,7 +400,7 @@ describe("EmployeeLineup", () => {
           id: "91000000-0000-4000-8000-000000000002",
           version_id: "90000000-0000-4000-8000-000000000002",
           location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
-          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+          mine: [{ ...row, replaced: false, start_time: "10:00", end_time: "14:00" }],
         },
       ],
     };
@@ -438,7 +438,7 @@ describe("EmployeeLineup", () => {
           location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
           shift_type_id: lunch,
           shift_type_name: "Lunch",
-          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+          mine: [{ ...row, replaced: false, start_time: "10:00", end_time: "14:00" }],
         },
       ],
     };
@@ -469,7 +469,7 @@ describe("EmployeeLineup", () => {
           location: { id: uptown, name: "Uptown", timezone: "America/Los_Angeles" },
           shift_type_id: lunch,
           shift_type_name: "Lunch",
-          mine: [{ ...row, start_time: "10:00", end_time: "14:00" }],
+          mine: [{ ...row, replaced: false, start_time: "10:00", end_time: "14:00" }],
         },
       ],
     };

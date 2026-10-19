@@ -1,4 +1,4 @@
-import { lineupCommandInputSchema, lineupDayQuerySchema, type AuthzAction } from "@newfork/shared";
+import { lineupCommandInputSchema, lineupDayQuerySchema, lineupEditInputSchema, type AuthzAction } from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
@@ -37,6 +37,17 @@ export function registerLineupRoutes(
     if (!body.success) return reply.status(400).send({ error: "Choose lineups to publish or unpublish" });
     if (!service) return reply.status(503).send(unavailable);
     return reply.send(await service.command({ ...actor, command: body.data }));
+  });
+
+  // LINEUP-EDIT L2a: a draft lineup's row or notes, by who may publish it there.
+  app.post("/v1/workspaces/:workspaceId/lineups/edit", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const actor = await actorFor(request.headers.authorization, params.data.workspaceId, "lineup.share");
+    const body = lineupEditInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Choose what to change in the lineup" });
+    if (!service) return reply.status(503).send(unavailable);
+    return reply.send(await service.edit({ ...actor, edit: body.data }));
   });
 
   app.get("/v1/workspaces/:workspaceId/lineups/:date", async (request, reply) => {

@@ -53,6 +53,51 @@ export const lineupCommandResultSchema = z.object({
 });
 export type LineupCommandResult = z.infer<typeof lineupCommandResultSchema>;
 
+/**
+ * LINEUP-EDIT L2a (KARARLAR S-178): a change to a draft lineup that hasn't started, in the lineup only. set_row
+ * names its row (a Schedule shift by source_shift_id, a person added in the lineup by row_id) and only the fields
+ * that change: null puts a field back to the Schedule's (In and Out go together), or empties a section or labels.
+ * set_notes sends the notes that change. The same command_id sent again answers what it answered the first time.
+ */
+const lineupEditRowSchema = z
+  .object({
+    source_shift_id: id.optional(),
+    row_id: id.optional(),
+    job_id: id.nullable().optional(),
+    label_ids: z.array(id).max(20).nullable().optional(),
+    starts: timeOfDay.nullable().optional(),
+    ends: timeOfDay.nullable().optional(),
+    section_id: id.nullable().optional(),
+  })
+  .strict()
+  .refine((row) => (row.source_shift_id === undefined) !== (row.row_id === undefined), "Name one row")
+  .refine((row) => (row.starts === undefined) === (row.ends === undefined), "In and Out go together");
+
+export const lineupEditInputSchema = z.discriminatedUnion("action", [
+  lineupTargetSchema.extend({ command_id: id, action: z.literal("set_row"), row: lineupEditRowSchema }),
+  lineupTargetSchema.extend({
+    command_id: id,
+    action: z.literal("set_notes"),
+    notes: z
+      .object({
+        specials: z.string().max(500).optional(),
+        n86: z.string().max(500).optional(),
+        shift_notes: z.string().max(1000).optional(),
+      })
+      .strict(),
+  }),
+]);
+export type LineupEditInput = z.infer<typeof lineupEditInputSchema>;
+
+export const lineupEditResultSchema = z.object({
+  command_id: id,
+  kind: z.literal("edit"),
+  lineup_id: id,
+  /** The row it changed; null for notes. */
+  row_id: id.nullable(),
+});
+export type LineupEditResult = z.infer<typeof lineupEditResultSchema>;
+
 const myLineupRowSchema = z.object({
   start_time: timeOfDay,
   end_time: timeOfDay,
@@ -77,8 +122,8 @@ export const myLineupSchema = z.object({
   ask_ack: z.boolean(),
   acknowledged_at: instant.nullable(),
   notes: z.object({ specials: z.string(), n86: z.string(), shift_notes: z.string() }),
-  /** Her own rows on it (usually one). */
-  mine: z.array(myLineupRowSchema).min(1),
+  /** Her own rows on it (usually one); replaced: someone took her place (LINEUP-EDIT L2a, S-178). */
+  mine: z.array(myLineupRowSchema.extend({ replaced: z.boolean() })).min(1),
   /** Everybody on it, in the lineup's order (PLAN §11.3: the whole team). */
   team: z.array(
     myLineupRowSchema.extend({
