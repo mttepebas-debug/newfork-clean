@@ -3479,9 +3479,15 @@ button.workspace-switcher-item:hover:not(:disabled) {
     grid-template-rows 220ms cubic-bezier(0.2, 0, 0, 1),
     opacity 180ms ease;
 }
+/* Once shut, the group is hidden outright, after the slide has ended. */
 .nav-children[data-open="false"] {
   grid-template-rows: 0fr;
   opacity: 0;
+  visibility: hidden;
+  transition:
+    grid-template-rows 220ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 180ms ease,
+    visibility 0s linear 220ms;
 }
 .nav-children-inner {
   min-height: 0;
@@ -3546,7 +3552,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
 @media (prefers-reduced-motion: reduce) {
   .nav-group-toggle svg,
   .nav-children,
-  .nav-children > .nav-children-inner,
+  .nav-children[data-open="false"],
+  .nav-children[data-open="true"] > .nav-children-inner,
   .nav-item-has-children::after {
     transition: none;
   }

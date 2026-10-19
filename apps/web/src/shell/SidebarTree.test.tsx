@@ -75,11 +75,27 @@ describe("the desktop left menu tree", () => {
     expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
     expect(group("Lineup")?.hasAttribute("inert")).toBe(true);
     expect(link("Schedule").className).toContain("active");
+    // A screen reader hears where the person is, too.
+    expect(link("Schedule").getAttribute("aria-current")).toBe("location");
 
     fireEvent.click(within(primary()).getByRole("button", { name: "Expand Schedule" }));
     expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
     expect(group("Lineup")?.hasAttribute("inert")).toBe(false);
     expect(link("Schedule").className).not.toContain("active");
+    expect(link("Schedule").getAttribute("aria-current")).toBeNull();
+    expect(link("Lineup").getAttribute("aria-current")).toBe("page");
+  });
+
+  it("keeps every group open in the narrow rail, where no toggle sits", () => {
+    mount("/app/schedule");
+    fireEvent.click(within(primary()).getByRole("button", { name: "Collapse Schedule" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
+    fireEvent.click(screen.getByRole("button", { name: "Collapse menu" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("true");
+    expect(group("Lineup")?.hasAttribute("inert")).toBe(false);
+    // Back to the wide menu, the group is as the person left it.
+    fireEvent.click(screen.getByRole("button", { name: "Expand menu" }));
+    expect(group("Lineup")?.getAttribute("data-open")).toBe("false");
   });
 
   it("opens a closed group again when its child page is reached", () => {

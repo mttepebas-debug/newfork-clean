@@ -334,7 +334,10 @@ export function AppShell() {
             const childActive = children.some((child) =>
               isRailItemActive(location.pathname, child.to),
             );
-            const isExpanded = hasChildren && expandedNavGroups.has(item.to);
+            // The narrow rail has no toggle: there every group stays open, and
+            // the wide menu gets back the groups as the person left them.
+            const isExpanded =
+              hasChildren && (collapsed || expandedNavGroups.has(item.to));
             // A parent whose child page is open is not the open page itself,
             // unless its group is closed: then it stands in for the hidden child.
             const standsIn = childActive && !isExpanded;
@@ -345,14 +348,17 @@ export function AppShell() {
                 <NavLink
                   key={link.to}
                   className={({ isActive }) =>
-                    `nav-item${isActive || (!child && standsIn) ? " active" : ""}${
+                    `nav-item${isActive ? " active" : ""}${
                       collapsed ? " rail-peek-item" : ""
                     }${child ? " nav-item-child" : ""}${
                       !child && hasChildren ? " nav-item-has-children" : ""
                     }`
                   }
                   to={link.to}
-                  end={link.exact || (!child && childActive)}
+                  // Standing in, the parent matches its child's path, so the
+                  // reader hears it as where the person is.
+                  end={child ? link.exact : !standsIn && (link.exact || childActive)}
+                  aria-current={!child && standsIn ? "location" : "page"}
                   aria-label={collapsed ? link.label : undefined}
                   data-rail-peek={collapsed ? "" : undefined}
                   data-rail-active={
