@@ -2977,10 +2977,11 @@ select:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
-/* The open menu's width (Mert 2026-10-19: 224, drawn on Notifications); the
+/* The open menu's width (Mert 2026-10-19: drawn at 224 on Notifications, then
+   "azıcık" wider, 240, with the same 32 px to the page); the
    panels that open beside it start at its edge. */
 .app-shell {
-  --app-sidebar-width: 224px;
+  --app-sidebar-width: 240px;
   display: grid;
   grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
   height: 100dvh;

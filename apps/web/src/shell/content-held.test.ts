@@ -39,7 +39,7 @@ describe("main-menu pages hold still when the menu collapses (Mert 2026-10-18)",
     expect(css).toMatch(/margin-left:\s*var\(--app-page-gutter-start\);\s*padding-top:\s*0;/);
     expect(css).toMatch(/margin-left:\s*var\(--app-page-gutter-start\);/);
     // The open menu's column; the held column must match it.
-    expect(css).toMatch(/\.app-shell \{\s*--app-sidebar-width: 224px;\s*display: grid;\s*grid-template-columns: var\(--app-sidebar-width\) minmax\(0, 1fr\);/);
+    expect(css).toMatch(/\.app-shell \{\s*--app-sidebar-width: 240px;\s*display: grid;\s*grid-template-columns: var\(--app-sidebar-width\) minmax\(0, 1fr\);/);
   });
 
   // With no top room on the page, nothing pinned at its top reaches up over it
@@ -51,7 +51,8 @@ describe("main-menu pages hold still when the menu collapses (Mert 2026-10-18)",
     expect(pin).not.toMatch(/margin-top:\s*-/);
   });
 
-  // The open menu is 224 px (Mert 2026-10-19, drawn on Notifications); the
+  // The open menu is 240 px (Mert 2026-10-19: drawn at 224 on Notifications,
+  // then "azıcık" wider with the same gap to the page); the
   // panels that open beside it start at its edge.
   it("opens the side panels at the open menu's edge", () => {
     const css = readFileSync("src/styles.css", "utf8") + readFileSync("src/notifications/notifications.css", "utf8");
