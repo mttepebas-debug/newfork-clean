@@ -1,7 +1,8 @@
-import type { ExchangeCase, ExchangeCommand, ExchangeShift } from "@newfork/shared";
+import type { ExchangeCase, ExchangeCommand, OwnExchangeShift } from "@newfork/shared";
 import { ConfirmButton } from "@newfork/ui";
 import { Check } from "lucide-react";
 import { useState } from "react";
+import { SelfOnlyNote } from "./ChangeOptions";
 import { PlanDialog } from "./PlanDialog";
 import { WindowAlert } from "../../shell/WindowAlert";
 import { Hand, ShiftTicket } from "./ShiftTicket";
@@ -29,7 +30,7 @@ export function ReleaseDialog({
   onClose,
   onReleased,
 }: {
-  shift: ExchangeShift;
+  shift: OwnExchangeShift;
   ownerName: string;
   canWrite: boolean;
   run: (command: ExchangeCommand) => Promise<{ case_id: string }>;
@@ -73,6 +74,7 @@ export function ReleaseDialog({
       }
     >
       <ShiftTicket shift={shift} hand={<Hand from={firstName(ownerName)} to={<em>anyone eligible</em>} />} />
+      <SelfOnlyNote tier={shift.decision_tier} />
       <label className="sx-note-field">
         <span>
           Note for teammates <small>Optional · everyone eligible sees it</small>

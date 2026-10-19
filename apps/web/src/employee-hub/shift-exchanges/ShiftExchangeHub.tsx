@@ -43,7 +43,7 @@ import {
 } from "./exchange-data";
 import "./shift-exchanges.css";
 import { ExchangeShiftCard, shiftHours } from "./ExchangeShiftCard";
-import { ChangeOptions, CLOSE_BEFORE_MS, type ChangeMode } from "./ChangeOptions";
+import { ChangeOptions, CLOSE_BEFORE_MS, SelfOnlyNote, type ChangeMode } from "./ChangeOptions";
 import { PlanDialog } from "./PlanDialog";
 import { ReleaseCard, ReleaseDialog, firstName } from "./Release";
 import { ReleaseDeck } from "./ReleaseDeck";
@@ -450,6 +450,9 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
   const offerShift = model.own_shifts.find(
     (s) => s.id === params.get("offer") || s.source_id === params.get("offer"),
   );
+  // Inside the last 4 hours before the shift nothing opens (plan 04:56).
+  const offerClosed =
+    Boolean(offerShift?.starts_at) && Date.parse(offerShift!.starts_at!) - CLOSE_BEFORE_MS <= Date.now();
   const offerActive = offerShift
     ? model.cases.find((c) => c.status === "open" && c.shift.source_id === offerShift.source_id)
     : undefined;
@@ -867,6 +870,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
         ) : offerShift ? (
           <PlanDialog eyebrow="Your shift" onClose={() => navigate({ offer: null, mode: null })}>
             <ShiftTicket shift={offerShift} />
+            {offerClosed ? null : <SelfOnlyNote tier={offerShift.decision_tier} />}
             <ChangeOptions
               // The page's own dates stay: a shift past today's 42 days was opened with from/to.
               hrefFor={(mode) => {
@@ -875,10 +879,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
                 next.set("mode", mode);
                 return `?${next}`;
               }}
-              closed={
-                Boolean(offerShift.starts_at) &&
-                Date.parse(offerShift.starts_at!) - CLOSE_BEFORE_MS <= Date.now()
-              }
+              closed={offerClosed}
             />
           </PlanDialog>
         ) : (
@@ -1489,6 +1490,7 @@ function CreateExchange({
             </select>
           </label>
           {shift && <ExchangeShiftCard shift={shift} />}
+          <SelfOnlyNote tier={shift?.decision_tier} />
           {active ? (
             <div className="sx-banner">
               <p>This shift already has an active request.</p>

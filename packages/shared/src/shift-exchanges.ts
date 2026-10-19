@@ -75,6 +75,13 @@ export const exchangeShiftSchema = z.object({
   employee_id: z.string().uuid().nullable(),
   employee_name: z.string().nullable(),
 });
+// Who a request for one's own shift would go to (KARARLAR S-169): the location's
+// manager, else an admin, else the owner; self_only when nobody but the owner, who
+// asks, can answer it.
+export const decisionTierSchema = z.enum(["location_manager", "admin", "owner", "self_only"]);
+export const ownExchangeShiftSchema = exchangeShiftSchema.extend({
+  decision_tier: decisionTierSchema,
+});
 export const exchangeApplicationSchema = z.object({
   id: z.string().uuid(),
   employee_id: z.string().uuid(),
@@ -133,7 +140,7 @@ export const exchangeReadModelSchema = z.object({
       note: z.string(),
     }),
   ),
-  own_shifts: z.array(exchangeShiftSchema),
+  own_shifts: z.array(ownExchangeShiftSchema),
 });
 export const exchangeCommandSchema = z.discriminatedUnion("action", [
   z.object({
@@ -211,6 +218,8 @@ export const exchangeMutationSchema = z.object({
 });
 export type ExchangeCase = z.infer<typeof exchangeCaseSchema>;
 export type ExchangeShift = z.infer<typeof exchangeShiftSchema>;
+export type OwnExchangeShift = z.infer<typeof ownExchangeShiftSchema>;
+export type DecisionTier = z.infer<typeof decisionTierSchema>;
 export type ExchangeApplication = z.infer<typeof exchangeApplicationSchema>;
 export type ExchangeCommand = z.infer<typeof exchangeCommandSchema>;
 export type ExchangeReadModel = z.infer<typeof exchangeReadModelSchema>;

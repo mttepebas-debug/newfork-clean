@@ -106,7 +106,7 @@ beforeEach(() => {
     employee_id: "alex",
     cases: [structuredClone(item)],
     opportunities: [],
-    own_shifts: [shift],
+    own_shifts: [{ ...shift, decision_tier: "location_manager" }],
   };
   vi.mocked(getExchanges).mockImplementation(async () => model);
   vi.mocked(getExchangeCandidates).mockResolvedValue({
@@ -1276,6 +1276,25 @@ describe("Shift Hub release", () => {
     );
   });
 
+  // KARARLAR S-169: the owner whom nobody else can answer decides their own request in Requests.
+  const SELF_ONLY = "No one else can approve this. It closes 4 hours before the shift.";
+  it.each(["", "&mode=release", "&mode=cover", "&mode=swap"])(
+    "tells the owner when no one else can approve a request for the shift (%s)",
+    async (mode) => {
+      model.cases = [];
+      model.own_shifts = [{ ...shift, decision_tier: "self_only" }];
+      mount(`/app/employee-hub/shift-hub?offer=shift${mode}`);
+      expect(await screen.findByText(SELF_ONLY)).toBeTruthy();
+    },
+  );
+  it("says nothing of it when someone else approves", async () => {
+    model.cases = [];
+    model.own_shifts = [{ ...shift, decision_tier: "location_manager" }];
+    mount("/app/employee-hub/shift-hub?offer=shift");
+    expect(await screen.findByRole("link", { name: /Release shift/, hidden: true })).toBeTruthy();
+    expect(screen.queryByText(SELF_ONLY)).toBeNull();
+  });
+
   it("offers the three named options for a shift opened without one", async () => {
     model.cases = [];
     mount("/app/employee-hub/shift-hub?offer=shift");
@@ -1298,7 +1317,7 @@ describe("Shift Hub release", () => {
   it("closes the options in the last 4 hours before the shift", async () => {
     model.cases = [];
     const soon = new Date(Date.now() + 2 * 60 * 60 * 1000).toISOString();
-    model.own_shifts = [{ ...shift, starts_at: soon }];
+    model.own_shifts = [{ ...shift, decision_tier: "location_manager", starts_at: soon }];
     mount("/app/employee-hub/shift-hub?offer=shift");
     expect(await screen.findByText("Changes are closed")).toBeTruthy();
     expect(screen.queryByRole("link", { name: /Release shift/, hidden: true })).toBeNull();

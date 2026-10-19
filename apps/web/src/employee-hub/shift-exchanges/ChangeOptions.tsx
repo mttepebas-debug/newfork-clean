@@ -1,4 +1,5 @@
 import { AlertTriangle, ArrowLeftRight, ChevronRight, Hand, UserRoundPlus } from "lucide-react";
+import type { DecisionTier } from "@newfork/shared";
 import { Link } from "react-router";
 import "./shift-release.css";
 
@@ -62,4 +63,14 @@ export function ChangeOptions({
       )}
     </div>
   );
+}
+
+/**
+ * KARARLAR S-169: when nobody but the owner can answer a request for this shift,
+ * the owner decides it in Requests; nobody else is asked.
+ */
+export function SelfOnlyNote({ tier }: { tier: DecisionTier | undefined }) {
+  return tier === "self_only" ? (
+    <p className="sx-help">No one else can approve this. It closes 4 hours before the shift.</p>
+  ) : null;
 }
