@@ -2977,9 +2977,12 @@ select:focus-visible {
   outline: none !important;
   box-shadow: none !important;
 }
+/* The open menu's width (Mert 2026-10-19: 224, drawn on Notifications); the
+   panels that open beside it start at its edge. */
 .app-shell {
+  --app-sidebar-width: 224px;
   display: grid;
-  grid-template-columns: 288px minmax(0, 1fr);
+  grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
   height: 100dvh;
   overflow: hidden;
 }
@@ -3008,7 +3011,7 @@ select:focus-visible {
     --app-page-gutter-end: 32px;
   }
   .app-shell[data-content-held="true"][data-sidebar-collapsed="true"] {
-    grid-template-columns: 288px minmax(0, 1fr);
+    grid-template-columns: var(--app-sidebar-width) minmax(0, 1fr);
     /* The room the menu gives up is the page's own colour, with no seam. */
     background: #f6f7f5;
   }
@@ -8697,7 +8700,7 @@ button.workspace-switcher-item:hover:not(:disabled) {
   z-index: 90;
   top: 45px;
   bottom: 0;
-  left: 288px;
+  left: var(--app-sidebar-width);
   display: flex;
   width: 320px;
   min-height: 0;

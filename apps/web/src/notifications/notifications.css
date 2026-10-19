@@ -60,7 +60,7 @@
   position: fixed;
   top: 0;
   bottom: 0;
-  left: 288px;
+  left: var(--app-sidebar-width);
   z-index: 50;
   display: flex;
   width: 420px;
