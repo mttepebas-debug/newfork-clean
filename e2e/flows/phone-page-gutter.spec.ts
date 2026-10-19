@@ -87,7 +87,20 @@ const gutters = (page: Page) =>
       left = Math.max(left, rect.left + parseFloat(style.borderLeftWidth) + parseFloat(style.paddingLeft));
       right = Math.max(right, width - rect.right + parseFloat(style.borderRightWidth) + parseFloat(style.paddingRight));
     }
-    return { left: Math.round(left), right: Math.round(right), wider: document.documentElement.scrollWidth > width };
+    // The page scrolls inside the main area and a phone list inside its own
+    // frame, so a strip that bleeds past the gutter widens one of those boxes,
+    // not the document: every box the page scrolls in is checked (a box that
+    // lets its content show past it scrolls nothing itself).
+    const frames = [
+      document.documentElement,
+      ...[
+        ...document.querySelectorAll(
+          ".app-main, .settings-content, .account-shell, .account-layout-grid, .account-content-scroll, .list-frozen-body, .employee-lineup-page, .ems-frame, .sx-workbench, .employee-weekly-workspace > [role=\"tabpanel\"]",
+        ),
+      ].filter((frame) => /(auto|scroll)/.test(getComputedStyle(frame).overflowX)),
+    ];
+    const wider = frames.some((frame) => frame.scrollWidth > frame.clientWidth);
+    return { left: Math.round(left), right: Math.round(right), wider };
   });
 
 for (const width of [390, 700]) {
@@ -103,6 +116,20 @@ for (const width of [390, 700]) {
     });
   }
 }
+
+// The employee's Lineup bleeds its pinned heading and its day wheel over the
+// gutter: both run exactly from one edge of the screen to the other.
+test("phone: the employee's Lineup strips reach both edges and no further", async ({ browser }) => {
+  const page = await open(browser, "emre", { width: 390, height: 844 });
+  await visit(page, "/app/employee-hub/schedule/lineup");
+  for (const strip of [".employee-lineup-pin", ".employee-lineup-day .lineup-wheel"]) {
+    const box = await page.locator(strip).first().evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { left: Math.round(rect.left), right: Math.round(rect.right) };
+    });
+    soft(box, strip).toEqual({ left: 0, right: 390 });
+  }
+});
 
 // The desktop is untouched: the employee's page starts 32 px right of the menu (S-172).
 test("desktop: the employee's Schedule keeps its 32 px", async ({ browser }) => {

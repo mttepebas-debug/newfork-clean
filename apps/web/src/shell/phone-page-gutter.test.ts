@@ -39,6 +39,8 @@ describe("phone page gutter", () => {
     expect(hub).toMatch(/padding\s*:\s*16px var\(--eh-gutter\) 34px/);
     // A full-width strip bleeds by the gutter; its fallback is the same 16.
     const lineup = strip(readFileSync("src/employee-hub/employee-lineup.css", "utf8"));
-    expect([...lineup.matchAll(/var\(--eh-gutter,\s*([^)]+)\)/g)].map(([, value]) => value)).not.toContain("14px");
+    const fallbacks = [...lineup.matchAll(/var\(--eh-gutter,\s*([^)]+)\)/g)].map(([, value]) => value);
+    expect(fallbacks.length).toBeGreaterThan(0);
+    expect(fallbacks.every((value) => value === "16px")).toBe(true);
   });
 });

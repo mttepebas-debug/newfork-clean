@@ -10910,6 +10910,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
 .organization-logo-control .nf-button {
   white-space: nowrap;
 }
+/* On a phone the logo's preview gives way so Manage logo stays inside the
+   card (it ran 1 px past the screen at 390; S-186). */
+@media (max-width: 720px) {
+  .organization-logo-control {
+    grid-template-columns: minmax(0, 260px) max-content;
+  }
+}
 .organization-form-actions {
   display: flex;
   justify-content: flex-end;
