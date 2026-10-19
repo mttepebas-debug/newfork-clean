@@ -69,5 +69,23 @@ select is((select count(*)::int from public.audit_events where workspace_id='282
 -- A document type is never archived and published at once.
 select throws_ok($$update public.document_types set publication_status='published' where id=(select id from archive_test)$$,'23514',null,'an archived document type cannot be published behind the service');
 
+-- A published document whose target job was archived later can still be unpublished and archived:
+-- Mert asks bartenders for a "Bartender card", then archives the Bartender job (review finding).
+insert into public.jobs(id,workspace_id,department_id,name) values('a8210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',null,'Bartender');
+insert into public.employee_job_assignments(workspace_id,employee_id,job_id,created_by)
+values('28210000-0000-4000-8000-000000000001','48210000-0000-4000-8000-000000000001','a8210000-0000-4000-8000-000000000001','18210000-0000-4000-8000-000000000001');
+create temp table bartender_test(id uuid, preview jsonb);
+insert into bartender_test(id) select public.save_document_type_lifecycle_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',null,null,'{"title":"Bartender card","description":"Document","requires_review":true,"accepted_formats":["pdf"],"tracks_expiry":false,"expiry_warning_days":30,"lifecycle_settings":{"mode":"conditional","assignment_scope":"future_onboarding","target":{"operator":"and","location_ids":[],"department_ids":[],"job_ids":["a8210000-0000-4000-8000-000000000001"],"employee_ids":[]},"period_days":7,"suspend_on_overdue":true,"extra_fields":[]}}');
+update bartender_test set preview=public.preview_document_publication_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',id);
+select public.set_document_publication_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',id,(preview->>'revision')::int,(preview->>'publication_revision')::int,preview->>'preview_token','Publish','published') from bartender_test;
+select is((select count(*)::int from public.employee_onboarding_requirements where source_id=(select id from bartender_test) and lifecycle_closed_at is null),1,'Ali, a bartender, is asked for the Bartender card');
+update public.jobs set archived_at=now() where id='a8210000-0000-4000-8000-000000000001';
+select lives_ok($$select public.preview_document_publication_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',(select id from bartender_test))$$,'the Unpublish preview still opens after the target job is archived');
+select lives_ok($$select public.set_document_type_archived_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',(select id from bartender_test),true)$$,'Mert archives the Bartender card after archiving the job');
+select is((select publication_status from public.document_types where id=(select id from bartender_test)),'draft','the archived Bartender card is out of publication');
+select throws_ok($$select public.preview_document_publication_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',(select id from bartender_test))$$,'PT409',null,'the archived card cannot be previewed for publishing');
+select lives_ok($$select public.set_document_type_archived_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',(select id from bartender_test),false)$$,'Mert restores the card');
+select throws_ok($$select public.preview_document_publication_service('18210000-0000-4000-8000-000000000001','28210000-0000-4000-8000-000000000001',(select id from bartender_test))$$,'42501',null,'publishing it again still refuses a target job that is archived');
+
 select * from finish();
 rollback;
