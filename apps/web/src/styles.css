@@ -2902,8 +2902,10 @@ p {
   min-height: 100vh;
   background: var(--theme-page);
 }
-/* Before the app opens, so there is no shell around the card. */
-.document-access-error {
+/* Before the app opens, or when the app itself broke (BL-1075), so there is
+   no shell around the card. */
+.document-access-error,
+.app-crash {
   min-height: 100vh;
   display: grid;
   place-items: center;

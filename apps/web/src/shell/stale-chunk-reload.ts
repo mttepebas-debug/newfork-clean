@@ -2,8 +2,13 @@
 // that no longer exist; the SPA fallback answers with index.html and the page
 // goes blank. Vite reports every failed dynamic import (React.lazy included)
 // as `vite:preloadError`, so one listener covers them all: reload once to pick
-// up the new build. A second failure within the window is a real error and is
-// let through, so it throws and reaches Sentry instead of looping.
+// up the new build. A second failure within the window is a real error and
+// does not reload again, so it cannot loop.
+//
+// The error itself is never swallowed (BL-1075): a cancelled event makes Vite's
+// import come back undefined, React.lazy then reads `.default` of it and the
+// page went white. It goes on to the page's error card (CrashBoundary) and to
+// Sentry, while the reload is on its way.
 
 export const STALE_CHUNK_RELOAD_KEY = "nf.stale-chunk-reload-at";
 export const STALE_CHUNK_RELOAD_WINDOW_MS = 10_000;
@@ -41,17 +46,13 @@ export function installStaleChunkReload({
 }: Options = {}): () => void {
   let reloading = false;
 
-  const onPreloadError = (event: Event) => {
-    if (reloading) {
-      event.preventDefault();
-      return;
-    }
+  const onPreloadError = () => {
+    if (reloading) return;
     const at = now();
     const last = readMark(storage);
     if (last !== null && at - last >= 0 && at - last < STALE_CHUNK_RELOAD_WINDOW_MS) return;
     reloading = true;
     writeMark(storage, at);
-    event.preventDefault();
     reload();
   };
 

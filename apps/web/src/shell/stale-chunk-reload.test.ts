@@ -53,14 +53,17 @@ function setup(storage: () => Storage, start = 1_000_000) {
 }
 
 describe("installStaleChunkReload", () => {
-  it("reloads once and swallows the error when a chunk of an old build is gone", () => {
+  // BL-1075: the error is never swallowed. Swallowed, the import comes back
+  // undefined and React.lazy reads .default of it: a white page. It goes on to
+  // the page's error card while the reload is on its way.
+  it("reloads once and lets the error go on to the page's error card when a chunk of an old build is gone", () => {
     const storage = memoryStorage();
     const { target, reload } = setup(() => storage);
 
     const event = preloadError(target);
 
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(event.defaultPrevented).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
     expect(storage.getItem(STALE_CHUNK_RELOAD_KEY)).toBe("1000000");
   });
 
@@ -72,7 +75,7 @@ describe("installStaleChunkReload", () => {
     const second = preloadError(target);
 
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(second.defaultPrevented).toBe(true);
+    expect(second.defaultPrevented).toBe(false);
   });
 
   it("lets the error through after a reload less than 10 s ago, so it reaches Sentry", () => {
@@ -94,7 +97,7 @@ describe("installStaleChunkReload", () => {
     const event = preloadError(target);
 
     expect(reload).toHaveBeenCalledTimes(1);
-    expect(event.defaultPrevented).toBe(true);
+    expect(event.defaultPrevented).toBe(false);
   });
 
   it("still reloads exactly once when storage throws", () => {

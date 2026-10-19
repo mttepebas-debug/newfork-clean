@@ -29,7 +29,7 @@ import { useAuth } from "../auth/AuthContext";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { can } from "../auth/can";
-import { workspaceLandingPathForRole } from "../auth/resolveLanding";
+import { noAccessHomePath, workspaceLandingPathForRole } from "../auth/resolveLanding";
 import {
   EmployeeViewSidebarLink,
   employeeViewMobileLink,
@@ -43,6 +43,7 @@ import { NotificationsNavEntry } from "../notifications/NotificationsNavEntry";
 import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
 import { hasEmployeeAccess, hasManagementAccess, membershipClass } from "../auth/access";
+import { PageCrashBoundary } from "./CrashBoundary";
 
 interface NavItem {
   readonly to: string;
@@ -560,7 +561,9 @@ export function AppShell() {
       {phoneBars ? <ManagerPhoneBar /> : null}
       <main className="app-main" ref={setMain}>
         {phoneBars ? <PullToRefreshMark state={pull.state} pull={pull.pull} /> : null}
-        <Outlet />
+        <PageCrashBoundary homeHref={noAccessHomePath(context, location.pathname)}>
+          <Outlet />
+        </PageCrashBoundary>
       </main>
       {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); the employee's Home shows it in its own list (Daylight, Mert 2026-10-18). */}
       {!employeeShell && location.pathname === managementHome ? <PhoneAlertsHome audience="manager" /> : null}

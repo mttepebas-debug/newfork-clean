@@ -52,6 +52,19 @@ describe("LoadError", () => {
     expect(button.disabled).toBe(true);
   });
 
+  it("shows the card's own buttons in place of Try again and its help line (BL-1075)", () => {
+    render(
+      <LoadError
+        title="Something went wrong"
+        detail="This page could not open. Nothing was changed."
+        actions={<button type="button">Reload page</button>}
+      />,
+    );
+    expect(screen.getByRole("button", { name: "Reload page" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Try again" })).toBeNull();
+    expect(screen.queryByText("Check your connection, then try again.")).toBeNull();
+  });
+
   it("leaves out the help line and the button when there is nothing to retry", () => {
     render(<LoadError title="We couldn't open this document" detail="The link has expired." />);
     expect(screen.queryByRole("button")).toBeNull();

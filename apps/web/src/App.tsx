@@ -13,6 +13,7 @@ import { PermissionRoute } from "./auth/PermissionRoute";
 import { SettingsPageRoute } from "./settings/SettingsPageRoute";
 import { appLandingPath, hubPath } from "./auth/resolveLanding";
 import { AppShell } from "./shell/AppShell";
+import { AppCrashBoundary } from "./shell/CrashBoundary";
 import { TOAST_LAYER_ATTRIBUTE } from "./shell/toastLayer";
 import { DocumentAccessRoute } from "./documents/DocumentAccessRoute";
 import { SignInPage } from "./views/SignInPage";
@@ -139,6 +140,10 @@ export function App() {
   return (
     <QueryClientProvider client={appQueryClient}>
       <BrowserRouter>
+        {/* A crash outside the shell's page area (the shell itself, Account,
+            sign-in) fills the screen with the error card instead of a white
+            page (BL-1075); inside the shell, PageCrashBoundary answers first. */}
+        <AppCrashBoundary>
         <AuthProvider queryClient={appQueryClient}>
           {createPortal(
             <div {...{ [TOAST_LAYER_ATTRIBUTE]: "" }}>
@@ -594,6 +599,7 @@ export function App() {
             </Routes>
           </Suspense>
         </AuthProvider>
+        </AppCrashBoundary>
       </BrowserRouter>
     </QueryClientProvider>
   );

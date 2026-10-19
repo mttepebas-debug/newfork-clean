@@ -91,6 +91,7 @@ export function LoadError({
   title,
   detail,
   onRetry,
+  actions,
   retrying = false,
   inset = false,
   headingRef,
@@ -102,6 +103,11 @@ export function LoadError({
   /** One sentence: what did not load, and that nothing was changed. */
   readonly detail: string;
   readonly onRetry?: () => void;
+  /**
+   * The card's own buttons, in place of Try again and its help line: a page
+   * that broke while it drew offers Reload page and Back to Home (BL-1075).
+   */
+  readonly actions?: ReactNode;
   /** True while the retry is on its way. */
   readonly retrying?: boolean;
   /**
@@ -131,9 +137,11 @@ export function LoadError({
           {title}
         </Heading>
         <p>{detail}</p>
-        {onRetry ? <p className="load-error-help">Check your connection, then try again.</p> : null}
+        {onRetry && !actions ? <p className="load-error-help">Check your connection, then try again.</p> : null}
       </div>
-      {onRetry ? (
+      {actions ? (
+        <div className="load-error-actions">{actions}</div>
+      ) : onRetry ? (
         <button type="button" className="load-error-retry" disabled={retrying} onClick={onRetry}>
           <RotateCw size={16} aria-hidden className={retrying ? "spinning" : undefined} />
           <span>{retrying ? "Trying again…" : "Try again"}</span>

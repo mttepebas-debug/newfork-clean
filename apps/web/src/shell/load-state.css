@@ -117,6 +117,19 @@
   min-height: 40px;
 }
 
+/* A card's own buttons (BL-1075): full width, one under the other, like
+   NoAccessState's Back to Home. */
+.load-error-actions {
+  display: flex;
+  flex-direction: column;
+  align-self: stretch;
+  gap: 8px;
+}
+.load-error-actions .nf-button {
+  justify-content: center;
+  text-decoration: none;
+}
+
 @media (max-width: 720px) {
   .load-error:not(.inset) {
     width: auto;
