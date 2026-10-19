@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 533, last: 20261019150221_one_decision_chain_4.sql
--- fingerprint: sha256:fa0901a973554f7ab515df6b1f77ed2d2fa0dbe03592c4dff920b1239344e5a9
+-- migrations: 534, last: 20261019150221_one_decision_chain_4.sql
+-- fingerprint: sha256:bdd9f0d5baa4e9b8e59e3bae8bee1e2e84267fa1ab560ad555a5c3501c7fb961
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -5468,6 +5468,33 @@ $$;
 
 
 ALTER FUNCTION "app_private"."job_assignment_candidates"("actor" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."jobs_lineup_icons"() RETURNS "trigger"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  valid boolean;
+begin
+  if tg_op = 'INSERT' and new.lineup_icons is null then
+    new.lineup_icons := app_private.suggest_lineup_art(new.name);
+  end if;
+  -- A nested list is refused before its keys are read: array_position cannot search one.
+  valid := coalesce(array_ndims(new.lineup_icons), 1) = 1;
+  if valid then
+    valid := app_private.lineup_art_keys_valid(new.lineup_icons) and cardinality(new.lineup_icons) <= 24;
+  end if;
+  if not valid then
+    raise exception 'Choose up to 24 different drawings from the archive'
+      using errcode = '22023', hint = 'job.lineup_icons_invalid';
+  end if;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."jobs_lineup_icons"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."keep_job_assignment_rules"() RETURNS "trigger"
@@ -12117,10 +12144,7 @@ CREATE OR REPLACE FUNCTION "public"."create_department_jobs_service"("actor_user
     AS $$
 declare dep public.departments; item jsonb; job public.jobs; result jsonb:='[]';
 begin
-  if actor_user_id is null then raise exception 'valid actor required' using errcode='42501'; end if;
-  perform set_config('request.jwt.claim.sub',actor_user_id::text,true);
-  if not public.workspace_has_permission(target_workspace_id, 'settings.jobs.manage') then
-    raise exception 'workspace management access required' using errcode='42501'; end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.jobs.write');
   if jsonb_typeof(jobs_input) is distinct from 'array' then
     raise exception 'Jobs must be an array' using errcode='22023'; end if;
   if jsonb_array_length(jobs_input) not between 1 and 500 then
@@ -12153,11 +12177,7 @@ CREATE OR REPLACE FUNCTION "public"."create_department_with_jobs_service"("actor
     AS $$
 declare dep public.departments; item jsonb; result_jobs jsonb;
 begin
-  if actor_user_id is null then raise exception 'valid actor required' using errcode='42501'; end if;
-  perform set_config('request.jwt.claim.sub', actor_user_id::text, true);
-  if not public.workspace_has_permission(target_workspace_id, 'settings.jobs.manage') then
-    raise exception 'workspace management access required' using errcode='42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.jobs.write');
   if jsonb_typeof(department_input) is distinct from 'object'
     or jsonb_typeof(department_input->'name') is distinct from 'string'
     or jsonb_typeof(department_input->'color') is distinct from 'string'
@@ -12280,13 +12300,7 @@ declare
   selected_department_id uuid;
   result jsonb := '{"changed_count":0,"unchanged_count":0}'::jsonb;
 begin
-  if actor_user_id is null then
-    raise exception 'valid actor required' using errcode = '42501';
-  end if;
-  perform set_config('request.jwt.claim.sub', actor_user_id::text, true);
-  if not public.workspace_has_permission(target_workspace_id, 'settings.jobs.manage') then
-    raise exception 'workspace management access required' using errcode = '42501';
-  end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.jobs.write');
   if jsonb_typeof(job_input) is distinct from 'object'
     or jsonb_typeof(job_input->'name') is distinct from 'string'
     or char_length(btrim(job_input->>'name')) not between 1 and 100
@@ -12295,6 +12309,9 @@ begin
     or not (job_input ? 'department_id')
     or jsonb_typeof(job_input->'department_id') not in ('string', 'null') then
     raise exception 'Valid job name, color and department required' using errcode = '22023';
+  end if;
+  if job_input ? 'lineup_icons' and jsonb_typeof(job_input->'lineup_icons') is distinct from 'array' then
+    raise exception 'Choose up to 24 different drawings from the archive' using errcode = '22023', hint = 'job.lineup_icons_invalid';
   end if;
   if jsonb_typeof(assignment_changes) is distinct from 'array'
     or jsonb_array_length(assignment_changes) > 10000 then
@@ -12313,12 +12330,14 @@ begin
   perform 1 from public.workspaces where id = target_workspace_id for update;
 
   begin
-    insert into public.jobs(workspace_id, department_id, name, color)
+    insert into public.jobs(workspace_id, department_id, name, color, lineup_icons)
     values(
       target_workspace_id,
       selected_department_id,
       btrim(job_input->>'name'),
-      job_input->>'color'
+      job_input->>'color',
+      case when job_input ? 'lineup_icons'
+        then array(select icon.key from jsonb_array_elements_text(job_input->'lineup_icons') with ordinality as icon(key, n) order by icon.n) end
     )
     returning * into target;
   exception when unique_violation then
@@ -21019,7 +21038,7 @@ begin
       select coalesce(jsonb_agg(to_jsonb(j) order by lower(j.name), j.id), '[]'::jsonb)
       from (
         select job.id, job.workspace_id, job.department_id, job.name, job.color, job.archived_at,
-          job.system_key
+          job.system_key, job.lineup_icons
         from public.jobs job
         where job.workspace_id = target_workspace_id and job.deleted_at is null
       ) j)
@@ -28057,9 +28076,7 @@ CREATE OR REPLACE FUNCTION "public"."update_department_with_jobs_service"("actor
     AS $$
 declare dep public.departments; added jsonb:='[]';
 begin
-  if actor_user_id is null then raise exception 'valid actor required' using errcode='42501'; end if;
-  perform set_config('request.jwt.claim.sub',actor_user_id::text,true);
-  if not public.workspace_has_permission(target_workspace_id, 'settings.jobs.manage') then raise exception 'workspace management access required' using errcode='42501'; end if;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.jobs.write');
   if jsonb_typeof(department_input->'name') is distinct from 'string' or jsonb_typeof(department_input->'color') is distinct from 'string'
     or jsonb_typeof(jobs_input) is distinct from 'array' then raise exception 'Valid department and jobs required' using errcode='22023'; end if;
   perform 1 from public.workspaces where id=target_workspace_id for update;
@@ -28260,18 +28277,20 @@ declare
   actual jsonb;
   selected_department_id uuid;
   result jsonb := '{"changed_count":0,"unchanged_count":0}'::jsonb;
+  me app_private.actor_state;
+  save_rule app_private.authz_actions;
+  reason text;
 begin
-  if actor_user_id is null then
-    raise exception 'Valid actor required' using errcode = '42501';
-  end if;
-  perform set_config('request.jwt.claim.sub', actor_user_id::text, true);
   if job_input is not null then
-    if not public.workspace_has_permission(target_workspace_id, 'settings.jobs.manage') then
-      raise exception 'Workspace management access required' using errcode = '42501';
-    end if;
-  elsif not public.workspace_has_permission(target_workspace_id, 'employees.manage')
-    or not public.workspace_has_permission(target_workspace_id, 'employees.read') then
-    raise exception 'Employee management access required' using errcode = '42501';
+    perform app_private.authorize(actor_user_id, target_workspace_id, 'settings.jobs.write');
+  else
+    -- Assignments alone: may they change anybody's jobs at all; whose, update_job_assignments_service
+    -- asks person by person.
+    me := app_private.actor(actor_user_id, target_workspace_id);
+    select * into save_rule from app_private.authz_actions r where r.key = 'employee.save';
+    reason := app_private.authz_check(me, save_rule, null, null, null);
+    if reason is not null and reason <> 'out_of_scope' then
+      raise exception 'Not allowed' using errcode='42501', hint='authz.' || reason, detail='employee.save'; end if;
   end if;
   if jsonb_typeof(assignment_changes) is distinct from 'array' then
     raise exception 'Valid assignment changes required' using errcode = '22023';
@@ -28301,12 +28320,17 @@ begin
       or jsonb_typeof(job_input->'department_id') not in ('string', 'null') then
       raise exception 'Valid job name, color and department required' using errcode = '22023';
     end if;
+    if job_input ? 'lineup_icons' and jsonb_typeof(job_input->'lineup_icons') is distinct from 'array' then
+      raise exception 'Choose up to 24 different drawings from the archive' using errcode = '22023', hint = 'job.lineup_icons_invalid';
+    end if;
     selected_department_id := (job_input->>'department_id')::uuid;
     desired := jsonb_build_object(
-      'name', btrim(job_input->>'name'), 'color', job_input->>'color', 'department_id', selected_department_id
+      'name', btrim(job_input->>'name'), 'color', job_input->>'color', 'department_id', selected_department_id,
+      'lineup_icons', coalesce(job_input->'lineup_icons', to_jsonb(target.lineup_icons))
     );
     actual := jsonb_build_object(
-      'name', target.name, 'color', target.color, 'department_id', target.department_id
+      'name', target.name, 'color', target.color, 'department_id', target.department_id,
+      'lineup_icons', to_jsonb(target.lineup_icons)
     );
     -- A successful request can be retried with the same original values.
     if desired is distinct from actual then
@@ -28324,6 +28348,7 @@ begin
         update public.jobs set
           name = desired->>'name', color = desired->>'color',
           department_id = selected_department_id,
+          lineup_icons = array(select icon.key from jsonb_array_elements_text(desired->'lineup_icons') with ordinality as icon(key, n) order by icon.n),
           updated_at = now()
           where id = target_job_id and workspace_id = target_workspace_id
           returning * into target;
@@ -30164,6 +30189,7 @@ CREATE TABLE IF NOT EXISTS "public"."jobs" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "deleted_at" timestamp with time zone,
     "system_key" "text",
+    "lineup_icons" "text"[] NOT NULL,
     CONSTRAINT "jobs_color_check" CHECK (("color" ~ '^#[0-9A-Fa-f]{6}$'::"text")),
     CONSTRAINT "jobs_deleted_remain_archived" CHECK ((("deleted_at" IS NULL) OR ("archived_at" IS NOT NULL))),
     CONSTRAINT "jobs_name_check" CHECK ((("char_length"("btrim"("name")) >= 1) AND ("char_length"("btrim"("name")) <= 100))),
@@ -30173,6 +30199,10 @@ CREATE TABLE IF NOT EXISTS "public"."jobs" (
 
 
 ALTER TABLE "public"."jobs" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."jobs"."lineup_icons" IS 'The job''s Lineup drawings (app_private.lineup_art keys, in order, at most 24, no repeats; AVATAR-IKON). Suggested from the name when a job is opened without a list (trigger jobs_lineup_icons); changed only by update_job_details_and_assignments_service.';
+
 
 
 CREATE TABLE IF NOT EXISTS "public"."lineup_commands" (
@@ -33295,6 +33325,10 @@ CREATE OR REPLACE TRIGGER "jobs_deletion_state_guard" BEFORE INSERT OR UPDATE ON
 
 
 
+CREATE OR REPLACE TRIGGER "jobs_lineup_icons" BEFORE INSERT OR UPDATE OF "lineup_icons" ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."jobs_lineup_icons"();
+
+
+
 CREATE OR REPLACE TRIGGER "jobs_stay_out_of_archived_departments" BEFORE INSERT OR UPDATE OF "department_id", "archived_at" ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."keep_jobs_out_of_archived_departments"();
 
 
@@ -36112,6 +36146,10 @@ GRANT ALL ON FUNCTION "app_private"."is_workspace_member"("target_workspace_id" 
 
 
 REVOKE ALL ON FUNCTION "app_private"."job_assignment_candidates"("actor" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid") FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."jobs_lineup_icons"() FROM PUBLIC;
 
 
 
