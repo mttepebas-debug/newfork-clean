@@ -339,6 +339,10 @@
   .avm-section-head {
     flex-wrap: wrap;
   }
+  /* The heading has its own line; the two tools sit together under it. */
+  .avm-section-head h3 {
+    flex-basis: 100%;
+  }
   /* 16 px: iOS does not zoom into a field this size. */
   .avm-note-field textarea {
     font-size: 16px;
