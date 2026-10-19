@@ -4,7 +4,7 @@
    writes --st (how far the page scrolled) and --p (how far a section came
    into view). */
 
-/* The page box is the shell's (S-172: 4 px right of the open menu, held when
+/* The page box is the shell's (S-172: 32 px right of the open menu, held when
    it folds); Home draws no ground of its own, so the app's ground runs on
    under it, past both its edges and into the band a folded menu leaves. */
 .employee-hub-page:has(> .dl-home) {

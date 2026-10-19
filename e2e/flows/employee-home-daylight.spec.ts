@@ -93,7 +93,8 @@ test("phone: the bar's slot takes no room on a manager's page (zeynep)", async (
   expect(room.fits || room.gap <= 12).toBe(true);
 });
 
-// S-172 (Mert 2026-10-18): the page box starts 4 px right of the open menu and
+// S-172 (Mert 2026-10-18, 2026-10-19): the page box starts 32 px right of the
+// open 240 px menu (x=272) and
 // holds still when it folds. Home draws no ground of its own, and its sky runs
 // past the box to the scrolling area's edges, so there is no seam on either
 // side, menu open or folded, and nothing scrolls sideways.
@@ -120,9 +121,9 @@ test("desktop: Home's sky and ground meet the menu and the right edge with no se
       };
     });
   const open = await measure();
-  expect(open).toMatchObject({ skyLeft: 0, skyRight: 0, boxLeft: 292, boxGround: "rgba(0, 0, 0, 0)", sideways: false });
+  expect(open).toMatchObject({ skyLeft: 0, skyRight: 0, boxLeft: 272, boxGround: "rgba(0, 0, 0, 0)", sideways: false });
   await page.getByRole("button", { name: "Collapse menu" }).click();
-  await expect.poll(async () => (await measure()).boxLeft).toBe(292);
+  await expect.poll(async () => (await measure()).boxLeft).toBe(272);
   const folded = await measure();
   expect(folded).toMatchObject({ skyLeft: 0, skyRight: 0, sideways: false });
   // The band the folded menu leaves is the same ground as the page under Home.

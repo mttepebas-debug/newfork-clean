@@ -37,7 +37,6 @@ describe("main-menu pages hold still when the menu collapses (Mert 2026-10-18)",
     // on Requests).
     expect(css).toMatch(/--app-page-gutter-start:\s*32px;/);
     expect(css).toMatch(/margin-left:\s*var\(--app-page-gutter-start\);\s*padding-top:\s*0;/);
-    expect(css).toMatch(/margin-left:\s*var\(--app-page-gutter-start\);/);
     // The open menu's column; the held column must match it.
     expect(css).toMatch(/\.app-shell \{\s*--app-sidebar-width: 240px;\s*display: grid;\s*grid-template-columns: var\(--app-sidebar-width\) minmax\(0, 1fr\);/);
   });
