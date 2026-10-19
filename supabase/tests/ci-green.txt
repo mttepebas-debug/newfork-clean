@@ -105,6 +105,7 @@ supabase/tests/shift_exchange_swap_gives_up_its_own_shift.test.sql
 supabase/tests/shift_exchange_travel_policy.test.sql
 supabase/tests/shift_exchanges_v1.test.sql
 supabase/tests/shift_labels_come_from_the_catalog.test.sql
+supabase/tests/shift_type_time_options.test.sql
 supabase/tests/signature_templates_rls.test.sql
 supabase/tests/template_apply_leaves_archived_labels.test.sql
 supabase/tests/template_replace_stays_in_its_lane.test.sql
