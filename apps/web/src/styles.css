@@ -3092,12 +3092,15 @@ select:focus-visible {
   font-weight: 750;
   line-height: 1;
 }
+/* In the open menu it is as wide as the footer row: the sidebar clips what
+   leaves it, and a fixed 264 px was cut once the menu became 240 (Mert
+   2026-10-19). Beside the collapsed rail nothing clips it, so it keeps 264. */
 .workspace-switcher-menu {
   position: absolute;
+  right: 0;
   bottom: calc(100% + 6px);
   left: 0;
   z-index: 120;
-  width: 264px;
   padding: 8px;
   border: 1px solid var(--theme-border);
   border-radius: 10px;
@@ -3105,8 +3108,10 @@ select:focus-visible {
   box-shadow: 0 16px 40px rgb(22 35 30 / 14%);
 }
 .app-shell[data-sidebar-collapsed="true"] .workspace-switcher-menu {
+  right: auto;
   bottom: 0;
   left: calc(100% + 8px);
+  width: 264px;
 }
 .workspace-switcher-label {
   margin: 6px 0 4px;
