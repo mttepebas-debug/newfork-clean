@@ -19,10 +19,14 @@ function sql(query: string): string {
   return execSync(psql, { input: query, encoding: "utf8" }).trim();
 }
 
-const cell = (page: Page, employeeId: string, date: string) =>
-  page.locator(`.schedule-cell[data-employee-id="${employeeId}"][data-date="${date}"]`);
-const card = (page: Page, employeeId: string, date: string) =>
-  cell(page, employeeId, date).locator('[data-shift-badge]:not([data-ghost="true"])');
+// A person working at two locations has a row in each location's section, so a
+// cell is named by its section too.
+const cell = (page: Page, locationId: string, employeeId: string, date: string) =>
+  page.locator(
+    `.schedule-cell[data-display-location-id="${locationId}"][data-employee-id="${employeeId}"][data-date="${date}"]`,
+  );
+const card = (page: Page, locationId: string, employeeId: string, date: string) =>
+  cell(page, locationId, employeeId, date).locator('[data-shift-badge]:not([data-ghost="true"])');
 
 test("a dropped preset offers its type's times and the picked one shows on the card", async ({ browser }) => {
   const week = roundWeek(WEEK);
@@ -33,9 +37,9 @@ test("a dropped preset offers its type's times and the picked one shows on the c
     select tests.publish_week('${run}', ${week}, '[
       {"label": "${roundLabel("emre-preset")}", "person": "emre", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"}
     ]');`);
-  const [monday, wednesday, emreId] = sql(
-    `select tests.week(${week}) || ' ' || tests.week(${week}) + 2 || ' ' || tests.id('${run}:emre');`,
-  ).split(" ") as [string, string, string];
+  const [monday, wednesday, emreId, kadikoyId] = sql(
+    `select tests.week(${week}) || ' ' || tests.week(${week}) + 2 || ' ' || tests.id('${run}:emre') || ' ' || tests.id('${run}:K');`,
+  ).split(" ") as [string, string, string, string];
 
   const zeynep = await (await browser.newContext()).newPage();
   await signIn(zeynep, "zeynep");
@@ -53,7 +57,7 @@ test("a dropped preset offers its type's times and the picked one shows on the c
   await zeynep.keyboard.press("Escape");
 
   const chip = zeynep.getByRole("button", { name: `${dinner}-Cook` }).first();
-  const target = cell(zeynep, emreId, wednesday);
+  const target = cell(zeynep, kadikoyId, emreId, wednesday);
   const from = (await chip.boundingBox())!;
   const to = (await target.boundingBox())!;
   await zeynep.mouse.move(from.x + from.width / 2, from.y + from.height / 2);
@@ -71,7 +75,7 @@ test("a dropped preset offers its type's times and the picked one shows on the c
   await expect(list).toHaveCount(0);
 
   // The card says its time, and the saved shift has it, shown.
-  await expect(card(zeynep, emreId, wednesday)).toContainText("5:00 PM");
+  await expect(card(zeynep, kadikoyId, emreId, wednesday)).toContainText("5:00 PM");
   await expect
     .poll(() =>
       sql(`select start_time || ' ' || end_time || ' ' || hide_time_on_badge from public.schedule_edit_session_shifts
