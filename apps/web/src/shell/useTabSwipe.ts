@@ -23,6 +23,12 @@ const SLIDE_MS = 220;
 // checkbox have none: a swipe across them still changes the tab).
 const OWN_SWIPE =
   'textarea, input:not([type="date"], [type="time"], [type="datetime-local"], [type="month"], [type="week"], [type="checkbox"], [type="radio"], [type="button"], [type="submit"], [type="reset"], [type="file"], [type="color"]), [contenteditable=""], [contenteditable="true"], [role="tablist"], [role="tab"], [role="group"], [role="slider"], [role="dialog"], [aria-modal="true"], nav';
+/**
+ * Where a page's swipe can start: the whole area the page sits in (the app's, or the account's), not only as far
+ * down as its content reaches. A tab with little on it ends under its first box while its page goes on down the
+ * screen (Mert 2026-10-19, Shift Hub → My requests: a swipe under "You're all caught up" did nothing).
+ */
+const PAGE_AREA = ".app-main, .account-shell";
 const CONTROL = 'a, button, input, select, textarea, label, summary, [role="button"], [role="tab"], [contenteditable=""], [contenteditable="true"]';
 
 /** 1: the next tab (the finger went left), -1: the previous one, 0: not a swipe. */
@@ -32,9 +38,9 @@ export function swipeStep(dx: number, dy: number, ms: number): -1 | 0 | 1 {
 }
 
 /** Whether a touch on `target` belongs to something under it that moves sideways itself. */
-function ownsSwipe(target: Element, root: Element): boolean {
+function ownsSwipe(target: Element, area: Element): boolean {
   if (target.closest(OWN_SWIPE)) return true;
-  for (let element: Element | null = target; element && element !== root; element = element.parentElement) {
+  for (let element: Element | null = target; element && element !== area; element = element.parentElement) {
     if (element.scrollWidth > element.clientWidth + 1 && /(auto|scroll)/.test(getComputedStyle(element).overflowX)) return true;
   }
   return false;
@@ -60,7 +66,7 @@ function holdEdge(): () => void {
 }
 
 export interface TabSwipe {
-  /** The page: swipes on it move between the tabs. */
+  /** The page (or, with scope "self", the card): swipes on the page's area move between the tabs. */
   readonly root: RefCallback<HTMLElement>;
   /** The tab row: what comes after it slides in when the tab changes. */
   readonly tabs: RefCallback<HTMLElement>;
@@ -71,6 +77,7 @@ export function useTabSwipe<T extends string>({
   active,
   onSelect,
   enabled = true,
+  scope = "page",
 }: {
   readonly tabs: readonly T[];
   /** The tab shown; one the list doesn't have (an unknown address) moves nowhere. */
@@ -78,6 +85,8 @@ export function useTabSwipe<T extends string>({
   readonly onSelect: (tab: T) => void;
   /** Off while the page shows something else over its tabs (an opened request). */
   readonly enabled?: boolean;
+  /** "page": a swipe anywhere on the page's area; "self": only on the root, for a card with tabs of its own. */
+  readonly scope?: "page" | "self";
 }): TabSwipe {
   const phone = useListPhoneWidth();
   const on = phone && enabled;
@@ -88,11 +97,12 @@ export function useTabSwipe<T extends string>({
 
   useEffect(() => {
     if (!on || !root) return;
+    const area = (scope === "page" && root.closest<HTMLElement>(PAGE_AREA)) || root;
     let start: { x: number; y: number; at: number } | null = null;
     const onStart = (event: TouchEvent) => {
       const touch = event.touches[0];
       start =
-        event.touches.length === 1 && touch && event.target instanceof Element && !ownsSwipe(event.target, root)
+        event.touches.length === 1 && touch && event.target instanceof Element && !ownsSwipe(event.target, area)
           ? { x: touch.clientX, y: touch.clientY, at: event.timeStamp }
           : null;
     };
@@ -112,19 +122,19 @@ export function useTabSwipe<T extends string>({
       if (step && at >= 0 && next !== undefined) select(next);
     };
     const onCancel = () => void (start = null);
-    root.addEventListener("touchstart", onStart, { passive: true });
-    root.addEventListener("touchmove", onMove, { passive: true });
-    root.addEventListener("touchend", onEnd);
-    root.addEventListener("touchcancel", onCancel);
+    area.addEventListener("touchstart", onStart, { passive: true });
+    area.addEventListener("touchmove", onMove, { passive: true });
+    area.addEventListener("touchend", onEnd);
+    area.addEventListener("touchcancel", onCancel);
     const releaseEdge = holdEdge();
     return () => {
-      root.removeEventListener("touchstart", onStart);
-      root.removeEventListener("touchmove", onMove);
-      root.removeEventListener("touchend", onEnd);
-      root.removeEventListener("touchcancel", onCancel);
+      area.removeEventListener("touchstart", onStart);
+      area.removeEventListener("touchmove", onMove);
+      area.removeEventListener("touchend", onEnd);
+      area.removeEventListener("touchcancel", onCancel);
       releaseEdge();
     };
-  }, [on, root]);
+  }, [on, root, scope]);
 
   // The new tab comes in from the side it is on: from the right going forward, from the left going back.
   const shown = useRef(active);

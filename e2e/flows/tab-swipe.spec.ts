@@ -29,7 +29,11 @@ async function phone(browser: Browser, person: Person, path: string): Promise<Pa
 async function swipe(page: Page, on: Locator, dx: number, dy = 0) {
   const box = (await on.boundingBox())!;
   const x = Math.min(Math.max(box.x + box.width / 2, Math.abs(dx) / 2 + 24), PHONE.width - Math.abs(dx) / 2 - 24) - dx / 2;
-  const y = Math.min(box.y + Math.min(box.height / 2, 60), PHONE.height - 120);
+  await swipeAt(page, x, Math.min(box.y + Math.min(box.height / 2, 60), PHONE.height - 120), dx, dy);
+}
+
+/** The same finger from the point (x, y) of the screen. */
+async function swipeAt(page: Page, x: number, y: number, dx: number, dy = 0) {
   const cdp = await page.context().newCDPSession(page);
   await cdp.send("Input.dispatchTouchEvent", { type: "touchStart", touchPoints: [{ x, y }] });
   for (let step = 1; step <= 8; step++) {
@@ -94,6 +98,12 @@ test("Shift Hub: a swipe steps through Available Shifts, My requests and History
   await expect(current).toContainText("History");
   await swipe(emre, body, 160);
   await expect(current).toContainText("My requests");
+  // Low on the screen, under whatever the tab holds (Mert 2026-10-19: an empty My requests ended under its
+  // "You're all caught up" box, and a swipe under it did nothing); the phone's bottom bar is lower still.
+  await swipeAt(emre, PHONE.width / 2 + 80, PHONE.height - 140, -160);
+  await expect(current).toContainText("History");
+  await swipeAt(emre, PHONE.width / 2 - 80, PHONE.height - 140, 160);
+  await expect(current).toContainText("My requests");
 });
 
 test("Account → Documents: a swipe moves to Policies & Agreements and back", async ({ browser }) => {
@@ -106,6 +116,9 @@ test("Account → Documents: a swipe moves to Policies & Agreements and back", a
   await expect(tabs).toHaveText("Policies & Agreements");
   await swipe(emre, list, 160);
   await expect(tabs).toHaveText("Documents");
+  // And low on the screen, under the short list: the account's page goes on down there.
+  await swipeAt(emre, PHONE.width / 2 + 80, PHONE.height - 140, -160);
+  await expect(tabs).toHaveText("Policies & Agreements");
 });
 
 test("the manager's phone Lineup: a swipe moves through Team, Notes and Read, never the shift", async ({ browser }) => {

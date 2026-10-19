@@ -150,6 +150,71 @@ describe("a tabbed page on a phone", () => {
     expect(selected()).toBe("one");
   });
 
+  // Mert 2026-10-19: Shift Hub → My requests, empty: a swipe on its "You're all caught up" box changed the tab,
+  // one just under it didn't. A page's content ends where its last box does; its page goes on down the screen.
+  it("changes the tab from anywhere on the page, also under a short tab's last box and on its title", () => {
+    render(
+      <main className="app-main" data-testid="area">
+        <h1 data-testid="title">Shift Hub</h1>
+        <Page />
+      </main>,
+    );
+    swipe(screen.getByTestId("area"), [300, 700], [200, 700]);
+    expect(selected()).toBe("two");
+    swipe(screen.getByTestId("title"), [300, 60], [200, 60]);
+    expect(selected()).toBe("three");
+  });
+
+  it("does the same on the account's pages, which have a shell of their own (Account → Documents)", () => {
+    render(
+      <div className="account-shell" data-testid="area">
+        <Page />
+      </div>,
+    );
+    swipe(screen.getByTestId("area"), [300, 700], [200, 700]);
+    expect(selected()).toBe("two");
+  });
+
+  it("keeps a card's own tabs to the card (the manager's phone Lineup)", () => {
+    function Card() {
+      const [tab, setTab] = useState<(typeof TABS)[number]>("one");
+      const swipe = useTabSwipe({ tabs: TABS, active: tab, onSelect: setTab, scope: "self" });
+      return (
+        <div ref={swipe.root} data-testid="card">
+          <div role="tablist" aria-label="Card" ref={swipe.tabs}>
+            {TABS.map((key) => (
+              <button key={key} type="button" role="tab" aria-selected={tab === key}>
+                {key}
+              </button>
+            ))}
+          </div>
+          <p data-testid="card-text">Card {tab}</p>
+        </div>
+      );
+    }
+    render(
+      <main className="app-main" data-testid="area">
+        <Card />
+        <p data-testid="next">Next card</p>
+      </main>,
+    );
+    swipe(screen.getByTestId("next"), [300, 700], [200, 700]);
+    expect(selected()).toBe("one");
+    swipe(screen.getByTestId("card-text"), [300, 100], [200, 100]);
+    expect(selected()).toBe("two");
+  });
+
+  it("leaves what moves sideways on its own in the rest of the page too (the phone's bottom bar, a sheet)", () => {
+    render(
+      <main className="app-main">
+        <Page />
+        <nav aria-label="Phone bar" data-testid="bar" />
+      </main>,
+    );
+    swipe(screen.getByTestId("bar"), [300, 780], [150, 780]);
+    expect(selected()).toBe("one");
+  });
+
   it("does nothing on a computer", () => {
     phone(false);
     render(<Page />);

@@ -277,7 +277,7 @@ function LocationLineup({
   const live = shift.publish.published;
   // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
   const seg: Seg = picked === "read" && !live ? "team" : picked;
-  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg });
+  const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg, scope: "self" });
   const joined = open && seg === "team" && shift.count === 0;
   const panel = `${ids}panel`;
   return (
