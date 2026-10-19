@@ -2463,6 +2463,20 @@ describe("EmployeeDrawer locations and access follow the server", () => {
       expect(screen.getByText(sentence)).toBeTruthy();
     });
 
+    // ROL-CIFT 2.2: somebody who only manages has no "Exclude from schedule"
+    // on their record, so what holds Save does not tell them to turn it on.
+    it("tells somebody who only manages what holds Save without Exclude from schedule", async () => {
+      renderDrawer("employment", managerAt({ access: { employee: false, management: "manager" } }));
+      const server = await screen.findByLabelText("Server");
+      await waitFor(() => expect((server as HTMLInputElement).checked).toBe(true));
+      fireEvent.click(server);
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+      expect(screen.getByText("Choose at least one job, or turn on Remote.")).toBeTruthy();
+      expect(screen.queryByText(/Exclude from schedule/)).toBeNull();
+      fireEvent.click(screen.getByLabelText("Remote"));
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
+    });
+
     it("lets an employee excluded from the schedule lose the last location, as before", async () => {
       renderDrawer("employment", {
         ...detail,

@@ -241,7 +241,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     managerRecord ? "manager" : null,
     draft,
   );
-  const draftReadiness = employeeCreateReadiness(draft);
+  // ROL-CIFT 2.2: somebody who only manages is never scheduled, so their
+  // record shows no "Exclude from schedule": what holds Save does not offer it.
+  const scheduled = props.creating || detail.data?.access.employee !== false;
+  const draftReadiness = employeeCreateReadiness(draft, { scheduled });
   const readiness = managerRefusal
     ? { ...draftReadiness, employeeReady: false, assignmentBlocker: managerRefusal }
     : draftReadiness;
@@ -2516,6 +2519,8 @@ function EmploymentSection({
   /** A manager reads why Terminate is off for them. */
   explainTerminate: boolean;
 }) {
+  // ROL-CIFT 2.2: somebody who only manages is never scheduled.
+  const scheduled = creating || detail?.access.employee !== false;
   // Where the server lets this reader take them off (employee.remove_from_location).
   const removable = detail?.locations.filter((location) => location.removable) ?? [];
   const removableIds = new Set(removable.map((location) => location.id));
@@ -2545,7 +2550,7 @@ function EmploymentSection({
         {/* ROL-CIFT 2.2: only somebody with the employee access is ever
             scheduled, so only their record offers to keep them off it. A new
             record has no access yet: it is offered there as before. */}
-        {creating || detail?.access.employee === true ? (
+        {scheduled ? (
           <label
             className="employee-work-mode off-schedule"
             data-selected={draft.is_excluded_from_schedule ? "true" : "false"}

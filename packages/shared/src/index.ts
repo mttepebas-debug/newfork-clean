@@ -887,6 +887,15 @@ export const managementAndOwnerRefusals = {
   // EMP-001 S2: any job can be primary, Manager too; only the Owner job never is.
   "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
 } as const;
+/**
+ * The same refusals for a record that can't be excluded from the schedule
+ * because it is never on it: somebody who only manages (ROL-CIFT 2.2).
+ */
+export const assignmentRefusalsWithoutExclude = {
+  "employee.location_required": "Choose at least one location and mark one as primary, or turn on Remote.",
+  "employee.job_required": "Choose at least one job, or turn on Remote.",
+  "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote.",
+} as const satisfies Partial<Record<keyof typeof managementAndOwnerRefusals, string>>;
 /** The sentence for one of those hints; undefined for any other hint. */
 export function managementAndOwnerSentence(hint: string | null | undefined): string | undefined {
   const sentences: Readonly<Record<string, string>> = managementAndOwnerRefusals;
