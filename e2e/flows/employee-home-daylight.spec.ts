@@ -73,11 +73,14 @@ test("phone: the next shift folds into the top bar as Home scrolls, and opens fr
   await expect(pill).toHaveCSS("opacity", "0");
 });
 
+// On Requests: a manager page with nothing for the slot. The managers' Home (/app/workspace) puts its own
+// pill there once its greeting scrolls away (Daylight C, KARARLAR S-210); manager-home.spec.ts checks that.
 test("phone: the bar's slot takes no room on a manager's page (zeynep)", async ({ browser }) => {
   const page = await (await browser.newContext({ viewport: PHONE, hasTouch: true, isMobile: true })).newPage();
   await signIn(page, "zeynep");
   await expect(page).not.toHaveURL(/\/sign-in/);
-  await page.goto("/app/workspace");
+  await page.goto("/app/schedule/requests");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText("Requests");
   const slot = page.locator(".mm-top .mm-top-mid");
   await expect(page.locator(".mm-top")).toBeVisible();
   await expect(slot).toHaveCSS("position", "absolute");

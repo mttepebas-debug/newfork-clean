@@ -157,7 +157,18 @@ test("phone: the top bar stays put while Home scrolls under it (zeynep)", async 
   const before = await box();
   expect(before?.height).toBeGreaterThan(0);
   const pill = page.locator(".mm-top-mid .dl-pill");
+  const workspace = bar.locator(".mm-top-workspace");
+  // At the top: the workspace's name, no pill; the slot stays out of the row, so the name keeps its width.
   await expect(pill).toHaveCSS("opacity", "0");
+  await expect(workspace).toHaveCSS("opacity", "1");
+  await expect(page.locator(".mm-top .mm-top-mid")).toHaveCSS("position", "absolute");
+  const room = await page.evaluate(() => {
+    const name = document.querySelector(".mm-top-workspace")!.getBoundingClientRect();
+    const tools = document.querySelector(".mm-top-tools")!.getBoundingClientRect();
+    const text = document.querySelector<HTMLElement>(".mm-top-name")!;
+    return { gap: Math.round(tools.left - name.right), fits: text.scrollWidth <= text.clientWidth };
+  });
+  expect(room.fits || room.gap <= 12).toBe(true);
   for (const y of [200, 600, 100000]) {
     const scrolled = await page.evaluate((y) => {
       const main = document.querySelector<HTMLElement>(".app-main")!;
@@ -167,8 +178,13 @@ test("phone: the top bar stays put while Home scrolls under it (zeynep)", async 
     expect(scrolled).toBeGreaterThan(0);
     await expect.poll(box).toEqual(before);
   }
+  // Scrolled: the pill takes the name's place.
   await expect(pill).toHaveCSS("opacity", "1");
   await expect(pill).toContainText("3 on now");
+  await expect(workspace).toHaveCSS("opacity", "0");
+  await page.evaluate(() => document.querySelector<HTMLElement>(".app-main")!.scrollTo(0, 0));
+  await expect(pill).toHaveCSS("opacity", "0");
+  await expect(workspace).toHaveCSS("opacity", "1");
 });
 
 test("phone: Home leads the bottom bar; one location is one card and no chips (ayse)", async ({ browser }) => {
