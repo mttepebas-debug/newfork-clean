@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import {
   expected,
+  permissionsForRole,
   type ActiveWorkspaceContext,
   type AuthzAction,
   type Permission,
@@ -9,6 +10,7 @@ import {
 import { describe, expect, it } from "vitest";
 import {
   canEnterSettings,
+  canOpenAnySettingsPage,
   canOpenSettingsPage,
   settingsHomePath,
   type SettingsPage,
@@ -373,6 +375,34 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     expect(canOpenSettingsPage(managerWithEveryRead, "locations")).toBe(false);
     const remoteAdmin = contextOf({ role: "admin", permissions: ["settings.locations.read"], locationIds: [] });
     expect(canOpenSettingsPage(remoteAdmin, "locations")).toBe(true);
+  });
+
+  it("opens the catalog, read only, to the built-in manager, and the menu shows Settings (BL-680, K14 S1)", () => {
+    const builtInManager = contextOf({
+      role: "manager",
+      permissions: settingsPermissions.filter((permission) =>
+        permissionsForRole("manager").includes(permission),
+      ),
+      locationIds: [homeLocation],
+    });
+    expect(pages.filter((page) => canOpenSettingsPage(builtInManager, page))).toEqual([
+      "jobs",
+      "scheduling",
+      "shiftCatalog",
+      "documents",
+      "acknowledgements",
+    ]);
+    expect(canOpenAnySettingsPage(builtInManager)).toBe(true);
+    expect(settingsHomePath(builtInManager)).toBe("/app/settings/jobs");
+  });
+
+  it("shows Settings in the menu to whoever opens one of its pages, and only them", () => {
+    const differ = everybody.filter((persona) => {
+      const context = contextOf(persona);
+      return canOpenAnySettingsPage(context) !== pages.some((page) => canOpenSettingsPage(context, page));
+    });
+    expect(differ.map(describePersona)).toEqual([]);
+    expect(canOpenAnySettingsPage(contextOf({ role: "employee", permissions: [], locationIds: [homeLocation] }))).toBe(false);
   });
 });
 

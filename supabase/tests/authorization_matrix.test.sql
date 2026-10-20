@@ -220,13 +220,11 @@ insert into persona values
   ('aydan',  'm', 'manager',  'restricted', '{K}',   '{}', true,  '{K}'),
   ('xavier', 'x', 'owner',    'active',     '{K,B}', '{}', false, '{}'),
   ('oya',    'o', 'owner',    'active',     '{K,B}', '{}', true,  '{}');
--- The manager role an owner starts with holds none of the Settings read
--- permissions below (important_dates.read aside); an owner may grant them to a
--- manager-type role (settings_reads_ask_the_core.test.sql), all but
--- settings.locations.read, which stays with owners and admins (BL-176).
+-- The manager role an owner starts with holds neither Settings read below;
+-- it reads the catalog (jobs, shift catalog, documents: BL-680, K14 S1).
+-- settings.locations.read stays with owners and admins (BL-176).
 update persona set permissions_removed = permissions_removed || array[
-  'settings.locations.read', 'settings.jobs.read', 'settings.shift_catalog.read',
-  'roles.read', 'documents.read']
+  'settings.locations.read', 'roles.read']
 -- It reads and decides the documents of the people where it manages (BL-560).
 where class = 'manager';
 

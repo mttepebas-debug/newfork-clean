@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(48);
+select plan(49);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -31,7 +31,9 @@ select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000002
 select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.manage'), 'admin receives documents.manage');
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000003', true);
-select isnt(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.read'), true, 'manager has no acknowledgement access by default');
+-- BL-680 (K14 S1, S3): the built-in manager reads the acknowledgements and changes none.
+select ok(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.read'), 'manager reads acknowledgements by default (BL-680)');
+select isnt(public.workspace_has_permission('25000000-0000-4000-8000-000000000001', 'documents.manage'), true, 'manager does not manage acknowledgements');
 
 select set_config('request.jwt.claim.sub', '15000000-0000-4000-8000-000000000001', true);
 set local role postgres;
@@ -202,10 +204,11 @@ select lives_ok(
 );
 
 set local role postgres;
-select throws_ok(
+-- BL-680: the built-in manager reads the acknowledgements; it still writes nothing (below).
+select lives_ok(
   $$select public.read_signature_settings_service(
     '15000000-0000-4000-8000-000000000003', '25000000-0000-4000-8000-000000000001')$$,
-  '42501', 'Not allowed', 'manager without permission cannot list templates'
+  'built-in manager lists templates (BL-680)'
 );
 select throws_ok(
   $$select public.save_signature_retention_policy_service(

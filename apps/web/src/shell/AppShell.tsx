@@ -28,6 +28,7 @@ import { useAuth } from "../auth/AuthContext";
 import { WorkspaceSwitcher } from "./WorkspaceSwitcher";
 import { CurrentUserAvatar } from "../account/AccountAvatar";
 import { can } from "../auth/can";
+import { canOpenAnySettingsPage } from "../settings/settings-access";
 import { noAccessHomePath, workspaceLandingPathForRole } from "../auth/resolveLanding";
 import {
   EmployeeViewSidebarLink,
@@ -209,11 +210,8 @@ const settingsNavItem: NavItem = {
   to: "/app/settings",
   label: "Settings",
   icon: Settings,
-  anyOf: [
-    "workspace.manage",
-    "roles.read",
-    "documents.read",
-  ],
+  // Not read: Settings opens by its pages' gates (canViewSettings).
+  anyOf: [],
   section: "management",
 };
 
@@ -309,11 +307,13 @@ export function AppShell() {
       !item.parentTo ||
       !visibleNavItems.some((parent) => parent.to === item.parentTo),
   );
+  // Owners and admins always; anybody else when one of its pages opens to them
+  // (settings-access.ts): a manager who only reads the catalog (BL-680).
   const canViewSettings =
     !employeeShell &&
     (membershipClass(context.membership) === "owner" ||
       membershipClass(context.membership) === "admin" ||
-      settingsNavItem.anyOf.some((permission) => permissions.has(permission)));
+      canOpenAnySettingsPage(context));
   const signOutAfterAvailabilityCheck = () =>
     requestAppNavigation(() => {
       void signOut();

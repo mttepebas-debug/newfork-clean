@@ -51,6 +51,13 @@ export function canOpenSettingsPage(
 
 const settingsPages = Object.keys(settingsPageGates) as SettingsPage[];
 
+/** Is any Settings page open to them: the menu shows Settings (BL-680). */
+export function canOpenAnySettingsPage(
+  context: ActiveWorkspaceContext | null | undefined,
+): boolean {
+  return settingsPages.some((page) => canOpenSettingsPage(context, page));
+}
+
 /**
  * May they enter Settings at all: any Settings page open to them opens it, and
  * so does reading employee documents, whose old Settings links pass through.
@@ -59,10 +66,7 @@ export function canEnterSettings(
   context: ActiveWorkspaceContext | null | undefined,
 ): context is ActiveWorkspaceContext {
   if (!context) return false;
-  return (
-    settingsPages.some((page) => canOpenSettingsPage(context, page)) ||
-    can(context, "documents.read")
-  );
+  return canOpenAnySettingsPage(context) || can(context, "documents.read");
 }
 
 /** Where /app/settings opens: the first page of these open to them. */

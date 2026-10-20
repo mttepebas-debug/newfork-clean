@@ -128,6 +128,12 @@ describe("ManagementMobileNav in the app shell", () => {
     expect(names(morePages())).toEqual(["Availability", "Account", "Sign out"]);
   });
 
+  it("manager who reads the Settings catalog: More offers Settings (BL-680)", () => {
+    context = { ...manager, permissions: [...manager.permissions, "settings.jobs.read"], actions: ["settings.jobs.read"] };
+    mount();
+    expect(names(morePages())).toEqual(["Availability", "Settings", "Account", "Sign out"]);
+  });
+
   it("to a manager who also works shifts, More offers the employee view (FB-6.2.8, ROL-CIFT 6.2)", () => {
     context = { ...manager, membership: { access: { employee: true, management: "manager" } }, actions: ["employee_hub.read"] };
     mount();

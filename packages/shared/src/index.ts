@@ -171,6 +171,11 @@ const rolePermissions = {
     // BL-560: the documents of the people where they manage, as app_private.role_default_permissions.
     "employee_documents.read",
     "employee_documents.review",
+    // BL-680: the Settings catalog, read only (KARARLAR K14 S1).
+    "settings.jobs.read",
+    "settings.shift_catalog.read",
+    "settings.schedule_rules.read",
+    "documents.read",
     "announcements.read",
     "announcements.manage",
     "notifications.read",
