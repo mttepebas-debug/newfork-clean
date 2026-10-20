@@ -98,6 +98,11 @@
   overscroll-behavior: contain;
   scrollbar-width: thin;
 }
+/* It holds what is placed absolutely in it (Call off's spoken status, an .sr-only), so nothing far down a long
+   list makes the page around it scroll (the CI e2e "lists scroll inside their frame", 09238b8d3). */
+.lineup-desk-scroll {
+  position: relative;
+}
 .lineup-desk-scroll > .lineup-short {
   margin: 0 0 10px;
 }
