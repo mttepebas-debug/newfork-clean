@@ -1,6 +1,6 @@
 # Sorular — Mert'e açık
 
-Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan silinir, cevabı `KARARLAR.md`'ye girer. Biçim: CLAUDE.md §2.8.
+Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan silinir, cevabı `KARARLAR.md`'ye girer. Biçim: CLAUDE.md §2.6.
 
 > **2026-10-08 taşıma notu:** aşağıdakiler arşivdeki `docs/archive/2026-10-08-v1/SABAH-SORULAR.md`'nin (2026-10-07 gecesi) cevaplanmamış sorularıdır; başlık ve metin aynen, yalnız arşivdeki S4…S25 soru kimlikleri burada Soru-4…Soru-25 oldu (karar defterindeki S-nn kural kimlikleriyle karışmasın diye; G kimlikleri aynen). Cevaplı olduğu için taşınmayanlar: Soru-1 ve G10 (KOORDINATOR-KARARLARI KK-225, KK-224; dosyadan zaten silinmişlerdi), Soru-3 (KARARLAR "Takas inceleme penceresi H2"), Soru-2'nin gönderim sorusu (Mert'in 2026-10-07 seçimleriyle aşıldı: KK-189, KK-190; içindeki kural sorusu aşağıda Soru-2 olarak açık). SABAH-SORULAR'ın "Soru değil — cevaplı, sonraya ya da Claude'un kararı" ve "Kaynak notları" bölümleri taşınmadı, arşivde kaldı. "Hat", "Bugün" ve dal satırları o gecenin durumudur; soru sorulmadan önce tazeliği ölçülür (KARARLAR S-39, S-63). "KARARLAR:NNN" atıfları arşivdeki `KARARLAR-v1.md` satırlarıdır.
 
