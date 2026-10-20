@@ -64,6 +64,49 @@ describe("ConfirmButton", () => {
     expect(button.textContent).toBe("Confirm delete");
   });
 
+  // A phone counts two taps half a second apart as a double-click (detail 2): the second tap someone meant, after the
+  // words changed, confirms (Mert 2026-10-20, "kesinlikle düzeltilsin"); only a quick double-click stays one gesture.
+  it("confirms a second tap that comes after the words changed, inside the double-click time", () => {
+    vi.useFakeTimers();
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmButton confirmLabel="Click again to call off" onConfirm={onConfirm}>
+        Call off
+      </ConfirmButton>,
+    );
+    const button = screen.getByRole("button");
+
+    fireEvent.click(button, { detail: 1 });
+    act(() => {
+      vi.advanceTimersByTime(450);
+    });
+    fireEvent.click(button, { detail: 2 });
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(button.textContent).toBe("Call off");
+  });
+
+  it("does not arm again on the third click of a triple-click", () => {
+    vi.useFakeTimers();
+    const onConfirm = vi.fn();
+    render(
+      <ConfirmButton confirmLabel="Confirm delete" onConfirm={onConfirm}>
+        Discard
+      </ConfirmButton>,
+    );
+    const button = screen.getByRole("button");
+
+    fireEvent.click(button, { detail: 1 });
+    act(() => {
+      vi.advanceTimersByTime(450);
+    });
+    fireEvent.click(button, { detail: 2 });
+    fireEvent.click(button, { detail: 3 });
+
+    expect(onConfirm).toHaveBeenCalledTimes(1);
+    expect(button.textContent).toBe("Discard");
+  });
+
   it("disarms on Escape, on blur and after the timeout", () => {
     vi.useFakeTimers();
     const onConfirm = vi.fn();

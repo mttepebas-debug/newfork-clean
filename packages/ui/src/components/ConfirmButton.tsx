@@ -1,9 +1,12 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { KeyboardEvent, MouseEvent, ReactNode } from "react";
 import { Button } from "./Button";
 import type { ButtonProps } from "./Button";
 
 const disarmAfterMs = 3200;
+// Two clicks closer than this are one double-click. A phone counts taps up to ~0.5 s apart as a double-click
+// (detail 2), so the browser's count alone would swallow a second tap someone meant (Mert 2026-10-20).
+const quickDoubleClickMs = 300;
 
 // Two-click confirm for actions that only need a bare "are you sure?":
 // the first click arms, the second one confirms. Disarms after a pause, on blur and on Escape.
@@ -11,6 +14,7 @@ const disarmAfterMs = 3200;
 // menu's Delete that opens the editor with its delete already armed.
 export function useConfirmClick(onConfirm: () => void, initiallyArmed = false) {
   const [armed, setArmed] = useState(initiallyArmed);
+  const armedAt = useRef(initiallyArmed ? Date.now() : 0);
 
   useEffect(() => {
     if (!armed) return undefined;
@@ -34,9 +38,11 @@ export function useConfirmClick(onConfirm: () => void, initiallyArmed = false) {
         }
       },
       onClick: (event: MouseEvent<HTMLButtonElement>) => {
-        // The second click of a double-click is one gesture, not a confirmation.
-        if (event.detail > 1) return;
+        // The second click of a quick double-click is one gesture, not a confirmation; a later click of the same
+        // count is a second tap someone meant. A triple-click's third click never arms it again.
+        if (event.detail > 1 && (!armed || Date.now() - armedAt.current < quickDoubleClickMs)) return;
         if (!armed) {
+          armedAt.current = Date.now();
           setArmed(true);
           return;
         }
