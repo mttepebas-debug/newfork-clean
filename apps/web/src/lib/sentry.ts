@@ -34,7 +34,31 @@ export function sentryOptions(env: SentryEnv): Sentry.BrowserOptions | null {
     dataCollection: NO_PERSONAL_DATA,
     integrations: [Sentry.browserTracingIntegration()],
     tracesSampleRate: 0.1,
+    beforeSend: groupStaleBuildChunks,
   };
+}
+
+export const STALE_BUILD_CHUNK_FINGERPRINT = "stale-build-chunk";
+
+// A tab left on an old build asks for chunk files the new deploy renamed
+// (stale-chunk-reload.ts reloads it). Each deploy names new files, so Sentry
+// opened a new issue, and sent a new email, for every one. One fingerprint
+// keeps them in one issue that still counts every time it happens.
+const STALE_BUILD_CHUNK_MESSAGES = [
+  /Failed to fetch dynamically imported module/i, // Chrome, Edge
+  /Importing a module script failed/i, // Safari
+  /error loading dynamically imported module/i, // Firefox
+  /is not a valid JavaScript MIME type/i, // Safari, index.html served for a gone chunk
+  /Unable to preload CSS/i, // Vite, gone stylesheet
+];
+
+function groupStaleBuildChunks<E extends Sentry.ErrorEvent>(event: E): E {
+  const values = event.exception?.values ?? [];
+  const stale = values.some((exception) =>
+    STALE_BUILD_CHUNK_MESSAGES.some((pattern) => pattern.test(exception.value ?? "")),
+  );
+  if (stale) event.fingerprint = [STALE_BUILD_CHUNK_FINGERPRINT];
+  return event;
 }
 
 export function initSentry(
