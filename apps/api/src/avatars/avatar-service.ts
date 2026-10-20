@@ -19,27 +19,31 @@ import {
   type OwnAvatarResponse,
 } from "@newfork/shared";
 import { z } from "zod";
+import { createUserVerifier } from "../auth/verify-user.js";
 import { HttpError, rpcFailure } from "../http-error";
 
 // AVATAR-IKON (design §4.3-4.5): one's own avatar in one workspace, read and written through the API.
-// Every read and write asks the database's authorization core (avatar.self); storage is reached only
-// with the service role, in the workspace's private employee-profile-photos bucket, and only at paths
-// in the caller's own membership's place or paths the database handed back.
+// Every read and write asks the database's authorization core (avatar.self), which also says yes to
+// somebody still onboarding there (5.1): no active workspace context is asked for. Storage is reached
+// only with the service role, in the workspace's private employee-profile-photos bucket, and only at
+// paths in the caller's own membership's place or paths the database handed back.
 
 interface Actor {
   readonly actorUserId: string;
   readonly workspaceId: string;
 }
-/** The caller's own membership here, from the workspace context the API resolved, never from the client. */
+/** The caller's own membership here, the one the core said yes to, never from the client. */
 interface OwnPlace extends Actor {
   readonly membershipId: string;
 }
 
 export interface AvatarService {
+  /** Whose session this is; null when the auth server does not know it. */
+  actor(accessToken: string): Promise<string | null>;
   own(input: Actor): Promise<OwnAvatarResponse>;
   last(input: Actor): Promise<LastAvatarResponse>;
-  prepareUpload(input: OwnPlace & { readonly contentType: EmployeeProfilePhotoMimeType }): Promise<AvatarUploadResponse>;
-  save(input: OwnPlace & { readonly choice: AvatarChoice }): Promise<void>;
+  prepareUpload(input: Actor & { readonly contentType: EmployeeProfilePhotoMimeType }): Promise<AvatarUploadResponse>;
+  save(input: Actor & { readonly choice: AvatarChoice }): Promise<void>;
   remove(input: Actor): Promise<void>;
 }
 
@@ -53,8 +57,14 @@ interface AvatarBucket {
   remove(paths: string[]): StorageResult<unknown>;
   copy(fromPath: string, toPath: string): StorageResult<unknown>;
 }
+type OwnMembershipQuery = {
+  eq(column: "workspace_id" | "user_id", value: string): OwnMembershipQuery;
+  maybeSingle(): PromiseLike<{ data: { id: string } | null; error: RpcError | null }>;
+};
 export interface AvatarClient {
+  auth: Parameters<typeof createUserVerifier>[0]["auth"];
   rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: RpcError | null }>;
+  from(table: "workspace_memberships"): { select(columns: "id"): OwnMembershipQuery };
   storage: { from(bucket: string): AvatarBucket };
 }
 
@@ -107,6 +117,7 @@ function outOfOwnPlace(): HttpError {
 
 export function createAvatarServiceWithClient(client: AvatarClient): AvatarService {
   const bucket = () => client.storage.from(employeeProfilePhotoBucket);
+  const verifyUser = createUserVerifier(client);
 
   async function rpc(name: string, args: Record<string, unknown>) {
     const { data, error } = await client.rpc(name, args);
@@ -114,6 +125,23 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
     return data;
   }
   const actorArgs = (input: Actor) => ({ actor_user_id: input.actorUserId, target_workspace_id: input.workspaceId });
+
+  /**
+   * One's own place here, asked before storage is reached: the core's yes first (avatar.self, the read
+   * that authorizes it), then the membership it said yes to. One membership per person and workspace.
+   */
+  async function ownPlace(input: Actor): Promise<OwnPlace> {
+    await rpc("get_own_avatar_service", actorArgs(input));
+    const { data, error } = await client
+      .from("workspace_memberships")
+      .select("id")
+      .eq("workspace_id", input.workspaceId)
+      .eq("user_id", input.actorUserId)
+      .maybeSingle();
+    if (error) throw rpcFailure(error);
+    if (!data) throw new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
+    return { ...input, membershipId: data.id };
+  }
 
   async function signed(path: string): Promise<string | null> {
     const result = await bucket().createSignedUrl(path, employeeProfilePhotoSignedUrlTtlSeconds);
@@ -170,6 +198,10 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
   }
 
   return {
+    async actor(accessToken) {
+      return (await verifyUser(accessToken))?.id ?? null;
+    },
+
     async own(input) {
       const read = ownRead.parse(await rpc("get_own_avatar_service", actorArgs(input)));
       let avatar: Avatar | null = null;
@@ -193,7 +225,8 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
       return lastAvatarResponseSchema.parse({ avatar, from_workspace_name: avatar ? read.from_workspace_name : null });
     },
 
-    async prepareUpload(input) {
+    async prepareUpload(request) {
+      const input = { ...(await ownPlace(request)), contentType: request.contentType };
       const path = buildMemberAvatarPhotoPath({
         workspaceId: input.workspaceId,
         membershipId: input.membershipId,
@@ -207,11 +240,12 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
 
     async save(input) {
       const { choice } = input;
+      // A drawing touches no storage: the save asks the core itself.
       if ("art_key" in choice) return deleteReplaced(await saveChoice(input, { art_key: choice.art_key }));
 
       if ("photo_path" in choice) {
         // Never read or delete an object outside one's own place, whatever the client sent.
-        if (!isMemberAvatarPhotoPath(choice.photo_path, input)) throw outOfOwnPlace();
+        if (!isMemberAvatarPhotoPath(choice.photo_path, await ownPlace(input))) throw outOfOwnPlace();
         await checkUploadedPhoto(choice.photo_path);
         let replacedPhoto: string | null;
         try {
@@ -229,9 +263,10 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
       const type = last?.source_photo_path ? memberAvatarPhotoContentType(last.source_photo_path) : null;
       if (!last?.source_photo_path || !type)
         throw new HttpError("There is no last avatar to use", 409, { reason: avatarReasons.noLastAvatar });
+      const place = await ownPlace(input);
       const copy = buildMemberAvatarPhotoPath({
-        workspaceId: input.workspaceId,
-        membershipId: input.membershipId,
+        workspaceId: place.workspaceId,
+        membershipId: place.membershipId,
         objectId: crypto.randomUUID(),
         contentType: type,
       });

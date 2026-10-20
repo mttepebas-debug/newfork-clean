@@ -925,7 +925,7 @@ export function buildApp(options: BuildAppOptions = {}) {
   });
   registerNotificationRoutes(app, { service: options.notificationsService, contextResolver });
   registerLineupRoutes(app, { service: options.lineupService, contextResolver });
-  registerAvatarRoutes(app, { service: options.avatarService, contextResolver });
+  registerAvatarRoutes(app, { service: options.avatarService });
   registerSettingsReadsRoutes(app, {
     service: settingsReadsService,
     contextResolver,

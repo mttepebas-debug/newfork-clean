@@ -35,7 +35,7 @@ export function bearerToken(authorization: string | undefined): string {
 const uuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
 /** No session was sent at all (BL-076): sign in, whatever the workspace. */
-function signedOut(): HttpError {
+export function signedOut(): HttpError {
   return new HttpError("Sign in required", 401, { reason: "session.required" });
 }
 
