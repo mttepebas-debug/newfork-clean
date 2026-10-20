@@ -2021,6 +2021,10 @@ describe("App", () => {
       screen.queryByRole("alertdialog", { name: "Discard unsaved changes?" }),
     ).toBeNull();
     await waitFor(() => expect(screen.queryByText("Editing draft")).toBeNull());
+    // QA 42: leaving the edit keeps the week that was being edited on screen.
+    expect(new URLSearchParams(window.location.search).get("date")).toBe(
+      "2026-09-07",
+    );
   }, 20000);
 
   it("confirms retroactive draft saves before acknowledging past edits", async () => {

@@ -1251,7 +1251,7 @@ export function SchedulePage({
     const nextSearch = new URLSearchParams(search);
     nextSearch.set("mode", "preview");
     nextSearch.delete("draft");
-    nextSearch.set("date", today);
+    // The edited week stays on screen (QA 42).
     nextSearch.set("view", "week");
     setSearch(nextSearch, { replace: true });
     setPendingOps([]);
