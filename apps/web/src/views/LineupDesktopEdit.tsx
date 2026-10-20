@@ -399,7 +399,8 @@ export function SectionsWindow({
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
     if (!first || !last) return;
-    if (event.shiftKey && document.activeElement === first) {
+    // The window itself (after a click on its empty part) counts as before the first field.
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === box.current)) {
       event.preventDefault();
       last.focus();
     } else if (!event.shiftKey && document.activeElement === last) {

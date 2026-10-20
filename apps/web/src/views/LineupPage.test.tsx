@@ -1826,6 +1826,10 @@ describe("LineupPage, editing a draft on the desktop", () => {
     expect(window_.getAttribute("tabindex")).toBe("-1");
     window_.focus();
     expect(document.activeElement).toBe(window_);
+    // Shift+Tab from there goes round to the last button, not out of the window.
+    fireEvent.keyDown(window_, { key: "Tab", shiftKey: true });
+    expect(document.activeElement).toBe(within(window_).getByRole("button", { name: "Done" }));
+    window_.focus();
     fireEvent.keyDown(window_, { key: "Escape" });
     expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
   });
