@@ -383,6 +383,11 @@ describe("organization settings routes", () => {
         serviceMethod: "readSchedulingSettings",
       },
       {
+        method: "GET",
+        url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`,
+        serviceMethod: "readSchedulingSettings",
+      },
+      {
         method: "PUT",
         url: `/v1/workspaces/${workspaceId}/scheduling-settings`,
         payload: settings,
@@ -414,6 +419,31 @@ describe("organization settings routes", () => {
       expect(response.json()).toEqual({ error: "Workspace not found" });
       expect(service[route.serviceMethod]).not.toHaveBeenCalled();
     }
+  });
+
+  it.each([
+    ["suspended", { membership: { ...context.membership, status: "suspended" as const } }],
+    ["held back by a document", { documentAccess: { restricted: true } }],
+  ])("tells a %s manager who holds the read that the conflict rules are not found", async (_who, held) => {
+    const service = organizationSettingsServiceMock();
+    const manager = {
+      ...context,
+      membership: { ...context.membership, access: { employee: false, management: "manager" as const } },
+      permissions: ["workspace.read", "settings.schedule_rules.read"],
+    };
+    const app = buildApp({
+      organizationSettingsService: service,
+      contextResolver: { resolve: async () => ({ ...manager, ...held }) as ActiveWorkspaceContext },
+    });
+    const response = await app.inject({
+      method: "GET",
+      url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`,
+      headers: { authorization: "Bearer valid-token" },
+    });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toEqual({ error: "Workspace not found" });
+    expect(service.readSchedulingSettings).not.toHaveBeenCalled();
+    await app.close();
   });
 
   // BL-172: somebody without the right is told no before anything about the
