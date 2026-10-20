@@ -101,12 +101,13 @@ jobs:
       # script (ILKELER P16: a new check arrives as a warning).
       - name: Schema snapshot matches the migrations
         run: node scripts/schema-snapshot.mjs check
-      # The Schedule speed budget stays on the green list (it only grows) but
+      # The speed budgets stay on the green list (it only grows) but
       # runs in the db-budget job below, alone, once the PC is quiet.
       - name: pgTAP (green list)
-        run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt | grep -vxF "$BUDGET_TEST")
+        run: supabase test db $(tr -d '\r' < supabase/tests/ci-green.txt | grep -vxFf <(tr ' ' '\n' <<< "$BUDGET_TESTS"))
         env: &budget
-          BUDGET_TEST: supabase/tests/schedule_grid_read_budget.test.sql
+          # The speed budgets: the Schedule grid and the managers' Home (YH-AUTHZ).
+          BUDGET_TESTS: supabase/tests/schedule_grid_read_budget.test.sql supabase/tests/manager_home_read_budget.test.sql
       # Only after the rename took: otherwise this would stop the shared stack.
       # BL-143: `supabase stop` ends by pruning Docker networks, and Docker's
       # prune lock is per-daemon, not per-project -- when the db and e2e jobs
@@ -143,8 +144,8 @@ jobs:
       - run: echo "SUPABASE_INTERNAL_IMAGE_REGISTRY=public.ecr.aws" >> "$GITHUB_ENV"
       - *apart
       - *start-db
-      - name: pgTAP (Schedule speed budget, alone)
-        run: supabase test db "$BUDGET_TEST"
+      - name: pgTAP (speed budgets, alone)
+        run: supabase test db $BUDGET_TESTS
         env: *budget
       - *stop-db
 
