@@ -8,14 +8,17 @@ import {
   emergencyIsOwnPhoneMessage,
   employeeInputSchema,
   hasTurkishOnlyLetters,
+  invitationAccessRefusal,
   managerLocationRefusal,
   employeeSectionSchema,
   sameUsPhone,
   toUsPhone,
   usLettersMessage,
   usPhoneMessage,
+  type EmployeeAccessImpact,
   type EmployeeDetail,
   type EmployeeInput,
+  type EmployeeInvitationAccess,
   type EmployeeCreateCommand,
   type EmployeeCreateResult,
   type EmployeeOnboardingManager,
@@ -26,7 +29,6 @@ import { Button, ConfirmButton, useConfirmClick, useToast } from "@newfork/ui";
 import { ConfirmDialog } from "../shell/ConfirmDialog";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  AlertTriangle,
   Archive,
   ArrowLeft,
   ArrowRight,
@@ -36,10 +38,8 @@ import {
   Clock3,
   FileText,
   History,
-  ImageOff,
   KeyRound,
   MailPlus,
-  ClipboardCopy,
   Pencil,
   RotateCcw,
   UserRound,
@@ -63,9 +63,7 @@ import { NoAccessState } from "../shell/NoAccessState";
 import {
   LinesOutline,
   LoadError,
-  LoadingOutline,
   RefreshError,
-  Skeleton,
 } from "../shell/LoadState";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
@@ -73,24 +71,21 @@ import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
 import "./employee-termination.css";
 import {
   getEmployeeDetail,
-  getEmployeeAvatar,
+  changeEmployeeAccess,
   createEmployee,
-  type InviteRoleOption,
-  loadEmployeeInvitationLink,
   decidePreferredName,
   listPendingPreferredNames,
   saveOwnEmploymentContact,
   loadEmployeeReferenceData,
   prepareEmployeeInvitation,
-  removeEmployeeAvatar,
+  previewEmployeeAccessChange,
   removeEmployeeAccess,
   removeEmployeeFromLocation,
-  retryEmployeeInvitation,
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
   terminateEmployee,
-  updateEmployeeRole,
+  updateEmployeeInvitationAccess,
   type EmployeeTerminationInput,
   type EmployeeDepartmentOption,
   type EmployeeOption,
@@ -113,6 +108,17 @@ import {
 import { refreshExchangeSurfaces } from "../employee-hub/shift-exchanges/exchange-data";
 import { WindowAlert } from "../shell/WindowAlert";
 import { membershipClass } from "../auth/access";
+import {
+  AccessTab,
+  DrawerAvatar,
+  accessFromDetail,
+  accessKey,
+  accessSummary,
+  managementRoleOptions,
+  noAccessChosen,
+  type AccessDraft,
+  type AccessTabProps,
+} from "./EmployeeAccessFields";
 
 const sections = [
   ["profile", "Profile", UserRound],
@@ -139,13 +145,21 @@ const emptyDraft: EmployeeInput = {
   expected_revision: null,
 };
 
+const noImpact: EmployeeAccessImpact = {
+  shifts_opened: 0,
+  requests_closed: 0,
+  applications_closed: 0,
+  time_off_withdrawn: 0,
+  availability_deleted: false,
+};
+
 interface EmployeeDrawerProps {
   readonly employeeId: string | null;
   readonly creating: boolean;
   readonly section: EmployeeSection;
   readonly onSectionChange: (section: EmployeeSection) => void;
   readonly onClose: () => void;
-  readonly onCreated: (employeeId: string) => void;
+  readonly onCreated: (employeeId: string, section?: EmployeeSection) => void;
   readonly onOnboardingReviewSuccess?: (review: {
     readonly action: "accept_requirement" | "reject_requirement";
     readonly requirementId: string;
@@ -179,7 +193,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     ),
   });
   const [draft, setDraft] = useState<EmployeeInput>(emptyDraft);
-  const [inviteRoleId, setInviteRoleId] = useState<string>("");
   const [error, setError] = useState<string | null>(null);
   const [developmentUrl, setDevelopmentUrl] = useState<string | null>(null);
   const [terminationOpen, setTerminationOpen] = useState(false);
@@ -196,11 +209,12 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const [terminationNotice, setTerminationNotice] = useState<string | null>(
     null,
   );
-  const [inviteRoleDirty, setInviteRoleDirty] = useState(false);
-  const [inviteRoleAttempt, setInviteRoleAttempt] = useState(0);
-  // The workspace role (EMP-001 item 15): picked here, saved by Save changes
-  // with its own command. Untouched, it follows the record.
-  const [rolePicked, setRolePicked] = useState<string | null>(null);
+  // DAVET-ERISIM (Tur 4 B): the Access tab's two accesses. Untouched, they
+  // follow the record; Invite with nothing chosen shakes the choice (attempt);
+  // a new record shows its Access step once Invite was asked for (started).
+  const [accessDraft, setAccessDraft] = useState<AccessDraft | null>(null);
+  const [accessAttempt, setAccessAttempt] = useState(0);
+  const [accessStarted, setAccessStarted] = useState(false);
   const [createResult, setCreateResult] = useState<EmployeeCreateResult | null>(
     null,
   );
@@ -248,6 +262,84 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const readiness = managerRefusal
     ? { ...draftReadiness, employeeReady: false, assignmentBlocker: managerRefusal }
     : draftReadiness;
+  // DAVET-ERISIM (Tur 4 B): what the record holds, what the tab now says, and
+  // what an invitation or an access change would send.
+  const linkedRecord = !props.creating && Boolean(detail.data?.user_id);
+  const accessSaved =
+    props.creating || !detail.data ? noAccessChosen : accessFromDetail(detail.data);
+  const accessNow = accessDraft ?? accessSaved;
+  const managementRoles = managementRoleOptions(references.data?.inviteRoles ?? []).filter(
+    // An admin is made by who may make one (the server asks again).
+    (role) => !linkedRecord || role.accessClass !== "admin" || (detail.data?.allowed.make_admin ?? false),
+  );
+  const accessRoleClass: WorkspaceRole | undefined = accessNow.management
+    ? (managementRoles.find((role) => role.id === accessNow.managementRoleId)?.accessClass ??
+      (accessNow.managementRoleId === accessSaved.managementRoleId
+        ? (detail.data?.is_workspace_owner ? "owner" : (detail.data?.access.management ?? undefined))
+        : undefined))
+    : undefined;
+  // A role picked and since deleted (or no longer the reader's to give) is no role.
+  const accessRoleOffered =
+    managementRoles.some((role) => role.id === accessNow.managementRoleId) ||
+    (accessNow.managementRoleId !== "" && accessNow.managementRoleId === accessSaved.managementRoleId);
+  const accessProblem = invitationAccessRefusal(
+    { ...accessNow, managementRoleId: accessRoleOffered ? accessNow.managementRoleId : "" },
+    accessRoleClass,
+  );
+  const invitationOut =
+    !props.creating &&
+    !linkedRecord &&
+    detail.data?.invitation?.status === "pending" &&
+    Date.parse(detail.data.invitation.expires_at) > Date.now();
+  // The employee app keeps the role it has (a workspace's own employee role),
+  // else the workspace's Employee role.
+  const employeeRoleId =
+    (linkedRecord ? detail.data?.employee_role_id : detail.data?.invitation?.employee_role_id) ??
+    references.data?.inviteRoles.find((role) => role.systemKey === "employee")?.id ??
+    null;
+  const accessToSend: EmployeeInvitationAccess = {
+    employee_role_id: accessNow.employee ? employeeRoleId : null,
+    management_role_id: accessNow.management ? accessNow.managementRoleId || null : null,
+    managed_location_ids:
+      accessNow.management && accessRoleClass === "manager" ? [...accessNow.managedLocationIds] : [],
+  };
+  const accessEditable =
+    !props.creating &&
+    !detail.data?.archived_at &&
+    !detail.data?.is_workspace_owner &&
+    (linkedRecord ? (detail.data?.allowed.change_role ?? false) : (detail.data?.allowed.invite ?? false));
+  // Only a joined person's access, or an invitation still out, is saved by Save changes.
+  const accessDirty =
+    accessEditable &&
+    (linkedRecord || invitationOut) &&
+    accessDraft !== null &&
+    accessKey(accessDraft) !== accessKey(accessSaved);
+  const droppingEmployeeApp = linkedRecord && accessDirty && accessSaved.employee && !accessNow.employee;
+  // Taking away an access someone holds is a decision: Save turns red and asks twice.
+  const accessRemoval =
+    linkedRecord && accessDirty
+      ? accessSaved.employee && !accessNow.employee
+        ? "Remove employee app"
+        : accessSaved.management && !accessNow.management
+          ? "Remove management app"
+          : null
+      : null;
+  const accessPreview = useQuery({
+    queryKey: [
+      "employee-access-preview",
+      workspaceId,
+      props.employeeId,
+      accessToSend.employee_role_id,
+      accessToSend.management_role_id,
+    ],
+    queryFn: () =>
+      previewEmployeeAccessChange(workspaceId, props.employeeId ?? "", {
+        employee_role_id: accessToSend.employee_role_id,
+        management_role_id: accessToSend.management_role_id,
+      }),
+    enabled: Boolean(workspaceId && props.employeeId && droppingEmployeeApp),
+  });
+  const createAccessOpen = props.creating && accessStarted && readiness.employeeReady && readiness.emailReady;
   const allowedSections = sections.filter(
     ([key]) =>
       (key !== "availability" || can(context, "availability.team_read")) &&
@@ -260,20 +352,26 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 (detail.data.allowed.invite ||
                   detail.data.allowed.remove_access ||
                   detail.data.allowed.change_role ||
-                  // The profile photo is removed here.
-                  detail.data.allowed.save ||
                   // The server gives the invitation only to who may read access.
                   detail.data.invitation !== null),
             ))),
   );
+  // A new record: Profile, Employment, and Access once Invite asked for it.
   const activeSection =
-    props.creating && (props.section !== "employment" || !readiness.namesReady)
-      ? "profile"
-      : allowedSections.some(([key]) => key === props.section)
-        ? props.section
-        : "profile";
+    props.creating && props.section === "access" && createAccessOpen
+      ? "access"
+      : props.creating && (props.section !== "employment" || !readiness.namesReady)
+        ? // An Access step whose Employment broke goes back there.
+          props.section === "access" && accessStarted && readiness.namesReady
+          ? "employment"
+          : "profile"
+        : allowedSections.some(([key]) => key === props.section)
+          ? props.section
+          : "profile";
   const visibleSections = props.creating
-    ? sections.slice(0, 2)
+    ? accessStarted
+      ? [...sections.slice(0, 2), sections[4]]
+      : sections.slice(0, 2)
     : allowedSections;
   const DrawerForm =
     !props.creating && activeSection === "availability" ? "div" : "form";
@@ -286,7 +384,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     props.creating ? "new" : (props.employeeId ?? "")
   }`;
   const lastDraftSubjectKeyRef = useRef<string | null>(null);
-  const lastInviteRoleSubjectKeyRef = useRef<string | null>(null);
   const allowNextDraftRefreshRef = useRef(false);
   const baseline = props.creating
     ? emptyDraft
@@ -325,16 +422,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const saveHeldReasonId = useId();
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
-  const roleSaved = detail.data?.role_id ?? "";
-  const roleNow = rolePicked ?? roleSaved;
-  // The role is picked only on a linked, active record the server lets the
-  // reader change it on.
-  const roleEditable =
-    !props.creating &&
-    Boolean(detail.data?.user_id) &&
-    !detail.data?.archived_at &&
-    (detail.data?.allowed.change_role ?? false);
-  const roleDirty = roleEditable && roleNow !== roleSaved;
   // The owner's own emergency contact goes with the one Save (K3, P20).
   const ownOwnerRecord = Boolean(
     detail.data &&
@@ -371,7 +458,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !hasTurkishOnlyLetters(contactNow.name) &&
     !hasTurkishOnlyLetters(contactNow.relationship);
   // What Save changes has to send; Terminate and Invite wait for it too.
-  const anyDirty = dirty || roleDirty || contactDirty;
+  const anyDirty = dirty || accessDirty || contactDirty;
 
   useEffect(() => {
     const subjectChanged = lastDraftSubjectKeyRef.current !== draftSubjectKey;
@@ -395,7 +482,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         commandRef.current = null;
       }
       setUncertainCreate(false);
-      setRolePicked(null);
+      setAccessDraft(null);
+      setAccessAttempt(0);
+      setAccessStarted(false);
       setContactDraft(null);
       setTerminationNotice(null);
     }
@@ -405,25 +494,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     draftEditedRef.current = true;
     setDraft(update);
   };
-
-  useEffect(() => {
-    const pendingRoleId = detail.data?.invitation?.role_id;
-    const subjectChanged =
-      lastInviteRoleSubjectKeyRef.current !== draftSubjectKey;
-    if (
-      subjectChanged &&
-      props.employeeId === createdIdRef.current &&
-      inviteRoleDirty
-    ) {
-      lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
-      return;
-    }
-    if (!subjectChanged && inviteRoleDirty) return;
-    setInviteRoleId(pendingRoleId ?? "");
-    setInviteRoleDirty(false);
-    setInviteRoleAttempt(0);
-    lastInviteRoleSubjectKeyRef.current = draftSubjectKey;
-  }, [detail.data?.invitation?.role_id, draftSubjectKey, inviteRoleDirty]);
 
   useEffect(() => {
     const close = (event: KeyboardEvent) => {
@@ -457,7 +527,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const readOnly = archived || !canSave;
   // Save changes is there for whoever may save the record or, on a record
   // they may not, change the role.
-  const canSubmit = !readOnly || roleEditable;
+  const canSubmit = !readOnly || (accessEditable && linkedRecord);
   // A manager who may take them off a location but not end their employment
   // still sees Terminate, switched off, with the reason (FB-6.2.8).
   const managerCannotTerminate =
@@ -478,7 +548,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
   const createMutation = useMutation({
     mutationFn: (command: EmployeeCreateCommand) =>
       createEmployee(workspaceId, command),
-    onSuccess: (result) => {
+    onSuccess: (result, command) => {
       createdIdRef.current = result.id;
       setCreateResult(result);
       setDevelopmentUrl(result.invitation?.developmentUrl ?? null);
@@ -486,7 +556,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       setError(null);
       draftEditedRef.current = false;
       allowNextDraftRefreshRef.current = true;
-      props.onCreated(result.id);
+      // Invited from the Access step, the drawer stays there (Tur 4 B).
+      if (command.invite_access) props.onCreated(result.id, "access");
+      else props.onCreated(result.id);
       void queryClient.invalidateQueries({
         queryKey: ["employees", workspaceId],
       });
@@ -505,9 +577,9 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     },
   });
   const saveMutation = useMutation({
-    // The record, then the role: two commands, in that order, because the
-    // role service moves the record's revision on. The record that landed is
-    // no longer dirty, so when the role fails a retry sends the role alone.
+    // The record, then the access: two commands, in that order, because the
+    // access service moves the record's revision on. The record that landed is
+    // no longer dirty, so when the access fails a retry sends the access alone.
     mutationFn: async () => {
       let savedId = props.employeeId ?? "";
       const recordSent = dirty;
@@ -534,19 +606,33 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           throw new Error("Emergency contact could not be saved");
         }
       }
-      if (roleDirty) {
+      const accessSent = accessDirty;
+      if (accessSent) {
         try {
-          await updateEmployeeRole(workspaceId, savedId, roleNow);
+          if (linkedRecord) {
+            // What the reader was shown is what happens; a change since refuses it.
+            const impact: EmployeeAccessImpact = droppingEmployeeApp
+              ? (accessPreview.data ??
+                (await previewEmployeeAccessChange(workspaceId, savedId, {
+                  employee_role_id: accessToSend.employee_role_id,
+                  management_role_id: accessToSend.management_role_id,
+                })))
+              : noImpact;
+            await changeEmployeeAccess(workspaceId, savedId, { ...accessToSend, expected_impact: impact });
+          } else {
+            await updateEmployeeInvitationAccess(workspaceId, savedId, accessToSend);
+          }
         } catch (cause) {
           // The form takes up the record that did land before the error shows.
           if (recordSent) await refreshRecord();
+          if (droppingEmployeeApp) void accessPreview.refetch();
           throw cause;
         }
         // A form touched and put back still takes up the new revision.
         draftEditedRef.current = false;
         allowNextDraftRefreshRef.current = true;
       }
-      return { savedId, recordSent, roleSent: roleDirty, contactSent };
+      return { savedId, recordSent, roleSent: accessSent, contactSent };
     },
     onSuccess: async ({ savedId, recordSent, roleSent, contactSent }) => {
       await Promise.all([
@@ -565,7 +651,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             ]
           : []),
       ]);
-      setRolePicked(null);
+      // A record saved alone keeps what Access holds for an Invite to come.
+      if (roleSent) {
+        setAccessDraft(null);
+        setAccessAttempt(0);
+      }
       if (contactSent) setContactDraft(null);
       setError(null);
       if (props.creating) props.onCreated(savedId);
@@ -631,41 +721,20 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     onError: (cause) => setError(errorMessage(cause)),
   });
   const inviteMutation = useMutation({
-    mutationFn: () => {
+    // The access chosen when Invite was pressed, not one read after a save.
+    mutationFn: (access: EmployeeInvitationAccess) => {
       setCreateResult(null);
       return prepareEmployeeInvitation(
         workspaceId,
         props.employeeId ?? "",
         draft.invitation_email,
-        inviteRoleId || null,
+        access,
       );
     },
     onSuccess: async (result) => {
       setDevelopmentUrl(result.developmentUrl ?? null);
-      setInviteRoleDirty(false);
-      setError(null);
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
-        queryClient.invalidateQueries({
-          queryKey: ["employee-detail", workspaceId, props.employeeId],
-        }),
-      ]);
-    },
-    onError: async (cause) => {
-      setError(errorMessage(cause));
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
-        queryClient.invalidateQueries({
-          queryKey: ["employee-detail", workspaceId, props.employeeId],
-        }),
-      ]);
-    },
-  });
-  const retryInvitationMutation = useMutation({
-    mutationFn: () =>
-      retryEmployeeInvitation(workspaceId, props.employeeId ?? ""),
-    onSuccess: async (result) => {
-      setDevelopmentUrl(result.developmentUrl ?? null);
+      setAccessDraft(null);
+      setAccessAttempt(0);
       setError(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
@@ -689,7 +758,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       revokeEmployeeInvitation(workspaceId, props.employeeId ?? ""),
     onSuccess: async () => {
       setDevelopmentUrl(null);
-      setInviteRoleDirty(false);
+      setAccessDraft(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
         queryClient.invalidateQueries({
@@ -703,7 +772,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     mutationFn: () => removeEmployeeAccess(workspaceId, props.employeeId ?? ""),
     onSuccess: async () => {
       setDevelopmentUrl(null);
-      setInviteRoleDirty(false);
+      setAccessDraft(null);
       setError(null);
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ["employees", workspaceId] }),
@@ -806,39 +875,27 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     createMutation.isPending ||
     saveMutation.isPending ||
     inviteMutation.isPending ||
-    retryInvitationMutation.isPending ||
-    removeAccessMutation.isPending;
+    removeAccessMutation.isPending ||
+    // What dropping the employee app does is read before Save.
+    (droppingEmployeeApp && accessPreview.isFetching);
   const done =
     !props.creating &&
     !anyDirty &&
     (createResult !== null || saveMutation.isSuccess);
-  const rolesState = references.isError ? "error" : references.data ? "ready" : "loading";
-  // The server sends only the roles this person may invite with (BL-231).
-  const inviteRoles = [...(references.data?.inviteRoles ?? [])]
-    .sort((a, b) => {
-      const rank = (key: string | null) =>
-        key === "employee"
-          ? 0
-          : key === "manager"
-            ? 1
-            : key === "admin"
-              ? 2
-              : 3;
-      return (
-        rank(a.systemKey) - rank(b.systemKey) || a.name.localeCompare(b.name)
-      );
-    });
-  const inviteRoleReady = inviteRoles.some((role) => role.id === inviteRoleId);
   const inviteReady =
     readiness.employeeReady &&
     readiness.emailReady &&
-    inviteRoleReady &&
+    !accessProblem &&
     canManageAccess &&
     !readOnly;
   const changeSection = (section: EmployeeSection) => {
     if (busy || uncertainCreate) return;
     if (props.creating && section === "employment" && !readiness.namesReady)
       return;
+    if (props.creating && section === "access") {
+      if (!readiness.employeeReady || !readiness.emailReady) return;
+      setAccessStarted(true);
+    }
     if (section !== activeSection) props.onSectionChange(section);
   };
   useEffect(() => {
@@ -962,10 +1019,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     };
   }, [props.creating, busy]);
   const startCreate = (invite: boolean) => {
-    if (invite && !inviteRoles.some((role) => role.id === inviteRoleId)) {
-      setInviteRoleAttempt((current) => current + 1);
-      return;
-    }
     if (
       busy ||
       submittingCreateRef.current ||
@@ -975,18 +1028,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
       (invite && !inviteReady)
     )
       return;
-    // An invitation as a manager makes them one (K4).
-    const invitedManagerRefusal = invite
-      ? managerLocationRefusal(roleClass(inviteRoleId), draft)
-      : undefined;
-    if (invitedManagerRefusal) {
-      setError(invitedManagerRefusal);
-      return;
-    }
     const command: EmployeeCreateCommand = {
       request_id: crypto.randomUUID(),
       employee: employeeInputSchema.parse(draft),
-      invite_role_id: invite ? inviteRoleId : null,
+      invite_access: invite ? accessToSend : null,
     };
     commandRef.current = command;
     submittingCreateRef.current = true;
@@ -1025,10 +1070,30 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     saveMutation.mutate();
   };
 
-  const handleInviteRoleChange = (roleId: string): void => {
-    setInviteRoleId(roleId);
-    setInviteRoleDirty(true);
-    setInviteRoleAttempt(0);
+  // Invite takes the reader to Access (Tur 4 B); with nothing chosen there the
+  // choice shakes red, the way the footer's role picker used to.
+  const inviteClick = async () => {
+    const access = accessToSend;
+    setAccessStarted(true);
+    if (accessProblem) {
+      if (activeSection !== "access") props.onSectionChange("access");
+      setAccessAttempt((current) => current + 1);
+      return;
+    }
+    if (props.creating) {
+      startCreate(true);
+      return;
+    }
+    if (anyDirty) {
+      try {
+        await saveMutation.mutateAsync();
+      } catch {
+        return;
+      }
+    }
+    // A record saved on the way went to Profile; the invitation is read on Access.
+    props.onSectionChange("access");
+    inviteMutation.mutate(access);
   };
   const handleAddEmail = (): void => {
     focusEmailOnProfileRef.current = true;
@@ -1037,7 +1102,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
 
   // Out of reach: only the card, no nameless record beside it (BL-402).
   const noAccess = isNoAccess(detail.error);
-  // A role just saved and nothing typed since (BL-463, BL-477).
+  // An access just saved and nothing typed since (BL-463, BL-477).
   const roleJustSaved =
     saveMutation.isSuccess && saveMutation.data.roleSent && !anyDirty;
   return (
@@ -1109,10 +1174,20 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 aria-label="Employee sections"
               >
                 <div className="employee-identity">
-                  {/* A person still loading is not drawn as a new one (QA 55). */}
-                  <span className="employee-avatar" aria-hidden>
-                    {(draft.first_name || (props.creating ? "N" : "")).slice(0, 1).toUpperCase()}
-                  </span>
+                  {!props.creating && detail.data ? (
+                    <DrawerAvatar
+                      workspaceId={detail.data.workspace_id}
+                      employeeId={detail.data.id}
+                      initial={(draft.first_name || "N").slice(0, 1).toUpperCase()}
+                      name={draft.first_name.trim() || "this person"}
+                      canRemove={!archived && (allowed?.save ?? false)}
+                    />
+                  ) : (
+                    // A person still loading is not drawn as a new one (QA 55).
+                    <span className="employee-avatar" aria-hidden>
+                      {(draft.first_name || (props.creating ? "N" : "")).slice(0, 1).toUpperCase()}
+                    </span>
+                  )}
                   <strong id="employee-drawer-title">
                     {props.creating
                       ? "New employee"
@@ -1166,7 +1241,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         uncertainCreate ||
                         (props.creating &&
                           key === "employment" &&
-                          !readiness.namesReady)
+                          !readiness.namesReady) ||
+                        (props.creating && key === "access" && !createAccessOpen)
                       }
                       data-group-start={index === 3 || index === 4}
                       onClick={() => changeSection(key)}
@@ -1180,7 +1256,21 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
             )}
 
             <div className="employee-drawer-content">
-              <div className="employee-drawer-mobile-header">
+              <div
+                className={`employee-drawer-mobile-header${
+                  !props.creating && detail.data && !noAccess ? " has-avatar" : ""
+                }`}
+              >
+                {!props.creating && detail.data && !noAccess ? (
+                  <DrawerAvatar
+                    compact
+                    workspaceId={detail.data.workspace_id}
+                    employeeId={detail.data.id}
+                    initial={(draft.first_name || "N").slice(0, 1).toUpperCase()}
+                    name={draft.first_name.trim() || "this person"}
+                    canRemove={!archived && (allowed?.save ?? false)}
+                  />
+                ) : null}
                 {props.creating ? (
                   <nav
                     className="employee-create-steps"
@@ -1196,7 +1286,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                         disabled={
                           busy ||
                           uncertainCreate ||
-                          (key === "employment" && !readiness.namesReady)
+                          (key === "employment" && !readiness.namesReady) ||
+                          (key === "access" && !createAccessOpen)
                         }
                         onClick={() => changeSection(key)}
                       >
@@ -1271,7 +1362,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   <RefreshError
                     // The sections stay hidden until it reads again, so nothing
                     // stale is offered for editing.
-                    message={`${roleJustSaved ? "Role saved. " : ""}This employee didn't reload.`}
+                    message={`${roleJustSaved ? "Access saved. " : ""}This employee didn't reload.`}
                     retrying={detail.isFetching}
                     onRetry={() => void detail.refetch()}
                   />
@@ -1291,12 +1382,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       draft,
                       updateDraft,
                       detail.data,
-                      // One order for every role picker (AC4, BL-669).
-                      references.data
-                        ? { ...references.data, inviteRoles }
-                        : references.data,
-                      inviteRoleId,
-                      handleInviteRoleChange,
+                      references.data,
                       emailInputRef,
                       handleAddEmail,
                       readOnly || busy || uncertainCreate,
@@ -1310,17 +1396,56 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                           reason,
                         }),
                       reviewMutation.isPending,
-                      () => retryInvitationMutation.mutate(),
-                      retryInvitationMutation.isPending,
-                      () => revokeMutation.mutate(),
-                      revokeMutation.isPending,
-                      () => removeAccessMutation.mutate(),
-                      removeAccessMutation.isPending,
+                      {
+                        detail: detail.data,
+                        draft,
+                        now: accessNow,
+                        saved: accessSaved,
+                        onChange: (next) => {
+                          setAccessDraft(next);
+                          setAccessAttempt(0);
+                        },
+                        attempt: accessAttempt,
+                        problem: accessProblem,
+                        roles: managementRoles,
+                        locations: (references.data?.locations ?? []).filter(
+                          (location) => !location.archived,
+                        ),
+                        jobs: references.data?.jobs ?? [],
+                        editable: props.creating
+                          ? canManageAccess && !busy
+                          : accessEditable && !busy,
+                        invitationReadOnly: archived || !canManageAccess || busy,
+                        canRemoveAccess: !archived && (allowed?.remove_access ?? false),
+                        impact: accessPreview.data,
+                        managesPicker: (
+                          <AssignmentPicker
+                            label="Manages"
+                            required={props.creating || accessEditable}
+                            options={(references.data?.locations ?? []).filter(
+                              (location) => !location.archived,
+                            )}
+                            selected={accessNow.managedLocationIds}
+                            primary={null}
+                            primaryChoice={false}
+                            searchable={false}
+                            disabled={!(props.creating ? canManageAccess : accessEditable) || busy}
+                            onChange={(ids) => {
+                              setAccessDraft({ ...accessNow, managedLocationIds: ids });
+                              setAccessAttempt(0);
+                            }}
+                          />
+                        ),
+                        onAddEmail: handleAddEmail,
+                        onResend: () => void inviteClick(),
+                        resending: inviteMutation.isPending,
+                        onRevoke: () => revokeMutation.mutate(),
+                        revoking: revokeMutation.isPending,
+                        onRemoveAccess: () => removeAccessMutation.mutate(),
+                        removingAccess: removeAccessMutation.isPending,
+                      },
                       (context ? membershipClass(context.membership) : undefined) ?? "employee",
                       allowed,
-                      roleNow,
-                      setRolePicked,
-                      busy,
                       ownOwnerRecord
                         ? {
                             value: contactNow,
@@ -1383,8 +1508,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     <div>
                       <strong>{draft.invitation_email}</strong>
                       <span>
-                        {inviteRoles.find((role) => role.id === inviteRoleId)
-                          ?.name ?? "Choose an invite role"}
+                        {accessProblem
+                          ? "Access is chosen when you invite"
+                          : accessSummary(
+                              accessNow,
+                              managementRoles,
+                              references.data?.locations ?? [],
+                            )}
                       </span>
                     </div>
                     <button
@@ -1478,36 +1608,20 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
           {props.creating ? (
             <footer className="employee-drawer-footer employee-create-footer">
               <div />
-              {canManageAccess ? (
-                <div className="employee-create-role">
-                  <InviteRoleField
-                    roles={inviteRoles}
-                    inviteRoleId={inviteRoleId}
-                    onInviteRoleChange={handleInviteRoleChange}
-                    rolesState={rolesState}
-                    waitsForEmail={!readiness.emailReady}
-                    disabled={
-                      busy ||
-                      uncertainCreate ||
-                      readOnly ||
-                      !readiness.emailReady
-                    }
-                    invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
-                  />
-                </div>
-              ) : null}
               <div className="employee-drawer-actions">
                 <Button
                   className="secondary-button"
                   type="button"
                   disabled={busy || uncertainCreate}
                   onClick={() =>
-                    activeSection === "employment"
-                      ? changeSection("profile")
-                      : requestClose()
+                    activeSection === "access"
+                      ? changeSection("employment")
+                      : activeSection === "employment"
+                        ? changeSection("profile")
+                        : requestClose()
                   }
                 >
-                  {activeSection === "employment" ? (
+                  {activeSection === "employment" || activeSection === "access" ? (
                     <>
                       <ArrowLeft size={16} aria-hidden />
                       Back
@@ -1527,11 +1641,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       !canManageAccess ||
                       readOnly
                     }
-                    onClick={() => startCreate(true)}
+                    onClick={() => void inviteClick()}
                   >
                     <MailPlus size={16} aria-hidden />
                     {createMutation.isPending &&
-                    commandRef.current?.invite_role_id
+                    commandRef.current?.invite_access
                       ? "Inviting..."
                       : "Invite"}
                   </Button>
@@ -1594,24 +1708,6 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                   </button>
                 ) : null}
               </div>
-              {!detail.data?.user_id &&
-              readiness.emailPresent &&
-              canManageAccess ? (
-                <div className="employee-create-role">
-                  <InviteRoleField
-                    roles={inviteRoles}
-                    inviteRoleId={inviteRoleId}
-                    onInviteRoleChange={handleInviteRoleChange}
-                    rolesState={rolesState}
-                    disabled={
-                      busy ||
-                      readOnly ||
-                      detail.data?.invitation?.status === "pending"
-                    }
-                    invalidAttempt={inviteRoleReady ? 0 : inviteRoleAttempt}
-                  />
-                </div>
-              ) : null}
               <div className="employee-drawer-actions">
                 <Button
                   className="secondary-button"
@@ -1624,8 +1720,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 {!props.creating &&
                 !readOnly &&
                 canManageAccess &&
-                // A linked account has nobody left to invite (visual QA .7b).
+                // A linked account has nobody left to invite (visual QA .7b);
+                // an invitation still out is resent from Access (Tur 4 B).
                 !detail.data?.user_id &&
+                !invitationOut &&
                 draft.invitation_email ? (
                   <Button
                     type="button"
@@ -1634,32 +1732,10 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       !readiness.emailReady ||
                       (dirty && !readiness.employeeReady)
                     }
-                    title={
-                      !inviteRoleReady
-                        ? "Choose a role before sending the invitation"
-                        : detail.data?.invitation?.status === "pending"
-                          ? "Create a new link and invalidate the current invitation"
-                          : undefined
-                    }
-                    onClick={async () => {
-                      if (!inviteRoleReady) {
-                        setInviteRoleAttempt((current) => current + 1);
-                        return;
-                      }
-                      if (anyDirty) {
-                        try {
-                          await saveMutation.mutateAsync();
-                        } catch {
-                          return;
-                        }
-                      }
-                      inviteMutation.mutate();
-                    }}
+                    onClick={() => void inviteClick()}
                   >
                     <MailPlus size={16} aria-hidden />
-                    {detail.data?.invitation?.status === "pending"
-                      ? "Resend"
-                      : "Invite"}
+                    Invite
                   </Button>
                 ) : null}
                 {canSubmit && saveHeldByRefusal ? (
@@ -1667,7 +1743,29 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     You can't save these changes without access to check documents.
                   </p>
                 ) : null}
-                {canSubmit ? (
+                {canSubmit && accessRemoval ? (
+                  // Taking an access away asks twice, in red (Tur 4 B).
+                  <ConfirmButton
+                    className="danger-button"
+                    type="button"
+                    disabled={
+                      busy ||
+                      documentPreviewBlocked ||
+                      (dirty && !readiness.employeeReady) ||
+                      (contactDirty && !contactReady) ||
+                      Boolean(accessProblem) ||
+                      (droppingEmployeeApp && !accessPreview.data)
+                    }
+                    confirmLabel="Confirm remove"
+                    onConfirm={() =>
+                      dialogRef.current
+                        ?.querySelector<HTMLFormElement>("form.employee-drawer-form")
+                        ?.requestSubmit()
+                    }
+                  >
+                    {saveMutation.isPending ? "Saving" : accessRemoval}
+                  </ConfirmButton>
+                ) : canSubmit ? (
                   <Button
                     type="submit"
                     aria-describedby={
@@ -1682,7 +1780,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       // the server refused it after the round trip.
                       (dirty && !readiness.employeeReady) ||
                       // Half an emergency contact is not one (K3).
-                      (contactDirty && !contactReady)
+                      (contactDirty && !contactReady) ||
+                      (accessDirty && Boolean(accessProblem))
                     }
                   >
                     {saveMutation.isPending
@@ -1700,7 +1799,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
         </DrawerForm>
         {/* Heard as well as seen on the button (BL-477). */}
         <span className="sr-only" role="status">
-          {roleJustSaved ? "Role saved." : ""}
+          {roleJustSaved ? "Access saved." : ""}
         </span>
         {terminationOpen && detail.data ? (
           <EmployeeTerminationDialog
@@ -2016,8 +2115,6 @@ function renderSection(
   setDraft: React.Dispatch<React.SetStateAction<EmployeeInput>>,
   detail: EmployeeDetail | undefined,
   references: Awaited<ReturnType<typeof loadEmployeeReferenceData>> | undefined,
-  inviteRoleId: string,
-  onInviteRoleChange: (roleId: string) => void,
   emailInputRef: React.RefObject<HTMLInputElement | null>,
   onAddEmail: () => void,
   readOnly: boolean,
@@ -2030,17 +2127,9 @@ function renderSection(
     reason: string,
   ) => void,
   reviewing: boolean,
-  onRetryInvitation: () => void,
-  retryingInvitation: boolean,
-  onRevokeInvitation: () => void,
-  revokingInvitation: boolean,
-  onRemoveAccess: () => void,
-  removingAccess: boolean,
+  access: AccessTabProps,
   actorRole: WorkspaceRole,
   allowed: EmployeeDetail["allowed"] | undefined,
-  roleId: string,
-  onRoleChange: (roleId: string) => void,
-  changingRole: boolean,
   /** The viewer is looking at their own record, and they own the workspace. */
   ownContact: OwnContactControl | null,
   canDecideLegalName: boolean,
@@ -2097,31 +2186,7 @@ function renderSection(
     ) : (
       <p>Save the employee before reviewing documents.</p>
     );
-  if (section === "access")
-    return (
-      <AccessSection
-        draft={draft}
-        detail={detail}
-        roles={references?.inviteRoles ?? []}
-        inviteRoleId={inviteRoleId}
-        onAddEmail={onAddEmail}
-        readOnly={
-          Boolean(detail?.archived_at) || !canManageAccess
-        }
-        archived={Boolean(detail?.archived_at)}
-        allowed={allowed}
-        onRetryInvitation={onRetryInvitation}
-        retryingInvitation={retryingInvitation}
-        onRevokeInvitation={onRevokeInvitation}
-        revokingInvitation={revokingInvitation}
-        onRemoveAccess={onRemoveAccess}
-        removingAccess={removingAccess}
-        actorRole={actorRole}
-        roleId={roleId}
-        onRoleChange={onRoleChange}
-        changingRole={changingRole}
-      />
-    );
+  if (section === "access") return <AccessTab {...access} />;
   return <HistorySection detail={detail} />;
 }
 
@@ -2662,523 +2727,6 @@ function EmploymentSection({
   );
 }
 
-function AccessSection({
-  draft,
-  detail,
-  roles,
-  inviteRoleId,
-  onAddEmail,
-  readOnly,
-  onRetryInvitation,
-  retryingInvitation,
-  onRevokeInvitation,
-  revokingInvitation,
-  onRemoveAccess,
-  removingAccess,
-  actorRole,
-  roleId,
-  onRoleChange,
-  changingRole,
-  archived,
-  allowed,
-}: {
-  draft: EmployeeInput;
-  detail: EmployeeDetail | undefined;
-  roles: readonly InviteRoleOption[];
-  inviteRoleId: string;
-  onAddEmail: () => void;
-  /** The invitation controls: the access permission, never an archived record. */
-  readOnly: boolean;
-  archived: boolean;
-  /** What the server says this reader may do to the record. */
-  allowed: EmployeeDetail["allowed"] | undefined;
-  onRetryInvitation: () => void;
-  retryingInvitation: boolean;
-  onRevokeInvitation: () => void;
-  revokingInvitation: boolean;
-  onRemoveAccess: () => void;
-  removingAccess: boolean;
-  actorRole: WorkspaceRole;
-  /** The role picked in the form; Save changes saves it. */
-  roleId: string;
-  onRoleChange: (roleId: string) => void;
-  changingRole: boolean;
-}) {
-  const linked = Boolean(detail?.user_id);
-  const currentRoleId = detail?.role_id ?? "";
-  const invitation = detail?.invitation ?? null;
-  const email = draft.invitation_email.trim();
-  const assignableRoles = roles.filter((role) =>
-    canAssignRole(actorRole, role.accessClass, allowed),
-  );
-  const canChangeRole = !archived && (allowed?.change_role ?? false);
-  const canRemoveAccess = !archived && (allowed?.remove_access ?? false);
-  // Why the owner's role cannot be picked; read out, not printed under it.
-  const ownerRoleReasonId = useId();
-  const ownerRoleReason =
-    detail?.is_workspace_owner
-      ? "Owner access is managed separately."
-      : undefined;
-  const inviteRoleName = assignableRoles.find(
-    (role) => role.id === inviteRoleId,
-  )?.name;
-  const invitationExpired = Boolean(
-    invitation?.status === "pending" &&
-    Date.parse(invitation.expires_at) <= Date.now(),
-  );
-  const state = linked
-    ? archived
-      ? // Linked but archived: not onboarding (K9, AC8).
-        "archived"
-      : detail?.display_status === "active"
-        ? "linked"
-        : "onboarding"
-    : !email
-      ? "no_email"
-      : invitationExpired || invitation?.status === "expired"
-        ? "expired"
-        : invitation?.status === "pending" &&
-            invitation.delivery_status === "failed"
-          ? "failed"
-          : invitation?.status === "pending"
-            ? "invited"
-            : invitation?.status === "revoked"
-              ? "revoked"
-              : invitation?.status === "declined"
-                ? "declined"
-                : invitation?.status === "accepted"
-                  ? "access_removed"
-                  : "ready";
-
-  const stateContent = {
-    no_email: {
-      icon: <AlertTriangle size={18} aria-hidden />,
-      title: "No email",
-      copy: "Add an email before sending an invite.",
-      tone: "warning",
-    },
-    ready: {
-      icon: <MailPlus size={18} aria-hidden />,
-      title: "Ready to invite",
-      copy: `The invitation will grant the ${inviteRoleName ?? "selected"} role.`,
-      tone: "neutral",
-    },
-    invited: {
-      icon: <Clock3 size={18} aria-hidden />,
-      title: "Invitation sent",
-      copy: invitation
-        ? `Sent to ${invitation.email}. Expires ${formatDateTime(invitation.expires_at)}.`
-        : "The invitation is waiting for acceptance.",
-      tone: "warning",
-    },
-    failed: {
-      icon: <AlertTriangle size={18} aria-hidden />,
-      title: "Invitation delivery failed",
-      copy:
-        invitation?.delivery_error ??
-        "Retry the same link, or use Resend to replace it with a new link.",
-      tone: "danger",
-    },
-    expired: {
-      icon: <AlertTriangle size={18} aria-hidden />,
-      title: "Invitation expired",
-      copy: "Use Resend to create a new invitation link.",
-      tone: "danger",
-    },
-    revoked: {
-      icon: <KeyRound size={18} aria-hidden />,
-      title: "Invitation revoked",
-      copy: "The previous link no longer grants access. Send a new invite when ready.",
-      tone: "neutral",
-    },
-    declined: {
-      icon: <KeyRound size={18} aria-hidden />,
-      title: "Invitation declined",
-      copy: "The employee declined the previous invitation. You can send a new one.",
-      tone: "neutral",
-    },
-    access_removed: {
-      icon: <KeyRound size={18} aria-hidden />,
-      title: "Access removed",
-      copy: "The employee record and work history are preserved. A new invite starts fresh onboarding.",
-      tone: "neutral",
-    },
-    archived: {
-      icon: <KeyRound size={18} aria-hidden />,
-      title: "Archived",
-      copy: "Access is suspended while the employee is archived.",
-      tone: "neutral",
-    },
-    onboarding: {
-      icon: <Clock3 size={18} aria-hidden />,
-      title: "Onboarding in progress",
-      copy: "The account is linked and waiting for onboarding completion.",
-      tone: "warning",
-    },
-    linked: {
-      icon: <CheckCircle2 size={18} aria-hidden />,
-      title: "Onboarded and linked",
-      copy: "This employee has active workspace access.",
-      tone: "success",
-    },
-  }[state];
-
-  return (
-    <div className="employee-access-sections">
-      <section className="employee-access-group">
-        <header>
-          <div>
-            <h3>Account access</h3>
-          </div>
-          <KeyRound size={18} aria-hidden />
-        </header>
-        <div className={`employee-access-state ${stateContent.tone}`}>
-          {stateContent.icon}
-          <div>
-            <strong>{stateContent.title}</strong>
-            <p>{stateContent.copy}</p>
-          </div>
-          {state === "no_email" && !readOnly ? (
-            <Button type="button" onClick={onAddEmail}>
-              Add email
-            </Button>
-          ) : state === "failed" && !readOnly ? (
-            <Button
-              type="button"
-              disabled={retryingInvitation}
-              onClick={onRetryInvitation}
-            >
-              <RotateCcw size={15} aria-hidden />
-              {retryingInvitation ? "Retrying" : "Retry"}
-            </Button>
-          ) : null}
-        </div>
-
-        {linked ? (
-          <div className="employee-linked-access-controls">
-            <label className="employee-field" title={ownerRoleReason}>
-              <span>Workspace role</span>
-              <select
-                aria-label="Workspace role"
-                aria-describedby={ownerRoleReason ? ownerRoleReasonId : undefined}
-                value={roleId}
-                disabled={
-                  !canChangeRole ||
-                  changingRole ||
-                  assignableRoles.length === 0 ||
-                  // One role, the one they hold, is nothing to pick (BL-430).
-                  (assignableRoles.length === 1 &&
-                    assignableRoles[0]?.id === currentRoleId)
-                }
-                onChange={(event) => onRoleChange(event.target.value)}
-              >
-                {currentRoleId &&
-                !assignableRoles.some((role) => role.id === currentRoleId) ? (
-                  <option value={currentRoleId}>
-                    {detail?.role_name ?? "Current role"}
-                  </option>
-                ) : null}
-                {assignableRoles.map((role) => (
-                  <option key={role.id} value={role.id}>
-                    {role.name}
-                  </option>
-                ))}
-              </select>
-              {ownerRoleReason ? (
-                <span id={ownerRoleReasonId} className="sr-only">
-                  {ownerRoleReason}
-                </span>
-              ) : null}
-            </label>
-            {canRemoveAccess ? (
-              <ConfirmButton
-                className="employee-remove-access danger-button"
-                type="button"
-                disabled={removingAccess}
-                confirmLabel="Confirm remove access"
-                title="The employee record and shifts are kept."
-                onConfirm={onRemoveAccess}
-              >
-                <KeyRound size={15} aria-hidden />
-                {removingAccess ? "Removing" : "Remove access"}
-              </ConfirmButton>
-            ) : null}
-          </div>
-        ) : state !== "no_email" ? (
-          <dl className="employee-access-details">
-            <div>
-              <dt>E-mail</dt>
-              <dd>{invitation?.email ?? email}</dd>
-            </div>
-            <div>
-              <dt>Invite role</dt>
-              <dd>
-                {invitation?.role_name ?? inviteRoleName ?? "Choose a role"}
-              </dd>
-            </div>
-            {invitation ? (
-              <div>
-                <dt>Invitation status</dt>
-                <dd>{stateContent.title}</dd>
-              </div>
-            ) : null}
-            {invitation?.invited_by_name ? (
-              <div>
-                <dt>Invited by</dt>
-                <dd>{invitation.invited_by_name}</dd>
-              </div>
-            ) : null}
-            {invitation?.status === "pending" ? (
-              <div>
-                <dt>Expires</dt>
-                <dd>{formatDateTime(invitation.expires_at)}</dd>
-              </div>
-            ) : null}
-            {invitation?.delivery_attempted_at ? (
-              <div>
-                <dt>Last delivery attempt</dt>
-                <dd>{formatDateTime(invitation.delivery_attempted_at)}</dd>
-              </div>
-            ) : null}
-          </dl>
-        ) : null}
-
-        {invitation?.status === "pending" && !invitationExpired && !readOnly ? (
-          <div className="employee-pending-invite-actions">
-            <Button
-              type="button"
-              disabled={retryingInvitation}
-              onClick={onRetryInvitation}
-            >
-              <RotateCcw size={15} aria-hidden />
-              {retryingInvitation ? "Sending" : "Send reminder"}
-            </Button>
-            <CopyInvitationLinkButton
-              workspaceId={detail?.workspace_id ?? ""}
-              employeeId={detail?.id ?? ""}
-            />
-            <ConfirmButton
-              className="employee-revoke-invite danger-button"
-              type="button"
-              disabled={revokingInvitation}
-              confirmLabel="Confirm revoke"
-              onConfirm={onRevokeInvitation}
-            >
-              Revoke invitation
-            </ConfirmButton>
-          </div>
-        ) : null}
-      </section>
-
-      <section className="employee-access-group">
-        <header>
-          <div>
-            <h3>Profile photo</h3>
-          </div>
-          <ImageOff size={18} aria-hidden />
-        </header>
-        <EmployeeAvatarControl
-          workspaceId={detail?.workspace_id ?? ""}
-          employeeId={detail?.id ?? ""}
-          readOnly={archived || !(allowed?.save ?? false)}
-        />
-      </section>
-    </div>
-  );
-}
-
-function EmployeeAvatarControl({
-  workspaceId,
-  employeeId,
-  readOnly,
-}: {
-  readonly workspaceId: string;
-  readonly employeeId: string;
-  readonly readOnly: boolean;
-}) {
-  const queryClient = useQueryClient();
-  const scopeId = useId();
-  const photoScope = "Remove only the photo shown for this workspace.";
-  const noPhoto = "There is no workspace photo to remove.";
-  const avatar = useQuery({
-    queryKey: ["employee-avatar", workspaceId, employeeId],
-    queryFn: () => getEmployeeAvatar(workspaceId, employeeId),
-    enabled: Boolean(workspaceId && employeeId),
-  });
-  const remove = useMutation({
-    mutationFn: () => removeEmployeeAvatar(workspaceId, employeeId),
-    onSuccess: async () => {
-      await Promise.all([
-        queryClient.invalidateQueries({
-          queryKey: ["employee-avatar", workspaceId, employeeId],
-        }),
-        queryClient.invalidateQueries({
-          queryKey: ["employee-detail", workspaceId, employeeId],
-        }),
-      ]);
-    },
-  });
-
-  if (avatar.isLoading)
-    return (
-      <LoadingOutline label="Loading profile photo" className="employee-avatar-outline">
-        <Skeleton width={44} height={44} className="employee-avatar-skeleton" />
-        <Skeleton width="40%" height={12} />
-      </LoadingOutline>
-    );
-  if (avatar.isError && !avatar.data)
-    return (
-      <LoadError
-        inset
-        level={3}
-        title="We couldn't load the profile photo"
-        detail="The photo didn't load. Nothing was changed."
-        retrying={avatar.isFetching}
-        onRetry={() => void avatar.refetch()}
-      />
-    );
-  const hasAvatar = Boolean(avatar.data?.present);
-
-  return (
-    <>
-    {avatar.isError ? (
-      <RefreshError
-        message="The profile photo didn't refresh. This is the last photo that loaded."
-        retrying={avatar.isFetching}
-        onRetry={() => void avatar.refetch()}
-      />
-    ) : null}
-    <div className="employee-avatar-control">
-      {hasAvatar && avatar.data?.url ? (
-        <img src={avatar.data.url} alt="Employee workspace profile" />
-      ) : (
-        <span className="employee-avatar-placeholder" aria-hidden>
-          <UserRound size={20} />
-        </span>
-      )}
-      {/* A row naming a removal nobody here can do is not drawn (BL-408). */}
-      {!readOnly ? (
-        <div>
-          <strong>Profile photo removal</strong>
-          <FieldNote
-            id="employee-avatar-remove"
-            error={remove.error ? errorMessage(remove.error) : null}
-          />
-        </div>
-      ) : null}
-      {!readOnly ? (
-        <ConfirmButton
-          className="danger-button"
-          type="button"
-          disabled={!hasAvatar || remove.isPending}
-          confirmLabel="Confirm remove"
-          // Which photo goes: read out and shown on hover, not printed.
-          aria-describedby={scopeId}
-          title={hasAvatar ? photoScope : noPhoto}
-          onConfirm={() => remove.mutate()}
-        >
-          <ImageOff size={15} aria-hidden />
-          {remove.isPending ? "Removing" : "Remove photo"}
-        </ConfirmButton>
-      ) : null}
-      {!readOnly ? (
-        <span id={scopeId} className="sr-only">
-          {/* Off for a reason that is said, too (BL-473). */}
-          {hasAvatar ? photoScope : noPhoto}
-        </span>
-      ) : null}
-    </div>
-    </>
-  );
-}
-
-const roleRank: Record<WorkspaceRole, number> = {
-  owner: 4,
-  admin: 3,
-  manager: 2,
-  employee: 1,
-};
-
-/**
- * May this role be given to the record? Whether the reader may change the
- * record's role at all, and make an admin, is the server's answer; a role is
- * only ever given below the giver's own rank.
- */
-function canAssignRole(
-  actorRole: WorkspaceRole,
-  targetAccessClass: WorkspaceRole,
-  allowed: EmployeeDetail["allowed"] | undefined,
-) {
-  if (!allowed || targetAccessClass === "owner") return false;
-  if (targetAccessClass === "admin") return allowed.make_admin;
-  return allowed.change_role && roleRank[targetAccessClass] < roleRank[actorRole];
-}
-
-function InviteRoleField({
-  roles,
-  inviteRoleId,
-  onInviteRoleChange,
-  rolesState,
-  waitsForEmail = false,
-  disabled,
-  invalidAttempt,
-}: {
-  roles: readonly InviteRoleOption[];
-  inviteRoleId: string;
-  onInviteRoleChange: (roleId: string) => void;
-  rolesState: "loading" | "error" | "ready";
-  /** The role only matters for an invite, so it waits for an email (bug 3). */
-  waitsForEmail?: boolean;
-  disabled: boolean;
-  invalidAttempt: number;
-}) {
-  const noteId = useId();
-  // Loading, a failed load and truly no roles each say so (bug 3).
-  const empty =
-    rolesState === "loading"
-      ? "Loading roles…"
-      : rolesState === "error"
-        ? "Roles didn't load"
-        : "You can't invite with any role";
-  const selectedRoleId = roles.some((role) => role.id === inviteRoleId)
-    ? inviteRoleId
-    : "";
-  const invalid = invalidAttempt > 0;
-  const pulseClass =
-    invalidAttempt > 0
-      ? ` employee-invite-role-invalid employee-invite-role-invalid-${invalidAttempt % 2}`
-      : "";
-  return (
-    <label className={`employee-field employee-invite-role-field${pulseClass}`}>
-      <select
-        aria-label="Invite role"
-        aria-describedby={noteId}
-        aria-invalid={invalid || undefined}
-        value={selectedRoleId}
-        disabled={disabled || roles.length === 0}
-        onChange={(event) => onInviteRoleChange(event.target.value)}
-      >
-        {roles.length > 0 ? (
-          <option value="">
-            {waitsForEmail ? "Add email first" : "Select a role"}
-          </option>
-        ) : null}
-        {roles.length === 0 ? <option value="">{empty}</option> : null}
-        {roles.map((role) => (
-          <option key={role.id} value={role.id}>
-            {role.name}
-          </option>
-        ))}
-      </select>
-      <small id={noteId}>
-        {waitsForEmail
-          ? "Add an email to choose an invite role."
-          : "The selected role is applied when the invite is accepted."}
-      </small>
-    </label>
-  );
-}
-
 function HistorySection({ detail }: { detail: EmployeeDetail | undefined }) {
   if (!detail?.events.length)
     return (
@@ -3413,6 +2961,7 @@ function AssignmentPicker({
   onChange,
   required = false,
   searchable = true,
+  primaryChoice = true,
   lockedIds,
   rowAction,
   fixedReason,
@@ -3440,6 +2989,8 @@ function AssignmentPicker({
   onChange: (ids: string[], primary: string | null) => void;
   required?: boolean;
   searchable?: boolean;
+  /** Off where no row is primary (Manages). */
+  primaryChoice?: boolean;
 }) {
   const [search, setSearch] = useState("");
   const groupId = useId();
@@ -3526,7 +3077,7 @@ function AssignmentPicker({
                   <span>{option.name}</span>
                   {option.archived ? <small>Archived</small> : null}
                 </label>
-                {checked && !reason ? (
+                {checked && !reason && primaryChoice ? (
                   <label className="primary-choice">
                     <input
                       type="radio"
@@ -3555,7 +3106,7 @@ function AssignmentPicker({
         <p>No matching {label.toLowerCase()}.</p>
       ) : null}
       {required && selected.length === 0 && available.length > 0 ? (
-        <p>Select at least one {label === "Locations" ? "location" : "job"}.</p>
+        <p>Select at least one {label === "Jobs" ? "job" : "location"}.</p>
       ) : null}
     </fieldset>
   );
@@ -3617,54 +3168,6 @@ function statusLabel(status: string): string {
   return status
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
-}
-
-/**
- * The invitation link itself, for when email did not arrive and the admin has
- * to hand it over another way. The server records the copy; the button says
- * plainly that it happened.
- */
-function CopyInvitationLinkButton({
-  workspaceId,
-  employeeId,
-}: {
-  readonly workspaceId: string;
-  readonly employeeId: string;
-}) {
-  const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
-  const copy = useMutation({
-    mutationFn: () => loadEmployeeInvitationLink(workspaceId, employeeId),
-    onSuccess: async (link) => {
-      try {
-        await navigator.clipboard.writeText(link.url);
-        setState("copied");
-      } catch {
-        setState("failed");
-      }
-    },
-    // The server's own wording is not for the screen.
-    onError: () => setState("failed"),
-  });
-
-  return (
-    <Button
-      type="button"
-      disabled={copy.isPending || !workspaceId || !employeeId}
-      onClick={() => {
-        setState("idle");
-        copy.mutate();
-      }}
-    >
-      <ClipboardCopy size={15} aria-hidden />
-      {copy.isPending
-        ? "Copying"
-        : state === "copied"
-          ? "Link copied"
-          : state === "failed"
-            ? "Copy failed"
-            : "Copy link"}
-    </Button>
-  );
 }
 
 /** A zone in words, "Pacific Time (Los Angeles)", not its code (E3-37). */

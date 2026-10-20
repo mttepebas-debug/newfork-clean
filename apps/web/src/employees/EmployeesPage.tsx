@@ -529,8 +529,9 @@ export default function EmployeesPage() {
           onClose={() =>
             updateParams({ employeeId: null, mode: null, section: null })
           }
-          onCreated={(id) =>
-            updateParams({ employeeId: id, mode: null, section: "profile" })
+          onCreated={(id, section) =>
+            // Invited from Access, the new record opens on Access (Tur 4 B).
+            updateParams({ employeeId: id, mode: null, section: section ?? "profile" })
           }
         />
       ) : null}

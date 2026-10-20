@@ -13216,3 +13216,194 @@ button.workspace-switcher-item:hover:not(:disabled) {
     display: none;
   }
 }
+
+/* DAVET-ERISIM (Tur 4 B, Mert 2026-10-20): the Access tab built from the
+   drawer's own parts: Profile's section heads, the header's status pill,
+   Employment's two-box row and its lists. */
+.access-choices {
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+.access-choices label {
+  cursor: pointer;
+}
+.access-choices label[data-locked="true"] {
+  cursor: default;
+}
+.employee-work-mode.access[data-selected="true"] {
+  border-color: var(--theme-accent);
+  background: var(--theme-selected);
+  color: var(--theme-accent-deep);
+}
+.employee-work-mode.access[data-selected="true"] input {
+  accent-color: var(--theme-accent);
+}
+.access-choices.access-invalid label:not([data-selected="true"]),
+.employee-assignment-picker.access-missing {
+  border-color: var(--theme-danger-border);
+  box-shadow: 0 0 0 1px var(--theme-danger-border);
+}
+.access-invalid-0 {
+  animation: employee-invite-role-pulse-a 520ms ease;
+}
+.access-invalid-1 {
+  animation: employee-invite-role-pulse-b 520ms ease;
+}
+.access-tab .employee-assignment-picker input[type="radio"] {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--theme-accent);
+}
+.access-scope {
+  color: var(--theme-muted);
+  font-size: 11px;
+}
+.access-invite-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 10px;
+  min-height: 28px;
+}
+.access-email {
+  min-width: 0;
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.access-invite-line .employee-state {
+  text-transform: none;
+}
+.access-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 16px;
+  margin-left: auto;
+}
+.access-link {
+  justify-self: start;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-accent);
+  font-size: 12px;
+  font-weight: 700;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+}
+.access-link:disabled {
+  color: var(--theme-muted);
+  cursor: default;
+}
+.access-link.danger {
+  color: var(--theme-danger-text);
+}
+.access-link.is-armed {
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--theme-danger-surface);
+  box-shadow: inset 0 0 0 1px var(--theme-danger-border);
+  color: var(--theme-danger-text);
+  text-decoration: none;
+}
+.access-note {
+  margin: 0;
+  color: var(--theme-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+.access-note.warning {
+  color: var(--theme-danger-text);
+}
+.access-error {
+  margin: 0;
+  color: var(--theme-danger);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+/* The profile photo is removed on the drawer's avatar itself, two clicks. */
+.drawer-avatar {
+  position: relative;
+  overflow: visible;
+  padding: 0;
+}
+.drawer-avatar img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.drawer-avatar.compact {
+  width: 34px;
+  height: 34px;
+  margin: 0;
+  font-size: 13px;
+}
+.drawer-avatar-button {
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+.drawer-avatar-mark {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--theme-text) 42%, transparent);
+  color: var(--theme-on-accent);
+  opacity: 0;
+  transition:
+    opacity 140ms ease,
+    background-color 140ms ease;
+}
+.drawer-avatar-button:hover .drawer-avatar-mark,
+.drawer-avatar-button:focus-visible .drawer-avatar-mark,
+.drawer-avatar-button[data-armed="true"] .drawer-avatar-mark {
+  opacity: 1;
+}
+.drawer-avatar-button[data-armed="true"] .drawer-avatar-mark {
+  background: color-mix(in srgb, var(--theme-danger) 84%, transparent);
+}
+.drawer-avatar-hint {
+  min-height: 0;
+  margin: -6px 0 8px;
+  color: var(--theme-danger-text);
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+.drawer-avatar-hint:empty {
+  display: none;
+}
+@media (max-width: 640px) {
+  .employee-drawer-mobile-header.has-avatar {
+    height: auto;
+    min-height: 58px;
+    grid-template-columns: 34px minmax(0, 1fr) 38px;
+  }
+  .employee-drawer-mobile-header.has-avatar > .drawer-avatar {
+    grid-row: 1;
+    grid-column: 1;
+  }
+  .employee-drawer-mobile-header.has-avatar > select {
+    grid-row: 1;
+    grid-column: 2;
+  }
+  .employee-drawer-mobile-header.has-avatar > .icon-button {
+    grid-row: 1;
+    grid-column: 3;
+  }
+  .employee-drawer-mobile-header.has-avatar .drawer-avatar-hint {
+    grid-row: 2;
+    grid-column: 1 / -1;
+    margin: 0;
+  }
+}

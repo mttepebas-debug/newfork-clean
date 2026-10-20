@@ -146,6 +146,9 @@ describe("employee create flow", () => {
         role_name: null,
         is_workspace_owner: false,
         access: { employee: true, management: null },
+        employee_role_id: null,
+        management_role_id: null,
+        managed_location_ids: [],
         private_contact: null,
         allowed: {
           save: true,
@@ -259,10 +262,8 @@ describe("employee create flow", () => {
 
   it("offers Save and Invite together after completing assignments and adding email", async () => {
     setup();
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
-      "disabled",
-      true,
-    );
+    // Tur 4 B: no role picker in the footer; Invite asks for access itself.
+    expect(screen.queryByLabelText("Invite role")).toBeNull();
     expect(disabled("Invite")).toBe(true);
     fillNames();
     next();
@@ -272,18 +273,13 @@ describe("employee create flow", () => {
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "ada@example.test" },
     });
-    expect(screen.getByLabelText("Invite role")).toHaveProperty("value", "");
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
-      "disabled",
-      false,
-    );
     expect(disabled("Save")).toBe(false);
     expect(disabled("Invite")).toBe(false);
     fireEvent.keyDown(screen.getByLabelText("E-mail"), { key: "Enter" });
     await waitFor(() =>
       expect(createEmployee).toHaveBeenCalledWith(
         ids.workspace,
-        expect.objectContaining({ invite_role_id: null }),
+        expect.objectContaining({ invite_access: null }),
       ),
     );
   });
@@ -447,7 +443,7 @@ describe("employee create flow", () => {
     expect(createEmployee).toHaveBeenCalledWith(
       ids.workspace,
       expect.objectContaining({
-        invite_role_id: null,
+        invite_access: null,
         employee: expect.objectContaining({
           location_ids: [ids.location],
           job_ids: [ids.job],
@@ -489,87 +485,125 @@ describe("employee create flow", () => {
       (screen.getByLabelText("Downtown") as HTMLInputElement).checked,
     ).toBe(true);
   });
-  it("invites with the selected custom role and keeps draft through refetch and navigation", async () => {
-    const { client } = setup();
-    fillNames();
-    fireEvent.change(screen.getByLabelText("E-mail"), {
-      target: { value: "ada@example.test" },
-    });
-    await screen.findByRole("option", { name: "Shift Lead" });
-    fireEvent.change(screen.getByLabelText("Invite role"), {
-      target: { value: ids.custom },
-    });
-    next();
-    fireEvent.click(screen.getByLabelText("Remote"));
-    await client.invalidateQueries({
-      queryKey: ["employee-reference-data", ids.workspace],
-    });
-    fireEvent.click(screen.getByRole("button", { name: "Back" }));
-    expect(
-      (screen.getByLabelText("Invite role") as HTMLSelectElement).value,
-    ).toBe(ids.custom);
-    expect(disabled("Invite")).toBe(false);
-    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    await waitFor(() =>
-      expect(createEmployee).toHaveBeenCalledWith(
-        ids.workspace,
-        expect.objectContaining({ invite_role_id: ids.custom }),
-      ),
-    );
-  });
-  // EMP-001 K4: a manager who is not Remote has a location, excluded from the
-  // schedule or not. Shift Lead is a manager role.
-  it("holds an invitation as a manager for somebody excluded from the schedule with no location", async () => {
+  // Tur 4 B (Mert, 2026-10-20): Invite opens Access; with nothing chosen both
+  // boxes shake red and say so, and nothing is sent.
+  it("opens Access on Invite and asks for an access before sending anything", async () => {
     setup();
     fillNames();
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "ada@example.test" },
     });
-    await screen.findByRole("option", { name: "Shift Lead" });
-    fireEvent.change(screen.getByLabelText("Invite role"), {
-      target: { value: ids.custom },
+    next();
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(await screen.findByRole("heading", { name: "Access", level: 2 })).toBeTruthy();
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      managementAndOwnerRefusals["access.role_required"],
+    );
+    expect(
+      document.querySelector(".access-choices")?.classList.contains("access-invalid"),
+    ).toBe(true);
+    expect(createEmployee).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByLabelText("Employee app"));
+    expect(screen.queryByRole("alert")).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await waitFor(() =>
+      expect(createEmployee).toHaveBeenCalledWith(
+        ids.workspace,
+        expect.objectContaining({
+          invite_access: { employee_role_id: ids.role, management_role_id: null, managed_location_ids: [] },
+        }),
+      ),
+    );
+  });
+  it("invites to both apps with a custom role and keeps the choice through refetch and navigation", async () => {
+    const { client, onCreated } = setup();
+    fillNames();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "ada@example.test" },
     });
     next();
-    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await screen.findByRole("heading", { name: "Access", level: 2 });
+    fireEvent.click(screen.getByLabelText("Employee app"));
+    fireEvent.click(screen.getByLabelText("Management app"));
+    fireEvent.click(await screen.findByLabelText("Shift Lead"));
+    fireEvent.click(screen.getByLabelText("Downtown"));
+    await client.invalidateQueries({
+      queryKey: ["employee-reference-data", ids.workspace],
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Back" }));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await waitFor(() =>
+      expect(createEmployee).toHaveBeenCalledWith(
+        ids.workspace,
+        expect.objectContaining({
+          invite_access: {
+            employee_role_id: ids.role,
+            management_role_id: ids.custom,
+            managed_location_ids: [ids.location],
+          },
+        }),
+      ),
+    );
+    // The drawer stays on Access for the new record.
+    await waitFor(() => expect(onCreated).toHaveBeenCalledWith(ids.employee, "access"));
+  });
+  // A manager manages somewhere (K4): the invitation names where.
+  it("holds a manager's invitation until a location to manage is chosen", async () => {
+    setup();
+    fillNames();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "ada@example.test" },
+    });
+    next();
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await screen.findByRole("heading", { name: "Access", level: 2 });
+    fireEvent.click(screen.getByLabelText("Management app"));
+    fireEvent.click(await screen.findByLabelText("Shift Lead"));
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
     expect((await screen.findByRole("alert")).textContent).toBe(
-      managementAndOwnerRefusals["employee.manager_location_required"],
+      managementAndOwnerRefusals["access.manages_required"],
     );
     expect(createEmployee).not.toHaveBeenCalled();
-    // Without the invitation nobody becomes a manager, so the record saves.
+    // Save keeps the record without inviting anybody to manage.
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
-    expect(vi.mocked(createEmployee).mock.calls[0]![1].invite_role_id).toBeNull();
+    expect(vi.mocked(createEmployee).mock.calls[0]![1].invite_access).toBeNull();
   });
-  it("does not silently replace a deleted selected role", async () => {
+  it("does not silently replace a deleted chosen role", async () => {
     const { client } = setup();
     fillNames();
     fireEvent.change(screen.getByLabelText("E-mail"), {
       target: { value: "ada@example.test" },
     });
-    await screen.findByRole("option", { name: "Shift Lead" });
-    fireEvent.change(screen.getByLabelText("Invite role"), {
-      target: { value: ids.custom },
-    });
     next();
-    fireEvent.click(screen.getByLabelText("Remote"));
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await screen.findByRole("heading", { name: "Access", level: 2 });
+    fireEvent.click(screen.getByLabelText("Management app"));
+    fireEvent.click(await screen.findByLabelText("Shift Lead"));
+    fireEvent.click(screen.getByLabelText("Downtown"));
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
-      locations: [],
+      locations: [{ id: ids.location, name: "Downtown", archived: false }],
       departments: [],
-      jobs: [],
+      jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, owner: false }],
       inviteRoles: [roles[0]!],
     });
     await client.invalidateQueries({
       queryKey: ["employee-reference-data", ids.workspace],
     });
-    await waitFor(() =>
-      expect(screen.getByLabelText("Invite role")).toHaveProperty("value", ""),
-    );
-    expect(disabled("Invite")).toBe(false);
+    await waitFor(() => expect(screen.queryByLabelText("Shift Lead")).toBeNull());
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    expect(
-      screen.getByLabelText("Invite role").getAttribute("aria-invalid"),
-    ).toBe("true");
+    expect((await screen.findByRole("alert")).textContent).toBe(
+      managementAndOwnerRefusals["access.management_role_required"],
+    );
     expect(createEmployee).not.toHaveBeenCalled();
     expect(disabled("Save")).toBe(false);
   });

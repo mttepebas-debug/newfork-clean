@@ -51,16 +51,17 @@ import {
   loadEmployeeInvitationLink,
   loadEmployeeReferenceData,
   saveOwnEmploymentContact,
+  changeEmployeeAccess,
   prepareEmployeeInvitation,
+  previewEmployeeAccessChange,
   removeEmployeeAccess,
   removeEmployeeAvatar,
   removeEmployeeFromLocation,
-  retryEmployeeInvitation,
   revokeEmployeeInvitation,
   saveEmployee,
   setEmployeeArchived,
   terminateEmployee,
-  updateEmployeeRole,
+  updateEmployeeInvitationAccess,
 } from "./employee-data";
 import {
   getEmployeeOnboardingReview,
@@ -72,6 +73,16 @@ const employeeId = "fe201916-aa0e-480b-9144-1e1c8da20a31";
 const employeeRoleId = "2efe6c80-634b-4b1d-8f09-7cba30697dd6";
 const managerRoleId = "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226";
 const ownerRoleId = "4b70f8b8-8f68-4f1e-b3b6-b0717caf49ab";
+const adminRoleId = "a0000000-0000-4000-8000-00000000000a";
+const mainDiningId = "11000000-0000-4000-8000-000000000001";
+// What an access change sends when it drops no employee app.
+const noImpact = {
+  shifts_opened: 0,
+  requests_closed: 0,
+  applications_closed: 0,
+  time_off_withdrawn: 0,
+  availability_deleted: false,
+};
 
 function weeklyModel(): WeeklyPreferenceRead {
   return {
@@ -165,6 +176,9 @@ const detail = {
   is_workspace_owner: false,
   role_id: null,
   access: { employee: true, management: null },
+  employee_role_id: null,
+  management_role_id: null,
+  managed_location_ids: [],
   display_status: "not_invited",
   archived_at: null,
   revision: 1,
@@ -241,16 +255,17 @@ vi.mock("./employee-data", () => ({
   loadEmployeeInvitationLink: vi.fn(),
   saveOwnEmploymentContact: vi.fn(),
   loadEmployeeReferenceData: vi.fn(),
+  changeEmployeeAccess: vi.fn(),
   prepareEmployeeInvitation: vi.fn(),
+  previewEmployeeAccessChange: vi.fn(),
   removeEmployeeAccess: vi.fn(),
   removeEmployeeAvatar: vi.fn(),
   removeEmployeeFromLocation: vi.fn(),
-  retryEmployeeInvitation: vi.fn(),
   revokeEmployeeInvitation: vi.fn(),
   saveEmployee: vi.fn(),
   setEmployeeArchived: vi.fn(),
   terminateEmployee: vi.fn(),
-  updateEmployeeRole: vi.fn(),
+  updateEmployeeInvitationAccess: vi.fn(),
 }));
 
 let renderedDetail: EmployeeDetail = detail;
@@ -258,7 +273,7 @@ let renderedDetail: EmployeeDetail = detail;
 let inviteRolesFixture: {
   id: string;
   name: string;
-  systemKey: "employee" | "manager" | "admin";
+  systemKey: "employee" | "manager" | "admin" | null;
   accessClass: "employee" | "manager" | "admin";
 }[] = [];
 // When set, the detail read fails with this instead of answering.
@@ -313,6 +328,35 @@ function lockReason(control: HTMLElement): string | null {
   );
 }
 
+/** One of the Access tab's two accesses (DAVET-ERISIM, Tur 4 B). */
+async function accessBox(name: "Employee app" | "Management app") {
+  return (await screen.findByRole("checkbox", { name })) as HTMLInputElement;
+}
+
+/** The Access tab's choice of accesses: the box that shakes when nothing is chosen. */
+function accessChoices() {
+  return screen.getByRole("checkbox", { name: "Employee app" }).closest("fieldset")!;
+}
+
+/**
+ * Ticks the management app once the roles to give have arrived, picks the
+ * role and, for a manager, the locations they manage.
+ */
+async function giveManagement(roleName = "Manager", locations: readonly string[] = ["Main Dining"]) {
+  const box = await accessBox("Management app");
+  await waitFor(() => expect(box.disabled).toBe(false));
+  fireEvent.click(box);
+  fireEvent.click(screen.getByRole("radio", { name: roleName }));
+  if (!locations.length) return;
+  const manages = screen.getByRole("group", { name: /^Manages/ });
+  for (const name of locations) fireEvent.click(within(manages).getByLabelText(name));
+}
+
+/** The rail's photo button (the phone header draws a compact twin). */
+async function photoButton(name: string) {
+  return (await screen.findAllByRole("button", { name }))[0]!;
+}
+
 function renderDrawer(
   section: EmployeeSection = "access",
   detailFixture: EmployeeDetail = detail,
@@ -354,10 +398,26 @@ function renderDrawer(
     id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
     expiresAt: "2026-08-24T12:00:00.000Z",
   });
-  vi.mocked(retryEmployeeInvitation).mockResolvedValue({
-    id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
-    expiresAt: "2026-08-24T12:00:00.000Z",
+  vi.mocked(previewEmployeeAccessChange).mockResolvedValue({
+    shifts_opened: 3,
+    requests_closed: 1,
+    applications_closed: 0,
+    time_off_withdrawn: 0,
+    availability_deleted: true,
   });
+  vi.mocked(changeEmployeeAccess).mockResolvedValue({
+    membership_id: "aa000000-0000-4000-8000-0000000000aa",
+    employee_role_id: employeeRoleId,
+    management_role_id: null,
+    impact: {
+      shifts_opened: 0,
+      requests_closed: 0,
+      applications_closed: 0,
+      time_off_withdrawn: 0,
+      availability_deleted: false,
+    },
+  });
+  vi.mocked(updateEmployeeInvitationAccess).mockResolvedValue();
   vi.mocked(getEmployeeAvatar).mockResolvedValue({ present: false, url: null });
   vi.mocked(removeEmployeeAvatar).mockResolvedValue();
   vi.mocked(removeEmployeeAccess).mockResolvedValue();
@@ -370,7 +430,6 @@ function renderDrawer(
     releasedShiftCount: 2,
     idempotentReplay: false,
   });
-  vi.mocked(updateEmployeeRole).mockResolvedValue();
   vi.mocked(getEmployeeOnboardingReview).mockResolvedValue(onboardingFixture);
   vi.mocked(reviewEmployeeOnboarding).mockResolvedValue(2);
 
@@ -446,34 +505,60 @@ describe("EmployeeDrawer", () => {
       invitation_email: "new@example.test",
       revision: 2,
     });
+    // Nothing chosen yet: Invite takes the reader to Access and the choice shakes.
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    const inviteRole = screen.getByLabelText("Invite role");
-    expect(inviteRole.getAttribute("aria-invalid")).toBe("true");
-    expect(inviteRole.closest("label")?.className).toContain(
-      "employee-invite-role-invalid-1",
-    );
+    const choices = await waitFor(() => accessChoices());
+    expect(choices.getAttribute("aria-invalid")).toBe("true");
+    expect(choices.className).toContain("access-invalid-1");
+    expect(screen.getByRole("alert").textContent).toBe("Choose at least one access.");
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
-    expect(inviteRole.closest("label")?.className).toContain(
-      "employee-invite-role-invalid-0",
-    );
+    expect(accessChoices().className).toContain("access-invalid-0");
     expect(prepareEmployeeInvitation).not.toHaveBeenCalled();
+    expect(saveEmployee).not.toHaveBeenCalled();
     expect(screen.queryByText("Unsaved changes")).toBeNull();
-    fireEvent.change(inviteRole, {
-      target: { value: employeeRoleId },
-    });
+    fireEvent.click(await accessBox("Employee app"));
+    // A choice made puts the error away until the next attempt.
+    expect(screen.queryByRole("alert")).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
     await waitFor(() =>
       expect(prepareEmployeeInvitation).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
         "new@example.test",
-        employeeRoleId,
+        { employee_role_id: employeeRoleId, management_role_id: null, managed_location_ids: [] },
       ),
     );
     expect(saveEmployee).toHaveBeenCalledTimes(1);
     expect(vi.mocked(saveEmployee).mock.invocationCallOrder[0]).toBeLessThan(
       vi.mocked(prepareEmployeeInvitation).mock.invocationCallOrder[0]!,
     );
+  });
+
+  // A record saved on the way to an invitation returns to Profile; the
+  // invitation is read on Access, and goes out with the access chosen there,
+  // not the one read back after the save.
+  it("stays on Access and sends the chosen access when Invite saves the record first", async () => {
+    const { onSectionChange } = renderDrawer("profile");
+    fireEvent.change(await screen.findByLabelText("E-mail"), {
+      target: { value: "new@example.test" },
+    });
+    vi.mocked(getEmployeeDetail).mockResolvedValue({
+      ...detail,
+      invitation_email: "new@example.test",
+      revision: 2,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    fireEvent.click(await accessBox("Employee app"));
+    onSectionChange.mockClear();
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    await waitFor(() => expect(prepareEmployeeInvitation).toHaveBeenCalledTimes(1));
+    expect(vi.mocked(prepareEmployeeInvitation).mock.calls[0]![3]).toEqual({
+      employee_role_id: employeeRoleId,
+      management_role_id: null,
+      managed_location_ids: [],
+    });
+    expect(onSectionChange).toHaveBeenLastCalledWith("access");
+    expect(await screen.findByRole("heading", { name: "Access", level: 2 })).toBeTruthy();
   });
 
   it("changes Done back to Save changes after another edit", async () => {
@@ -694,12 +779,23 @@ describe("EmployeeDrawer", () => {
     expect(screen.queryByRole("button", { name: /Accept / })).toBeNull();
   });
 
-  it("sends the selected access-tab invite role with the employee invitation", async () => {
+  it("sends the management access chosen in Access with the employee invitation", async () => {
     renderDrawer();
 
-    fireEvent.change(await screen.findByLabelText("Invite role"), {
-      target: { value: managerRoleId },
-    });
+    const management = await accessBox("Management app");
+    await waitFor(() => expect(management.disabled).toBe(false));
+    fireEvent.click(management);
+    // The management app asks for a role first.
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(screen.getByRole("alert").textContent).toBe("Choose a role for the management app.");
+    fireEvent.click(screen.getByRole("radio", { name: "Manager" }));
+    // A manager manages somewhere.
+    const manages = screen.getByRole("group", { name: /^Manages/ });
+    expect(within(manages).getByText("Required")).toBeTruthy();
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    expect(screen.getByRole("alert").textContent).toBe("Choose at least one location they manage.");
+    expect(prepareEmployeeInvitation).not.toHaveBeenCalled();
+    fireEvent.click(within(manages).getByLabelText("Main Dining"));
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
     await waitFor(() =>
@@ -707,19 +803,18 @@ describe("EmployeeDrawer", () => {
         workspaceId,
         employeeId,
         "alex@example.test",
-        managerRoleId,
+        { employee_role_id: null, management_role_id: managerRoleId, managed_location_ids: [mainDiningId] },
       ),
     );
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
-  it("lets managers choose the invite role while editing the profile email", async () => {
-    renderDrawer("profile");
-
+  it("keeps the access chosen in Access while the profile email is edited", async () => {
+    renderDrawer("access");
+    fireEvent.click(await accessBox("Employee app"));
+    fireEvent.change(screen.getByLabelText("Employee section"), { target: { value: "profile" } });
     fireEvent.change(await screen.findByLabelText("E-mail"), {
-      target: { value: "alex@example.test" },
-    });
-    fireEvent.change(screen.getByLabelText("Invite role"), {
-      target: { value: managerRoleId },
+      target: { value: "alex.kim@example.test" },
     });
     fireEvent.click(screen.getByRole("button", { name: "Invite" }));
 
@@ -727,10 +822,11 @@ describe("EmployeeDrawer", () => {
       expect(prepareEmployeeInvitation).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
-        "alex@example.test",
-        managerRoleId,
+        "alex.kim@example.test",
+        { employee_role_id: employeeRoleId, management_role_id: null, managed_location_ids: [] },
       ),
     );
+    expect(saveEmployee).toHaveBeenCalledTimes(1);
   });
 
   it("does not overwrite unsaved profile changes when employee detail refetches", async () => {
@@ -757,12 +853,10 @@ describe("EmployeeDrawer", () => {
     );
   });
 
-  it("does not overwrite an unsaved invite role choice when employee detail refetches", async () => {
+  it("does not overwrite an unsaved access choice when employee detail refetches", async () => {
     const { client } = renderDrawer("access");
 
-    fireEvent.change(await screen.findByLabelText("Invite role"), {
-      target: { value: managerRoleId },
-    });
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockResolvedValue({
       ...detail,
       revision: 2,
@@ -773,13 +867,14 @@ describe("EmployeeDrawer", () => {
     });
 
     await waitFor(() => expect(getEmployeeDetail).toHaveBeenCalledTimes(2));
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
-      "value",
-      managerRoleId,
-    );
+    expect((await accessBox("Management app")).checked).toBe(true);
+    expect(screen.getByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
+    expect(
+      within(screen.getByRole("group", { name: /^Manages/ })).getByLabelText("Main Dining"),
+    ).toHaveProperty("checked", true);
   });
 
-  it("keeps the linked owner role and lifecycle read-only", async () => {
+  it("keeps the linked owner's access and lifecycle read-only: Owner, every location", async () => {
     renderDrawer("access", {
       ...detail,
       role_id: ownerRoleId,
@@ -787,20 +882,49 @@ describe("EmployeeDrawer", () => {
       is_workspace_owner: true,
       user_id: context.userId,
       display_status: "active",
-      allowed: ownRecordAllowed,
+      access: { employee: false, management: "owner" },
+      management_role_id: ownerRoleId,
+      // Even a reader the server lets change roles and remove access changes
+      // nothing on the owner's record.
+      allowed: { ...ownRecordAllowed, change_role: true, remove_access: true },
     });
 
-    expect(await screen.findByLabelText("Workspace role")).toHaveProperty(
-      "disabled",
-      true,
-    );
-    expect(screen.queryByRole("button", { name: "Remove access" })).toBeNull();
+    const owner = await screen.findByRole("radio", { name: "Owner" });
+    expect(owner).toHaveProperty("checked", true);
+    // Switched off with its fieldset: nothing on the owner's role is picked.
+    expect(owner.closest("fieldset")).toHaveProperty("disabled", true);
+    expect(within(owner.closest("div")!).getByText("Every location")).toBeTruthy();
+    // Nothing else is offered in its place, and nothing names where they manage.
+    expect(screen.getAllByRole("radio")).toHaveLength(1);
+    expect(screen.queryByRole("group", { name: /^Manages/ })).toBeNull();
+    expect((await accessBox("Employee app")).disabled).toBe(true);
+    expect((await accessBox("Management app")).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Remove all access" })).toBeNull();
     expect(
       screen.queryByRole("button", { name: "Terminate employee" }),
     ).toBeNull();
-    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
     expect(removeEmployeeAccess).not.toHaveBeenCalled();
     expect(setEmployeeArchived).not.toHaveBeenCalled();
+  });
+
+  // The tab opens for who may invite, change or remove access, or read an
+  // invitation; saving the record alone does not open it.
+  it("offers no Access tab on the owner's own record, where the server allows only saving", async () => {
+    renderDrawer("access", {
+      ...detail,
+      role_id: ownerRoleId,
+      role_name: "Owner",
+      is_workspace_owner: true,
+      user_id: context.userId,
+      display_status: "active",
+      access: { employee: false, management: "owner" },
+      management_role_id: ownerRoleId,
+      allowed: ownRecordAllowed,
+    });
+    expect(await screen.findByRole("heading", { level: 2, name: "Profile" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Access" })).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Employee app" })).toBeNull();
   });
 
   it("shows invitation delivery failure without clearing the pending invite", async () => {
@@ -811,6 +935,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -821,18 +948,24 @@ describe("EmployeeDrawer", () => {
       },
     });
 
+    expect(await screen.findByText("Not delivered")).toBeTruthy();
     expect(
-      await screen.findAllByText("Invitation delivery failed"),
-    ).toHaveLength(2);
-    expect(screen.getByText("Invitation delivery failed (503)")).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Retry" }));
+      screen.getByText("Invitation delivery failed (503) Resend sends a new link."),
+    ).toBeTruthy();
+    // The link still works: it can be copied and revoked.
+    expect(screen.getByRole("button", { name: "Copy link" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Retry" })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Resend" }));
     await waitFor(() =>
-      expect(retryEmployeeInvitation).toHaveBeenCalledWith(
+      expect(prepareEmployeeInvitation).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
+        "alex@example.test",
+        { employee_role_id: employeeRoleId, management_role_id: null, managed_location_ids: [] },
       ),
     );
-    expect(screen.getByRole("button", { name: "Resend" })).toBeTruthy();
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
   // Everyone else gives an emergency contact while onboarding. The owner never
@@ -1027,14 +1160,17 @@ describe("EmployeeDrawer", () => {
     ).toBeNull();
   });
 
-  it("names the role an invitation grants and the person who sent it", async () => {
+  it("names who sent an invitation, when it expires, and the access it grants", async () => {
     renderDrawer("access", {
       ...detail,
       display_status: "invited",
       invitation: {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
-        role_id: employeeRoleId,
+        role_id: managerRoleId,
+        employee_role_id: null,
+        management_role_id: managerRoleId,
+        managed_location_ids: [mainDiningId],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1044,10 +1180,17 @@ describe("EmployeeDrawer", () => {
       },
     });
 
-    expect(await screen.findByText("Invited by")).toBeTruthy();
-    expect(screen.getByText("Mert Tepebas")).toBeTruthy();
-    expect(screen.getAllByText("Manager").length).toBeGreaterThan(0);
-    expect(screen.getByText("Expires")).toBeTruthy();
+    expect(
+      await screen.findByText("Sent Aug 17 by Mert Tepebas · expires Aug 24"),
+    ).toBeTruthy();
+    expect(screen.getByText("Pending")).toBeTruthy();
+    expect(screen.getByText("alex@example.test")).toBeTruthy();
+    expect((await accessBox("Employee app")).checked).toBe(false);
+    expect((await accessBox("Management app")).checked).toBe(true);
+    expect(await screen.findByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
+    expect(
+      within(screen.getByRole("group", { name: /^Manages/ })).getByLabelText("Main Dining"),
+    ).toHaveProperty("checked", true);
   });
 
   it("copies the invitation link when email did not get there", async () => {
@@ -1074,6 +1217,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1101,6 +1247,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1108,12 +1257,10 @@ describe("EmployeeDrawer", () => {
       },
     });
 
-    fireEvent.click(
-      await screen.findByRole("button", { name: "Revoke invitation" }),
-    );
+    fireEvent.click(await screen.findByRole("button", { name: "Revoke" }));
     expect(revokeEmployeeInvitation).not.toHaveBeenCalled();
     fireEvent.click(
-      await screen.findByRole("button", { name: /Confirm revoke/ }),
+      await screen.findByRole("button", { name: "Confirm revoke" }),
     );
 
     await waitFor(() =>
@@ -1124,7 +1271,7 @@ describe("EmployeeDrawer", () => {
     );
   });
 
-  it("sends a reminder for the current pending invitation", async () => {
+  it("resends the current pending invitation as a new link with the access it carries", async () => {
     renderDrawer("access", {
       ...detail,
       display_status: "invited",
@@ -1132,6 +1279,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1142,37 +1292,33 @@ describe("EmployeeDrawer", () => {
       },
     });
 
-    expect(await screen.findAllByText("Invitation sent")).toHaveLength(2);
-    expect(
-      screen.getByRole("button", { name: "Revoke invitation" }),
-    ).toBeTruthy();
-    fireEvent.click(screen.getByRole("button", { name: "Send reminder" }));
+    expect(await screen.findByText("Pending")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Revoke" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "Send reminder" })).toBeNull();
+    // Resend lives in Access; the footer has no second Invite.
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
+    const resend = screen.getByRole("button", { name: "Resend" });
+    expect(resend.getAttribute("title")).toBe("Sends a new link. The old link stops working.");
+    fireEvent.click(resend);
 
     await waitFor(() =>
-      expect(retryEmployeeInvitation).toHaveBeenCalledWith(
+      expect(prepareEmployeeInvitation).toHaveBeenCalledWith(
         workspaceId,
         employeeId,
+        "alex@example.test",
+        { employee_role_id: employeeRoleId, management_role_id: null, managed_location_ids: [] },
       ),
     );
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
-  it("keeps profile photo removal disabled until a workspace photo exists", async () => {
-    renderDrawer("access");
+  it("draws the avatar as a plain picture until a workspace photo exists", async () => {
+    const { client, container } = renderDrawer("profile");
 
-    expect(await screen.findByText("Profile photo removal")).toBeTruthy();
-    expect(screen.getByRole("button", { name: "Remove photo" })).toHaveProperty(
-      "disabled",
-      true,
-    );
-  });
-
-  it("removes the workspace profile photo when one exists, on the second click", async () => {
-    const { client } = renderDrawer("access");
-
-    const removePhoto = await screen.findByRole("button", {
-      name: "Remove photo",
-    });
-    expect(removePhoto).toHaveProperty("disabled", true);
+    await screen.findByLabelText("First name");
+    await waitFor(() => expect(getEmployeeAvatar).toHaveBeenCalled());
+    expect(screen.queryByRole("button", { name: /photo/ })).toBeNull();
+    expect(container.querySelector(".drawer-avatar")?.tagName).toBe("SPAN");
     vi.mocked(getEmployeeAvatar).mockResolvedValue({
       present: true,
       url: "https://example.test/avatar.png",
@@ -1180,14 +1326,26 @@ describe("EmployeeDrawer", () => {
     await client.invalidateQueries({
       queryKey: ["employee-avatar", workspaceId, employeeId],
     });
-    await waitFor(() => expect(removePhoto).toHaveProperty("disabled", false));
+    expect(
+      await photoButton("Alex's photo. Select twice to remove it."),
+    ).toBeTruthy();
+  });
+
+  it("removes the workspace profile photo from the avatar, on the second click", async () => {
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({
+      present: true,
+      url: "https://example.test/avatar.png",
+    });
+    renderDrawer("profile");
+    const photo = await photoButton("Alex's photo. Select twice to remove it.");
+    expect(photo.querySelector("img")?.getAttribute("src")).toBe("https://example.test/avatar.png");
     // The first click only arms it: losing a photo to one stray click is what
-    // the two-click button exists to prevent.
-    fireEvent.click(removePhoto);
+    // the two clicks exist to prevent.
+    fireEvent.click(photo);
     expect(removeEmployeeAvatar).not.toHaveBeenCalled();
-    fireEvent.click(
-      await screen.findByRole("button", { name: /Confirm remove/ }),
-    );
+    expect(photo.getAttribute("aria-label")).toBe("Remove Alex's photo");
+    expect(screen.getByText("Click again to remove the photo.")).toBeTruthy();
+    fireEvent.click(photo);
 
     await waitFor(() =>
       expect(removeEmployeeAvatar).toHaveBeenCalledWith(
@@ -1195,6 +1353,24 @@ describe("EmployeeDrawer", () => {
         employeeId,
       ),
     );
+    expect(removeEmployeeAvatar).toHaveBeenCalledTimes(1);
+  });
+
+  it("removes the photo from the phone header's avatar too, saying tap again", async () => {
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({
+      present: true,
+      url: "https://example.test/avatar.png",
+    });
+    renderDrawer("profile");
+    await photoButton("Alex's photo. Select twice to remove it.");
+    const compact = screen
+      .getAllByRole("button", { name: "Alex's photo. Select twice to remove it." })
+      .find((button) => button.classList.contains("compact"))!;
+    fireEvent.click(compact);
+    expect(screen.getByText("Tap again to remove the photo.")).toBeTruthy();
+    expect(removeEmployeeAvatar).not.toHaveBeenCalled();
+    fireEvent.click(compact);
+    await waitFor(() => expect(removeEmployeeAvatar).toHaveBeenCalledTimes(1));
   });
 
   it("locks profile identity and email while an invitation is pending", async () => {
@@ -1205,6 +1381,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "pending",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1221,10 +1400,8 @@ describe("EmployeeDrawer", () => {
     );
     expect(screen.getByLabelText("Last name")).toHaveProperty("readOnly", true);
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", true);
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
-      "disabled",
-      true,
-    );
+    // The invitation out is resent from Access, not invited again from here.
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
   });
 
   it("unlocks profile identity and email after a pending invitation is revoked", async () => {
@@ -1235,6 +1412,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "revoked",
         expires_at: "2099-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1254,7 +1434,7 @@ describe("EmployeeDrawer", () => {
       false,
     );
     expect(screen.getByLabelText("E-mail")).toHaveProperty("readOnly", false);
-    expect(screen.getByLabelText("Invite role")).toHaveProperty(
+    expect(screen.getByRole("button", { name: "Invite" })).toHaveProperty(
       "disabled",
       false,
     );
@@ -1269,6 +1449,9 @@ describe("EmployeeDrawer", () => {
         id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
         email: "alex@example.test",
         role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
         status: "accepted",
         expires_at: "2026-08-24T12:00:00.000Z",
         sent_at: "2026-08-17T12:00:00.000Z",
@@ -1279,8 +1462,14 @@ describe("EmployeeDrawer", () => {
       },
     });
 
-    expect(await screen.findAllByText("Access removed")).toHaveLength(2);
-    expect(screen.queryByText("Invitation expired")).toBeNull();
+    expect(await screen.findByText("Access removed")).toBeTruthy();
+    expect(
+      screen.getByText("The record and work history are kept. Select Invite to give access again."),
+    ).toBeTruthy();
+    expect(screen.queryByText("Expired")).toBeNull();
+    // Access is chosen again before a new invitation.
+    expect((await accessBox("Employee app")).checked).toBe(false);
+    expect(screen.getByRole("button", { name: "Invite" })).toBeTruthy();
   });
 
   it("routes the no-email access state to the profile email field", async () => {
@@ -1290,10 +1479,9 @@ describe("EmployeeDrawer", () => {
       invitation: null,
     });
 
-    expect(await screen.findByText("No email")).toBeTruthy();
-    expect(
-      screen.getByText("Add an email before sending an invite."),
-    ).toBeTruthy();
+    // In place of the address, and on its pill.
+    expect(await screen.findAllByText("No email")).toHaveLength(2);
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: "Add email" }));
 
     const email = await screen.findByLabelText("E-mail");
@@ -1686,9 +1874,22 @@ describe("EmployeeDrawer", () => {
     });
 
     it("locks the role and opens the owner's own emergency contact by the flag", async () => {
-      const founder = { ...ownersRecord, role_id: ownerRoleId, role_name: "Founder", display_status: "active" as const, private_contact: null };
+      const founder = {
+        ...ownersRecord,
+        role_id: ownerRoleId,
+        role_name: "Founder",
+        display_status: "active" as const,
+        private_contact: null,
+        access: { employee: false, management: "owner" as const },
+        management_role_id: ownerRoleId,
+        // Somebody who may change roles opens Access; the owner's stays locked.
+        allowed: { ...ownRecordAllowed, change_role: true },
+      };
       const view = renderDrawer("access", founder);
-      expect(lockReason(await screen.findByLabelText("Workspace role"))).toBe("Owner access is managed separately.");
+      // Owner by the flag, whatever the role is named.
+      expect((await screen.findByRole("radio", { name: "Owner" })).closest("fieldset")).toHaveProperty("disabled", true);
+      expect(screen.queryByRole("radio", { name: "Founder" })).toBeNull();
+      expect((await accessBox("Management app")).disabled).toBe(true);
       view.unmount();
       renderDrawer("profile", founder);
       expect(await screen.findByLabelText("Emergency contact")).toBeTruthy();
@@ -2223,28 +2424,44 @@ describe("EmployeeDrawer record actions follow the server", () => {
     expect(screen.queryByRole("button", { name: "Restore employee" })).toBeNull();
   });
 
-  it("hides Remove access when the server does not allow it", async () => {
+  it("hides Remove all access when the server does not allow it", async () => {
     renderDrawer("access", { ...linked, allowed: { ...detail.allowed, remove_access: false } });
-    const role = await screen.findByLabelText("Workspace role");
-    await waitFor(() => expect(role).toHaveProperty("disabled", false));
-    expect(screen.queryByRole("button", { name: "Remove access" })).toBeNull();
+    const management = await accessBox("Management app");
+    await waitFor(() => expect(management.disabled).toBe(false));
+    expect(screen.queryByRole("button", { name: "Remove all access" })).toBeNull();
   });
 
-  it("locks the workspace role when changing it is not allowed", async () => {
+  it("locks the accesses when changing them is not allowed", async () => {
     renderDrawer("access", { ...linked, allowed: { ...detail.allowed, change_role: false } });
-    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
-    expect(screen.getByRole("button", { name: "Remove access" })).toBeTruthy();
+    expect(await screen.findByRole("button", { name: "Remove all access" })).toBeTruthy();
+    expect((await accessBox("Employee app")).disabled).toBe(true);
+    expect((await accessBox("Management app")).disabled).toBe(true);
+  });
+
+  it("asks twice before removing all access", async () => {
+    renderDrawer("access", linked);
+    fireEvent.click(await screen.findByRole("button", { name: "Remove all access" }));
+    expect(removeEmployeeAccess).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole("button", { name: "Confirm remove all access" }));
+    await waitFor(() => expect(removeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId));
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
   });
 
   it("offers an admin role only when making an admin is allowed", async () => {
     inviteRolesFixture = [
       { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
-      { id: "a0000000-0000-4000-8000-00000000000a", name: "Admin", systemKey: "admin", accessClass: "admin" },
+      { id: managerRoleId, name: "Manager", systemKey: "manager", accessClass: "manager" },
+      { id: adminRoleId, name: "Admin", systemKey: "admin", accessClass: "admin" },
     ];
-    renderDrawer("access", { ...linked, allowed: { ...detail.allowed, make_admin: false } });
-    const select = await screen.findByLabelText("Workspace role");
-    await waitFor(() => expect(within(select).getByRole("option", { name: "Employee" })).toBeTruthy());
-    expect(within(select).queryByRole("option", { name: "Admin" })).toBeNull();
+    const view = renderDrawer("access", { ...linked, allowed: { ...detail.allowed, make_admin: false } });
+    await giveManagement("Manager", []);
+    expect(screen.queryByRole("radio", { name: "Admin" })).toBeNull();
+    view.unmount();
+    renderDrawer("access", linked);
+    await giveManagement("Admin", []);
+    expect(screen.getByRole("radio", { name: "Admin" })).toHaveProperty("checked", true);
+    // An admin manages every location: nothing to pick.
+    expect(screen.queryByRole("group", { name: /^Manages/ })).toBeNull();
   });
 
   it("shows the no-access card, not the server's sentence, for a person out of reach", async () => {
@@ -2587,6 +2804,9 @@ describe("EmployeeDrawer EMP-001 look", () => {
     id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
     email: "alex@example.test",
     role_id: employeeRoleId,
+    employee_role_id: employeeRoleId,
+    management_role_id: null,
+    managed_location_ids: [],
     status: "pending" as const,
     expires_at: "2099-08-24T12:00:00.000Z",
     sent_at: "2026-08-17T12:00:00.000Z",
@@ -2678,7 +2898,7 @@ describe("EmployeeDrawer EMP-001 look", () => {
     expect(email).toHaveProperty("readOnly", false);
   });
 
-  it("says why the owner's role is locked to a screen reader only", async () => {
+  it("draws the owner's role as one switched-off row, asking for nothing", async () => {
     renderDrawer("access", {
       ...detail,
       role_id: ownerRoleId,
@@ -2686,87 +2906,96 @@ describe("EmployeeDrawer EMP-001 look", () => {
       is_workspace_owner: true,
       user_id: context.userId,
       display_status: "active",
-      allowed: ownRecordAllowed,
+      access: { employee: false, management: "owner" },
+      management_role_id: ownerRoleId,
+      allowed: { ...ownRecordAllowed, change_role: true },
     });
-    const role = await screen.findByLabelText("Workspace role");
+    const owner = await screen.findByRole("radio", { name: "Owner" });
+    const role = screen.getByRole("group", { name: /^Role/ });
+    expect(owner.closest("fieldset")).toBe(role);
     expect(role).toHaveProperty("disabled", true);
-    expect(described(role)).toEqual({ text: "Owner access is managed separately.", hidden: true });
-    expect(screen.queryByText("Invitation, onboarding, and workspace role.")).toBeNull();
+    expect(within(role).queryByText("Required")).toBeNull();
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector(".access-note.warning")).toBeNull();
   });
 
-  it("prints no note under anybody else's role", async () => {
+  it("prints no warning or error on a linked person's untouched access", async () => {
     renderDrawer("access", {
       ...detail,
-      role_id: employeeRoleId,
-      role_name: "Employee",
+      role_id: managerRoleId,
+      role_name: "Manager",
       user_id: "16000000-0000-4000-8000-000000000005",
       display_status: "active",
+      access: { employee: true, management: "manager" },
+      employee_role_id: employeeRoleId,
+      management_role_id: managerRoleId,
+      managed_location_ids: [mainDiningId],
     });
-    const role = await screen.findByLabelText("Workspace role");
-    expect(screen.queryByText("Owner access is managed separately.")).toBeNull();
-    expect(role.getAttribute("aria-describedby")).toBeNull();
-    expect(screen.queryByText("Invitation, onboarding, and workspace role.")).toBeNull();
+    expect(await screen.findByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
+    expect(within(screen.getByRole("group", { name: /^Role/ })).getByText("Required")).toBeTruthy();
+    expect(
+      within(screen.getByRole("group", { name: /^Manages/ })).getByLabelText("Main Dining"),
+    ).toHaveProperty("checked", true);
+    expect(screen.queryByRole("alert")).toBeNull();
+    expect(document.querySelector(".access-note.warning")).toBeNull();
+    expect(screen.queryByRole("button", { name: "Undo" })).toBeNull();
+    expect(screen.getByText("Alex signs in with this email.")).toBeTruthy();
   });
 
-  it("prints no notes in the Profile photo group; the button says what it removes to a screen reader", async () => {
-    // With a photo to remove; without one the button says why it is off (BL-473).
+  it("names what the photo button does to a screen reader, and prints no hint until it is armed", async () => {
     vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({ present: true, url: "blob:photo" });
-    renderDrawer("access");
-    const remove = await screen.findByRole("button", { name: "Remove photo" });
-    expect(described(remove)).toEqual({
-      text: "Remove only the photo shown for this workspace.",
-      hidden: true,
-    });
-    expect(screen.queryByText(/Remove the workspace profile photo shown/)).toBeNull();
-    expect(screen.getByText("Profile photo removal")).toBeTruthy();
+    renderDrawer("profile");
+    const photo = await photoButton("Alex's photo. Select twice to remove it.");
+    expect(photo.getAttribute("title")).toBe("Remove photo");
+    expect(
+      [...document.querySelectorAll(".drawer-avatar-hint")].map((hint) => hint.textContent),
+    ).toEqual(["", ""]);
+    expect(screen.queryByText("Profile photo removal")).toBeNull();
   });
 
-  it("outlines the profile photo while it loads", async () => {
+  it("shows the initial while the photo loads, with nothing to remove", async () => {
     vi.mocked(getEmployeeAvatar).mockReturnValueOnce(new Promise(() => {}));
-    renderDrawer("access");
-    expect(await screen.findByText("Loading profile photo")).toBeTruthy();
-    expect(screen.queryByText("Loading profile photo...")).toBeNull();
-  });
-
-  it("shows the load-error card with Try again when the profile photo fails", async () => {
-    vi.mocked(getEmployeeAvatar).mockRejectedValueOnce(new Error("Storage unavailable"));
-    renderDrawer("access");
-    expect(await screen.findByRole("heading", { level: 3, name: "We couldn't load the profile photo" })).toBeTruthy();
-    expect(screen.queryByText("Storage unavailable")).toBeNull();
-    expect(screen.queryByText("Profile photo unavailable")).toBeNull();
-    fireEvent.click(screen.getByRole("button", { name: "Try again" }));
+    const { container } = renderDrawer("profile");
+    await screen.findByLabelText("First name");
     await waitFor(() =>
-      expect(screen.queryByRole("heading", { name: "We couldn't load the profile photo" })).toBeNull(),
+      expect(container.querySelector(".employee-summary-rail .drawer-avatar")?.textContent).toBe("A"),
     );
-    expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /photo/ })).toBeNull();
   });
 
-  it("keeps the photo control and says so when the photo does not refresh", async () => {
-    const { client } = renderDrawer("access");
-    expect(await screen.findByRole("button", { name: "Remove photo" })).toBeTruthy();
+  it("shows the initial when the photo fails, without the server's words", async () => {
+    vi.mocked(getEmployeeAvatar).mockRejectedValueOnce(new Error("Storage unavailable"));
+    const { container } = renderDrawer("profile");
+    await screen.findByLabelText("First name");
+    await waitFor(() => expect(getEmployeeAvatar).toHaveBeenCalled());
+    expect(container.querySelector(".employee-summary-rail .drawer-avatar")?.textContent).toBe("A");
+    expect(screen.queryByText("Storage unavailable")).toBeNull();
+    expect(screen.queryByRole("button", { name: /photo/ })).toBeNull();
+  });
+
+  it("keeps the photo and its removal when the photo does not refresh", async () => {
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({ present: true, url: "blob:photo" });
+    const { client } = renderDrawer("profile");
+    expect(await photoButton("Alex's photo. Select twice to remove it.")).toBeTruthy();
     vi.mocked(getEmployeeAvatar).mockRejectedValueOnce(new Error("Storage unavailable"));
     await act(async () => {
       await client.refetchQueries({ queryKey: ["employee-avatar"] });
     });
-    const line = await screen.findByText(
-      "The profile photo didn't refresh. This is the last photo that loaded.",
-    );
-    expect(screen.getByRole("button", { name: "Remove photo" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "We couldn't load the profile photo" })).toBeNull();
+    const photo = await photoButton("Alex's photo. Select twice to remove it.");
+    expect(photo.querySelector("img")?.getAttribute("src")).toBe("blob:photo");
     expect(screen.queryByText("Storage unavailable")).toBeNull();
-    fireEvent.click(within(line.closest(".load-refresh") as HTMLElement).getByRole("button", { name: "Try again" }));
-    await waitFor(() =>
-      expect(screen.queryByText(/The profile photo didn't refresh/)).toBeNull(),
-    );
   });
 
-  it("keeps no photo note for a reader who cannot remove the photo", async () => {
-    renderDrawer("access", { ...detail, allowed: { ...detail.allowed, save: false } });
-    await screen.findByRole("heading", { name: "Profile photo" });
-    // BL-408: a row naming a removal nobody here can do is not drawn.
-    expect(screen.queryByText("Profile photo removal")).toBeNull();
-    expect(screen.queryByRole("button", { name: "Remove photo" })).toBeNull();
-    expect(screen.queryByText("Remove only the photo shown for this workspace.")).toBeNull();
+  it("shows the photo without a way to remove it to a reader who cannot save the record", async () => {
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({ present: true, url: "blob:photo" });
+    const { container } = renderDrawer("profile", { ...detail, allowed: { ...detail.allowed, save: false } });
+    await waitFor(() =>
+      expect(container.querySelector(".employee-summary-rail .drawer-avatar img")?.getAttribute("src")).toBe(
+        "blob:photo",
+      ),
+    );
+    expect(screen.queryByRole("button", { name: /photo/ })).toBeNull();
+    expect(document.querySelector(".drawer-avatar-hint")).toBeNull();
   });
 
   it("lists jobs under their departments, Management last", async () => {
@@ -2834,32 +3063,43 @@ describe("EmployeeDrawer EMP-001 look", () => {
   });
 });
 
-// EMP-001 B4 (item 15, K7): the workspace role is picked in the form and
-// Save changes saves it, the record first. The drawer never asks before it
-// closes.
-describe("EmployeeDrawer saves the workspace role with Save changes", () => {
+// EMP-001 B4 (item 15, K7), as DAVET-ERISIM (Tur 4 B) left it: a linked
+// person's accesses are picked in the form and Save changes saves them, the
+// record first. The drawer never asks before it closes.
+describe("EmployeeDrawer saves access with Save changes", () => {
   const linked = {
     ...detail,
     role_id: employeeRoleId,
     role_name: "Employee",
     user_id: "16000000-0000-4000-8000-000000000005",
     display_status: "active" as const,
+    employee_role_id: employeeRoleId,
   };
-  const asManager = { ...linked, role_id: managerRoleId, role_name: "Manager", revision: 2 };
+  const asManager = {
+    ...linked,
+    role_id: managerRoleId,
+    role_name: "Manager",
+    access: { employee: true, management: "manager" as const },
+    management_role_id: managerRoleId,
+    managed_location_ids: [mainDiningId],
+    revision: 2,
+  };
+  const managerAccess = {
+    employee_role_id: employeeRoleId,
+    management_role_id: managerRoleId,
+    managed_location_ids: [mainDiningId],
+    expected_impact: noImpact,
+  };
   // The file does not clear its mocks; these tests count calls.
   beforeEach(() => {
     vi.mocked(saveEmployee).mockClear();
-    vi.mocked(updateEmployeeRole).mockClear();
+    vi.mocked(changeEmployeeAccess).mockClear();
+    vi.mocked(previewEmployeeAccessChange).mockClear();
+    vi.mocked(updateEmployeeInvitationAccess).mockClear();
+    vi.mocked(prepareEmployeeInvitation).mockClear();
     vi.mocked(getEmployeeDetail).mockClear();
     refresh.mockClear();
   });
-  const pickManager = async () => {
-    const role = (await screen.findByLabelText("Workspace role")) as HTMLSelectElement;
-    // The roles to pick from arrive after the record.
-    await waitFor(() => expect(within(role).getByRole("option", { name: "Manager" })).toBeTruthy());
-    fireEvent.change(role, { target: { value: managerRoleId } });
-    return role;
-  };
   const firstName = async () => {
     const input = (await screen.findByLabelText("First name")) as HTMLInputElement;
     await waitFor(() => expect(input.value).toBe("Alex"));
@@ -2870,99 +3110,114 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
   const save = () => screen.getByRole("button", { name: "Save changes" }) as HTMLButtonElement;
   const settled = () => new Promise((resolve) => setTimeout(resolve, 0));
 
-  it("holds a picked role in the form and sends nothing", async () => {
+  it("holds the access picked in the form and sends nothing", async () => {
     renderDrawer("access", linked);
-    const role = await pickManager();
-    expect(role.value).toBe(managerRoleId);
+    await giveManagement();
+    expect((await accessBox("Management app")).checked).toBe(true);
+    expect(screen.getByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
     expect(save().disabled).toBe(false);
     await settled();
-    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
+    expect(previewEmployeeAccessChange).not.toHaveBeenCalled();
   });
 
-  it("sends the role alone when only the role changed, and stays on Access", async () => {
+  it("holds Save until a manager's role names where they manage", async () => {
+    renderDrawer("access", linked);
+    await giveManagement("Manager", []);
+    expect(save().disabled).toBe(true);
+    fireEvent.click(within(screen.getByRole("group", { name: /^Manages/ })).getByLabelText("Main Dining"));
+    expect(save().disabled).toBe(false);
+  });
+
+  it("sends the access alone when only the access changed, and stays on Access", async () => {
     const { onSectionChange } = renderDrawer("access", linked);
-    await pickManager();
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
     fireEvent.click(save());
     await screen.findByRole("button", { name: "Done" });
-    expect(updateEmployeeRole).toHaveBeenCalledTimes(1);
-    expect(updateEmployeeRole).toHaveBeenCalledWith(workspaceId, employeeId, managerRoleId);
+    expect(changeEmployeeAccess).toHaveBeenCalledTimes(1);
+    expect(changeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId, managerAccess);
+    // Nothing is dropped, so nothing is previewed.
+    expect(previewEmployeeAccessChange).not.toHaveBeenCalled();
     expect(saveEmployee).not.toHaveBeenCalled();
     expect(refresh).toHaveBeenCalled();
     expect(onSectionChange).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+    expect((await accessBox("Management app")).checked).toBe(true);
   });
 
-  // BL-477: a role saved alone is heard, not only seen on the button.
-  it("tells a screen reader the role was saved", async () => {
+  // BL-477: an access saved alone is heard, not only seen on the button.
+  it("tells a screen reader the access was saved", async () => {
     renderDrawer("access", linked);
-    await pickManager();
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
     fireEvent.click(save());
     await screen.findByRole("button", { name: "Done" });
-    expect(screen.getAllByRole("status").some((region) => region.textContent === "Role saved.")).toBe(true);
+    expect(screen.getAllByRole("status").some((region) => region.textContent === "Access saved.")).toBe(true);
   });
 
-  // BL-463: the role is saved even when reading the person again fails; the
+  // BL-463: the access is saved even when reading the person again fails; the
   // drawer says so and offers Retry instead of a bare error.
-  it("says the role was saved when reading the person again fails", async () => {
+  it("says the access was saved when reading the person again fails", async () => {
     renderDrawer("access", linked);
-    await pickManager();
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockRejectedValue(new Error("Failed to fetch"));
     fireEvent.click(save());
     expect(
-      await screen.findByText(/^Role saved\. This employee didn't reload\.$/),
+      await screen.findByText(/^Access saved\. This employee didn't reload\.$/),
     ).toBeTruthy();
     expect(screen.getByRole("button", { name: "Try again" })).toBeTruthy();
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 
-  it("sends the record, then the role, and returns to Profile", async () => {
+  it("sends the record, then the access, and returns to Profile", async () => {
     const { onSectionChange } = renderDrawer("profile", linked);
     fireEvent.change(await firstName(), { target: { value: "Alexa" } });
     goTo("access");
-    await pickManager();
+    await giveManagement();
     fireEvent.click(save());
-    await waitFor(() => expect(updateEmployeeRole).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(changeEmployeeAccess).toHaveBeenCalledTimes(1));
+    expect(changeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId, managerAccess);
     expect(saveEmployee).toHaveBeenCalledTimes(1);
     expect(vi.mocked(saveEmployee).mock.invocationCallOrder[0]).toBeLessThan(
-      vi.mocked(updateEmployeeRole).mock.invocationCallOrder[0]!,
+      vi.mocked(changeEmployeeAccess).mock.invocationCallOrder[0]!,
     );
     await waitFor(() => expect(onSectionChange).toHaveBeenLastCalledWith("profile"));
   });
 
-  it("keeps the picked role when it fails after the record landed; the retry sends the role alone", async () => {
+  it("keeps the picked access when it fails after the record landed; the retry sends the access alone", async () => {
     renderDrawer("profile", linked);
     fireEvent.change(await firstName(), { target: { value: "Alexa" } });
     goTo("access");
-    await pickManager();
-    vi.mocked(updateEmployeeRole).mockRejectedValueOnce(new Error("The role could not be changed"));
+    await giveManagement();
+    vi.mocked(changeEmployeeAccess).mockRejectedValueOnce(new Error("The access could not be changed"));
     vi.mocked(getEmployeeDetail).mockResolvedValue({ ...linked, first_name: "Alexa", revision: 2 });
     fireEvent.click(save());
-    expect(await screen.findByText("The role could not be changed")).toBeTruthy();
-    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+    expect(await screen.findByText("The access could not be changed")).toBeTruthy();
+    expect((await accessBox("Management app")).checked).toBe(true);
+    expect(screen.getByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
     await waitFor(() => expect(save().disabled).toBe(false));
     fireEvent.click(save());
-    await waitFor(() => expect(updateEmployeeRole).toHaveBeenCalledTimes(2));
+    await waitFor(() => expect(changeEmployeeAccess).toHaveBeenCalledTimes(2));
+    expect(changeEmployeeAccess).toHaveBeenLastCalledWith(workspaceId, employeeId, managerAccess);
     expect(saveEmployee).toHaveBeenCalledTimes(1);
   });
 
-  it("sends no role when the record is refused", async () => {
+  it("sends no access when the record is refused", async () => {
     renderDrawer("profile", linked);
     fireEvent.change(await firstName(), { target: { value: "Alexa" } });
     goTo("access");
-    await pickManager();
+    await giveManagement();
     vi.mocked(saveEmployee).mockRejectedValueOnce(new Error("The record could not be saved"));
     fireEvent.click(save());
     expect(await screen.findByText("The record could not be saved")).toBeTruthy();
-    expect(updateEmployeeRole).not.toHaveBeenCalled();
-    expect(screen.getByLabelText("Workspace role")).toHaveProperty("value", managerRoleId);
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
+    expect((await accessBox("Management app")).checked).toBe(true);
   });
 
-  // BL-431: what is unsaved may be the role, not the profile.
-  it("holds Terminate while only the role is unsaved, and does not say profile", async () => {
+  // BL-431: what is unsaved may be the access, not the profile.
+  it("holds Terminate while only the access is unsaved, and does not say profile", async () => {
     renderDrawer("access", linked);
-    await pickManager();
+    await giveManagement();
     const terminate = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
     switchedOff(terminate);
     expect(describedBy(terminate)).toBe("Save your changes before terminating the employee");
@@ -2973,39 +3228,40 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     renderDrawer("access", linked);
     const live = (await screen.findByRole("button", { name: "Terminate employee" })) as HTMLButtonElement;
     expect(live.classList.contains("employee-terminate-passive")).toBe(false);
-    await pickManager();
+    await giveManagement();
     const held = screen.getByRole("button", { name: "Terminate employee" }) as HTMLButtonElement;
     switchedOff(held);
     expect(held.classList.contains("employee-terminate-passive")).toBe(true);
     expect(describedBy(held)).toBe("Save your changes before terminating the employee");
   });
 
-  it("offers Save changes to a reader who may change the role and not the record", async () => {
+  it("offers Save changes to a reader who may change access and not the record", async () => {
     renderDrawer("access", { ...linked, allowed: { ...detail.allowed, save: false } });
-    await pickManager();
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockResolvedValue({ ...asManager, allowed: { ...detail.allowed, save: false } });
     fireEvent.click(save());
     await waitFor(() =>
-      expect(updateEmployeeRole).toHaveBeenCalledWith(workspaceId, employeeId, managerRoleId),
+      expect(changeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId, managerAccess),
     );
     expect(saveEmployee).not.toHaveBeenCalled();
   });
 
   it("offers no Save changes to a reader who may change neither", async () => {
     renderDrawer("access", { ...linked, allowed: { ...detail.allowed, save: false, change_role: false } });
-    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
+    expect(await screen.findByRole("button", { name: "Remove all access" })).toBeTruthy();
+    expect((await accessBox("Management app")).disabled).toBe(true);
     expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
   });
 
-  // The role service moves the record's revision on. A form touched and put
-  // back before the role was saved must still take the new one up.
-  it("saves a later name change on the revision the role save left", async () => {
+  // The access service moves the record's revision on. A form touched and put
+  // back before the access was saved must still take the new one up.
+  it("saves a later name change on the revision the access save left", async () => {
     renderDrawer("profile", linked);
     const name = await firstName();
     fireEvent.change(name, { target: { value: "Alexa" } });
     fireEvent.change(name, { target: { value: "Alex" } });
     goTo("access");
-    await pickManager();
+    await giveManagement();
     vi.mocked(getEmployeeDetail).mockResolvedValue(asManager);
     fireEvent.click(save());
     await screen.findByRole("button", { name: "Done" });
@@ -3020,19 +3276,22 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
   });
 
   // K7 (i), user decision 2026-09-30: leaving is never asked about.
-  it("closes on Escape and on a click outside without asking, and forgets the picked role", async () => {
+  it("closes on Escape and on a click outside without asking, and forgets the picked access", async () => {
     const { onClose, unmount } = renderDrawer("access", linked);
-    await pickManager();
+    await giveManagement();
     fireEvent.keyDown(document, { key: "Escape" });
     expect(onClose).toHaveBeenCalledTimes(1);
     fireEvent.click(screen.getAllByRole("button", { name: "Close employee details" })[0]!);
     expect(onClose).toHaveBeenCalledTimes(2);
     expect(screen.queryByRole("alertdialog")).toBeNull();
     await settled();
-    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
     unmount();
     renderDrawer("access", linked);
-    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("value", employeeRoleId);
+    const management = await accessBox("Management app");
+    await waitFor(() => expect(management.disabled).toBe(false));
+    expect(management.checked).toBe(false);
+    expect(screen.queryByRole("radio", { name: "Manager" })).toBeNull();
   });
 
   // BL-432: Enter sends what Save changes would, and nothing when it is off.
@@ -3041,7 +3300,138 @@ describe("EmployeeDrawer saves the workspace role with Save changes", () => {
     fireEvent.keyDown(await firstName(), { key: "Enter" });
     await settled();
     expect(saveEmployee).not.toHaveBeenCalled();
-    expect(updateEmployeeRole).not.toHaveBeenCalled();
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
+  });
+
+  it("locks a linked person's only access, and says Remove all access takes it", async () => {
+    renderDrawer("access", linked);
+    const employee = await accessBox("Employee app");
+    const management = await accessBox("Management app");
+    await waitFor(() => expect(management.disabled).toBe(false));
+    expect(employee.checked).toBe(true);
+    expect(employee.disabled).toBe(true);
+    expect(employee.closest("label")!.getAttribute("title")).toBe(
+      "This is Alex's only access. Remove all access takes it away.",
+    );
+  });
+
+  describe("taking an access away (Tur 4 B)", () => {
+    it("asks twice, in red, before removing the employee app, and sends what the preview said", async () => {
+      renderDrawer("access", asManager);
+      const employee = await accessBox("Employee app");
+      await waitFor(() => expect(employee.disabled).toBe(false));
+      fireEvent.click(employee);
+      expect(
+        await screen.findByText(/^When you save, 3 upcoming shifts become open and 1 pending request closes\./),
+      ).toBeTruthy();
+      expect(previewEmployeeAccessChange).toHaveBeenCalledWith(workspaceId, employeeId, {
+        employee_role_id: null,
+        management_role_id: managerRoleId,
+      });
+      expect(screen.queryByRole("button", { name: "Save changes" })).toBeNull();
+      const remove = screen.getByRole("button", { name: "Remove employee app" }) as HTMLButtonElement;
+      expect(remove.className).toContain("danger-button");
+      await waitFor(() => expect(remove.disabled).toBe(false));
+      fireEvent.click(remove);
+      expect(changeEmployeeAccess).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+      await waitFor(() =>
+        expect(changeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId, {
+          employee_role_id: null,
+          management_role_id: managerRoleId,
+          managed_location_ids: [mainDiningId],
+          expected_impact: {
+            shifts_opened: 3,
+            requests_closed: 1,
+            applications_closed: 0,
+            time_off_withdrawn: 0,
+            availability_deleted: true,
+          },
+        }),
+      );
+      expect(changeEmployeeAccess).toHaveBeenCalledTimes(1);
+      expect(saveEmployee).not.toHaveBeenCalled();
+    });
+
+    it("puts the employee app back with Undo, and Save changes is plain again", async () => {
+      renderDrawer("access", asManager);
+      const employee = await accessBox("Employee app");
+      await waitFor(() => expect(employee.disabled).toBe(false));
+      fireEvent.click(employee);
+      await screen.findByRole("button", { name: "Remove employee app" });
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      expect(employee.checked).toBe(true);
+      expect(screen.queryByText(/^When you save/)).toBeNull();
+      expect(screen.queryByRole("button", { name: "Remove employee app" })).toBeNull();
+      expect(save().disabled).toBe(true);
+      await settled();
+      expect(changeEmployeeAccess).not.toHaveBeenCalled();
+    });
+
+    it("says what removing the management app takes away, asks twice, and Undo gives the role back", async () => {
+      renderDrawer("access", asManager);
+      const management = await accessBox("Management app");
+      await waitFor(() => expect(management.disabled).toBe(false));
+      fireEvent.click(management);
+      expect(
+        screen.getByText(/^When you save, Alex can no longer open the management app or manage Main Dining\./),
+      ).toBeTruthy();
+      expect(screen.queryByRole("radio", { name: "Manager" })).toBeNull();
+      fireEvent.click(screen.getByRole("button", { name: "Undo" }));
+      expect(management.checked).toBe(true);
+      expect(screen.getByRole("radio", { name: "Manager" })).toHaveProperty("checked", true);
+      expect(
+        within(screen.getByRole("group", { name: /^Manages/ })).getByLabelText("Main Dining"),
+      ).toHaveProperty("checked", true);
+      fireEvent.click(management);
+      fireEvent.click(screen.getByRole("button", { name: "Remove management app" }));
+      expect(changeEmployeeAccess).not.toHaveBeenCalled();
+      fireEvent.click(screen.getByRole("button", { name: "Confirm remove" }));
+      await waitFor(() =>
+        expect(changeEmployeeAccess).toHaveBeenCalledWith(workspaceId, employeeId, {
+          employee_role_id: employeeRoleId,
+          management_role_id: null,
+          managed_location_ids: [],
+          expected_impact: noImpact,
+        }),
+      );
+      // Dropping the management app moves no shift: nothing is previewed.
+      expect(previewEmployeeAccessChange).not.toHaveBeenCalled();
+    });
+  });
+
+  // An invitation still out takes the access change on its own link (Tur 4 B).
+  it("changes a pending invitation's access with Save changes, keeping the link", async () => {
+    renderDrawer("access", {
+      ...detail,
+      display_status: "invited",
+      invitation: {
+        id: "8ce12c4a-216e-4e52-bca4-66c32c996541",
+        email: "alex@example.test",
+        role_id: employeeRoleId,
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
+        status: "pending",
+        expires_at: "2099-08-24T12:00:00.000Z",
+        sent_at: "2026-08-17T12:00:00.000Z",
+        delivery_status: "sent",
+      },
+    });
+    await giveManagement();
+    // No second Invite in the footer: the invitation out is the one changed.
+    expect(screen.queryByRole("button", { name: "Invite" })).toBeNull();
+    fireEvent.click(save());
+    await waitFor(() =>
+      expect(updateEmployeeInvitationAccess).toHaveBeenCalledWith(workspaceId, employeeId, {
+        employee_role_id: employeeRoleId,
+        management_role_id: managerRoleId,
+        managed_location_ids: [mainDiningId],
+      }),
+    );
+    expect(prepareEmployeeInvitation).not.toHaveBeenCalled();
+    expect(changeEmployeeAccess).not.toHaveBeenCalled();
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 });
 
@@ -3368,12 +3758,15 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
     expect(document.activeElement).toBe(last);
   });
 
-  // AC4 (BL-669 2): the Access role picker lists roles in the invite picker's
-  // order (lowest first), whatever order the server sends.
-  it("lists roles in Access in the invite picker's order", async () => {
+  // AC4 (BL-669 2), in Mert's order (Tur 4 B): Admin, Manager, then the
+  // workspace's own roles, whatever order the server sends; the employee
+  // role is the Employee app, not a management role.
+  it("lists management roles in Access as Admin, Manager, then the workspace's own", async () => {
     inviteRolesFixture = [
+      { id: "c0000000-0000-4000-8000-0000000000c1", name: "Shift Lead", systemKey: null, accessClass: "manager" },
       { id: managerRoleId, name: "Manager", systemKey: "manager", accessClass: "manager" },
       { id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" },
+      { id: adminRoleId, name: "Admin", systemKey: "admin", accessClass: "admin" },
     ];
     renderDrawer("access", {
       ...detail,
@@ -3382,10 +3775,18 @@ describe("EmployeeDrawer keeps the keyboard (EKRAN-03)", () => {
       user_id: "16000000-0000-4000-8000-000000000005",
       display_status: "active",
     });
-    const role = (await screen.findByLabelText("Workspace role")) as HTMLSelectElement;
-    await waitFor(() =>
-      expect(Array.from(role.options).map((option) => option.textContent)).toEqual(["Employee", "Manager"]),
-    );
+    await giveManagement("Manager", []);
+    const roles = screen.getByRole("group", { name: /^Role/ });
+    expect(within(roles).getAllByRole("radio").map((radio) => radio.closest("label")!.textContent)).toEqual([
+      "Admin",
+      "Manager",
+      "Shift Lead",
+    ]);
+    // Only the admin's role manages every location.
+    expect(within(roles).getAllByText("Every location")).toHaveLength(1);
+    expect(
+      within(screen.getByRole("radio", { name: "Admin" }).closest("div")!).getByText("Every location"),
+    ).toBeTruthy();
   });
 
   // Review D1: a read-only record's switched-off fields cannot take the focus.
@@ -3477,8 +3878,13 @@ describe("EmployeeDrawer words (EKRAN-03)", () => {
   // K9 (AC8, BL-669 1).
   it("says an archived person with a linked account is archived, not onboarding", async () => {
     renderDrawer("access", archivedLinked);
-    expect(await screen.findByText("Access is suspended while the employee is archived.")).toBeTruthy();
-    expect(screen.queryByText("Onboarding in progress")).toBeNull();
+    expect(await screen.findByText("Access is paused while the employee is archived.")).toBeTruthy();
+    expect(within(document.querySelector(".access-invite-line")!).getByText("Archived")).toBeTruthy();
+    expect(screen.queryByText("Accepted")).toBeNull();
+    expect(screen.queryByText(/finishing setup/)).toBeNull();
+    // Nothing to change while archived.
+    expect((await accessBox("Employee app")).disabled).toBe(true);
+    expect(screen.queryByRole("button", { name: "Remove all access" })).toBeNull();
   });
 
   // K10 (BL-408): nothing to cancel in a drawer that only reads.
@@ -3488,19 +3894,30 @@ describe("EmployeeDrawer words (EKRAN-03)", () => {
     expect(screen.queryByRole("button", { name: "Cancel" })).toBeNull();
   });
 
-  // BL-473: switched off with no photo, and says why.
-  it("says why Remove photo is off when there is no photo", async () => {
-    renderDrawer("access");
-    const remove = await screen.findByRole("button", { name: "Remove photo" });
-    expect(remove).toHaveProperty("disabled", true);
-    expect(describedBy(remove)).toBe("There is no workspace photo to remove.");
+  // BL-473 as the avatar has it (Mert, 20 Oct): an archived record's photo is
+  // not removed from the drawer.
+  it("offers no photo removal on an archived record", async () => {
+    vi.mocked(getEmployeeAvatar).mockResolvedValueOnce({ present: true, url: "blob:photo" });
+    const { container } = renderDrawer("profile", archivedLinked);
+    await waitFor(() =>
+      expect(container.querySelector(".employee-summary-rail .drawer-avatar img")?.getAttribute("src")).toBe(
+        "blob:photo",
+      ),
+    );
+    expect(screen.queryByRole("button", { name: /photo/ })).toBeNull();
   });
 
-  // BL-430: one role, the one they hold, is nothing to pick.
-  it("switches the role picker off when the only role is the person's own", async () => {
+  // BL-430: a role nobody here may give is nothing to pick.
+  it("switches the management app off when the reader has no management role to give", async () => {
     inviteRolesFixture = [{ id: employeeRoleId, name: "Employee", systemKey: "employee", accessClass: "employee" }];
     renderDrawer("access", { ...archivedLinked, archived_at: null, display_status: "active" });
-    expect(await screen.findByLabelText("Workspace role")).toHaveProperty("disabled", true);
+    const management = await accessBox("Management app");
+    await waitFor(() =>
+      expect(management.closest("label")!.getAttribute("title")).toBe(
+        "Only owners and admins can give management access.",
+      ),
+    );
+    expect(management.disabled).toBe(true);
   });
 
   // BL-482: nothing is asked of the owner's Jobs either.
