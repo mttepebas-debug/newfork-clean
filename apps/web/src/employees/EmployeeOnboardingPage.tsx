@@ -35,6 +35,7 @@ import { clearTenantQueriesForOrganizationSwitch } from "../auth/tenant-query-ca
 import { setTabWorkspaceId } from "../lib/supabase";
 import { RequestError } from "../lib/request-error";
 import { FieldNote, fieldNoteId } from "../shell/FieldNote";
+import { Skeleton } from "../shell/LoadState";
 import { UsPhoneInput } from "../shell/UsPhoneInput";
 import {
   AccountBlock,
@@ -786,6 +787,8 @@ function ProfileStep({
           offered={offered}
           offeredFrom={last.data?.from_workspace_name ?? null}
         />
+      ) : own.isPending || last.isPending ? (
+        <OnboardingAvatarOutline />
       ) : null}
       <div className="onboarding-form-grid">
         {/*
@@ -902,6 +905,26 @@ function ProfileStep({
           server rejects a profile that is missing its emergency contact. */}
       <MutationFooter mutation={mutation} error={validationError} label="Continue" />
     </form>
+  );
+}
+
+/**
+ * The avatar card's room while its two answers are on the way (Mert, 20 Oct): the same box with its
+ * words as grey bars, so the fields under it stay where they are when the card comes in.
+ */
+function OnboardingAvatarOutline() {
+  const size = useListPhoneWidth() ? 64 : 76;
+  return (
+    <div className="onboarding-avatar is-loading" aria-hidden="true">
+      <Skeleton width={size} height={size} style={{ borderRadius: "50%" }} />
+      <div className="onboarding-avatar-text">
+        <span className="onboarding-avatar-label nf-skeleton">Your avatar</span>
+        <p className="nf-skeleton">Optional. Upload your photo or pick one of ours.</p>
+        <div>
+          <Skeleton width={98} height={36} style={{ borderRadius: 7 }} />
+        </div>
+      </div>
+    </div>
   );
 }
 

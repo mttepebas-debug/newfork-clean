@@ -256,6 +256,13 @@ test("onboarding masks the phone and says in red when it is somebody else's or o
     sql(`select substr(phone, 3) from public.employee_private_profiles where employee_id = tests.id('${run}:emre');`),
   );
 
+  // The avatar card's answer is held until the fields are measured: it comes in where its room already was.
+  let release!: () => void;
+  const held = new Promise<void>((resolve) => (release = resolve));
+  await page.route("**/me/last-avatar", async (route) => {
+    await held;
+    await route.continue();
+  });
   await signInAs(page, email);
   await page.goto("/welcome");
   await page.getByRole("button", { name: "Begin" }).click();
@@ -269,6 +276,8 @@ test("onboarding masks the phone and says in red when it is somebody else's or o
   const birth = page.getByLabel("Date of birth", { exact: true });
   const street = page.getByLabel("Street address", { exact: true });
   const before = [await birth.boundingBox(), await street.boundingBox()];
+  release();
+  await expect(page.getByRole("group", { name: "Your avatar" })).toBeVisible();
   const shown: string[] = [];
   for (const digit of emre) {
     await phone.press(digit);

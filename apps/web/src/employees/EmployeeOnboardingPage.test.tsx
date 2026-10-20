@@ -70,6 +70,8 @@ vi.mock("../auth/AuthContext", () => ({
 const avatarMock = vi.hoisted(() => ({
   own: null as Avatar | null,
   last: { avatar: null, from_workspace_name: null } as LastAvatarResponse,
+  /** Holds the last-avatar answer until it settles. */
+  lastHeld: null as Promise<void> | null,
   /** What a PUT answers with; a refusal is thrown. */
   save: vi.fn(async (_choice: unknown): Promise<void> => undefined),
 }));
@@ -78,7 +80,10 @@ vi.mock("../lib/supabase", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../lib/supabase")>()),
   supabaseClient: {},
   apiRequest: vi.fn(async (_client: unknown, path: string, init?: RequestInit) => {
-    if (path.endsWith("/me/last-avatar")) return avatarMock.last;
+    if (path.endsWith("/me/last-avatar")) {
+      await avatarMock.lastHeld;
+      return avatarMock.last;
+    }
     if (!path.endsWith("/me/avatar")) throw new Error(`unexpected ${path}`);
     if (init?.method === "PUT") {
       const choice = JSON.parse(String(init.body)) as { art_key?: string };
@@ -202,6 +207,7 @@ describe("EmployeeOnboardingPage", () => {
     authMock.phone = "+13105559999";
     avatarMock.own = null;
     avatarMock.last = { avatar: null, from_workspace_name: null };
+    avatarMock.lastHeld = null;
     avatarMock.save.mockResolvedValue(undefined);
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
     vi.mocked(isMyOnboardingPhoneInUse).mockResolvedValue(false);
@@ -1204,6 +1210,21 @@ describe("EmployeeOnboardingPage", () => {
       await waitFor(() => expect(saveMyOnboardingProfile).toHaveBeenCalled());
       await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
       expect(useLastSent()).toBe(false);
+    });
+
+    // A card that came in late pushed the whole form down by its height (CI, 20 Oct): its room is there from the start.
+    it("keeps the card's room with a grey outline while the avatar is on its way", async () => {
+      let release!: () => void;
+      avatarMock.lastHeld = new Promise((resolve) => (release = resolve));
+      renderProfileStep();
+      expect(await screen.findByLabelText("Legal first name")).toBeTruthy();
+      const outline = document.querySelector(".onboarding-avatar.is-loading");
+      expect(outline?.getAttribute("aria-hidden")).toBe("true");
+      expect(outline?.nextElementSibling?.classList.contains("onboarding-form-grid")).toBe(true);
+      expect(screen.queryByRole("group", { name: "Your avatar" })).toBeNull();
+      release();
+      await avatarBox();
+      expect(document.querySelector(".onboarding-avatar.is-loading")).toBeNull();
     });
 
     it("offers Add avatar with initials when there is no last avatar", async () => {
