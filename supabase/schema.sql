@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 570, last: 20261020225506_existing_managers_read_settings_catalog.sql
--- fingerprint: sha256:175792eef9e3971fb2462ab39b225472bc2cc7f739dc10640f918f16f65ae4fc
+-- fingerprint: sha256:0aa8d1e7b5e7dec116f1943e17fc23dff92b7909b4c99bb44823378b8fa419f3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2987,7 +2987,7 @@ begin
       where a.id = (
         select first.id from public.employee_location_assignments first
         join public.locations l on l.id = first.location_id
-        where first.employee_id = owner_employee_id and first.ended_at is null
+        where first.employee_id = owner_employee_id and first.ended_at is null and l.archived_at is null
         order by l.created_at, l.name, l.id
         limit 1);
       update public.employee_profiles
@@ -26158,8 +26158,7 @@ begin
   update public.employee_job_assignments set is_primary = true
   where employee_id = saved_id and ended_at is null and not is_primary and job_id = primary_job_id;
 
-  -- K4: excluded from the Schedule needs no location, except a manager, who
-  -- manages only where they are assigned.
+  -- K4: a manager keeps a location to manage.
   perform app_private.keep_manager_at_a_location(target_workspace_id, saved_id);
   return saved_id;
 end;
