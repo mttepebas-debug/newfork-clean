@@ -107,7 +107,10 @@ export default defineConfig({
   // A forgotten test.only would quietly skip every other spec in CI (BL-281).
   forbidOnly: Boolean(process.env.CI),
   grepInvert: quarantine(),
-  reporter: process.env.CI ? [["list"], ["html", { open: "never" }]] : [["list"]],
+  // CI retries a failed test once; one that passes on the retry is counted as flaky in the list
+  // summary and marked on the run page by the github reporter (Mert, 2026-10-20).
+  retries: process.env.CI ? 1 : 0,
+  reporter: process.env.CI ? [["list"], ["github"], ["html", { open: "never" }]] : [["list"]],
   use: {
     baseURL: webUrl,
     // CI installs Playwright's own Chromium; locally the installed Chrome is used

@@ -31,5 +31,7 @@ export default defineConfig(({ mode }) => ({
     // handful timed out on every run while each passed alone. The timeout is
     // about how long a slow machine may take, not about what the test asserts.
     testTimeout: 20000,
+    // CI retries a failed test once and lists the ones that passed only on the retry (scripts/vitest-flaky-reporter.mjs).
+    ...(process.env.CI ? { retry: 1, reporters: ["default", "../../scripts/vitest-flaky-reporter.mjs"] } : {}),
   },
 }));
