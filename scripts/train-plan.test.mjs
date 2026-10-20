@@ -5,6 +5,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { plan, build, fingerprint, headerHash, git, write, commit, auditLines, STAMP, ID, text, refs, state, subjects, w } from "./train-test-world.mjs";
 
 // ---- plan ----
@@ -152,7 +153,14 @@ function landedTwin(name) {
   commit(w.repo, "main: three in capitals");
   write(w.repo, "README.md", "one\ntwo\nTHREE\nfour\n");
   git(w.repo, "add", "-A");
-  git(w.repo, "commit", "-q", "-C", old); // the train's copy
+  // the train's copy, made as copyCommit makes it: commit-tree fed `%B`, which leaves one more trailing newline
+  const [author, email, date] = git(w.repo, "log", "-1", "--format=%an%x00%ae%x00%aI", old).split("\0");
+  const copy = execFileSync("git", ["-C", w.repo, "commit-tree", git(w.repo, "write-tree"), "-p", "HEAD", "-F", "-"], {
+    encoding: "utf8",
+    input: execFileSync("git", ["-C", w.repo, "log", "-1", "--format=%B", old], { encoding: "utf8" }),
+    env: { ...process.env, GIT_AUTHOR_NAME: author, GIT_AUTHOR_EMAIL: email, GIT_AUTHOR_DATE: date },
+  }).trim();
+  git(w.repo, "update-ref", "refs/heads/main", copy); // main is checked out and its index already holds this tree
   git(w.repo, "push", "-q", "origin", "HEAD:main");
   git(w.repo, "checkout", "-q", name);
   write(w.repo, "docs/next.md", "next\n");
