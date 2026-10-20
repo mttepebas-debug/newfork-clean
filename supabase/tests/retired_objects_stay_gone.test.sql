@@ -567,6 +567,21 @@ insert into retired (kind, name, step) values
   ('storage_policy', 'account_profile_photos_insert_own', 'AVATAR-IKON'),
   ('storage_policy', 'account_profile_photos_update_own', 'AVATAR-IKON'),
   ('storage_policy', 'account_profile_photos_delete_own', 'AVATAR-IKON');
+-- An invitation carries the two accesses (DAVET-ERISIM, ROL-CIFT 6.1 and 6.3): the one-role road goes with what
+-- placed one role into two slots, and Manages no longer follows Works at.
+insert into retired (kind, name, step) values
+  ('function', 'update_employee_membership_role_service', 'DAVET-ERISIM'),
+  ('function', 'place_single_role', 'DAVET-ERISIM'),
+  ('function', 'manages_follow_works', 'DAVET-ERISIM'),
+  ('function', 'manages_follow_works_trigger', 'DAVET-ERISIM'),
+  ('function', 'manages_follow_works_for_member', 'DAVET-ERISIM'),
+  ('trigger', 'employee_location_assignments.manages_follow_works', 'DAVET-ERISIM'),
+  ('trigger', 'workspace_memberships.manages_follow_works_for_member', 'DAVET-ERISIM'),
+  ('function_signature', 'public.prepare_employee_invitation_service(uuid, uuid, uuid, text, uuid, text, timestamptz)', 'DAVET-ERISIM'),
+  ('function_signature', 'public.create_employee_command_service(uuid, uuid, uuid, jsonb, uuid)', 'DAVET-ERISIM'),
+  ('column', 'employee_invitations.all_locations', 'DAVET-ERISIM'),
+  ('column', 'employee_invitations.location_ids', 'DAVET-ERISIM'),
+  ('constraint', 'employee_invitations_role_id_workspace_id_fkey', 'DAVET-ERISIM');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),
