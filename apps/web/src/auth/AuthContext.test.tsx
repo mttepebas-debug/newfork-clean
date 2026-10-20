@@ -451,4 +451,28 @@ describe("AuthProvider sign-up (SEC-003 #9)", () => {
       false,
     );
   });
+
+  // Bug 20: Supabase's own words reached the screen when its mail limit was hit.
+  it("says the sign-up email limit in plain words, with how long to wait", async () => {
+    supabaseMock.signUp.mockResolvedValue({
+      data: { user: null, session: null },
+      error: { message: "email rate limit exceeded", status: 429, code: "over_email_send_rate_limit" },
+    });
+    let captured: ReturnType<typeof useAuth> | null = null;
+    function Probe() {
+      captured = useAuth();
+      return null;
+    }
+    render(
+      <AuthProvider>
+        <Probe />
+      </AuthProvider>,
+    );
+    await waitFor(() => expect(captured?.ready).toBe(true));
+
+    await act(async () => {
+      await captured!.signUp("new@example.test", "long-password");
+    });
+    expect(captured!.error).toBe("Too many sign-up emails right now. Try again in a few minutes.");
+  });
 });

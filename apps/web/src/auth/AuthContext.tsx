@@ -293,7 +293,12 @@ export function AuthProvider({
         password,
       });
       if (signUpError) {
-        setError(signUpError.message);
+        // Supabase's mail limit reads as its own words otherwise (bug 20).
+        setError(
+          signUpError.code === "over_email_send_rate_limit"
+            ? "Too many sign-up emails right now. Try again in a few minutes."
+            : signUpError.message,
+        );
         return false;
       }
       if (!data.session) return "email_confirmation_required";
