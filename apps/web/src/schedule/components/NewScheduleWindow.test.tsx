@@ -77,7 +77,9 @@ describe("New Schedule window (Mert, 2026-10-12, design B)", () => {
     expect(within(rows[1]!).getByRole("button", { name: "Delete Plan B" })).toBeTruthy();
   });
 
-  it("shows a schedule on the grid from its row, and edits it from the pencil, closing the window", () => {
+  // Editing takes requests: the window stays until the page holds the edit and
+  // closes it (SchedulePage), saying "Starting…" meanwhile.
+  it("shows a schedule on the grid from its row, closing the window, and edits it from the pencil", () => {
     const onPreviewDraft = vi.fn();
     const onEditDraft = vi.fn();
     render(<Harness onPreviewDraft={onPreviewDraft} onEditDraft={onEditDraft} />);
@@ -88,7 +90,15 @@ describe("New Schedule window (Mert, 2026-10-12, design B)", () => {
     windowRoot = openWindow();
     fireEvent.click(within(windowRoot).getByRole("button", { name: "Edit Plan B" }));
     expect(onEditDraft).toHaveBeenCalledWith(OTHER.id);
-    expect(screen.queryByRole("dialog")).toBeNull();
+    expect(screen.getByRole("dialog")).toBeTruthy();
+  });
+
+  it("says Starting… and holds every edit while one is on its way", () => {
+    render(<Harness isStartingDraft />);
+    const windowRoot = openWindow();
+    const starting = within(windowRoot).getByRole("button", { name: "Starting…" });
+    expect((starting as HTMLButtonElement).disabled).toBe(true);
+    expect((within(windowRoot).getByRole("button", { name: "Edit Plan B" }) as HTMLButtonElement).disabled).toBe(true);
   });
 
   it("offers only the tabs the person may use, and draws Export only on its tab", () => {

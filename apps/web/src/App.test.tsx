@@ -6136,6 +6136,41 @@ describe("App", () => {
     consoleError.mockRestore();
   });
 
+  // Starting takes two requests; the window stays open and says so until the
+  // edit is held, instead of closing on a screen that shows nothing.
+  it("keeps New Schedule open with Starting… until the blank schedule is ready", async () => {
+    const weekStart = "2026-11-16";
+    vi.mocked(getScheduleReadModel).mockResolvedValue(scheduleFixtureForWeek(weekStart));
+    vi.mocked(listScheduleDrafts).mockResolvedValue(draftList([]));
+    let release: (() => void) | null = null;
+    vi.mocked(acquireScheduleEditSession).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          release = () => resolve(makeDefaultEditAcquireResult());
+        }),
+    );
+    window.history.pushState({}, "", `/app/schedule?date=${weekStart}`);
+    testAuth.role = "owner";
+    render(<App />);
+
+    fireEvent.click(
+      await screen.findByRole("button", { name: "Draft selector: New Schedule" }, { timeout: 5000 }),
+    );
+    fireEvent.click(await screen.findByRole("button", { name: "Blank schedule" }));
+
+    const starting = await screen.findByRole("button", { name: "Starting…" });
+    expect((starting as HTMLButtonElement).disabled).toBe(true);
+    await waitFor(() => expect(release).not.toBeNull());
+    expect(screen.getByRole("dialog", { name: /^Schedules for/ })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "Starting…" })).toBeTruthy();
+
+    await act(async () => {
+      release!();
+    });
+    await waitFor(() => expect(screen.queryByRole("dialog", { name: /^Schedules for/ })).toBeNull());
+    expect(screen.queryByRole("button", { name: "Starting…" })).toBeNull();
+  }, 15_000);
+
   it("says plainly when drafts cannot load before a new or edited draft, never unhandled (BL-394)", async () => {
     const weekStart = "2026-11-16";
     const draft = {

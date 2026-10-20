@@ -200,10 +200,8 @@ function HeadAction(props: NewScheduleWindowProps & { readonly tab: NewScheduleT
       type="button"
       className="nf-button new-schedule-window-main"
       disabled={!props.canStartDraft || props.isStartingDraft}
-      onClick={() => {
-        props.onOpenChange(false);
-        props.onStartBlankDraft();
-      }}
+      // The window stays open saying "Starting…" until the edit is held.
+      onClick={props.onStartBlankDraft}
     >
       <FilePlus2 size={15} aria-hidden />{props.isStartingDraft ? "Starting…" : "Blank schedule"}
     </button>
@@ -289,7 +287,6 @@ function ScheduleRows(props: NewScheduleWindowProps & { readonly rows: readonly 
   const canEdit = (row: Row) => canManageDrafts && (row.kind === "draft" || props.canEditPublishedSchedule);
   const edit = (row: Row) => {
     if (editDisabled) return;
-    props.onOpenChange(false);
     if (row.kind === "live") props.onEditPublishedSchedule();
     else if (row.id) props.onEditDraft(row.id);
   };

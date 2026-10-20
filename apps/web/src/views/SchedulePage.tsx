@@ -543,6 +543,8 @@ export function SchedulePage({
       document.removeEventListener("click", blockOutsideTopActionClick, true);
   }, []);
   const [isDiscardingEditSession, setIsDiscardingEditSession] = useState(false);
+  // New Schedule stays open saying "Starting…" until the edit is held.
+  const [isStartingEdit, setIsStartingEdit] = useState(false);
   const [showShiftType, setShowShiftType] = usePersistentScheduleUiBoolean(
     "showShiftType",
     true,
@@ -937,6 +939,7 @@ export function SchedulePage({
       return true;
     } catch (error) {
       console.error(error);
+      setNewScheduleMenuOpen(false);
       if (isNoAccess(error)) {
         setDraftsUnread(null);
         setOperationError("You don't have access to edit this schedule.");
@@ -947,10 +950,20 @@ export function SchedulePage({
     }
   };
 
-  const startBlankDraftFromMenu = async () => {
-    if (!(await refreshDraftsBeforeEdit({ source: "blank", draftId: null }))) return;
-    return acquire("blank");
+  const whileStarting = async <T,>(start: () => Promise<T>) => {
+    setIsStartingEdit(true);
+    try {
+      return await start();
+    } finally {
+      setIsStartingEdit(false);
+    }
   };
+
+  const startBlankDraftFromMenu = () =>
+    whileStarting(async () => {
+      if (!(await refreshDraftsBeforeEdit({ source: "blank", draftId: null }))) return;
+      return acquire("blank");
+    });
 
   const previewDraftFromMenu = async (draftId: string | null) => {
     if (!context || !query.data) return;
@@ -960,10 +973,11 @@ export function SchedulePage({
     setScheduleMode("preview", draftId);
   };
 
-  const editDraftFromMenu = async (draftId: string | null) => {
-    if (!(await refreshDraftsBeforeEdit({ source: "edit", draftId }))) return;
-    return acquire(draftId ? "draft" : "published", draftId);
-  };
+  const editDraftFromMenu = (draftId: string | null) =>
+    whileStarting(async () => {
+      if (!(await refreshDraftsBeforeEdit({ source: "edit", draftId }))) return;
+      return acquire(draftId ? "draft" : "published", draftId);
+    });
 
   const draftsUnreadHere =
     draftsUnread && draftsUnread.weekStart === query.data?.week_start ? draftsUnread : null;
@@ -1200,6 +1214,7 @@ export function SchedulePage({
       try {
         await setAsideEditSession();
       } catch (error) {
+        setNewScheduleMenuOpen(false);
         setOperationError(requestErrorText(error));
         return;
       }
@@ -1209,7 +1224,6 @@ export function SchedulePage({
     // The filtered locations, or every location the person may edit.
     const editLocationIds = filteredLocationIds.length ? filteredLocationIds : null;
     setOperationError(null);
-    setNewScheduleMenuOpen(false);
     const result = await acquireEditSession(
       query.data.week_start,
       source,
@@ -1217,6 +1231,7 @@ export function SchedulePage({
       editLocationIds,
       resume,
     );
+    setNewScheduleMenuOpen(false);
     if (!result) return;
     if (result.status === "conflict") return;
     enterEditModeWithResetFilters(
@@ -2504,7 +2519,7 @@ export function SchedulePage({
           }
           canManageDrafts={!pastWeek && !gridEditSession}
           canStartDraft={!pastWeek && !gridEditSession && !isDiscardingEditSession}
-          isStartingDraft={isDiscardingEditSession}
+          isStartingDraft={isStartingEdit}
           readOnlyNote={pastWeek ? "Past week: you can view it, not edit it." : null}
           disableDeleteDraftId={gridEditSession?.source_draft_id ?? null}
           onPreviewDraft={(draftId) => void previewDraftFromMenu(draftId)}
