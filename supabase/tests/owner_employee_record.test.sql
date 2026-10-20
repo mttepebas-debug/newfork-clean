@@ -276,8 +276,8 @@ update public.employee_profiles
 set user_id = '14000000-0000-4000-8000-000000000002'
 where id = '17000000-0000-4000-8000-000000000009';
 
-insert into public.workspace_memberships (workspace_id, user_id, status, employee_id, role_id, employee_role_id)
-select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.employee_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
 from (select
   (select workspace_id from owner_record_target),
   '14000000-0000-4000-8000-000000000002',
@@ -285,8 +285,7 @@ from (select
   (select id from public.workspace_roles
    where workspace_id = (select workspace_id from owner_record_target)
      and system_key = 'employee'),
-  'active'::public.membership_status,
-  '17000000-0000-4000-8000-000000000009') as legacy(workspace_id, user_id, role, role_id, status, employee_id);
+  'active'::public.membership_status) as legacy(workspace_id, user_id, role, role_id, status);
 
 -- Added long after setup, required of everyone on staff.
 insert into public.document_types (

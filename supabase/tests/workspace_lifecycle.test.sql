@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(21);
+select plan(19);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -120,20 +120,15 @@ select set_config('request.jwt.claims', '{"sub":"11000000-0000-4000-8000-0000000
 insert into public.employee_profiles (id, workspace_id, employee_code, first_name, last_name, created_by)
 values ('13000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), 'E-9001', 'Lif', 'Cycle', '11000000-0000-4000-8000-000000000001');
 
-insert into public.workspace_memberships (id, workspace_id, user_id, status, last_used_at, employee_id, role_id, employee_role_id)
-select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.last_used_at::timestamptz, legacy.employee_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
-from (values ('12000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), '11000000-0000-4000-8000-000000000002', 'employee', 'active', now(), '13000000-0000-4000-8000-000000000001')) as legacy(id, workspace_id, user_id, role, status, last_used_at, employee_id);
+insert into public.workspace_memberships (id, workspace_id, user_id, status, last_used_at, role_id, employee_role_id)
+select legacy.id::uuid, legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.last_used_at::timestamptz, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+from (values ('12000000-0000-4000-8000-000000000001', (select workspace_id from lifecycle_target), '11000000-0000-4000-8000-000000000002', 'employee', 'active', now())) as legacy(id, workspace_id, user_id, role, status, last_used_at);
 
 select set_config('request.jwt.claims', '', true);
 
 select ok(
   (select last_used_at is not null from public.workspace_memberships where id = '12000000-0000-4000-8000-000000000001'),
   'a membership records when it was last opened'
-);
-select is(
-  (select employee_id::text from public.workspace_memberships where id = '12000000-0000-4000-8000-000000000001'),
-  '13000000-0000-4000-8000-000000000001',
-  'a membership names the employee record it is'
 );
 
 -- The owner keeps building inside a draft workspace, straight from the browser.
@@ -196,10 +191,6 @@ select is(
 
 -- Losing the employee record does not lose the membership.
 delete from public.employee_profiles where id = '13000000-0000-4000-8000-000000000001';
-select ok(
-  (select employee_id is null from public.workspace_memberships where id = '12000000-0000-4000-8000-000000000001'),
-  'deleting the employee record clears the link instead of the membership'
-);
 select ok(
   exists (select 1 from public.workspace_memberships where id = '12000000-0000-4000-8000-000000000001'),
   'the membership survives its employee record'

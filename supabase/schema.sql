@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 566, last: 20261020210000_invitation_two_accesses_retire.sql
--- fingerprint: sha256:dbd933f363359e4c86384d04de60f077b58cdc6cadc1106c2020df02bbfe09f9
+-- migrations: 567, last: 20261020210000_invitation_two_accesses_retire.sql
+-- fingerprint: sha256:a15830e0d85040b18e805c317a82858211787e19bfc66f59cc0024fe2576fc70
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -603,7 +603,6 @@ CREATE TABLE IF NOT EXISTS "public"."workspace_memberships" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "role_id" "uuid",
     "last_used_at" timestamp with time zone,
-    "employee_id" "uuid",
     "employee_role_id" "uuid",
     CONSTRAINT "workspace_memberships_holds_an_access" CHECK ((("role_id" IS NOT NULL) OR ("employee_role_id" IS NOT NULL)))
 );
@@ -613,10 +612,6 @@ ALTER TABLE "public"."workspace_memberships" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."workspace_memberships"."last_used_at" IS 'When this membership was last opened. The landing decision picks the most recent one.';
-
-
-
-COMMENT ON COLUMN "public"."workspace_memberships"."employee_id" IS 'The employee record this membership is. Null while the workspace has no record for the account.';
 
 
 
@@ -37121,11 +37116,6 @@ ALTER TABLE ONLY "public"."workspace_layout_preferences"
 
 ALTER TABLE ONLY "public"."workspace_layout_preferences"
     ADD CONSTRAINT "workspace_layout_preferences_workspace_id_fkey" FOREIGN KEY ("workspace_id") REFERENCES "public"."workspaces"("id") ON DELETE CASCADE;
-
-
-
-ALTER TABLE ONLY "public"."workspace_memberships"
-    ADD CONSTRAINT "workspace_memberships_employee_id_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE SET NULL ("employee_id");
 
 
 

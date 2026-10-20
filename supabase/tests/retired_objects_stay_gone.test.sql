@@ -582,6 +582,11 @@ insert into retired (kind, name, step) values
   ('column', 'employee_invitations.all_locations', 'DAVET-ERISIM'),
   ('column', 'employee_invitations.location_ids', 'DAVET-ERISIM'),
   ('constraint', 'employee_invitations_role_id_workspace_id_fkey', 'DAVET-ERISIM');
+-- A membership's employee record is found by its account (employee_profiles.user_id); the column that copied it
+-- once (2026-09-21) was never written again nor read (Mert 2026-10-20, "Silinsin").
+insert into retired (kind, name, step) values
+  ('column', 'workspace_memberships.employee_id', 'UYELIK-BAG'),
+  ('constraint', 'workspace_memberships_employee_id_fkey', 'UYELIK-BAG');
 
 select is(
   array(select r.name from retired r where r.kind = 'table' and to_regclass('public.' || r.name) is not null order by 1),

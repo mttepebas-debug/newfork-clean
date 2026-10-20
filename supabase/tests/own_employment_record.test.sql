@@ -54,8 +54,8 @@ values (
   '1a000000-0000-4000-8000-000000000001'
 );
 
-insert into public.workspace_memberships (workspace_id, user_id, status, employee_id, role_id, employee_role_id)
-select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, legacy.employee_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
+insert into public.workspace_memberships (workspace_id, user_id, status, role_id, employee_role_id)
+select legacy.workspace_id::uuid, legacy.user_id::uuid, legacy.status::text::public.membership_status, (case when legacy.role::text <> 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(legacy.role_id::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
 from (select
   (select workspace_id from own_record_target),
   '1a000000-0000-4000-8000-000000000002',

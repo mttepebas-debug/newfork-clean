@@ -68,13 +68,6 @@ values (
   '24000000-0000-4000-8000-000000000001'
 );
 
--- Creating the workspace already made them a member of it; this record is the
--- employment side of the same person.
-update public.workspace_memberships
-set employee_id = '25000000-0000-4000-8000-000000000001'
-where workspace_id = (select workspace_id from called_target)
-  and user_id = '24000000-0000-4000-8000-000000000001';
-
 select is(
   (select preferred_name from public.employee_profiles
    where id = '25000000-0000-4000-8000-000000000001'),
