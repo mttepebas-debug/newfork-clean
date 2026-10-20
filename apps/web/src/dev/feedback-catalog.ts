@@ -48,6 +48,8 @@ export const toastCatalog: readonly ToastEntry[] = [
   // Shift editor
   { id: "invalid-time", screen: "Schedule · shift editor", source: editor, tone: "error", title: "Enter a valid shift time", description: "End time must be after start time.", trigger: "Save with an impossible time" },
   { id: "availability-failed", screen: "Schedule · shift editor", source: editor, tone: "error", title: "Availability could not be checked", description: "Failed to fetch", trigger: "Save while the availability check fails (raw text today)" },
+  { id: "availability-not-at-location", screen: "Schedule · shift editor", source: editor, tone: "error", title: "Not assigned to this location", description: "Add them to this location first, or pick someone else.", trigger: "Save a shift for someone not assigned to its location" },
+  { id: "availability-out-of-scope", screen: "Schedule · shift editor", source: editor, tone: "error", title: "You can't edit this location's schedule", trigger: "Save a shift at a location outside the manager's scope" },
   { id: "review-shift", screen: "Schedule · shift editor", source: editor, tone: "warning", title: "Review shift", description: "Alex marked Friday evening as unavailable.", trigger: "Save a shift with a conflict you may override" },
   { id: "shift-conflict", screen: "Schedule · shift editor", source: editor, tone: "error", title: "Shift conflict", description: "Alex is already working 4:00 PM–10:00 PM.", trigger: "Save a shift with a blocking conflict" },
   { id: "editor-warning", screen: "Schedule · shift editor", source: editor, tone: "warning", title: "Shift saved with a warning", description: "Alex prefers not to work Friday evenings.", trigger: "Confirm a warn-only save" },

@@ -3,6 +3,7 @@ import { readFileSync } from "node:fs";
 import { act, configure, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { loadShiftAvailability } from "../../availability/availability-data";
+import { RequestError } from "../../lib/request-error";
 import type { ShiftAvailabilityAssessment } from "@newfork/shared";
 
 import { ShiftCard } from "./ShiftCard";
@@ -125,6 +126,22 @@ function dispatchPointerEvent(
 }
 
 describe("ShiftQuickEditor", () => {
+  // Bug 24: every refusal read "Availability could not be checked", even when
+  // the person or the manager is not at this location.
+  it.each([
+    [new RequestError("Employee is not assigned to this location", undefined, undefined, 403),
+      "Not assigned to this location", "Add them to this location first, or pick someone else."],
+    [new RequestError("Not allowed", "authz.out_of_scope", "schedule.edit", 403), "You can't edit this location's schedule", undefined],
+    [new RequestError("Something else", undefined, undefined, 400), "Availability could not be checked", "Something else"],
+  ])("names why the check was refused: %s", async (error, title, description) => {
+    vi.mocked(loadShiftAvailability).mockRejectedValue(error);
+    render(<ShiftQuickEditor model={model} state={{ mode: "create", locationId: model.locations[0]!.id, employeeId: model.employees[0]!.id, date: model.week_start }} timeFormat="12h" formatTime={value => value} addDays={value => value} scheduleClosureCoversDate={() => false} onClose={vi.fn()} onReload={vi.fn()} onDelete={vi.fn()} onSubmit={vi.fn()} />);
+    fireEvent.click(screen.getByRole("button", { name: "Add shift" }));
+    await waitFor(() => expect(toast.error).toHaveBeenCalledOnce());
+    expect(toast.error.mock.calls[0]?.[0]).toBe(title);
+    expect((toast.error.mock.calls[0]?.[1] as { description?: string } | undefined)?.description).toBe(description);
+  });
+
   it("uses fresh canonical confirmation instead of a stale cached blocker", async () => {
     vi.mocked(loadShiftAvailability).mockResolvedValue({ ...confirmedAvailability, conflict_severity: "confirm", operation: "warning_requires_override", warning_policy: "confirm", reasons: [{ code: "closed_location", severity: "confirm", definite: true, message: "This location is closed." }] });
     const onSubmit = vi.fn().mockResolvedValue("saved");

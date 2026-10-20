@@ -194,9 +194,10 @@ export function useShiftEditor(props: ShiftEditorProps) {
         if (JSON.stringify(valueRef.current) !== submittedKey) return;
         setAssessmentState({ key: submittedKey, value: checked });
       } catch (error) {
-        toast.error("Availability could not be checked", {
+        const refusal = availabilityRefusal(error);
+        toast.error(refusal?.title ?? "Availability could not be checked", {
           dedupeKey: "schedule-quick-editor-availability-check-failed",
-          description: requestErrorText(error, "Please retry."),
+          description: refusal ? refusal.description : requestErrorText(error, "Please retry."),
         });
         return;
       } finally {
@@ -463,4 +464,18 @@ function useDismissShiftWindow(
       window.removeEventListener("keydown", handleKeyDown, true);
     };
   }, [windowRef, onDismiss, shouldSuppressPointerDownProp]);
+}
+
+/**
+ * A check refused because of the location says so in its heading (bug 24).
+ * The not-assigned refusal comes without a reason key; its sentence is the
+ * one schedule-conflicts.ts already knows.
+ */
+function availabilityRefusal(error: unknown): { title: string; description?: string } | null {
+  if (!(error instanceof Error)) return null;
+  const { reason } = error as { reason?: unknown };
+  if (reason === "authz.out_of_scope") return { title: "You can't edit this location's schedule" };
+  if (error.message.trim() === "Employee is not assigned to this location")
+    return { title: "Not assigned to this location", description: "Add them to this location first, or pick someone else." };
+  return null;
 }
