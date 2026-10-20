@@ -75,6 +75,28 @@ export function ListOutline({
   );
 }
 
+/**
+ * A page whose code is still on its way (its first visit): a title bar and a
+ * list frame inside the page area, so the menu around it stays where it is.
+ */
+export function PageOutline() {
+  return (
+    <LoadingOutline label="Loading page" className="nf-page-outline">
+      <Skeleton width={200} height={18} className="on-page" />
+      <div className="nf-list-outline-frame">
+        <div className="nf-list-outline-head" />
+        {Array.from({ length: 6 }, (_, row) => (
+          <div className="nf-list-outline-row" key={row} style={{ gridTemplateColumns: "2fr repeat(3, 1fr)" }}>
+            {Array.from({ length: 4 }, (_, column) => (
+              <Skeleton key={column} width={column === 0 ? `${70 - row * 6}%` : "55%"} />
+            ))}
+          </div>
+        ))}
+      </div>
+    </LoadingOutline>
+  );
+}
+
 /** A few lines of text while a panel, drawer or expanded row loads. */
 export function LinesOutline({ label, lines = 3 }: { readonly label: string; readonly lines?: number }) {
   return (

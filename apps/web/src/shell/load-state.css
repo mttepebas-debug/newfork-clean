@@ -50,6 +50,23 @@
   background: var(--theme-surface);
 }
 
+/* A page on its way: title bar, then the list frame (PageOutline). */
+.nf-page-outline {
+  padding: 32px 24px;
+}
+
+.nf-page-outline > div {
+  display: grid;
+  gap: 20px;
+}
+
+.nf-list-outline-frame {
+  overflow: hidden;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 8px;
+  background: var(--theme-surface);
+}
+
 .nf-list-outline.inset > div {
   border: 0;
   border-radius: 0;

@@ -12,9 +12,10 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import { NavLink, Outlet, useLocation } from "react-router";
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { createPortal } from "react-dom";
 import { useFrozenTop } from "../shell/useFrozenTop";
+import { PageOutline } from "../shell/LoadState";
 import { usePhonePageMenu } from "../shell/usePhonePageMenu";
 import { NoAccessRoute } from "../shell/NoAccessState";
 import { useAuth } from "../auth/AuthContext";
@@ -174,7 +175,9 @@ export default function SettingsLayout() {
         {menuSlot ? null : menu}
       </aside>
       <main className="settings-content" ref={setContent}>
-        <Outlet />
+        <Suspense fallback={<PageOutline />}>
+          <Outlet />
+        </Suspense>
       </main>
       {menuSlot ? createPortal(menu, menuSlot) : null}
     </div>

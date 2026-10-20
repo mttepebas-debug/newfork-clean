@@ -8,8 +8,9 @@ import {
   Warehouse,
 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { PageOutline } from "../shell/LoadState";
 import { useFrozenTop } from "../shell/useFrozenTop";
 import { usePhonePageMenu } from "../shell/usePhonePageMenu";
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router";
@@ -146,7 +147,9 @@ export default function AccountLayout() {
         </aside>
         <main className="account-content-scroll" ref={contentBox}>
           <div className="account-main">
-            <Outlet />
+            <Suspense fallback={<PageOutline />}>
+              <Outlet />
+            </Suspense>
           </div>
         </main>
         {menuSlot ? createPortal(menu, menuSlot) : null}

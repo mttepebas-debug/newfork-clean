@@ -15,7 +15,7 @@ import {
   Users,
 } from "lucide-react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
+import { Suspense, useEffect, useLayoutEffect, useMemo, useRef, useState, type ComponentType } from "react";
 import { PullToRefreshMark, usePullToRefresh } from "./PullToRefresh";
 import { useFrozenTop } from "./useFrozenTop";
 import { useListPhoneWidth, usePhoneWidth } from "../lib/usePhoneWidth";
@@ -44,6 +44,7 @@ import { ManagerPhoneBar } from "./ManagerPhoneBar";
 import { rememberAppPage } from "./last-app-page";
 import { hasEmployeeAccess, hasManagementAccess, membershipClass } from "../auth/access";
 import { PageCrashBoundary } from "./CrashBoundary";
+import { PageOutline } from "./LoadState";
 
 interface NavItem {
   readonly to: string;
@@ -628,7 +629,11 @@ export function AppShell() {
       <main className="app-main" ref={setMain}>
         {phoneBars ? <PullToRefreshMark state={pull.state} pull={pull.pull} /> : null}
         <PageCrashBoundary homeHref={noAccessHomePath(context, location.pathname)}>
-          <Outlet />
+          {/* A page's code on its way waits here, not above the shell: the
+              menu stays and only the page area shows the outline. */}
+          <Suspense fallback={<PageOutline />}>
+            <Outlet />
+          </Suspense>
         </PageCrashBoundary>
       </main>
       {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); the employee's Home shows it in its own list (Daylight, Mert 2026-10-18). */}
