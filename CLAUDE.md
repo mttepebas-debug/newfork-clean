@@ -13,7 +13,7 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Main'e gönderim: dokunduğun paketin lint, typecheck ve testleri yeşil → `git fetch origin && git rebase origin/main` → `git push origin HEAD:main`. Main'deki her şey Vercel'den canlıya çıkar.
 - Yetki, RLS, grant, `*_service`, davet, sahiplik devri, veri silme ya da parola/oturum koduna dokunan iş main'e göndermeden önce `nf-guvenlik` ONAY'ı alır.
 - Migration'lı işte sıra: ekleyen migration önce canlıya (aşağıda), sonra kod main'e; silen migration tersine, önce onu artık kullanmayan kod main'e, CI yeşil olunca canlıdan silme. Main'e girince ortak yerel DB'ye de uygula: `node scripts/lock.mjs run db -- node scripts/db-apply.mjs`.
-- Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar; `gh run watch` ile izle. Kırmızıyı gören oturum düşen testin hangi commit'ten geldiğini bulur: kendi commit'iyse hemen düzeltir, değilse o commit'i `git revert` ile geri alır ve Mert'e söyler.
+- Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar; `gh run watch` ile izle. GitHub'ın ücretsiz dakikaları sürdükçe aynı test `CI (GitHub)` adıyla GitHub'da da koşar; işleri başlamadan dakika/ödeme uyarısıyla düşerse kod kırmızısı değildir, `gh workflow disable "CI (GitHub)"` ile kapatılır ve Mert'e söylenir. Kırmızıyı gören oturum düşen testin hangi commit'ten geldiğini bulur: kendi commit'iyse hemen düzeltir, değilse o commit'i `git revert` ile geri alır ve Mert'e söyler.
 
 ## Canlı veritabanı (Supabase `hvyvyisrqyathtliyyyv`)
 - İşi yapan oturum `canli-migration` skill'iyle uygular: yedek → MCP `apply_migration` → doğrulama → dosya adı = canlı ledger sürümü.

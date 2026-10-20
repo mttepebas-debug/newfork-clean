@@ -40,7 +40,7 @@ const netshOutput = (ranges) =>
   ].join("\r\n");
 
 // ranges: [[from, to, administered?]] for a fake netsh; null for a runner with no netsh.exe (real Linux).
-function run(runnerName, ranges) {
+function run(runnerName, ranges, extraEnv = {}) {
   const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "nf-apart-"));
   boxes.push(cwd);
   fs.mkdirSync(path.join(cwd, "supabase"));
@@ -55,7 +55,7 @@ function run(runnerName, ranges) {
   const r = spawnSync(BASH, [SCRIPT], {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, RUNNER_NAME: runnerName, GITHUB_ENV: githubEnv, APART_NETSH: netsh },
+    env: { ...process.env, RUNNER_NAME: runnerName, GITHUB_ENV: githubEnv, APART_NETSH: netsh, ...extraEnv },
   });
   const config = fs.readFileSync(path.join(cwd, "supabase", "config.toml"), "utf8");
   return { code: r.status, out: `${r.stdout}${r.stderr}`, config, env: fs.readFileSync(githubEnv, "utf8") };
@@ -77,6 +77,14 @@ test("a free first block: runner pc keeps 590xx, its own project, and CI_RUNNER_
   assert.doesNotMatch(r.config, /newfork-clean|^(shadow_)?port = 553/m);
   assert.match(r.env, /^CI_RUNNER_INDEX=1$/m);
   assert.match(r.out, /::notice::.*590xx/);
+});
+
+test("a GitHub-hosted runner (any name) takes lane 1: it has its own machine, no shared stack", () => {
+  const r = run("GitHub Actions 7", null, { RUNNER_ENVIRONMENT: "github-hosted" });
+  assert.equal(r.code, 0, r.out);
+  assert.equal(prefixOf(r.config), 590);
+  assert.match(r.config, /^project_id = "newfork-ci-pc1"$/m);
+  assert.match(r.env, /^CI_RUNNER_INDEX=1$/m);
 });
 
 test("the 2026-10-16 exclusion (58930-59029) moves runner pc to its next block, with a notice", () => {

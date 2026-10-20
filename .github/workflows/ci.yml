@@ -8,10 +8,12 @@ on:
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 
-# A newer push to main cancels the running check: the latest main is the one that counts.
+# A started run finishes; pushes that land meanwhile wait as one pending run (GitHub keeps only the
+# newest), which then checks all of them. Cancelling on every push left main with no finished run for
+# two hours on 2026-10-20 (Mert). CI (GitHub) is a second lane with its own group.
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   check:

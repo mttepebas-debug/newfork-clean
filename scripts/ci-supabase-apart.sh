@@ -19,7 +19,11 @@
 # web/api ports (playwright.config.ts) can be derived from the same runner.
 set -euo pipefail
 runner_name="${RUNNER_NAME:?RUNNER_NAME not set}"
-if [[ "$runner_name" =~ -pc-([0-9]+)$ ]]; then
+# CI-GITHUB-LANE (Mert, 2026-10-20): a GitHub-hosted runner is a machine of its own with no shared
+# stack, whatever its name ("GitHub Actions 7"); it takes lane 1.
+if [[ "${RUNNER_ENVIRONMENT:-}" == "github-hosted" ]]; then
+  index=1
+elif [[ "$runner_name" =~ -pc-([0-9]+)$ ]]; then
   index="${BASH_REMATCH[1]}"
 elif [[ "$runner_name" =~ -pc$ ]]; then
   index=1
