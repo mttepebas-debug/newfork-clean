@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// KARAR-001: Mert's decision log (CLAUDE.md §2.8, docs/plan/KARARLAR.md).
+// KARAR-001: Mert's decision log (CLAUDE.md §2.6, docs/plan/KARARLAR.md).
 // Every AskUserQuestion answer is appended to decisions.jsonl in the git-free ops
 // folder (OPS_DIR), so recommendation accuracy is measured and free-text answers become
 // written rules instead of living only in a transcript.
@@ -171,7 +171,7 @@ export function runHook(kind, input, now = new Date()) {
         append([{ ts: now.toISOString(), type: "blocked", session_id: input.session_id ?? null, problems }]);
       } catch {} // a log that cannot be written must not let the bad question through
       const reason =
-        `Soru Mert'e gitmedi (KARAR-001, CLAUDE.md §2.8 / §6):\n- ${problems.join("\n- ")}\n` +
+        `Soru Mert'e gitmedi (KARAR-001, CLAUDE.md §2.6 / §6):\n- ${problems.join("\n- ")}\n` +
         `Düzeltip yeniden sor. Önerilen seçeneğin etiketi tam "${LABEL}"; açıklamasının sonunda tek satır: ` +
         `"Dayanak: <KARARLAR madde kimliği / Mert'in <tarih> kararı>" ya da "Dayanak: yok — yeni karar".`;
       return JSON.stringify({

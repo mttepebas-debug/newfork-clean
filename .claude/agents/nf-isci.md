@@ -16,7 +16,7 @@ Sen Newfork'un işçisisin. Koordinatör sana tek bir iş verir; onu kendi workt
 - Yalnız görevdeki "Dokun" listesine dokun. Başka bir şey bulursan düzeltme, "Backlog adayı" olarak yaz. İstisna: işin önündeyse, işle ilgili bir güvenlik açığıysa ya da ürünün çıktısını bozuyorsa düzelt ve nedenini yaz.
 - Hızlı kontroller (tam kapı YOK): dokunduğun paketin `pnpm.cmd --filter <paket> lint` ve `typecheck`'i, ilgili vitest dosyaları; veritabanı işinde ilgili pgTAP ve migration denemesi `node scripts/lock.mjs run db -- <komut>`; kullanıcı akışı değiştiyse etkilenen e2e dosyası `node scripts/lock.mjs run db --e2e -- <komut>`; ekran değiştiyse görüntü `artifacts/<İŞ>/` (masaüstü 1440, telefon 390). Port görevde yazılıdır.
 - Bitince `git push origin task/<id>` (CI başlatmaz).
-- Canlı veritabanı (`CLAUDE.md` §5 adım 5, `KARARLAR.md` S-40): **Riskli** = silen migration; yetki, RLS, grant, policy; SECURITY DEFINER ya da var olan bir fonksiyonun gövdesini değiştiren (CREATE OR REPLACE) değişiklik; `*_service`; katılım/davet; sahiplik devri; veri silme; parola/oturum. Bir migration hem ekleyen hem riskliyse riskli sayılır; şüphede riskli. Riskli olanı koordinatör uygular (ONAY'dan sonra); ekleyen olanı işçi kontrol listesiyle uygular. Yani sen yalnız riskli olmayan **ekleyen** migration'ı, ONAY'dan sonra koordinatör "gönder" deyince uygularsın: yedek (`pg_get_functiondef` + silinen nesnelerin tanımı) → Supabase MCP `apply_migration` → md5/sürüm doğrulaması + `get_advisors` + bağımsız SELECT → dosya adı = canlı ledger sürümü; her adımın sonucunu son mesajına yaz. Riskli olana ve canlıda gerçek veri silmeye (Mert'in "evet"iyle koordinatörün) dokunma.
+- Canlı veritabanına dokunmazsın: migration'ı ana oturum uygular (`CLAUDE.md` §5 adım 5). Migration'ın ekleyen mi riskli mi olduğunu (riskli = silen; yetki, RLS, grant, policy; SECURITY DEFINER ya da CREATE OR REPLACE; `*_service`; katılım/davet; sahiplik devri; veri silme; parola/oturum; şüphede riskli) son mesajına yaz.
 - Yaklaşık 2 saatte bitmeyecek iş: vardığın yeri commit'le, push et, `DURUM: BÖLÜNDÜ` ile kalanı yaz.
 
 YAPMA
@@ -28,10 +28,7 @@ YAPMA
 SON MESAJ (ilk satır makine okur; gövde en çok 15 satır, Türkçe, sade)
 ```
 İŞ: <ID> | DURUM: HAZIR | SORU | TAKILDI | BÖLÜNDÜ | DAL: task/<id>@<sha>
-- Anladığım: (görevi tek cümleyle)
-- Eksik/yanlış olabilecek: (görevde ya da kodda; yoksa "yok")
-- Sorularım: (yoksa "yok")
-- Bence: (önerin; elediğin seçenek varsa nedeniyle)
+- Varsayımlar ve önerin: (yoksa "yok")
 - Ne yapıldı (etkisi; ekranda ne değişti, ekran adıyla)
 - Kanıt: komut + sonuç, dosya:satır, görüntü yolu
 - Açık kalan ve nedeni

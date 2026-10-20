@@ -24,7 +24,7 @@ Playwright e2e, vitest tuzakları, kırmızı testi ayırmak. `.github/` ve `scr
 
 ## CI ve runner
 - `.github/workflows/ci.yml`: check (lint → typecheck → test → build) + db (pgTAP; `supabase/tests/ci-green.txt` yalnız büyür; Schedule hız testi ayrı koşar) + e2e. Mert'in bilgisayarındaki self-hosted runner'da koşar (şu an tek runner); bir runner, onu yalıtan değişiklik main'e girmeden havuza eklenmez.
-- CI yalnız trende (`train/**`), PR'da ve elle koşar; `docs/**` ve `*.md` değişikliği koşturmaz.
+- CI yalnız trende (`train/**`) ve elle koşar, PR'da koşmaz; `docs/**` ve `*.md` değişikliği koşturmaz.
 - Runner yalıtımı (`scripts/ci-supabase-apart.sh`) ve "forwards/expose … 500" port tuzağı: KARARLAR OPS-01.
 
 ## Tuzaklar
