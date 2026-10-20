@@ -18,10 +18,18 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Riskli migration (silen; yetki, RLS, grant, policy; SECURITY DEFINER ya da CREATE OR REPLACE; `*_service`; davet; sahiplik devri; veri silme; parola/oturum) `nf-guvenlik` ONAY'ı ve Mert'in "evet"iyle. `supabase db push` ve `db reset` yasak.
 
 ## Mert'le çalışma
-- Kısa cümle, geliştirici dili yok. Dosya tam Windows yolu ve tıklanır bağlantıyla; saat California saatiyle (PowerShell'den al, Git Bash `date` UTC verir).
-- Küçük işte başla. Büyük işte bir kez kısa brief (sorun, bitti ölçütü, önerin), Mert onaylar, bitene kadar yeniden sorma.
-- Çalıştığını kendin doğrula (test, e2e, ekran görüntüsü), kanıtı gönder. Mert'e yalnız onun kararı sorulur: görsel seçim, ürün kuralı, para, geri alınamaz adım. Soruda önerilen ilk sırada `(Önerilen)`, son seçenek "Yazarak cevap vereceğim".
-- Git'i Mert'e sorma. Mert'in çalıştıracağı komut tek satır, `bash` bloğunda, PowerShell 7'de geçerli (`pnpm.cmd`); kendin çalıştırabileceğin komutu verme.
+- Mert'le konuşulan tek dil Türkçe. Kısa cümle, geliştirici dili yok.
+- Bir şey anlatırken en basit yoldan anlat ve 5N1K'ya (ne, nerede, ne zaman, nasıl, neden, kim) cevap ver.
+- Referans verirken tam yerini göster: ekran → bölüm → düğme, dosyanın tam Windows yolu tıklanır bağlantıyla ya da ekran görüntüsü. Saat California saatiyle (PowerShell'den al, Git Bash `date` UTC verir).
+- Mert'in söylediğini olduğu gibi doğru kabul etme: en iyi uygulamayla karşılaştır, açığını ve zayıf yönünü söyle. Anlamak ve kapsamı daraltmak için soru sor, anladığını özetle, onay al; ondan sonra kod yaz. Küçük işte özet tek satırdır.
+- Büyük işte bir kez kısa brief (sorun, bitti ölçütü, önerin); Mert onaylayınca iş bitene kadar yeniden sorma.
+- Her zaman daha kısa, daha kaliteli, daha ucuz, en az kodla bitiren yolu öner. Konu dışındaki parçaya zorunda kalmadıkça dokunma.
+- Mert'e yalnız onun kararı sorulur: görsel seçim, ürün kuralı, para, geri alınamaz adım. Soruda önerilen ilk sırada `(Önerilen)`, son seçenek "Yazarak cevap vereceğim".
+- Git'i (commit, push, rebase, PR) Mert'e sorma, sen yönet. Mert'in çalıştıracağı komut tek satır, `bash` bloğunda, PowerShell 7'de geçerli (`pnpm.cmd`); kendin çalıştırabileceğin komutu verme.
+- Çalıştığını kendin doğrula (test, e2e, ekran görüntüsü), kanıtı gönder.
+- Yolda bulunan şey (güvenlik açığı ve hata dışında) plana ve koda katılmaz: listelenir, iş sonunda Mert'e raporlanır ve `C:\Users\TheWe\Desktop\newfork-md\yolda-bulunanlar\<tarih>-<iş>.md` dosyasına yazılır.
+- Konuşma uzayınca ya da konu değişince Mert'e compact ya da devir notuyla yeni oturuma geçmeyi hatırlat. İş bitip yarım bir şey kalmadıysa oturumun arşivlenebileceğini söyle.
+- Her iş sonunda kısa, gruplu liste: yapılan · biten · arayüzde değişen · yolda bulunanlar · sıradaki en önemli iş.
 - Aynı ekranın görsel işi o ekranın var olan Artifact'ında sürer.
 
 ## Yapı
