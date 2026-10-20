@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 545, last: 20261019224901_document_archive_stops_publication.sql
--- fingerprint: sha256:57062338dcf74ae7ae5d116ad22bc376bcbd462f35ecafb94eeb2d4f1a21d4bc
+-- migrations: 547, last: 20261019230100_existing_managers_read_and_review_documents.sql
+-- fingerprint: sha256:f613961ed1e53fb5a429f006c180e4f76e76a86111a15981573234cf762df6c2
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -7935,6 +7935,7 @@ CREATE OR REPLACE FUNCTION "app_private"."role_default_permissions"("role_class"
  'workspace.read','schedule.read','schedule.manage','schedule.publish','schedule.templates.read','schedule.templates.manage','schedule.export',
  'schedule.time_off_requests.read','schedule.time_off_requests.manage','schedule.shift_change_requests.read','schedule.shift_change_requests.manage',
  'availability.read','availability.manage','employees.read','employees.manage','employees.archive','employee_onboarding.review','announcements.read','announcements.manage','important_dates.read','important_dates.manage',
+ 'employee_documents.read','employee_documents.review',
  'notifications.read','notifications.read_own','notifications.preferences.write_own'))
  or (role_class = 'employee' and employee_eligible);
 $$;
