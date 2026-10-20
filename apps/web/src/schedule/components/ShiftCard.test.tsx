@@ -271,6 +271,13 @@ describe("ShiftCard", () => {
     expect(document.querySelector(".schedule-shift-color-dot")).toBeNull();
   });
 
+  it("shows a cut title and place in full on hover (QA 50)", () => {
+    renderShiftCard();
+
+    expect(screen.getByText("Dinner-Server").getAttribute("title")).toBe("Dinner-Server");
+    expect(screen.getByText("Main").getAttribute("title")).toBe("Main");
+  });
+
   it("reads title, labels, then time, with no location pin", () => {
     renderShiftCard({ locationName: null });
 

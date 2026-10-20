@@ -109,7 +109,8 @@ function GeneratedOrganizationLogo({
       data-testid={testId}
     >
       <span>{buildInitials(name)}</span>
-      <strong>{name}</strong>
+      {/* A long name is cut; hover shows it whole (QA 50). */}
+      <strong title={name}>{name}</strong>
     </div>
   );
 }

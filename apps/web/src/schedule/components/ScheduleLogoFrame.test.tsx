@@ -30,4 +30,14 @@ describe("ScheduleLogoFrame", () => {
     ).toBeTruthy();
     expect(screen.getByText("MJ")).toBeTruthy();
   });
+
+  it("shows a cut workspace name in full on hover (QA 50)", () => {
+    render(
+      <ScheduleLogoFrame logoUrl={null} organizationName="TEST Workspace With A Long Name" />,
+    );
+
+    expect(
+      screen.getByText("TEST Workspace With A Long Name").getAttribute("title"),
+    ).toBe("TEST Workspace With A Long Name");
+  });
 });

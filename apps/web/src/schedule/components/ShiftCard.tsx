@@ -403,11 +403,13 @@ export function ShiftCard({
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"
       >
-        <strong>{title}</strong>
+        {/* A narrow day cuts these lines; hover shows them whole (QA 50). */}
+        <strong title={title}>{title}</strong>
         {locationName ? (
           <span
             className="schedule-shift-location"
             data-shift-badge-location="true"
+            title={locationName}
           >
             {locationName}
           </span>
@@ -532,7 +534,7 @@ export function GhostShiftCard({
         className="schedule-shift-badge-content"
         data-shift-badge-content="true"
       >
-        <strong>{title}</strong>
+        <strong title={title}>{title}</strong>
         {showShiftLabels && labelText.displayText ? (
           <span className="schedule-shift-labels" title={labelText.fullText}>
             {labelText.displayText}
