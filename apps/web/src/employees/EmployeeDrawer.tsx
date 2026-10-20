@@ -3158,7 +3158,11 @@ function InviteRoleField({
         disabled={disabled || roles.length === 0}
         onChange={(event) => onInviteRoleChange(event.target.value)}
       >
-        {roles.length > 0 ? <option value="">Select a role</option> : null}
+        {roles.length > 0 ? (
+          <option value="">
+            {waitsForEmail ? "Add email first" : "Select a role"}
+          </option>
+        ) : null}
         {roles.length === 0 ? <option value="">{empty}</option> : null}
         {roles.map((role) => (
           <option key={role.id} value={role.id}>

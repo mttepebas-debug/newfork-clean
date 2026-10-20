@@ -231,6 +231,8 @@ describe("employee create flow", () => {
     const field = await screen.findByLabelText("Invite role");
     const note = document.getElementById(field.getAttribute("aria-describedby") ?? "");
     expect(note?.textContent).toBe("Add an email to choose an invite role.");
+    // The footer hides that line to stay one row, so the field says it too.
+    await waitFor(() => expect((field as HTMLSelectElement).options[0]?.textContent).toBe("Add email first"));
   });
 
   it("tells loading roles, failed roles and no roles apart", async () => {
