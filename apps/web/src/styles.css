@@ -5530,7 +5530,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   align-items: center;
   gap: 5px;
 }
-.schedule-employee-name-button {
+.schedule-employee-name-button,
+.schedule-employee-name-text {
   display: block;
   min-width: 0;
   flex: 1;
@@ -5546,6 +5547,9 @@ button.workspace-switcher-item:hover:not(:disabled) {
   text-align: left;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.schedule-employee-name-text {
+  cursor: default;
 }
 .schedule-employee-name-button:hover,
 .schedule-employee-name-button:focus-visible {

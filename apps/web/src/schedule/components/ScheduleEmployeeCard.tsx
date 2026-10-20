@@ -22,7 +22,8 @@ export function ScheduleEmployeeCard({
   readonly unassignedLabelMode: "header" | "centered";
   readonly rowStyle: CSSProperties;
   readonly anchorRef: RefObject<HTMLDivElement | null>;
-  readonly onOpenEmployeeCard: (employeeId: string) => void;
+  /** Without it there is no card to open, so the name is plain text (QA 59). */
+  readonly onOpenEmployeeCard?: (employeeId: string) => void;
 }) {
   const isUnassignedRow = !employee;
 
@@ -59,18 +60,22 @@ export function ScheduleEmployeeCard({
     >
       {employee ? (
         <div className="schedule-employee-name-row">
-          <button
-            type="button"
-            className="schedule-employee-name-button"
-            data-schedule-employee-card-trigger="true"
-            onClick={(event) => {
-              event.preventDefault();
-              event.stopPropagation();
-              onOpenEmployeeCard(employee.id);
-            }}
-          >
-            <strong>{employee.display_name}</strong>
-          </button>
+          {onOpenEmployeeCard ? (
+            <button
+              type="button"
+              className="schedule-employee-name-button"
+              data-schedule-employee-card-trigger="true"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                onOpenEmployeeCard(employee.id);
+              }}
+            >
+              <strong>{employee.display_name}</strong>
+            </button>
+          ) : (
+            <strong className="schedule-employee-name-text">{employee.display_name}</strong>
+          )}
           {availabilityLines.length ? (
             <AvailabilityMarkButton
               className="schedule-availability-mark-name"

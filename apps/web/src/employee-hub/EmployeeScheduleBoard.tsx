@@ -344,7 +344,6 @@ export function EmployeeScheduleBoard({
         onPaste={noop}
         onMove={noop}
         onCopyMove={noop}
-        onOpenEmployeeCard={noop}
         onDayHeaderClick={(date) => navigate({ date, view: "day" })}
         onLocationHeaderClick={(ids) =>
           navigate({ locations: ids.join(",") || null })

@@ -167,7 +167,7 @@ export function ScheduleGrid({
     employeeId: string | null,
     date: string,
   ) => void;
-  readonly onOpenEmployeeCard: (employeeId: string) => void;
+  readonly onOpenEmployeeCard?: (employeeId: string) => void;
   readonly onDayHeaderClick: (
     date: string,
     locationIds: readonly string[],

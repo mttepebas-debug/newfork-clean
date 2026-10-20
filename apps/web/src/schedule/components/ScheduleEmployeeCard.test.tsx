@@ -32,6 +32,23 @@ describe("ScheduleEmployeeCard", () => {
     expect([...screen.getByRole("dialog").querySelectorAll("p")].map((line) => line.textContent)).toEqual(lines);
     expect(props.onOpenEmployeeCard).not.toHaveBeenCalled();
   });
+  // QA 59: with nothing to open (the employee's Team schedule), the name is text, not a dead button.
+  it("draws the name as plain text when there is no employee card to open", () => {
+    render(
+      <ScheduleEmployeeCard
+        editing={false}
+        employee={employee()}
+        openShiftCount={0}
+        unassignedFrozen={false}
+        unassignedLabelMode="header"
+        rowStyle={{}}
+        anchorRef={createRef<HTMLDivElement>()}
+      />,
+    );
+
+    expect(screen.queryByRole("button", { name: "Ada Lovelace" })).toBeNull();
+    expect(screen.getByText("Ada Lovelace").className).toBe("schedule-employee-name-text");
+  });
   it("renders employee identity and opens the employee card from the name button", () => {
     const onOpenEmployeeCard = vi.fn();
     render(

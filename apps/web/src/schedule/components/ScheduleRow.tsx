@@ -175,7 +175,7 @@ export function ScheduleRow({
     event: MouseEvent<HTMLElement>,
   ) => void;
   readonly onDragOverCell: (cellKey: string | null) => void;
-  readonly onOpenEmployeeCard: (employeeId: string) => void;
+  readonly onOpenEmployeeCard?: (employeeId: string) => void;
 }) {
   const rowKey = employee?.id ?? "unassigned";
   const isUnassignedRow = !employee;

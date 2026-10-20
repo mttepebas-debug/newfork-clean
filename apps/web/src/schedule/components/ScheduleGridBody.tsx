@@ -111,7 +111,7 @@ export function ScheduleGridBody({
     point?: { readonly x: number; readonly y: number },
   ) => void;
   readonly onFocusShift: (shift: ScheduleShift) => void;
-  readonly onOpenEmployeeCard: (employeeId: string) => void;
+  readonly onOpenEmployeeCard?: (employeeId: string) => void;
   readonly onPaste: (
     locationId: string,
     employeeId: string | null,
