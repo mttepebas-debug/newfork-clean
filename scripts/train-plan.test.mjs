@@ -143,6 +143,51 @@ test("plan: a task branch adding a quarantine line stops the train; coord/kayit2
   assert.doesNotMatch(text(c), /kayıt dosyasına dokunuyor/);
 });
 
+// A records commit that a train already carried, but whose context changed on main first: `git cherry` sees a
+// different patch and calls it new, and replaying it clashes (TREN-KAYIT-ATLA). `landedTwin` puts the train's copy
+// on main (same author, date and message, as copyCommit keeps them; other context) and one new commit on the branch.
+function landedTwin(name) {
+  const old = w.branch(name, ["records: four", { "README.md": "one\ntwo\nthree\nfour\n" }]);
+  write(w.repo, "README.md", "one\ntwo\nTHREE\n");
+  commit(w.repo, "main: three in capitals");
+  write(w.repo, "README.md", "one\ntwo\nTHREE\nfour\n");
+  git(w.repo, "add", "-A");
+  git(w.repo, "commit", "-q", "-C", old); // the train's copy
+  git(w.repo, "push", "-q", "origin", "HEAD:main");
+  git(w.repo, "checkout", "-q", name);
+  write(w.repo, "docs/next.md", "next\n");
+  commit(w.repo, "records: next");
+  git(w.repo, "checkout", "-q", "main");
+  assert.match(git(w.repo, "cherry", "origin/main", name), new RegExp(`^\\+ ${old}`)); // the patch differs
+  return old;
+}
+
+test("plan: a coord/kayit2 commit main already carries under another context is left out and named; the new one rides", () => {
+  const old = landedTwin("coord/kayit2");
+  const r = plan(w.ctx, ["coord/kayit2"]);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), new RegExp(`coord/kayit2: zaten main'de \\(kopyası main'de\\): ${old.slice(0, 8)} = main @\\w{8}`));
+  assert.match(text(r), /coord\/kayit2: girer, 1 commit/);
+  assert.equal(r.sim.results[0].commits.length, 1);
+});
+
+test("plan: coord/kayit2 holding only commits main already carries is already on main", () => {
+  landedTwin("coord/kayit2");
+  git(w.repo, "branch", "-f", "coord/kayit2", "coord/kayit2~1");
+  const r = plan(w.ctx, ["coord/kayit2"]);
+  assert.equal(r.code, 0, text(r));
+  assert.match(text(r), /^coord\/kayit2: zaten main'de$/m);
+  assert.deepEqual(r.order, []);
+});
+
+test("plan: a task branch is not let off by a copy on main; its commit is replayed as before", () => {
+  landedTwin("task/w");
+  const r = plan(w.ctx, ["task/w"]);
+  assert.equal(r.code, 2, text(r));
+  assert.match(text(r), /task\/w: ATLANIR, çakışma: README\.md, 2 commit/);
+  assert.doesNotMatch(text(r), /kopyası main'de/);
+});
+
 test("plan: NF_OVERRIDE passes a branch touching a record file, and the pass is logged", () => {
   w.branch("task/rec", ["records", { "DURUM.md": "# Durum\n" }]);
   const r = plan({ ...w.ctx, override: "Mert kayıt düzeltmesini işçiye verdi" }, ["task/rec"]);
