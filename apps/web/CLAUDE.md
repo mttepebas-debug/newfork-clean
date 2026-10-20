@@ -41,3 +41,4 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - Commit değişince ya da rebase sonrası yetkili düğme kaybolur ya da eski CSS gelir: önce `vite --force`.
 - `pnpm.cmd … exec vitest run` test düşünce `"vitest" not found` yazar; `Tests` satırını oku.
 - `EmployeeDrawer.test.tsx` `./employee-data`'yı bütünüyle taklit eder: yeni saf yardımcı `employees/employee-create-flow.ts`'e. `App.test.tsx` Schedule'ın render testidir; yeni hedefsiz `can()` aksiyonu oradaki `actions`'a da girer.
+- iOS sürümü: Safari 26'dan beri tarayıcı kimliğindeki "OS 18_6" donuk; sürüm "Version/NN"den okunur (`phone-alerts/install-state.ts`, IPHONE-SHARE).
