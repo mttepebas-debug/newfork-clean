@@ -14,21 +14,31 @@ const NAME = /^\d{14}_[\w-]+\.sql$/;
 export const version = (file) => file.split("_")[0];
 const md5 = (text) => createHash("md5").update(text).digest("hex");
 
-// ledger: Map version -> { md5, n } (n = statement count). files: [{ file, sql }] in version order.
-// A file in the ledger with the same content is skipped; with other content, or split by the CLI, it stops
-// the run: an applied migration never changes, a fix is a new migration.
+// What a ledger row is compared by: the text without its trailing spaces, newlines and one closing semicolon,
+// as the CLI (statement by statement), db-apply and MCP (the whole file) each leave a row's end differently.
+export const ending = (sql) => sql.replace(/[ \t\r\n]+$/, "").replace(/;$/, "").replace(/[ \t\r\n]+$/, "");
+export const fingerprint = (sql) => md5(ending(sql));
+
+// ledger: Map version -> { md5, n } (md5 = fingerprint of statements[1]; n = statement count). files: [{ file, sql }]
+// in version order. A one-statement row is compared: the same text is skipped, other text stops the run (an applied
+// migration never changes, a fix is a new migration). A row the CLI split into statements can't be compared and
+// counts as applied (Mert 2026-10-20); `cli` counts those.
 export function pending(ledger, files) {
   const apply = [];
+  let cli = 0;
   for (const { file, sql } of files) {
     const row = ledger.get(version(file));
     if (!row) {
       apply.push(file);
       continue;
     }
-    if (row.n !== 1) return { apply, stop: `${file}: ledger'da ${row.n} deyim olarak var (CLI ile uygulanmış); içerik karşılaştırılamadı` };
-    if (row.md5 !== md5(sql)) return { apply, stop: `${file}: ortak DB'de başka içerikle uygulanmış; düzeltme yeni migration'la` };
+    if (row.n !== 1) {
+      cli += 1;
+      continue;
+    }
+    if (row.md5 !== fingerprint(sql)) return { apply, stop: `${file}: ortak DB'de başka içerikle uygulanmış; düzeltme yeni migration'la`, cli };
   }
-  return { apply, stop: null };
+  return { apply, stop: null, cli };
 }
 
 const literal = (sql) => {
@@ -61,13 +71,20 @@ function main() {
     .sort()
     .map((file) => ({ file, sql: git(["show", `origin/main:${MIGRATIONS}/${file}`]) }));
   const db = container(root);
-  const q = psql(db, "select version || ' ' || coalesce(md5(statements[1]), '-') || ' ' || coalesce(array_length(statements, 1), 0) from supabase_migrations.schema_migrations;", true);
+  // statements[1] by the same ending rule as `ending` (Postgres: trailing whitespace, one semicolon, whitespace).
+  const q = psql(
+    db,
+    "select version || ' ' || coalesce(md5(rtrim(regexp_replace(rtrim(statements[1], E' \t\r\n'), ';$', ''), E' \t\r\n')), '-') || ' ' || " +
+      "coalesce(array_length(statements, 1), 0) from supabase_migrations.schema_migrations;",
+    true,
+  );
   if (q.status !== 0) {
     console.error(`ortak DB okunamadı: ${q.err.trim()}`);
     return 1;
   }
   const ledger = new Map(q.out.split("\n").filter(Boolean).map((l) => l.trim().split(" ")).map(([v, m, n]) => [v, { md5: m, n: Number(n) }]));
-  const { apply, stop } = pending(ledger, files);
+  const { apply, stop, cli } = pending(ledger, files);
+  if (cli) console.log(`${cli} eski satır CLI ile deyim deyim yazılmış; içerik karşılaştırılamadı, uygulanmış sayıldı`);
   if (stop) {
     console.error(`DUR: ${stop}`);
     return 1;
