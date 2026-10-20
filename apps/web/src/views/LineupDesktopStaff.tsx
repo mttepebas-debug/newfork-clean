@@ -160,7 +160,7 @@ export function OutGroups({
             <ul aria-label="Called off">
               {calledOff.map((row) => (
                 <li className="lineup-phone-row lineup-desk-row is-out" key={row.shiftId}>
-                  <LineupPersonCircle name={row.name} />
+                  <LineupPersonCircle name={row.name} artKey={row.artKey} />
                   <span className="lineup-desk-name">
                     <span className="lineup-phone-name">{row.name}</span>
                   </span>
@@ -194,14 +194,14 @@ export function OutGroups({
               {replaced.map(({ row, by }) => (
                 <li className={`lineup-phone-row lineup-staff-rep${editing ? " is-edit" : ""}`} key={row.shiftId}>
                   <span className="lineup-staff-who">
-                    <LineupPersonCircle name={row.name} />
+                    <LineupPersonCircle name={row.name} artKey={row.artKey} />
                     <span className="lineup-phone-name">{row.name}</span>
                     <span className="lineup-staff-rep-ic" role="img" aria-label="replaced by">
                       <ArrowLeftRight size={18} aria-hidden />
                     </span>
                     {by ? (
                       <>
-                        <LineupPersonCircle name={by.name} />
+                        <LineupPersonCircle name={by.name} artKey={by.artKey} />
                         <span className="lineup-phone-name is-by">{by.name}</span>
                       </>
                     ) : null}
@@ -446,7 +446,7 @@ export function StaffWindow({
               const label = place.kind === "replace" ? "Replace" : "Add";
               return (
                 <li className={`lineup-staff-cand${group === "unavailable" ? " is-u" : ""}`} key={candidate.employee_id}>
-                  <LineupPersonCircle name={candidate.name} />
+                  <LineupPersonCircle name={candidate.name} artKey={null} />
                   <span className="lineup-staff-cand-mid">
                     <b>{candidate.name}</b>
                     <span>
