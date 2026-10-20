@@ -11,7 +11,8 @@ import { WindowAlert } from "../shell/WindowAlert";
 // LINEUP-EDIT W2a (KARARLAR S-178 madde 1-4, ek 2-3, ek b; the design's F "after", yapim/masaustu/desk.js fRow,
 // secCell, secLayer, notesPane): on a draft that hasn't started, a manager changes a row in place (Position, Label,
 // In - Out, Section with "Other…" and Save to sections), the location's sections in the Sections window, and the notes.
-// The Schedule never changes. Call off, Add Staff and Replace are in LineupDesktopStaff (W3a).
+// The Schedule never changes. Call off, Add Staff and Replace are in LineupDesktopStaff (W3a). The phone (W2b) draws the
+// same fields in its person panel and the Sections window as a sheet.
 
 /**
  * What the pickers offer: the workspace's departments, positions and labels, and the positions each person is
@@ -40,7 +41,10 @@ function firstName(name: string): string {
   return name.split(/\s+/)[0] ?? name;
 }
 
-/** One row, in place: Position, Label, In - Out and Section. A refusal shows under the field it is about. */
+/**
+ * One row, in place: Position, Label, In - Out and Section. A refusal shows under the field it is about. In the phone's
+ * person panel (`panel`) the same fields stand two by two under their names, Section across (the design's ph-fields).
+ */
 export function EditableRowCells({
   row,
   location,
@@ -50,6 +54,7 @@ export function EditableRowCells({
   onManageSections,
   dot,
   children,
+  panel = false,
 }: {
   readonly row: LineupRow;
   readonly location: LineupLocation;
@@ -59,8 +64,10 @@ export function EditableRowCells({
   readonly onManageSections: () => void;
   /** The orange dot, right after Out. */
   readonly dot?: ReactNode;
-  /** The hours change, under In - Out. */
+  /** The hours change, under In - Out (the panel: under the fields). */
   readonly children?: ReactNode;
+  /** The phone's person panel. */
+  readonly panel?: boolean;
 }) {
   const edit = useLineupEdit(editing.workspaceId, editing.date);
   // A choice shows at once and holds until the day is read again (or the change is refused).
@@ -110,93 +117,125 @@ export function EditableRowCells({
       </em>
     ) : null;
 
+  const position = (
+    <>
+      <select
+        className="lineup-edit-sel"
+        aria-label={`Position, ${row.name}`}
+        value={job}
+        onChange={(event) => send("job", { job_id: event.target.value }, { key: "job", value: event.target.value })}
+      >
+        {job && !editing.catalog.jobs.some((item) => item.id === job) ? <option value={job}>{row.jobName}</option> : null}
+        {assigned.length ? (
+          <optgroup label={`Assigned to ${firstName(row.name)}`}>
+            {assigned.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+        {others.length ? (
+          <optgroup label="Other positions">
+            {others.map((item) => (
+              <option key={item.id} value={item.id}>
+                {item.name}
+              </option>
+            ))}
+          </optgroup>
+        ) : null}
+      </select>
+      {note("job")}
+    </>
+  );
+  const labels = (
+    <>
+      <select
+        className="lineup-edit-sel"
+        aria-label={`Label, ${row.name}`}
+        value={label}
+        onChange={(event) => {
+          const choice = event.target.value;
+          if (choice === MANY) return;
+          send("label", { label_ids: choice ? [choice] : [] }, { key: "label", value: choice });
+        }}
+      >
+        <option value="">None</option>
+        {many ? <option value={MANY}>{row.labels.join(", ")}</option> : null}
+        {label && label !== MANY && !editing.catalog.labels.some((item) => item.id === label) ? (
+          <option value={label}>{row.labels[0] ?? "Label"}</option>
+        ) : null}
+        {editing.catalog.labels.map((item) => (
+          <option key={item.id} value={item.id}>
+            {item.name}
+          </option>
+        ))}
+      </select>
+      {note("label")}
+    </>
+  );
+  const start = (
+    <TimeField row={row} field="start" timeFormat={timeFormat} refused={refused.start ?? null} onTime={(time) => sendTime("start", time)} />
+  );
+  const end = (
+    <TimeField row={row} field="end" timeFormat={timeFormat} refused={refused.end ?? null} onTime={(time) => sendTime("end", time)} />
+  );
+  const section = (
+    <>
+      <SectionField
+        row={row}
+        location={location}
+        shown={shown.section}
+        onSection={(id) => send("section", { section_id: id }, { key: "section", value: id ?? "" })}
+        onTyped={(name, save) => send("section", { section_name: name, save_section: save })}
+        onManage={onManageSections}
+      />
+      {note("section")}
+    </>
+  );
+
+  if (panel)
+    return (
+      <>
+        <div className="lineup-person-fields">
+          <div className="lineup-person-fld">
+            <span>Position</span>
+            {position}
+          </div>
+          <div className="lineup-person-fld">
+            <span>Label</span>
+            {labels}
+          </div>
+          <div className="lineup-person-fld">
+            <span>In</span>
+            {start}
+          </div>
+          <div className="lineup-person-fld">
+            <span>Out</span>
+            {end}
+          </div>
+          <div className="lineup-person-fld is-wide">
+            <span>Section</span>
+            {section}
+          </div>
+        </div>
+        {children}
+      </>
+    );
   return (
     <>
-      <span className="lineup-desk-cell lineup-edit-cell">
-        <select
-          className="lineup-edit-sel"
-          aria-label={`Position, ${row.name}`}
-          value={job}
-          onChange={(event) => send("job", { job_id: event.target.value }, { key: "job", value: event.target.value })}
-        >
-          {job && !editing.catalog.jobs.some((item) => item.id === job) ? <option value={job}>{row.jobName}</option> : null}
-          {assigned.length ? (
-            <optgroup label={`Assigned to ${firstName(row.name)}`}>
-              {assigned.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-          {others.length ? (
-            <optgroup label="Other positions">
-              {others.map((item) => (
-                <option key={item.id} value={item.id}>
-                  {item.name}
-                </option>
-              ))}
-            </optgroup>
-          ) : null}
-        </select>
-        {note("job")}
-      </span>
-      <span className="lineup-desk-cell lineup-edit-cell">
-        <select
-          className="lineup-edit-sel"
-          aria-label={`Label, ${row.name}`}
-          value={label}
-          onChange={(event) => {
-            const choice = event.target.value;
-            if (choice === MANY) return;
-            send("label", { label_ids: choice ? [choice] : [] }, { key: "label", value: choice });
-          }}
-        >
-          <option value="">None</option>
-          {many ? <option value={MANY}>{row.labels.join(", ")}</option> : null}
-          {label && label !== MANY && !editing.catalog.labels.some((item) => item.id === label) ? (
-            <option value={label}>{row.labels[0] ?? "Label"}</option>
-          ) : null}
-          {editing.catalog.labels.map((item) => (
-            <option key={item.id} value={item.id}>
-              {item.name}
-            </option>
-          ))}
-        </select>
-        {note("label")}
-      </span>
+      <span className="lineup-desk-cell lineup-edit-cell">{position}</span>
+      <span className="lineup-desk-cell lineup-edit-cell">{labels}</span>
       <span className="lineup-desk-cell lineup-desk-time lineup-edit-time">
         <span className="lineup-edit-tline">
-          <TimeField
-            row={row}
-            field="start"
-            timeFormat={timeFormat}
-            refused={refused.start ?? null}
-            onTime={(time) => sendTime("start", time)}
-          />
+          {start}
           <span className="lineup-edit-dash">–</span>
-          <TimeField
-            row={row}
-            field="end"
-            timeFormat={timeFormat}
-            refused={refused.end ?? null}
-            onTime={(time) => sendTime("end", time)}
-          />
+          {end}
           {dot}
         </span>
         {children}
       </span>
-      <span className="lineup-desk-cell lineup-edit-cell">
-        <SectionField
-          row={row}
-          location={location}
-          shown={shown.section}
-          onSection={(id) => send("section", { section_id: id }, { key: "section", value: id ?? "" })}
-          onTyped={(name, save) => send("section", { section_name: name, save_section: save })}
-          onManage={onManageSections}
-        />
-        {note("section")}
-      </span>
+      <span className="lineup-desk-cell lineup-edit-cell">{section}</span>
     </>
   );
 }
@@ -368,17 +407,21 @@ export function SectionsWindow({
   editing,
   location,
   onClose,
+  sheet = false,
 }: {
   readonly editing: LineupEditing;
   readonly location: LineupLocation;
   readonly onClose: () => void;
+  /** The phone's: a sheet from the bottom (the design's secLayer, frame "phone"). */
+  readonly sheet?: boolean;
 }) {
   const change = useLineupSections(editing.workspaceId, editing.date);
   const [refused, setRefused] = useState<string | null>(null);
   const [added, setAdded] = useState("");
   const [dragged, setDragged] = useState<number | null>(null);
   const titleId = useId();
-  const { box, keys } = useWindowKeys(onClose);
+  // On a phone the sheet itself takes the focus: a name's field would bring up the keyboard over the list.
+  const { box, keys } = useWindowKeys(onClose, { toField: !sheet });
   const sections = location.sections;
 
   function run(input: Parameters<typeof change.mutate>[0], after?: () => void) {
@@ -399,12 +442,12 @@ export function SectionsWindow({
   }
 
   return createPortal(
-    <div className="lineup-edit-layer" role="presentation">
+    <div className={`lineup-edit-layer${sheet ? " is-sheet" : ""}`} role="presentation">
       <div className="lineup-edit-scrim" aria-hidden onClick={onClose} />
       {/* tabIndex -1: a click on its empty part keeps the focus in it, so its keys still work. */}
       <section
         ref={box}
-        className="lineup-edit-dlg"
+        className={`lineup-edit-dlg lineup-sec-dlg${sheet ? " is-sheet" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
@@ -512,18 +555,20 @@ export function SectionsWindow({
  * A window's focus and keys: the focus goes to its first field when it opens and back to what opened it when it
  * closes; Escape closes it (after the field's own Escape); Tab stays inside.
  */
-export function useWindowKeys(onClose: () => void) {
+export function useWindowKeys(onClose: () => void, { toField = true }: { readonly toField?: boolean } = {}) {
   const box = useRef<HTMLElement | null>(null);
   const latest = useRef(onClose);
   latest.current = onClose;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    // A window with nothing to type in (the phone's person panel) takes the focus itself.
-    (box.current?.querySelector<HTMLElement>("input") ?? box.current)?.focus();
+    // A window with nothing to type in, or whose fields would bring up a phone's keyboard (the person panel), takes the
+    // focus itself.
+    ((toField ? box.current?.querySelector<HTMLElement>("input") : null) ?? box.current)?.focus();
     return () => {
       if (opener?.isConnected) opener.focus();
     };
-  }, []);
+    // Once, when the window opens: it is fixed for the window.
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
   function keys(event: KeyboardEvent<HTMLElement>) {
     if (event.key === "Escape") {
       event.preventDefault();

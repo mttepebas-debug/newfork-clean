@@ -5,17 +5,18 @@ import { createPortal } from "react-dom";
 
 import { lineupRowRef, type LineupLocation, type LineupRow, type LineupShift } from "../schedule/lineup";
 import type { LineupEdit } from "../schedule/lineup-data";
-import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
+import type { ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { WindowAlert } from "../shell/WindowAlert";
-import { useWindowKeys, type LineupEditing } from "./LineupDesktopEdit";
+import { HoursChange } from "./LineupDesktop";
+import { EditableRowCells, useWindowKeys, type LineupEditing } from "./LineupDesktopEdit";
 import { useStaffEdit } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 
 // LINEUP-EDIT W3b: the phone's person panel (the design's phone E, personLayer, frame.css .ph-acts): a tap on a row of
 // a draft that hasn't started opens it as a sheet from the bottom. Replace… opens the same list as a name on the
-// desktop; Call off takes two taps (Mert 2026-10-20). The row's fields join it with W2b.
+// desktop; Call off takes two taps (Mert 2026-10-20). W2b: the desktop row's fields, two by two, each change sent at once.
 
-/** One person on the lineup, from a tap on her row: who she is, and Replace…, Call off and Done. */
+/** One person on the lineup, from a tap on her row: who she is, her row's fields, and Replace…, Call off and Done. */
 export function PersonSheet({
   row,
   location,
@@ -23,24 +24,24 @@ export function PersonSheet({
   editing,
   timeFormat,
   onReplace,
+  onManageSections,
   onClose,
 }: {
+  /** As the day read has her now: each change shows once the day is read again. */
   readonly row: LineupRow;
   readonly location: LineupLocation;
   readonly shift: LineupShift;
   readonly editing: LineupEditing;
   readonly timeFormat: ScheduleTimeFormat;
   readonly onReplace: () => void;
+  /** "Manage sections…" in the Section list: the Sections sheet over this one. */
+  readonly onManageSections: () => void;
   readonly onClose: () => void;
 }) {
   const { run, refused } = useStaffEdit(editing);
   const titleId = useId();
-  const { box, keys } = useWindowKeys(onClose);
-  const facts = [
-    `${formatTime(row.startTime, timeFormat, "long")} – ${formatTime(row.endTime, timeFormat, "long")}`,
-    row.sectionName,
-    row.labels.join(", "),
-  ].filter(Boolean);
+  // The panel itself takes the focus: In, its first field, would bring up the keyboard.
+  const { box, keys } = useWindowKeys(onClose, { toField: false });
   return createPortal(
     <div className="lineup-edit-layer is-sheet" role="presentation">
       <div className="lineup-edit-scrim" aria-hidden onClick={onClose} />
@@ -65,7 +66,25 @@ export function PersonSheet({
             <X aria-hidden />
           </button>
         </header>
-        <p className="lineup-person-facts">{facts.join(" · ")}</p>
+        <div className="lineup-edit-dlg-body lineup-person-body">
+          <EditableRowCells
+            row={row}
+            location={location}
+            shift={shift}
+            editing={editing}
+            timeFormat={timeFormat}
+            onManageSections={onManageSections}
+            panel
+          >
+            {row.changed.length ? (
+              <p className="lineup-person-chg">
+                <i className="lineup-phone-changed" aria-hidden />
+                <span>Changed in this lineup only. The Schedule doesn't change.</span>
+                <HoursChange row={row} timeFormat={timeFormat} />
+              </p>
+            ) : null}
+          </EditableRowCells>
+        </div>
         <footer className="lineup-person-acts">
           <WindowAlert message={refused} />
           <button type="button" className="lineup-person-repl" aria-haspopup="dialog" onClick={onReplace}>

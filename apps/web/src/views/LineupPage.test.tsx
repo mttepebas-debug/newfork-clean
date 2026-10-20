@@ -1346,8 +1346,13 @@ describe("LineupPage on a phone, E", () => {
   });
 
   // Mert 2026-10-17 (~11:30 AM): one white card, a section per note with its icon and heading; nothing edits it.
-  it("reads the notes in the Notes tab, each in its own section, with nothing to type in", async () => {
-    published = { [lunch]: { notes: { specials: "Halibut", n86: "", shift_notes: "Patio opens at 5" } } };
+  it("reads a published lineup's notes in the Notes tab, each in its own section, with nothing to type in", async () => {
+    published = {
+      [lunch]: {
+        status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false,
+        notes: { specials: "Halibut", n86: "", shift_notes: "Patio opens at 5" },
+      },
+    };
     renderPage();
     fireEvent.click(await screen.findByRole("tab", { name: "Notes 2" }));
     const panel = screen.getByRole("tabpanel");
@@ -1935,6 +1940,113 @@ describe("LineupPage, editing a draft on the desktop", () => {
     );
     expect(within(noApp).getByRole("button", { name: "Copied" })).toBeTruthy();
   });
+
+  // LINEUP-EDIT W2b (the design's phone E: personLayer's ph-fields, secLayer as a sheet, the ticket's gear): the same
+  // fields in the person panel, two by two, each change sent at once.
+  describe("on a phone", () => {
+    beforeEach(() => {
+      phone = true;
+    });
+    const panelOf = async () => {
+      fireEvent.click(await screen.findByRole("button", { name: "Change Maria Lopez" }));
+      return screen.getByRole("dialog", { name: "Maria Lopez" });
+    };
+
+    it("lays her row's fields out two by two in her panel, and sends each change at once", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const panel = await panelOf();
+      // The panel holds the focus: In, its first field, would bring up the keyboard.
+      expect(document.activeElement).toBe(panel);
+      expect([...panel.querySelectorAll(".lineup-person-fld > span:first-child")].map((caption) => caption.textContent)).toEqual([
+        "Position", "Label", "In", "Out", "Section",
+      ]);
+      const position = within(panel).getByRole("combobox", { name: "Position, Maria Lopez" }) as HTMLSelectElement;
+      expect(position.value).toBe(server);
+      fireEvent.change(position, { target: { value: host } });
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_row", row: { source_shift_id: marias(), job_id: host } });
+      fireEvent.change(within(panel).getByRole("combobox", { name: "Label, Maria Lopez" }), { target: { value: "" } });
+      await waitFor(() => expect(sent).toHaveLength(2));
+      expect(sent[1]!.body.row).toEqual({ source_shift_id: marias(), label_ids: [] });
+      const start = within(panel).getByRole("textbox", { name: "In, Maria Lopez" }) as HTMLInputElement;
+      expect(start.value).toBe("11:00 AM");
+      fireEvent.change(start, { target: { value: "10:30 am" } });
+      fireEvent.keyDown(start, { key: "Enter" });
+      await waitFor(() => expect(sent).toHaveLength(3));
+      expect(sent[2]!.body.row).toEqual({ source_shift_id: marias(), starts: "10:30", ends: "16:00" });
+      // The panel stays on her as the day is read again.
+      expect(screen.getByRole("dialog", { name: "Maria Lopez" })).toBe(panel);
+    });
+
+    it("gives her a section typed with Other…, and opens Sections over the panel from Manage sections…", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const panel = await panelOf();
+      fireEvent.change(within(panel).getByRole("combobox", { name: "Section, Maria Lopez" }), { target: { value: "__other" } });
+      const typed = within(panel).getByRole("textbox", { name: "New section, Maria Lopez" });
+      await waitFor(() => expect(document.activeElement).toBe(typed));
+      fireEvent.change(typed, { target: { value: "Deck" } });
+      fireEvent.click(within(panel).getByRole("checkbox", { name: "Save to sections" }));
+      fireEvent.click(within(panel).getByRole("button", { name: "Use this section" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]!.body.row).toEqual({ source_shift_id: marias(), section_name: "Deck", save_section: true });
+      fireEvent.change(within(panel).getByRole("combobox", { name: "Section, Maria Lopez" }), { target: { value: "__manage" } });
+      const sheet = screen.getByRole("dialog", { name: "Sections · Downtown" });
+      expect(sheet.classList.contains("is-sheet")).toBe(true);
+      expect(screen.getByRole("dialog", { name: "Maria Lopez" })).toBe(panel);
+      fireEvent.click(within(sheet).getByRole("button", { name: "Done" }));
+      expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
+      expect(screen.getByRole("dialog", { name: "Maria Lopez" })).toBe(panel);
+    });
+
+    it("opens Sections as a sheet from the gear beside the ticket's Edit", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+      fireEvent.click(within(card).getByRole("button", { name: "Sections" }));
+      const sheet = screen.getByRole("dialog", { name: "Sections · Downtown" });
+      expect(sheet.classList.contains("is-sheet")).toBe(true);
+      fireEvent.change(within(sheet).getByRole("textbox", { name: "New section" }), { target: { value: "Deck" } });
+      fireEvent.click(within(sheet).getByRole("button", { name: "Add" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toEqual({ path: "sections", body: { action: "add", location_id: downtown, name: "Deck" } });
+    });
+
+    it("edits the notes in the Notes tab and sends only the ones that changed", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+      fireEvent.click(screen.getByRole("button", { name: "Edit notes" }));
+      const specials = screen.getByPlaceholderText("Tonight's specials");
+      expect(document.activeElement).toBe(specials);
+      fireEvent.change(specials, { target: { value: "Halibut, $34" } });
+      fireEvent.click(screen.getByRole("button", { name: "Save" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_notes", notes: { specials: "Halibut, $34" } });
+      await waitFor(() => expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull());
+    });
+
+    it("copies the lineup as text from Read's No app heading", async () => {
+      published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: true, with_app: 0 } };
+      reads = { [maria]: "no app" };
+      const writeText = vi.fn(async () => undefined);
+      Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("tab", { name: /^Read/ }));
+      const noApp = within(screen.getByRole("tabpanel")).getByRole("region", { name: "No app" });
+      fireEvent.click(within(noApp).getByRole("button", { name: "Copy as text" }));
+      expect(writeText).toHaveBeenCalledWith(
+        ["Downtown · Lunch · Tue, Oct 13", "", "Front of House", "Server: Maria Lopez · 11:00 AM – 4:00 PM · Training"].join("\n"),
+      );
+    });
+
+    it("has no gear, panel or Edit notes on a published lineup", async () => {
+      published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const card = await screen.findByRole("region", { name: "Downtown, Lunch" });
+      expect(within(card).queryByRole("button", { name: "Sections" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Change Maria Lopez" })).toBeNull();
+      fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+      expect(screen.queryByRole("button", { name: "Edit notes" })).toBeNull();
+    });
+  });
 });
 
 // LINEUP-EDIT W3a (S-178 madde 5-7; the design's F outGroups, pickLayer): Call off with two clicks (Mert 2026-10-20),
@@ -2146,7 +2258,8 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
       expect(panel.classList.contains("is-sheet")).toBe(true);
       expect(document.activeElement).toBe(panel);
       expect(within(panel).getByText("Server · Lunch · Downtown")).toBeTruthy();
-      expect(within(panel).getByText("11:00 AM – 4:00 PM · Training")).toBeTruthy();
+      // Her row's fields (W2b): In as the day has it.
+      expect((within(panel).getByRole("textbox", { name: "In, Maria Lopez" }) as HTMLInputElement).value).toBe("11:00 AM");
       fireEvent.click(within(panel).getByRole("button", { name: "Done" }));
       expect(screen.queryByRole("dialog")).toBeNull();
       expect(document.activeElement).toBe(tap);
@@ -2180,7 +2293,8 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
       fireEvent.click(await screen.findByRole("button", { name: "Add Staff to Front of House" }));
       const window_ = screen.getByRole("dialog", { name: "Add Staff · Front of House" });
       expect(window_.classList.contains("is-sheet")).toBe(true);
-      expect(document.activeElement).toBe(within(window_).getByRole("textbox", { name: "Search people" }));
+      // The sheet holds the focus: the search would bring up the keyboard over the list (W2b).
+      expect(document.activeElement).toBe(window_);
       await within(window_).findByRole("region", { name: "Best fit" });
       expect(asked[0]).toEqual({ ...target(), department_id: foh });
       expect(within(window_).getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Best fit", "Consider", "Unavailable"]);

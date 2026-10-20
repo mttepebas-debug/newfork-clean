@@ -401,7 +401,8 @@ export function StaffWindow({
   const { run, refused } = useStaffEdit(editing);
   const [search, setSearch] = useState("");
   const titleId = useId();
-  const { box, keys } = useWindowKeys(onClose);
+  // On a phone the sheet itself takes the focus: the search would bring up the keyboard over the list.
+  const { box, keys } = useWindowKeys(onClose, { toField: !sheet });
 
   const what = place.kind === "add" ? place.department.name : place.row.jobName;
   const title = place.kind === "add" ? `Add Staff · ${place.department.name}` : `Replace ${place.row.name}`;

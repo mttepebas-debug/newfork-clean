@@ -1,4 +1,4 @@
-import { Ban, ChevronDown, Eye, Lock, MapPin, MessageSquareText, Pencil, Sparkles, Users } from "lucide-react";
+import { Ban, ChevronDown, Eye, Lock, MapPin, MessageSquareText, Pencil, Settings, Sparkles, Users } from "lucide-react";
 import {
   Fragment,
   useEffect,
@@ -17,6 +17,7 @@ import {
 import {
   canPublish,
   lineupCardState,
+  lineupCopyText,
   lineupEditable,
   lineupNoteCount,
   lineupShiftSpan,
@@ -39,7 +40,7 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../sched
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
-import type { LineupEditing } from "./LineupDesktopEdit";
+import { CopyTextButton, EditNotesButton, NotesEditor, SectionsWindow, type LineupEditing } from "./LineupDesktopEdit";
 import { AddStaffButton, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import { PersonSheet } from "./LineupPhoneStaff";
@@ -51,7 +52,8 @@ import "./lineup-phone.css";
 // (place, day, Live or Draft, Edit; Shift · People · Hours; Team · Notes · Read inside) and the team all scroll.
 // Publish waits at the bottom over the bar while the shift on screen has a draft; it opens the Publish window as
 // a sheet. On a draft that hasn't started, a manager taps a row for its person panel (Replace…, Call off) and adds
-// staff from a department's heading (LINEUP-EDIT W3b).
+// staff from a department's heading (LINEUP-EDIT W3b); the panel changes the row's fields, the ticket's gear opens
+// Sections, Notes has Edit notes and Read Copy as text (W2b).
 
 export interface PhonePublish {
   readonly waiting: number;
@@ -293,8 +295,13 @@ function LocationLineup({
   const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg, scope: "self" });
   // A draft that hasn't started changes in place (the server locks the rest), as on the desktop.
   const changing = editing && lineupEditable(shift, now) ? editing : null;
-  const [person, setPerson] = useState<LineupRow | null>(null);
+  // The person panel's row, by its key: the panel reads her as the day has her now (a change moves her row).
+  const [personKey, setPersonKey] = useState<string | null>(null);
+  const person = personKey ? findRow(shift, personKey) : null;
+  const setPerson = (row: LineupRow | null) => setPersonKey(row?.shiftId ?? null);
   const [staff, setStaff] = useState<StaffPlace | null>(null);
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   const joined = open && seg === "team" && teamEmpty(shift, changing);
   const panel = `${ids}panel`;
   return (
@@ -319,15 +326,28 @@ function LocationLineup({
         day={day}
         panel={panel}
         cardRef={swipe.tabs}
+        onSections={changing ? () => setSectionsOpen(true) : undefined}
       >
         <Segments shift={shift} seg={seg} onSeg={setSeg} ids={ids} panel={panel} />
       </LineupCard>
       {open ? (
         <div className="lineup-phone-pane" role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
           {seg === "notes" ? (
-            <NotesPane shift={shift} />
+            changing && notesOpen ? (
+              <NotesEditor editing={changing} shift={shift} onDone={() => setNotesOpen(false)} />
+            ) : (
+              <>
+                {changing ? <EditNotesButton onEdit={() => setNotesOpen(true)} /> : null}
+                <NotesPane shift={shift} />
+              </>
+            )
           ) : seg === "read" ? (
-            <ReadPane shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
+            <ReadPane
+              shift={shift}
+              timeFormat={timeFormat}
+              timezone={location.timezone}
+              copy={editing ? <CopyTextButton text={() => lineupCopyText(location, shift, dateLabel, timeFormat)} /> : undefined}
+            />
           ) : (
             <TeamPane location={location} shift={shift} timeFormat={timeFormat} editing={changing} onPerson={setPerson} onStaff={setStaff} />
           )}
@@ -344,9 +364,11 @@ function LocationLineup({
             setPerson(null);
             setStaff({ kind: "replace", row: person });
           }}
+          onManageSections={() => setSectionsOpen(true)}
           onClose={() => setPerson(null)}
         />
       ) : null}
+      {changing && sectionsOpen ? <SectionsWindow editing={changing} location={location} onClose={() => setSectionsOpen(false)} sheet /> : null}
       {changing && staff ? (
         <StaffWindow
           editing={changing}
@@ -360,6 +382,13 @@ function LocationLineup({
       ) : null}
     </div>
   );
+}
+
+/** A row of the lineup's team by its key, or null once it has left the team (called off, replaced). */
+function findRow(shift: LineupShift, key: string): LineupRow | null {
+  for (const department of shift.departments)
+    for (const job of department.jobs) for (const row of job.rows) if (row.shiftId === key) return row;
+  return null;
 }
 
 /** Nothing to list: no one on the lineup or out of it, and no department to add staff to. */
@@ -388,6 +417,7 @@ export function LineupCard({
   day,
   panel,
   cardRef,
+  onSections,
   children,
 }: {
   readonly location: LineupLocation;
@@ -409,6 +439,8 @@ export function LineupCard({
   /** The id of the pane the card's tabs and chevron control. */
   readonly panel: string;
   readonly cardRef?: Ref<HTMLElement>;
+  /** The phone's Sections window, from a gear beside Edit on a draft that can change (the design's secBtn). */
+  readonly onSections?: () => void;
   readonly children: ReactNode;
 }) {
   const [editing, setEditing] = useState(false);
@@ -470,6 +502,18 @@ export function LineupCard({
             >
               {started ? <Lock aria-hidden /> : <Pencil aria-hidden />}
               Edit
+            </button>
+          ) : null}
+          {onSections ? (
+            <button
+              type="button"
+              className="lineup-card-edit lineup-card-sections"
+              aria-haspopup="dialog"
+              aria-label="Sections"
+              title="Sections"
+              onClick={onSections}
+            >
+              <Settings aria-hidden />
             </button>
           ) : null}
         </div>

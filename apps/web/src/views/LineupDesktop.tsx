@@ -499,7 +499,7 @@ function DesktopRow({
 }
 
 /** The orange dot (S-178 madde 3): the lineup changed this row against the Schedule. Managers only. */
-function ChangedDot({ row }: { readonly row: LineupRow }) {
+export function ChangedDot({ row }: { readonly row: LineupRow }) {
   if (!row.changed.length) return null;
   return (
     <i
@@ -513,7 +513,7 @@ function ChangedDot({ row }: { readonly row: LineupRow }) {
 
 /** Under In – Out, managers only: red "+1 h 30 min" when the shift is longer than the Schedule's, green "−1 h" when
  * shorter, nothing when the total is the same (S-178 Ek 2). */
-function HoursChange({ row, timeFormat }: { readonly row: LineupRow; readonly timeFormat: ScheduleTimeFormat }) {
+export function HoursChange({ row, timeFormat }: { readonly row: LineupRow; readonly timeFormat: ScheduleTimeFormat }) {
   const change = lineupHoursChange(row);
   if (!change || !row.scheduleStartTime || !row.scheduleEndTime) return null;
   const longer = change > 0;

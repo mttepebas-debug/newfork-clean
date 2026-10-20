@@ -1005,6 +1005,83 @@
   outline-offset: 1px;
 }
 
+/* LINEUP-EDIT W2b (the design's phone E: personLayer .ph-fields, secLayer as a sheet, the ticket's gear dk-secbtn): the
+   person panel's fields two by two, Section across; 16 px type so iOS doesn't zoom into a field. */
+.lineup-person-body {
+  padding-top: 2px;
+}
+.lineup-person-fields {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 14px 12px;
+}
+.lineup-person-fld {
+  display: grid;
+  min-width: 0;
+  align-content: start;
+  gap: 5px;
+}
+.lineup-person-fld > span:first-child {
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  font-weight: 700;
+}
+.lineup-person-fld.is-wide {
+  grid-column: 1 / -1;
+}
+.lineup-person-fld :is(.lineup-edit-sel, .lineup-edit-inp) {
+  width: 100%;
+  height: 40px;
+  font-size: 16px;
+}
+.lineup-person-fld .lineup-edit-mini {
+  width: 40px;
+  height: 40px;
+}
+.lineup-person-fld .lineup-edit-save {
+  font-size: 14px;
+}
+/* One line that wraps as text: the dot, the words, how much longer or shorter. */
+.lineup-person-chg {
+  margin: 14px 0 0;
+  color: var(--theme-availability-text);
+  font-size: 13px;
+  line-height: 1.45;
+}
+.lineup-person-chg > .lineup-phone-changed {
+  margin-right: 7px;
+  vertical-align: 1px;
+}
+.lineup-person-chg .lineup-desk-change {
+  margin-left: 6px;
+  font-size: 13px;
+  white-space: nowrap;
+}
+/* The ticket's gear beside Edit: Sections (a draft that can change). */
+.lineup-card-edit.lineup-card-sections {
+  margin-left: 2px;
+}
+/* Sections as a sheet: a name and its use under it, Delete at the end; the add row at the sheet's gutter. */
+.lineup-edit-dlg.is-sheet .lineup-edit-sec {
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  row-gap: 2px;
+}
+.lineup-edit-dlg.is-sheet .lineup-edit-use {
+  grid-column: 2;
+  grid-row: 2;
+}
+.lineup-edit-dlg.is-sheet .lineup-edit-del {
+  grid-column: 3;
+  grid-row: 1;
+}
+.lineup-edit-dlg.is-sheet .lineup-edit-sec-add {
+  padding: 10px 16px 12px;
+}
+.lineup-edit-dlg.is-sheet .lineup-edit-box,
+.lineup-phone-pane .lineup-edit-ta {
+  font-size: 16px;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .lineup-edit-dlg.is-sheet {
     animation: none;
