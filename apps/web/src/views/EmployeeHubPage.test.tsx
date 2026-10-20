@@ -590,6 +590,20 @@ describe("EmployeeHubPage", () => {
     vi.useRealTimers();
   });
 
+  // QA 60 (Mert 2026-10-20): the day card names the shift type as Home's card does; none, nothing added.
+  it("names the shift type on a My shifts day card when the shift has one", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    const dinner = { ...ownShift, id: "22000000-0000-4000-8000-000000000009", scheduled_date: "2026-08-25", shift_type_name: "Dinner" };
+    renderPageWithFixture({ ...fixture, shifts: [ownShift, dinner] } as EmployeeHubReadModel, "/app/employee-hub/schedule");
+
+    const thisWeek = await screen.findByRole("tabpanel", { name: "This week" });
+    expect(thisWeek.querySelector('[data-day="2026-08-25"] .ems-shift span:not(.ems-sr)')?.textContent).toBe("Main Dining · Server · Dinner");
+    expect(thisWeek.querySelector('[data-day="2026-08-24"] .ems-shift span:not(.ems-sr)')?.textContent).toBe("Main Dining · Server");
+    vi.useRealTimers();
+  });
+
   it("opens Your shift from a day card", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));

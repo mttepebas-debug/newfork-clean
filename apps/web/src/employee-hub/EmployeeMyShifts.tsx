@@ -221,7 +221,8 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
                         >
                           <span className="ems-sr">{longDay(day.date)}, </span>
                           <b>{formatTime(shift.start_time, timeFormat, "long")} – {formatTime(shift.end_time, timeFormat, "long")}</b>
-                          <span>{shift.location_name} · {shift.job_name}</span>
+                          {/* The type as on Home's card (QA 60, Mert 2026-10-20). */}
+                          <span>{[shift.location_name, shift.job_name, shift.shift_type_name].filter(Boolean).join(" · ")}</span>
                         </Link>
                       ))
                     ) : day.timeOff ? (
