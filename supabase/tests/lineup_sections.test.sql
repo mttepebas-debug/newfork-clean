@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(39);
+select plan(44);
 
 -- LINEUP-EDIT L2b (KARARLAR S-178 madde 4 and ek 3; Mert 2026-10-20 ~00:40 AM PT): a location's sections are added,
 -- renamed, ordered and removed (the Sections window); a row takes one of them or a name typed in that lineup only
@@ -311,6 +311,7 @@ select is(
     tests.user('e:mia'), (select value from fixture where key = 'eli_source'), tests.id('e:section:patio'))),
   '22023:lineup.invalid_section', 'a removed section is not chosen again'
 );
+create temporary table tuesday_before as select d.revision from public.daily_lineups d where d.id = tests.id('e:lineup:tue');
 select is(
   pg_temp.names(pg_temp.sections(tests.user('e:mia'), jsonb_build_object('action', 'remove',
     'section_id', pg_temp.section(tests.id('e:K'), 'Deck')))),
@@ -320,8 +321,38 @@ select is(
   (select r.section_id from public.daily_lineup_rows r where r.id = tests.id('e:row:tue')),
   null, 'and a draft''s row, on a day to come, has none at once'
 );
+select is(
+  (select d.revision from public.daily_lineups d where d.id = tests.id('e:lineup:tue')),
+  (select revision + 1 from tuesday_before), 'and that draft''s revision moves on'
+);
 
--- 7. The service is the server's only.
+-- 7. A lineup taken back with Edit is a draft: Eli on Garden there, Garden removed, his row has none at once.
+select pg_temp.edit(tests.user('e:mia'), (select value from fixture where key = 'eli_source'), jsonb_build_object('section_id', pg_temp.section(tests.id('e:K'), 'Garden')));
+select is(
+  coalesce(pg_temp.names(pg_temp.sections(tests.user('e:mia'), jsonb_build_object('action', 'remove',
+    'section_id', pg_temp.section(tests.id('e:K'), 'Garden')))), ''),
+  '', 'Garden is removed: no sections are left'
+);
+select is(
+  (select r.section_id from public.daily_lineup_rows r where r.source_shift_id = (select value from fixture where key = 'eli_source')),
+  null, 'on a lineup taken back with Edit, the row has none at once'
+);
+
+-- 8. A typed name: a removed section's name is only a name; a person added in the lineup takes one too.
+select pg_temp.edit(tests.user('e:mia'), (select value from fixture where key = 'eli_source'), jsonb_build_object('section_name', 'Patio'));
+select is(
+  (select row(r.section_id, r.section_name)::text from public.daily_lineup_rows r where r.source_shift_id = (select value from fixture where key = 'eli_source')),
+  row(null, 'Patio')::text, 'a removed section''s name, typed, stays a typed name'
+);
+select public.lineup_edit_service(tests.user('e:mia'), tests.id('e'), gen_random_uuid(), jsonb_build_object(
+  'location_id', tests.id('e:K'), 'service_date', tests.week(0) + 1, 'shift_type_id', tests.id('e:type:lunch'),
+  'action', 'set_row', 'row', jsonb_build_object('row_id', tests.id('e:row:tue'), 'section_name', 'Booth')));
+select is(
+  (select row(r.section_id, r.section_name)::text from public.daily_lineup_rows r where r.id = tests.id('e:row:tue')),
+  row(null, 'Booth')::text, 'a person added in the lineup takes a typed name'
+);
+
+-- 9. The service is the server's only.
 select ok(
   not has_function_privilege('anon', 'public.lineup_sections_service(uuid, uuid, jsonb)', 'execute')
     and not has_function_privilege('authenticated', 'public.lineup_sections_service(uuid, uuid, jsonb)', 'execute')
