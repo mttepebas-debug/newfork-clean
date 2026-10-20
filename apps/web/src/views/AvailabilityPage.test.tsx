@@ -176,7 +176,10 @@ describe("Availability: the people on the left, the chosen person's week on the 
     fireEvent.click(people()[1]!);
     expect(people()[1]!.getAttribute("aria-current")).toBe("true");
     expect(within(detail()).getByText("Not submitted")).toBeTruthy();
-    expect(within(detail()).getByText("Jordan hasn't shared availability yet.")).toBeTruthy();
+    // A week never shared counts as open every day (Mert 2026-10-20).
+    const open = within(detail()).getAllByRole("listitem");
+    expect(open).toHaveLength(7);
+    expect(open.every((box) => box.className.includes("is-free"))).toBe(true);
     expect(screen.getByTestId("url").textContent).toBe(`?person=${jordan}`);
   });
 
@@ -313,6 +316,11 @@ describe("Availability on a phone (720 px and below)", () => {
     expect(screen.queryByRole("button", { name: /^Not submitted/ })).toBeNull();
     expect(people()).toHaveLength(3);
     expect(screen.getByText("3 employees")).toBeTruthy();
+    // Mert 2026-10-20: the count sits under the search, on the legend's row; no row of its own.
+    const count = screen.getByText("3 employees");
+    expect(count.closest(".catalog-toolbar-filter-row")).toBeTruthy();
+    expect(count.previousElementSibling?.className).toBe("avt-legend");
+    expect(document.querySelector(".catalog-toolbar-status-row")).toBeNull();
     fireEvent.change(screen.getByLabelText("Search employees"), { target: { value: "e-003" } });
     expect(people().map((person) => person.textContent)).toEqual(["SCSam ChenHost"]);
     expect(screen.getByText("1 employee")).toBeTruthy();

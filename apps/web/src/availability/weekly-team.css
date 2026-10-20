@@ -327,14 +327,55 @@
     max-width: none;
     min-height: 44px;
   }
-  /* No status tabs on a phone (Mert, 2026-10-17): the count of everyone
-     the location and the search leave stands alone on the row. */
-  .weekly-team-page.list-page.list-page .catalog-toolbar-status-row .weekly-team-count {
-    margin-left: 0;
-    padding-left: 0;
+  /* No status tabs on a phone (Mert, 2026-10-17), so no tab row: the filters
+     start 12 px under the heading's line, and the count of everyone the
+     location and the search leave sits under the search, at the legend's
+     right end (Mert 2026-10-20). */
+  .availability-page.list-page.list-page > .catalog-page-header {
+    margin-bottom: 12px;
   }
   .avt-legend {
     margin: 0;
+  }
+  .catalog-toolbar-filter-row > .weekly-team-count {
+    align-self: center;
+    margin-left: auto;
+    white-space: nowrap;
+  }
+  /* The page reaches the bottom bar: the line about who sets the weeks sits
+     right on it, and the list takes every row that fits above it (Mert
+     2026-10-20). */
+  .availability-page.list-page.list-page.list-page {
+    padding-bottom: 0;
+  }
+  .availability-page.list-page.list-page.list-page > .avt-foot {
+    margin: auto 0 0;
+    padding: 12px 0;
+  }
+
+  /* A person's page: one white top under the app bar (back, the person, the
+     two tabs) and the white Save bar right on the bottom bar; the week
+     between them on the page's grey (Mert 2026-10-20, "hiçbir şey harmoni
+     içinde durmuyor"). */
+  .availability-page.list-page.list-page.avt-person-page {
+    padding-top: 0;
+  }
+  .avt-person-top {
+    gap: 4px;
+    margin: 0 -16px;
+    padding: 4px 16px 16px;
+    background: var(--theme-surface);
+  }
+  /* The chevron's own drawing starts 6 px into its box: the arrow, the
+     avatar and the tabs' text all start on the page's 16 px line. */
+  .avt-back {
+    margin-left: -12px;
+  }
+  .avt-person {
+    margin-bottom: 0;
+  }
+  .avt-person-page .avm-tabs {
+    border-top: 0;
   }
   .avt-split.is-phone {
     grid-template-columns: minmax(0, 1fr);

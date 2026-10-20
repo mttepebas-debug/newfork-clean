@@ -60,7 +60,9 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(document.querySelector(".avr-mgr-note")).toBeTruthy();
   });
 
-  it("keeps the empty state for a week never shared, without a header too", () => {
+  // Mert 2026-10-20: a week never shared counts as open every day, so it reads
+  // as seven green days, not as a message.
+  it("draws a week never shared as seven open days, without a header too", () => {
     render(
       <WeekRead
         name="Maria Lopez"
@@ -72,7 +74,15 @@ describe("a person's week, read only (KARARLAR M2)", () => {
         header={false}
       />,
     );
-    expect(screen.getByText("Maria hasn't shared availability yet.")).toBeTruthy();
+    const boxes = within(screen.getByRole("list", { name: "Maria's week" })).getAllByRole("listitem");
+    expect(boxes.map((box) => box.querySelector("b")?.textContent)).toEqual([
+      "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun",
+    ]);
+    boxes.forEach((box) => {
+      expect(box.textContent).toContain("Available all day");
+      expect(box.className).toContain("is-free");
+    });
+    expect(screen.queryByText(/hasn't shared/)).toBeNull();
   });
 
   it("draws seven day boxes Monday first: green when open, orange with the hours when not", () => {
@@ -130,20 +140,16 @@ describe("a person's week, read only (KARARLAR M2)", () => {
     expect(screen.getByText("Maria is open to work any time.")).toBeTruthy();
   });
 
-  it("says a week never shared is optional, and every time counts as available", () => {
+  it("draws a week never shared as open even when the saved week says otherwise", () => {
+    const week = emptyWeeklyPreference();
+    week.days[1]!.ranges = [{ start: "00:00", end: "11:00" }];
     render(
-      <WeekRead
-        name="Maria Lopez"
-        submitted={false}
-        updatedAt={null}
-        preference={emptyWeeklyPreference()}
-        timeFormat="12h"
-        readOnlyBar
-      />,
+      <WeekRead name="Maria Lopez" submitted={false} updatedAt={null} preference={week} timeFormat="12h" readOnlyBar />,
     );
-    expect(screen.getByText("Maria hasn't shared availability yet.")).toBeTruthy();
-    expect(screen.getByText("It's optional. Until then, every time counts as available.")).toBeTruthy();
-    expect(screen.queryByRole("list")).toBeNull();
-    expect(screen.queryByText(/Read only/)).toBeNull();
+    const boxes = within(screen.getByRole("list", { name: "Maria's week" })).getAllByRole("listitem");
+    expect(boxes.every((box) => box.className.includes("is-free"))).toBe(true);
+    expect(screen.getByText("Maria is open to work any time.")).toBeTruthy();
+    // No save date: nothing was saved.
+    expect(screen.queryByText(/Updated/)).toBeNull();
   });
 });

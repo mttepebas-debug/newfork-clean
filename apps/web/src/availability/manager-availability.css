@@ -336,6 +336,10 @@
   .avm-notes-head {
     align-items: flex-start;
   }
+  /* Two even lines, never "doesn't." alone on the second. */
+  .avm-ro-line {
+    text-wrap: balance;
+  }
   .avm-section-head {
     flex-wrap: wrap;
   }

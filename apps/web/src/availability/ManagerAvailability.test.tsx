@@ -88,11 +88,13 @@ describe("Employees drawer, Availability: the employee's week", () => {
     expect(screen.queryByRole("radio")).toBeNull();
   });
 
-  it("says a week never shared is optional", () => {
+  it("draws a week never shared as seven open days", () => {
     const data = model();
     data.employee.submitted = false;
     render(<ManagerAvailability model={data} onSave={vi.fn()} />);
-    expect(screen.getByText("Ada hasn't shared availability yet.")).toBeTruthy();
+    const boxes = within(screen.getByRole("list", { name: "Ada's week" })).getAllByRole("listitem");
+    expect(boxes).toHaveLength(7);
+    expect(boxes.every((box) => box.className.includes("is-free"))).toBe(true);
   });
 
   it("draws no notes when the reader may not see them", () => {

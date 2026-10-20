@@ -154,6 +154,12 @@ export function AvailabilityPage() {
       </section>
     );
 
+  const count = model && (
+    <span className="weekly-team-count" role="status">
+      {employees.length} {employees.length === 1 ? "employee" : "employees"}
+    </span>
+  );
+
   const personRow = (employee: Person) => (
     <button
       key={employee.id}
@@ -189,8 +195,10 @@ export function AvailabilityPage() {
         description="Your team's weekly preferences. They guide the schedule; you can still schedule anyone."
       />
       <div className="weekly-team-toolbar catalog-toolbar">
-        <div className="catalog-toolbar-status-row">
-          {!phone && (
+        {/* A phone has no status tabs (Mert 2026-10-17); its count sits under the
+            search, at the legend's right end (Mert 2026-10-20). */}
+        {!phone && (
+          <div className="catalog-toolbar-status-row">
             <div className="catalog-status-tabs weekly-team-filters" role="group" aria-label="Submission status">
               {STATUSES.map(([value, label]) => (
                 <button
@@ -205,13 +213,9 @@ export function AvailabilityPage() {
                 </button>
               ))}
             </div>
-          )}
-          {model && (
-            <span className="weekly-team-count" role="status">
-              {employees.length} {employees.length === 1 ? "employee" : "employees"}
-            </span>
-          )}
-        </div>
+            {count}
+          </div>
+        )}
         <div className="catalog-toolbar-filter-row">
           <select
             className="toolbar-filter-select list-filter-narrow"
@@ -245,6 +249,7 @@ export function AvailabilityPage() {
               Prefers not to work
             </li>
           </ul>
+          {phone && count}
         </div>
       </div>
       {query.isPending && <ListOutline label="Loading availability" rows={8} columns={3} />}

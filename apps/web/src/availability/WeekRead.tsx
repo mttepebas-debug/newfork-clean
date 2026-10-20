@@ -1,6 +1,6 @@
 import { Fragment } from "react";
-import { CalendarX, Info, Lock, Sparkles } from "lucide-react";
-import type { WeeklyPreference } from "@newfork/shared";
+import { Info, Lock, Sparkles } from "lucide-react";
+import { emptyWeeklyPreference, type WeeklyPreference } from "@newfork/shared";
 import {
   DAY_END,
   DAY_START,
@@ -39,17 +39,12 @@ type Props = {
   header?: boolean;
 };
 
-export function WeekRead({ name, submitted, updatedAt, preference, timeFormat, readOnlyBar = false, header = true }: Props) {
+export function WeekRead({ name, submitted, updatedAt, preference: saved, timeFormat, readOnlyBar = false, header = true }: Props) {
   const who = firstName(name);
-  if (!submitted)
-    return (
-      <div className="avr-empty">
-        <CalendarX size={24} aria-hidden />
-        <b>{who} hasn't shared availability yet.</b>
-        <span>It's optional. Until then, every time counts as available.</span>
-      </div>
-    );
-  const updated = updatedOn(updatedAt);
+  // A week never shared counts as open every day: seven green days, not a
+  // message (Mert 2026-10-20).
+  const preference = submitted ? saved : emptyWeeklyPreference();
+  const updated = submitted ? updatedOn(updatedAt) : null;
   return (
     <div className="avr-week">
       {header && readOnlyBar && (
