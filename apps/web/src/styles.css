@@ -1902,6 +1902,10 @@
   min-height: 0;
   flex: 1;
   overflow-y: auto;
+  /* Pulled past its ends the body holds still, never sideways and never
+     handing the pull on to the page (Mert's phone notes 2026-10-20). */
+  overflow-x: hidden;
+  overscroll-behavior: none;
   padding: 24px 26px 36px;
   background: #fafbfa;
 }
@@ -2023,6 +2027,8 @@
 }
 .employee-field {
   display: grid;
+  /* A box is never wider than its field (a phone's date box asks for more). */
+  grid-template-columns: minmax(0, 1fr);
   /* Fields on one row keep their inputs level when one grows a message. */
   align-content: start;
   gap: 7px;
@@ -2618,8 +2624,8 @@
   .employee-drawer-create .employee-toggle-grid {
     grid-template-columns: minmax(0, 1fr);
   }
+  /* Its own row above the buttons, in reading and tab order. */
   .employee-create-role {
-    order: 3;
     width: 100%;
     margin-left: 0;
   }
@@ -2841,8 +2847,14 @@
   .employee-form-grid {
     grid-template-columns: 1fr;
   }
+  /* The footer grows to hold the role picker's row and the buttons' row:
+     a fixed height let them run off the screen and under the bands above
+     it (Mert 2026-10-20). */
   .employee-drawer-footer {
     min-height: 68px;
+    flex: none;
+    flex-wrap: wrap;
+    gap: 8px;
     padding: 9px 12px;
   }
   .employee-drawer-footer > div:first-child {
@@ -2853,10 +2865,7 @@
     flex-wrap: wrap;
     justify-content: flex-end;
   }
-  /* The reason sits above Cancel and Save; the footer grows to hold it. */
-  .employee-drawer-footer:has(.employee-save-held) {
-    flex-basis: auto;
-  }
+  /* The reason sits above Cancel and Save. */
   .employee-save-held {
     order: -1;
     flex-basis: 100%;

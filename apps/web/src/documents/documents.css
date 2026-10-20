@@ -73,12 +73,13 @@
   min-height: 0;
   padding: 20px 16px;
 }
-/* Two columns fit a phone: no sideways scroll to reach the status. */
-.employee-table.document-personal-table {
+/* Two or three columns fit a phone: no sideways scroll to reach the status
+   (the Employees list's 780 px floor is not theirs, Mert 2026-10-20). */
+.employee-table.document-table {
   min-width: 0;
 }
 /* A long document name wraps rather than hiding behind an ellipsis. */
-.employee-table.document-personal-table td {
+.employee-table.document-table td {
   white-space: normal;
   overflow-wrap: anywhere;
 }
@@ -116,5 +117,17 @@
     .catalog-toolbar-filter-row
     > label:not(.toolbar-search) {
     flex-basis: 100%;
+  }
+}
+/* On a phone the status chip reads whole; names and titles wrap beside it. */
+@media (max-width: 640px) {
+  .employee-table.document-table.document-table :is(th, td) {
+    padding-inline: 10px;
+  }
+  .employee-table.document-table.document-table th:is(:nth-child(1), :nth-child(2)) {
+    width: auto;
+  }
+  .employee-table.document-table.document-table th:last-child {
+    width: 132px;
   }
 }
