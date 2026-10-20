@@ -67,6 +67,7 @@ describe("useScheduleDrafts", () => {
           updated_by_name: "Olcay Owner",
           shift_count: 0,
           paid_minutes: 0,
+          open_shift_count: 0,
         },
         {
           id: "22222222-2222-4222-8222-222222222222",
@@ -81,9 +82,10 @@ describe("useScheduleDrafts", () => {
           updated_by_name: "Olcay Owner",
           shift_count: 0,
           paid_minutes: 0,
+          open_shift_count: 0,
         },
       ],
-      published: { shift_count: 0, paid_minutes: 0 },
+      published: { shift_count: 0, paid_minutes: 0, open_shift_count: 0 },
     });
 
     const { result } = renderHook(

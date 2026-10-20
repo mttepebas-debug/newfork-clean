@@ -36,7 +36,7 @@ function Harness({ initialTab = "schedules", session = false, templateProps, ...
     open, tab, onOpenChange: setOpen, onTabChange: setTab,
     tabs: { schedules: true, templates: true, export: true },
     triggerLabel: "New Schedule", weekStart: WEEK, drafts: [LIVE, OTHER],
-    publishedFacts: { shift_count: 12, paid_minutes: 5040 },
+    publishedFacts: { shift_count: 12, paid_minutes: 5040, open_shift_count: 0 },
     publishedSchedule: { published_at: "2026-08-17T10:00:00Z", published_by_name: "Olcay Owner", source_draft_id: LIVE.id, source_draft_name: LIVE.name },
     activeDraftId: null, editing: false, editingName: null, canManageDrafts: true, canStartDraft: true, isStartingDraft: false,
     canEditPublishedSchedule: true, readOnlyNote: null,
@@ -75,6 +75,16 @@ describe("New Schedule window (Mert, 2026-10-12, design B)", () => {
     // The live schedule is unpublished, never deleted; a draft is deleted with two clicks.
     expect(within(rows[0]!).getByRole("button", { name: "Unpublish schedule" })).toBeTruthy();
     expect(within(rows[1]!).getByRole("button", { name: "Delete Plan B" })).toBeTruthy();
+  });
+
+  // QA 41 (Mert, 2026-10-20): shifts and hours are the assigned ones, as on the
+  // grid; open shifts are said apart, and only where there are some.
+  it("says a schedule's open shifts apart from its shifts and hours", () => {
+    render(<Harness publishedFacts={{ shift_count: 12, paid_minutes: 5040, open_shift_count: 2 }} />);
+    const rows = within(openWindow()).getAllByRole("listitem");
+    expect(rows[0]!.textContent).toContain("12 shifts");
+    expect(rows[0]!.textContent).toContain("2 open");
+    expect(rows[1]!.textContent).not.toMatch(/\d open/);
   });
 
   // Editing takes requests: the window stays until the page holds the edit and

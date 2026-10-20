@@ -89,7 +89,7 @@ describe("draftSaveFlow", () => {
   });
 
   it("keeps the live week's facts when a draft is saved or deleted (S18)", () => {
-    const published = { shift_count: 12, paid_minutes: 5040 };
+    const published = { shift_count: 12, paid_minutes: 5040, open_shift_count: 0 };
     const current: DraftsCacheSnapshot = { drafts: [draft("draft-a", "2026-08-17T12:00:00.000Z")], published };
     expect(upsertSavedDraft(current, draft("draft-b", "2026-08-17T13:00:00.000Z")).published).toEqual(published);
     expect(removeDraft(current, "draft-a")).toEqual({ drafts: [], published });

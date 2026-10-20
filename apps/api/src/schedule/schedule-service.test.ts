@@ -183,7 +183,8 @@ describe("createScheduleReadService undo", () => {
     const list = await service.listDrafts(actorUserId, workspaceId, "2026-08-17");
 
     expect(list.drafts[0]).toMatchObject({ updated_by_name: "Olcay Owner", shift_count: 3, paid_minutes: 1050 });
-    expect(list.published).toEqual({ shift_count: 2, paid_minutes: 810 });
+    // A database from before QA 41 sends no open count: it reads as none.
+    expect(list.published).toEqual({ shift_count: 2, paid_minutes: 810, open_shift_count: 0 });
     // An answer without the facts is a broken contract, not an empty window.
     mocks.rpc.mockResolvedValueOnce({ data: { drafts: [draft] }, error: null });
     await expect(service.listDrafts(actorUserId, workspaceId, "2026-08-17")).rejects.toThrow();

@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 560, last: 20261020174755_lineup_drawings.sql
--- fingerprint: sha256:778a4feb1cf316cfa16a4b57e7bec2ce3b6987d343526803174ad6c5166bb41c
+-- migrations: 560, last: 20261020152900_schedules_window_counts_assigned_shifts.sql
+-- fingerprint: sha256:bda796713d42cc671cb86b2fa834cf209f6254dcdebffe9aae41f21cba583a54
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -19157,14 +19157,16 @@ begin
       'updated_by_name', coalesce((
         select nullif(profile.display_name, '') from public.user_profiles profile
         where profile.user_id = draft.updated_by), 'Team member'),
-      'shift_count', facts.shift_count, 'paid_minutes', facts.paid_minutes
+      'shift_count', facts.shift_count, 'paid_minutes', facts.paid_minutes,
+      'open_shift_count', facts.open_shift_count
     ) order by draft.updated_at desc, draft.name)
     from public.schedule_drafts draft
     cross join lateral (
-      select count(*)::integer as shift_count,
+      select count(*) filter (where shift.employee_id is not null)::integer as shift_count,
         coalesce(sum(greatest(0, (case when shift.end_time <= shift.start_time then 1440 else 0 end
           + extract(epoch from (shift.end_time - shift.start_time)) / 60)::integer
-          - shift.unpaid_break_minutes)), 0)::integer as paid_minutes
+          - shift.unpaid_break_minutes)) filter (where shift.employee_id is not null), 0)::integer as paid_minutes,
+        count(*) filter (where shift.employee_id is null)::integer as open_shift_count
       from public.schedule_draft_shifts shift
       where shift.draft_id = draft.id and shift.workspace_id = target_workspace_id
         and (org_wide or shift.location_id = any (edit_scope))
@@ -19174,10 +19176,11 @@ begin
       and (org_wide or draft.location_ids && edit_scope)
   ), '[]'::jsonb),
   'published', (
-    select jsonb_build_object('shift_count', count(*)::integer,
+    select jsonb_build_object('shift_count', count(*) filter (where shift.employee_id is not null)::integer,
       'paid_minutes', coalesce(sum(greatest(0, (case when shift.end_time <= shift.start_time then 1440 else 0 end
         + extract(epoch from (shift.end_time - shift.start_time)) / 60)::integer
-        - shift.unpaid_break_minutes)), 0)::integer)
+        - shift.unpaid_break_minutes)) filter (where shift.employee_id is not null), 0)::integer,
+      'open_shift_count', count(*) filter (where shift.employee_id is null)::integer)
     from public.schedule_published_shifts shift
     join public.schedule_location_publications publication
       on publication.id = shift.publication_id and publication.workspace_id = shift.workspace_id

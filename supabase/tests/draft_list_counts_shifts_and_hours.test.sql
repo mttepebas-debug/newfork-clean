@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(12);
+select plan(14);
 
 -- New Schedule window (Mert, 2026-10-12 17:00 PT): every schedule of the week
 -- shows its shifts and paid hours and who saved it last, counted only where
@@ -8,6 +8,8 @@ select plan(12);
 -- 09:00-15:00 at Kadikoy with a 30-minute unpaid break (330 paid minutes),
 -- Tuesday 22:00-06:00 at Kadikoy, past midnight (480), and Wednesday
 -- 10:00-14:00 at Besiktas (240). Derya manages Kadikoy only.
+-- QA 41 (Mert, 2026-10-20): an open shift on Thursday at Kadikoy is in no
+-- total, the grid's way; the window says it apart as open_shift_count.
 
 select tests.world('dc');
 select tests.person('dc', 'ali', 'employee', array['K', 'B'], array['cook']);
@@ -15,7 +17,8 @@ select tests.person('dc', 'derya', 'manager', array['K'], array['cook']);
 select tests.remember('dc:draft', tests.publish_week('dc', 1, '[
   {"label": "mon", "person": "ali", "loc": "K", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"},
   {"label": "tue", "person": "ali", "loc": "K", "job": "cook", "day": 1, "start": "22:00", "end": "06:00"},
-  {"label": "wed", "person": "ali", "loc": "B", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"}
+  {"label": "wed", "person": "ali", "loc": "B", "job": "cook", "day": 2, "start": "10:00", "end": "14:00"},
+  {"label": "open", "loc": "K", "job": "cook", "day": 3, "start": "10:00", "end": "14:00"}
 ]'));
 -- ponytail: the builder's shift has no break field; set the break on both copies by hand.
 update public.schedule_draft_shifts set unpaid_break_minutes = 30
@@ -43,19 +46,23 @@ select is((select (fields ->> 'shift_count')::integer from draft_row where reade
   'a manager counts only the shifts at the locations they schedule');
 select is((select (fields ->> 'paid_minutes')::integer from draft_row where reader = 'derya'), 810,
   'and only those shifts'' paid minutes');
+select is((select (fields ->> 'open_shift_count')::integer from draft_row where reader = 'owner'), 1,
+  'the open shift is counted apart, not in the shifts or hours');
+select is((select (fields ->> 'open_shift_count')::integer from draft_row where reader = 'derya'), 1,
+  'the Kadikoy manager sees the Kadikoy open shift apart too');
 select is((select fields ->> 'updated_by_name' from draft_row where reader = 'owner'), 'Olcay Owner',
   'the row names who saved the draft last');
 
 select is((select body -> 'published' from list_for where reader = 'owner'),
-  '{"shift_count": 3, "paid_minutes": 1050}'::jsonb,
+  '{"shift_count": 3, "paid_minutes": 1050, "open_shift_count": 1}'::jsonb,
   'the live schedule has its own total, from what is published');
 select is((select body -> 'published' from list_for where reader = 'derya'),
-  '{"shift_count": 2, "paid_minutes": 810}'::jsonb,
+  '{"shift_count": 2, "paid_minutes": 810, "open_shift_count": 1}'::jsonb,
   'the manager''s live total stays at their locations');
 
 select is(
   public.list_schedule_drafts_service(tests.user('dc:owner'), tests.id('dc'), tests.week(2)),
-  '{"drafts": [], "published": {"shift_count": 0, "paid_minutes": 0}}'::jsonb,
+  '{"drafts": [], "published": {"shift_count": 0, "paid_minutes": 0, "open_shift_count": 0}}'::jsonb,
   'a week with nothing in it says so with zeros, not nulls'
 );
 
@@ -75,7 +82,7 @@ select tests.remember('dc:kadikoy-only', tests.publish_week_as(tests.user('dc:de
 
 select is(
   public.list_schedule_drafts_service(tests.user('dc:owner'), tests.id('dc'), tests.week(1)) -> 'published',
-  '{"shift_count": 3, "paid_minutes": 1050}'::jsonb,
+  '{"shift_count": 3, "paid_minutes": 1050, "open_shift_count": 1}'::jsonb,
   'another workspace''s week adds nothing to the live total'
 );
 select is(

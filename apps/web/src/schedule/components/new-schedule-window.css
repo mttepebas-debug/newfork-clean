@@ -35,7 +35,7 @@
 /* Rows: Schedules and Templates in one compact list (Mert, 2026-10-12 17:00 PT) */
 .new-schedule-window-rows { display: grid; margin: 0; padding: 0; list-style: none; column-gap: 6px; }
 .new-schedule-window-rows.is-templates { grid-template-columns: minmax(0, 1fr) auto auto; }
-.new-schedule-window-rows.is-schedules { grid-template-columns: minmax(0, 1fr) auto auto auto auto; }
+.new-schedule-window-rows.is-schedules { grid-template-columns: minmax(0, 1fr) auto auto auto auto auto; }
 .new-schedule-window-rows li { display: grid; grid-column: 1 / -1; grid-template-columns: subgrid; align-items: center; min-height: 40px; margin: 0 -6px; padding: 3px 6px; border-bottom: 1px solid var(--theme-border-subtle); }
 .new-schedule-window-rows li:last-child { border-bottom: 0; }
 .new-schedule-window-rows li[data-clickable="true"] { cursor: pointer; }

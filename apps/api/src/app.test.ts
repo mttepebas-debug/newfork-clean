@@ -3266,9 +3266,10 @@ function scheduleServiceMock(
           updated_by_name: "Morgan Manager",
           shift_count: 0,
           paid_minutes: 0,
+          open_shift_count: 0,
         },
       ],
-      published: { shift_count: 0, paid_minutes: 0 },
+      published: { shift_count: 0, paid_minutes: 0, open_shift_count: 0 },
     }),
     listWeeklyShifts: async () => ({
       shifts: [scheduleShiftMockModel()],

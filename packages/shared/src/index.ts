@@ -1783,10 +1783,15 @@ export type ScheduleShiftMutationInput = z.infer<
   typeof scheduleShiftMutationInputSchema
 >;
 
-/** What a schedule of the week holds where the reader schedules: shifts and paid minutes. */
+/**
+ * What a schedule of the week holds where the reader schedules: assigned shifts
+ * and their paid minutes, as the grid totals them; open shifts apart (QA 41).
+ */
 export const scheduleWeekFactsSchema = z.object({
   shift_count: z.coerce.number().int().nonnegative(),
   paid_minutes: z.coerce.number().int().nonnegative(),
+  // Default until every server sends it (the live database goes first).
+  open_shift_count: z.coerce.number().int().nonnegative().default(0),
 });
 export type ScheduleWeekFacts = z.infer<typeof scheduleWeekFactsSchema>;
 /** A row of the New Schedule window: the draft, who saved it last, and its facts. */

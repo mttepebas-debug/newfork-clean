@@ -264,7 +264,7 @@ function templateUseOptions(props: NewScheduleWindowProps, rows: readonly Row[])
 
 function draftFacts(draft: DraftRow): ScheduleWeekFacts | null {
   return typeof draft.shift_count === "number" && typeof draft.paid_minutes === "number"
-    ? { shift_count: draft.shift_count, paid_minutes: draft.paid_minutes }
+    ? { shift_count: draft.shift_count, paid_minutes: draft.paid_minutes, open_shift_count: draft.open_shift_count ?? 0 }
     : null;
 }
 
@@ -327,6 +327,10 @@ function ScheduleRows(props: NewScheduleWindowProps & { readonly rows: readonly 
             </span>
             <span className="new-schedule-window-num"><b>{row.facts ? row.facts.shift_count : "–"}</b> shifts</span>
             <span className="new-schedule-window-num"><b>{row.facts ? hoursText(row.facts.paid_minutes) : "–"}</b> h</span>
+            {/* Open shifts are in no total, as on the grid; said apart where there are some (QA 41). */}
+            <span className="new-schedule-window-num">
+              {row.facts?.open_shift_count ? <><b>{row.facts.open_shift_count}</b> open</> : null}
+            </span>
             {canEdit(row) ? (
               <button
                 type="button"

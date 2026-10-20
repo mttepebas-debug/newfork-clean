@@ -15,8 +15,8 @@ const sidebar = () =>
   within(screen.getByRole("complementary", { name: "Application sidebar" }));
 // The drafts list as the API answers it: each draft with its facts, and the live total.
 const draftList = (drafts: readonly ScheduleDraftSummary[]): ScheduleDraftList => ({
-  drafts: drafts.map((draft) => ({ updated_by_name: "Olcay Owner", shift_count: 0, paid_minutes: 0, ...draft })),
-  published: { shift_count: 0, paid_minutes: 0 },
+  drafts: drafts.map((draft) => ({ updated_by_name: "Olcay Owner", shift_count: 0, paid_minutes: 0, open_shift_count: 0, ...draft })),
+  published: { shift_count: 0, paid_minutes: 0, open_shift_count: 0 },
 });
 import type { ScheduleReadModel } from "@newfork/shared";
 import type { ScheduleDraftList, ScheduleDraftSummary } from "@newfork/shared/schedule";
@@ -622,7 +622,7 @@ vi.mock("./schedule/schedule-data", async (importOriginal) => {
   isEditSessionClosed: actual.isEditSessionClosed,
   getScheduleReadModel: vi.fn().mockResolvedValue(scheduleFixture),
   authorizeScheduleExportV2: vi.fn().mockResolvedValue(undefined),
-  listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [], published: { shift_count: 0, paid_minutes: 0 } }),
+  listScheduleDrafts: vi.fn().mockResolvedValue({ drafts: [], published: { shift_count: 0, paid_minutes: 0, open_shift_count: 0 } }),
   fetchScheduleDraftShifts: vi.fn().mockResolvedValue({
     shifts: scheduleFixture.shifts.map((shift) => ({
       ...shift,
@@ -3302,7 +3302,7 @@ describe("App", () => {
     const other = draft("99999999-9999-4999-8999-999999999982", "Week plan v2");
     vi.mocked(listScheduleDrafts).mockResolvedValue({
       ...draftList([live, other]),
-      published: { shift_count: 12, paid_minutes: 5040 },
+      published: { shift_count: 12, paid_minutes: 5040, open_shift_count: 0 },
     });
     const status = await vi.mocked(fetchSchedulePublicationStatus)(
       scheduleFixture.workspace_id,
