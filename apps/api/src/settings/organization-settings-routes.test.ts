@@ -63,16 +63,23 @@ function organizationSettingsServiceMock(): OrganizationSettingsService {
 
 describe("organization settings routes", () => {
   const conflicts = { conflict_rules: { approved_time_off: "block", closed_location: "confirm", minimum_travel: "confirm", minimum_rest: "confirm" }, conflict_rules_revision: 3, minimum_travel_minutes: 30, minimum_rest_minutes: 0 } as const;
-  it("guards conflict read and write with the single permission and binds the actor", async () => {
+  it("reads conflict rules with the schedule rules read, writes them with the conflict permission only, and binds the actor", async () => {
     const service = organizationSettingsServiceMock();
     vi.mocked(service.readSchedulingSettings).mockResolvedValue({ workspace_id: workspaceId, week_start_day: "monday", schedule_deadline_day: "sunday", time_format: "12h", ...conflicts });
     vi.mocked(service.updateSchedulingSettings).mockImplementation(async () => service.readSchedulingSettings({ workspaceId }));
-    for (const allowed of [false, true]) {
-      const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: allowed ? ["schedule.conflict_rules.manage", "settings.schedule_rules.read"] : context.permissions }) } });
+    // Mert 2026-10-20 (K14 S1): the manager reads the conflict rules and changes none of them.
+    const cases = [
+      { permissions: ["workspace.read"], read: 403, write: 403 },
+      { permissions: ["workspace.read", "settings.schedule_rules.read"], read: 200, write: 403 },
+      { permissions: ["schedule.conflict_rules.manage", "settings.schedule_rules.read"], read: 200, write: 200 },
+    ] as const;
+    for (const { permissions, read, write } of cases) {
+      const app = buildApp({ organizationSettingsService: service, contextResolver: { resolve: async () => ({ ...context, permissions: [...permissions] }) } });
       for (const method of ["GET", "PUT"] as const) {
         const response = await app.inject({ method, url: `/v1/workspaces/${workspaceId}/scheduling-settings/conflicts`, headers: { authorization: "Bearer valid-token" }, ...(method === "PUT" ? { payload: conflicts } : {}) });
-        expect(response.statusCode).toBe(allowed ? 200 : 403);
-        if (allowed) expect(response.json()).toEqual(conflicts);
+        const expected = method === "GET" ? read : write;
+        expect(response.statusCode, `${method} with ${permissions.join(", ")}`).toBe(expected);
+        if (expected === 200) expect(response.json()).toEqual(conflicts);
       }
       await app.close();
     }

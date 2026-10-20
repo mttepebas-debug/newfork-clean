@@ -9,6 +9,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ShieldAlert, Save } from "lucide-react";
 import { useEffect, useState, type FormEvent } from "react";
 import { useAuth } from "../auth/AuthContext";
+import { can } from "../auth/can";
 import { errorText, SettingsHeader } from "./GeneralSettingsPage";
 import { organizationRequest } from "./organization-data";
 
@@ -60,6 +61,8 @@ const conflictActionLabels: Record<string, string> = {
 
 export default function ConflictHandlingSettingsPage() {
   const { context } = useAuth();
+  // A manager reads the rules and changes none of them (Mert 2026-10-20, K14 S1).
+  const canEdit = can(context, "settings.conflict_rules.write");
   const workspaceId = context?.workspace.id ?? "";
   const client = useQueryClient();
   const queryKey = ["schedule-conflict-settings", workspaceId];
@@ -122,6 +125,7 @@ export default function ConflictHandlingSettingsPage() {
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
+    if (!canEdit) return;
     const parsed = scheduleConflictSettingsSchema.safeParse(draft);
     if (!parsed.success) {
       setValidation(
@@ -170,7 +174,7 @@ export default function ConflictHandlingSettingsPage() {
       {draft ? (
         <form className="organization-form scheduling-form" onSubmit={submit}>
           <fieldset
-            disabled={mutation.isPending}
+            disabled={!canEdit || mutation.isPending}
             style={{ border: 0, padding: 0, margin: 0, minWidth: 0 }}
           >
             <ul className="conflict-settings-always">
@@ -263,30 +267,32 @@ export default function ConflictHandlingSettingsPage() {
                 Conflict rules saved.
               </p>
             ) : null}
-            <div className="organization-form-actions">
-              <Button
-                type="button"
-                className="secondary-button"
-                onClick={async () => {
-                  const result = await query.refetch();
-                  if (result.data) {
-                    setDraft(result.data);
-                    setDirty(false);
-                    setValidation(null);
-                    mutation.reset();
-                  }
-                }}
-              >
-                Reload rules
-              </Button>
-              <Button
-                type="submit"
-                disabled={!dirty || stale || mutation.isPending}
-              >
-                <Save size={16} aria-hidden />
-                {mutation.isPending ? "Saving" : "Save conflict rules"}
-              </Button>
-            </div>
+            {canEdit ? (
+              <div className="organization-form-actions">
+                <Button
+                  type="button"
+                  className="secondary-button"
+                  onClick={async () => {
+                    const result = await query.refetch();
+                    if (result.data) {
+                      setDraft(result.data);
+                      setDirty(false);
+                      setValidation(null);
+                      mutation.reset();
+                    }
+                  }}
+                >
+                  Reload rules
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={!dirty || stale || mutation.isPending}
+                >
+                  <Save size={16} aria-hidden />
+                  {mutation.isPending ? "Saving" : "Save conflict rules"}
+                </Button>
+              </div>
+            ) : null}
           </fieldset>
         </form>
       ) : null}

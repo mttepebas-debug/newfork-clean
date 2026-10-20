@@ -11,6 +11,9 @@ import { holdsPermission } from "../auth/PermissionRoute";
  * context.actions). A permission key only where the core has no action for the
  * page yet, or its action reaches fewer people than the key does today (BL-176):
  * - General and Schedule rules: no read action in app_private.authz_actions.
+ * - Conflict handling: read with the Schedule rules key (a manager reads the
+ *   rules, Mert 2026-10-20, K14 S1); changing them stays the core's
+ *   settings.conflict_rules.write, owners and admins.
  * - Locations: settings.locations.read is a set action (per location); only
  *   owners and admins hold its key, no manager role may (Mert 2026-10-12,
  *   BL-176), so the key is the page's gate.
@@ -26,7 +29,7 @@ export const settingsPageGates = {
   // The notification core's own owner/admin rule (BILDIRIM-07).
   notifications: [{ action: "settings.organization.write" }],
   scheduling: [{ permission: "settings.schedule_rules.read" }],
-  conflicts: [{ action: "settings.conflict_rules.write" }],
+  conflicts: [{ permission: "settings.schedule_rules.read" }, { action: "settings.conflict_rules.write" }],
   shiftCatalog: [{ action: "settings.shift_catalog.read" }],
   roles: [{ action: "settings.roles.read" }],
   documents: [{ action: "settings.documents.read" }],
@@ -75,8 +78,8 @@ const settingsHomeOrder = [
   ["locations", "/app/settings/locations"],
   ["jobs", "/app/settings/jobs"],
   ["shiftCatalog", "/app/settings/scheduling/shift-types"],
-  ["conflicts", "/app/settings/scheduling/conflicts"],
   ["scheduling", "/app/settings/scheduling"],
+  ["conflicts", "/app/settings/scheduling/conflicts"],
   ["notifications", "/app/settings/notifications"],
   ["roles", "/app/settings/roles"],
   ["documents", "/app/settings/documents"],

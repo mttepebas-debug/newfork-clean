@@ -246,7 +246,10 @@ function enteredSettingsBefore(context: ActiveWorkspaceContext) {
   );
 }
 
-/** SettingsHomeRedirect. */
+/**
+ * SettingsHomeRedirect. Since Mert 2026-10-20 (a manager reads the conflict
+ * rules) Schedule rules comes ahead of Conflict handling, the rail's order.
+ */
 function homeBefore(context: ActiveWorkspaceContext) {
   const permissions = new Set(context.permissions);
   return permissions.has("settings.general.read")
@@ -257,10 +260,10 @@ function homeBefore(context: ActiveWorkspaceContext) {
         ? "/app/settings/jobs"
         : permissions.has("settings.shift_catalog.read")
           ? "/app/settings/scheduling/shift-types"
-          : permissions.has("schedule.conflict_rules.manage")
-            ? "/app/settings/scheduling/conflicts"
-            : permissions.has("settings.schedule_rules.read")
-              ? "/app/settings/scheduling"
+          : permissions.has("settings.schedule_rules.read")
+            ? "/app/settings/scheduling"
+            : permissions.has("schedule.conflict_rules.manage")
+              ? "/app/settings/scheduling/conflicts"
               : permissions.has("roles.read")
                 ? "/app/settings/roles"
                 : permissions.has("documents.read")
@@ -282,7 +285,10 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     expect(everybody).toHaveLength(1 + 512 + 128 + 1);
   });
 
-  it.each(pages)("opens the %s route for exactly the same people", (page) => {
+  // Conflict handling widened on purpose (Mert 2026-10-20); its own test below.
+  const unchanged = pages.filter((page) => page !== "conflicts");
+
+  it.each(unchanged)("opens the %s route for exactly the same people", (page) => {
     const differ = everybody.filter((persona) => {
       const context = contextOf(persona);
       return routeOpenedBefore(context, page) !== canOpenSettingsPage(context, page);
@@ -290,7 +296,7 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     expect(differ.map(describePersona)).toEqual([]);
   });
 
-  it.each(pages)("shows the %s link in the Settings rail to exactly the same people", (page) => {
+  it.each(unchanged)("shows the %s link in the Settings rail to exactly the same people", (page) => {
     const differ = everybody.filter((persona) => {
       const context = contextOf(persona);
       const shownBefore = railBefore[page].some((permission) =>
@@ -333,6 +339,7 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
       "general",
       "locations",
       "scheduling",
+      "conflicts",
     ]);
   });
 
@@ -347,7 +354,6 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     };
     expect(pages.filter((page) => routeOpenedBefore(context, page) !== canOpenSettingsPage(context, page))).toEqual([
       "jobs",
-      "conflicts",
       "shiftCatalog",
       "roles",
     ]);
@@ -377,6 +383,22 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     expect(canOpenSettingsPage(remoteAdmin, "locations")).toBe(true);
   });
 
+  it("opens Conflict handling to whoever reads the schedule rules, and to whoever the core lets change them (Mert 2026-10-20)", () => {
+    for (const persona of everybody) {
+      const context = contextOf(persona);
+      expect(canOpenSettingsPage(context, "conflicts"), describePersona(persona)).toBe(
+        context.permissions.includes("settings.schedule_rules.read") ||
+          context.actions.includes("settings.conflict_rules.write"),
+      );
+    }
+    // Everybody who opened it before still does: changing the rules needs reading them.
+    const widenedOnly = everybody.filter((persona) => {
+      const context = contextOf(persona);
+      return routeOpenedBefore(context, "conflicts") && !canOpenSettingsPage(context, "conflicts");
+    });
+    expect(widenedOnly.map(describePersona)).toEqual([]);
+  });
+
   it("opens the catalog, read only, to the built-in manager, and the menu shows Settings (BL-680, K14 S1)", () => {
     const builtInManager = contextOf({
       role: "manager",
@@ -388,6 +410,7 @@ describe("Settings gates ask the core and open what the keys opened (BL-176)", (
     expect(pages.filter((page) => canOpenSettingsPage(builtInManager, page))).toEqual([
       "jobs",
       "scheduling",
+      "conflicts",
       "shiftCatalog",
       "documents",
       "acknowledgements",

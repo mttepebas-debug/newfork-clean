@@ -35,7 +35,9 @@ export function registerOrganizationSettingsRoutes(
   app.get("/v1/workspaces/:workspaceId/scheduling-settings/conflicts", async (request, reply) => {
     const params = workspaceParams.safeParse(request.params);
     if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
-    const context = await authorize(request.headers.authorization, params.data.workspaceId, "schedule.conflict_rules.manage", options.contextResolver, reply);
+    // Whoever reads the schedule rules reads the conflict rules, a manager too; only
+    // schedule.conflict_rules.manage changes them (K14 S1, Mert 2026-10-20).
+    const context = await authorize(request.headers.authorization, params.data.workspaceId, "settings.schedule_rules.read", options.contextResolver, reply);
     if (!context) return;
     if (!options.service) return reply.status(503).send({ error: "Organization settings unavailable" });
     return reply.send(scheduleConflictSettingsSchema.parse(await options.service.readSchedulingSettings({ workspaceId: params.data.workspaceId })));

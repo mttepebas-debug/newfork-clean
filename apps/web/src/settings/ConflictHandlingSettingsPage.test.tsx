@@ -8,7 +8,7 @@ import { organizationRequest } from "./organization-data";
 
 import { RequestError } from "../lib/request-error";
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
-const context: ActiveWorkspaceContext = {
+const owner: ActiveWorkspaceContext = {
   userId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5",
   workspace: {
     id: workspaceId,
@@ -26,7 +26,7 @@ const context: ActiveWorkspaceContext = {
     status: "active",
   },
   permissions: ["schedule.conflict_rules.manage"],
-  actions: [],
+  actions: ["settings.conflict_rules.write"],
   onboarding: { status: "complete", currentStep: 4 },
   documentAccess: { restricted: false },
   locationScope: { allLocations: true, locationIds: [] },
@@ -42,6 +42,7 @@ const conflictSettings = {
   minimum_travel_minutes: 30,
   minimum_rest_minutes: 0,
 } as const;
+let context: ActiveWorkspaceContext = owner;
 
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("./organization-data", () => ({ organizationRequest: vi.fn() }));
@@ -49,6 +50,7 @@ vi.mock("./organization-data", () => ({ organizationRequest: vi.fn() }));
 describe("ConflictHandlingSettingsPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    context = owner;
     vi.mocked(organizationRequest).mockImplementation(
       async (_workspace, _path, init) =>
         init?.method === "PUT"
@@ -218,6 +220,25 @@ describe("ConflictHandlingSettingsPage", () => {
     expect(save).toHaveProperty("disabled", false);
     fireEvent.change(input, { target: { value: saved } });
     expect(save).toHaveProperty("disabled", true);
+  });
+
+  it("shows a manager the rules read only, with nothing to save (Mert 2026-10-20, K14 S1)", async () => {
+    context = {
+      ...owner,
+      membership: { ...owner.membership, access: { employee: false, management: "manager" } },
+      permissions: ["settings.schedule_rules.read"],
+      actions: [],
+    };
+    renderPage();
+    const select = (await screen.findByRole("combobox", { name: "Closed location handling" })) as HTMLSelectElement;
+    expect(select.value).toBe("confirm");
+    // Disabled through its fieldset, as Schedule rules does.
+    expect(select.matches(":disabled")).toBe(true);
+    expect((screen.getByLabelText("Minimum travel time (minutes)") as HTMLInputElement).value).toBe("30");
+    expect(screen.queryByRole("button", { name: "Save conflict rules" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Reload rules" })).toBeNull();
+    fireEvent.submit(select.closest("form")!);
+    expect(organizationRequest).toHaveBeenCalledTimes(1);
   });
 
   it("does not silently turn a cleared minimum into zero", async () => {

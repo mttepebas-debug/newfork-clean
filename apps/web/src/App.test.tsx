@@ -7362,8 +7362,7 @@ describe("App", () => {
     expect(rail.queryByRole("link", { name: "General" })).toBeNull();
     expect(rail.queryByRole("link", { name: "Locations" })).toBeNull();
     expect(rail.queryByRole("link", { name: "Roles & permissions" })).toBeNull();
-    expect(rail.queryByRole("link", { name: "Conflict handling" })).toBeNull();
-    for (const page of ["Jobs", "Schedule rules", "Shift catalog", "Documents", "Acknowledgements"])
+    for (const page of ["Jobs", "Schedule rules", "Conflict handling", "Shift catalog", "Documents", "Acknowledgements"])
       expect(rail.getByRole("link", { name: page })).toBeTruthy();
     expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
     expect(sidebar().getByRole("link", { name: "Settings" })).toBeTruthy();
