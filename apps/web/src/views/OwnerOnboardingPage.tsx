@@ -1491,7 +1491,7 @@ export default function OwnerOnboardingPage() {
                   legend="Locations"
                   options={activeLocations}
                   selected={employeeDraft.location_ids}
-                  required={!exemptFromSchedule(employeeDraft)}
+                  required
                   onChange={(ids) =>
                     setEmployeeDraft({
                       ...employeeDraft,
@@ -1504,7 +1504,7 @@ export default function OwnerOnboardingPage() {
                   legend="Jobs"
                   options={activeJobs}
                   selected={employeeDraft.job_ids}
-                  required={!exemptFromSchedule(employeeDraft)}
+                  required
                   onChange={(ids) =>
                     setEmployeeDraft({ ...employeeDraft, job_ids: ids })
                   }
@@ -1740,13 +1740,9 @@ function LocationFields({
   );
 }
 
-function exemptFromSchedule(draft: EmployeeInput): boolean {
-  return Boolean(draft.is_remote || draft.is_excluded_from_schedule);
-}
-
 /**
- * Pick the locations or jobs this person works. Required unless they are remote
- * or kept off the schedule — the same rule the employee drawer enforces. The
+ * Pick the locations or jobs this person works. Required, Remote or kept off the
+ * schedule too (DAVET-ERISIM) — the same rule the employee drawer enforces. The
  * first one picked is the primary; the wizard does not ask, Settings can change it.
  */
 function AssignmentChecks({

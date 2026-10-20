@@ -613,6 +613,9 @@ describe("EmployeeDrawer", () => {
     expect(save).toHaveProperty("disabled", true);
     fireEvent.click(screen.getByLabelText("Exclude from schedule"));
     expect(save).toHaveProperty("disabled", true);
+    // The fields still say what holds Save.
+    expect(within(screen.getByRole("group", { name: /^Locations/ })).getByText("Required")).toBeTruthy();
+    expect(within(screen.getByRole("group", { name: /^Jobs/ })).getByText("Required")).toBeTruthy();
     expect(saveEmployee).not.toHaveBeenCalled();
   });
 

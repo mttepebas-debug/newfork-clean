@@ -353,11 +353,9 @@ begin
   if cardinality(location_ids) = 0 then
     delete from public.employee_location_assignments a where a.employee_id = employee;
   end if;
+  -- Somebody with management access keeps the Management job they were given (management_job_stays_held).
   if cardinality(job_ids) = 0 then
     delete from public.employee_job_assignments a where a.employee_id = employee;
-    delete from public.membership_management_jobs mj
-    using public.workspace_memberships m
-    where mj.membership_id = m.id and m.workspace_id = workspace and m.user_id = person.user_id;
   end if;
   perform tests.settle();
 

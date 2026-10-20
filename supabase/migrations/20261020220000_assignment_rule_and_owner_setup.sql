@@ -212,8 +212,7 @@ begin
   update public.employee_job_assignments set is_primary = true
   where employee_id = saved_id and ended_at is null and not is_primary and job_id = primary_job_id;
 
-  -- K4: excluded from the Schedule needs no location, except a manager, who
-  -- manages only where they are assigned.
+  -- K4: a manager keeps a location to manage.
   perform app_private.keep_manager_at_a_location(target_workspace_id, saved_id);
   return saved_id;
 end;
@@ -388,7 +387,7 @@ begin
       where a.id = (
         select first.id from public.employee_location_assignments first
         join public.locations l on l.id = first.location_id
-        where first.employee_id = owner_employee_id and first.ended_at is null
+        where first.employee_id = owner_employee_id and first.ended_at is null and l.archived_at is null
         order by l.created_at, l.name, l.id
         limit 1);
       update public.employee_profiles

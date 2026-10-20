@@ -2654,11 +2654,8 @@ function EmploymentSection({
       <AssignmentPicker
         label="Locations"
         // Nothing is asked of the owner: every location is theirs already.
-        required={
-          !detail?.is_workspace_owner &&
-          !draft.is_remote &&
-          (!draft.is_excluded_from_schedule || locationActions.managerRecord)
-        }
+        // Remote and Exclude from schedule ask it too (DAVET-ERISIM).
+        required={!detail?.is_workspace_owner}
         options={references?.locations ?? []}
         selected={draft.location_ids}
         primary={draft.primary_location_id}
@@ -2692,11 +2689,7 @@ function EmploymentSection({
       <AssignmentPicker
         label="Jobs"
         // Nothing is asked of the owner here either (BL-482, KK-63).
-        required={
-          !detail?.is_workspace_owner &&
-          !draft.is_remote &&
-          !draft.is_excluded_from_schedule
-        }
+        required={!detail?.is_workspace_owner}
         options={references?.jobs ?? []}
         departments={references?.departments}
         selected={draft.job_ids}
