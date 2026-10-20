@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(14);
+select plan(16);
 
 -- New Schedule window (Mert, 2026-10-12 17:00 PT): every schedule of the week
 -- shows its shifts and paid hours and who saved it last, counted only where
@@ -91,6 +91,19 @@ select is(
    where d ->> 'id' = tests.id('dc:draft')::text),
   1,
   'the Besiktas manager counts only the Besiktas shift of the draft'
+);
+-- The open shift is at Kadikoy: out of Berk's reach, so not in his open count either.
+select is(
+  (select (d ->> 'open_shift_count')::integer
+   from jsonb_array_elements(public.list_schedule_drafts_service(tests.user('dc:berk'), tests.id('dc'), tests.week(1)) -> 'drafts') d
+   where d ->> 'id' = tests.id('dc:draft')::text),
+  0,
+  'an open shift at another location is not in the Besiktas manager''s open count'
+);
+select is(
+  public.list_schedule_drafts_service(tests.user('dc:berk'), tests.id('dc'), tests.week(1)) -> 'published',
+  '{"shift_count": 1, "paid_minutes": 240, "open_shift_count": 0}'::jsonb,
+  'nor in his live total'
 );
 select is(
   (select count(*)::integer
