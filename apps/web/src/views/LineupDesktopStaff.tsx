@@ -250,7 +250,7 @@ function PhoneOutGroups({
             <ul aria-label="Called off">
               {calledOff.map((row) => (
                 <li className="lineup-phone-row is-out" key={row.shiftId}>
-                  <LineupPersonCircle name={row.name} />
+                  <LineupPersonCircle name={row.name} artKey={row.artKey} />
                   <span className="lineup-phone-mid">
                     <span className="lineup-phone-name">{row.name}</span>
                     <span className="lineup-phone-time">
@@ -280,7 +280,7 @@ function PhoneOutGroups({
             <ul aria-label="Replaced">
               {replaced.map(({ row, by }) => (
                 <li className="lineup-phone-row is-out lineup-staff-rep-ph" key={row.shiftId}>
-                  <LineupPersonCircle name={row.name} />
+                  <LineupPersonCircle name={row.name} artKey={row.artKey} />
                   <span className="lineup-phone-mid">
                     <span className="lineup-phone-name">{row.name}</span>
                     {by ? (

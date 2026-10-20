@@ -55,7 +55,7 @@ export function PersonSheet({
       >
         <header>
           <div className="lineup-person-who">
-            <LineupPersonCircle name={row.name} />
+            <LineupPersonCircle name={row.name} artKey={row.artKey} />
             <div>
               <h2 id={titleId}>{row.name}</h2>
               <p>{[row.jobName, shift.name, location.name].join(" · ")}</p>
