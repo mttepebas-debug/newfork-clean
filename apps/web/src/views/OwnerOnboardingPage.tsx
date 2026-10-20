@@ -921,6 +921,22 @@ export default function OwnerOnboardingPage() {
             </header>
             <form className="onboarding-form" onSubmit={saveWorkspaceIdentity}>
               <div className="owner-onboarding-grid">
+                {/* The step's own field first: the heading names it. */}
+                <label className="wide" htmlFor="workspace-name">
+                  Workspace name
+                  <input
+                    id="workspace-name"
+                    // Named outright: the rule's line sits inside the label.
+                    aria-label="Workspace name"
+                    value={workspaceName}
+                    maxLength={120}
+                    onChange={(event) => setWorkspaceName(event.target.value)}
+                    autoFocus
+                    required
+                    {...letterRuleProps(workspaceName, "workspace-name")}
+                  />
+                  <LetterRuleNote value={workspaceName} id="workspace-name" />
+                </label>
                 {/* The owner's legal name: saved as the account name and as the
                     name documents read. Going by another name is Profile's job. */}
                 <fieldset
@@ -938,7 +954,6 @@ export default function OwnerOnboardingPage() {
                       maxLength={80}
                       onChange={(event) => setOwnerFirstName(event.target.value)}
                       autoComplete="given-name"
-                      autoFocus
                       required
                       {...letterRuleProps(ownerFirstName, "owner-first-name")}
                     />
@@ -978,20 +993,6 @@ export default function OwnerOnboardingPage() {
                     else? Add a preferred name later in Account › Profile.
                   </small>
                 </fieldset>
-                <label className="wide" htmlFor="workspace-name">
-                  Workspace name
-                  <input
-                    id="workspace-name"
-                    // Named outright: the rule's line sits inside the label.
-                    aria-label="Workspace name"
-                    value={workspaceName}
-                    maxLength={120}
-                    onChange={(event) => setWorkspaceName(event.target.value)}
-                    required
-                    {...letterRuleProps(workspaceName, "workspace-name")}
-                  />
-                  <LetterRuleNote value={workspaceName} id="workspace-name" />
-                </label>
               </div>
               <Feedback success={success} />
               <WizardBar error={error}>

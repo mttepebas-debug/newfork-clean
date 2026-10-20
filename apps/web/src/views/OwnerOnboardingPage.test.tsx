@@ -292,6 +292,18 @@ describe("OwnerOnboardingPage", () => {
     ).toBeTruthy();
   });
 
+  // The step is named for the workspace, so its name is the first field and
+  // takes the cursor; the owner's own name follows.
+  it("opens on the workspace name the heading asks for", async () => {
+    renderPage();
+
+    const heading = await screen.findByRole("heading", { name: "Name your workspace" });
+    const form = heading.closest("section")!.querySelector("form")!;
+    const first = form.querySelector("input")!;
+    expect(first.id).toBe("workspace-name");
+    expect(document.activeElement).toBe(first);
+  });
+
   // Creating an account is an email and a password; the name is asked here,
   // where an employee record is about to need it, in the two parts it holds.
   it("asks for a first and last name rather than guessing at one string", async () => {
