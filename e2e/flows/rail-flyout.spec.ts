@@ -24,9 +24,9 @@ test("narrowing and widening the menu shows no name boxes; hovering an icon fade
 
   await sidebar.getByRole("button", { name: "Collapse menu" }).click();
   expect(await flyoutMotions(page)).toBe(0);
-  await expect(sidebar.locator(".rail-flyout").filter({ hasText: "Workspace" })).toHaveCSS("opacity", "0");
+  await expect(sidebar.locator(".rail-flyout").filter({ hasText: /^Home$/ })).toHaveCSS("opacity", "0");
 
-  await sidebar.getByRole("link", { name: "Workspace" }).hover();
+  await sidebar.getByRole("link", { name: "Home", exact: true }).hover();
   await expect
     .poll(() =>
       page.evaluate(
@@ -35,12 +35,12 @@ test("narrowing and widening the menu shows no name boxes; hovering an icon fade
             .getAnimations()
             .filter((animation) => {
               const target = (animation.effect as KeyframeEffect | null)?.target;
-              return target instanceof Element && target.matches(".rail-flyout") && target.textContent === "Workspace";
+              return target instanceof Element && target.matches(".rail-flyout") && target.textContent === "Home";
             }).length,
       ),
     )
     .toBeGreaterThan(0);
-  await expect(sidebar.locator(".rail-flyout").filter({ hasText: "Workspace" })).toHaveCSS("opacity", "1");
+  await expect(sidebar.locator(".rail-flyout").filter({ hasText: /^Home$/ })).toHaveCSS("opacity", "1");
 
   await page.mouse.move(900, 450);
   await sidebar.getByRole("button", { name: "Expand menu" }).click();

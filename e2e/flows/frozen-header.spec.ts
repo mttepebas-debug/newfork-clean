@@ -84,8 +84,9 @@ const sweep = (page: Page) =>
   });
 
 test.describe("desktop: the heading and tabs stay where they are", () => {
+  // The managers' Home is not here: its greeting folds into the bar like the
+  // employee's (Daylight, Mert 2026-10-19, KARARLAR S-210); its test is below.
   for (const [person, path, more] of [
-    ["zeynep", "/app/workspace", []],
     ["zeynep", "/app/settings/scheduling", [".settings-rail"]],
     ["zeynep", "/app/settings/scheduling/conflicts", []],
     ["zeynep", "/account/security", [".account-sidebar"]],
@@ -112,9 +113,18 @@ test("the employee's Home keeps its bar while the greeting scrolls away (emre)",
   await expect.poll(() => topOf(page, ".eh-context-bar")).toBe(before);
 });
 
+// The managers' Home is the same exception (YONETICI-HOME, S-210).
+test("the managers' Home keeps its bar while the greeting scrolls away (zeynep)", async ({ browser }) => {
+  const page = await open(browser, "zeynep", DESKTOP);
+  await visit(page, "/app/workspace");
+  const before = await topOf(page, ".eh-context-bar");
+  expect(await scrollPage(page)).toBeGreaterThan(0);
+  await expect.poll(() => topOf(page, ".eh-context-bar")).toBe(before);
+});
+
 test.describe("phone: the heading keeps its size and stays on top", () => {
+  // Not the managers' Home: its greeting folds into the top bar (S-210).
   for (const [person, path, more] of [
-    ["zeynep", "/app/workspace", []],
     // The Settings menu sits under the heading's line on a phone (MOBIL-BASLIK).
     ["zeynep", "/app/settings/scheduling", ['nav[aria-label="Workspace settings"]']],
     ["zeynep", "/account/security", [".account-sidebar", 'nav[aria-label="Account"]']],

@@ -15,9 +15,10 @@ const OPEN = 116;
 // Every page is checked even after one is off, so a run names them all.
 const soft = expect.configure({ soft: true });
 
+// The managers' Home (/app/workspace) is not here, as the employee's is not:
+// its greeting folds into the bar (Daylight, Mert 2026-10-19, S-210).
 const PAGES: Record<"zeynep" | "emre", string[]> = {
   zeynep: [
-    "/app/workspace",
     "/app/schedule/requests",
     "/app/schedule/lineup",
     "/app/availability",
