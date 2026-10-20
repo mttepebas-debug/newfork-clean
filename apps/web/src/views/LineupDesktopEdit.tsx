@@ -518,7 +518,8 @@ export function useWindowKeys(onClose: () => void) {
   latest.current = onClose;
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>("input")?.focus();
+    // A window with nothing to type in (the phone's person panel) takes the focus itself.
+    (box.current?.querySelector<HTMLElement>("input") ?? box.current)?.focus();
     return () => {
       if (opener?.isConnected) opener.focus();
     };

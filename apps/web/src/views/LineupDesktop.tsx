@@ -22,7 +22,15 @@ import {
   SectionsWindow,
   type LineupEditing,
 } from "./LineupDesktopEdit";
-import { AddStaffButton, CallOffCell, OutGroups, ReplaceName, StaffWindow, type StaffPlace } from "./LineupDesktopStaff";
+import {
+  AddStaffButton,
+  CallOffCell,
+  OutGroups,
+  ReplaceName,
+  StaffWindow,
+  teamDepartments,
+  type StaffPlace,
+} from "./LineupDesktopStaff";
 import { LineupCard, NotesPane, ReadPane, Segments, type Seg } from "./LineupPhone";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
@@ -345,18 +353,7 @@ function DesktopTeam({
   readonly onManageSections: () => void;
   readonly onStaff: (place: StaffPlace) => void;
 }) {
-  // Editing, every department shows, so Add Staff reaches one with no one on it yet (the design's teamPane).
-  const departments = editing
-    ? [
-        ...shift.departments,
-        ...editing.catalog.departments
-          .filter((department) => !shift.departments.some((item) => item.id === department.id))
-          .map((department) => ({ ...department, jobs: [] })),
-      ].sort(
-        (a, b) =>
-          (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }),
-      )
-    : shift.departments;
+  const departments = teamDepartments(shift, editing);
   const out = shift.out.calledOff.length + shift.out.replaced.length;
   if (!shift.count && !out && !(editing && departments.length))
     return (

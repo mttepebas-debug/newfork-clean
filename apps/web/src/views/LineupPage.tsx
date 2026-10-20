@@ -197,6 +197,7 @@ export function LineupPage() {
         onShift={(key) => setParam("shift", key)}
         nowAt={nowAt}
         timeFormat={timeFormat}
+        editing={day.data ? editing : null}
         publish={
           canShare && day.data
             ? {

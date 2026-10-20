@@ -770,11 +770,14 @@ describe("LineupPage on a phone", () => {
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: "Dinner, no one" }));
     expect(screen.getByTestId("where").textContent).toBe(`?shift=${dinner}`);
-    expect(screen.getByText("No one is scheduled for Dinner at Downtown")).toBeTruthy();
-    expect(screen.getByText("No one is scheduled for Dinner at Uptown")).toBeTruthy();
+    // A manager's empty draft shows its departments, so Add Staff reaches them (LINEUP-EDIT W3b, as on the desktop).
+    expect(screen.getByRole("region", { name: "Downtown, Dinner" })).toBeTruthy();
+    expect(screen.getByRole("region", { name: "Uptown, Dinner" })).toBeTruthy();
+    expect(screen.getAllByRole("button", { name: "Add Staff to Kitchen" })).toHaveLength(2);
     fireEvent.change(screen.getByRole("combobox", { name: "Location" }), { target: { value: uptown } });
     expect(screen.getByTestId("where").textContent).toContain(`location=${uptown}`);
-    expect(screen.queryByText("No one is scheduled for Dinner at Downtown")).toBeNull();
+    expect(screen.queryByRole("region", { name: "Downtown, Dinner" })).toBeNull();
+    expect(screen.getAllByRole("button", { name: "Add Staff to Kitchen" })).toHaveLength(1);
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
     expect(within(screen.getByRole("list", { name: "Server" })).getByText("Hannah Lee")).toBeTruthy();
   });
@@ -1296,7 +1299,9 @@ describe("LineupPage on a phone, E", () => {
     expect(card.contains(screen.getByRole("tablist", { name: "Lineup" }))).toBe(true);
   });
 
-  it("lists the team read-only: no person panel, call off, Add Staff or note editing", async () => {
+  // A published lineup changes only after Edit takes it back (LINEUP-EDIT W3b: a draft's rows open their panel).
+  it("lists a published team read-only: no person panel, call off, Add Staff or note editing", async () => {
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
     renderPage();
     const team = await screen.findByRole("list", { name: "Server" });
     const row = within(team).getByRole("listitem");
@@ -1332,14 +1337,21 @@ describe("LineupPage on a phone, E", () => {
     expect(within(screen.getByRole("tabpanel")).getByText("No notes yet.")).toBeTruthy();
   });
 
-  // Mert 2026-10-17 (~2 PM): an empty shift's box hangs off its card and names the shift and the place, one line.
-  it("joins an empty shift's box to its card, with no Add Staff", async () => {
-    renderPage(`/app/schedule/lineup?shift=${dinner}`);
-    const card = await screen.findByRole("region", { name: "Downtown, Dinner" });
-    const box = screen.getByText("No one is scheduled for Dinner at Downtown");
-    expect(box.getAttribute("title")).toBe("No one is scheduled for Dinner at Downtown");
-    expect(card.classList.contains("is-joined")).toBe(true);
-    expect(screen.queryByRole("button", { name: /Add Staff/ })).toBeNull();
+  // Mert 2026-10-17 (~2 PM): an empty shift's box hangs off its card and names the shift and the place, one line;
+  // for someone who can't change it (a manager's empty draft lists its departments with Add Staff, LINEUP-EDIT W3b).
+  it("joins an empty shift's box to its card for someone who can't change it, with no Add Staff", async () => {
+    const actions = context.actions;
+    (context as { actions: string[] }).actions = ["schedule.read", "lineup.read"];
+    try {
+      renderPage(`/app/schedule/lineup?shift=${dinner}`);
+      const card = await screen.findByRole("region", { name: "Downtown, Dinner" });
+      const box = screen.getByText("No one is scheduled for Dinner at Downtown");
+      expect(box.getAttribute("title")).toBe("No one is scheduled for Dinner at Downtown");
+      expect(card.classList.contains("is-joined")).toBe(true);
+      expect(screen.queryByRole("button", { name: /Add Staff/ })).toBeNull();
+    } finally {
+      (context as { actions: readonly string[] }).actions = actions;
+    }
   });
 
   // KARARLAR §1.5: a swipe sideways moves between Team, Notes and Read; the day wheel and the shift tabs keep
@@ -2092,11 +2104,123 @@ describe("LineupPage, calling off, adding and replacing on the desktop", () => {
     }
   });
 
-  it("leaves called-off and replaced people out of the phone's team", async () => {
-    phone = true;
-    maria_ = "replaced";
-    renderPage(`/app/schedule/lineup?location=${downtown}`);
-    await screen.findByText("Hannah Lee");
-    expect(screen.queryByText("Maria Lopez")).toBeNull();
+  // LINEUP-EDIT W3b (the design's phone E: personLayer, pickLayer as a sheet, outGroups' phone rows).
+  describe("on a phone", () => {
+    beforeEach(() => {
+      phone = true;
+    });
+
+    it("opens a person's panel from her row: Done closes it, Call off takes two taps", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const tap = await screen.findByRole("button", { name: "Change Maria Lopez" });
+      fireEvent.click(tap);
+      let panel = screen.getByRole("dialog", { name: "Maria Lopez" });
+      expect(panel.classList.contains("is-sheet")).toBe(true);
+      expect(document.activeElement).toBe(panel);
+      expect(within(panel).getByText("Server · Lunch · Downtown")).toBeTruthy();
+      expect(within(panel).getByText("11:00 AM – 4:00 PM · Training")).toBeTruthy();
+      fireEvent.click(within(panel).getByRole("button", { name: "Done" }));
+      expect(screen.queryByRole("dialog")).toBeNull();
+      expect(document.activeElement).toBe(tap);
+      fireEvent.click(tap);
+      panel = screen.getByRole("dialog", { name: "Maria Lopez" });
+      const off = within(panel).getByRole("button", { name: "Call off Maria Lopez" });
+      fireEvent.click(off);
+      expect(sent).toHaveLength(0);
+      expect(off.textContent).toBe("Click again to call off");
+      fireEvent.click(off);
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toMatchObject({ ...target(), action: "call_off", row: { source_shift_id: marias() } });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("lists a called-off person at the foot, out of her department, and calls her in", async () => {
+      maria_ = "off";
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const out = await screen.findByRole("region", { name: "Called off" });
+      expect(within(out).getByText("Maria Lopez")).toBeTruthy();
+      expect(within(out).getByText("Server · called off 9:41 AM")).toBeTruthy();
+      const front = screen.getByRole("region", { name: "Front of House" });
+      expect(within(front).getByText("No one in Front of House yet.")).toBeTruthy();
+      fireEvent.click(within(out).getByRole("button", { name: "Call in Maria Lopez" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toMatchObject({ ...target(), action: "call_in", row: { source_shift_id: marias() } });
+    });
+
+    it("adds staff from a department's heading in a sheet: Add anyway takes two taps", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("button", { name: "Add Staff to Front of House" }));
+      const window_ = screen.getByRole("dialog", { name: "Add Staff · Front of House" });
+      expect(window_.classList.contains("is-sheet")).toBe(true);
+      expect(document.activeElement).toBe(within(window_).getByRole("textbox", { name: "Search people" }));
+      await within(window_).findByRole("region", { name: "Best fit" });
+      expect(asked[0]).toEqual({ ...target(), department_id: foh });
+      expect(within(window_).getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Best fit", "Consider", "Unavailable"]);
+      const anyway = within(window_).getByRole("button", { name: "Add Hannah Lee anyway" });
+      fireEvent.click(anyway);
+      expect(sent).toHaveLength(0);
+      expect(anyway.textContent).toBe("Click again to add");
+      fireEvent.click(within(window_).getByRole("button", { name: "Add Chloe Davis" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toMatchObject({ ...target(), action: "add_person", person: { employee_id: chloe, job_id: server } });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    });
+
+    it("replaces a person from her panel's Replace…, then shows who took her place at the foot with Undo", async () => {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const tap = await screen.findByRole("button", { name: "Change Maria Lopez" });
+      fireEvent.click(tap);
+      fireEvent.click(within(screen.getByRole("dialog", { name: "Maria Lopez" })).getByRole("button", { name: "Replace…" }));
+      expect(screen.queryByRole("dialog", { name: "Maria Lopez" })).toBeNull();
+      const window_ = screen.getByRole("dialog", { name: "Replace Maria Lopez" });
+      expect(window_.classList.contains("is-sheet")).toBe(true);
+      await within(window_).findByRole("region", { name: "Best fit" });
+      expect(asked[0]).toEqual({ ...target(), row: { source_shift_id: marias() } });
+      expect(within(window_).getByText("Server · Downtown · Lunch · 11:00 AM – 4:00 PM")).toBeTruthy();
+      fireEvent.click(within(window_).getByRole("button", { name: "Replace Chloe Davis" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toMatchObject({ ...target(), action: "replace", row: { source_shift_id: marias() }, person: { employee_id: chloe } });
+      await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+      expect(document.activeElement).toBe(tap);
+      cleanup();
+      sent.length = 0;
+      maria_ = "replaced";
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const replaced = await screen.findByRole("region", { name: "Replaced" });
+      expect(within(replaced).getByText("Maria Lopez")).toBeTruthy();
+      expect(within(replaced).getByText("Hannah Lee")).toBeTruthy();
+      const front = screen.getByRole("region", { name: "Front of House" });
+      expect(within(front).getByRole("button", { name: "Change Hannah Lee" })).toBeTruthy();
+      expect(within(front).queryByText("Maria Lopez")).toBeNull();
+      fireEvent.click(within(replaced).getByRole("button", { name: "Undo, put Maria Lopez back" }));
+      await waitFor(() => expect(sent).toHaveLength(1));
+      expect(sent[0]).toMatchObject({ ...target(), action: "undo_replace", row: { row_id: added } });
+    });
+
+    it("says in the panel why the person wasn't called off, never the server's sentence", async () => {
+      refuse = "lineup.started";
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      fireEvent.click(await screen.findByRole("button", { name: "Change Maria Lopez" }));
+      const panel = screen.getByRole("dialog", { name: "Maria Lopez" });
+      const off = within(panel).getByRole("button", { name: "Call off Maria Lopez" });
+      fireEvent.click(off);
+      fireEvent.click(off);
+      const alert = await within(panel).findByRole("alert");
+      expect(alert.textContent).toBe("This shift has started. Its lineup can't change.");
+      expect(alert.parentElement?.tagName).toBe("FOOTER");
+      expect(screen.getByRole("dialog", { name: "Maria Lopez" })).toBe(panel);
+    });
+
+    it("reads a published lineup's people out at the foot, with no panel, Call in or Add Staff", async () => {
+      maria_ = "replaced";
+      published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      const replaced = await screen.findByRole("region", { name: "Replaced" });
+      expect(within(replaced).getByText("Hannah Lee")).toBeTruthy();
+      expect(within(replaced).getByText("Server")).toBeTruthy();
+      expect(within(replaced).queryByRole("button")).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Change |^Add Staff/ })).toBeNull();
+      expect(screen.queryByRole("region", { name: "Kitchen" })).toBeNull();
+    });
   });
 });

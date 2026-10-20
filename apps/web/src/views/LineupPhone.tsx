@@ -17,6 +17,7 @@ import {
 import {
   canPublish,
   lineupCardState,
+  lineupEditable,
   lineupNoteCount,
   lineupShiftSpan,
   phoneLineupKey,
@@ -38,7 +39,10 @@ import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../sched
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
 import { useTabSwipe } from "../shell/useTabSwipe";
+import type { LineupEditing } from "./LineupDesktopEdit";
+import { AddStaffButton, OutGroups, StaffWindow, teamDepartments, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupPersonCircle } from "./LineupPersonCircle";
+import { PersonSheet } from "./LineupPhoneStaff";
 import "./lineup-phone.css";
 
 // The phone Lineup for owner, admin and manager (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih, D1–D3; card 1,
@@ -46,7 +50,8 @@ import "./lineup-phone.css";
 // fixed (Mert 2026-10-17 ~8 AM); under it the date and location, the day wheel, the shift tabs, the lineup card
 // (place, day, Live or Draft, Edit; Shift · People · Hours; Team · Notes · Read inside) and the team all scroll.
 // Publish waits at the bottom over the bar while the shift on screen has a draft; it opens the Publish window as
-// a sheet.
+// a sheet. On a draft that hasn't started, a manager taps a row for its person panel (Replace…, Call off) and adds
+// staff from a department's heading (LINEUP-EDIT W3b).
 
 export interface PhonePublish {
   readonly waiting: number;
@@ -88,6 +93,7 @@ export function PhoneLineupPage({
   nowAt,
   timeFormat,
   publish,
+  editing = null,
 }: {
   readonly header: ReactNode;
   readonly workspaceId: string | null;
@@ -110,6 +116,8 @@ export function PhoneLineupPage({
   readonly timeFormat: ScheduleTimeFormat;
   /** Publishing, and taking a lineup back to draft (Edit), for someone who may. */
   readonly publish: PhonePublish | null;
+  /** Changing a draft that hasn't started, for someone who may change the day's lineups. */
+  readonly editing?: LineupEditing | null;
 }) {
   // Folded cards, by location and shift (Mert 2026-10-17 ~9:10 AM: a tap on a card folds that place's list).
   const [shut, setShut] = useState<ReadonlySet<string>>(() => new Set());
@@ -223,6 +231,7 @@ export function PhoneLineupPage({
                   held={Boolean(publish?.open)}
                   day={date}
                   stacked={Boolean(previous) && !line}
+                  editing={editing}
                 />
               ) : (
                 <p className="lineup-phone-empty">
@@ -258,6 +267,7 @@ function LocationLineup({
   held,
   day,
   stacked,
+  editing,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
@@ -273,6 +283,7 @@ function LocationLineup({
   readonly day: string;
   /** Right under a folded card: a small gap, no line. */
   readonly stacked: boolean;
+  readonly editing: LineupEditing | null;
 }) {
   const [picked, setSeg] = useState<Seg>("team");
   const ids = useId();
@@ -280,7 +291,11 @@ function LocationLineup({
   // Read is off until the lineup is published (Mert 2026-10-17 ~12:30 PM): a draft shows Team or Notes.
   const seg: Seg = picked === "read" && !live ? "team" : picked;
   const swipe = useTabSwipe({ tabs: live ? SEGS : SEGS.slice(0, 2), active: seg, enabled: open, onSelect: setSeg, scope: "self" });
-  const joined = open && seg === "team" && shift.count === 0;
+  // A draft that hasn't started changes in place (the server locks the rest), as on the desktop.
+  const changing = editing && lineupEditable(shift, now) ? editing : null;
+  const [person, setPerson] = useState<LineupRow | null>(null);
+  const [staff, setStaff] = useState<StaffPlace | null>(null);
+  const joined = open && seg === "team" && teamEmpty(shift, changing);
   const panel = `${ids}panel`;
   return (
     <div className={`lineup-phone-block${stacked ? " is-stacked" : ""}`} ref={swipe.root}>
@@ -314,12 +329,43 @@ function LocationLineup({
           ) : seg === "read" ? (
             <ReadPane shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
           ) : (
-            <TeamPane location={location} shift={shift} timeFormat={timeFormat} />
+            <TeamPane location={location} shift={shift} timeFormat={timeFormat} editing={changing} onPerson={setPerson} onStaff={setStaff} />
           )}
         </div>
       ) : null}
+      {changing && person ? (
+        <PersonSheet
+          row={person}
+          location={location}
+          shift={shift}
+          editing={changing}
+          timeFormat={timeFormat}
+          onReplace={() => {
+            setPerson(null);
+            setStaff({ kind: "replace", row: person });
+          }}
+          onClose={() => setPerson(null)}
+        />
+      ) : null}
+      {changing && staff ? (
+        <StaffWindow
+          editing={changing}
+          location={location}
+          shift={shift}
+          place={staff}
+          timeFormat={timeFormat}
+          onClose={() => setStaff(null)}
+          sheet
+        />
+      ) : null}
     </div>
   );
+}
+
+/** Nothing to list: no one on the lineup or out of it, and no department to add staff to. */
+function teamEmpty(shift: LineupShift, editing: LineupEditing | null): boolean {
+  const out = shift.out.calledOff.length + shift.out.replaced.length;
+  return !shift.count && !out && !(editing && editing.catalog.departments.length);
 }
 
 /**
@@ -547,17 +593,26 @@ export function Segments({
   );
 }
 
-/** C's list: department, then job (dot, name, count), then people. Read-only: a row opens nothing. */
+/**
+ * C's list: department, then job (dot, name, count), then people, and the people out at the foot. Read-only, a row
+ * opens nothing; on a draft that hasn't started, a tap opens its person panel and each department adds staff.
+ */
 function TeamPane({
   location,
   shift,
   timeFormat,
+  editing,
+  onPerson,
+  onStaff,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
+  readonly editing: LineupEditing | null;
+  readonly onPerson: (row: LineupRow) => void;
+  readonly onStaff: (place: StaffPlace) => void;
 }) {
-  if (!shift.count)
+  if (teamEmpty(shift, editing))
     return (
       <div className="lineup-phone-noone">
         <Users aria-hidden />
@@ -566,15 +621,22 @@ function TeamPane({
     );
   return (
     <>
-      {shift.departments.map((department) => {
+      {teamDepartments(shift, editing).map((department) => {
         const count = department.jobs.reduce((sum, job) => sum + job.rows.length, 0);
         return (
           <section className="lineup-phone-dept" key={department.id ?? "other"} aria-label={department.name}>
             <h3>
               {department.name}
               <span>{count}</span>
+              {editing && department.id ? (
+                <AddStaffButton
+                  department={department.name}
+                  onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
+                />
+              ) : null}
             </h3>
             <div className="lineup-phone-list">
+              {department.jobs.length ? null : <p className="lineup-staff-none">No one in {department.name} yet.</p>}
               {department.jobs.map((job) => (
                 <div className="lineup-phone-job" key={job.id}>
                   <p>
@@ -584,7 +646,7 @@ function TeamPane({
                   </p>
                   <ul aria-label={job.name}>
                     {job.rows.map((row) => (
-                      <PersonRow key={row.shiftId} row={row} timeFormat={timeFormat} />
+                      <PersonRow key={row.shiftId} row={row} timeFormat={timeFormat} onTap={editing ? () => onPerson(row) : undefined} />
                     ))}
                   </ul>
                 </div>
@@ -593,6 +655,7 @@ function TeamPane({
           </section>
         );
       })}
+      <OutGroups location={location} shift={shift} timeFormat={timeFormat} editing={editing} phone />
     </>
   );
 }
@@ -614,10 +677,32 @@ function OneLine({ text }: { readonly text: string }) {
   );
 }
 
-function PersonRow({ row, timeFormat }: { readonly row: LineupRow; readonly timeFormat: ScheduleTimeFormat }) {
+function PersonRow({
+  row,
+  timeFormat,
+  onTap,
+}: {
+  readonly row: LineupRow;
+  readonly timeFormat: ScheduleTimeFormat;
+  /** Opens the person panel (a draft that hasn't started): the whole row is its button. */
+  readonly onTap?: () => void;
+}) {
   const chips = [...row.labels.map((label) => ({ label, warn: false })), ...(row.lineupOnly ? [{ label: "Lineup only", warn: true }] : [])];
   return (
-    <li className="lineup-phone-row">
+    <li className={`lineup-phone-row${onTap ? " is-tap" : ""}`}>
+      {onTap ? (
+        <button
+          type="button"
+          className="lineup-phone-tap"
+          aria-haspopup="dialog"
+          aria-label={`Change ${row.name}`}
+          onClick={(event) => {
+            // A tap doesn't focus a button on iOS: it holds the focus, so the panel gives it back here.
+            event.currentTarget.focus();
+            onTap();
+          }}
+        />
+      ) : null}
       <LineupPersonCircle name={row.name} />
       <span className="lineup-phone-mid">
         <span className="lineup-phone-name">{row.name}</span>

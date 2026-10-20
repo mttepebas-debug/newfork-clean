@@ -14,7 +14,8 @@ import { LineupPersonCircle } from "./LineupPersonCircle";
 
 // LINEUP-EDIT W3a (S-178 madde 5-7; the design's F, yapim/masaustu/desk.js outGroups, pickLayer, doPick, undoRep):
 // on a draft that hasn't started, Call off and Call in, Add Staff from a department's heading, Replace from a name,
-// and Undo. Call off takes two clicks (Mert 2026-10-20), as Add anyway does. The Schedule never changes.
+// and Undo. Call off takes two clicks (Mert 2026-10-20), as Add anyway does. The Schedule never changes. The phone
+// (W3b) draws the same windows as sheets from the bottom and the people out as its own rows (the design's phone E).
 
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   return `${formatTime(start, format, "long")} – ${formatTime(end, format, "long")}`;
@@ -28,7 +29,7 @@ function firstName(name: string): string {
  * One staff change: a refusal shows beside the button that sent it. A second press while one is on its way does
  * nothing; the button stays enabled, so the focus stays on it (and Escape still reaches the window).
  */
-function useStaffEdit(editing: LineupEditing) {
+export function useStaffEdit(editing: LineupEditing) {
   const edit = useLineupEdit(editing.workspaceId, editing.date);
   const [refused, setRefused] = useState<string | null>(null);
   const going = useRef(false);
@@ -44,7 +45,7 @@ function useStaffEdit(editing: LineupEditing) {
   return { run, refused };
 }
 
-function Refused({ message }: { readonly message: string | null }) {
+export function Refused({ message }: { readonly message: string | null }) {
   return message ? (
     <em className="lineup-edit-msg" role="alert">
       {message}
@@ -98,10 +99,36 @@ export function ReplaceName({ row, onReplace }: { readonly row: LineupRow; reado
 /** Add Staff, at the right of a department's heading. */
 export function AddStaffButton({ department, onAdd }: { readonly department: string; readonly onAdd: () => void }) {
   return (
-    <button type="button" className="lineup-staff-add" aria-haspopup="dialog" aria-label={`Add Staff to ${department}`} onClick={onAdd}>
+    <button
+      type="button"
+      className="lineup-staff-add"
+      aria-haspopup="dialog"
+      aria-label={`Add Staff to ${department}`}
+      onClick={(event) => {
+        // A tap doesn't focus a button on iOS: it holds the focus, so the window gives it back here.
+        event.currentTarget.focus();
+        onAdd();
+      }}
+    >
       <UserPlus size={16} aria-hidden />
       Add Staff
     </button>
+  );
+}
+
+/**
+ * The team's departments: editing, every department shows, so Add Staff reaches one with no one on it yet (the
+ * design's teamPane); Other last.
+ */
+export function teamDepartments(shift: LineupShift, editing: LineupEditing | null): LineupShift["departments"] {
+  if (!editing) return shift.departments;
+  return [
+    ...shift.departments,
+    ...editing.catalog.departments
+      .filter((department) => !shift.departments.some((item) => item.id === department.id))
+      .map((department) => ({ ...department, jobs: [] })),
+  ].sort(
+    (a, b) => (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }),
   );
 }
 
@@ -111,13 +138,17 @@ export function OutGroups({
   shift,
   timeFormat,
   editing,
+  phone = false,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
   readonly editing: LineupEditing | null;
+  /** The phone's rows (the design's outGroups, not F): the name, a line under it, the button at the end. */
+  readonly phone?: boolean;
 }) {
   const { calledOff, replaced } = shift.out;
+  if (phone) return <PhoneOutGroups location={location} shift={shift} timeFormat={timeFormat} editing={editing} />;
   return (
     <>
       {calledOff.length ? (
@@ -186,6 +217,91 @@ export function OutGroups({
                       change={{ ...shift.publish.target, action: "undo_replace", row: { row_id: by.rowId } } as LineupEdit}
                     />
                   ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+function PhoneOutGroups({
+  location,
+  shift,
+  timeFormat,
+  editing,
+}: {
+  readonly location: LineupLocation;
+  readonly shift: LineupShift;
+  readonly timeFormat: ScheduleTimeFormat;
+  readonly editing: LineupEditing | null;
+}) {
+  const { calledOff, replaced } = shift.out;
+  return (
+    <>
+      {calledOff.length ? (
+        <section className="lineup-phone-dept lineup-staff-out" aria-label="Called off">
+          <h3>
+            Called off<span>{calledOff.length}</span>
+          </h3>
+          <div className="lineup-phone-list">
+            <ul aria-label="Called off">
+              {calledOff.map((row) => (
+                <li className="lineup-phone-row is-out" key={row.shiftId}>
+                  <LineupPersonCircle name={row.name} />
+                  <span className="lineup-phone-mid">
+                    <span className="lineup-phone-name">{row.name}</span>
+                    <span className="lineup-phone-time">
+                      {row.jobName} · called off {publishedAt(row.calledOffAt, timeFormat, location.timezone)}
+                    </span>
+                  </span>
+                  {editing ? (
+                    <BackButton
+                      editing={editing}
+                      label="Call in"
+                      name={`Call in ${row.name}`}
+                      change={{ ...shift.publish.target, action: "call_in", row: lineupRowRef(row) } as LineupEdit}
+                    />
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        </section>
+      ) : null}
+      {replaced.length ? (
+        <section className="lineup-phone-dept lineup-staff-out" aria-label="Replaced">
+          <h3>
+            Replaced<span>{replaced.length}</span>
+          </h3>
+          <div className="lineup-phone-list">
+            <ul aria-label="Replaced">
+              {replaced.map(({ row, by }) => (
+                <li className="lineup-phone-row is-out lineup-staff-rep-ph" key={row.shiftId}>
+                  <LineupPersonCircle name={row.name} />
+                  <span className="lineup-phone-mid">
+                    <span className="lineup-phone-name">{row.name}</span>
+                    {by ? (
+                      <span className="lineup-staff-rep-to">
+                        <span role="img" aria-label="replaced by">
+                          <ArrowLeftRight aria-hidden />
+                        </span>
+                        {by.name}
+                      </span>
+                    ) : null}
+                  </span>
+                  {editing && by?.rowId ? (
+                    <BackButton
+                      editing={editing}
+                      label="Undo"
+                      name={`Undo, put ${row.name} back`}
+                      change={{ ...shift.publish.target, action: "undo_replace", row: { row_id: by.rowId } } as LineupEdit}
+                    />
+                  ) : (
+                    <span className="lineup-phone-time">{row.jobName}</span>
+                  )}
                 </li>
               ))}
             </ul>
@@ -267,6 +383,7 @@ export function StaffWindow({
   place,
   timeFormat,
   onClose,
+  sheet = false,
 }: {
   readonly editing: LineupEditing;
   readonly location: LineupLocation;
@@ -274,6 +391,8 @@ export function StaffWindow({
   readonly place: StaffPlace;
   readonly timeFormat: ScheduleTimeFormat;
   readonly onClose: () => void;
+  /** The phone's: a sheet from the bottom (the design's pickLayer, frame "phone"). */
+  readonly sheet?: boolean;
 }) {
   const target = shift.publish.target;
   const query =
@@ -371,11 +490,11 @@ export function StaffWindow({
     });
 
   return createPortal(
-    <div className="lineup-edit-layer" role="presentation">
+    <div className={`lineup-edit-layer${sheet ? " is-sheet" : ""}`} role="presentation">
       <div className="lineup-edit-scrim" aria-hidden onClick={onClose} />
       <section
         ref={box}
-        className="lineup-edit-dlg lineup-staff-dlg"
+        className={`lineup-edit-dlg lineup-staff-dlg${sheet ? " is-sheet" : ""}`}
         role="dialog"
         aria-modal="true"
         aria-labelledby={titleId}
