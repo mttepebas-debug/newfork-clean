@@ -4,7 +4,7 @@ import { expect, test } from "../fixtures/test";
 import { signIn, type Person } from "../fixtures/world";
 
 // CALISAN-SCHEDULE-LISTE (Mert 2026-10-17, S-153): Employee → Schedule opens on My shifts, the Home lab's
-// "Zaman çizgisi" week list: This week · Next week, one card per day. The week changes only from the switch; a
+// "Zaman çizgisi" week list: This week · Next week, one card per day. The week changes only from the switch (and its arrows); a
 // finger swiped sideways over the list moves to the next page tab (Lineup), as on every tabbed page (S-146), and
 // the week is where it was on the way back. Team schedule is the published board, on a desktop only. The world
 // has no shifts in the current two weeks (its weeks are far ahead), so the hub's answer for them gets three of

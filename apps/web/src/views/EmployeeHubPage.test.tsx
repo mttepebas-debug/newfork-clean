@@ -604,6 +604,44 @@ describe("EmployeeHubPage", () => {
     vi.useRealTimers();
   });
 
+  // QA 60 (Mert 2026-10-20, "week ileri geri eklenmeli"): arrows beside the switch reach any week, back or on.
+  it("moves My shifts a week back or on from the arrows beside the switch", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule");
+    await screen.findByRole("tabpanel", { name: "This week" });
+
+    fireEvent.click(screen.getByRole("button", { name: "Following week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Next week" }).getAttribute("aria-selected")).toBe("true"));
+    fireEvent.click(screen.getByRole("button", { name: "Following week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Sep 7 – Sep 13" }).getAttribute("aria-selected")).toBe("true"));
+    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-09-07", "2026-09-13");
+
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Next week" }).getAttribute("aria-selected")).toBe("true"));
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "This week" }).getAttribute("aria-selected")).toBe("true"));
+    // From This week chosen on the switch itself, back is the week before it.
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "Aug 17 – Aug 23" }).getAttribute("aria-selected")).toBe("true"));
+    expect(getEmployeeHub).toHaveBeenCalledWith(workspaceId, "2026-08-17", "2026-08-23");
+    vi.useRealTimers();
+  });
+
+  it("goes back from Next week chosen on the switch to This week", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));
+    vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+    renderPage("/app/employee-hub/schedule");
+    await screen.findByRole("tabpanel", { name: "This week" });
+
+    fireEvent.click(screen.getByRole("tab", { name: "Next week" }));
+    fireEvent.click(screen.getByRole("button", { name: "Previous week" }));
+    await waitFor(() => expect(screen.getByRole("tab", { name: "This week" }).getAttribute("aria-selected")).toBe("true"));
+    vi.useRealTimers();
+  });
+
   it("opens Your shift from a day card", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-26T19:00:00Z"));

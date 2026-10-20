@@ -1,6 +1,6 @@
 import type { EmployeeHubReadModel } from "@newfork/shared";
 import { useQueries, useQuery } from "@tanstack/react-query";
-import { CalendarX2 } from "lucide-react";
+import { CalendarX2, ChevronLeft, ChevronRight } from "lucide-react";
 import { useEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import { Link, useSearchParams } from "react-router";
 import { loadWeeklyPreferences } from "../availability/availability-data";
@@ -16,7 +16,7 @@ import { usePickupShifts } from "./shift-exchanges/pickup";
 
 // Employee → Schedule → My shifts (CALISAN-SCHEDULE-LISTE; Mert 2026-10-17, "Zaman çizgisi, Home sayfasındaki,
 // birebir"): This week and Next week, one card per day with a date tile. The week changes only from the switch
-// (Mert, same day): a sideways swipe belongs to the page tabs.
+// and its arrows (Mert, same day; arrows QA 60, 2026-10-20): a sideways swipe belongs to the page tabs.
 const WEEKDAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const weekday = (iso: string) => WEEKDAYS[new Date(`${iso}T12:00:00Z`).getUTCDay()]!;
 const dayOfMonth = (iso: string) => Number(iso.slice(8, 10));
@@ -125,6 +125,16 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
   // The two weeks slide as one track and the white pill with them (the lab's pager, drawn with a transform: a
   // scrolled pager pushed the app's own scroll area sideways on a phone).
   const go = (next: 0 | 1) => setPage(next);
+  // The arrows beside the switch reach any week, back or on, through ?date= (QA 60, Mert 2026-10-20).
+  const step = (days: number) => {
+    if (!weeks || !start || !board.data) return;
+    const target = addDays(weeks.starts[page], days);
+    setPage(switchWeeks(start, target, board.data.week_start_day).open);
+    const params = new URLSearchParams(search);
+    params.set("date", target);
+    params.delete("shift");
+    setSearch(params, { replace: true });
+  };
   const onTabKey = (event: KeyboardEvent<HTMLButtonElement>) => {
     if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
     event.preventDefault();
@@ -171,23 +181,31 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
           onRetry={() => void hub.refetch()}
         />
       ) : null}
-      <div className="ems-seg" role="tablist" aria-label="Week" ref={seg}>
-        {weeks.labels.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            role="tab"
-            id={`ems-tab-${i}`}
-            aria-selected={page === i}
-            aria-controls={`ems-week-${i}`}
-            tabIndex={page === i ? 0 : -1}
-            onClick={() => go(i as 0 | 1)}
-            onKeyDown={onTabKey}
-          >
-            {label}
-          </button>
-        ))}
-        <i className="ems-seg-i" aria-hidden="true" />
+      <div className="ems-nav">
+        <button type="button" className="ems-step" aria-label="Previous week" title="Previous week" onClick={() => step(-7)}>
+          <ChevronLeft size={18} aria-hidden="true" />
+        </button>
+        <div className="ems-seg" role="tablist" aria-label="Week" ref={seg}>
+          {weeks.labels.map((label, i) => (
+            <button
+              key={label}
+              type="button"
+              role="tab"
+              id={`ems-tab-${i}`}
+              aria-selected={page === i}
+              aria-controls={`ems-week-${i}`}
+              tabIndex={page === i ? 0 : -1}
+              onClick={() => go(i as 0 | 1)}
+              onKeyDown={onTabKey}
+            >
+              {label}
+            </button>
+          ))}
+          <i className="ems-seg-i" aria-hidden="true" />
+        </div>
+        <button type="button" className="ems-step" aria-label="Following week" title="Following week" onClick={() => step(7)}>
+          <ChevronRight size={18} aria-hidden="true" />
+        </button>
       </div>
       {/* The days scroll in their own frame on a phone, under the week switch (views/list-page-frozen.css). */}
       <div className="ems-frame">
