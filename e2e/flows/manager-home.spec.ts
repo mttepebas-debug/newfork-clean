@@ -69,9 +69,13 @@ async function open(browser: Browser, person: Person, size: typeof DESKTOP, both
   );
   // Other specs' swaps would wait on this manager too: this Home's list is the fixed day's alone.
   await page.route(/\/v1\/workspaces\/[^/]+\/shift-exchanges(\?.*)?$/, async (route: Route) => {
-    const response = await route.fetch();
-    const body = (await response.json()) as { cases?: unknown[] };
-    await route.fulfill({ response, json: { ...body, cases: [] } });
+    try {
+      const response = await route.fetch();
+      const body = (await response.json()) as { cases?: unknown[] };
+      await route.fulfill({ response, json: { ...body, cases: [] } });
+    } catch {
+      // The page closed while a read was on its way (the list reads every minute): nothing to answer.
+    }
   });
   await signIn(page, person);
   await expect(page).not.toHaveURL(/\/sign-in/);
@@ -138,6 +142,33 @@ test("desktop: Customize hides a section, Cancel keeps it, Save layout keeps the
   await page.getByRole("button", { name: "Move Todos down" }).click();
   await page.getByRole("button", { name: "Save layout" }).click();
   await expect(page.getByRole("region", { name: "Open shifts" })).toBeVisible();
+});
+
+// phone-page-top and frozen-header leave Home out (its greeting folds); this
+// stands in for them: the top bar holds still, the page scrolls under it, and
+// once the greeting is gone the bar's middle shows who is on now.
+test("phone: the top bar stays put while Home scrolls under it (zeynep)", async ({ browser }) => {
+  const page = await open(browser, "zeynep", PHONE, true);
+  const bar = page.locator(".mm-top");
+  const box = async () => {
+    const rect = await bar.boundingBox();
+    return rect && { top: Math.round(rect.y), height: Math.round(rect.height) };
+  };
+  const before = await box();
+  expect(before?.height).toBeGreaterThan(0);
+  const pill = page.locator(".mm-top-mid .dl-pill");
+  await expect(pill).toHaveCSS("opacity", "0");
+  for (const y of [200, 600, 100000]) {
+    const scrolled = await page.evaluate((y) => {
+      const main = document.querySelector<HTMLElement>(".app-main")!;
+      main.scrollTo(0, y);
+      return main.scrollTop;
+    }, y);
+    expect(scrolled).toBeGreaterThan(0);
+    await expect.poll(box).toEqual(before);
+  }
+  await expect(pill).toHaveCSS("opacity", "1");
+  await expect(pill).toContainText("3 on now");
 });
 
 test("phone: Home leads the bottom bar; one location is one card and no chips (ayse)", async ({ browser }) => {

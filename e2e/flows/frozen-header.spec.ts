@@ -254,7 +254,8 @@ test.describe("My Availability", () => {
 
 test("a window shorter than 560 px scrolls the whole page as before", async ({ browser }) => {
   const page = await open(browser, "zeynep", { width: 1440, height: 500 });
-  await visit(page, "/app/workspace");
+  // Not Home: it never freezes its heading (its greeting folds, S-210); a list page does.
+  await visit(page, "/app/announcements");
   const before = await topOf(page, "h1");
   expect(await scrollPage(page)).toBeGreaterThan(0);
   await expect.poll(() => topOf(page, "h1")).toBeLessThan(before!);
