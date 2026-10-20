@@ -34,6 +34,12 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Her iş sonunda kısa, gruplu liste: yapılan · biten · arayüzde değişen · yolda bulunanlar · sıradaki en önemli iş.
 - Aynı ekranın görsel işi o ekranın var olan Artifact'ında sürer.
 
+## Büyük iş
+- Büyük işte çalışma kopyasında git'e girmeyen bir plan dosyası açılır: `artifacts/<iş>/PLAN.md` (hedef, bitti ölçütü, dilimler, her dilimin durumu). Her dilim bitince güncellenir. Compact ya da yeni oturumdan sonra iş konuşmadan değil bu dosyadan devam eder; devir notu ayrıca yazılmaz.
+- İş dikey dilimlere bölünür: her dilim veritabanından ekrana kendi başına çalışır, kendi testiyle ayrı ayrı main'e girer.
+- Geniş keşif (bir şeyin nerelerde geçtiği, bir akışın izi) alt ajana verilir (`nf-okur` ya da Explore); ana oturuma yalnız sonuç ve dosya:satır gelir.
+- Bir klasördeki koda dokunmadan önce o klasörün `CLAUDE.md`'si okunur (`supabase/`, `apps/web/`, `apps/api/`, `e2e/`).
+
 ## Yapı
 - Bir isteğin yolu: ekran → TanStack Query hook'u (`*-data.ts`) → `apiRequest` → API route (`apps/api/src/<alan>/`) → `supabase.rpc('<ad>_service')` → RLS + `app_private.authorize()`. Web veriye API'den ulaşır; web'deki `can()` yalnız yansıtır.
 - Bugünkü şema `supabase/schema.sql`'de (elle düzenlenmez, `pnpm.cmd db:schema` üretir); bir fonksiyonun son hâli migration'larda değil orada aranır. Test dünyası `supabase/test-support/builder.sql`.
