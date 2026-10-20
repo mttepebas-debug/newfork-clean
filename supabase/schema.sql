@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 565, last: 20261020210000_invitation_two_accesses_retire.sql
--- fingerprint: sha256:46d4db142261ce77a012fb106cb53f4eb788fcd72ce89274139008fbcff83960
+-- migrations: 566, last: 20261020210000_invitation_two_accesses_retire.sql
+-- fingerprint: sha256:dbd933f363359e4c86384d04de60f077b58cdc6cadc1106c2020df02bbfe09f9
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -34740,6 +34740,18 @@ CREATE INDEX "audit_events_workspace_time_idx" ON "public"."audit_events" USING 
 
 
 CREATE INDEX "daily_lineup_acknowledgements_employee_idx" ON "public"."daily_lineup_acknowledgements" USING "btree" ("employee_id");
+
+
+
+CREATE INDEX "daily_lineup_drawings_art_idx" ON "public"."daily_lineup_drawings" USING "btree" ("art_key");
+
+
+
+CREATE INDEX "daily_lineup_drawings_employee_idx" ON "public"."daily_lineup_drawings" USING "btree" ("employee_id");
+
+
+
+CREATE INDEX "daily_lineup_drawings_job_idx" ON "public"."daily_lineup_drawings" USING "btree" ("job_id");
 
 
 
