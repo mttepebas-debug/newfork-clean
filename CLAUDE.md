@@ -5,7 +5,7 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 ## Güvenlik
 - Bir workspace başkasının verisini göremez: her tablo, fonksiyon ve uç RLS + `app_private.authorize()` / `scope_set()` üzerinden. Ret 42501 + `authz.*` hint; API'de `authz.not_member` → 404, diğer `authz.*` → 403. Yeni `*_service` `supabase/tests/authorization_matrix.test.sql` ve `authz_catalog.test.sql`'de sınıflanır.
 - Hata için önce kırmızı test; beklenti gevşetilmez (skip ve todo dahil).
-- Gizli anahtar commit edilmez (`.env.local`). SSN toplanmaz.
+- Gizli anahtar commit edilmez (`.env.local`).
 
 ## Kod ve main
 - Ana klasör (`newfork-clean`, main) Mert'indir: orada kod değiştirilmez, dal değiştirilmez. Her oturum işini kendi worktree'sinde yapar: `git worktree add ../newfork-wt/<iş> -b task/<iş> origin/main`, sonra `pnpm.cmd install`.
