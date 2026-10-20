@@ -1,6 +1,6 @@
 # Newfork
 
-ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngilizce (ABD); Mert'le (ürün sahibi, tek geliştirici) Türkçe ve sade konuşulur. pnpm + turbo monorepo: `apps/web` (React 19, Vite 7, TanStack Query), `apps/api` (Fastify 5, zod), `packages/shared` (tipler, saf kurallar), `packages/ui`, `supabase/` (migration, RLS, pgTAP), `e2e/` (Playwright).
+ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngilizce (ABD); Mert ürün sahibi ve tek geliştiricidir. pnpm + turbo monorepo: `apps/web` (React 19, Vite 7, TanStack Query), `apps/api` (Fastify 5, zod), `packages/shared` (tipler, saf kurallar), `packages/ui`, `supabase/` (migration, RLS, pgTAP), `e2e/` (Playwright).
 
 ## Güvenlik
 - Bir workspace başkasının verisini göremez: her tablo, fonksiyon ve uç RLS + `app_private.authorize()` / `scope_set()` üzerinden. Ret 42501 + `authz.*` hint; API'de `authz.not_member` → 404, diğer `authz.*` → 403. Yeni `*_service` `supabase/tests/authorization_matrix.test.sql` ve `authz_catalog.test.sql`'de sınıflanır.
@@ -8,10 +8,12 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Gizli anahtar commit edilmez (`.env.local`).
 
 ## Kod ve main
-- Ana klasör (`newfork-clean`, main) Mert'indir: orada kod değiştirilmez, dal değiştirilmez. Her oturum işini kendi worktree'sinde yapar: `git worktree add ../newfork-wt/<iş> -b task/<iş> origin/main`, sonra `pnpm.cmd install`.
+- Ana klasör (`newfork-clean`, main) Mert'indir: orada kod değiştirilmez, dal değiştirilmez. Her oturum işini kendi worktree'sinde yapar: `git worktree add ../newfork-wt/<iş> -b task/<iş> origin/main`, sonra `pnpm.cmd install` (yoksa vitest `@vitejs/plugin-react`'i bulamaz).
 - Yasak: `git stash`, `reset --hard`, `checkout -- .`, force push, `--no-verify`, toplu `git clean`, başkasının worktree'si, isimle süreç öldürme.
-- Main'e gönderim: dokunduğun paketin lint, typecheck ve testleri yeşil → `git fetch origin && git rebase origin/main` → `git push origin HEAD:main`. Main'deki her şey Vercel'den canlıya çıkar. Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar: `gh run watch` ile izle, kırmızıysa hemen düzelt.
-- Gönderdiğin işte migration varsa ortak yerel DB'ye uygula: `node scripts/lock.mjs run db -- node scripts/db-apply.mjs`.
+- Main'e gönderim: dokunduğun paketin lint, typecheck ve testleri yeşil → `git fetch origin && git rebase origin/main` → `git push origin HEAD:main`. Main'deki her şey Vercel'den canlıya çıkar.
+- Yetki, RLS, grant, `*_service`, davet, sahiplik devri, veri silme ya da parola/oturum koduna dokunan iş main'e göndermeden önce `nf-guvenlik` ONAY'ı alır.
+- Migration'lı işte sıra: ekleyen migration önce canlıya (aşağıda), sonra kod main'e; silen migration tersine, önce onu artık kullanmayan kod main'e, CI yeşil olunca canlıdan silme. Main'e girince ortak yerel DB'ye de uygula: `node scripts/lock.mjs run db -- node scripts/db-apply.mjs`.
+- Tam test (CI) main'e girince Mert'in bilgisayarındaki runner'da koşar; `gh run watch` ile izle. Kırmızıyı gören oturum düşen testin hangi commit'ten geldiğini bulur: kendi commit'iyse hemen düzeltir, değilse o commit'i `git revert` ile geri alır ve Mert'e söyler.
 
 ## Canlı veritabanı (Supabase `hvyvyisrqyathtliyyyv`)
 - İşi yapan oturum `canli-migration` skill'iyle uygular: yedek → MCP `apply_migration` → doğrulama → dosya adı = canlı ledger sürümü.
@@ -42,13 +44,12 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - Commit: İngilizce Conventional Commits, dosyalar adıyla (`git commit -a` yok).
 
 ## Komutlar
-- `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556; önizleme 5642/5643).
+- `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556; başka oturum boş bir port çifti alır).
 - `pnpm.cmd lint` · `pnpm.cmd typecheck` · `pnpm.cmd test` · `pnpm.cmd build`; odaklı: `pnpm.cmd --filter <paket> lint` / `typecheck`, `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`.
 - Ortak yerel DB'ye dokunan komut kilitle koşar: `node scripts/lock.mjs run db -- pnpm.cmd test:db` (akış testi: `node scripts/lock.mjs run db --e2e -- <komut>`); sıra `node scripts/lock.mjs status`.
 - Migration ekleyince `pnpm.cmd db:schema`, şema aynı commit'e; yeni pgTAP dosyası `supabase/tests/ci-green.txt`'ye.
 
 ## Tuzaklar
 - Yerel DB tek ve bütün oturumlarda ortak: migration denemesi tek transaction + `rollback`; main'e girmemiş migration ortak DB'ye kalıcı uygulanmaz.
-- Yeni worktree'de önce `pnpm.cmd install` (yoksa vitest `@vitejs/plugin-react`'i bulamaz).
 - Dev sunucusu port PID'iyle değil süreç ağacıyla durdurulur (`tsx watch` canlı kalır); yabancı PID'deki portu öldürme, boş port çifti al.
 - `mt.tepebas@gmail.com` Mert'in gerçek hesabıdır; testte `owner@newfork.test` ya da e2e dünyası kullanılır.
