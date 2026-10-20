@@ -442,7 +442,7 @@
 
 /* The pagination bar under a list table (K-S9): 12 above the table's frame,
    13 px text, controls 32 high with the shared field edge; the current page is
-   the action green. Same row on a phone, the range line wraps under. */
+   the action green. A phone keeps one row (below). */
 .list-pagination {
   display: flex;
   flex-wrap: wrap;
@@ -500,4 +500,30 @@
 .list-pagination-gap {
   min-width: 20px;
   text-align: center;
+}
+/* A phone has room for one row only: Rows per page, the range, back and next.
+   Page numbers grew with the page count and wrapped the bar into two rows, so
+   Rows per page jumped up on a new size or page (Mert 2026-10-20). The range
+   says where you are; on a very narrow screen it gives way, never the row. */
+@media (max-width: 720px) {
+  .list-pagination {
+    flex-wrap: nowrap;
+    gap: 8px;
+  }
+  .list-pagination-size {
+    flex: 0 0 auto;
+  }
+  .list-pagination-range {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .list-pagination-pages {
+    flex: 0 0 auto;
+  }
+  .list-pagination-pages button[aria-label^="Page "],
+  .list-pagination-gap {
+    display: none;
+  }
 }

@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { fireEvent, render, screen, within } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { ListPagination, pageNumbers } from "./ListPagination";
@@ -64,5 +65,26 @@ describe("ListPagination", () => {
     expect(pageNumbers(10, 20)).toEqual([1, "gap", 9, 10, 11, "gap", 20]);
     expect(pageNumbers(20, 20)).toEqual([1, "gap", 18, 19, 20]);
     expect(pageNumbers(4, 7)).toEqual([1, 2, 3, 4, 5, 6, 7]);
+  });
+});
+
+// On a phone the bar is one row whatever the page count or range: a second
+// page number or a longer "26–39 of 39" wrapped it into two rows, and Rows per
+// page jumped up (Mert 2026-10-20). The range says where you are; back and
+// next move.
+describe("ListPagination on a phone", () => {
+  const css = readFileSync("src/views/list-page.css", "utf8").replace(/\/\*[\s\S]*?\*\//g, "");
+  const phone = [...css.matchAll(/@media \(max-width: 720px\) \{([\s\S]*?)\n\}/g)].map((match) => match[1]!).join("\n");
+  const rule = (selector: RegExp) =>
+    [...phone.matchAll(/([^{}]+)\{([^}]*)\}/g)].filter(([, head]) => selector.test(head!)).map(([, , body]) => body!).join(";");
+
+  it("keeps the bar on one row", () => {
+    expect(rule(/^\s*\.list-pagination\s*$/m)).toMatch(/flex-wrap\s*:\s*nowrap/);
+    expect(rule(/\.list-pagination-range/)).toMatch(/white-space\s*:\s*nowrap/);
+  });
+
+  it("leaves only back and next, no page numbers", () => {
+    expect(rule(/\.list-pagination-pages button\[aria-label\^="Page "\]/)).toMatch(/display\s*:\s*none/);
+    expect(rule(/\.list-pagination-gap/)).toMatch(/display\s*:\s*none/);
   });
 });
