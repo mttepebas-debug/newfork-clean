@@ -2281,6 +2281,9 @@ describe("EmployeeDrawer record actions follow the server", () => {
     renderDrawer("profile");
     expect(await screen.findByText("Loading employee")).toBeTruthy();
     expect(screen.queryByText("Loading employee...")).toBeNull();
+    // QA 55: a person being loaded is not drawn as a new employee.
+    expect(screen.queryByText("Code assigned on save")).toBeNull();
+    expect(document.querySelector(".employee-avatar")?.textContent ?? "").toBe("");
   });
 });
 

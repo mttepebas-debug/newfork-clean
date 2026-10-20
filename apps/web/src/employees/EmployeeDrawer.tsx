@@ -1109,17 +1109,18 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                 aria-label="Employee sections"
               >
                 <div className="employee-identity">
+                  {/* A person still loading is not drawn as a new one (QA 55). */}
                   <span className="employee-avatar" aria-hidden>
-                    {(draft.first_name || "N").slice(0, 1).toUpperCase()}
+                    {(draft.first_name || (props.creating ? "N" : "")).slice(0, 1).toUpperCase()}
                   </span>
                   <strong id="employee-drawer-title">
                     {props.creating
                       ? "New employee"
                       : (detail.data?.display_name ?? "Employee details")}
                   </strong>
-                  {!props.creating ? (
+                  {!props.creating && detail.data ? (
                     <span>
-                      {detail.data?.employee_code ?? "Code assigned on save"}
+                      {detail.data.employee_code ?? "Code assigned on save"}
                     </span>
                   ) : null}
                   {detail.data ? (
