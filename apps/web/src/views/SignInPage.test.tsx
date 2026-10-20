@@ -7,6 +7,7 @@ import {
   useLocation,
 } from "react-router";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import ForgotPasswordPage from "./ForgotPasswordPage";
 import { SignInPage } from "./SignInPage";
 
 const auth = vi.hoisted(() => ({
@@ -61,6 +62,28 @@ describe("SignInPage", () => {
     auth.signIn.mockResolvedValue(true);
     auth.signUp.mockReset();
     auth.signUp.mockResolvedValue(true);
+  });
+
+  // QA 64: the address already typed goes along, in the page's state, never the URL.
+  it("carries the typed email to the password reset page", () => {
+    render(
+      <MemoryRouter initialEntries={["/sign-in"]}>
+        <Routes>
+          <Route path="/sign-in" element={<SignInPage />} />
+          <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+        </Routes>
+      </MemoryRouter>,
+    );
+    fireEvent.change(screen.getByLabelText("Email"), {
+      target: { value: "ayse@example.test" },
+    });
+    const forgot = screen.getByRole("link", { name: "Forgot password?" });
+    expect(forgot.getAttribute("href")).toBe("/forgot-password");
+    fireEvent.click(forgot);
+
+    expect(
+      (screen.getByLabelText("Email") as HTMLInputElement).value,
+    ).toBe("ayse@example.test");
   });
 
   it("offers a way to reset a forgotten password when signing in, not when creating an account", () => {

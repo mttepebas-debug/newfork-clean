@@ -144,7 +144,8 @@ export function SignInPage() {
               required
             />
             {creatingAccount ? null : (
-              <Link className="pb-link" to="/forgot-password">
+              // The typed address rides in the page's state, never the URL (QA 64).
+              <Link className="pb-link" to="/forgot-password" state={{ email: email.trim() }}>
                 Forgot password?
               </Link>
             )}

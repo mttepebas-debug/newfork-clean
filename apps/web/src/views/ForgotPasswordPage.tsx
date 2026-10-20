@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from "react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 import { requestPasswordReset } from "../lib/supabase";
 import { PreBizFrame } from "../shell/prebiz/PreBiz";
 import { FieldNote } from "../shell/FieldNote";
@@ -7,7 +7,9 @@ import { FieldNote } from "../shell/FieldNote";
 // BL-137. One answer for every email, so the screen never says whether an
 // account exists. Visual polish is nf-arayuz's; this reuses the sign-in parts.
 export default function ForgotPasswordPage() {
-  const [email, setEmail] = useState("");
+  // The address typed on Sign in comes along in the page's state (QA 64).
+  const carried = (useLocation().state as { email?: unknown } | null)?.email;
+  const [email, setEmail] = useState(typeof carried === "string" ? carried : "");
   const [submitting, setSubmitting] = useState(false);
   const [sent, setSent] = useState(false);
   const [error, setError] = useState<string | null>(null);
