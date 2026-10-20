@@ -181,6 +181,15 @@ select is(
 );
 select ok(not has_function_privilege('authenticated', 'app_private.deal_lineup_art(text, jsonb, jsonb)', 'execute'),
   'the browser cannot call the deal');
+-- Every foreign key is served by an index that starts with its first column: deleting a person, a job or a
+-- drawing does not scan the table. The lineup's is the primary key's lead column.
+select is(
+  (select array_agg(c.conname::text order by c.conname) from pg_constraint c
+   where c.conrelid = 'public.daily_lineup_drawings'::regclass and c.contype = 'f'
+     and not exists (select 1 from pg_index i where i.indrelid = c.conrelid
+                     and (i.indkey::int2[])[0] = c.conkey[1])),
+  null, 'every foreign key of daily_lineup_drawings leads an index'
+);
 
 -- 2. Every row with a person carries a key; a draft deals evenly per job. Two icons over five cooks: 3 and 2.
 create temporary table draft as select pg_temp.drawings() as map;
