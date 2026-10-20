@@ -490,7 +490,8 @@ function WelcomeStep({
       <p className="onboarding-eyebrow">Welcome to {model.workspace_name}</p>
       <h1>Let's set up your employee account</h1>
       <p className="onboarding-lead">
-        A few steps, then your manager checks them and opens your access.
+        A few steps, then you're in. If anything needs a manager's check, we'll
+        tell you here.
       </p>
       <dl className="onboarding-assignment-summary">
         <div>

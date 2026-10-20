@@ -538,6 +538,13 @@ describe("EmployeeOnboardingPage", () => {
     expect(
       await screen.findByText("Let's set up your employee account"),
     ).toBeTruthy();
+    // Most workspaces open access without a manager's look, so the welcome
+    // does not promise one (the workspace decides; the page says so if it does).
+    expect(
+      screen.getByText(
+        "A few steps, then you're in. If anything needs a manager's check, we'll tell you here.",
+      ),
+    ).toBeTruthy();
     expect(screen.getByText("Downtown")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: /begin/i }));
     expect(
