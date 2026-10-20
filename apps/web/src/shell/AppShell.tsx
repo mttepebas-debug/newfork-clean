@@ -7,7 +7,6 @@ import {
   FileText,
   ClipboardList,
   Home,
-  LayoutDashboard,
   LogOut,
   Megaphone,
   Menu,
@@ -60,8 +59,9 @@ interface NavItem {
 const navItems: readonly NavItem[] = [
   {
     to: "/app/workspace",
-    label: "Workspace",
-    icon: LayoutDashboard,
+    // The managers' Home: one name in both views (Mert 2026-10-19, KARARLAR S-210 (b)); the address stays.
+    label: "Home",
+    icon: Home,
     anyOf: ["workspace.read"],
     section: "management",
     roles: ["owner", "admin", "manager"],

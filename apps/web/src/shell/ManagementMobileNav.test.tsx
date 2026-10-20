@@ -108,7 +108,7 @@ describe("ManagementMobileNav in the app shell", () => {
     context = owner;
     mount();
     // Lineup opens on a phone too (Mert 2026-10-14); a real phone has no Schedule entry.
-    expect(names(bar())).toEqual(["Workspace", "Schedule", "Requests", "Lineup", "More"]);
+    expect(names(bar())).toEqual(["Home", "Schedule", "Requests", "Lineup", "More"]);
     expect(names(morePages())).toEqual([
       "Employees",
       "Documents",

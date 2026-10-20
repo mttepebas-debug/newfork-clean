@@ -66,7 +66,7 @@ describe("the desktop left menu tree", () => {
     const order = within(primary())
       .getAllByRole("link", { hidden: true })
       .map((element) => element.textContent);
-    expect(order.slice(0, 4)).toEqual(["Workspace", "Schedule", "Lineup", "Requests"]);
+    expect(order.slice(0, 4)).toEqual(["Home", "Schedule", "Lineup", "Requests"]);
     expect(group("Lineup")).not.toBeNull();
     expect(group("Requests")).toBeNull();
     expect(link("Requests").className).not.toContain("nav-item-child");

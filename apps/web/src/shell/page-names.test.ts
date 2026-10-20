@@ -3,7 +3,7 @@ import { pageName } from "./page-names";
 
 describe("pageName", () => {
   it.each([
-    ["/app/workspace", "Workspace"],
+    ["/app/workspace", "Home"],
     ["/app/schedule", "Schedule"],
     ["/app/schedule/export", "Schedule"],
     ["/app/schedule/lineup", "Lineup"],

@@ -4,7 +4,7 @@
  * address and a page the API refuses say the same thing (Mert 2026-10-14).
  */
 const pageNames: readonly (readonly [RegExp, string])[] = [
-  [/^\/app\/workspace\/?$/, "Workspace"],
+  [/^\/app\/workspace\/?$/, "Home"],
   [/^\/app\/schedule\/requests\/?$/, "Requests"],
   [/^\/app\/schedule\/lineup\/?$/, "Lineup"],
   [/^\/app\/schedule(\/(export|templates))?\/?$/, "Schedule"],
