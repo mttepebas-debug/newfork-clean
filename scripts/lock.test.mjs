@@ -254,7 +254,8 @@ test("status: over 30 minutes is long, taken before boot is dead, waiting ticket
     path.join(tmpDir, "queue-db", "000000000000009-9-w.json"),
     JSON.stringify({ identity: "run/bekleyen-9", command: "pnpm.cmd test:db", pid: process.pid, startedAt: new Date().toISOString() }),
   );
-  const s = status()[0];
+  // A machine up for years: a fresh CI machine booted under 31 minutes ago would call it dead.
+  const s = status({ boot: Date.parse("2001-01-01T00:00:00Z") })[0];
   assert.equal(s.long, true);
   assert.equal(s.dead, false);
   assert.deepEqual(s.queue, [{ identity: "run/bekleyen-9", command: "pnpm.cmd test:db", dead: false }]);

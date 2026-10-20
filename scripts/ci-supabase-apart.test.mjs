@@ -52,10 +52,12 @@ function run(runnerName, ranges, extraEnv = {}) {
     fs.writeFileSync(path.join(cwd, "netsh.txt"), netshOutput(ranges));
     fs.writeFileSync(netsh, '#!/usr/bin/env bash\ncat "$(dirname "$0")/netsh.txt"\n', { mode: 0o755 });
   }
+  // On a GitHub-hosted runner the job's own RUNNER_ENVIRONMENT would make every case lane 1.
+  const { RUNNER_ENVIRONMENT, ...hostEnv } = process.env;
   const r = spawnSync(BASH, [SCRIPT], {
     cwd,
     encoding: "utf8",
-    env: { ...process.env, RUNNER_NAME: runnerName, GITHUB_ENV: githubEnv, APART_NETSH: netsh, ...extraEnv },
+    env: { ...hostEnv, RUNNER_NAME: runnerName, GITHUB_ENV: githubEnv, APART_NETSH: netsh, ...extraEnv },
   });
   const config = fs.readFileSync(path.join(cwd, "supabase", "config.toml"), "utf8");
   return { code: r.status, out: `${r.stdout}${r.stderr}`, config, env: fs.readFileSync(githubEnv, "utf8") };
