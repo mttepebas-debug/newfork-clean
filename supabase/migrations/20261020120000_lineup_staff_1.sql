@@ -143,7 +143,8 @@ begin
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
     end if;
   end if;
-  -- LINEUP-EDIT L3a: who is added or put in a place: someone this lineup may take, not on it already.
+  -- LINEUP-EDIT L3a: who is added or put in a place: someone this lineup may take, not on it already in any way
+  -- (called off: Call in brings her back; replaced: Undo does).
   if payload ->> 'action' in ('add_person', 'replace') then
     who := (person ->> 'employee_id')::uuid;
     if not app_private.lineup_staff_eligible(target_workspace_id, place.id, who) then
@@ -154,15 +155,15 @@ begin
       from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
         jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
       where (x ->> 'shift_type_id')::uuid is not distinct from type_id and (r ->> 'employee_id')::uuid = who
-        and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
     ) then
       raise exception 'This person is on this lineup already' using errcode = '22023', hint = 'lineup.already_on';
     end if;
   end if;
-  -- Called off or replaced, a person isn't on the lineup to be called off or replaced (Call in brings one back).
+  -- Called off or replaced, a person isn't on the lineup to be called off or replaced (Call in brings one back);
+  -- a place taken from someone who took a place goes back the way it came, the last one first.
   if payload ->> 'action' in ('call_off', 'replace')
      and (target ->> 'called_off_at' is not null or target ->> 'replaced_by_row_id' is not null)
-     or payload ->> 'action' = 'call_in' and target ->> 'replaced_by_row_id' is not null then
+     or payload ->> 'action' in ('call_in', 'undo_replace') and target ->> 'replaced_by_row_id' is not null then
     raise exception 'This person isn''t on the lineup now' using errcode = '22023', hint = 'lineup.row_out';
   end if;
 

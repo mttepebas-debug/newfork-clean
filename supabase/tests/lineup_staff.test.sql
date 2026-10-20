@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(30);
+select plan(37);
 
 -- LINEUP-EDIT L3a (KARARLAR S-178 madde 5-7; Mert 2026-10-20 ~04:20 AM PT, "Bu kapsamla, Moved sonra"): on a draft
 -- lineup a manager calls a person off and back in, adds somebody from a scored list (Best fit / Available /
@@ -143,6 +143,20 @@ select is(
   row('09:00', '15:00')::text, 'the hours measured by: the kitchen''s on this lineup'
 );
 
+-- Another location's draft is its own: Besiktas moves Deniz to 9 AM - 3 PM in a lineup it hasn't published, and
+-- the list still reads Besiktas's published Schedule (the review of 051577fd2; the Schedule's ghost shift).
+insert into public.daily_lineups (id, workspace_id, location_id, service_date, shift_type_id)
+values (tests.remember('e:lineup:b', gen_random_uuid()), tests.id('e'), tests.id('e:B'), tests.week(0), tests.id('e:type:lunch'));
+insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, starts, ends)
+select tests.id('e'), tests.id('e:lineup:b'), tests.id('e:B'), tests.week(0), s.source_shift_id, '09:00', '15:00'
+from public.schedule_published_shifts s where s.id = tests.id('e:shift:deniz');
+select is(
+  (select c -> 'why' from jsonb_array_elements(pg_temp.candidates(tests.user('e:mia'),
+     jsonb_build_object('department_id', tests.id('e:kitchen'))) -> 'candidates') c where c ->> 'name' = 'Deniz Person'),
+  '{"reason": "elsewhere", "location_name": "Besiktas", "shift_name": "Lunch", "start_time": "10:00", "end_time": "14:00", "partial": true}'::jsonb,
+  'another location''s draft doesn''t show: its published Schedule does'
+);
+
 -- 2. Replace's list for Eli's row: his position and hours; the floor's Gus is only to consider.
 select is(
   (select string_agg((c ->> 'name') || ' ' || (c ->> 'group'), ', ' order by o)
@@ -221,7 +235,23 @@ select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'call_in',
   jsonb_build_object('source_shift_id', (select value from fixture where key = 'eli_source'))));
 select is((select r ->> 'called_off_at' from pg_temp.row_of('eli') r), null, 'Call in brings him back');
 
--- 6. Replace: Cem takes Eli's place, his position, hours and section; Undo gives it back.
+-- Called off, a person is still on the lineup: added again, she would be there twice (the review of 051577fd2).
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'call_off', 'row',
+  jsonb_build_object('row_id', (select r ->> 'id' from pg_temp.row_of('ana') r))));
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'add_person', 'person',
+    jsonb_build_object('employee_id', %L, 'job_id', %L)))$$, tests.user('e:mia'), tests.id('e:ana'), tests.id('e:job:cook'))),
+  '22023:lineup.already_on', 'someone called off is called back in, not added again'
+);
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'call_in', 'row',
+  jsonb_build_object('row_id', (select r ->> 'id' from pg_temp.row_of('ana') r))));
+
+-- 6. Replace: Cem takes Eli's place, his position, hours, label, section and place in the order; Undo gives it back.
+insert into public.shift_labels (id, workspace_id, name) values (tests.remember('e:label:lead', gen_random_uuid()), tests.id('e'), 'Lead');
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'set_row', 'row', jsonb_build_object(
+  'source_shift_id', (select value from fixture where key = 'eli_source'), 'label_ids', jsonb_build_array(tests.id('e:label:lead')),
+  'section_name', 'Window')));
+update public.daily_lineup_rows set sort_order = 3 where source_shift_id = (select value from fixture where key = 'eli_source');
 select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'replace',
   'row', jsonb_build_object('source_shift_id', (select value from fixture where key = 'eli_source')),
   'person', jsonb_build_object('employee_id', tests.id('e:cem'))));
@@ -230,6 +260,30 @@ select is(
    from pg_temp.row_of('cem') c, pg_temp.row_of('eli') e),
   row('09:00', '15:00', tests.id('e:job:cook')::text, true)::text, 'Cem has Eli''s place, and Eli is Replaced by him'
 );
+select is(
+  (select row(c -> 'label_ids', c ->> 'section_id', c ->> 'section_name', c ->> 'sort_order')::text from pg_temp.row_of('cem') c),
+  row(jsonb_build_array(tests.id('e:label:lead')), null, 'Window', '3')::text,
+  'and Eli''s label, his section (a name typed for today) and his place in the order'
+);
+-- Ana takes Cem's place in turn: Cem's Undo would leave two in one place (the review of 051577fd2).
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'call_off', 'row',
+  jsonb_build_object('row_id', (select r ->> 'id' from pg_temp.row_of('ana') r))));
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'replace', 'row', jsonb_build_object('row_id', %L),
+    'person', jsonb_build_object('employee_id', %L)))$$,
+    tests.user('e:mia'), (select r ->> 'id' from pg_temp.row_of('cem') r), tests.id('e:ana'))),
+  '22023:lineup.already_on', 'a person called off here doesn''t take a place either'
+);
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'replace',
+  'row', jsonb_build_object('row_id', (select r ->> 'id' from pg_temp.row_of('cem') r)),
+  'person', jsonb_build_object('employee_id', tests.id('e:gus'))));
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'undo_replace', 'row', jsonb_build_object('row_id', %L)))$$,
+    tests.user('e:mia'), (select r ->> 'id' from pg_temp.row_of('cem') r))),
+  '22023:lineup.row_out', 'Undo goes back the way it came: Gus''s first, then Cem''s'
+);
+select pg_temp.edit(tests.user('e:mia'), jsonb_build_object('action', 'undo_replace', 'row',
+  jsonb_build_object('row_id', (select r ->> 'id' from pg_temp.row_of('gus') r))));
 select is(
   pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'replace', 'row', jsonb_build_object('source_shift_id', %L),
     'person', jsonb_build_object('employee_id', %L)))$$,
@@ -249,6 +303,13 @@ select is(
   '22023:lineup.not_replacing', 'Undo needs a place taken'
 );
 
+-- Who may change who is on it: another location's manager is out of scope here too.
+select is(
+  pg_temp.refusal(format($$select pg_temp.edit(%L, jsonb_build_object('action', 'call_off', 'row', jsonb_build_object('source_shift_id', %L)))$$,
+    tests.user('e:bo'), (select value from fixture where key = 'eli_source'))),
+  '42501:authz.out_of_scope', 'another location''s manager calls nobody off here'
+);
+
 -- 7. The lock is the edit's: a published lineup changes after Edit only.
 select public.lineup_command_service(tests.user('e:mia'), tests.id('e'), gen_random_uuid(), 'share', jsonb_build_object(
   'lineups', jsonb_build_array(jsonb_build_object('location_id', tests.id('e:K'), 'service_date', tests.week(0),
@@ -265,6 +326,11 @@ select ok(
     and not has_function_privilege('authenticated', 'public.get_lineup_candidates_service(uuid, uuid, jsonb)', 'execute')
     and has_function_privilege('service_role', 'public.get_lineup_candidates_service(uuid, uuid, jsonb)', 'execute'),
   'only the API reads the candidates'
+);
+select ok(
+  not has_function_privilege('anon', 'app_private.lineup_staff_eligible(uuid, uuid, uuid)', 'execute')
+    and not has_function_privilege('authenticated', 'app_private.lineup_staff_eligible(uuid, uuid, uuid)', 'execute'),
+  'and nobody calls the eligibility rule from outside'
 );
 
 select * from finish();

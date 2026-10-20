@@ -4,7 +4,7 @@
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
 -- migrations: 559, last: 20261020120100_lineup_staff_2.sql
--- fingerprint: sha256:607d1e5700fcbbaa25abdabdd2b6accfe2eba69d66f55cda6be96b26573c3b4e
+-- fingerprint: sha256:95ceca5ad5de9f7f1a0eb93a1a71a87abe7ff5cc641cb05eb8be20b2b5177854
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15556,18 +15556,27 @@ begin
   end if;
   win_minutes := extract(epoch from win_to - win_from) / 60;
 
-  with shifts as (
-    -- Everyone's shift that day, wherever, but this lineup's: who is on it is not offered.
+  with day_rows as (
+    -- Everyone's shift that day, wherever, but this lineup's: who is on it is not offered. Here, and where its lineup
+    -- is published, as the lineup has it; at another location's draft, as its published Schedule has it (a draft is
+    -- its manager's; the Schedule's ghost shift says no more).
     select (r ->> 'employee_id')::uuid as employee_id, (l ->> 'id')::uuid as location_id, l ->> 'name' as location_name,
-      coalesce(x ->> 'shift_type_name', 'No shift type') as shift_name, r ->> 'start_time' as start_time,
-      r ->> 'end_time' as end_time,
-      (day + (r ->> 'start_time')::time) at time zone (l ->> 'timezone') as from_at,
-      (day + (r ->> 'end_time')::time
-        + case when (r -> 'crosses_midnight')::boolean then interval '1 day' else interval '0' end) at time zone (l ->> 'timezone')
-        as to_at
+      l ->> 'timezone' as zone, coalesce(x ->> 'shift_type_name', 'No shift type') as shift_name, r,
+      (l ->> 'id')::uuid = place.id or (x -> 'published')::boolean as live
     from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
-    where r ->> 'employee_id' is not null and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+    where r ->> 'employee_id' is not null
       and not ((l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id)
+  ), shifts as (
+    select d.employee_id, d.location_id, d.location_name, d.shift_name, t.start_time, t.end_time,
+      (day + t.start_time::time) at time zone d.zone as from_at,
+      (day + t.end_time::time + case when t.end_time::time <= t.start_time::time then interval '1 day' else interval '0' end)
+        at time zone d.zone as to_at
+    from day_rows d
+    cross join lateral (select
+        case when d.live then d.r ->> 'start_time' else d.r ->> 'schedule_start_time' end as start_time,
+        case when d.live then d.r ->> 'end_time' else d.r ->> 'schedule_end_time' end as end_time) t
+    where case when d.live then d.r ->> 'called_off_at' is null and d.r ->> 'replaced_by_row_id' is null
+               else not (d.r -> 'lineup_only')::boolean end
   ), measured as (
     select s.*, greatest(0, extract(epoch from least(s.to_at, win_to) - greatest(s.from_at, win_from)) / 60) as overlap
     from shifts s
@@ -17981,7 +17990,8 @@ begin
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
     end if;
   end if;
-  -- LINEUP-EDIT L3a: who is added or put in a place: someone this lineup may take, not on it already.
+  -- LINEUP-EDIT L3a: who is added or put in a place: someone this lineup may take, not on it already in any way
+  -- (called off: Call in brings her back; replaced: Undo does).
   if payload ->> 'action' in ('add_person', 'replace') then
     who := (person ->> 'employee_id')::uuid;
     if not app_private.lineup_staff_eligible(target_workspace_id, place.id, who) then
@@ -17992,15 +18002,15 @@ begin
       from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
         jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
       where (x ->> 'shift_type_id')::uuid is not distinct from type_id and (r ->> 'employee_id')::uuid = who
-        and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
     ) then
       raise exception 'This person is on this lineup already' using errcode = '22023', hint = 'lineup.already_on';
     end if;
   end if;
-  -- Called off or replaced, a person isn't on the lineup to be called off or replaced (Call in brings one back).
+  -- Called off or replaced, a person isn't on the lineup to be called off or replaced (Call in brings one back);
+  -- a place taken from someone who took a place goes back the way it came, the last one first.
   if payload ->> 'action' in ('call_off', 'replace')
      and (target ->> 'called_off_at' is not null or target ->> 'replaced_by_row_id' is not null)
-     or payload ->> 'action' = 'call_in' and target ->> 'replaced_by_row_id' is not null then
+     or payload ->> 'action' in ('call_in', 'undo_replace') and target ->> 'replaced_by_row_id' is not null then
     raise exception 'This person isn''t on the lineup now' using errcode = '22023', hint = 'lineup.row_out';
   end if;
 

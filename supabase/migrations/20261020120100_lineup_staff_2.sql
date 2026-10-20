@@ -3,8 +3,9 @@
 -- by a score: Best fit (no shift today, assigned to the position), Available (assigned, free for these hours),
 -- Consider (free, not assigned to it), Unavailable (approved time off, or working somewhere else at those hours:
 -- added with "Add anyway"). Someone already on this lineup, or here at another shift for half these hours or more,
--- is not offered. Another location's shift says only where, which shift and its hours, as the Schedule's ghost
--- shift does. Who may: lineup.share at the location.
+-- is not offered. Another location's shift says only where, which shift and its hours, as its published lineup or
+-- else its published Schedule has them (never its draft), as the Schedule's ghost shift does. Who may: lineup.share
+-- at the location.
 
 -- payload: location_id, service_date, shift_type_id (null: the location's other shifts), and department_id (Add
 -- Staff; null: the positions with no department) or row: source_shift_id or row_id (Replace).
@@ -102,18 +103,27 @@ begin
   end if;
   win_minutes := extract(epoch from win_to - win_from) / 60;
 
-  with shifts as (
-    -- Everyone's shift that day, wherever, but this lineup's: who is on it is not offered.
+  with day_rows as (
+    -- Everyone's shift that day, wherever, but this lineup's: who is on it is not offered. Here, and where its lineup
+    -- is published, as the lineup has it; at another location's draft, as its published Schedule has it (a draft is
+    -- its manager's; the Schedule's ghost shift says no more).
     select (r ->> 'employee_id')::uuid as employee_id, (l ->> 'id')::uuid as location_id, l ->> 'name' as location_name,
-      coalesce(x ->> 'shift_type_name', 'No shift type') as shift_name, r ->> 'start_time' as start_time,
-      r ->> 'end_time' as end_time,
-      (day + (r ->> 'start_time')::time) at time zone (l ->> 'timezone') as from_at,
-      (day + (r ->> 'end_time')::time
-        + case when (r -> 'crosses_midnight')::boolean then interval '1 day' else interval '0' end) at time zone (l ->> 'timezone')
-        as to_at
+      l ->> 'timezone' as zone, coalesce(x ->> 'shift_type_name', 'No shift type') as shift_name, r,
+      (l ->> 'id')::uuid = place.id or (x -> 'published')::boolean as live
     from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
-    where r ->> 'employee_id' is not null and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+    where r ->> 'employee_id' is not null
       and not ((l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id)
+  ), shifts as (
+    select d.employee_id, d.location_id, d.location_name, d.shift_name, t.start_time, t.end_time,
+      (day + t.start_time::time) at time zone d.zone as from_at,
+      (day + t.end_time::time + case when t.end_time::time <= t.start_time::time then interval '1 day' else interval '0' end)
+        at time zone d.zone as to_at
+    from day_rows d
+    cross join lateral (select
+        case when d.live then d.r ->> 'start_time' else d.r ->> 'schedule_start_time' end as start_time,
+        case when d.live then d.r ->> 'end_time' else d.r ->> 'schedule_end_time' end as end_time) t
+    where case when d.live then d.r ->> 'called_off_at' is null and d.r ->> 'replaced_by_row_id' is null
+               else not (d.r -> 'lineup_only')::boolean end
   ), measured as (
     select s.*, greatest(0, extract(epoch from least(s.to_at, win_to) - greatest(s.from_at, win_from)) / 60) as overlap
     from shifts s
