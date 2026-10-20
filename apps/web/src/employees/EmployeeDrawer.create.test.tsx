@@ -224,6 +224,37 @@ describe("employee create flow", () => {
     },
   );
 
+  // Bug 3: the role field waited for an email without saying so, and read
+  // "No assignable roles" while the roles were still loading or had failed.
+  it("says the invite role waits for an email", async () => {
+    setup();
+    const field = await screen.findByLabelText("Invite role");
+    const note = document.getElementById(field.getAttribute("aria-describedby") ?? "");
+    expect(note?.textContent).toBe("Add an email to choose an invite role.");
+  });
+
+  it("tells loading roles, failed roles and no roles apart", async () => {
+    vi.mocked(loadEmployeeReferenceData).mockReturnValue(new Promise(() => {}));
+    const loading = setup();
+    expect(screen.getByLabelText("Invite role").textContent).toBe("Loading roles…");
+    loading.client.clear();
+    document.body.innerHTML = "";
+
+    vi.mocked(loadEmployeeReferenceData).mockRejectedValue(new Error("offline"));
+    setup();
+    await waitFor(() => expect(screen.getByLabelText("Invite role").textContent).toBe("Roles didn't load"));
+    document.body.innerHTML = "";
+
+    vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
+      locations: [{ id: ids.location, name: "Downtown", archived: false }],
+      departments: [],
+      jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, owner: false }],
+      inviteRoles: [],
+    });
+    setup();
+    await waitFor(() => expect(screen.getByLabelText("Invite role").textContent).toBe("You can't invite with any role"));
+  });
+
   it("offers Save and Invite together after completing assignments and adding email", async () => {
     setup();
     expect(screen.getByLabelText("Invite role")).toHaveProperty(

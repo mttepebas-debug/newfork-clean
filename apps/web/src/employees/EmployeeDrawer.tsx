@@ -812,6 +812,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !props.creating &&
     !anyDirty &&
     (createResult !== null || saveMutation.isSuccess);
+  const rolesState = references.isError ? "error" : references.data ? "ready" : "loading";
   // The server sends only the roles this person may invite with (BL-231).
   const inviteRoles = [...(references.data?.inviteRoles ?? [])]
     .sort((a, b) => {
@@ -1482,6 +1483,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     roles={inviteRoles}
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
+                    rolesState={rolesState}
+                    waitsForEmail={!readiness.emailReady}
                     disabled={
                       busy ||
                       uncertainCreate ||
@@ -1598,6 +1601,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                     roles={inviteRoles}
                     inviteRoleId={inviteRoleId}
                     onInviteRoleChange={handleInviteRoleChange}
+                    rolesState={rolesState}
                     disabled={
                       busy ||
                       readOnly ||
@@ -3113,15 +3117,28 @@ function InviteRoleField({
   roles,
   inviteRoleId,
   onInviteRoleChange,
+  rolesState,
+  waitsForEmail = false,
   disabled,
   invalidAttempt,
 }: {
   roles: readonly InviteRoleOption[];
   inviteRoleId: string;
   onInviteRoleChange: (roleId: string) => void;
+  rolesState: "loading" | "error" | "ready";
+  /** The role only matters for an invite, so it waits for an email (bug 3). */
+  waitsForEmail?: boolean;
   disabled: boolean;
   invalidAttempt: number;
 }) {
+  const noteId = useId();
+  // Loading, a failed load and truly no roles each say so (bug 3).
+  const empty =
+    rolesState === "loading"
+      ? "Loading roles…"
+      : rolesState === "error"
+        ? "Roles didn't load"
+        : "You can't invite with any role";
   const selectedRoleId = roles.some((role) => role.id === inviteRoleId)
     ? inviteRoleId
     : "";
@@ -3134,22 +3151,25 @@ function InviteRoleField({
     <label className={`employee-field employee-invite-role-field${pulseClass}`}>
       <select
         aria-label="Invite role"
+        aria-describedby={noteId}
         aria-invalid={invalid || undefined}
         value={selectedRoleId}
         disabled={disabled || roles.length === 0}
         onChange={(event) => onInviteRoleChange(event.target.value)}
       >
         {roles.length > 0 ? <option value="">Select a role</option> : null}
-        {roles.length === 0 ? (
-          <option value="">No assignable roles</option>
-        ) : null}
+        {roles.length === 0 ? <option value="">{empty}</option> : null}
         {roles.map((role) => (
           <option key={role.id} value={role.id}>
             {role.name}
           </option>
         ))}
       </select>
-      <small>The selected role is applied when the invite is accepted.</small>
+      <small id={noteId}>
+        {waitsForEmail
+          ? "Add an email to choose an invite role."
+          : "The selected role is applied when the invite is accepted."}
+      </small>
     </label>
   );
 }
