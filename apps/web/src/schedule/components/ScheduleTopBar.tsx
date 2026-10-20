@@ -20,6 +20,7 @@ import {
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { ReactNode } from "react";
 
+import { Tooltip } from "../../shell/Tooltip";
 import { useCloseOnEscape } from "../lib/useCloseOnEscape";
 import { MiniCalendar, type CalendarMarker } from "./MiniCalendar";
 import {
@@ -611,7 +612,7 @@ function SettingsMenuPanel({
           icon={showPresetShiftBadges ? <Eye size={15} /> : <EyeOff size={15} />}
           label={showHideLabel(Boolean(showPresetShiftBadges), "Preset badges")}
           onClick={onTogglePresetShiftBadges}
-          disabled={employeeSortMode !== "byJob"}
+          disabledReason={employeeSortMode !== "byJob" ? SORT_BY_JOB_REASON : null}
         />
       ) : null}
       <div className="schedule-menu-separator" />
@@ -627,7 +628,7 @@ function SettingsMenuPanel({
         icon={showRoleSeparators ? <Eye size={15} /> : <EyeOff size={15} />}
         label={showHideLabel(showRoleSeparators, "Role Separators")}
         onClick={onToggleRoleSeparators}
-        disabled={employeeSortMode !== "byJob"}
+        disabledReason={employeeSortMode !== "byJob" ? SORT_BY_JOB_REASON : null}
       />
       {onToggleUnassignedShifts ? (
         <SettingsToggleRow
@@ -635,7 +636,7 @@ function SettingsMenuPanel({
           icon={showUnassignedShifts ? <Eye size={15} /> : <EyeOff size={15} />}
           label={showHideLabel(Boolean(showUnassignedShifts), "Unassigned Shifts Row")}
           onClick={onToggleUnassignedShifts}
-          disabled={unassignedRowSettingsDisabled}
+          disabledReason={unassignedRowSettingsDisabled ? EDIT_ONLY_REASON : null}
         />
       ) : null}
       {onToggleUnassignedFrozen ? (
@@ -653,7 +654,7 @@ function SettingsMenuPanel({
           }
           label={`${unassignedFrozen ? "Unfreeze" : "Freeze"} Unassigned Shifts Row`}
           onClick={onToggleUnassignedFrozen}
-          disabled={unassignedRowSettingsDisabled}
+          disabledReason={unassignedRowSettingsDisabled ? EDIT_ONLY_REASON : null}
         />
       ) : null}
       {onToggleAvailability ? (
@@ -666,7 +667,7 @@ function SettingsMenuPanel({
             label={showHideLabel(Boolean(showAvailability), "Availability")}
             onClick={onToggleAvailability}
             // The orange "!" shows only in edit mode, so the switch does too (KARARLAR Schedule, 2026-10-06).
-            disabled={unassignedRowSettingsDisabled}
+            disabledReason={unassignedRowSettingsDisabled ? EDIT_ONLY_REASON : null}
           />
         </>
       ) : null}
@@ -702,32 +703,55 @@ function SettingsRadioRow({
   );
 }
 
+// A passive row says why it cannot be used, as the passive Publish does (BL-308, QA 47).
+const SORT_BY_JOB_REASON = "Sort by Job/Position to use this.";
+const EDIT_ONLY_REASON = "Available while editing.";
+
 function SettingsToggleRow({
   pressed,
   icon,
   label,
   onClick,
-  disabled = false,
+  disabledReason = null,
 }: {
   readonly pressed: boolean;
   readonly icon: ReactNode;
   readonly label: string;
   readonly onClick: () => void;
-  readonly disabled?: boolean;
+  readonly disabledReason?: string | null;
 }) {
+  const content = (
+    <>
+      {icon}
+      <span aria-hidden className="schedule-settings-row-bullet" />
+      <span className="schedule-settings-row-label">{label}</span>
+    </>
+  );
+  // The label is the action ("Hide …"/"Show …"), so no aria-pressed: it would
+  // read as the opposite of the screen (QA 48). data-pressed keeps the look.
+  if (disabledReason) {
+    // Still focusable and tappable, so the reason can be read; the press only shows it.
+    return (
+      <Tooltip
+        unstyled
+        label={label}
+        content={disabledReason}
+        className="schedule-settings-row"
+        aria-disabled="true"
+        data-pressed={String(pressed)}
+      >
+        {content}
+      </Tooltip>
+    );
+  }
   return (
-    // The label is the action ("Hide …"/"Show …"), so no aria-pressed: it would
-    // read as the opposite of the screen (QA 48). data-pressed keeps the look.
     <button
       type="button"
-      disabled={disabled}
       className="schedule-settings-row"
       data-pressed={pressed}
       onClick={onClick}
     >
-      {icon}
-      <span aria-hidden className="schedule-settings-row-bullet" />
-      <span className="schedule-settings-row-label">{label}</span>
+      {content}
     </button>
   );
 }

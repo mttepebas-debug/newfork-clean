@@ -4153,7 +4153,8 @@ button.workspace-switcher-item:hover:not(:disabled) {
   height: 15px;
   flex: 0 0 15px;
 }
-.schedule-command-menu-panel .schedule-settings-row:disabled {
+.schedule-command-menu-panel .schedule-settings-row:disabled,
+.schedule-command-menu-panel .schedule-settings-row[aria-disabled="true"] {
   opacity: 0.4;
   cursor: not-allowed;
   background: transparent;

@@ -281,8 +281,8 @@ describe("ScheduleTopBar", () => {
 
     expect(alphabetical.getAttribute("aria-checked")).toBe("true");
     expect(byJob.getAttribute("aria-checked")).toBe("false");
-    expect(presetBadges).toHaveProperty("disabled", true);
-    expect(roleSeparators).toHaveProperty("disabled", true);
+    expect(presetBadges.getAttribute("aria-disabled")).toBe("true");
+    expect(roleSeparators.getAttribute("aria-disabled")).toBe("true");
 
     fireEvent.click(byJob);
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("byJob");
@@ -311,11 +311,11 @@ describe("ScheduleTopBar", () => {
     expect(alphabeticalAfterSort.getAttribute("aria-checked")).toBe("false");
     expect(byJobAfterSort.getAttribute("aria-checked")).toBe("true");
     expect(
-      screen.getByRole("button", { name: "Hide Preset badges" }),
-    ).toHaveProperty("disabled", false);
+      screen.getByRole("button", { name: "Hide Preset badges" }).getAttribute("aria-disabled"),
+    ).toBe(null);
     expect(
-      screen.getByRole("button", { name: "Hide Role Separators" }),
-    ).toHaveProperty("disabled", false);
+      screen.getByRole("button", { name: "Hide Role Separators" }).getAttribute("aria-disabled"),
+    ).toBe(null);
 
     fireEvent.click(alphabeticalAfterSort);
     expect(onEmployeeSortModeChange).toHaveBeenCalledWith("alphabetical");
@@ -326,7 +326,7 @@ describe("ScheduleTopBar", () => {
     const { rerender } = renderTopBar({ showAvailability: true, onToggleAvailability, unassignedRowSettingsDisabled: true });
     fireEvent.click(screen.getByRole("button", { name: "Settings" }));
     const passive = screen.getByRole("button", { name: "Hide Availability" });
-    expect(passive).toHaveProperty("disabled", true);
+    expect(passive.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(passive);
     expect(onToggleAvailability).not.toHaveBeenCalled();
     rerender(
@@ -338,7 +338,7 @@ describe("ScheduleTopBar", () => {
     // QA 48: the label already says the action, so "pressed" would read as its opposite.
     expect(row.hasAttribute("aria-pressed")).toBe(false);
     expect(row.getAttribute("data-pressed")).toBe("true");
-    expect(row).toHaveProperty("disabled", false);
+    expect(row.getAttribute("aria-disabled")).toBe(null);
     fireEvent.click(row);
     expect(onToggleAvailability).toHaveBeenCalledOnce();
     rerender(
@@ -347,6 +347,42 @@ describe("ScheduleTopBar", () => {
       </MemoryRouter>,
     );
     expect(screen.getByRole("button", { name: "Show Availability" }).hasAttribute("aria-pressed")).toBe(false);
+  });
+
+  it("says why a passive Settings row cannot be used (QA 47)", () => {
+    const onToggleRoleSeparators = vi.fn();
+    const onToggleUnassignedShifts = vi.fn();
+    const onToggleAvailability = vi.fn();
+    renderTopBar({
+      employeeSortMode: "alphabetical",
+      unassignedRowSettingsDisabled: true,
+      onToggleRoleSeparators,
+      onToggleUnassignedShifts,
+      showAvailability: true,
+      onToggleAvailability,
+    });
+    fireEvent.click(screen.getByRole("button", { name: "Settings" }));
+    const reason = (row: HTMLElement) =>
+      document.getElementById(row.getAttribute("aria-describedby") ?? "")?.textContent ?? null;
+    const rows = {
+      "Hide Preset badges": "Sort by Job/Position to use this.",
+      "Hide Role Separators": "Sort by Job/Position to use this.",
+      "Hide Unassigned Shifts Row": "Available while editing.",
+      "Unfreeze Unassigned Shifts Row": "Available while editing.",
+      "Hide Availability": "Available while editing.",
+    };
+    for (const [name, why] of Object.entries(rows)) {
+      const row = screen.getByRole("button", { name });
+      // It stays reachable so the reason can be read, but does nothing (BL-308).
+      expect(row.getAttribute("aria-disabled")).toBe("true");
+      expect(reason(row)).toBe(why);
+      fireEvent.click(row);
+    }
+    expect(onToggleRoleSeparators).not.toHaveBeenCalled();
+    expect(onToggleUnassignedShifts).not.toHaveBeenCalled();
+    expect(onToggleAvailability).not.toHaveBeenCalled();
+    // A row that works has no reason to give.
+    expect(screen.getByRole("button", { name: "Hide Shift type in badges" }).hasAttribute("aria-describedby")).toBe(false);
   });
 
   it("keeps the Unassigned Shifts Row settings passive outside edit mode", () => {
@@ -365,8 +401,8 @@ describe("ScheduleTopBar", () => {
     const freeze = screen.getByRole("button", {
       name: /freeze Unassigned Shifts Row/i,
     });
-    expect(showHide).toHaveProperty("disabled", true);
-    expect(freeze).toHaveProperty("disabled", true);
+    expect(showHide.getAttribute("aria-disabled")).toBe("true");
+    expect(freeze.getAttribute("aria-disabled")).toBe("true");
     fireEvent.click(showHide);
     fireEvent.click(freeze);
     expect(onToggleUnassignedShifts).not.toHaveBeenCalled();

@@ -2818,18 +2818,18 @@ describe("App", () => {
 
     fireEvent.click(app.getByRole("button", { name: /Settings/ }));
     expect(
-      app.getByRole("button", { name: "Show Preset badges" }),
-    ).toHaveProperty("disabled", true);
+      app.getByRole("button", { name: "Show Preset badges" }).getAttribute("aria-disabled"),
+    ).toBe("true");
     expect(
-      app.getByRole("button", { name: "Show Role Separators" }),
-    ).toHaveProperty("disabled", true);
+      app.getByRole("button", { name: "Show Role Separators" }).getAttribute("aria-disabled"),
+    ).toBe("true");
     fireEvent.click(app.getByRole("menuitemradio", { name: "Job/Position" }));
     expect(
-      app.getByRole("button", { name: "Hide Preset badges" }),
-    ).toHaveProperty("disabled", false);
+      app.getByRole("button", { name: "Hide Preset badges" }).getAttribute("aria-disabled"),
+    ).toBe(null);
     expect(
-      app.getByRole("button", { name: "Hide Role Separators" }),
-    ).toHaveProperty("disabled", false);
+      app.getByRole("button", { name: "Hide Role Separators" }).getAttribute("aria-disabled"),
+    ).toBe(null);
 
     expect(employeeOrder()).toEqual([
       "Morgan No Primary",
@@ -5209,10 +5209,10 @@ describe("App", () => {
     const unfreeze = screen.getByRole("button", {
       name: "Unfreeze Unassigned Shifts Row",
     });
-    expect(unfreeze).toHaveProperty("disabled", true);
+    expect(unfreeze.getAttribute("aria-disabled")).toBe("true");
     expect(
-      screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }),
-    ).toHaveProperty("disabled", true);
+      screen.getByRole("button", { name: "Hide Unassigned Shifts Row" }).getAttribute("aria-disabled"),
+    ).toBe("true");
     fireEvent.click(unfreeze);
     expect(unassignedRow()).toBeNull();
     expect(screen.getAllByText("Alex Rivera").length).toBeGreaterThan(0);
