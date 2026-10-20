@@ -1,4 +1,5 @@
 import {
+  lineupCandidatesQuerySchema,
   lineupCommandInputSchema,
   lineupDayQuerySchema,
   lineupEditInputSchema,
@@ -65,6 +66,18 @@ export function registerLineupRoutes(
     if (!body.success) return reply.status(400).send({ error: "Choose what to change in the sections" });
     if (!service) return reply.status(503).send(unavailable);
     return reply.send(await service.sections({ ...actor, change: body.data }));
+  });
+
+  // LINEUP-EDIT L3a: who may join a department or take a person's place, by who may publish its lineups. A read with
+  // a body (a department or a row), so a POST.
+  app.post("/v1/workspaces/:workspaceId/lineups/candidates", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const actor = await actorFor(request.headers.authorization, params.data.workspaceId, "lineup.share");
+    const body = lineupCandidatesQuerySchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Choose a department or a person" });
+    if (!service) return reply.status(503).send(unavailable);
+    return reply.send(await service.candidates({ ...actor, query: body.data }));
   });
 
   app.get("/v1/workspaces/:workspaceId/lineups/:date", async (request, reply) => {

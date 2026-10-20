@@ -1,6 +1,15 @@
 import { describe, expect, it, vi } from "vitest";
 import { lineupService } from "./lineup-service";
-import { acknowledgement, editResult, lineupDay, myLineups, sectionsResult, shareResult, unpublishResult } from "./lineup-fixtures";
+import {
+  acknowledgement,
+  candidatesResult,
+  editResult,
+  lineupDay,
+  myLineups,
+  sectionsResult,
+  shareResult,
+  unpublishResult,
+} from "./lineup-fixtures";
 
 const actor = { actorUserId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
 const lineup = {
@@ -49,6 +58,15 @@ describe("lineup service", () => {
       actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, payload: change,
     });
     expect(result).toEqual(sectionsResult);
+  });
+
+  it("asks who may join a department as the payload (LINEUP-EDIT L3a)", async () => {
+    const rpc = client(candidatesResult);
+    const query = { ...lineup, department_id: "40000000-0000-4000-8000-000000000001" };
+    expect(await lineupService(rpc).candidates({ ...actor, query })).toEqual(candidatesResult);
+    expect(rpc.rpc).toHaveBeenCalledWith("get_lineup_candidates_service", {
+      actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, payload: query,
+    });
   });
 
   it("sends an unpublish with no ask", async () => {

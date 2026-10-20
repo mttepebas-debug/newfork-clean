@@ -1,7 +1,7 @@
 import { authzActionKeys, permissionSchema, type ActiveWorkspaceContext, type AuthzAction } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
-import { acknowledgement, editResult, lineupDay, myLineups, sectionsResult, shareResult } from "./lineup-fixtures";
+import { acknowledgement, candidatesResult, editResult, lineupDay, myLineups, sectionsResult, shareResult } from "./lineup-fixtures";
 import type { LineupService } from "./lineup-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -44,6 +44,7 @@ function serviceMock(): LineupService {
     command: vi.fn(async () => shareResult as never),
     edit: vi.fn(async () => editResult as never),
     sections: vi.fn(async () => sectionsResult as never),
+    candidates: vi.fn(async () => candidatesResult as never),
     myLineups: vi.fn(async () => myLineups as never),
     acknowledge: vi.fn(async () => acknowledgement as never),
     day: vi.fn(async () => lineupDay as never),
@@ -64,11 +65,13 @@ const setRow = {
 };
 
 const addSection = { action: "add", location_id: lineup.location_id, name: "Terrace" };
+const kitchen = { ...lineup, department_id: "40000000-0000-4000-8000-000000000001" };
 
 const routes = [
   ["publish", "POST", `${w}/lineups/commands`, share, "lineup.share"],
   ["edit", "POST", `${w}/lineups/edit`, setRow, "lineup.share"],
   ["sections", "POST", `${w}/lineups/sections`, addSection, "lineup.share"],
+  ["candidates", "POST", `${w}/lineups/candidates`, kitchen, "lineup.share"],
   ["my lineups", "GET", `${w}/my-lineups/2028-09-11`, undefined, "employee_hub.read"],
   ["acknowledge", "POST", `${w}/lineups/versions/${versionId}/acknowledge`, undefined, "lineup.acknowledge"],
   ["day", "GET", `${w}/lineups/2028-09-11`, undefined, "lineup.read"],
@@ -118,6 +121,40 @@ describe("lineup routes", () => {
     const reorder = { action: "reorder", location_id: lineup.location_id, section_ids: ids };
     expect((await app.inject({ method: "POST", url: `${w}/lineups/sections`, headers: auth, payload: reorder })).statusCode).toBe(200);
     expect(service.sections).toHaveBeenLastCalledWith({ ...actor, change: reorder });
+  });
+
+  // LINEUP-EDIT L3a (S-178 madde 5-7).
+  it("calls off, calls in, adds, replaces and takes a replace back", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const source = setRow.row.source_shift_id;
+    const person = "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d";
+    const job = "5c6d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f";
+    const base = { command_id: editResult.command_id, ...lineup };
+    for (const payload of [
+      { ...base, action: "call_off", row: { source_shift_id: source } },
+      { ...base, action: "call_in", row: { row_id: editResult.row_id } },
+      { ...base, action: "add_person", person: { employee_id: person, job_id: job } },
+      { ...base, action: "add_person", person: { employee_id: person, job_id: job, starts: "10:00", ends: "14:00" } },
+      { ...base, action: "replace", row: { source_shift_id: source }, person: { employee_id: person } },
+      { ...base, action: "undo_replace", row: { row_id: editResult.row_id } },
+    ]) {
+      const response = await app.inject({ method: "POST", url: `${w}/lineups/edit`, headers: auth, payload });
+      expect(response.statusCode).toBe(200);
+      expect(service.edit).toHaveBeenLastCalledWith({ ...actor, edit: payload });
+    }
+  });
+
+  it("reads who may join a department, or take a person's place", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({ method: "POST", url: `${w}/lineups/candidates`, headers: auth, payload: kitchen });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(candidatesResult);
+    expect(service.candidates).toHaveBeenCalledWith({ ...actor, query: kitchen });
+    const place = { ...lineup, row: { source_shift_id: setRow.row.source_shift_id } };
+    expect((await app.inject({ method: "POST", url: `${w}/lineups/candidates`, headers: auth, payload: place })).statusCode).toBe(200);
+    expect(service.candidates).toHaveBeenLastCalledWith({ ...actor, query: place });
   });
 
   it("reads the employee's published lineups of a day", async () => {
@@ -179,6 +216,14 @@ describe("lineup routes", () => {
     ["POST", `${w}/lineups/sections`, { action: "rename", location_id: lineup.location_id, name: "Garden" }],
     ["POST", `${w}/lineups/sections`, { action: "reorder", location_id: lineup.location_id, section_ids: [] }],
     ["POST", `${w}/lineups/sections`, { action: "remove", location_id: lineup.location_id, section_id: "patio" }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "call_off", row: { source_shift_id: setRow.row.source_shift_id, starts: "10:00" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "add_person", row: undefined, person: { employee_id: lineup.location_id } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "add_person", row: undefined, person: { employee_id: lineup.location_id, job_id: lineup.location_id, starts: "10:00" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "replace", person: undefined }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, action: "undo_replace", row: { source_shift_id: setRow.row.source_shift_id } }],
+    ["POST", `${w}/lineups/candidates`, lineup],
+    ["POST", `${w}/lineups/candidates`, { ...kitchen, row: { source_shift_id: setRow.row.source_shift_id } }],
+    ["POST", `${w}/lineups/candidates`, { ...kitchen, department_id: "kitchen" }],
     ["GET", `${w}/my-lineups/yesterday`, undefined],
     ["POST", `${w}/lineups/versions/not-a-uuid/acknowledge`, undefined],
     ["GET", "/v1/workspaces/not-a-uuid/my-lineups/2028-09-11", undefined],
@@ -192,6 +237,7 @@ describe("lineup routes", () => {
     expect(service.command).not.toHaveBeenCalled();
     expect(service.edit).not.toHaveBeenCalled();
     expect(service.sections).not.toHaveBeenCalled();
+    expect(service.candidates).not.toHaveBeenCalled();
     expect(service.myLineups).not.toHaveBeenCalled();
     expect(service.acknowledge).not.toHaveBeenCalled();
     expect(service.day).not.toHaveBeenCalled();

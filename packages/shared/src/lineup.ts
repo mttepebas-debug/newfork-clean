@@ -78,8 +78,37 @@ const lineupEditRowSchema = z
   .refine((row) => (row.starts === undefined) === (row.ends === undefined), "In and Out go together")
   .refine((row) => row.section_id === undefined || row.section_name === undefined, "A section or a typed name");
 
+/** A row an action names: a Schedule shift by source_shift_id, a person added in the lineup by row_id. */
+const lineupRowRefSchema = z
+  .object({ source_shift_id: id.optional(), row_id: id.optional() })
+  .strict()
+  .refine((row) => (row.source_shift_id === undefined) !== (row.row_id === undefined), "Name one row");
+
 export const lineupEditInputSchema = z.discriminatedUnion("action", [
   lineupTargetSchema.extend({ command_id: id, action: z.literal("set_row"), row: lineupEditRowSchema }),
+  // LINEUP-EDIT L3a (S-178 madde 5-7): Call off and Call in; Add Staff (no hours: the position's on this lineup,
+  // else the shift type's); Replace (the person takes the row's position, hours, labels and section); Undo.
+  lineupTargetSchema.extend({ command_id: id, action: z.literal("call_off"), row: lineupRowRefSchema }),
+  lineupTargetSchema.extend({ command_id: id, action: z.literal("call_in"), row: lineupRowRefSchema }),
+  lineupTargetSchema.extend({
+    command_id: id,
+    action: z.literal("add_person"),
+    person: z
+      .object({ employee_id: id, job_id: id, starts: timeOfDay.optional(), ends: timeOfDay.optional() })
+      .strict()
+      .refine((person) => (person.starts === undefined) === (person.ends === undefined), "In and Out go together"),
+  }),
+  lineupTargetSchema.extend({
+    command_id: id,
+    action: z.literal("replace"),
+    row: lineupRowRefSchema,
+    person: z.object({ employee_id: id }).strict(),
+  }),
+  lineupTargetSchema.extend({
+    command_id: id,
+    action: z.literal("undo_replace"),
+    row: z.object({ row_id: id }).strict(),
+  }),
   lineupTargetSchema.extend({
     command_id: id,
     action: z.literal("set_notes"),
@@ -93,6 +122,65 @@ export const lineupEditInputSchema = z.discriminatedUnion("action", [
   }),
 ]);
 export type LineupEditInput = z.infer<typeof lineupEditInputSchema>;
+
+/**
+ * LINEUP-EDIT L3a (S-178 madde 6-7): who may join a lineup's department (Add Staff) or take a person's place
+ * (Replace), by a score in four groups. The reason is the screen's to word.
+ */
+export const lineupCandidatesQuerySchema = z.union([
+  lineupTargetSchema.extend({ department_id: id.nullable() }).strict(),
+  lineupTargetSchema.extend({ row: lineupRowRefSchema }).strict(),
+]);
+export type LineupCandidatesQuery = z.infer<typeof lineupCandidatesQuerySchema>;
+
+const lineupCandidateWhySchema = z.discriminatedUnion("reason", [
+  z.object({ reason: z.literal("no_shift") }),
+  z.object({ reason: z.literal("time_off") }),
+  z.object({
+    reason: z.literal("elsewhere"),
+    location_name: z.string(),
+    shift_name: z.string(),
+    start_time: timeOfDay,
+    end_time: timeOfDay,
+    /** For part of these hours, not all of them. */
+    partial: z.boolean(),
+  }),
+  z.object({
+    reason: z.literal("overlap_here"),
+    shift_name: z.string(),
+    start_time: timeOfDay,
+    end_time: timeOfDay,
+    overlap_minutes: z.number().int().nonnegative(),
+  }),
+  z.object({
+    reason: z.literal("other_shift"),
+    /** Null when it is at this location. */
+    location_name: z.string().nullable(),
+    shift_name: z.string(),
+    start_time: timeOfDay,
+    end_time: timeOfDay,
+  }),
+]);
+
+export const lineupCandidatesSchema = z.object({
+  /** The hours measured by: the row's, the department's on this lineup, or the shift type's. */
+  window: z.object({ start_time: timeOfDay, end_time: timeOfDay }),
+  /** The row's position on Replace. */
+  job_id: id.nullable(),
+  candidates: z.array(
+    z.object({
+      employee_id: id,
+      name: z.string(),
+      job_ids: z.array(id),
+      /** The position the person would take; null when none of hers fits the department. */
+      job_id: id.nullable(),
+      group: z.enum(["best_fit", "available", "consider", "unavailable"]),
+      score: z.number().int(),
+      why: lineupCandidateWhySchema,
+    }),
+  ),
+});
+export type LineupCandidates = z.infer<typeof lineupCandidatesSchema>;
 
 export const lineupEditResultSchema = z.object({
   command_id: id,

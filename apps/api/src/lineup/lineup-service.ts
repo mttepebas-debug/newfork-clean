@@ -1,12 +1,15 @@
 import { createClient } from "@supabase/supabase-js";
 import {
   lineupAcknowledgementSchema,
+  lineupCandidatesSchema,
   lineupCommandResultSchema,
   lineupDaySchema,
   lineupEditResultSchema,
   lineupSectionsResultSchema,
   myLineupsSchema,
   type LineupAcknowledgement,
+  type LineupCandidates,
+  type LineupCandidatesQuery,
   type LineupCommandInput,
   type LineupCommandResult,
   type LineupDay,
@@ -30,6 +33,8 @@ export interface LineupService {
   edit(input: Actor & { readonly edit: LineupEditInput }): Promise<LineupEditResult>;
   /** LINEUP-EDIT L2b: the Sections window, a location's sections (lineup.share there). */
   sections(input: Actor & { readonly change: LineupSectionsInput }): Promise<LineupSectionsResult>;
+  /** LINEUP-EDIT L3a: who may join a department (Add Staff) or take a person's place (Replace), scored. */
+  candidates(input: Actor & { readonly query: LineupCandidatesQuery }): Promise<LineupCandidates>;
   myLineups(input: Actor & { readonly date: string }): Promise<MyLineups>;
   acknowledge(input: Actor & { readonly versionId: string }): Promise<LineupAcknowledgement>;
   /** The manager's day: every location she reads, unless she chose some (lineup.read). */
@@ -92,6 +97,13 @@ export function lineupService(client: RpcClient): LineupService {
         actor_user_id: actor.actorUserId,
         target_workspace_id: actor.workspaceId,
         payload: change,
+      }));
+    },
+    async candidates({ query, ...actor }) {
+      return lineupCandidatesSchema.parse(await rpc("get_lineup_candidates_service", {
+        actor_user_id: actor.actorUserId,
+        target_workspace_id: actor.workspaceId,
+        payload: query,
       }));
     },
     async myLineups({ date, ...actor }) {

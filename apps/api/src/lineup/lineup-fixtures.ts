@@ -18,6 +18,23 @@ export const sectionsResult = {
   ],
 };
 
+// get_lineup_candidates_service: Kadikoy's kitchen at Lunch, 9 AM - 3 PM (the shape lineup_staff.test.sql reads).
+export const candidatesResult = {
+  window: { start_time: "09:00", end_time: "15:00" },
+  job_id: null,
+  candidates: [
+    {
+      employee_id: "7a1b2c3d-4e5f-4a6b-8c7d-9e0f1a2b3c4d", name: "Ana Person", job_ids: ["5c6d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f"],
+      job_id: "5c6d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f", group: "best_fit", score: 100, why: { reason: "no_shift" },
+    },
+    {
+      employee_id: "8b2c3d4e-5f6a-4b7c-9d8e-0f1a2b3c4d5e", name: "Deniz Person", job_ids: ["5c6d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f"],
+      job_id: "5c6d7e8f-9a0b-4c1d-8e2f-3a4b5c6d7e8f", group: "unavailable", score: 45,
+      why: { reason: "elsewhere", location_name: "Besiktas", shift_name: "Lunch", start_time: "10:00", end_time: "14:00", partial: true },
+    },
+  ],
+};
+
 export const shareResult = {
   kind: "share",
   lineups: [{

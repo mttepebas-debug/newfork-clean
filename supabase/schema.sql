@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 557, last: 20261020090527_lineup_sections_4.sql
--- fingerprint: sha256:ce7427dad2d5119c0c2eb55bff72d87920242d61dc3a967d3da9e8c67240da74
+-- migrations: 559, last: 20261020120100_lineup_staff_2.sql
+-- fingerprint: sha256:607d1e5700fcbbaa25abdabdd2b6accfe2eba69d66f55cda6be96b26573c3b4e
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6188,6 +6188,24 @@ $$;
 
 
 ALTER FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."lineup_staff_eligible"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_employee_id" "uuid") RETURNS boolean
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select exists (
+    select 1 from public.employee_profiles e
+    where e.id = target_employee_id and e.workspace_id = target_workspace_id and e.archived_at is null
+      and not e.is_excluded_from_schedule
+      and app_private.has_employee_access(target_workspace_id, e.user_id)
+      and exists (select 1 from public.employee_location_assignments a
+                  where a.workspace_id = target_workspace_id and a.employee_id = e.id
+                    and a.location_id = target_location_id and a.ended_at is null))
+$$;
+
+
+ALTER FUNCTION "app_private"."lineup_staff_eligible"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."lineup_started"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "at_moment" timestamp with time zone DEFAULT "now"()) RETURNS boolean
@@ -15447,6 +15465,197 @@ $$;
 ALTER FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_lineup_candidates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  place public.locations;
+  day date;
+  type_id uuid;
+  edit jsonb := payload -> 'row';
+  department uuid;
+  read jsonb;
+  target jsonb;
+  win_from timestamptz;
+  win_to timestamptz;
+  win_minutes numeric;
+  result jsonb;
+  uuid_shape constant text := '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+begin
+  if jsonb_typeof(payload) is distinct from 'object'
+     or payload ->> 'location_id' is null or (payload ->> 'location_id') !~* uuid_shape
+     or payload ->> 'service_date' is null or (payload ->> 'service_date') !~ '^\d{4}-\d{2}-\d{2}$'
+     or (payload ->> 'shift_type_id' is not null and (payload ->> 'shift_type_id') !~* uuid_shape)
+     or (payload ? 'row') = (payload ? 'department_id')
+     or (payload ? 'row' and (jsonb_typeof(edit) is distinct from 'object'
+         or ((edit ->> 'source_shift_id') is null) = ((edit ->> 'row_id') is null)
+         or coalesce(edit ->> 'source_shift_id', edit ->> 'row_id') !~* uuid_shape))
+     or (payload ->> 'department_id' is not null and (payload ->> 'department_id') !~* uuid_shape) then
+    raise exception 'Choose a department or a person' using errcode = '22023', hint = 'lineup.invalid_command';
+  end if;
+  -- The core first: a stranger learns nothing.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.share',
+    target_locations => array[(payload ->> 'location_id')::uuid]);
+
+  select * into place from public.locations l
+  where l.id = (payload ->> 'location_id')::uuid and l.workspace_id = target_workspace_id;
+  day := (payload ->> 'service_date')::date;
+  type_id := (payload ->> 'shift_type_id')::uuid;
+  department := (payload ->> 'department_id')::uuid;
+  if type_id is not null and not exists (
+    select 1 from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id and t.deleted_at is null
+  ) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+  end if;
+
+  -- The whole day, every location's lineups: who works where, and when.
+  read := app_private.lineup_day(target_workspace_id, day, array(
+    select l.id from public.locations l
+    where l.workspace_id = target_workspace_id and l.archived_at is null and l.deleted_at is null));
+
+  if payload ? 'row' then
+    select r into target
+    from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+    where (l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id
+      and (r ->> 'employee_id') is not null
+      and ((edit ? 'source_shift_id' and r ->> 'source_shift_id' = edit ->> 'source_shift_id')
+        or (edit ? 'row_id' and r ->> 'id' = edit ->> 'row_id' and (r -> 'lineup_only')::boolean));
+    if target is null then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+    end if;
+    if target ->> 'called_off_at' is not null or target ->> 'replaced_by_row_id' is not null then
+      raise exception 'This person isn''t on the lineup now' using errcode = '22023', hint = 'lineup.row_out';
+    end if;
+    win_from := (day + (target ->> 'start_time')::time) at time zone place.timezone;
+    win_to := (day + (target ->> 'end_time')::time
+      + case when (target -> 'crosses_midnight')::boolean then interval '1 day' else interval '0' end) at time zone place.timezone;
+  else
+    -- The department's hours on this lineup (its first in to its last out), else the shift type's.
+    select min((day + (r ->> 'start_time')::time) at time zone place.timezone),
+      max((day + (r ->> 'end_time')::time
+        + case when (r -> 'crosses_midnight')::boolean then interval '1 day' else interval '0' end) at time zone place.timezone)
+    into win_from, win_to
+    from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+    where (l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id
+      and r ->> 'employee_id' is not null and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+      and (r ->> 'department_id')::uuid is not distinct from department;
+    if win_from is null then
+      select (day + t.default_start_time) at time zone place.timezone,
+        (day + t.default_end_time + case when t.default_end_time <= t.default_start_time then interval '1 day' else interval '0' end)
+          at time zone place.timezone
+      into win_from, win_to
+      from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id
+        and t.default_start_time is not null and t.default_end_time is not null;
+    end if;
+  end if;
+  -- No hours to measure by: the whole day there.
+  if win_from is null then
+    win_from := day::timestamp at time zone place.timezone;
+    win_to := (day + 1)::timestamp at time zone place.timezone;
+  end if;
+  win_minutes := extract(epoch from win_to - win_from) / 60;
+
+  with shifts as (
+    -- Everyone's shift that day, wherever, but this lineup's: who is on it is not offered.
+    select (r ->> 'employee_id')::uuid as employee_id, (l ->> 'id')::uuid as location_id, l ->> 'name' as location_name,
+      coalesce(x ->> 'shift_type_name', 'No shift type') as shift_name, r ->> 'start_time' as start_time,
+      r ->> 'end_time' as end_time,
+      (day + (r ->> 'start_time')::time) at time zone (l ->> 'timezone') as from_at,
+      (day + (r ->> 'end_time')::time
+        + case when (r -> 'crosses_midnight')::boolean then interval '1 day' else interval '0' end) at time zone (l ->> 'timezone')
+        as to_at
+    from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+    where r ->> 'employee_id' is not null and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+      and not ((l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id)
+  ), measured as (
+    select s.*, greatest(0, extract(epoch from least(s.to_at, win_to) - greatest(s.from_at, win_from)) / 60) as overlap
+    from shifts s
+  ), on_lineup as (
+    select (r ->> 'employee_id')::uuid as employee_id
+    from jsonb_array_elements(read -> 'locations') l, jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+    where (l ->> 'id')::uuid = place.id and (x ->> 'shift_type_id')::uuid is not distinct from type_id
+      and r ->> 'employee_id' is not null
+  ), people as (
+    select e.id, coalesce(nullif(e.preferred_name, ''), e.first_name) || ' ' || e.last_name as name,
+      array(select a.job_id from public.employee_job_assignments a join public.jobs j on j.id = a.job_id
+            where a.workspace_id = target_workspace_id and a.employee_id = e.id and a.ended_at is null and j.archived_at is null
+            order by a.is_primary desc, j.name) as job_ids
+    from public.employee_profiles e
+    where e.workspace_id = target_workspace_id
+      and app_private.lineup_staff_eligible(target_workspace_id, place.id, e.id)
+      and not exists (select 1 from on_lineup o where o.employee_id = e.id)
+  ), fitted as (
+    select p.*,
+      array(select j.id from unnest(p.job_ids) as k (id) join public.jobs j on j.id = k.id
+            where case when target is not null then j.id = (target ->> 'job_id')::uuid
+                       else j.department_id is not distinct from department end) as fits,
+      exists (select 1 from public.schedule_time_off_segments s
+              join public.schedule_time_off_requests q on q.id = s.request_id and q.workspace_id = s.workspace_id
+              where s.workspace_id = target_workspace_id and q.employee_id = p.id and q.request_type = 'time_off'
+                and s.status = 'approved' and s.starts_at < win_to and s.ends_at > win_from) as off,
+      away.location_name as away_location, away.shift_name as away_shift, away.start_time as away_start,
+      away.end_time as away_end, away.overlap as away_overlap,
+      here.shift_name as here_shift, here.start_time as here_start, here.end_time as here_end, here.overlap as here_overlap,
+      first.location_id as first_location_id, first.location_name as first_location, first.shift_name as first_shift,
+      first.start_time as first_start, first.end_time as first_end
+    from people p
+    -- The most of these hours somewhere else, the most here, and the day's first shift.
+    left join lateral (select m.* from measured m where m.employee_id = p.id and m.location_id <> place.id and m.overlap > 0
+                       order by m.overlap desc limit 1) away on true
+    left join lateral (select m.* from measured m where m.employee_id = p.id and m.location_id = place.id and m.overlap > 0
+                       order by m.overlap desc limit 1) here on true
+    left join lateral (select m.* from measured m where m.employee_id = p.id order by m.from_at limit 1) first on true
+  ), scored as (
+    select f.*, cardinality(f.fits) > 0 as match,
+      case
+        when f.off then 10 + case when cardinality(f.fits) > 0 then 5 else 0 end
+        when f.away_overlap is not null then (case when f.away_overlap < win_minutes then 40 else 25 end)
+          + case when cardinality(f.fits) > 0 then 5 else 0 end
+        when f.here_overlap is not null then 30
+        when f.first_start is not null then case when f.first_location_id = place.id then 65 else 70 end
+        else 100
+      end as score
+    from fitted f
+    -- Here at another shift for half these hours or more: not free for this one.
+    where f.off or f.away_overlap is not null or f.here_overlap is null or f.here_overlap < win_minutes / 2
+  )
+  select jsonb_build_object(
+    'window', jsonb_build_object('start_time', to_char(win_from at time zone place.timezone, 'HH24:MI'),
+      'end_time', to_char(win_to at time zone place.timezone, 'HH24:MI')),
+    'job_id', target -> 'job_id',
+    'candidates', coalesce(jsonb_agg(jsonb_build_object(
+      'employee_id', s.id,
+      'name', s.name,
+      'job_ids', to_jsonb(s.job_ids),
+      -- The position the person would take: the row's on Replace, else her first in the department.
+      'job_id', case when target is not null then target -> 'job_id' else to_jsonb(s.fits[1]) end,
+      'group', case when s.off or s.away_overlap is not null then 'unavailable' when not s.match then 'consider'
+                    when s.score = 100 then 'best_fit' else 'available' end,
+      'score', s.score,
+      'why', case
+        when s.off then jsonb_build_object('reason', 'time_off')
+        when s.away_overlap is not null then jsonb_build_object('reason', 'elsewhere', 'location_name', s.away_location,
+          'shift_name', s.away_shift, 'start_time', s.away_start, 'end_time', s.away_end,
+          'partial', s.away_overlap < win_minutes)
+        when s.here_overlap is not null then jsonb_build_object('reason', 'overlap_here', 'shift_name', s.here_shift,
+          'start_time', s.here_start, 'end_time', s.here_end, 'overlap_minutes', round(s.here_overlap))
+        when s.first_start is not null then jsonb_build_object('reason', 'other_shift',
+          'location_name', case when s.first_location_id = place.id then null else s.first_location end,
+          'shift_name', s.first_shift, 'start_time', s.first_start, 'end_time', s.first_end)
+        else jsonb_build_object('reason', 'no_shift')
+      end
+    ) order by s.score desc, s.name, s.id), '[]'::jsonb))
+  into result
+  from scored s;
+  return result;
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."get_lineup_candidates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[], "target_shift_type_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -17682,6 +17891,12 @@ declare
   target jsonb;
   edit jsonb := payload -> 'row';
   notes jsonb := payload -> 'notes';
+  -- LINEUP-EDIT L3a: who is added or put in a place.
+  person jsonb := payload -> 'person';
+  who uuid;
+  hours_in time;
+  hours_out time;
+  place_row uuid;
   row_id uuid;
   label uuid;
   section uuid;
@@ -17691,14 +17906,20 @@ declare
   time_shape constant text := '^([01][0-9]|2[0-3]):[0-5][0-9]$';
 begin
   if command_id is null or jsonb_typeof(payload) is distinct from 'object'
-     or payload ->> 'action' is null or payload ->> 'action' not in ('set_row', 'set_notes')
+     or payload ->> 'action' is null
+     or payload ->> 'action' not in ('set_row', 'set_notes', 'call_off', 'call_in', 'add_person', 'replace', 'undo_replace')
      or payload ->> 'location_id' is null or (payload ->> 'location_id') !~* uuid_shape
      or payload ->> 'service_date' is null or (payload ->> 'service_date') !~ '^\d{4}-\d{2}-\d{2}$'
      or (payload ->> 'shift_type_id' is not null and (payload ->> 'shift_type_id') !~* uuid_shape)
-     or (payload ->> 'action' = 'set_row' and (jsonb_typeof(edit) is distinct from 'object'
+     or (payload ->> 'action' in ('set_row', 'call_off', 'call_in', 'replace', 'undo_replace')
+         and (jsonb_typeof(edit) is distinct from 'object'
          or ((edit ->> 'source_shift_id') is null) = ((edit ->> 'row_id') is null)
          or coalesce(edit ->> 'source_shift_id', edit ->> 'row_id') !~* uuid_shape
          or (edit ? 'save_section' and jsonb_typeof(edit -> 'save_section') is distinct from 'boolean')))
+     or (payload ->> 'action' = 'undo_replace' and edit ->> 'row_id' is null)
+     or (payload ->> 'action' in ('add_person', 'replace') and (jsonb_typeof(person) is distinct from 'object'
+         or person ->> 'employee_id' is null or (person ->> 'employee_id') !~* uuid_shape))
+     or (payload ->> 'action' = 'add_person' and (person ->> 'job_id' is null or (person ->> 'job_id') !~* uuid_shape))
      or (payload ->> 'action' = 'set_notes' and jsonb_typeof(notes) is distinct from 'object') then
     raise exception 'Choose what to change in the lineup' using errcode = '22023', hint = 'lineup.invalid_command';
   end if;
@@ -17746,7 +17967,8 @@ begin
     raise exception 'This shift has started' using errcode = '22023', hint = 'lineup.started';
   end if;
 
-  if payload ->> 'action' = 'set_row' then
+  -- LINEUP-EDIT L3a: the row a row action names, as the day reads it (set_row's, now shared).
+  if payload ->> 'action' in ('set_row', 'call_off', 'call_in', 'replace', 'undo_replace') then
     -- The row as the day reads it: on this lineup, or it is out of reach (an unknown row gets the same answer).
     select r into target
     from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
@@ -17758,6 +17980,31 @@ begin
     if target is null then
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
     end if;
+  end if;
+  -- LINEUP-EDIT L3a: who is added or put in a place: someone this lineup may take, not on it already.
+  if payload ->> 'action' in ('add_person', 'replace') then
+    who := (person ->> 'employee_id')::uuid;
+    if not app_private.lineup_staff_eligible(target_workspace_id, place.id, who) then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+    end if;
+    if exists (
+      select 1
+      from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
+        jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+      where (x ->> 'shift_type_id')::uuid is not distinct from type_id and (r ->> 'employee_id')::uuid = who
+        and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+    ) then
+      raise exception 'This person is on this lineup already' using errcode = '22023', hint = 'lineup.already_on';
+    end if;
+  end if;
+  -- Called off or replaced, a person isn't on the lineup to be called off or replaced (Call in brings one back).
+  if payload ->> 'action' in ('call_off', 'replace')
+     and (target ->> 'called_off_at' is not null or target ->> 'replaced_by_row_id' is not null)
+     or payload ->> 'action' = 'call_in' and target ->> 'replaced_by_row_id' is not null then
+    raise exception 'This person isn''t on the lineup now' using errcode = '22023', hint = 'lineup.row_out';
+  end if;
+
+  if payload ->> 'action' = 'set_row' then
     if edit ? 'starts' or edit ? 'ends' then
       if (edit ->> 'starts' is null) <> (edit ->> 'ends' is null)
          or (edit ->> 'starts' is not null and ((edit ->> 'starts') !~ time_shape or (edit ->> 'ends') !~ time_shape
@@ -17838,7 +18085,7 @@ begin
         when edit ? 'section_id' then null else r.section_name end,
       updated_at = now(), updated_by = actor_user_id
     where r.id = row_id;
-  else
+  elsif payload ->> 'action' = 'set_notes' then
     if char_length(coalesce(notes ->> 'specials', '')) > 500 or char_length(coalesce(notes ->> 'n86', '')) > 500
        or char_length(coalesce(notes ->> 'shift_notes', '')) > 1000 then
       raise exception 'This note is too long' using errcode = '22023', hint = 'lineup.note_too_long';
@@ -17853,6 +18100,99 @@ begin
       n86 = case when notes ? 'n86' then coalesce(notes ->> 'n86', '') else d.n86 end,
       shift_notes = case when notes ? 'shift_notes' then coalesce(notes ->> 'shift_notes', '') else d.shift_notes end
     where d.id = header.id;
+  -- LINEUP-EDIT L3a: Call off and Call in (S-178 madde 5).
+  elsif payload ->> 'action' in ('call_off', 'call_in') then
+    if header.id is null then
+      insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
+      values (target_workspace_id, place.id, day, type_id, actor_user_id)
+      returning * into header;
+    end if;
+    row_id := (target ->> 'id')::uuid;
+    if row_id is null then
+      insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, updated_by)
+      values (target_workspace_id, header.id, place.id, day, (target ->> 'source_shift_id')::uuid, actor_user_id)
+      returning id into row_id;
+    end if;
+    update public.daily_lineup_rows r set
+      called_off_at = case when payload ->> 'action' = 'call_off' then coalesce(r.called_off_at, now()) end,
+      called_off_by = case when payload ->> 'action' = 'call_off' then coalesce(r.called_off_by, actor_user_id) end,
+      updated_at = now(), updated_by = actor_user_id
+    where r.id = row_id;
+  -- LINEUP-EDIT L3a: Add Staff (S-178 madde 6): a person in the lineup only, the Schedule untouched.
+  elsif payload ->> 'action' = 'add_person' then
+    if not exists (select 1 from public.jobs j where j.id = (person ->> 'job_id')::uuid
+                     and j.workspace_id = target_workspace_id and j.archived_at is null) then
+      raise exception 'Choose a position' using errcode = '22023', hint = 'lineup.invalid_job';
+    end if;
+    if (person ->> 'starts' is null) <> (person ->> 'ends' is null)
+       or (person ->> 'starts' is not null and ((person ->> 'starts') !~ time_shape or (person ->> 'ends') !~ time_shape
+           or person ->> 'starts' = person ->> 'ends')) then
+      raise exception 'Use a time like 4:30 PM' using errcode = '22023', hint = 'lineup.invalid_hours';
+    end if;
+    -- No hours sent: someone in that position on this lineup, else the shift type's.
+    if person ->> 'starts' is not null then
+      hours_in := (person ->> 'starts')::time;
+      hours_out := (person ->> 'ends')::time;
+    else
+      select (r ->> 'start_time')::time, (r ->> 'end_time')::time into hours_in, hours_out
+      from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
+        jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+      where (x ->> 'shift_type_id')::uuid is not distinct from type_id and r ->> 'job_id' = person ->> 'job_id'
+        and r ->> 'employee_id' is not null and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null
+      order by r ->> 'start_time'
+      limit 1;
+      if hours_in is null then
+        select t.default_start_time, t.default_end_time into hours_in, hours_out
+        from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id;
+      end if;
+      if hours_in is null or hours_out is null then
+        raise exception 'Use a time like 4:30 PM' using errcode = '22023', hint = 'lineup.invalid_hours';
+      end if;
+    end if;
+    if header.id is null then
+      insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
+      values (target_workspace_id, place.id, day, type_id, actor_user_id)
+      returning * into header;
+    end if;
+    insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, employee_id, job_id,
+      starts, ends, updated_by)
+    values (target_workspace_id, header.id, place.id, day, who, (person ->> 'job_id')::uuid, hours_in, hours_out,
+      actor_user_id)
+    returning id into row_id;
+  -- LINEUP-EDIT L3a: Replace (S-178 madde 7): the person takes the row's place, the row is Replaced.
+  elsif payload ->> 'action' = 'replace' then
+    if header.id is null then
+      insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
+      values (target_workspace_id, place.id, day, type_id, actor_user_id)
+      returning * into header;
+    end if;
+    place_row := (target ->> 'id')::uuid;
+    if place_row is null then
+      insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, updated_by)
+      values (target_workspace_id, header.id, place.id, day, (target ->> 'source_shift_id')::uuid, actor_user_id)
+      returning id into place_row;
+    end if;
+    insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, employee_id, job_id,
+      starts, ends, label_ids, section_id, section_name, sort_order, updated_by)
+    values (target_workspace_id, header.id, place.id, day, who, (target ->> 'job_id')::uuid,
+      (target ->> 'start_time')::time, (target ->> 'end_time')::time,
+      array(select (value #>> '{}')::uuid from jsonb_array_elements(coalesce(nullif(target -> 'label_ids', 'null'::jsonb), '[]'))),
+      (target ->> 'section_id')::uuid,
+      case when target ->> 'section_id' is null then target ->> 'section_name' end,
+      (target ->> 'sort_order')::integer, actor_user_id)
+    returning id into row_id;
+    update public.daily_lineup_rows r set replaced_by_row_id = row_id, updated_at = now(), updated_by = actor_user_id
+    where r.id = place_row;
+  -- LINEUP-EDIT L3a: Undo (S-178 madde 7): the place goes back; who took it leaves the lineup.
+  else
+    if not exists (select 1 from public.daily_lineup_rows r
+                   where r.workspace_id = target_workspace_id and r.replaced_by_row_id = (target ->> 'id')::uuid) then
+      raise exception 'This person took nobody''s place' using errcode = '22023', hint = 'lineup.not_replacing';
+    end if;
+    update public.daily_lineup_rows r set replaced_by_row_id = null, updated_at = now(), updated_by = actor_user_id
+    where r.workspace_id = target_workspace_id and r.replaced_by_row_id = (target ->> 'id')::uuid;
+    -- A person added in the lineup only: the row goes (target is lineup_only; header is its lineup).
+    delete from public.daily_lineup_rows r where r.id = (target ->> 'id')::uuid and r.source_shift_id is null;
   end if;
 
   update public.daily_lineups d set revision = d.revision + 1, updated_at = now(), updated_by = actor_user_id
@@ -37484,6 +37824,10 @@ REVOKE ALL ON FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", 
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."lineup_staff_eligible"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."lineup_started"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "at_moment" timestamp with time zone) FROM PUBLIC;
 
 
@@ -38586,6 +38930,11 @@ GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uu
 
 REVOKE ALL ON FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_lineup_candidates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_lineup_candidates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") TO "service_role";
 
 
 
