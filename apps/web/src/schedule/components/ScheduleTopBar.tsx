@@ -716,9 +716,10 @@ function SettingsToggleRow({
   readonly disabled?: boolean;
 }) {
   return (
+    // The label is the action ("Hide …"/"Show …"), so no aria-pressed: it would
+    // read as the opposite of the screen (QA 48). data-pressed keeps the look.
     <button
       type="button"
-      aria-pressed={pressed}
       disabled={disabled}
       className="schedule-settings-row"
       data-pressed={pressed}

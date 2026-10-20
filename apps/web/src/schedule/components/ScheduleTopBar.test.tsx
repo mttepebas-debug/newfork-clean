@@ -335,7 +335,9 @@ describe("ScheduleTopBar", () => {
       </MemoryRouter>,
     );
     const row = screen.getByRole("button", { name: "Hide Availability" });
-    expect(row.getAttribute("aria-pressed")).toBe("true");
+    // QA 48: the label already says the action, so "pressed" would read as its opposite.
+    expect(row.hasAttribute("aria-pressed")).toBe(false);
+    expect(row.getAttribute("data-pressed")).toBe("true");
     expect(row).toHaveProperty("disabled", false);
     fireEvent.click(row);
     expect(onToggleAvailability).toHaveBeenCalledOnce();
@@ -344,7 +346,7 @@ describe("ScheduleTopBar", () => {
         <ScheduleTopBar {...buildTopBarProps({ showAvailability: false, onToggleAvailability })} />
       </MemoryRouter>,
     );
-    expect(screen.getByRole("button", { name: "Show Availability" }).getAttribute("aria-pressed")).toBe("false");
+    expect(screen.getByRole("button", { name: "Show Availability" }).hasAttribute("aria-pressed")).toBe(false);
   });
 
   it("keeps the Unassigned Shifts Row settings passive outside edit mode", () => {
