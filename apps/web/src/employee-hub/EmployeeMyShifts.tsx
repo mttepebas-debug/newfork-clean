@@ -12,6 +12,7 @@ import { ownAvailabilityClash } from "./own-availability";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
 import { useHubClock } from "./useHubClock";
 import "./employee-my-shifts.css";
+import { usePickupShifts } from "./shift-exchanges/pickup";
 
 // Employee → Schedule → My shifts (CALISAN-SCHEDULE-LISTE; Mert 2026-10-17, "Zaman çizgisi, Home sayfasındaki,
 // birebir"): This week and Next week, one card per day with a date tile. The week changes only from the switch
@@ -24,7 +25,7 @@ const longDay = (iso: string) => new Date(`${iso}T12:00:00Z`).toLocaleDateString
 type Model = EmployeeHubReadModel;
 
 /** The days of a week with what the list shows for each: the employee's shifts, approved time off, open shifts. */
-export function weekDays(model: Model, start: string) {
+export function weekDays(model: Model, start: string, openDates: readonly string[] = []) {
   return Array.from({ length: 7 }, (_, i) => {
     const date = addDays(start, i);
     const shifts = model.shifts
@@ -42,7 +43,8 @@ export function weekDays(model: Model, start: string) {
             !(period.cancelled_intervals?.length && !period.effective_intervals?.length),
         ),
     );
-    const open = model.open_shifts.filter((shift) => shift.scheduled_date === date).length;
+    // Released shifts in the pool, not unassigned ones (QA 38, S-151 (3)).
+    const open = openDates.filter((day) => day === date).length;
     return { date, shifts, timeOff, open };
   });
 }
@@ -68,13 +70,14 @@ function merged(parts: (Model | undefined)[]): Model | undefined {
   const [a, b] = parts;
   if (!a || !b) return undefined;
   const byId = <T extends { id: string }>(items: T[]) => [...new Map(items.map((item) => [item.id, item])).values()];
-  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), open_shifts: byId([...a.open_shifts, ...b.open_shifts]), requests: byId([...a.requests, ...b.requests]) };
+  return { ...a, shifts: byId([...a.shifts, ...b.shifts]), requests: byId([...a.requests, ...b.requests]) };
 }
 
 export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string }) {
   const [search, setSearch] = useSearchParams();
   const now = useHubClock();
   const today = todayIn(undefined, now);
+  const pickups = usePickupShifts(workspaceId);
   // The workspace's own week (Settings → Scheduling): the Team schedule's read model carries it.
   const board = useQuery({
     queryKey: ["employee-schedule-board", workspaceId, today],
@@ -156,7 +159,8 @@ export function EmployeeMyShifts({ workspaceId }: { readonly workspaceId: string
     params.delete("shift");
     setSearch(params, { replace: true });
   };
-  const pages = [weekDays(model, weeks.starts[0]), weekDays(model, weeks.starts[1])];
+  const openDates = pickups.map((item) => item.scheduled_date);
+  const pages = [weekDays(model, weeks.starts[0], openDates), weekDays(model, weeks.starts[1], openDates)];
   const timeFormat = model.settings.time_format;
   return (
     <div className="ems" style={{ "--pos": page } as CSSProperties}>

@@ -109,7 +109,10 @@ describe("home model", () => {
         },
       ],
     });
-    const week = homeWeek(m, "2026-10-16");
+    // QA 38: the unassigned shift on Oct 18 alone is no open shift for an employee.
+    expect(homeWeek(m, "2026-10-16")[2]!.open).toBe(0);
+    // A released shift in the pool that day is.
+    const week = homeWeek(m, "2026-10-16", ["2026-10-18"]);
     expect(week).toHaveLength(7);
     expect(week.map((day) => day.date)).toEqual(["2026-10-16", "2026-10-17", "2026-10-18", "2026-10-19", "2026-10-20", "2026-10-21", "2026-10-22"]);
     expect(week[0]!.hours).toBe(7);

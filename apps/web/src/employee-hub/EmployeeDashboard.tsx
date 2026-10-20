@@ -41,6 +41,7 @@ import { HomeSection } from "./HomeSection";
 import { ComingUpDates, useHubAnnouncements } from "./DashboardCommunications";
 import { PersonalTasks } from "./PersonalReminders";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
+import { usePickupShifts } from "./shift-exchanges/pickup";
 import { loadWeeklyPreferences } from "../availability/availability-data";
 import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
 import { ownAvailabilityClash } from "./own-availability";
@@ -90,7 +91,9 @@ export function EmployeeDashboard({
   const zone = shift ? shiftZone(model, shift) : validZone(model.locations[0]?.timezone);
   const today = dateInZone(now, zone);
   const minute = clockMinutes(now, zone);
-  const week = homeWeek(model, today);
+  // QA 38, S-151 (3): open shifts here are released shifts in the pool, as on Shift Hub.
+  const pickups = usePickupShifts(model.workspace_id);
+  const week = homeWeek(model, today, pickups.map((item) => item.scheduled_date));
   const data = useHomeData(model, today);
   const far = useHomeScroll(root);
   const selected = model.shifts.find((item) => item.id === search.get("shift"));
@@ -116,9 +119,9 @@ export function EmployeeDashboard({
   const todayShifts = week[0]!.shifts;
   const endedToday = todayShifts.filter((item) => shiftState(item, now, zone).state === "finished");
   const arcShifts = shift?.scheduled_date === today ? todayShifts : endedToday.length ? endedToday : [];
-  const open = model.open_shifts
-    .filter((item) => shiftState(item, now, shiftZone(model, item)).state === "upcoming")
-    .sort((a, b) => shiftInstant(a, model) - shiftInstant(b, model))
+  const open = pickups
+    .filter((item) => !item.starts_at || Date.parse(item.starts_at) > now.getTime())
+    .sort((a, b) => (a.starts_at ?? a.scheduled_date).localeCompare(b.starts_at ?? b.scheduled_date))
     .slice(0, 8);
   const format = model.settings.time_format;
   // The next three shifts, as Home always looked at, whether or not they fall in the strip's seven days.
@@ -202,7 +205,7 @@ export function EmployeeDashboard({
             endsIn={endsIn}
             area={shift ? data.areaFor(shift) : null}
             manager={shift ? managerOnFloor(model, shift) : null}
-            openCount={model.open_shifts.length}
+            openCount={pickups.length}
           />
           <div className="dl-wh">
             <h2>Next 7 days</h2>
@@ -260,12 +263,14 @@ export function EmployeeDashboard({
             }
           >
             {open.length ? (
-              <div className="dl-open" role="list" data-own-drag="">
+              <div className="dl-open" role="list" aria-label="Open shifts to pick up" data-own-drag="">
                 {open.map((item) => (
                   <Link role="listitem" className="dl-oc" key={item.id} to={`${base}/shift-hub?hub_view=available`}>
                     <span className="dl-oc-d">{item.scheduled_date === nextDay(today) ? "Tomorrow" : shiftDate(item.scheduled_date)}</span>
                     <b>
-                      {formatTime(item.start_time, format)} – {formatTime(item.end_time, format)}
+                      {item.start_time && item.end_time
+                        ? `${formatTime(item.start_time, format)} – ${formatTime(item.end_time, format)}`
+                        : (item.shift_type_name ?? "")}
                     </b>
                     <span>
                       {item.location_name} · {item.job_name}

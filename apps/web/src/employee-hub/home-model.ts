@@ -82,7 +82,7 @@ const shiftHours = (shift: EmployeeHubShift) => {
   return (end - start) / 60;
 };
 /** Seven days from today: the person's own shifts, approved time off and open shifts. */
-export function homeWeek(model: EmployeeHubReadModel, today: string): HomeDay[] {
+export function homeWeek(model: EmployeeHubReadModel, today: string, openDates: readonly string[] = []): HomeDay[] {
   const offDays = new Set(
     model.requests.flatMap((request) =>
       (request.periods ?? []).filter((period) => period.status === "approved").map((period) => period.segment_date),
@@ -100,7 +100,8 @@ export function homeWeek(model: EmployeeHubReadModel, today: string): HomeDay[] 
       shifts,
       hours: shifts.reduce((sum, shift) => sum + shiftHours(shift), 0),
       timeOff: offDays.has(date),
-      open: model.open_shifts.filter((shift) => shift.scheduled_date === date).length,
+      // Released shifts in the pool, not unassigned ones (QA 38, S-151 (3)).
+      open: openDates.filter((day) => day === date).length,
     };
   });
 }

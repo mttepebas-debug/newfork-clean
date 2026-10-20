@@ -563,6 +563,7 @@ describe("EmployeeHubPage", () => {
       status: "approved",
       periods: [{ id: "98210000-0000-4000-8000-000000000009", segment_date: "2026-08-27", start_time: null, end_time: null, status: "approved" as const }],
     };
+    vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [poolShift("2026-08-28")] });
     renderPageWithFixture({ ...fixture, requests: [approved] }, "/app/employee-hub/schedule");
 
     const tabs = await screen.findByRole("navigation", { name: "Schedule pages" });
@@ -727,6 +728,29 @@ describe("EmployeeHubPage", () => {
   });
 
   // Daylight (Mert 2026-10-18): the greeting, the next shift's card and the day's sections.
+  // QA 38, S-151 (3): an employee's open shifts are the released shifts in the
+  // pool; a shift nobody is assigned to is not shown to employees anywhere.
+  it("offers only released shifts from the pool on Home and My shifts, never unassigned ones", async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true });
+    vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
+    try {
+      vi.mocked(getEmployeeScheduleBoard).mockResolvedValue(scheduleBoard);
+      // The hub still sends an unassigned shift on Aug 28; the pool is empty.
+      const { unmount } = renderPage();
+      expect(await screen.findByRole("heading", { name: "Pick up a shift" })).toBeTruthy();
+      expect(await screen.findByText("No open shifts right now.")).toBeTruthy();
+      unmount();
+
+      vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [poolShift("2026-08-28")] });
+      renderPage();
+      const list = await screen.findByRole("list", { name: "Open shifts to pick up" });
+      expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+      expect(list.textContent).toContain("Main Dining");
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
   it("greets the employee with the next shift, the week and the sections", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
@@ -889,8 +913,10 @@ describe("EmployeeHubPage", () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     vi.setSystemTime(new Date("2026-08-24T12:00:00Z"));
     try {
+      vi.mocked(getExchanges).mockResolvedValue({ employee_id: fixture.employee.id, cases: [], own_shifts: [], opportunities: [poolShift("2026-08-28")] });
       renderPage();
       const row = await screen.findByRole("heading", { name: "Pick up a shift" });
+      await within(row.closest("section")!).findByRole("listitem");
       const card = row.closest("section")!.querySelector('[role="listitem"]')!;
       expect(card.getAttribute("href")).toBe("/app/employee-hub/shift-hub?hub_view=available");
     } finally {
@@ -1249,3 +1275,16 @@ describe("no access (FB-6.1.9)", () => {
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
 });
+
+/** A teammate's released shift in the Shift Hub pool, on the given day. */
+function poolShift(date: string) {
+  return {
+    case_id: "98200000-0000-4000-8000-000000000011", note: "", eligibility: { status: "eligible" as const, reasons: [] },
+    shift: {
+      ...ownShift, id: "22000000-0000-4000-8000-000000000015", source_id: "22000000-0000-4000-8000-000000000015",
+      employee_id: "51000000-0000-4000-8000-000000000009", employee_name: "Maria Lopez",
+      job_id: "13000000-0000-4000-8000-000000000001", scheduled_date: date, timezone: "America/Los_Angeles",
+      starts_at: `${date}T16:00:00Z`, ends_at: `${date}T23:30:00Z`,
+    },
+  };
+}

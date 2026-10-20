@@ -41,6 +41,7 @@ import {
   getExchanges,
   refreshExchangeSurfaces,
 } from "./exchange-data";
+import { activeApplication, blockedByTimeOff, pickupOpportunities } from "./pickup";
 import "./shift-exchanges.css";
 import { ExchangeShiftCard, shiftHours } from "./ExchangeShiftCard";
 import { ChangeOptions, CLOSE_BEFORE_MS, SelfOnlyNote, type ChangeMode } from "./ChangeOptions";
@@ -78,8 +79,6 @@ const caseStatusLabels: Record<ExchangeCase["status"], string> = {
   expired: "Expired",
   invalidated: "Shift changed",
 };
-const activeApplication = (a: ExchangeApplication) =>
-  a.status === "invited" || a.status === "pending_manager";
 // TAKAS-RELEASE: a release is a cover asked of everyone eligible.
 const isRelease = (item: ExchangeCase) => item.kind === "cover" && item.audience === "eligible_pool";
 function caseTitle(item: ExchangeCase) {
@@ -91,14 +90,6 @@ function caseTitle(item: ExchangeCase) {
 
 function availabilityMessage(verb: "Requesting" | "Accepting") {
   return `Conflicts with your availability. ${verb} anyway does not change your weekly preferences.`;
-}
-
-/** BL-995: their approved time off alone keeps this shift from them; they ask for those hours back first. */
-function blockedByTimeOff(eligibility: ExchangeOpportunity["eligibility"]) {
-  return (
-    eligibility.status !== "eligible" &&
-    (eligibility.blockers ?? []).some((b) => b.code === "approved_time_off")
-  );
 }
 
 type ExchangeOpportunity = ExchangeReadModel["opportunities"][number];
@@ -478,9 +469,7 @@ export function ShiftExchangeHub({ workspaceId }: { workspaceId: string }) {
       );
   // The same for open shifts: the ones I can still ask for, whatever the
   // filters show. Time off blocks a shift; one I asked for waits on a manager.
-  const takeable = model.opportunities.filter(
-    (o) => !blockedByTimeOff(o.eligibility) && !myApplication(o),
-  ).length;
+  const takeable = pickupOpportunities(model).length;
   const canWrite = online && !mutation.isPending;
   const matches = (shift: ExchangeShift) =>
     shift.scheduled_date >= from &&

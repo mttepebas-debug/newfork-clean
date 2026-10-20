@@ -50,6 +50,8 @@ describe("My shifts: what each day says", () => {
         timeOff(5, "2026-08-24", { status: "pending" }, { status: "pending" }),
       ]),
       "2026-08-24",
+      // A released shift in the pool on Aug 28 (QA 38).
+      ["2026-08-28"],
     );
     const off = Object.fromEntries(days.map((day) => [day.date, day.timeOff]));
     expect(off).toEqual({
