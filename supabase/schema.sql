@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 553, last: 20261020061217_manager_home_reads_each_location.sql
--- fingerprint: sha256:0d8e1e03404223642c15ac2e0c2968e88fed756df72911f733676a82c02e0538
+-- migrations: 557, last: 20261020080300_lineup_sections_4.sql
+-- fingerprint: sha256:d8f9cc2bbf2c2ab2f70dba8bc127d0585dcdde07ec1d692bd0914e1d998ee1fd
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -6023,7 +6023,8 @@ begin
       coalesce(r.starts, s.start_time) as starts, coalesce(r.ends, s.end_time) as ends,
       s.start_time as schedule_starts, s.end_time as schedule_ends,
       coalesce(r.label_ids, s.label_ids) as label_ids, r.label_ids is not null as own_labels, s.label_names,
-      s.shift_type_id as schedule_type, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, false as lineup_only,
+      s.shift_type_id as schedule_type, r.section_id, r.section_name, r.sort_order, r.called_off_at, r.called_off_by,
+      false as lineup_only,
       r.replaced_by_row_id
     from shifts s
     -- Only a row of this day's lineups: a shift moved here from another day comes as the Schedule has it.
@@ -6034,7 +6035,8 @@ begin
     -- A person added in the lineup only.
     select r.location_id, h.shift_type_id, r.id, null, null, r.employee_id,
       r.job_id, null, r.starts, r.ends, null, null,
-      coalesce(r.label_ids, '{}'), true, '{}', null, r.section_id, r.sort_order, r.called_off_at, r.called_off_by, true,
+      coalesce(r.label_ids, '{}'), true, '{}', null, r.section_id, r.section_name, r.sort_order, r.called_off_at,
+      r.called_off_by, true,
       r.replaced_by_row_id
     from public.daily_lineup_rows r
     join headers h on h.id = r.lineup_id
@@ -6127,7 +6129,8 @@ begin
                                    from public.shift_labels sl
                                    where sl.workspace_id = target_workspace_id and sl.id = any (r.label_ids)), '[]'::jsonb)
                     else to_jsonb(r.label_names) end,
-                  'section_id', r.section_id, 'section_name', sec.name,
+                  -- LINEUP-EDIT L2b: one of the location's sections, or a name typed in this lineup only ("Other…").
+                  'section_id', r.section_id, 'section_name', coalesce(sec.name, r.section_name),
                   'sort_order', r.sort_order,
                   'called_off_at', r.called_off_at, 'called_off_by', r.called_off_by,
                   -- LINEUP-EDIT L1: the row of this lineup that took this one's place (S-178 "Replaced").
@@ -17627,6 +17630,11 @@ begin
         update public.daily_lineups d
         set editing = true, revision = d.revision + 1, updated_at = now(), updated_by = actor_user_id
         where d.id = header.id;
+        -- LINEUP-EDIT L2b (Mert 2026-10-20, "Edit'e kadar kalsın"): a section removed while this lineup was
+        -- published leaves its rows now that it is a draft again.
+        update public.daily_lineup_rows r set section_id = null, updated_at = now(), updated_by = actor_user_id
+        from public.location_sections s
+        where r.lineup_id = header.id and s.id = r.section_id and s.archived_at is not null;
       end if;
       -- Unpublish tells nobody (PLAN §9).
       done := done || jsonb_build_object('lineup_id', header.id, 'version', header.latest_version, 'status', 'unpublished');
@@ -17676,6 +17684,8 @@ declare
   notes jsonb := payload -> 'notes';
   row_id uuid;
   label uuid;
+  section uuid;
+  typed text;
   result jsonb;
   uuid_shape constant text := '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
   time_shape constant text := '^([01][0-9]|2[0-3]):[0-5][0-9]$';
@@ -17687,7 +17697,8 @@ begin
      or (payload ->> 'shift_type_id' is not null and (payload ->> 'shift_type_id') !~* uuid_shape)
      or (payload ->> 'action' = 'set_row' and (jsonb_typeof(edit) is distinct from 'object'
          or ((edit ->> 'source_shift_id') is null) = ((edit ->> 'row_id') is null)
-         or coalesce(edit ->> 'source_shift_id', edit ->> 'row_id') !~* uuid_shape))
+         or coalesce(edit ->> 'source_shift_id', edit ->> 'row_id') !~* uuid_shape
+         or (edit ? 'save_section' and jsonb_typeof(edit -> 'save_section') is distinct from 'boolean')))
      or (payload ->> 'action' = 'set_notes' and jsonb_typeof(notes) is distinct from 'object') then
     raise exception 'Choose what to change in the lineup' using errcode = '22023', hint = 'lineup.invalid_command';
   end if;
@@ -17777,6 +17788,30 @@ begin
            and s.location_id = place.id and s.workspace_id = target_workspace_id and s.archived_at is null)) then
       raise exception 'Choose one of this location''s sections' using errcode = '22023', hint = 'lineup.invalid_section';
     end if;
+    -- LINEUP-EDIT L2b: "Other…", a name typed in this lineup only (S-178 madde 4).
+    if edit ? 'section_name' then
+      if edit ? 'section_id' then
+        raise exception 'Choose one of this location''s sections' using errcode = '22023', hint = 'lineup.invalid_section';
+      end if;
+      if edit -> 'section_name' <> 'null'::jsonb then
+        typed := btrim(edit ->> 'section_name');
+        if jsonb_typeof(edit -> 'section_name') <> 'string' or char_length(typed) not between 1 and 40 then
+          raise exception 'Name the section in 40 characters or fewer' using errcode = '22023',
+            hint = 'lineup.invalid_section_name';
+        end if;
+        -- The location's section of that name, if it has one; "Save to sections" adds it.
+        select s.id into section from public.location_sections s
+        where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+          and lower(btrim(s.name)) = lower(typed);
+        if section is null and (edit -> 'save_section') = 'true'::jsonb then
+          insert into public.location_sections (workspace_id, location_id, name, sort_order)
+          select target_workspace_id, place.id, typed, coalesce(max(s.sort_order) + 1, 0)
+          from public.location_sections s
+          where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+          returning id into section;
+        end if;
+      end if;
+    end if;
 
     if header.id is null then
       insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
@@ -17797,7 +17832,10 @@ begin
         else r.label_ids end,
       starts = case when edit ? 'starts' then (edit ->> 'starts')::time else r.starts end,
       ends = case when edit ? 'ends' then (edit ->> 'ends')::time else r.ends end,
-      section_id = case when edit ? 'section_id' then (edit ->> 'section_id')::uuid else r.section_id end,
+      section_id = case when edit ? 'section_name' then section
+        when edit ? 'section_id' then (edit ->> 'section_id')::uuid else r.section_id end,
+      section_name = case when edit ? 'section_name' then case when section is null then typed end
+        when edit ? 'section_id' then null else r.section_name end,
       updated_at = now(), updated_by = actor_user_id
     where r.id = row_id;
   else
@@ -17828,6 +17866,114 @@ $_$;
 
 
 ALTER FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."lineup_sections_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  place public.locations;
+  section public.location_sections;
+  typed text;
+  wanted uuid[];
+  uuid_shape constant text := '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+begin
+  if jsonb_typeof(payload) is distinct from 'object'
+     or payload ->> 'action' is null or payload ->> 'action' not in ('add', 'rename', 'reorder', 'remove')
+     or payload ->> 'location_id' is null or (payload ->> 'location_id') !~* uuid_shape
+     or (payload ->> 'action' in ('rename', 'remove')
+         and (payload ->> 'section_id' is null or (payload ->> 'section_id') !~* uuid_shape))
+     or (payload ->> 'action' in ('add', 'rename') and jsonb_typeof(payload -> 'name') is distinct from 'string')
+     or (payload ->> 'action' = 'reorder' and (jsonb_typeof(payload -> 'section_ids') is distinct from 'array'
+         or exists (select 1 from jsonb_array_elements(payload -> 'section_ids') v
+                    where jsonb_typeof(v) <> 'string' or (v #>> '{}') !~* uuid_shape))) then
+    raise exception 'Choose what to change in the sections' using errcode = '22023', hint = 'lineup.invalid_command';
+  end if;
+  -- The core first: a stranger learns nothing.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.share',
+    target_locations => array[(payload ->> 'location_id')::uuid]);
+  -- The lineup's edits and the sections, one at a time.
+  perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text, 1017));
+
+  select * into place from public.locations l
+  where l.id = (payload ->> 'location_id')::uuid and l.workspace_id = target_workspace_id;
+  if place.id is null then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+  end if;
+  if payload ->> 'action' in ('rename', 'remove') then
+    -- Another location's section, or none, gets the same answer.
+    select * into section from public.location_sections s
+    where s.id = (payload ->> 'section_id')::uuid and s.workspace_id = target_workspace_id and s.location_id = place.id
+      and (s.archived_at is null or payload ->> 'action' = 'remove');
+    if section.id is null then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+    end if;
+  end if;
+  if payload ->> 'action' in ('add', 'rename') then
+    typed := btrim(payload ->> 'name');
+    if char_length(typed) not between 1 and 40 then
+      raise exception 'Name the section in 40 characters or fewer' using errcode = '22023',
+        hint = 'lineup.invalid_section_name';
+    end if;
+  end if;
+
+  if payload ->> 'action' = 'add' then
+    if not exists (select 1 from public.location_sections s
+                   where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+                     and lower(btrim(s.name)) = lower(typed)) then
+      insert into public.location_sections (workspace_id, location_id, name, sort_order)
+      select target_workspace_id, place.id, typed, coalesce(max(s.sort_order) + 1, 0)
+      from public.location_sections s
+      where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null;
+    end if;
+  elsif payload ->> 'action' = 'rename' then
+    if exists (select 1 from public.location_sections s
+               where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+                 and s.id <> section.id and lower(btrim(s.name)) = lower(typed)) then
+      raise exception 'This location has a section with that name' using errcode = '22023',
+        hint = 'lineup.section_exists';
+    end if;
+    update public.location_sections s set name = typed, updated_at = now() where s.id = section.id;
+  elsif payload ->> 'action' = 'reorder' then
+    wanted := array(select (v #>> '{}')::uuid from jsonb_array_elements(payload -> 'section_ids') v);
+    if cardinality(wanted) <> (select count(distinct w) from unnest(wanted) w)
+       or array(select w from unnest(wanted) w order by w) is distinct from array(
+         select s.id from public.location_sections s
+         where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+         order by s.id) then
+      raise exception 'Order every section of this location' using errcode = '22023', hint = 'lineup.invalid_section';
+    end if;
+    update public.location_sections s set sort_order = o.ord - 1, updated_at = now()
+    from unnest(wanted) with ordinality as o (id, ord)
+    where s.id = o.id;
+  elsif section.archived_at is null then
+    update public.location_sections s set archived_at = now(), updated_at = now() where s.id = section.id;
+    -- Mert 2026-10-20: the draft rows that had it, today and later, have none. A published lineup keeps it until
+    -- Edit takes it back (lineup_command_service), and a day that is over keeps its rows.
+    with cleared as (
+      update public.daily_lineup_rows r set section_id = null, updated_at = now(), updated_by = actor_user_id
+      from public.daily_lineups d
+      where r.workspace_id = target_workspace_id and r.section_id = section.id
+        and r.service_date >= (now() at time zone place.timezone)::date
+        and d.id = r.lineup_id and (d.latest_version = 0 or d.editing)
+      returning r.lineup_id
+    )
+    update public.daily_lineups d set revision = d.revision + 1, updated_at = now(), updated_by = actor_user_id
+    where d.id in (select c.lineup_id from cleared c);
+  end if;
+
+  return jsonb_build_object('location_id', place.id, 'sections', coalesce((
+    select jsonb_agg(jsonb_build_object('id', s.id, 'location_id', s.location_id, 'name', s.name,
+      'sort_order', s.sort_order) order by s.sort_order, s.name)
+    from public.location_sections s
+    where s.workspace_id = target_workspace_id and s.location_id = place.id and s.archived_at is null
+  ), '[]'::jsonb));
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."lineup_sections_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_account_deletion_avatar_objects_service"("target_request_id" "uuid", "target_lease_id" "uuid") RETURNS "jsonb"
@@ -30805,10 +30951,13 @@ CREATE TABLE IF NOT EXISTS "public"."daily_lineup_rows" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_by" "uuid",
     "replaced_by_row_id" "uuid",
+    "section_name" "text",
     CONSTRAINT "daily_lineup_rows_call_off" CHECK ((("called_off_at" IS NULL) = ("called_off_by" IS NULL))),
     CONSTRAINT "daily_lineup_rows_hours" CHECK (((("starts" IS NULL) = ("ends" IS NULL)) AND (("starts" IS NULL) OR ("starts" <> "ends")))),
     CONSTRAINT "daily_lineup_rows_kind" CHECK (((("source_shift_id" IS NOT NULL) AND ("employee_id" IS NULL)) OR (("source_shift_id" IS NULL) AND ("employee_id" IS NOT NULL) AND ("job_id" IS NOT NULL) AND ("starts" IS NOT NULL) AND ("ends" IS NOT NULL)))),
+    CONSTRAINT "daily_lineup_rows_one_section" CHECK ((("section_id" IS NULL) OR ("section_name" IS NULL))),
     CONSTRAINT "daily_lineup_rows_replaced_by_other" CHECK (("replaced_by_row_id" IS DISTINCT FROM "id")),
+    CONSTRAINT "daily_lineup_rows_section_name_check" CHECK ((("section_name" IS NULL) OR (("char_length"("btrim"("section_name")) >= 1) AND ("char_length"("btrim"("section_name")) <= 40)))),
     CONSTRAINT "daily_lineup_rows_sort_order_check" CHECK ((("sort_order" IS NULL) OR ("sort_order" >= 0)))
 );
 
@@ -38624,6 +38773,11 @@ GRANT ALL ON FUNCTION "public"."lineup_command_service"("actor_user_id" "uuid", 
 
 REVOKE ALL ON FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."lineup_sections_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."lineup_sections_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "payload" "jsonb") TO "service_role";
 
 
 
