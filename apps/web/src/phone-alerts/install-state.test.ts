@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  iosVersion,
   isAndroidChrome,
   isIPhoneSafari,
   isStandalone,
@@ -14,6 +15,11 @@ import {
 const UA = {
   iphoneSafari:
     "Mozilla/5.0 (iPhone; CPU iPhone OS 18_5 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.5 Mobile/15E148 Safari/604.1",
+  // Safari 26 and later freeze "OS 18_6" in the user agent; only "Version/" carries the real release.
+  iphone26:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Mobile/15E148 Safari/604.1",
+  iphone27:
+    "Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/27.1 Mobile/15E148 Safari/604.1",
   iphoneOld:
     "Mozilla/5.0 (iPhone; CPU iPhone OS 16_3 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.3 Mobile/15E148 Safari/604.1",
   iphoneChrome:
@@ -41,6 +47,26 @@ const noPush = { secure: true, serviceWorker: true, pushManager: false, notifica
 function env(overrides: Partial<InstallEnv>): InstallEnv {
   return { userAgent: UA.desktopChrome, maxTouchPoints: 0, standalone: false, ...pushReady, ...overrides };
 }
+
+describe("iosVersion", () => {
+  it("reads Safari's Version first, since iOS 26 and later freeze OS 18_6", () => {
+    expect(iosVersion(UA.iphone26)).toBe(26);
+    expect(iosVersion(UA.iphone27)).toBe(27.01);
+    expect(iosVersion("Mozilla/5.0 (iPhone; CPU iPhone OS 18_6 like Mac OS X) Version/26 Mobile/15E148 Safari/604.1")).toBe(26);
+  });
+
+  it("reads earlier releases the same way", () => {
+    expect(iosVersion(UA.iphoneSafari)).toBe(18.05);
+    expect(iosVersion(UA.iphoneOld)).toBe(16.03);
+    expect(iosVersion(UA.ipadDesktop)).toBe(18.05);
+  });
+
+  it("falls back to OS n_n where Safari names no Version, as in the Home Screen app", () => {
+    expect(iosVersion(UA.iphoneHomeScreen)).toBe(18.05);
+    expect(iosVersion("Mozilla/5.0 (iPhone; CPU iPhone OS 16_4 like Mac OS X) AppleWebKit/605.1.15 Mobile/15E148")).toBe(16.04);
+    expect(iosVersion(UA.desktopChrome)).toBeNull();
+  });
+});
 
 describe("isIPhoneSafari", () => {
   it("is Safari on an iPhone, in the browser", () => {
@@ -99,6 +125,15 @@ describe("phoneAlertsSupport", () => {
       kind: "needs-install",
       device: "phone",
     });
+  });
+
+  it("asks iPhone Safari on iOS 26 and 27 the same way", () => {
+    for (const userAgent of [UA.iphone26, UA.iphone27]) {
+      expect(phoneAlertsSupport(env({ userAgent, maxTouchPoints: 5, ...noPush }))).toEqual({
+        kind: "needs-install",
+        device: "phone",
+      });
+    }
   });
 
   it("lets the Home Screen app on iPhone turn alerts on", () => {

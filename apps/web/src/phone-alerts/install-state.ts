@@ -50,10 +50,13 @@ function isIOS({ userAgent, maxTouchPoints }: InstallEnv): boolean {
   return /Macintosh/.test(userAgent) && maxTouchPoints > 1;
 }
 
-/** Major.minor of iOS, from "OS 18_5" or, for an iPad posing as a Mac, Safari's "Version/18.5". */
-function iosVersion(userAgent: string): number | null {
-  const match = /OS (\d+)_(\d+)/.exec(userAgent) ?? /Version\/(\d+)\.(\d+)/.exec(userAgent);
-  return match ? Number(match[1]) + Number(match[2]) / 100 : null;
+/**
+ * Major.minor of iOS. Safari's "Version/26.0" comes first: from Safari 26 the "OS 18_6" part is
+ * frozen. The Home Screen app names no Version, so "OS 18_5" is the fallback there.
+ */
+export function iosVersion(userAgent: string): number | null {
+  const match = /Version\/(\d+)(?:\.(\d+))?/.exec(userAgent) ?? /OS (\d+)_(\d+)/.exec(userAgent);
+  return match ? Number(match[1]) + Number(match[2] ?? 0) / 100 : null;
 }
 
 export function isIPhoneSafari(env: InstallEnv): boolean {
