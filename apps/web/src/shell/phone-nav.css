@@ -18,8 +18,14 @@
     border-top: 1px solid var(--theme-border);
     background: var(--theme-surface);
   }
-  /* The on-screen keyboard needs the room while a field is being typed in. */
-  .app-shell:has(input:focus, textarea:focus, select:focus) .phone-bar {
+  /* The on-screen keyboard needs the room while a field is being typed in.
+     A select or a checkbox brings no keyboard, so the bar stays and the page
+     does not jump (Mert 2026-10-20, Employees › Rows per page). */
+  .app-shell:has(
+      input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="color"]):not([type="file"]):not([type="button"]):not([type="submit"]):not([type="reset"]):focus,
+      textarea:focus
+    )
+    .phone-bar {
     display: none;
   }
   .phone-bar a,
