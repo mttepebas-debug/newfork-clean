@@ -3580,3 +3580,4 @@ Kapanan madde açık listelerden buraya taşınır; kritik madde aramaları yaln
 - **BL-1182 (leave: medium / do: normal) Başka workspace'in belge bağlantısı açık workspace'te açılınca belge açılmıyor, uyarı da yok.** Bildirimdeki bağlantı belge kimliğini taşıyor ama sayfa açık workspace'e bakıyor. Kaynak: MY-DOCUMENTS, 2026-10-19.
 - **BL-1183 (leave: low / do: normal) Telefonda yöneticinin alt çubuğu "menünün ilk 4 sayfası".** İzni eksik özel rolde ekip Documents'ı çubuğa çıkabilir (Mobil Bug #9'un ilk ölçümü). Kaynak: MY-DOCUMENTS, 2026-10-19.
 - **BL-1184 (leave: low / do: safe; görsel soru, Mert'e) My documents sekmeleri "içerik sekmesi" görünümünde (13 px).** Sayfa sekmeleri kuralına (S-152) alınsın mı? Kaynak: MY-DOCUMENTS, 2026-10-19.
+- **BL-1185 (leave: low / do: moderate; para) Ücretli SMS davet kanalı.** Davet bugün yalnız e-postayla (S-207); SMS ücretli servis ister, Mert'in ödeme kararıyla eklenir. Kaynak: S-207, 2026-10-19.
