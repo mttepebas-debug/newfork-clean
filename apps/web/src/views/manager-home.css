@@ -59,8 +59,9 @@
   color: var(--dl-tx2);
   font-size: 13.5px;
 }
+/* The owner's setup list, after "Needs you" with a section's gap. */
 .mh-home .owner-setup-checklist {
-  margin-top: 16px;
+  margin-top: 26px;
 }
 .mh-allhidden {
   margin-top: 16px;
@@ -372,4 +373,10 @@ button.mh-loc:hover {
     height: 36px;
     padding: 0 12px;
   }
+}
+
+/* "Needs you"'s count turns red while somebody works without a required document (S-206). */
+.mh-home .dl-cnt.is-warn {
+  background: var(--dl-off-soft);
+  color: var(--dl-off);
 }

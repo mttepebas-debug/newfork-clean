@@ -215,6 +215,8 @@ export function WorkspacePage() {
   );
   const phoneSlot = typeof document === "undefined" ? null : document.getElementById("mm-top-mid");
   const allHidden = !customizing && layout.widget_order.every((id) => hidden.has(id));
+  const shown = layout.widget_order.filter((id) => !hidden.has(id));
+  const setupAfter = shown.includes("pending_requests") ? "pending_requests" : shown[shown.length - 1];
 
   const parts: Record<WorkspaceWidgetId, () => ReactNode> = {
     operations: () => (
@@ -401,7 +403,7 @@ export function WorkspacePage() {
             {customizing ? (
               <span className="mh-tools">
                 <button
-                  className="nf-button secondary"
+                  className="nf-button secondary-button"
                   type="button"
                   onClick={() => {
                     setDraft(null);
@@ -415,7 +417,7 @@ export function WorkspacePage() {
                 </button>
               </span>
             ) : (
-              <button className="nf-button secondary mh-customize" type="button" onClick={() => setCustomizing(true)}>
+              <button className="nf-button secondary-button mh-customize" type="button" onClick={() => setCustomizing(true)}>
                 <Settings2 size={16} aria-hidden /> Customize
               </button>
             )}
@@ -426,13 +428,20 @@ export function WorkspacePage() {
               {requestErrorText(saveMutation.error)}
             </p>
           ) : null}
-          {ownerRole && context && !customizing ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
           {allHidden ? <p className="workspace-empty mh-allhidden">Every card is hidden. Use Customize to show them again.</p> : null}
+          {allHidden && ownerRole && context ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
           <div className="dl-secs mh-secs">
             {layout.widget_order.map((id, index) => {
               const off = hidden.has(id);
               if (off && !customizing) return null;
-              if (!customizing) return <div key={id}>{parts[id]()}</div>;
+              // The owner's setup list follows "Needs you" (variant C's "Finish setting up"); it is not arranged.
+              if (!customizing)
+                return (
+                  <div key={id}>
+                    {parts[id]()}
+                    {id === setupAfter && ownerRole && context ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
+                  </div>
+                );
               const label = HOME_SECTIONS[id];
               return (
                 <div className={`mh-cz${off ? " is-hidden" : ""}`} key={id}>
