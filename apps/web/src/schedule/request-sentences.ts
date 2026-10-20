@@ -62,7 +62,13 @@ export function exchangeSentence(item: ExchangeCase, timeFormat: "12h" | "24h"):
   const start = shift.start_time ? `${clock(shift.start_time, timeFormat)} ` : "";
   const where = ` at ${shift.location_name} on ${day(shift.scheduled_date)}.`;
   if (item.kind === "swap") {
-    const partner = item.requested_shift?.employee_name ?? "a teammate";
+    // The other person comes from the request: once approved, the requested
+    // shift's live holder is the owner (bug 31; SwapReview reads it the same way).
+    const other =
+      item.applications.find((application) => application.status === "pending_manager" || application.status === "invited") ??
+      item.applications.find((application) => application.status === "approved") ??
+      item.applications.at(-1);
+    const partner = other?.employee_name ?? item.requested_shift?.employee_name ?? "a teammate";
     const verb = item.status === "completed" ? "swapped" : item.status === "open" ? "want to swap" : "asked to swap";
     return [{ strong: owner }, " and ", { strong: partner }, ` ${verb} their ${shift.job_name} shifts.`];
   }

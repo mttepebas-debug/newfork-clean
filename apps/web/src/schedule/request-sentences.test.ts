@@ -59,6 +59,16 @@ describe("exchangeSentence", () => {
     expect(sentenceText(exchangeSentence(swap, "12h"))).toBe("Daniel Brooks and Priya Shah want to swap their Server shifts.");
   });
 
+  // Bug 31: after approval the requested shift's live holder is the owner, so
+  // the other name comes from the request itself.
+  it("keeps both names once a swap is approved", () => {
+    const swapped = release([person("Priya Shah", "approved")], {
+      kind: "swap", audience: "direct", status: "completed", stage: "closed", owner_name: "Daniel Brooks",
+      requested_shift: { ...shift, employee_name: "Daniel Brooks" },
+    });
+    expect(sentenceText(exchangeSentence(swapped, "12h"))).toBe("Daniel Brooks and Priya Shah swapped their Server shifts.");
+  });
+
   it("puts names in bold", () => {
     expect(exchangeSentence(release([person("Jake Miller")]), "12h")[0]).toEqual({ strong: "Jake Miller" });
   });
