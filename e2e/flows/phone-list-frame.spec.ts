@@ -41,7 +41,7 @@ async function phone(browser: Browser): Promise<{ page: Page; cdp: CDPSession }>
     const workspace = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/.exec(url.pathname)?.[0] ?? "";
     const row = (i: number) => ({
       start_time: "16:00", end_time: "22:00", crosses_midnight: false, job_name: ["Server", "Cook", "Host"][i % 3]!,
-      job_color: "#2255ee", section_name: null, label_names: [], called_off: false,
+      job_color: "#2255ee", section_name: null, label_names: [], called_off: false, art_key: null,
     });
     await route.fulfill({
       json: {
