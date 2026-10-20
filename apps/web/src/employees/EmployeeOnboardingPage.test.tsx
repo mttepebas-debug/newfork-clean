@@ -21,8 +21,11 @@ import { RequestError } from "../lib/request-error";
 import EmployeeOnboardingPage from "./EmployeeOnboardingPage";
 import {
   emptyWeeklyPreference,
+  type Avatar,
+  type LastAvatarResponse,
   type WeeklyPreferenceRead,
 } from "@newfork/shared";
+import { apiRequest } from "../lib/supabase";
 import {
   loadWeeklyPreferences,
   saveWeeklyPreferences,
@@ -61,6 +64,37 @@ vi.mock("../auth/AuthContext", () => ({
     refresh: authMock.refresh,
     signOut: authMock.signOut,
   }),
+}));
+
+// AVATAR-IKON 5.1: the avatar goes through the API; one's avatar here and the last one elsewhere.
+const avatarMock = vi.hoisted(() => ({
+  own: null as Avatar | null,
+  last: { avatar: null, from_workspace_name: null } as LastAvatarResponse,
+  /** What a PUT answers with; a refusal is thrown. */
+  save: vi.fn(async (_choice: unknown): Promise<void> => undefined),
+}));
+
+vi.mock("../lib/supabase", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("../lib/supabase")>()),
+  supabaseClient: {},
+  apiRequest: vi.fn(async (_client: unknown, path: string, init?: RequestInit) => {
+    if (path.endsWith("/me/last-avatar")) return avatarMock.last;
+    if (!path.endsWith("/me/avatar")) throw new Error(`unexpected ${path}`);
+    if (init?.method === "PUT") {
+      const choice = JSON.parse(String(init.body)) as { art_key?: string };
+      await avatarMock.save(choice);
+      if (choice.art_key) avatarMock.own = { kind: "art", art_key: choice.art_key } as Avatar;
+      return null;
+    }
+    const avatar = avatarMock.own;
+    return { present: avatar !== null, url: null, avatar, suggested: ["001-server", "003-bartender"] };
+  }),
+}));
+
+// The drawings without the real chunk.
+vi.mock("../lineup-art/useLineupArt", () => ({
+  useLineupArtSvgs: () => null,
+  loadLineupArtSvgs: async () => ({}),
 }));
 
 vi.mock("./onboarding-data", () => ({
@@ -166,6 +200,9 @@ describe("EmployeeOnboardingPage", () => {
     vi.clearAllMocks();
     authMock.refresh.mockResolvedValue(null);
     authMock.phone = "+13105559999";
+    avatarMock.own = null;
+    avatarMock.last = { avatar: null, from_workspace_name: null };
+    avatarMock.save.mockResolvedValue(undefined);
     vi.mocked(getMyOnboarding).mockResolvedValue(onboarding);
     vi.mocked(isMyOnboardingPhoneInUse).mockResolvedValue(false);
     vi.mocked(loadWeeklyPreferences).mockResolvedValue(weeklyModel());
@@ -1086,6 +1123,116 @@ describe("EmployeeOnboardingPage", () => {
 
     expect(await screen.findByText("Welcome redirect")).toBeTruthy();
     expect(getMyOnboarding).not.toHaveBeenCalled();
+  });
+
+  // AVATAR-IKON 5.1 (Mert, 19 Oct: B): a new workspace starts with the person's last avatar.
+  describe("Your avatar", () => {
+    const avatarPath = `/v1/workspaces/${onboarding.workspace_id}/me/avatar`;
+    const lastFromHarbor: LastAvatarResponse = {
+      avatar: { kind: "art", art_key: "001-server" },
+      from_workspace_name: "Harbor & Vine",
+    };
+    const avatarBox = async () =>
+      (await screen.findByRole("group", { name: "Your avatar" })) as HTMLElement;
+    const useLastSent = () =>
+      vi.mocked(apiRequest).mock.calls.some(
+        ([, path, init]) => path === avatarPath && init?.body === JSON.stringify({ use_last: true }),
+      );
+    beforeEach(() => {
+      // jsdom has no modal dialogs: the avatar window opens as an open <dialog>.
+      HTMLDialogElement.prototype.showModal = function () {
+        this.setAttribute("open", "");
+      };
+    });
+
+    it("offers the last avatar from the other workspace, with Change", async () => {
+      avatarMock.last = lastFromHarbor;
+      renderProfileStep();
+      const box = await avatarBox();
+      expect(
+        await within(box).findByText(
+          "From your Harbor & Vine profile. It will be your avatar here too, unless you change it.",
+        ),
+      ).toBeTruthy();
+      expect(within(box).getByRole("button", { name: "Change" })).toBeTruthy();
+      expect(within(box).queryByRole("button", { name: "Add avatar" })).toBeNull();
+      expect(box.querySelector(".member-avatar--art")).not.toBeNull();
+    });
+
+    it("keeps the last avatar here once the profile is saved", async () => {
+      avatarMock.last = lastFromHarbor;
+      vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+      renderProfileStep();
+      await within(await avatarBox()).findByRole("button", { name: "Change" });
+      await fillProfileAndSave();
+      await waitFor(() => expect(useLastSent()).toBe(true));
+      expect(avatarMock.save).toHaveBeenCalledWith({ use_last: true });
+      const putOrder = vi
+        .mocked(apiRequest)
+        .mock.invocationCallOrder[
+          vi.mocked(apiRequest).mock.calls.findIndex(([, , init]) => init?.method === "PUT")
+        ]!;
+      expect(vi.mocked(saveMyOnboardingProfile).mock.invocationCallOrder[0]!).toBeLessThan(putOrder);
+    });
+
+    it("does not send the last avatar once the person chose another one", async () => {
+      avatarMock.last = lastFromHarbor;
+      vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+      renderProfileStep();
+      fireEvent.click(await within(await avatarBox()).findByRole("button", { name: "Change" }));
+      const picker = screen.getByRole("dialog", { name: "Your avatar" });
+      // The window starts on the suggestion.
+      expect(within(picker).getByText("Server")).toBeTruthy();
+      fireEvent.click(within(picker).getByRole("radio", { name: "Shaker" }));
+      fireEvent.click(within(picker).getByRole("button", { name: "Save" }));
+      // The window saves at once, apart from the step's Save and continue.
+      await waitFor(() => expect(avatarMock.save).toHaveBeenCalledWith({ art_key: "003-bartender" }));
+      expect(saveMyOnboardingProfile).not.toHaveBeenCalled();
+      await waitFor(() => expect(screen.queryByRole("dialog", { name: "Your avatar" })).toBeNull());
+      expect(
+        await within(await avatarBox()).findByText("Your avatar in Meyhouse."),
+      ).toBeTruthy();
+
+      await fillProfileAndSave();
+      await waitFor(() => expect(saveMyOnboardingProfile).toHaveBeenCalled());
+      await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
+      expect(useLastSent()).toBe(false);
+    });
+
+    it("offers Add avatar with initials when there is no last avatar", async () => {
+      renderProfileStep();
+      const box = await avatarBox();
+      expect(
+        await within(box).findByText("Optional. Upload your photo or pick one of ours."),
+      ).toBeTruthy();
+      expect(within(box).getByRole("button", { name: "Add avatar" })).toBeTruthy();
+      expect(within(box).queryByRole("button", { name: "Change" })).toBeNull();
+      expect(box.querySelector(".member-avatar--initials")?.textContent).toBe("TR");
+      fireEvent.click(within(box).getByRole("button", { name: "Add avatar" }));
+      expect(screen.getByRole("dialog", { name: "Your avatar" })).toBeTruthy();
+    });
+
+    it("moves on without an avatar, and sends none", async () => {
+      vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+      renderProfileStep();
+      await within(await avatarBox()).findByRole("button", { name: "Add avatar" });
+      await fillProfileAndSave();
+      await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
+      expect(
+        vi.mocked(apiRequest).mock.calls.some(([, , init]) => init?.method === "PUT"),
+      ).toBe(false);
+    });
+
+    it("moves on when keeping the last avatar fails", async () => {
+      avatarMock.last = lastFromHarbor;
+      avatarMock.save.mockRejectedValue(new RequestError("offline", undefined, undefined, 503));
+      vi.mocked(saveMyOnboardingProfile).mockResolvedValue(2);
+      renderProfileStep();
+      await within(await avatarBox()).findByRole("button", { name: "Change" });
+      await fillProfileAndSave();
+      await waitFor(() => expect(getMyOnboarding).toHaveBeenCalledTimes(2));
+      expect(avatarMock.save).toHaveBeenCalledWith({ use_last: true });
+    });
   });
 
   describe("step list", () => {

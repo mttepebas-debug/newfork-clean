@@ -987,6 +987,66 @@
   align-items: center;
 }
 
+/* AVATAR-IKON 5.1 (Mert, 19 Oct: B): "Your avatar" above the profile fields;
+   the circle and its camera badge as in Account › Profile. */
+.onboarding-avatar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px;
+  border: 1px solid var(--theme-border);
+  border-radius: 14px;
+  background: var(--theme-surface);
+}
+
+.onboarding-avatar-circle {
+  position: relative;
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  cursor: pointer;
+}
+
+.onboarding-avatar-camera {
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 2px solid var(--theme-surface);
+  border-radius: 50%;
+  background: var(--theme-accent-strong);
+  color: var(--theme-on-accent);
+  box-sizing: border-box;
+}
+
+.onboarding-avatar-text {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.onboarding-avatar-label {
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.onboarding-avatar-text p {
+  margin: 0;
+  color: var(--theme-text-secondary);
+  font-size: 13.5px;
+  line-height: 1.45;
+}
+
+.onboarding-avatar-text > div {
+  margin-top: 4px;
+}
+
 /* Onboarding reads the whole policy in the page flow: a box that scrolls inside
    a page that also scrolls hides how much is left to read. */
 .onboarding-policy-text {

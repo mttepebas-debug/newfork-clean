@@ -5,22 +5,25 @@ import {
   phoneInUseMessage,
   sameUsPhone,
   toUsPhone,
+  type Avatar,
   type EmployeeOnboarding,
   type EmployeeOnboardingProfile,
   type EmployeeOnboardingRequirement,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@newfork/ui";
-import { ArrowRight, Check, CircleAlert, UserRound } from "lucide-react";
+import { ArrowRight, Camera, Check, CircleAlert, UserRound } from "lucide-react";
 import {
   useCallback,
   useEffect,
   useId,
   useMemo,
+  useRef,
   useState,
   type FormEvent,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 import { Link, Navigate, useLocation, useNavigate, useParams } from "react-router";
 import { OnboardingDocumentStep } from "./OnboardingDocumentStep";
 import { WeeklyPreferencesPanel } from "../availability/WeeklyPreferencesPanel";
@@ -49,6 +52,14 @@ import {
   submitMyOnboarding,
 } from "./onboarding-data";
 import { letterRuleError } from "../shell/us-text";
+import { AvatarPicker } from "../avatar/AvatarPicker";
+import { MemberAvatar } from "../avatar/MemberAvatar";
+import {
+  useLastAvatar,
+  useOwnAvatar,
+  useRemoveAvatar,
+  useSaveAvatar,
+} from "../avatar/avatar-data";
 
 export default function EmployeeOnboardingPage() {
   const location = useLocation();
@@ -609,9 +620,28 @@ function ProfileStep({
         ? "Other"
         : "",
   );
+  // AVATAR-IKON 5.1: the account's last avatar (another workspace's) is offered
+  // while there is none here yet; a choice in the avatar window is saved at once.
+  const own = useOwnAvatar(workspaceId);
+  const last = useLastAvatar(workspaceId);
+  const saveAvatar = useSaveAvatar(workspaceId);
+  const offered =
+    own.data && own.data.avatar === null ? (last.data?.avatar ?? null) : null;
   const mutation = useMutation({
-    mutationFn: () =>
-      saveMyOnboardingProfile(workspaceId, draft, model.revision),
+    mutationFn: async () => {
+      const saved = await saveMyOnboardingProfile(
+        workspaceId,
+        draft,
+        model.revision,
+      );
+      // Kept here once the profile is saved. Never holds the onboarding up: the
+      // avatar is optional and can be chosen any time in Account › Profile.
+      if (offered)
+        await saveAvatar
+          .mutateAsync({ use_last: true })
+          .catch(() => undefined);
+      return saved;
+    },
     onSuccess: onSaved,
     // Somebody may have taken the number since it was asked about.
     onError: (error) => {
@@ -745,6 +775,17 @@ function ProfileStep({
         copy="Only your manager and whoever runs payroll can see these."
       />
       {rejection}
+      {own.data && !last.isPending ? (
+        <OnboardingAvatar
+          workspaceId={workspaceId}
+          workspaceName={model.workspace_name}
+          personName={model.employee_name}
+          avatar={own.data.avatar}
+          suggested={own.data.suggested}
+          offered={offered}
+          offeredFrom={last.data?.from_workspace_name ?? null}
+        />
+      ) : null}
       <div className="onboarding-form-grid">
         {/*
           These are the names payroll and documents use, so they are asked as
@@ -860,6 +901,103 @@ function ProfileStep({
           server rejects a profile that is missing its emergency contact. */}
       <MutationFooter mutation={mutation} error={validationError} label="Continue" />
     </form>
+  );
+}
+
+/**
+ * AVATAR-IKON 5.1 (Mert, 19 Oct: B): "Your avatar" on the first profile page.
+ * Shows one's avatar here, else the offered last one, else the initials; Change
+ * or Add avatar opens the same window as Account › Profile, which saves at once.
+ */
+function OnboardingAvatar({
+  workspaceId,
+  workspaceName,
+  personName,
+  avatar,
+  suggested,
+  offered,
+  offeredFrom,
+}: {
+  readonly workspaceId: string;
+  readonly workspaceName: string;
+  readonly personName: string;
+  readonly avatar: Avatar | null;
+  readonly suggested: readonly string[];
+  readonly offered: Avatar | null;
+  readonly offeredFrom: string | null;
+}) {
+  const phone = useListPhoneWidth();
+  const labelId = useId();
+  const named = useRef<HTMLButtonElement>(null);
+  const save = useSaveAvatar(workspaceId);
+  const remove = useRemoveAvatar(workspaceId);
+  const [picking, setPicking] = useState(false);
+  const shown = avatar ?? offered;
+  const line = avatar
+    ? `Your avatar in ${workspaceName}.`
+    : offered
+      ? `From your ${offeredFrom ?? "other"} profile. It will be your avatar here too, unless you change it.`
+      : "Optional. Upload your photo or pick one of ours.";
+  const choose = () => {
+    // The window gives focus back to what had it: the named button, never the circle.
+    named.current?.focus({ preventScroll: true });
+    setPicking(true);
+  };
+  return (
+    <div className="onboarding-avatar" role="group" aria-labelledby={labelId}>
+      {/* The circle opens the window too, for a pointer; the named button is the one to tab to. */}
+      <button
+        type="button"
+        className="onboarding-avatar-circle"
+        tabIndex={-1}
+        aria-hidden="true"
+        onClick={choose}
+      >
+        <MemberAvatar avatar={shown} name={personName} size={phone ? 64 : 76} />
+        <span className="onboarding-avatar-camera">
+          <Camera size={14} />
+        </span>
+      </button>
+      <div className="onboarding-avatar-text">
+        <span className="onboarding-avatar-label">
+          <span id={labelId}>Your avatar</span>
+          {shown ? null : <span className="field-optional">optional</span>}
+        </span>
+        <p>{line}</p>
+        <div>
+          <button
+            ref={named}
+            type="button"
+            className="pb-btn pb-btn-secondary"
+            onClick={choose}
+          >
+            {shown ? "Change" : "Add avatar"}
+          </button>
+        </div>
+      </div>
+      {createPortal(
+        <AvatarPicker
+          open={picking}
+          workspaceId={workspaceId}
+          workspaceName={workspaceName}
+          personName={personName}
+          initial={shown}
+          suggested={suggested}
+          onSave={async (choice) => {
+            await save.mutateAsync(choice);
+          }}
+          onRemove={
+            avatar
+              ? async () => {
+                  await remove.mutateAsync();
+                }
+              : undefined
+          }
+          onClose={() => setPicking(false)}
+        />,
+        document.body,
+      )}
+    </div>
   );
 }
 
