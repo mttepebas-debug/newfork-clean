@@ -2118,13 +2118,17 @@ begin
   end if;
 
   -- Bug 2: it goes to people, not to checked locations; with nobody but its
-  -- author at them (or only its author named) it reaches nobody.
-  if cardinality(app_private.announcement_audience(w,
-       array(select x::uuid from jsonb_array_elements_text(n -> 'live_location_ids') x),
-       array(select x::uuid from jsonb_array_elements_text(n -> 'people') x),
-       array(select change.employee_id from public.announcement_shift_changes change
-             where change.announcement_id = stored.id and not change.silent and change.brought_back_at is null),
-       coalesce(stored.created_by, (n ->> 'author')::uuid))) = 0 then
+  -- author at them (or only its author named) it reaches nobody. Mert,
+  -- 2026-10-20: a published post can still be corrected, and one that sets a
+  -- day's hours does its work with nobody to tell.
+  if (jsonb_array_length(n -> 'live_location_ids') = 0 and jsonb_array_length(n -> 'people') = 0)
+     or (intent in ('publish', 'schedule') and not (n ->> 'hours')::boolean
+         and cardinality(app_private.announcement_audience(w,
+           array(select x::uuid from jsonb_array_elements_text(n -> 'live_location_ids') x),
+           array(select x::uuid from jsonb_array_elements_text(n -> 'people') x),
+           array(select change.employee_id from public.announcement_shift_changes change
+                 where change.announcement_id = stored.id and not change.silent and change.brought_back_at is null),
+           coalesce(stored.created_by, (n ->> 'author')::uuid))) = 0) then
     found := found || jsonb_build_array(jsonb_build_object('tab', 'aud', 'field', 'people', 'code', 'nobody',
       'message', 'Nobody gets it yet. Check a location on Locations & publishing, or add people here.', 'required', true));
   end if;
@@ -2422,8 +2426,11 @@ begin
         if failure is not null then
           raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || failure, detail = 'announcement.write';
         end if;
-        -- Bug 2: due with nobody left to reach (they left its locations), it stays back.
-        if cardinality(app_private.announcement_recipients(item)) = 0 then
+        -- Bug 2: due with nobody left to reach (they left its locations), it
+        -- stays back, unless it sets a day's hours.
+        if cardinality(app_private.announcement_recipients(item)) = 0
+           and not exists (select 1 from public.announcement_locations target
+                           where target.announcement_id = item.id and target.day <> 'open') then
           raise exception 'nobody' using errcode = '22023', hint = 'announcement.nobody';
         end if;
         impact := app_private.announcement_impact(place, item.id, item.starts_on, item.ends_on,

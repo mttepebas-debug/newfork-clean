@@ -261,6 +261,26 @@ select is(pg_temp.sees('owner', tests.id('r:ann:later')) ->> 'display_status', '
   'bug 2: due with nobody left to reach, it does not go out');
 select is(pg_temp.sees('owner', tests.id('r:ann:later')) ->> 'publish_error_code', 'nobody', 'bug 2: and says nobody would get it');
 
+-- Mert, 2026-10-20: a published post whose people all left can still be put
+-- right (whoever joins later reads the right one); and a post that sets a
+-- day's hours does its work with nobody to tell.
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload(array['S'], 'Only the owner at Sile, fixed'), 'save')$$,
+  tests.id('r:ann:alone'))), 'ok', 'bug 2: a published post nobody is left at can still be corrected');
+create function pg_temp.closed_at(key text, title text, extra jsonb default '{}') returns jsonb language sql as $$
+  select pg_temp.payload('{}', title, jsonb_build_object('starts_on', current_date + 40,
+    'locations', jsonb_build_array(jsonb_build_object('location_id', tests.id('r:' || key), 'day', 'closed'))) || extra)
+$$;
+select tests.remember('r:ann:closed', pg_temp.draft('owner', '{}', 'Sile closed'));
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.closed_at('S', 'Sile closed'), 'publish')$$,
+  tests.id('r:ann:closed'))), 'ok', 'bug 2: a closed day at a location with only its author still goes out');
+select tests.remember('r:ann:closed2', pg_temp.draft('owner', '{}', 'Sile closed later'));
+select pg_temp.save('owner', tests.id('r:ann:closed2'), pg_temp.closed_at('S', 'Sile closed later',
+  jsonb_build_object('starts_on', current_date + 41, 'publish_at', now() + interval '1 hour')), 'schedule');
+-- ponytail: time passes by moving its hour back.
+update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('r:ann:closed2');
+select app_private.announcement_release(tests.id('r'));
+select is(pg_temp.status(tests.id('r:ann:closed2')), 'published', 'bug 2: and so does one scheduled, when it comes due');
+
 -- 8. Two people editing at once: the later save is refused (KK-92 c) ----------------------------
 
 select tests.remember('r:ann:rev', pg_temp.draft('owner', array['K'], 'Revisioned'));
