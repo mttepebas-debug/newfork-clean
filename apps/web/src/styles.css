@@ -5990,6 +5990,13 @@ button.workspace-switcher-item:hover:not(:disabled) {
   opacity: 1;
   pointer-events: auto;
 }
+/* A touch screen has no hover: while editing, every cell shows its strip. */
+@media (hover: none) {
+  .schedule-cell[data-editing="true"] > .schedule-cell-add-action {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
 .schedule-cell-add {
   position: absolute;
   inset: 0;

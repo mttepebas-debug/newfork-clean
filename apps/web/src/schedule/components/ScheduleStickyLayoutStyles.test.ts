@@ -456,4 +456,15 @@ describe("schedule sticky layout styles", () => {
     expect(imageRule).toContain("object-position: center");
     expect(focusRule).toContain("outline: 2px solid var(--schedule-focus-ring-color)");
   });
+
+  // A touch screen has no hover: while editing, every cell shows its Add shift
+  // strip, as the windows' row tools do (KARARLAR 504).
+  it("shows the cell's Add shift strip on a touch screen while editing", () => {
+    const touchRule = cssRuleByPattern(
+      /@media \(hover: none\)\s*\{\s*\.schedule-cell\[data-editing="true"\] > \.schedule-cell-add-action\s*\{([^}]*)\}/m,
+    );
+
+    expect(touchRule).toContain("opacity: 1");
+    expect(touchRule).toContain("pointer-events: auto");
+  });
 });
