@@ -85,6 +85,9 @@ insert into service_class values
   -- The new notification system (BILDIRIM-07): one's own list and choices, and the workspace's settings.
   ('get_notification_feed_service', 'notifications.read_own'),
   ('get_lineup_day_service', 'lineup.read'),
+  -- The managers' Home (YONETICI-HOME): Home's own gate; its locations are the schedule.read scope,
+  -- its document and time off rows each asked of the core (documents.read, requests.read).
+  ('get_manager_home_service', 'workspace.todos'),
   ('get_notification_preferences_service', 'notifications.read_own'),
   ('get_notification_workspace_settings_service', 'settings.organization.write'),
   ('get_employee_detail_service', 'employee.read'),
