@@ -14,7 +14,10 @@ select no_plan();
 --       answer, and a request that closed before its shift each tell the people it changes;
 --   (e) a request that still waits is reminded every 12 hours to who has not decided, and once more
 --       4 hours before it closes; nothing twice;
---   (f) another workspace hears nothing; every notice is in its recipient's choices.
+--   (f) another workspace hears nothing; every notice is in its recipient's choices;
+--   (g) one acceptance that ends tells only that teammate and leaves the request open; a manager's reason
+--       for closing reaches who asked, not the owner; an answer closed when someone leaves tells the owner;
+--       a private note for managers is in no notice.
 
 select tests.world('sx');
 select tests.world('sy');
@@ -39,7 +42,10 @@ select tests.publish_week('sx', 1, '[
   {"label": "jake-fri", "person": "jake", "loc": "K", "job": "cook", "day": 4, "start": "10:00", "end": "15:00"},
   {"label": "leo-sat", "person": "leo", "loc": "K", "job": "cook", "day": 5, "start": "09:00", "end": "15:00"},
   {"label": "maria-sun", "person": "maria", "loc": "K", "job": "cook", "day": 6, "start": "09:00", "end": "15:00"},
-  {"label": "deniz-mon", "person": "deniz", "loc": "B", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"}
+  {"label": "deniz-mon", "person": "deniz", "loc": "B", "job": "cook", "day": 0, "start": "09:00", "end": "15:00"},
+  {"label": "maria-thu", "person": "maria", "loc": "K", "job": "cook", "day": 3, "start": "16:00", "end": "22:00"},
+  {"label": "maria-sat", "person": "maria", "loc": "K", "job": "cook", "day": 5, "start": "16:00", "end": "22:00"},
+  {"label": "emre-fri", "person": "emre", "loc": "K", "job": "cook", "day": 4, "start": "16:00", "end": "22:00"}
 ]');
 select tests.publish_week('sy', 1, '[
   {"label": "yan-mon", "person": "yan", "loc": "K", "job": "cook", "day": 0, "start": "16:00", "end": "22:00"}
@@ -292,6 +298,61 @@ select is(pg_temp.reminders(), 3, '(e) once');
 select pg_temp.approve('sx:zeynep', tests.id('sx:case:deniz-mon'), 'sx:berk');
 select is((select count(*)::integer from public.person_notifications n where n.subject_id = tests.id('sx:case:deniz-mon')
   and n.type_key like 'shift_changes.approval_%' and n.resolved_at is null), 0, '(e) the decision closes the reminders too');
+
+-- (g) Edges -------------------------------------------------------------------------------------------------
+
+-- One acceptance ends (refresh_weekly_exchange_terms: the new hours overlap Jake's other shift); the
+-- request stays open for Leo.
+select pg_temp.release('sx:maria', 'maria-thu');
+select pg_temp.apply('sx:jake', tests.id('sx:case:maria-thu'));
+select pg_temp.apply('sx:leo', tests.id('sx:case:maria-thu'));
+update public.shift_exchange_applications set status = 'invalidated'
+where id = pg_temp.app(tests.id('sx:case:maria-thu'), 'sx:jake');
+select public.shift_exchange_emit(null, tests.id('sx'), tests.id('sx:case:maria-thu'),
+  pg_temp.app(tests.id('sx:case:maria-thu'), 'sx:jake'), 'invalidated', 'That acceptance ended; no assignment changed.');
+select is((select status from public.shift_exchange_cases where id = tests.id('sx:case:maria-thu')), 'open', '(g) the request stays open');
+select is(pg_temp.told('closed', tests.id('sx:case:maria-thu')), array['sx:jake'], '(g) only Jake hears his acceptance ended');
+select matches(pg_temp.said('closed', tests.id('sx:case:maria-thu'), 'sx:jake'),
+  '^Your request for Maria Person''s shift ended \| The shift changed and now overlaps another of your shifts\. Your schedule has not changed\.$',
+  '(g) and why');
+select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-thu'), 'sx:ayse'), 'open', '(g) Ayse''s card stays open for Leo');
+
+-- Ayse closes it with a reason and a note for managers.
+select pg_temp.command('sx:ayse', jsonb_build_object('action', 'close', 'case_id', tests.id('sx:case:maria-thu'),
+  'expected_revision', pg_temp.rev(tests.id('sx:case:maria-thu')), 'reason', 'Kitchen is closed that night',
+  'private_note', 'GIZLI one'));
+select is(pg_temp.told('closed', tests.id('sx:case:maria-thu')), array['sx:jake', 'sx:leo', 'sx:maria'],
+  '(g) the real close still reaches Maria, and Leo');
+select matches(pg_temp.said('closed', tests.id('sx:case:maria-thu'), 'sx:leo'), '\| Kitchen is closed that night$',
+  '(g) Leo, who asked, reads the reason');
+select doesnt_match(pg_temp.said('closed', tests.id('sx:case:maria-thu'), 'sx:maria'), 'Kitchen',
+  '(g) Maria, the owner, does not');
+select is(pg_temp.card('approval_needed', tests.id('sx:case:maria-thu'), 'sx:ayse'), 'cancelled', '(g) Ayse''s card closes');
+
+-- Emre, asked by name, accepts; his access is removed (close_employee_side closes his answer).
+select pg_temp.ask('sx:maria', 'maria-sat', 'sx:emre');
+select pg_temp.answer('sx:emre', tests.id('sx:case:maria-sat'), 'accept');
+update public.shift_exchange_applications set status = 'closed_case_cancelled'
+where id = pg_temp.app(tests.id('sx:case:maria-sat'), 'sx:emre');
+update public.shift_exchange_cases set status = 'cancelled' where id = tests.id('sx:case:maria-sat');
+select public.shift_exchange_emit(tests.user('sx:owner'), tests.id('sx'), tests.id('sx:case:maria-sat'),
+  pg_temp.app(tests.id('sx:case:maria-sat'), 'sx:emre'), 'application_closed', 'Their answer was closed. No assignment changed.');
+select is(pg_temp.told('cover_unfilled', tests.id('sx:case:maria-sat')), array['sx:maria'], '(g) Maria hears Emre can no longer cover');
+select matches(pg_temp.said('cover_unfilled', tests.id('sx:case:maria-sat'), 'sx:maria'),
+  '^No one could cover your Sat, .* shift \| Emre Person can no longer cover it\. You are still responsible for this shift\.$', '(g) in those words');
+select isnt(pg_temp.card('approval_needed', tests.id('sx:case:maria-sat'), 'sx:ayse'), 'open', '(g) Ayse''s card closes');
+
+-- An approval with a note for managers.
+select pg_temp.release('sx:emre', 'emre-fri');
+select pg_temp.apply('sx:jake', tests.id('sx:case:emre-fri'));
+select pg_temp.command('sx:ayse', jsonb_build_object('action', 'approve', 'case_id', tests.id('sx:case:emre-fri'),
+  'application_id', pg_temp.app(tests.id('sx:case:emre-fri'), 'sx:jake'), 'expected_revision', pg_temp.rev(tests.id('sx:case:emre-fri')),
+  'private_note', 'GIZLI two',
+  'fingerprint', public.shift_exchange_preview(tests.user('sx:ayse'), tests.id('sx'), tests.id('sx:case:emre-fri'),
+    pg_temp.app(tests.id('sx:case:emre-fri'), 'sx:jake')) ->> 'fingerprint'));
+select is(pg_temp.told('decided', tests.id('sx:case:emre-fri')), array['sx:emre', 'sx:jake'], '(g) the approval with a note is told');
+select is((select count(*)::integer from public.person_notifications n where n.workspace_id = tests.id('sx')
+  and (n.title || coalesce(n.body, '') || n.data::text) like '%GIZLI%'), 0, '(g) no notice carries a note for managers');
 
 -- (f) Another workspace ------------------------------------------------------------------------------------
 

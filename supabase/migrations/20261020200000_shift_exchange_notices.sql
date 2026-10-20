@@ -218,18 +218,21 @@ begin
         else who_name || ' wants ' || owner_name || '''s ' || day end,
       desk, actor, 'shift_exchange_case', cid, facts);
 
-  elsif act in ('peer_declined', 'application_withdrawn') then
+  elsif act in ('peer_declined', 'application_withdrawn', 'application_closed') then
+    -- An answer: declined, taken back, or closed because its teammate left (close_employee_side).
     perform app_private.shift_exchange_resolve(w, cid, invitations,
-      case when act = 'peer_declined' then 'declined' else 'withdrawn' end, actor, array[who_user]);
+      case act when 'peer_declined' then 'declined' when 'application_withdrawn' then 'withdrawn' else 'closed' end, actor, array[who_user]);
     if not pool then
       if c.kind = 'swap' then
         sent := app_private.notify('shift_changes.swap_answered', w, array[owner_user], key || ':answer:' || aid::text,
-          who_name || case when act = 'peer_declined' then ' declined your swap' else ' withdrew from your swap' end,
+          who_name || case act when 'peer_declined' then ' declined your swap' when 'application_withdrawn' then ' withdrew from your swap'
+            else ' can no longer swap with you' end,
           'Nothing changed. You still work ' || day || '.', hub, actor, 'shift_exchange_case', cid, facts);
       else
         sent := app_private.notify('shift_changes.cover_unfilled', w, array[owner_user], key || ':unfilled:' || aid::text,
           'No one could cover your ' || day_only || ' shift',
-          who_name || ' can''t cover it. You are still responsible for this shift.', hub, actor, 'shift_exchange_case', cid, facts);
+          who_name || case when act = 'peer_declined' then ' can''t cover it.' else ' can no longer cover it.' end
+            || ' You are still responsible for this shift.', hub, actor, 'shift_exchange_case', cid, facts);
       end if;
       perform app_private.shift_exchange_resolve(w, cid, null, 'withdrawn', actor);
     elsif not exists (select 1 from public.shift_exchange_applications x where x.case_id = cid and x.status = 'pending_manager') then
@@ -238,8 +241,10 @@ begin
     return sent;
 
   elsif act = 'scope_approved' then
-    -- One location approved a two-location swap: that manager's card says so; the other still waits.
-    perform app_private.shift_exchange_resolve(w, cid, approvals, 'approved', actor, array[actor]);
+    -- One location approved a two-location swap: its deciders' cards close; the other location's wait.
+    perform app_private.shift_exchange_resolve(w, cid, approvals, 'approved', actor,
+      array(select u from unnest(app_private.shift_exchange_deciders(w, cid, a.employee_id)) u
+            where u <> all (app_private.shift_exchange_deciders(w, cid, a.employee_id, true))));
     return 0;
 
   elsif act = 'application_rejected' then
@@ -311,6 +316,19 @@ begin
     perform app_private.shift_exchange_resolve(w, cid, null, 'cancelled', actor);
     return sent;
 
+  elsif act in ('expired', 'invalidated') and aid is not null then
+    -- One acceptance ended (refresh_weekly_exchange_terms: the new hours overlap the teammate's other shift);
+    -- the request stays open: only that teammate hears it, and only their cards close.
+    sent := app_private.notify('shift_changes.closed', w, array[who_user], key || ':ended:' || aid::text,
+      'Your request for ' || owner_name || '''s shift ended',
+      'The shift changed and now overlaps another of your shifts. Your schedule has not changed.',
+      hub, actor, 'shift_exchange_case', cid, facts);
+    perform app_private.shift_exchange_resolve(w, cid, null, 'shift_changed', actor, array[who_user]);
+    if not exists (select 1 from public.shift_exchange_applications x where x.case_id = cid and x.status = 'pending_manager') then
+      perform app_private.shift_exchange_resolve(w, cid, approvals, 'shift_changed', actor);
+    end if;
+    return sent;
+
   elsif act in ('expired', 'invalidated') then
     -- Everything closes 4 hours before the shift, and a changed shift ends it; everyone it held hears it
     -- (plan §4.1, §4.2).
@@ -366,7 +384,13 @@ begin
     where x.status = 'open' and x.expires_at > now()
       and exists (select 1 from public.shift_exchange_applications p where p.case_id = x.id and p.status = 'pending_manager')
     order by x.expires_at, x.id limit pass_limit loop
-    if public.shift_exchange_live_status(c.workspace_id, c.id) <> 'open' then
+    begin
+    -- The lock a decision holds (shift_exchanges_command_service): a case being decided waits for the next pass.
+    if not pg_try_advisory_xact_lock(hashtextextended(c.workspace_id::text, 921)) then
+      continue;
+    end if;
+    if not exists (select 1 from public.shift_exchange_cases x where x.id = c.id and x.status = 'open')
+      or public.shift_exchange_live_status(c.workspace_id, c.id) <> 'open' then
       continue;
     end if;
     select min(e.created_at) into first_ask from public.shift_exchange_events e
@@ -384,9 +408,13 @@ begin
         || ' for ' || app_private.shift_exchange_shift_text(c.workspace_id, c.requested_snapshot)
       else who_name || ' wants ' || owner_name || '''s ' || app_private.shift_exchange_shift_text(c.workspace_id, c.offered_snapshot) end;
     if now() >= c.expires_at - interval '4 hours' then
-      if first_ask >= c.expires_at - interval '4 hours' then
+      if first_ask >= c.expires_at - interval '4 hours'
+        or exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
+                   and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':last_call') then
         continue;
       end if;
+      -- A new reminder replaces the one before it.
+      perform app_private.shift_exchange_resolve(c.workspace_id, c.id, array['shift_changes.approval_reminder'], 'reminded_again', null, waiting);
       zone := coalesce(c.offered_snapshot ->> 'timezone', 'UTC');
       fmt := (select x.time_format from public.workspace_scheduling_settings x where x.workspace_id = c.workspace_id);
       done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting, 'case:' || c.id::text || ':last_call',
@@ -397,13 +425,19 @@ begin
     elsif not exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
                       and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':last_call') then
       turn := floor(extract(epoch from now() - first_ask) / 43200)::integer;
-      if turn >= 1 then
+      if turn >= 1 and not exists (select 1 from public.person_notifications n where n.workspace_id = c.workspace_id
+                                   and n.subject_id = c.id and n.event_key = 'case:' || c.id::text || ':reminder:' || turn::text) then
+        perform app_private.shift_exchange_resolve(c.workspace_id, c.id, array['shift_changes.approval_reminder'], 'reminded_again', null, waiting);
         done := done + app_private.notify('shift_changes.approval_reminder', c.workspace_id, waiting,
           'case:' || c.id::text || ':reminder:' || turn::text, 'Shift change still waits for your approval',
           said, '/app/schedule/requests?type=shift_changes', null, 'shift_exchange_case', c.id,
           jsonb_build_object('case_id', c.id, 'kind', c.kind, 'audience', c.audience));
       end if;
     end if;
+    exception when others then
+      -- One broken case does not stop the others' reminders (as time_off_sweep).
+      raise warning 'shift-exchange-reminders: case % of workspace % failed: % %', c.id, c.workspace_id, sqlstate, sqlerrm;
+    end;
   end loop;
   return done;
 end;
