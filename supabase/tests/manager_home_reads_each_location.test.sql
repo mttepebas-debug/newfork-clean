@@ -53,14 +53,16 @@ set local session_replication_role = replica;
 insert into public.schedule_published_shifts (workspace_id, location_id, publication_id, employee_id, job_id,
   scheduled_date, start_time, end_time, time_basis, time_timezone, source_shift_id)
 select tests.id('mh'), l.id, tests.id('mh:pub:K'), shift.employee, shift.job,
-  (now() at time zone l.timezone)::date + shift.day, time '09:00', time '17:00', 'explicit', l.timezone, gen_random_uuid()
+  (now() at time zone l.timezone)::date + shift.day, shift.starts, shift.ends, 'explicit', l.timezone, gen_random_uuid()
 from public.locations l
+-- Today's open shift runs past midnight, so it is still ahead at any hour of
+-- Kadikoy's day (it ended at 17:00 and CI runs after then).
 cross join (values
-  (tests.id('mh:ayse'), tests.id('mh:job:general manager'), 0),
-  (tests.id('mh:emre'), tests.id('mh:job:cook'), 0),
-  (null::uuid, tests.id('mh:job:server'), 0),
-  (null::uuid, tests.id('mh:job:server'), 2)
-) shift(employee, job, day)
+  (tests.id('mh:ayse'), tests.id('mh:job:general manager'), 0, time '09:00', time '17:00'),
+  (tests.id('mh:emre'), tests.id('mh:job:cook'), 0, time '09:00', time '17:00'),
+  (null::uuid, tests.id('mh:job:server'), 0, time '16:00', time '02:00'),
+  (null::uuid, tests.id('mh:job:server'), 2, time '09:00', time '17:00')
+) shift(employee, job, day, starts, ends)
 where l.id = tests.id('mh:K');
 set local session_replication_role = origin;
 
