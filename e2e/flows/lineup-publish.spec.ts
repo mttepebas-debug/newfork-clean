@@ -120,8 +120,8 @@ test("a manager publishes a lineup, the employee acknowledges it, and it is take
 });
 
 // LINEUP-PUBLISH-PHONE (KARARLAR Lineup, Mert 2026-10-17: E · Çark tarih): on a phone Ayse turns the day wheel
-// to the day, reads the team (nothing to edit), publishes from the dock over the bottom bar through the
-// sheet, and the Read tab counts. Only the page header stays while the page scrolls (Mert 2026-10-17 ~8 AM).
+// to the day, reads the team (a draft's row opens its person panel, LINEUP-EDIT W3b; a live one opens nothing),
+// publishes from the dock over the bottom bar through the sheet, and the Read tab counts. Only the page header stays while the page scrolls (Mert 2026-10-17 ~8 AM).
 test("a manager publishes a lineup from a phone", async ({ browser }) => {
   const week = roundWeek(641);
   sql(`select tests.publish_week('${run}', ${week}, '[
@@ -144,10 +144,16 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await expect(ayse).toHaveURL(new RegExp(`date=${day}`));
   await ayse.getByRole("combobox", { name: "Location" }).selectOption({ label: "Kadikoy" });
 
-  // Read-only: the rows open nothing.
+  // A draft that hasn't started: each row opens its person panel (LINEUP-EDIT W3b), a sheet that Done closes.
   const team = ayse.getByRole("list", { name: "Cook" });
   await expect(team).toContainText("Emre Person");
-  await expect(team.getByRole("button")).toHaveCount(0);
+  await expect(team.getByRole("button")).toHaveCount(2);
+  await team.getByRole("button", { name: "Change Emre Person" }).tap();
+  const panel = ayse.getByRole("dialog", { name: "Emre Person" });
+  await expect(panel).toHaveClass(/is-sheet/);
+  await expect(panel.getByRole("button", { name: "Call off Emre Person" })).toBeVisible();
+  await panel.getByRole("button", { name: "Done", exact: true }).tap();
+  await expect(panel).toHaveCount(0);
   // The card (Mert 2026-10-17, card 1): the place and day; Draft over "Not published yet"; Edit off; Read off.
   const card = ayse.locator(".lineup-card");
   await expect(card.locator(".lineup-card-loc")).toHaveText("Kadikoy");
@@ -203,6 +209,8 @@ test("a manager publishes a lineup from a phone", async ({ browser }) => {
   await expect(card.getByText(/^Published at \d{1,2}:\d{2} [AP]M$/)).toBeVisible();
   await expect(ayse.locator(".lineup-phone-dock")).toHaveCount(0);
   await expect(card.getByRole("button", { name: "Edit", exact: true })).toBeFocused();
+  // Live: read-only, the rows open nothing.
+  await expect(team.getByRole("button")).toHaveCount(0);
   await ayse.getByRole("tab", { name: /^Read \d+\/\d+$/ }).tap();
   await expect(ayse.getByRole("tabpanel").getByRole("progressbar", { name: /^0 of \d+ read$/ })).toBeVisible();
   await expect(ayse.getByRole("tabpanel").getByRole("region", { name: "Not read yet" })).toContainText("Emre Person");
