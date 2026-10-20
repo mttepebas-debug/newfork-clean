@@ -10,7 +10,7 @@ import { RequestError } from "../lib/request-error";
 import { getScheduleReadModel } from "../schedule/schedule-data";
 import type { LineupDayLineup } from "@newfork/shared";
 import { apiRequest } from "../lib/supabase";
-import { chloe, day, dayRead, dinner, downtown, hannah, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
+import { chloe, day, dayRead, dinner, downtown, hannah, host, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { LINEUP_BUSY_MS } from "../schedule/lineup";
 import { LineupPage } from "./LineupPage";
 
@@ -145,10 +145,12 @@ describe("LineupPage", () => {
   });
 
   it("shows one location's ticket and its team under column headings: position, label, in – out, section", async () => {
+    // Published: the rows read as text (a draft that hasn't started changes in place, LINEUP-EDIT W2a, below).
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
     renderPage();
     const ticket = await screen.findByRole("region", { name: "Downtown, Lunch" });
     expect(read).toHaveBeenCalledWith(ws, day, "day");
-    expect(within(ticket).getByText("Draft")).toBeTruthy();
+    expect(within(ticket).getByText("Live")).toBeTruthy();
     expect(within(ticket).getByRole("tab", { name: "Team 1" }).getAttribute("aria-selected")).toBe("true");
     // The ticket doesn't fold on the desktop.
     expect(within(ticket).queryByRole("button", { name: "Hide list" })).toBeNull();
@@ -1571,5 +1573,221 @@ describe("LineupPage on a phone, E", () => {
     } finally {
       (context as { actions: readonly string[] }).actions = actions;
     }
+  });
+});
+
+// LINEUP-EDIT W2a (KARARLAR S-178 madde 1-4, ek 2-3, ek b; the design's F "after"): on a draft that hasn't started, a
+// manager changes a row in place, the location's sections in the Sections window, and the notes; Copy as text in Read.
+describe("LineupPage, editing a draft on the desktop", () => {
+  const reduce = window.matchMedia;
+  const sent: { path: string; body: Record<string, unknown> }[] = [];
+  const patio = "80000000-0000-4000-8000-000000000001";
+  const bar = "80000000-0000-4000-8000-000000000002";
+  const training = "90000000-0000-4000-8000-000000000001";
+  const closer = "90000000-0000-4000-8000-000000000002";
+  let sections: { id: string; location_id: string; name: string; sort_order: number }[] = [];
+  beforeEach(() => {
+    window.matchMedia = ((query: string) => ({
+      matches: query.includes("prefers-reduced-motion"),
+      media: query,
+      addEventListener: () => undefined,
+      removeEventListener: () => undefined,
+    })) as unknown as typeof window.matchMedia;
+    sent.length = 0;
+    sections = [{ id: patio, location_id: downtown, name: "Patio", sort_order: 1 }];
+    world = model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] })]);
+    world.employees.find((employee) => employee.id === maria)!.job_ids.push(host);
+    world.shift_labels = [
+      { id: training, name: "Training", color: "#22aa55", sort_order: 1 },
+      { id: closer, name: "Closer", color: "#aa2255", sort_order: 2 },
+    ];
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/edit") || path.endsWith("/lineups/sections")) {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        sent.push({ path: path.slice(path.lastIndexOf("/") + 1), body });
+        if (path.endsWith("/lineups/sections"))
+          return { location_id: downtown, sections: sections.filter((section) => section.location_id === downtown) };
+        return { command_id: body.command_id, kind: "edit", lineup_id: "a0000000-0000-4000-8000-000000000001", row_id: null };
+      }
+      const answer = (await realRead(client, path, init)) as ReturnType<typeof dayRead>;
+      if (/\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path)) {
+        answer.sections = sections;
+        const row = answer.locations[0]?.lineups[0]?.rows[0];
+        if (row) Object.assign(row, { label_ids: [training] });
+      }
+      return answer;
+    });
+  });
+  afterEach(() => {
+    window.matchMedia = reduce;
+  });
+
+  const target = () => ({ location_id: downtown, service_date: day, shift_type_id: lunch });
+  const marias = () => world.shifts[0]!.id;
+
+  it("changes Maria's position, with her own positions first, and takes off her label with None", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const position = (await screen.findByRole("combobox", { name: "Position, Maria Lopez" })) as HTMLSelectElement;
+    expect(position.value).toBe(server);
+    const groups = [...position.querySelectorAll("optgroup")].map((group) => [group.label, [...group.children].map((option) => option.textContent)]);
+    expect(groups).toEqual([
+      ["Assigned to Maria", ["Host"]],
+      ["Other positions", ["Server", "Line Cook"]],
+    ]);
+    fireEvent.change(position, { target: { value: host } });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_row", row: { source_shift_id: marias(), job_id: host } });
+    expect(typeof sent[0]!.body.command_id).toBe("string");
+    const label = screen.getByRole("combobox", { name: "Label, Maria Lopez" }) as HTMLSelectElement;
+    expect(label.value).toBe(training);
+    fireEvent.change(label, { target: { value: "" } });
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.body.row).toEqual({ source_shift_id: marias(), label_ids: [] });
+  });
+
+  it("reads In and Out as typed; what isn't a time says so under it and nothing is sent", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const start = (await screen.findByRole("textbox", { name: "In, Maria Lopez" })) as HTMLInputElement;
+    expect(start.value).toBe("11:00 AM");
+    fireEvent.change(start, { target: { value: "9:3x" } });
+    fireEvent.blur(start);
+    expect((await screen.findByRole("alert")).textContent).toBe("Use a time like 4:30 PM");
+    expect(start.getAttribute("aria-invalid")).toBe("true");
+    expect(sent).toHaveLength(0);
+    fireEvent.change(start, { target: { value: "10:30 am" } });
+    fireEvent.keyDown(start, { key: "Enter" });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    // In and Out go together (the server's rule): Out goes as it is.
+    expect(sent[0]!.body.row).toEqual({ source_shift_id: marias(), starts: "10:30", ends: "16:00" });
+    expect(screen.queryByRole("alert")).toBeNull();
+  });
+
+  it("gives a row a section from the list, or a name typed with Other…, which Save to sections adds to the list", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const section = (await screen.findByRole("combobox", { name: "Section, Maria Lopez" })) as HTMLSelectElement;
+    expect([...section.options].map((option) => option.textContent)).toEqual(["None", "Patio", "Other…", "──────────", "Manage sections…"]);
+    fireEvent.change(section, { target: { value: patio } });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]!.body.row).toEqual({ source_shift_id: marias(), section_id: patio });
+    fireEvent.change(screen.getByRole("combobox", { name: "Section, Maria Lopez" }), { target: { value: "__other" } });
+    const name = screen.getByRole("textbox", { name: "New section, Maria Lopez" });
+    expect(document.activeElement).toBe(name);
+    fireEvent.change(name, { target: { value: " Window " } });
+    fireEvent.click(screen.getByRole("checkbox", { name: "Save to sections" }));
+    fireEvent.click(screen.getByRole("button", { name: "Use this section" }));
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.body.row).toEqual({ source_shift_id: marias(), section_name: "Window", save_section: true });
+  });
+
+  it("says a typed name is this lineup's only, and a refused change under its field", async () => {
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/edit")) throw new RequestError("No", "lineup.invalid_section", undefined, 400);
+      const answer = (await realRead(client, path, init)) as ReturnType<typeof dayRead>;
+      const row = /\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path) ? answer.locations[0]?.lineups[0]?.rows[0] : undefined;
+      if (row) Object.assign(row, { section_id: null, section_name: "Window" });
+      return answer;
+    });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const section = (await screen.findByRole("combobox", { name: "Section, Maria Lopez" })) as HTMLSelectElement;
+    expect(section.selectedOptions[0]!.textContent).toBe("Window · today only");
+    fireEvent.change(section, { target: { value: patio } });
+    expect((await screen.findByRole("alert")).textContent).toBe("Choose one of this location's sections.");
+  });
+
+  it("opens the Sections window from the gear by SECTION: adds, renames, orders and deletes with two clicks", async () => {
+    sections = [
+      { id: patio, location_id: downtown, name: "Patio", sort_order: 1 },
+      { id: bar, location_id: downtown, name: "Bar", sort_order: 2 },
+    ];
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Manage sections" }));
+    const window_ = screen.getByRole("dialog", { name: "Sections · Downtown" });
+    expect(within(window_).getAllByRole("textbox", { name: "Section name" }).map((box) => (box as HTMLInputElement).value)).toEqual(["Patio", "Bar"]);
+    expect(within(window_).getAllByText("Not used today")).toHaveLength(2);
+    fireEvent.change(within(window_).getByRole("textbox", { name: "New section" }), { target: { value: "Deck" } });
+    fireEvent.click(within(window_).getByRole("button", { name: "Add" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toEqual({ path: "sections", body: { action: "add", location_id: downtown, name: "Deck" } });
+    const [first] = within(window_).getAllByRole("textbox", { name: "Section name" });
+    fireEvent.change(first!, { target: { value: "Garden" } });
+    fireEvent.keyDown(first!, { key: "Enter" });
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.body).toEqual({ action: "rename", location_id: downtown, section_id: patio, name: "Garden" });
+    fireEvent.keyDown(within(window_).getByRole("button", { name: "Move Bar. Alt and arrow keys" }), { key: "ArrowUp", altKey: true });
+    await waitFor(() => expect(sent).toHaveLength(3));
+    expect(sent[2]!.body).toEqual({ action: "reorder", location_id: downtown, section_ids: [bar, patio] });
+    const remove = within(window_).getByRole("button", { name: "Delete Bar" });
+    fireEvent.click(remove);
+    expect(sent).toHaveLength(3);
+    expect(remove.textContent).toBe("Click again to delete");
+    // Armed, it still says which section goes.
+    expect(within(window_).getByRole("button", { name: "Click again to delete Bar" })).toBe(remove);
+    fireEvent.click(remove);
+    await waitFor(() => expect(sent).toHaveLength(4));
+    expect(sent[3]!.body).toEqual({ action: "remove", location_id: downtown, section_id: bar });
+    fireEvent.click(within(window_).getByRole("button", { name: "Done" }));
+    expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
+  });
+
+  it("edits the notes in place and sends only the ones that changed", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));
+    fireEvent.click(screen.getByRole("button", { name: "Edit notes" }));
+    const specials = screen.getByPlaceholderText("Tonight's specials");
+    expect(document.activeElement).toBe(specials);
+    expect(screen.getByText("Staff see the notes when you publish.")).toBeTruthy();
+    fireEvent.change(specials, { target: { value: "Halibut, $34" } });
+    fireEvent.click(screen.getByRole("button", { name: "Save" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]!.body).toMatchObject({ ...target(), action: "set_notes", notes: { specials: "Halibut, $34" } });
+    expect(Object.keys(sent[0]!.body.notes as object)).toEqual(["specials"]);
+    await waitFor(() => expect(screen.queryByPlaceholderText("Tonight's specials")).toBeNull());
+  });
+
+  it("reads a published lineup as text, with no pickers or gear: Edit takes it back first", async () => {
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(screen.queryByRole("combobox", { name: "Position, Maria Lopez" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manage sections" })).toBeNull();
+    fireEvent.click(screen.getByRole("tab", { name: "Notes" }));
+    expect(screen.queryByRole("button", { name: "Edit notes" })).toBeNull();
+  });
+
+  it("reads a shift that has started as text: its first person is in", async () => {
+    clocks = { "America/Los_Angeles": "11:00", device: "11:00" };
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    expect(screen.queryByRole("combobox", { name: "Position, Maria Lopez" })).toBeNull();
+  });
+
+  it("has no pickers for someone who can't publish lineups", async () => {
+    const actions = context.actions;
+    (context as { actions: string[] }).actions = ["schedule.read", "lineup.read"];
+    try {
+      renderPage(`/app/schedule/lineup?location=${downtown}`);
+      await screen.findByRole("region", { name: "Downtown, Lunch" });
+      expect(screen.queryByRole("combobox", { name: "Position, Maria Lopez" })).toBeNull();
+      expect(screen.queryByRole("button", { name: "Manage sections" })).toBeNull();
+    } finally {
+      (context as { actions: readonly string[] }).actions = actions;
+    }
+  });
+
+  it("copies the lineup as text from Read's No app heading, for the people without the app", async () => {
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: true, with_app: 0 } };
+    reads = { [maria]: "no app" };
+    const writeText = vi.fn(async () => undefined);
+    Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("tab", { name: /^Read/ }));
+    const noApp = within(screen.getByRole("tabpanel")).getByRole("region", { name: "No app" });
+    fireEvent.click(within(noApp).getByRole("button", { name: "Copy as text" }));
+    expect(writeText).toHaveBeenCalledWith(
+      ["Downtown · Lunch · Tue, Oct 13", "", "Front of House", "Server: Maria Lopez · 11:00 AM – 4:00 PM · Training"].join("\n"),
+    );
+    expect(within(noApp).getByRole("button", { name: "Copied" })).toBeTruthy();
   });
 });

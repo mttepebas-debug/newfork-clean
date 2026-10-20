@@ -16,12 +16,13 @@ import { LoadError } from "../shell/LoadState";
 import { NoAccessState } from "../shell/NoAccessState";
 import { CatalogPageHeader } from "./CatalogPageHeader";
 import { DesktopLineupPage } from "./LineupDesktop";
+import type { LineupEditing } from "./LineupDesktopEdit";
 import { PhoneLineupPage } from "./LineupPhone";
 
 // Lineup (Mert 2026-10-13): who works each shift of the day, per location, from the published Schedule, and
 // publishing it to staff. On a phone, E · Çark tarih (KARARLAR Lineup, Mert 2026-10-17); on the desktop, F (Mert
-// 2026-10-19): the same day picker, shift tabs and lineup card, one location's ticket at a time. Editing a lineup's
-// rows comes with LINEUP-EDIT W2.
+// 2026-10-19): the same day picker, shift tabs and lineup card, one location's ticket at a time, whose draft rows,
+// sections and notes a manager changes in place (LINEUP-EDIT W2a; the phone's come with W2b).
 
 const isoDate = /^\d{4}-\d{2}-\d{2}$/;
 
@@ -143,6 +144,21 @@ export function LineupPage() {
   ) : null;
 
   const timeFormat = model?.settings.time_format ?? "12h";
+  // What the desktop's row pickers offer (LINEUP-EDIT W2a): the Schedule's positions and labels, and each person's
+  // own positions first.
+  const editing = useMemo<LineupEditing | null>(() => {
+    if (!canShare || !model) return null;
+    const assigned = new Map(model.employees.map((employee) => [employee.id, employee.job_ids]));
+    return {
+      workspaceId,
+      date,
+      catalog: {
+        jobs: model.jobs.map((job) => ({ id: job.id, name: job.name })),
+        labels: [...(model.shift_labels ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((label) => ({ id: label.id, name: label.name })),
+        jobsOf: (employeeId) => assigned.get(employeeId) ?? [],
+      },
+    };
+  }, [canShare, model, workspaceId, date]);
   // A phone: E · Çark tarih (KARARLAR Lineup, Mert 2026-10-17), its own page.
   if (phone && !(query.error && isNoAccess(query.error))) {
     return (
@@ -249,6 +265,7 @@ export function LineupPage() {
       nowAt={nowAt}
       timeFormat={timeFormat}
       canEdit={canShare && Boolean(day.data)}
+      editing={day.data ? editing : null}
       held={publishOpen}
       waiting={publishing}
     />

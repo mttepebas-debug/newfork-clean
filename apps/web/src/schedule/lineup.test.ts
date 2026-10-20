@@ -5,11 +5,14 @@ import {
   lineupDay,
   lineupNoteCount,
   lineupCardState,
+  lineupCopyText,
+  lineupEditable,
   lineupHoursChange,
   lineupReadLists,
   lineupShiftSpan,
   phoneLineupKey,
   phoneLineupShift,
+  parseLineupTime,
   phoneShiftTabs,
   unpublishedCount,
 } from "./lineup";
@@ -364,5 +367,78 @@ describe("lineupHoursChange", () => {
   it("runs past midnight, and says nothing for a row with no Schedule times", () => {
     expect(lineupHoursChange(row("21:00", "01:00", "21:00", "00:30"))).toBe(30);
     expect(lineupHoursChange(row("16:00", "22:00", null, null))).toBe(0);
+  });
+});
+
+// LINEUP-EDIT W2a (S-178 madde 1, 4): the desktop edits a row in place; In and Out take what a manager types.
+describe("parseLineupTime", () => {
+  it("reads 12-hour and 24-hour times, and a bare hour on the side of the day it was", () => {
+    expect(parseLineupTime("4:30 PM", "16:00")).toBe("16:30");
+    expect(parseLineupTime("4:30p", "16:00")).toBe("16:30");
+    expect(parseLineupTime("12 am", "16:00")).toBe("00:00");
+    expect(parseLineupTime("17:15", "09:00")).toBe("17:15");
+    expect(parseLineupTime("5", "16:00")).toBe("17:00");
+    expect(parseLineupTime("9:45", "09:00")).toBe("09:45");
+  });
+  it("refuses what isn't a time", () => {
+    for (const typed of ["9:3x", "13 pm", "25:00", "4:75", "", "noon"]) expect(parseLineupTime(typed, "16:00")).toBeNull();
+  });
+});
+
+describe("the lineup's rows for editing", () => {
+  it("carry what an edit names: the row, its position, labels and section, and the location's sections", () => {
+    const m = model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" })]);
+    const read = dayRead(m, day);
+    read.sections = [
+      { id: "80000000-0000-4000-8000-000000000002", location_id: downtown, name: "Bar", sort_order: 2 },
+      { id: "80000000-0000-4000-8000-000000000001", location_id: downtown, name: "Patio", sort_order: 1 },
+      { id: "80000000-0000-4000-8000-000000000003", location_id: uptown, name: "Deck", sort_order: 1 },
+    ];
+    Object.assign(read.locations[0]!.lineups[0]!.rows[0]!, { section_id: "80000000-0000-4000-8000-000000000001", section_name: "Patio", label_ids: ["90000000-0000-4000-8000-000000000001"] });
+    const [down] = lineupDay(read, m);
+    const row = down!.shifts[0]!.departments[0]!.jobs[0]!.rows[0]!;
+    expect(row).toMatchObject({ rowId: null, jobId: server, sectionId: "80000000-0000-4000-8000-000000000001", labelIds: ["90000000-0000-4000-8000-000000000001"] });
+    expect(row.sourceShiftId).toBe(m.shifts[0]!.id);
+    expect(down!.sections.map((section) => section.name)).toEqual(["Patio", "Bar"]);
+  });
+
+  it("are editable on a draft that hasn't started; published, started or over, they are not", () => {
+    const m = model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" })]);
+    const draft = lineupDay(dayRead(m, day), m)[0]!.shifts[0]!;
+    expect(lineupEditable(draft, "10:59")).toBe(true);
+    expect(lineupEditable(draft, "11:00")).toBe(false);
+    expect(lineupEditable(draft, null)).toBe(true);
+    const live = lineupDay(dayRead(m, day, { [lunch]: { status: "shared", published: true } }), m)[0]!.shifts[0]!;
+    expect(lineupEditable(live, null)).toBe(false);
+    const over = lineupDay(dayRead(m, day, { [lunch]: { status: "past" } }), m)[0]!.shifts[0]!;
+    expect(lineupEditable(over, null)).toBe(false);
+  });
+});
+
+// Copy as text (S-178 ek b): the lineup for people without the app, as the design writes it.
+describe("lineupCopyText", () => {
+  it("writes the place, shift and day, the team by department and job, then the notes staff see", () => {
+    const m = model([
+      shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00", labels: ["Closer"] }),
+      shift({ employee: chloe, job: cook, type: dinner, start: "15:00", end: "23:00" }),
+    ]);
+    const read = dayRead(m, day, { [dinner]: { notes: { specials: "Halibut, $34", n86: "", shift_notes: "Party of 22" } } });
+    Object.assign(read.locations[0]!.lineups[0]!.rows[0]!, { section_name: "Patio" });
+    const [down] = lineupDay(read, m);
+    expect(lineupCopyText(down!, down!.shifts.find((item) => item.key === dinner)!, "Tue, Oct 13", "12h")).toBe(
+      [
+        "Downtown · Dinner · Tue, Oct 13",
+        "",
+        "Front of House",
+        "Server: Maria Lopez · 4:00 PM – 10:00 PM · Patio · Closer",
+        "",
+        "Kitchen",
+        "Line Cook: Chloe Davis · 3:00 PM – 11:00 PM",
+        "",
+        "Specials: Halibut, $34",
+        "",
+        "Shift notes: Party of 22",
+      ].join("\n"),
+    );
   });
 });

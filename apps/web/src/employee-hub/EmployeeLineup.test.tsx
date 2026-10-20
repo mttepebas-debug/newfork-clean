@@ -357,6 +357,22 @@ describe("EmployeeLineup", () => {
     expect(time.textContent).not.toContain("Changed today");
   });
 
+  // S-178 madde 3 and ek 2 (LINEUP-EDIT W2a): the orange dot and the hours worked against the Schedule are the
+  // managers' marks; an employee's lineup has neither, nor anything that edits it.
+  it("has none of the managers' marks: no orange dot, no hours difference, no pickers", async () => {
+    answer = mine({ mine: [{ ...row, replaced: false, start_time: "15:00", end_time: "23:00" }] });
+    board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    await waitFor(() => expect(view.querySelector(".employee-lineup-time.is-changed")).toBeTruthy());
+    expect(document.querySelector(".lineup-phone-changed, .lineup-desk-change")).toBeNull();
+    expect(view.textContent).not.toMatch(/[+−]\d+ h/);
+    expect(screen.queryByRole("combobox", { name: /^(Position|Label|Section), / })).toBeNull();
+    expect(screen.queryByRole("textbox", { name: /^(In|Out), / })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Manage sections" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Edit notes" })).toBeNull();
+  });
+
   it("shows an unchanged time plain", async () => {
     board.mockResolvedValue(model([shift({ employee: maria, job: server, type: dinner, start: "16:00", end: "22:00" })]));
     renderLineup();

@@ -1,6 +1,8 @@
 import type { LineupDay, LineupDayLineup, LineupTarget } from "@newfork/shared";
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
 
+import { formatTime, type ScheduleTimeFormat } from "./lib/scheduleDateTime";
+
 // Lineup (Mert 2026-10-13): the day's lineups, per location and shift type, then by department and job.
 // The rows and the publish state come from the lineup day read (LINEUP-PUBLISH-WEB: the live Schedule with
 // what the lineup changed, the one source employees see too); the Schedule read only gives the catalog
@@ -8,6 +10,13 @@ import type { ScheduleReadModel } from "@newfork/shared/schedule";
 
 export interface LineupRow {
   readonly shiftId: string;
+  /** What an edit names (LINEUP-EDIT W2a): the lineup's own row once it has one, and the Schedule shift it comes from. */
+  readonly rowId: string | null;
+  readonly sourceShiftId: string | null;
+  readonly jobId: string | null;
+  readonly labelIds: readonly string[];
+  /** One of the location's sections; null with none or with a name typed in this lineup only ("Other…"). */
+  readonly sectionId: string | null;
   readonly employeeId: string;
   readonly name: string;
   readonly jobName: string;
@@ -87,6 +96,14 @@ export interface LineupLocation {
   /** Published short hours that day. */
   readonly shortHours: LineupClosure | null;
   readonly shifts: readonly LineupShift[];
+  /** The location's sections, in their order: every Section list there (S-178 madde 4). */
+  readonly sections: readonly LineupSection[];
+}
+
+export interface LineupSection {
+  readonly id: string;
+  readonly name: string;
+  readonly sortOrder: number;
 }
 
 const NO_SHIFT_TYPE = "none";
@@ -138,6 +155,11 @@ export function lineupDay(
             department.jobs.set(jobKey, job);
             job.rows.push({
               shiftId: row.shift_id ?? row.id ?? `${row.employee_id}-${row.start_time}`,
+              rowId: row.id,
+              sourceShiftId: row.source_shift_id,
+              jobId: row.job_id,
+              labelIds: row.label_ids ?? [],
+              sectionId: row.section_id,
               employeeId: row.employee_id!,
               name: row.name ?? "Team member",
               jobName: row.job_name ?? "Job",
@@ -204,6 +226,10 @@ export function lineupDay(
         closed,
         shortHours: published(location.short_hours),
         shifts,
+        sections: read.sections
+          .filter((section) => section.location_id === location.id)
+          .sort((a, b) => a.sort_order - b.sort_order || byName(a, b))
+          .map((section) => ({ id: section.id, name: section.name, sortOrder: section.sort_order })),
       };
     });
 }
@@ -332,6 +358,69 @@ export function lineupCardState(shift: LineupShift, now: string | null): { reado
   const span = lineupShiftSpan(shift);
   const started = shift.publish.status === "past" || (now !== null && span !== null && minutes(now) >= minutes(span.firstIn));
   return { live: shift.publish.published, started };
+}
+
+/**
+ * Whether a manager changes the lineup's rows and notes in place (LINEUP-EDIT W2a; the server's lock, L2a): a draft
+ * whose shift hasn't started. A published one goes back to draft with Edit first.
+ */
+export function lineupEditable(shift: LineupShift, now: string | null): boolean {
+  const state = lineupCardState(shift, now);
+  return !state.live && !state.started;
+}
+
+/**
+ * A time as a manager types it into In or Out (the design's parseT): "4:30 PM", "4:30p", "17:15", or a bare "5",
+ * which takes the side of the day the time already had. HH:MM, or null when it isn't a time.
+ */
+export function parseLineupTime(typed: string, base: string): string | null {
+  const match = typed.trim().toLowerCase().replace(/\s+/g, "").replace(/\./g, "").match(/^(\d{1,2})(?::?(\d{2}))?(a|am|p|pm)?$/);
+  if (!match) return null;
+  let hours = Number(match[1]);
+  const mins = match[2] ? Number(match[2]) : 0;
+  const half = match[3]?.[0];
+  if (mins > 59) return null;
+  if (half) {
+    if (hours < 1 || hours > 12) return null;
+    hours = (hours % 12) + (half === "p" ? 12 : 0);
+  } else if (hours > 23) return null;
+  else if (hours <= 12) hours = (minutes(base || "12:00") >= 12 * 60 ? 12 : 0) + (hours % 12);
+  return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
+}
+
+/**
+ * Copy as text (S-178 ek b; the design's lineupText): the lineup for people without the app. The place, shift and
+ * day; each department with its people as "Job: Name · In – Out · Section · Label"; then the notes staff see.
+ */
+export function lineupCopyText(
+  location: LineupLocation,
+  shift: LineupShift,
+  dateLabel: string,
+  timeFormat: ScheduleTimeFormat,
+): string {
+  const lines = [`${location.name} · ${shift.name} · ${dateLabel}`];
+  for (const department of shift.departments) {
+    lines.push("", department.name);
+    for (const job of department.jobs)
+      for (const row of job.rows)
+        lines.push(
+          [
+            `${job.name}: ${row.name}`,
+            `${formatTime(row.startTime, timeFormat, "long")} – ${formatTime(row.endTime, timeFormat, "long")}`,
+            row.sectionName,
+            row.labels[0],
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        );
+  }
+  const notes = [
+    ["Specials", shift.publish.notes.specials],
+    ["86s", shift.publish.notes.n86],
+    ["Shift notes", shift.publish.notes.shift_notes],
+  ] as const;
+  for (const [label, note] of notes) if (note.trim()) lines.push("", `${label}: ${note.trim()}`);
+  return lines.join("\n");
 }
 
 /** How many of a lineup's notes staff see (an empty note doesn't show). */

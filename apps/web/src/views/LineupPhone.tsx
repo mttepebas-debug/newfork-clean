@@ -679,11 +679,14 @@ export function ReadPane({
   shift,
   timeFormat,
   timezone,
+  copy,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
   /** The location's: read times are its clock's, as "Published at" is. */
   readonly timezone: string;
+  /** Copy as text, on the No app heading (the desktop's, LINEUP-EDIT W2a). */
+  readonly copy?: ReactNode;
 }) {
   if (!shift.publish.askAck)
     return (
@@ -693,7 +696,7 @@ export function ReadPane({
         <span>Staff were notified without being asked to acknowledge.</span>
       </div>
     );
-  return <LineupReadPhone shift={shift} timeFormat={timeFormat} timezone={timezone} />;
+  return <LineupReadPhone shift={shift} timeFormat={timeFormat} timezone={timezone} noAppAction={copy} />;
 }
 
 function PhoneLineupOutline() {

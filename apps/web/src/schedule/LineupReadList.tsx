@@ -25,12 +25,15 @@ function Group({
   people,
   when,
   lead,
+  action,
 }: {
   readonly title: string;
   readonly people: readonly LineupReader[];
   readonly when: (person: LineupReader) => JSX.Element;
   /** The progress the first heading carries in place of its count (the phone's Read tab). */
   readonly lead?: ReactNode;
+  /** A button at the heading's end (No app's Copy as text). */
+  readonly action?: ReactNode;
 }) {
   if (!people.length) return null;
   return (
@@ -44,6 +47,7 @@ function Group({
         <h3>
           {title}
           <span>{people.length}</span>
+          {action}
         </h3>
       )}
       <ul className="lineup-read-list">
@@ -80,11 +84,14 @@ export function LineupReadPhone({
   shift,
   timeFormat,
   timezone,
+  noAppAction,
 }: {
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
   /** The location's IANA zone. */
   readonly timezone?: string;
+  /** On No app's heading: the desktop's Copy as text, for the people without the app. */
+  readonly noAppAction?: ReactNode;
 }): JSX.Element {
   const { acknowledged, withApp } = shift.publish;
   const lists = lineupReadLists(shift);
@@ -113,7 +120,7 @@ export function LineupReadPhone({
     <div className="lineup-read is-phone">
       <Group title="Read" people={lists.read} when={readWhen(timeFormat, timezone)} lead={onRead ? lead : undefined} />
       <Group title="Not read yet" people={lists.unread} when={unreadWhen} lead={onRead ? undefined : lead} />
-      <Group title="No app" people={lists.noApp} when={noAppWhen} />
+      <Group title="No app" people={lists.noApp} when={noAppWhen} action={noAppAction} />
     </div>
   );
 }

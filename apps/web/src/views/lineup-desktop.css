@@ -216,3 +216,415 @@
 .lineup-desk-outline .lineup-card {
   cursor: default;
 }
+
+/* LINEUP-EDIT W2a (S-178; the design's F "after", yapim/masaustu/frame.css): a draft's row in place. */
+.lineup-desk-col-lab {
+  position: relative;
+  display: inline-block;
+}
+/* The gear by SECTION opens the Sections window (S-178 ek 3); it hangs beside the word, which stays centred. */
+.lineup-edit-gear {
+  position: absolute;
+  top: 50%;
+  left: 100%;
+  display: inline-grid;
+  width: 28px;
+  height: 28px;
+  margin-left: 4px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+  transform: translateY(-50%);
+}
+.lineup-edit-gear:hover {
+  background: var(--theme-accent-soft);
+  color: var(--theme-accent-deep);
+}
+.lineup-desk-cell.lineup-edit-cell {
+  display: grid;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+.lineup-edit-sel,
+.lineup-edit-inp {
+  height: 32px;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text-body);
+  font: inherit;
+  font-size: 13.5px;
+  font-variant-numeric: tabular-nums;
+}
+.lineup-edit-sel {
+  width: 100%;
+  max-width: 100%;
+  padding: 0 6px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lineup-edit-inp {
+  width: 82px;
+  padding: 0 7px;
+}
+.lineup-edit-sel:hover,
+.lineup-edit-inp:hover,
+.lineup-edit-box:hover {
+  border-color: var(--theme-border-hover);
+}
+.lineup-edit-sel:focus,
+.lineup-edit-inp:focus,
+.lineup-edit-box:focus,
+.lineup-edit-ta:focus {
+  border-color: var(--theme-focus);
+  outline: none;
+  box-shadow: 0 0 0 2px var(--theme-focus-halo);
+}
+.lineup-edit-inp.is-err {
+  border-color: var(--theme-danger);
+  box-shadow: 0 0 0 1px var(--theme-danger);
+}
+.lineup-edit-msg {
+  color: var(--theme-danger);
+  font-size: 12px;
+  font-style: normal;
+  font-weight: 600;
+  line-height: 16px;
+  white-space: normal;
+}
+/* In – Out on one line; the dot beside it and the difference in hours under it. */
+.lineup-desk-cell.lineup-edit-time {
+  position: relative;
+  overflow: visible;
+  white-space: normal;
+}
+.lineup-edit-tline {
+  display: flex;
+  align-items: flex-start;
+  gap: 4px;
+}
+.lineup-edit-t1 {
+  display: grid;
+  gap: 2px;
+}
+.lineup-edit-dash {
+  color: var(--theme-text-secondary);
+  line-height: 32px;
+}
+/* The dot right after Out, on the fields' middle (the design's .is-edit .dk-tline > .lineup-phone-changed). */
+.lineup-edit-tline > .lineup-phone-changed {
+  flex: none;
+  margin-top: 12px;
+}
+/* "Other…": a name for this lineup only, with Save to sections under it. */
+.lineup-edit-other {
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  gap: 4px;
+}
+.lineup-edit-other-in {
+  display: flex;
+  min-width: 0;
+  gap: 4px;
+}
+.lineup-edit-inp.is-sec {
+  width: auto;
+  min-width: 0;
+  flex: 1;
+}
+.lineup-edit-mini {
+  display: inline-grid;
+  width: 30px;
+  height: 32px;
+  flex: none;
+  place-items: center;
+  border: 1px solid var(--theme-border-subtle);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+}
+.lineup-edit-mini.is-ok {
+  border-color: var(--theme-accent);
+  background: var(--theme-accent);
+  color: var(--theme-on-accent);
+}
+.lineup-edit-mini:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.lineup-edit-save {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--theme-text-body);
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+}
+.lineup-edit-save input {
+  width: 15px;
+  height: 15px;
+  margin: 0;
+  accent-color: var(--theme-accent);
+}
+.lineup-edit-gear:focus-visible,
+.lineup-edit-mini:focus-visible,
+.lineup-edit-grip:focus-visible,
+.lineup-edit-del:focus-visible,
+.lineup-edit-add:focus-visible,
+.lineup-edit-copy:focus-visible,
+.lineup-edit-x:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+
+/* The Sections window: one centred window over the page. */
+.lineup-edit-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+}
+.lineup-edit-scrim {
+  position: absolute;
+  inset: 0;
+  background: rgb(15 28 22 / 16%);
+}
+.lineup-edit-dlg {
+  position: relative;
+  display: flex;
+  width: 560px;
+  max-width: calc(100% - 32px);
+  max-height: calc(100% - 80px);
+  flex-direction: column;
+  border-radius: 14px;
+  background: var(--theme-surface);
+  box-shadow: 0 24px 60px -18px rgb(15 23 42 / 40%);
+}
+.lineup-edit-dlg > header {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  gap: 12px;
+  padding: 20px 16px 14px 22px;
+}
+.lineup-edit-dlg h2 {
+  margin: 0;
+  color: var(--theme-text);
+  font-size: 18px;
+  font-weight: 750;
+}
+.lineup-edit-dlg > header p {
+  margin: 4px 0 0;
+  color: var(--theme-text-secondary);
+  font-size: 13px;
+}
+.lineup-edit-x {
+  display: inline-grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-text-secondary);
+  cursor: pointer;
+}
+.lineup-edit-x:hover {
+  background: var(--theme-surface-muted);
+}
+.lineup-edit-x svg {
+  width: 18px;
+  height: 18px;
+}
+.lineup-edit-dlg-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 22px 12px;
+  scrollbar-width: thin;
+}
+.lineup-edit-none {
+  margin: 0;
+  padding: 8px 0 12px;
+  color: var(--theme-text-secondary);
+  font-size: 13.5px;
+}
+.lineup-edit-secs {
+  display: grid;
+  gap: 6px;
+  margin: 0;
+  padding: 2px 0 6px;
+  list-style: none;
+}
+.lineup-edit-sec {
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) 120px 150px;
+  align-items: center;
+  gap: 10px;
+}
+.lineup-edit-sec.is-drag {
+  opacity: 0.45;
+}
+.lineup-edit-box {
+  width: 100%;
+  min-width: 0;
+  height: 36px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  padding: 0 10px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+}
+.lineup-edit-grip {
+  display: inline-grid;
+  width: 28px;
+  height: 36px;
+  place-items: center;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--theme-text-faint);
+  cursor: grab;
+}
+.lineup-edit-grip:hover {
+  background: var(--theme-surface-muted);
+  color: var(--theme-text-secondary);
+}
+.lineup-edit-use {
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  white-space: nowrap;
+}
+.lineup-edit-del {
+  justify-self: end;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-danger-strong);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineup-edit-del.is-armed {
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
+.lineup-edit-sec-add {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  padding: 10px 22px 14px 60px;
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.lineup-edit-sec-add .nf-button {
+  min-height: 36px;
+  padding: 0 14px;
+  font-size: 13.5px;
+}
+.lineup-edit-dlg > footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 12px 22px;
+  border-top: 1px solid var(--theme-border-subtle);
+  border-radius: 0 0 14px 14px;
+  background: var(--theme-surface-soft);
+}
+/* Why a change didn't go through, on the left; Done on the right. */
+.lineup-edit-dlg-alert {
+  min-width: 0;
+  margin-right: auto;
+}
+.lineup-edit-dlg > footer .nf-button {
+  min-height: 38px;
+  padding: 0 18px;
+  font-size: 13.5px;
+}
+
+/* Edit notes: the button over the notes, and the three notes in place. */
+.lineup-edit-notes-head {
+  display: flex;
+  justify-content: flex-end;
+  margin: 0 0 6px;
+}
+.lineup-edit-add,
+.lineup-edit-copy {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.lineup-edit-copy {
+  gap: 5px;
+  min-height: 28px;
+  margin-left: auto;
+  padding: 0 8px;
+  font-size: 12.5px;
+}
+.lineup-edit-add:hover,
+.lineup-edit-copy:hover {
+  background: var(--theme-accent-soft);
+}
+.lineup-edit-notes .lineup-note {
+  display: block;
+}
+.lineup-edit-ta {
+  display: block;
+  width: calc(100% - 25px);
+  margin: 8px 0 0 25px;
+  padding: 8px 10px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14.5px;
+  line-height: 1.45;
+  resize: vertical;
+}
+.lineup-edit-notes-acts {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 12px 16px 14px;
+  border-top: 1px solid var(--theme-border-subtle);
+  background: var(--theme-surface-soft);
+}
+.lineup-edit-notes-acts > span {
+  margin-right: auto;
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+}
+.lineup-edit-notes-acts .nf-button {
+  min-height: 36px;
+  padding: 0 16px;
+  font-size: 13.5px;
+}

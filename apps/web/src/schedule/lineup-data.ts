@@ -2,7 +2,11 @@ import {
   lineupAcknowledgementSchema,
   lineupCommandResultSchema,
   lineupDaySchema,
+  lineupEditResultSchema,
+  lineupSectionsResultSchema,
   myLineupsSchema,
+  type LineupEditInput,
+  type LineupSectionsInput,
   type LineupTarget,
 } from "@newfork/shared";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -81,6 +85,69 @@ export function useAcknowledgeLineup(workspaceId: string | null) {
       ),
     onSettled: () => queryClient.invalidateQueries({ queryKey: lineupKeys.allMine(workspaceId ?? "") }),
   });
+}
+
+/** A change to a draft lineup (LINEUP-EDIT W2a): its row or its notes; each is its own command id. */
+export type LineupEdit = LineupEditInput extends infer Edit ? (Edit extends unknown ? Omit<Edit, "command_id"> : never) : never;
+
+export function useLineupEdit(workspaceId: string | null, date: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (edit: LineupEdit) =>
+      lineupEditResultSchema.parse(
+        await lineupApi(workspaceId!, "/lineups/edit", {
+          method: "POST",
+          body: JSON.stringify({ command_id: crypto.randomUUID(), ...edit }),
+        }),
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: lineupKeys.day(workspaceId ?? "", date) }),
+  });
+}
+
+/** The Sections window (LINEUP-EDIT W2a): a location's sections; the day read holds them, so it is read again. */
+export function useLineupSections(workspaceId: string | null, date: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (change: LineupSectionsInput) =>
+      lineupSectionsResultSchema.parse(
+        await lineupApi(workspaceId!, "/lineups/sections", { method: "POST", body: JSON.stringify(change) }),
+      ),
+    onSettled: () => queryClient.invalidateQueries({ queryKey: lineupKeys.day(workspaceId ?? "", date) }),
+  });
+}
+
+/** What a refused edit or section change means to the manager; the server's sentence never shows. */
+export function lineupEditMessage(error: unknown): string {
+  const reason = error instanceof RequestError ? error.reason : undefined;
+  switch (reason) {
+    case "lineup.invalid_hours":
+      return "Use a time like 4:30 PM, with Out not the same as In.";
+    case "lineup.invalid_job":
+      return "Choose one of the positions.";
+    case "lineup.invalid_label":
+      return "Choose one of the labels.";
+    case "lineup.invalid_section":
+      return "Choose one of this location's sections.";
+    case "lineup.invalid_section_name":
+      return "Name the section in 40 characters or fewer.";
+    case "lineup.section_exists":
+      return "This location already has a section with that name.";
+    case "lineup.note_too_long":
+      return "This note is too long.";
+    case "lineup.live":
+      return "This lineup is published. Take it back with Edit first.";
+    case "lineup.started":
+      return "This shift has started. Its lineup can't change.";
+    case "lineup.past_day":
+      return "This day is over. Its lineups can't change.";
+    case "lineup.closed_day":
+      return "The location is closed that day, so it has no lineup.";
+    case "authz.out_of_scope":
+    case "authz.not_member":
+      return "You can't change lineups at this location.";
+    default:
+      return "It didn't change. Check your connection, then try again.";
+  }
 }
 
 /** What a refused lineup command means to the manager; the server's sentence never shows. */

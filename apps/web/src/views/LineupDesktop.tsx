@@ -1,7 +1,9 @@
-import { ChevronLeft, ChevronRight, Users } from "lucide-react";
+import { ChevronLeft, ChevronRight, Settings, Users } from "lucide-react";
 import { useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 
 import {
+  lineupCopyText,
+  lineupEditable,
   lineupHoursChange,
   phoneLineupKey,
   phoneShiftTabs,
@@ -12,6 +14,14 @@ import {
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs } from "../schedule/lineup-wheel-view";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { LoadingOutline, Skeleton } from "../shell/LoadState";
+import {
+  CopyTextButton,
+  EditableRowCells,
+  EditNotesButton,
+  NotesEditor,
+  SectionsWindow,
+  type LineupEditing,
+} from "./LineupDesktopEdit";
 import { LineupCard, NotesPane, ReadPane, Segments, type Seg } from "./LineupPhone";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
@@ -21,7 +31,8 @@ import "./lineup-desktop.css";
 // middle between two arrows as tall as it (none with one location), Team · Notes · Read in its foot. Only the list
 // under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
 // each heading centred on its column's content and Section the last column, by the list's right edge (Mert
-// 2026-10-19 ~5:30 AM). Read-only (LINEUP-EDIT W1); editing in the row (and its Call off column) comes with W2.
+// 2026-10-19 ~5:30 AM). On a draft that hasn't started a manager changes the rows in place, the location's sections
+// (the gear by SECTION) and the notes (LINEUP-EDIT W2a); Call off, Add Staff and Replace come with L3.
 
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
@@ -52,6 +63,7 @@ export function DesktopLineupPage({
   nowAt,
   timeFormat,
   canEdit,
+  editing,
   held,
   waiting,
 }: {
@@ -76,6 +88,8 @@ export function DesktopLineupPage({
   readonly timeFormat: ScheduleTimeFormat;
   /** May take a published lineup back to draft (the ticket's Edit). */
   readonly canEdit: boolean;
+  /** Changing a draft's rows, sections and notes, for someone who may (null: read only). */
+  readonly editing: LineupEditing | null;
   /** The Publish window is open over the page: a lineup that goes out lights up once it closes. */
   readonly held: boolean;
   /** The Publish window is publishing: the day waits. */
@@ -127,6 +141,7 @@ export function DesktopLineupPage({
         now={nowAt(current.location)}
         timeFormat={timeFormat}
         edit={canEdit ? { workspaceId, date } : null}
+        editing={editing}
         held={held}
         day={date}
         seg={segs[segKey] ?? "team"}
@@ -174,6 +189,7 @@ function DesktopLineup({
   now,
   timeFormat,
   edit,
+  editing,
   held,
   day,
   seg: picked,
@@ -188,6 +204,7 @@ function DesktopLineup({
   readonly now: string | null;
   readonly timeFormat: ScheduleTimeFormat;
   readonly edit: { readonly workspaceId: string | null; readonly date: string } | null;
+  readonly editing: LineupEditing | null;
   readonly held: boolean;
   readonly day: string;
   readonly seg: Seg;
@@ -207,6 +224,10 @@ function DesktopLineup({
   useLayoutEffect(() => {
     if (list.current) list.current.scrollTop = 0;
   }, [seg]);
+  // A draft that hasn't started changes in place (the server locks the rest).
+  const changing = editing && lineupEditable(shift, now) ? editing : null;
+  const [sectionsOpen, setSectionsOpen] = useState(false);
+  const [notesOpen, setNotesOpen] = useState(false);
   return (
     <div className="lineup-desk">
       <div className={`lineup-desk-ticket${arrows ? "" : " is-one"}`}>
@@ -236,13 +257,34 @@ function DesktopLineup({
           </p>
         ) : null}
         {seg === "notes" ? (
-          <NotesPane shift={shift} />
+          changing && notesOpen ? (
+            <NotesEditor editing={changing} shift={shift} onDone={() => setNotesOpen(false)} />
+          ) : (
+            <>
+              {changing ? <EditNotesButton onEdit={() => setNotesOpen(true)} /> : null}
+              <NotesPane shift={shift} />
+            </>
+          )
         ) : seg === "read" ? (
-          <ReadPane shift={shift} timeFormat={timeFormat} timezone={location.timezone} />
+          <ReadPane
+            shift={shift}
+            timeFormat={timeFormat}
+            timezone={location.timezone}
+            copy={<CopyTextButton text={() => lineupCopyText(location, shift, dateLabel, timeFormat)} />}
+          />
         ) : (
-          <DesktopTeam location={location} shift={shift} timeFormat={timeFormat} />
+          <DesktopTeam
+            location={location}
+            shift={shift}
+            timeFormat={timeFormat}
+            editing={changing}
+            onManageSections={() => setSectionsOpen(true)}
+          />
         )}
       </div>
+      {changing && sectionsOpen ? (
+        <SectionsWindow editing={changing} location={location} onClose={() => setSectionsOpen(false)} />
+      ) : null}
     </div>
   );
 }
@@ -277,10 +319,15 @@ function DesktopTeam({
   location,
   shift,
   timeFormat,
+  editing,
+  onManageSections,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
   readonly timeFormat: ScheduleTimeFormat;
+  /** The rows change in place (a draft that hasn't started). */
+  readonly editing: LineupEditing | null;
+  readonly onManageSections: () => void;
 }) {
   if (!shift.count)
     return (
@@ -293,13 +340,30 @@ function DesktopTeam({
     );
   return (
     <>
-      <div className="lineup-desk-cols" aria-hidden>
-        <span />
-        <span>Employee</span>
-        <span>Position</span>
-        <span>Label</span>
-        <span>In – Out</span>
-        <span>Section</span>
+      <div className="lineup-desk-cols">
+        <span aria-hidden />
+        <span aria-hidden>Employee</span>
+        <span aria-hidden>Position</span>
+        <span aria-hidden>Label</span>
+        <span aria-hidden>In – Out</span>
+        <span>
+          <span className="lineup-desk-col-lab">
+            <span aria-hidden>Section</span>
+            {/* The Sections window (S-178 ek 3): from the gear by SECTION; the ticket has no button of its own. */}
+            {editing ? (
+              <button
+                type="button"
+                className="lineup-edit-gear"
+                aria-label="Manage sections"
+                title="Manage sections"
+                aria-haspopup="dialog"
+                onClick={onManageSections}
+              >
+                <Settings size={15} aria-hidden />
+              </button>
+            ) : null}
+          </span>
+        </span>
       </div>
       {shift.departments.map((department) => (
         <section className="lineup-phone-dept" key={department.id ?? "other"} aria-label={department.name}>
@@ -317,7 +381,15 @@ function DesktopTeam({
                 </p>
                 <ul aria-label={job.name}>
                   {job.rows.map((row) => (
-                    <DesktopRow key={row.shiftId} row={row} timeFormat={timeFormat} />
+                    <DesktopRow
+                      key={row.shiftId}
+                      row={row}
+                      location={location}
+                      shift={shift}
+                      timeFormat={timeFormat}
+                      editing={editing}
+                      onManageSections={onManageSections}
+                    />
                   ))}
                 </ul>
               </div>
@@ -329,32 +401,74 @@ function DesktopTeam({
   );
 }
 
-function DesktopRow({ row, timeFormat }: { readonly row: LineupRow; readonly timeFormat: ScheduleTimeFormat }) {
-  return (
-    <li className="lineup-phone-row lineup-desk-row">
+function DesktopRow({
+  row,
+  location,
+  shift,
+  timeFormat,
+  editing,
+  onManageSections,
+}: {
+  readonly row: LineupRow;
+  readonly location: LineupLocation;
+  readonly shift: LineupShift;
+  readonly timeFormat: ScheduleTimeFormat;
+  readonly editing: LineupEditing | null;
+  readonly onManageSections: () => void;
+}) {
+  const person = (
+    <>
       <LineupPersonCircle name={row.name} />
       <span className="lineup-desk-name">
         <span className="lineup-phone-name">{row.name}</span>
         {row.lineupOnly ? <i className="lineup-phone-chip is-warn">Lineup only</i> : null}
       </span>
+    </>
+  );
+  if (editing)
+    return (
+      <li className="lineup-phone-row lineup-desk-row is-edit">
+        {person}
+        <EditableRowCells
+          row={row}
+          location={location}
+          shift={shift}
+          editing={editing}
+          timeFormat={timeFormat}
+          onManageSections={onManageSections}
+          dot={<ChangedDot row={row} />}
+        >
+          <HoursChange row={row} timeFormat={timeFormat} />
+        </EditableRowCells>
+      </li>
+    );
+  return (
+    <li className="lineup-phone-row lineup-desk-row">
+      {person}
       <span className="lineup-desk-cell">{row.jobName}</span>
       <span className="lineup-desk-cell">{row.labels.join(", ") || <None label="No label" />}</span>
       <span className="lineup-desk-cell lineup-desk-time">
         <span className="lineup-desk-hours">
           {range(row.startTime, row.endTime, timeFormat)}
-          {row.changed.length ? (
-            <i
-              className="lineup-phone-changed"
-              role="img"
-              aria-label="Changed in this lineup only"
-              title="Changed in this lineup only. The Schedule doesn't change."
-            />
-          ) : null}
+          <ChangedDot row={row} />
         </span>
         <HoursChange row={row} timeFormat={timeFormat} />
       </span>
       <span className="lineup-desk-cell">{row.sectionName || <None label="No section" />}</span>
     </li>
+  );
+}
+
+/** The orange dot (S-178 madde 3): the lineup changed this row against the Schedule. Managers only. */
+function ChangedDot({ row }: { readonly row: LineupRow }) {
+  if (!row.changed.length) return null;
+  return (
+    <i
+      className="lineup-phone-changed"
+      role="img"
+      aria-label="Changed in this lineup only"
+      title="Changed in this lineup only. The Schedule doesn't change."
+    />
   );
 }
 
