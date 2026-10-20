@@ -4,6 +4,7 @@ import {
   buildScheduleHourTotalValue,
   formatHourTotal,
   formatHourTotalValue,
+  hourTotalHasEstimates,
   type ScheduleHourTotalValue,
 } from "../lib/scheduleHourTotals";
 import { formatWeekdayDate } from "../lib/scheduleDateTime";
@@ -82,16 +83,17 @@ export function ScheduleTotalValue({
 }: {
   readonly total: ScheduleHourTotalValue;
 }) {
-  if (total.containsEstimates) {
-    return <span className="schedule-total-value" title="Includes reference estimates.">{formatHourTotalValue(total)}</span>;
-  }
+  const title = hourTotalHasEstimates(total) ? "~ Some shifts use their shift type's default hours, which can change." : undefined;
   if (total.totalMinutes !== total.visibleMinutes) {
     return (
-      <span className="schedule-total-value" data-has-comparison="true">
-        <span>{formatHourTotal(total.visibleMinutes)}</span>
-        <small>/ {formatHourTotal(total.totalMinutes)}</small>
+      <span className="schedule-total-value" data-has-comparison="true" title={title}>
+        <span>{total.containsEstimates ? "~" : ""}{formatHourTotal(total.visibleMinutes)}</span>
+        <small>/ {total.totalContainsEstimates ? "~" : ""}{formatHourTotal(total.totalMinutes)}</small>
       </span>
     );
+  }
+  if (total.containsEstimates) {
+    return <span className="schedule-total-value" title={title}>{formatHourTotalValue(total)}</span>;
   }
   return (
     <span className="schedule-total-value">

@@ -5,7 +5,10 @@ import { getShiftTimeBasis } from "@newfork/shared";
 export interface ScheduleHourTotalValue {
   readonly visibleMinutes: number;
   readonly totalMinutes: number;
+  /** The shown minutes hold reference hours ("~"). */
   readonly containsEstimates?: boolean;
+  /** The comparison total holds reference hours: a filter can hide them (QA 49). */
+  readonly totalContainsEstimates?: boolean;
 }
 
 export function shiftMinutes(shift: ScheduleShift): number {
@@ -41,22 +44,28 @@ export function buildScheduleHourTotalValue(
     (sum, shift) => sum + shiftMinutes(shift),
     0,
   );
-  const included = totalShifts.length ? totalShifts : visibleShifts;
-  const containsEstimates = included.some((shift) => getShiftTimeBasis(shift) === "type_default");
+  const hasEstimates = (shifts: readonly ScheduleShift[]) =>
+    shifts.some((shift) => getShiftTimeBasis(shift) === "type_default");
+  const comparison = totalMinutes !== visibleMinutes && totalMinutes > 0;
+  const containsEstimates = hasEstimates(visibleShifts);
+  const totalContainsEstimates = comparison && hasEstimates(totalShifts);
   return {
     ...(containsEstimates ? { containsEstimates } : {}),
+    ...(totalContainsEstimates ? { totalContainsEstimates } : {}),
     visibleMinutes,
-    totalMinutes:
-      totalMinutes === visibleMinutes || totalMinutes <= 0
-        ? visibleMinutes
-        : totalMinutes,
+    totalMinutes: comparison ? totalMinutes : visibleMinutes,
   };
+}
+
+export function hourTotalHasEstimates(total: ScheduleHourTotalValue): boolean {
+  return Boolean(total.containsEstimates || total.totalContainsEstimates);
 }
 
 export function formatHourTotalValue(total: ScheduleHourTotalValue): string {
   const prefix = total.containsEstimates ? "~" : "";
   if (total.totalMinutes !== total.visibleMinutes) {
-    return `${prefix}${formatHourTotal(total.visibleMinutes)} / ${formatHourTotal(total.totalMinutes)}`;
+    const totalPrefix = total.totalContainsEstimates ? "~" : "";
+    return `${prefix}${formatHourTotal(total.visibleMinutes)} / ${totalPrefix}${formatHourTotal(total.totalMinutes)}`;
   }
   return `${prefix}${formatHourTotal(total.visibleMinutes)}`;
 }

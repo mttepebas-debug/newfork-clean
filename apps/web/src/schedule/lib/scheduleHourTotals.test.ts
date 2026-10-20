@@ -65,6 +65,19 @@ describe("scheduleHourTotals", () => {
     expect(formatHourTotalValue(total)).toBe("3h 30m / 5h 30m");
   });
 
+  // QA 49: a filter hid her Main shift on reference hours; the 9–5 on hand-set
+  // hours she still sees is exact, only the week that holds the hidden one is not.
+  it("marks only the part of a comparison that holds reference hours", () => {
+    const visible = [shift({ id: "location-2", start_time: "09:00", end_time: "17:00" })];
+    const all = [
+      ...visible,
+      shift({ id: "main", start_time: "09:00", end_time: "17:00", time_basis: "type_default" }),
+    ];
+
+    expect(formatHourTotalValue(buildScheduleHourTotalValue(visible, all))).toBe("7h 30m / ~15h");
+    expect(formatHourTotalValue(buildScheduleHourTotalValue(all.slice(1), all))).toBe("~7h 30m / ~15h");
+  });
+
   it("uses visible minutes when total minutes do not exceed visible minutes", () => {
     const total = buildScheduleHourTotalValue([shift()], []);
 

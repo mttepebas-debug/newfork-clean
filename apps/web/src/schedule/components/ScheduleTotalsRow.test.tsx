@@ -121,4 +121,21 @@ describe("ScheduleTotalsRow", () => {
       ),
     ).toBeNull();
   });
+
+  // QA 49: the hidden shift on reference hours marks the week, not the exact part shown.
+  it("keeps the comparison and marks only the part with reference hours", () => {
+    render(
+      <ScheduleTotalValue
+        total={{
+          visibleMinutes: 450,
+          totalMinutes: 900,
+          totalContainsEstimates: true,
+        }}
+      />,
+    );
+
+    const value = document.querySelector(".schedule-total-value[data-has-comparison='true']");
+    expect(value?.textContent).toBe("7h 30m/ ~15h");
+    expect(value?.getAttribute("title")).toBe("~ Some shifts use their shift type's default hours, which can change.");
+  });
 });
