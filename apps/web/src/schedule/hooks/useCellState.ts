@@ -108,6 +108,7 @@ export function buildScheduleCellState(model: ScheduleReadModel, hideAvailabilit
     for (const shift of shifts) {
       const employeeId = shift.employee_id;
       if (!employeeId) continue;
+      const overlapsAnother = shifts.some((other) => other !== shift && shiftsOverlap(shift, other));
       for (const location of model.locations) {
         if (location.id === shift.location_id) continue;
         const cell = ensureCell(
@@ -120,6 +121,7 @@ export function buildScheduleCellState(model: ScheduleReadModel, hideAvailabilit
             locationName(model, shift.location_id) ??
               ghostLocationNames.get(shift.location_id) ??
               null,
+            overlapsAnother,
           ),
         );
       }
@@ -280,10 +282,15 @@ function mergeCellState(
   );
 }
 
-function makeGhostShift(shift: ScheduleShift, sourceLocationName: string | null): ScheduleShift {
+// A ghost says "conflicts" only when it really overlaps another shift that day (QA 39).
+function makeGhostShift(
+  shift: ScheduleShift,
+  sourceLocationName: string | null,
+  overlapsAnother: boolean,
+): ScheduleShift {
   return {
     ...shift,
-    warning_codes: shift.warning_codes.includes("overlap")
+    warning_codes: !overlapsAnother || shift.warning_codes.includes("overlap")
       ? shift.warning_codes
       : [...shift.warning_codes, "overlap"],
     ghost: true,

@@ -292,6 +292,36 @@ describe("buildScheduleCellState", () => {
     expect(patioCell?.conflictingShiftIds.has("shift-patio")).toBe(true);
   });
 
+  // QA 39: a ghost is the person's shift elsewhere, not a conflict. It says
+  // "conflicts" only when it really overlaps another shift that day.
+  it("marks a ghost as overlapping only when it overlaps another shift", () => {
+    const ghostIn = (state: ReturnType<typeof buildScheduleCellState>, locationId: string, id: string) =>
+      state.get(scheduleCellStateKey(locationId, "2026-08-17", employeeId))?.ghostShifts.find((item) => item.id === id);
+
+    const apart = buildScheduleCellState(
+      model([
+        shift({ id: "shift-main", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" }),
+        shift({ id: "shift-patio", location_id: patioLocationId, start_time: "14:00", end_time: "18:00" }),
+      ]),
+    );
+    expect(ghostIn(apart, patioLocationId, "shift-main")?.warning_codes).not.toContain("overlap");
+    expect(ghostIn(apart, mainLocationId, "shift-patio")?.warning_codes).not.toContain("overlap");
+
+    const alone = buildScheduleCellState(
+      model([shift({ id: "shift-main", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" })]),
+    );
+    expect(ghostIn(alone, patioLocationId, "shift-main")?.warning_codes).not.toContain("overlap");
+
+    const clashing = buildScheduleCellState(
+      model([
+        shift({ id: "shift-main", location_id: mainLocationId, start_time: "09:00", end_time: "13:00" }),
+        shift({ id: "shift-patio", location_id: patioLocationId, start_time: "12:00", end_time: "16:00" }),
+      ]),
+    );
+    expect(ghostIn(clashing, patioLocationId, "shift-main")?.warning_codes).toContain("overlap");
+    expect(ghostIn(clashing, mainLocationId, "shift-patio")?.warning_codes).toContain("overlap");
+  });
+
   // Mert, 2026-10-12: a shift removed while editing makes no overlap and no
   // ghost; it is on its way out.
   it("leaves a shift removed while editing out of overlaps and ghosts", () => {
