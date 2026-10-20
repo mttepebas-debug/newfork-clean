@@ -77,15 +77,19 @@ select lives_ok(
 set local role authenticated;
 select set_config('request.jwt.claim.sub', '12000000-0000-4000-8000-000000000001', true);
 select is((select name from public.shift_types order by sort_order limit 1), 'Dinner', 'shift type order is persisted');
+-- Every shift type has valid default times; the times guard answers before
+-- any other check, so the refusals below that are not about times give valid
+-- times.
 select throws_ok(
   $$insert into public.shift_types (workspace_id, name, default_start_time, default_end_time)
     values ('22000000-0000-4000-8000-000000000001', 'Invalid', '09:00', '09:00')$$,
-  '23514',
-  null,
+  '22023',
+  'Set valid default start and end times for this shift type',
   'equal default times are rejected'
 );
 select throws_ok(
-  $$insert into public.shift_types (workspace_id, name) values ('22000000-0000-4000-8000-000000000001', 'breakfast')$$,
+  $$insert into public.shift_types (workspace_id, name, default_start_time, default_end_time)
+    values ('22000000-0000-4000-8000-000000000001', 'breakfast', '09:00', '17:00')$$,
   '23505',
   null,
   'active shift type names are unique ignoring case'
@@ -153,7 +157,8 @@ select is(
   'manager cannot update scheduling rules'
 );
 select throws_ok(
-  $$insert into public.shift_types (workspace_id, name) values ('22000000-0000-4000-8000-000000000001', 'Unauthorized')$$,
+  $$insert into public.shift_types (workspace_id, name, default_start_time, default_end_time)
+    values ('22000000-0000-4000-8000-000000000001', 'Unauthorized', '09:00', '17:00')$$,
   '42501',
   'new row violates row-level security policy for table "shift_types"',
   'manager cannot create a shift type'

@@ -1,3 +1,2 @@
 # pgTAP files that do not run in CI yet, one per line: <path>  # reason.
 # The list only shrinks: a test leaves it by going green (scripts/ci-green-guard.sh).
-supabase/tests/scheduling_settings_shift_types_rls.test.sql  # red in CI run 36588987982 (2026-09-29, fresh DB): tests 12-13, 23 (BL-368)
