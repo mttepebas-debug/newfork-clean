@@ -306,9 +306,10 @@
   right: -25px;
 }
 /* Shift · People · Hours. */
+/* The hours never shorten ("3:00 PM – 10:00 PM" whole on a 390 phone); a long shift name gives way, with "…". */
 .lineup-card-facts {
   display: grid;
-  grid-template-columns: auto auto minmax(0, 1fr);
+  grid-template-columns: minmax(0, 1fr) auto auto;
   gap: 22px;
   margin: 0;
   padding: 12px 16px;
@@ -334,6 +335,11 @@
   line-height: 20px;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+.lineup-card-facts dd span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .lineup-card-facts dd i {
   width: 8px;

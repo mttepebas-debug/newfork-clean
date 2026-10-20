@@ -542,7 +542,7 @@ export function LineupCard({
               <dt>Shift</dt>
               <dd>
                 <i aria-hidden />
-                {shift.name}
+                <span>{shift.name}</span>
               </dd>
             </div>
             <div>
