@@ -127,5 +127,20 @@ select is(pg_temp.home('ayse') -> 'time_off' -> 0 -> 'location_ids', jsonb_build
   'Ayse sees it, filed under Kadikoy');
 select is(pg_temp.home('bora') -> 'time_off', '[]'::jsonb, 'Bora, at Besiktas, does not');
 
+-- One workspace never reaches another (CLAUDE.md §3.A.1): the owner of world mx.
+select tests.world('mx');
+select is(pg_temp.refusal($$select public.get_manager_home_service(tests.user('mx:owner'), tests.id('mh'))$$),
+  '42501 authz.not_member', 'the owner of another workspace does not open this Home');
+select is(
+  (select count(*)::integer from jsonb_array_elements(public.get_manager_home_service(tests.user('mx:owner'), tests.id('mx')) -> 'locations') l
+   where (l ->> 'id')::uuid in (tests.id('mh:K'), tests.id('mh:B'))),
+  0, 'her own Home shows none of this workspace''s locations');
+select is(
+  (select count(*)::integer from jsonb_array_elements(public.get_manager_home_service(tests.user('mx:owner'), tests.id('mx')) -> 'locations') l
+   where (l ->> 'id')::uuid in (tests.id('mx:K'), tests.id('mx:B'))),
+  2, 'it shows her own two locations');
+select is(public.get_manager_home_service(tests.user('mx:owner'), tests.id('mx')) -> 'time_off', '[]'::jsonb,
+  'nor this workspace''s time off');
+
 select * from finish();
 rollback;
