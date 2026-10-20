@@ -549,11 +549,6 @@
   border-radius: 0 0 14px 14px;
   background: var(--theme-surface-soft);
 }
-/* Why a change didn't go through, on the left; Done on the right. */
-.lineup-edit-dlg-alert {
-  min-width: 0;
-  margin-right: auto;
-}
 .lineup-edit-dlg > footer .nf-button {
   min-height: 38px;
   padding: 0 18px;
@@ -631,4 +626,273 @@
   min-height: 36px;
   padding: 0 16px;
   font-size: 13.5px;
+}
+
+/* LINEUP-EDIT W3a (S-178 madde 5-7; the design's F, yapim/masaustu/frame.css .dk-calloff, .dk-add, .dk-out, .dk-cand):
+   Call off at the end of a row, Add Staff on a department's heading, the people out at the foot, the window. */
+.lineup-desk-scroll.is-edit {
+  --lineup-desk-cols: 38px minmax(0, 1.25fr) minmax(0, 1fr) minmax(0, 0.8fr) minmax(206px, 1.1fr) minmax(0, 1fr) 150px;
+}
+.lineup-desk-cell.lineup-staff-cell {
+  display: grid;
+  justify-items: end;
+  gap: 2px;
+  overflow: visible;
+  white-space: normal;
+}
+.lineup-staff-off,
+.lineup-staff-back {
+  min-height: 30px;
+  padding: 0 11px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineup-staff-off {
+  color: var(--theme-danger-strong);
+}
+.lineup-staff-off:hover {
+  border-color: var(--theme-danger-border);
+  background: var(--theme-danger-surface);
+}
+.lineup-staff-off.is-armed {
+  border-color: var(--theme-danger);
+  background: var(--theme-danger);
+  color: var(--theme-on-accent);
+}
+.lineup-staff-back {
+  color: var(--theme-accent-deep);
+}
+.lineup-staff-back:hover {
+  background: var(--theme-accent-soft);
+}
+.lineup-staff-name {
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 650;
+  text-align: left;
+  cursor: pointer;
+  overflow-wrap: anywhere;
+}
+.lineup-staff-name:hover {
+  color: var(--theme-accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lineup-desk-page .lineup-phone-dept > h3 {
+  display: flex;
+  align-items: center;
+}
+.lineup-staff-add {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 30px;
+  margin-left: auto;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 8px;
+  background: none;
+  color: var(--theme-accent-deep);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  cursor: pointer;
+}
+.lineup-staff-add:hover {
+  background: var(--theme-accent-soft);
+}
+/* Its words end where the Call off buttons' edge does (the row's 12px padding plus the cell's own). */
+.lineup-desk-page .lineup-phone-dept > h3 > .lineup-staff-add {
+  margin-right: 3px;
+}
+.lineup-staff-none {
+  margin: 0;
+  padding: 14px 16px;
+  color: var(--theme-text-secondary);
+  font-size: 13.5px;
+}
+.lineup-staff-out h3 {
+  color: var(--theme-text-secondary);
+}
+.lineup-staff-out ul {
+  margin: 0;
+  padding: 0 0 2px;
+  list-style: none;
+}
+.lineup-phone-row.is-out .lineup-phone-name,
+.lineup-desk-cell.is-muted {
+  color: var(--theme-text-secondary);
+}
+.lineup-phone-row.lineup-staff-rep {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  column-gap: 14px;
+  min-height: 54px;
+  padding: 7px 12px;
+}
+.lineup-phone-row.lineup-staff-rep.is-edit {
+  grid-template-columns: minmax(0, 1fr) auto 150px;
+}
+.lineup-staff-who {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 10px;
+}
+.lineup-staff-who .lineup-phone-name {
+  color: var(--theme-text-secondary);
+  white-space: nowrap;
+}
+.lineup-staff-who .lineup-phone-name.is-by {
+  color: var(--theme-text);
+}
+.lineup-staff-rep-ic {
+  display: inline-grid;
+  place-items: center;
+  color: var(--theme-accent-deep);
+}
+.lineup-staff-off:focus-visible,
+.lineup-staff-back:focus-visible,
+.lineup-staff-name:focus-visible,
+.lineup-staff-add:focus-visible,
+.lineup-staff-pick:focus-visible,
+.lineup-staff-anyway:focus-visible {
+  outline: 2px solid var(--theme-focus);
+  outline-offset: 1px;
+}
+
+/* Add Staff and Replace: the search, the four groups, a person per line. */
+.lineup-edit-dlg.lineup-staff-dlg {
+  width: 640px;
+  height: min(720px, calc(100% - 80px));
+}
+.lineup-staff-search {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  margin: 0 22px 8px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 8px;
+  color: var(--theme-text-secondary);
+}
+.lineup-staff-search:focus-within {
+  border-color: var(--theme-focus);
+  box-shadow: 0 0 0 2px var(--theme-focus-halo);
+}
+.lineup-staff-search input {
+  flex: 1;
+  min-width: 0;
+  border: 0;
+  outline: none;
+  background: none;
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 14px;
+}
+.lineup-staff-group h3 {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin: 0;
+  padding: 12px 0 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font-size: 13px;
+  font-weight: 800;
+}
+.lineup-staff-group h3 span {
+  color: var(--theme-muted);
+  font-weight: 650;
+}
+.lineup-staff-group h3 small {
+  margin-left: auto;
+  color: var(--theme-text-secondary);
+  font-size: 12px;
+  font-weight: 600;
+}
+.lineup-staff-group ul {
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--theme-list-frame, var(--theme-border));
+  border-radius: 10px;
+  list-style: none;
+}
+.lineup-staff-cand {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  min-height: 56px;
+  padding: 8px 12px;
+}
+.lineup-staff-cand + .lineup-staff-cand {
+  border-top: 1px solid var(--theme-border-subtle);
+}
+.lineup-staff-cand-mid {
+  display: grid;
+  min-width: 0;
+  gap: 1px;
+}
+.lineup-staff-cand-mid b {
+  color: var(--theme-text);
+  font-size: 14px;
+  font-weight: 650;
+}
+.lineup-staff-cand-mid > span {
+  overflow: hidden;
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.lineup-staff-cand-mid strong {
+  color: var(--theme-text-body);
+  font-weight: 700;
+}
+.nf-button.lineup-staff-pick {
+  min-height: 32px;
+  padding: 0 14px;
+  font-size: 13px;
+}
+.lineup-staff-anyway {
+  min-height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--theme-border-control);
+  border-radius: 6px;
+  background: var(--theme-surface);
+  color: var(--theme-text);
+  font: inherit;
+  font-size: 13px;
+  font-weight: 650;
+  white-space: nowrap;
+  cursor: pointer;
+}
+.lineup-staff-anyway.is-armed {
+  border-color: var(--theme-warning-border);
+  background: var(--theme-warning-surface);
+  color: var(--theme-warning-text);
+}
+.lineup-staff-foot {
+  margin-right: auto;
+  color: var(--theme-text-secondary);
+  font-size: 12.5px;
 }

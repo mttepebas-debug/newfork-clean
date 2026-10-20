@@ -153,7 +153,10 @@ export function LineupPage() {
       workspaceId,
       date,
       catalog: {
-        jobs: model.jobs.map((job) => ({ id: job.id, name: job.name })),
+        departments: [...model.departments]
+          .sort((a, b) => a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }))
+          .map((department) => ({ id: department.id, name: department.name })),
+        jobs: model.jobs.map((job) => ({ id: job.id, name: job.name, departmentId: job.department_id })),
         labels: [...(model.shift_labels ?? [])].sort((a, b) => a.sort_order - b.sort_order).map((label) => ({ id: label.id, name: label.name })),
         jobsOf: (employeeId) => assigned.get(employeeId) ?? [],
       },

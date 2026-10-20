@@ -37,6 +37,9 @@ export interface LineupRow {
   readonly hasApp: boolean;
   /** When she acknowledged the version staff see, if she did. */
   readonly acknowledgedAt: string | null;
+  /** LINEUP-EDIT W3a (S-178 madde 5-7): called off, or someone took her place (that row's id). */
+  readonly calledOffAt: string | null;
+  readonly replacedByRowId: string | null;
 }
 
 export interface LineupJob {
@@ -75,8 +78,14 @@ export interface LineupShift {
   readonly key: string;
   readonly name: string;
   readonly color: string | null;
+  /** Who is on it; called off and replaced people are under `out`, not here. */
   readonly departments: readonly LineupDepartment[];
   readonly count: number;
+  /** At the foot of the list (S-178 madde 5-7): called off, then replaced with who took the place. */
+  readonly out: {
+    readonly calledOff: readonly LineupRow[];
+    readonly replaced: readonly { readonly row: LineupRow; readonly by: LineupRow | null }[];
+  };
   readonly publish: LineupPublish;
 }
 
@@ -127,6 +136,38 @@ function emptyLineup(typeId: string | null): LineupDayLineup {
   };
 }
 
+function lineupRow(row: LineupDayLineup["rows"][number]): LineupRow {
+  return {
+    shiftId: row.shift_id ?? row.id ?? `${row.employee_id}-${row.start_time}`,
+    rowId: row.id,
+    sourceShiftId: row.source_shift_id,
+    jobId: row.job_id,
+    labelIds: row.label_ids ?? [],
+    sectionId: row.section_id,
+    employeeId: row.employee_id!,
+    name: row.name ?? "Team member",
+    jobName: row.job_name ?? "Job",
+    startTime: row.start_time,
+    endTime: row.end_time,
+    crossesMidnight: row.crosses_midnight,
+    scheduleStartTime: row.schedule_start_time,
+    scheduleEndTime: row.schedule_end_time,
+    labels: row.label_names ?? [],
+    sectionName: row.section_name,
+    lineupOnly: row.lineup_only,
+    changed: row.changed,
+    hasApp: row.has_app,
+    acknowledgedAt: row.acknowledged_at,
+    calledOffAt: row.called_off_at,
+    replacedByRowId: row.replaced_by_row_id,
+  };
+}
+
+/** What names a row in an edit: the lineup's own row once it has one, else the Schedule shift it comes from. */
+export function lineupRowRef(row: LineupRow): { readonly row_id: string } | { readonly source_shift_id: string } {
+  return row.lineupOnly && row.rowId ? { row_id: row.rowId } : { source_shift_id: row.sourceShiftId ?? row.shiftId };
+}
+
 /**
  * The day's lineups as the page shows them: the day read's rows grouped by department and job, every active
  * shift type of the catalog in its place (Mert 2026-10-13: an empty shift stays as a short card).
@@ -144,7 +185,9 @@ export function lineupDay(
       const shifts = closed ? [] : [...byType.entries()]
         .map(([key, lineup]) => {
           const type = types.find((item) => item.id === key);
-          const rows = lineup.rows.filter((row) => row.employee_id !== null);
+          const all = lineup.rows.filter((row) => row.employee_id !== null).map((row) => ({ row, item: lineupRow(row) }));
+          const rows = all.filter(({ item }) => !item.calledOffAt && !item.replacedByRowId).map(({ row }) => row);
+          const byId = new Map(all.flatMap(({ item }) => (item.rowId ? [[item.rowId, item] as const] : [])));
           const byDepartment = new Map<string | null, { name: string; jobs: Map<string, { name: string; color: string | null; rows: LineupRow[] }> }>();
           for (const row of rows) {
             const department = byDepartment.get(row.department_id) ??
@@ -153,28 +196,7 @@ export function lineupDay(
             const jobKey = row.job_id ?? "none";
             const job = department.jobs.get(jobKey) ?? { name: row.job_name ?? "Job", color: row.job_color, rows: [] };
             department.jobs.set(jobKey, job);
-            job.rows.push({
-              shiftId: row.shift_id ?? row.id ?? `${row.employee_id}-${row.start_time}`,
-              rowId: row.id,
-              sourceShiftId: row.source_shift_id,
-              jobId: row.job_id,
-              labelIds: row.label_ids ?? [],
-              sectionId: row.section_id,
-              employeeId: row.employee_id!,
-              name: row.name ?? "Team member",
-              jobName: row.job_name ?? "Job",
-              startTime: row.start_time,
-              endTime: row.end_time,
-              crossesMidnight: row.crosses_midnight,
-              scheduleStartTime: row.schedule_start_time,
-              scheduleEndTime: row.schedule_end_time,
-              labels: row.label_names ?? [],
-              sectionName: row.section_name,
-              lineupOnly: row.lineup_only,
-              changed: row.changed,
-              hasApp: row.has_app,
-              acknowledgedAt: row.acknowledged_at,
-            });
+            job.rows.push(lineupRow(row));
           }
           const departments: LineupDepartment[] = [...byDepartment.entries()]
             .map(([id, department]) => ({
@@ -199,6 +221,14 @@ export function lineupDay(
             color: lineup.color ?? type?.color ?? null,
             departments,
             count: rows.length,
+            out: {
+              calledOff: all.map(({ item }) => item).filter((item) => item.calledOffAt && !item.replacedByRowId).sort(byName),
+              replaced: all
+                .map(({ item }) => item)
+                .filter((item) => item.replacedByRowId)
+                .sort(byName)
+                .map((item) => ({ row: item, by: byId.get(item.replacedByRowId!) ?? null })),
+            },
             // By the shift type's start (a type gone from the catalog: its earliest row), shifts with no type last.
             start: key === NO_SHIFT_TYPE
               ? "99:99:99"

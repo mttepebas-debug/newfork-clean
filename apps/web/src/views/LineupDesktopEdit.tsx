@@ -3,7 +3,7 @@ import { Ban, Check, ClipboardCopy, GripVertical, MessageSquareText, Pencil, Plu
 import { useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 
-import { parseLineupTime, type LineupLocation, type LineupRow, type LineupShift } from "../schedule/lineup";
+import { lineupRowRef, parseLineupTime, type LineupLocation, type LineupRow, type LineupShift } from "../schedule/lineup";
 import { lineupEditMessage, useLineupEdit, useLineupSections, type LineupEdit } from "../schedule/lineup-data";
 import { formatTime, type ScheduleTimeFormat } from "../schedule/lib/scheduleDateTime";
 import { WindowAlert } from "../shell/WindowAlert";
@@ -11,11 +11,15 @@ import { WindowAlert } from "../shell/WindowAlert";
 // LINEUP-EDIT W2a (KARARLAR S-178 madde 1-4, ek 2-3, ek b; the design's F "after", yapim/masaustu/desk.js fRow,
 // secCell, secLayer, notesPane): on a draft that hasn't started, a manager changes a row in place (Position, Label,
 // In - Out, Section with "Other…" and Save to sections), the location's sections in the Sections window, and the notes.
-// The Schedule never changes. Call off, Add Staff and Replace come with L3.
+// The Schedule never changes. Call off, Add Staff and Replace are in LineupDesktopStaff (W3a).
 
-/** What the pickers offer: the workspace's positions and labels, and the positions each person is assigned to. */
+/**
+ * What the pickers offer: the workspace's departments, positions and labels, and the positions each person is
+ * assigned to.
+ */
 export interface LineupEditCatalog {
-  readonly jobs: readonly { readonly id: string; readonly name: string }[];
+  readonly departments: readonly { readonly id: string; readonly name: string }[];
+  readonly jobs: readonly { readonly id: string; readonly name: string; readonly departmentId: string | null }[];
   readonly labels: readonly { readonly id: string; readonly name: string }[];
   readonly jobsOf: (employeeId: string) => readonly string[];
 }
@@ -63,7 +67,7 @@ export function EditableRowCells({
   const [shown, setShown] = useState<Partial<Record<"job" | "label" | "section", string>>>({});
   // Each field's refusal, under it: one change's answer never stands for another's.
   const [refused, setRefused] = useState<Partial<Record<string, string>>>({});
-  const which = row.lineupOnly && row.rowId ? { row_id: row.rowId } : { source_shift_id: row.sourceShiftId ?? row.shiftId };
+  const which = lineupRowRef(row);
   // In and Out go together: the one not typed goes as last typed, until the day is read again with nothing on its
   // way (the review of 6ec3afb16: Out sent while In was on its way must not put the old In back).
   const latest = useRef(row);
@@ -374,40 +378,8 @@ export function SectionsWindow({
   const [added, setAdded] = useState("");
   const [dragged, setDragged] = useState<number | null>(null);
   const titleId = useId();
-  const box = useRef<HTMLElement | null>(null);
-  const latest = useRef(onClose);
-  latest.current = onClose;
+  const { box, keys } = useWindowKeys(onClose);
   const sections = location.sections;
-
-  // Focus goes in when it opens and back to what opened it (the gear) when it closes.
-  useEffect(() => {
-    const opener = document.activeElement as HTMLElement | null;
-    box.current?.querySelector<HTMLElement>("input")?.focus();
-    return () => {
-      if (opener?.isConnected) opener.focus();
-    };
-  }, []);
-  // Its own keys, after the field's: Escape in a changed name puts the name back first; Tab stays inside.
-  function keys(event: KeyboardEvent<HTMLElement>) {
-    if (event.key === "Escape") {
-      event.preventDefault();
-      latest.current();
-      return;
-    }
-    if (event.key !== "Tab" || !box.current) return;
-    const focusable = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
-    const first = focusable[0];
-    const last = focusable[focusable.length - 1];
-    if (!first || !last) return;
-    // The window itself (after a click on its empty part) counts as before the first field.
-    if (event.shiftKey && (document.activeElement === first || document.activeElement === box.current)) {
-      event.preventDefault();
-      last.focus();
-    } else if (!event.shiftKey && document.activeElement === last) {
-      event.preventDefault();
-      first.focus();
-    }
-  }
 
   function run(input: Parameters<typeof change.mutate>[0], after?: () => void) {
     setRefused(null);
@@ -526,15 +498,52 @@ export function SectionsWindow({
           </Button>
         </div>
         <footer>
-          <span className="lineup-edit-dlg-alert">
-            <WindowAlert message={refused} />
-          </span>
+          {/* The band goes first in the footer, laid over the body's bottom edge (WindowAlert). */}
+          <WindowAlert message={refused} />
           <Button onClick={onClose}>Done</Button>
         </footer>
       </section>
     </div>,
     document.body,
   );
+}
+
+/**
+ * A window's focus and keys: the focus goes to its first field when it opens and back to what opened it when it
+ * closes; Escape closes it (after the field's own Escape); Tab stays inside.
+ */
+export function useWindowKeys(onClose: () => void) {
+  const box = useRef<HTMLElement | null>(null);
+  const latest = useRef(onClose);
+  latest.current = onClose;
+  useEffect(() => {
+    const opener = document.activeElement as HTMLElement | null;
+    box.current?.querySelector<HTMLElement>("input")?.focus();
+    return () => {
+      if (opener?.isConnected) opener.focus();
+    };
+  }, []);
+  function keys(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      latest.current();
+      return;
+    }
+    if (event.key !== "Tab" || !box.current) return;
+    const focusable = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    // The window itself (after a click on its empty part) counts as before the first field.
+    if (event.shiftKey && (document.activeElement === first || document.activeElement === box.current)) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
+  return { box, keys };
 }
 
 /** A section's name, renamed on Enter or when it loses focus; Escape puts it back. */

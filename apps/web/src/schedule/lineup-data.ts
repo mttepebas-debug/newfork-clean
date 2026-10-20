@@ -1,10 +1,12 @@
 import {
   lineupAcknowledgementSchema,
+  lineupCandidatesSchema,
   lineupCommandResultSchema,
   lineupDaySchema,
   lineupEditResultSchema,
   lineupSectionsResultSchema,
   myLineupsSchema,
+  type LineupCandidatesQuery,
   type LineupEditInput,
   type LineupSectionsInput,
   type LineupTarget,
@@ -116,6 +118,21 @@ export function useLineupSections(workspaceId: string | null, date: string) {
   });
 }
 
+/**
+ * Who may join a department (Add Staff) or take a person's place (Replace), scored (LINEUP-EDIT W3a). Under the
+ * day's key, so an edit that reads the day again reads this again too.
+ */
+export function useLineupCandidates(workspaceId: string | null, date: string, query: LineupCandidatesQuery | null) {
+  return useQuery({
+    queryKey: [...lineupKeys.day(workspaceId ?? "", date), "candidates", query] as const,
+    queryFn: async () =>
+      lineupCandidatesSchema.parse(
+        await lineupApi(workspaceId!, "/lineups/candidates", { method: "POST", body: JSON.stringify(query) }),
+      ),
+    enabled: Boolean(workspaceId && query),
+  });
+}
+
 /** What a refused edit or section change means to the manager; the server's sentence never shows. */
 export function lineupEditMessage(error: unknown): string {
   const reason = error instanceof RequestError ? error.reason : undefined;
@@ -134,6 +151,12 @@ export function lineupEditMessage(error: unknown): string {
       return "This location already has a section with that name.";
     case "lineup.note_too_long":
       return "This note is too long.";
+    case "lineup.already_on":
+      return "This person is on this lineup already.";
+    case "lineup.row_out":
+      return "This person isn't on the lineup now.";
+    case "lineup.not_replacing":
+      return "This person took nobody's place.";
     case "lineup.live":
       return "This lineup is published. Take it back with Edit first.";
     case "lineup.started":

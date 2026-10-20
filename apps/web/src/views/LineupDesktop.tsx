@@ -22,6 +22,7 @@ import {
   SectionsWindow,
   type LineupEditing,
 } from "./LineupDesktopEdit";
+import { AddStaffButton, CallOffCell, OutGroups, ReplaceName, StaffWindow, type StaffPlace } from "./LineupDesktopStaff";
 import { LineupCard, NotesPane, ReadPane, Segments, type Seg } from "./LineupPhone";
 import { LineupPersonCircle } from "./LineupPersonCircle";
 import "./lineup-desktop.css";
@@ -32,7 +33,8 @@ import "./lineup-desktop.css";
 // under the ticket scrolls. The team is one list under column headings: person, position, label, in – out, section,
 // each heading centred on its column's content and Section the last column, by the list's right edge (Mert
 // 2026-10-19 ~5:30 AM). On a draft that hasn't started a manager changes the rows in place, the location's sections
-// (the gear by SECTION) and the notes (LINEUP-EDIT W2a); Call off, Add Staff and Replace come with L3.
+// (the gear by SECTION) and the notes (LINEUP-EDIT W2a), and calls people off, adds them and replaces them (W3a);
+// called off and replaced people sit at the foot of the list.
 
 function range(start: string, end: string, format: ScheduleTimeFormat): string {
   if (!start || !end) return "";
@@ -228,6 +230,7 @@ function DesktopLineup({
   const changing = editing && lineupEditable(shift, now) ? editing : null;
   const [sectionsOpen, setSectionsOpen] = useState(false);
   const [notesOpen, setNotesOpen] = useState(false);
+  const [staff, setStaff] = useState<StaffPlace | null>(null);
   return (
     <div className="lineup-desk">
       <div className={`lineup-desk-ticket${arrows ? "" : " is-one"}`}>
@@ -249,7 +252,7 @@ function DesktopLineup({
         </LineupCard>
         {arrows ? <MoveArrow to={next ?? null} onMove={onMove} /> : null}
       </div>
-      <div className="lineup-desk-scroll" ref={list} role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
+      <div className={`lineup-desk-scroll${changing ? " is-edit" : ""}`} ref={list} role="tabpanel" id={panel} aria-labelledby={`${ids}seg-${seg}`}>
         {location.shortHours?.opens && location.shortHours.closes ? (
           <p className="lineup-short" role="note">
             Short hours today: open {range(location.shortHours.opens, location.shortHours.closes, timeFormat)} (
@@ -279,11 +282,22 @@ function DesktopLineup({
             timeFormat={timeFormat}
             editing={changing}
             onManageSections={() => setSectionsOpen(true)}
+            onStaff={setStaff}
           />
         )}
       </div>
       {changing && sectionsOpen ? (
         <SectionsWindow editing={changing} location={location} onClose={() => setSectionsOpen(false)} />
+      ) : null}
+      {changing && staff ? (
+        <StaffWindow
+          editing={changing}
+          location={location}
+          shift={shift}
+          place={staff}
+          timeFormat={timeFormat}
+          onClose={() => setStaff(null)}
+        />
       ) : null}
     </div>
   );
@@ -321,6 +335,7 @@ function DesktopTeam({
   timeFormat,
   editing,
   onManageSections,
+  onStaff,
 }: {
   readonly location: LineupLocation;
   readonly shift: LineupShift;
@@ -328,8 +343,22 @@ function DesktopTeam({
   /** The rows change in place (a draft that hasn't started). */
   readonly editing: LineupEditing | null;
   readonly onManageSections: () => void;
+  readonly onStaff: (place: StaffPlace) => void;
 }) {
-  if (!shift.count)
+  // Editing, every department shows, so Add Staff reaches one with no one on it yet (the design's teamPane).
+  const departments = editing
+    ? [
+        ...shift.departments,
+        ...editing.catalog.departments
+          .filter((department) => !shift.departments.some((item) => item.id === department.id))
+          .map((department) => ({ ...department, jobs: [] })),
+      ].sort(
+        (a, b) =>
+          (a.id === null ? 1 : 0) - (b.id === null ? 1 : 0) || a.name.localeCompare(b.name, "en-US", { sensitivity: "base" }),
+      )
+    : shift.departments;
+  const out = shift.out.calledOff.length + shift.out.replaced.length;
+  if (!shift.count && !out && !(editing && departments.length))
     return (
       <div className="lineup-phone-noone">
         <Users aria-hidden />
@@ -364,14 +393,22 @@ function DesktopTeam({
             ) : null}
           </span>
         </span>
+        {editing ? <span aria-hidden /> : null}
       </div>
-      {shift.departments.map((department) => (
+      {departments.map((department) => (
         <section className="lineup-phone-dept" key={department.id ?? "other"} aria-label={department.name}>
           <h3>
             {department.name}
             <span>{department.jobs.reduce((sum, job) => sum + job.rows.length, 0)}</span>
+            {editing && department.id ? (
+              <AddStaffButton
+                department={department.name}
+                onAdd={() => onStaff({ kind: "add", department: { id: department.id!, name: department.name } })}
+              />
+            ) : null}
           </h3>
           <div className="lineup-phone-list">
+            {department.jobs.length ? null : <p className="lineup-staff-none">No one in {department.name} yet.</p>}
             {department.jobs.map((job) => (
               <div className="lineup-phone-job" key={job.id}>
                 <p>
@@ -389,6 +426,7 @@ function DesktopTeam({
                       timeFormat={timeFormat}
                       editing={editing}
                       onManageSections={onManageSections}
+                      onReplace={() => onStaff({ kind: "replace", row })}
                     />
                   ))}
                 </ul>
@@ -397,6 +435,7 @@ function DesktopTeam({
           </div>
         </section>
       ))}
+      <OutGroups location={location} shift={shift} timeFormat={timeFormat} editing={editing} />
     </>
   );
 }
@@ -408,6 +447,7 @@ function DesktopRow({
   timeFormat,
   editing,
   onManageSections,
+  onReplace,
 }: {
   readonly row: LineupRow;
   readonly location: LineupLocation;
@@ -415,12 +455,13 @@ function DesktopRow({
   readonly timeFormat: ScheduleTimeFormat;
   readonly editing: LineupEditing | null;
   readonly onManageSections: () => void;
+  readonly onReplace: () => void;
 }) {
   const person = (
     <>
       <LineupPersonCircle name={row.name} />
       <span className="lineup-desk-name">
-        <span className="lineup-phone-name">{row.name}</span>
+        {editing ? <ReplaceName row={row} onReplace={onReplace} /> : <span className="lineup-phone-name">{row.name}</span>}
         {row.lineupOnly ? <i className="lineup-phone-chip is-warn">Lineup only</i> : null}
       </span>
     </>
@@ -440,6 +481,7 @@ function DesktopRow({
         >
           <HoursChange row={row} timeFormat={timeFormat} />
         </EditableRowCells>
+        <CallOffCell row={row} shift={shift} editing={editing} />
       </li>
     );
   return (

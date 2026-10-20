@@ -10,7 +10,7 @@ import { RequestError } from "../lib/request-error";
 import { getScheduleReadModel } from "../schedule/schedule-data";
 import type { LineupDayLineup } from "@newfork/shared";
 import { apiRequest } from "../lib/supabase";
-import { chloe, day, dayRead, dinner, downtown, hannah, host, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
+import { aisha, chloe, cook, day, dayRead, dinner, downtown, foh, hannah, host, lunch, maria, model, server, shift, uptown, ws } from "../schedule/lineup.testing";
 import { LINEUP_BUSY_MS } from "../schedule/lineup";
 import { LineupPage } from "./LineupPage";
 
@@ -183,7 +183,9 @@ describe("LineupPage", () => {
     expect(screen.queryByRole("region", { name: /^Uptown/ })).toBeNull();
     expect(screen.queryByRole("button", { name: /location/ })).toBeNull();
     expect(screen.getByRole("button", { name: "Dinner, no one", pressed: true })).toBeTruthy();
-    expect(within(screen.getByRole("tabpanel")).getByText("No one is scheduled for Dinner at Downtown")).toBeTruthy();
+    // A manager's empty draft shows its departments, so Add Staff reaches them (LINEUP-EDIT W3a, the design's teamPane).
+    expect(within(screen.getByRole("tabpanel")).getByText("No one in Kitchen yet.")).toBeTruthy();
+    expect(within(screen.getByRole("tabpanel")).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
     expect(within(ticket).getByText("Draft")).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Lunch, 1 person" }));
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe(`?location=${downtown}&shift=${lunch}`));
@@ -1892,5 +1894,209 @@ describe("LineupPage, editing a draft on the desktop", () => {
       ["Downtown · Lunch · Tue, Oct 13", "", "Front of House", "Server: Maria Lopez · 11:00 AM – 4:00 PM · Training"].join("\n"),
     );
     expect(within(noApp).getByRole("button", { name: "Copied" })).toBeTruthy();
+  });
+});
+
+// LINEUP-EDIT W3a (S-178 madde 5-7; the design's F outGroups, pickLayer): Call off with two clicks (Mert 2026-10-20),
+// Add Staff from a department's heading, Replace from a name, and the people out at the foot of the list.
+describe("LineupPage, calling off, adding and replacing on the desktop", () => {
+  const sent: Record<string, unknown>[] = [];
+  const asked: Record<string, unknown>[] = [];
+  const added = "a1000000-0000-4000-8000-000000000001";
+  // How the day read has Maria: on, called off, or replaced by Hannah (a row added in the lineup).
+  let maria_: "on" | "off" | "replaced" = "on";
+  let refuse: string | null = null;
+  const candidates = {
+    window: { start_time: "11:00", end_time: "16:00" },
+    job_id: null,
+    candidates: [
+      { employee_id: chloe, name: "Chloe Davis", job_ids: [server], job_id: server, group: "best_fit", score: 100, why: { reason: "no_shift" } },
+      { employee_id: aisha, name: "Aisha Johnson", job_ids: [cook], job_id: null, group: "consider", score: 100, why: { reason: "no_shift" } },
+      {
+        employee_id: hannah, name: "Hannah Lee", job_ids: [server], job_id: server, group: "unavailable", score: 30,
+        why: { reason: "elsewhere", location_name: "Uptown", shift_name: "Lunch", start_time: "11:00", end_time: "16:00", partial: false },
+      },
+    ],
+  };
+  beforeEach(() => {
+    sent.length = 0;
+    asked.length = 0;
+    maria_ = "on";
+    refuse = null;
+    world = model([shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00", labels: ["Training"] })]);
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/edit")) {
+        const body = JSON.parse(String(init?.body)) as Record<string, unknown>;
+        sent.push(body);
+        if (refuse) throw new RequestError("No", refuse, undefined, 400);
+        return { command_id: body.command_id, kind: "edit", lineup_id: "a0000000-0000-4000-8000-000000000001", row_id: null };
+      }
+      if (path.endsWith("/lineups/candidates")) {
+        asked.push(JSON.parse(String(init?.body)) as Record<string, unknown>);
+        return candidates;
+      }
+      const answer = (await realRead(client, path, init)) as ReturnType<typeof dayRead>;
+      const rows = /\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path) ? answer.locations[0]?.lineups[0]?.rows : undefined;
+      if (rows && maria_ === "off") Object.assign(rows[0]!, { id: "a2000000-0000-4000-8000-000000000001", called_off_at: "2026-10-13T16:41:00Z" });
+      if (rows && maria_ === "replaced") {
+        Object.assign(rows[0]!, { id: "a2000000-0000-4000-8000-000000000001", replaced_by_row_id: added });
+        rows.push({
+          ...rows[0]!, id: added, shift_id: null, source_shift_id: null, employee_id: hannah, name: "Hannah Lee",
+          schedule_start_time: null, schedule_end_time: null, replaced_by_row_id: null, lineup_only: true,
+        });
+      }
+      return answer;
+    });
+  });
+
+  const target = () => ({ location_id: downtown, service_date: day, shift_type_id: lunch });
+  const marias = () => world.shifts[0]!.id;
+
+  it("calls a person off with two clicks", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const off = await screen.findByRole("button", { name: "Call off Maria Lopez" });
+    fireEvent.click(off);
+    expect(sent).toHaveLength(0);
+    expect(off.textContent).toBe("Click again to call off");
+    expect(screen.getByRole("button", { name: "Click again to call off Maria Lopez" })).toBe(off);
+    fireEvent.click(off);
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ ...target(), action: "call_off", row: { source_shift_id: marias() } });
+  });
+
+  it("lists a called-off person at the foot, out of her department's count, and calls her in", async () => {
+    maria_ = "off";
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const out = await screen.findByRole("region", { name: "Called off" });
+    expect(within(out).getByText("Maria Lopez")).toBeTruthy();
+    expect(within(out).getByText("Called off 9:41 AM")).toBeTruthy();
+    const front = screen.getByRole("region", { name: "Front of House" });
+    expect(within(front).queryByText("Maria Lopez")).toBeNull();
+    expect(within(front).getByText("No one in Front of House yet.")).toBeTruthy();
+    fireEvent.click(within(out).getByRole("button", { name: "Call in Maria Lopez" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ ...target(), action: "call_in", row: { source_shift_id: marias() } });
+  });
+
+  it("adds staff from a department's heading: the four groups, Add, and Add anyway with two clicks", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Add Staff to Front of House" }));
+    const window_ = screen.getByRole("dialog", { name: "Add Staff · Front of House" });
+    expect(document.activeElement).toBe(within(window_).getByRole("textbox", { name: "Search people" }));
+    await within(window_).findByRole("region", { name: "Best fit" });
+    expect(asked[0]).toEqual({ ...target(), department_id: foh });
+    expect(within(window_).getByText("Downtown · Lunch · 11:00 AM – 4:00 PM")).toBeTruthy();
+    expect(within(window_).getAllByRole("region").map((group) => group.getAttribute("aria-label"))).toEqual(["Best fit", "Consider", "Unavailable"]);
+    expect(within(window_).getByText("Working somewhere else · Uptown Lunch · 11:00 AM – 4:00 PM", { exact: false })).toBeTruthy();
+    const anyway = within(window_).getByRole("button", { name: "Add Hannah Lee anyway" });
+    fireEvent.click(anyway);
+    expect(sent).toHaveLength(0);
+    expect(anyway.textContent).toBe("Click again to add");
+    fireEvent.click(within(window_).getByRole("button", { name: "Add Chloe Davis" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ ...target(), action: "add_person", person: { employee_id: chloe, job_id: server } });
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+  });
+
+  it("adds someone not assigned to the department as its first position, and finds people by name", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Add Staff to Front of House" }));
+    const window_ = screen.getByRole("dialog", { name: "Add Staff · Front of House" });
+    await within(window_).findByRole("region", { name: "Consider" });
+    fireEvent.change(within(window_).getByRole("textbox", { name: "Search people" }), { target: { value: "ais" } });
+    expect(within(window_).queryByText("Chloe Davis")).toBeNull();
+    fireEvent.click(within(window_).getByRole("button", { name: "Add Aisha Johnson" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ action: "add_person", person: { employee_id: aisha, job_id: host } });
+  });
+
+  it("shows a department with no one on it, with its Add Staff", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const kitchen = await screen.findByRole("region", { name: "Kitchen" });
+    expect(within(kitchen).getByText("No one in Kitchen yet.")).toBeTruthy();
+    expect(within(kitchen).getByRole("button", { name: "Add Staff to Kitchen" })).toBeTruthy();
+  });
+
+  it("replaces a person from her name: the place's hours, then who took it at the foot with Undo", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Maria Lopez" }));
+    const window_ = screen.getByRole("dialog", { name: "Replace Maria Lopez" });
+    await within(window_).findByRole("region", { name: "Best fit" });
+    expect(asked[0]).toEqual({ ...target(), row: { source_shift_id: marias() } });
+    expect(within(window_).getByText("Server · Downtown · Lunch · 11:00 AM – 4:00 PM")).toBeTruthy();
+    expect(within(window_).getByText("The new person takes Maria's time, section and label. The Schedule doesn't change.")).toBeTruthy();
+    fireEvent.click(within(window_).getByRole("button", { name: "Replace Chloe Davis" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ ...target(), action: "replace", row: { source_shift_id: marias() }, person: { employee_id: chloe } });
+    cleanup();
+    sent.length = 0;
+    maria_ = "replaced";
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const replaced = await screen.findByRole("region", { name: "Replaced" });
+    expect(within(replaced).getByText("Maria Lopez")).toBeTruthy();
+    expect(within(replaced).getByText("Hannah Lee")).toBeTruthy();
+    expect(within(screen.getByRole("region", { name: "Front of House" })).getByRole("button", { name: "Hannah Lee" })).toBeTruthy();
+    fireEvent.click(within(replaced).getByRole("button", { name: "Undo, put Maria Lopez back" }));
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]).toMatchObject({ ...target(), action: "undo_replace", row: { row_id: added } });
+  });
+
+  it("says in the window why the person wasn't added, never the server's sentence", async () => {
+    refuse = "lineup.already_on";
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Add Staff to Front of House" }));
+    const window_ = screen.getByRole("dialog", { name: "Add Staff · Front of House" });
+    const add = await within(window_).findByRole("button", { name: "Add Chloe Davis" });
+    add.focus();
+    fireEvent.click(add);
+    const alert = await within(window_).findByRole("alert");
+    expect(alert.textContent).toBe("This person is on this lineup already.");
+    // The band is the footer's first child (WindowAlert), laid over the body, not squeezed into a span beside it.
+    expect(alert.parentElement?.tagName).toBe("FOOTER");
+    expect(screen.getByRole("dialog", { name: "Add Staff · Front of House" })).toBe(window_);
+    // The button that sent it keeps the focus, so Escape still closes the window.
+    expect(document.activeElement).toBe(add);
+  });
+
+  it("lays a refused Sections change over the window's body from its footer", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Manage sections" }));
+    const window_ = screen.getByRole("dialog", { name: "Sections · Downtown" });
+    fireEvent.change(within(window_).getByRole("textbox", { name: "New section" }), { target: { value: "Deck" } });
+    fireEvent.click(within(window_).getByRole("button", { name: "Add" }));
+    const alert = await within(window_).findByRole("alert");
+    expect(alert.textContent).toBe("It didn't change. Check your connection, then try again.");
+    expect(alert.parentElement?.tagName).toBe("FOOTER");
+  });
+
+  it("reads a published lineup's called-off people with no Call in, Call off or Add Staff", async () => {
+    maria_ = "off";
+    published = { [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T15:10:00Z", ask_ack: false } };
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const out = await screen.findByRole("region", { name: "Called off" });
+    expect(within(out).queryByRole("button")).toBeNull();
+    expect(screen.queryByRole("button", { name: /^Add Staff/ })).toBeNull();
+    expect(screen.queryByRole("region", { name: "Kitchen" })).toBeNull();
+  });
+
+  it("says no one is scheduled on an empty shift for someone who can't change it", async () => {
+    const actions = context.actions;
+    (context as { actions: string[] }).actions = ["schedule.read", "lineup.read"];
+    try {
+      renderPage(`/app/schedule/lineup?location=${downtown}&shift=${dinner}`);
+      expect(await screen.findByText("No one is scheduled for Dinner at Downtown")).toBeTruthy();
+      expect(screen.queryByRole("button", { name: /^Add Staff/ })).toBeNull();
+    } finally {
+      (context as { actions: readonly string[] }).actions = actions;
+    }
+  });
+
+  it("leaves called-off and replaced people out of the phone's team", async () => {
+    phone = true;
+    maria_ = "replaced";
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    await screen.findByText("Hannah Lee");
+    expect(screen.queryByText("Maria Lopez")).toBeNull();
   });
 });

@@ -72,6 +72,26 @@ describe("lineupDay", () => {
     ]);
   });
 
+  // LINEUP-EDIT W3a (S-178 madde 5-7): called off and replaced people leave the team and its count for the foot.
+  it("puts called-off and replaced people at the foot, with who took the place, out of the count", () => {
+    const m = model([
+      shift({ employee: maria, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: hannah, job: server, type: lunch, start: "11:00", end: "16:00" }),
+      shift({ employee: aisha, job: cook, type: lunch, start: "10:00", end: "16:00" }),
+    ]);
+    const read = dayRead(m, day);
+    const rows = read.locations[0]!.lineups[0]!.rows;
+    const took = "a1000000-0000-4000-8000-000000000001";
+    Object.assign(rows[0]!, { called_off_at: "2026-10-13T16:41:00Z" });
+    Object.assign(rows[1]!, { replaced_by_row_id: took });
+    rows.push({ ...rows[1]!, id: took, shift_id: null, source_shift_id: null, employee_id: chloe, name: "Chloe Davis", replaced_by_row_id: null, lineup_only: true });
+    const lunchShift = lineupDay(read, m)[0]!.shifts[0]!;
+    expect(lunchShift.count).toBe(2);
+    expect(lunchShift.departments.flatMap((d) => d.jobs.flatMap((j) => j.rows.map((r) => r.name)))).toEqual(["Chloe Davis", "Aisha Johnson"]);
+    expect(lunchShift.out.calledOff.map((r) => r.name)).toEqual(["Maria Lopez"]);
+    expect(lunchShift.out.replaced.map(({ row, by }) => [row.name, by?.name])).toEqual([["Hannah Lee", "Chloe Davis"]]);
+  });
+
   it("leaves out open shifts, other days and other locations", () => {
     const result = view(
       model([
