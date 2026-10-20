@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 559, last: 20261020120225_lineup_staff_2.sql
--- fingerprint: sha256:1214f959eac539ee9b82113ffc5a18b54b69f065a4729add34c1fb790b2c2344
+-- migrations: 560, last: 20261020124736_lineup_drawings.sql
+-- fingerprint: sha256:04e1a35c7a0ecca6aa3ef7022fd8f53a05650b53a522d6824829db34752e4836
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3921,6 +3921,59 @@ $$;
 ALTER FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"() OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."deal_lineup_art"("seed" "text", "pairs" "jsonb", "stored" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  team text[] := array(select a.key from app_private.lineup_art a where a.kind = 'team');
+  dealt jsonb := '{}';
+  used jsonb := '{}';
+  pair record;
+  best text;
+begin
+  -- pairs: [{employee_id, job_id, icons}]; stored: {"<employee>:<job>": key}. Returns {"<employee>:<job>": key}.
+  -- The written pairs of this lineup stay as written, and count.
+  for pair in
+    select s.key as k, s.value as art
+    from jsonb_each_text(coalesce(stored, '{}'::jsonb)) s
+    where exists (select 1 from jsonb_array_elements(coalesce(pairs, '[]'::jsonb)) x
+                  where (x ->> 'employee_id') || ':' || (x ->> 'job_id') = s.key)
+  loop
+    dealt := dealt || jsonb_build_object(pair.k, pair.art);
+    used := used || jsonb_build_object(pair.art, coalesce((used ->> pair.art)::integer, 0) + 1);
+  end loop;
+  -- The rest in the seed's order, each the least used of its pool; a tie goes in the seed's order of the pool.
+  for pair in
+    select t.k, t.icons from (
+      select distinct on (k) (x ->> 'employee_id') || ':' || (x ->> 'job_id') as k,
+        array(select jsonb_array_elements_text(coalesce(x -> 'icons', '[]'::jsonb))) as icons
+      from jsonb_array_elements(coalesce(pairs, '[]'::jsonb)) x
+      order by k) t
+    where not dealt ? t.k
+    order by md5(seed || ':' || t.k), t.k
+  loop
+    select c into best
+    from unnest(case when cardinality(pair.icons) > 0 then pair.icons else team end) c
+    order by coalesce((used ->> c)::integer, 0), md5(seed || ':' || c), c
+    limit 1;
+    dealt := dealt || jsonb_build_object(pair.k, best);
+    if best is not null then
+      used := used || jsonb_build_object(best, coalesce((used ->> best)::integer, 0) + 1);
+    end if;
+  end loop;
+  return dealt;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."deal_lineup_art"("seed" "text", "pairs" "jsonb", "stored" "jsonb") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "app_private"."deal_lineup_art"("seed" "text", "pairs" "jsonb", "stored" "jsonb") IS 'AVATAR-IKON slice 4: deals Lineup drawings to a lineup''s (person, job) pairs: written pairs stay; the rest, in md5(seed:pair) order, take the least used key of their job''s icons (the team drawings when it has none), ties in md5(seed:key) order.';
+
+
+
 CREATE OR REPLACE FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid" DEFAULT NULL::"uuid", "action" "text" DEFAULT 'exchange.approve'::"text") RETURNS "text"
     LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -6061,6 +6114,24 @@ begin
     from rows_wanted r
     where r.employee_id is not null and r.called_off_at is null and r.replaced_by_row_id is null
     group by r.location_id, r.group_type
+  ), deals as materialized (
+    -- AVATAR-IKON slice 4: each lineup's drawings, dealt once per read; everyone on it counts, called off too, so
+    -- calling somebody off moves nobody else's drawing.
+    select g.location_id, g.group_type, app_private.lineup_deal(target_workspace_id, g.location_id, target_date,
+      g.group_type, (select jsonb_agg(jsonb_build_object('employee_id', r.employee_id, 'job_id', r.job_id))
+                     from rows_wanted r
+                     where r.location_id = g.location_id and r.group_type is not distinct from g.group_type
+                       and r.employee_id is not null)) as art
+    from groups g
+  ), own_art as materialized (
+    -- A drawing the person chose as her avatar here comes first; a photo never reaches a lineup.
+    -- Her membership is her account's in this workspace, as has_app finds it.
+    select e.id as employee_id, a.art_key
+    from public.employee_profiles e
+    join public.workspace_memberships m on m.workspace_id = target_workspace_id and m.user_id = e.user_id
+    join public.member_avatars a on a.membership_id = m.id and a.workspace_id = target_workspace_id
+    where e.workspace_id = target_workspace_id and a.art_key is not null
+      and e.id in (select r.employee_id from rows_wanted r)
   )
   select jsonb_build_object(
     'workspace_id', target_workspace_id,
@@ -6115,6 +6186,9 @@ begin
                   'shift_id', r.shift_id,
                   'source_shift_id', r.source_shift_id,
                   'employee_id', r.employee_id,
+                  -- AVATAR-IKON slice 4: her own drawing, else the lineup's deal; null for nobody.
+                  'art_key', case when r.employee_id is not null
+                    then coalesce(oa.art_key, dl.art ->> (r.employee_id || ':' || r.job_id)) end,
                   'name', case when e.id is not null
                     then coalesce(nullif(e.preferred_name, ''), e.first_name) || ' ' || e.last_name end,
                   'job_id', r.job_id, 'job_name', j.name, 'job_color', j.color,
@@ -6160,6 +6234,7 @@ begin
                 left join public.departments dept on dept.id = j.department_id and dept.workspace_id = target_workspace_id
                   and dept.deleted_at is null
                 left join public.location_sections sec on sec.id = r.section_id
+                left join own_art oa on oa.employee_id = r.employee_id
                 where r.location_id = p.id and r.group_type is not distinct from g.group_type
               ), '[]'::jsonb)
             ) order by t.sort_order nulls last, t.name nulls last)
@@ -6169,6 +6244,7 @@ begin
             left join headers h on h.location_id = g.location_id and h.shift_type_id is not distinct from g.group_type
             left join public.daily_lineup_versions v on v.lineup_id = h.id and v.version = h.latest_version
             left join people pc on pc.location_id = g.location_id and pc.group_type is not distinct from g.group_type
+            left join deals dl on dl.location_id = g.location_id and dl.group_type is not distinct from g.group_type
             where g.location_id = p.id
           ), '[]'::jsonb) end
       ) order by p.sort_order, p.name)
@@ -6188,6 +6264,33 @@ $$;
 
 
 ALTER FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."lineup_deal"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "people" "jsonb") RETURNS "jsonb"
+    LANGUAGE "sql" STABLE
+    SET "search_path" TO ''
+    AS $$
+  select app_private.deal_lineup_art(
+    target_location_id || ':' || target_date || ':' || coalesce(target_shift_type_id::text, 'other'),
+    coalesce((
+      select jsonb_agg(jsonb_build_object('employee_id', p.employee_id, 'job_id', p.job_id,
+        'icons', to_jsonb(coalesce(j.lineup_icons, '{}'::text[]))))
+      from (select distinct (x ->> 'employee_id')::uuid as employee_id, (x ->> 'job_id')::uuid as job_id
+            from jsonb_array_elements(coalesce(people, '[]'::jsonb)) x
+            where x ->> 'employee_id' is not null and x ->> 'job_id' is not null) p
+      left join public.jobs j on j.id = p.job_id and j.workspace_id = target_workspace_id and j.deleted_at is null
+    ), '[]'::jsonb),
+    coalesce((
+      select jsonb_object_agg(s.employee_id || ':' || s.job_id, s.art_key)
+      from public.daily_lineups d
+      join public.daily_lineup_drawings s on s.lineup_id = d.id
+      where d.workspace_id = target_workspace_id and d.location_id = target_location_id
+        and d.service_date = target_date and d.shift_type_id is not distinct from target_shift_type_id
+    ), '{}'::jsonb))
+$$;
+
+
+ALTER FUNCTION "app_private"."lineup_deal"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "people" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."lineup_staff_eligible"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_employee_id" "uuid") RETURNS boolean
@@ -15913,6 +16016,7 @@ begin
                  select jsonb_build_object('start_time', r -> 'start_time', 'end_time', r -> 'end_time',
                    'crosses_midnight', r -> 'crosses_midnight', 'job_name', r -> 'job_name', 'job_color', r -> 'job_color',
                    'section_name', r -> 'section_name', 'label_names', r -> 'label_names',
+                   'art_key', r -> 'art_key',
                    'called_off', r ->> 'called_off_at' is not null,
                    -- LINEUP-EDIT L2a: someone took her place (S-178 "Replaced").
                    'replaced', r ->> 'replaced_by_row_id' is not null) v
@@ -15924,6 +16028,7 @@ begin
                    'end_time', r -> 'end_time', 'crosses_midnight', r -> 'crosses_midnight',
                    'section_name', r -> 'section_name', 'label_names', r -> 'label_names',
                    'called_off', r ->> 'called_off_at' is not null,
+                   'art_key', r -> 'art_key',
                    'is_me', (r ->> 'employee_id')::uuid = me) order by o)
                  from jsonb_array_elements(x -> 'rows') with ordinality t(r, o)
                  -- A replaced person is not on the team; the one in her place is.
@@ -17725,6 +17830,7 @@ declare
   type_id uuid;
   header public.daily_lineups;
   live jsonb;
+  dealt jsonb;
   version_row public.daily_lineup_versions;
   ask boolean;
   done jsonb := '[]'::jsonb;
@@ -17818,9 +17924,17 @@ begin
       from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
         jsonb_array_elements(l -> 'lineups') x
       where (x ->> 'shift_type_id')::uuid is not distinct from type_id;
-      -- The rows as published: who has the app and who read an earlier version are the day's, not the record's.
+      -- The drawings as shown now are this lineup's from here on (AVATAR-IKON slice 4); written ones stay.
+      dealt := app_private.lineup_deal(target_workspace_id, place.id, day, type_id, live -> 'rows');
+      insert into public.daily_lineup_drawings (lineup_id, workspace_id, employee_id, job_id, art_key)
+      select header.id, target_workspace_id, split_part(d.key, ':', 1)::uuid, split_part(d.key, ':', 2)::uuid, d.value
+      from jsonb_each_text(dealt) d
+      where d.value is not null
+      on conflict do nothing;
+      -- The rows as published: who has the app, who read an earlier version and the drawings are the day's, not
+      -- the record's.
       live := jsonb_build_object('notes', live -> 'notes', 'rows', coalesce(
-        (select jsonb_agg(r - 'has_app' - 'acknowledged_at' order by o)
+        (select jsonb_agg(r - 'has_app' - 'acknowledged_at' - 'art_key' order by o)
          from jsonb_array_elements(live -> 'rows') with ordinality t(r, o)), '[]'::jsonb));
       insert into public.daily_lineup_versions (workspace_id, lineup_id, version, shared_by, ask_ack, snapshot, fingerprint)
       values (target_workspace_id, header.id, header.latest_version + 1, actor_user_id, ask, live,
@@ -31281,6 +31395,23 @@ CREATE TABLE IF NOT EXISTS "public"."daily_lineup_acknowledgements" (
 ALTER TABLE "public"."daily_lineup_acknowledgements" OWNER TO "postgres";
 
 
+CREATE TABLE IF NOT EXISTS "public"."daily_lineup_drawings" (
+    "lineup_id" "uuid" NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "employee_id" "uuid" NOT NULL,
+    "job_id" "uuid" NOT NULL,
+    "art_key" "text" NOT NULL,
+    "created_at" timestamp with time zone DEFAULT "now"() NOT NULL
+);
+
+
+ALTER TABLE "public"."daily_lineup_drawings" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."daily_lineup_drawings" IS 'The drawing each person and job of a lineup was dealt when the lineup was shared (AVATAR-IKON slice 4). Written by lineup_command_service, read by app_private.lineup_day; nothing else.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."daily_lineup_rows" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -33221,6 +33352,11 @@ ALTER TABLE ONLY "public"."audit_events"
 
 ALTER TABLE ONLY "public"."daily_lineup_acknowledgements"
     ADD CONSTRAINT "daily_lineup_acknowledgements_pkey" PRIMARY KEY ("version_id", "employee_id");
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_drawings"
+    ADD CONSTRAINT "daily_lineup_drawings_pkey" PRIMARY KEY ("lineup_id", "employee_id", "job_id");
 
 
 
@@ -35270,6 +35406,26 @@ ALTER TABLE ONLY "public"."daily_lineup_acknowledgements"
 
 
 
+ALTER TABLE ONLY "public"."daily_lineup_drawings"
+    ADD CONSTRAINT "daily_lineup_drawings_art_fkey" FOREIGN KEY ("art_key") REFERENCES "app_private"."lineup_art"("key") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_drawings"
+    ADD CONSTRAINT "daily_lineup_drawings_employee_fkey" FOREIGN KEY ("employee_id", "workspace_id") REFERENCES "public"."employee_profiles"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_drawings"
+    ADD CONSTRAINT "daily_lineup_drawings_job_fkey" FOREIGN KEY ("job_id", "workspace_id") REFERENCES "public"."jobs"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."daily_lineup_drawings"
+    ADD CONSTRAINT "daily_lineup_drawings_lineup_fkey" FOREIGN KEY ("lineup_id", "workspace_id") REFERENCES "public"."daily_lineups"("id", "workspace_id") ON DELETE CASCADE;
+
+
+
 ALTER TABLE ONLY "public"."daily_lineup_rows"
     ADD CONSTRAINT "daily_lineup_rows_called_off_by_fkey" FOREIGN KEY ("called_off_by") REFERENCES "auth"."users"("id") ON DELETE SET NULL;
 
@@ -36761,6 +36917,9 @@ CREATE POLICY "audit_select_admin" ON "public"."audit_events" FOR SELECT TO "aut
 ALTER TABLE "public"."daily_lineup_acknowledgements" ENABLE ROW LEVEL SECURITY;
 
 
+ALTER TABLE "public"."daily_lineup_drawings" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "public"."daily_lineup_rows" ENABLE ROW LEVEL SECURITY;
 
 
@@ -37551,6 +37710,10 @@ REVOKE ALL ON FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"() FROM 
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."deal_lineup_art"("seed" "text", "pairs" "jsonb", "stored" "jsonb") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid", "action" "text") FROM PUBLIC;
 
 
@@ -37831,6 +37994,10 @@ REVOKE ALL ON FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) FR
 
 
 REVOKE ALL ON FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."lineup_deal"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "people" "jsonb") FROM PUBLIC;
 
 
 
@@ -40284,6 +40451,10 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."audit_events" TO "
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineup_acknowledgements" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."daily_lineup_drawings" TO "service_role";
 
 
 
