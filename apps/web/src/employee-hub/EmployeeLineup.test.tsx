@@ -263,6 +263,12 @@ describe("EmployeeLineup", () => {
   it("works inside the Acknowledge button, then slides Acknowledged. in where it was", async () => {
     renderLineup();
     const button = await screen.findByRole("button", { name: "Acknowledge" });
+    // Where focus is the moment "Acknowledged." comes in; a check a beat later once found it on the page.
+    let focusAtIn: Element | null = null;
+    const seen = new MutationObserver(() => {
+      if (!focusAtIn && document.querySelector(".employee-lineup-acked")) focusAtIn = document.activeElement;
+    });
+    seen.observe(document.body, { childList: true, subtree: true });
     button.focus();
     fireEvent.click(button);
     const pressed = Date.now();
@@ -281,8 +287,10 @@ describe("EmployeeLineup", () => {
     expect(done.textContent).toBe("Acknowledged.");
     expect(done.classList.contains("is-in")).toBe(true);
     expect(acknowledged).toEqual([versionId]);
-    // The button went: focus waits on the ticket's fold, not on the page.
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "Hide team and notes" }));
+    // The button went: focus waits on the ticket's fold, not on the page, from the moment it goes.
+    seen.disconnect();
+    expect(focusAtIn).toBe(screen.getByRole("button", { name: "Hide team and notes" }));
+    expect(document.activeElement).toBe(focusAtIn);
   });
 
   it("gives Acknowledge back with a line under it when it didn't go through", async () => {

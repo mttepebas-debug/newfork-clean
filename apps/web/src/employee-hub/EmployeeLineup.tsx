@@ -2,7 +2,7 @@ import type { MyLineup } from "@newfork/shared";
 import { Button } from "@newfork/ui";
 import { useQuery } from "@tanstack/react-query";
 import { CalendarDays, CheckCircle2, ChevronDown, Clock, MapPin } from "lucide-react";
-import { Fragment, useEffect, useId, useRef, useState, type CSSProperties, type JSX, type MouseEvent as ReactMouseEvent, type Ref } from "react";
+import { Fragment, useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type JSX, type MouseEvent as ReactMouseEvent, type Ref } from "react";
 import { Link, useLocation, useNavigate } from "react-router";
 
 import { todayIn } from "../lib/today";
@@ -284,11 +284,12 @@ function LineupView({
   const timer = useRef<number | undefined>(undefined);
   useEffect(() => () => window.clearTimeout(timer.current), []);
   // While it works the button is aria-disabled, not disabled, so it keeps the keyboard's focus (D2); when it goes,
-  // focus moves to the ticket's fold rather than falling to the page.
+  // focus moves to the ticket's fold rather than falling to the page. In the same commit that removes the button
+  // (a layout effect): a passive effect left focus on the page for a moment, and a check then found it there.
   const ackBox = useRef<HTMLDivElement | null>(null);
   const foldButton = useRef<HTMLButtonElement | null>(null);
   const [focusFold, setFocusFold] = useState(false);
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (!focusFold) return;
     foldButton.current?.focus();
     setFocusFold(false);
