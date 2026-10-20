@@ -1,5 +1,5 @@
 {
- "sourceSha256": "cfd20781c33f6c3943454d427e1dfed40e3397b3ce3d8abc6100d7f12ef031b3",
+ "sourceSha256": "61f0bcbded851e8cec196b88c66c26f43ba965a75453ec3ab89ac71f3421e656",
  "coreActionKeys": [
   "account.self",
   "announcement.acknowledge",
@@ -120,10 +120,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -140,10 +137,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -161,10 +155,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -182,10 +173,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -202,10 +190,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -234,10 +219,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -266,10 +248,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -286,10 +265,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": false,
    "manages": [
@@ -308,10 +284,7 @@
     "employees.manage",
     "schedule.publish",
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -326,10 +299,7 @@
    "locs": [],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": false,
    "manages": []
@@ -394,10 +364,7 @@
    ],
    "permissionsRemoved": [
     "settings.locations.read",
-    "settings.jobs.read",
-    "settings.shift_catalog.read",
-    "roles.read",
-    "documents.read"
+    "roles.read"
    ],
    "employee": true,
    "manages": [
@@ -49196,25 +49163,25 @@
    "settings.documents.read",
    "ayse",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "can",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "derya",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "dora",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
@@ -49226,7 +49193,7 @@
    "settings.documents.read",
    "ersin",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
@@ -49238,25 +49205,25 @@
    "settings.documents.read",
    "mehmet",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "mona",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "nil",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
    "nur",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.documents.read",
@@ -49460,25 +49427,25 @@
    "settings.jobs.read",
    "ayse",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "can",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "derya",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "dora",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
@@ -49490,7 +49457,7 @@
    "settings.jobs.read",
    "ersin",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
@@ -49502,25 +49469,25 @@
    "settings.jobs.read",
    "mehmet",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "mona",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "nil",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
    "nur",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.jobs.read",
@@ -50912,25 +50879,25 @@
    "settings.shift_catalog.read",
    "ayse",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "can",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "derya",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "dora",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
@@ -50942,7 +50909,7 @@
    "settings.shift_catalog.read",
    "ersin",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
@@ -50954,25 +50921,25 @@
    "settings.shift_catalog.read",
    "mehmet",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "mona",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "nil",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
    "nur",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.shift_catalog.read",
@@ -51044,25 +51011,25 @@
    "settings.signature_templates.read",
    "ayse",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "can",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "derya",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "dora",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
@@ -51074,7 +51041,7 @@
    "settings.signature_templates.read",
    "ersin",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
@@ -51086,25 +51053,25 @@
    "settings.signature_templates.read",
    "mehmet",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "mona",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "nil",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
    "nur",
    "workspace",
-   "deny"
+   "allow"
   ],
   [
    "settings.signature_templates.read",
