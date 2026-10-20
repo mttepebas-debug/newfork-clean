@@ -361,6 +361,8 @@ export function SchedulePage({
   const [draftsRetrying, setDraftsRetrying] = useState(false);
   const { confirm, dialog: confirmDialog } = useConfirmDialog();
   const [focusedShiftId, setFocusedShiftId] = useState<string | null>(null);
+  // The job and type filters a badge click set; the outline lives as long as they do (QA 43).
+  const focusFiltersRef = useRef<{ jobs: string | null; shiftTypes: string | null; seen: boolean } | null>(null);
   const [selectedIds, setSelectedIds] = useState<readonly string[]>([]);
   const selectedIdsRef = useRef<readonly string[]>([]);
   const [deleteSelectionConfirmOpen, setDeleteSelectionConfirmOpen] =
@@ -841,6 +843,7 @@ export function SchedulePage({
     );
     next.delete("employees");
     setSearch(next);
+    focusFiltersRef.current = { jobs: shift.job_id, shiftTypes: shift.shift_type_id, seen: false };
     setFocusedShiftId(shift.id);
     updateSelectedIds([]);
     setPasteArmed(false);
@@ -860,6 +863,21 @@ export function SchedulePage({
     const nextSearch = clearFocusedShiftSearchFilters(search);
     if (nextSearch) setSearch(nextSearch);
   }, [search, setSearch, updateSelectedIds]);
+
+  useEffect(() => {
+    const filters = focusFiltersRef.current;
+    if (!focusedShiftId || !filters) return;
+    const holds = (key: string, id: string | null) =>
+      !id || (search.get(key)?.split(",") ?? []).includes(id);
+    // The address catches up after the click; only a filter that was there and left counts.
+    if (holds("jobs", filters.jobs) && holds("shiftTypes", filters.shiftTypes)) {
+      filters.seen = true;
+      return;
+    }
+    if (!filters.seen) return;
+    focusFiltersRef.current = null;
+    setFocusedShiftId(null);
+  }, [focusedShiftId, search]);
 
   useEffect(() => {
     if (gridEditSession || !focusedShiftId) return undefined;
@@ -3424,6 +3442,7 @@ export function SchedulePage({
             setCellMenu(null);
             setPasteArmed(false);
             setSearch((current) => preflightReturnSearch(current, shift, choices.draftId), { replace: true });
+            focusFiltersRef.current = null;
             setFocusedShiftId(shift.id);
             setPreflightShiftId(shift.id);
           }}

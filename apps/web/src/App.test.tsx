@@ -5102,6 +5102,38 @@ describe("App", () => {
     });
   });
 
+  // QA 43: the gold outline belongs to the filters the click set; taking one
+  // of them off takes the outline off too.
+  it("drops the focused shift outline when its job filter is removed", async () => {
+    const readModelMock = vi.mocked(getScheduleReadModel);
+    readModelMock.mockReset();
+    readModelMock.mockResolvedValue(scheduleFixture);
+    window.history.pushState({}, "", "/app/schedule?date=2026-08-17");
+    testAuth.role = "owner";
+    const { container } = render(<App />);
+
+    const badge = await waitFor(() => {
+      const found = container.querySelector<HTMLElement>(
+        `.schedule-shift-badge[data-shift-id="${scheduleFixture.shifts[0]!.id}"]`,
+      );
+      expect(found).toBeTruthy();
+      return found!;
+    });
+    fireEvent.click(badge);
+    await waitFor(() => expect(badge.getAttribute("data-focused")).toBe("true"));
+
+    fireEvent.click(
+      await screen.findByRole("button", {
+        name: `Remove job filter ${scheduleFixture.jobs[0]!.name}`,
+      }),
+    );
+    await waitFor(() => expect(window.location.search).not.toContain("jobs="));
+    const after = container.querySelector<HTMLElement>(
+      `.schedule-shift-badge[data-shift-id="${scheduleFixture.shifts[0]!.id}"]`,
+    );
+    expect(after?.getAttribute("data-focused")).toBe("false");
+  });
+
   it("keeps the unassigned shifts row out of view mode and its settings passive, without hiding scheduled employees (BL-681)", async () => {
     const unassignedModel = {
       ...scheduleFixture,
