@@ -334,6 +334,31 @@ select t.label,
 from target t;
 
 -- 4. The actions, each on the entry point the API calls ---------------------------
+-- Add employee with no location: since DAVET-ERISIM (Mert 2026-10-20) nobody is filed nowhere, Remote
+-- included, so the record is refused for what it holds (22023 employee.location_required) once the actor
+-- is let through; the gate answers first (42501). This cell asks the gate: that refusal counts as let
+-- through. assignment_rule_and_owner_setup.test.sql holds the refusal itself.
+create function pg_temp.create_probe(actor_id uuid, workspace_id uuid, place uuid) returns boolean
+language plpgsql as $$
+declare
+  job uuid := (select j.id from public.jobs j where j.workspace_id = create_probe.workspace_id order by j.name limit 1);
+  key text;
+begin
+  return public.create_employee_command_service(actor_id, workspace_id, gen_random_uuid(),
+    jsonb_build_object('first_name', 'Probe', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
+      'invitation_email', 'probe.' || gen_random_uuid() || '@world.test', 'start_date', '', 'internal_note', '',
+      'location_ids', to_jsonb(array_remove(array[place], null)), 'primary_location_id', place,
+      'job_ids', to_jsonb(array[job]), 'primary_job_id', job,
+      'is_remote', place is null, 'is_excluded_from_schedule', false, 'expected_revision', null),
+    jsonb_build_object('employee_role_id',
+      (select r.id from public.workspace_roles r where r.workspace_id = create_probe.workspace_id and r.system_key = 'employee'))) is not null;
+exception when sqlstate '22023' then
+  get stacked diagnostics key = pg_exception_hint;
+  if place is null and key = 'employee.location_required' then return true; end if;
+  raise;
+end;
+$$;
+grant execute on function pg_temp.create_probe(uuid, uuid, uuid) to public;
 -- The template runs with $1 = actor user id, $2 = workspace m, $3 = target id.
 -- empty_is_no: a false/0/NULL answer means the actor was not let through (a
 -- read that hides the row, or a browser write RLS filtered out).
@@ -403,15 +428,7 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
      else (select public.preview_employee_access_change_service($1, $2, $3, m.employee_role_id, m.role_id) is not null
        from public.workspace_memberships m where m.workspace_id = $2 and m.user_id = $1) end$$),
   ('employee.create', 'location', 'employees.manage', false, false,
-   $$select public.create_employee_command_service($1, $2, gen_random_uuid(),
-       jsonb_build_object('first_name', 'Probe', 'middle_name', '', 'last_name', 'Person', 'preferred_name', '',
-         'invitation_email', 'probe.' || gen_random_uuid() || '@world.test', 'start_date', '', 'internal_note', '',
-         'location_ids', to_jsonb(array_remove(array[$3], null)), 'primary_location_id', $3,
-         'job_ids', case when $3 is null then '[]'::jsonb else to_jsonb(array[(select j.id from public.jobs j where j.workspace_id = $2 order by j.name limit 1)]) end,
-         'primary_job_id', case when $3 is null then null else (select j.id from public.jobs j where j.workspace_id = $2 order by j.name limit 1) end,
-         'is_remote', $3 is null, 'is_excluded_from_schedule', false, 'expected_revision', null),
-       jsonb_build_object('employee_role_id',
-         (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee'))) is not null$$),
+   $$select pg_temp.create_probe($1, $2, $3)$$),
   ('schedule.read', 'location', 'schedule.read', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_read_model_service($1, $2, tests.week(0)) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$),

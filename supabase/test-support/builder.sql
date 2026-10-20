@@ -215,6 +215,11 @@ begin
     select e.id from public.employee_profiles e
     where e.workspace_id = workspace and e.user_id = owner_id
   ));
+  -- ponytail: setup files the founder off the Schedule (DAVET-ERISIM); the world's owner unticks Exclude from
+  -- schedule, as an owner may, so a test can give them shifts. Their primaries stay as setup made them.
+  update public.employee_profiles
+  set is_excluded_from_schedule = false, revision = revision + 1, updated_at = now()
+  where workspace_id = workspace and user_id = owner_id;
   perform tests.settle();
   return workspace;
 end;
@@ -250,7 +255,7 @@ $$;
 -- Management, and a manager manages where they work. '<role>+employee' gives the
 -- employee slot whatever the jobs (ROL-CIFT). The invitation carries the two
 -- slots and Manages (DAVET-ERISIM); a manager filed nowhere manages nowhere.
--- locs are location keys (K, B), jobs are job keys (cook, server); both empty
+-- locs are location keys (K, B), jobs are job keys (cook, server); no locs
 -- files them as remote. status: active (accepted and finished their own
 -- onboarding) | onboarding (accepted, onboarding not finished) | pending
 -- (invited, not accepted) | suspended (access removed, record kept) |
@@ -284,6 +289,8 @@ declare
   employee_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = workspace and r.system_key = 'employee');
   works boolean;
   nowhere_manager boolean;
+  filed_locations uuid[];
+  filed_jobs uuid[];
 begin
   if status not in ('active', 'onboarding', 'pending', 'suspended', 'removed') then
     raise exception 'tests.person: unknown status %', status;
@@ -302,6 +309,12 @@ begin
   -- ponytail: an invitation asks a manager for somewhere to manage; somebody filed nowhere (remote) is
   -- invited to manage the world's Kadikoy and left managing nowhere once they accept.
   nowhere_manager := role_class = 'manager' and cardinality(location_ids) = 0;
+  -- ponytail: a record is filed with a location and a job, Remote too (DAVET-ERISIM); somebody a test wants
+  -- with neither is filed at Kadikoy and the first job of their slot, which are taken off once they are in.
+  filed_locations := case when cardinality(location_ids) = 0 then array[tests.id(w || ':K')] else location_ids end;
+  filed_jobs := case when cardinality(job_ids) > 0 then job_ids
+    when works then array[tests.id(w || ':job:cook')]
+    else array[tests.id(w || ':job:general manager')] end;
 
   created := public.create_employee_command_service(
     owner_id, workspace, gen_random_uuid(),
@@ -310,10 +323,10 @@ begin
       'preferred_name', '',
       'invitation_email', (select u.email from auth.users u where u.id = user_id),
       'start_date', '', 'internal_note', '',
-      'location_ids', to_jsonb(location_ids),
-      'primary_location_id', location_ids[1],
-      'job_ids', to_jsonb(job_ids),
-      'primary_job_id', job_ids[1],
+      'location_ids', to_jsonb(filed_locations),
+      'primary_location_id', filed_locations[1],
+      'job_ids', to_jsonb(filed_jobs),
+      'primary_job_id', filed_jobs[1],
       'is_remote', cardinality(location_ids) = 0,
       'is_excluded_from_schedule', false,
       'expected_revision', null
@@ -322,8 +335,7 @@ begin
       'employee_role_id', case when role_class = 'employee' then role_id when works then employee_role end,
       'management_role_id', case when role_class <> 'employee' then role_id end,
       'managed_location_ids', case
-        when nowhere_manager then to_jsonb(array[tests.id(w || ':K')])
-        when role_class = 'manager' then to_jsonb(location_ids)
+        when role_class = 'manager' then to_jsonb(filed_locations)
         else '[]'::jsonb end
     )
   );
@@ -337,6 +349,15 @@ begin
       using public.workspace_memberships m
       where managed.membership_id = m.id and m.workspace_id = workspace and m.user_id = person.user_id;
     end if;
+  end if;
+  if cardinality(location_ids) = 0 then
+    delete from public.employee_location_assignments a where a.employee_id = employee;
+  end if;
+  if cardinality(job_ids) = 0 then
+    delete from public.employee_job_assignments a where a.employee_id = employee;
+    delete from public.membership_management_jobs mj
+    using public.workspace_memberships m
+    where mj.membership_id = m.id and m.workspace_id = workspace and m.user_id = person.user_id;
   end if;
   perform tests.settle();
 

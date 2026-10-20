@@ -174,13 +174,15 @@ select ok(
 -- Employees > the list's Job column: the stored primary job; failing that the
 -- Owner job (the owner's, never stored as primary), then the first job in the
 -- catalog's order, whatever its department (as the Schedule places the row).
--- Emre is Remote, washes dishes and manages, and chose no primary.
+-- Emre is Remote, washes dishes and manages, and has no primary: a record saved before every record
+-- needed one (DAVET-ERISIM). ponytail: saved with Dishwasher primary, the mark then taken off by hand.
 select tests.person('mk', 'emre', 'employee', null, null);
 select public.save_employee_service(
   tests.user('mk:owner'), tests.id('mk'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
-  e.invitation_email, e.start_date, e.internal_note, '{}'::uuid[], null,
-  array[tests.id('mk:job:dishwasher'), tests.id('mk:job:general manager')], null, true, false, e.revision)
+  e.invitation_email, e.start_date, e.internal_note, array[tests.id('mk:K')], tests.id('mk:K'),
+  array[tests.id('mk:job:dishwasher'), tests.id('mk:job:general manager')], tests.id('mk:job:dishwasher'), true, false, e.revision)
 from public.employee_profiles e where e.id = tests.id('mk:emre');
+update public.employee_job_assignments set is_primary = false where employee_id = tests.id('mk:emre');
 create function pg_temp.listed_job(w text, person text) returns text language sql as $$
   select l.primary_job_name
   from public.list_employees_service(tests.user(w || ':owner'), tests.id(w), false, '', 'all', 200, 0) l

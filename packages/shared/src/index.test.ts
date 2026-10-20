@@ -1698,7 +1698,7 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
       "The Owner job can't be marked primary. Choose another job as primary, or leave it empty if they only hold the Owner job.",
     );
     expect(managementAndOwnerRefusals["employee.primary_job_required"]).toBe(
-      "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
+      "Mark one of the jobs as primary.",
     );
   });
 
@@ -1783,7 +1783,7 @@ describe("Management and Owner in the Schedule and drawer reads (BL-218)", () =>
     });
 
     it("stays out of the payload: the record parses the same whoever holds it", () => {
-      const record = { ...managerOnly, location_ids: [], primary_location_id: null, job_ids: [], is_excluded_from_schedule: true };
+      const record = { ...managerOnly, is_excluded_from_schedule: true };
       expect(employeeInputSchema.parse({ ...record, is_manager_record: true })).not.toHaveProperty("is_manager_record");
     });
   });
@@ -1902,10 +1902,10 @@ describe("US form rules on the schemas (BL-503, BL-969)", () => {
       invitation_email: "",
       start_date: "",
       internal_note: "",
-      location_ids: [],
-      primary_location_id: null,
-      job_ids: [],
-      primary_job_id: null,
+      location_ids: ["10000000-0000-4000-8000-000000000001"],
+      primary_location_id: "10000000-0000-4000-8000-000000000001",
+      job_ids: ["20000000-0000-4000-8000-000000000001"],
+      primary_job_id: "20000000-0000-4000-8000-000000000001",
       is_remote: true,
       expected_revision: 1,
     };

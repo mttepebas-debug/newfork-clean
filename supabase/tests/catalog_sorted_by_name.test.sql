@@ -127,14 +127,16 @@ select is(pg_temp.primary_of('az:carl'), 'prep cook',
   'Line Cook deleted: Carl''s new primary job is the first of the rest A to Z');
 
 -- 6. The Employees list names the first job A to Z when none is primary -------------
--- Dana is not in Schedule, so her record saves with two jobs and no primary.
+-- Dana is not in Schedule and has two jobs and no primary: a record saved before every record needed
+-- one (DAVET-ERISIM). ponytail: saved with Zest primary, the mark then taken off by hand.
 
 select tests.person('az', 'dana', 'employee', array['K'], array['zest']);
 select public.save_employee_service(
   tests.user('az:owner'), tests.id('az'), e.id, e.first_name, e.middle_name, e.last_name, e.preferred_name,
   e.invitation_email, e.start_date, e.internal_note, array[tests.id('az:K')], tests.id('az:K'),
-  array[tests.id('az:job:zest'), tests.id('az:job:bartender')], null, false, true, e.revision)::text
+  array[tests.id('az:job:zest'), tests.id('az:job:bartender')], tests.id('az:job:zest'), false, true, e.revision)::text
 from public.employee_profiles e where e.id = tests.id('az:dana');
+update public.employee_job_assignments set is_primary = false where employee_id = tests.id('az:dana');
 select is((select l.primary_job_name from public.list_employees_service(tests.user('az:owner'), tests.id('az'),
     false, 'Dana', 'all', 50, 0) l where l.id = tests.id('az:dana')),
   'bartender', 'the Employees list names Dana''s first job A to Z');

@@ -200,17 +200,17 @@ describe("the Management and Owner refusals (BL-218)", () => {
     [
       "employee.location_required",
       "employee requires a location and job unless remote or excluded from schedule",
-      "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule.",
+      "Choose at least one location and mark one as primary.",
     ],
     [
       "employee.job_required",
       "employee requires a location and job unless remote or excluded from schedule",
-      "Choose at least one job, or turn on Remote or Exclude from schedule.",
+      "Choose at least one job.",
     ],
     [
       "employee.primary_job_required",
       "employee requires a primary job unless remote or excluded from schedule",
-      "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
+      "Mark one of the jobs as primary.",
     ],
   ] as const;
 

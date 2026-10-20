@@ -48,8 +48,8 @@ const newEmployee = {
   invite_access: { employee_role_id: id, management_role_id: null, managed_location_ids: [] },
   employee: {
     first_name: "Ada", last_name: "Lovelace", preferred_name: "", invitation_email: "ada@example.test",
-    start_date: "", internal_note: "", location_ids: [], primary_location_id: null, job_ids: [],
-    primary_job_id: null, is_remote: true, expected_revision: null,
+    start_date: "", internal_note: "", location_ids: [id], primary_location_id: id, job_ids: [id],
+    primary_job_id: id, is_remote: true, expected_revision: null,
   },
 };
 const documentsClient = {

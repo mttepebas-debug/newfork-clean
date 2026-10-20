@@ -595,7 +595,8 @@ describe("EmployeeDrawer", () => {
     expect(onClose).not.toHaveBeenCalled();
   });
 
-  it("holds Save when an edit clears the last location, unless remote or excluded", async () => {
+  // DAVET-ERISIM (Mert, 2026-10-20): Remote and Exclude from schedule never lift the rule.
+  it("holds Save when an edit clears the last location, Remote or not", async () => {
     // A location the reader may not Remove is the one the form can untick (FB-6.2.8).
     renderDrawer("employment", { ...detail, locations: [{ ...detail.locations[0]!, removable: false }] });
     await employeeLoaded();
@@ -606,10 +607,12 @@ describe("EmployeeDrawer", () => {
     expect(save).toHaveProperty("disabled", true);
     // Save says why it is held (BL-218), in the words the API would use.
     expect(
-      screen.getByText("Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule."),
+      screen.getByText("Choose at least one location and mark one as primary."),
     ).toBeTruthy();
     fireEvent.click(screen.getByLabelText("Remote"));
-    expect(save).toHaveProperty("disabled", false);
+    expect(save).toHaveProperty("disabled", true);
+    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
+    expect(save).toHaveProperty("disabled", true);
     expect(saveEmployee).not.toHaveBeenCalled();
   });
 
@@ -1549,7 +1552,7 @@ describe("EmployeeDrawer", () => {
     expect(screen.getByLabelText("ZIP code")).toHaveProperty("value", "90001");
   });
 
-  it("allows excluded employees to be saved without location or job assignments", async () => {
+  it("holds Save for somebody excluded from the schedule with no location or job", async () => {
     renderDrawer("employment", {
       ...detail,
       primary_location_id: null,
@@ -1564,21 +1567,9 @@ describe("EmployeeDrawer", () => {
 
     await employeeLoaded();
     fireEvent.click(screen.getByLabelText("Exclude from schedule"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-
-    await waitFor(() =>
-      expect(saveEmployee).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({
-          location_ids: [],
-          primary_location_id: null,
-          job_ids: [],
-          primary_job_id: null,
-          is_excluded_from_schedule: true,
-        }),
-        employeeId,
-      ),
-    );
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Choose at least one location and mark one as primary.")).toBeTruthy();
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
   // EMP-001 C (S2, items 12 and 23): any job can be primary, Manager too; only
@@ -1665,7 +1656,7 @@ describe("EmployeeDrawer", () => {
     // Remote) goes out as it was read. The drawer makes up no primary; the
     // database answers and its sentence is shown.
     it("sends a job with no primary as it was read and shows the database answer", async () => {
-      const sentence = "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.";
+      const sentence = "Mark one of the jobs as primary.";
       vi.mocked(saveEmployee).mockRejectedValueOnce(
         new RequestError(sentence, "employee.primary_job_required", undefined, 400),
       );
@@ -1896,7 +1887,7 @@ describe("EmployeeDrawer", () => {
     });
   });
 
-  it("does not make the location just unticked a Remote person's primary", async () => {
+  it("does not make the location just unticked a Remote person's primary, and asks for one", async () => {
     const second = { id: "11000000-0000-4000-8000-000000000002", name: "Patio", primary: false, archived: false, removable: false };
     renderDrawer("employment", {
       ...detail,
@@ -1908,14 +1899,10 @@ describe("EmployeeDrawer", () => {
     });
     await employeeLoaded();
     fireEvent.click(screen.getByLabelText("Patio"));
-    fireEvent.click(screen.getByRole("button", { name: "Save changes" }));
-    await waitFor(() =>
-      expect(saveEmployee).toHaveBeenCalledWith(
-        workspaceId,
-        expect.objectContaining({ location_ids: [detail.locations[0]!.id], primary_location_id: null }),
-        employeeId,
-      ),
-    );
+    // No primary is invented for them; Remote no longer saves without one.
+    expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+    expect(screen.getByText("Choose at least one location and mark one as primary.")).toBeTruthy();
+    expect(saveEmployee).not.toHaveBeenCalled();
   });
 
   it("shows selected work modes in employment and the summary rail", async () => {
@@ -2659,7 +2646,7 @@ describe("EmployeeDrawer locations and access follow the server", () => {
       ...patch,
     });
 
-    it("holds Save when a manager excluded from the schedule loses the last location, until Remote", async () => {
+    it("holds Save when a manager excluded from the schedule loses the last location, Remote or not", async () => {
       renderDrawer("employment", managerAt({ is_excluded_from_schedule: true }));
       await employeeLoaded();
       fireEvent.click(screen.getByLabelText("Main Dining"));
@@ -2668,7 +2655,7 @@ describe("EmployeeDrawer locations and access follow the server", () => {
       expect(screen.getByText(sentence)).toBeTruthy();
       expect(within(screen.getByRole("group", { name: /^Locations/ })).getByText("Required")).toBeTruthy();
       fireEvent.click(screen.getByLabelText("Remote"));
-      expect(save).toHaveProperty("disabled", false);
+      expect(save).toHaveProperty("disabled", true);
       expect(saveEmployee).not.toHaveBeenCalled();
     });
 
@@ -2691,13 +2678,13 @@ describe("EmployeeDrawer locations and access follow the server", () => {
       await waitFor(() => expect((server as HTMLInputElement).checked).toBe(true));
       fireEvent.click(server);
       expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
-      expect(screen.getByText("Choose at least one job, or turn on Remote.")).toBeTruthy();
+      expect(screen.getByText("Choose at least one job.")).toBeTruthy();
       expect(screen.queryByText(/Exclude from schedule/)).toBeNull();
       fireEvent.click(screen.getByLabelText("Remote"));
-      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
     });
 
-    it("lets an employee excluded from the schedule lose the last location, as before", async () => {
+    it("holds Save when an employee excluded from the schedule loses the last location", async () => {
       renderDrawer("employment", {
         ...detail,
         role_id: employeeRoleId,
@@ -2707,8 +2694,8 @@ describe("EmployeeDrawer locations and access follow the server", () => {
       });
       await employeeLoaded();
       fireEvent.click(screen.getByLabelText("Main Dining"));
-      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", false);
-      expect(screen.queryByText(sentence)).toBeNull();
+      expect(screen.getByRole("button", { name: "Save changes" })).toHaveProperty("disabled", true);
+      expect(screen.getByText("Choose at least one location and mark one as primary.")).toBeTruthy();
     });
   });
 
@@ -4014,7 +4001,8 @@ describe("EmployeeDrawer when someone else saved first (EKRAN-03)", () => {
   // Review O3: a merge does not pick a primary nobody chose (P11): a Remote
   // person, or the owner, may have jobs and locations and no primary.
   it("does not invent a primary the record did not have", async () => {
-    const remote = { ...detail, is_remote: true, primary_job_id: null, primary_location_id: null };
+    // The owner's record, the one record the location and job rule leaves out (DAVET-ERISIM).
+    const remote = { ...detail, is_workspace_owner: true, primary_job_id: null, primary_location_id: null };
     renderDrawer("profile", remote);
     fireEvent.change(await screen.findByLabelText("First name"), { target: { value: "Alexandra" } });
     vi.mocked(saveEmployee).mockRejectedValueOnce(

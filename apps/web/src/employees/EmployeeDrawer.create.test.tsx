@@ -379,7 +379,8 @@ describe("employee create flow", () => {
     fireEvent.click(screen.getByRole("button", { name: "Add" }));
     fillNames();
     next();
-    fireEvent.click(screen.getByLabelText("Remote"));
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
     window.history.back();
@@ -469,36 +470,41 @@ describe("employee create flow", () => {
       }),
     );
   });
+  // DAVET-ERISIM (Mert, 2026-10-20): Remote and Exclude from schedule never
+  // lift the location and job rule.
   it.each(["Remote", "Exclude from schedule"])(
-    "saves %s without any assignments",
+    "holds Save with %s and no assignments, and saves once a location and a job are chosen",
     async (mode) => {
       setup();
       fillNames();
       next();
       fireEvent.click(screen.getByLabelText(mode));
+      expect(disabled("Save")).toBe(true);
+      fireEvent.click(await screen.findByLabelText("Downtown"));
+      expect(disabled("Save")).toBe(true);
+      fireEvent.click(screen.getByLabelText("Server"));
       expect(disabled("Save")).toBe(false);
       fireEvent.click(screen.getByRole("button", { name: "Save" }));
       await waitFor(() => expect(createEmployee).toHaveBeenCalledTimes(1));
-      expect(
-        vi.mocked(createEmployee).mock.calls[0]![1].employee.location_ids,
-      ).toEqual([]);
-      expect(
-        vi.mocked(createEmployee).mock.calls[0]![1].employee.job_ids,
-      ).toEqual([]);
+      expect(vi.mocked(createEmployee).mock.calls[0]![1].employee).toEqual(
+        expect.objectContaining({ location_ids: [ids.location], job_ids: [ids.job] }),
+      );
     },
   );
-  it("preserves assignments while toggling work mode and revalidates when toggled off", async () => {
+  it("keeps assignments while toggling work mode, and the rule holds either way", async () => {
     setup();
     fillNames();
     next();
     fireEvent.click(await screen.findByLabelText("Downtown"));
     fireEvent.click(screen.getByLabelText("Remote"));
-    expect(disabled("Save")).toBe(false);
-    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
-    fireEvent.click(screen.getByLabelText("Remote"));
-    expect(disabled("Save")).toBe(false);
+    expect(disabled("Save")).toBe(true);
     fireEvent.click(screen.getByLabelText("Exclude from schedule"));
     expect(disabled("Save")).toBe(true);
+    fireEvent.click(screen.getByLabelText("Server"));
+    expect(disabled("Save")).toBe(false);
+    fireEvent.click(screen.getByLabelText("Remote"));
+    fireEvent.click(screen.getByLabelText("Exclude from schedule"));
+    expect(disabled("Save")).toBe(false);
     expect(
       (screen.getByLabelText("Downtown") as HTMLInputElement).checked,
     ).toBe(true);
@@ -632,7 +638,8 @@ describe("employee create flow", () => {
     setup();
     fillNames();
     next();
-    fireEvent.click(screen.getByLabelText("Remote"));
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
     fireEvent.click(screen.getByRole("button", { name: "Save" }));
     fireEvent.click(
       await screen.findByRole("button", { name: "Retry request" }),

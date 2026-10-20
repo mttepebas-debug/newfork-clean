@@ -441,22 +441,16 @@ select is(pg_temp.assign('cemre', pg_temp.manager_job('mo'), true), 'allowed',
 select is(pg_temp.is_primary('cemre', pg_temp.manager_job('mo')), true,
   'and, as her first job, is stored as primary');
 
--- The Owner job is the one job never stored as primary.
-select is(
-  pg_temp.refusal(format(
-    'update public.employee_job_assignments set is_primary = true where employee_id = %L and job_id = %L and ended_at is null',
-    tests.id('mo:owner'), pg_temp.owner_job('mo')
-  )),
-  '23514 employee.management_primary',
-  'the Owner job cannot be marked primary by any writer'
-);
+-- DAVET-ERISIM (Mert 2026-10-20): the Owner job is the owner's primary job; setup makes it so.
+select is(pg_temp.is_primary('owner', pg_temp.owner_job('mo')), true,
+  'setup made the Owner job the owner''s primary job');
 -- The owner is given Cook in Settings > Jobs, then loses it.
 select pg_temp.assign('owner', tests.id('mo:job:cook'), true);
-select is(pg_temp.is_primary('owner', tests.id('mo:job:cook')), true,
-  'the owner''s first other job becomes their primary');
+select is(pg_temp.is_primary('owner', tests.id('mo:job:cook')), false,
+  'Cook given, the owner''s primary stays the Owner job');
 select pg_temp.assign('owner', tests.id('mo:job:cook'), false);
-select is(pg_temp.is_primary('owner', pg_temp.owner_job('mo')), false,
-  'taken away again, the primary mark does not fall to the Owner job');
+select is(pg_temp.is_primary('owner', pg_temp.owner_job('mo')), true,
+  'and stays it when Cook is taken away again');
 
 -- Deniz hosts (primary); Host then moves under Management and stays her primary.
 select tests.person('mo', 'deniz', 'employee', array['K'], array['host']);

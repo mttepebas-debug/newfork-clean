@@ -130,20 +130,23 @@ create function pg_temp.manages(person text) returns text[] language sql as $$
   where member.workspace_id = tests.id('e') and member.user_id = tests.user('e:' || person)
 $$;
 
-select is(pg_temp.save_as('owner', 'derya', '{}', false, true), 'allowed',
-  'an excluded manager is saved with no location to work at');
-select is(pg_temp.manages('derya'), array['B'], 'and still manages the one she managed');
+-- DAVET-ERISIM (Mert 2026-10-20): Remote and Exclude from schedule no longer lift the location rule.
+select is(pg_temp.save_as('owner', 'derya', '{}', false, true), '22023 employee.location_required',
+  'an excluded manager is not saved with no location to work at');
+select is(pg_temp.save_as('owner', 'mert', '{}', false, true), '22023 employee.location_required',
+  'nor is an excluded employee');
+select is(pg_temp.save_as('owner', 'emre', '{}', true, false), '22023 employee.location_required',
+  'nor a Remote person');
+-- ponytail: a record saved before the rule can work nowhere; Derya and Emre are made such records by hand.
+delete from public.employee_location_assignments where employee_id in (tests.id('e:derya'), tests.id('e:emre'));
+select is(pg_temp.manages('derya'), array['B'], 'working nowhere, she still manages the one she managed');
 select is(app_private.scope_set(tests.user('e:derya'), tests.id('e'), 'schedule.edit'), array[tests.id('e:B')],
   'so she still reaches it');
 select is(pg_temp.works_at('derya'), '{}'::text[], 'though she works nowhere now');
 select is(pg_temp.save_as('owner', 'derya', array['B'], false, true), 'allowed',
   'with her location back she is saved');
-select is(pg_temp.save_as('owner', 'mert', '{}', false, true), 'allowed',
-  'an excluded employee is saved with no location, as before');
-select is(pg_temp.save_as('owner', 'emre', '{}', true, false), 'allowed',
-  'a Remote person is saved with no location, as before');
 select is(pg_temp.save_as('owner', 'emre', '{}', false, false), '22023 employee.location_required',
-  'somebody neither Remote nor excluded still needs one');
+  'somebody neither Remote nor excluded needs one too');
 select is(pg_temp.save_as('owner', 'melis', '{}', false, false), '22023 employee.location_required',
   'a manager who takes shifts included: the older rule answers first');
 
@@ -184,24 +187,24 @@ select is(pg_temp.role_of('veli'), 'employee', 'their role is as it was too');
 select is(pg_temp.access_as('mert', 'manager', array['K']), 'allowed',
   'given a location to manage they are made a manager');
 select is(pg_temp.manages('mert'), array['K'], 'and manage it');
--- Emre was saved Remote above, with no location.
+-- Emre was left Remote above, with no location.
 select is(pg_temp.access_as('emre', 'manager', '{}'), '22023 access.manages_required',
   'a Remote person is not made a manager with nowhere to manage either');
 select is(pg_temp.access_as('emre', 'manager', array['B']), 'allowed',
   'and is made one with a location to manage, working nowhere');
 
--- Nor invited as one. Nil is excluded and was never given a location; Oya takes
--- shifts and was taken off her only one; Rana is Remote.
+-- Nor invited as one. Nil is excluded and works at Kadikoy; Oya takes shifts and was
+-- taken off her only location; Rana is Remote and works at Kadikoy (DAVET-ERISIM: both need one).
 select tests.remember('e:nil', public.save_employee_service(
   tests.user('e:owner'), tests.id('e'), null, 'Nil', '', 'Person', '', 'nil.e@world.test', null, '',
-  '{}'::uuid[], null, '{}'::uuid[], null, false, true, null));
+  array[tests.id('e:K')], tests.id('e:K'), array[tests.id('e:job:cook')], tests.id('e:job:cook'), false, true, null));
 select tests.remember('e:oya', public.save_employee_service(
   tests.user('e:owner'), tests.id('e'), null, 'Oya', '', 'Person', '', 'oya.e@world.test', null, '',
   array[tests.id('e:K')], tests.id('e:K'), array[tests.id('e:job:cook')], tests.id('e:job:cook'), false, false, null));
 select is(pg_temp.remove('oya', 'K'), 'allowed', 'somebody not yet invited is taken off their only location');
 select tests.remember('e:rana', public.save_employee_service(
   tests.user('e:owner'), tests.id('e'), null, 'Rana', '', 'Person', '', 'rana.e@world.test', null, '',
-  '{}'::uuid[], null, '{}'::uuid[], null, true, false, null));
+  array[tests.id('e:K')], tests.id('e:K'), array[tests.id('e:job:cook')], tests.id('e:job:cook'), true, false, null));
 -- An employee role goes in the employee slot, a manager role in the management one with its Manages.
 create function pg_temp.invite(person text, role_key text, places text[]) returns text language sql as $$
   select pg_temp.refusal(format('select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, %L::uuid[], %L, %L)',
@@ -215,15 +218,15 @@ create function pg_temp.invite(person text, role_key text, places text[]) return
 $$;
 select is(pg_temp.invite('nil', 'manager', '{}'), '22023 access.manages_required',
   'an excluded person is not invited as a manager with nowhere to manage');
-select is(pg_temp.invite('nil', 'manager', array['K']), 'allowed',
+select is(pg_temp.invite('nil', 'manager', array['B']), 'allowed',
   'and is with a location to manage, assigned there or not');
 select is(pg_temp.invite('nil', 'employee', '{}'), 'allowed', 'and is invited as an employee');
 select is(pg_temp.invite('oya', 'manager', array['K']), '22023 ',
   'somebody who takes shifts and has no location is not invited at all: they need a location to work at');
 select is(pg_temp.invite('rana', 'manager', '{}'), '22023 access.manages_required',
   'a Remote person is not invited as a manager with nowhere to manage');
-select is(pg_temp.invite('rana', 'manager', array['K']), 'allowed',
-  'and is with a location to manage, working nowhere');
+select is(pg_temp.invite('rana', 'manager', array['B']), 'allowed',
+  'and is with a location to manage, working elsewhere');
 
 select * from finish();
 rollback;

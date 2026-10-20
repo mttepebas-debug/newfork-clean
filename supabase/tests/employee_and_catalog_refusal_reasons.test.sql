@@ -92,8 +92,11 @@ select is(pg_temp.refusal($$insert into public.employee_location_assignments(wor
 select is(pg_temp.refusal($$update public.locations set name='West side' where id='8a045000-0000-4000-8000-000000000001'$$),
  'PT409 catalog.deleted','editing a location deleted meanwhile');
 
--- Employees: a create request key replayed with other details is a standing refusal.
-create temp table create_command as select '{"first_name":"Ada","middle_name":"","last_name":"Refusal","preferred_name":"","invitation_email":"","start_date":"","internal_note":"","location_ids":[],"primary_location_id":null,"job_ids":[],"primary_job_id":null,"is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb employee;
+-- Employees: a create request key replayed with other details is a standing refusal. Ada is filed at a
+-- location and a job: Remote no longer saves without them (DAVET-ERISIM).
+insert into public.locations(id,workspace_id,name,short_name,street_address,city,region,postal_code,country_code,timezone) values
+ ('8a045000-0000-4000-8000-000000000002','2a045000-0000-4000-8000-000000000001','East','EST1045','2 Road','City','CA','90012','US','America/Los_Angeles');
+create temp table create_command as select '{"first_name":"Ada","middle_name":"","last_name":"Refusal","preferred_name":"","invitation_email":"","start_date":"","internal_note":"","location_ids":["8a045000-0000-4000-8000-000000000002"],"primary_location_id":"8a045000-0000-4000-8000-000000000002","job_ids":["aa045000-0000-4000-8000-000000000001"],"primary_job_id":"aa045000-0000-4000-8000-000000000001","is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb employee;
 select lives_ok($$select public.create_employee_command_service('1a045000-0000-4000-8000-000000000001','2a045000-0000-4000-8000-000000000001',
  '3a045000-0000-4000-8000-000000000001',employee,null) from create_command$$,'the first create lands');
 select is(pg_temp.refusal($$select public.create_employee_command_service('1a045000-0000-4000-8000-000000000001','2a045000-0000-4000-8000-000000000001',

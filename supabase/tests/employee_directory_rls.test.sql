@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(118);
+select plan(120);
 
 insert into auth.users (id, instance_id, aud, role, email, encrypted_password, raw_app_meta_data, raw_user_meta_data, created_at, updated_at)
 values
@@ -367,25 +367,44 @@ select throws_ok(
     'No','', 'Assignment', '', '', null, '',
     '{}'::uuid[], null, '{}'::uuid[], null, false, false, null
   )$$,
-  '22023', 'employee requires a location and job unless remote or excluded from schedule', 'non-remote scheduled employee requires location and job'
+  '22023', 'employee requires a location and a job', 'non-remote scheduled employee requires location and job'
+);
+-- DAVET-ERISIM (Mert 2026-10-20): Remote and Exclude from schedule no longer lift it.
+select throws_ok(
+  $$select public.save_employee_service(
+    '16000000-0000-4000-8000-000000000001',
+    '26000000-0000-4000-8000-000000000001', null,
+    'Excluded','', 'Worker', '', '', null, '',
+    '{}'::uuid[], null, '{}'::uuid[], null, false, true, null
+  )$$,
+  '22023', 'employee requires a location and a job', 'an excluded employee requires a location and job too'
+);
+select throws_ok(
+  $$select public.save_employee_service(
+    '16000000-0000-4000-8000-000000000001',
+    '26000000-0000-4000-8000-000000000001', null,
+    'Remote','', 'Worker', '', '', null, '',
+    '{}'::uuid[], null, '{}'::uuid[], null, true, false, null
+  )$$,
+  '22023', 'employee requires a location and a job', 'and so does a Remote one'
 );
 select lives_ok(
   $$insert into employee_ids values ('excluded', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001', null,
     'Excluded','', 'Worker', '', '', null, '',
-    '{}'::uuid[], null, '{}'::uuid[], null, false, true, null
+    array['46000000-0000-4000-8000-000000000002']::uuid[], '46000000-0000-4000-8000-000000000002', array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, true, null
   ))$$,
-  'excluded employee can be saved without location or job'
+  'excluded employee is saved with a location and job'
 );
 select lives_ok(
   $$insert into employee_ids values ('remote', public.save_employee_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001', null,
     'Remote','', 'Worker', '', '', null, '',
-    '{}'::uuid[], null, '{}'::uuid[], null, true, false, null
+    array['46000000-0000-4000-8000-000000000002']::uuid[], '46000000-0000-4000-8000-000000000002', array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', true, false, null
   ))$$,
-  'remote employee can be saved without location or job'
+  'remote employee is saved with a location and job'
 );
 select lives_ok(
   $$select public.save_employee_service(
@@ -513,7 +532,7 @@ select lives_ok(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001', (select id from employee_ids where label = 'excluded'),
     'Excluded','', 'Worker', '', '', null, 'Admin edited employee',
-    '{}'::uuid[], null, '{}'::uuid[], null, false, true, 1
+    array['46000000-0000-4000-8000-000000000002']::uuid[], '46000000-0000-4000-8000-000000000002', array['66000000-0000-4000-8000-000000000001']::uuid[], '66000000-0000-4000-8000-000000000001', false, true, 1
   )$$,
   'admin edits an employee-class record'
 );

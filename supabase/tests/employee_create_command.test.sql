@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(44);
+select plan(45);
 
 insert into auth.users (id, email, raw_app_meta_data, raw_user_meta_data)
 values ('19000000-0000-4000-8000-000000000001', 'create-owner@example.test', '{}', '{}'),
@@ -14,12 +14,21 @@ insert into public.workspace_memberships (workspace_id, user_id, role_id, employ
 select legacy.workspace_id::uuid, legacy.user_id::uuid, (case when legacy.role::text <> 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key::text = legacy.role::text)) end), (case when legacy.role::text = 'employee' then coalesce(null::uuid, (select r.id from public.workspace_roles r where r.workspace_id = legacy.workspace_id::uuid and r.system_key = 'employee')) end)
 from (values ('29000000-0000-4000-8000-000000000001', '19000000-0000-4000-8000-000000000001', 'owner', true)) as legacy(workspace_id, user_id, role, all_locations);
 
+-- Where Ada works: Remote still needs a location and a job (DAVET-ERISIM, Mert 2026-10-20).
+insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, country_code, timezone)
+values ('89000000-0000-4000-8000-000000000002', '29000000-0000-4000-8000-000000000001', 'East', 'EST9', '2 Road', 'City', 'CA',
+  '90012', 'US', 'America/Los_Angeles');
+insert into public.departments (id, workspace_id, name)
+values ('99000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001', 'Kitchen');
+insert into public.jobs (id, workspace_id, department_id, name, color)
+values ('a9000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001', '99000000-0000-4000-8000-000000000001', 'Cook', '#123456');
+
 -- DAVET-ERISIM: the invitation names its two accesses; employee_access holds the Employee role in the
 -- employee slot, owner_access the Owner role in the management slot (which never takes it).
 create temporary table create_fixture (employee jsonb, employee_role uuid, owner_role uuid, result jsonb,
   employee_access jsonb, owner_access jsonb);
 insert into create_fixture (employee, employee_role, owner_role, result)
-select '{"first_name":"Ada","middle_name":"Byron","last_name":"Lovelace","preferred_name":"","invitation_email":"create-remote@example.test","start_date":"","internal_note":"","location_ids":[],"primary_location_id":null,"job_ids":[],"primary_job_id":null,"is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb,
+select '{"first_name":"Ada","middle_name":"Byron","last_name":"Lovelace","preferred_name":"","invitation_email":"create-remote@example.test","start_date":"","internal_note":"","location_ids":["89000000-0000-4000-8000-000000000002"],"primary_location_id":"89000000-0000-4000-8000-000000000002","job_ids":["a9000000-0000-4000-8000-000000000001"],"primary_job_id":"a9000000-0000-4000-8000-000000000001","is_remote":true,"is_excluded_from_schedule":false,"expected_revision":null}'::jsonb,
   (select id from public.workspace_roles where workspace_id = '29000000-0000-4000-8000-000000000001' and system_key = 'employee'),
   (select id from public.workspace_roles where workspace_id = '29000000-0000-4000-8000-000000000001' and system_key = 'owner'), null;
 update create_fixture set employee_access = jsonb_build_object('employee_role_id', employee_role),
@@ -28,7 +37,7 @@ grant all on create_fixture to service_role;
 set local role service_role;
 select lives_ok($$update create_fixture set result = public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
-  '39000000-0000-4000-8000-000000000001', employee, employee_access)$$, 'remote create and invitation need no assignments');
+  '39000000-0000-4000-8000-000000000001', employee, employee_access)$$, 'a remote create and its invitation');
 -- The command path passed a positional argument list written before a middle
 -- name existed, so this was dropped on the way in and nothing noticed. The
 -- record itself is read as postgres; service_role cannot select the table.
@@ -61,12 +70,12 @@ select throws_ok($$select public.create_employee_command_service(
   '22023', 'the management slot holds a manager or admin class role', 'invalid invite role rolls back the create');
 select throws_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
-  '39000000-0000-4000-8000-000000000003', employee || '{"is_remote":false}', null) from create_fixture$$,
-  '22023', 'employee requires a location and job unless remote or excluded from schedule', 'normal mode still requires assignments');
+  '39000000-0000-4000-8000-000000000003', employee || '{"location_ids":[],"primary_location_id":null}', null) from create_fixture$$,
+  '22023', 'employee requires a location and a job', 'Remote no longer creates somebody with no location');
 set local role postgres;
 select is((select count(*)::integer from public.employee_profiles where workspace_id = '29000000-0000-4000-8000-000000000001'), 1, 'retries and rejected invitation leave exactly one employee');
 select is((select count(*)::integer from public.employee_invitations where workspace_id = '29000000-0000-4000-8000-000000000001'), 1, 'exactly one invitation');
-select is((select count(*)::integer from public.employee_location_assignments where workspace_id = '29000000-0000-4000-8000-000000000001'), 0, 'no manufactured locations');
+select is((select count(*)::integer from public.employee_location_assignments where workspace_id = '29000000-0000-4000-8000-000000000001'), 1, 'no manufactured locations: only the one Ada was given');
 select is((select role_id from public.employee_invitations where id = (select (result->>'invitation_id')::uuid from create_fixture)), (select employee_role from create_fixture), 'chosen role stored');
 set local role service_role;
 select lives_ok($$select public.mark_employee_invitation_delivery_service(
@@ -97,16 +106,20 @@ select is((select resend_count from public.employee_invitations where id = (sele
 set local role service_role;
 select lives_ok($$select public.accept_employee_invitation_service(
   '19000000-0000-4000-8000-000000000002', encode(extensions.digest(result->>'token', 'sha256'), 'hex')) from create_fixture$$,
-  'remote employee accepts invitation without a location');
+  'remote employee accepts the invitation');
 set local role postgres;
 select is((select count(*)::integer from public.employee_invitation_delivery_secrets where invitation_id = (select (result->>'invitation_id')::uuid from create_fixture)), 0, 'acceptance removes the recoverable delivery token');
 set local role service_role;
 select lives_ok($$select public.initialize_employee_onboarding_service('19000000-0000-4000-8000-000000000002')$$,
-  'remote employee initializes onboarding without a location');
+  'remote employee initializes onboarding');
 select lives_ok($$select public.create_employee_command_service(
   '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
   '39000000-0000-4000-8000-000000000004', employee || '{"is_remote":false,"is_excluded_from_schedule":true,"invitation_email":""}', null) from create_fixture$$,
-  'excluded employee saves without email or assignments');
+  'excluded employee saves without an email');
+select throws_ok($$select public.create_employee_command_service(
+  '19000000-0000-4000-8000-000000000001', '29000000-0000-4000-8000-000000000001',
+  '39000000-0000-4000-8000-0000000000f5', employee || '{"is_remote":false,"is_excluded_from_schedule":true,"invitation_email":"","job_ids":[],"primary_job_id":null}', null) from create_fixture$$,
+  '22023', 'employee requires a location and a job', 'nor without a job: Exclude from schedule no longer lifts it');
 set local role postgres;
 -- ROL-CIFT: an Employee role chosen at the invitation lands in the employee slot, and nothing in the
 -- management slot.

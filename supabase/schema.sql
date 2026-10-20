@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 569, last: 20261020225506_existing_managers_read_settings_catalog.sql
--- fingerprint: sha256:cb3fbb343462c52bad1676203829cdd302577ef2159caf35149186684b655e1b
+-- migrations: 570, last: 20261020225506_existing_managers_read_settings_catalog.sql
+-- fingerprint: sha256:175792eef9e3971fb2462ab39b225472bc2cc7f739dc10640f918f16f65ae4fc
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -2967,6 +2967,33 @@ begin
   );
 
   if mark_complete then
+    -- DAVET-ERISIM: the founder's record as a new workspace starts (Mert 2026-10-20): the Owner job is their
+    -- primary job, the first location their primary location, and they stay off the Schedule until they
+    -- choose otherwise. Only a record with no primary yet: a setup finishing again changes nothing.
+    if not exists (
+      select 1 from public.employee_job_assignments a
+      where a.employee_id = owner_employee_id and a.ended_at is null and a.is_primary
+    ) and not exists (
+      select 1 from public.employee_location_assignments a
+      where a.employee_id = owner_employee_id and a.ended_at is null and a.is_primary
+    ) then
+      update public.employee_job_assignments a
+      set is_primary = true
+      from public.jobs j
+      where a.employee_id = owner_employee_id and a.ended_at is null
+        and j.id = a.job_id and j.workspace_id = target_workspace_id and j.system_key = 'owner';
+      update public.employee_location_assignments a
+      set is_primary = true
+      where a.id = (
+        select first.id from public.employee_location_assignments first
+        join public.locations l on l.id = first.location_id
+        where first.employee_id = owner_employee_id and first.ended_at is null
+        order by l.created_at, l.name, l.id
+        limit 1);
+      update public.employee_profiles
+      set is_excluded_from_schedule = true, revision = revision + 1, updated_at = now()
+      where id = owner_employee_id and workspace_id = target_workspace_id;
+    end if;
 
     insert into public.workspace_entitlements (
       workspace_id,
@@ -5934,12 +5961,7 @@ begin
     raise exception 'Only the workspace owner works the Owner job'
       using errcode = '42501', hint = 'authz.owner_only';
   end if;
-  -- Every job can be somebody's primary job but Owner (EMP-001 S2).
-  if new.is_primary
-     and exists (select 1 from public.jobs job where job.id = new.job_id and job.system_key = 'owner') then
-    raise exception 'The Owner job is never marked primary'
-      using errcode = '23514', hint = 'employee.management_primary';
-  end if;
+  -- DAVET-ERISIM: every job can be its holder's primary job, the Owner job too (EMP-001 S2 widened).
   return new;
 end;
 $$;
@@ -21374,12 +21396,10 @@ begin
   perform app_private.invitation_access_check(actor_user_id, target_workspace_id,
     target_employee_role_id, target_management_role_id, places);
 
+  -- DAVET-ERISIM: Remote and Exclude from schedule no longer lift it.
   if not exists (
     select 1 from public.employee_location_assignments
     where employee_id = target_employee_id and ended_at is null
-  ) and not exists (
-    select 1 from public.employee_profiles where id = target_employee_id
-      and workspace_id = target_workspace_id and (is_remote or is_excluded_from_schedule)
   ) then
     raise exception 'employee requires a location before invitation' using errcode = '22023';
   end if;
@@ -25971,7 +25991,6 @@ declare
   kept uuid[];
   current_revision integer;
   next_code bigint;
-  assignment_optional boolean := coalesce(employee_is_remote, false) or coalesce(employee_is_excluded_from_schedule, false);
 begin
   -- A new record is asked where it will work (a manager only where they
   -- manage, never nowhere); an existing one, whose it is.
@@ -25998,21 +26017,20 @@ begin
   if char_length(btrim(employee_first_name)) not between 1 and 80 or char_length(btrim(employee_last_name)) not between 1 and 80 then
     raise exception 'employee first and last name are required' using errcode = '22023';
   end if;
-  -- Somebody not Remote nor excluded from Schedule needs a location, a primary
-  -- location, a job and a primary job; any job can be the primary one, under
-  -- Management too (EMP-001 S2). The owner's record needs none of it: the owner
-  -- may work anywhere, and their Owner job is never primary.
-  if not assignment_optional and not app_private.employee_record_is_workspace_owner(target_workspace_id, target_employee_id) then
+  -- DAVET-ERISIM: everybody needs a location, a primary location, a job and a primary job, Remote and
+  -- excluded from Schedule too; any job can be the primary one, under Management too (EMP-001 S2). The owner's
+  -- record needs none of it: the owner may work anywhere.
+  if not app_private.employee_record_is_workspace_owner(target_workspace_id, target_employee_id) then
     if cardinality(coalesce(location_ids, '{}'::uuid[]) || kept) = 0 or primary_location_id is null then
-      raise exception 'employee requires a location and job unless remote or excluded from schedule'
+      raise exception 'employee requires a location and a job'
         using errcode = '22023', hint = 'employee.location_required';
     end if;
     if cardinality(coalesce(job_ids, '{}'::uuid[])) = 0 then
-      raise exception 'employee requires a location and job unless remote or excluded from schedule'
+      raise exception 'employee requires a location and a job'
         using errcode = '22023', hint = 'employee.job_required';
     end if;
     if primary_job_id is null then
-      raise exception 'employee requires a primary job unless remote or excluded from schedule'
+      raise exception 'employee requires a primary job'
         using errcode = '22023', hint = 'employee.primary_job_required';
     end if;
   end if;

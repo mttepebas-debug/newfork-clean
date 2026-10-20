@@ -1,6 +1,6 @@
 begin;
 create extension if not exists pgtap with schema extensions;
-select plan(19);
+select plan(20);
 
 -- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
 -- takes the employee slot and empties the management one; a management role goes beside the employee
@@ -102,12 +102,14 @@ select is(pg_temp.works('ayse'), 'General Manager,Server*@Kadikoy', 'Server is h
 select is(pg_temp.save(array['K'], 'K', array['manager', 'server'], 'manager') || ' ' || pg_temp.works('ayse'),
   'allowed General Manager*,Server@Kadikoy', 'and Manager can be, in its place');
 
--- 3. Remote and "Exclude from schedule" keep their exemption ---------------------------
+-- 3. Remote and "Exclude from schedule" no longer lift it (DAVET-ERISIM, Mert 2026-10-20) --
 
-select is(pg_temp.save(array[]::text[], null, array['manager'], null, true), 'allowed',
-  'Remote with only Manager saves with no location and no primary job');
-select is(pg_temp.save(array[]::text[], null, array['manager'], null, false, true), 'allowed',
-  'so does somebody excluded from Schedule');
+select is(pg_temp.save(array[]::text[], null, array['manager'], null, true), '22023 employee.location_required',
+  'Remote with only Manager is refused with no location');
+select is(pg_temp.save(array[]::text[], null, array['manager'], null, false, true), '22023 employee.location_required',
+  'so is somebody excluded from Schedule');
+select is(pg_temp.save(array['K'], 'K', array['manager'], null, true, true), '22023 employee.primary_job_required',
+  'Remote and excluded, with a location, she still needs a primary job');
 
 -- 4. Add employee follows the same rule --------------------------------------------------
 

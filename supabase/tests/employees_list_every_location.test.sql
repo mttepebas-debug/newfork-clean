@@ -10,7 +10,7 @@ select * from no_plan();
 -- names of all of their locations (KARARLAR "Kişinin bütün lokasyon adları
 -- görünür", BL-417).
 -- Example: Ali works at Besiktas (primary) and at Kadikoy; the owner works at
--- both with no primary; Rana is remote. Ayse manages Kadikoy, Mehmet
+-- both; Rana is remote. Ayse manages Kadikoy, Mehmet
 -- Besiktas.
 
 select tests.world('el');
@@ -58,8 +58,13 @@ select is(
    where row.id = tests.id('el:ali')),
   tests.id('el:B')::text,
   'the location carries its id, so the screen can filter on it');
+-- DAVET-ERISIM: setup files the owner with the first location as primary (Besiktas: both made at once, A to Z).
+select is(pg_temp.places('owner', 'owner'), array['Besiktas*', 'Kadikoy'],
+  'the owner set up today works at every location, the first one primary');
+-- ponytail: an owner of a workspace set up before has no primary; one is made by hand.
+update public.employee_location_assignments set is_primary = false where employee_id = tests.id('el:owner');
 select is(pg_temp.places('owner', 'owner'), array['Besiktas', 'Kadikoy'],
-  'the owner works at every location with no primary: both, A to Z (BL-428: no "Unassigned +1")');
+  'an owner with no primary works at both, A to Z (BL-428: no "Unassigned +1")');
 select is(pg_temp.places('owner', 'emre'), array['Besiktas*'], 'one location, the primary one');
 select is(pg_temp.places('owner', 'rana'), '{}'::text[], 'a remote person has an empty list, never null');
 

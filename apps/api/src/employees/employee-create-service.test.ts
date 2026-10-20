@@ -22,10 +22,11 @@ const command = {
     invitation_email: "ada@example.test",
     start_date: "",
     internal_note: "",
-    location_ids: [],
-    primary_location_id: null,
-    job_ids: [],
-    primary_job_id: null,
+    // Remote still needs a location and a job (DAVET-ERISIM).
+    location_ids: [id],
+    primary_location_id: id,
+    job_ids: [id],
+    primary_job_id: id,
     is_remote: true,
     expected_revision: null,
   },
@@ -160,7 +161,7 @@ describe("employee create service", () => {
       data: null,
       error: {
         code: "22023",
-        message: "employee requires a primary job unless remote or excluded from schedule",
+        message: "employee requires a primary job",
         hint: "employee.primary_job_required",
       },
     });

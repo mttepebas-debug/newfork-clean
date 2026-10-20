@@ -255,10 +255,7 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     managerRecord ? "manager" : null,
     draft,
   );
-  // ROL-CIFT 2.2: somebody who only manages is never scheduled, so their
-  // record shows no "Exclude from schedule": what holds Save does not offer it.
-  const scheduled = props.creating || detail.data?.access.employee !== false;
-  const draftReadiness = employeeCreateReadiness(draft, { scheduled });
+  const draftReadiness = employeeCreateReadiness(draft);
   const readiness = managerRefusal
     ? { ...draftReadiness, employeeReady: false, assignmentBlocker: managerRefusal }
     : draftReadiness;

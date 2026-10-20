@@ -925,15 +925,15 @@ export const managementAndOwnerRefusals = {
     "The Owner job can't be marked primary. Choose another job as primary, or leave it empty if they only hold the Owner job.",
   "employee.owner_locations":
     "The workspace owner works at every location, so a location can't be removed from them.",
-  "employee.location_required":
-    "Choose at least one location and mark one as primary, or turn on Remote or Exclude from schedule.",
-  "employee.job_required": "Choose at least one job, or turn on Remote or Exclude from schedule.",
+  // DAVET-ERISIM (Mert 2026-10-20): Remote and Exclude from schedule never lift these.
+  "employee.location_required": "Choose at least one location and mark one as primary.",
+  "employee.job_required": "Choose at least one job.",
   // EMP-001 K4: a manager manages where they are assigned, so one who is not
   // Remote is assigned somewhere, excluded from the schedule or not.
   "employee.manager_location_required":
-    "A manager needs at least one location to manage. Choose a location, or turn on Remote.",
+    "A manager needs at least one location to manage. Choose a location.",
   // EMP-001 S2: any job can be primary, Manager too; only the Owner job never is.
-  "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
+  "employee.primary_job_required": "Mark one of the jobs as primary.",
   // DAVET-ERISIM: what an invitation or an access change has to name (Tur 4 B).
   "access.role_required": "Choose at least one access.",
   "access.management_role_required": "Choose a role for the management app.",
@@ -941,15 +941,6 @@ export const managementAndOwnerRefusals = {
   "access.manages_only_for_manager": "Only a manager manages chosen locations.",
   "access.management_job_required": "Add a job from Management in Employment first.",
 } as const;
-/**
- * The same refusals for a record that can't be excluded from the schedule
- * because it is never on it: somebody who only manages (ROL-CIFT 2.2).
- */
-export const assignmentRefusalsWithoutExclude = {
-  "employee.location_required": "Choose at least one location and mark one as primary, or turn on Remote.",
-  "employee.job_required": "Choose at least one job, or turn on Remote.",
-  "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote.",
-} as const satisfies Partial<Record<keyof typeof managementAndOwnerRefusals, string>>;
 /** The sentence for one of those hints; undefined for any other hint. */
 export function managementAndOwnerSentence(hint: string | null | undefined): string | undefined {
   const sentences: Readonly<Record<string, string>> = managementAndOwnerRefusals;
@@ -2801,11 +2792,8 @@ export const employeeInputSchema = z
     expected_revision: z.number().int().positive().nullable(),
   })
   .superRefine((value, issue) => {
-    const assignmentOptional =
-      value.is_remote === true ||
-      value.is_excluded_from_schedule === true ||
-      value.is_owner_record === true;
-    if (assignmentOptional) return;
+    // Remote and Exclude from schedule never lift it (DAVET-ERISIM); the owner works anywhere.
+    if (value.is_owner_record === true) return;
     // The primary job is the database's to ask for
     // (employee.primary_job_required): a picker marks the first job ticked,
     // so a form has nothing to say first. So is whether a location is needed
