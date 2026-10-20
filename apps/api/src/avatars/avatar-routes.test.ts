@@ -79,21 +79,23 @@ function world(options: {
     data: { user: token === "valid-token" ? ({ id: userId } as never) : null },
     error: null,
   }));
-  const memberships = vi.fn((_table: string) => {
-    const query = {
-      select: () => query,
-      eq: () => query,
-      maybeSingle: async () => ({ data: options.membership === null ? null : { id: membershipId }, error: null }),
-    };
-    return query;
-  });
+  const eq = vi.fn((_column: string, _value: string) => query);
+  const query = {
+    select: () => query,
+    eq,
+    maybeSingle: async () => ({
+      data: options.membership === null ? null : { id: membershipId, workspace_id: workspaceId },
+      error: null,
+    }),
+  };
+  const memberships = vi.fn((_table: string) => query);
   const client = { rpc, auth: { getUser }, from: memberships, storage: { from } };
   const app = buildApp({
     contextResolver: { resolve: async () => (options.context === undefined ? context : options.context) },
     avatarService: createAvatarServiceWithClient(client),
     employeeDirectoryService: createEmployeeDirectoryServiceWithClient(client),
   });
-  return { app, rpc, from, createSignedUrl, createSignedUploadUrl, download, remove, copy };
+  return { app, rpc, from, eq, createSignedUrl, createSignedUploadUrl, download, remove, copy };
 }
 
 const auth = { authorization: "Bearer valid-token" };
@@ -559,6 +561,29 @@ describe("somebody still onboarding here", () => {
     const response = await w.app.inject({ method: "POST", url: `${me}/upload`, headers: auth, payload: { content_type: "image/png" } });
     expect(response.statusCode).toBe(200);
     expect((response.json() as { path: string }).path).toMatch(ownPath);
+    // The place is the session's own membership in the workspace asked about.
+    expect(w.eq).toHaveBeenCalledWith("workspace_id", workspaceId);
+    expect(w.eq).toHaveBeenCalledWith("user_id", userId);
+  });
+
+  it("names the place by the database's ids, whatever the address's case", async () => {
+    const w = world();
+    const response = await w.app.inject({
+      method: "POST",
+      url: `/v1/workspaces/${workspaceId.toUpperCase()}/me/avatar/upload`,
+      headers: auth,
+      payload: { content_type: "image/png" },
+    });
+    expect(response.statusCode).toBe(200);
+    expect((response.json() as { path: string }).path).toMatch(ownPath);
+  });
+
+  it("answers 404 when the core said yes but no membership is there, before storage", async () => {
+    const w = world({ membership: null });
+    const response = await w.app.inject({ method: "POST", url: `${me}/upload`, headers: auth, payload: { content_type: "image/png" } });
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+    expect(w.createSignedUploadUrl).not.toHaveBeenCalled();
   });
 });
 

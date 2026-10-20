@@ -59,12 +59,12 @@ interface AvatarBucket {
 }
 type OwnMembershipQuery = {
   eq(column: "workspace_id" | "user_id", value: string): OwnMembershipQuery;
-  maybeSingle(): PromiseLike<{ data: { id: string } | null; error: RpcError | null }>;
+  maybeSingle(): PromiseLike<{ data: { id: string; workspace_id: string } | null; error: RpcError | null }>;
 };
 export interface AvatarClient {
   auth: Parameters<typeof createUserVerifier>[0]["auth"];
   rpc(name: string, args: Record<string, unknown>): PromiseLike<{ data: unknown; error: RpcError | null }>;
-  from(table: "workspace_memberships"): { select(columns: "id"): OwnMembershipQuery };
+  from(table: "workspace_memberships"): { select(columns: "id, workspace_id"): OwnMembershipQuery };
   storage: { from(bucket: string): AvatarBucket };
 }
 
@@ -129,18 +129,20 @@ export function createAvatarServiceWithClient(client: AvatarClient): AvatarServi
   /**
    * One's own place here, asked before storage is reached: the core's yes first (avatar.self, the read
    * that authorizes it), then the membership it said yes to. One membership per person and workspace.
+   * Both ids come from the database: a path built from the address could differ in case from the
+   * folders the account deletion sweep lists.
    */
   async function ownPlace(input: Actor): Promise<OwnPlace> {
     await rpc("get_own_avatar_service", actorArgs(input));
     const { data, error } = await client
       .from("workspace_memberships")
-      .select("id")
+      .select("id, workspace_id")
       .eq("workspace_id", input.workspaceId)
       .eq("user_id", input.actorUserId)
       .maybeSingle();
     if (error) throw rpcFailure(error);
     if (!data) throw new HttpError("Workspace not found", 404, { reason: "authz.not_member" });
-    return { ...input, membershipId: data.id };
+    return { actorUserId: input.actorUserId, workspaceId: data.workspace_id, membershipId: data.id };
   }
 
   async function signed(path: string): Promise<string | null> {
