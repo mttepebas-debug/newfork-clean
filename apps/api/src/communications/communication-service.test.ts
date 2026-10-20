@@ -156,4 +156,22 @@ describe("communication service", () => {
       target_todo_id: todoId,
     });
   });
+
+  // YONETICI-HOME: the managers' Home reads one service. The answer is a real
+  // one, from a rolled-back run of manager_home_reads_each_location.test.sql (Ayse).
+  it("reads the managers' Home from its one service and keeps its shape", async () => {
+    const answer = JSON.parse(
+      '{"now": "2026-10-20T04:43:32.075078+00:00", "time_off": [{"id": "7d882f38-2421-4bf0-90b3-fcd0b00913c8", "last_date": "2026-10-30", "first_date": "2026-10-30", "employee_id": "db37ec6e-d3b2-42c4-8045-d8533c17a4d2", "location_ids": ["20409979-fe36-4ee6-8461-1ba62eb4dbac"], "employee_name": "Emre Person"}], "locations": [{"id": "20409979-fe36-4ee6-8461-1ba62eb4dbac", "name": "Kadikoy", "week": [{"date": "2026-10-20", "open": 1, "shifts": 3, "published": true}, {"date": "2026-10-21", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-22", "open": 1, "shifts": 1, "published": true}, {"date": "2026-10-23", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-24", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-25", "open": 0, "shifts": 0, "published": true}, {"date": "2026-10-26", "open": 0, "shifts": 0, "published": true}], "today": "2026-10-20", "timezone": "Europe/Istanbul", "open_shifts": [{"date": "2026-10-20", "ends_at": "2026-10-20T14:00:00+00:00", "job_name": "Server", "starts_at": "2026-10-20T06:00:00+00:00"}, {"date": "2026-10-22", "ends_at": "2026-10-22T14:00:00+00:00", "job_name": "Server", "starts_at": "2026-10-22T06:00:00+00:00"}], "today_shifts": [{"open": true, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}, {"open": false, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}, {"open": false, "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}], "floor_managers": [{"name": "Ayse Person", "ends_at": "2026-10-20T14:00:00+00:00", "starts_at": "2026-10-20T06:00:00+00:00"}], "missing_documents": [{"name": "Emre Person", "document": "Food handler card", "employee_id": "db37ec6e-d3b2-42c4-8045-d8533c17a4d2"}]}], "workspace_id": "f7f9131e-5ae4-4d2d-9fd0-d4284e5b8eaa"}',
+    );
+    const rpc = vi.fn().mockResolvedValue({ data: answer, error: null });
+    const service = createCommunicationServiceWithClient({ rpc });
+
+    const home = await service.getManagerHome({ actorUserId: userId, workspaceId });
+
+    expect(rpc).toHaveBeenCalledWith("get_manager_home_service", {
+      actor_user_id: userId,
+      target_workspace_id: workspaceId,
+    });
+    expect(home).toEqual(answer);
+  });
 });

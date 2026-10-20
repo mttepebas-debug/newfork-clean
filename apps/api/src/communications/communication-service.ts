@@ -7,6 +7,7 @@ import {
   importantDateListSchema,
   ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
+  managerHomeSchema,
   workspaceManualTodoInputSchema,
   workspaceTodoSchema,
   type AnnouncementDetail,
@@ -21,6 +22,7 @@ import {
   type OwnerSetupChecklistItemId,
   type OwnerSetupChecklistProgress,
   type WorkspaceDashboard,
+  type ManagerHome,
   type WorkspaceLayoutInput,
   type WorkspaceManualTodoInput,
   type WorkspaceTodo,
@@ -71,6 +73,8 @@ export interface CommunicationService {
     input: ActorInput & { announcementId: string },
   ): Promise<z.infer<typeof acknowledgedResultSchema>>;
   getWorkspace(input: ActorInput): Promise<WorkspaceDashboard>;
+  /** The managers' Home, "Locations first" (YONETICI-HOME). */
+  getManagerHome(input: ActorInput): Promise<ManagerHome>;
   saveWorkspaceLayout(
     input: ActorInput & { layout: WorkspaceLayoutInput },
   ): Promise<z.infer<typeof savedResultSchema>>;
@@ -187,6 +191,9 @@ export function createCommunicationServiceWithClient(
       return workspaceDashboardSchema.parse(
         await rpc("get_workspace_dashboard_service", actorArgs(input)),
       );
+    },
+    async getManagerHome(input) {
+      return managerHomeSchema.parse(await rpc("get_manager_home_service", actorArgs(input)));
     },
     async saveWorkspaceLayout(input) {
       return savedResultSchema.parse(

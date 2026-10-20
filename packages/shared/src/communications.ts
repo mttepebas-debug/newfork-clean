@@ -495,3 +495,54 @@ export const workspaceDashboardSchema = z.object({
   layout: workspaceLayoutInputSchema,
 });
 export type WorkspaceDashboard = z.infer<typeof workspaceDashboardSchema>;
+
+const homeMomentSchema = z.string().datetime({ offset: true });
+const homeDateSchema = z.string().regex(/^\d{4}-\d{2}-\d{2}$/);
+
+/**
+ * The managers' Home, "Locations first" (YONETICI-HOME, KARARLAR S-210): each
+ * location in the actor's schedule scope with its day, its next seven days and
+ * whoever works there without a required document (S-206), and the time off
+ * waiting on an answer. Layout, to-dos and announcements stay on the
+ * Workspace dashboard read.
+ */
+export const managerHomeLocationSchema = z.object({
+  id: z.string().uuid(),
+  name: z.string(),
+  timezone: z.string(),
+  today: homeDateSchema,
+  today_shifts: z.array(z.object({ starts_at: homeMomentSchema, ends_at: homeMomentSchema, open: z.boolean() })),
+  floor_managers: z.array(z.object({ name: z.string(), starts_at: homeMomentSchema, ends_at: homeMomentSchema })),
+  week: z
+    .array(
+      z.object({
+        date: homeDateSchema,
+        shifts: z.coerce.number().int().nonnegative(),
+        open: z.coerce.number().int().nonnegative(),
+        published: z.boolean(),
+      }),
+    )
+    .length(7),
+  open_shifts: z.array(
+    z.object({ date: homeDateSchema, starts_at: homeMomentSchema, ends_at: homeMomentSchema, job_name: z.string() }),
+  ),
+  missing_documents: z.array(z.object({ employee_id: z.string().uuid(), name: z.string(), document: z.string() })),
+});
+export type ManagerHomeLocation = z.infer<typeof managerHomeLocationSchema>;
+
+export const managerHomeSchema = z.object({
+  workspace_id: z.string().uuid(),
+  now: homeMomentSchema,
+  locations: z.array(managerHomeLocationSchema),
+  time_off: z.array(
+    z.object({
+      id: z.string().uuid(),
+      employee_id: z.string().uuid(),
+      employee_name: z.string(),
+      first_date: homeDateSchema.nullable(),
+      last_date: homeDateSchema.nullable(),
+      location_ids: z.array(z.string().uuid()),
+    }),
+  ),
+});
+export type ManagerHome = z.infer<typeof managerHomeSchema>;

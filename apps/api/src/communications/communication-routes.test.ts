@@ -81,6 +81,7 @@ function communicationServiceMock(): CommunicationService {
     setAnnouncementState: vi.fn(),
     acknowledgeAnnouncement: vi.fn(),
     getWorkspace: vi.fn(),
+    getManagerHome: vi.fn(),
     saveWorkspaceLayout: vi.fn(),
     createWorkspaceTodo: vi.fn(),
     resolveWorkspaceTodo: vi.fn(),
@@ -379,6 +380,8 @@ describe("communication routes", () => {
     const todoId = "a9700000-0000-4000-8000-000000000011";
     const routes = [
       ["home", "getWorkspace", "GET", `/v1/workspaces/${workspaceId}/workspace`, undefined],
+      // The managers' Home, "Locations first" (YONETICI-HOME): the same gate, its own read.
+      ["managers' Home", "getManagerHome", "GET", `/v1/workspaces/${workspaceId}/workspace/home`, undefined],
       ["layout", "saveWorkspaceLayout", "PUT", `/v1/workspaces/${workspaceId}/workspace/layout`, { widget_order: ["operations", "pending_requests", "open_shifts", "announcements", "todos", "quick_actions"], hidden_widget_ids: [] }],
       ["new to-do", "createWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos`, { title: "Follow up", body: "", employee_id: null, due_at: null }],
       ["to-do resolution", "resolveWorkspaceTodo", "POST", `/v1/workspaces/${workspaceId}/workspace/todos/${todoId}/resolve`, undefined],

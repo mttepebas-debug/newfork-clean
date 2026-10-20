@@ -234,6 +234,22 @@ export function registerCommunicationRoutes(
     return reply.send(await options.service.getWorkspace(actor(context)));
   });
 
+  // The managers' Home, "Locations first" (YONETICI-HOME, KARARLAR S-210): each
+  // location's day. No gate here either: the service asks the core
+  // (workspace.todos; its locations are the schedule.read scope).
+  app.get("/v1/workspaces/:workspaceId/workspace/home", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success)
+      return reply.status(400).send({ error: "Valid workspace required" });
+    const context = await resolveActor(
+      request.headers.authorization,
+      params.data.workspaceId,
+      options.contextResolver,
+    );
+    if (!options.service) return unavailable(reply);
+    return reply.send(await options.service.getManagerHome(actor(context)));
+  });
+
   app.put(
     "/v1/workspaces/:workspaceId/workspace/layout",
     async (request, reply) => {
