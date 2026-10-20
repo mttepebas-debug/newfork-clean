@@ -100,8 +100,8 @@ test.describe("phone", () => {
     await drawer.getByRole("button", { name: "Save", exact: true }).click();
     const saved = drawer.locator(".employee-drawer-notice[role='status']");
     await expect(saved).toContainText("Employee saved.");
-    // The saved person loads first (Close alone), then their own buttons.
-    await expect(drawer.getByRole("button", { name: "Save changes", exact: true })).toBeVisible();
+    // The saved person loads first (Close alone), then their own footer: Cancel, Invite, Done.
+    await expect(drawer.locator(".employee-drawer-footer:not(.employee-create-footer) .employee-drawer-actions .nf-button")).toHaveCount(3);
     await footerHolds(drawer);
     for (const button of await drawer.locator(".employee-drawer-actions .nf-button").all()) await onTop(button);
     const [band, footer] = [await saved.boundingBox(), await drawer.locator(".employee-drawer-footer").boundingBox()];
