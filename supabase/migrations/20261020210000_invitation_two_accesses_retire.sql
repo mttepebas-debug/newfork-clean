@@ -1,5 +1,5 @@
 -- DAVET-ERISIM part 2 of 2 (Tur 4 B; ROL-CIFT 6.1 and 6.3): once the code on main calls only the two-access
--- services (20261020130000), the one-role road goes: the role service behind PATCH /role, the one-role
+-- services (20261020200724), the one-role road goes: the role service behind PATCH /role, the one-role
 -- invitation and create calls, place_single_role, and manages_follow_works. Nothing places one role into two
 -- slots any more. Applied to the live database only after main's CI is green (CLAUDE.md: a dropping migration
 -- goes after the code that no longer uses it).
