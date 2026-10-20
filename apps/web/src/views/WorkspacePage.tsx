@@ -25,7 +25,7 @@ import {
   Settings2,
   TriangleAlert,
 } from "lucide-react";
-import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
@@ -88,7 +88,11 @@ export function WorkspacePage() {
   const { context } = useAuth();
   const client = useQueryClient();
   const phone = usePhoneWidth();
-  const root = useRef<HTMLDivElement>(null);
+  // Home paints after its outline: the scroll motion starts when its root is on the page,
+  // not at the first render (a plain ref would leave the greeting, the bar's pill and the
+  // sections' rise still).
+  const [rootElement, setRootElement] = useState<HTMLDivElement | null>(null);
+  const root = useMemo(() => ({ current: rootElement }), [rootElement]);
   const far = useHomeScroll(root);
   const [customizing, setCustomizing] = useState(false);
   const [draft, setDraft] = useState<WorkspaceLayoutInput | null>(null);
@@ -363,7 +367,7 @@ export function WorkspacePage() {
 
   return (
     <section className="manager-home-page" aria-labelledby="manager-home-title">
-      <div className={`eh-dashboard dl-home mh-home${far ? " is-far" : ""}`} data-slot={daySlot(minute)} ref={root}>
+      <div className={`eh-dashboard dl-home mh-home${far ? " is-far" : ""}`} data-slot={daySlot(minute)} ref={setRootElement}>
         <div className="dl-sky" aria-hidden />
         {phoneSlot ? createPortal(pill, phoneSlot) : null}
         <div className="eh-context-bar">
