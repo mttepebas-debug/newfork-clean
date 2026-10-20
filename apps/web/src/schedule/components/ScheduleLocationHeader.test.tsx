@@ -162,11 +162,54 @@ describe("ScheduleLocationHeader", () => {
     );
 
     const statusDot = screen.getByLabelText(
-      "Deadline approaching. This week starts soon; publish the schedule as soon as possible.",
+      "Deadline approaching. The week starts Mon, Sep 7; publish the schedule as soon as possible.",
     );
     expect(statusDot.dataset.status).toBe("unpublished");
     expect(statusDot.dataset.deadline).toBe("true");
     expect(statusDot.getAttribute("title")).toContain("Deadline approaching");
+  });
+
+  // Settings → Scheduling → Publish by: the deadline is that weekday before the
+  // week, and the warning names the date (two days ahead, as before).
+  describe("with the workspace's Publish by day", () => {
+    const header = (currentDate: string) => (
+      <ScheduleLocationHeader
+        location={{
+          ...unifiedLocation,
+          id: "loc-1",
+          name: "Main Dining",
+          sourceIds: ["loc-1"],
+          sourceNames: [{ id: "loc-1", name: "Main Dining" }],
+        }}
+        locationIndex={0}
+        daysLength={7}
+        weekStartDate="2026-09-07"
+        currentDate={currentDate}
+        publishDeadlineDay="thursday"
+        onToggleLocationFilter={vi.fn()}
+      />
+    );
+
+    it("stays quiet until two days before that day", () => {
+      render(header("2026-08-31"));
+      expect(screen.getByLabelText("Unpublished").dataset.deadline).toBe("false");
+    });
+
+    it("names the date to publish by and the week's start", () => {
+      render(header("2026-09-01"));
+      const dot = screen.getByLabelText(
+        "Deadline approaching. Publish by Thu, Sep 3. The week starts Mon, Sep 7.",
+      );
+      expect(dot.dataset.deadline).toBe("true");
+    });
+
+    it("says the date passed while the week has not started", () => {
+      render(header("2026-09-05"));
+      const dot = screen.getByLabelText(
+        "Publish deadline passed on Thu, Sep 3. The week starts Mon, Sep 7; publish as soon as possible.",
+      );
+      expect(dot.dataset.deadline).toBe("true");
+    });
   });
 
   it("keeps unpublished headers urgent while the schedule week is underway", () => {

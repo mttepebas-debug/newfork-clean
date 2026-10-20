@@ -444,6 +444,9 @@ export function SchedulePage({
   const [isUnpublishing, setIsUnpublishing] = useState(false);
   const [publicationStatus, setPublicationStatus] =
     useState<SchedulePublicationStatus | null>(null);
+  // Settings → Scheduling → Publish by, kept while an edit hides the status.
+  const [publishDeadlineDay, setPublishDeadlineDay] =
+    useState<SchedulePublicationStatus["schedule_deadline_day"]>();
   const [pendingOps, setPendingOps] = useState<readonly SchedulePendingOp[]>(
     [],
   );
@@ -1069,8 +1072,10 @@ export function SchedulePage({
         context.workspace.id,
         query.data.week_start,
       );
-      if (requestId === publicationRequestIdRef.current)
+      if (requestId === publicationRequestIdRef.current) {
         setPublicationStatus(status);
+        setPublishDeadlineDay(status.schedule_deadline_day);
+      }
     } catch (error) {
       if (requestId === publicationRequestIdRef.current)
         setPublicationStatus(null);
@@ -2878,6 +2883,7 @@ export function SchedulePage({
         model={sortedModel}
         timeFormat={resolveTimeInputFormat(account?.timeFormat, model.settings.time_format)}
         publishWarnings={canPublishSchedule}
+        publishDeadlineDay={publishDeadlineDay}
         search={search}
         selectedDate={selectedDate}
         view={view}

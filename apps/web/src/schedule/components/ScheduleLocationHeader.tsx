@@ -1,3 +1,4 @@
+import type { SchedulingSettings } from "@newfork/shared";
 import { todayIn } from "../../lib/today";
 import type { KeyboardEvent, MouseEvent } from "react";
 
@@ -6,6 +7,9 @@ import type { ScheduleGridLocationGroup } from "../lib/scheduleGridLayout";
 const PUBLISH_DEADLINE_WARNING_DAYS = 2;
 const SCHEDULE_WEEK_LENGTH_DAYS = 7;
 const MS_PER_DAY = 24 * 60 * 60 * 1000;
+const WEEKDAYS = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"] as const;
+
+type PublishDeadlineDay = SchedulingSettings["schedule_deadline_day"];
 
 export function ScheduleLocationHeader({
   location,
@@ -15,6 +19,7 @@ export function ScheduleLocationHeader({
   // A group of several locations has no zone of its own: the device's calendar.
   currentDate = todayIn(location.timezone),
   publishWarnings = true,
+  publishDeadlineDay,
   onToggleLocationFilter,
 }: {
   readonly location: ScheduleGridLocationGroup;
@@ -24,6 +29,8 @@ export function ScheduleLocationHeader({
   readonly currentDate?: string;
   /** BL-683: false for a viewer who cannot publish (an employee): no deadline call to action. */
   readonly publishWarnings?: boolean;
+  /** Settings → Scheduling → Publish by; until it loads, the week's start is the deadline. */
+  readonly publishDeadlineDay?: PublishDeadlineDay;
   readonly onToggleLocationFilter: (locationIds: readonly string[]) => void;
 }) {
   const status = getLocationPublicationStatus(
@@ -31,6 +38,7 @@ export function ScheduleLocationHeader({
     weekStartDate,
     currentDate,
     publishWarnings,
+    publishDeadlineDay,
   );
   const toggle = (
     locationIds: readonly string[],
@@ -104,6 +112,7 @@ function getLocationPublicationStatus(
   weekStartDate: string,
   currentDate: string,
   publishWarnings: boolean,
+  publishDeadlineDay: PublishDeadlineDay | undefined,
 ): {
   readonly status: "published" | "unpublished";
   readonly deadlineWarning: boolean;
@@ -117,20 +126,27 @@ function getLocationPublicationStatus(
     };
   }
 
-  const daysUntilStart = daysUntilWeekStart(weekStartDate, currentDate);
+  const daysUntilStart = daysBetween(currentDate, weekStartDate);
+  const deadline = publishDeadlineDay
+    ? publishDeadlineDate(weekStartDate, publishDeadlineDay)
+    : null;
+  const daysUntilDeadline = deadline ? daysBetween(currentDate, deadline) : daysUntilStart;
   const deadlineWarning =
     publishWarnings &&
-    daysUntilStart <= PUBLISH_DEADLINE_WARNING_DAYS &&
+    daysUntilDeadline <= PUBLISH_DEADLINE_WARNING_DAYS &&
     daysUntilStart > -SCHEDULE_WEEK_LENGTH_DAYS;
   return {
     status: "unpublished",
     deadlineWarning,
-    label: getUnpublishedStatusLabel(daysUntilStart, deadlineWarning),
+    label: getUnpublishedStatusLabel(weekStartDate, daysUntilStart, deadline, daysUntilDeadline, deadlineWarning),
   };
 }
 
 function getUnpublishedStatusLabel(
+  weekStartDate: string,
   daysUntilStart: number,
+  deadline: string | null,
+  daysUntilDeadline: number,
   deadlineWarning: boolean,
 ): string {
   if (!deadlineWarning) {
@@ -141,11 +157,31 @@ function getUnpublishedStatusLabel(
     return "Schedule week is underway. Publish this schedule as soon as possible.";
   }
 
-  return "Deadline approaching. This week starts soon; publish the schedule as soon as possible.";
+  const weekStart = shortDate(weekStartDate);
+  if (!deadline) {
+    return `Deadline approaching. The week starts ${weekStart}; publish the schedule as soon as possible.`;
+  }
+  if (daysUntilDeadline < 0) {
+    return `Publish deadline passed on ${shortDate(deadline)}. The week starts ${weekStart}; publish as soon as possible.`;
+  }
+  return `Deadline approaching. Publish by ${shortDate(deadline)}. The week starts ${weekStart}.`;
 }
 
-function daysUntilWeekStart(weekStartDate: string, today: string): number {
-  return Math.ceil((toUtcDay(weekStartDate) - toUtcDay(today)) / MS_PER_DAY);
+/** The last `day` before the week starts. */
+function publishDeadlineDate(weekStartDate: string, day: PublishDeadlineDay): string {
+  const start = new Date(toUtcDay(weekStartDate));
+  const back = (start.getUTCDay() - WEEKDAYS.indexOf(day) + 7) % 7 || 7;
+  return new Date(start.getTime() - back * MS_PER_DAY).toISOString().slice(0, 10);
+}
+
+function shortDate(iso: string): string {
+  return new Intl.DateTimeFormat("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" }).format(
+    new Date(toUtcDay(iso)),
+  );
+}
+
+function daysBetween(from: string, to: string): number {
+  return Math.ceil((toUtcDay(to) - toUtcDay(from)) / MS_PER_DAY);
 }
 
 function toUtcDay(iso: string): number {

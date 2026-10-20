@@ -5,7 +5,7 @@ import type {
   ScheduleShift,
   ScheduleView,
 } from "@newfork/shared/schedule";
-import type { ScheduleLogoPlacement } from "@newfork/shared";
+import type { ScheduleLogoPlacement, SchedulingSettings } from "@newfork/shared";
 import {
   useEffect,
   useMemo,
@@ -61,6 +61,7 @@ export function ScheduleGrid({
   showClockTimes,
   timeFormat,
   publishWarnings,
+  publishDeadlineDay,
   showTotalHours,
   showUnassignedShifts,
   unassignedFrozen,
@@ -102,6 +103,8 @@ export function ScheduleGrid({
   readonly timeFormat?: ScheduleReadModel["settings"]["time_format"];
   /** BL-683, BL-1025: false where the viewer cannot publish (Employee view, a manager without publish). */
   readonly publishWarnings?: boolean;
+  /** Settings → Scheduling → Publish by. */
+  readonly publishDeadlineDay?: SchedulingSettings["schedule_deadline_day"];
   readonly search: URLSearchParams;
   readonly selectedDate: string;
   readonly view: ScheduleView;
@@ -469,6 +472,7 @@ export function ScheduleGrid({
         showTotalHours={showTotalHours}
         weekStartDate={model.week_start}
         publishWarnings={publishWarnings}
+        publishDeadlineDay={publishDeadlineDay}
         onDayHeaderClick={onDayHeaderClick}
         onManageLogo={onManageLogo}
         onOpenPost={onOpenPost}

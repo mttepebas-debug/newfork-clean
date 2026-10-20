@@ -1,3 +1,4 @@
+import type { SchedulingSettings } from "@newfork/shared";
 import type { ScheduleReadModel } from "@newfork/shared/schedule";
 
 import type { ScheduleLogoSaveDraft } from "./ScheduleLogoUploadDialog";
@@ -20,6 +21,7 @@ export function ScheduleGridHeaders({
   weekStartDate,
   currentDate,
   publishWarnings,
+  publishDeadlineDay,
   onDayHeaderClick,
   onManageLogo,
   onOpenPost,
@@ -38,6 +40,7 @@ export function ScheduleGridHeaders({
   readonly weekStartDate: string;
   readonly currentDate?: string;
   readonly publishWarnings?: boolean;
+  readonly publishDeadlineDay?: SchedulingSettings["schedule_deadline_day"];
   readonly onDayHeaderClick: (
     date: string,
     locationIds: readonly string[],
@@ -80,6 +83,7 @@ export function ScheduleGridHeaders({
           weekStartDate={weekStartDate}
           currentDate={currentDate}
           publishWarnings={publishWarnings}
+          publishDeadlineDay={publishDeadlineDay}
           onToggleLocationFilter={onToggleLocationFilter}
         />
       ))}

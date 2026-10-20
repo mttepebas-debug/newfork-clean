@@ -1135,7 +1135,18 @@ describe("App", () => {
       render(<App />);
 
       expect(
-        (await screen.findAllByRole("img", { name: /publish the schedule as soon as possible/ })).length,
+        (await screen.findAllByRole("img", { name: /as soon as possible/ })).length,
+      ).toBeGreaterThan(0);
+    });
+
+    // Settings → Scheduling → Publish by (Sunday here) sets the date the dot names.
+    it("names the Publish by date from the workspace's settings", async () => {
+      unpublishedThisWeek();
+      testAuth.role = "owner";
+      render(<App />);
+
+      expect(
+        (await screen.findAllByRole("img", { name: /^Publish deadline passed on Sun, Aug 16\./ })).length,
       ).toBeGreaterThan(0);
     });
 
