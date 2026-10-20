@@ -1851,7 +1851,8 @@ CREATE OR REPLACE FUNCTION "app_private"."announcement_item"("state" "app_privat
     'status', item.status, 'display_status', shown.status,
     'publish_error_code', case when shown.status <> 'publish_failed' then null
       when item.release_error like '42501%' then 'not_allowed'
-      when item.release_error like '%too_late%' then 'too_late' else 'failed' end,
+      when item.release_error like '%too_late%' then 'too_late'
+      when item.release_error = '22023: nobody' then 'nobody' else 'failed' end,
     'starts_on', item.starts_on, 'ends_on', item.ends_on,
     'event_from', to_char(item.event_from, 'HH24:MI'), 'event_until', to_char(item.event_until, 'HH24:MI'),
     'recurrence', item.recurrence,
@@ -2116,7 +2117,14 @@ begin
     end if;
   end if;
 
-  if jsonb_array_length(n -> 'live_location_ids') = 0 and jsonb_array_length(n -> 'people') = 0 then
+  -- Bug 2: it goes to people, not to checked locations; with nobody but its
+  -- author at them (or only its author named) it reaches nobody.
+  if cardinality(app_private.announcement_audience(w,
+       array(select x::uuid from jsonb_array_elements_text(n -> 'live_location_ids') x),
+       array(select x::uuid from jsonb_array_elements_text(n -> 'people') x),
+       array(select change.employee_id from public.announcement_shift_changes change
+             where change.announcement_id = stored.id and not change.silent and change.brought_back_at is null),
+       coalesce(stored.created_by, (n ->> 'author')::uuid))) = 0 then
     found := found || jsonb_build_array(jsonb_build_object('tab', 'aud', 'field', 'people', 'code', 'nobody',
       'message', 'Nobody gets it yet. Check a location on Locations & publishing, or add people here.', 'required', true));
   end if;
@@ -2285,6 +2293,8 @@ begin
                            from jsonb_array_elements(live_rows || kept_rows) r), '[]'::jsonb),
     'live_location_ids', coalesce((select jsonb_agg(r -> 'location_id') from jsonb_array_elements(live_rows) r), '[]'::jsonb),
     'people', to_jsonb(added),
+    -- Bug 2: who wrote it never counts as reached; the checks read it here.
+    'author', author,
     'hours', hours,
     'choices', case when jsonb_typeof(p -> 'choices') = 'object' then p -> 'choices' else '{}'::jsonb end);
 end;
@@ -2412,6 +2422,10 @@ begin
         if failure is not null then
           raise exception 'Not allowed' using errcode = '42501', hint = 'authz.' || failure, detail = 'announcement.write';
         end if;
+        -- Bug 2: due with nobody left to reach (they left its locations), it stays back.
+        if cardinality(app_private.announcement_recipients(item)) = 0 then
+          raise exception 'nobody' using errcode = '22023', hint = 'announcement.nobody';
+        end if;
         impact := app_private.announcement_impact(place, item.id, item.starts_on, item.ends_on,
           app_private.announcement_rows(item.id), item.shift_choices, item.choices_saved_at);
         update public.announcements
@@ -2431,15 +2445,18 @@ begin
         released := released + 1;
       exception when others then
         get stacked diagnostics failure = returned_sqlstate, failure_hint = pg_exception_hint, failure_text = message_text;
-        if failure = '42501' or failure_hint = 'announcement.too_late' then
+        if failure = '42501' or failure_hint in ('announcement.too_late', 'announcement.nobody') then
           update public.announcements
           set release_failed_at = now(), release_error = left(failure || ': ' || failure_text, 2000), revision = revision + 1
           where id = item.id returning * into item;
           insert into public.announcement_changes (workspace_id, announcement_id, actor_user_id, action, detail)
           values (place, item.id, null, 'publish_failed',
-            jsonb_build_object('code', case when failure = '42501' then 'not_allowed' else 'too_late' end));
+            jsonb_build_object('code', case when failure = '42501' then 'not_allowed'
+                                            when failure_hint = 'announcement.nobody' then 'nobody' else 'too_late' end));
           perform app_private.announcement_tell_release_failed(item, case when failure = '42501'
-            then 'Whoever scheduled it may no longer publish it.' else 'Its day started before it could go out.' end);
+            then 'Whoever scheduled it may no longer publish it.'
+            when failure_hint = 'announcement.nobody' then 'Nobody else would get it.'
+            else 'Its day started before it could go out.' end);
         else
           -- One broken row must not hold up every workspace's, nor the read
           -- that called this (O2). It tries again the next minute (KK-98).
@@ -14651,7 +14668,9 @@ begin
                          join public.employee_profiles person on person.id = assignment.employee_id and person.archived_at is null
                          join public.workspace_memberships membership
                            on membership.workspace_id = w and membership.user_id = person.user_id and membership.status = 'active'
-                         where assignment.location_id = location.id and assignment.ended_at is null))
+                         -- Bug 35: whoever is writing never gets their own post.
+                         where assignment.location_id = location.id and assignment.ended_at is null
+                           and person.user_id <> actor_user_id))
         order by location.sort_order, location.name)
       from public.locations location
       where location.workspace_id = w and location.archived_at is null and (wide or location.id = any (writable))), '[]'::jsonb)

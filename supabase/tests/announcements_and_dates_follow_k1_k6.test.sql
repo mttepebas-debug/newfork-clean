@@ -255,6 +255,8 @@ select tests.remember('m:date:kb', pg_temp.publish('owner', array['K', 'B'], 'Ka
 select is((select jsonb_agg(l ->> 'name' order by l ->> 'name') from jsonb_array_elements(pg_temp.sees_date('ayse', tests.id('m:date:kb')) -> 'locations') l),
   '["Besiktas", "Kadikoy"]'::jsonb, 'K6: Ayse sees a date at Kadikoy and Besiktas with both names');
 select is(pg_temp.sees_date('ayse', tests.id('m:date:kb')) ->> 'can_edit', 'false', 'K6: and may not change it');
+-- Bug 2: a post reaches people, so Moda has someone besides the owner.
+select tests.person('m', 'meral', 'employee', array['M'], array['server']);
 select tests.remember('m:date:km', pg_temp.publish('owner', array['K', 'M'], 'Kadikoy and Moda', '{"on_important_dates": true}'));
 select tests.remember('m:date:m', pg_temp.publish('owner', array['M'], 'Moda only', '{"on_important_dates": true}'));
 update public.locations set archived_at = now() where id = tests.id('m:M');

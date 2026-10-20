@@ -161,6 +161,8 @@ begin
   return made;
 end;
 $$;
+-- Bug 2: a post reaches people, so n's Kadikoy has someone besides its owner.
+select tests.person('n', 'nur', 'employee', array['K'], array['server']);
 select tests.remember('n:ann', pg_temp.schedule_in('n', tests.user('n:owner'), 'Broken'));
 select tests.remember('r:ann:due', pg_temp.schedule_in('r', pg_temp.u('owner'), 'Due'));
 -- ponytail: time passes by moving their hour back.
@@ -218,6 +220,46 @@ select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload(
   'KK-86: a draft only at archived Moda can still be changed');
 select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('{}', 'Moda only'), 'publish')$$, tests.id('r:ann:m'))),
   '22023 announcement.nobody', 'KK-86: but it reaches nobody, so it does not go out');
+
+-- 7b. Nobody but its author (bugs 2 and 35) ------------------------------------------------------
+-- A new location, Sile (S), reaches the owner alone (locations_reach_the_owner);
+-- then employee Sena joins. A post reaches people, not a checked location: its
+-- author never counts, on the location row either.
+
+select tests.as_browser(tests.user('r:owner'), format(
+  $sql$insert into public.locations (id, workspace_id, name, short_name, street_address, city, region, postal_code, timezone)
+       values (%L, %L, 'Sile', 'SLE', '1 Sile Cd', 'Istanbul', 'Istanbul', '34980', 'Europe/Istanbul')$sql$,
+  tests.remember('r:S', gen_random_uuid()), tests.id('r')));
+create function pg_temp.people_at(person text, key text) returns integer language sql as $$
+  select (l ->> 'people_count')::integer
+  from jsonb_array_elements(public.get_announcements_service(pg_temp.u(person), tests.id('r')) -> 'locations') l
+  where (l ->> 'id')::uuid = tests.id('r:' || key)
+$$;
+select is(pg_temp.people_at('owner', 'S'), 0, 'bug 35: Sile''s row does not count the owner, who is writing');
+select tests.remember('r:ann:alone', pg_temp.draft('owner', array['S'], 'Only the owner at Sile'));
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload(array['S'], 'Only the owner at Sile'), 'publish')$$,
+  tests.id('r:ann:alone'))), '22023 announcement.nobody', 'bug 2: a location with only its author reaches nobody, so it does not go out');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload('{}', 'Only the owner at Sile', jsonb_build_object('people', jsonb_build_array(%L))), 'publish')$$,
+  tests.id('r:ann:alone'), pg_temp.u('owner'))), '22023 announcement.nobody', 'bug 2: nor does a list naming only its author');
+
+select tests.person('r', 'sena', 'employee', array['S'], array['server']);
+select is(pg_temp.people_at('owner', 'S'), 1, 'bug 35: with Sena there, the owner''s row says 1');
+select is(pg_temp.people_at('zeynep', 'S'), 2, 'bug 35: and admin Zeynep, who is not at Sile, reads 2');
+select is(pg_temp.try(format($$select pg_temp.save('owner', %L, pg_temp.payload(array['S'], 'Only the owner at Sile'), 'publish')$$,
+  tests.id('r:ann:alone'))), 'ok', 'bug 2: once Sena is there it goes out');
+
+-- Scheduled while Sena was there; she leaves Sile before it is due.
+select tests.remember('r:ann:later', pg_temp.draft('owner', array['S'], 'Later at Sile'));
+select pg_temp.save('owner', tests.id('r:ann:later'),
+  pg_temp.payload(array['S'], 'Later at Sile', jsonb_build_object('publish_at', now() + interval '1 hour')), 'schedule');
+update public.employee_location_assignments set ended_at = now()
+where employee_id = tests.id('r:sena') and location_id = tests.id('r:S');
+-- ponytail: time passes by moving its hour back.
+update public.announcements set publish_at = now() - interval '1 minute' where id = tests.id('r:ann:later');
+select app_private.announcement_release(tests.id('r'));
+select is(pg_temp.sees('owner', tests.id('r:ann:later')) ->> 'display_status', 'publish_failed',
+  'bug 2: due with nobody left to reach, it does not go out');
+select is(pg_temp.sees('owner', tests.id('r:ann:later')) ->> 'publish_error_code', 'nobody', 'bug 2: and says nobody would get it');
 
 -- 8. Two people editing at once: the later save is refused (KK-92 c) ----------------------------
 
