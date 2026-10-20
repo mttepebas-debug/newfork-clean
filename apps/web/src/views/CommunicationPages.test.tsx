@@ -41,6 +41,7 @@ const context = {
 vi.mock("../auth/AuthContext", () => ({ useAuth: () => ({ context }) }));
 vi.mock("../communications/communications-data", () => ({
   getWorkspaceDashboard: vi.fn(),
+  getManagerHome: vi.fn().mockResolvedValue({ workspace_id: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd", now: "2026-10-20T12:00:00Z", locations: [], time_off: [] }),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
 }));
 
@@ -60,7 +61,7 @@ function renderRoute(path: string, element: React.ReactNode, routePath = "*") {
 }
 
 describe("Phase 8 communication pages", () => {
-  it("saves a personalized Workspace layout", async () => {
+  it("saves a personalized Home layout", async () => {
     vi.mocked(getWorkspaceDashboard).mockResolvedValue({
       workspace_id: workspaceId,
       display_name: "Taylor",
@@ -86,10 +87,11 @@ describe("Phase 8 communication pages", () => {
     });
     renderRoute("/app/workspace", <WorkspacePage />);
     expect(
-      await screen.findByRole("heading", { name: "Workspace" }),
+      await screen.findByRole("heading", { name: /, Taylor\.$/ }),
     ).toBeTruthy();
     fireEvent.click(screen.getByRole("button", { name: "Customize" }));
-    fireEvent.click(screen.getByRole("button", { name: "Hide Quick actions" }));
+    // "Next 7 days" is kept under the stored key quick_actions (YONETICI-HOME).
+    fireEvent.click(screen.getByRole("button", { name: "Hide Next 7 days" }));
     fireEvent.click(screen.getByRole("button", { name: "Save layout" }));
     await waitFor(() =>
       expect(saveWorkspaceLayout).toHaveBeenCalledWith(

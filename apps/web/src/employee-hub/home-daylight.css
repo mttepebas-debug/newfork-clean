@@ -7,16 +7,17 @@
 /* The page box is the shell's (S-172: 32 px right of the open menu, held when
    it folds); Home draws no ground of its own, so the app's ground runs on
    under it, past both its edges and into the band a folded menu leaves. */
-.employee-hub-page:has(> .dl-home) {
+/* The managers' Home (.manager-home-page, YONETICI-HOME) is the same page. */
+:is(.employee-hub-page, .manager-home-page):has(> .dl-home) {
   padding: 0;
   background: transparent;
 }
 /* The sky reaches the scrolling area's edges; the area clips it there. */
-.app-main:has(> .employee-hub-page > .dl-home) {
+.app-main:has(> :is(.employee-hub-page, .manager-home-page) > .dl-home) {
   overflow-x: hidden;
 }
 @media (max-width: 720px) {
-  .employee-hub-page:has(> .dl-home) {
+  :is(.employee-hub-page, .manager-home-page):has(> .dl-home) {
     width: 100%;
   }
 }
@@ -25,7 +26,7 @@
    whole area and the column sits in its middle (Mert 2026-10-19, the Employee
    Home variants page, A; CALISAN-HOME-HIZA). */
 @media (min-width: 721px) {
-  .app-shell[data-content-held="true"] > .app-main > .employee-hub-page:has(> .dl-home) {
+  .app-shell[data-content-held="true"] > .app-main > :is(.employee-hub-page, .manager-home-page):has(> .dl-home) {
     --app-page-gutter-start: 0px;
     --app-page-gutter-end: 0px;
     width: 100%;

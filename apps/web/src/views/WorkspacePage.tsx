@@ -1,5 +1,6 @@
 import { usePhoneWidth } from "../lib/usePhoneWidth";
 import type {
+  ManagerHomeLocation,
   OwnerSetupChecklistItemId,
   WorkspaceDashboard,
   WorkspaceLayoutInput,
@@ -9,24 +10,30 @@ import type {
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   ArrowDown,
+  ArrowLeftRight,
   ArrowRight,
   ArrowUp,
   CalendarDays,
+  CalendarX,
   Check,
   CheckCircle2,
+  ChevronRight,
+  CircleCheck,
   Eye,
   EyeOff,
-  Megaphone,
+  MapPin,
   Settings2,
-  Users,
+  TriangleAlert,
 } from "lucide-react";
-import { useEffect, useState, type FormEvent, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "react-router";
 import { useAuth } from "../auth/AuthContext";
 import { can } from "../auth/can";
 import { safeAppActionUrl } from "../communications/action-url";
 import {
   createWorkspaceTodo,
+  getManagerHome,
   getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
   markOwnerSetupChecklistItem,
@@ -35,29 +42,57 @@ import {
 } from "../communications/communications-data";
 
 import { getExchanges } from "../employee-hub/shift-exchanges/exchange-data";
-import { CatalogPageHeader } from "./CatalogPageHeader";
+import { HomeSection } from "../employee-hub/HomeSection";
+import { HomeNoticeDeck } from "../employee-hub/HomeNoticeDeck";
+import { useHomeScroll } from "../employee-hub/home-motion";
+import { daySlot } from "../employee-hub/home-model";
+import { ago } from "../employee-hub/home-data";
+import { NotificationBell } from "../notifications/NotificationViews";
 
 import { isNoAccess } from "../lib/no-access";
 import { requestErrorText } from "../lib/request-error";
 import { NoAccessState } from "../shell/NoAccessState";
 import { LoadError, LoadingOutline, RefreshError, Skeleton } from "../shell/LoadState";
 import { noAccessHomePath } from "../auth/resolveLanding";
-import { announcementCategoryLabel } from "../lib/announcementCategories";
 import { membershipClass } from "../auth/access";
-const widgetLabels: Record<WorkspaceWidgetId, string> = {
-  operations: "Today",
-  pending_requests: "Pending requests",
-  open_shifts: "Open shifts",
-  announcements: "Announcements",
-  todos: "Todos",
-  quick_actions: "Quick actions",
-};
+import {
+  HOME_SECTIONS,
+  groupNeeds,
+  homeNeeds,
+  homeSubline,
+  hourBars,
+  hourNow,
+  locationBadge,
+  managerOnFloor,
+  needsAt,
+  onNow,
+  openToday,
+  type ManagerNeed,
+} from "./manager-home-model";
+import "../employee-hub/employee-dashboard.css";
+import "../employee-hub/home-daylight.css";
+import "./manager-home.css";
 
+const managerHomeKey = (workspaceId: string) => ["workspace-dashboard", workspaceId, "home"];
+
+/**
+ * The managers' Home (Owner, Admin, Manager): Daylight "C · Locations first"
+ * (Mert 2026-10-19, KARARLAR S-210). The employee's Home greeting and sky
+ * (S-163, S-180), then a card per location with who is on the floor now and
+ * the day hour by hour; a card or a chip narrows the whole page to that
+ * location; "Needs you" is grouped by location, with whoever works without a
+ * required document on top (S-206). Customize still moves and hides the
+ * sections, saved as before (S-210 (a)).
+ */
 export function WorkspacePage() {
   const { context } = useAuth();
   const client = useQueryClient();
+  const phone = usePhoneWidth();
+  const root = useRef<HTMLDivElement>(null);
+  const far = useHomeScroll(root);
   const [customizing, setCustomizing] = useState(false);
   const [draft, setDraft] = useState<WorkspaceLayoutInput | null>(null);
+  const [chosen, setChosen] = useState("all");
   const [now, setNow] = useState(() => new Date());
   const workspaceId = context?.workspace.id ?? "";
   const query = useQuery({
@@ -65,9 +100,15 @@ export function WorkspacePage() {
     queryFn: () => getWorkspaceDashboard(workspaceId),
     enabled: Boolean(workspaceId),
   });
-  // The setup checklist sits above the cards: it is read beside the
-  // dashboard and the outline stays until both have answered, so the cards
-  // never jump down when it paints (CI run 39023052297: 405 px on a phone).
+  const home = useQuery({
+    queryKey: managerHomeKey(workspaceId),
+    queryFn: () => getManagerHome(workspaceId),
+    enabled: Boolean(workspaceId),
+    refetchInterval: 5 * 60_000,
+  });
+  // The setup checklist sits above the sections: it is read beside the
+  // dashboard and the outline stays until both have answered, so the page
+  // never jumps down when it paints (CI run 39023052297: 405 px on a phone).
   const ownerRole =
     (context ? membershipClass(context.membership) : undefined) === "owner" || (context ? membershipClass(context.membership) : undefined) === "admin";
   const checklist = useQuery({
@@ -82,10 +123,9 @@ export function WorkspacePage() {
     refetchInterval: 60_000,
   });
   const saveMutation = useMutation({
-    mutationFn: (layout: WorkspaceLayoutInput) =>
-      saveWorkspaceLayout(workspaceId, layout),
+    mutationFn: (layout: WorkspaceLayoutInput) => saveWorkspaceLayout(workspaceId, layout),
     onSuccess: async () => {
-      await client.invalidateQueries({ queryKey: ["workspace-dashboard"] });
+      await client.invalidateQueries({ queryKey: ["workspace-dashboard", workspaceId] });
       setDraft(null);
       setCustomizing(false);
     },
@@ -106,30 +146,23 @@ export function WorkspacePage() {
     if (!todayEndsAt) return;
     const wait = Date.parse(todayEndsAt) - Date.now();
     const timer = window.setTimeout(() => {
-      void client.invalidateQueries({
-        queryKey: ["workspace-dashboard", workspaceId],
-      });
+      void client.invalidateQueries({ queryKey: ["workspace-dashboard", workspaceId] });
     }, wait > 0 ? wait : 30_000);
     return () => window.clearTimeout(timer);
   }, [client, readAt, todayEndsAt, workspaceId]);
 
   // The API's "no" gets the one no-access card, never its raw sentence.
-  if (isNoAccess(query.error))
-    return (
-      <NoAccessState
-        homeHref={noAccessHomePath(context, "/app/workspace")}
-      />
-    );
-  // Loading and error in the "B" look (Mert 2026-10-14): never the server's sentence.
+  if (isNoAccess(query.error) || isNoAccess(home.error))
+    return <NoAccessState homeHref={noAccessHomePath(context, "/app/workspace")} />;
   // Only the first answer holds the outline: a later read of the checklist
   // (its own Try again) does not take the whole page back to the outline.
-  if (query.isLoading || (checklist.isPending && checklist.isFetching && !checklist.isFetchedAfterMount))
-    return <WorkspaceOutline />;
+  if (query.isLoading || home.isLoading || (checklist.isPending && checklist.isFetching && !checklist.isFetchedAfterMount))
+    return <HomeOutline />;
   if (!query.data) {
     return (
-      <section className="workspace-page">
+      <section className="manager-home-page is-plain">
         <LoadError
-          title="We couldn't load Workspace"
+          title="We couldn't load Home"
           detail="Today's numbers didn't load. Nothing was changed."
           retrying={query.isFetching}
           onRetry={() => void query.refetch()}
@@ -137,41 +170,236 @@ export function WorkspacePage() {
       </section>
     );
   }
-  // A failed check with nothing cached is unknown (null), not zero.
-  const pendingExchanges = exchanges.isError && !exchanges.data ? null : exchanges.data?.cases.filter((item) => item.status === "open" && ["ready_for_manager", "awaiting_other_manager"].includes(item.stage)).length ?? 0;
-  // Shift changes are Shift Hub cases waiting for a manager.
-  const model = { ...query.data, metrics: { ...query.data.metrics, pending_shift_change_count: pendingExchanges } };
+  const model = query.data;
   const layout = draft ?? model.layout;
   const hidden = new Set(layout.hidden_widget_ids);
-  const updateLayout = (next: WorkspaceLayoutInput) => setDraft(next);
   const move = (id: WorkspaceWidgetId, offset: number) => {
     const index = layout.widget_order.indexOf(id);
     const target = index + offset;
     if (target < 0 || target >= layout.widget_order.length) return;
     const order = [...layout.widget_order];
     [order[index], order[target]] = [order[target]!, order[index]!];
-    updateLayout({ ...layout, widget_order: order });
+    setDraft({ ...layout, widget_order: order });
   };
-  const toggle = (id: WorkspaceWidgetId) => {
-    updateLayout({
+  const toggle = (id: WorkspaceWidgetId) =>
+    setDraft({
       ...layout,
-      hidden_widget_ids: hidden.has(id)
-        ? layout.hidden_widget_ids.filter((item) => item !== id)
-        : [...layout.hidden_widget_ids, id],
+      hidden_widget_ids: hidden.has(id) ? layout.hidden_widget_ids.filter((item) => item !== id) : [...layout.hidden_widget_ids, id],
     });
+
+  const day = home.data ?? null;
+  const locations = day?.locations ?? [];
+  const multi = locations.length > 1;
+  // The page narrows to one location while its cards are on the page (a state, not a setting).
+  const selected = multi && !hidden.has("operations") && locations.some((item) => item.id === chosen) ? chosen : "all";
+  // A failed check with nothing cached is unknown, not zero (the Requests page's rule).
+  const casesUnknown = exchanges.isError && !exchanges.data;
+  const needs = day ? homeNeeds(day, exchanges.data?.cases ?? [], phone) : [];
+  const shownNeeds = selected === "all" ? needs : needsAt(needs, selected);
+  const zone = locations[0]?.timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const minute = clockMinutes(now, zone);
+  const people = locations.reduce((sum, item) => sum + onNow(item, now), 0);
+  const firstName = model.display_name.trim().split(/\s+/)[0] ?? "";
+  const pill = (
+    <button
+      type="button"
+      className={`dl-pill${far ? " is-shown" : ""}`}
+      tabIndex={far ? 0 : -1}
+      aria-hidden={!far}
+      data-bar-shown={far ? "" : undefined}
+      onClick={() => root.current?.closest(".app-main")?.scrollTo({ top: 0, behavior: "smooth" })}
+    >
+      <i className="dl-pulse is-on" />
+      <b>{people}</b> on now{needs.length ? <> · <b>{needs.length}</b> need you</> : null}
+    </button>
+  );
+  const phoneSlot = typeof document === "undefined" ? null : document.getElementById("mm-top-mid");
+  const allHidden = !customizing && layout.widget_order.every((id) => hidden.has(id));
+
+  const parts: Record<WorkspaceWidgetId, () => ReactNode> = {
+    operations: () => (
+      <HomeSection name="locs" bare>
+        {home.isError && !day ? (
+          <LoadError
+            inset
+            level={3}
+            title="We couldn't load your locations"
+            detail="Today's numbers didn't load. Nothing was changed."
+            retrying={home.isFetching}
+            onRetry={() => void home.refetch()}
+          />
+        ) : !locations.length ? (
+          <p className="dl-empty mh-none">No locations to show yet.</p>
+        ) : (
+          <>
+            <div className={`mh-locs${multi ? "" : " is-one"}`} data-own-drag="">
+              {locations.map((item) => (
+                <LocationCard
+                  key={item.id}
+                  location={item}
+                  now={now}
+                  needs={needs}
+                  pressed={multi ? selected === item.id : undefined}
+                  onPick={multi && !customizing ? () => setChosen(selected === item.id ? "all" : item.id) : undefined}
+                />
+              ))}
+            </div>
+            {multi && !customizing ? (
+              <div className="mh-filter" role="group" aria-label="Location">
+                {[{ id: "all", name: "All locations" }, ...locations].map((item) => (
+                  <button type="button" key={item.id} aria-pressed={selected === item.id} onClick={() => setChosen(item.id)}>
+                    {item.name}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+          </>
+        )}
+      </HomeSection>
+    ),
+    pending_requests: () => (
+      <HomeSection name="needs" title="Needs you" count={shownNeeds.length} warn={shownNeeds.some((need) => need.urgent)}>
+        <NeedsList
+          needs={shownNeeds}
+          groups={selected === "all" && multi ? groupNeeds(shownNeeds, locations) : null}
+          casesUnknown={casesUnknown}
+        />
+      </HomeSection>
+    ),
+    quick_actions: () => {
+      const one = locations.find((item) => item.id === selected);
+      return (
+        <HomeSection
+          name="week"
+          title={one ? `Next 7 days · ${one.name}` : "Next 7 days"}
+          bare
+          link={
+            <Link className="dl-lnk" to={phone ? "/app/schedule/lineup" : "/app/schedule"}>
+              {phone ? "Lineup" : "Full schedule"} <ChevronRight size={16} />
+            </Link>
+          }
+        >
+          <WeekStrip locations={one ? [one] : locations} phone={phone} />
+        </HomeSection>
+      );
+    },
+    open_shifts: () => {
+      const open = locations
+        .filter((item) => selected === "all" || item.id === selected)
+        .flatMap((item) => item.open_shifts.map((shift) => ({ ...shift, location: item })))
+        .sort((a, b) => Date.parse(a.starts_at) - Date.parse(b.starts_at))
+        .slice(0, 12);
+      return (
+        <HomeSection
+          name="open"
+          title="Open shifts"
+          count={open.length}
+          link={
+            <Link className="dl-lnk" to={phone ? "/app/schedule/lineup" : "/app/schedule"} aria-label="All open shifts">
+              All <ChevronRight size={16} />
+            </Link>
+          }
+        >
+          {open.length ? (
+            <div className="dl-open" role="list" data-own-drag="">
+              {open.map((shift) => (
+                <Link
+                  role="listitem"
+                  className="dl-oc"
+                  key={`${shift.location.id}:${shift.starts_at}:${shift.job_name}`}
+                  to={phone ? "/app/schedule/lineup" : `/app/schedule?date=${shift.date}`}
+                >
+                  <span className="dl-oc-d">{relativeDay(shift.date, shift.location.today)}</span>
+                  <b>
+                    {clock(shift.starts_at, shift.location.timezone)} – {clock(shift.ends_at, shift.location.timezone)}
+                  </b>
+                  <span>
+                    {shift.location.name} · {shift.job_name}
+                  </span>
+                  <em>{phone ? "See in Lineup" : "Fill in Schedule"}</em>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="dl-empty">No open shifts right now.</p>
+          )}
+        </HomeSection>
+      );
+    },
+    announcements: () => (
+      <HomeSection
+        name="notices"
+        title="From your team"
+        link={
+          <Link className="dl-lnk" to="/app/announcements" aria-label="View all announcements">
+            All <ChevronRight size={16} />
+          </Link>
+        }
+      >
+        {model.announcements.length ? (
+          <HomeNoticeDeck
+            notices={model.announcements.map((item) => ({
+              id: item.id,
+              title: item.title,
+              body: item.body,
+              author: item.author_name,
+              when: item.published_at ? ago(item.published_at, now) : "",
+              ack: null,
+            }))}
+          />
+        ) : (
+          <p className="dl-empty">No active announcements.</p>
+        )}
+      </HomeSection>
+    ),
+    todos: () => (
+      <HomeSection name="todos" title="Todos">
+        <TodoWidget todos={model.todos} workspaceId={workspaceId} />
+      </HomeSection>
+    ),
   };
 
   return (
-    <section className="workspace-page" aria-labelledby="workspace-title">
-      <CatalogPageHeader
-        eyebrow="TODAY'S WORK. ONE PLACE."
-        title="Workspace"
-        titleId="workspace-title"
-        description={`Track today’s operations, open requests, announcements, todos, and quick actions. ${greeting(now)}, ${model.display_name} · ${formatNow(now)}.`}
-        action={
-          <div className="workspace-header-actions">
+    <section className="manager-home-page" aria-labelledby="manager-home-title">
+      <div className={`eh-dashboard dl-home mh-home${far ? " is-far" : ""}`} data-slot={daySlot(minute)} ref={root}>
+        <div className="dl-sky" aria-hidden />
+        {phoneSlot ? createPortal(pill, phoneSlot) : null}
+        <div className="eh-context-bar">
+          <div className="dl-desk-pill">{pill}</div>
+          <div className="eh-context-actions">
+            {can(context, "notifications.read_own") ? <NotificationBell workspaceId={workspaceId} className="eh-icon-button" /> : null}
+            <Link className="eh-icon-button" to="/account/profile" aria-label="Your profile">
+              <span className="eh-avatar">{firstName.slice(0, 1)}</span>
+            </Link>
+          </div>
+        </div>
+        <div className="dl-body mh-body">
+          {query.error ? (
+            <RefreshError
+              message="Home didn't refresh. These are the last numbers that loaded."
+              retrying={query.isFetching}
+              onRetry={() => void query.refetch()}
+            />
+          ) : home.error && day ? (
+            <RefreshError
+              message="Your locations didn't refresh. These are the last numbers that loaded."
+              retrying={home.isFetching}
+              onRetry={() => void home.refetch()}
+            />
+          ) : null}
+          <section className="dl-hero" aria-label="Your day">
+            <p className="dl-date">
+              {new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: zone }).format(now)}
+            </p>
+            <h1 className="dl-greet" id="manager-home-title">
+              <span>{greetingAt(minute)},</span> <span className="dl-nm">{firstName}.</span>
+            </h1>
+            {day ? <p className="dl-sub">{homeSubline(people, locations, needs.length)}</p> : null}
+          </section>
+          <div className="mh-head">
+            <h2>{hidden.has("operations") && !customizing ? "Your Home" : multi ? "Your locations" : "Your location"}</h2>
             {customizing ? (
-              <>
+              <span className="mh-tools">
                 <button
                   className="nf-button secondary"
                   type="button"
@@ -182,97 +410,272 @@ export function WorkspacePage() {
                 >
                   Cancel
                 </button>
-                <button
-                  className="nf-button"
-                  type="button"
-                  disabled={saveMutation.isPending}
-                  onClick={() => saveMutation.mutate(layout)}
-                >
+                <button className="nf-button" type="button" disabled={saveMutation.isPending} onClick={() => saveMutation.mutate(layout)}>
                   {saveMutation.isPending ? "Saving..." : "Save layout"}
                 </button>
-              </>
+              </span>
             ) : (
-              <button
-                className="nf-button secondary"
-                type="button"
-                onClick={() => setCustomizing(true)}
-              >
+              <button className="nf-button secondary mh-customize" type="button" onClick={() => setCustomizing(true)}>
                 <Settings2 size={16} aria-hidden /> Customize
               </button>
             )}
           </div>
-        }
-      />
-      {query.error ? (
-        <RefreshError
-          message="Workspace didn't refresh. These are the last numbers that loaded."
-          retrying={query.isFetching}
-          onRetry={() => void query.refetch()}
-        />
-      ) : null}
-      {saveMutation.error ? (
-        <p className="workspace-error" role="alert">
-          {requestErrorText(saveMutation.error)}
-        </p>
-      ) : null}
-      {ownerRole && context ? (
-        <OwnerSetupChecklist workspaceId={context.workspace.id} />
-      ) : null}
-      {!customizing && layout.widget_order.every((id) => hidden.has(id)) ? (
-        <EmptyWidget text="Every card is hidden. Use Customize to show them again." />
-      ) : null}
-      <div className="workspace-grid">
-        {layout.widget_order.map((id, index) => {
-          if (hidden.has(id) && !customizing) return null;
-          return (
-            <article
-              className={`workspace-widget${hidden.has(id) ? " is-hidden" : ""}`}
-              key={id}
-            >
-              <header>
-                <h2>{widgetLabels[id]}</h2>
-                {customizing ? (
-                  <div className="widget-controls">
-                    <button
-                      className="icon-button"
-                      aria-label={`Move ${widgetLabels[id]} up`}
-                      disabled={index === 0}
-                      onClick={() => move(id, -1)}
-                    >
-                      <ArrowUp size={15} aria-hidden />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label={`Move ${widgetLabels[id]} down`}
-                      disabled={index === layout.widget_order.length - 1}
-                      onClick={() => move(id, 1)}
-                    >
-                      <ArrowDown size={15} aria-hidden />
-                    </button>
-                    <button
-                      className="icon-button"
-                      aria-label={`${hidden.has(id) ? "Show" : "Hide"} ${widgetLabels[id]}`}
-                      onClick={() => toggle(id)}
-                    >
-                      {hidden.has(id) ? (
-                        <Eye size={15} aria-hidden />
-                      ) : (
-                        <EyeOff size={15} aria-hidden />
-                      )}
-                    </button>
+          {customizing ? <p className="mh-note">Move or hide the sections of your Home, then save. Only you see this layout.</p> : null}
+          {saveMutation.error ? (
+            <p className="workspace-error" role="alert">
+              {requestErrorText(saveMutation.error)}
+            </p>
+          ) : null}
+          {ownerRole && context && !customizing ? <OwnerSetupChecklist workspaceId={context.workspace.id} /> : null}
+          {allHidden ? <p className="workspace-empty mh-allhidden">Every card is hidden. Use Customize to show them again.</p> : null}
+          <div className="dl-secs mh-secs">
+            {layout.widget_order.map((id, index) => {
+              const off = hidden.has(id);
+              if (off && !customizing) return null;
+              if (!customizing) return <div key={id}>{parts[id]()}</div>;
+              const label = HOME_SECTIONS[id];
+              return (
+                <div className={`mh-cz${off ? " is-hidden" : ""}`} key={id}>
+                  <div className="mh-cz-bar">
+                    <b>{label}</b>
+                    <span className="mh-cz-ctl">
+                      <button className="icon-button" type="button" aria-label={`Move ${label} up`} disabled={index === 0} onClick={() => move(id, -1)}>
+                        <ArrowUp size={15} aria-hidden />
+                      </button>
+                      <button
+                        className="icon-button"
+                        type="button"
+                        aria-label={`Move ${label} down`}
+                        disabled={index === layout.widget_order.length - 1}
+                        onClick={() => move(id, 1)}
+                      >
+                        <ArrowDown size={15} aria-hidden />
+                      </button>
+                      <button className="icon-button" type="button" aria-label={`${off ? "Show" : "Hide"} ${label}`} onClick={() => toggle(id)}>
+                        {off ? <Eye size={15} aria-hidden /> : <EyeOff size={15} aria-hidden />}
+                      </button>
+                    </span>
                   </div>
-                ) : null}
-              </header>
-              {/* BL-813: a hidden card in Customize is a preview, not a form.
-                  One wrapper either way, so Hide / Show keeps what was typed. */}
-              <div className="workspace-widget-preview" inert={hidden.has(id)}>
-                <Widget id={id} model={model} workspaceId={workspaceId} />
-              </div>
-            </article>
-          );
-        })}
+                  {/* BL-813: a hidden section in Customize is a preview, not a form.
+                      One wrapper either way, so Hide / Show keeps what was typed. */}
+                  <div className="mh-cz-prev" inert={off}>
+                    {parts[id]()}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+          <footer className="dl-end">
+            <span className="dl-end-i">
+              <Check size={20} />
+            </span>
+            <p>That’s everything for now</p>
+            <small>Pull down at the top to refresh</small>
+          </footer>
+        </div>
       </div>
     </section>
+  );
+}
+
+/** Minutes after midnight on the wall clock of `zone`. */
+function clockMinutes(now: Date, zone: string) {
+  const parts = new Intl.DateTimeFormat("en-GB", { timeZone: zone, hour: "2-digit", minute: "2-digit", hourCycle: "h23" }).formatToParts(now);
+  const value = (type: string) => Number(parts.find((part) => part.type === type)?.value ?? 0);
+  return value("hour") * 60 + value("minute");
+}
+function greetingAt(minute: number) {
+  return minute < 5 * 60 ? "Up late" : minute < 12 * 60 ? "Good morning" : minute < 18 * 60 ? "Good afternoon" : "Good evening";
+}
+const clock = (iso: string, zone: string) =>
+  new Intl.DateTimeFormat("en-US", { hour: "numeric", minute: "2-digit", timeZone: zone }).format(new Date(iso));
+const nextDate = (date: string, days = 1) => {
+  const value = new Date(`${date}T12:00:00Z`);
+  value.setUTCDate(value.getUTCDate() + days);
+  return value.toISOString().slice(0, 10);
+};
+const relativeDay = (date: string, today: string) =>
+  date === today
+    ? "Today"
+    : date === nextDate(today)
+      ? "Tomorrow"
+      : new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric", timeZone: "UTC" });
+
+function LocationCard({
+  location,
+  now,
+  needs,
+  pressed,
+  onPick,
+}: {
+  location: ManagerHomeLocation;
+  now: Date;
+  needs: readonly ManagerNeed[];
+  /** Undefined with one location: there is nothing to narrow to. */
+  pressed?: boolean;
+  onPick?: () => void;
+}) {
+  const bars = hourBars(location);
+  const top = Math.max(1, ...bars.map((bar) => bar.count));
+  const current = hourNow(location, now);
+  const badge = locationBadge(location, needs);
+  const manager = managerOnFloor(location, now);
+  const open = openToday(location);
+  const body = (
+    <>
+      <span className="mh-loc-h">
+        <MapPin size={16} aria-hidden />
+        <b>{location.name}</b>
+        <span className={`mh-badge is-${badge.tone}`} aria-label={badge.label}>
+          {badge.tone === "danger" ? <TriangleAlert size={13} aria-hidden /> : badge.tone === "ok" ? <Check size={13} aria-hidden /> : null}
+          {badge.text}
+        </span>
+      </span>
+      <span className="mh-loc-n">
+        {onNow(location, now)}
+        <small>on now · {location.week[0]?.shifts ?? 0} today</small>
+      </span>
+      <span className="mh-hours" aria-hidden>
+        <span className="mh-bars">
+          {bars.map((bar, index) => (
+            <i
+              key={index}
+              className={`${bar.count ? "" : "is-zero"}${bar.gap ? " is-gap" : ""}${index === current ? " is-now" : ""}`}
+              style={{ "--h": (bar.count / top).toFixed(3) } as CSSProperties}
+            />
+          ))}
+        </span>
+        <span className="mh-axis">
+          <span>6 AM</span>
+          <span>Noon</span>
+          <span>6 PM</span>
+          <span>Midnight</span>
+        </span>
+      </span>
+      <span className="mh-loc-f">
+        {manager ? <span>{manager} on the floor</span> : null}
+        {open ? <span className="is-open">{open} open today</span> : null}
+      </span>
+      <span className="mh-loc-wk" aria-hidden>
+        {location.week.map((item) => (
+          <i key={item.date} className={!item.published ? "is-draft" : item.open ? "is-open" : ""} />
+        ))}
+      </span>
+    </>
+  );
+  if (!onPick) return <div className="mh-loc">{body}</div>;
+  return (
+    <button
+      type="button"
+      className={`mh-loc${pressed ? " is-sel" : ""}`}
+      aria-pressed={pressed}
+      aria-label={`${location.name}: ${onNow(location, now)} on now. ${badge.label}. Show only ${location.name}`}
+      onClick={onPick}
+    >
+      {body}
+    </button>
+  );
+}
+
+function NeedsList({
+  needs,
+  groups,
+  casesUnknown,
+}: {
+  needs: readonly ManagerNeed[];
+  groups: ReturnType<typeof groupNeeds> | null;
+  casesUnknown: boolean;
+}) {
+  const unknown = casesUnknown ? <p className="dl-empty mh-unknown">Shift changes couldn't be checked.</p> : null;
+  if (!needs.length)
+    return (
+      <>
+        <div className="dl-calm">
+          <CircleCheck size={34} />
+          <div>
+            <b>You’re all caught up</b>
+            <span>Nothing needs your answer right now.</span>
+          </div>
+        </div>
+        {unknown}
+      </>
+    );
+  return (
+    <>
+      <ul className="dl-rows">
+        {groups
+          ? groups.map((group) => [
+              <li className="mh-grp" key={`g:${group.id}`}>
+                {group.name}
+              </li>,
+              ...group.needs.map((need) => <NeedRow key={need.id} need={need} />),
+            ])
+          : needs.map((need) => <NeedRow key={need.id} need={need} />)}
+      </ul>
+      {unknown}
+    </>
+  );
+}
+
+function NeedRow({ need }: { need: ManagerNeed }) {
+  const icon =
+    need.kind === "docs" ? <TriangleAlert size={20} /> : need.kind === "timeoff" ? <CalendarX size={20} /> : need.kind === "swap" ? <ArrowLeftRight size={20} /> : <CalendarDays size={20} />;
+  const body = (
+    <>
+      <span className={`dl-ri mh-ri-${need.kind}`}>{icon}</span>
+      <span className="dl-rt">
+        <b>{need.title}</b>
+        {need.detail ? <small>{need.detail}</small> : null}
+        <em>{need.cta}</em>
+      </span>
+      {need.href ? <ChevronRight size={18} /> : null}
+    </>
+  );
+  return (
+    <li>
+      {need.href ? (
+        <Link className={`dl-row${need.urgent ? " is-urgent" : ""}`} to={need.href}>
+          {body}
+        </Link>
+      ) : (
+        <div className="dl-row">{body}</div>
+      )}
+    </li>
+  );
+}
+
+function WeekStrip({ locations, phone }: { locations: readonly ManagerHomeLocation[]; phone: boolean }) {
+  const first = locations[0];
+  if (!first) return <p className="dl-empty">No locations to show yet.</p>;
+  const days = first.week.map((item, index) => ({
+    date: item.date,
+    shifts: locations.reduce((sum, place) => sum + (place.week[index]?.shifts ?? 0), 0),
+    open: locations.reduce((sum, place) => sum + (place.week[index]?.open ?? 0), 0),
+    draft: locations.some((place) => place.week[index] && !place.week[index]!.published),
+  }));
+  const top = Math.max(1, ...days.map((item) => item.shifts));
+  return (
+    <div className="dl-wk mh-wk" role="group" aria-label="Next 7 days">
+      {days.map((item) => {
+        const when = new Date(`${item.date}T12:00:00Z`);
+        const weekday = when.toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
+        const long = when.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" });
+        return (
+          <Link
+            key={item.date}
+            className={`dl-wk-d${item.date === first.today ? " is-today" : ""}${item.shifts ? " has" : ""}${item.open ? " has-open" : ""}${item.draft ? " is-draft" : ""}`}
+            style={{ "--h": (item.shifts / top).toFixed(3) } as CSSProperties}
+            to={phone ? "/app/schedule/lineup" : `/app/schedule?date=${item.date}`}
+            aria-label={`${long}: ${item.shifts} shifts, ${item.open} open${item.draft ? ", not published" : ""}`}
+          >
+            <span className="dl-wk-n">{weekday}</span>
+            <span className="dl-wk-num">{when.getUTCDate()}</span>
+            <span className="dl-wk-bar" aria-hidden />
+            <span className="dl-wk-s">{item.draft && !item.shifts ? "Draft" : item.open ? `${item.open} open` : item.shifts}</span>
+          </Link>
+        );
+      })}
+    </div>
   );
 }
 
@@ -429,93 +832,6 @@ function OwnerSetupChecklist({
   );
 }
 
-function Widget({
-  id,
-  model,
-  workspaceId,
-}: {
-  id: WorkspaceWidgetId;
-  model: WorkspaceDashboard & {
-    metrics: { pending_shift_change_count: number | null };
-  };
-  workspaceId: string;
-}) {
-  const phone = usePhoneWidth();
-  if (id === "operations") {
-    return (
-      <div className="workspace-metrics">
-        <Metric
-          value={model.metrics.today_shift_count}
-          label="Scheduled today"
-        />
-        <Metric
-          value={model.metrics.today_open_shift_count}
-          label="Open today"
-        />
-      </div>
-    );
-  }
-  if (id === "pending_requests") {
-    return (
-      <div className="workspace-metrics">
-        <Metric value={model.metrics.pending_time_off_count} label="Time off" />
-        <Metric
-          value={model.metrics.pending_shift_change_count}
-          label="Shift changes"
-        />
-        <WidgetLink to="/app/schedule/requests">Review requests</WidgetLink>
-      </div>
-    );
-  }
-  if (id === "open_shifts") {
-    return (
-      <div className="workspace-focus-number">
-        <strong>{model.metrics.today_open_shift_count}</strong>
-        <span>unassigned shifts today</span>
-        {phone ? null : <WidgetLink to="/app/schedule">Open Schedule</WidgetLink>}
-      </div>
-    );
-  }
-  if (id === "announcements") {
-    return model.announcements.length ? (
-      <div className="workspace-feed">
-        {model.announcements.map((item) => (
-          <Link to={`/app/announcements/${item.id}`} key={item.id}>
-            <Megaphone size={16} aria-hidden />
-            <span>
-              <strong>{item.title}</strong>
-              <small>{announcementCategoryLabel(item.category, item.category_other)}</small>
-            </span>
-            <ArrowRight size={15} aria-hidden />
-          </Link>
-        ))}
-        {/* BL-810: the box holds five at most. */}
-        <WidgetLink to="/app/announcements">View all announcements</WidgetLink>
-      </div>
-    ) : (
-      <EmptyWidget text="No active announcements" />
-    );
-  }
-  if (id === "todos") {
-    return <TodoWidget todos={model.todos} workspaceId={workspaceId} />;
-  }
-  return (
-    <div className="workspace-quick-actions">
-      {phone ? null : (
-        <WidgetLink to="/app/schedule">
-          <CalendarDays size={16} /> Open Schedule
-        </WidgetLink>
-      )}
-      <WidgetLink to="/app/employees">
-        <Users size={16} /> View employees
-      </WidgetLink>
-      <WidgetLink to="/app/announcements">
-        <Megaphone size={16} /> New announcement
-      </WidgetLink>
-    </div>
-  );
-}
-
 function TodoWidget({
   todos,
   workspaceId,
@@ -585,7 +901,7 @@ function TodoWidget({
           ))}
         </div>
       ) : (
-        <EmptyWidget text="No open todos" />
+        <p className="workspace-empty">No open todos</p>
       )}
     </div>
   );
@@ -642,63 +958,34 @@ function TodoPreview({
   return <div>{content}</div>;
 }
 
-function Metric({ value, label }: { value: number | null; label: string }) {
+/** Home in grey while it loads: the greeting, the location cards and a section, at their real place. */
+function HomeOutline() {
   return (
-    <div>
-      <strong>{value ?? "—"}</strong>
-      <span>{label}</span>
-    </div>
-  );
-}
-function WidgetLink({ to, children }: { to: string; children: ReactNode }) {
-  return (
-    <Link className="widget-link" to={to}>
-      {children}
-      <ArrowRight size={15} aria-hidden />
-    </Link>
-  );
-}
-function EmptyWidget({ text }: { text: string }) {
-  return <p className="workspace-empty">{text}</p>;
-}
-/** The dashboard's cards in grey while it loads, at their real size. */
-function WorkspaceOutline() {
-  return (
-    <section className="workspace-page">
-      <LoadingOutline label="Loading Workspace">
-        <div className="workspace-grid">
-          {[0, 1, 2, 3].map((card) => (
-            <article className="workspace-widget" key={card}>
-              <header>
-                <Skeleton width="45%" height={14} />
-              </header>
-              <Skeleton width="80%" />
-              <Skeleton width="60%" />
-              <Skeleton width="70%" />
-            </article>
-          ))}
+    <section className="manager-home-page">
+      <div className="eh-dashboard dl-home mh-home" data-slot="afternoon">
+        <div className="dl-body mh-body">
+          <LoadingOutline label="Loading Home">
+            <div className="dl-hero">
+              <Skeleton width="30%" height={14} />
+              <Skeleton width="60%" height={36} />
+              <Skeleton width="50%" height={16} />
+            </div>
+            <div className="mh-locs">
+              {[0, 1, 2].map((card) => (
+                <div className="mh-loc" key={card}>
+                  <Skeleton width="50%" />
+                  <Skeleton width="30%" height={28} />
+                  <Skeleton width="90%" height={46} />
+                </div>
+              ))}
+            </div>
+          </LoadingOutline>
         </div>
-      </LoadingOutline>
+      </div>
     </section>
   );
 }
-function greeting(date: Date) {
-  const hour = date.getHours();
-  return hour < 12
-    ? "Good morning"
-    : hour < 18
-      ? "Good afternoon"
-      : "Good evening";
-}
-function formatNow(date: Date) {
-  return new Intl.DateTimeFormat("en-US", {
-    weekday: "long",
-    month: "long",
-    day: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
-}
+
 /** BL-1013: a due time still ahead reads "Due in 2h"; one gone by, "Due 2h ago". */
 export function dueLabel(iso: string, now = Date.now()) {
   const ahead = Date.parse(iso) - now;

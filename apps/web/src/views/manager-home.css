@@ -1,0 +1,375 @@
+/* The managers' Home, Daylight "C · Locations first" (Mert 2026-10-19,
+   KARARLAR S-210; Yönetici Home variants page, C). The page, the sky, the
+   greeting and the sections are the employee's Home (home-daylight.css); this
+   sheet adds the location cards, the location chips, the grouped "Needs you"
+   and Customize. Colours are the app's light theme only. */
+
+.manager-home-page {
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 100%;
+  width: min(100% - 64px, 1320px);
+  margin: 0 auto;
+  color: var(--theme-text);
+}
+.manager-home-page.is-plain {
+  padding: 30px 0 44px;
+}
+@media (max-width: 720px) {
+  .manager-home-page {
+    width: 100%;
+  }
+  .manager-home-page.is-plain {
+    padding: 16px 16px 34px;
+  }
+}
+
+/* A wider column than the employee's: three location cards side by side. */
+.mh-home .mh-body {
+  max-width: 880px;
+}
+
+.mh-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 38px;
+  margin-top: 22px;
+}
+.mh-head h2 {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.012em;
+}
+.mh-head .mh-customize,
+.mh-head .mh-tools {
+  margin-left: auto;
+}
+.mh-tools {
+  display: flex;
+  gap: 8px;
+}
+.mh-customize {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.mh-note {
+  margin-top: 8px;
+  color: var(--dl-tx2);
+  font-size: 13.5px;
+}
+.mh-home .owner-setup-checklist {
+  margin-top: 16px;
+}
+.mh-allhidden {
+  margin-top: 16px;
+}
+
+/* The sections follow the heading closely: the cards are its content. */
+.mh-secs {
+  margin-top: 12px;
+}
+
+/* A card per location. */
+.mh-locs {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.mh-locs.is-one {
+  grid-template-columns: minmax(0, 1fr);
+}
+.mh-loc {
+  position: relative;
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 0;
+  border-radius: var(--dl-r);
+  background: var(--theme-surface);
+  box-shadow: var(--dl-shadow);
+  color: inherit;
+  text-align: left;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+button.mh-loc:hover {
+  transform: translateY(-2px);
+}
+.mh-loc.is-sel {
+  box-shadow: 0 0 0 2px var(--dl-ac), var(--dl-shadow);
+}
+.mh-loc-h {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.mh-loc-h b {
+  min-width: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mh-badge {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  gap: 5px;
+  height: 24px;
+  margin-left: auto;
+  padding: 0 9px;
+  border-radius: 99px;
+  font-size: 12px;
+  font-weight: 700;
+}
+.mh-badge.is-danger {
+  background: var(--dl-off-soft);
+  color: var(--dl-off);
+}
+.mh-badge.is-warn {
+  background: var(--dl-now-soft);
+  color: var(--dl-now-ink);
+}
+.mh-badge.is-ok {
+  background: var(--dl-ok-soft);
+  color: var(--dl-ok);
+}
+.mh-loc-n {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  font-size: 28px;
+  font-weight: 720;
+  line-height: 1;
+  letter-spacing: -0.03em;
+}
+.mh-loc-n small {
+  color: var(--dl-tx2);
+  font-size: 13.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+}
+
+/* The day, 6 AM to midnight: a bar an hour; red top where a shift is open. */
+.mh-hours {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mh-bars {
+  display: grid;
+  height: 34px;
+  grid-template-columns: repeat(18, minmax(0, 1fr));
+  align-items: end;
+  gap: 3px;
+}
+.mh-bars i {
+  display: block;
+  height: calc(3px + var(--h) * 30px);
+  border-radius: 4px 4px 2px 2px;
+  background: color-mix(in oklab, var(--dl-ac) 30%, var(--theme-surface));
+}
+.mh-bars i.is-zero {
+  background: var(--dl-ln);
+}
+.mh-bars i.is-now {
+  background: var(--dl-now);
+}
+.mh-bars i.is-gap {
+  box-shadow: inset 0 3px 0 var(--dl-off);
+}
+.mh-axis {
+  display: flex;
+  justify-content: space-between;
+  color: var(--dl-tx2);
+  font-size: 11px;
+  font-weight: 600;
+}
+.mh-loc-f {
+  display: flex;
+  min-height: 17px;
+  flex-wrap: wrap;
+  gap: 6px 12px;
+  color: var(--dl-tx2);
+  font-size: 12.5px;
+  font-weight: 550;
+}
+.mh-loc-f .is-open {
+  color: var(--dl-now-ink);
+}
+/* The next seven days: green published, amber with an open shift, striped not published. */
+.mh-loc-wk {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 4px;
+}
+.mh-loc-wk i {
+  height: 6px;
+  border-radius: 99px;
+  background: var(--dl-ac);
+  opacity: 0.85;
+}
+.mh-loc-wk i.is-open {
+  background: var(--dl-now);
+}
+.mh-loc-wk i.is-draft {
+  background: repeating-linear-gradient(135deg, var(--dl-ln2) 0 3px, var(--dl-sf2) 3px 5px);
+  opacity: 1;
+}
+.mh-none {
+  padding: 18px 0;
+}
+
+/* The location chips stay under the bar while the page scrolls. */
+.mh-filter {
+  position: sticky;
+  z-index: 4;
+  top: 54px;
+  display: flex;
+  gap: 6px;
+  margin: 22px calc(-1 * var(--dl-g)) 0;
+  overflow-x: auto;
+  padding: 8px var(--dl-g);
+  background: color-mix(in srgb, var(--theme-page) 90%, transparent);
+  -webkit-backdrop-filter: blur(14px);
+  backdrop-filter: blur(14px);
+  scrollbar-width: none;
+}
+.mh-filter::-webkit-scrollbar {
+  display: none;
+}
+.mh-filter button {
+  flex: none;
+  height: 32px;
+  padding: 0 13px;
+  border: 1px solid var(--dl-ln2);
+  border-radius: 99px;
+  background: var(--theme-surface);
+  color: var(--dl-tx2);
+  font-size: 13px;
+  font-weight: 650;
+}
+.mh-filter button[aria-pressed="true"] {
+  border-color: var(--theme-text);
+  background: var(--theme-text);
+  color: var(--theme-surface);
+}
+
+/* "Needs you", by location. */
+.mh-grp {
+  padding: 12px 0 2px;
+  border-top: 1px solid var(--dl-ln);
+  color: var(--dl-mu);
+  font-size: 11.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+.mh-grp:first-child {
+  border-top: 0;
+}
+.mh-grp + li .dl-row {
+  border-top: 0;
+}
+.mh-ri-docs {
+  background: var(--dl-off-soft);
+  color: var(--dl-off);
+}
+.mh-ri-timeoff,
+.mh-ri-swap {
+  background: var(--dl-now-soft);
+  color: var(--dl-now-ink);
+}
+.mh-ri-publish {
+  background: var(--dl-info-soft);
+  color: var(--dl-info);
+}
+.dl-row.is-urgent em {
+  color: var(--dl-off);
+}
+.mh-unknown {
+  padding: 4px 0 12px;
+}
+
+/* The next seven days for the page's location(s): a day not published is striped. */
+.mh-wk .dl-wk-d.has-open .dl-wk-s {
+  color: var(--dl-now-ink);
+  font-weight: 700;
+}
+.mh-wk .dl-wk-d.is-draft .dl-wk-bar {
+  background: repeating-linear-gradient(135deg, var(--dl-ln2) 0 3px, var(--dl-sf2) 3px 5px);
+}
+
+/* Customize: each section in a dashed frame with its controls; a hidden one is faint. */
+.mh-cz {
+  padding: 8px 10px 12px;
+  border: 1.5px dashed var(--dl-ln2);
+  border-radius: 18px;
+}
+.mh-cz.is-hidden {
+  border-style: dotted;
+  opacity: 0.55;
+}
+.mh-cz-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 2px 2px 8px;
+}
+.mh-cz-bar b {
+  color: var(--dl-tx2);
+  font-size: 13px;
+}
+.mh-cz-ctl {
+  display: flex;
+  gap: 4px;
+  margin-left: auto;
+}
+.mh-cz-prev {
+  max-height: 220px;
+  overflow: hidden;
+  -webkit-mask-image: linear-gradient(180deg, var(--theme-text) 70%, transparent);
+  mask-image: linear-gradient(180deg, var(--theme-text) 70%, transparent);
+}
+.mh-cz-prev .dl-sec {
+  --p: 1 !important;
+}
+.mh-cz-prev .dl-sh {
+  display: none;
+}
+
+/* Phone: the cards slide sideways under the thumb. */
+@media (max-width: 720px) {
+  .mh-locs:not(.is-one) {
+    display: flex;
+    overflow-x: auto;
+    margin: 0 calc(-1 * var(--dl-g));
+    padding: 0 var(--dl-g) 14px;
+    scroll-snap-type: x mandatory;
+    scrollbar-width: none;
+  }
+  .mh-locs::-webkit-scrollbar {
+    display: none;
+  }
+  .mh-locs:not(.is-one) .mh-loc {
+    width: 300px;
+    flex: none;
+    scroll-snap-align: start;
+  }
+  .mh-filter {
+    top: 0;
+    margin-top: 8px;
+  }
+  .mh-head {
+    margin-top: 18px;
+  }
+  .mh-head .nf-button {
+    height: 36px;
+    padding: 0 12px;
+  }
+}

@@ -1,6 +1,6 @@
 import type { EmployeeHubReadModel, EmployeeHubShift } from "@newfork/shared";
 import { useQuery } from "@tanstack/react-query";
-import { useRef, type CSSProperties, type ReactNode } from "react";
+import { useRef, type CSSProperties } from "react";
 import { createPortal } from "react-dom";
 import {
   CalendarDays,
@@ -37,6 +37,7 @@ import { ago, useHomeData, type HomeNeed, type HomeUpdate } from "./home-data";
 import { useHomeScroll } from "./home-motion";
 import { HomeWeekStrip } from "./HomeWeekStrip";
 import { HomeNoticeDeck } from "./HomeNoticeDeck";
+import { HomeSection } from "./HomeSection";
 import { ComingUpDates, useHubAnnouncements } from "./DashboardCommunications";
 import { PersonalTasks } from "./PersonalReminders";
 import { ShiftSheet, ShiftUnavailable } from "./ShiftSheet";
@@ -225,19 +226,19 @@ export function EmployeeDashboard({
           ) : null}
         </section>
         <div className="dl-secs">
-          <Section name="needs" title="Needs you" count={data.needs.length}>
+          <HomeSection name="needs" title="Needs you" count={data.needs.length}>
             <NeedsList needs={data.needs} unknown={data.needsUnknown} />
-          </Section>
+          </HomeSection>
           {/* Updates, Your week and Pick up a shift stay with nothing in them, each with
               one quiet line (Mert 2026-10-19, CALISAN-HOME-HIZA). */}
-          <Section name="updates" title="Updates">
+          <HomeSection name="updates" title="Updates">
             <UpdatesList updates={data.updates} now={now} />
-          </Section>
+          </HomeSection>
           {/* Phone alerts' one ask, on Home only (variant A, KARARLAR S-123); in the list since Daylight (Mert 2026-10-18). */}
-          <Section name="alerts" bare>
+          <HomeSection name="alerts" bare>
             <PhoneAlertsHome audience="employee" />
-          </Section>
-          <Section
+          </HomeSection>
+          <HomeSection
             name="week"
             title="Your week"
             link={
@@ -247,8 +248,8 @@ export function EmployeeDashboard({
             }
           >
             <WeekSummary week={week} today={today} />
-          </Section>
-          <Section
+          </HomeSection>
+          <HomeSection
             name="open"
             title="Pick up a shift"
             count={open.length}
@@ -276,25 +277,25 @@ export function EmployeeDashboard({
             ) : (
               <p className="dl-empty">No open shifts right now.</p>
             )}
-          </Section>
+          </HomeSection>
           {readsPosts ? <Notices workspaceId={model.workspace_id} now={now} /> : null}
           {readsPosts ? (
-            <Section name="dates" title="Coming up" hideEmpty>
+            <HomeSection name="dates" title="Coming up" hideEmpty>
               <ComingUpDates
                 workspaceId={model.workspace_id}
                 myLocationIds={model.locations.map((location) => location.id)}
                 timeFormat={format}
               />
-            </Section>
+            </HomeSection>
           ) : null}
-          <Section name="rem" title="My reminders">
+          <HomeSection name="rem" title="My reminders">
             <PersonalTasks
               key={`${model.workspace_id}:${model.employee.id}`}
               workspaceId={model.workspace_id}
               employeeId={model.employee.id}
               online={online}
             />
-          </Section>
+          </HomeSection>
         </div>
         <footer className="dl-end">
           <span className="dl-end-i">
@@ -319,40 +320,6 @@ const relDay = (date: string, today: string) => (date === today ? "Today" : date
 /** The greeting follows the shift's place; past midnight it is "Up late". */
 function greetingAt(minute: number, now: Date) {
   return minute < 5 * 60 ? "Up late" : greeting(new Date(now.getFullYear(), 0, 1, Math.floor(minute / 60)));
-}
-
-function Section({
-  name,
-  title,
-  count,
-  link,
-  bare,
-  hideEmpty,
-  children,
-}: {
-  name: string;
-  title?: string;
-  count?: number;
-  link?: ReactNode;
-  /** No heading and no card of its own (the phone alerts card brings its own). */
-  bare?: boolean;
-  /** Hidden while its card is empty. */
-  hideEmpty?: boolean;
-  children: ReactNode;
-}) {
-  const id = `dl-sec-${name}`;
-  return (
-    <section className={`dl-sec dl-sec-${name}${hideEmpty ? " is-hide-empty" : ""}${bare ? " is-bare" : ""}`} data-rise aria-labelledby={title ? id : undefined}>
-      {title ? (
-        <header className="dl-sh">
-          <h2 id={id}>{title}</h2>
-          {count ? <span className="dl-cnt">{count}</span> : null}
-          {link}
-        </header>
-      ) : null}
-      {bare ? children : <div className="dl-card">{children}</div>}
-    </section>
-  );
 }
 
 function DayArc({ shifts, minute, done }: { shifts: EmployeeHubShift[]; minute: number; done: (shift: EmployeeHubShift) => boolean }) {
@@ -603,7 +570,7 @@ function Notices({ workspaceId, now }: { workspaceId: string; now: Date }) {
       ack: item.asked_to_acknowledge ? (item.acknowledged_at && !item.content_changed_since_acknowledged ? ("done" as const) : ("asked" as const)) : null,
     }));
   return (
-    <Section
+    <HomeSection
       name="notices"
       title="From your team"
       link={
@@ -635,6 +602,6 @@ function Notices({ workspaceId, now }: { workspaceId: string; now: Date }) {
       ) : (
         <p className="dl-empty">No new notices. Enjoy a little quiet.</p>
       )}
-    </Section>
+    </HomeSection>
   );
 }

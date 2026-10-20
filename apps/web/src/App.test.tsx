@@ -828,6 +828,33 @@ vi.mock("./communications/communications-data", () => ({
       hidden_widget_ids: [],
     },
   }),
+  // The managers' Home (YONETICI-HOME): one location whose next days are not
+  // published and that has an open shift, so every way toward Schedule is drawn.
+  getManagerHome: vi.fn().mockResolvedValue({
+    workspace_id: scheduleFixture.workspace_id,
+    now: "2026-10-20T12:00:00Z",
+    locations: [
+      {
+        id: "11000000-0000-4000-8000-000000000001",
+        name: "Kadikoy",
+        timezone: "Europe/Istanbul",
+        today: "2026-10-20",
+        today_shifts: [],
+        floor_managers: [],
+        week: Array.from({ length: 7 }, (_, index) => ({
+          date: `2026-10-${String(20 + index).padStart(2, "0")}`,
+          shifts: 1,
+          open: 1,
+          published: index < 3,
+        })),
+        open_shifts: [
+          { date: "2026-10-21", starts_at: "2026-10-21T14:00:00Z", ends_at: "2026-10-21T20:00:00Z", job_name: "Server" },
+        ],
+        missing_documents: [],
+      },
+    ],
+    time_off: [],
+  }),
   saveWorkspaceLayout: vi.fn().mockResolvedValue({ status: "saved" }),
   createWorkspaceTodo: vi.fn(),
   resolveWorkspaceTodo: vi.fn(),
@@ -1229,13 +1256,19 @@ describe("App", () => {
     expect(screen.getAllByRole("link", { name: "Requests" }).length).toBeGreaterThan(0);
   });
 
-  it("offers no way into Schedule from Workspace on a phone (TEL-KAPALI-2)", async () => {
+  it("offers no way into Schedule from Home on a phone (TEL-KAPALI-2)", async () => {
     emulatePhone();
     window.history.pushState({}, "", "/app/workspace");
     render(<App />);
     await signInAs("owner");
-    await screen.findByRole("link", { name: /View employees/ });
-    expect(screen.queryAllByRole("link", { name: /Open Schedule|First schedule view/ })).toHaveLength(0);
+    await screen.findByText("Publish from a computer");
+    expect(screen.queryAllByRole("link", { name: /Open Schedule|First schedule view|Full schedule/ })).toHaveLength(0);
+    // Not one link on the page leads into Schedule's grid: its days and open shifts go to Lineup.
+    const intoSchedule = [...document.querySelectorAll("a[href]")]
+      .map((link) => link.getAttribute("href") ?? "")
+      .filter((href) => /^\/app\/schedule(\?|\/?$)/.test(href));
+    expect(intoSchedule).toEqual([]);
+    expect(screen.getByText("See in Lineup").closest("a")?.getAttribute("href")).toBe("/app/schedule/lineup");
   });
 
   it("keeps Schedule's export and templates addresses closed on a phone too", async () => {
@@ -6921,7 +6954,7 @@ describe("App", () => {
     expect(screen.queryByText("Expired request error")).toBeNull();
   });
 
-  it("lands manager sign-ins on Workspace by default", async () => {
+  it("lands manager sign-ins on Home by default", async () => {
     window.history.pushState({}, "", "/sign-in");
     render(<App />);
 
@@ -6931,7 +6964,7 @@ describe("App", () => {
       expect(window.location.pathname).toBe("/app/workspace"),
     );
     expect(
-      await screen.findByRole("heading", { name: "Workspace" }),
+      await screen.findByRole("heading", { name: /, Development\.$/ }),
     ).toBeTruthy();
   });
 
@@ -7376,7 +7409,7 @@ describe("App", () => {
     expect(screen.queryByRole("button", { name: /^Notifications/ })).toBeNull();
   });
 
-  it("shows employee-only users the no-access card at the manager Workspace route", async () => {
+  it("shows employee-only users the no-access card at the managers' Home route", async () => {
     window.history.pushState({}, "", "/app/workspace");
     render(<App />);
 
@@ -7387,12 +7420,12 @@ describe("App", () => {
 
     // The card in place, not a silent trip home (Mert 2026-10-14).
     expect(
-      await screen.findByRole("heading", { name: "You don't have access to Workspace" }),
+      await screen.findByRole("heading", { name: "You don't have access to Home" }),
     ).toBeTruthy();
     expect(window.location.pathname).toBe("/app/workspace");
     expect(
       screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
     ).toBe("/app/employee-hub");
-    expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
+    expect(screen.queryByRole("heading", { name: /, Development\.$/ })).toBeNull();
   });
 });

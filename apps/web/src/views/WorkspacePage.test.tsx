@@ -8,6 +8,7 @@ import {
 } from "@testing-library/react";
 import type {
   ActiveWorkspaceContext,
+  ManagerHome,
   OwnerSetupChecklistItemId,
   WorkspaceDashboard,
 } from "@newfork/shared";
@@ -17,6 +18,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import WorkspacePage, { dueLabel } from "./WorkspacePage";
 import {
   createWorkspaceTodo,
+  getManagerHome,
   getOwnerSetupChecklistProgress,
   getWorkspaceDashboard,
   markOwnerSetupChecklistItem,
@@ -77,6 +79,32 @@ const dashboard = {
   },
 } satisfies WorkspaceDashboard;
 
+// The managers' Home read (YONETICI-HOME): one location, nothing on today.
+const week = Array.from({ length: 7 }, (_, index) => ({
+  date: `2026-10-${String(20 + index).padStart(2, "0")}`,
+  shifts: 0,
+  open: 0,
+  published: true,
+}));
+const kadikoy = {
+  id: "11000000-0000-4000-8000-000000000001",
+  name: "Kadikoy",
+  timezone: "Europe/Istanbul",
+  today: "2026-10-20",
+  today_shifts: [],
+  floor_managers: [],
+  week,
+  open_shifts: [],
+  missing_documents: [],
+};
+const managerHome = {
+  workspace_id: workspaceId,
+  now: "2026-10-20T12:00:00Z",
+  locations: [kadikoy],
+  time_off: [],
+} satisfies ManagerHome;
+const greeting = { name: /^(Good morning|Good afternoon|Good evening|Up late), Meyhouse\.$/ };
+
 let currentContext: ActiveWorkspaceContext = context;
 let completedChecklistItemIds: OwnerSetupChecklistItemId[] = [];
 
@@ -91,6 +119,7 @@ vi.mock("../employee-hub/shift-exchanges/exchange-data", async (importOriginal) 
 
 vi.mock("../communications/communications-data", () => ({
   createWorkspaceTodo: vi.fn(),
+  getManagerHome: vi.fn(),
   getOwnerSetupChecklistProgress: vi.fn(),
   getWorkspaceDashboard: vi.fn(),
   markOwnerSetupChecklistItem: vi.fn(),
@@ -104,6 +133,7 @@ describe("WorkspacePage setup checklist", () => {
     completedChecklistItemIds = [];
     vi.clearAllMocks();
     vi.mocked(getWorkspaceDashboard).mockResolvedValue(dashboard);
+    vi.mocked(getManagerHome).mockResolvedValue(managerHome);
     vi.mocked(getOwnerSetupChecklistProgress).mockImplementation(async () => ({
       workspace_id: workspaceId,
       user_id: userId,
@@ -184,7 +214,7 @@ describe("WorkspacePage setup checklist", () => {
         today_ends_at: new Date(Date.now() + 5 * 60_000).toISOString(),
       });
       renderPage();
-      await screen.findByText("Scheduled today");
+      await screen.findByRole("heading", greeting);
       expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(4 * 60_000);
       expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
@@ -205,7 +235,7 @@ describe("WorkspacePage setup checklist", () => {
         today_ends_at: new Date(Date.now() - 1_000).toISOString(),
       });
       renderPage();
-      await screen.findByText("Scheduled today");
+      await screen.findByRole("heading", greeting);
       expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
       await vi.advanceTimersByTimeAsync(29_000);
       expect(vi.mocked(getWorkspaceDashboard)).toHaveBeenCalledTimes(1);
@@ -221,7 +251,7 @@ describe("WorkspacePage setup checklist", () => {
   it("shows the no-access card, not the raw error, when the API refuses this workspace (FB-6.1.9)", async () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new RequestError("Forbidden", "authz.missing_permission", undefined, 403));
     renderPage();
-    expect(await screen.findByRole("heading", { name: "You don't have access to Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", { name: "You don't have access to Home" })).toBeTruthy();
     expect(screen.getByRole("link", { name: "Back to Home" })).toBeTruthy();
     expect(screen.queryByText("Forbidden")).toBeNull();
   });
@@ -231,32 +261,32 @@ describe("WorkspacePage setup checklist", () => {
     vi.mocked(getWorkspaceDashboard).mockResolvedValue({
       ...dashboard,
       announcements: [
-        { id: "a9700000-0000-4000-8000-000000000021", title: "Patio opens", category: "general" },
+        { id: "a9700000-0000-4000-8000-000000000021", title: "Patio opens", category: "general", body: "From Friday", author_name: "Olcay", published_at: null },
       ] as never,
     });
     renderPage();
     const link = await screen.findByRole("link", { name: "View all announcements" });
     expect(link.getAttribute("href")).toBe("/app/announcements");
-    // BL-666 (3): the category reads as a word, not the stored code.
+    // From your team (Daylight): a notice opens its own page.
     const row = screen.getByRole("link", { name: /Patio opens/ });
-    expect(row.textContent).toContain("General");
-    expect(row.textContent).not.toContain("general");
+    expect(row.getAttribute("href")).toBe("/app/announcements/a9700000-0000-4000-8000-000000000021");
   });
 
   // BILDIRIM-06 (KARARLAR S-123, S-96): the old notification system is gone,
-  // and with it the Notifications card: six cards, on the page and in Customize.
-  it("has six cards and no Notifications card, also in Customize", async () => {
+  // and with it the Notifications card: six sections, on the page and in
+  // Customize, under Home's names (YONETICI-HOME, S-210 (a)).
+  it("has six sections and no Notifications section, also in Customize", async () => {
     renderPage();
     await screen.findByRole("heading", { name: "Todos" });
     expect(screen.queryByRole("heading", { name: "Notifications" })).toBeNull();
     fireEvent.click(screen.getByRole("button", { name: /Customize/ }));
     expect(screen.getAllByRole("button", { name: /^Hide / }).map((button) => button.getAttribute("aria-label"))).toEqual([
-      "Hide Today",
-      "Hide Pending requests",
+      "Hide Your locations",
+      "Hide Needs you",
       "Hide Open shifts",
-      "Hide Announcements",
+      "Hide From your team",
       "Hide Todos",
-      "Hide Quick actions",
+      "Hide Next 7 days",
     ]);
     expect(screen.queryByRole("button", { name: "Hide Notifications" })).toBeNull();
   });
@@ -270,7 +300,7 @@ describe("WorkspacePage setup checklist", () => {
     });
     renderPage();
     fireEvent.click(await screen.findByRole("button", { name: /Customize/ }));
-    const todos = screen.getByRole("heading", { name: "Todos" }).closest("article")!;
+    const todos = screen.getByRole("heading", { name: "Todos" }).closest(".mh-cz")!;
     expect(todos.querySelector("[inert]")?.querySelector("input")).toBeTruthy();
     expect(
       screen.getByRole("button", { name: "Show Todos" }).querySelector("svg")?.getAttribute("aria-hidden"),
@@ -281,7 +311,7 @@ describe("WorkspacePage setup checklist", () => {
     expect(todos.querySelector("[inert]")).toBeNull();
     expect(todos.querySelector("input")?.value).toBe("Call the plumber");
     expect(
-      screen.getByRole("button", { name: "Hide Announcements" }).querySelector("svg")
+      screen.getByRole("button", { name: "Hide From your team" }).querySelector("svg")
         ?.getAttribute("aria-hidden"),
     ).toBe("true");
   });
@@ -302,24 +332,24 @@ describe("WorkspacePage setup checklist", () => {
     vi.mocked(getWorkspaceDashboard).mockRejectedValue(new TypeError("Failed to fetch"));
     renderPage();
     const card = await screen.findByRole("alert");
-    expect(within(card).getByRole("heading", { name: "We couldn't load Workspace" })).toBeTruthy();
+    expect(within(card).getByRole("heading", { name: "We couldn't load Home" })).toBeTruthy();
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
 
   // Loading and error in the "B" look (Mert 2026-10-14).
-  it("outlines the cards while Workspace loads, then loads again from Try again", async () => {
+  it("outlines the cards while Home loads, then loads again from Try again", async () => {
     vi.mocked(getWorkspaceDashboard).mockReturnValueOnce(new Promise(() => {}) as never);
     const { unmount } = renderPage();
-    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Workspace")).toBe(true);
-    expect(screen.queryByText("Loading Workspace...")).toBeNull();
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Home")).toBe(true);
+    expect(screen.queryByText("Loading Home...")).toBeNull();
     unmount();
 
     vi.mocked(getWorkspaceDashboard).mockRejectedValueOnce(new TypeError("Failed to fetch"));
     renderPage();
     const card = await screen.findByRole("alert");
     fireEvent.click(within(card).getByRole("button", { name: "Try again" }));
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
-    expect(screen.queryByRole("heading", { name: "We couldn't load Workspace" })).toBeNull();
+    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
+    expect(screen.queryByRole("heading", { name: "We couldn't load Home" })).toBeNull();
   });
 
   // The checklist sits above the cards: if it painted after them, every card
@@ -339,32 +369,32 @@ describe("WorkspacePage setup checklist", () => {
     });
     // Both reads start at once, not one after the other.
     expect(getOwnerSetupChecklistProgress).toHaveBeenCalledWith(workspaceId);
-    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Workspace")).toBe(true);
-    const widgets = [...document.querySelectorAll(".workspace-widget")];
-    expect(widgets.length).toBeGreaterThan(0);
-    expect(widgets.every((widget) => widget.querySelector(".nf-skeleton"))).toBe(true);
-    expect(screen.queryByRole("heading", { name: "Workspace" })).toBeNull();
+    expect(screen.getAllByRole("status").some((node) => node.textContent === "Loading Home")).toBe(true);
+    const cards = [...document.querySelectorAll(".mh-loc")];
+    expect(cards.length).toBeGreaterThan(0);
+    expect(cards.every((card) => card.querySelector(".nf-skeleton"))).toBe(true);
+    expect(screen.queryByRole("heading", greeting)).toBeNull();
 
     await act(async () => {
       answer({ workspace_id: workspaceId, user_id: userId, completed_item_ids: [], closed_at: null });
     });
     expect(await screen.findByRole("region", { name: "Setup checklist" })).toBeTruthy();
-    expect(screen.getByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(screen.getByRole("heading", greeting)).toBeTruthy();
   });
 
   it("keeps the last cards and says so when a refresh fails", async () => {
     const { client } = renderPage();
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
-    const cards = document.querySelectorAll(".workspace-widget").length;
+    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
+    const cards = document.querySelectorAll(".dl-sec").length;
     expect(cards).toBeGreaterThan(0);
     vi.mocked(getWorkspaceDashboard).mockRejectedValueOnce(new TypeError("Failed to fetch"));
     await act(async () => {
       await client.refetchQueries({ queryKey: ["workspace-dashboard"] });
     });
     expect(
-      await screen.findByText("Workspace didn't refresh. These are the last numbers that loaded."),
+      await screen.findByText("Home didn't refresh. These are the last numbers that loaded."),
     ).toBeTruthy();
-    expect(document.querySelectorAll(".workspace-widget").length).toBe(cards);
+    expect(document.querySelectorAll(".dl-sec").length).toBe(cards);
     expect(screen.queryByText("Failed to fetch")).toBeNull();
   });
   it("words a failed layout save for the person", async () => {
@@ -395,9 +425,10 @@ describe("WorkspacePage setup checklist", () => {
     currentContext = { ...context, actions: [...context.actions, "exchange.read"] };
     vi.mocked(getExchanges).mockRejectedValue(new Error("Offline"));
     renderPage();
-    const label = await screen.findByText("Shift changes");
+    await screen.findByRole("heading", { name: "Needs you" });
     await waitFor(() => expect(vi.mocked(getExchanges)).toHaveBeenCalled());
-    await waitFor(() => expect(label.previousElementSibling?.textContent).toBe("—"));
+    // Unknown is not zero: "Needs you" says the check failed instead of "all caught up" alone.
+    expect(await screen.findByText("Shift changes couldn't be checked.")).toBeTruthy();
   });
 
   // BL-176: whether shift changes are counted is the core's answer.
@@ -405,7 +436,7 @@ describe("WorkspacePage setup checklist", () => {
     currentContext = { ...context, permissions: [...context.permissions, "schedule.shift_change_requests.read"] };
     vi.mocked(getExchanges).mockClear();
     renderPage();
-    await screen.findByText("Shift changes");
+    await screen.findByRole("heading", { name: "Needs you" });
     expect(vi.mocked(getExchanges)).not.toHaveBeenCalled();
   });
 
@@ -428,7 +459,7 @@ describe("WorkspacePage setup checklist", () => {
   it("shows a visit-based setup checklist to owner roles", async () => {
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
     const checklist = await screen.findByRole("region", {
       name: "Setup checklist",
     });
@@ -672,7 +703,7 @@ describe("WorkspacePage setup checklist", () => {
     };
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
     await waitFor(() =>
       expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull(),
     );
@@ -687,7 +718,7 @@ describe("WorkspacePage setup checklist", () => {
     }));
     renderPage();
 
-    expect(await screen.findByRole("heading", { name: "Workspace" })).toBeTruthy();
+    expect(await screen.findByRole("heading", greeting)).toBeTruthy();
     expect(screen.queryByRole("heading", { name: "Setup checklist" })).toBeNull();
   });
 
@@ -702,6 +733,85 @@ describe("WorkspacePage setup checklist", () => {
     ).toBeTruthy();
     expect(within(checklist).getAllByText("Optional visit").length).toBeGreaterThan(0);
     expect(within(checklist).queryByText(/setup complete/i)).toBeNull();
+  });
+
+  // YONETICI-HOME (KARARLAR S-210): "Locations first".
+  describe("Locations first", () => {
+    const now = Date.now();
+    const besiktas = {
+      ...kadikoy,
+      id: "11000000-0000-4000-8000-000000000002",
+      name: "Besiktas",
+      // One person on the floor right now; one more shift later today.
+      today_shifts: [
+        { starts_at: new Date(now - 3_600_000).toISOString(), ends_at: new Date(now + 3_600_000).toISOString(), open: false },
+        { starts_at: new Date(now + 7_200_000).toISOString(), ends_at: new Date(now + 9_000_000).toISOString(), open: true },
+      ],
+      missing_documents: [
+        { employee_id: "aa000000-0000-4000-8000-000000000001", name: "Sam Ortiz", document: "Alcohol Server Permit" },
+      ],
+    };
+    const two = {
+      ...managerHome,
+      locations: [besiktas, kadikoy],
+      time_off: [
+        { id: "ab000000-0000-4000-8000-000000000001", employee_id: "aa000000-0000-4000-8000-000000000002", employee_name: "Emre Demir",
+          first_date: "2026-10-23", last_date: "2026-10-25", location_ids: [kadikoy.id] },
+      ],
+    } satisfies ManagerHome;
+    const needs = () => screen.getByRole("region", { name: "Needs you" });
+    const rows = () => within(needs()).getAllByRole("link").map((row) => row.querySelector("b")?.textContent);
+
+    it("draws a card per location with who is on the floor and a badge, and groups Needs you by location", async () => {
+      vi.mocked(getManagerHome).mockResolvedValue(two);
+      renderPage();
+      const card = await screen.findByRole("button", { name: /^Besiktas:/ });
+      expect(card.getAttribute("aria-pressed")).toBe("false");
+      expect(card.querySelector(".mh-loc-n")?.textContent).toMatch(/^1on now/);
+      expect(within(card).getByLabelText("1 person working without a required document").textContent).toBe("1 document");
+      expect(within(screen.getByRole("button", { name: /^Kadikoy:/ })).getByLabelText("1 thing need you here")).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Your locations" })).toBeTruthy();
+      // S-206's warning first, in red; each location under its own heading.
+      expect(within(needs()).getAllByRole("listitem").map((item) => item.querySelector("b")?.textContent ?? item.textContent)).toEqual([
+        "Besiktas",
+        "Sam Ortiz is working without a required document",
+        "Kadikoy",
+        "Emre Demir asks for time off",
+      ]);
+      expect(needs().querySelector(".dl-cnt")?.className).toContain("is-warn");
+      expect(screen.getByText(/1 person on the floor across 2 locations\. 2 things need you\./)).toBeTruthy();
+    });
+
+    it("narrows the page to a location from its card or its chip, and back to all", async () => {
+      vi.mocked(getManagerHome).mockResolvedValue(two);
+      renderPage();
+      fireEvent.click(await screen.findByRole("button", { name: /^Kadikoy:/ }));
+      expect(screen.getByRole("button", { name: /^Kadikoy:/ }).getAttribute("aria-pressed")).toBe("true");
+      expect(rows()).toEqual(["Emre Demir asks for time off"]);
+      expect(screen.getByRole("heading", { name: "Next 7 days · Kadikoy" })).toBeTruthy();
+      const chips = screen.getByRole("group", { name: "Location" });
+      fireEvent.click(within(chips).getByRole("button", { name: "Besiktas" }));
+      expect(rows()).toEqual(["Sam Ortiz is working without a required document"]);
+      fireEvent.click(within(chips).getByRole("button", { name: "All locations" }));
+      expect(rows()).toHaveLength(2);
+    });
+
+    it("draws one card and no chips for one location", async () => {
+      renderPage();
+      await screen.findByRole("heading", greeting);
+      expect(screen.getByRole("heading", { name: "Your location" })).toBeTruthy();
+      expect(document.querySelectorAll(".mh-loc")).toHaveLength(1);
+      expect(screen.queryByRole("group", { name: "Location" })).toBeNull();
+      expect(screen.queryByRole("button", { name: /^Kadikoy:/ })).toBeNull();
+    });
+
+    it("keeps the rest of Home when the locations' read fails", async () => {
+      vi.mocked(getManagerHome).mockRejectedValue(new TypeError("Failed to fetch"));
+      renderPage();
+      expect(await screen.findByRole("heading", { name: "We couldn't load your locations" })).toBeTruthy();
+      expect(screen.getByRole("heading", { name: "Todos" })).toBeTruthy();
+      expect(screen.queryByText("Failed to fetch")).toBeNull();
+    });
   });
 });
 

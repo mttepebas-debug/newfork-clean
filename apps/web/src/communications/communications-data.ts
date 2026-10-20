@@ -7,6 +7,7 @@ import {
   announcementStateResultSchema,
   communicationSavedResultSchema,
   importantDateListSchema,
+  managerHomeSchema,
   ownerSetupChecklistItemIdSchema,
   ownerSetupChecklistProgressSchema,
   workspaceDashboardSchema,
@@ -59,6 +60,10 @@ export async function getWorkspaceDashboard(workspaceId: string) {
   return workspaceDashboardSchema.parse(
     await request(workspaceId, "/workspace"),
   );
+}
+/** The managers' Home, "Locations first": each location's day (YONETICI-HOME). */
+export async function getManagerHome(workspaceId: string) {
+  return managerHomeSchema.parse(await request(workspaceId, "/workspace/home"));
 }
 export async function saveWorkspaceLayout(
   workspaceId: string,

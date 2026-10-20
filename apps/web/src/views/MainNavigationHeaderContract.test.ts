@@ -1,12 +1,9 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 
+// Home (/app/workspace) is not here: like the employee's Home it opens with
+// the Daylight greeting, which folds into the bar (Mert 2026-10-19, KARARLAR S-210).
 const topLevelPages = [
-  {
-    label: "Workspace",
-    path: "src/views/WorkspacePage.tsx",
-    catalogTitle: "Workspace",
-  },
   {
     label: "Availability",
     path: "src/views/AvailabilityPage.tsx",
