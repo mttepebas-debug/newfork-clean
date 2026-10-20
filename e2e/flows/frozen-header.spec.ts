@@ -177,23 +177,31 @@ test.describe("lists scroll inside their frame while the heading stays", () => {
     test(`${path} at ${size.width}`, async ({ browser }) => {
       const page = await open(browser, "zeynep", size);
       await visit(page, path === "/app/schedule/lineup" ? `${path}?date=${lineupDay}` : path);
-      await page.evaluate((frame) => {
-        if (!document.querySelector(frame)) {
-          const list = document.createElement("div");
-          list.className = "job-catalog";
-          document.querySelector(".acknowledgement-page")!.append(list);
-        }
-        const tall = document.createElement("div");
-        tall.style.height = "2000px";
-        document.querySelector(frame)!.append(tall);
-      }, frame);
       const before = await topOf(page, "h1");
-      const moved = await page.evaluate((frame) => {
-        const list = document.querySelector(frame)!;
-        list.scrollTop = 500;
-        const area = list.closest(".settings-content") ?? document.querySelector(".app-main")!;
-        return { list: list.scrollTop, area: area.scrollHeight - area.clientHeight };
-      }, frame);
+      // The list may be drawn again while its data settles: the filler and the scroll go into whatever list is
+      // on the page now, until one of them holds.
+      const scrollList = () =>
+        page.evaluate((frame) => {
+          if (!document.querySelector(frame)) {
+            const list = document.createElement("div");
+            list.className = "job-catalog";
+            document.querySelector(".acknowledgement-page")!.append(list);
+          }
+          const list = document.querySelector(frame)!;
+          if (!list.querySelector(":scope > [data-tall-filler]")) {
+            const tall = document.createElement("div");
+            tall.dataset.tallFiller = "";
+            tall.style.height = "2000px";
+            // A flex column (Availability's list is one) would shrink an empty filler to nothing.
+            tall.style.flex = "none";
+            list.append(tall);
+          }
+          list.scrollTop = 500;
+          const area = list.closest(".settings-content") ?? document.querySelector(".app-main")!;
+          return { list: list.scrollTop, area: area.scrollHeight - area.clientHeight };
+        }, frame);
+      await expect.poll(async () => (await scrollList()).list).toBeGreaterThan(0);
+      const moved = await scrollList();
       expect(moved.list).toBeGreaterThan(0);
       // the page around the list has nothing to scroll
       expect(moved.area).toBeLessThanOrEqual(1);
