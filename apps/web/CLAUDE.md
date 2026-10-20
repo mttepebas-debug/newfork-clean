@@ -25,8 +25,8 @@ Ekran, veri katmanı ve görsel kontrol için bu klasöre özgü olgular; `packa
 - Metin değişince `e2e/`'de ikizini ara (`toContainText`, `getByText`, `getByRole(…, { name })`); onu main'deki CI koşar; akış değiştiyse etkilenen e2e'yi `node scripts/lock.mjs run db --e2e -- …` ile sen de koş. `toContainText` gizli çocukları da sayar: `aria-describedby` hedefi `not.toContainText`'i kırar.
 
 ## Görsel kontrol ve erişilebilirlik
-- Görsel kararı Mert gözle verir: gerçek uygulamada yalnız DEV'de query param'la açılan 2–3 gerçekten farklı varyant; seçimden sonra ötekiler silinir.
-- Kanıt: 1440 ve 390 ekran görüntüsü + Mert'in kapanış turu; ayrı görsel QA yok. Bak: owner/manager/employee; yükleniyor/boş/hata/erişim-yok; klavye, görünür odak, AA kontrast; komşu ekran.
+- Görsel varyant o ekranın Artifact'ında gösterilir (kök CLAUDE.md); Mert seçince ötekiler silinir.
+- Kanıtı Claude kendisi toplar: 1440 ve 390 ekran görüntüsü; ayrı görsel QA yok. Bak: owner/manager/employee; yükleniyor/boş/hata/erişim-yok; klavye, görünür odak, AA kontrast; komşu ekran.
 - jsdom CSS yüklemez: renk düzeltmesi tarayıcıda computed style ile kanıtlanır. Vitest'te jest-dom yok.
 - Telefonda ipucu ve dokunma `hasTouch: true` + `tap` ile denenir; fareyle 390 dokunma hatasını gizler.
 

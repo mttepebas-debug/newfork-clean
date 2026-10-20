@@ -53,6 +53,7 @@ ABD restoranları için çok kiracılı vardiya planlama SaaS'ı. Arayüz İngil
 - `pnpm.cmd install` · `pnpm.cmd supabase:start` · `pnpm.cmd dev` (web 5555, API 5556; başka oturum boş bir port çifti alır).
 - `pnpm.cmd lint` · `pnpm.cmd typecheck` · `pnpm.cmd test` · `pnpm.cmd build`; odaklı: `pnpm.cmd --filter <paket> lint` / `typecheck`, `pnpm.cmd --filter @newfork/web exec vitest run <dosya>`.
 - Ortak yerel DB'ye dokunan komut kilitle koşar: `node scripts/lock.mjs run db -- pnpm.cmd test:db` (akış testi: `node scripts/lock.mjs run db --e2e -- <komut>`); sıra `node scripts/lock.mjs status`.
+- Akış testi (tek dosya): `e2e` klasöründen `node ../scripts/lock.mjs run db --e2e -- npx playwright test flows/<dosya>`; ayrıntı `e2e/CLAUDE.md`.
 - Migration ekleyince `pnpm.cmd db:schema`, şema aynı commit'e; yeni pgTAP dosyası `supabase/tests/ci-green.txt`'ye.
 
 ## Tuzaklar
