@@ -7351,17 +7351,22 @@ describe("App", () => {
     ).toBeTruthy();
     await signInAs("manager");
 
-    // The card in place, not a silent trip home (Mert 2026-10-14).
+    // The card in place, not a silent trip home (Mert 2026-10-14). Since
+    // BL-680 the manager reads the catalog, so Settings opens around the card:
+    // General stays with owners and admins.
     expect(
-      await screen.findByRole("heading", { name: "You don't have access to Settings" }),
+      await screen.findByRole("heading", { name: /^You don't have access to / }),
     ).toBeTruthy();
     expect(window.location.pathname).toBe("/app/settings/general");
-    expect(
-      screen.getByRole("link", { name: "Back to Home" }).getAttribute("href"),
-    ).toBe("/app/workspace");
-    expect(screen.queryByRole("navigation", { name: "Workspace settings" })).toBeNull();
+    const rail = within(screen.getByRole("navigation", { name: "Workspace settings" }));
+    expect(rail.queryByRole("link", { name: "General" })).toBeNull();
+    expect(rail.queryByRole("link", { name: "Locations" })).toBeNull();
+    expect(rail.queryByRole("link", { name: "Roles & permissions" })).toBeNull();
+    expect(rail.queryByRole("link", { name: "Conflict handling" })).toBeNull();
+    for (const page of ["Jobs", "Schedule rules", "Shift catalog", "Documents", "Acknowledgements"])
+      expect(rail.getByRole("link", { name: page })).toBeTruthy();
     expect(sidebar().getByRole("link", { name: "Employees" })).toBeTruthy();
-    expect(screen.queryByRole("link", { name: "Settings", hidden: true })).toBeNull();
+    expect(sidebar().getByRole("link", { name: "Settings" })).toBeTruthy();
   });
 
   it("shows employee-only users the no-access card at the manager Schedule route", async () => {
