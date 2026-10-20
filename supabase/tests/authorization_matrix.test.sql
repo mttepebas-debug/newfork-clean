@@ -617,6 +617,14 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.lineup_command_service($1, $2, gen_random_uuid(), 'share', jsonb_build_object(
        'lineups', jsonb_build_array(jsonb_build_object('location_id', $3, 'service_date', tests.week(0) + 1,
          'shift_type_id', null)), 'ask_ack', true)) is not null$$);
+-- The managers' Home (KARARLAR S-210): opening it, and arranging one's own cards on it (KK-36).
+insert into action (key, target_kind, permission, owner_only, empty_is_no, template) values
+  ('home.manager.read', 'workspace', 'workspace.read', false, false,
+   $$select public.get_manager_home_service($1, $2) is not null$$),
+  ('home.layout.save', 'workspace', 'workspace.read', false, false,
+   $$select public.save_workspace_layout_service($1, $2,
+       array['quick_actions', 'operations', 'pending_requests', 'open_shifts', 'announcements', 'todos'],
+       array[]::text[]) is not null$$);
 
 -- The same actions as the core names them. blank: how a blank location reaches
 -- the core, as the entry point receives it: 'null' ({NULL}, no location) or
@@ -700,6 +708,9 @@ insert into core_action (key, core_key, blank) values
   ('employee.save_own_contact', 'employee.save_own_contact', 'null'),
   ('availability.own', 'availability.own', 'null');
 insert into core_action (key, core_key, blank) values ('lineup.share', 'lineup.share', 'null');
+insert into core_action (key, core_key, blank) values
+  ('home.manager.read', 'workspace.todos', 'null'),
+  ('home.layout.save', 'workspace.todos', 'null');
 update core_action set by_account = true where key = 'read.membership';
 
 select is(
@@ -931,6 +942,13 @@ begin
 
   when 'workspace.close', 'workspace.transfer_ownership' then
     return 'allow';  -- owner only, checked above
+
+  when 'home.manager.read', 'home.layout.save' then
+    -- The managers' Home is management's (KARARLAR S-210): the owner, an admin, a manager, whatever
+    -- they manage (one managing nowhere opens it empty), and whoever only works never (checked above);
+    -- nor somebody suspended, invited, removed, still in onboarding or of another workspace (above).
+    -- Its layout is one's own and goes with opening it (KK-36).
+    return 'allow';
 
   when 'time_off.decide', 'requests.read' then
     -- One decision chain (KARARLAR S-164, S-169; ROL-CIFT design §4.5): the managers of every location

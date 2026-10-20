@@ -178,6 +178,8 @@ export const targetedAuthzActions = {
   "time_off.request_own": { permission: null, own: true, employeeTarget: true },
   "time_off.revoke": { person: true, permission: "schedule.time_off_requests.manage" },
   "workspace.close": { permission: null, ownerOnly: true },
+  // The managers' Home and its card layout (KARARLAR S-210, KK-36).
+  "workspace.todos": { permission: "workspace.read" },
   "workspace.transfer_ownership": { permission: null, ownerOnly: true },
 } as const satisfies Partial<Record<AuthzAction, TargetedRule>>;
 export type TargetedAuthzAction = keyof typeof targetedAuthzActions;
@@ -409,6 +411,11 @@ export function expected<A extends TargetedAuthzAction>(
     case "workspace.close":
     case "workspace.transfer_ownership":
       return true; // owner only, checked above
+
+    case "workspace.todos":
+      // The managers' Home is management's (S-210): the owner, an admin or a manager, wherever they
+      // manage; whoever only works, or is not active, never (checked above).
+      return true;
 
     case "time_off.decide":
     case "requests.read":
