@@ -1,5 +1,0 @@
-select public.request_employee_preferred_name_service('c0000000-0000-4000-8000-000000000005','c0100000-0000-4000-8000-000000000001','c0400000-0000-4000-8000-000000000005','Alican');
-update public.notification_outbox set payload = payload || '{"recipient_user_ids":["c0000000-0000-4000-8000-000000000001","c0000000-0000-4000-8000-000000000003"]}', status='leased', lease_owner='cb-worker', lease_expires_at=now()+interval '1 minute' where workspace_id='c0100000-0000-4000-8000-000000000001';
-select public.process_notification_outbox_service('cb-worker', id)->>'status' from public.notification_outbox where workspace_id='c0100000-0000-4000-8000-000000000001';
-select 'inbox', right(u::text,1), n->>'title', n->>'body', n->>'action_url' from unnest(array['c0000000-0000-4000-8000-000000000001','c0000000-0000-4000-8000-000000000003']::uuid[]) u,
- lateral jsonb_array_elements(public.get_notification_inbox_v2_service(u,'c0100000-0000-4000-8000-000000000001',null,null,null,null,null,30)->'notifications') n;

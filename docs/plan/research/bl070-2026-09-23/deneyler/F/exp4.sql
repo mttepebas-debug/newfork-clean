@@ -1,7 +1,0 @@
-select pg_temp.pub(ali,kad,1,'18:00','22:00',1), pg_temp.pub(ayse,bes,1,'18:00','22:00',2) from fx;
-create temp table st(k text primary key, v jsonb);
-insert into st select 'e1', pg_temp.cmd(ali_u,jsonb_build_object('action','create','kind','swap','shift_id',pg_temp.sid(1),'requested_shift_id',pg_temp.sid(2))) from fx;
-select 'P1 create same-time cross-location swap (patched)', v from st;
-select 'P1 accept', pg_temp.cmd(ayse_u,jsonb_build_object('action','accept','case_id',c.id,'application_id',a.id,'expected_revision',c.revision))->>'status' from fx, public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id=c.id where c.id=(select (v->>'case_id')::uuid from st where k='e1');
-select 'P1 owner preview', public.shift_exchange_preview(owner_u,w,c.id,a.id)->'reasons' from fx, public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id=c.id where c.id=(select (v->>'case_id')::uuid from st where k='e1');
-select 'P1 owner approve (write)', pg_temp.try(format($q$select pg_temp.cmd(%L,jsonb_build_object('action','approve','case_id',%L,'application_id',%L,'expected_revision',%s,'fingerprint',%L))::text$q$,owner_u,c.id,a.id,c.revision,public.shift_exchange_preview(owner_u,w,c.id,a.id)->>'fingerprint')) from fx, public.shift_exchange_cases c join public.shift_exchange_applications a on a.case_id=c.id where c.id=(select (v->>'case_id')::uuid from st where k='e1');

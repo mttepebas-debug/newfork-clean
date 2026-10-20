@@ -1,16 +1,14 @@
 name: CI
 
 on:
-  # WORKFLOW-V2 (spec §7.2): the full check runs once per train, on its train/<stamp> branch; main only ever
-  # receives that same green commit (scripts/train.mjs push), so a push to main or task/** starts nothing.
-  # No pull_request trigger (PROJECT-GECIS, Mert 2026-10-09): a thread's PR would race the train for the one
-  # runner on Mert's PC; a branch reaches main only through the train.
+  # Mert, 2026-10-20: no train. A session runs its quick checks and pushes to main itself; the full check
+  # runs here after the push, on the one runner on Mert's PC, and a red run is fixed at once.
   push:
-    branches: ["train/**"]
+    branches: ["main"]
     paths-ignore: ["docs/**", "**/*.md"]
   workflow_dispatch:
 
-# A newer push to the same ref (a PR) cancels the running check; every train branch is new.
+# A newer push to main cancels the running check: the latest main is the one that counts.
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
@@ -69,7 +67,7 @@ jobs:
       # previous push (that push's run may have been cancelled).
       - name: Green list only grows
         run: |
-          base="${{ github.event.pull_request.base.sha }}"
+          base="${{ github.event.before }}"
           case "$base" in ""|0000000000000000000000000000000000000000) base=$(git merge-base HEAD origin/main) ;; esac
           bash scripts/ci-green-guard.sh "$base"
       # BL-112: check, db and e2e can run at once; isolation is keyed to
@@ -131,7 +129,6 @@ jobs:
   # timing test. Beside e2e it measured 57-67 ms and failed main twice; alone
   # it reads 21-24 ms. So it runs last, after check, db and e2e have finished,
   # with nothing else from this run on the PC. The 50 ms limit is unchanged.
-  # (Another branch's run can still overlap; trains run one at a time. Only a re-push to the same PR cancels its older run; every train branch is new, so train runs are not cancelled.)
   db-budget:
     needs: [check, db, e2e]
     runs-on: *runner

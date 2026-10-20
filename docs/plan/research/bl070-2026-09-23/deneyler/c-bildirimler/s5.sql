@@ -1,5 +1,0 @@
-\echo == S5 custom manager role with notifications.settings.write
-select public.save_workspace_role_service('c0000000-0000-4000-8000-000000000001','c0100000-0000-4000-8000-000000000001',null,'Kadikoy lead','', 'manager', array['workspace.read','employees.read','notifications.settings.read','notifications.settings.write'], null) is not null as role_saved;
-update public.workspace_memberships set role_id=(select id from workspace_roles where workspace_id='c0100000-0000-4000-8000-000000000001' and name='Kadikoy lead') where id='c0200000-0000-4000-8000-000000000003';
-select 'mehmet saves global policy', public.save_notification_policy_service('c0000000-0000-4000-8000-000000000003','c0100000-0000-4000-8000-000000000001','requests.time_off.submitted',1,'global',null,null,false,array['in_app'],'immediate','Mute')->>'status';
-select 'mehmet saves Besiktas policy', public.save_notification_policy_service('c0000000-0000-4000-8000-000000000003','c0100000-0000-4000-8000-000000000001','requests.shift_change.submitted',1,'location','c0300000-0000-4000-8000-000000000002',null,false,array['in_app'],'immediate','Mute Besiktas')->>'status';

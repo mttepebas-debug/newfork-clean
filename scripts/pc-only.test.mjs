@@ -31,8 +31,6 @@ const node = (args, { cwd, env }) => spawnSync(process.execPath, args, { cwd, en
 for (const [script, args] of [
   ["lock.mjs", ["run", "db", "--", "echo", "x"]],
   ["lock.mjs", ["status"]],
-  ["train.mjs", ["run", "task/x"]],
-  ["train.mjs", ["plan", "task/x"]],
 ]) {
   test(`${script} ${args[0]}: off Mert's PC it refuses with exit 3 and opens no C: folder`, () => {
     const box = sandbox("linux");

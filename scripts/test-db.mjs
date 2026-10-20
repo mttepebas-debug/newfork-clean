@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 /**
  * PARALEL-1 (BL-897, replaces reload-test-builder.mjs): `pnpm test:db` for a branch, on the one local
- * database every session shares (CLAUDE.md §5: a branch's change reaches the shared DB only in the
- * train's apply-local, under db.lock).
+ * database every session shares (a branch's change reaches the shared DB only after it is on main,
+ * through scripts/db-apply.mjs under db.lock).
  *
  * `supabase test db` runs pgTAP against whatever test world builder (supabase/test-support/builder.sql)
  * the database has loaded. Loading the branch's builder for good (the old reload) changed every other

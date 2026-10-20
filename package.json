@@ -7,7 +7,7 @@
     "dev:turbo": "turbo dev",
     "build": "turbo build",
     "typecheck": "turbo typecheck",
-    "test": "node --test scripts/lock.test.mjs scripts/guard.test.mjs scripts/decision-log.test.mjs scripts/schema-snapshot.test.mjs scripts/ci-supabase-apart.test.mjs scripts/test-db.test.mjs scripts/hooks.test.mjs scripts/wt-hazirla.test.mjs scripts/train-plan.test.mjs scripts/train-steps.test.mjs scripts/kararlar-check.test.mjs scripts/main-watch.test.mjs scripts/karantina.test.mjs scripts/pc-only.test.mjs scripts/vercel-config.test.mjs scripts/sentry-sourcemaps.test.mjs && turbo test",
+    "test": "node --test scripts/lock.test.mjs scripts/guard.test.mjs scripts/db-apply.test.mjs scripts/schema-snapshot.test.mjs scripts/ci-supabase-apart.test.mjs scripts/test-db.test.mjs scripts/wt-hazirla.test.mjs scripts/karantina.test.mjs scripts/pc-only.test.mjs scripts/vercel-config.test.mjs scripts/sentry-sourcemaps.test.mjs && turbo test",
     "test:db": "node scripts/test-db.mjs",
     "db:schema": "node scripts/schema-snapshot.mjs write",
     "e2e": "playwright test -c e2e/playwright.config.ts",

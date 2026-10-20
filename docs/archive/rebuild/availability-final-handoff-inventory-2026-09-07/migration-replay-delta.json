@@ -1,9 +1,0 @@
-{
-  "recorded_count": 204,
-  "current_count": 206,
-  "changed_or_missing": [],
-  "added": [
-    "20260909034000_shift_exchange_shared_assignment_guard.sql",
-    "20260909035000_lineup_shared_content_revision_compare.sql"
-  ]
-}

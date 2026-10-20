@@ -1,22 +1,10 @@
 #!/usr/bin/env node
-// WORKFLOW-V2 (spec §7.2, §10): PreToolUse guard for Bash, PowerShell, Edit and Write.
-// - A push to main is refused: only scripts/train.mjs sends main (its own process, not seen here), and
-//   only a train CI passed. `gh pr merge` and a `gh api` write to a merge, contents or git/refs endpoint (or a
-//   graphql merge/ref mutation) count as a push to main.
-//   Emergency: NF_OVERRIDE="<reason>" in front of the push saves origin/main as refs/nf-backup/main/<stamp>
-//   first and is logged; when that backup cannot be taken the push is refused.
-// ponytail: a client-side guard reads words, not what git will run: `git -c alias.p=push p ...`, `eval`,
-//   `iex`, `node -e "...execSync('git push ...')"` stay invisible. Server-side protection of main is the real fix.
-// - A worker agent (a hook input with agent_id, or a folder under .claude/worktrees/agent-*) never writes
-//   a record file (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, the daily log, e2e/karantina.txt), by edit or by commit,
-//   and never pushes to the coordinator's branch coord/kayit2. It never runs scripts/train.mjs and never writes
-//   <OPS_DIR>/audit.log (Edit/Write, a redirection, tee or a content cmdlet).
-// - The main checkout is Mert's (CLAUDE.md §3.B.1): while it is on branch main, no Edit/Write lands on a file there
-//   that git tracks or would track; git-ignored files (CLAUDE.local.md, .env.local, artifacts/) stay writable.
+// PreToolUse guard for Bash, PowerShell, Edit and Write.
+// - The main checkout is Mert's: while it is on branch main, no Edit/Write lands on a file there that git
+//   tracks or would track; git-ignored files (CLAUDE.local.md, .env.local, artifacts/) stay writable.
 // - Deleting a branch or removing a worktree is allowed; the tip is saved under refs/nf-backup/... first.
 // - Commands the settings deny list refuses are logged when tried.
 // Every decision lands in <OPS_DIR>/audit.log (one JSON object per line, secrets masked).
-// Fail-closed only for a push to main: if evaluate() itself breaks, that push is refused.
 import fs from "node:fs";
 import path from "node:path";
 import { execFileSync, spawnSync } from "node:child_process";
@@ -46,30 +34,6 @@ const tryGit = (cwd, args, timeout) => {
 };
 const stamp = () => new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d+/, "");
 
-// The override counts only as an assignment in front of the guarded command itself:
-// bash `NF_OVERRIDE="why" git push …`, or PowerShell `$env:NF_OVERRIDE='why'; … git push …`
-// (an earlier segment: PowerShell keeps the variable for the rest of the command, a
-// `Set-Location` in between included). Text anywhere else (a commit message) does not count.
-const REASON = String.raw`\s*=\s*(?:"([^"]*)"|'([^']*)'|(\S+))`;
-const PS_OVERRIDE = new RegExp(`^\\$env:NF_OVERRIDE${REASON}\\s*$`, "i");
-export function overrideReason(segs, i) {
-  const pick = (m) => (m ? (m[1] ?? m[2] ?? m[3] ?? "").trim() || "(gerekçe yok)" : null);
-  const own = pick(segs[i].match(new RegExp(`^NF_OVERRIDE${REASON}\\s`)));
-  if (own) return own;
-  for (let j = i - 1; j >= 0; j--) {
-    const ps = pick(segs[j].match(PS_OVERRIDE));
-    if (ps) return ps;
-  }
-  return null;
-}
-
-// Split on && || ; | newline, but only in the command's own code (BL-964): not inside quotes, a
-// heredoc body, a here-string or a `#` comment, and not at a line continuation. Bash and PowerShell
-// differ in their escape character (\ vs `) and in how a quote escapes itself. A command wrapped in
-// another shell (`bash -c "…"`, `pwsh -Command "…"`, `cmd /c "…"`) is read as that shell's commands.
-// ponytail: a lone `&` (background) is not a separator; `pwsh -EncodedCommand` is not decoded.
-// Each segment carries the operator in front of it; an empty segment between two
-// operators keeps the weaker one (anything but && breaks a chain).
 const SEP = /(&&|\|\||[;|\n])/;
 const ENV = /^(?:[A-Za-z_]\w*=(?:"[^"]*"|'[^']*'|\S*)\s+)+/;
 export function chain(cmd, shell = "bash", depth = 0) {
@@ -346,147 +310,11 @@ function gitCall(seg, sub) {
   return { cwd, args: w.slice(i + 1) };
 }
 
-// Where a push goes: its directory and, per refspec, what it sends (src) and where (dst; "*" for
-// --all/--branches/--mirror and for any refspec with a wildcard). BL-760: `git push origin task/x:main`
-// sends task/x whatever HEAD is. `@` is git's short name for HEAD, so a dst of `@` or `HEAD` is the current
-// branch. src is null for a delete (`:main`).
-function pushCall(seg, cwd) {
-  const call = gitCall(seg, "push");
-  if (!call) return null;
-  const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  // ponytail: --all/--mirror send every branch; HEAD stands in for them, as before
-  if (call.args.some((a) => a === "--all" || a === "--branches" || a === "--mirror")) return { dir, refs: [{ src: "HEAD", dst: "*" }] };
-  const plain = call.args.filter((a) => !a.startsWith("-"));
-  // --repo=<remote> names the remote as an option, so every plain arg is a refspec
-  const refspecs = call.args.some((a) => a.startsWith("--repo")) ? plain : plain.slice(1);
-  const current = () => tryGit(dir, ["branch", "--show-current"]);
-  if (!refspecs.length) return { dir, refs: [{ src: "HEAD", dst: current() }] };
-  // a refspec built by $( … ) or `…` (`git push -u origin "$(git branch --show-current)"`) cannot be
-  // read before it runs; it is resolved like a bare push, to the current branch
-  if (refspecs.some((spec) => SUBST.test(spec))) return { dir, refs: [{ src: "HEAD", dst: current() }] };
-  return {
-    dir,
-    refs: refspecs.map((spec) => {
-      const s = spec.replace(/^\+/, "");
-      // `:` alone is the matching refspec: every branch both sides have, main among them
-      if (s.includes("*") || s === ":") return { src: s, dst: "*" };
-      const [src, to] = s.includes(":") ? s.split(":") : [s, s];
-      const dst = to === "HEAD" || to === "@" ? current() : to;
-      return { src: src || null, dst: dst.replace(/^(refs\/)?heads\//, "") };
-    }),
-  };
-}
-const toMain = (r) => r.dst === "main" || r.dst === "*";
-
-// Ways to reach main without a git push: `gh [-R x] pr merge …` (a PR lands on its base, main here), and a
-// `gh api` write to a merge, contents or git/refs endpoint, or a graphql merge/ref mutation. A `gh api` call
-// writes when -X/--method says so or when it sends fields (-f/-F/--field/--raw-field/--input imply POST).
-// A GET passes: reading refs/heads/main is harmless (`git ls-remote origin main` reads it without the API).
-const GH_WRITE_ENDPOINT = /(^|\/)(pulls\/[^/\s]+\/merge|merges|contents|git\/refs)(\/|$|\?)/;
-const GH_MUTATION = /\b(mergePullRequest|updateRef|updateRefs|createCommitOnBranch|enablePullRequestAutoMerge)\b/;
-function ghToMain(seg) {
-  const w = words(seg);
-  const g = w.findIndex((x) => /(^|[\\/])gh(\.exe)?$/i.test(x));
-  if (g < 0) return false;
-  let k = g + 1;
-  while (k < w.length && w[k].startsWith("-")) k += w[k] === "-R" || w[k] === "--repo" ? 2 : 1; // gh's own -R/--repo <repo>
-  if (w[k] === "pr" && w[k + 1] === "merge") return true;
-  if (w[k] !== "api") return false;
-  const args = w.slice(k + 1);
-  let method = null;
-  let fields = false;
-  for (let j = 0; j < args.length; j++) {
-    const a = args[j];
-    const m = a.match(/^(?:-X|--method)(?:=?(.+))?$/i);
-    if (m) method = (m[1] ?? args[++j] ?? "").toUpperCase();
-    else if (/^(-f|-F|--field|--raw-field|--input)(=|$)/.test(a) || /^-[fF]\S/.test(a)) fields = true;
-  }
-  const writes = (method ?? (fields ? "POST" : "GET")) !== "GET";
-  if (!writes) return false;
-  if (args.includes("graphql")) return args.some((a) => GH_MUTATION.test(a));
-  return args.some((a) => !a.startsWith("-") && GH_WRITE_ENDPOINT.test(a.replace(/^\/?repos\/[^/]+\/[^/]+/, "")));
-}
-
-// ---- record files (spec §6.1): the coordinator's; a worker agent never writes them ----
-// e2e/karantina.txt too (S-106): only the coordinator quarantines a known red, on coord/kayit2.
-const RECORDS = /(^|\/)(DURUM\.md|docs\/plan\/(BACKLOG|KARARLAR|SORULAR|EKRAN-PLANI)\.md|docs\/plan\/gunluk\/.+|e2e\/karantina\.txt)$/i;
-// `docs/plan/./KARARLAR.md`, `docs/plan/x/../SORULAR.md`, backslashes: a path is normalized before it is read.
-// Windows also opens `KARARLAR.md.`, `KARARLAR.md ` and `DURUM.md::$DATA` (an NTFS stream) as the file itself, so
-// each name loses its stream suffix and its trailing dots and spaces first (a drive's `C:` is kept).
-const winName = (seg) => (seg === "." || seg === ".." || /^[A-Za-z]:$/.test(seg) ? seg : seg.replace(/:.*$/, "").replace(/[. ]+$/, ""));
-const posix = (f) => path.posix.normalize(String(f ?? "").replaceAll("\\", "/").split("/").map(winName).join("/"));
-export const isRecordFile = (f) => RECORDS.test(posix(f));
-// Worker agents run in <project>/.claude/worktrees/agent-*/ (Agent tool, isolation: worktree).
-const AGENT_TREE = /\/\.claude\/worktrees\/agent-[^/]+\//i;
-export const inWorkerTree = (p) => AGENT_TREE.test(`${posix(p)}/`);
-const byWorker = (input, where) => Boolean(input.agent_id) || inWorkerTree(where);
-const RECORD_REFUSAL =
-  "Reddedildi: kayıt dosyasını (DURUM, KARARLAR, SORULAR, BACKLOG, EKRAN-PLANI, günlük, e2e/karantina.txt) yalnız koordinatör yazar; bulduğunu son mesajına yaz (CLAUDE.md §6).";
-// The coordinator's record branch (spec §7.3): a worker never pushes to it.
-const COORD_BRANCH = "coord/kayit2";
-const COORD_REFUSAL = `Reddedildi: ${COORD_BRANCH} koordinatörün kayıt dalıdır, işçi oraya gönderemez; kendi task/<iş> dalına gönder (CLAUDE.md §6).`;
-
-// The train is the coordinator's (CLAUDE.md §5): a worker never runs scripts/train.mjs, whatever the subcommand.
-// ponytail: words, as everywhere here: `node -e "import('./scripts/train.mjs')"` is not seen.
-const TRAIN_REFUSAL = "Reddedildi: scripts/train.mjs'i yalnız koordinatör koşar; dalını push et ve son mesajında HAZIR yaz (CLAUDE.md §5).";
-function runsTrain(seg) {
-  const w = words(seg);
-  const n = w.findIndex((x) => /(^|[\\/])node(\.exe)?$/i.test(x));
-  return n >= 0 && w.slice(n + 1).some((x) => /(^|[\\/])train\.mjs$/i.test(x));
-}
-// <OPS_DIR>/audit.log is the guard's and the train's record (main-watch reads train pushes from it): a worker
-// never writes it, by Edit/Write or by a shell redirection, tee or a content cmdlet. Reading it passes.
-const AUDIT_REFUSAL = "Reddedildi: audit.log'u yalnız guard ve tren yazar; işçi ona yazamaz (CLAUDE.md §6).";
-const isAuditLog = (f) => {
-  const p = posix(f).toLowerCase();
-  return p === posix(AUDIT()).toLowerCase() || /(^|\/)\.newfork-inbox\/audit\.log$/.test(p);
-};
-const AUDIT_SHELL_WRITE = [
-  />\s*["']?[^\s"'|;&<>]*audit\.log\b/i,
-  /\b(tee|tee-object|out-file|add-content|set-content|clear-content|remove-item|move-item|copy-item|rm|del|mv|cp|copy|truncate)\b[^|;&]*audit\.log\b/i,
-  // sed edits in place only with -i / --in-place; `sed -n …p audit.log` is a read
-  /\bsed\b(?=[^|;&]*\s(-[a-zA-Z]*i|--in-place)\b)[^|;&]*audit\.log\b/i,
-];
-const writesAuditLog = (seg) => AUDIT_SHELL_WRITE.some((re) => re.test(seg));
-
-// A git commit's record files: the staged ones plus any named on the command line.
-const COMMIT_VALUE = new Set(["-m", "-F", "-C", "-c", "-t", "--author", "--date", "--file", "--message", "--template", "--cleanup", "--fixup", "--squash", "--trailer", "--reuse-message", "--reedit-message"]);
-function commitRecords(seg, cwd) {
-  const call = gitCall(seg, "commit");
-  if (!call) return [];
-  const dir = call.cwd ? path.resolve(cwd, call.cwd) : cwd;
-  const named = [];
-  for (let k = 0; k < call.args.length; k++) {
-    const a = call.args[k];
-    if (a === "--") {
-      named.push(...call.args.slice(k + 1));
-      break;
-    }
-    if (COMMIT_VALUE.has(a)) k++;
-    else if (!a.startsWith("-")) named.push(a);
-  }
-  const staged = tryGit(dir, ["diff", "--cached", "--name-only"]).split("\n").filter(Boolean);
-  return [...new Set([...staged, ...named])].filter(isRecordFile);
-}
-
 export function audit(entry) {
   fs.mkdirSync(OPS_DIR, { recursive: true });
   const line = { at: new Date().toISOString(), ...entry };
   if (line.command) line.command = redact(line.command);
   fs.appendFileSync(AUDIT(), `${JSON.stringify(line)}\n`);
-}
-
-export function backupMain(cwd) {
-  let fetched = true;
-  try {
-    git(cwd, ["fetch", "-q", "origin", "main"], 30000);
-  } catch {
-    fetched = false;
-  }
-  const sha = git(cwd, ["rev-parse", "origin/main"]);
-  const ref = `refs/nf-backup/main/${stamp()}`;
-  git(cwd, ["update-ref", ref, sha]);
-  return { ref, sha, fetched };
 }
 
 function backupBranches(seg, cwd, base) {
@@ -520,10 +348,6 @@ function backupBranches(seg, cwd, base) {
   return out;
 }
 
-// Command substitution: $( … ) or a backtick.
-const SUBST = /\$\(|`/;
-const SUBST_PUSH_MAIN = /\bgit\b[^;&|\n]*\bpush\b[^;&|\n]*\bmain\b/;
-
 // The main checkout (MAIN_DIR) is Mert's (CLAUDE.md §3.B.1). An edit there is refused when that folder is the
 // repo's primary worktree, on branch main, and the file is not git-ignored. Its linked worktrees
 // (.claude/worktrees/*) and a nested repo are other folders. When git cannot answer, the edit passes and is
@@ -556,10 +380,6 @@ function mainCheckoutEdit(file) {
 const EDIT_TOOLS = /^(Edit|Write|MultiEdit|NotebookEdit)$/;
 function evaluateEdit(input) {
   const file = String(input.tool_input?.file_path ?? input.tool_input?.notebook_path ?? "");
-  if (isAuditLog(file) && byWorker(input, input.cwd)) {
-    audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "audit-write-by-worker-blocked" });
-    return { block: true, message: AUDIT_REFUSAL };
-  }
   const main = mainCheckoutEdit(file);
   if (main) {
     const entry = { session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file };
@@ -569,10 +389,7 @@ function evaluateEdit(input) {
     }
     audit({ ...entry, event: "main-edit-check-error", error: main.slice("error: ".length) });
   }
-  // the session's own folder decides, so a worker cannot reach the coordinator's file by absolute path
-  if (!isRecordFile(file) || !(byWorker(input, input.cwd) || inWorkerTree(file))) return { block: false };
-  audit({ session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd: input.cwd ?? "", tool: input.tool_name, file, event: "record-by-worker-blocked" });
-  return { block: true, message: RECORD_REFUSAL };
+  return { block: false };
 }
 
 // Returns { block, message? }; performs backups and writes the audit log.
@@ -581,70 +398,17 @@ export function evaluate(input) {
   const cmd = input.tool_input?.command ?? "";
   const cwd = input.cwd ?? process.cwd();
   const base = { session_id: input.session_id ?? "", agent_id: input.agent_id ?? null, cwd, tool: input.tool_name ?? "", command: cmd };
-  let segs = [];
   try {
     for (const re of DENIED) if (re.test(cmd)) audit({ ...base, event: "deny-pattern", pattern: String(re) });
-    const links = chain(cmd, input.tool_name === "PowerShell" ? "pwsh" : "bash");
-    segs = links.map((l) => l.seg);
+    const segs = chain(cmd, input.tool_name === "PowerShell" ? "pwsh" : "bash").map((l) => l.seg);
     const dirs = folders(segs, cwd);
-    for (let i = 0; i < segs.length; i++) {
-      const seg = segs[i];
-      for (const entry of backupBranches(seg, dirs[i], base)) audit(entry);
-      const recs = byWorker(input, dirs[i]) ? commitRecords(seg, dirs[i]) : [];
-      if (recs.length) {
-        audit({ ...base, event: "record-by-worker-blocked", files: recs });
-        return { block: true, message: RECORD_REFUSAL };
-      }
-      if (byWorker(input, dirs[i]) && runsTrain(seg)) {
-        audit({ ...base, event: "train-by-worker-blocked" });
-        return { block: true, message: TRAIN_REFUSAL };
-      }
-      if (byWorker(input, dirs[i]) && writesAuditLog(seg)) {
-        audit({ ...base, event: "audit-write-by-worker-blocked" });
-        return { block: true, message: AUDIT_REFUSAL };
-      }
-      const push = pushCall(seg, dirs[i]);
-      if (push && byWorker(input, dirs[i]) && push.refs.some((r) => r.dst === COORD_BRANCH)) {
-        audit({ ...base, event: "coord-push-by-worker-blocked" });
-        return { block: true, message: COORD_REFUSAL };
-      }
-      // fail-safe: a push inside $( … ) or `…` is not a word gitCall can see, so the text decides
-      const hidden = SUBST.test(seg) && SUBST_PUSH_MAIN.test(seg);
-      const gh = ghToMain(seg);
-      if (!hidden && !gh && (!push || !push.refs.some(toMain))) continue;
-      const reason = overrideReason(segs, i);
-      if (reason) {
-        // no backup, no override: an emergency push never lands on main unsaved
-        let b;
-        try {
-          b = backupMain(push?.dir ?? dirs[i]);
-        } catch (err) {
-          const why = String(err?.message ?? err).split("\n")[0];
-          audit({ ...base, event: "push-main-override-no-backup", reason, error: why });
-          return { block: true, message: `main'e gönderim reddedildi: NF_OVERRIDE verildi ama origin/main yedek alınamadı (${why}); yedeksiz geçilmez.` };
-        }
-        audit({ ...base, event: "push-main-override", reason, backup: b.ref, sha: b.sha, fetched: b.fetched });
-        continue;
-      }
-      audit({ ...base, event: "push-main-blocked" });
-      return {
-        block: true,
-        message:
-          "main'e gönderim reddedildi: main'e yalnız tren gider (`node scripts/train.mjs run <dal…>`, koordinatör; CLAUDE.md §5). " +
-          'Acil durumda push komutunun başına NF_OVERRIDE="<gerekçe>" koy; origin/main önce yedeklenir ve kayda düşer.',
-      };
-    }
-    return { block: false };
+    for (let i = 0; i < segs.length; i++) for (const entry of backupBranches(segs[i], dirs[i], base)) audit(entry);
   } catch (err) {
-    // NF_OVERRIDE counts for nothing here: its backup or its log line may be missing, so a main push is refused
-    const risky = (/\bpush\b/.test(cmd) && /\bmain\b/.test(cmd)) || /\bgh(\.exe)?\s[^\n]*\b(pr\s+merge|api)\b/i.test(cmd);
     try {
-      audit({ ...base, event: "guard-error", error: String(err?.message ?? err), blocked: risky });
+      audit({ ...base, event: "guard-error", error: String(err?.message ?? err) });
     } catch {}
-    return risky
-      ? { block: true, message: `guard hata verdi, main'e gönderim güvenlik için reddedildi (NF_OVERRIDE ile de; yedek ve kayıt güvencesi yok): ${err?.message ?? err}` }
-      : { block: false };
   }
+  return { block: false };
 }
 
 async function main() {

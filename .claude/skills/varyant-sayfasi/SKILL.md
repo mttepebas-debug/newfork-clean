@@ -51,8 +51,7 @@ Kullanıcı bir ekran ya da parça için görsel varyant istediğinde bu adımla
 - İş bitince sayfa belgelemesi ya da uygulama sayfalarını Artifact olarak yazma; yalnız istenen varyant sayfası.
 
 ## Newfork projesinde (newfork-clean)
-- Tasarım dili: `apps/web/src/styles.css` (`--theme-*`), `docs/design-canvas.md`; yalnız açık tema; aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı; tarayıcı diyaloğu yok.
-- Orijinal: bulut thread'inde PAGES demo uygulama aracı (`/mnt/project-files/PAGES/_kaynak/`, yalnız Orijinal görüntüsü için; güncel tutulmaz, yayınlanmaz; README'ye aracın derlendiği main sürümü yazılır, güncel main'den geride olabilir); bilgisayarda gerçek uygulama.
-- Dosyalar: `/mnt/project-files/pages/gorsel-kararlar/gelen/<konu>/` (sayfa, `README.md`: Orijinal'in kaynak sürümü, tarih California saatiyle, her varyant bir satır, turlar; görüntüler). Yolu koordinatöre bildir; "Bekleyen görsel kararlar" sayfasına eklenir.
-- Seçim `docs/plan/KARARLAR.md`'ye thread'in dalında girer (CLAUDE.md §6).
-- Kurallar: repo `CLAUDE.md` ve `docs/plan/KARARLAR.md` geçerlidir; bu skill onlarla çelişirse onlar kazanır.
+- Tasarım dili: `apps/web/src/styles.css` (`--theme-*`); yalnız açık tema; aksiyon yeşil, vazgeç beyaz, yıkıcı iki tık kırmızı; tarayıcı diyaloğu yok.
+- Orijinal: bilgisayarda çalışan gerçek uygulama.
+- Dosyalar: `C:\Users\TheWe\Documents\Codex\newfork-pages\hesap-devri-2026-10-14\proje-dosyalari\pages\gorsel-kararlar\gelen\<konu>\` (sayfa, `README.md`: Orijinal'in kaynak sürümü, tarih California saatiyle, her varyant bir satır, turlar; görüntüler). Aynı ekranın işi o ekranın var olan Artifact'ında sürer.
+- Kurallar: repo `CLAUDE.md` geçerlidir; bu skill onunla çelişirse o kazanır.

@@ -12,8 +12,8 @@ Sen Newfork'un salt okur kaşifisin. `CLAUDE.md` anayasandır.
 - Tazelik hükmü üç türdür: **geçerli** (anlatıldığı gibi duruyor), **değişmiş** (kısmen düzelmiş ya da şekli farklı; bugünkü hâliyle yeniden yaz), **bayat** (zaten düzelmiş ya da anlamsız; kanıtıyla). Hükmün yanına tarih ve `origin/main` commit'i yazılır.
 - Fazla düzgün sonuç bozuk ölçümdür: bir satırı elle doğrula.
 
-CI KIRMIZISINI AYIRMA (koordinatör tren kırmızı dönünce çağırır; girdi: run kimliği, tren dalı, trendeki dallar)
+CI KIRMIZISINI AYIRMA (main'deki CI kırmızı dönünce çağrılır; girdi: run kimliği)
 1. `gh run view <run> --json jobs` ve `gh run view <run> --log-failed` (uzunsa yalnız hatanın çevresi).
 2. Altyapı işaretleri: "run out of resources", "forwards/expose returned unexpected status: 500", "toomanyrequests", "a prune operation is already running", Docker ya da Supabase başlamadı, runner kayboldu, yük altında zaman aşımı (aynı test boşta geçiyorsa). Kod işaretleri: beklenti farkı, tip hatası, lint, migration hatası, yeni test kırmızı.
-3. Kodsa hangi dal: düşen testin ve dokunduğu dosyaların değişikliği `git log --format='%h %s' <taban>..<tren ucu> -- <dosya>`; commit mesajındaki iş numarası dalı söyler.
-4. Hüküm (en çok 10 satır): `AYRIM: ALTYAPI | KOD | BELİRSİZ` · düşen iş ve test · kanıt satırı · KOD ise bozan dal ve dosya:satır · önerilen adım (`gh run rerun <run> --failed` ya da "task/<id> trenden çıksın").
+3. Kodsa hangi commit: düşen testin ve dokunduğu dosyaların değişikliği `git log --format='%h %s' <son yeşil>..<kırmızı commit> -- <dosya>`.
+4. Hüküm (en çok 10 satır): `AYRIM: ALTYAPI | KOD | BELİRSİZ` · düşen iş ve test · kanıt satırı · KOD ise bozan commit ve dosya:satır · önerilen adım (`gh run rerun <run> --failed` ya da "<commit> geri alınsın").

@@ -11,8 +11,6 @@
       "Bash(gh run watch *)",
       "Bash(node scripts/lock.mjs status)",
       "Bash(node scripts/schema-snapshot.mjs check-fast)",
-      "Bash(node scripts/main-watch.mjs)",
-      "Bash(node scripts/main-watch.mjs --since *)",
       "Bash(pnpm.cmd typecheck)",
       "Bash(pnpm.cmd lint)",
       "Bash(pnpm.cmd --filter @newfork/web typecheck)",
@@ -129,43 +127,6 @@
             "command": "node \"$CLAUDE_PROJECT_DIR/scripts/guard.mjs\"",
             "timeout": 30
           }
-        ]
-      },
-      {
-        "matcher": "AskUserQuestion",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/decision-log.mjs\" hook pre",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "PostToolUse": [
-      {
-        "matcher": "AskUserQuestion",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "node \"$CLAUDE_PROJECT_DIR/scripts/decision-log.mjs\" hook post",
-            "timeout": 15
-          }
-        ]
-      }
-    ],
-    "SubagentStop": [
-      {
-        "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks.mjs\" agent-report", "timeout": 15 }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "matcher": "startup|resume|clear|compact",
-        "hooks": [
-          { "type": "command", "command": "node \"$CLAUDE_PROJECT_DIR/scripts/hooks.mjs\" session-start", "timeout": 15 }
         ]
       }
     ]
