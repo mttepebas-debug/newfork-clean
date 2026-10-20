@@ -96,6 +96,36 @@ function migrationChanges(repo, commits, onMain) {
 const ahead = (repo, ref) => listed(git(repo, ["cherry", BASE, ref])).filter((l) => l.startsWith("+ ")).map((l) => l.slice(2));
 
 const COORD_BRANCH = "coord/kayit2"; // the coordinator's records (spec §7.3)
+
+// coord/kayit2 is never rebased (no force push), so after a train carries its commits `git cherry` still sees them,
+// and when main changed a line next to one before that train landed, the patch differs and it calls the commit new:
+// replayed, it clashes and the whole records branch is left out (TREN-KAYIT-ATLA). A train's copy keeps the
+// author, the author date and the message (copyCommit), so a commit with such a copy on main has landed whatever
+// main did to those lines since (a later edit or a revert is main's word, not a reason to replay it). Content
+// matching was weighed and left: a line a commit adds may already sit on main, and a line it adds may have been
+// edited on main since, so it would both skip records that never landed and replay ones that did.
+// Only for coord/kayit2: a task branch's commits are replayed as before. Returns { commits, landed: [[c, copy]] }.
+function pendingCommits(repo, b) {
+  const commits = ahead(repo, b.ref);
+  if (b.name !== COORD_BRANCH || !commits.length) return { commits, landed: [] };
+  // the copy's message ends in one more newline (commit-tree is fed `%B`), so trailing whitespace is not compared
+  const key = ([name, email, date, message]) => [name, email, date, message.trimEnd()].join("\0");
+  const copies = new Map();
+  const log = execFileSync("git", ["-C", repo, "log", "-z", "--format=%H%x00%an%x00%ae%x00%aI%x00%B", BASE, `^${b.ref}`], {
+    encoding: "utf8",
+    maxBuffer: 256 * 1024 * 1024,
+  }).split("\0");
+  for (let i = 0; i + 4 < log.length; i += 5) copies.set(key(log.slice(i + 1, i + 5)), log[i].replace(/^\n/, ""));
+  const landed = [];
+  const left = [];
+  for (const c of commits) {
+    const [, ...fields] = execFileSync("git", ["-C", repo, "log", "-1", "-z", "--format=%H%x00%an%x00%ae%x00%aI%x00%B", c], { encoding: "utf8" }).split("\0");
+    const copy = copies.get(key(fields.slice(0, 4)));
+    if (copy) landed.push([c, copy]);
+    else left.push(c);
+  }
+  return { commits: left, landed };
+}
 // Record files (guard.mjs isRecordFile) a branch's own commits change; only coord/kayit2 may carry them (spec §10).
 function recordFiles(repo, commits) {
   const files = new Set();
@@ -320,7 +350,8 @@ export function plan(ctx, args) {
       blockers.push(`${arg} bulunamadı`);
       continue;
     }
-    const commits = ahead(repo, b.ref);
+    const { commits, landed } = pendingCommits(repo, b);
+    for (const [c, copy] of landed) lines.push(`${b.name}: zaten main'de (kopyası main'de): ${short(c)} = main @${short(copy)}`);
     if (!commits.length) {
       lines.push(`${b.name}: zaten main'de`);
       continue;
@@ -608,7 +639,7 @@ function pushStep(ctx) {
 
 function coordBranch(repo) {
   const b = resolve(repo, COORD_BRANCH); // origin's first, as build reads it
-  return b && ahead(repo, b.ref).length ? COORD_BRANCH : null;
+  return b && pendingCommits(repo, b).commits.length ? COORD_BRANCH : null;
 }
 
 export const run = (ctx, args) => withTrain(ctx, "run", `run ${args.join(" ") || COORD_BRANCH}`, () => runSteps(ctx, args));
