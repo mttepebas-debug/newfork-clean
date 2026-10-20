@@ -696,6 +696,7 @@ type HistoryEntry = NonNullable<AnnouncementDetail["history"]>[number];
 const failureReasons: Record<string, string> = {
   not_allowed: "Whoever scheduled it can't publish it there anymore.",
   too_late: "It started before it could go out.",
+  nobody: "Nobody else would get it when it was due.",
   failed: "Something went wrong when it was due.",
 };
 

@@ -322,5 +322,7 @@ describe("the drawer", () => {
       bad: true,
     });
     expect(failureReason(null)).toBe("Something went wrong when it was due.");
+    // Bug 2: due with nobody left to reach, it stays back and says so.
+    expect(failureReason("nobody")).toBe("Nobody else would get it when it was due.");
   });
 });

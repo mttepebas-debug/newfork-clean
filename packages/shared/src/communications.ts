@@ -145,7 +145,7 @@ export const announcementRecordSchema = z.object({
   status: announcementStatusSchema,
   display_status: announcementDisplayStatusSchema,
   /** Why a scheduled one couldn't publish: its author may no longer, its day came, or it failed. */
-  publish_error_code: z.enum(["not_allowed", "too_late", "failed"]).nullable(),
+  publish_error_code: z.enum(["not_allowed", "too_late", "nobody", "failed"]).nullable(),
   starts_on: z.string().date().nullable(),
   ends_on: z.string().date().nullable(),
   event_from: clockSchema.nullable(),
