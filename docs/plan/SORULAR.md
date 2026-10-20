@@ -114,15 +114,6 @@ Koordinatör yazar, `/durum`'da dörder dörder sorulur; cevaplanan soru buradan
 
 ## Tur 3 — canlı e-posta ve yerel veritabanı (kod hattını durdurmuyor)
 
-### Soru-8. Canlıda e-posta: Resend'i ne zaman kuruyorsun?
-- **Hat:** kod hattını durdurmuyor; canlıda davet ve parola sıfırlamayı durduruyor.
-- **Bugün:** canlıda e-posta anahtarı yok. Employees → Invite "Invitation delivery failed" veriyor. Sign in → Forgot password e-posta göndermiyor. Zamanlanmış Schedule e-postası her denemede düşüyor. Adımlar 2026-10-06 12:35Z'de iletildi: `docs/plan/mvp/RESEND.md` §3.
-- **(a) Bugün: Resend ücretsiz plan ($0, günde 100 e-posta), `mail.tepebash.com` doğrulanır, anahtarı sen Vercel'e yapıştırırsın (adım 1–5); Supabase SMTP adımı (6) da yapılır. Sonra bir oturum canlıda test daveti ve parola sıfırlama dener. (Önerilen)**
-  Zayıf yanı: e-postalar ürün adıyla değil `tepebash.com` alanından gelir (`newfork.app`'in sahipliği ölçülmedi). 100 kişilik ekibin aynı gün toplu daveti günlük sınıra dayanır.
-  `Dayanak: ILKELER P06 (ücretsiz önce) + CLAUDE.md §8 (hesap ve anahtar yalnız sende)`
-- (b) Lansmana yakın; o zamana kadar canlıda e-posta yok.
-- (c) Başka alan adıyla (ör. `newfork.app` alınırsa) — önce alan adı kararı.
-
 ### Soru-23. Yerel veritabanında kalan iki test dünyası ne olsun?
 - **Hat:** hiçbir hat durmuyor; yalnız yerel bir test kırmızı. Cevap gelene kadar yerel `test:db` sonucu bu testte hep kırmızı okunur.
 - **Bugün:** 2026-10-06 15:53Z'deki bir deneme sırasında ortak yerel veritabanına iki test dünyası (World ra, World rx: 2 workspace, 9 kullanıcı) kalıcı yazıldı. Yerel "belge türleri" testi bu yüzden düşüyor. CI ve canlı etkilenmiyor (CI her koşuda temiz veritabanı kurar). Gece silmek denendi; ürünün kendi korumaları (workspace'in aktif owner'ı kalmalı, değiştirilemez kayıtlar) silmeyi durdurdu, hiçbir şey yazılmadı. 692 satırın tam yedeği alındı: `.newfork-inbox/backup-test-worlds-ra-rx-20261006/rows.jsonl`.
