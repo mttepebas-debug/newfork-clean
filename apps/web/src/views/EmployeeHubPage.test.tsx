@@ -598,6 +598,9 @@ describe("EmployeeHubPage", () => {
     // jsdom has no showModal: the sheet is in the page, not "open".
     await waitFor(() => expect(document.querySelector("dialog.eh-sheet h2")?.textContent).toBe("Your shift"));
     expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Main Dining · Server");
+    // QA 60: the zone in words people use, not the raw "America/Los Angeles".
+    expect(document.querySelector("dialog.eh-sheet")?.textContent).toContain("Los Angeles time");
+    expect(document.querySelector("dialog.eh-sheet")?.textContent).not.toContain("America/");
     vi.useRealTimers();
   });
 
@@ -607,7 +610,7 @@ describe("EmployeeHubPage", () => {
 
     const rowNames = () =>
       Array.from(
-        document.querySelectorAll(".schedule-employee-name-button"),
+        document.querySelectorAll(".schedule-employee-name-text"),
       ).map((element) => element.textContent);
 
     await waitFor(() => expect(rowNames()).toContain("Jordy Lee"));
@@ -626,7 +629,7 @@ describe("EmployeeHubPage", () => {
     );
     const rowNames = () =>
       Array.from(
-        document.querySelectorAll(".schedule-employee-name-button"),
+        document.querySelectorAll(".schedule-employee-name-text"),
       ).map((element) => element.textContent);
 
     await waitFor(() => expect(rowNames()).toContain("Alex Kim"));
@@ -655,7 +658,7 @@ describe("EmployeeHubPage", () => {
     );
     const rowNames = () =>
       Array.from(
-        document.querySelectorAll(".schedule-employee-name-button"),
+        document.querySelectorAll(".schedule-employee-name-text"),
       ).map((element) => element.textContent);
 
     await waitFor(() => expect(rowNames()).toContain("Jordy Lee"));
@@ -711,7 +714,7 @@ describe("EmployeeHubPage", () => {
 
     await waitFor(() =>
       expect(
-        document.querySelectorAll(".schedule-employee-name-button").length,
+        document.querySelectorAll(".schedule-employee-name-text").length,
       ).toBeGreaterThan(0),
     );
     fireEvent.click(screen.getByRole("button", { name: /settings/i }));

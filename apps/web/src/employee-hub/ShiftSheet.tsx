@@ -7,6 +7,7 @@ import { formatTimeRange } from "../schedule/lib/scheduleDateTime";
 import { shiftDate, shiftInstant, shiftZone } from "./dashboard-model";
 import { CLOSE_BEFORE_MS, ChangeOptions } from "./shift-exchanges/ChangeOptions";
 import { OwnAvailabilityFlag } from "./OwnAvailabilityFlag";
+import { timeOffZoneName } from "./time-off-split";
 const base = "/app/employee-hub";
 function Sheet({
   title,
@@ -99,7 +100,7 @@ export function ShiftSheet({
         {shift.location_name} · {shift.job_name}
       </p>
       <p className="eh-section-description">
-        {shiftZone(model, shift).replaceAll("_", " ")}
+        {timeOffZoneName(shiftZone(model, shift))}
         {shift.end_time <= shift.start_time ? " · Ends the following day" : ""}
       </p>
       {clash ? <OwnAvailabilityFlag when={clash} shiftId={shift.id} /> : null}
