@@ -384,7 +384,8 @@ export function parseLineupTime(typed: string, base: string): string | null {
     if (hours < 1 || hours > 12) return null;
     hours = (hours % 12) + (half === "p" ? 12 : 0);
   } else if (hours > 23) return null;
-  else if (hours <= 12) {
+  // "00:30", "0:30", "09:15": written the 24-hour way, read as written.
+  else if (hours <= 12 && !match[1]!.startsWith("0")) {
     // No AM or PM: the reading nearer the time it had, round the clock ("12:30" by 9 AM is noon, "1" by 10 PM is 1 AM).
     const had = minutes(base || "12:00");
     const away = (at: number) => Math.min(Math.abs(at * 60 + mins - had), 24 * 60 - Math.abs(at * 60 + mins - had));

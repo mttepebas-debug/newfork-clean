@@ -387,6 +387,11 @@ describe("parseLineupTime", () => {
     expect(parseLineupTime("11", "22:00")).toBe("23:00");
     expect(parseLineupTime("6", "09:00")).toBe("06:00");
   });
+  it("reads a time written with a leading zero as the 24-hour clock's", () => {
+    expect(parseLineupTime("00:30", "12:00")).toBe("00:30");
+    expect(parseLineupTime("0:30", "12:00")).toBe("00:30");
+    expect(parseLineupTime("09:15", "21:00")).toBe("09:15");
+  });
   it("refuses what isn't a time", () => {
     for (const typed of ["9:3x", "13 pm", "25:00", "4:75", "", "noon"]) expect(parseLineupTime(typed, "16:00")).toBeNull();
   });

@@ -428,7 +428,16 @@ export function SectionsWindow({
   return createPortal(
     <div className="lineup-edit-layer" role="presentation">
       <div className="lineup-edit-scrim" aria-hidden onClick={onClose} />
-      <section ref={box} className="lineup-edit-dlg" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={keys}>
+      {/* tabIndex -1: a click on its empty part keeps the focus in it, so its keys still work. */}
+      <section
+        ref={box}
+        className="lineup-edit-dlg"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+        onKeyDown={keys}
+      >
         <header>
           <div>
             <h2 id={titleId}>Sections · {location.name}</h2>

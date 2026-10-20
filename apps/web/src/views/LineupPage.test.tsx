@@ -1819,6 +1819,17 @@ describe("LineupPage, editing a draft on the desktop", () => {
     expect(sent).toHaveLength(0);
   });
 
+  it("keeps the focus in the window after a click on its empty part, so Escape still closes it", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    fireEvent.click(await screen.findByRole("button", { name: "Manage sections" }));
+    const window_ = screen.getByRole("dialog", { name: "Sections · Downtown" });
+    expect(window_.getAttribute("tabindex")).toBe("-1");
+    window_.focus();
+    expect(document.activeElement).toBe(window_);
+    fireEvent.keyDown(window_, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
+  });
+
   it("edits the notes in place and sends only the ones that changed", async () => {
     renderPage(`/app/schedule/lineup?location=${downtown}`);
     fireEvent.click(await screen.findByRole("tab", { name: "Notes" }));

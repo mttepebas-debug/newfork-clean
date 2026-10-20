@@ -408,6 +408,10 @@
   background: var(--theme-surface);
   box-shadow: 0 24px 60px -18px color-mix(in srgb, var(--theme-text) 40%, transparent);
 }
+/* It takes the focus only to keep it (a click on its empty part); its fields show theirs. */
+.lineup-edit-dlg:focus {
+  outline: none;
+}
 .lineup-edit-dlg > header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 36px;
