@@ -420,6 +420,13 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
     !documentPreview.isFetching &&
     isNoAccess(documentPreview.error);
   const saveHeldReasonId = useId();
+  // Why Invite waits, said on the button (QA: the footer's role field used to say it).
+  const inviteHeldReasonId = useId();
+  const inviteHeldReason = !readiness.emailReady
+    ? "Add an email to invite."
+    : !readiness.employeeReady
+      ? "Choose a location and a job to invite."
+      : null;
   const baselineKey = JSON.stringify(baseline);
   const dirty = draftEditedRef.current && JSON.stringify(draft) !== baselineKey;
   // The owner's own emergency contact goes with the one Save (K3, P20).
@@ -1641,6 +1648,8 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       !canManageAccess ||
                       readOnly
                     }
+                    title={inviteHeldReason ?? undefined}
+                    aria-describedby={inviteHeldReason ? inviteHeldReasonId : undefined}
                     onClick={() => void inviteClick()}
                   >
                     <MailPlus size={16} aria-hidden />
@@ -1649,6 +1658,11 @@ export function EmployeeDrawer(props: EmployeeDrawerProps) {
                       ? "Inviting..."
                       : "Invite"}
                   </Button>
+                ) : null}
+                {canManageAccess && inviteHeldReason ? (
+                  <span id={inviteHeldReasonId} className="sr-only">
+                    {inviteHeldReason}
+                  </span>
                 ) : null}
                 <Button
                   type="submit"

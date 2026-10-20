@@ -229,35 +229,53 @@ describe("employee create flow", () => {
 
   // Bug 3: the role field waited for an email without saying so, and read
   // "No assignable roles" while the roles were still loading or had failed.
-  it("says the invite role waits for an email", async () => {
+  // QA: Invite says why it waits (the footer's role field said it before Tur 4 B).
+  it("says Invite waits for an email, then for a location and a job", async () => {
     setup();
-    const field = await screen.findByLabelText("Invite role");
-    const note = document.getElementById(field.getAttribute("aria-describedby") ?? "");
-    expect(note?.textContent).toBe("Add an email to choose an invite role.");
-    // The footer hides that line to stay one row, so the field says it too.
-    await waitFor(() => expect((field as HTMLSelectElement).options[0]?.textContent).toBe("Add email first"));
+    const invite = screen.getByRole("button", { name: "Invite" });
+    const reason = () =>
+      document.getElementById(invite.getAttribute("aria-describedby") ?? "")?.textContent;
+    expect(reason()).toBe("Add an email to invite.");
+    fillNames();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "ada@example.test" },
+    });
+    expect(reason()).toBe("Choose a location and a job to invite.");
+    next();
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    expect(invite.getAttribute("aria-describedby")).toBeNull();
+    expect(disabled("Invite")).toBe(false);
   });
 
-  it("tells loading roles, failed roles and no roles apart", async () => {
-    vi.mocked(loadEmployeeReferenceData).mockReturnValue(new Promise(() => {}));
-    const loading = setup();
-    expect(screen.getByLabelText("Invite role").textContent).toBe("Loading roles…");
-    loading.client.clear();
-    document.body.innerHTML = "";
-
+  it("tells roles that did not load, and no management role to give, apart", async () => {
     vi.mocked(loadEmployeeReferenceData).mockRejectedValue(new Error("offline"));
-    setup();
-    await waitFor(() => expect(screen.getByLabelText("Invite role").textContent).toBe("Roles didn't load"));
+    const failed = setup();
+    expect(await screen.findByText("We couldn't load locations, jobs and roles")).toBeTruthy();
+    failed.client.clear();
     document.body.innerHTML = "";
 
+    // Only the employee role is the reader's to give: the management app says who can.
     vi.mocked(loadEmployeeReferenceData).mockResolvedValue({
       locations: [{ id: ids.location, name: "Downtown", archived: false }],
       departments: [],
       jobs: [{ id: ids.job, name: "Server", archived: false, departmentId: null, owner: false }],
-      inviteRoles: [],
+      inviteRoles: [roles[0]!],
     });
     setup();
-    await waitFor(() => expect(screen.getByLabelText("Invite role").textContent).toBe("You can't invite with any role"));
+    fillNames();
+    fireEvent.change(screen.getByLabelText("E-mail"), {
+      target: { value: "ada@example.test" },
+    });
+    next();
+    fireEvent.click(await screen.findByLabelText("Downtown"));
+    fireEvent.click(screen.getByLabelText("Server"));
+    fireEvent.click(screen.getByRole("button", { name: "Invite" }));
+    const management = (await screen.findByLabelText("Management app")) as HTMLInputElement;
+    expect(management.disabled).toBe(true);
+    expect(management.closest("label")?.getAttribute("title")).toBe(
+      "Only owners and admins can give management access.",
+    );
   });
 
   it("offers Save and Invite together after completing assignments and adding email", async () => {
