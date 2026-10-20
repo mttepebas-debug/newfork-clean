@@ -177,8 +177,9 @@ test("a legal name typed differently from the invitation is approved by an admin
           'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
           'primary_job_id', tests.id('${run}:job:cook'),
           'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-        (select id from public.workspace_roles
-         where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+        jsonb_build_object('employee_role_id', (select id from public.workspace_roles
+         where workspace_id = tests.id('${run}') and system_key = 'employee'),
+         'management_role_id', null, 'managed_location_ids', '[]'::jsonb)) as employee
     )
     select public.accept_employee_invitation_by_id_service(
       tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;
@@ -247,8 +248,9 @@ test("onboarding masks the phone and says in red when it is somebody else's or o
           'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
           'primary_job_id', tests.id('${run}:job:cook'),
           'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-        (select id from public.workspace_roles
-         where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+        jsonb_build_object('employee_role_id', (select id from public.workspace_roles
+         where workspace_id = tests.id('${run}') and system_key = 'employee'),
+         'management_role_id', null, 'managed_location_ids', '[]'::jsonb)) as employee
     )
     select public.accept_employee_invitation_by_id_service(
       tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;
@@ -371,8 +373,9 @@ for (const height of [844, 800]) {
             'job_ids', jsonb_build_array(tests.id('${run}:job:cook')),
             'primary_job_id', tests.id('${run}:job:cook'),
             'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-          (select id from public.workspace_roles
-           where workspace_id = tests.id('${run}') and system_key = 'employee')) as employee
+          jsonb_build_object('employee_role_id', (select id from public.workspace_roles
+           where workspace_id = tests.id('${run}') and system_key = 'employee'),
+           'management_role_id', null, 'managed_location_ids', '[]'::jsonb)) as employee
       )
       select public.accept_employee_invitation_by_id_service(
         tests.user('${run}:${key}'), (employee ->> 'invitation_id')::uuid) is not null from created;

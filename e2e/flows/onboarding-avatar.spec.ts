@@ -26,7 +26,9 @@ test("a second workspace's onboarding starts with the last avatar", async ({ pag
           'location_ids', jsonb_build_array(tests.id('${second}:K')), 'primary_location_id', tests.id('${second}:K'),
           'job_ids', jsonb_build_array(tests.id('${second}:job:cook')), 'primary_job_id', tests.id('${second}:job:cook'),
           'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-        (select r.id from public.workspace_roles r where r.workspace_id = tests.id('${second}') and r.system_key = 'employee'))
+        jsonb_build_object('employee_role_id', (select r.id from public.workspace_roles r
+          where r.workspace_id = tests.id('${second}') and r.system_key = 'employee'),
+          'management_role_id', null, 'managed_location_ids', '[]'::jsonb))
     ) ->> 'invitation_id')::uuid);
     select tests.settle();
     select tests.id('${second}');`),

@@ -47,9 +47,10 @@ test("a waiting invitation comes first on every open, and Not now goes to work",
         'job_ids', jsonb_build_array(tests.id('${inviter}:job:cook')),
         'primary_job_id', tests.id('${inviter}:job:cook'),
         'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-      -- A role is what makes the record send its invitation.
-      (select r.id from public.workspace_roles r
-       where r.workspace_id = tests.id('${inviter}') and r.system_key = 'employee'));
+      -- An access is what makes the record send its invitation (the employee app).
+      jsonb_build_object('employee_role_id', (select r.id from public.workspace_roles r
+       where r.workspace_id = tests.id('${inviter}') and r.system_key = 'employee'),
+       'management_role_id', null, 'managed_location_ids', '[]'::jsonb));
     select tests.settle();`);
 
   await page.goto("/sign-in");
