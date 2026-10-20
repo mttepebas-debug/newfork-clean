@@ -1,7 +1,7 @@
 import { authzActionKeys, permissionSchema, type ActiveWorkspaceContext, type AuthzAction } from "@newfork/shared";
 import { describe, expect, it, vi } from "vitest";
 import { buildApp } from "../app";
-import { acknowledgement, editResult, lineupDay, myLineups, shareResult } from "./lineup-fixtures";
+import { acknowledgement, editResult, lineupDay, myLineups, sectionsResult, shareResult } from "./lineup-fixtures";
 import type { LineupService } from "./lineup-service";
 
 const workspaceId = "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd";
@@ -43,6 +43,7 @@ function serviceMock(): LineupService {
   return {
     command: vi.fn(async () => shareResult as never),
     edit: vi.fn(async () => editResult as never),
+    sections: vi.fn(async () => sectionsResult as never),
     myLineups: vi.fn(async () => myLineups as never),
     acknowledge: vi.fn(async () => acknowledgement as never),
     day: vi.fn(async () => lineupDay as never),
@@ -62,9 +63,12 @@ const setRow = {
   row: { source_shift_id: "be50320c-52d9-4f54-9684-372461ec9a95", starts: "15:30", ends: "22:00" },
 };
 
+const addSection = { action: "add", location_id: lineup.location_id, name: "Terrace" };
+
 const routes = [
   ["publish", "POST", `${w}/lineups/commands`, share, "lineup.share"],
   ["edit", "POST", `${w}/lineups/edit`, setRow, "lineup.share"],
+  ["sections", "POST", `${w}/lineups/sections`, addSection, "lineup.share"],
   ["my lineups", "GET", `${w}/my-lineups/2028-09-11`, undefined, "employee_hub.read"],
   ["acknowledge", "POST", `${w}/lineups/versions/${versionId}/acknowledge`, undefined, "lineup.acknowledge"],
   ["day", "GET", `${w}/lineups/2028-09-11`, undefined, "lineup.read"],
@@ -93,6 +97,27 @@ describe("lineup routes", () => {
     const notes = { command_id: editResult.command_id, action: "set_notes", ...lineup, notes: { n86: "Oysters" } };
     expect((await app.inject({ method: "POST", url: `${w}/lineups/edit`, headers: auth, payload: notes })).statusCode).toBe(200);
     expect(service.edit).toHaveBeenLastCalledWith({ ...actor, edit: notes });
+  });
+
+  it("takes a typed section name on a row (LINEUP-EDIT L2b)", async () => {
+    const service = serviceMock();
+    const other = { ...setRow, row: { source_shift_id: setRow.row.source_shift_id, section_name: " Window ", save_section: true } };
+    const response = await appWith(service).inject({ method: "POST", url: `${w}/lineups/edit`, headers: auth, payload: other });
+    expect(response.statusCode).toBe(200);
+    expect(service.edit).toHaveBeenCalledWith({ ...actor, edit: { ...other, row: { ...other.row, section_name: "Window" } } });
+  });
+
+  it("changes a location's sections (LINEUP-EDIT L2b)", async () => {
+    const service = serviceMock();
+    const app = appWith(service);
+    const response = await app.inject({ method: "POST", url: `${w}/lineups/sections`, headers: auth, payload: addSection });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toEqual(sectionsResult);
+    expect(service.sections).toHaveBeenCalledWith({ ...actor, change: addSection });
+    const ids = sectionsResult.sections.map((section) => section.id).reverse();
+    const reorder = { action: "reorder", location_id: lineup.location_id, section_ids: ids };
+    expect((await app.inject({ method: "POST", url: `${w}/lineups/sections`, headers: auth, payload: reorder })).statusCode).toBe(200);
+    expect(service.sections).toHaveBeenLastCalledWith({ ...actor, change: reorder });
   });
 
   it("reads the employee's published lineups of a day", async () => {
@@ -145,6 +170,15 @@ describe("lineup routes", () => {
     ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, starts: "3:30 PM" } }],
     ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, called_off: true } }],
     ["POST", `${w}/lineups/edit`, { ...setRow, action: "set_notes", row: undefined, notes: { specials: "x".repeat(501) } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, section_id: lineup.location_id, section_name: "Window" } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, section_name: "x".repeat(41) } }],
+    ["POST", `${w}/lineups/edit`, { ...setRow, row: { ...setRow.row, section_name: "   " } }],
+    ["POST", `${w}/lineups/sections`, { ...addSection, action: "archive" }],
+    ["POST", `${w}/lineups/sections`, { ...addSection, name: "" }],
+    ["POST", `${w}/lineups/sections`, { ...addSection, location_id: "not-a-uuid" }],
+    ["POST", `${w}/lineups/sections`, { action: "rename", location_id: lineup.location_id, name: "Garden" }],
+    ["POST", `${w}/lineups/sections`, { action: "reorder", location_id: lineup.location_id, section_ids: [] }],
+    ["POST", `${w}/lineups/sections`, { action: "remove", location_id: lineup.location_id, section_id: "patio" }],
     ["GET", `${w}/my-lineups/yesterday`, undefined],
     ["POST", `${w}/lineups/versions/not-a-uuid/acknowledge`, undefined],
     ["GET", "/v1/workspaces/not-a-uuid/my-lineups/2028-09-11", undefined],
@@ -157,6 +191,7 @@ describe("lineup routes", () => {
     expect(response.statusCode).toBe(400);
     expect(service.command).not.toHaveBeenCalled();
     expect(service.edit).not.toHaveBeenCalled();
+    expect(service.sections).not.toHaveBeenCalled();
     expect(service.myLineups).not.toHaveBeenCalled();
     expect(service.acknowledge).not.toHaveBeenCalled();
     expect(service.day).not.toHaveBeenCalled();

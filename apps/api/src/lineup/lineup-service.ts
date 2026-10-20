@@ -4,6 +4,7 @@ import {
   lineupCommandResultSchema,
   lineupDaySchema,
   lineupEditResultSchema,
+  lineupSectionsResultSchema,
   myLineupsSchema,
   type LineupAcknowledgement,
   type LineupCommandInput,
@@ -11,6 +12,8 @@ import {
   type LineupDay,
   type LineupEditInput,
   type LineupEditResult,
+  type LineupSectionsInput,
+  type LineupSectionsResult,
   type MyLineups,
 } from "@newfork/shared";
 import { rpcFailure } from "../http-error";
@@ -25,6 +28,8 @@ export interface LineupService {
   command(input: Actor & { readonly command: LineupCommandInput }): Promise<LineupCommandResult>;
   /** LINEUP-EDIT L2a: a change to a draft lineup's row or notes (lineup.share there). */
   edit(input: Actor & { readonly edit: LineupEditInput }): Promise<LineupEditResult>;
+  /** LINEUP-EDIT L2b: the Sections window, a location's sections (lineup.share there). */
+  sections(input: Actor & { readonly change: LineupSectionsInput }): Promise<LineupSectionsResult>;
   myLineups(input: Actor & { readonly date: string }): Promise<MyLineups>;
   acknowledge(input: Actor & { readonly versionId: string }): Promise<LineupAcknowledgement>;
   /** The manager's day: every location she reads, unless she chose some (lineup.read). */
@@ -80,6 +85,13 @@ export function lineupService(client: RpcClient): LineupService {
         target_workspace_id: actor.workspaceId,
         command_id,
         payload,
+      }));
+    },
+    async sections({ change, ...actor }) {
+      return lineupSectionsResultSchema.parse(await rpc("lineup_sections_service", {
+        actor_user_id: actor.actorUserId,
+        target_workspace_id: actor.workspaceId,
+        payload: change,
       }));
     },
     async myLineups({ date, ...actor }) {

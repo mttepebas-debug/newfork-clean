@@ -9,6 +9,15 @@ export const editResult = {
   row_id: "3f1d6a77-5d0e-4c8b-9b7a-2b3c4d5e6f70",
 };
 
+// lineup_sections_service: Mia adds Terrace at Kadikoy, after Patio (the shape lineup_sections.test.sql reads).
+export const sectionsResult = {
+  location_id: "b340777a-a901-40c5-a3c8-4727ceeb55c7",
+  sections: [
+    { id: "5b0c1d2e-3f40-4a5b-8c6d-7e8f9a0b1c2d", location_id: "b340777a-a901-40c5-a3c8-4727ceeb55c7", name: "Patio", sort_order: 1 },
+    { id: "6c1d2e3f-4051-4b6c-9d7e-8f9a0b1c2d3e", location_id: "b340777a-a901-40c5-a3c8-4727ceeb55c7", name: "Terrace", sort_order: 2 },
+  ],
+};
+
 export const shareResult = {
   kind: "share",
   lineups: [{

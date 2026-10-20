@@ -1,4 +1,10 @@
-import { lineupCommandInputSchema, lineupDayQuerySchema, lineupEditInputSchema, type AuthzAction } from "@newfork/shared";
+import {
+  lineupCommandInputSchema,
+  lineupDayQuerySchema,
+  lineupEditInputSchema,
+  lineupSectionsInputSchema,
+  type AuthzAction,
+} from "@newfork/shared";
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { authorize, resolveActor, type WorkspaceContextResolver } from "../auth/workspace-context";
@@ -48,6 +54,17 @@ export function registerLineupRoutes(
     if (!body.success) return reply.status(400).send({ error: "Choose what to change in the lineup" });
     if (!service) return reply.status(503).send(unavailable);
     return reply.send(await service.edit({ ...actor, edit: body.data }));
+  });
+
+  // LINEUP-EDIT L2b: the Sections window, a location's sections, by who may publish its lineups.
+  app.post("/v1/workspaces/:workspaceId/lineups/sections", async (request, reply) => {
+    const params = workspaceParams.safeParse(request.params);
+    if (!params.success) return reply.status(400).send({ error: "Valid workspace required" });
+    const actor = await actorFor(request.headers.authorization, params.data.workspaceId, "lineup.share");
+    const body = lineupSectionsInputSchema.safeParse(request.body);
+    if (!body.success) return reply.status(400).send({ error: "Choose what to change in the sections" });
+    if (!service) return reply.status(503).send(unavailable);
+    return reply.send(await service.sections({ ...actor, change: body.data }));
   });
 
   app.get("/v1/workspaces/:workspaceId/lineups/:date", async (request, reply) => {

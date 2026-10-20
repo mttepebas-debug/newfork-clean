@@ -9,6 +9,7 @@ const id = z.string().uuid();
 const day = z.string().date();
 const instant = z.string().datetime({ offset: true });
 const timeOfDay = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/);
+const sectionName = z.string().trim().min(1).max(40);
 
 /** One lineup: a location's day and shift type (null: the day's shifts with no shift type). */
 export const lineupTargetSchema = z.object({
@@ -68,10 +69,14 @@ const lineupEditRowSchema = z
     starts: timeOfDay.nullable().optional(),
     ends: timeOfDay.nullable().optional(),
     section_id: id.nullable().optional(),
+    /** LINEUP-EDIT L2b: "Other…", a name typed in this lineup only; save_section adds it to the location's sections. */
+    section_name: sectionName.nullable().optional(),
+    save_section: z.boolean().optional(),
   })
   .strict()
   .refine((row) => (row.source_shift_id === undefined) !== (row.row_id === undefined), "Name one row")
-  .refine((row) => (row.starts === undefined) === (row.ends === undefined), "In and Out go together");
+  .refine((row) => (row.starts === undefined) === (row.ends === undefined), "In and Out go together")
+  .refine((row) => row.section_id === undefined || row.section_name === undefined, "A section or a typed name");
 
 export const lineupEditInputSchema = z.discriminatedUnion("action", [
   lineupTargetSchema.extend({ command_id: id, action: z.literal("set_row"), row: lineupEditRowSchema }),
@@ -216,6 +221,10 @@ export type LineupDayLineup = z.infer<typeof lineupDayLineupSchema>;
 
 const lineupClosureSchema = z.object({ title: z.string(), status: z.string().nullable() });
 
+/** One of a location's sections, in its order. */
+export const lineupSectionSchema = z.object({ id, location_id: id, name: z.string(), sort_order: z.number().int() });
+export type LineupSection = z.infer<typeof lineupSectionSchema>;
+
 export const lineupDaySchema = z.object({
   workspace_id: id,
   date: day,
@@ -229,9 +238,25 @@ export const lineupDaySchema = z.object({
       lineups: z.array(lineupDayLineupSchema),
     }),
   ),
-  sections: z.array(z.object({ id, location_id: id, name: z.string(), sort_order: z.number().int() })),
+  sections: z.array(lineupSectionSchema),
 });
 export type LineupDay = z.infer<typeof lineupDaySchema>;
+
+/**
+ * LINEUP-EDIT L2b (S-178 madde 4): the Sections window, a location's sections. add answers the section of that
+ * name if there is one; reorder sends every section of the location; remove leaves the draft rows that had it with
+ * none (a published lineup keeps it until Edit). Each answers the location's sections in order.
+ */
+export const lineupSectionsInputSchema = z.discriminatedUnion("action", [
+  z.object({ action: z.literal("add"), location_id: id, name: sectionName }).strict(),
+  z.object({ action: z.literal("rename"), location_id: id, section_id: id, name: sectionName }).strict(),
+  z.object({ action: z.literal("reorder"), location_id: id, section_ids: z.array(id).min(1).max(100) }).strict(),
+  z.object({ action: z.literal("remove"), location_id: id, section_id: id }).strict(),
+]);
+export type LineupSectionsInput = z.infer<typeof lineupSectionsInputSchema>;
+
+export const lineupSectionsResultSchema = z.object({ location_id: id, sections: z.array(lineupSectionSchema) });
+export type LineupSectionsResult = z.infer<typeof lineupSectionsResultSchema>;
 
 /** The day read's filters: comma-separated ids in the query string, each list optional. */
 export const lineupDayQuerySchema = z.object({

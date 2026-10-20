@@ -1,6 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { lineupService } from "./lineup-service";
-import { acknowledgement, editResult, lineupDay, myLineups, shareResult, unpublishResult } from "./lineup-fixtures";
+import { acknowledgement, editResult, lineupDay, myLineups, sectionsResult, shareResult, unpublishResult } from "./lineup-fixtures";
 
 const actor = { actorUserId: "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5", workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd" };
 const lineup = {
@@ -39,6 +39,16 @@ describe("lineup service", () => {
       actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, command_id: editResult.command_id, payload,
     });
     expect(result).toEqual(editResult);
+  });
+
+  it("sends a change to a location's sections as the payload (LINEUP-EDIT L2b)", async () => {
+    const rpc = client(sectionsResult);
+    const change = { action: "add" as const, location_id: lineup.location_id, name: "Terrace" };
+    const result = await lineupService(rpc).sections({ ...actor, change });
+    expect(rpc.rpc).toHaveBeenCalledWith("lineup_sections_service", {
+      actor_user_id: actor.actorUserId, target_workspace_id: actor.workspaceId, payload: change,
+    });
+    expect(result).toEqual(sectionsResult);
   });
 
   it("sends an unpublish with no ask", async () => {
