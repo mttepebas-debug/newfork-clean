@@ -1,0 +1,16 @@
+# Kararlar — Employee view (Shift Hub, çalışan Schedule, More)
+
+Karar defterinin ([C:\Users\TheWe\Documents\Codex\newfork-clean\docs\plan\KARARLAR.md](../../KARARLAR.md)) bu ekrana ait bölümü; metin 2026-10-20'de defterden anlamı değişmeden taşındı (KAYIT-BOLME). Madde biçimi, dayanak sırası ve kimlik kuralları defterin başındaki gibidir; uygulama geneli kurallar (vizyon ve ilkeler, roller ve kapsam, form kuralları, MVP sınırı, her ekranın ortak kararları, yetki, teknik, süreç) defterde kalır. Yeni ekran kararı buraya yazılır ve kimliği defterdeki fihrist satırına eklenir (`node scripts/kararlar-check.mjs` ikisini karşılaştırır). Metindeki "§1.3", "§4" gibi bölüm atıfları defterindir.
+
+## Ekran kararları (eski §1.5'ten)
+
+### Employee Hub
+- Shift Hub telefondaki alt çubukta "Requests" adını taşır.
+- Tanınmayan alt yol (eski `lineup` bağlantıları dahil) More sayfasını açar.
+- Çalışan görünümüne geçiş (kullanıcı kararı 2026-09-30, FB-6.2.8 varyant A): kendi çalışan kaydı olan owner, admin ve manager kenar çubuğunda Account'un üstünde "Employee view" satırını görür; telefonda yönetimin More menüsünde. Çalışan görünümü çalışanın kendi çerçevesinde açılır (Employees, Settings yok); dönüş aynı satırdan ("Management view") ve telefonda Hub'ın More sayfasından. Neden: tek satır, iki yönde aynı yer; yönetim menüsü kalabalıklaşmaz.
+- My availability (2026-10-04, besleme #148; KARARLAR "Müsaitlik" M8): "Availability is a preference, not a guarantee: a manager can still schedule you…" cümlesi kalır (Mert, AVAIL-002 S5: "Bugünkü kalsın"; önerilen "ayara göre değişsin" — ters seçim; Hard block olmadığı için cümle doğru). Kaydedilmemiş değişiklikte My availability ve onboarding adımı "Discard unsaved changes?" sorar, Employees çekmecesi sormaz (koordinatör kararı, AVAIL-002 S4; dayanak ILKELER P26 + K7). Uygulama AVAIL-002 C2.
+- **Shift Hub sekmeleri (Mert, 2026-10-13, PAGES 7.2 yorumları).** İlk sekme "Available Shifts"; sekmeler liste sayfalarının alt çizgili dilinde; My requests sekmesinde senden cevap bekleyen talep sayısı, Available Shifts sekmesinde alabileceğin açık vardiya sayısı küçük kırmızı rozetle sağ üstte; masaüstünde Shift Hub sayfasının kaydırma çubuğu gizli. Uygulama a70cf9a2 + d473b93f + de47671e.
+
+## Ürün ve ekran kararları (eski §4'ten, S- kimlikli)
+
+- **S-153** Çalışanın telefon Schedule'ı haftalık liste "Zaman çizgisi" (Mert, 2026-10-17 akşam, "Telefon Schedule: haftalık liste" oturumu: "Zaman çizgisi Home sayfasındaki, birebir bunu implement et"; sayfa https://claude.ai/artifact/KgsSemacH6YTMtmqg6YoTP sürüm 6; reddedilen: Tur 4 Z1–Z5, Tur 3 B1/B2/E/F). This week / Next week anahtarı, gün başına kart (tarih kutusu, "Time off · Approved", "Day off · N open shifts to pick up"). Hafta yalnız anahtara dokununca değişir; listedeki yana kaydırma sayfa sekmelerinde kalır (soru kutusu, önerilen "Anahtara dokununca"). Sekmeler bu işte (soru kutusu, önerilen "Evet, bu işte"; daha önceki "My shifts önce" kararı): masaüstünde My shifts · Team schedule · Lineup, telefonda My shifts · Lineup; sayfa My shifts ile açılır; masaüstü ızgarası /app/employee-hub/schedule/team'e taşınır, telefon o adresten My shifts'e gönderilir. Kod task/calisan-schedule-liste.
