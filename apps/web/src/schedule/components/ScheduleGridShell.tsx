@@ -119,6 +119,7 @@ export function ScheduleGridShell({
   fitWeeklyLocations = false,
   gridRef,
   overlays,
+  published = false,
   showTotalHours,
   view,
   onClearSelection,
@@ -132,6 +133,8 @@ export function ScheduleGridShell({
   readonly fitWeeklyLocations?: boolean;
   readonly gridRef: RefObject<HTMLDivElement | null>;
   readonly overlays?: ReactNode;
+  /** Every location on the grid is live; only then is the grid called published (QA 51). */
+  readonly published?: boolean;
   readonly showTotalHours: boolean;
   readonly view: "day" | "week";
   readonly onClearSelection: () => void;
@@ -337,8 +340,8 @@ export function ScheduleGridShell({
         data-card-band={cardBand}
         data-schedule-column-count={columns}
         aria-label={`${view === "day" ? "Daily" : "Weekly"} ${
-          editing ? "editable" : "published"
-        } schedule`}
+          editing ? "editable " : published ? "published " : ""
+        }schedule`}
         style={
           {
             "--schedule-day-column-min": `${effectiveDayColumnMinWidth}px`,

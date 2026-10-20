@@ -422,6 +422,10 @@ export function ScheduleGrid({
       fitVisibleColumns={fitVisibleColumns}
       fitWeeklyLocations={view === "week" && !fitVisibleColumns}
       gridRef={gridRef}
+      published={
+        locationGroups.length > 0 &&
+        locationGroups.every((group) => group.publication_status === "published")
+      }
       showTotalHours={showTotalHours}
       view={view}
       overlays={

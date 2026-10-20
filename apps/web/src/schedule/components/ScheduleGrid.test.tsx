@@ -446,6 +446,21 @@ describe("ScheduleGrid", () => {
     ).toBeNull();
   });
 
+  // QA 51: a week that is not live is not called "published".
+  it("names an unpublished week without calling it published", () => {
+    const unpublished = scheduleModel({
+      locations: scheduleModel().locations.map((location) => ({
+        ...location,
+        publication_status: "unpublished" as const,
+        published_at: null,
+      })),
+    });
+    renderGrid({ model: unpublished, session: null });
+
+    expect(screen.getByRole("grid", { name: "Weekly schedule" })).toBeTruthy();
+    expect(screen.queryByRole("grid", { name: "Weekly published schedule" })).toBeNull();
+  });
+
   it("fills an empty employee grid down to the sticky totals row", () => {
     const emptyModel = scheduleModel({ employees: [], shifts: [] });
     const { container } = renderGrid({

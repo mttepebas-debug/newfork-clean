@@ -563,6 +563,7 @@ describe("ScheduleGridShell", () => {
         dayColumnMinWidth={112}
         editing={false}
         gridRef={createRef<HTMLDivElement>()}
+        published
         showTotalHours={false}
         view="day"
         onClearSelection={onClearSelection}
