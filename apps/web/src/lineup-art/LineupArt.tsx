@@ -22,20 +22,23 @@ export function LineupArt({
   name,
   size,
   className,
+  style: extra,
 }: {
   readonly artKey: string | null;
   readonly name: string;
   readonly size: number;
   readonly className?: string;
+  /** More custom properties for the circle (EmployeeLineup's --job ring). */
+  readonly style?: CSSProperties;
 }) {
   const svgs = useLineupArtSvgs();
   // Only the archive's own entries: a key like "constructor" must not find what every object inherits.
   const own = artKey && svgs && Object.hasOwn(svgs, artKey) ? svgs[artKey] : undefined;
   const svg = typeof own === "string" ? own : undefined;
-  const style = { "--lineup-art-size": `${size}px` } as CSSProperties;
+  const style = { ...extra, "--lineup-art-size": `${size}px` } as CSSProperties;
   const classes = ["lineup-art", svg ? "lineup-art--drawing" : "lineup-art--initials", className].filter(Boolean).join(" ");
   return (
-    <span className={classes} style={style} aria-hidden="true">
+    <span className={classes} style={style} aria-hidden="true" data-art-key={svg ? artKey : undefined}>
       {svg ? <span className="lineup-art-svg" dangerouslySetInnerHTML={{ __html: svg }} /> : lineupInitials(name)}
     </span>
   );

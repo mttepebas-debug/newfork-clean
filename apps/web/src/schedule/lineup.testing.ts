@@ -139,7 +139,7 @@ export function dayRead(m: Model, date: string, extra: Record<string, Partial<Li
                 schedule_start_time: s.start_time, schedule_end_time: s.end_time, label_ids: [],
                 label_names: s.label_names ?? [], section_id: null, section_name: null, sort_order: null,
                 called_off_at: null, called_off_by: null, replaced_by_row_id: null, lineup_only: false, changed: [],
-                has_app: Boolean(s.employee_id), acknowledged_at: null,
+                has_app: Boolean(s.employee_id), acknowledged_at: null, art_key: null,
               };
             }),
             ...extra[key ?? "none"],

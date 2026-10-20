@@ -40,6 +40,8 @@ export interface LineupRow {
   /** LINEUP-EDIT W3a (S-178 madde 5-7): called off, or someone took her place (that row's id). */
   readonly calledOffAt: string | null;
   readonly replacedByRowId: string | null;
+  /** Her Lineup drawing (AVATAR-IKON slice 4); null: her initials. */
+  readonly artKey: string | null;
 }
 
 export interface LineupJob {
@@ -160,6 +162,7 @@ function lineupRow(row: LineupDayLineup["rows"][number]): LineupRow {
     acknowledgedAt: row.acknowledged_at,
     calledOffAt: row.called_off_at,
     replacedByRowId: row.replaced_by_row_id,
+    artKey: row.art_key,
   };
 }
 
@@ -470,6 +473,7 @@ export interface LineupReader {
   readonly name: string;
   readonly jobName: string;
   readonly acknowledgedAt: string | null;
+  readonly artKey: string | null;
 }
 
 /**
@@ -484,7 +488,7 @@ export function lineupReadLists(shift: LineupShift): {
   const seen = new Map<string, LineupRow>();
   for (const row of shiftRows(shift)) if (!seen.has(row.employeeId)) seen.set(row.employeeId, row);
   const people = [...seen.values()]
-    .map((row) => ({ row, reader: { employeeId: row.employeeId, name: row.name, jobName: row.jobName, acknowledgedAt: row.acknowledgedAt } }))
+    .map((row) => ({ row, reader: { employeeId: row.employeeId, name: row.name, jobName: row.jobName, acknowledgedAt: row.acknowledgedAt, artKey: row.artKey } }))
     .sort((a, b) => byName(a.reader, b.reader));
   return {
     unread: people.filter(({ row }) => row.hasApp && !row.acknowledgedAt).map(({ reader }) => reader),

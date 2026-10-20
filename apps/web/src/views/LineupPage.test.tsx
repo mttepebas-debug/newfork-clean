@@ -57,6 +57,8 @@ let published: Record<string, Partial<LineupDayLineup>> = {};
 const commands: unknown[] = [];
 // Who read a lineup: per employee, when she acknowledged, or "no app".
 let reads: Record<string, string | "no app"> = {};
+// Each person's Lineup drawing (AVATAR-IKON slice 4), by employee id; none otherwise.
+let drawings: Record<string, string> = {};
 // The locations the day read answers for (null: all of the model's): a manager who runs one place sees one.
 let only: string | null = null;
 // A location's time zone the day read gives, by location id (the model's otherwise).
@@ -68,6 +70,7 @@ function readers(read: ReturnType<typeof dayRead>) {
     for (const lineup of location.lineups)
       for (const row of lineup.rows) {
         const said = row.employee_id ? reads[row.employee_id] : undefined;
+        Object.assign(row, { art_key: row.employee_id ? drawings[row.employee_id] ?? null : null });
         if (said === "no app") Object.assign(row, { has_app: false });
         else if (said) Object.assign(row, { acknowledged_at: said });
       }
@@ -104,6 +107,7 @@ beforeEach(() => {
   phone = false;
   published = {};
   reads = {};
+  drawings = {};
   clocks = {};
   only = null;
   zones = {};
@@ -279,6 +283,30 @@ describe("LineupPage", () => {
     expect(within(screen.getByRole("tabpanel")).queryByRole("region", { name: "Not read yet" })).toBeNull();
     // Another tab starts at its top, not where Team was scrolled.
     expect(screen.getByRole("tabpanel").scrollTop).toBe(0);
+  });
+
+  // AVATAR-IKON slice 4: the circle draws the person's Lineup drawing; without one, her initials.
+  it("draws each person's drawing in her circle, in the team and in the Read list; initials without one", async () => {
+    drawings = { [maria]: "001-server" };
+    reads = { [maria]: "2026-10-13T21:40:00Z" };
+    published = {
+      [lunch]: { status: "shared", published: true, shared_at: "2026-10-13T21:10:00Z", ask_ack: true, acknowledged: 1, with_app: 1 },
+    };
+    renderPage();
+    await screen.findByRole("region", { name: "Downtown, Lunch" });
+    const circle = within(screen.getByRole("list", { name: "Server" })).getByRole("listitem").querySelector(".lineup-phone-avatar")!;
+    await waitFor(() => expect(circle.querySelector("svg")).not.toBeNull(), { timeout: 15000 });
+    expect(circle.textContent).toBe("");
+    expect(circle.getAttribute("aria-hidden")).toBe("true");
+    fireEvent.click(screen.getByRole("tab", { name: "Read 1/1" }));
+    const reader = within(within(screen.getByRole("tabpanel")).getByRole("region", { name: "Read" })).getByRole("listitem");
+    expect(reader.querySelector(".lineup-read-avatar svg")).not.toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: "Next location: Uptown" }));
+    await screen.findByRole("region", { name: "Uptown, Lunch" });
+    fireEvent.click(screen.getByRole("tab", { name: /^Team/ }));
+    const hannahs = within(screen.getByRole("list", { name: "Server" })).getByRole("listitem").querySelector(".lineup-phone-avatar")!;
+    expect(hannahs.textContent).toBe("HL");
+    expect(hannahs.querySelector("svg")).toBeNull();
   });
 
   it("shows a grey outline of the lineup while it loads, and says so once", async () => {

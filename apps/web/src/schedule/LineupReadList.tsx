@@ -1,6 +1,7 @@
 import { Check } from "lucide-react";
 import type { JSX, ReactNode } from "react";
 
+import { LineupArt } from "../lineup-art/LineupArt";
 import { lineupReadLists, type LineupReader, type LineupShift } from "./lineup";
 import { publishedAt } from "./LineupPublishWindow";
 import type { ScheduleTimeFormat } from "./lib/scheduleDateTime";
@@ -10,15 +11,6 @@ import "./lineup-read.css";
 // Read tab, on the phone and in the desktop's ticket (F, Mert 2026-10-19) alike (Mert 2026-10-17 ~12:30 PM, ~1 PM):
 // Read first, then Not read yet and No app, and one thin bar on the first heading. Every time is on the location's clock, as
 // the card's "Published at" is, not the phone's.
-
-function initials(name: string): string {
-  return name
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((part) => part[0]!.toUpperCase())
-    .join("");
-}
 
 function Group({
   title,
@@ -53,9 +45,7 @@ function Group({
       <ul className="lineup-read-list">
         {people.map((person) => (
           <li key={person.employeeId} className="lineup-read-row">
-            <span className="lineup-read-avatar" aria-hidden>
-              {initials(person.name)}
-            </span>
+            <LineupArt artKey={person.artKey} name={person.name} size={32} className="lineup-read-avatar" />
             <span className="lineup-read-mid">
               <span className="lineup-read-name">{person.name}</span>
               <span className="lineup-read-job">{person.jobName}</span>

@@ -18,6 +18,9 @@ import {
 } from "./lineup";
 import { aisha, chloe, day, dayRead, dinner, downtown, hannah, host, lunch, maria, model, oldJob, server, cook, shift, uptown } from "./lineup.testing";
 
+const shiftRowsOf = (shift: { departments: readonly { jobs: readonly { rows: readonly { name: string; artKey: string | null }[] }[] }[] }) =>
+  shift.departments.flatMap((department) => department.jobs.flatMap((job) => job.rows));
+
 const view = (m: ReturnType<typeof model>, date: string) => lineupDay(dayRead(m, date), m);
 
 // Lineup, read-only first stage (Mert 2026-10-13): the day's live shifts per
@@ -355,8 +358,13 @@ describe("the phone's lineup parts", () => {
     for (const row of by(hannah)) Object.assign(row, { acknowledged_at: "2026-10-13T22:05:00Z" });
     for (const row of by(aisha)) Object.assign(row, { acknowledged_at: "2026-10-13T21:40:00Z" });
     for (const row of by(chloe)) Object.assign(row, { has_app: false });
+    for (const row of by(maria)) Object.assign(row, { art_key: "001-server" });
     const dinnerShift = lineupDay(read, people)[0]!.shifts.find((s) => s.key === dinner)!;
+    // AVATAR-IKON slice 4: each row and each reader carries the person's drawing, null without one.
+    expect(shiftRowsOf(dinnerShift).map((row) => [row.name, row.artKey])).toContainEqual(["Maria Lopez", "001-server"]);
+    expect(shiftRowsOf(dinnerShift).map((row) => [row.name, row.artKey])).toContainEqual(["Hannah Lee", null]);
     const lists = lineupReadLists(dinnerShift);
+    expect(lists.unread.map((p) => p.artKey)).toEqual(["001-server"]);
     expect(lists.unread.map((p) => [p.name, p.jobName])).toEqual([["Maria Lopez", "Server"]]);
     expect(lists.read.map((p) => [p.name, p.acknowledgedAt])).toEqual([
       ["Aisha Johnson", "2026-10-13T21:40:00Z"],

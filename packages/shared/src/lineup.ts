@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { lineupArtKeySchema } from "./lineup-art";
 
 // LINEUP-PUBLISH (KARARLAR "Lineup yayını öne alındı", 2026-10-17): a manager publishes a day's lineups and
 // takes them back; an employee reads the published lineups she is on, as they are now, and acknowledges them.
@@ -200,6 +201,8 @@ const myLineupRowSchema = z.object({
   section_name: z.string().nullable(),
   label_names: z.array(z.string()),
   called_off: z.boolean(),
+  /** AVATAR-IKON slice 4: the person's Lineup drawing (her own, else her job's dealt one); never a photo. */
+  art_key: lineupArtKeySchema.nullable(),
 });
 
 export const myLineupSchema = z.object({
@@ -278,6 +281,8 @@ const lineupDayRowSchema = z.object({
   /** The Read list (Mert 2026-10-17): the person has the app, and when she acknowledged the version staff see. */
   has_app: z.boolean(),
   acknowledged_at: instant.nullable(),
+  /** AVATAR-IKON slice 4: the person's Lineup drawing (her own, else her job's dealt one); null for an open shift. */
+  art_key: lineupArtKeySchema.nullable(),
 });
 export type LineupDayRow = z.infer<typeof lineupDayRowSchema>;
 

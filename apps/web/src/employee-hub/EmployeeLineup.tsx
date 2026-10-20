@@ -12,6 +12,7 @@ import { LINEUP_BUSY_MS } from "../schedule/lineup";
 import { lineupKeys, useAcknowledgeLineup, useMyLineups } from "../schedule/lineup-data";
 import { LineupDayPicker, LineupLocationSelect, LineupShiftTabs, type LineupShiftTab } from "../schedule/lineup-wheel-view";
 import { LoadError, LoadingOutline, Skeleton } from "../shell/LoadState";
+import { LineupArt } from "../lineup-art/LineupArt";
 import { getEmployeeScheduleBoard } from "./employee-hub-data";
 import "./employee-lineup.css";
 import { FieldNote } from "../shell/FieldNote";
@@ -35,10 +36,6 @@ function longDate(iso: string): string {
     day: "numeric",
     timeZone: "UTC",
   });
-}
-
-function initials(name: string): string {
-  return name.split(/\s+/).filter(Boolean).slice(0, 2).map((part) => part[0]!.toUpperCase()).join("");
 }
 
 /** Where a page under Schedule opens, on the day the address has. */
@@ -349,9 +346,13 @@ function LineupView({
             <ChevronDown size={18} aria-hidden />
           </button>
           <div className="employee-lineup-stub">
-            <span className="employee-lineup-avatar is-large" style={{ "--job": me.job_color ?? "var(--theme-border-strong)" } as CSSProperties} aria-hidden>
-              {initials(lineup.team.find((row) => row.is_me)?.name ?? "")}
-            </span>
+            <LineupArt
+              artKey={me.art_key}
+              name={lineup.team.find((row) => row.is_me)?.name ?? ""}
+              size={52}
+              className="employee-lineup-avatar is-large"
+              style={{ "--job": me.job_color ?? "var(--theme-border-strong)" } as CSSProperties}
+            />
             <b>{name}</b>
           </div>
           <div className="employee-lineup-ticket-body">
@@ -503,9 +504,13 @@ function Team({ rows, timeFormat }: { readonly rows: readonly Row[]; readonly ti
                 <ul aria-label={job}>
                   {people.map((row) => (
                     <li key={`${row.employee_id}-${row.start_time}`} className={row.is_me ? "is-me" : undefined}>
-                      <span className="employee-lineup-avatar" style={{ "--job": row.job_color ?? "var(--theme-border-strong)" } as CSSProperties} aria-hidden>
-                        {initials(row.name ?? "")}
-                      </span>
+                      <LineupArt
+                        artKey={row.art_key}
+                        name={row.name ?? ""}
+                        size={38}
+                        className="employee-lineup-avatar"
+                        style={{ "--job": row.job_color ?? "var(--theme-border-strong)" } as CSSProperties}
+                      />
                       <span className="employee-lineup-mid">
                         <span className="employee-lineup-name">
                           {row.name ?? "Team member"}

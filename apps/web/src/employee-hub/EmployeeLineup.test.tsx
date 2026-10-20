@@ -24,7 +24,7 @@ const board = vi.mocked(getEmployeeScheduleBoard);
 const versionId = "90000000-0000-4000-8000-000000000001";
 const row = {
   start_time: "16:00", end_time: "22:00", crosses_midnight: false, job_name: "Server", job_color: "#2255ee",
-  section_name: "Patio", label_names: ["Closer"], called_off: false,
+  section_name: "Patio", label_names: ["Closer"], called_off: false, art_key: null as MyLineups["lineups"][number]["mine"][number]["art_key"],
 };
 
 function mine(overrides: Partial<MyLineups["lineups"][number]> = {}): MyLineups {
@@ -111,6 +111,28 @@ beforeEach(() => {
 });
 
 describe("EmployeeLineup", () => {
+  // AVATAR-IKON slice 4: her circle and each teammate's draw the Lineup drawing; without one, the initials.
+  it("draws her drawing on her ticket and each teammate's in the team, initials without one", async () => {
+    answer = mine({
+      mine: [{ ...row, art_key: "001-server", replaced: false }],
+      team: [
+        { ...row, art_key: "001-server", employee_id: maria, name: "Maria Lopez", department_name: "Front of House", is_me: true },
+        { ...row, employee_id: hannah, name: "Hannah Lee", department_name: "Front of House", is_me: false },
+      ],
+    });
+    renderLineup();
+    const view = await screen.findByRole("region", { name: "Dinner lineup" });
+    const stub = view.querySelector(".employee-lineup-avatar.is-large")!;
+    await waitFor(() => expect(stub.querySelector("svg")).not.toBeNull(), { timeout: 15000 });
+    expect(stub.textContent).toBe("");
+    const team = within(view).getByRole("list", { name: "Server" });
+    const circle = (name: string) => within(team).getByText(name).closest("li")!.querySelector(".employee-lineup-avatar")!;
+    expect(circle("Maria Lopez").querySelector("svg")).not.toBeNull();
+    expect(circle("Hannah Lee").textContent).toBe("HL");
+    // Her position's colour still rings the circle.
+    expect((circle("Hannah Lee") as HTMLElement).style.getPropertyValue("--job")).toBe("#2255ee");
+  });
+
   it("shows her shift as a ticket and the whole team, her own row marked", async () => {
     renderLineup();
     const view = await screen.findByRole("region", { name: "Dinner lineup" });

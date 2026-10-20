@@ -456,7 +456,7 @@ function DesktopRow({
 }) {
   const person = (
     <>
-      <LineupPersonCircle name={row.name} />
+      <LineupPersonCircle name={row.name} artKey={row.artKey} />
       <span className="lineup-desk-name">
         {editing ? <ReplaceName row={row} onReplace={onReplace} /> : <span className="lineup-phone-name">{row.name}</span>}
         {row.lineupOnly ? <i className="lineup-phone-chip is-warn">Lineup only</i> : null}

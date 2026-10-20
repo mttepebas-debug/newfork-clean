@@ -703,7 +703,7 @@ function PersonRow({
           }}
         />
       ) : null}
-      <LineupPersonCircle name={row.name} />
+      <LineupPersonCircle name={row.name} artKey={row.artKey} />
       <span className="lineup-phone-mid">
         <span className="lineup-phone-name">{row.name}</span>
         <span className="lineup-phone-time">
