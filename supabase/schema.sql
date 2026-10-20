@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 547, last: 20261020011801_existing_managers_read_and_review_documents.sql
--- fingerprint: sha256:ab2531383ad5949d61ed9a38f0340c44aa5e6c14f1b9cb381d5c9b406fa9f754
+-- migrations: 552, last: 20261020011801_existing_managers_read_and_review_documents.sql
+-- fingerprint: sha256:8455c5e093c9ec542c5b113f277c976eeb8a4d4d05665f0b0ff803766cbc8070
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -3567,6 +3567,31 @@ $$;
 ALTER FUNCTION "app_private"."channel_room"("target_channel" "text", OUT "room" integer, OUT "opens_at" timestamp with time zone) OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."clear_member_avatar"("target_membership_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  removed_photo text;
+begin
+  delete from public.member_avatars a
+  where a.membership_id = target_membership_id
+  returning a.photo_path into removed_photo;
+
+  delete from app_private.last_avatars l where l.source_membership_id = target_membership_id;
+
+  return removed_photo;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."clear_member_avatar"("target_membership_id" "uuid") OWNER TO "postgres";
+
+
+COMMENT ON FUNCTION "app_private"."clear_member_avatar"("target_membership_id" "uuid") IS 'Deletes a membership''s avatar (public.member_avatars) and every app_private.last_avatars row whose source is that membership; returns the removed photo_path, null for a drawing or no avatar (AVATAR-IKON, S-187). Does not authorize: the caller authorizes first. Callers: remove_own_avatar_service and remove_member_photo_service. Access removal (public.remove_employee_access_service, decision S-187) will call it when a person''s access to a workspace is removed; that call is not wired yet. The caller must delete the returned object from the employee-profile-photos bucket.';
+
+
+
 CREATE OR REPLACE FUNCTION "app_private"."close_employee_side"("w" "uuid", "emp" "uuid", "actor" "uuid", "reason" "text") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -3866,6 +3891,34 @@ $$;
 
 
 ALTER FUNCTION "app_private"."complete_due_workspace_closures"() OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"() RETURNS "trigger"
+    LANGUAGE "plpgsql"
+    SET "search_path" TO ''
+    AS $$
+declare
+  step uuid := new.replaced_by_row_id;
+  hops integer := 0;
+begin
+  -- A row pointing at itself is daily_lineup_rows_replaced_by_other's to refuse.
+  if step = new.id then
+    return new;
+  end if;
+  while step is not null and hops < 100 loop
+    if step = new.id then
+      raise exception 'A row cannot be replaced by one it replaced' using errcode = '23514',
+        constraint = 'daily_lineup_rows_replaced_by_loop', hint = 'lineup.replace_loop';
+    end if;
+    select r.replaced_by_row_id into step from public.daily_lineup_rows r where r.id = step;
+    hops := hops + 1;
+  end loop;
+  return new;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"() OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."decision_tier"("w" "uuid", "requester" "uuid", "loc" "uuid", "other" "uuid" DEFAULT NULL::"uuid", "action" "text" DEFAULT 'exchange.approve'::"text") RETURNS "text"
@@ -6034,8 +6087,12 @@ begin
               'version', nullif(h.latest_version, 0),
               'shared_at', v.shared_at,
               'ask_ack', v.ask_ack,
+              -- Read's count above the line, like the one below it, is who is on the lineup (LINEUP-EDIT L2a).
               'acknowledged', case when v.id is null then null
-                else (select count(*) from public.daily_lineup_acknowledgements a where a.version_id = v.id) end,
+                else (select count(*) from public.daily_lineup_acknowledgements a where a.version_id = v.id
+                        and exists (select 1 from rows_wanted w where w.location_id = g.location_id
+                          and w.group_type is not distinct from g.group_type and w.employee_id = a.employee_id
+                          and w.called_off_at is null and w.replaced_by_row_id is null)) end,
               'revision', h.revision,
               -- LINEUP-PUBLISH: whether employees see it now, the version they see, who published it, and how
               -- many are on it and have the app ("Read 7/11" is acknowledged / with_app).
@@ -6128,6 +6185,41 @@ $$;
 
 
 ALTER FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "app_private"."lineup_started"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "at_moment" timestamp with time zone DEFAULT "now"()) RETURNS boolean
+    LANGUAGE "plpgsql" STABLE
+    SET "search_path" TO ''
+    AS $$
+declare
+  zone text;
+  local_now timestamp;
+  first_in text;
+begin
+  select l.timezone into zone from public.locations l
+  where l.id = target_location_id and l.workspace_id = target_workspace_id;
+  if zone is null then
+    return false;
+  end if;
+  local_now := at_moment at time zone zone;
+  if target_date < local_now::date then
+    return true;
+  end if;
+  if target_date > local_now::date then
+    return false;
+  end if;
+  select min(r ->> 'start_time') into first_in
+  from jsonb_array_elements(app_private.lineup_day(target_workspace_id, target_date, array[target_location_id]) -> 'locations') l,
+    jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+  where (x ->> 'shift_type_id')::uuid is not distinct from target_shift_type_id
+    -- People only, as the web reads it: an open shift is nobody's and starts nothing.
+    and r ->> 'employee_id' is not null;
+  return first_in is not null and to_char(local_now, 'HH24:MI') >= first_in;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."lineup_started"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "at_moment" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."lineup_tell"("target_type" "text", "target_workspace" "uuid", "target_recipients" "uuid"[], "target_event_key" "text", "target_title" "text", "target_body" "text", "target_url" "text", "target_actor" "uuid", "target_subject_type" "text", "target_subject_id" "uuid", "target_data" "jsonb" DEFAULT '{}'::"jsonb") RETURNS integer
@@ -10320,7 +10412,9 @@ begin
        from jsonb_array_elements(app_private.lineup_day(target_workspace_id, header.service_date,
               array[header.location_id]) -> 'locations') l,
          jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
-       where (x ->> 'id')::uuid = header.id and (r ->> 'employee_id')::uuid = me) then
+       where (x ->> 'id')::uuid = header.id and (r ->> 'employee_id')::uuid = me
+         -- Only who is on it: a called off or replaced person does not acknowledge it (LINEUP-EDIT L2a).
+         and r ->> 'called_off_at' is null and r ->> 'replaced_by_row_id' is null) then
     raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.acknowledge';
   end if;
   insert into public.daily_lineup_acknowledgements (version_id, workspace_id, employee_id)
@@ -14085,6 +14179,10 @@ begin
   delete from public.user_workspace_preferences where user_id = target_request.user_id;
   delete from public.user_preferences where user_id = target_request.user_id;
   delete from public.user_profiles where user_id = target_request.user_id;
+  delete from public.member_avatars a
+  using public.workspace_memberships m
+  where a.membership_id = m.id and m.user_id = target_request.user_id;
+  delete from app_private.last_avatars l where l.user_id = target_request.user_id;
 
   update public.account_deletion_requests
   set status = 'completed',
@@ -14464,28 +14562,6 @@ $$;
 
 
 ALTER FUNCTION "public"."get_announcements_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "public"."get_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "text"
-    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  avatar_path text;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.read', target_person => target_employee_id);
-
-  select private_profile.avatar_object_path into avatar_path
-  from public.employee_private_profiles private_profile
-  where private_profile.workspace_id = target_workspace_id
-    and private_profile.employee_id = target_employee_id;
-
-  return avatar_path;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."get_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_employee_detail_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "jsonb"
@@ -15317,6 +15393,57 @@ $$;
 ALTER FUNCTION "public"."get_important_dates_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  membership uuid;
+  remembered app_private.last_avatars;
+  source_photo text;
+  source_name text;
+  source_live boolean;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'avatar.self');
+
+  select m.id into membership
+  from public.workspace_memberships m
+  where m.workspace_id = target_workspace_id and m.user_id = actor_user_id;
+
+  select * into remembered from app_private.last_avatars l where l.user_id = actor_user_id;
+  if remembered.user_id is null or remembered.source_membership_id is not distinct from membership then
+    return null;
+  end if;
+
+  select w.name, a.photo_path,
+    m.status in ('active', 'pending_activation') and app_private.workspace_open_to_actor(m.workspace_id, actor_user_id)
+    into source_name, source_photo, source_live
+  from public.workspace_memberships m
+  join public.workspaces w on w.id = m.workspace_id
+  left join public.member_avatars a on a.membership_id = m.id
+  where m.id = remembered.source_membership_id and m.user_id = actor_user_id;
+
+  -- A drawing whose membership was deleted (source forgotten) is still offered; a known source must be live.
+  if remembered.source_membership_id is not null and source_live is not true then
+    return null;
+  end if;
+
+  if remembered.art_key is not null then
+    return jsonb_build_object('kind', 'art', 'art_key', remembered.art_key, 'source_photo_path', null,
+      'from_workspace_name', source_name);
+  end if;
+  if source_photo is null then
+    return null;
+  end if;
+  return jsonb_build_object('kind', 'photo', 'art_key', null, 'source_photo_path', source_photo,
+    'from_workspace_name', source_name);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[] DEFAULT NULL::"uuid"[], "target_shift_type_ids" "uuid"[] DEFAULT NULL::"uuid"[]) RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
@@ -15344,6 +15471,29 @@ $$;
 
 
 ALTER FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."get_member_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  photo text;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.read', target_person => target_employee_id);
+
+  select a.photo_path into photo
+  from public.employee_profiles profile
+  join public.workspace_memberships m on m.workspace_id = profile.workspace_id and m.user_id = profile.user_id
+  join public.member_avatars a on a.membership_id = m.id
+  where profile.id = target_employee_id and profile.workspace_id = target_workspace_id;
+
+  return photo;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."get_member_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_my_lineups_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date") RETURNS "jsonb"
@@ -15387,7 +15537,9 @@ begin
                  select jsonb_build_object('start_time', r -> 'start_time', 'end_time', r -> 'end_time',
                    'crosses_midnight', r -> 'crosses_midnight', 'job_name', r -> 'job_name', 'job_color', r -> 'job_color',
                    'section_name', r -> 'section_name', 'label_names', r -> 'label_names',
-                   'called_off', r ->> 'called_off_at' is not null) v
+                   'called_off', r ->> 'called_off_at' is not null,
+                   -- LINEUP-EDIT L2a: someone took her place (S-178 "Replaced").
+                   'replaced', r ->> 'replaced_by_row_id' is not null) v
                  from jsonb_array_elements(x -> 'rows') r where (r ->> 'employee_id')::uuid = me) mine_rows),
       -- The team as the lineup orders it: people only (an open shift is nobody's), no manager detail.
       'team', coalesce((select jsonb_agg(jsonb_build_object('employee_id', r -> 'employee_id', 'name', r -> 'name',
@@ -15398,7 +15550,8 @@ begin
                    'called_off', r ->> 'called_off_at' is not null,
                    'is_me', (r ->> 'employee_id')::uuid = me) order by o)
                  from jsonb_array_elements(x -> 'rows') with ordinality t(r, o)
-                 where r ->> 'employee_id' is not null), '[]'::jsonb)
+                 -- A replaced person is not on the team; the one in her place is.
+                 where r ->> 'employee_id' is not null and r ->> 'replaced_by_row_id' is null), '[]'::jsonb)
     ) order by l ->> 'name', x ->> 'shift_type_name'), '[]'::jsonb)
   into result
   from jsonb_array_elements(app_private.lineup_day(target_workspace_id, target_date, places) -> 'locations') l,
@@ -15564,31 +15717,53 @@ $$;
 ALTER FUNCTION "public"."get_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."get_own_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "text"
+CREATE OR REPLACE FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
     LANGUAGE "plpgsql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
-    AS $_$
-declare avatar_path text; employee_id uuid;
+    AS $$
+declare
+  membership uuid;
+  avatar public.member_avatars;
+  suggested text[];
 begin
-  if not app_private.workspace_allows_interactive_access(target_workspace_id)
-    or not exists (select 1 from public.workspace_memberships m
-      where m.workspace_id = target_workspace_id and m.user_id = actor_user_id and m.status = 'active') then
-    raise exception 'workspace unavailable' using errcode = 'P0002';
-  end if;
-  select e.id, p.avatar_object_path into employee_id, avatar_path
-  from public.employee_profiles e
-  join public.employee_private_profiles p on p.employee_id = e.id and p.workspace_id = e.workspace_id
-  where e.workspace_id = target_workspace_id and e.user_id = actor_user_id;
-  if avatar_path is not null and avatar_path !~* (
-    '^' || target_workspace_id::text || '/' || employee_id::text ||
-    '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'
-  ) then return null; end if;
-  return avatar_path;
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'avatar.self');
+
+  select m.id into membership
+  from public.workspace_memberships m
+  where m.workspace_id = target_workspace_id and m.user_id = actor_user_id;
+
+  select * into avatar from public.member_avatars a where a.membership_id = membership;
+
+  select coalesce(array_agg(ranked.icon order by ranked.first_seen), '{}') into suggested
+  from (
+    select listed.icon, min(listed.position) as first_seen
+    from (
+      select icon.key as icon,
+        row_number() over (order by assignment.is_primary desc, job.name, job.id, icon.n) as position
+      from public.employee_profiles profile
+      join public.employee_job_assignments assignment
+        on assignment.employee_id = profile.id and assignment.workspace_id = profile.workspace_id
+       and assignment.ended_at is null
+      join public.jobs job
+        on job.id = assignment.job_id and job.workspace_id = assignment.workspace_id and job.archived_at is null
+      cross join unnest(job.lineup_icons) with ordinality as icon (key, n)
+      where profile.workspace_id = target_workspace_id
+        and profile.user_id = actor_user_id
+        and profile.archived_at is null
+    ) listed
+    group by listed.icon
+  ) ranked;
+
+  return jsonb_build_object(
+    'kind', case when avatar.photo_path is not null then 'photo' when avatar.art_key is not null then 'art' end,
+    'art_key', avatar.art_key,
+    'photo_path', avatar.photo_path,
+    'suggested', to_jsonb(suggested));
 end;
-$_$;
+$$;
 
 
-ALTER FUNCTION "public"."get_own_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."get_own_legal_name_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS TABLE("legal_first_name" "text", "legal_middle_name" "text", "legal_last_name" "text")
@@ -17329,6 +17504,207 @@ $_$;
 
 
 ALTER FUNCTION "public"."lineup_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "kind" "text", "payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $_$
+declare
+  prior public.lineup_commands;
+  place public.locations;
+  day date;
+  type_id uuid;
+  header public.daily_lineups;
+  target jsonb;
+  edit jsonb := payload -> 'row';
+  notes jsonb := payload -> 'notes';
+  row_id uuid;
+  label uuid;
+  result jsonb;
+  uuid_shape constant text := '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$';
+  time_shape constant text := '^([01][0-9]|2[0-3]):[0-5][0-9]$';
+begin
+  if command_id is null or jsonb_typeof(payload) is distinct from 'object'
+     or payload ->> 'action' is null or payload ->> 'action' not in ('set_row', 'set_notes')
+     or payload ->> 'location_id' is null or (payload ->> 'location_id') !~* uuid_shape
+     or payload ->> 'service_date' is null or (payload ->> 'service_date') !~ '^\d{4}-\d{2}-\d{2}$'
+     or (payload ->> 'shift_type_id' is not null and (payload ->> 'shift_type_id') !~* uuid_shape)
+     or (payload ->> 'action' = 'set_row' and (jsonb_typeof(edit) is distinct from 'object'
+         or ((edit ->> 'source_shift_id') is null) = ((edit ->> 'row_id') is null)
+         or coalesce(edit ->> 'source_shift_id', edit ->> 'row_id') !~* uuid_shape))
+     or (payload ->> 'action' = 'set_notes' and jsonb_typeof(notes) is distinct from 'object') then
+    raise exception 'Choose what to change in the lineup' using errcode = '22023', hint = 'lineup.invalid_command';
+  end if;
+  -- The core first: a stranger learns nothing, not even a command id.
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'lineup.share',
+    target_locations => array[(payload ->> 'location_id')::uuid]);
+
+  perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text, 1017));
+  select * into prior from public.lineup_commands c
+  where c.workspace_id = target_workspace_id and c.actor_user_id = lineup_edit_service.actor_user_id
+    and c.command_id = lineup_edit_service.command_id;
+  if prior.command_id is not null then
+    if prior.kind <> 'edit' or prior.payload <> lineup_edit_service.payload then
+      raise exception 'This command id was used for another command' using errcode = '22023', hint = 'lineup.command_reused';
+    end if;
+    return prior.result;
+  end if;
+
+  select * into place from public.locations l
+  where l.id = (payload ->> 'location_id')::uuid and l.workspace_id = target_workspace_id;
+  day := (payload ->> 'service_date')::date;
+  type_id := (payload ->> 'shift_type_id')::uuid;
+  if type_id is not null and not exists (
+    select 1 from public.shift_types t where t.id = type_id and t.workspace_id = target_workspace_id and t.deleted_at is null
+  ) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+  end if;
+  if day < (now() at time zone place.timezone)::date then
+    raise exception 'This day has passed' using errcode = '22023', hint = 'lineup.past_day';
+  end if;
+  if exists (select 1 from public.schedule_closures c
+             where c.workspace_id = target_workspace_id and c.location_id = place.id and c.closed_date = day
+               and c.kind = 'closed') then
+    raise exception 'This location is closed that day' using errcode = '22023', hint = 'lineup.closed_day';
+  end if;
+
+  select * into header from public.daily_lineups d
+  where d.workspace_id = target_workspace_id and d.location_id = place.id and d.service_date = day
+    and d.shift_type_id is not distinct from type_id
+  for update;
+  if header.id is not null and header.latest_version > 0 and not header.editing then
+    raise exception 'Take the lineup back with Edit first' using errcode = '22023', hint = 'lineup.live';
+  end if;
+  if app_private.lineup_started(target_workspace_id, place.id, day, type_id, now()) then
+    raise exception 'This shift has started' using errcode = '22023', hint = 'lineup.started';
+  end if;
+
+  if payload ->> 'action' = 'set_row' then
+    -- The row as the day reads it: on this lineup, or it is out of reach (an unknown row gets the same answer).
+    select r into target
+    from jsonb_array_elements(app_private.lineup_day(target_workspace_id, day, array[place.id]) -> 'locations') l,
+      jsonb_array_elements(l -> 'lineups') x, jsonb_array_elements(x -> 'rows') r
+    where (x ->> 'shift_type_id')::uuid is not distinct from type_id
+      and (r ->> 'employee_id') is not null
+      and ((edit ? 'source_shift_id' and r ->> 'source_shift_id' = edit ->> 'source_shift_id')
+        or (edit ? 'row_id' and r ->> 'id' = edit ->> 'row_id' and (r -> 'lineup_only')::boolean));
+    if target is null then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'lineup.share';
+    end if;
+    if edit ? 'starts' or edit ? 'ends' then
+      if (edit ->> 'starts' is null) <> (edit ->> 'ends' is null)
+         or (edit ->> 'starts' is not null and ((edit ->> 'starts') !~ time_shape or (edit ->> 'ends') !~ time_shape
+             or edit ->> 'starts' = edit ->> 'ends'))
+         or (edit ->> 'starts' is null and (target -> 'lineup_only')::boolean) then
+        raise exception 'Use a time like 4:30 PM' using errcode = '22023', hint = 'lineup.invalid_hours';
+      end if;
+    end if;
+    if edit ? 'job_id' and (edit ->> 'job_id' is null and (target -> 'lineup_only')::boolean
+        or edit ->> 'job_id' is not null and ((edit ->> 'job_id') !~* uuid_shape or not exists (
+          select 1 from public.jobs j where j.id = (edit ->> 'job_id')::uuid and j.workspace_id = target_workspace_id
+            and j.archived_at is null))) then
+      raise exception 'Choose a position' using errcode = '22023', hint = 'lineup.invalid_job';
+    end if;
+    if edit ? 'label_ids' then
+      if edit -> 'label_ids' <> 'null'::jsonb and jsonb_typeof(edit -> 'label_ids') is distinct from 'array' then
+        raise exception 'Choose labels' using errcode = '22023', hint = 'lineup.invalid_label';
+      end if;
+      for label in select (value #>> '{}')::uuid from jsonb_array_elements(coalesce(nullif(edit -> 'label_ids', 'null'::jsonb), '[]')) loop
+        if not exists (select 1 from public.shift_labels s where s.id = label and s.workspace_id = target_workspace_id
+                         and s.archived_at is null and s.deleted_at is null) then
+          raise exception 'Choose labels' using errcode = '22023', hint = 'lineup.invalid_label';
+        end if;
+      end loop;
+    end if;
+    if edit ? 'section_id' and edit ->> 'section_id' is not null and ((edit ->> 'section_id') !~* uuid_shape or not exists (
+         select 1 from public.location_sections s where s.id = (edit ->> 'section_id')::uuid
+           and s.location_id = place.id and s.workspace_id = target_workspace_id and s.archived_at is null)) then
+      raise exception 'Choose one of this location''s sections' using errcode = '22023', hint = 'lineup.invalid_section';
+    end if;
+
+    if header.id is null then
+      insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
+      values (target_workspace_id, place.id, day, type_id, actor_user_id)
+      returning * into header;
+    end if;
+    row_id := (target ->> 'id')::uuid;
+    if row_id is null then
+      insert into public.daily_lineup_rows (workspace_id, lineup_id, location_id, service_date, source_shift_id, updated_by)
+      values (target_workspace_id, header.id, place.id, day, (target ->> 'source_shift_id')::uuid, actor_user_id)
+      returning id into row_id;
+    end if;
+    update public.daily_lineup_rows r set
+      job_id = case when edit ? 'job_id' then (edit ->> 'job_id')::uuid else r.job_id end,
+      label_ids = case when edit ? 'label_ids' then
+          case when edit -> 'label_ids' = 'null'::jsonb then null
+            else array(select (value #>> '{}')::uuid from jsonb_array_elements(edit -> 'label_ids')) end
+        else r.label_ids end,
+      starts = case when edit ? 'starts' then (edit ->> 'starts')::time else r.starts end,
+      ends = case when edit ? 'ends' then (edit ->> 'ends')::time else r.ends end,
+      section_id = case when edit ? 'section_id' then (edit ->> 'section_id')::uuid else r.section_id end,
+      updated_at = now(), updated_by = actor_user_id
+    where r.id = row_id;
+  else
+    if char_length(coalesce(notes ->> 'specials', '')) > 500 or char_length(coalesce(notes ->> 'n86', '')) > 500
+       or char_length(coalesce(notes ->> 'shift_notes', '')) > 1000 then
+      raise exception 'This note is too long' using errcode = '22023', hint = 'lineup.note_too_long';
+    end if;
+    if header.id is null then
+      insert into public.daily_lineups (workspace_id, location_id, service_date, shift_type_id, updated_by)
+      values (target_workspace_id, place.id, day, type_id, actor_user_id)
+      returning * into header;
+    end if;
+    update public.daily_lineups d set
+      specials = case when notes ? 'specials' then coalesce(notes ->> 'specials', '') else d.specials end,
+      n86 = case when notes ? 'n86' then coalesce(notes ->> 'n86', '') else d.n86 end,
+      shift_notes = case when notes ? 'shift_notes' then coalesce(notes ->> 'shift_notes', '') else d.shift_notes end
+    where d.id = header.id;
+  end if;
+
+  update public.daily_lineups d set revision = d.revision + 1, updated_at = now(), updated_by = actor_user_id
+  where d.id = header.id;
+  result := jsonb_build_object('command_id', command_id, 'kind', 'edit', 'lineup_id', header.id, 'row_id', row_id);
+  insert into public.lineup_commands (workspace_id, actor_user_id, command_id, kind, payload, result)
+  values (target_workspace_id, actor_user_id, command_id, 'edit', payload, result);
+  return result;
+end;
+$_$;
+
+
+ALTER FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."list_account_deletion_avatar_objects_service"("target_request_id" "uuid", "target_lease_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  photos text[];
+  folders text[];
+begin
+  perform public.renew_account_deletion_work_service(target_request_id, target_lease_id);
+
+  select coalesce(array_agg(a.photo_path order by a.photo_path), '{}') into photos
+  from public.account_deletion_requests request
+  join public.workspace_memberships m on m.user_id = request.user_id
+  join public.member_avatars a on a.membership_id = m.id
+  where request.id = target_request_id and a.photo_path is not null;
+
+  select coalesce(array_agg(place.folder order by place.folder), '{}') into folders
+  from (
+    select m.workspace_id::text || '/' || m.id::text || '/' as folder
+    from public.account_deletion_requests request
+    join public.workspace_memberships m on m.user_id = request.user_id
+    where request.id = target_request_id
+  ) place;
+
+  return jsonb_build_object('photos', to_jsonb(photos), 'folders', to_jsonb(folders));
+end;
+$$;
+
+
+ALTER FUNCTION "public"."list_account_deletion_avatar_objects_service"("target_request_id" "uuid", "target_lease_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."list_employee_document_lifecycle_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "self_only" boolean) RETURNS "jsonb"
@@ -21968,40 +22344,6 @@ $$;
 ALTER FUNCTION "public"."remove_employee_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."remove_employee_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "text"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  avatar_path text;
-begin
-  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.save', target_person => target_employee_id);
-
-  select private_profile.avatar_object_path into avatar_path
-  from public.employee_private_profiles private_profile
-  where private_profile.workspace_id = target_workspace_id
-    and private_profile.employee_id = target_employee_id
-  for update;
-
-  if avatar_path is null then
-    return null;
-  end if;
-
-  update public.employee_private_profiles
-  set avatar_object_path = null, updated_at = now()
-  where workspace_id = target_workspace_id and employee_id = target_employee_id;
-
-  insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
-  values (target_workspace_id, target_employee_id, actor_user_id, 'employee.avatar_removed', 'Workspace profile photo removed');
-
-  return avatar_path;
-end;
-$$;
-
-
-ALTER FUNCTION "public"."remove_employee_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
-
-
 CREATE OR REPLACE FUNCTION "public"."remove_employee_document_draft_file_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "target_submission_id" "uuid", "target_file_id" "uuid") RETURNS integer
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
@@ -22128,6 +22470,66 @@ $$;
 
 
 ALTER FUNCTION "public"."remove_employee_from_location_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_location_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."remove_member_photo_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") RETURNS "text"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  membership uuid;
+  photo text;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.save', target_person => target_employee_id);
+
+  select m.id into membership
+  from public.employee_profiles profile
+  join public.workspace_memberships m on m.workspace_id = profile.workspace_id and m.user_id = profile.user_id
+  where profile.id = target_employee_id and profile.workspace_id = target_workspace_id;
+
+  select a.photo_path into photo
+  from public.member_avatars a
+  where a.membership_id = membership
+  for update;
+  if photo is null then
+    raise exception 'Not a photo' using errcode = 'PT409', hint = 'avatar.not_photo';
+  end if;
+
+  perform app_private.clear_member_avatar(membership);
+
+  insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
+  values (target_workspace_id, target_employee_id, actor_user_id, 'employee.avatar_removed', 'Workspace profile photo removed');
+
+  return photo;
+end;
+$$;
+
+
+ALTER FUNCTION "public"."remove_member_photo_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."remove_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  membership uuid;
+  previous text;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'avatar.self');
+
+  select m.id into membership
+  from public.workspace_memberships m
+  where m.workspace_id = target_workspace_id and m.user_id = actor_user_id;
+
+  previous := app_private.clear_member_avatar(membership);
+
+  return jsonb_build_object('previous_photo_path', previous);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."remove_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."remove_schedule_pending_op_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_op_id" "uuid") RETURNS "jsonb"
@@ -24670,6 +25072,51 @@ $$;
 
 
 ALTER FUNCTION "public"."save_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_settings" "jsonb") OWNER TO "postgres";
+
+
+CREATE OR REPLACE FUNCTION "public"."save_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "choice" "jsonb") RETURNS "jsonb"
+    LANGUAGE "plpgsql" SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  membership uuid;
+  chosen_art text := choice ->> 'art_key';
+  chosen_photo text := choice ->> 'photo_path';
+  previous text;
+begin
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'avatar.self');
+
+  select m.id into membership
+  from public.workspace_memberships m
+  where m.workspace_id = target_workspace_id and m.user_id = actor_user_id;
+
+  if chosen_photo is not null
+     and not starts_with(chosen_photo, target_workspace_id::text || '/' || membership::text || '/') then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'avatar.self';
+  end if;
+
+  select a.photo_path into previous
+  from public.member_avatars a
+  where a.membership_id = membership
+  for update;
+
+  insert into public.member_avatars (membership_id, workspace_id, photo_path, art_key, updated_at)
+  values (membership, target_workspace_id, chosen_photo, chosen_art, now())
+  on conflict (membership_id) do update
+  set photo_path = excluded.photo_path, art_key = excluded.art_key, updated_at = excluded.updated_at;
+
+  insert into app_private.last_avatars (user_id, source_membership_id, art_key)
+  values (actor_user_id, membership, chosen_art)
+  on conflict (user_id) do update
+  set source_membership_id = excluded.source_membership_id, art_key = excluded.art_key;
+
+  return jsonb_build_object('previous_photo_path',
+    case when previous is distinct from chosen_photo then previous end);
+end;
+$$;
+
+
+ALTER FUNCTION "public"."save_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "choice" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."save_own_employment_contact_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "contact_name" "text", "contact_relationship" "text", "contact_phone" "text", "contact_email" "text" DEFAULT ''::"text", "personal_phone" "text" DEFAULT NULL::"text") RETURNS "void"
@@ -29812,6 +30259,20 @@ COMMENT ON TABLE "app_private"."authz_settings" IS 'The scope model in force. Ch
 
 
 
+CREATE TABLE IF NOT EXISTS "app_private"."last_avatars" (
+    "user_id" "uuid" NOT NULL,
+    "source_membership_id" "uuid",
+    "art_key" "text"
+);
+
+
+ALTER TABLE "app_private"."last_avatars" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "app_private"."last_avatars" IS 'An account''s last avatar (AVATAR-IKON), offered when it joins another workspace: a drawing''s key, or (art_key null) the membership whose current photo it is. Never a copy of the photo.';
+
+
+
 CREATE TABLE IF NOT EXISTS "public"."signature_templates" (
     "id" "uuid" DEFAULT "gen_random_uuid"() NOT NULL,
     "workspace_id" "uuid" NOT NULL,
@@ -30524,9 +30985,7 @@ CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "emergency_contact_relationship" "text",
     "emergency_contact_email" "text" DEFAULT ''::"text" NOT NULL,
-    "avatar_object_path" "text",
     "legal_middle_name" "text" DEFAULT ''::"text" NOT NULL,
-    CONSTRAINT "employee_private_profiles_avatar_path_check" CHECK ((("avatar_object_path" IS NULL) OR ("avatar_object_path" ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'::"text"))),
     CONSTRAINT "employee_private_profiles_city_check" CHECK ((("char_length"("btrim"("city")) >= 1) AND ("char_length"("btrim"("city")) <= 100))),
     CONSTRAINT "employee_private_profiles_city_us_letters" CHECK ((NORMALIZE("city", NFC) !~ '[şŞğĞıİ]'::"text")),
     CONSTRAINT "employee_private_profiles_country_code_check" CHECK (("country_code" ~ '^[A-Z]{2}$'::"text")),
@@ -30556,10 +31015,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_private_profiles" (
 
 
 ALTER TABLE "public"."employee_private_profiles" OWNER TO "postgres";
-
-
-COMMENT ON COLUMN "public"."employee_private_profiles"."avatar_object_path" IS 'Workspace-scoped avatar path inside the private employee-profile-photos bucket: workspace_id/employee_id/object_uuid.ext.';
-
 
 
 COMMENT ON COLUMN "public"."employee_private_profiles"."legal_middle_name" IS 'Optional middle name as it appears on the person''s ID.';
@@ -30659,7 +31114,7 @@ CREATE TABLE IF NOT EXISTS "public"."lineup_commands" (
     "payload" "jsonb" NOT NULL,
     "result" "jsonb" NOT NULL,
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
-    CONSTRAINT "lineup_commands_kind_check" CHECK (("kind" = ANY (ARRAY['share'::"text", 'unpublish'::"text"])))
+    CONSTRAINT "lineup_commands_kind_check" CHECK (("kind" = ANY (ARRAY['share'::"text", 'unpublish'::"text", 'edit'::"text"])))
 );
 
 
@@ -30699,6 +31154,32 @@ CREATE TABLE IF NOT EXISTS "public"."manager_weekly_reminders" (
 
 
 ALTER TABLE "public"."manager_weekly_reminders" OWNER TO "postgres";
+
+
+CREATE TABLE IF NOT EXISTS "public"."member_avatars" (
+    "membership_id" "uuid" NOT NULL,
+    "workspace_id" "uuid" NOT NULL,
+    "photo_path" "text",
+    "art_key" "text",
+    "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
+    CONSTRAINT "member_avatars_one_of_two" CHECK (("num_nonnulls"("photo_path", "art_key") = 1)),
+    CONSTRAINT "member_avatars_photo_path_shape" CHECK ((("photo_path" IS NULL) OR ("photo_path" ~ (((('^'::"text" || ("workspace_id")::"text") || '/'::"text") || ("membership_id")::"text") || '/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'::"text"))))
+);
+
+
+ALTER TABLE "public"."member_avatars" OWNER TO "postgres";
+
+
+COMMENT ON TABLE "public"."member_avatars" IS 'A person''s avatar in one workspace (AVATAR-IKON): a photo they uploaded or a Lineup archive drawing, never both. Read and written only through the avatar services.';
+
+
+
+COMMENT ON COLUMN "public"."member_avatars"."photo_path" IS 'Object path in the private employee-profile-photos bucket: <workspace_id>/<membership_id>/<uuid>.<jpg|png|webp>.';
+
+
+
+COMMENT ON COLUMN "public"."member_avatars"."art_key" IS 'A Lineup archive drawing (app_private.lineup_art).';
+
 
 
 CREATE OR REPLACE VIEW "public"."membership_location_scopes" WITH ("security_invoker"='true') AS
@@ -31679,8 +32160,6 @@ CREATE TABLE IF NOT EXISTS "public"."user_profiles" (
     "created_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "updated_at" timestamp with time zone DEFAULT "now"() NOT NULL,
     "phone_e164" "text",
-    "avatar_object_path" "text",
-    CONSTRAINT "user_profiles_avatar_object_path_check" CHECK ((("avatar_object_path" IS NULL) OR ("avatar_object_path" ~* (('^'::"text" || ("user_id")::"text") || '/profile/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.(jpg|png|webp)$'::"text")))),
     CONSTRAINT "user_profiles_display_name_check" CHECK ((("char_length"("btrim"("display_name")) >= 1) AND ("char_length"("btrim"("display_name")) <= 100))),
     CONSTRAINT "user_profiles_phone_e164_us_phone" CHECK (("phone_e164" ~ '^\+1[2-9][0-9]{9}$'::"text"))
 );
@@ -31690,10 +32169,6 @@ ALTER TABLE "public"."user_profiles" OWNER TO "postgres";
 
 
 COMMENT ON COLUMN "public"."user_profiles"."phone_e164" IS 'The account phone, a US number in E.164. The one phone: every live employee record copies it (KK-7).';
-
-
-
-COMMENT ON COLUMN "public"."user_profiles"."avatar_object_path" IS 'Current private global account avatar path: user_id/profile/object_uuid.ext.';
 
 
 
@@ -31962,6 +32437,11 @@ ALTER TABLE ONLY "app_private"."authz_scope_rules"
 
 ALTER TABLE ONLY "app_private"."authz_settings"
     ADD CONSTRAINT "authz_settings_pkey" PRIMARY KEY ("singleton");
+
+
+
+ALTER TABLE ONLY "app_private"."last_avatars"
+    ADD CONSTRAINT "last_avatars_pkey" PRIMARY KEY ("user_id");
 
 
 
@@ -32407,6 +32887,11 @@ ALTER TABLE ONLY "public"."locations"
 
 ALTER TABLE ONLY "public"."manager_weekly_reminders"
     ADD CONSTRAINT "manager_weekly_reminders_pkey" PRIMARY KEY ("workspace_id", "employee_id");
+
+
+
+ALTER TABLE ONLY "public"."member_avatars"
+    ADD CONSTRAINT "member_avatars_pkey" PRIMARY KEY ("membership_id");
 
 
 
@@ -32995,6 +33480,10 @@ CREATE INDEX "account_throttle_events_age" ON "app_private"."account_throttle_ev
 
 
 CREATE INDEX "account_throttle_events_lookup" ON "app_private"."account_throttle_events" USING "btree" ("kind", "key_digest", "at" DESC);
+
+
+
+CREATE INDEX "last_avatars_source_membership_idx" ON "app_private"."last_avatars" USING "btree" ("source_membership_id");
 
 
 
@@ -33618,6 +34107,10 @@ CREATE OR REPLACE TRIGGER "check_time_source" BEFORE INSERT OR UPDATE ON "public
 
 
 
+CREATE OR REPLACE TRIGGER "daily_lineup_rows_no_replace_loop" BEFORE INSERT OR UPDATE OF "replaced_by_row_id" ON "public"."daily_lineup_rows" FOR EACH ROW WHEN (("new"."replaced_by_row_id" IS NOT NULL)) EXECUTE FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"();
+
+
+
 CREATE OR REPLACE TRIGGER "deleted_department_job_guard" BEFORE INSERT OR UPDATE OF "department_id" ON "public"."jobs" FOR EACH ROW EXECUTE FUNCTION "app_private"."guard_deleted_department_job"();
 
 
@@ -33960,6 +34453,21 @@ CREATE OR REPLACE TRIGGER "zz_availability_assignment" BEFORE INSERT OR UPDATE O
 
 ALTER TABLE ONLY "app_private"."authz_actions"
     ADD CONSTRAINT "authz_actions_permission_key_fkey" FOREIGN KEY ("permission_key") REFERENCES "public"."permissions"("key");
+
+
+
+ALTER TABLE ONLY "app_private"."last_avatars"
+    ADD CONSTRAINT "last_avatars_art_fkey" FOREIGN KEY ("art_key") REFERENCES "app_private"."lineup_art"("key");
+
+
+
+ALTER TABLE ONLY "app_private"."last_avatars"
+    ADD CONSTRAINT "last_avatars_source_membership_fkey" FOREIGN KEY ("source_membership_id") REFERENCES "public"."workspace_memberships"("id") ON DELETE SET NULL;
+
+
+
+ALTER TABLE ONLY "app_private"."last_avatars"
+    ADD CONSTRAINT "last_avatars_user_fkey" FOREIGN KEY ("user_id") REFERENCES "auth"."users"("id") ON DELETE CASCADE;
 
 
 
@@ -34565,6 +35073,16 @@ ALTER TABLE ONLY "public"."manager_weekly_reminders"
 
 ALTER TABLE ONLY "public"."manager_weekly_reminders"
     ADD CONSTRAINT "manager_weekly_reminders_workspace_id_employee_id_fkey" FOREIGN KEY ("workspace_id", "employee_id") REFERENCES "public"."employee_profiles"("workspace_id", "id") ON DELETE CASCADE;
+
+
+
+ALTER TABLE ONLY "public"."member_avatars"
+    ADD CONSTRAINT "member_avatars_art_fkey" FOREIGN KEY ("art_key") REFERENCES "app_private"."lineup_art"("key");
+
+
+
+ALTER TABLE ONLY "public"."member_avatars"
+    ADD CONSTRAINT "member_avatars_membership_fkey" FOREIGN KEY ("membership_id", "workspace_id") REFERENCES "public"."workspace_memberships"("id", "workspace_id") ON DELETE CASCADE;
 
 
 
@@ -35513,6 +36031,9 @@ ALTER TABLE ONLY "public"."workspaces"
 
 
 
+ALTER TABLE "app_private"."last_avatars" ENABLE ROW LEVEL SECURITY;
+
+
 ALTER TABLE "app_private"."lineup_art" ENABLE ROW LEVEL SECURITY;
 
 
@@ -35720,6 +36241,9 @@ CREATE POLICY "locations_update_admin" ON "public"."locations" FOR UPDATE TO "au
 
 
 ALTER TABLE "public"."manager_weekly_reminders" ENABLE ROW LEVEL SECURITY;
+
+
+ALTER TABLE "public"."member_avatars" ENABLE ROW LEVEL SECURITY;
 
 
 ALTER TABLE "public"."membership_managed_locations" ENABLE ROW LEVEL SECURITY;
@@ -36337,6 +36861,10 @@ REVOKE ALL ON FUNCTION "app_private"."channel_room"("target_channel" "text", OUT
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."clear_member_avatar"("target_membership_id" "uuid") FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."close_employee_side"("w" "uuid", "emp" "uuid", "actor" "uuid", "reason" "text") FROM PUBLIC;
 
 
@@ -36362,6 +36890,10 @@ REVOKE ALL ON FUNCTION "app_private"."communication_reason"("state" "app_private
 
 
 REVOKE ALL ON FUNCTION "app_private"."complete_due_workspace_closures"() FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."daily_lineup_rows_no_replace_loop"() FROM PUBLIC;
 
 
 
@@ -36645,6 +37177,10 @@ REVOKE ALL ON FUNCTION "app_private"."lineup_art_keys_valid"("keys" "text"[]) FR
 
 
 REVOKE ALL ON FUNCTION "app_private"."lineup_day"("target_workspace_id" "uuid", "target_date" "date", "target_places" "uuid"[], "target_shift_type_ids" "uuid"[]) FROM PUBLIC;
+
+
+
+REVOKE ALL ON FUNCTION "app_private"."lineup_started"("target_workspace_id" "uuid", "target_location_id" "uuid", "target_date" "date", "target_shift_type_id" "uuid", "at_moment" timestamp with time zone) FROM PUBLIC;
 
 
 
@@ -37699,11 +38235,6 @@ GRANT ALL ON FUNCTION "public"."get_announcements_service"("actor_user_id" "uuid
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."get_employee_detail_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_employee_detail_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
 
@@ -37749,8 +38280,18 @@ GRANT ALL ON FUNCTION "public"."get_important_dates_service"("actor_user_id" "uu
 
 
 
+REVOKE ALL ON FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_last_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
+
+
+
 REVOKE ALL ON FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."get_lineup_day_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_date" "date", "target_location_ids" "uuid"[], "target_shift_type_ids" "uuid"[]) TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."get_member_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_member_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
 
 
 
@@ -37774,8 +38315,8 @@ GRANT ALL ON FUNCTION "public"."get_notification_workspace_settings_service"("ac
 
 
 
-REVOKE ALL ON FUNCTION "public"."get_own_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."get_own_employee_avatar_path_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."get_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
 
 
@@ -37918,6 +38459,16 @@ GRANT ALL ON FUNCTION "public"."leave_employee_onboarding_service"("target_user_
 
 REVOKE ALL ON FUNCTION "public"."lineup_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "kind" "text", "payload" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."lineup_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "kind" "text", "payload" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."lineup_edit_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "payload" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."list_account_deletion_avatar_objects_service"("target_request_id" "uuid", "target_lease_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."list_account_deletion_avatar_objects_service"("target_request_id" "uuid", "target_lease_id" "uuid") TO "service_role";
 
 
 
@@ -38309,11 +38860,6 @@ GRANT ALL ON FUNCTION "public"."remove_employee_access_service"("actor_user_id" 
 
 
 
-REVOKE ALL ON FUNCTION "public"."remove_employee_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."remove_employee_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
-
-
-
 REVOKE ALL ON FUNCTION "public"."remove_employee_document_draft_file_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "target_submission_id" "uuid", "target_file_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_employee_document_draft_file_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_requirement_id" "uuid", "expected_revision" integer, "target_submission_id" "uuid", "target_file_id" "uuid") TO "service_role";
 
@@ -38321,6 +38867,16 @@ GRANT ALL ON FUNCTION "public"."remove_employee_document_draft_file_service"("ac
 
 REVOKE ALL ON FUNCTION "public"."remove_employee_from_location_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_location_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."remove_employee_from_location_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_location_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."remove_member_photo_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."remove_member_photo_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."remove_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."remove_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") TO "service_role";
 
 
 
@@ -38491,6 +39047,11 @@ GRANT ALL ON FUNCTION "public"."save_notification_push_subscription_service"("ac
 
 REVOKE ALL ON FUNCTION "public"."save_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_settings" "jsonb") FROM PUBLIC;
 GRANT ALL ON FUNCTION "public"."save_notification_workspace_settings_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_settings" "jsonb") TO "service_role";
+
+
+
+REVOKE ALL ON FUNCTION "public"."save_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "choice" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."save_own_avatar_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "choice" "jsonb") TO "service_role";
 
 
 
@@ -39173,6 +39734,10 @@ GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."lineup_commands" T
 
 
 GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."location_sections" TO "service_role";
+
+
+
+GRANT REFERENCES,TRIGGER,TRUNCATE,MAINTAIN ON TABLE "public"."member_avatars" TO "service_role";
 
 
 
