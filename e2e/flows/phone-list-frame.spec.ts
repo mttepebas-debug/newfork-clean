@@ -51,7 +51,7 @@ async function phone(browser: Browser): Promise<{ page: Page; cdp: CDPSession }>
           id: "91000000-0000-4000-8000-000000000001", version_id: "90000000-0000-4000-8000-000000000001", version: 1,
           location: { id: "20000000-0000-4000-8000-000000000001", name: "Downtown", timezone: "America/Los_Angeles" },
           shift_type_id: null, shift_type_name: "Dinner", color: "#5b4bd6", shared_at: `${date}T21:10:00+00:00`,
-          ask_ack: false, acknowledged_at: null, notes: { specials: "", n86: "", shift_notes: "" }, mine: [row(0)],
+          ask_ack: false, acknowledged_at: null, notes: { specials: "", n86: "", shift_notes: "" }, mine: [{ ...row(0), replaced: false }],
           team: names.map((name, i) => ({
             ...row(i), employee_id: `00000000-0000-4000-8000-${String(i + 1).padStart(12, "0")}`, name,
             department_name: ["Front of House", "Back of House"][i % 2]!, is_me: i === 2,
