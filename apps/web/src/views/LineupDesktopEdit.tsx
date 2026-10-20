@@ -30,6 +30,7 @@ export interface LineupEditing {
 const OTHER = "__other";
 const MANAGE = "__manage";
 const TYPED = "__typed";
+const MANY = "__many";
 
 function firstName(name: string): string {
   return name.split(/\s+/)[0] ?? name;
@@ -60,32 +61,48 @@ export function EditableRowCells({
   const edit = useLineupEdit(editing.workspaceId, editing.date);
   // A choice shows at once and holds until the day is read again (or the change is refused).
   const [shown, setShown] = useState<Partial<Record<"job" | "label" | "section", string>>>({});
-  const [refused, setRefused] = useState<{ readonly field: string; readonly message: string } | null>(null);
+  // Each field's refusal, under it: one change's answer never stands for another's.
+  const [refused, setRefused] = useState<Partial<Record<string, string>>>({});
   const which = row.lineupOnly && row.rowId ? { row_id: row.rowId } : { source_shift_id: row.sourceShiftId ?? row.shiftId };
+  // In and Out go together: the one not typed goes as last typed, until the day is read again with nothing on its
+  // way (the review of 6ec3afb16: Out sent while In was on its way must not put the old In back).
+  const latest = useRef(row);
+  latest.current = row;
+  const going = useRef(0);
+  const times = useRef({ start: row.startTime, end: row.endTime });
+  useEffect(() => {
+    if (!going.current) times.current = { start: row.startTime, end: row.endTime };
+  }, [row.startTime, row.endTime]);
 
   function send(field: string, fields: Record<string, unknown>, show?: { key: "job" | "label" | "section"; value: string }) {
-    setRefused(null);
+    setRefused((now) => ({ ...now, [field]: undefined }));
     if (show) setShown((now) => ({ ...now, [show.key]: show.value }));
-    edit.mutate(
-      { ...shift.publish.target, action: "set_row", row: { ...which, ...fields } } as LineupEdit,
-      {
-        onError: (error) => setRefused({ field, message: lineupEditMessage(error) }),
-        onSettled: () => {
-          if (show) setShown((now) => ({ ...now, [show.key]: undefined }));
-        },
-      },
-    );
+    going.current += 1;
+    edit
+      .mutateAsync({ ...shift.publish.target, action: "set_row", row: { ...which, ...fields } } as LineupEdit)
+      .catch((error: unknown) => setRefused((now) => ({ ...now, [field]: lineupEditMessage(error) })))
+      .finally(() => {
+        going.current -= 1;
+        if (show) setShown((now) => ({ ...now, [show.key]: undefined }));
+        if (!going.current) times.current = { start: latest.current.startTime, end: latest.current.endTime };
+      });
+  }
+  function sendTime(field: "start" | "end", time: string) {
+    times.current = { ...times.current, [field]: time };
+    send(field, { starts: times.current.start, ends: times.current.end });
   }
 
   const mine = new Set(editing.catalog.jobsOf(row.employeeId));
   const assigned = editing.catalog.jobs.filter((job) => mine.has(job.id));
   const others = editing.catalog.jobs.filter((job) => !mine.has(job.id));
   const job = shown.job ?? row.jobId ?? "";
-  const label = shown.label ?? row.labelIds[0] ?? "";
+  // More than one label (a Schedule shift can carry several): shown together, until one is chosen.
+  const many = row.labelIds.length > 1;
+  const label = shown.label ?? (many ? MANY : (row.labelIds[0] ?? ""));
   const note = (field: string) =>
-    refused?.field === field ? (
+    refused[field] ? (
       <em className="lineup-edit-msg" role="alert">
-        {refused.message}
+        {refused[field]}
       </em>
     ) : null;
 
@@ -125,12 +142,15 @@ export function EditableRowCells({
           className="lineup-edit-sel"
           aria-label={`Label, ${row.name}`}
           value={label}
-          onChange={(event) =>
-            send("label", { label_ids: event.target.value ? [event.target.value] : [] }, { key: "label", value: event.target.value })
-          }
+          onChange={(event) => {
+            const choice = event.target.value;
+            if (choice === MANY) return;
+            send("label", { label_ids: choice ? [choice] : [] }, { key: "label", value: choice });
+          }}
         >
           <option value="">None</option>
-          {label && !editing.catalog.labels.some((item) => item.id === label) ? (
+          {many ? <option value={MANY}>{row.labels.join(", ")}</option> : null}
+          {label && label !== MANY && !editing.catalog.labels.some((item) => item.id === label) ? (
             <option value={label}>{row.labels[0] ?? "Label"}</option>
           ) : null}
           {editing.catalog.labels.map((item) => (
@@ -147,16 +167,16 @@ export function EditableRowCells({
             row={row}
             field="start"
             timeFormat={timeFormat}
-            refused={refused?.field === "start" ? refused.message : null}
-            onTime={(time) => send("start", { starts: time, ends: row.endTime })}
+            refused={refused.start ?? null}
+            onTime={(time) => sendTime("start", time)}
           />
           <span className="lineup-edit-dash">–</span>
           <TimeField
             row={row}
             field="end"
             timeFormat={timeFormat}
-            refused={refused?.field === "end" ? refused.message : null}
-            onTime={(time) => send("end", { starts: row.startTime, ends: time })}
+            refused={refused.end ?? null}
+            onTime={(time) => sendTime("end", time)}
           />
           {dot}
         </span>
@@ -359,35 +379,34 @@ export function SectionsWindow({
   latest.current = onClose;
   const sections = location.sections;
 
+  // Focus goes in when it opens and back to what opened it (the gear) when it closes.
   useEffect(() => {
     const opener = document.activeElement as HTMLElement | null;
     box.current?.querySelector<HTMLElement>("input")?.focus();
-    const keydown = (event: globalThis.KeyboardEvent) => {
-      if (event.key === "Escape") {
-        event.preventDefault();
-        event.stopPropagation();
-        latest.current();
-        return;
-      }
-      if (event.key !== "Tab" || !box.current) return;
-      const focusable = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
-      const first = focusable[0];
-      const last = focusable[focusable.length - 1];
-      if (!first || !last) return;
-      if (event.shiftKey && document.activeElement === first) {
-        event.preventDefault();
-        last.focus();
-      } else if (!event.shiftKey && document.activeElement === last) {
-        event.preventDefault();
-        first.focus();
-      }
-    };
-    document.addEventListener("keydown", keydown, true);
     return () => {
-      document.removeEventListener("keydown", keydown, true);
       if (opener?.isConnected) opener.focus();
     };
   }, []);
+  // Its own keys, after the field's: Escape in a changed name puts the name back first; Tab stays inside.
+  function keys(event: KeyboardEvent<HTMLElement>) {
+    if (event.key === "Escape") {
+      event.preventDefault();
+      latest.current();
+      return;
+    }
+    if (event.key !== "Tab" || !box.current) return;
+    const focusable = [...box.current.querySelectorAll<HTMLElement>("button:not(:disabled), input:not(:disabled)")];
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    if (!first || !last) return;
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault();
+      last.focus();
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault();
+      first.focus();
+    }
+  }
 
   function run(input: Parameters<typeof change.mutate>[0], after?: () => void) {
     setRefused(null);
@@ -409,7 +428,7 @@ export function SectionsWindow({
   return createPortal(
     <div className="lineup-edit-layer" role="presentation">
       <div className="lineup-edit-scrim" aria-hidden onClick={onClose} />
-      <section ref={box} className="lineup-edit-dlg" role="dialog" aria-modal="true" aria-labelledby={titleId}>
+      <section ref={box} className="lineup-edit-dlg" role="dialog" aria-modal="true" aria-labelledby={titleId} onKeyDown={keys}>
         <header>
           <div>
             <h2 id={titleId}>Sections · {location.name}</h2>
@@ -530,7 +549,8 @@ function SectionName({ name, onRename }: { readonly name: string; readonly onRen
       onBlur={save}
       onKeyDown={(event) => {
         if (event.key === "Enter") save();
-        if (event.key === "Escape") {
+        // A changed name goes back; an unchanged one lets Escape close the window.
+        if (event.key === "Escape" && text !== name) {
           event.stopPropagation();
           setText(name);
         }

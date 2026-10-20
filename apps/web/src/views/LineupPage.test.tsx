@@ -1663,6 +1663,75 @@ describe("LineupPage, editing a draft on the desktop", () => {
     expect(screen.queryByRole("alert")).toBeNull();
   });
 
+  // The review of 6ec3afb16 (Yüksek): In and Out go together, so Out sent while In is still on its way carries the
+  // new In, not the one the day read had.
+  it("sends Out with the In just typed, while the day hasn't been read again", async () => {
+    const realRead = api.getMockImplementation()!;
+    let release: (() => void) | null = null;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/edit") && !release) {
+        const answer = realRead(client, path, init);
+        await new Promise<void>((resolve) => (release = resolve));
+        return answer;
+      }
+      return realRead(client, path, init);
+    });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const start = (await screen.findByRole("textbox", { name: "In, Maria Lopez" })) as HTMLInputElement;
+    fireEvent.change(start, { target: { value: "10:30 am" } });
+    fireEvent.keyDown(start, { key: "Enter" });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    const end = screen.getByRole("textbox", { name: "Out, Maria Lopez" });
+    fireEvent.change(end, { target: { value: "5 pm" } });
+    fireEvent.keyDown(end, { key: "Enter" });
+    await waitFor(() => expect(sent).toHaveLength(2));
+    expect(sent[1]!.body.row).toEqual({ source_shift_id: marias(), starts: "10:30", ends: "17:00" });
+    release!();
+  });
+
+  // The review of 6ec3afb16 (Orta): each change answers for itself, even when the next one is already on its way.
+  it("says a refused change under its own field, while another change on the row goes through", async () => {
+    const realRead = api.getMockImplementation()!;
+    let refuse: (() => void) | null = null;
+    api.mockImplementation(async (client, path, init) => {
+      if (path.endsWith("/lineups/edit")) {
+        const body = JSON.parse(String(init?.body)) as { row: Record<string, unknown> };
+        if ("job_id" in body.row) {
+          await realRead(client, path, init);
+          await new Promise<void>((resolve) => (refuse = resolve));
+          throw new RequestError("No", "lineup.invalid_job", undefined, 400);
+        }
+      }
+      return realRead(client, path, init);
+    });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const position = (await screen.findByRole("combobox", { name: "Position, Maria Lopez" })) as HTMLSelectElement;
+    fireEvent.change(position, { target: { value: host } });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    fireEvent.change(screen.getByRole("combobox", { name: "Label, Maria Lopez" }), { target: { value: closer } });
+    await waitFor(() => expect(sent).toHaveLength(2));
+    refuse!();
+    expect((await screen.findByRole("alert")).textContent).toBe("Choose one of the positions.");
+    await waitFor(() => expect(position.value).toBe(server));
+  });
+
+  // The review of 6ec3afb16 (Orta): a shift with two labels shows both, and a choice says what it keeps.
+  it("shows every label a row has, and None takes them all off", async () => {
+    const realRead = api.getMockImplementation()!;
+    api.mockImplementation(async (client, path, init) => {
+      const answer = (await realRead(client, path, init)) as ReturnType<typeof dayRead>;
+      const row = /\/lineups\/\d{4}-\d{2}-\d{2}$/.test(path) ? answer.locations[0]?.lineups[0]?.rows[0] : undefined;
+      if (row) Object.assign(row, { label_ids: [training, closer], label_names: ["Training", "Closer"] });
+      return answer;
+    });
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const label = (await screen.findByRole("combobox", { name: "Label, Maria Lopez" })) as HTMLSelectElement;
+    expect(label.selectedOptions[0]!.textContent).toBe("Training, Closer");
+    fireEvent.change(label, { target: { value: closer } });
+    await waitFor(() => expect(sent).toHaveLength(1));
+    expect(sent[0]!.body.row).toEqual({ source_shift_id: marias(), label_ids: [closer] });
+  });
+
   it("gives a row a section from the list, or a name typed with Other…, which Save to sections adds to the list", async () => {
     renderPage(`/app/schedule/lineup?location=${downtown}`);
     const section = (await screen.findByRole("combobox", { name: "Section, Maria Lopez" })) as HTMLSelectElement;
@@ -1729,6 +1798,25 @@ describe("LineupPage, editing a draft on the desktop", () => {
     expect(sent[3]!.body).toEqual({ action: "remove", location_id: downtown, section_id: bar });
     fireEvent.click(within(window_).getByRole("button", { name: "Done" }));
     expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
+  });
+
+  // The review of 6ec3afb16 (Düşük): Escape in a name puts the name back; Escape elsewhere closes the window and
+  // gives the focus back to the gear.
+  it("puts a name back with Escape, and closes on the next Escape, the focus back on the gear", async () => {
+    renderPage(`/app/schedule/lineup?location=${downtown}`);
+    const gear = await screen.findByRole("button", { name: "Manage sections" });
+    gear.focus();
+    fireEvent.click(gear);
+    const window_ = screen.getByRole("dialog", { name: "Sections · Downtown" });
+    const name = within(window_).getByRole("textbox", { name: "Section name" }) as HTMLInputElement;
+    fireEvent.change(name, { target: { value: "Garden" } });
+    fireEvent.keyDown(name, { key: "Escape" });
+    expect(name.value).toBe("Patio");
+    expect(screen.getByRole("dialog", { name: "Sections · Downtown" })).toBe(window_);
+    fireEvent.keyDown(name, { key: "Escape" });
+    expect(screen.queryByRole("dialog", { name: "Sections · Downtown" })).toBeNull();
+    expect(document.activeElement).toBe(gear);
+    expect(sent).toHaveLength(0);
   });
 
   it("edits the notes in place and sends only the ones that changed", async () => {

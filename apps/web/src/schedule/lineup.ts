@@ -371,7 +371,7 @@ export function lineupEditable(shift: LineupShift, now: string | null): boolean 
 
 /**
  * A time as a manager types it into In or Out (the design's parseT): "4:30 PM", "4:30p", "17:15", or a bare "5",
- * which takes the side of the day the time already had. HH:MM, or null when it isn't a time.
+ * read as the time nearer the one it had. HH:MM, or null when it isn't a time.
  */
 export function parseLineupTime(typed: string, base: string): string | null {
   const match = typed.trim().toLowerCase().replace(/\s+/g, "").replace(/\./g, "").match(/^(\d{1,2})(?::?(\d{2}))?(a|am|p|pm)?$/);
@@ -384,7 +384,12 @@ export function parseLineupTime(typed: string, base: string): string | null {
     if (hours < 1 || hours > 12) return null;
     hours = (hours % 12) + (half === "p" ? 12 : 0);
   } else if (hours > 23) return null;
-  else if (hours <= 12) hours = (minutes(base || "12:00") >= 12 * 60 ? 12 : 0) + (hours % 12);
+  else if (hours <= 12) {
+    // No AM or PM: the reading nearer the time it had, round the clock ("12:30" by 9 AM is noon, "1" by 10 PM is 1 AM).
+    const had = minutes(base || "12:00");
+    const away = (at: number) => Math.min(Math.abs(at * 60 + mins - had), 24 * 60 - Math.abs(at * 60 + mins - had));
+    hours = away(hours % 12) <= away((hours % 12) + 12) ? hours % 12 : (hours % 12) + 12;
+  }
   return `${String(hours).padStart(2, "0")}:${String(mins).padStart(2, "0")}`;
 }
 
@@ -408,7 +413,7 @@ export function lineupCopyText(
             `${job.name}: ${row.name}`,
             `${formatTime(row.startTime, timeFormat, "long")} – ${formatTime(row.endTime, timeFormat, "long")}`,
             row.sectionName,
-            row.labels[0],
+            row.labels.join(", "),
           ]
             .filter(Boolean)
             .join(" · "),

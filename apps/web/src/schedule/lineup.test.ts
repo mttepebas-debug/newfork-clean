@@ -380,6 +380,13 @@ describe("parseLineupTime", () => {
     expect(parseLineupTime("5", "16:00")).toBe("17:00");
     expect(parseLineupTime("9:45", "09:00")).toBe("09:45");
   });
+  // The review of 6ec3afb16 (Orta): a bare time is the one nearer the time it had, and 12 with no AM or PM is noon.
+  it("reads a bare time as the one nearer the time it had", () => {
+    expect(parseLineupTime("12:30", "09:00")).toBe("12:30");
+    expect(parseLineupTime("1", "22:00")).toBe("01:00");
+    expect(parseLineupTime("11", "22:00")).toBe("23:00");
+    expect(parseLineupTime("6", "09:00")).toBe("06:00");
+  });
   it("refuses what isn't a time", () => {
     for (const typed of ["9:3x", "13 pm", "25:00", "4:75", "", "noon"]) expect(parseLineupTime(typed, "16:00")).toBeNull();
   });

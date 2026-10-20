@@ -395,7 +395,7 @@
 .lineup-edit-scrim {
   position: absolute;
   inset: 0;
-  background: rgb(15 28 22 / 16%);
+  background: color-mix(in srgb, var(--theme-text) 16%, transparent);
 }
 .lineup-edit-dlg {
   position: relative;
@@ -406,7 +406,7 @@
   flex-direction: column;
   border-radius: 14px;
   background: var(--theme-surface);
-  box-shadow: 0 24px 60px -18px rgb(15 23 42 / 40%);
+  box-shadow: 0 24px 60px -18px color-mix(in srgb, var(--theme-text) 40%, transparent);
 }
 .lineup-edit-dlg > header {
   display: grid;
