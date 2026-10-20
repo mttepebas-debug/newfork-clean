@@ -275,6 +275,10 @@ export function AppShell() {
   // Documents left Account (MY-DOCUMENTS): what waits there is invitations;
   // what the open workspace asks of the person waits on Documents.
   const accountWaiting = accountAttention.data?.workspaces ?? 0;
+  // Invitations and ownership transfers are answered on Workspaces, so the
+  // row leads there while one waits; Profile has nothing to answer.
+  const accountHref =
+    accountWaiting > 0 ? "/account/workspaces" : "/account/profile";
   const ownDocuments = useOwnDocuments();
   if (!context) return null;
   const isEmployee = membershipClass(context.membership) === "employee";
@@ -574,7 +578,7 @@ export function AppShell() {
                 collapsed ? " rail-peek-item" : ""
               }`
             }
-            to="/account/profile"
+            to={accountHref}
             aria-label={
               accountWaiting > 0
                 ? `Account, ${accountWaiting} waiting on you`
