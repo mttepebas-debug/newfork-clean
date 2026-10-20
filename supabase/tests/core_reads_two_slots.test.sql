@@ -73,8 +73,7 @@ insert into public.workspace_memberships (id, workspace_id, user_id, role_id, em
   ('c1200000-0000-4000-8000-000000000507', 'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000007',
    (select id from slot_role where key = 'admin'), (select id from slot_role where key = 'employee'), 'active');
 -- Manages: Emre, Mona, Dora and Fikret manage Kadikoy, and nothing else.
--- ponytail: a new manager starts managing where they work until ROL-CIFT 6.3 (manages_follow_works);
--- Manages is set here apart from Works at.
+-- Manages is set here apart from Works at, as the invitation and the access change set it (ROL-CIFT 6.3).
 delete from public.membership_managed_locations
 where workspace_id = 'c1200000-0000-4000-8000-000000000101';
 insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
@@ -280,11 +279,12 @@ select is(
    from public.resolve_workspace_context_service('c1200000-0000-4000-8000-000000000005', 'c1200000-0000-4000-8000-000000000101') c),
   '(,t)', 'Ece''s context: an employee only');
 
--- One role placed in the two slots (an invitation reopening a suspended account, a role change, a
--- restored access) never makes an owner: only an ownership transfer does.
-select is(pg_temp.said($q$select app_private.place_single_role('c1200000-0000-4000-8000-000000000503',
-    (select id from slot_role where key = 'owner'))$q$),
-  '42501 authz.missing_permission', 'Mona is not made the owner by placing a role');
+-- An access change (what a role change is since DAVET-ERISIM) never makes an owner, not even the
+-- owner's own: only an ownership transfer does.
+select is(pg_temp.said($q$select public.change_employee_access_service('c1200000-0000-4000-8000-000000000001',
+    'c1200000-0000-4000-8000-000000000101', 'c1200000-0000-4000-8000-000000000603',
+    null, (select id from slot_role where key = 'owner'), null, null, null)$q$),
+  '42501 authz.rank', 'Mona is not made the owner by an access change');
 
 select hasnt_function('app_private', 'ranks_as_employee', 'ranks_as_employee is gone; has_employee_access reads the slot');
 

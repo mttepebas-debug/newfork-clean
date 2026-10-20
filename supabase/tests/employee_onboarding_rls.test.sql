@@ -432,6 +432,10 @@ insert into public.employee_profiles (
 insert into public.employee_location_assignments (workspace_id, employee_id, location_id, is_primary, created_by)
 select '27000000-0000-4000-8000-000000000001', e, 'd7000000-0000-4000-8000-000000000001', true, '17000000-0000-4000-8000-000000000001'
 from unnest(array['47000000-0000-4000-8000-000000000001', '47000000-0000-4000-8000-000000000005']::uuid[]) e;
+-- The manager manages that location (Manages no longer follows Works at, DAVET-ERISIM).
+insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+values ('27000000-0000-4000-8000-000000000001', '37000000-0000-4000-8000-000000000002', 'd7000000-0000-4000-8000-000000000001')
+on conflict (membership_id, location_id) do nothing;
 set local role service_role;
 select is(
   public.get_employee_document_lifecycle_path_service(

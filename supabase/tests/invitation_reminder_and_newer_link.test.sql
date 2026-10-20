@@ -93,7 +93,7 @@ where id = tests.id('r:ali:invitation');
 select public.prepare_employee_invitation_service(
   pg_temp.owner(), tests.id('r'), tests.id('r:ali'),
   (select i.email from public.employee_invitations i where i.id = tests.id('r:ali:invitation')),
-  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('r') and r.system_key = 'employee'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('r') and r.system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('ali-second-link', 'sha256'), 'hex'),
   now() + interval '7 days');
 select is((select i.status::text from public.employee_invitations i where i.id = tests.id('r:ali:invitation')),
@@ -114,7 +114,7 @@ select is(pg_temp.refusal(format('select public.load_employee_invitation_retry_s
 -- A newer invitation to another address is not this person's newer email.
 select public.prepare_employee_invitation_service(
   pg_temp.owner(), tests.id('r'), tests.id('r:eda'), 'eda.elsewhere@world.test',
-  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('r') and r.system_key = 'employee'),
+  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('r') and r.system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('eda-second-link', 'sha256'), 'hex'),
   now() + interval '7 days');
 select is(pg_temp.preview(pg_temp.first_token('eda')), 'revoked',

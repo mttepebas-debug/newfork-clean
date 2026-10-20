@@ -929,6 +929,12 @@ export const managementAndOwnerRefusals = {
     "A manager needs at least one location to manage. Choose a location, or turn on Remote.",
   // EMP-001 S2: any job can be primary, Manager too; only the Owner job never is.
   "employee.primary_job_required": "Mark one of the jobs as primary, or turn on Remote or Exclude from schedule.",
+  // DAVET-ERISIM: what an invitation or an access change has to name (Tur 4 B).
+  "access.role_required": "Choose at least one access.",
+  "access.management_role_required": "Choose a role for the management app.",
+  "access.manages_required": "Choose at least one location they manage.",
+  "access.manages_only_for_manager": "Only a manager manages chosen locations.",
+  "access.management_job_required": "Add a job from Management in Employment first.",
 } as const;
 /**
  * The same refusals for a record that can't be excluded from the schedule
@@ -2614,6 +2620,11 @@ export const employeeDetailSchema = employeeSummarySchema.omit({ management_acce
   // The record's two access slots (ROL-CIFT 2.2): somebody with no account yet
   // holds the employee one, as the server's has_employee_access reads it.
   access: workspaceAccessSchema,
+  // DAVET-ERISIM: the account's two slots by role, and where a manager manages
+  // (empty for who may neither read nor change access).
+  employee_role_id: z.string().uuid().nullable().default(null),
+  management_role_id: z.string().uuid().nullable().default(null),
+  managed_location_ids: z.array(z.string().uuid()).default([]),
   private_contact: z
     .object({
       // Names, addresses and phones under the US form rules the data keeps
@@ -2651,6 +2662,10 @@ export const employeeDetailSchema = employeeSummarySchema.omit({ management_acce
       id: z.string().uuid(),
       email: z.string().email(),
       role_id: z.string().uuid(),
+      // DAVET-ERISIM: the two accesses it carries.
+      employee_role_id: z.string().uuid().nullable().default(null),
+      management_role_id: z.string().uuid().nullable().default(null),
+      managed_location_ids: z.array(z.string().uuid()).default([]),
       status: z.enum(["pending", "accepted", "revoked", "expired", "declined"]),
       expires_at: z.string().datetime({ offset: true }),
       sent_at: z.string().datetime({ offset: true }),
@@ -2703,13 +2718,6 @@ export const employeeDetailSchema = employeeSummarySchema.omit({ management_acce
 });
 export type EmployeeDetail = z.infer<typeof employeeDetailSchema>;
 
-export const employeeRoleUpdateInputSchema = z.object({
-  role_id: z.string().uuid(),
-});
-export type EmployeeRoleUpdateInput = z.infer<
-  typeof employeeRoleUpdateInputSchema
->;
-
 /**
  * ROL-CIFT 4.1 (design §4.8): changing somebody's two access slots. Giving the
  * employee access up closes their employee side; what it does is shown first
@@ -2733,7 +2741,8 @@ export type EmployeeAccessPreviewInput = z.infer<
 export const employeeAccessChangeInputSchema =
   employeeAccessPreviewInputSchema.extend({
     managed_location_ids: z.array(z.string().uuid()).max(500),
-    management_job_ids: z.array(z.string().uuid()).max(100),
+    // Left out: the person's own Management jobs (the drawer names none).
+    management_job_ids: z.array(z.string().uuid()).max(100).optional(),
     expected_impact: employeeAccessImpactSchema,
   });
 export type EmployeeAccessChangeInput = z.infer<
@@ -2832,14 +2841,42 @@ export function managerLocationRefusal(
     : undefined;
 }
 
+/**
+ * DAVET-ERISIM (Tur 4 B): what an invitation gives, the employee app and the
+ * management app apart (a role, and for a manager the locations they manage).
+ */
+export const employeeInvitationAccessSchema = z.object({
+  employee_role_id: z.string().uuid().nullable(),
+  management_role_id: z.string().uuid().nullable(),
+  managed_location_ids: z.array(z.string().uuid()).max(500),
+});
+export type EmployeeInvitationAccess = z.infer<typeof employeeInvitationAccessSchema>;
+
+/**
+ * The database's rule for what an invitation or an access change names, for a
+ * form that refuses first: the sentence to show, or undefined. managementClass
+ * is the class of the management role chosen (undefined: not known yet).
+ */
+export function invitationAccessRefusal(
+  access: { readonly employee: boolean; readonly management: boolean; readonly managementRoleId: string; readonly managedLocationIds: readonly string[] },
+  managementClass: WorkspaceRole | null | undefined,
+): string | undefined {
+  if (!access.employee && !access.management) return managementAndOwnerRefusals["access.role_required"];
+  if (!access.management) return undefined;
+  if (!access.managementRoleId) return managementAndOwnerRefusals["access.management_role_required"];
+  return managementClass === "manager" && access.managedLocationIds.length === 0
+    ? managementAndOwnerRefusals["access.manages_required"]
+    : undefined;
+}
+
 export const employeeCreateCommandSchema = z
   .object({
     request_id: z.string().uuid(),
     employee: employeeInputSchema,
-    invite_role_id: z.string().uuid().nullable(),
+    invite_access: employeeInvitationAccessSchema.nullable(),
   })
   .superRefine((value, context) => {
-    if (value.invite_role_id && !value.employee.invitation_email.trim()) {
+    if (value.invite_access && !value.employee.invitation_email.trim()) {
       context.addIssue({
         code: "custom",
         path: ["employee", "invitation_email"],

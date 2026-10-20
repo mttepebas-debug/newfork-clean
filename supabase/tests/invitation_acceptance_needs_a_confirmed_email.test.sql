@@ -41,7 +41,8 @@ begin
       'location_ids', jsonb_build_array(tests.id('iv:K')), 'primary_location_id', tests.id('iv:K'),
       'job_ids', jsonb_build_array(tests.id('iv:job:cook')), 'primary_job_id', tests.id('iv:job:cook'),
       'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('iv') and r.system_key = 'employee'));
+    jsonb_build_object('employee_role_id',
+      (select r.id from public.workspace_roles r where r.workspace_id = tests.id('iv') and r.system_key = 'employee')));
   insert into invited values (person, (created ->> 'invitation_id')::uuid, created ->> 'token');
 end;
 $$;

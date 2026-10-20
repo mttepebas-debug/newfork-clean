@@ -249,7 +249,8 @@ insert into service_class values
   ('unpublish_schedule_service', 'schedule.publish'),
   ('unpublish_signature_template_service', 'settings.documents.write'),
   ('update_department_with_jobs_service', 'settings.jobs.write'),
-  ('update_employee_membership_role_service', 'employee.change_role'),
+  -- DAVET-ERISIM: an invitation still out takes another access.
+  ('update_employee_invitation_access_service', 'employee.invite'),
   ('update_job_assignments_service', 'employee.save'),
   ('update_job_details_and_assignments_service', 'settings.jobs.write'),
   ('update_owner_onboarding_service', 'workspace.setup'),

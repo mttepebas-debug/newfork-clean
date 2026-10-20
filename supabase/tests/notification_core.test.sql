@@ -375,7 +375,8 @@ select public.accept_employee_invitation_by_id_service(pg_temp.u('nc:ali'), (pub
     'start_date', '', 'internal_note', '', 'location_ids', jsonb_build_array(tests.id('other:K')),
     'primary_location_id', tests.id('other:K'), 'job_ids', jsonb_build_array(tests.id('other:job:cook')),
     'primary_job_id', tests.id('other:job:cook'), 'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-  (select r.id from public.workspace_roles r where r.workspace_id = tests.id('other') and r.system_key = 'employee')) ->> 'invitation_id')::uuid);
+  jsonb_build_object('employee_role_id',
+    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('other') and r.system_key = 'employee'))) ->> 'invitation_id')::uuid);
 select tests.settle();
 select is(app_private.notify('schedule.published', tests.id('nc'), array[pg_temp.u('nc:ali')], 'schedule.published:week-9', 'Out in nc'),
   1, '(e) a person in two workspaces gets the event in the first');

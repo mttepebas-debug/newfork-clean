@@ -10,7 +10,16 @@ import {
   employeeReferenceDataSchema,
   type EmployeeCreateCommand,
   type EmployeeCreateResult,
-  employeeRoleUpdateInputSchema,
+  employeeAccessChangeInputSchema,
+  employeeAccessChangeResultSchema,
+  employeeAccessImpactSchema,
+  employeeAccessPreviewInputSchema,
+  employeeInvitationAccessSchema,
+  type EmployeeAccessChangeInput,
+  type EmployeeAccessChangeResult,
+  type EmployeeAccessImpact,
+  type EmployeeAccessPreviewInput,
+  type EmployeeInvitationAccess,
   employeeSummarySchema,
   invitationFailureCodeSchema,
   invitationPreviewSchema,
@@ -174,15 +183,47 @@ export async function saveEmployee(
   return String(body.id);
 }
 
-export async function updateEmployeeRole(
+/**
+ * DAVET-ERISIM (ROL-CIFT 4.1): what changing a joined person's two accesses
+ * does, then the change, sent with what the reader was shown (409 when it moved).
+ */
+export async function previewEmployeeAccessChange(
   workspaceId: string,
   employeeId: string,
-  roleId: string,
+  input: EmployeeAccessPreviewInput,
+): Promise<EmployeeAccessImpact> {
+  const value = employeeAccessPreviewInputSchema.parse(input);
+  return employeeAccessImpactSchema.parse(
+    await request(workspaceId, `/${employeeId}/access/preview`, {
+      method: "POST",
+      body: JSON.stringify(value),
+    }),
+  );
+}
+
+export async function changeEmployeeAccess(
+  workspaceId: string,
+  employeeId: string,
+  input: EmployeeAccessChangeInput,
+): Promise<EmployeeAccessChangeResult> {
+  const value = employeeAccessChangeInputSchema.parse(input);
+  return employeeAccessChangeResultSchema.parse(
+    await request(workspaceId, `/${employeeId}/access`, {
+      method: "PATCH",
+      body: JSON.stringify(value),
+    }),
+  );
+}
+
+/** An invitation still out takes another access; its link stays. */
+export async function updateEmployeeInvitationAccess(
+  workspaceId: string,
+  employeeId: string,
+  access: EmployeeInvitationAccess,
 ): Promise<void> {
-  const value = employeeRoleUpdateInputSchema.parse({ role_id: roleId });
-  await request(workspaceId, `/${employeeId}/role`, {
+  await request(workspaceId, `/${employeeId}/invitations`, {
     method: "PATCH",
-    body: JSON.stringify(value),
+    body: JSON.stringify({ access: employeeInvitationAccessSchema.parse(access) }),
   });
 }
 
@@ -256,11 +297,11 @@ export async function prepareEmployeeInvitation(
   workspaceId: string,
   employeeId: string,
   email: string,
-  roleId?: string | null,
+  access: EmployeeInvitationAccess,
 ): Promise<PreparedInvitation> {
   return (await request(workspaceId, `/${employeeId}/invitations`, {
     method: "POST",
-    body: JSON.stringify({ email, roleId: roleId ?? null }),
+    body: JSON.stringify({ email, access: employeeInvitationAccessSchema.parse(access) }),
   })) as PreparedInvitation;
 }
 

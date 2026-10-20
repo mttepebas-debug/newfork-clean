@@ -90,12 +90,13 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 insert into public.employee_location_assignments(workspace_id,employee_id,location_id,created_by)
  select f.w,i.invited_manager,f.loc,f.owner_id from wt_fixture f,wt_invited i
  union all select f.w,i.invited_employee,f.loc,f.owner_id from wt_fixture f,wt_invited i;
-insert into public.employee_invitations(workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by)
- select f.w,i.invited_manager,'weekly-team-invited-manager@example.test',
-  (select coalesce(m.role_id, m.employee_role_id) from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.manager),
+-- The invited manager's invitation names the management access, the employee's the employee one (DAVET-ERISIM).
+insert into public.employee_invitations(workspace_id,employee_id,email,employee_role_id,management_role_id,token_hash,expires_at,created_by)
+ select f.w,i.invited_manager,'weekly-team-invited-manager@example.test',null,
+  (select m.role_id from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.manager),
   encode(extensions.digest('weekly-team-invited-manager','sha256'),'hex'),now()+interval '7 days',f.owner_id from wt_fixture f,wt_invited i
  union all select f.w,i.invited_employee,'weekly-team-invited-employee@example.test',
-  (select coalesce(m.role_id, m.employee_role_id) from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.actor),
+  (select m.employee_role_id from public.workspace_memberships m where m.workspace_id=f.w and m.user_id=f.actor),null,
   encode(extensions.digest('weekly-team-invited-employee','sha256'),'hex'),now()+interval '7 days',f.owner_id from wt_fixture f,wt_invited i;
 select is(pg_temp.team_ids(manager,w),pg_temp.ids(emp,undeclared,i.invited_employee),'an invited employee is listed, an invited manager is not') from wt_fixture,wt_invited i;
 select is(pg_temp.team_ids(owner_id,w),pg_temp.ids(emp,hidden_emp,unassigned,undeclared,i.invited_employee),'the owner sees the same') from wt_fixture,wt_invited i;

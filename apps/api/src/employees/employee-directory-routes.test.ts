@@ -71,7 +71,7 @@ describe("employee directory routes", () => {
     const command = {
       request_id: "91000000-0000-4000-8000-000000000001",
       employee: employeeInput,
-      invite_role_id: null,
+      invite_access: null,
     };
     const response = await app.inject({
       method: "POST",
@@ -96,7 +96,11 @@ describe("employee directory routes", () => {
     const command = {
       request_id: "91000000-0000-4000-8000-000000000001",
       employee: employeeInput,
-      invite_role_id: "92000000-0000-4000-8000-000000000001",
+      invite_access: {
+        employee_role_id: "92000000-0000-4000-8000-000000000001",
+        management_role_id: null,
+        managed_location_ids: [],
+      },
     };
 
     it("hands a create with an invitation to the database without the access permission", async () => {
@@ -229,9 +233,9 @@ describe("employee directory routes", () => {
     });
   });
 
-  it("forwards linked employee role updates from path and context identity", async () => {
-    const updateRole = vi.fn(async () => undefined);
-    const roleId = "26000000-0000-4000-8000-000000000002";
+  // DAVET-ERISIM: the membership-role route is gone; access changes through
+  // PATCH .../access, an invitation's through PATCH .../invitations.
+  it("no longer has a linked-employee role route", async () => {
     const app = buildApp({
       contextResolver: {
         resolve: async () => ({
@@ -239,25 +243,18 @@ describe("employee directory routes", () => {
           permissions: [...context.permissions, "employee_access.manage"],
         }),
       },
-      employeeDirectoryService: {
-        updateRole,
-      } as unknown as EmployeeDirectoryService,
+      employeeDirectoryService: {} as unknown as EmployeeDirectoryService,
     });
 
     const response = await app.inject({
       method: "PATCH",
       url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/role`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { ...spoofedIdentity, role_id: roleId },
+      payload: { role_id: "26000000-0000-4000-8000-000000000002" },
     });
 
-    expect(response.statusCode, response.body).toBe(204);
-    expect(updateRole).toHaveBeenCalledWith({
-      actorUserId: userId,
-      workspaceId,
-      employeeId,
-      role: { role_id: roleId },
-    });
+    expect(response.statusCode).toBe(404);
+    await app.close();
   });
 
   it("forwards employee updates and lifecycle actions from path and context identity", async () => {
@@ -337,7 +334,6 @@ describe("employee directory routes", () => {
     const list = vi.fn(async () => []);
     const get = vi.fn(async () => ({ id: employeeId }));
     const save = vi.fn(async () => employeeId);
-    const updateRole = vi.fn(async () => undefined);
     const setArchived = vi.fn(async () => undefined);
     const terminate = vi.fn(async () => ({
       terminationId: "56000000-0000-4000-8000-000000000001",
@@ -349,7 +345,6 @@ describe("employee directory routes", () => {
       list,
       get,
       save,
-      updateRole,
       setArchived,
       terminate,
     } as unknown as EmployeeDirectoryService;
@@ -392,13 +387,6 @@ describe("employee directory routes", () => {
       },
       {
         method: "PATCH",
-        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/role`,
-        payload: {
-          role_id: "26000000-0000-4000-8000-000000000002",
-        },
-      },
-      {
-        method: "PATCH",
         url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/archive`,
         payload: { archived: true, restoreAccess: false },
       },
@@ -428,7 +416,6 @@ describe("employee directory routes", () => {
     expect(list).not.toHaveBeenCalled();
     expect(get).not.toHaveBeenCalled();
     expect(save).not.toHaveBeenCalled();
-    expect(updateRole).not.toHaveBeenCalled();
     expect(setArchived).not.toHaveBeenCalled();
     expect(terminate).not.toHaveBeenCalled();
   });
@@ -519,7 +506,7 @@ describe("employee directory routes", () => {
       method: "POST",
       url: `/v1/workspaces/${workspaceId}/employees/create`,
       headers: { authorization: "Bearer valid-token" },
-      payload: { request_id: "91000000-0000-4000-8000-000000000001", employee: employeeInput, invite_role_id: null },
+      payload: { request_id: "91000000-0000-4000-8000-000000000001", employee: employeeInput, invite_access: null },
     });
     expect(response.statusCode).toBe(400);
     expect(response.json()).toEqual({ error: sentence, reason: "employee.management_primary", requestId: expect.any(String) });
@@ -617,7 +604,6 @@ describe("employee directory routes", () => {
     };
     const writes = [
       ["save", "save_employee_service", "PUT", `/v1/workspaces/${workspaceId}/employees/${employeeId}`, employeeInput],
-      ["role change", "update_employee_membership_role_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/role`, { role_id: "26000000-0000-4000-8000-000000000002" }],
       ["access change preview", "preview_employee_access_change_service", "POST", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access/preview`, { employee_role_id: null, management_role_id: "26000000-0000-4000-8000-000000000002" }],
       ["access change", "change_employee_access_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`, accessChange],
       ["archive", "set_employee_archived_service", "PATCH", `/v1/workspaces/${workspaceId}/employees/${employeeId}/archive`, { archived: true, restoreAccess: false }],
@@ -692,6 +678,29 @@ describe("employee directory routes", () => {
         management_job_ids: accessChange.management_job_ids,
         expected_impact: impact,
       });
+      await app.close();
+    });
+
+    // DAVET-ERISIM: management_job_ids is optional; left out, the database is told null.
+    it("sends null management jobs to the database when the change leaves them out", async () => {
+      const rpc = vi.fn(async () => ({
+        data: { membership_id: "26000000-0000-4000-8000-000000000031", employee_role_id: null,
+          management_role_id: accessChange.management_role_id, impact: accessChange.expected_impact },
+        error: null,
+      }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => noPermissions },
+        employeeDirectoryService: createEmployeeDirectoryServiceWithClient({ rpc }),
+      });
+      const { management_job_ids: _jobs, ...withoutJobs } = accessChange;
+      const response = await app.inject({
+        method: "PATCH",
+        url: `/v1/workspaces/${workspaceId}/employees/${employeeId}/access`,
+        headers: { authorization: "Bearer valid-token" },
+        payload: withoutJobs,
+      });
+      expect(response.statusCode, response.body).toBe(200);
+      expect(rpc).toHaveBeenCalledWith("change_employee_access_service", expect.objectContaining({ management_job_ids: null }));
       await app.close();
     });
 

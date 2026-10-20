@@ -63,7 +63,7 @@ select public.prepare_employee_invitation_service(
   '1f000000-0000-4000-8000-000000000001',
   'two-invites-joiner@example.test',
   (select id from public.workspace_roles
-   where workspace_id = (select first_id from two_workspaces) and system_key = 'employee'),
+   where workspace_id = (select first_id from two_workspaces) and system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('token-first', 'sha256'), 'hex'),
   now() + interval '7 days'
 );
@@ -74,7 +74,7 @@ select public.prepare_employee_invitation_service(
   '1f000000-0000-4000-8000-000000000002',
   'two-invites-joiner@example.test',
   (select id from public.workspace_roles
-   where workspace_id = (select second_id from two_workspaces) and system_key = 'employee'),
+   where workspace_id = (select second_id from two_workspaces) and system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('token-second', 'sha256'), 'hex'),
   now() + interval '7 days'
 );
@@ -154,7 +154,7 @@ select public.prepare_employee_invitation_service(
   '1f000000-0000-4000-8000-000000000003',
   'mid-setup@example.test',
   (select id from public.workspace_roles
-   where workspace_id = (select first_id from two_workspaces) and system_key = 'employee'),
+   where workspace_id = (select first_id from two_workspaces) and system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('token-mid', 'sha256'), 'hex'),
   now() + interval '7 days'
 );

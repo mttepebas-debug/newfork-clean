@@ -3,8 +3,8 @@
 -- Nothing applies this file: change the schema with a new migration, then run
 -- pnpm.cmd db:schema and commit both (SCHEMA-SNAP). CI compares this file with a fresh dump.
 -- CR bytes are dropped: 20260909003001 keeps some inside a function body on purpose.
--- migrations: 562, last: 20261020200001_announcements_reach_people.sql
--- fingerprint: sha256:c4f6805299caa7edd2ab9bfe1a8664018579e2fcffa1077509754114bd5c0464
+-- migrations: 563, last: 20261020200001_announcements_reach_people.sql
+-- fingerprint: sha256:c8901e405890a8cd82742dbdc3e248b269d564d5001be95fade98dae9f48da25
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -437,7 +437,7 @@ CREATE OR REPLACE FUNCTION "app_private"."accept_employee_invitation_for_user"("
     AS $$
 declare
   invitation public.employee_invitations%rowtype;
-  employee_role public.workspace_roles%rowtype;
+  jobs uuid[];
   normalized_user_email text;
   email_confirmed boolean;
   membership public.workspace_memberships%rowtype;
@@ -480,16 +480,6 @@ begin
   end if;
 
   select *
-  into employee_role
-  from public.workspace_roles
-  where id = invitation.role_id
-    and workspace_id = invitation.workspace_id;
-
-  if employee_role.id is null then
-    raise exception 'invitation role is unavailable' using errcode = '22023';
-  end if;
-
-  select *
   into membership
   from public.workspace_memberships
   where workspace_id = invitation.workspace_id
@@ -516,9 +506,12 @@ begin
 
   perform set_config('app.employee_invitation_accept', 'on', true);
 
+  -- DAVET-ERISIM: the two accesses the invitation names, as they are; an account reopened takes them too.
   if membership.id is not null then
     update public.workspace_memberships
     set status = 'pending_activation'::public.membership_status,
+        role_id = invitation.management_role_id,
+        employee_role_id = invitation.employee_role_id,
         updated_at = now()
     where id = membership.id
     returning id into accepted_membership_id;
@@ -528,13 +521,39 @@ begin
     ) values (
       invitation.workspace_id,
       target_user_id,
-      case when employee_role.access_class = 'employee' then null else invitation.role_id end,
-      case when employee_role.access_class = 'employee' then invitation.role_id end,
+      invitation.management_role_id,
+      invitation.employee_role_id,
       'pending_activation'::public.membership_status
     )
     returning id into accepted_membership_id;
   end if;
-  perform app_private.place_single_role(accepted_membership_id, invitation.role_id);
+  -- DAVET-ERISIM: Manages is what the invitation says, among the locations still open; the Management jobs
+  -- follow the person's own (management_jobs_for). Rows an account reopened still held are put right.
+  delete from public.membership_managed_locations managed
+  where managed.membership_id = accepted_membership_id
+    and not managed.location_id = any (invitation.managed_location_ids);
+  if app_private.role_class(invitation.management_role_id) = 'manager' then
+    insert into public.membership_managed_locations (workspace_id, membership_id, location_id, created_by)
+    select invitation.workspace_id, accepted_membership_id, l.id, invitation.created_by
+    from public.locations l
+    where l.workspace_id = invitation.workspace_id and l.id = any (invitation.managed_location_ids)
+      and app_private.location_is_live(l)
+    on conflict (membership_id, location_id) do nothing;
+    if not exists (select 1 from public.membership_managed_locations m where m.membership_id = accepted_membership_id) then
+      raise exception 'a manager needs a location to manage'
+        using errcode = '22023', hint = 'access.manages_required';
+    end if;
+  end if;
+  if invitation.management_role_id is not null then
+    jobs := app_private.management_jobs_for(invitation.workspace_id, invitation.employee_id, accepted_membership_id);
+    delete from public.membership_management_jobs held
+    using public.jobs j
+    where held.membership_id = accepted_membership_id and j.id = held.job_id and j.system_key is null
+      and not held.job_id = any (jobs);
+    insert into public.membership_management_jobs (workspace_id, membership_id, job_id, created_by)
+    select invitation.workspace_id, accepted_membership_id, job, invitation.created_by from unnest(jobs) job
+    on conflict (membership_id, job_id) do nothing;
+  end if;
 
   perform app_private.reset_employee_onboarding_for_rehire(
     invitation.workspace_id,
@@ -5744,6 +5763,57 @@ $$;
 ALTER FUNCTION "app_private"."initialize_employee_onboarding"("target_user_id" "uuid", "target_workspace_id" "uuid") OWNER TO "postgres";
 
 
+CREATE OR REPLACE FUNCTION "app_private"."invitation_access_check"("actor" "uuid", "w" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid", "places" "uuid"[]) RETURNS "void"
+    LANGUAGE "plpgsql" STABLE SECURITY DEFINER
+    SET "search_path" TO ''
+    AS $$
+declare
+  management_class public.workspace_role;
+begin
+  if next_employee_role is null and next_management_role is null then
+    raise exception 'choose an employee access, a management access or both'
+      using errcode = '22023', hint = 'access.role_required';
+  end if;
+  if next_employee_role is not null and (
+    not exists (select 1 from public.workspace_roles r where r.id = next_employee_role and r.workspace_id = w)
+    or app_private.role_class(next_employee_role) is distinct from 'employee'
+  ) then
+    raise exception 'the employee slot holds an employee class role'
+      using errcode = '22023', hint = 'membership.employee_slot';
+  end if;
+  if next_management_role is not null then
+    select r.access_class into management_class from public.workspace_roles r
+    where r.id = next_management_role and r.workspace_id = w;
+    if management_class is null or management_class not in ('manager', 'admin') then
+      raise exception 'the management slot holds a manager or admin class role'
+        using errcode = '22023', hint = 'membership.management_slot';
+    end if;
+  end if;
+  if (next_employee_role is not null and not app_private.can_invite_with_role(actor, w, next_employee_role))
+     or (next_management_role is not null and not app_private.can_invite_with_role(actor, w, next_management_role)) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
+  end if;
+  if management_class = 'manager' then
+    if cardinality(coalesce(places, '{}')) = 0 then
+      raise exception 'a manager needs a location to manage'
+        using errcode = '22023', hint = 'access.manages_required';
+    end if;
+    if exists (select 1 from unnest(places) given(id) where not exists (
+        select 1 from public.locations l
+        where l.id = given.id and l.workspace_id = w and app_private.location_is_live(l))) then
+      raise exception 'Not allowed' using errcode = '42501', hint = 'authz.out_of_scope', detail = 'employee.invite';
+    end if;
+  elsif cardinality(coalesce(places, '{}')) > 0 then
+    raise exception 'only a manager manages chosen locations'
+      using errcode = '22023', hint = 'access.manages_only_for_manager';
+  end if;
+end;
+$$;
+
+
+ALTER FUNCTION "app_private"."invitation_access_check"("actor" "uuid", "w" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid", "places" "uuid"[]) OWNER TO "postgres";
+
+
 CREATE OR REPLACE FUNCTION "app_private"."is_employee_onboarding_document_path"("candidate_path" "text", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_requirement_id" "uuid") RETURNS boolean
     LANGUAGE "sql" IMMUTABLE
     SET "search_path" TO ''
@@ -6603,70 +6673,35 @@ $$;
 ALTER FUNCTION "app_private"."management_job_stays_held"() OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
+CREATE OR REPLACE FUNCTION "app_private"."management_jobs_for"("w" "uuid", "emp" "uuid", "member" "uuid") RETURNS "uuid"[]
+    LANGUAGE "sql" STABLE SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
-declare
-  member public.workspace_memberships;
-  profile_id uuid;
-begin
-  select * into member from public.workspace_memberships m where m.id = target_membership;
-  if member.id is null or app_private.role_class(member.role_id) is distinct from 'manager' then
-    return;
-  end if;
-  select p.id into profile_id from public.employee_profiles p
-  where p.workspace_id = member.workspace_id and p.user_id = member.user_id and p.archived_at is null;
-
-  delete from public.membership_managed_locations managed
-  where managed.membership_id = member.id
-    and not exists (
-      select 1 from public.employee_location_assignments a
-      where a.employee_id = profile_id and a.location_id = managed.location_id and a.ended_at is null);
-  insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
-  select member.workspace_id, member.id, a.location_id
-  from public.employee_location_assignments a
-  join public.locations l on l.id = a.location_id and app_private.location_is_live(l)
-  where a.employee_id = profile_id and a.ended_at is null
-  on conflict (membership_id, location_id) do nothing;
-end;
+  select coalesce(
+    nullif(array(
+      select a.job_id from public.employee_job_assignments a
+      join public.jobs j on j.id = a.job_id and j.workspace_id = w
+      join public.departments d on d.id = j.department_id and d.system_key = 'management'
+      where a.employee_id = emp and a.ended_at is null
+        and j.system_key is null and j.archived_at is null and j.deleted_at is null
+      order by a.job_id), '{}'),
+    nullif(array(
+      select held.job_id from public.membership_management_jobs held
+      join public.jobs j on j.id = held.job_id and j.workspace_id = w
+      where held.membership_id = member
+        and j.system_key is null and j.archived_at is null and j.deleted_at is null
+      order by held.job_id), '{}'),
+    array(
+      select j.id from public.jobs j
+      join public.departments d on d.id = j.department_id and d.system_key = 'management'
+      where j.workspace_id = w and j.system_key is null and j.archived_at is null and j.deleted_at is null
+      order by case when lower(j.name) = 'manager' then 1 when lower(j.name) = 'general manager' then 2 else 3 end,
+        lower(j.name)
+      limit 1))
 $$;
 
 
-ALTER FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works_for_member"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-begin
-  perform app_private.manages_follow_works(new.id);
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."manages_follow_works_for_member"() OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."manages_follow_works_trigger"() RETURNS "trigger"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  row_data public.employee_location_assignments := coalesce(new, old);
-begin
-  perform app_private.manages_follow_works(m.id)
-  from public.employee_profiles p
-  join public.workspace_memberships m on m.workspace_id = p.workspace_id and m.user_id = p.user_id
-  where p.id = row_data.employee_id;
-  return null;
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."manages_follow_works_trigger"() OWNER TO "postgres";
+ALTER FUNCTION "app_private"."management_jobs_for"("w" "uuid", "emp" "uuid", "member" "uuid") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "app_private"."mark_account_organization_history"() RETURNS "trigger"
@@ -7576,9 +7611,6 @@ CREATE TABLE IF NOT EXISTS "public"."employee_invitations" (
     "workspace_id" "uuid" NOT NULL,
     "employee_id" "uuid" NOT NULL,
     "email" "text" NOT NULL,
-    "role_id" "uuid" NOT NULL,
-    "all_locations" boolean DEFAULT true NOT NULL,
-    "location_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
     "token_hash" "text" NOT NULL,
     "status" "public"."employee_invitation_status" DEFAULT 'pending'::"public"."employee_invitation_status" NOT NULL,
     "expires_at" timestamp with time zone NOT NULL,
@@ -7594,15 +7626,28 @@ CREATE TABLE IF NOT EXISTS "public"."employee_invitations" (
     "delivery_attempted_at" timestamp with time zone,
     "delivery_failed_at" timestamp with time zone,
     "delivery_error" "text",
+    "employee_role_id" "uuid",
+    "management_role_id" "uuid",
+    "managed_location_ids" "uuid"[] DEFAULT '{}'::"uuid"[] NOT NULL,
+    "role_id" "uuid" GENERATED ALWAYS AS (COALESCE("management_role_id", "employee_role_id")) STORED,
     CONSTRAINT "employee_invitations_delivery_error_check" CHECK ((("delivery_error" IS NULL) OR ("char_length"("delivery_error") <= 500))),
     CONSTRAINT "employee_invitations_delivery_status_check" CHECK (("delivery_status" = ANY (ARRAY['pending'::"text", 'sent'::"text", 'failed'::"text"]))),
     CONSTRAINT "employee_invitations_email_check" CHECK (("email" = "lower"("btrim"("email")))),
+    CONSTRAINT "employee_invitations_holds_an_access" CHECK ((("employee_role_id" IS NOT NULL) OR ("management_role_id" IS NOT NULL))),
     CONSTRAINT "employee_invitations_resend_count_check" CHECK (("resend_count" >= 0)),
     CONSTRAINT "employee_invitations_token_hash_check" CHECK (("token_hash" ~ '^[0-9a-f]{64}$'::"text"))
 );
 
 
 ALTER TABLE "public"."employee_invitations" OWNER TO "postgres";
+
+
+COMMENT ON COLUMN "public"."employee_invitations"."managed_location_ids" IS 'Where an invited manager will manage (Manages). Empty for every other access.';
+
+
+
+COMMENT ON COLUMN "public"."employee_invitations"."role_id" IS 'The higher of the two accesses (the management role when there is one): what rank checks read. Computed.';
+
 
 
 CREATE OR REPLACE FUNCTION "app_private"."people_tell_invitation"("invitation" "public"."employee_invitations", "kind" "text", "actor" "uuid") RETURNS integer
@@ -7681,85 +7726,6 @@ $$;
 
 
 ALTER FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") OWNER TO "postgres";
-
-
-CREATE OR REPLACE FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") RETURNS "void"
-    LANGUAGE "plpgsql" SECURITY DEFINER
-    SET "search_path" TO ''
-    AS $$
-declare
-  member public.workspace_memberships;
-  chosen_class public.workspace_role;
-  profile_id uuid;
-  works boolean;
-  asked text := current_setting('app.membership_change', true);
-begin
-  select * into member from public.workspace_memberships m where m.id = target_membership;
-  select r.access_class into chosen_class from public.workspace_roles r
-  where r.id = chosen_role and r.workspace_id = member.workspace_id;
-  if member.id is null or chosen_class is null then
-    raise exception 'role must belong to the workspace' using errcode = '23503';
-  end if;
-  -- Nobody becomes the owner this way (an invitation reopening a suspended account, a role change, a
-  -- restored access): only an ownership transfer makes an owner, as the membership guard says.
-  if chosen_class = 'owner' and member.role_id is distinct from chosen_role then
-    raise exception 'membership change is not permitted' using errcode = '42501', hint = 'authz.missing_permission';
-  end if;
-  select p.id into profile_id from public.employee_profiles p
-  where p.workspace_id = member.workspace_id and p.user_id = member.user_id and p.archived_at is null;
-  works := chosen_class = 'employee' or exists (
-    select 1 from public.employee_job_assignments a
-    join public.jobs j on j.id = a.job_id and j.deleted_at is null
-    left join public.departments d on d.id = j.department_id
-    where a.employee_id = profile_id and a.ended_at is null and d.system_key is distinct from 'management');
-
-  perform set_config('app.membership_change', member.id::text, true);
-  update public.workspace_memberships
-  set role_id = case when chosen_class = 'employee' then null else chosen_role end,
-      -- ROL-CIFT 2.1 (KARARLAR S-167): a management role is added beside the employee access, never
-      -- in its place: whoever holds it keeps it. Without it, they get it when they work a job outside
-      -- Management. Giving the employee access up is its own step (slice 4).
-      employee_role_id = case
-        when chosen_class = 'employee' then chosen_role
-        when member.employee_role_id is not null then member.employee_role_id
-        when works then (
-          select r.id from public.workspace_roles r where r.workspace_id = member.workspace_id and r.system_key = 'employee')
-      end,
-      updated_at = now()
-  where id = member.id;
-
-  perform app_private.manages_follow_works(member.id);
-
-  if chosen_class <> 'employee' then
-    insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
-    select member.workspace_id, member.id, a.job_id
-    from public.employee_job_assignments a
-    join public.jobs j on j.id = a.job_id and j.archived_at is null and j.deleted_at is null
-    join public.departments d on d.id = j.department_id and d.system_key = 'management'
-    where a.employee_id = profile_id and a.ended_at is null
-      and (j.system_key is null or chosen_class = 'owner')
-    on conflict (membership_id, job_id) do nothing;
-    if not exists (select 1 from public.membership_management_jobs x where x.membership_id = member.id) then
-      insert into public.membership_management_jobs (workspace_id, membership_id, job_id)
-      select member.workspace_id, member.id, j.id
-      from public.jobs j
-      join public.departments d on d.id = j.department_id and d.system_key = 'management'
-      where j.workspace_id = member.workspace_id and j.archived_at is null and j.deleted_at is null
-        and (j.system_key is null or chosen_class = 'owner')
-      order by case
-        when chosen_class = 'owner' and j.system_key = 'owner' then 0
-        when lower(j.name) = 'manager' then 1
-        when lower(j.name) = 'general manager' then 2
-        else 3 end, lower(j.name)
-      limit 1;
-    end if;
-  end if;
-  perform set_config('app.membership_change', coalesce(asked, ''), true);
-end;
-$$;
-
-
-ALTER FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") OWNER TO "postgres";
 
 
 CREATE TABLE IF NOT EXISTS "public"."signature_template_versions" (
@@ -12274,7 +12240,8 @@ declare
   management_class text;
   impact jsonb;
   places uuid[] := coalesce(managed_location_ids, '{}');
-  jobs uuid[] := coalesce(management_job_ids, '{}');
+  -- DAVET-ERISIM: null asks for the person's own (below).
+  jobs uuid[] := management_job_ids;
 begin
   perform public.availability_lock_workspace(target_workspace_id);
   member := app_private.access_change_target(actor_user_id, target_workspace_id, target_employee_id,
@@ -12295,6 +12262,11 @@ begin
   -- The kind of access they now hold, as the core reads it; a refusal below undoes the update.
   management_class := case when next_management_role_id is null then null
     else (app_private.actor(member.user_id, target_workspace_id)).class::text end;
+  -- DAVET-ERISIM: a management access with no jobs named holds the person's own Management jobs.
+  if jobs is null then
+    jobs := case when management_class in ('manager', 'admin')
+      then app_private.management_jobs_for(target_workspace_id, target_employee_id, member.id) else '{}' end;
+  end if;
 
   -- Every management access holds a Management job (S-168); a manager manages a place (design §4.2).
   -- The owner's Owner job comes with ownership, so the owner's jobs and places are not asked.
@@ -12850,7 +12822,7 @@ end; $$;
 ALTER FUNCTION "public"."create_department_with_jobs_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "department_input" "jsonb", "jobs_input" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_role_id" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_access" "jsonb") RETURNS "jsonb"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $_$
@@ -12861,6 +12833,10 @@ declare
   saved_id uuid;
   prepared_id uuid;
   secret_token text;
+  -- DAVET-ERISIM: the two accesses of the invitation, when there is one.
+  invite_employee_role uuid := nullif(invite_access ->> 'employee_role_id', '')::uuid;
+  invite_management_role uuid := nullif(invite_access ->> 'management_role_id', '')::uuid;
+  invite_places uuid[] := array(select jsonb_array_elements_text(coalesce(invite_access -> 'managed_location_ids', '[]'::jsonb)))::uuid[];
 begin
   -- Asked where the record will work, retries included: a manager only where
   -- they manage, never nowhere.
@@ -12869,7 +12845,7 @@ begin
   if command_id is null then
     raise exception 'command id required' using errcode = '22023';
   end if;
-  fingerprint := encode(extensions.digest(jsonb_build_object('employee', employee_input, 'role', invite_role_id)::text, 'sha256'), 'hex');
+  fingerprint := encode(extensions.digest(jsonb_build_object('employee', employee_input, 'access', invite_access)::text, 'sha256'), 'hex');
   -- Serializes retries before creating anything, including concurrent requests.
   perform pg_advisory_xact_lock(hashtextextended(target_workspace_id::text || actor_user_id::text || command_id::text, 0));
   select * into stored from public.employee_create_commands c
@@ -12880,8 +12856,10 @@ begin
       raise exception 'idempotency key belongs to different employee details' using errcode = 'PT409', hint = 'employee.create_request_reused';
     end if;
     -- A retry hands the token out again: only while the role is still theirs to give.
-    if invite_role_id is not null
-      and not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invite_role_id) then
+    if (invite_employee_role is not null
+        and not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invite_employee_role))
+      or (invite_management_role is not null
+        and not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invite_management_role)) then
       raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
     end if;
   else
@@ -12903,11 +12881,12 @@ begin
       coalesce((employee_input->>'is_remote')::boolean, false),
       coalesce((employee_input->>'is_excluded_from_schedule')::boolean, false), null
     );
-    if invite_role_id is not null then
+    if invite_access is not null and jsonb_typeof(invite_access) = 'object' then
       secret_token := encode(extensions.gen_random_bytes(32), 'hex');
       prepared_id := public.prepare_employee_invitation_service(
         actor_user_id, target_workspace_id, saved_id, lower(btrim(employee_input->>'invitation_email')),
-        invite_role_id, encode(extensions.digest(secret_token, 'sha256'), 'hex'), now() + interval '7 days'
+        invite_employee_role, invite_management_role, invite_places,
+        encode(extensions.digest(secret_token, 'sha256'), 'hex'), now() + interval '7 days'
       );
     end if;
     insert into public.employee_create_commands
@@ -12927,7 +12906,7 @@ end;
 $_$;
 
 
-ALTER FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_role_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_access" "jsonb") OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."create_job_with_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "job_input" "jsonb", "assignment_changes" "jsonb" DEFAULT '[]'::"jsonb") RETURNS "jsonb"
@@ -13807,7 +13786,7 @@ begin
  if not app_private.can_edit_role(actor_user_id,target_workspace_id,target_role_id) then raise exception 'role management access denied' using errcode='42501',hint=case when not exists(select 1 from public.workspace_roles r where r.id=target_role_id and r.workspace_id=target_workspace_id) then 'authz.out_of_scope' else 'authz.rank' end; end if;
  select * into target from public.workspace_roles where id=target_role_id and workspace_id=target_workspace_id for update;
  if target.system_key is not null then raise exception 'Built-in roles cannot be deleted' using errcode='42501'; end if;
- if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where role_id=target_role_id) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409',hint='role.in_use'; end if;
+ if exists(select 1 from public.workspace_memberships where role_id=target_role_id) or exists(select 1 from public.employee_invitations where target_role_id in (employee_role_id, management_role_id)) or exists(select 1 from public.employee_access_snapshots where role_id=target_role_id) then raise exception 'Role has member or invitation references. Resolve these dependencies before deleting.' using errcode='PT409',hint='role.in_use'; end if;
  delete from public.workspace_roles where id=target_role_id;
  insert into public.audit_events(workspace_id,actor_user_id,action,target_type,target_id,metadata) values(target_workspace_id,actor_user_id,'role.deleted','workspace_role',target_role_id::text,jsonb_build_object('name',target.name));
 end; $$;
@@ -14724,6 +14703,7 @@ declare
   reads_access boolean;
   removal app_private.authz_actions;
   invite_rule app_private.authz_actions;
+  change_rule app_private.authz_actions;
   answer jsonb;
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.read', target_person => target_employee_id);
@@ -14738,6 +14718,10 @@ begin
   select * into invite_rule from app_private.authz_actions action where action.key = 'employee.invite';
   if not found then
     raise exception 'core action employee.invite is missing' using errcode = '22023';
+  end if;
+  select * into change_rule from app_private.authz_actions action where action.key = 'employee.change_role';
+  if not found then
+    raise exception 'core action employee.change_role is missing' using errcode = '22023';
   end if;
 
   select jsonb_build_object(
@@ -14772,6 +14756,15 @@ begin
     'access', jsonb_build_object(
       'employee', app_private.has_employee_access(employee.workspace_id, employee.user_id),
       'management', management_role.access_class),
+    -- DAVET-ERISIM: the two slots by role, and where a manager manages, for who reads access or may change it.
+    'employee_role_id', membership.employee_role_id,
+    'management_role_id', membership.role_id,
+    'managed_location_ids', case
+      when membership.id is null or not (reads_access
+        or app_private.authz_check(me, change_rule, null, employee.id, null) is null) then '[]'::jsonb
+      else coalesce((select jsonb_agg(managed.location_id order by managed.location_id)
+        from public.membership_managed_locations managed where managed.membership_id = membership.id), '[]'::jsonb)
+    end,
     'display_status', case
       when employee.archived_at is not null then 'archived'
       when membership.status = 'active' then 'active'
@@ -14854,6 +14847,10 @@ begin
         'id', invitation.id,
         'email', invitation.email,
         'role_id', invitation.role_id,
+        -- DAVET-ERISIM: the two accesses it carries.
+        'employee_role_id', invitation.employee_role_id,
+        'management_role_id', invitation.management_role_id,
+        'managed_location_ids', to_jsonb(invitation.managed_location_ids),
         'status', invitation.status,
         'expires_at', invitation.expires_at,
         'sent_at', invitation.sent_at,
@@ -18790,7 +18787,7 @@ $$;
 ALTER FUNCTION "public"."list_own_employment_records_service"("actor_user_id" "uuid") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."list_owner_onboarding_invitation_intents_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS TABLE("employee_id" "uuid", "email" "text")
+CREATE OR REPLACE FUNCTION "public"."list_owner_onboarding_invitation_intents_service"("actor_user_id" "uuid", "target_workspace_id" "uuid") RETURNS TABLE("employee_id" "uuid", "email" "text", "employee_role_id" "uuid")
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
@@ -18812,7 +18809,9 @@ begin
   end if;
 
   return query
-  select intent.employee_id, intent.email
+  select intent.employee_id, intent.email,
+    -- DAVET-ERISIM
+    (select r.id from public.workspace_roles r where r.workspace_id = target_workspace_id and r.system_key = 'employee')
   from public.owner_onboarding_invitation_intents intent
   join public.employee_profiles employee
     on employee.workspace_id = intent.workspace_id
@@ -20916,14 +20915,13 @@ $_$;
 ALTER FUNCTION "public"."prepare_account_deletion_recovery_resend_service"("account_email" "text", "recovery_token_digest" "text") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_role_id" "uuid", "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) RETURNS "uuid"
+CREATE OR REPLACE FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[], "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) RETURNS "uuid"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $_$
 declare
   invitation_id uuid;
-  invite_role public.workspace_roles%rowtype;
-  assigned_location_ids uuid[];
+  places uuid[] := array(select distinct p from unnest(coalesce(target_managed_location_ids, '{}')) p order by p);
 begin
   perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.invite', target_person => target_employee_id);
   if employee_email <> lower(btrim(employee_email)) or employee_email !~ '^[^@[:space:]]+@[^@[:space:]]+\.[^@[:space:]]+$' then
@@ -20942,27 +20940,13 @@ begin
     raise exception 'invitable employee not found' using errcode = 'P0002';
   end if;
 
-  if target_role_id is null then
-    select * into invite_role from public.workspace_roles
-    where workspace_id = target_workspace_id and system_key = 'employee';
-  else
-    select * into invite_role from public.workspace_roles
-    where workspace_id = target_workspace_id and id = target_role_id;
-  end if;
-  if invite_role.id is null then
-    raise exception 'invitation role is unavailable' using errcode = '22023';
-  end if;
-  if not app_private.can_invite_with_role(actor_user_id, target_workspace_id, invite_role.id) then
-    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
-  end if;
+  perform app_private.invitation_access_check(actor_user_id, target_workspace_id,
+    target_employee_role_id, target_management_role_id, places);
 
-  -- K4: nobody without a location is invited as a manager, unless Remote.
-  perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee_id, invite_role.access_class);
-
-  select coalesce(array_agg(location_id order by location_id), '{}') into assigned_location_ids
-  from public.employee_location_assignments
-  where employee_id = target_employee_id and ended_at is null;
-  if cardinality(assigned_location_ids) = 0 and not exists (
+  if not exists (
+    select 1 from public.employee_location_assignments
+    where employee_id = target_employee_id and ended_at is null
+  ) and not exists (
     select 1 from public.employee_profiles where id = target_employee_id
       and workspace_id = target_workspace_id and (is_remote or is_excluded_from_schedule)
   ) then
@@ -20982,13 +20966,11 @@ begin
   set status = 'revoked', revoked_at = now(), updated_at = now()
   where employee_id = target_employee_id and status = 'pending';
   insert into public.employee_invitations (
-    workspace_id, employee_id, email, role_id, all_locations, location_ids,
+    workspace_id, employee_id, email, employee_role_id, management_role_id, managed_location_ids,
     token_hash, expires_at, created_by, delivery_status
   ) values (
-    target_workspace_id, target_employee_id, employee_email, invite_role.id,
-    invite_role.access_class in ('admin', 'employee'),
-    case when invite_role.access_class in ('admin', 'employee') then '{}'::uuid[] else assigned_location_ids end, invitation_token_hash, invitation_expires_at,
-    actor_user_id, 'pending'
+    target_workspace_id, target_employee_id, employee_email, target_employee_role_id, target_management_role_id,
+    places, invitation_token_hash, invitation_expires_at, actor_user_id, 'pending'
   ) returning id into invitation_id;
   update public.employee_profiles
   set invitation_email = employee_email, revision = revision + 1, updated_at = now()
@@ -21000,7 +20982,7 @@ end;
 $_$;
 
 
-ALTER FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_role_id" "uuid", "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) OWNER TO "postgres";
+ALTER FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[], "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."prepare_weekly_schedule_assignment"("actor" "uuid", "w" "uuid", "s" "jsonb", "previous" "jsonb") RETURNS "void"
@@ -22595,14 +22577,15 @@ begin
           from public.workspace_role_permissions g where g.role_id = r.id), '[]'::jsonb),
         'member_count', (select count(*) from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id) and m.status = 'active'),
         'pending_invite_count', (select count(*) from public.employee_invitations i
-          where i.role_id = r.id and i.status = 'pending' and i.expires_at > now()),
+          where r.id in (i.employee_role_id, i.management_role_id) and i.status = 'pending' and i.expires_at > now()),
         'blocking_member_count', (select count(*) from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id))
           + (select count(*) from public.employee_access_snapshots snap where snap.role_id = r.id),
-        'blocking_invite_count', (select count(*) from public.employee_invitations i where i.role_id = r.id),
+        'blocking_invite_count', (select count(*) from public.employee_invitations i
+          where r.id in (i.employee_role_id, i.management_role_id)),
         'editable', app_private.can_edit_role(actor_user_id, target_workspace_id, r.id),
         'deletable', r.system_key is null and app_private.can_edit_role(actor_user_id, target_workspace_id, r.id)
           and not exists (select 1 from public.workspace_memberships m where r.id in (m.role_id, m.employee_role_id))
-          and not exists (select 1 from public.employee_invitations i where i.role_id = r.id)
+          and not exists (select 1 from public.employee_invitations i where r.id in (i.employee_role_id, i.management_role_id))
           and not exists (select 1 from public.employee_access_snapshots snap where snap.role_id = r.id)
       ) order by r.sort_order, r.name)
       from public.workspace_roles r
@@ -27525,7 +27508,6 @@ begin
     update public.workspace_memberships
     set status = 'active'::public.membership_status, updated_at = now()
     where id = snapshot.membership_id;
-    perform app_private.place_single_role(snapshot.membership_id, snapshot.role_id);
 
     update public.employee_access_snapshots set restored_at = now() where id = snapshot.id;
   end if;
@@ -29779,97 +29761,43 @@ end; $$;
 ALTER FUNCTION "public"."update_department_with_jobs_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_department_id" "uuid", "department_input" "jsonb", "jobs_input" "jsonb") OWNER TO "postgres";
 
 
-CREATE OR REPLACE FUNCTION "public"."update_employee_membership_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_role_id" "uuid") RETURNS "jsonb"
+CREATE OR REPLACE FUNCTION "public"."update_employee_invitation_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[]) RETURNS "void"
     LANGUAGE "plpgsql" SECURITY DEFINER
     SET "search_path" TO ''
     AS $$
 declare
-  target_employee public.employee_profiles%rowtype;
-  target_membership public.workspace_memberships%rowtype;
-  existing_role public.workspace_roles%rowtype;
-  next_role public.workspace_roles%rowtype;
+  pending public.employee_invitations;
+  places uuid[] := array(select distinct p from unnest(coalesce(target_managed_location_ids, '{}')) p order by p);
 begin
-  perform app_private.authorize_role_grant(actor_user_id, target_workspace_id, target_role_id,
-    target_person => target_employee_id);
-  select role.* into next_role
-  from public.workspace_roles role
-  where role.id = target_role_id and role.workspace_id = target_workspace_id;
-
-  select employee.* into target_employee
-  from public.employee_profiles employee
-  where employee.id = target_employee_id
-    and employee.workspace_id = target_workspace_id
-    and employee.archived_at is null
+  perform app_private.authorize(actor_user_id, target_workspace_id, 'employee.invite', target_person => target_employee_id);
+  select * into pending from public.employee_invitations i
+  where i.workspace_id = target_workspace_id and i.employee_id = target_employee_id and i.status = 'pending'
+    and i.expires_at > now()
   for update;
-  if target_employee.id is null then
-    raise exception 'employee not found' using errcode = 'P0002';
+  if pending.id is null then
+    raise exception 'open invitation not found' using errcode = 'P0002';
   end if;
-  if target_employee.user_id is null then
-    raise exception 'employee has no linked workspace account' using errcode = '22023';
+  if not app_private.can_invite_with_role(actor_user_id, target_workspace_id, pending.role_id) then
+    raise exception 'Not allowed' using errcode = '42501', hint = 'authz.rank', detail = 'employee.invite';
   end if;
+  perform app_private.invitation_access_check(actor_user_id, target_workspace_id,
+    target_employee_role_id, target_management_role_id, places);
 
-  select membership.* into target_membership
-  from public.workspace_memberships membership
-  where membership.workspace_id = target_workspace_id
-    and membership.user_id = target_employee.user_id
-    and membership.status = 'active'
-  for update;
-  if target_membership.id is null then
-    raise exception 'active workspace membership not found' using errcode = 'P0002';
-  end if;
-
-  select role.* into existing_role
-  from public.workspace_roles role
-  where role.id = coalesce(target_membership.role_id, target_membership.employee_role_id) and role.workspace_id = target_workspace_id;
-
-  perform set_config('app.membership_change', target_membership.id::text, true);
-  perform app_private.place_single_role(target_membership.id, next_role.id);
-
-  -- K4: nobody without a location becomes a manager, unless Remote.
-  perform app_private.keep_manager_at_a_location(target_workspace_id, target_employee.id);
-
+  update public.employee_invitations
+  set employee_role_id = target_employee_role_id, management_role_id = target_management_role_id,
+      managed_location_ids = places, updated_at = now()
+  where id = pending.id;
   update public.employee_profiles
   set revision = revision + 1, updated_at = now()
-  where id = target_employee.id and workspace_id = target_workspace_id;
-
+  where id = target_employee_id and workspace_id = target_workspace_id;
   insert into public.employee_events (workspace_id, employee_id, actor_user_id, action, summary)
-  values (target_workspace_id, target_employee.id, actor_user_id, 'employee.role_changed', 'Workspace access role changed');
-
-  insert into public.audit_events (workspace_id, actor_user_id, action, target_type, target_id, metadata)
-  values (
-    target_workspace_id,
-    actor_user_id,
-    'membership.role_changed',
-    'workspace_membership',
-    target_membership.id::text,
-    jsonb_build_object(
-      'employee_id', target_employee.id,
-      'from_role_id', existing_role.id,
-      'from_access_class', existing_role.access_class,
-      'to_role_id', next_role.id,
-      'to_access_class', next_role.access_class
-    )
-  );
-
-  -- The person hears their new role, when it is a new one (guarded).
-  if existing_role.id is distinct from next_role.id then
-    perform app_private.people_tell('people.role_changed', target_workspace_id, array[target_employee.user_id],
-      'role:' || target_membership.id::text || ':' || txid_current()::text,
-      'Your role is now ' || next_role.name, null, '/app', actor_user_id, 'workspace_membership', target_membership.id,
-      jsonb_build_object('role_id', next_role.id));
-  end if;
-
-  return jsonb_build_object(
-    'membership_id', target_membership.id,
-    'role_id', next_role.id,
-    'role_name', next_role.name,
-    'access_class', next_role.access_class
-  );
+  values (target_workspace_id, target_employee_id, actor_user_id, 'employee.invitation_access_changed',
+    'Invitation access changed');
 end;
 $$;
 
 
-ALTER FUNCTION "public"."update_employee_membership_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_role_id" "uuid") OWNER TO "postgres";
+ALTER FUNCTION "public"."update_employee_invitation_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[]) OWNER TO "postgres";
 
 
 CREATE OR REPLACE FUNCTION "public"."update_job_assignments_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_job_id" "uuid", "assignment_changes" "jsonb") RETURNS "jsonb"
@@ -35102,14 +35030,6 @@ CREATE OR REPLACE TRIGGER "management_job_stays_held" BEFORE UPDATE OF "departme
 
 
 
-CREATE OR REPLACE TRIGGER "manages_follow_works" AFTER INSERT OR DELETE OR UPDATE OF "location_id", "ended_at" ON "public"."employee_location_assignments" FOR EACH ROW EXECUTE FUNCTION "app_private"."manages_follow_works_trigger"();
-
-
-
-CREATE OR REPLACE TRIGGER "manages_follow_works_for_member" AFTER INSERT OR UPDATE OF "role_id" ON "public"."workspace_memberships" FOR EACH ROW EXECUTE FUNCTION "app_private"."manages_follow_works_for_member"();
-
-
-
 CREATE OR REPLACE TRIGGER "mark_schedule_edit_session_shift_source_trigger" BEFORE INSERT ON "public"."schedule_edit_session_shifts" FOR EACH ROW EXECUTE FUNCTION "public"."mark_schedule_edit_session_shift_source"();
 
 
@@ -35686,7 +35606,12 @@ ALTER TABLE ONLY "public"."employee_invitations"
 
 
 ALTER TABLE ONLY "public"."employee_invitations"
-    ADD CONSTRAINT "employee_invitations_role_id_workspace_id_fkey" FOREIGN KEY ("role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE RESTRICT;
+    ADD CONSTRAINT "employee_invitations_employee_role_fkey" FOREIGN KEY ("employee_role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE RESTRICT;
+
+
+
+ALTER TABLE ONLY "public"."employee_invitations"
+    ADD CONSTRAINT "employee_invitations_management_role_fkey" FOREIGN KEY ("management_role_id", "workspace_id") REFERENCES "public"."workspace_roles"("id", "workspace_id") ON DELETE RESTRICT;
 
 
 
@@ -37975,6 +37900,10 @@ REVOKE ALL ON FUNCTION "app_private"."initialize_employee_onboarding"("target_us
 
 
 
+REVOKE ALL ON FUNCTION "app_private"."invitation_access_check"("actor" "uuid", "w" "uuid", "next_employee_role" "uuid", "next_management_role" "uuid", "places" "uuid"[]) FROM PUBLIC;
+
+
+
 REVOKE ALL ON FUNCTION "app_private"."is_employee_onboarding_document_path"("candidate_path" "text", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_requirement_id" "uuid") FROM PUBLIC;
 GRANT ALL ON FUNCTION "app_private"."is_employee_onboarding_document_path"("candidate_path" "text", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_requirement_id" "uuid") TO "service_role";
 
@@ -38134,15 +38063,7 @@ REVOKE ALL ON FUNCTION "app_private"."management_job_stays_held"() FROM PUBLIC;
 
 
 
-REVOKE ALL ON FUNCTION "app_private"."manages_follow_works"("target_membership" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."manages_follow_works_for_member"() FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."manages_follow_works_trigger"() FROM PUBLIC;
+REVOKE ALL ON FUNCTION "app_private"."management_jobs_for"("w" "uuid", "emp" "uuid", "member" "uuid") FROM PUBLIC;
 
 
 
@@ -38272,10 +38193,6 @@ REVOKE ALL ON FUNCTION "app_private"."phone_used_in_workspace"("target_workspace
 
 
 REVOKE ALL ON FUNCTION "app_private"."place_deciders"("target_workspace" "uuid", "target_action" "text", "target_place" "uuid", "target_person" "uuid") FROM PUBLIC;
-
-
-
-REVOKE ALL ON FUNCTION "app_private"."place_single_role"("target_membership" "uuid", "chosen_role" "uuid") FROM PUBLIC;
 
 
 
@@ -38877,8 +38794,8 @@ GRANT ALL ON FUNCTION "public"."create_department_with_jobs_service"("actor_user
 
 
 
-REVOKE ALL ON FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_role_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_role_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_access" "jsonb") FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."create_employee_command_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "command_id" "uuid", "employee_input" "jsonb", "invite_access" "jsonb") TO "service_role";
 
 
 
@@ -39543,8 +39460,8 @@ GRANT ALL ON FUNCTION "public"."prepare_account_deletion_recovery_resend_service
 
 
 
-REVOKE ALL ON FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_role_id" "uuid", "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_role_id" "uuid", "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) TO "service_role";
+REVOKE ALL ON FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[], "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."prepare_employee_invitation_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "employee_email" "text", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[], "invitation_token_hash" "text", "invitation_expires_at" timestamp with time zone) TO "service_role";
 
 
 
@@ -40301,8 +40218,8 @@ GRANT ALL ON FUNCTION "public"."update_department_with_jobs_service"("actor_user
 
 
 
-REVOKE ALL ON FUNCTION "public"."update_employee_membership_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_role_id" "uuid") FROM PUBLIC;
-GRANT ALL ON FUNCTION "public"."update_employee_membership_role_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_role_id" "uuid") TO "service_role";
+REVOKE ALL ON FUNCTION "public"."update_employee_invitation_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[]) FROM PUBLIC;
+GRANT ALL ON FUNCTION "public"."update_employee_invitation_access_service"("actor_user_id" "uuid", "target_workspace_id" "uuid", "target_employee_id" "uuid", "target_employee_role_id" "uuid", "target_management_role_id" "uuid", "target_managed_location_ids" "uuid"[]) TO "service_role";
 
 
 

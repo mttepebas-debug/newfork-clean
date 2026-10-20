@@ -64,6 +64,7 @@ function appFailingWith(error: unknown) {
     notificationsService: service,
     lineupService: service,
     avatarService: service,
+    invitationService: service,
   };
   return buildApp(options);
 }
@@ -119,6 +120,41 @@ describe.each(requests)("%s route", (_name, method, url) => {
     const response = await send(new Error("permission denied for table employees"));
     expect(response.statusCode).toBe(500);
     expect(response.payload).not.toContain("employees");
+  });
+});
+
+// DAVET-ERISIM: the invitation access change carries a body, so it sits beside the table.
+describe("invitation access route", () => {
+  const send = (error: unknown) =>
+    appFailingWith(error).inject({
+      method: "PATCH",
+      url: `${w}/employees/${id}/invitations`,
+      headers: { authorization: "Bearer token" },
+      payload: { access: { employee_role_id: null, management_role_id: null, managed_location_ids: [] } },
+    });
+
+  it("answers a non-member with 404 and authz.not_member", async () => {
+    const response = await send(rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.not_member" }));
+    expect(response.statusCode).toBe(404);
+    expect(response.json()).toMatchObject({ reason: "authz.not_member", requestId: expect.any(String) });
+  });
+
+  it("keeps the reason and detail of a 403", async () => {
+    const response = await send(
+      rpcFailure({ message: "Not allowed", code: "42501", hint: "authz.rank", details: "employee.invite" }),
+    );
+    expect(response.statusCode).toBe(403);
+    expect(response.json()).toMatchObject({ error: "Not allowed", reason: "authz.rank", detail: "employee.invite" });
+  });
+
+  it("takes the status from the error, not from its wording", async () => {
+    expect((await send(new HttpError("Access denied while not found", 409))).statusCode).toBe(409);
+  });
+
+  it("keeps an untyped failure's message off the screen", async () => {
+    const response = await send(new Error("permission denied for table employee_invitations"));
+    expect(response.statusCode).toBe(500);
+    expect(response.payload).not.toContain("employee_invitations");
   });
 });
 

@@ -248,7 +248,8 @@ $$;
 -- in the two access slots the way the product places one role (design §5.1): a
 -- management role holds the employee slot too when one of the jobs is outside
 -- Management, and a manager manages where they work. '<role>+employee' gives the
--- employee slot whatever the jobs (ROL-CIFT); tests.manages sets Manages apart.
+-- employee slot whatever the jobs (ROL-CIFT). The invitation carries the two
+-- slots and Manages (DAVET-ERISIM); a manager filed nowhere manages nowhere.
 -- locs are location keys (K, B), jobs are job keys (cook, server); both empty
 -- files them as remote. status: active (accepted and finished their own
 -- onboarding) | onboarding (accepted, onboarding not finished) | pending
@@ -267,6 +268,7 @@ returns uuid
 language plpgsql
 set search_path = ''
 as $$
+<<person>>
 declare
   owner_id uuid := tests.user(w || ':owner');
   workspace uuid := tests.id(w);
@@ -278,7 +280,10 @@ declare
   employee uuid;
   role_key text := split_part(access, '+', 1);
   also_works boolean := access like '%+employee';
-  invited_account uuid;
+  role_class public.workspace_role;
+  employee_role uuid := (select r.id from public.workspace_roles r where r.workspace_id = workspace and r.system_key = 'employee');
+  works boolean;
+  nowhere_manager boolean;
 begin
   if status not in ('active', 'onboarding', 'pending', 'suspended', 'removed') then
     raise exception 'tests.person: unknown status %', status;
@@ -290,6 +295,13 @@ begin
   if role_id is null then
     raise exception 'tests.person: no role % in world %', access, w;
   end if;
+  role_class := (select r.access_class from public.workspace_roles r where r.id = role_id);
+  works := role_class = 'employee' or also_works or exists (
+    select 1 from public.jobs j left join public.departments d on d.id = j.department_id
+    where j.id = any (job_ids) and d.system_key is distinct from 'management');
+  -- ponytail: an invitation asks a manager for somewhere to manage; somebody filed nowhere (remote) is
+  -- invited to manage the world's Kadikoy and left managing nowhere once they accept.
+  nowhere_manager := role_class = 'manager' and cardinality(location_ids) = 0;
 
   created := public.create_employee_command_service(
     owner_id, workspace, gen_random_uuid(),
@@ -306,19 +318,24 @@ begin
       'is_excluded_from_schedule', false,
       'expected_revision', null
     ),
-    role_id
+    jsonb_build_object(
+      'employee_role_id', case when role_class = 'employee' then role_id when works then employee_role end,
+      'management_role_id', case when role_class <> 'employee' then role_id end,
+      'managed_location_ids', case
+        when nowhere_manager then to_jsonb(array[tests.id(w || ':K')])
+        when role_class = 'manager' then to_jsonb(location_ids)
+        else '[]'::jsonb end
+    )
   );
   employee := tests.remember(w || ':' || person_label, (created ->> 'id')::uuid);
   perform tests.remember(w || ':' || person_label || ':invitation', (created ->> 'invitation_id')::uuid);
 
   if status <> 'pending' then
     perform public.accept_employee_invitation_by_id_service(user_id, (created ->> 'invitation_id')::uuid);
-    -- ponytail: the invitation names the employee slot itself from ROL-CIFT slice 6 on.
-    invited_account := user_id;
-    if also_works then
-      update public.workspace_memberships m
-      set employee_role_id = (select r.id from public.workspace_roles r where r.workspace_id = workspace and r.system_key = 'employee')
-      where m.workspace_id = workspace and m.user_id = invited_account and m.employee_role_id is null;
+    if nowhere_manager then
+      delete from public.membership_managed_locations managed
+      using public.workspace_memberships m
+      where managed.membership_id = m.id and m.workspace_id = workspace and m.user_id = person.user_id;
     end if;
   end if;
   perform tests.settle();
@@ -693,6 +710,12 @@ begin
     select 1 from public.employee_location_assignments a
     where a.employee_id = profile.id and a.location_id = location and a.ended_at is null
   );
+  -- A manager manages where the fixture files them (Manages no longer follows Works at, DAVET-ERISIM).
+  insert into public.membership_managed_locations (workspace_id, membership_id, location_id, created_by)
+  select member.workspace_id, member.id, location, maker
+  from public.workspace_roles r
+  where r.id = member.role_id and r.access_class = 'manager'
+  on conflict (membership_id, location_id) do nothing;
   return profile.id;
 end;
 $$;
@@ -703,7 +726,6 @@ $$;
 -- without taking shifts is assigned there and excluded (EMP-001).
 -- ponytail: the flag is set by hand; saving the whole record through
 -- save_employee_service would need every field the builder does not keep.
-drop function if exists tests.manages(text, text, text);
 create or replace function tests.excluded(w text, person_label text)
 returns void
 language sql
@@ -715,7 +737,8 @@ as $$
 $$;
 
 -- The opposite: the member no longer works at the location (every location
--- when location is null). Their active assignments there end now.
+-- when location is null). Their active assignments there end now, and a
+-- manager stops managing it (Manages no longer follows Works at, DAVET-ERISIM).
 create or replace function tests.stops_working_at(membership uuid, location uuid default null)
 returns void
 language sql
@@ -729,6 +752,9 @@ as $$
     and a.employee_id = e.id
     and a.ended_at is null
     and (location is null or a.location_id = location);
+  delete from public.membership_managed_locations managed
+  where managed.membership_id = membership
+    and (location is null or managed.location_id = location);
 $$;
 
 -- A published announcement that closes these locations from starts to ends,
@@ -820,27 +846,6 @@ as $$
   where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label) and m.role_id is not null;
 $$;
 
--- Manages (ROL-CIFT): the locations a manager of the test world manages, set
--- apart from where they work. Labels as tests.person's; locs are location keys.
--- ponytail: a later change to their location assignments resets Manages to
--- where they work until slice 6.3 (app_private.manages_follow_works).
-create or replace function tests.manages(w text, person_label text, locs text[])
-returns void
-language plpgsql
-set search_path = ''
-as $$
-declare
-  member uuid := (select m.id from public.workspace_memberships m
-                  where m.workspace_id = tests.id(w) and m.user_id = tests.user(w || ':' || person_label));
-begin
-  if member is null then
-    raise exception 'tests.manages: % has no membership in world %', person_label, w;
-  end if;
-  delete from public.membership_managed_locations where membership_id = member;
-  insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
-  select tests.id(w), member, tests.id(w || ':' || k) from unnest(coalesce(locs, '{}')) k;
-end;
-$$;
 
 grant execute on all functions in schema tests to service_role;
 grant select, insert, update on tests.ids to service_role;

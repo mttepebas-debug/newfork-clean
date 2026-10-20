@@ -1,4 +1,5 @@
 import {
+  type EmployeeInvitationAccess,
   invitationPreviewSchema,
   type InvitationPreview,
   accountPendingInvitationSchema,
@@ -15,7 +16,8 @@ export interface PrepareEmployeeInvitationInput {
   readonly workspaceId: string;
   readonly employeeId: string;
   readonly email: string;
-  readonly roleId?: string | null;
+  /** DAVET-ERISIM: the employee app and the management app apart. */
+  readonly access: EmployeeInvitationAccess;
 }
 
 export interface PreparedEmployeeInvitation {
@@ -31,12 +33,14 @@ export interface EmployeeInvitationService {
     input: PrepareEmployeeInvitationInput,
   ): Promise<PreparedEmployeeInvitation>;
   retry(
-    input: Omit<PrepareEmployeeInvitationInput, "email" | "roleId">,
+    input: Omit<PrepareEmployeeInvitationInput, "email" | "access">,
   ): Promise<PreparedEmployeeInvitation>;
-  revoke(input: Omit<PrepareEmployeeInvitationInput, "email">): Promise<void>;
+  /** An invitation still out takes another access; its link stays. */
+  updateAccess(input: Omit<PrepareEmployeeInvitationInput, "email">): Promise<void>;
+  revoke(input: Omit<PrepareEmployeeInvitationInput, "email" | "access">): Promise<void>;
   /** The open invitation's own link, for an admin to pass along by hand. */
   link(
-    input: Omit<PrepareEmployeeInvitationInput, "email" | "roleId">,
+    input: Omit<PrepareEmployeeInvitationInput, "email" | "access">,
   ): Promise<{ readonly url: string; readonly expiresAt: string }>;
   accept(accessToken: string, token: string): Promise<{ workspaceId: string }>;
   listPending(accessToken: string): Promise<AccountPendingInvitation[]>;
@@ -99,7 +103,9 @@ export function createEmployeeInvitationService(
           target_workspace_id: input.workspaceId,
           target_employee_id: input.employeeId,
           employee_email: input.email.trim().toLowerCase(),
-          target_role_id: input.roleId ?? null,
+          target_employee_role_id: input.access.employee_role_id,
+          target_management_role_id: input.access.management_role_id,
+          target_managed_location_ids: input.access.managed_location_ids,
           invitation_token_hash: tokenHash,
           invitation_expires_at: expiresAt,
         },
@@ -210,6 +216,20 @@ export function createEmployeeInvitationService(
         expiresAt: row.expires_at,
         ...(options.production ? {} : { developmentUrl }),
       };
+    },
+    async updateAccess(input) {
+      const { error } = await client.rpc(
+        "update_employee_invitation_access_service",
+        {
+          actor_user_id: input.actorUserId,
+          target_workspace_id: input.workspaceId,
+          target_employee_id: input.employeeId,
+          target_employee_role_id: input.access.employee_role_id,
+          target_management_role_id: input.access.management_role_id,
+          target_managed_location_ids: input.access.managed_location_ids,
+        },
+      );
+      if (error) throw rpcFailure(error);
     },
     async revoke(input) {
       await revokePrepared(client, input);
@@ -360,7 +380,7 @@ export async function deliverInvitation(
 
 async function revokePrepared(
   client: SupabaseClient,
-  input: Omit<PrepareEmployeeInvitationInput, "email">,
+  input: Omit<PrepareEmployeeInvitationInput, "email" | "access">,
 ): Promise<void> {
   const { error } = await client.rpc("revoke_employee_invitation_service", {
     actor_user_id: input.actorUserId,

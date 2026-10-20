@@ -236,3 +236,4 @@ supabase/tests/lineup_publish.test.sql
 supabase/tests/notify_lineup.test.sql
 supabase/tests/shift_exchange_release.test.sql
 supabase/tests/scheduling_settings_shift_types_rls.test.sql
+supabase/tests/invitation_two_accesses.test.sql

@@ -2,6 +2,22 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+-- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
+-- takes the employee slot and empties the management one; a management role goes beside the employee
+-- slot held, a manager managing where they work.
+create function pg_temp.change_role(actor uuid, w uuid, emp uuid, next_role uuid) returns jsonb language sql as $$
+  select public.change_employee_access_service(actor, w, emp,
+    case when r.access_class = 'employee' then r.id else m.employee_role_id end,
+    case when r.access_class <> 'employee' then r.id end,
+    case when r.access_class = 'manager' then array(select a.location_id from public.employee_location_assignments a
+      where a.employee_id = emp and a.ended_at is null) else '{}'::uuid[] end,
+    null, null)
+  from public.workspace_roles r, public.employee_profiles e
+  join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+  where r.id = next_role and e.id = emp
+$$;
+grant execute on function pg_temp.change_role(uuid, uuid, uuid, uuid) to public;
+
 -- BILDIRIM-U4b (KARARLAR S-123, S-126 (5), S-127; docs/plan/research/BILDIRIM-URETICILER.md §2.1 #6, §2.5 #28-33):
 -- role, access and ownership write their own notices into the new core.
 --   (a) a role changed tells the person, once; never who changed it;
@@ -95,13 +111,16 @@ create temp table checked as select n.id from public.person_notifications n wher
 
 -- (a) A role changed ----------------------------------------------------------------------------------------
 
-select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
+select pg_temp.change_role(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'manager'));
 select is(pg_temp.told('people.role_changed'), array['pa:emre'], '(a) Emre, made a manager, is told; the owner is not');
-select is((select n.title from public.person_notifications n where n.type_key = 'people.role_changed'
-           and n.user_id = pg_temp.u('emre')), 'Your role is now Manager', '(a) saying which');
+-- DAVET-ERISIM: an access change tells it in one title; which access it is now travels in the notice's data.
+select is((select (n.title, n.data ->> 'management_role_id')::text from public.person_notifications n
+           where n.type_key = 'people.role_changed' and n.user_id = pg_temp.u('emre')),
+  (select ('Your access changed', r.id)::text from public.workspace_roles r
+   where r.workspace_id = tests.id('pa') and r.system_key = 'manager'), '(a) saying which');
 -- The same role given again changes nothing, and tells nothing.
-select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
+select pg_temp.change_role(pg_temp.u('owner'), tests.id('pa'), tests.id('pa:emre'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'manager'));
 select is(pg_temp.told('people.role_changed'), array['pa:emre'], '(a) given the same role again: not told again');
 select is(app_private.account_name(gen_random_uuid()), 'Somebody', '(a) an account without a profile is named Somebody');
@@ -222,7 +241,7 @@ declare
   boss uuid := pg_temp.u('zeynep');
   offer uuid;
 begin
-  perform public.update_employee_membership_role_service(boss, w, tests.id('pa:role' || tag),
+  perform pg_temp.change_role(boss, w, tests.id('pa:role' || tag),
     (select r.id from public.workspace_roles r where r.workspace_id = w and r.system_key = 'manager'));
   perform public.remove_employee_access_service(boss, w, tests.id('pa:rm' || tag));
   perform public.terminate_employee_service(boss, w, tests.id('pa:term' || tag),
@@ -284,11 +303,11 @@ select tests.role('pa', 'no publishing', 'manager', array(
   select rp.permission_key from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('pa') and r.system_key = 'manager' and rp.permission_key <> 'schedule.publish'));
-select public.update_employee_membership_role_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:dmo'),
+select pg_temp.change_role(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:dmo'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.system_key = 'employee'));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('pa') and m.user_id = pg_temp.u('mov')), tests.id('pa:K'));
-select public.update_employee_membership_role_service(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:lim'),
+select pg_temp.change_role(pg_temp.u('zeynep'), tests.id('pa'), tests.id('pa:lim'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('pa') and r.name = 'no publishing'));
 create temp table required_document (id uuid, preview jsonb);
 insert into required_document (id)

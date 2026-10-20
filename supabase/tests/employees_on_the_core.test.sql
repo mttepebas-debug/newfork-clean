@@ -187,11 +187,22 @@ select is(pg_temp.save_as('selin', 'veli', array['B']), 'allowed',
 
 -- A manager moves somebody between employee roles at their own locations
 -- (6A), and gives nobody a role at or above their own.
-create function pg_temp.role_as(actor text, person text, role_key text) returns text language sql as $$
-  select pg_temp.refusal(format('select public.update_employee_membership_role_service(%L, %L, %L, %L)',
+-- DAVET-ERISIM: a role change is an access change. An employee role takes the
+-- employee slot and empties the management one; a management role goes beside
+-- the employee slot they hold, a manager managing where they work.
+create function pg_temp.role_change(actor text, person text, role_key text) returns text language sql as $$
+  select format('select public.change_employee_access_service(%L, %L, %L, %L, %L, %L::uuid[], null, null)',
     tests.user(case actor when 'olcay' then 'm:owner' else 'm:' || actor end), tests.id('m'), tests.id('m:' || person),
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m')
-       and (r.system_key::text = role_key or r.name = role_key))))
+    case when r.access_class = 'employee' then r.id else (select m.employee_role_id from public.workspace_memberships m
+      where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:' || person)) end,
+    case when r.access_class <> 'employee' then r.id end,
+    case when r.access_class = 'manager' then array(select a.location_id from public.employee_location_assignments a
+      where a.employee_id = tests.id('m:' || person) and a.ended_at is null) else '{}'::uuid[] end)
+  from public.workspace_roles r
+  where r.workspace_id = tests.id('m') and (r.system_key::text = role_key or r.name = role_key)
+$$;
+create function pg_temp.role_as(actor text, person text, role_key text) returns text language sql as $$
+  select pg_temp.refusal(pg_temp.role_change(actor, person, role_key))
 $$;
 select is(pg_temp.role_as('ayse', 'ece', 'line cook'), 'allowed', 'a manager moves an employee to another employee role');
 select is(pg_temp.role_as('ayse', 'ece', 'manager'), '42501 authz.rank', 'a manager does not make anybody a manager');
@@ -226,16 +237,19 @@ select is((select array_agg(s.employee_id is null) from public.schedule_publishe
   where s.id in (tests.id('m:shift:oya-k'), tests.id('m:shift:oya-b'))), array[true, true],
   'her Kadikoy shift and her Besiktas shift are open');
 
--- A role change is written to the audit log with the two roles, and nothing
--- about locations: a role holds none of its own (EMP-001).
+-- A role change is written to the audit log with the two slots before and
+-- after; a role holds no location of its own (EMP-001), so the only places it
+-- names are the ones a manager is given to manage (DAVET-ERISIM), with the
+-- Management jobs and what the change did.
 select is(pg_temp.role_as('olcay', 'selin', 'employee'), 'allowed', 'the owner makes a manager an employee');
 select is(
   (select array(select k from jsonb_object_keys(a.metadata) k order by k)
    from public.audit_events a
-   where a.workspace_id = tests.id('m') and a.action = 'membership.role_changed'
+   where a.workspace_id = tests.id('m') and a.action = 'membership.access_changed'
      and a.metadata ->> 'employee_id' = tests.id('m:selin')::text),
-  array['employee_id', 'from_access_class', 'from_role_id', 'to_access_class', 'to_role_id'],
-  'the audit log names the two roles and nothing else');
+  array['employee_id', 'from_employee_role_id', 'from_management_role_id', 'impact', 'managed_location_ids',
+    'management_job_ids', 'to_employee_role_id', 'to_management_role_id'],
+  'the audit log names the two slots, Manages, the Management jobs and the impact, and nothing else');
 
 select ok(
   to_regprocedure('public.save_employee(uuid, uuid, text, text, text, text, text, date, text, uuid[], uuid, uuid[], uuid, boolean, boolean, integer)') is null
@@ -273,8 +287,7 @@ select is(pg_temp.as_api(format('select public.submit_employee_onboarding_servic
 select is(
   (select m.status::text from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:oya')),
   'active', 'finishing onboarding opened the account');
-select is(pg_temp.as_api(format('select public.update_employee_membership_role_service(%L, %L, %L, %L)', tests.user('m:owner'), tests.id('m'),
-    tests.id('m:ece'), (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'manager'))),
+select is(pg_temp.as_api(pg_temp.role_change('olcay', 'ece', 'manager')),
   'allowed', 'as the API: the owner changes a role');
 select is(pg_temp.as_api(format('select public.set_employee_archived_service(%L, %L, %L, true, false)',
     tests.user('m:owner'), tests.id('m'), tests.id('m:ece'))),

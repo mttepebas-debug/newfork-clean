@@ -68,12 +68,17 @@ test("a manager invites somebody at her own location, they accept, and the list 
   await expect(row.getByText("Not Invited", { exact: true })).toBeVisible();
 
   // The invitation goes out from the record's own drawer: the address in
-  // Profile, the role and Invite in the footer. The name opens Profile; the
+  // Profile, Invite in the footer, the access on Access (Tur 4 B): with
+  // nothing chosen, Invite opens Access and asks. The name opens Profile; the
   // location and job cells open Employment.
   await row.getByText(name, { exact: true }).click();
   const drawer = ayse.getByRole("dialog", { name });
   await drawer.getByLabel("E-mail").fill(inviteeEmail);
-  await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
+  await drawer.getByRole("button", { name: "Invite", exact: true }).click();
+  await expect(drawer.getByRole("alert").filter({ hasText: "Choose at least one access." })).toBeVisible();
+  // A manager gives the employee app; the management app is not hers to give.
+  await expect(drawer.getByLabel("Management app")).toBeDisabled();
+  await drawer.getByLabel("Employee app").check();
   await drawer.getByRole("button", { name: "Invite", exact: true }).click();
   // No email leaves a local run; the drawer hands over the link the email
   // would have carried.
@@ -86,10 +91,12 @@ test("a manager invites somebody at her own location, they accept, and the list 
   // would take the first link back.
   await ayse.goto(`/app/employees?employeeId=${employeeId}&section=access`);
   const access = ayse.getByRole("dialog", { name });
-  // The state card's title (the summary list below repeats it).
-  await expect(access.getByRole("strong").filter({ hasText: /^Invitation sent$/ })).toBeVisible();
-  await expect(access.getByRole("button", { name: "Send reminder", exact: true })).toBeVisible();
-  await expect(access.getByText("Ready to invite", { exact: true })).toHaveCount(0);
+  // One line: the address, the pill and the invitation's own links.
+  await expect(access.getByText("Pending", { exact: true })).toBeVisible();
+  await expect(access.getByRole("button", { name: "Resend", exact: true })).toBeVisible();
+  await expect(access.getByRole("button", { name: "Revoke", exact: true })).toBeVisible();
+  await expect(access.getByRole("button", { name: "Invite", exact: true })).toHaveCount(0);
+  await expect(access.getByLabel("Employee app")).toBeChecked();
 
   // The invited person opens the link signed out. It offers a new account
   // first; this one already has theirs, so they sign in and accept.
@@ -120,7 +127,10 @@ test("a manager's invitation for somebody at another location is refused with 40
     fetch(`${process.env.E2E_API_URL}/v1/workspaces/${ids.workspace}/employees/${employeeId}/invitations`, {
       method: "POST",
       headers: { Authorization: `Bearer ${await tokenOf(person)}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ email: `far-${tag()}@world.test`, roleId: ids.role }),
+      body: JSON.stringify({
+        email: `far-${tag()}@world.test`,
+        access: { employee_role_id: ids.role, management_role_id: null, managed_location_ids: [] },
+      }),
     });
 
   // Ayse manages Kadikoy; the record works at Besiktas only.
@@ -133,11 +143,10 @@ test("a manager's invitation for somebody at another location is refused with 40
   expect(invitationsOf(employeeId)).toBe("1");
 });
 
-// BL-767 + BL-922 (KARARLAR Employees S2, S-86 K7): Send reminder on an
-// invitation that went out sends the same link again and keeps its expiry
-// (it was refused on every press); Resend opens a new link, and the old
-// email's link then points to the newer email instead of "withdrawn".
-test("a reminder sends the same link again, and Resend's old link points to the newer email", async ({
+// BL-922 (KARARLAR Employees S2): Resend opens a new link, and the old
+// email's link then points to the newer email instead of "withdrawn". Tur 4 B
+// (Mert, 2026-10-20) keeps Resend, Copy link and Revoke on Access.
+test("Resend's new link leaves the old one pointing to the newer email", async ({
   browser,
 }) => {
   const firstName = `Rem${tag()}`;
@@ -148,7 +157,7 @@ test("a reminder sends the same link again, and Resend's old link points to the 
     sql(`select token_hash || '|' || expires_at || '|' || resend_count from public.employee_invitations
          where employee_id = '${employeeId}' and status = 'pending';`);
 
-  // An admin: the invitation's state and its Send reminder are on Access.
+  // An admin: the invitation's state and its links are on Access.
   const zeynep = await (await browser.newContext()).newPage();
   await signIn(zeynep, "zeynep");
   await expect(zeynep).not.toHaveURL(/\/sign-in/);
@@ -158,21 +167,15 @@ test("a reminder sends the same link again, and Resend's old link points to the 
   let drawer = zeynep.getByRole("dialog", { name });
   // Exact: an admin also reads the Emergency e-mail field.
   await drawer.getByLabel("E-mail", { exact: true }).fill(inviteeEmail);
-  await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
+  await drawer.getByRole("button", { name: "Invite", exact: true }).click();
+  await drawer.getByLabel("Employee app").check();
   await drawer.getByRole("button", { name: "Invite", exact: true }).click();
   const firstLink = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
   expect(firstLink).toContain("/invite/accept?token=");
-  const [hash, expires, sent] = pending().split("|");
-  expect(sent).toBe("0");
+  const [hash] = pending().split("|");
 
   await zeynep.goto(`/app/employees?employeeId=${employeeId}&section=access`);
   drawer = zeynep.getByRole("dialog", { name });
-  await drawer.getByRole("button", { name: "Send reminder", exact: true }).click();
-  // The drawer hands the reminder's link over, as the email would carry it.
-  await expect(drawer.getByRole("link", { name: "Open acceptance link" })).toHaveAttribute("href", firstLink!);
-  await expect(drawer.getByRole("alert")).toHaveCount(0);
-  expect(pending()).toBe(`${hash}|${expires}|1`);
-
   // Resend replaces the link; the first email's link sends the person on.
   await drawer.getByRole("button", { name: "Resend", exact: true }).click();
   await expect(drawer.getByRole("link", { name: "Open acceptance link" })).not.toHaveAttribute("href", firstLink!);

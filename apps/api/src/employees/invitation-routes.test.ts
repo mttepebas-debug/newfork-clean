@@ -17,6 +17,7 @@ function serviceThrowing(error: unknown): EmployeeInvitationService {
     preview: fail,
     link: fail,
     prepare: fail,
+    updateAccess: fail,
     retry: fail,
     revoke: fail,
     accept: fail,
@@ -242,8 +243,14 @@ describe("invitation endpoints", () => {
       locationScope: { allLocations: false, locationIds: [] },
     };
     const base = `/v1/workspaces/${workspaceId}/employees/${employeeId}/invitations`;
+    const access = {
+      employee_role_id: "92000000-0000-4000-8000-000000000001",
+      management_role_id: "92000000-0000-4000-8000-000000000002",
+      managed_location_ids: ["92000000-0000-4000-8000-000000000003"],
+    };
     const routes = [
-      ["send", "prepare", "POST", base, { email: "pat@example.test" }],
+      ["send", "prepare", "POST", base, { email: "pat@example.test", access }],
+      ["access change", "updateAccess", "PATCH", base, { access }],
       ["retry", "retry", "POST", `${base}/retry`, undefined],
       ["revoke", "revoke", "DELETE", base, undefined],
       ["link", "link", "GET", `${base}/link`, undefined],
@@ -282,12 +289,80 @@ describe("invitation endpoints", () => {
       await app.close();
     });
 
+    // DAVET-ERISIM: an open invitation's access changes with PATCH; the actor
+    // comes from the token, never from the body.
+    it("answers 204 on an access change and hands the service the token's actor and the body's access", async () => {
+      const updateAccess = vi.fn(async () => undefined);
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: { ...serviceThrowing(new Error("unused")), updateAccess },
+      });
+      const response = await app.inject({
+        method: "PATCH",
+        url: base,
+        headers: { authorization: "Bearer manager-token" },
+        payload: {
+          access,
+          actorUserId: "11111111-1111-4111-8111-111111111111",
+          actor_user_id: "11111111-1111-4111-8111-111111111111",
+        },
+      });
+      expect(response.statusCode, response.body).toBe(204);
+      expect(updateAccess).toHaveBeenCalledWith({ actorUserId: managerId, workspaceId, employeeId, access });
+      await app.close();
+    });
+
+    it("answers 404 authz.not_member on an access change before the service is asked", async () => {
+      const updateAccess = vi.fn(async () => undefined);
+      const app = buildApp({
+        contextResolver: { resolve: async () => null },
+        invitationService: { ...serviceThrowing(new Error("unused")), updateAccess },
+      });
+      const response = await app.inject({ method: "PATCH", url: base, headers: { authorization: "Bearer stranger-token" }, payload: { access } });
+      expect(response.statusCode).toBe(404);
+      expect(response.json()).toMatchObject({ reason: "authz.not_member" });
+      expect(updateAccess).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it.each([
+      ["no body", undefined],
+      ["no access", {}],
+      ["a role that is not an id", { access: { ...access, employee_role_id: "owner" } }],
+      ["locations that are not a list", { access: { ...access, managed_location_ids: "all" } }],
+      ["locations that are not ids", { access: { ...access, managed_location_ids: ["nowhere"] } }],
+      ["a missing management role", { access: { employee_role_id: null, managed_location_ids: [] } }],
+    ] as const)("answers 400 on an access change with %s, and asks nobody", async (_name, payload) => {
+      const updateAccess = vi.fn(async () => undefined);
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: { ...serviceThrowing(new Error("unused")), updateAccess },
+      });
+      const response = await app.inject({ method: "PATCH", url: base, headers: { authorization: "Bearer manager-token" }, payload });
+      expect(response.statusCode).toBe(400);
+      expect(response.json()).toMatchObject({ error: "Valid invitation access required" });
+      expect(updateAccess).not.toHaveBeenCalled();
+      await app.close();
+    });
+
+    it("answers 400 on a send without its access", async () => {
+      const prepare = vi.fn(async () => ({ id: employeeId, expiresAt: "2026-10-07T00:00:00.000Z" }));
+      const app = buildApp({
+        contextResolver: { resolve: async () => manager },
+        invitationService: { ...serviceThrowing(new Error("unused")), prepare },
+      });
+      const response = await app.inject({ method: "POST", url: base, headers: { authorization: "Bearer manager-token" }, payload: { email: "pat@example.test" } });
+      expect(response.statusCode).toBe(400);
+      expect(prepare).not.toHaveBeenCalled();
+      await app.close();
+    });
+
     it("never hands the database's own sentence to the caller", async () => {
       const app = buildApp({
         contextResolver: { resolve: async () => manager },
         invitationService: serviceThrowing(new Error('duplicate key value violates unique constraint "employee_invitations_pkey"')),
       });
-      const response = await app.inject({ method: "POST", url: base, headers: { authorization: "Bearer manager-token" }, payload: { email: "pat@example.test" } });
+      const response = await app.inject({ method: "POST", url: base, headers: { authorization: "Bearer manager-token" }, payload: { email: "pat@example.test", access } });
       expect(response.statusCode).toBe(500);
       expect(response.payload).not.toContain("duplicate key");
       await app.close();

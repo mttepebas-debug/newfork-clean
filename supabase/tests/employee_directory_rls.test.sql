@@ -67,9 +67,9 @@ select lives_ok(
 );
 set local role postgres;
 select is((select employee_code from public.employee_profiles where id = (select id from employee_ids where label = 'downtown')), 'E-0001', 'employee code is server generated');
--- Mona manages Downtown because she works there: a manager's locations are
--- their assignments (stage 4b), so her employee record comes before anything
--- she does as a manager.
+-- Mona works at Downtown and manages it: her employee record comes before
+-- anything she does as a manager, and Manages is set apart from Works at
+-- (DAVET-ERISIM), here by hand as the drawer's access change would.
 insert into public.employee_profiles (
   id, workspace_id, user_id, employee_code, first_name, last_name, preferred_name,
   invitation_email, created_by
@@ -90,6 +90,8 @@ insert into public.employee_location_assignments (
   true,
   '16000000-0000-4000-8000-000000000001'
 );
+insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+values ('26000000-0000-4000-8000-000000000001', '36000000-0000-4000-8000-000000000002', '46000000-0000-4000-8000-000000000001');
 insert into public.employee_job_assignments (
   workspace_id, employee_id, job_id, is_primary, created_by
 ) values (
@@ -295,12 +297,22 @@ select throws_ok(
   )$$,
   '42501', 'Not allowed', 'manager cannot edit a linked manager employee drawer'
 );
+-- Every management access holds a Management job (S-168): the hand-built workspace gets the one an
+-- owner's setup makes, which the access change hands out when none is named (DAVET-ERISIM).
+set local role postgres;
+insert into public.departments (workspace_id, name, system_key)
+values ('26000000-0000-4000-8000-000000000001', 'Management', 'management')
+on conflict (workspace_id, system_key) where system_key is not null do nothing;
+insert into public.jobs (workspace_id, department_id, name)
+select d.workspace_id, d.id, 'General Manager' from public.departments d
+where d.workspace_id = '26000000-0000-4000-8000-000000000001' and d.system_key = 'management';
+set local role service_role;
 select lives_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001',
-    (select id from directory_role_ids where label = 'admin')
+    null, (select id from directory_role_ids where label = 'admin'), null, null, null
   )$$,
   'owner can promote a linked non-owner member to admin'
 );
@@ -312,29 +324,29 @@ select is(
 );
 set local role service_role;
 select throws_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000002',
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001',
-    (select id from directory_role_ids where label = 'admin')
+    null, (select id from directory_role_ids where label = 'admin'), null, null, null
   )$$,
   '42501', 'Not allowed', 'admin cannot assign admin access'
 );
 select throws_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001',
-    (select id from directory_role_ids where label = 'owner')
+    null, (select id from directory_role_ids where label = 'owner'), null, null, null
   )$$,
   '42501', 'Not allowed', 'owner access cannot be assigned through drawer role change'
 );
 select throws_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'downtown'),
-    (select id from directory_role_ids where label = 'employee')
+    (select id from directory_role_ids where label = 'employee'), null, null, null, null
   )$$,
   '22023', 'employee has no linked workspace account', 'unlinked employee role is managed by invitation instead of role change'
 );
@@ -344,6 +356,9 @@ update public.workspace_memberships
 set role_id = (select id from directory_role_ids where label = 'manager')
 where workspace_id = '26000000-0000-4000-8000-000000000001'
   and user_id = '16000000-0000-4000-8000-000000000002';
+-- Back to a manager, managing Downtown again (an admin holds no Manages rows).
+insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+values ('26000000-0000-4000-8000-000000000001', '36000000-0000-4000-8000-000000000002', '46000000-0000-4000-8000-000000000001');
 set local role service_role;
 select throws_ok(
   $$select public.save_employee_service(
@@ -480,16 +495,16 @@ set local role service_role;
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000002', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'downtown'), 'ada@example.test', null, repeat('a', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'downtown'), 'ada@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('a', 64), now() + interval '7 days'
   )$$,
   'a manager prepares an invitation for an employee at their location'
 );
 select lives_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000001',
-    (select id from directory_role_ids where label = 'admin')
+    null, (select id from directory_role_ids where label = 'admin'), null, null, null
   )$$,
   'owner can promote the scoped manager fixture back to admin for admin write checks'
 );
@@ -515,7 +530,7 @@ select lives_ok(
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'downtown'), 'ada@example.test', null, repeat('b', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'downtown'), 'ada@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('b', 64), now() + interval '7 days'
   )$$,
   'owner prepares a hashed invitation through service boundary'
 );
@@ -563,7 +578,7 @@ set local role service_role;
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'downtown'), 'new-employee@example.test', null, repeat('c', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'downtown'), 'new-employee@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('c', 64), now() + interval '7 days'
   )$$,
   'owner prepares invitation for account acceptance'
 );
@@ -597,7 +612,7 @@ select lives_ok(
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'duplicate-existing-member'), 'new-employee@example.test', null, repeat('0', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'duplicate-existing-member'), 'new-employee@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('0', 64), now() + interval '7 days'
   )$$,
   'owner prepares a duplicate same-organization invite'
 );
@@ -622,7 +637,7 @@ select lives_ok(
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'expired-invite'), 'expired-invite@example.test', null, repeat('1', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'expired-invite'), 'expired-invite@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('1', 64), now() + interval '7 days'
   )$$,
   'owner prepares an invitation that later expires'
 );
@@ -649,7 +664,7 @@ select lives_ok(
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'generic-accept'), 'generic-accept@example.test', null, repeat('d', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'generic-accept'), 'generic-accept@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('d', 64), now() + interval '7 days'
   )$$,
   'owner prepares invitation discoverable from generic signup'
 );
@@ -683,7 +698,7 @@ select lives_ok(
 select lives_ok(
   $$select public.prepare_employee_invitation_service(
     '16000000-0000-4000-8000-000000000001', '26000000-0000-4000-8000-000000000001',
-    (select id from employee_ids where label = 'generic-decline'), 'generic-decline@example.test', null, repeat('e', 64), now() + interval '7 days'
+    (select id from employee_ids where label = 'generic-decline'), 'generic-decline@example.test', (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[], repeat('e', 64), now() + interval '7 days'
   )$$,
   'owner prepares invitation for decline'
 );
@@ -712,7 +727,8 @@ select lives_ok(
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'admin-invite'),
     'admin-invite@example.test',
-    (select id from public.workspace_roles where workspace_id = '26000000-0000-4000-8000-000000000001' and system_key = 'admin'),
+    null, (select id from public.workspace_roles where workspace_id = '26000000-0000-4000-8000-000000000001' and system_key = 'admin'),
+    '{}'::uuid[],
     repeat('f', 64),
     now() + interval '7 days'
   )$$,
@@ -727,11 +743,11 @@ select is((select status::text from public.workspace_memberships where user_id =
 set local role service_role;
 select throws_ok($$select * from public.list_employees_service('16000000-0000-4000-8000-000000000008', '26000000-0000-4000-8000-000000000001', false, '', 'all', 100, 0)$$, '42501', null, 'pending admin-role invitee has no privileged access before activation');
 select throws_ok(
-  $$select public.update_employee_membership_role_service(
+  $$select public.change_employee_access_service(
     '16000000-0000-4000-8000-000000000001',
     '26000000-0000-4000-8000-000000000001',
     (select id from employee_ids where label = 'admin-invite'),
-    (select id from directory_role_ids where label = 'employee')
+    (select id from directory_role_ids where label = 'employee'), null, null, null, null
   )$$,
   'P0002', 'active workspace membership not found', 'pending onboarding role cannot be changed before activation'
 );
@@ -911,7 +927,7 @@ select lives_ok(
     '26000000-0000-4000-8000-000000000001',
     '76000000-0000-4000-8000-000000000010',
     'archive-linked@example.test',
-    null,
+    (select id from directory_role_ids where label = 'employee'), null, '{}'::uuid[],
     repeat('2', 64),
     now() + interval '7 days'
   )$$,

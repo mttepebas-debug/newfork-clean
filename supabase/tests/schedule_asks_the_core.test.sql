@@ -2,6 +2,22 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select plan(87);
 
+-- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
+-- takes the employee slot and empties the management one; a management role goes beside the employee
+-- slot held, a manager managing where they work.
+create function pg_temp.change_role(actor uuid, w uuid, emp uuid, next_role uuid) returns jsonb language sql as $$
+  select public.change_employee_access_service(actor, w, emp,
+    case when r.access_class = 'employee' then r.id else m.employee_role_id end,
+    case when r.access_class <> 'employee' then r.id end,
+    case when r.access_class = 'manager' then array(select a.location_id from public.employee_location_assignments a
+      where a.employee_id = emp and a.ended_at is null) else '{}'::uuid[] end,
+    null, null)
+  from public.workspace_roles r, public.employee_profiles e
+  join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+  where r.id = next_role and e.id = emp
+$$;
+grant execute on function pg_temp.change_role(uuid, uuid, uuid, uuid) to public;
+
 -- FB-6.1 step .2: Schedule's entry points ask the authorization core
 -- (app_private.authorize() / scope_set()) instead of the three old Schedule
 -- helpers, and a no is 42501 with an authz.* hint. The helpers stay until the
@@ -453,7 +469,7 @@ select is(
 create function pg_temp.make(whose text, role_key text) returns void
 language sql
 as $$
-  select public.update_employee_membership_role_service(tests.user('sc:owner'), tests.id('sc'), tests.id('sc:' || whose),
+  select pg_temp.change_role(tests.user('sc:owner'), tests.id('sc'), tests.id('sc:' || whose),
     (select r.id from public.workspace_roles r where r.workspace_id = tests.id('sc') and r.system_key::text = role_key));
 $$;
 create function pg_temp.notes_about(whose text) returns integer

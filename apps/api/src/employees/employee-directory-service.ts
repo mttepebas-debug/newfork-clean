@@ -14,14 +14,12 @@ import {
   employeeLocationRemovalSchema,
   employeeReferenceDataSchema,
   type EmployeeReferenceDataRecord,
-  employeeRoleUpdateInputSchema,
   employeeSummarySchema,
   pendingPreferredNameFromRow,
   preferredNameOutcomeSchema,
   type EmployeeDetail,
   type EmployeeInput,
   type EmployeeLocationRemoval,
-  type EmployeeRoleUpdateInput,
   type EmployeeSummary,
   type PendingPreferredName,
   type PreferredNameOutcome,
@@ -69,12 +67,6 @@ export interface EmployeeDirectoryService {
     readonly employeeId?: string;
     readonly employee: EmployeeInput;
   }): Promise<string>;
-  updateRole(input: {
-    readonly actorUserId: string;
-    readonly workspaceId: string;
-    readonly employeeId: string;
-    readonly role: EmployeeRoleUpdateInput;
-  }): Promise<void>;
   previewAccessChange(input: {
     readonly actorUserId: string;
     readonly workspaceId: string;
@@ -279,15 +271,6 @@ export function createEmployeeDirectoryServiceWithClient(
         }),
       );
     },
-    async updateRole(input) {
-      const value = employeeRoleUpdateInputSchema.parse(input.role);
-      await rpc("update_employee_membership_role_service", {
-        actor_user_id: input.actorUserId,
-        target_workspace_id: input.workspaceId,
-        target_employee_id: input.employeeId,
-        target_role_id: value.role_id,
-      });
-    },
     async previewAccessChange(input) {
       const value = employeeAccessPreviewInputSchema.parse(input.access);
       return employeeAccessImpactSchema.parse(
@@ -310,7 +293,7 @@ export function createEmployeeDirectoryServiceWithClient(
           next_employee_role_id: value.employee_role_id,
           next_management_role_id: value.management_role_id,
           managed_location_ids: value.managed_location_ids,
-          management_job_ids: value.management_job_ids,
+          management_job_ids: value.management_job_ids ?? null,
           expected_impact: value.expected_impact,
         }),
       );

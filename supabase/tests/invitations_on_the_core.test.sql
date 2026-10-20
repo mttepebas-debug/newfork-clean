@@ -31,6 +31,16 @@ create function pg_temp.actor(label text) returns uuid language sql as $$
   select tests.user(case label when 'olcay' then 'm:owner' else 'm:' || label end)
 $$;
 
+-- The access an invitation with this role names (DAVET-ERISIM): an employee role in the employee slot,
+-- a management role in the management one, a manager managing the given locations.
+create function pg_temp.access(role_key text, places uuid[]) returns jsonb language sql as $$
+  select jsonb_build_object(
+    'employee_role_id', case when r.access_class = 'employee' then r.id end,
+    'management_role_id', case when r.access_class <> 'employee' then r.id end,
+    'managed_location_ids', case when r.access_class = 'manager' then to_jsonb(places) else '[]'::jsonb end)
+  from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key::text = role_key
+$$;
+
 -- Adds somebody at one location and invites them with a role.
 create function pg_temp.invite_as(actor text, loc text, role_key text) returns text language sql as $$
   select pg_temp.refusal(format($f$select public.create_employee_command_service(%L, %L, gen_random_uuid(),
@@ -39,10 +49,10 @@ create function pg_temp.invite_as(actor text, loc text, role_key text) returns t
         'location_ids', jsonb_build_array(%L::uuid), 'primary_location_id', %L::uuid,
         'job_ids', jsonb_build_array(%L::uuid), 'primary_job_id', %L::uuid,
         'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-      %L)$f$,
+      %L::jsonb)$f$,
     pg_temp.actor(actor), tests.id('m'), tests.id('m:' || loc), tests.id('m:' || loc),
     tests.id('m:job:cook'), tests.id('m:job:cook'),
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key::text = role_key)))
+    pg_temp.access(role_key, array[tests.id('m:' || loc)])))
 $$;
 
 -- A manager adds and invites an employee where they work; employee access
@@ -54,7 +64,8 @@ select is(pg_temp.invite_as('ayse', 'K', 'manager'), '42501 authz.rank', 'a mana
 select is(pg_temp.invite_as('zeynep', 'K', 'manager'), 'allowed', 'an admin invites a manager');
 select is(pg_temp.invite_as('zeynep', 'K', 'admin'), '42501 authz.rank', 'an admin invites nobody as an admin');
 select is(pg_temp.invite_as('olcay', 'K', 'admin'), 'allowed', 'the owner invites an admin');
-select is(pg_temp.invite_as('olcay', 'K', 'owner'), '42501 authz.rank', 'nobody is invited as the owner');
+-- The owner's role fits neither slot, so it is refused before anybody's rank is asked.
+select is(pg_temp.invite_as('olcay', 'K', 'owner'), '22023 membership.management_slot', 'nobody is invited as the owner');
 
 -- After an invitation is sent: copying its link, retrying its delivery and
 -- keeping its token for a retry are for whoever could have sent it.
@@ -111,11 +122,13 @@ select is(pg_temp.revoke_as('ayse', 'pelin'), 'allowed', 'a manager takes back a
 -- An existing record is invited again by the same rules, whoever prepares it
 -- (after the one above was taken back).
 create function pg_temp.prepare_as(actor text, person text, role_key text) returns text language sql as $$
-  select pg_temp.refusal(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, now() + interval '7 days')$f$,
+  select pg_temp.refusal(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, %L::uuid[], %L, now() + interval '7 days')$f$,
     pg_temp.actor(actor), tests.id('m'), coalesce((select i.id from tests.ids i where i.label = 'm:' || person), gen_random_uuid()),
     person || '.again@world.test',
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key::text = role_key),
+    a ->> 'employee_role_id', a ->> 'management_role_id',
+    array(select jsonb_array_elements_text(a -> 'managed_location_ids')),
     encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex')))
+  from pg_temp.access(role_key, array[tests.id('m:K')]) a
 $$;
 select is(pg_temp.prepare_as('ayse', 'pelin', 'employee'), 'allowed', 'a manager sends an invitation again to an employee at their location');
 select is(pg_temp.prepare_as('ayse', 'baris', 'employee'), '42501 authz.out_of_scope', 'but not to somebody at another location');
@@ -142,7 +155,7 @@ exception when others then
 end;
 $$;
 select is(
-  pg_temp.as_api(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, %L, now() + interval '7 days')$f$,
+  pg_temp.as_api(format($f$select public.prepare_employee_invitation_service(%L, %L, %L, %L, %L, null, '{}', %L, now() + interval '7 days')$f$,
     pg_temp.actor('ayse'), tests.id('m'), tests.id('m:pat'), 'pat.again@world.test',
     (select r.id from public.workspace_roles r where r.workspace_id = tests.id('m') and r.system_key = 'employee'),
     encode(extensions.digest(gen_random_uuid()::text, 'sha256'), 'hex'))),
@@ -174,7 +187,7 @@ select ok(pg_temp.refusal(format('select public.list_owner_onboarding_invitation
 -- invitation, no JWT written, no role read off the membership.
 select ok(
   (select p.prosrc ~ 'can_invite_with_role' and p.prosrc !~ 'actor_role' from pg_proc p
-   where p.oid = 'public.prepare_employee_invitation_service(uuid,uuid,uuid,text,uuid,text,timestamptz)'::regprocedure),
+   where p.oid = 'public.prepare_employee_invitation_service(uuid,uuid,uuid,text,uuid,uuid,uuid[],text,timestamptz)'::regprocedure),
   'the invitation asks the one role rule and keeps no copy of it'
 );
 select is(

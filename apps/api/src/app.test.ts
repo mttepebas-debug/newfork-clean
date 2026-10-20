@@ -74,6 +74,12 @@ function workspaceMismatchContext(): ActiveWorkspaceContext {
   };
 }
 
+const invitationAccess = {
+  employee_role_id: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
+  management_role_id: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049227",
+  managed_location_ids: ["cb8b3ca2-bdaa-460b-9ae8-ef6b8c049228"],
+};
+
 describe("api app", () => {
   it("serves the current phase health endpoint", async () => {
     const app = buildApp();
@@ -866,6 +872,7 @@ describe("api app", () => {
       expiresAt: "2026-08-24T12:00:00.000Z",
     }));
     const revoke = vi.fn(async (_input: unknown) => undefined);
+    const updateAccess = vi.fn(async (_input: unknown) => undefined);
     const app = buildApp({
       contextResolver: { resolve: async () => resolvedContext },
       invitationService: {
@@ -879,6 +886,7 @@ describe("api app", () => {
           expiresAt: "2026-08-24T12:00:00.000Z",
         }),
         prepare,
+        updateAccess,
         retry,
         revoke: async (input) => {
           revoked.push(input);
@@ -901,7 +909,7 @@ describe("api app", () => {
       headers: { authorization: "Bearer valid-token" },
       payload: {
         email: "employee@example.test",
-        roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
+        access: invitationAccess,
         actorUserId: "11111111-1111-4111-8111-111111111111",
         actor_user_id: "11111111-1111-4111-8111-111111111111",
         workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
@@ -917,7 +925,25 @@ describe("api app", () => {
       workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
       employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
       email: "employee@example.test",
-      roleId: "cb8b3ca2-bdaa-460b-9ae8-ef6b8c049226",
+      access: invitationAccess,
+    });
+
+    const accessResponse = await app.inject({
+      method: "PATCH",
+      url: "/v1/workspaces/6ea5d512-bc7f-4cf3-aad4-2f0815de00fd/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
+      headers: { authorization: "Bearer valid-token" },
+      payload: {
+        access: invitationAccess,
+        actorUserId: "11111111-1111-4111-8111-111111111111",
+        workspaceId: "1131ca31-392f-4ea0-bdc2-e1235e1496b1",
+      },
+    });
+    expect(accessResponse.statusCode).toBe(204);
+    expect(updateAccess).toHaveBeenCalledWith({
+      actorUserId: resolvedContext.userId,
+      workspaceId: "6ea5d512-bc7f-4cf3-aad4-2f0815de00fd",
+      employeeId: "fe201916-aa0e-480b-9144-1e1c8da20a31",
+      access: invitationAccess,
     });
 
     const retryResponse = await app.inject({
@@ -959,7 +985,7 @@ describe("api app", () => {
       method: "POST",
       url: "/v1/workspaces/1131ca31-392f-4ea0-bdc2-e1235e1496b1/employees/fe201916-aa0e-480b-9144-1e1c8da20a31/invitations",
       headers: { authorization: "Bearer valid-token" },
-      payload: { email: "employee@example.test" },
+      payload: { email: "employee@example.test", access: invitationAccess },
     });
     expect(crossWorkspace.statusCode).toBe(404);
     expect(crossWorkspace.json()).toMatchObject({ error: "Workspace not found", reason: "authz.not_member" });
@@ -1043,6 +1069,9 @@ describe("api app", () => {
           emailHint: "em***@example.test",
           expiresAt: "2026-08-24T12:00:00.000Z",
         }),
+        updateAccess: async () => {
+          throw new Error("not used");
+        },
         prepare: async () => {
           throw new Error("not used");
         },
@@ -1087,6 +1116,9 @@ describe("api app", () => {
           throw new Error("not used");
         },
         preview: async () => {
+          throw new Error("not used");
+        },
+        updateAccess: async () => {
           throw new Error("not used");
         },
         prepare: async () => {
@@ -1146,6 +1178,9 @@ describe("api app", () => {
           throw new Error("not used");
         },
         preview: async () => {
+          throw new Error("not used");
+        },
+        updateAccess: async () => {
           throw new Error("not used");
         },
         prepare: async () => {

@@ -58,7 +58,7 @@ select public.prepare_employee_invitation_service(
   '23000000-0000-4000-8000-000000000002',
   'somebody-there@example.test',
   (select id from public.workspace_roles
-   where workspace_id = (select theirs from sides) and system_key = 'employee'),
+   where workspace_id = (select theirs from sides) and system_key = 'employee'), null, '{}'::uuid[],
   encode(extensions.digest('token-theirs', 'sha256'), 'hex'),
   now() + interval '7 days'
 );

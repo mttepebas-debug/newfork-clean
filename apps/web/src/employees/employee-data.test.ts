@@ -146,7 +146,7 @@ describe("the primary job a picker falls back to (EMP-001 C)", () => {
 describe("Invitations the core refuses", () => {
   const employeeId = "15000000-0000-4000-8000-000000000001";
   it.each([
-    ["sending", () => prepareEmployeeInvitation(workspaceId, employeeId, "pat@example.test", null)],
+    ["sending", () => prepareEmployeeInvitation(workspaceId, employeeId, "pat@example.test", { employee_role_id: null, management_role_id: null, managed_location_ids: [] })],
     ["resending", () => retryEmployeeInvitation(workspaceId, employeeId)],
     ["cancelling", () => revokeEmployeeInvitation(workspaceId, employeeId)],
   ] as const)("passes the core's no on %s with its reason", async (_name, call) => {

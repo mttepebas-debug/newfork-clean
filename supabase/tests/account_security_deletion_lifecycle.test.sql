@@ -74,7 +74,7 @@ insert into public.employee_profiles (
 );
 
 insert into public.employee_invitations (
-  id, workspace_id, employee_id, email, role_id, token_hash,
+  id, workspace_id, employee_id, email, employee_role_id, token_hash,
   expires_at, created_by
 ) values (
   '72000000-0000-4000-8000-000000000401',

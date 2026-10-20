@@ -69,7 +69,9 @@ test("an invited employee onboards, waits on the document, and lands in the empl
   await ayse.getByRole("row", { name: new RegExp(name) }).getByText(name, { exact: true }).click();
   const drawer = ayse.getByRole("dialog", { name });
   await drawer.getByLabel("E-mail").fill(email);
-  await drawer.getByLabel("Invite role").selectOption({ label: "Employee" });
+  // Tur 4 B: Invite opens Access; the employee app is ticked there.
+  await drawer.getByRole("button", { name: "Invite", exact: true }).click();
+  await drawer.getByLabel("Employee app").check();
   await drawer.getByRole("button", { name: "Invite", exact: true }).click();
   const link = await drawer.getByRole("link", { name: "Open acceptance link" }).getAttribute("href");
   expect(link).toContain("/invite/accept?token=");

@@ -40,10 +40,11 @@ $$;
 
 select is(
   array(select k from jsonb_object_keys(pg_temp.detail('owner', 'selin')) k order by k),
+  -- DAVET-ERISIM: the two slots by role and Manages (employee_role_id, management_role_id, managed_location_ids).
   array['access', 'account_email', 'allowed', 'archived_at', 'display_name', 'display_status', 'employee_code',
-    'events', 'first_name', 'id', 'internal_note', 'invitation', 'invitation_email',
+    'employee_role_id', 'events', 'first_name', 'id', 'internal_note', 'invitation', 'invitation_email',
     'is_excluded_from_schedule', 'is_remote', 'is_workspace_owner', 'job_count', 'jobs', 'last_name', 'location_count',
-    'locations', 'onboarding', 'preferred_name', 'primary_job_id', 'primary_job_name',
+    'locations', 'managed_location_ids', 'management_role_id', 'onboarding', 'preferred_name', 'primary_job_id', 'primary_job_name',
     'primary_location_id', 'primary_location_name', 'private_contact', 'revision', 'role_id',
     'role_name', 'start_date', 'user_id', 'workspace_id'],
   'the detail answers exactly these keys');

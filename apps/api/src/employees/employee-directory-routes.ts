@@ -1,7 +1,6 @@
 import {
   employeeInputSchema,
   employeeCreateCommandSchema,
-  employeeRoleUpdateInputSchema,
   employeeAccessChangeInputSchema,
   employeeAccessPreviewInputSchema,
   usPhoneSchema,
@@ -453,36 +452,6 @@ export function registerEmployeeDirectoryRoutes(
           employee: body.data,
         }),
       });
-    },
-  );
-
-  app.patch(
-    "/v1/workspaces/:workspaceId/employees/:employeeId/role",
-    async (request, reply) => {
-      const params = employeeParams.safeParse(request.params);
-      const body = employeeRoleUpdateInputSchema.safeParse(request.body);
-      if (!params.success || !body.success)
-        return reply
-          .status(400)
-          .send({ error: "Valid employee role required" });
-      // No gate here: the service asks the core, and its "no" reaches the
-      // drawer as 404 or 403 with its reason (FB-6.2 .4, KK-31).
-      const context = await resolveActor(
-        request.headers.authorization,
-        params.data.workspaceId,
-        options.contextResolver,
-      );
-      if (!options.service)
-        return reply
-          .status(503)
-          .send({ error: "Employee directory service is not configured" });
-      await options.service.updateRole({
-        actorUserId: context.userId,
-        workspaceId: params.data.workspaceId,
-        employeeId: params.data.employeeId,
-        role: body.data,
-      });
-      return reply.status(204).send();
     },
   );
 

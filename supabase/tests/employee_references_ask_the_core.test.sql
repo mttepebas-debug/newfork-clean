@@ -116,16 +116,19 @@ select is(pg_temp.answer('r:owner', 'r'), 'allowed', 'the owner reads them');
 -- 5. The list is exactly what creating an employee accepts -----------------------------
 -- For every role in the workspace, Add employee with an invitation either goes
 -- through or is refused 42501; the drawer lists exactly the ones that go through.
+-- DAVET-ERISIM: the invitation names the role in its own slot, a manager managing
+-- the record's location; the owner's role fits no slot and is refused as such.
 
 create function pg_temp.accepted_roles(person text) returns uuid[]
 language plpgsql as $$
 declare
   role record;
+  hint text;
   accepted uuid[] := '{}';
   place uuid := (select (l ->> 'id')::uuid from jsonb_array_elements(pg_temp.read(person) -> 'locations') l
     where l ->> 'archived_at' is null limit 1);
 begin
-  for role in select r.id from public.workspace_roles r where r.workspace_id = tests.id('r') order by r.id loop
+  for role in select r.id, r.access_class from public.workspace_roles r where r.workspace_id = tests.id('r') order by r.id loop
     begin
       perform public.create_employee_command_service(tests.user(person), tests.id('r'), gen_random_uuid(),
         jsonb_build_object(
@@ -135,10 +138,19 @@ begin
           'location_ids', jsonb_build_array(place), 'primary_location_id', place,
           'job_ids', jsonb_build_array(tests.id('r:job:cook')), 'primary_job_id', tests.id('r:job:cook'),
           'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-        role.id);
+        jsonb_build_object(
+          'employee_role_id', case when role.access_class = 'employee' then role.id end,
+          'management_role_id', case when role.access_class <> 'employee' then role.id end,
+          'managed_location_ids', case when role.access_class = 'manager' then jsonb_build_array(place) else '[]'::jsonb end));
       accepted := accepted || role.id;
-    exception when sqlstate '42501' then
-      null;
+    exception
+      when sqlstate '42501' then
+        null;
+      when sqlstate '22023' then
+        get stacked diagnostics hint = pg_exception_hint;
+        if hint is distinct from 'membership.management_slot' or role.access_class <> 'owner' then
+          raise;
+        end if;
     end;
   end loop;
   return accepted;

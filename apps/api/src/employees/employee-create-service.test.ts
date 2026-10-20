@@ -10,7 +10,11 @@ const id = "10000000-0000-4000-8000-000000000001";
 const invitationId = "10000000-0000-4000-8000-000000000002";
 const command = {
   request_id: id,
-  invite_role_id: id,
+  invite_access: {
+    employee_role_id: id,
+    management_role_id: null,
+    managed_location_ids: [],
+  },
   employee: {
     first_name: "Ada",
     last_name: "Lovelace",
@@ -78,6 +82,11 @@ describe("employee create service", () => {
       }),
     );
     expect(mocks.rpc).toHaveBeenNthCalledWith(
+      1,
+      "create_employee_command_service",
+      expect.objectContaining({ invite_access: command.invite_access }),
+    );
+    expect(mocks.rpc).toHaveBeenNthCalledWith(
       2,
       "store_employee_invitation_delivery_secret_service",
       expect.objectContaining({
@@ -121,7 +130,7 @@ describe("employee create service", () => {
       },
     });
     await expect(
-      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_access: null }),
     ).rejects.toMatchObject({
       statusCode: 400,
       reason: "employee.management_primary",
@@ -140,7 +149,7 @@ describe("employee create service", () => {
       },
     });
     await expect(
-      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_access: null }),
     ).rejects.toMatchObject({
       statusCode: 409,
       reason: "employee.create_request_reused",
@@ -156,7 +165,7 @@ describe("employee create service", () => {
       },
     });
     await expect(
-      createEmployeeCreateService(options).create(id, id, { ...command, invite_role_id: null }),
+      createEmployeeCreateService(options).create(id, id, { ...command, invite_access: null }),
     ).rejects.toMatchObject({
       statusCode: 400,
       reason: "employee.primary_job_required",
@@ -173,7 +182,7 @@ describe("employee create service", () => {
     expect(
       await createEmployeeCreateService(options).create(id, id, {
         ...command,
-        invite_role_id: null,
+        invite_access: null,
       }),
     ).toEqual({ id, invitation: null });
     expect(fetch).not.toHaveBeenCalled();

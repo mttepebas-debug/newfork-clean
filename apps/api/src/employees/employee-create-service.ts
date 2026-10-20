@@ -43,7 +43,7 @@ export function createEmployeeCreateService(
           target_workspace_id: workspaceId,
           command_id: command.request_id,
           employee_input: command.employee,
-          invite_role_id: command.invite_role_id,
+          invite_access: command.invite_access,
         },
       );
       if (error) throw rpcFailure(error);

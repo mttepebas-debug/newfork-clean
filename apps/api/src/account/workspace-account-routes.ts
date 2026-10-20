@@ -440,7 +440,11 @@ export function registerWorkspaceAccountRoutes(
               workspaceId: params.data.workspaceId,
               employeeId: intent.employeeId,
               email: intent.email,
-              roleId: null,
+              access: {
+                employee_role_id: intent.employeeRoleId,
+                management_role_id: null,
+                managed_location_ids: [],
+              },
             });
             await options.service.markOwnerOnboardingInvitationIntentDispatched(
               accessToken,

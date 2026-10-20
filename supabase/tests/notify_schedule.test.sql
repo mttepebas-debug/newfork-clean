@@ -2,6 +2,22 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+-- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
+-- takes the employee slot and empties the management one; a management role goes beside the employee
+-- slot held, a manager managing where they work.
+create function pg_temp.change_role(actor uuid, w uuid, emp uuid, next_role uuid) returns jsonb language sql as $$
+  select public.change_employee_access_service(actor, w, emp,
+    case when r.access_class = 'employee' then r.id else m.employee_role_id end,
+    case when r.access_class <> 'employee' then r.id end,
+    case when r.access_class = 'manager' then array(select a.location_id from public.employee_location_assignments a
+      where a.employee_id = emp and a.ended_at is null) else '{}'::uuid[] end,
+    null, null)
+  from public.workspace_roles r, public.employee_profiles e
+  join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+  where r.id = next_role and e.id = emp
+$$;
+grant execute on function pg_temp.change_role(uuid, uuid, uuid, uuid) to public;
+
 -- BILDIRIM-U3 (KARARLAR S-123, S-95, S-126; docs/plan/research/BILDIRIM-URETICILER.md §2.1): Schedule writes its own
 -- notices into the new core.
 --   (a) a first publish tells everyone with a shift that week, once;
@@ -259,7 +275,7 @@ create temp table rules as select person, pg_temp.rule(person) id
 from unnest(array['ayse', 'dmo', 'mov', 'lim', 'blk', 'gon']) person;
 
 -- The five come to lose the right.
-select public.update_employee_membership_role_service(tests.user('nu:owner'), tests.id('nu'), tests.id('nu:dmo'),
+select pg_temp.change_role(tests.user('nu:owner'), tests.id('nu'), tests.id('nu:dmo'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('nu') and r.system_key = 'employee'));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('nu') and m.user_id = tests.user('nu:mov')), tests.id('nu:K'));

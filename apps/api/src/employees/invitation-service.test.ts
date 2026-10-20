@@ -22,6 +22,13 @@ const workspaceId = "20000000-0000-4000-8000-000000000001";
 const employeeId = "30000000-0000-4000-8000-000000000001";
 const invitationId = "40000000-0000-4000-8000-000000000001";
 const roleId = "50000000-0000-4000-8000-000000000001";
+const managementRoleId = "50000000-0000-4000-8000-000000000002";
+const locationId = "60000000-0000-4000-8000-000000000001";
+const access = {
+  employee_role_id: roleId,
+  management_role_id: managementRoleId,
+  managed_location_ids: [locationId],
+};
 
 beforeEach(() => {
   vi.restoreAllMocks();
@@ -57,7 +64,7 @@ describe("createEmployeeInvitationService", () => {
         workspaceId,
         employeeId,
         email: "Employee@Example.Test",
-        roleId,
+        access,
       }),
     ).resolves.toEqual({
       id: invitationId,
@@ -139,7 +146,7 @@ describe("createEmployeeInvitationService", () => {
         workspaceId,
         employeeId,
         email: "employee@example.test",
-        roleId,
+        access,
       }),
     ).rejects.toMatchObject({
       // The invitation stands and is marked failed; the inviter hears a
@@ -157,7 +164,9 @@ describe("createEmployeeInvitationService", () => {
         target_workspace_id: workspaceId,
         target_employee_id: employeeId,
         employee_email: "employee@example.test",
-        target_role_id: roleId,
+        target_employee_role_id: roleId,
+        target_management_role_id: managementRoleId,
+        target_managed_location_ids: [locationId],
       }),
     );
     expect(mocks.rpc).toHaveBeenNthCalledWith(
@@ -212,7 +221,7 @@ describe("createEmployeeInvitationService", () => {
         workspaceId,
         employeeId,
         email: "Employee@Example.Test",
-        roleId,
+        access,
       });
       return { ...result, expiresAt: "<expires>" };
     };
@@ -245,7 +254,7 @@ describe("createEmployeeInvitationService", () => {
       workspaceId,
       employeeId,
       email: "employee@example.test",
-      roleId: null,
+      access: { employee_role_id: null, management_role_id: null, managed_location_ids: [] },
     });
 
     expect(fetch).not.toHaveBeenCalled();
@@ -410,5 +419,56 @@ describe("createEmployeeInvitationService", () => {
       service.retry({ actorUserId, workspaceId, employeeId }),
     ).rejects.toThrow("Invitation retry state is invalid");
     expect(fetch).not.toHaveBeenCalled();
+  });
+
+  describe("updateAccess", () => {
+    const service = () =>
+      createEmployeeInvitationService({
+        url: "https://example.supabase.co",
+        serviceRoleKey: "service-role",
+        appUrl: "https://app.example.test",
+        production: true,
+      });
+
+    it("hands the new access to update_employee_invitation_access_service", async () => {
+      mocks.rpc.mockResolvedValueOnce({ data: null, error: null });
+
+      await expect(
+        service().updateAccess({ actorUserId, workspaceId, employeeId, access }),
+      ).resolves.toBeUndefined();
+
+      expect(mocks.rpc).toHaveBeenCalledTimes(1);
+      expect(mocks.rpc).toHaveBeenCalledWith(
+        "update_employee_invitation_access_service",
+        {
+          actor_user_id: actorUserId,
+          target_workspace_id: workspaceId,
+          target_employee_id: employeeId,
+          target_employee_role_id: roleId,
+          target_management_role_id: managementRoleId,
+          target_managed_location_ids: [locationId],
+        },
+      );
+    });
+
+    it("turns the database refusal into the HttpError with its reason", async () => {
+      mocks.rpc.mockResolvedValueOnce({
+        data: null,
+        error: {
+          message: "Not allowed",
+          code: "42501",
+          hint: "authz.rank",
+          details: "employee.invite",
+        },
+      });
+
+      await expect(
+        service().updateAccess({ actorUserId, workspaceId, employeeId, access }),
+      ).rejects.toMatchObject({
+        statusCode: 403,
+        pgCode: "42501",
+        reason: "authz.rank",
+      });
+    });
   });
 });

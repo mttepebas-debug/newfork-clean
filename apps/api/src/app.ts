@@ -1,5 +1,6 @@
 import {
   activeWorkspaceContextSchema,
+  employeeInvitationAccessSchema,
   healthResponseSchema,
   type NotificationChannelsConfig,
 } from "@newfork/shared";
@@ -303,9 +304,13 @@ const invitationParamsSchema = z.object({
   workspaceId: z.string().uuid(),
   employeeId: z.string().uuid(),
 });
+// DAVET-ERISIM: an invitation names the two accesses apart (Tur 4 B).
 const invitationBodySchema = z.object({
   email: z.string().trim().email(),
-  roleId: z.string().uuid().nullable().optional(),
+  access: employeeInvitationAccessSchema,
+});
+const invitationAccessBodySchema = z.object({
+  access: employeeInvitationAccessSchema,
 });
 const invitationAcceptanceSchema = z.object({
   token: z.string().trim().min(32).max(256),
@@ -601,9 +606,39 @@ export function buildApp(options: BuildAppOptions = {}) {
           workspaceId: params.data.workspaceId,
           employeeId: params.data.employeeId,
           email: body.data.email,
-          roleId: body.data.roleId ?? null,
+          access: body.data.access,
         }),
       );
+    },
+  );
+
+  // DAVET-ERISIM: until it is accepted, an invitation's access changes; the link stays.
+  app.patch(
+    "/v1/workspaces/:workspaceId/employees/:employeeId/invitations",
+    async (request, reply) => {
+      const params = invitationParamsSchema.safeParse(request.params);
+      const body = invitationAccessBodySchema.safeParse(request.body);
+      if (!params.success || !body.success) {
+        return reply
+          .status(400)
+          .send({ error: "Valid invitation access required" });
+      }
+      const context = await resolveActor(
+        request.headers.authorization,
+        params.data.workspaceId,
+        contextResolver,
+      );
+      if (!invitationService)
+        return reply
+          .status(503)
+          .send({ error: "Employee invitation service is not configured" });
+      await invitationService.updateAccess({
+        actorUserId: context.userId,
+        workspaceId: params.data.workspaceId,
+        employeeId: params.data.employeeId,
+        access: body.data.access,
+      });
+      return reply.status(204).send();
     },
   );
 

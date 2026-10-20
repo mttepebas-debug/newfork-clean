@@ -4,6 +4,7 @@ import { createAvailabilityService } from "./availability/availability-service";
 import { createCommunicationService } from "./communications/communication-service";
 import { createEmployeeHubService } from "./employee-hub/employee-hub-service";
 import { createEmployeeCreateService } from "./employees/employee-create-service";
+import { createEmployeeInvitationService } from "./employees/invitation-service";
 import { createEmployeeDirectoryService } from "./employees/employee-directory-service";
 import { createScheduleRequestsService } from "./schedule/schedule-requests-service";
 import { createDocumentTypesService } from "./settings/document-types-service";
@@ -44,7 +45,7 @@ const input = { actorUserId: actor, workspaceId: workspace } as never;
 const createOptions = { ...options, appUrl: "https://app.example.test", resendApiKey: "test-key", production: true };
 const newEmployee = {
   request_id: id,
-  invite_role_id: id,
+  invite_access: { employee_role_id: id, management_role_id: null, managed_location_ids: [] },
   employee: {
     first_name: "Ada", last_name: "Lovelace", preferred_name: "", invitation_email: "ada@example.test",
     start_date: "", internal_note: "", location_ids: [], primary_location_id: null, job_ids: [],
@@ -64,6 +65,10 @@ const calls: ReadonlyArray<readonly [string, () => Promise<unknown>]> = [
   ["communications", () => createCommunicationService(options).getAnnouncements(input)],
   ["employee hub", () => createEmployeeHubService(options).getPersonalTasks(input)],
   ["employee create", () => createEmployeeCreateService(createOptions).create(actor, workspace, newEmployee as never)],
+  ["invitation access", () => createEmployeeInvitationService(createOptions).updateAccess({
+    actorUserId: actor, workspaceId: workspace, employeeId: id,
+    access: { employee_role_id: id, management_role_id: null, managed_location_ids: [] },
+  })],
   ["employee directory", () => createEmployeeDirectoryService(options).list(input)],
   ["schedule requests", () => createScheduleRequestsService(options).get(input)],
   ["document types", () => createDocumentTypesService(options).targetOptions(input)],

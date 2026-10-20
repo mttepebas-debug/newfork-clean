@@ -168,15 +168,18 @@ insert into public.employee_profiles(id,workspace_id,user_id,employee_code,first
 ('a5500000-0000-4000-8000-000000000312','a5500000-0000-4000-8000-000000000102',null,'E-9912','Pending','Invitee','a5500000-0000-4000-8000-000000000008'),
 ('a5500000-0000-4000-8000-000000000313','a5500000-0000-4000-8000-000000000102',null,'E-9913','Expired','Invitee','a5500000-0000-4000-8000-000000000008'),
 ('a5500000-0000-4000-8000-000000000314','a5500000-0000-4000-8000-000000000102',null,'E-9914','Owner','Invitee','a5500000-0000-4000-8000-000000000008');
-insert into public.employee_invitations(workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by)
+insert into public.employee_invitations(workspace_id,employee_id,email,employee_role_id,management_role_id,token_hash,expires_at,created_by)
 select 'a5500000-0000-4000-8000-000000000102', invitee.employee_id, invitee.email,
-  (select id from public.workspace_roles where workspace_id='a5500000-0000-4000-8000-000000000102' order by created_at limit 1),
+  (select id from public.workspace_roles where workspace_id='a5500000-0000-4000-8000-000000000102' and access_class='employee' and id=first_role.id),
+  (select id from public.workspace_roles where workspace_id='a5500000-0000-4000-8000-000000000102' and access_class<>'employee' and id=first_role.id),
   repeat(invitee.hash_char,64), now() + invitee.expires_in, 'a5500000-0000-4000-8000-000000000008'
 from (values
   ('a5500000-0000-4000-8000-000000000312'::uuid,'invitee-gate2@example.test','b',interval '1 day'),
   ('a5500000-0000-4000-8000-000000000313'::uuid,'expired-invitee-gate2@example.test','c',interval '-1 day'),
   ('a5500000-0000-4000-8000-000000000314'::uuid,'owner-invitee-gate2@example.test','d',interval '1 day')
-) as invitee(employee_id,email,hash_char,expires_in);
+) as invitee(employee_id,email,hash_char,expires_in),
+-- The role goes in the slot of its class (DAVET-ERISIM).
+(select id from public.workspace_roles where workspace_id='a5500000-0000-4000-8000-000000000102' order by created_at limit 1) as first_role;
 set local role service_role;
 select throws_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000012','Invitee business')$q$,'42501','pending invitation must be resolved first','pending invitee without owner membership cannot create');
 select lives_ok($q$select public.create_owner_workspace_service('a5500000-0000-4000-8000-000000000013','Expired invitee business')$q$,'expired invitation does not block creation');

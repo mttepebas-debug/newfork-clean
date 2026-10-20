@@ -29,6 +29,7 @@ const passwordIncorrect = {
 };
 const userId = "d9f43e62-e099-48e1-bc6f-a5aabe8e87d5";
 const employeeId = "97f65b16-a7ad-4f50-990e-d89030ac4701";
+const employeeRoleId = "26000000-0000-4000-8000-0000000000aa";
 
 function fakeJwt(payload: Record<string, unknown>): string {
   return [
@@ -392,7 +393,7 @@ describe("workspace account routes", () => {
   it("dispatches queued owner onboarding invitations after completion", async () => {
     const saveOwnerOnboarding = vi.fn(async () => undefined);
     const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
-      { employeeId, email: "alex@example.test" },
+      { employeeId, email: "alex@example.test", employeeRoleId },
     ]);
     const markOwnerOnboardingInvitationIntentDispatched = vi.fn(
       async () => undefined,
@@ -442,7 +443,11 @@ describe("workspace account routes", () => {
       workspaceId,
       employeeId,
       email: "alex@example.test",
-      roleId: null,
+      access: {
+        employee_role_id: employeeRoleId,
+        management_role_id: null,
+        managed_location_ids: [],
+      },
     });
     expect(markOwnerOnboardingInvitationIntentDispatched).toHaveBeenCalledWith(
       accessToken,
@@ -456,7 +461,7 @@ describe("workspace account routes", () => {
   it("does not roll back owner onboarding when invitation dispatch fails", async () => {
     const saveOwnerOnboarding = vi.fn(async () => undefined);
     const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
-      { employeeId, email: "alex@example.test" },
+      { employeeId, email: "alex@example.test", employeeRoleId },
     ]);
     const markOwnerOnboardingInvitationIntentDispatched = vi.fn(
       async () => undefined,
@@ -998,7 +1003,7 @@ describe("workspace account routes", () => {
   it("does not dispatch owner onboarding invitations when completion mismatches the active workspace", async () => {
     const saveOwnerOnboarding = vi.fn(async () => undefined);
     const listOwnerOnboardingInvitationIntents = vi.fn(async () => [
-      { employeeId, email: "alex@example.test" },
+      { employeeId, email: "alex@example.test", employeeRoleId },
     ]);
     const markOwnerOnboardingInvitationIntentDispatched = vi.fn(
       async () => undefined,

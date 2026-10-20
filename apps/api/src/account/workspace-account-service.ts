@@ -112,6 +112,8 @@ export interface WorkspaceAccountService {
 export interface OwnerOnboardingInvitationIntent {
   readonly employeeId: string;
   readonly email: string;
+  /** The employee app's role: setup invites to it (DAVET-ERISIM). */
+  readonly employeeRoleId: string;
 }
 
 interface RpcClient {
@@ -330,10 +332,11 @@ export function createWorkspaceAccountServiceWithClients(options: {
         (await rpc("list_owner_onboarding_invitation_intents_service", {
           ...(await actorArgs(accessToken)),
           target_workspace_id: workspaceId,
-        })) as Array<{ employee_id: string; email: string }>
+        })) as Array<{ employee_id: string; email: string; employee_role_id: string }>
       ).map((row) => ({
         employeeId: row.employee_id,
         email: row.email,
+        employeeRoleId: row.employee_role_id,
       }));
     },
     async markOwnerOnboardingInvitationIntentDispatched(accessToken, input) {

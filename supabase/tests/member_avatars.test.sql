@@ -31,7 +31,8 @@ begin
       'location_ids', jsonb_build_array(tests.id(w || ':K')), 'primary_location_id', tests.id(w || ':K'),
       'job_ids', jsonb_build_array(tests.id(w || ':job:cook')), 'primary_job_id', tests.id(w || ':job:cook'),
       'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id(w) and r.system_key = 'employee'));
+    jsonb_build_object('employee_role_id',
+      (select r.id from public.workspace_roles r where r.workspace_id = tests.id(w) and r.system_key = 'employee')));
   perform public.accept_employee_invitation_by_id_service(account, (created ->> 'invitation_id')::uuid);
   perform tests.settle();
   return (created ->> 'id')::uuid;

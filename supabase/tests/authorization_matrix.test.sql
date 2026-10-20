@@ -62,7 +62,10 @@ select tests.person('x', 'xena', 'employee', array['K'], array['cook']);
 -- Ada is an admin who works at Kadikoy. Oya, in a small world of her own, owns it and works there.
 select tests.person('m', 'dora', 'manager', array['K'], array['cook']);
 select tests.person('m', 'ersin', 'manager+employee', array['B'], array['cook']);
-select tests.manages('m', 'ersin', array['K']);
+-- Ersin's Manages is set apart from where he works through the access change the drawer saves (DAVET-ERISIM).
+select public.change_employee_access_service(tests.user('m:owner'), tests.id('m'), tests.id('m:ersin'),
+  m.employee_role_id, m.role_id, array[tests.id('m:K')], null, null)
+from public.workspace_memberships m where m.workspace_id = tests.id('m') and m.user_id = tests.user('m:ersin');
 select tests.person('m', 'mona', 'manager', array['K'], array['general manager']);
 select tests.person('m', 'ada', 'admin', array['K'], array['cook']);
 select tests.world('o');
@@ -379,12 +382,17 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
    $$select public.set_employee_archived_service($1, $2, $3, true) is not null$$),
   ('employee.remove_access', 'person', 'employees.manage', false, false,
    $$select public.remove_employee_access_service($1, $2, $3) is not null$$),
+  -- DAVET-ERISIM: a role change is an access change (the single-role service is gone). Making somebody an
+  -- admin puts the admin role in the management slot, their employee slot kept; making them an employee
+  -- leaves the employee role alone, the management slot emptied.
   ('employee.make_admin', 'person', null, true, false,
-   $$select public.update_employee_membership_role_service($1, $2, $3,
+   $$select public.preview_employee_access_change_service($1, $2, $3,
+       (select m.employee_role_id from public.employee_profiles e
+        join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id where e.id = $3),
        (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'admin')) is not null$$),
   ('employee.make_employee', 'person', 'employees.manage', false, false,
-   $$select public.update_employee_membership_role_service($1, $2, $3,
-       (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee')) is not null$$),
+   $$select public.preview_employee_access_change_service($1, $2, $3,
+       (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee'), null) is not null$$),
   -- ROL-CIFT 4.1: an access change on somebody else's record, previewed with the slots they hold;
   -- on one's own record the owner alone (change_own_access). Each reaches only its own records.
   ('employee.change_access', 'person', 'employees.manage', false, true,
@@ -404,7 +412,8 @@ insert into action (key, target_kind, permission, owner_only, empty_is_no, templ
          'job_ids', case when $3 is null then '[]'::jsonb else to_jsonb(array[(select j.id from public.jobs j where j.workspace_id = $2 order by j.name limit 1)]) end,
          'primary_job_id', case when $3 is null then null else (select j.id from public.jobs j where j.workspace_id = $2 order by j.name limit 1) end,
          'is_remote', $3 is null, 'is_excluded_from_schedule', false, 'expected_revision', null),
-       (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee')) is not null$$),
+       jsonb_build_object('employee_role_id',
+         (select r.id from public.workspace_roles r where r.workspace_id = $2 and r.system_key = 'employee'))) is not null$$),
   ('schedule.read', 'location', 'schedule.read', false, true,
    $$select exists (select 1 from jsonb_array_elements(public.get_schedule_read_model_service($1, $2, tests.week(0)) -> 'locations') l
      where (l ->> 'id')::uuid = $3)$$),

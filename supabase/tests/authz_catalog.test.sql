@@ -55,9 +55,8 @@ select cmp_ok(
 create temporary table slot_rule (name text primary key);
 insert into slot_rule values
   ('membership_access_slots_hold'), ('managed_location_needs_manager'), ('management_job_holds'),
-  ('ensure_management_and_owner'),
-  -- ponytail: these two go in ROL-CIFT 6.3, with the drawer's own Manages (6 -> 4)
-  ('place_single_role'), ('manages_follow_works');
+  ('ensure_management_and_owner');
+-- DAVET-ERISIM (ROL-CIFT 6.3, 6 -> 4): place_single_role and manages_follow_works went with the one-role road.
 select cmp_ok(
   (select count(*)::integer from core_function
    where body ~* 'membership_location_scopes|all_locations|access_class\s*(=|in)|\.role\s*(=|<>|in)|role_class\(|coalesce\(\s*[a-z_]+\.access_class[^)]*\)\s*into'
@@ -72,7 +71,7 @@ select is(
   array(select name from slot_rule order by 1),
   'the two-slot data rules read a role''s kind, and nothing else is let off the count'
 );
-select cmp_ok((select count(*)::integer from slot_rule), '<=', 6, 'the two-slot data rules only go down');
+select cmp_ok((select count(*)::integer from slot_rule), '<=', 4, 'the two-slot data rules only go down');
 
 -- Wrapper chains and versioned copies of one entry point. Target 0. FB-6.1 .4
 -- folded Schedule's 24 into one function per job (37 -> 13), and with them

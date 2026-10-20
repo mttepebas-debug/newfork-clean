@@ -67,7 +67,10 @@ select throws_ok($$select public.delete_workspace_role_service('b1051001-0000-40
 set local role postgres;
 update public.workspace_memberships set role_id=(select manager_role from role_test_state) where id='b1051003-0000-4000-8000-000000000003';
 insert into public.employee_profiles(id,workspace_id,employee_code,first_name,last_name,created_by) values('b1051004-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','E-0001','Pending','Invite','b1051001-0000-4000-8000-000000000001');
-insert into public.employee_invitations(id,workspace_id,employee_id,email,role_id,token_hash,expires_at,created_by) values('b1051005-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000001','roles-invite@example.test',(select custom_role from role_test_state),repeat('a',64),now()+interval '1 day','b1051001-0000-4000-8000-000000000001');
+-- A manager-class invitation names where they will manage (DAVET-ERISIM): the Shared location, made here.
+insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone) values
+('T00030','b1051006-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Shared','1 Test','Test','CA','90001','America/Los_Angeles');
+insert into public.employee_invitations(id,workspace_id,employee_id,email,management_role_id,managed_location_ids,token_hash,expires_at,created_by) values('b1051005-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000001','roles-invite@example.test',(select custom_role from role_test_state),array['b1051006-0000-4000-8000-000000000001']::uuid[],repeat('a',64),now()+interval '1 day','b1051001-0000-4000-8000-000000000001');
 set local role service_role;
 select throws_ok($$select public.delete_workspace_role_service('b1051001-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001',(select custom_role from role_test_state))$$,'PT409',null,'Pending invitation references block deletion');
 select is((select (r->>'pending_invite_count')::integer from jsonb_array_elements(public.read_role_workspace_service('b1051001-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001')->'roles') r where r->>'id'=(select custom_role::text from role_test_state)),1,'Role editor reports real pending impact');
@@ -88,7 +91,6 @@ select is((select role_id from public.workspace_memberships where workspace_id='
 select ok(not exists(select 1 from public.workspace_memberships m join public.workspace_role_permissions g on g.role_id=m.role_id where m.user_id='b1051001-0000-4000-8000-000000000005' and g.permission_key='schedule.manage'),'Accepted membership uses updated grants, not sent-time edit permission');
 select set_config('request.jwt.claim.sub','',true);
 insert into public.locations(short_name, id,workspace_id,name,street_address,city,region,postal_code,timezone) values
-('T00030','b1051006-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Shared','1 Test','Test','CA','90001','America/Los_Angeles'),
 ('T00031','b1051006-0000-4000-8000-000000000002','b1051002-0000-4000-8000-000000000001','Outside','2 Test','Test','CA','90001','America/Los_Angeles');
 insert into public.jobs(id,workspace_id,name) values('b1051007-0000-4000-8000-000000000001','b1051002-0000-4000-8000-000000000001','Server');
 insert into auth.users(id,instance_id,aud,role,email,encrypted_password,raw_app_meta_data,raw_user_meta_data,created_at,updated_at) values('b1051001-0000-4000-8000-000000000006','00000000-0000-0000-0000-000000000000','authenticated','authenticated','roles-employee@example.test','','{}','{}',now(),now());
@@ -106,6 +108,8 @@ insert into public.employee_location_assignments(workspace_id,employee_id,locati
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000001',true,'b1051001-0000-4000-8000-000000000001'),
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000002',false,'b1051001-0000-4000-8000-000000000001'),
 ('b1051002-0000-4000-8000-000000000001','b1051004-0000-4000-8000-000000000004','b1051006-0000-4000-8000-000000000001',true,'b1051001-0000-4000-8000-000000000001');
+-- The manager manages where they work, set apart from Works at (DAVET-ERISIM).
+insert into public.membership_managed_locations(workspace_id,membership_id,location_id) values('b1051002-0000-4000-8000-000000000001','b1051003-0000-4000-8000-000000000003','b1051006-0000-4000-8000-000000000001');
 insert into public.employee_private_profiles(employee_id,workspace_id,legal_first_name,legal_last_name,phone,emergency_contact_name,emergency_contact_phone) values('b1051004-0000-4000-8000-000000000003','b1051002-0000-4000-8000-000000000001','Private','Person','+14155550100','Test Contact','+14155550101');
 set constraints all immediate;
 set constraints all deferred;

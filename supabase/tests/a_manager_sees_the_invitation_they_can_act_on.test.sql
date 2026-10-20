@@ -26,6 +26,10 @@ select tests.person('v', 'mo', 'employee', array['B'], array['cook']);
 update public.workspace_memberships set role_id = (
   select r.id from public.workspace_roles r where r.workspace_id = tests.id('v') and r.system_key = 'manager')
 where workspace_id = tests.id('v') and user_id = tests.user('v:mo');
+-- He manages Besiktas: Manages is set apart from Works at (DAVET-ERISIM).
+insert into public.membership_managed_locations (workspace_id, membership_id, location_id)
+select m.workspace_id, m.id, tests.id('v:B') from public.workspace_memberships m
+where m.workspace_id = tests.id('v') and m.user_id = tests.user('v:mo');
 -- A manager role that reads people but does not invite them.
 select tests.role('v', 'Desk', 'manager', array['workspace.read', 'employees.read']);
 select tests.person('v', 'can', 'Desk', array['B'], array['cook']);
@@ -54,6 +58,7 @@ select public.prepare_employee_invitation_service(
   tests.user('v:ayse'), tests.id('v'), tests.id('v:pia'),
   (select i.email from public.employee_invitations i where i.id = tests.id('v:pia:invitation')),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('v') and r.system_key = 'employee'),
+  null, '{}'::uuid[],
   encode(extensions.digest('pia-from-ayse', 'sha256'), 'hex'),
   now() + interval '7 days');
 select is(pg_temp.invitation('ayse', 'pia') ->> 'invited_by_name', 'Ayse Person',

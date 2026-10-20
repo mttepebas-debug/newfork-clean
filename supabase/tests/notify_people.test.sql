@@ -2,6 +2,22 @@ begin;
 create extension if not exists pgtap with schema extensions;
 select no_plan();
 
+-- DAVET-ERISIM: a role change is an access change (the single-role service is gone). An employee role
+-- takes the employee slot and empties the management one; a management role goes beside the employee
+-- slot held, a manager managing where they work.
+create function pg_temp.change_role(actor uuid, w uuid, emp uuid, next_role uuid) returns jsonb language sql as $$
+  select public.change_employee_access_service(actor, w, emp,
+    case when r.access_class = 'employee' then r.id else m.employee_role_id end,
+    case when r.access_class <> 'employee' then r.id end,
+    case when r.access_class = 'manager' then array(select a.location_id from public.employee_location_assignments a
+      where a.employee_id = emp and a.ended_at is null) else '{}'::uuid[] end,
+    null, null)
+  from public.workspace_roles r, public.employee_profiles e
+  join public.workspace_memberships m on m.workspace_id = e.workspace_id and m.user_id = e.user_id
+  where r.id = next_role and e.id = emp
+$$;
+grant execute on function pg_temp.change_role(uuid, uuid, uuid, uuid) to public;
+
 -- BILDIRIM-U4a (KARARLAR S-123, S-127; docs/plan/research/BILDIRIM-URETICILER.md §2.5): people write their own
 -- notices into the new core (part 4, the people slice: invitations, onboarding, preferred name).
 --   (a) an invitation accepted, declined or dropped (its invitee's account going) tells whoever sent it while
@@ -53,7 +69,8 @@ begin
       'location_ids', to_jsonb(array(select tests.id('np:' || k) from unnest(locs) k)), 'primary_location_id', tests.id('np:' || locs[1]),
       'job_ids', jsonb_build_array(tests.id('np:job:cook')), 'primary_job_id', tests.id('np:job:cook'),
       'is_remote', false, 'is_excluded_from_schedule', false, 'expected_revision', null),
-    (select r.id from public.workspace_roles r where r.workspace_id = tests.id('np') and r.system_key = 'employee'));
+    jsonb_build_object('employee_role_id',
+      (select r.id from public.workspace_roles r where r.workspace_id = tests.id('np') and r.system_key = 'employee')));
   insert into who values ('np:' || label, person);
   perform tests.remember('np:' || label, (created ->> 'id')::uuid);
   return tests.remember('np:' || label || ':invitation', (created ->> 'invitation_id')::uuid);
@@ -343,11 +360,11 @@ select tests.role('np', 'no employees', 'manager', array(
   select rp.permission_key from public.workspace_role_permissions rp
   join public.workspace_roles r on r.id = rp.role_id
   where r.workspace_id = tests.id('np') and r.system_key = 'manager' and rp.permission_key <> 'employees.manage'));
-select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:dmo'),
+select pg_temp.change_role(pg_temp.u('owner'), tests.id('np'), tests.id('np:dmo'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('np') and r.system_key = 'employee'));
 select tests.stops_working_at((select m.id from public.workspace_memberships m
   where m.workspace_id = tests.id('np') and m.user_id = pg_temp.u('mov')), tests.id('np:K'));
-select public.update_employee_membership_role_service(pg_temp.u('owner'), tests.id('np'), tests.id('np:lim'),
+select pg_temp.change_role(pg_temp.u('owner'), tests.id('np'), tests.id('np:lim'),
   (select r.id from public.workspace_roles r where r.workspace_id = tests.id('np') and r.name = 'no employees'));
 create temp table required_document (id uuid, preview jsonb);
 insert into required_document (id)
